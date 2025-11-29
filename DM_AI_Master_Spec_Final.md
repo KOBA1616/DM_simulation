@@ -47,14 +47,23 @@ dm_simulator/
 │   │   └── encoders/           # TensorConverter (Hybrid)
 │   ├── utils/                  # [dm::utils] RNG, CSV Loader
 │   └── python/                 # Pybind11 Interface
+├── gui/                        # PyQt Frontend
+│   ├── app.py                  # Main Window
+│   ├── widgets/                # CardWidget, MCTS_Info
+│   └── deck_builder.py         # [Q68] GUI Deck Editor
 ├── py_ai/                      # Python AI Modules
 │   ├── agent/                  # Network (MLP), MCTS
 │   ├── ga/                     # Deck Evolution (Mutation)
 │   └── analytics/              # Heatmap Generator
-└── gui/                        # PyQt Frontend
-    ├── app.py                  # Main Window
-    ├── widgets/                # CardWidget, MCTS_Info
-    └── deck_builder.py         # [Q68] GUI Deck Editor
+├── scripts/                    # Entry Points & Tools
+│   ├── train.py                # Training Loop
+│   ├── test_ai.py              # AI Test Script
+│   ├── test_binding.py         # Binding Test Script
+│   └── validator.py            # CSV Validator
+├── models/                     # Trained Models
+│   └── model_iter_*.pth
+└── bin/                        # Compiled Executables
+    └── dm_sim_test.exe
 ```
 
 ## 3. コア・データ仕様 (Core Data Specs)

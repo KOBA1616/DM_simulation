@@ -64,7 +64,7 @@ def validate_csv(filepath):
         return False
 
 if __name__ == "__main__":
-    csv_path = os.path.join("data", "cards.csv")
+    csv_path = os.path.join(os.path.dirname(__file__), '..', "data", "cards.csv")
     if not validate_csv(csv_path):
         sys.exit(1)
     sys.exit(0)
