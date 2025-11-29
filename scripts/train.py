@@ -25,7 +25,7 @@ def self_play(network, card_db):
     game_data = []
     gs = dm_ai_module.GameState(np.random.randint(100000))
     gs.setup_test_duel() # Use test deck for now
-    dm_ai_module.PhaseManager.start_game(gs)
+    dm_ai_module.PhaseManager.start_game(gs, card_db)
     
     mcts = MCTS(network, card_db, simulations=TRAIN_CFG['simulations'])
     
@@ -72,7 +72,7 @@ def self_play(network, card_db):
         # Apply Action
         dm_ai_module.EffectResolver.resolve_action(gs, action, card_db)
         if action.type == dm_ai_module.ActionType.PASS:
-            dm_ai_module.PhaseManager.next_phase(gs)
+            dm_ai_module.PhaseManager.next_phase(gs, card_db)
             
         # Check Game Over
         is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
