@@ -2,9 +2,9 @@ training:
   batch_size: 32
   learning_rate: 0.001
   epochs: 1
-  simulations: 10
-  games_per_iteration: 1
-  iterations: 1
+  simulations: 25
+  games_per_iteration: 2
+  iterations: 2
   cpuct: 1.0
   checkpoint_dir: "models"
   data_dir: "data"
