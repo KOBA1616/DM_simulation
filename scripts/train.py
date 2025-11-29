@@ -1,6 +1,7 @@
 import os
 import sys
 import yaml
+import glob
 
 # Add root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -176,6 +177,25 @@ def train_loop():
         os.makedirs(models_dir, exist_ok=True)
         model_path = os.path.join(models_dir, f"model_iter_{iteration}.pth")
         torch.save(network.state_dict(), model_path)
+        
+        # Cleanup old models (Keep latest 3)
+        model_files = glob.glob(os.path.join(models_dir, "model_iter_*.pth"))
+        # Sort by iteration number
+        def get_iter(f):
+            try:
+                return int(os.path.basename(f).replace("model_iter_", "").replace(".pth", ""))
+            except ValueError:
+                return -1
+        
+        model_files.sort(key=get_iter, reverse=True)
+        
+        if len(model_files) > 3:
+            for f in model_files[3:]:
+                try:
+                    os.remove(f)
+                    print(f"  Removed old model: {os.path.basename(f)}")
+                except OSError as e:
+                    print(f"  Error removing {f}: {e}")
 
 if __name__ == "__main__":
     train_loop()
