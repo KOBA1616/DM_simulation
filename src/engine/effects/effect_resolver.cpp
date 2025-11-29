@@ -33,7 +33,7 @@ namespace dm::engine {
                 break;
             case ActionType::ATTACK_PLAYER:
             case ActionType::ATTACK_CREATURE:
-                resolve_attack(game_state, action);
+                resolve_attack(game_state, action, card_db);
                 break;
             default:
                 break;
@@ -88,17 +88,19 @@ namespace dm::engine {
         }
     }
 
-    void EffectResolver::resolve_attack(GameState& game_state, const Action& action) {
+    void EffectResolver::resolve_attack(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
         Player& active = game_state.get_active_player();
         Player& opponent = game_state.get_non_active_player();
 
         // Tap attacker
-        auto it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
+        auto attacker_it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
             [action](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
         
-        if (it != active.battle_zone.end()) {
-            it->is_tapped = true;
+        if (attacker_it == active.battle_zone.end()) {
+            return;
         }
+        attacker_it->is_tapped = true;
+        CardInstance attacker = *attacker_it;
 
         if (action.type == ActionType::ATTACK_PLAYER) {
             // Break Shield
@@ -122,8 +124,46 @@ namespace dm::engine {
             }
         } else if (action.type == ActionType::ATTACK_CREATURE) {
             // Battle logic
-            // Compare power, destroy loser
-            // Simplified: Both survive for now or implement power check
+            auto defender_it = std::find_if(opponent.battle_zone.begin(), opponent.battle_zone.end(),
+                [action](const CardInstance& c) { return c.instance_id == action.target_instance_id; });
+            
+            if (defender_it == opponent.battle_zone.end()) {
+                return;
+            }
+            CardInstance defender = *defender_it;
+
+            int attacker_power = card_db.at(attacker.card_id).power;
+            int defender_power = card_db.at(defender.card_id).power;
+
+            bool destroy_attacker = false;
+            bool destroy_defender = false;
+
+            if (attacker_power > defender_power) {
+                destroy_defender = true;
+            } else if (attacker_power < defender_power) {
+                destroy_attacker = true;
+            } else {
+                destroy_attacker = true;
+                destroy_defender = true;
+            }
+
+            if (destroy_attacker) {
+                auto it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
+                    [attacker](const CardInstance& c) { return c.instance_id == attacker.instance_id; });
+                if (it != active.battle_zone.end()) {
+                    active.graveyard.push_back(*it);
+                    active.battle_zone.erase(it);
+                }
+            }
+
+            if (destroy_defender) {
+                auto it = std::find_if(opponent.battle_zone.begin(), opponent.battle_zone.end(),
+                    [defender](const CardInstance& c) { return c.instance_id == defender.instance_id; });
+                if (it != opponent.battle_zone.end()) {
+                    opponent.graveyard.push_back(*it);
+                    opponent.battle_zone.erase(it);
+                }
+            }
         }
     }
 
