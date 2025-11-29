@@ -18,7 +18,13 @@ namespace dm::core {
         bool blocker : 1;
         bool shield_trigger : 1;
         bool evolution : 1;
-        // Add others as needed
+        // Triggers
+        bool cip : 1;             // Comes Into Play
+        bool at_attack : 1;       // Attack Trigger
+        bool at_block : 1;        // Block Trigger
+        bool at_start_of_turn : 1;
+        bool at_end_of_turn : 1;
+        bool destruction : 1;     // Destruction Trigger
     };
 
     // Mode Selection: ModalEffectGroup 構造体による複数選択管理 [Q71]

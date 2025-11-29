@@ -44,7 +44,23 @@ class PythonMCTS:
                 # Remove PASS action to force charge
                 legal_actions = [a for a in legal_actions if a.type != dm_ai_module.ActionType.PASS]
 
+        # Rule: Prioritize playing cards in Main Phase (80% chance to force play if possible)
+        elif self.root.state.current_phase == dm_ai_module.Phase.MAIN:
+            has_play = any(a.type == dm_ai_module.ActionType.PLAY_CARD for a in legal_actions)
+            if has_play and random.random() < 0.8:
+                 legal_actions = [a for a in legal_actions if a.type != dm_ai_module.ActionType.PASS]
+
+        # Rule: Prioritize attacking in Attack Phase (80% chance to force attack if possible)
+        elif self.root.state.current_phase == dm_ai_module.Phase.ATTACK:
+            has_attack = any(a.type in (dm_ai_module.ActionType.ATTACK_PLAYER, dm_ai_module.ActionType.ATTACK_CREATURE) for a in legal_actions)
+            if has_attack and random.random() < 0.8:
+                 legal_actions = [a for a in legal_actions if a.type != dm_ai_module.ActionType.PASS]
+
         self.root.untried_actions = legal_actions
+
+        # Check stop condition before starting
+        if self.should_stop and self.should_stop():
+            return None
 
         for _ in range(self.simulations):
             QApplication.processEvents() # Keep GUI responsive
@@ -54,6 +70,9 @@ class PythonMCTS:
             node = self._select(self.root)
             reward = self._simulate(node.state)
             self._backpropagate(node, reward)
+
+        if self.should_stop and self.should_stop():
+            return None
 
         if not self.root.children:
             if self.root.untried_actions:
@@ -83,7 +102,7 @@ class PythonMCTS:
         # For simplicity, we assume resolve_action handles immediate effects.
         # But we might need to handle phase transitions if the action was PASS.
         if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
-             dm_ai_module.PhaseManager.next_phase(next_state)
+             dm_ai_module.PhaseManager.next_phase(next_state, self.card_db)
 
         child_node = Node(next_state, parent=node, action=action)
         child_node.untried_actions = dm_ai_module.ActionGenerator.generate_legal_actions(next_state, self.card_db)
@@ -111,26 +130,38 @@ class PythonMCTS:
             
             actions = dm_ai_module.ActionGenerator.generate_legal_actions(current_state, self.card_db)
             if not actions:
-                dm_ai_module.PhaseManager.next_phase(current_state)
+                dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
             else:
-                # Heuristic: Prioritize Mana Charge in Mana Phase
-                mana_charges = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
+                # Heuristics for Random Rollout
                 
+                # 1. Mana Charge (Turn <= 3)
+                mana_charges = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
                 should_charge = False
                 if mana_charges:
-                    if current_state.turn_number <= 5:
+                    if current_state.turn_number <= 3:
                         should_charge = True
                     elif random.random() < 0.9: 
                         should_charge = True
-
+                
                 if should_charge:
                     action = random.choice(mana_charges)
                 else:
-                    action = random.choice(actions)
+                    # 2. Play Card (Main Phase)
+                    play_cards = [a for a in actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
+                    if play_cards and random.random() < 0.8: # 80% chance to play card
+                        action = random.choice(play_cards)
+                    else:
+                        # 3. Attack (Attack Phase)
+                        attacks = [a for a in actions if a.type in (dm_ai_module.ActionType.ATTACK_PLAYER, dm_ai_module.ActionType.ATTACK_CREATURE)]
+                        if attacks and random.random() < 0.8: # 80% chance to attack
+                            action = random.choice(attacks)
+                        else:
+                            # Fallback to random (includes PASS)
+                            action = random.choice(actions)
                 
                 dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
                 if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
-                    dm_ai_module.PhaseManager.next_phase(current_state)
+                    dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
             depth += 1
         
         return 0.5 # Draw if depth limit reached

@@ -14,7 +14,7 @@ namespace dm::engine {
         from.pop_back();
     }
 
-    void PhaseManager::start_game(GameState& game_state) {
+    void PhaseManager::start_game(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         game_state.turn_number = 1;
         game_state.active_player_id = 0;
         // Initial setup (shields, hand) would be done elsewhere or here?
@@ -34,14 +34,29 @@ namespace dm::engine {
             }
         }
 
-        start_turn(game_state);
+        start_turn(game_state, card_db);
     }
 
-    void PhaseManager::start_turn(GameState& game_state) {
+    void PhaseManager::start_turn(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         Player& active_player = game_state.get_active_player();
         
         // Untap
         ManaSystem::untap_all(active_player);
+
+        // Clear Summoning Sickness
+        for (auto& card : active_player.battle_zone) {
+            card.summoning_sickness = false;
+        }
+
+        // Trigger Reservation: AT_START_OF_TURN
+        for (const auto& card : active_player.battle_zone) {
+            if (card_db.count(card.card_id)) {
+                const auto& def = card_db.at(card.card_id);
+                if (def.keywords.at_start_of_turn) {
+                    game_state.pending_effects.emplace_back(EffectType::AT_START_OF_TURN, card.instance_id, active_player.id);
+                }
+            }
+        }
         
         // Draw Phase
         // First turn, first player doesn't draw? (Standard rules: First player skips draw on turn 1)
@@ -67,6 +82,12 @@ namespace dm::engine {
     }
 
     bool PhaseManager::check_game_over(GameState& game_state, GameResult& result) {
+        // Check Winner Flag (Direct Attack)
+        if (game_state.winner != GameResult::NONE) {
+            result = game_state.winner;
+            return true;
+        }
+
         // Check Deck Out
         // "Deck Out (Hard): 山札の最後の1枚を引いた瞬間に敗北 [Q27]"
         // This means if deck is empty when trying to draw, or just empty?
@@ -106,7 +127,7 @@ namespace dm::engine {
         return false;
     }
 
-    void PhaseManager::next_phase(GameState& game_state) {
+    void PhaseManager::next_phase(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         switch (game_state.current_phase) {
             case Phase::START_OF_TURN:
                 game_state.current_phase = Phase::DRAW;
@@ -123,6 +144,18 @@ namespace dm::engine {
                 break;
             case Phase::ATTACK:
                 game_state.current_phase = Phase::END_OF_TURN;
+                // Trigger Reservation: AT_END_OF_TURN
+                {
+                    Player& active_player = game_state.get_active_player();
+                    for (const auto& card : active_player.battle_zone) {
+                        if (card_db.count(card.card_id)) {
+                            const auto& def = card_db.at(card.card_id);
+                            if (def.keywords.at_end_of_turn) {
+                                game_state.pending_effects.emplace_back(EffectType::AT_END_OF_TURN, card.instance_id, active_player.id);
+                            }
+                        }
+                    }
+                }
                 break;
             case Phase::END_OF_TURN:
                 // Switch turn
@@ -131,7 +164,7 @@ namespace dm::engine {
                     game_state.turn_number++;
                 }
                 game_state.current_phase = Phase::START_OF_TURN;
-                start_turn(game_state);
+                start_turn(game_state, card_db);
                 break;
         }
     }

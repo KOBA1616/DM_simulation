@@ -29,14 +29,15 @@ class GameWindow(QMainWindow):
         # Game State
         self.gs = dm_ai_module.GameState(42)
         self.gs.setup_test_duel()
-        dm_ai_module.PhaseManager.start_game(self.gs)
         self.card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
+        dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
         self.civ_map = self.load_civilizations("data/cards.csv")
         
         # Simulation Timer
         self.timer = QTimer()
         self.timer.timeout.connect(self.step_phase)
         self.is_running = False
+        self.is_processing = False
 
         # UI Setup
         self.central_widget = QWidget()
@@ -205,7 +206,7 @@ class GameWindow(QMainWindow):
                 new_gs = dm_ai_module.GameState(random.randint(0, 10000))
                 new_gs.setup_test_duel()
                 new_gs.set_deck(0, deck_ids)
-                dm_ai_module.PhaseManager.start_game(new_gs)
+                dm_ai_module.PhaseManager.start_game(new_gs, self.card_db)
                 self.gs = new_gs
                 
                 self.log_list.clear()
@@ -232,7 +233,7 @@ class GameWindow(QMainWindow):
         
         self.gs = dm_ai_module.GameState(random.randint(0, 10000))
         self.gs.setup_test_duel()
-        dm_ai_module.PhaseManager.start_game(self.gs)
+        dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
         
         self.log_list.clear()
         self.log_list.addItem("Game Reset")
@@ -281,69 +282,81 @@ class GameWindow(QMainWindow):
         self.log_list.addItem(f"P0 Action: {action.to_string()}")
         
         if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
-            dm_ai_module.PhaseManager.next_phase(self.gs)
+            dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
             
         self.update_ui()
 
     def step_phase(self):
-        # Check Game Over
-        is_over, result = dm_ai_module.PhaseManager.check_game_over(self.gs)
-        if is_over:
-            self.timer.stop()
-            self.is_running = False
-            self.start_btn.setText("Start Simulation")
-            self.log_list.addItem(f"Game Over! Result: {result}")
+        if self.is_processing:
             return
+        self.is_processing = True
+        was_running_at_start = self.is_running
+        
+        try:
+            # Check Game Over
+            is_over, result = dm_ai_module.PhaseManager.check_game_over(self.gs)
+            if is_over:
+                self.timer.stop()
+                self.is_running = False
+                self.start_btn.setText("Start Simulation")
+                self.log_list.addItem(f"Game Over! Result: {result}")
+                return
 
-        active_pid = self.gs.active_player_id
-        is_human = (active_pid == 0 and self.p0_human_radio.isChecked()) or \
-                   (active_pid == 1 and self.p1_human_radio.isChecked())
+            active_pid = self.gs.active_player_id
+            is_human = (active_pid == 0 and self.p0_human_radio.isChecked()) or \
+                       (active_pid == 1 and self.p1_human_radio.isChecked())
 
-        if is_human:
-            # If human turn, we wait for input.
-            # Unless there are no actions (Auto-Pass)
+            if is_human:
+                # If human turn, we wait for input.
+                # Unless there are no actions (Auto-Pass)
+                actions = dm_ai_module.ActionGenerator.generate_legal_actions(
+                    self.gs, self.card_db
+                )
+                if not actions:
+                    dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
+                    self.log_list.addItem(f"P{active_pid} Auto-Pass")
+                    self.update_ui()
+                return
+
+            # AI Turn
             actions = dm_ai_module.ActionGenerator.generate_legal_actions(
                 self.gs, self.card_db
             )
+
             if not actions:
-                dm_ai_module.PhaseManager.next_phase(self.gs)
+                dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
                 self.log_list.addItem(f"P{active_pid} Auto-Pass")
-                self.update_ui()
-            return
-
-        # AI Turn
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(
-            self.gs, self.card_db
-        )
-
-        if not actions:
-            dm_ai_module.PhaseManager.next_phase(self.gs)
-            self.log_list.addItem(f"P{active_pid} Auto-Pass")
-        else:
-            # Use MCTS to decide action
-            mcts = PythonMCTS(self.card_db, simulations=50) 
-            
-            # Pass a lambda to check if simulation should stop
-            mcts.should_stop = lambda: not self.is_running
-            
-            best_action = mcts.search(self.gs)
-            
-            # Update MCTS View
-            tree_data = mcts.get_tree_data()
-            self.mcts_view.update_from_data(tree_data)
-            
-            if best_action:
-                dm_ai_module.EffectResolver.resolve_action(
-                    self.gs, best_action, self.card_db
-                )
-                self.log_list.addItem(f"P{active_pid} AI Action: {best_action.to_string()}")
-
-                if best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE:
-                    dm_ai_module.PhaseManager.next_phase(self.gs)
             else:
-                self.log_list.addItem("Error: MCTS returned None")
+                # Use MCTS to decide action
+                mcts = PythonMCTS(self.card_db, simulations=50) 
+                
+                # Pass a lambda to check if simulation should stop
+                mcts.should_stop = lambda: was_running_at_start and not self.is_running
+                
+                best_action = mcts.search(self.gs)
+                
+                # Update MCTS View
+                tree_data = mcts.get_tree_data()
+                self.mcts_view.update_from_data(tree_data)
+                
+                if was_running_at_start and not self.is_running:
+                    self.log_list.addItem("Simulation stopped.")
+                    return
 
-        self.update_ui()
+                if best_action:
+                    dm_ai_module.EffectResolver.resolve_action(
+                        self.gs, best_action, self.card_db
+                    )
+                    self.log_list.addItem(f"P{active_pid} AI Action: {best_action.to_string()}")
+
+                    if best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE:
+                        dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
+                else:
+                    self.log_list.addItem("Error: MCTS returned None")
+
+            self.update_ui()
+        finally:
+            self.is_processing = False
         
     def update_ui(self):
         self.turn_label.setText(f"Turn: {self.gs.turn_number}")
