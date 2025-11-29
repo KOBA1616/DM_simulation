@@ -1,12 +1,16 @@
 import sys
 import os
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QListWidget
-from PyQt6.QtCore import QTimer, Qt
+import random
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QPushButton, QListWidget
+)
 import dm_ai_module
 from gui.deck_builder import DeckBuilder
 
 # Add root to path
 sys.path.append(os.getcwd())
+
 
 class GameWindow(QMainWindow):
     def __init__(self):
@@ -77,22 +81,25 @@ class GameWindow(QMainWindow):
             return
 
         # Generate Actions
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.gs, self.card_db)
-        
+        actions = dm_ai_module.ActionGenerator.generate_legal_actions(
+            self.gs, self.card_db
+        )
+
         if not actions:
             dm_ai_module.PhaseManager.next_phase(self.gs)
             self.log_list.addItem("Auto-Pass Phase")
         else:
             # For now, just pick random action to step forward
             # In real GUI, we would let user click or AI choose
-            import random
             action = random.choice(actions)
-            dm_ai_module.EffectResolver.resolve_action(self.gs, action, self.card_db)
+            dm_ai_module.EffectResolver.resolve_action(
+                self.gs, action, self.card_db
+            )
             self.log_list.addItem(f"Action: {action.to_string()}")
-            
+
             if action.type == dm_ai_module.ActionType.PASS:
                 dm_ai_module.PhaseManager.next_phase(self.gs)
-                
+
         self.update_ui()
         
     def update_ui(self):

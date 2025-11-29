@@ -51,6 +51,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<Player>(m, "Player")
         .def_readonly("id", &Player::id)
         .def_readonly("hand", &Player::hand)
+        .def_readonly("deck", &Player::deck)
         .def_readonly("mana_zone", &Player::mana_zone)
         .def_readonly("battle_zone", &Player::battle_zone)
         .def_readonly("shield_zone", &Player::shield_zone)
@@ -64,6 +65,15 @@ PYBIND11_MODULE(dm_ai_module, m) {
             for (int i = 0; i < 40; ++i) {
                 s.players[0].deck.emplace_back(1, i); // ID 1
                 s.players[1].deck.emplace_back(1, i + 100);
+            }
+        })
+        .def("set_deck", [](GameState& s, int player_id, const std::vector<uint16_t>& card_ids) {
+            if (player_id < 0 || player_id >= 2) return;
+            auto& player = s.players[player_id];
+            player.deck.clear();
+            int instance_id_counter = player_id * 10000; 
+            for (uint16_t cid : card_ids) {
+                player.deck.emplace_back(cid, instance_id_counter++);
             }
         })
         .def_readwrite("turn_number", &GameState::turn_number)
