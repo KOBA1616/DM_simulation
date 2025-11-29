@@ -35,6 +35,7 @@ namespace dm::core {
     struct GameState {
         int turn_number = 1;
         PlayerID active_player_id = 0;
+        Phase current_phase = Phase::START_OF_TURN;
         std::array<Player, 2> players;
         
         // Determinism: std::mt19937 inside State [Q69]
