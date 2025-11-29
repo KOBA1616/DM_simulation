@@ -280,7 +280,7 @@ class GameWindow(QMainWindow):
         )
         self.log_list.addItem(f"P0 Action: {action.to_string()}")
         
-        if action.type == dm_ai_module.ActionType.PASS:
+        if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
             dm_ai_module.PhaseManager.next_phase(self.gs)
             
         self.update_ui()
@@ -322,6 +322,10 @@ class GameWindow(QMainWindow):
         else:
             # Use MCTS to decide action
             mcts = PythonMCTS(self.card_db, simulations=50) 
+            
+            # Pass a lambda to check if simulation should stop
+            mcts.should_stop = lambda: not self.is_running
+            
             best_action = mcts.search(self.gs)
             
             # Update MCTS View
@@ -334,7 +338,7 @@ class GameWindow(QMainWindow):
                 )
                 self.log_list.addItem(f"P{active_pid} AI Action: {best_action.to_string()}")
 
-                if best_action.type == dm_ai_module.ActionType.PASS:
+                if best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE:
                     dm_ai_module.PhaseManager.next_phase(self.gs)
             else:
                 self.log_list.addItem("Error: MCTS returned None")
