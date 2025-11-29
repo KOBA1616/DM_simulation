@@ -38,7 +38,15 @@ def self_play(network, card_db):
     gs.setup_test_duel() # Use test deck for now
     dm_ai_module.PhaseManager.start_game(gs, card_db)
     
-    mcts = MCTS(network, card_db, simulations=TRAIN_CFG['simulations'])
+    mcts_cfg = CONFIG['mcts']
+    mcts = MCTS(
+        network, 
+        card_db, 
+        simulations=TRAIN_CFG['simulations'], 
+        c_puct=TRAIN_CFG['cpuct'],
+        dirichlet_alpha=mcts_cfg['dirichlet_alpha'],
+        dirichlet_epsilon=mcts_cfg['dirichlet_epsilon']
+    )
     
     turn_count = 0
     while True:
@@ -55,21 +63,30 @@ def self_play(network, card_db):
             return game_data, result
 
         # MCTS
-        root = mcts.search(gs)
+        root = mcts.search(gs, add_noise=True)
         
-        # Policy Target
+        # Policy Target with Temperature
         policy_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
         policy = np.zeros(policy_size)
         
-        # Temperature?
-        # For now, deterministic or simple proportional
         visits = np.array([child.visit_count for child in root.children])
-        actions = [child.action for child in root.children]
         
         if len(visits) == 0:
             break # Game Over
             
-        probs = visits / visits.sum()
+        # Temperature Schedule
+        if turn_count < 30:
+            temp = 1.0
+        else:
+            temp = 0.1 # Almost deterministic
+            
+        if temp < 1e-3:
+            best_idx = np.argmax(visits)
+            probs = np.zeros_like(visits, dtype=float)
+            probs[best_idx] = 1.0
+        else:
+            visits_temp = visits ** (1.0 / temp)
+            probs = visits_temp / visits_temp.sum()
         
         for child, prob in zip(root.children, probs):
             idx = dm_ai_module.ActionEncoder.action_to_index(child.action)

@@ -1,5 +1,6 @@
 import math
 import torch
+import numpy as np
 import dm_ai_module
 
 
@@ -23,11 +24,13 @@ class MCTSNode:
 
 
 class MCTS:
-    def __init__(self, network, card_db, simulations=100, c_puct=1.0):
+    def __init__(self, network, card_db, simulations=100, c_puct=1.0, dirichlet_alpha=0.3, dirichlet_epsilon=0.25):
         self.network = network
         self.card_db = card_db
         self.simulations = simulations
         self.c_puct = c_puct
+        self.dirichlet_alpha = dirichlet_alpha
+        self.dirichlet_epsilon = dirichlet_epsilon
 
     def _fast_forward(self, state):
         while True:
@@ -41,13 +44,16 @@ class MCTS:
                 break
             dm_ai_module.PhaseManager.next_phase(state, self.card_db)
 
-    def search(self, root_state):
+    def search(self, root_state, add_noise=False):
         root_state_clone = root_state.clone()
         self._fast_forward(root_state_clone)
         root = MCTSNode(root_state_clone)
 
         # Expand root
         self._expand(root)
+        
+        if add_noise:
+            self._add_exploration_noise(root)
 
         for _ in range(self.simulations):
             node = root
@@ -69,6 +75,15 @@ class MCTS:
             self._backpropagate(node, value)
 
         return root
+
+    def _add_exploration_noise(self, node):
+        if not node.children:
+            return
+            
+        noise = np.random.dirichlet([self.dirichlet_alpha] * len(node.children))
+        
+        for i, child in enumerate(node.children):
+            child.prior = child.prior * (1 - self.dirichlet_epsilon) + noise[i] * self.dirichlet_epsilon
 
     def _select_child(self, node):
         best_score = -float('inf')
