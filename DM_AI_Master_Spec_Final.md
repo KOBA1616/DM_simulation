@@ -191,7 +191,7 @@ dm_simulator/
 - **Training Loop**: `train.py` (Self-play, Replay Buffer) 実装。
 - **Evolution**: `evolve.py` (GA, Evaluation-based swap) 実装。
 
-### Phase 5: Polish & Analytics (仕上げ)
+### Phase 5: Polish & Analytics (仕上げ) - DONE
 - **Deck Builder**: GUIへの機能統合。
 - **Heatmap**: `analyze.py` 実装。
 - **Optimization**: プロファイリングとボトルネック解消。
