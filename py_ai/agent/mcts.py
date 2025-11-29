@@ -39,7 +39,7 @@ class MCTS:
             )
             if actions:
                 break
-            dm_ai_module.PhaseManager.next_phase(state)
+            dm_ai_module.PhaseManager.next_phase(state, self.card_db)
 
     def search(self, root_state):
         root_state_clone = root_state.clone()
@@ -166,7 +166,7 @@ class MCTS:
             # Check if phase changed?
             # If action was PASS, phase changes.
             if action.type == dm_ai_module.ActionType.PASS:
-                dm_ai_module.PhaseManager.next_phase(next_state)
+                dm_ai_module.PhaseManager.next_phase(next_state, self.card_db)
 
             # Fast forward through auto-phases
             self._fast_forward(next_state)
