@@ -22,6 +22,10 @@ namespace dm::core {
         int target_instance_id; // For ATTACK_CREATURE, SELECT_TARGET
         PlayerID target_player; // For ATTACK_PLAYER
         
+        // ML Helper
+        int slot_index = -1; // Index in Hand/BattleZone for source
+        int target_slot_index = -1; // Index in BattleZone for target
+        
         // For debugging
         std::string to_string() const {
             // Simplified string representation
