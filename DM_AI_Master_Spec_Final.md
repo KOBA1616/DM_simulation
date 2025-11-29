@@ -9,6 +9,7 @@
     - **Evolutionary**: 評価ベースのサイドボード交換によるデッキ進化。
     - **Scientific**: PyQt6による可視化とヒートマップ分析。
     - **Version Control**: 各開発ステップ完了ごとにGitコミットを行い、進捗を確実に保存する。
+    - **Quality Control**: 各開発フェーズ終了時に静的解析を実行し、コード品質を維持する。
 
 ## 2. システムアーキテクチャ (System Architecture)
 
@@ -167,14 +168,14 @@ dm_simulator/
 
 **Note**: 各ステップの完了時には必ずGitコミットを行い、変更を保存すること。
 
-### Phase 1: Foundation (基盤構築)
+### Phase 1: Foundation (基盤構築) - DONE
 - **Project Setup**: CMakeLists.txt 作成、ディレクトリ構造作成。
 - **Core Types**: `types.hpp`, `constants.hpp` 定義。
 - **Data Loader**: `csv_loader.cpp` (String Parsing) 実装。
 - **Game State**: `game_state.hpp` (Memory optimized) 実装。
 - **Tests**: `validator.py` によるデータ整合性チェック。
 
-### Phase 2: Game Logic Implementation (ロジック実装)
+### Phase 2: Game Logic Implementation (ロジック実装) - DONE
 - **Phase Flow**: `PhaseManager` (Win condition, Turn limit) 実装。
 - **Mana System**: `ManaCalculator` (Color/Cost logic) 実装。
 - **Action Gen**: `ActionGenerator` (Masking, Strategic Pass) 実装。
