@@ -170,6 +170,7 @@ dm_simulator/
 
 ### 7.2 開発補助
 - **Deck Builder**: GUI内蔵エディタを段階的に実装 [Q68].
+- **Card Editor**: GUI上で新規カードデータを登録・編集し、`cards.csv` に保存する機能 [New].
 - **Auto-Gen**: テスト用ランダムデッキ生成ツール [Q85].
 - **Config**: `config.json` による外部パラメータ管理 [Q84].
 

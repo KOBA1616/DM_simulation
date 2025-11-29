@@ -1,15 +1,17 @@
 import sys
 import os
 import random
+import json
+
+# Add root to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QListWidget
+    QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox
 )
 import dm_ai_module
 from gui.deck_builder import DeckBuilder
-
-# Add root to path
-sys.path.append(os.getcwd())
 
 
 class GameWindow(QMainWindow):
@@ -46,6 +48,10 @@ class GameWindow(QMainWindow):
         self.deck_builder_button = QPushButton("Deck Builder")
         self.deck_builder_button.clicked.connect(self.open_deck_builder)
         self.info_layout.addWidget(self.deck_builder_button)
+
+        self.load_deck_btn = QPushButton("Load Deck P0")
+        self.load_deck_btn.clicked.connect(self.load_deck_p0)
+        self.info_layout.addWidget(self.load_deck_btn)
         
         self.main_layout.addWidget(self.info_panel)
         
@@ -72,6 +78,52 @@ class GameWindow(QMainWindow):
     def open_deck_builder(self):
         self.deck_builder = DeckBuilder(self.card_db)
         self.deck_builder.show()
+
+    def load_deck_p0(self):
+        os.makedirs("data/decks", exist_ok=True)
+        fname, _ = QFileDialog.getOpenFileName(
+            self, "Load Deck P0", "data/decks", "JSON Files (*.json)"
+        )
+        if fname:
+            try:
+                with open(fname, 'r') as f:
+                    deck_ids = json.load(f)
+                
+                if len(deck_ids) != 40:
+                    QMessageBox.warning(self, "Invalid Deck", "Deck must have 40 cards.")
+                    return
+
+                # Set deck for P0
+                self.gs.set_deck(0, deck_ids)
+                
+                # Restart game to apply changes (or just reset state)
+                # For now, let's just reset the game with new deck
+                # But we need P1 deck too. Let's assume P1 keeps default or random.
+                # Actually, setup_test_duel sets both.
+                # If we call set_deck, it updates the deck vector.
+                # But we need to restart the game to draw hands etc.
+                
+                # Re-initialize game
+                # self.gs = dm_ai_module.GameState(random.randint(0, 10000))
+                # self.gs.setup_test_duel() # Sets default decks
+                # self.gs.set_deck(0, deck_ids) # Override P0
+                # dm_ai_module.PhaseManager.start_game(self.gs)
+                
+                # Wait, GameState is bound to C++.
+                # If I create new GameState, I need to update self.gs
+                
+                new_gs = dm_ai_module.GameState(random.randint(0, 10000))
+                new_gs.setup_test_duel()
+                new_gs.set_deck(0, deck_ids)
+                dm_ai_module.PhaseManager.start_game(new_gs)
+                self.gs = new_gs
+                
+                self.log_list.clear()
+                self.log_list.addItem(f"Loaded Deck for P0: {os.path.basename(fname)}")
+                self.update_ui()
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to load deck: {e}")
         
     def step_phase(self):
         # Check Game Over

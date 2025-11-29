@@ -4,6 +4,8 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
     QPushButton, QLabel, QLineEdit, QMessageBox, QFileDialog
 )
+import dm_ai_module
+from gui.card_editor import CardEditor
 
 
 class DeckBuilder(QWidget):
@@ -28,6 +30,11 @@ class DeckBuilder(QWidget):
         self.card_list = QListWidget()
         self.card_list.itemDoubleClicked.connect(self.add_card)
         left_panel.addWidget(self.card_list)
+        
+        # Add New Card Button
+        new_card_btn = QPushButton("New Card")
+        new_card_btn.clicked.connect(self.open_card_editor)
+        left_panel.addWidget(new_card_btn)
 
         layout.addLayout(left_panel)
 
@@ -52,6 +59,13 @@ class DeckBuilder(QWidget):
         layout.addLayout(right_panel)
 
         self.populate_card_list()
+
+    def open_card_editor(self):
+        editor = CardEditor("data/cards.csv", self)
+        if editor.exec():
+            # Reload DB
+            self.card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
+            self.populate_card_list()
 
     def populate_card_list(self):
         self.card_list.clear()
