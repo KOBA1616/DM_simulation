@@ -181,12 +181,12 @@ dm_simulator/
 - **Effects**: `EffectResolver` (Stack, Trigger, Mode Selection) 実装。
 - **Milestone**: C++のみでランダム対戦がエラーなく完走すること。
 
-### Phase 3: AI Bridge & Python (AI連携)
+### Phase 3: AI Bridge & Python (AI連携) - DONE
 - **Tensor**: `TensorConverter` (Hybrid encoding) 実装。
 - **Binding**: `bindings.cpp` (Pybind11 Zero-copy) 実装。
 - **Python Agent**: `network.py` (MLP), `mcts.py` (Determinization) 実装。
 
-### Phase 4: Frontend & Training System (アプリ化)
+### Phase 4: Frontend & Training System (アプリ化) - DONE
 - **GUI**: `app.py` (PyQt6 Main Window) 実装。
 - **Training Loop**: `train.py` (Self-play, Replay Buffer) 実装。
 - **Evolution**: `evolve.py` (GA, Evaluation-based swap) 実装。

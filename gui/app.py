@@ -3,6 +3,7 @@ import os
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QListWidget
 from PyQt6.QtCore import QTimer, Qt
 import dm_ai_module
+from gui.deck_builder import DeckBuilder
 
 # Add root to path
 sys.path.append(os.getcwd())
@@ -22,7 +23,7 @@ class GameWindow(QMainWindow):
         # UI Setup
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-        self.layout = QHBoxLayout(self.central_widget)
+        self.main_layout = QHBoxLayout(self.central_widget)
         
         # Left Panel (Game Info)
         self.info_panel = QWidget()
@@ -38,7 +39,11 @@ class GameWindow(QMainWindow):
         self.step_button.clicked.connect(self.step_phase)
         self.info_layout.addWidget(self.step_button)
         
-        self.layout.addWidget(self.info_panel)
+        self.deck_builder_button = QPushButton("Deck Builder")
+        self.deck_builder_button.clicked.connect(self.open_deck_builder)
+        self.info_layout.addWidget(self.deck_builder_button)
+        
+        self.main_layout.addWidget(self.info_panel)
         
         # Center Panel (Board)
         self.board_panel = QWidget()
@@ -52,13 +57,17 @@ class GameWindow(QMainWindow):
         self.p0_area.setStyleSheet("background-color: #ccffcc; padding: 10px;")
         self.board_layout.addWidget(self.p0_area)
         
-        self.layout.addWidget(self.board_panel)
+        self.main_layout.addWidget(self.board_panel)
         
         # Right Panel (Logs/Actions)
         self.log_list = QListWidget()
-        self.layout.addWidget(self.log_list)
+        self.main_layout.addWidget(self.log_list)
         
         self.update_ui()
+        
+    def open_deck_builder(self):
+        self.deck_builder = DeckBuilder(self.card_db)
+        self.deck_builder.show()
         
     def step_phase(self):
         # Check Game Over
