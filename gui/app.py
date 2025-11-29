@@ -2,39 +2,48 @@ import sys
 import os
 import random
 import json
+import csv
 
 # Add root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox
+    QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox, QSplitter
 )
+from PyQt6.QtCore import Qt
 import dm_ai_module
 from gui.deck_builder import DeckBuilder
+from gui.widgets.zone_widget import ZoneWidget
+from gui.widgets.mcts_view import MCTSView
+from gui.ai.mcts_python import PythonMCTS
 
 
 class GameWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DM AI Simulator")
-        self.resize(1200, 800)
+        self.resize(1400, 900)
         
         # Game State
         self.gs = dm_ai_module.GameState(42)
         self.gs.setup_test_duel()
         dm_ai_module.PhaseManager.start_game(self.gs)
         self.card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
+        self.civ_map = self.load_civilizations("data/cards.csv")
         
         # UI Setup
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QHBoxLayout(self.central_widget)
         
-        # Left Panel (Game Info)
+        # Left Panel (Game Info & Controls)
         self.info_panel = QWidget()
+        self.info_panel.setFixedWidth(250)
         self.info_layout = QVBoxLayout(self.info_panel)
+        
         self.turn_label = QLabel("Turn: 1")
+        self.turn_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.phase_label = QLabel("Phase: START")
         self.active_label = QLabel("Active: P0")
         self.info_layout.addWidget(self.turn_label)
@@ -53,30 +62,77 @@ class GameWindow(QMainWindow):
         self.load_deck_btn.clicked.connect(self.load_deck_p0)
         self.info_layout.addWidget(self.load_deck_btn)
         
+        self.info_layout.addStretch()
+        
+        # MCTS View
+        self.mcts_view = MCTSView()
+        self.info_layout.addWidget(self.mcts_view)
+        
         self.main_layout.addWidget(self.info_panel)
         
         # Center Panel (Board)
         self.board_panel = QWidget()
         self.board_layout = QVBoxLayout(self.board_panel)
         
-        self.p1_area = QLabel("P1 Area")
-        self.p1_area.setStyleSheet("background-color: #ffcccc; padding: 10px;")
-        self.board_layout.addWidget(self.p1_area)
+        # P1 (Opponent) Zones
+        self.p1_zones = QWidget()
+        self.p1_layout = QVBoxLayout(self.p1_zones)
+        self.p1_hand = ZoneWidget("P1 Hand")
+        self.p1_mana = ZoneWidget("P1 Mana")
+        self.p1_battle = ZoneWidget("P1 Battle")
+        self.p1_shield = ZoneWidget("P1 Shield")
         
-        self.p0_area = QLabel("P0 Area")
-        self.p0_area.setStyleSheet("background-color: #ccffcc; padding: 10px;")
-        self.board_layout.addWidget(self.p0_area)
+        self.p1_layout.addWidget(self.p1_hand)
+        self.p1_layout.addWidget(self.p1_mana)
+        self.p1_layout.addWidget(self.p1_battle)
+        self.p1_layout.addWidget(self.p1_shield)
         
-        self.main_layout.addWidget(self.board_panel)
+        # P0 (Player) Zones
+        self.p0_zones = QWidget()
+        self.p0_layout = QVBoxLayout(self.p0_zones)
+        self.p0_battle = ZoneWidget("P0 Battle")
+        self.p0_shield = ZoneWidget("P0 Shield")
+        self.p0_mana = ZoneWidget("P0 Mana")
+        self.p0_hand = ZoneWidget("P0 Hand")
         
-        # Right Panel (Logs/Actions)
+        self.p0_layout.addWidget(self.p0_battle)
+        self.p0_layout.addWidget(self.p0_shield)
+        self.p0_layout.addWidget(self.p0_mana)
+        self.p0_layout.addWidget(self.p0_hand)
+        
+        # Splitter for P1 and P0 areas
+        self.board_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.board_splitter.addWidget(self.p1_zones)
+        self.board_splitter.addWidget(self.p0_zones)
+        self.board_layout.addWidget(self.board_splitter)
+        
+        self.main_layout.addWidget(self.board_panel, stretch=2)
+        
+        # Right Panel (Logs)
         self.log_list = QListWidget()
+        self.log_list.setFixedWidth(250)
         self.main_layout.addWidget(self.log_list)
         
         self.update_ui()
         
+    def load_civilizations(self, filepath):
+        civ_map = {}
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    try:
+                        cid = int(row['ID'])
+                        civ = row['Civilization']
+                        civ_map[cid] = civ
+                    except ValueError:
+                        continue
+        except Exception as e:
+            print(f"Error loading civilizations: {e}")
+        return civ_map
+
     def open_deck_builder(self):
-        self.deck_builder = DeckBuilder(self.card_db)
+        self.deck_builder = DeckBuilder(self.card_db, self.civ_map)
         self.deck_builder.show()
 
     def load_deck_p0(self):
@@ -93,25 +149,6 @@ class GameWindow(QMainWindow):
                     QMessageBox.warning(self, "Invalid Deck", "Deck must have 40 cards.")
                     return
 
-                # Set deck for P0
-                self.gs.set_deck(0, deck_ids)
-                
-                # Restart game to apply changes (or just reset state)
-                # For now, let's just reset the game with new deck
-                # But we need P1 deck too. Let's assume P1 keeps default or random.
-                # Actually, setup_test_duel sets both.
-                # If we call set_deck, it updates the deck vector.
-                # But we need to restart the game to draw hands etc.
-                
-                # Re-initialize game
-                # self.gs = dm_ai_module.GameState(random.randint(0, 10000))
-                # self.gs.setup_test_duel() # Sets default decks
-                # self.gs.set_deck(0, deck_ids) # Override P0
-                # dm_ai_module.PhaseManager.start_game(self.gs)
-                
-                # Wait, GameState is bound to C++.
-                # If I create new GameState, I need to update self.gs
-                
                 new_gs = dm_ai_module.GameState(random.randint(0, 10000))
                 new_gs.setup_test_duel()
                 new_gs.set_deck(0, deck_ids)
@@ -141,16 +178,25 @@ class GameWindow(QMainWindow):
             dm_ai_module.PhaseManager.next_phase(self.gs)
             self.log_list.addItem("Auto-Pass Phase")
         else:
-            # For now, just pick random action to step forward
-            # In real GUI, we would let user click or AI choose
-            action = random.choice(actions)
-            dm_ai_module.EffectResolver.resolve_action(
-                self.gs, action, self.card_db
-            )
-            self.log_list.addItem(f"Action: {action.to_string()}")
+            # Use MCTS to decide action
+            mcts = PythonMCTS(self.card_db, simulations=50) # 50 simulations for responsiveness
+            best_action = mcts.search(self.gs)
+            
+            # Update MCTS View
+            tree_data = mcts.get_tree_data()
+            self.mcts_view.update_from_data(tree_data)
+            
+            if best_action:
+                dm_ai_module.EffectResolver.resolve_action(
+                    self.gs, best_action, self.card_db
+                )
+                self.log_list.addItem(f"Action: {best_action.to_string()}")
 
-            if action.type == dm_ai_module.ActionType.PASS:
-                dm_ai_module.PhaseManager.next_phase(self.gs)
+                if best_action.type == dm_ai_module.ActionType.PASS:
+                    dm_ai_module.PhaseManager.next_phase(self.gs)
+            else:
+                # Should not happen if actions is not empty
+                self.log_list.addItem("Error: MCTS returned None")
 
         self.update_ui()
         
@@ -159,21 +205,23 @@ class GameWindow(QMainWindow):
         self.phase_label.setText(f"Phase: {self.gs.current_phase}")
         self.active_label.setText(f"Active: P{self.gs.active_player_id}")
         
-        # Update Board Text
+        # Update Zones
         p0 = self.gs.players[0]
         p1 = self.gs.players[1]
         
-        self.p0_area.setText(
-            f"P0 (Active: {self.gs.active_player_id == 0})\n"
-            f"Hand: {len(p0.hand)} | Mana: {len(p0.mana_zone)} | Shields: {len(p0.shield_zone)}\n"
-            f"Battle: {len(p0.battle_zone)}"
-        )
+        # Helper to convert C++ vector to list of dicts
+        def convert_zone(zone_cards):
+            return [{'id': c.card_id, 'tapped': c.is_tapped} for c in zone_cards]
+            
+        self.p0_hand.update_cards(convert_zone(p0.hand), self.card_db, self.civ_map)
+        self.p0_mana.update_cards(convert_zone(p0.mana_zone), self.card_db, self.civ_map)
+        self.p0_battle.update_cards(convert_zone(p0.battle_zone), self.card_db, self.civ_map)
+        self.p0_shield.update_cards(convert_zone(p0.shield_zone), self.card_db, self.civ_map)
         
-        self.p1_area.setText(
-            f"P1 (Active: {self.gs.active_player_id == 1})\n"
-            f"Hand: {len(p1.hand)} | Mana: {len(p1.mana_zone)} | Shields: {len(p1.shield_zone)}\n"
-            f"Battle: {len(p1.battle_zone)}"
-        )
+        self.p1_hand.update_cards(convert_zone(p1.hand), self.card_db, self.civ_map)
+        self.p1_mana.update_cards(convert_zone(p1.mana_zone), self.card_db, self.civ_map)
+        self.p1_battle.update_cards(convert_zone(p1.battle_zone), self.card_db, self.civ_map)
+        self.p1_shield.update_cards(convert_zone(p1.shield_zone), self.card_db, self.civ_map)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

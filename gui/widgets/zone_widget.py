@@ -1,0 +1,70 @@
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
+from PyQt6.QtCore import Qt
+from .card_widget import CardWidget
+
+class ZoneWidget(QWidget):
+    def __init__(self, title, parent=None):
+        super().__init__(parent)
+        self.title = title
+        self.cards = []
+        
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Title Label (Vertical)
+        self.title_label = QLabel(self.title.replace(" ", "\n"))
+        self.title_label.setFixedWidth(40)
+        self.title_label.setWordWrap(True)
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setStyleSheet("background-color: #ddd; border: 1px solid #999; font-weight: bold;")
+        main_layout.addWidget(self.title_label)
+        
+        # Scroll Area for Cards
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFixedHeight(160) # Slightly larger than CardWidget height
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        
+        self.card_container = QWidget()
+        self.card_layout = QHBoxLayout(self.card_container)
+        self.card_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.card_layout.setContentsMargins(5, 5, 5, 5)
+        self.card_layout.setSpacing(5)
+        
+        self.scroll_area.setWidget(self.card_container)
+        main_layout.addWidget(self.scroll_area)
+
+    def update_cards(self, card_data_list, card_db, civ_map=None):
+        # Clear existing
+        for i in reversed(range(self.card_layout.count())):
+            item = self.card_layout.itemAt(i)
+            if item:
+                widget = item.widget()
+                if widget:
+                    widget.setParent(None)
+        
+        self.cards = []
+        for c_data in card_data_list:
+            # c_data: (card_id, is_tapped) or just card_id
+            cid = c_data['id']
+            tapped = c_data.get('tapped', False)
+            
+            if cid in card_db:
+                card_def = card_db[cid]
+                civ = "COLORLESS"
+                if civ_map and cid in civ_map:
+                    civ = civ_map[cid]
+                
+                widget = CardWidget(
+                    cid, card_def.name, card_def.cost, card_def.power, 
+                    civ, tapped
+                )
+                self.card_layout.addWidget(widget)
+                self.cards.append(widget)
+            else:
+                # Unknown/Masked
+                widget = CardWidget(0, "???", 0, 0, "COLORLESS")
+                self.card_layout.addWidget(widget)
