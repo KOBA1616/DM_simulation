@@ -2,7 +2,12 @@ import os
 import sys
 import random
 import json
+
+# Add root to path if needed
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 import dm_ai_module
+from py_ai.agent.mcts import MCTS
 
 class DeckEvolution:
     def __init__(self, card_db):
@@ -22,10 +27,82 @@ class DeckEvolution:
             self.population.append(deck)
             
     def evaluate(self, network):
-        # Run league
         scores = [0] * self.population_size
-        # TODO: Implement league play using self_play logic with fixed decks
+        matches_per_deck = 2 # Keep low for dev speed
+        
+        print("  Evaluating population...")
+        for i in range(self.population_size):
+            deck_a = self.population[i]
+            
+            for _ in range(matches_per_deck):
+                # Pick opponent
+                j = random.randint(0, self.population_size - 1)
+                if i == j:
+                    j = (j + 1) % self.population_size
+                deck_b = self.population[j]
+                
+                winner_id = self._play_match(deck_a, deck_b, network)
+                
+                if winner_id == 0:
+                    scores[i] += 1
+                    
         return scores
+
+    def _play_match(self, deck_a, deck_b, network):
+        gs = dm_ai_module.GameState(random.randint(0, 100000))
+        gs.set_deck(0, deck_a)
+        gs.set_deck(1, deck_b)
+        dm_ai_module.PhaseManager.start_game(gs)
+        
+        mcts = None
+        if network:
+            mcts = MCTS(network, self.card_db, simulations=10)
+            
+        turn_count = 0
+        while True:
+            turn_count += 1
+            if turn_count > 200:
+                # print("Draw (Turn Limit)")
+                return -1 # Draw
+                
+            is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
+            if is_over:
+                # 1=P1(0), 2=P2(1), 3=Draw
+                # print(f"Game Over: {result} at turn {turn_count}")
+                if result == 1: return 0
+                if result == 2: return 1
+                return -1
+                
+            if mcts:
+                root = mcts.search(gs)
+                # Select best action by visit count
+                best_action = None
+                max_visits = -1
+                for child in root.children:
+                    if child.visit_count > max_visits:
+                        max_visits = child.visit_count
+                        best_action = child.action
+                
+                if best_action is None:
+                    # Fallback if no children (should be game over or pass)
+                    actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db)
+                    if not actions:
+                        dm_ai_module.PhaseManager.next_phase(gs)
+                        continue
+                    action = actions[0]
+                else:
+                    action = best_action
+            else:
+                # Random
+                actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db)
+                if not actions:
+                    dm_ai_module.PhaseManager.next_phase(gs)
+                    continue
+                action = random.choice(actions)
+                
+            dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+            if action.type == dm_ai_module.ActionType.PASS:
+                dm_ai_module.PhaseManager.next_phase(gs)
         
     def mutate(self, deck):
         # Swap 1-4 cards
@@ -58,13 +135,30 @@ class DeckEvolution:
             self.save_generation(gen)
             
             # Evaluate
-            # scores = self.evaluate(None)
+            # For now, passing None for network (Random Play)
+            # In real training, we would pass the trained AlphaZeroNetwork
+            scores = self.evaluate(None)
+            print(f"  Scores: {scores}")
             
-            # Select & Mutate (Simple elitism + mutation for now)
-            # Just mutate everyone for testing flow
+            # Select & Mutate
+            # Sort by score
+            pop_scores = list(zip(self.population, scores))
+            pop_scores.sort(key=lambda x: x[1], reverse=True)
+            
+            # Keep top 50%
+            half = max(1, self.population_size // 2)
+            survivors = [x[0] for x in pop_scores[:half]]
+            
             new_pop = []
-            for deck in self.population:
-                new_pop.append(self.mutate(deck))
+            # Elitism: Keep best
+            new_pop.extend([d.copy() for d in survivors])
+            
+            # Fill rest with mutated versions of survivors
+            while len(new_pop) < self.population_size:
+                parent = random.choice(survivors)
+                child = self.mutate(parent)
+                new_pop.append(child)
+                
             self.population = new_pop
 
 if __name__ == "__main__":
