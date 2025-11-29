@@ -9,9 +9,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox, QSplitter
+    QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox, QSplitter,
+    QCheckBox, QGroupBox, QRadioButton, QButtonGroup
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
 from gui.deck_builder import DeckBuilder
 from gui.widgets.zone_widget import ZoneWidget
@@ -32,6 +33,11 @@ class GameWindow(QMainWindow):
         self.card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
         self.civ_map = self.load_civilizations("data/cards.csv")
         
+        # Simulation Timer
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.step_phase)
+        self.is_running = False
+
         # UI Setup
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -39,7 +45,7 @@ class GameWindow(QMainWindow):
         
         # Left Panel (Game Info & Controls)
         self.info_panel = QWidget()
-        self.info_panel.setFixedWidth(250)
+        self.info_panel.setFixedWidth(280)
         self.info_layout = QVBoxLayout(self.info_panel)
         
         self.turn_label = QLabel("Turn: 1")
@@ -50,9 +56,51 @@ class GameWindow(QMainWindow):
         self.info_layout.addWidget(self.phase_label)
         self.info_layout.addWidget(self.active_label)
         
+        # Controls Group
+        ctrl_group = QGroupBox("Controls")
+        ctrl_layout = QVBoxLayout()
+        
+        self.start_btn = QPushButton("Start Simulation")
+        self.start_btn.clicked.connect(self.toggle_simulation)
+        ctrl_layout.addWidget(self.start_btn)
+        
         self.step_button = QPushButton("Step Phase")
         self.step_button.clicked.connect(self.step_phase)
-        self.info_layout.addWidget(self.step_button)
+        ctrl_layout.addWidget(self.step_button)
+        
+        self.reset_btn = QPushButton("Reset Game")
+        self.reset_btn.clicked.connect(self.reset_game)
+        ctrl_layout.addWidget(self.reset_btn)
+        
+        ctrl_group.setLayout(ctrl_layout)
+        self.info_layout.addWidget(ctrl_group)
+        
+        # Player Mode Group
+        mode_group = QGroupBox("Player Modes")
+        mode_layout = QVBoxLayout()
+        
+        self.p0_human_radio = QRadioButton("P0: Human")
+        self.p0_ai_radio = QRadioButton("P0: AI")
+        self.p0_ai_radio.setChecked(True)
+        self.p0_group = QButtonGroup()
+        self.p0_group.addButton(self.p0_human_radio)
+        self.p0_group.addButton(self.p0_ai_radio)
+        
+        mode_layout.addWidget(self.p0_human_radio)
+        mode_layout.addWidget(self.p0_ai_radio)
+        
+        self.p1_human_radio = QRadioButton("P1: Human")
+        self.p1_ai_radio = QRadioButton("P1: AI")
+        self.p1_ai_radio.setChecked(True)
+        self.p1_group = QButtonGroup()
+        self.p1_group.addButton(self.p1_human_radio)
+        self.p1_group.addButton(self.p1_ai_radio)
+        
+        mode_layout.addWidget(self.p1_human_radio)
+        mode_layout.addWidget(self.p1_ai_radio)
+        
+        mode_group.setLayout(mode_layout)
+        self.info_layout.addWidget(mode_group)
         
         self.deck_builder_button = QPushButton("Deck Builder")
         self.deck_builder_button.clicked.connect(self.open_deck_builder)
@@ -94,6 +142,11 @@ class GameWindow(QMainWindow):
         self.p0_shield = ZoneWidget("P0 Shield")
         self.p0_mana = ZoneWidget("P0 Mana")
         self.p0_hand = ZoneWidget("P0 Hand")
+        
+        # Connect signals
+        self.p0_hand.card_clicked.connect(self.on_card_clicked)
+        self.p0_mana.card_clicked.connect(self.on_card_clicked)
+        self.p0_battle.card_clicked.connect(self.on_card_clicked)
         
         self.p0_layout.addWidget(self.p0_battle)
         self.p0_layout.addWidget(self.p0_shield)
@@ -162,24 +215,113 @@ class GameWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to load deck: {e}")
         
+    def toggle_simulation(self):
+        if self.is_running:
+            self.timer.stop()
+            self.start_btn.setText("Start Simulation")
+            self.is_running = False
+        else:
+            self.timer.start(500) # 500ms per step
+            self.start_btn.setText("Stop Simulation")
+            self.is_running = True
+
+    def reset_game(self):
+        self.timer.stop()
+        self.is_running = False
+        self.start_btn.setText("Start Simulation")
+        
+        self.gs = dm_ai_module.GameState(random.randint(0, 10000))
+        self.gs.setup_test_duel()
+        dm_ai_module.PhaseManager.start_game(self.gs)
+        
+        self.log_list.clear()
+        self.log_list.addItem("Game Reset")
+        self.update_ui()
+
+    def on_card_clicked(self, card_id, instance_id):
+        # Only handle clicks if it's P0's turn and P0 is Human
+        if self.gs.active_player_id != 0 or not self.p0_human_radio.isChecked():
+            return
+
+        # Get legal actions
+        actions = dm_ai_module.ActionGenerator.generate_legal_actions(
+            self.gs, self.card_db
+        )
+        
+        # Filter actions for this card
+        # Note: instance_id might be -1 if unknown, but here we expect valid instance_id
+        relevant_actions = [
+            a for a in actions 
+            if a.source_instance_id == instance_id or (a.card_id == card_id and a.type == dm_ai_module.ActionType.PLAY_CARD)
+        ]
+        # Note: PLAY_CARD actions usually have source_instance_id set correctly by generator.
+        # Let's rely on source_instance_id.
+        relevant_actions = [a for a in actions if a.source_instance_id == instance_id]
+
+        if not relevant_actions:
+            self.log_list.addItem(f"No actions for card {card_id} (Inst: {instance_id})")
+            return
+
+        if len(relevant_actions) == 1:
+            action = relevant_actions[0]
+            self.execute_action(action)
+        else:
+            # Multiple actions (e.g. Attack Player vs Creature)
+            # For now, just pick first or show dialog.
+            # Let's pick Attack Player if available, else random.
+            # Or simple dialog?
+            # Let's just log and pick first for MVP.
+            self.log_list.addItem(f"Multiple actions found. Executing first.")
+            self.execute_action(relevant_actions[0])
+
+    def execute_action(self, action):
+        dm_ai_module.EffectResolver.resolve_action(
+            self.gs, action, self.card_db
+        )
+        self.log_list.addItem(f"P0 Action: {action.to_string()}")
+        
+        if action.type == dm_ai_module.ActionType.PASS:
+            dm_ai_module.PhaseManager.next_phase(self.gs)
+            
+        self.update_ui()
+
     def step_phase(self):
         # Check Game Over
         is_over, result = dm_ai_module.PhaseManager.check_game_over(self.gs)
         if is_over:
+            self.timer.stop()
+            self.is_running = False
+            self.start_btn.setText("Start Simulation")
             self.log_list.addItem(f"Game Over! Result: {result}")
             return
 
-        # Generate Actions
+        active_pid = self.gs.active_player_id
+        is_human = (active_pid == 0 and self.p0_human_radio.isChecked()) or \
+                   (active_pid == 1 and self.p1_human_radio.isChecked())
+
+        if is_human:
+            # If human turn, we wait for input.
+            # Unless there are no actions (Auto-Pass)
+            actions = dm_ai_module.ActionGenerator.generate_legal_actions(
+                self.gs, self.card_db
+            )
+            if not actions:
+                dm_ai_module.PhaseManager.next_phase(self.gs)
+                self.log_list.addItem(f"P{active_pid} Auto-Pass")
+                self.update_ui()
+            return
+
+        # AI Turn
         actions = dm_ai_module.ActionGenerator.generate_legal_actions(
             self.gs, self.card_db
         )
 
         if not actions:
             dm_ai_module.PhaseManager.next_phase(self.gs)
-            self.log_list.addItem("Auto-Pass Phase")
+            self.log_list.addItem(f"P{active_pid} Auto-Pass")
         else:
             # Use MCTS to decide action
-            mcts = PythonMCTS(self.card_db, simulations=50) # 50 simulations for responsiveness
+            mcts = PythonMCTS(self.card_db, simulations=50) 
             best_action = mcts.search(self.gs)
             
             # Update MCTS View
@@ -190,12 +332,11 @@ class GameWindow(QMainWindow):
                 dm_ai_module.EffectResolver.resolve_action(
                     self.gs, best_action, self.card_db
                 )
-                self.log_list.addItem(f"Action: {best_action.to_string()}")
+                self.log_list.addItem(f"P{active_pid} AI Action: {best_action.to_string()}")
 
                 if best_action.type == dm_ai_module.ActionType.PASS:
                     dm_ai_module.PhaseManager.next_phase(self.gs)
             else:
-                # Should not happen if actions is not empty
                 self.log_list.addItem("Error: MCTS returned None")
 
         self.update_ui()

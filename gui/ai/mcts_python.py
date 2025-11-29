@@ -50,6 +50,10 @@ class PythonMCTS:
             if not node.is_fully_expanded():
                 return self._expand(node)
             else:
+                if not node.children:
+                    # Node is fully expanded (no untried actions) but has no children.
+                    # This means there were no legal actions at all in this state.
+                    return node
                 node = node.best_child()
         return node
 
