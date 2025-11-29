@@ -1,0 +1,10 @@
+build_vs/dm_core.dir/Debug/dm_core.lib filter=lfs diff=lfs merge=lfs -text
+build_debug/_deps/onnxruntime_pkg-src/lib/onnxruntime.pdb filter=lfs diff=lfs merge=lfs -text
+build_vs/dm_core.dir/RelWithDebInfo/dm_core.lib filter=lfs diff=lfs merge=lfs -text
+build_vs/dm_ai_module.dir/RelWithDebInfo/dm_ai_module.cp312-win_amd64.ilk filter=lfs diff=lfs merge=lfs -text
+build_vs/dm_core.dir/Release/dm_core.lib filter=lfs diff=lfs merge=lfs -text
+build_debug/_deps/onnxruntime_pkg-populate-prefix/src/onnxruntime-win-x64-1.18.0.zip filter=lfs diff=lfs merge=lfs -text
+*.pdb filter=lfs diff=lfs merge=lfs -text
+*.lib filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.ilk filter=lfs diff=lfs merge=lfs -text
