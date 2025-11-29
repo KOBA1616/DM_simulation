@@ -1,6 +1,7 @@
 import math
 import random
 import dm_ai_module
+from PyQt6.QtWidgets import QApplication
 
 class Node:
     def __init__(self, state, parent=None, action=None):
@@ -23,17 +24,33 @@ class Node:
         ]
         return self.children[choices_weights.index(max(choices_weights))]
 
+from typing import Callable, Optional
+
 class PythonMCTS:
     def __init__(self, card_db, simulations=100):
         self.card_db = card_db
         self.simulations = simulations
         self.root = None
+        self.should_stop: Optional[Callable[[], bool]] = None # Callback function
 
     def search(self, root_state):
         self.root = Node(root_state.clone())
-        self.root.untried_actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.root.state, self.card_db)
+        legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.root.state, self.card_db)
+
+        # Rule: Always charge mana until turn 5
+        if self.root.state.current_phase == dm_ai_module.Phase.MANA and self.root.state.turn_number <= 5:
+            has_charge = any(a.type == dm_ai_module.ActionType.MANA_CHARGE for a in legal_actions)
+            if has_charge:
+                # Remove PASS action to force charge
+                legal_actions = [a for a in legal_actions if a.type != dm_ai_module.ActionType.PASS]
+
+        self.root.untried_actions = legal_actions
 
         for _ in range(self.simulations):
+            QApplication.processEvents() # Keep GUI responsive
+            if self.should_stop and self.should_stop():
+                break
+            
             node = self._select(self.root)
             reward = self._simulate(node.state)
             self._backpropagate(node, reward)
@@ -65,7 +82,7 @@ class PythonMCTS:
         # Check if phase changed, if so, handle auto-transitions until next decision or game over
         # For simplicity, we assume resolve_action handles immediate effects.
         # But we might need to handle phase transitions if the action was PASS.
-        if action.type == dm_ai_module.ActionType.PASS:
+        if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
              dm_ai_module.PhaseManager.next_phase(next_state)
 
         child_node = Node(next_state, parent=node, action=action)
@@ -96,9 +113,23 @@ class PythonMCTS:
             if not actions:
                 dm_ai_module.PhaseManager.next_phase(current_state)
             else:
-                action = random.choice(actions)
+                # Heuristic: Prioritize Mana Charge in Mana Phase
+                mana_charges = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
+                
+                should_charge = False
+                if mana_charges:
+                    if current_state.turn_number <= 5:
+                        should_charge = True
+                    elif random.random() < 0.9: 
+                        should_charge = True
+
+                if should_charge:
+                    action = random.choice(mana_charges)
+                else:
+                    action = random.choice(actions)
+                
                 dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
-                if action.type == dm_ai_module.ActionType.PASS:
+                if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
                     dm_ai_module.PhaseManager.next_phase(current_state)
             depth += 1
         
