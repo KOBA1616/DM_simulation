@@ -13,16 +13,16 @@ namespace dm::engine {
         switch (game_state.current_phase) {
             case Phase::MANA:
                 // 1. Charge Mana (any card from hand)
-                for (const auto& card : active_player.hand) {
+                for (size_t i = 0; i < active_player.hand.size(); ++i) {
+                    const auto& card = active_player.hand[i];
                     Action action;
                     action.type = ActionType::MANA_CHARGE;
                     action.card_id = card.card_id;
                     action.source_instance_id = card.instance_id;
+                    action.slot_index = static_cast<int>(i);
                     actions.push_back(action);
                 }
-                // 2. Pass (Always allowed in Mana phase? Spec says "5ターン目以降、チャージスキップ(PASS)可能 [Q26]")
-                // But usually you can skip charge anytime. "Must charge 1 per turn" is not a rule, it's "Up to 1".
-                // So Pass is always allowed.
+                // 2. Pass
                 {
                     Action pass;
                     pass.type = ActionType::PASS;
@@ -32,7 +32,8 @@ namespace dm::engine {
 
             case Phase::MAIN:
                 // 1. Play Card
-                for (const auto& card : active_player.hand) {
+                for (size_t i = 0; i < active_player.hand.size(); ++i) {
+                    const auto& card = active_player.hand[i];
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
                         if (ManaSystem::can_pay_cost(active_player, def, card_db)) {
@@ -40,6 +41,7 @@ namespace dm::engine {
                             action.type = ActionType::PLAY_CARD;
                             action.card_id = card.card_id;
                             action.source_instance_id = card.instance_id;
+                            action.slot_index = static_cast<int>(i);
                             actions.push_back(action);
                         }
                     }
@@ -54,22 +56,27 @@ namespace dm::engine {
 
             case Phase::ATTACK:
                 // 1. Attack with creatures
-                for (const auto& card : active_player.battle_zone) {
+                for (size_t i = 0; i < active_player.battle_zone.size(); ++i) {
+                    const auto& card = active_player.battle_zone[i];
                     if (!card.is_tapped && !card.summoning_sickness) {
                         // Attack Player
                         Action attack_player;
                         attack_player.type = ActionType::ATTACK_PLAYER;
                         attack_player.source_instance_id = card.instance_id;
+                        attack_player.slot_index = static_cast<int>(i);
                         attack_player.target_player = opponent.id;
                         actions.push_back(attack_player);
 
                         // Attack Tapped Creatures
-                        for (const auto& opp_card : opponent.battle_zone) {
+                        for (size_t j = 0; j < opponent.battle_zone.size(); ++j) {
+                            const auto& opp_card = opponent.battle_zone[j];
                             if (opp_card.is_tapped) {
                                 Action attack_creature;
                                 attack_creature.type = ActionType::ATTACK_CREATURE;
                                 attack_creature.source_instance_id = card.instance_id;
+                                attack_creature.slot_index = static_cast<int>(i);
                                 attack_creature.target_instance_id = opp_card.instance_id;
+                                attack_creature.target_slot_index = static_cast<int>(j);
                                 actions.push_back(attack_creature);
                             }
                         }

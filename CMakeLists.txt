@@ -20,7 +20,7 @@ endif()
 
 # --- Dependencies ---
 # Pybind11 is required for Python bindings (Phase 3)
-# find_package(pybind11 REQUIRED)
+find_package(pybind11 REQUIRED)
 
 # --- Include Directories ---
 include_directories(src)
@@ -53,7 +53,8 @@ set(SRC_UTILS
 
 # AI Bridge (Phase 3)
 set(SRC_AI
-    # src/ai/encoders/tensor_converter.cpp
+    src/ai/encoders/tensor_converter.cpp
+    src/ai/encoders/action_encoder.cpp
 )
 
 # --- Targets ---
@@ -73,7 +74,7 @@ add_executable(dm_sim_test
 target_link_libraries(dm_sim_test PRIVATE dm_core)
 
 # Python Module (Phase 3)
-# pybind11_add_module(dm_ai_module
-#     src/python/bindings.cpp
-# )
-# target_link_libraries(dm_ai_module PRIVATE dm_core)
+pybind11_add_module(dm_ai_module
+    src/python/bindings.cpp
+)
+target_link_libraries(dm_ai_module PRIVATE dm_core)
