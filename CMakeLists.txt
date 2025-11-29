@@ -30,23 +30,24 @@ include_directories(src)
 
 # Core (Phase 1)
 set(SRC_CORE
-    # src/core/types.hpp
-    # src/core/constants.hpp
-    # src/core/card_def.hpp
-    # src/core/game_state.hpp
+    src/core/types.hpp
+    src/core/constants.hpp
+    src/core/card_def.hpp
+    src/core/game_state.hpp
+    src/core/action.hpp
 )
 
 # Engine (Phase 2)
 set(SRC_ENGINE
-    # src/engine/action_gen/action_generator.cpp
-    # src/engine/flow/phase_manager.cpp
-    # src/engine/effects/effect_resolver.cpp
-    # src/engine/mana/mana_system.cpp
+    src/engine/action_gen/action_generator.cpp
+    src/engine/flow/phase_manager.cpp
+    src/engine/effects/effect_resolver.cpp
+    src/engine/mana/mana_system.cpp
 )
 
 # Utils (Phase 1)
 set(SRC_UTILS
-    # src/utils/csv_loader.cpp
+    src/utils/csv_loader.cpp
     # src/utils/rng.cpp
 )
 
@@ -58,19 +59,18 @@ set(SRC_AI
 # --- Targets ---
 
 # Main Simulator Library (Static library for logic)
-# Uncomment when source files are added
-# add_library(dm_core STATIC
-#     ${SRC_CORE}
-#     ${SRC_ENGINE}
-#     ${SRC_UTILS}
-#     ${SRC_AI}
-# )
+add_library(dm_core STATIC
+    ${SRC_CORE}
+    ${SRC_ENGINE}
+    ${SRC_UTILS}
+    ${SRC_AI}
+)
 
 # Executable for C++ Testing/Validation (Phase 1 & 2)
-# add_executable(dm_sim_test
-#     # src/main_test.cpp
-# )
-# target_link_libraries(dm_sim_test PRIVATE dm_core)
+add_executable(dm_sim_test
+    src/main_test.cpp
+)
+target_link_libraries(dm_sim_test PRIVATE dm_core)
 
 # Python Module (Phase 3)
 # pybind11_add_module(dm_ai_module

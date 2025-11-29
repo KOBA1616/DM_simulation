@@ -48,6 +48,15 @@ namespace dm::core {
         HYPER_SPATIAL,
         GR_DECK
     };
+
+    enum class Phase : uint8_t {
+        START_OF_TURN,
+        DRAW,
+        MANA,
+        MAIN,
+        ATTACK,
+        END_OF_TURN
+    };
     
     // Result of a game
     enum class GameResult {

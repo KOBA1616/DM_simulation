@@ -67,7 +67,10 @@ namespace dm::utils {
             if (!std::getline(ss, cell, ',')) continue;
             try {
                 def.id = static_cast<CardID>(std::stoi(cell));
-            } catch (...) { continue; }
+            } catch (...) { 
+                std::cerr << "Failed to parse ID: " << cell << "\n";
+                continue; 
+            }
 
             // 2. Name
             if (!std::getline(ss, def.name, ',')) continue;
@@ -93,7 +96,11 @@ namespace dm::utils {
             } catch (...) { def.power = 0; }
 
             // 7. Races (semicolon separated)
-            if (!std::getline(ss, cell, ',')) continue;
+            if (!std::getline(ss, cell, ',')) {
+                 // It's possible races is the last column if keywords are missing?
+                 // But we expect 8 columns.
+                 // If races is empty "...,," it reads empty.
+            }
             std::stringstream race_ss(cell);
             std::string race;
             while (std::getline(race_ss, race, ';')) {
@@ -101,7 +108,19 @@ namespace dm::utils {
             }
 
             // 8. Keywords (semicolon separated)
-            if (!std::getline(ss, cell, ',')) continue;
+            // Use getline with \n or just read the rest?
+            // Since we are using stringstream from line, we can just read the rest.
+            if (std::getline(ss, cell, ',')) {
+                 // Found a comma, so read it.
+            } else {
+                 // Maybe end of line?
+                 // If we are at EOF, cell might be empty or partially read?
+                 // If previous getline consumed everything, this fails.
+                 // But we need to handle the case where there is no trailing comma.
+                 // Actually, if we are at the last column, we should just read until end of stream.
+                 std::getline(ss, cell); 
+            }
+            
             // Parse keywords and set flags in def.keywords
             std::string keywords = trim(cell);
             if (keywords.find("BLOCKER") != std::string::npos) def.keywords.blocker = true;
