@@ -2,7 +2,7 @@ import os
 import sys
 
 # Add root to path
-sys.path.append(os.getcwd())
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
 import torch.optim as optim
@@ -85,7 +85,8 @@ def train_loop():
     print("Starting Training Loop...")
     
     # Load DB
-    card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
+    data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'cards.csv')
+    card_db = dm_ai_module.CsvLoader.load_cards(data_path)
     
     # Init Network
     input_size = dm_ai_module.TensorConverter.INPUT_SIZE
@@ -153,7 +154,8 @@ def train_loop():
                 print(f"  Loss: {loss.item():.4f}")
                 
         # Save Checkpoint
-        torch.save(network.state_dict(), f"model_iter_{iteration}.pth")
+        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', f"model_iter_{iteration}.pth")
+        torch.save(network.state_dict(), model_path)
 
 if __name__ == "__main__":
     train_loop()

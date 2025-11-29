@@ -3,14 +3,14 @@ import torch
 import os
 import sys
 
-# Add current dir to path to find py_ai
-sys.path.append(os.getcwd())
+# Add root to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from py_ai.agent.network import AlphaZeroNetwork
 from py_ai.agent.mcts import MCTS
 
 # Load DB
-db_path = os.path.join("data", "cards.csv")
+db_path = os.path.join(os.path.dirname(__file__), '..', "data", "cards.csv")
 if not os.path.exists(db_path):
     print("Error: cards.csv not found")
     sys.exit(1)
