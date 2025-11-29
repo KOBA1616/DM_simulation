@@ -1,10 +1,11 @@
-import dm_ai_module
-import torch
 import os
 import sys
 
 # Add root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import dm_ai_module
+import torch
 
 from py_ai.agent.network import AlphaZeroNetwork
 from py_ai.agent.mcts import MCTS

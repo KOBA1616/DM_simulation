@@ -54,10 +54,16 @@ class MCTS:
 
             # Selection
             while node.is_expanded():
-                node = self._select_child(node)
+                next_node = self._select_child(node)
+                if next_node is None:
+                    break
+                node = next_node
 
             # Expansion & Evaluation
-            value = self._expand(node)
+            if not node.is_expanded():
+                value = self._expand(node)
+            else:
+                value = node.value()
 
             # Backpropagation
             self._backpropagate(node, value)
@@ -85,9 +91,16 @@ class MCTS:
             # So for us (Parent), it is -Value.
 
             score = q_score + u_score
+            
+            if math.isnan(score):
+                score = -float('inf')
+
             if score > best_score:
                 best_score = score
                 best_child = child
+
+        if best_child is None and node.children:
+            best_child = node.children[0]
 
         return best_child
 
