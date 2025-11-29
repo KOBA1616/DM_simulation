@@ -1,9 +1,11 @@
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPalette
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QPalette, QMouseEvent
 
 class CardWidget(QFrame):
-    def __init__(self, card_id, card_name, cost, power, civ, tapped=False, parent=None):
+    clicked = pyqtSignal(int) # Emits instance_id
+
+    def __init__(self, card_id, card_name, cost, power, civ, tapped=False, instance_id=-1, parent=None):
         super().__init__(parent)
         self.card_id = card_id
         self.card_name = card_name
@@ -11,6 +13,7 @@ class CardWidget(QFrame):
         self.power = power
         self.civ = civ
         self.tapped = tapped
+        self.instance_id = instance_id
         
         self.setFixedSize(100, 140)
         self.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
@@ -78,3 +81,8 @@ class CardWidget(QFrame):
     def set_tapped(self, tapped):
         self.tapped = tapped
         self.update_style()
+
+    def mousePressEvent(self, a0: QMouseEvent | None):
+        if a0 and a0.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(self.instance_id)
+        super().mousePressEvent(a0)

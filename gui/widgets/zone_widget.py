@@ -1,8 +1,10 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from .card_widget import CardWidget
 
 class ZoneWidget(QWidget):
+    card_clicked = pyqtSignal(int, int) # card_id, instance_id
+
     def __init__(self, title, parent=None):
         super().__init__(parent)
         self.title = title
@@ -51,6 +53,7 @@ class ZoneWidget(QWidget):
             # c_data: (card_id, is_tapped) or just card_id
             cid = c_data['id']
             tapped = c_data.get('tapped', False)
+            instance_id = c_data.get('instance_id', -1)
             
             if cid in card_db:
                 card_def = card_db[cid]
@@ -60,11 +63,13 @@ class ZoneWidget(QWidget):
                 
                 widget = CardWidget(
                     cid, card_def.name, card_def.cost, card_def.power, 
-                    civ, tapped
+                    civ, tapped, instance_id
                 )
+                widget.clicked.connect(lambda i_id, c_id=cid: self.card_clicked.emit(c_id, i_id))
                 self.card_layout.addWidget(widget)
                 self.cards.append(widget)
             else:
                 # Unknown/Masked
-                widget = CardWidget(0, "???", 0, 0, "COLORLESS")
+                widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id)
+                widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
                 self.card_layout.addWidget(widget)
