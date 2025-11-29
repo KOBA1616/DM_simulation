@@ -22,6 +22,16 @@ def load_config():
 CONFIG = load_config()
 TRAIN_CFG = CONFIG['training']
 
+def fast_forward(state, card_db):
+    while True:
+        is_over, _ = dm_ai_module.PhaseManager.check_game_over(state)
+        if is_over:
+            break
+        actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+        if actions:
+            break
+        dm_ai_module.PhaseManager.next_phase(state, card_db)
+
 def self_play(network, card_db):
     game_data = []
     gs = dm_ai_module.GameState(np.random.randint(100000))
@@ -36,6 +46,14 @@ def self_play(network, card_db):
         if turn_count > 200: # Safety
             break
             
+        # Fast Forward to decision point
+        fast_forward(gs, card_db)
+        
+        # Check Game Over after fast forward
+        is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
+        if is_over:
+            return game_data, result
+
         # MCTS
         root = mcts.search(gs)
         
