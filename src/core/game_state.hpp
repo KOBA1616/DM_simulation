@@ -20,6 +20,15 @@ namespace dm::core {
         CardInstance(CardID cid, int iid) : card_id(cid), instance_id(iid) {}
     };
 
+    struct PendingEffect {
+        EffectType type;
+        int source_instance_id;
+        PlayerID controller;
+        
+        PendingEffect(EffectType t, int src, PlayerID p) 
+            : type(t), source_instance_id(src), controller(p) {}
+    };
+
     struct Player {
         PlayerID id;
         std::vector<CardInstance> hand;
@@ -36,8 +45,12 @@ namespace dm::core {
         int turn_number = 1;
         PlayerID active_player_id = 0;
         Phase current_phase = Phase::START_OF_TURN;
+        GameResult winner = GameResult::NONE;
         std::array<Player, 2> players;
         
+        // Pending Effects Pool [Spec 4.1, 4.2]
+        std::vector<PendingEffect> pending_effects;
+
         // Determinism: std::mt19937 inside State [Q69]
         std::mt19937 rng;
 

@@ -114,14 +114,11 @@ namespace dm::engine {
                 opponent.hand.push_back(shield);
             } else {
                 // Direct Attack -> Win
-                // Handled by PhaseManager check_game_over?
-                // Or we set a flag.
-                // Let's assume PhaseManager checks shield count when attack happens?
-                // No, PhaseManager checks state.
-                // If shields are 0 and we attack, it's a win.
-                // But we just resolved the attack.
-                // We need to record that a direct attack succeeded.
-                // Maybe GameState needs a "winner" field?
+                if (active.id == 0) {
+                    game_state.winner = GameResult::P1_WIN;
+                } else {
+                    game_state.winner = GameResult::P2_WIN;
+                }
             }
         } else if (action.type == ActionType::ATTACK_CREATURE) {
             // Battle logic
