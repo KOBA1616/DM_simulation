@@ -2,19 +2,24 @@ import csv
 import os
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
-    QComboBox, QSpinBox, QPushButton, QMessageBox, QFormLayout
+    QComboBox, QSpinBox, QPushButton, QMessageBox, QFormLayout, QFrame, QWidget
 )
+from gui.widgets.card_widget import CardWidget
 
 class CardEditor(QDialog):
     def __init__(self, csv_path, parent=None):
         super().__init__(parent)
         self.csv_path = csv_path
         self.setWindowTitle("Card Editor")
-        self.resize(400, 500)
+        self.resize(600, 500)
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout(self)
+        main_layout = QHBoxLayout(self)
+        
+        # Left: Form
+        form_widget = QWidget()
+        form_layout = QVBoxLayout(form_widget)
         form = QFormLayout()
 
         self.id_input = QSpinBox()
@@ -24,10 +29,12 @@ class CardEditor(QDialog):
         form.addRow("ID:", self.id_input)
 
         self.name_input = QLineEdit()
+        self.name_input.textChanged.connect(self.update_preview)
         form.addRow("Name:", self.name_input)
 
         self.civ_input = QComboBox()
         self.civ_input.addItems(["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE"])
+        self.civ_input.currentTextChanged.connect(self.update_preview)
         form.addRow("Civilization:", self.civ_input)
 
         self.type_input = QComboBox()
@@ -36,11 +43,13 @@ class CardEditor(QDialog):
 
         self.cost_input = QSpinBox()
         self.cost_input.setRange(0, 99)
+        self.cost_input.valueChanged.connect(self.update_preview)
         form.addRow("Cost:", self.cost_input)
 
         self.power_input = QSpinBox()
         self.power_input.setRange(0, 99999)
         self.power_input.setSingleStep(500)
+        self.power_input.valueChanged.connect(self.update_preview)
         form.addRow("Power:", self.power_input)
 
         self.races_input = QLineEdit()
@@ -51,7 +60,7 @@ class CardEditor(QDialog):
         self.keywords_input.setPlaceholderText("Comma separated (e.g. BLOCKER, SPEED_ATTACKER)")
         form.addRow("Keywords:", self.keywords_input)
 
-        layout.addLayout(form)
+        form_layout.addLayout(form)
 
         btn_layout = QHBoxLayout()
         save_btn = QPushButton("Save Card")
@@ -61,7 +70,43 @@ class CardEditor(QDialog):
         
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        layout.addLayout(btn_layout)
+        form_layout.addLayout(btn_layout)
+        
+        main_layout.addWidget(form_widget)
+        
+        # Right: Preview
+        preview_layout = QVBoxLayout()
+        preview_label = QLabel("Preview")
+        preview_label.setStyleSheet("font-weight: bold;")
+        preview_layout.addWidget(preview_label)
+        
+        self.preview_container = QWidget()
+        self.preview_container_layout = QVBoxLayout(self.preview_container)
+        self.preview_card = None
+        
+        preview_layout.addWidget(self.preview_container)
+        preview_layout.addStretch()
+        
+        main_layout.addLayout(preview_layout)
+        
+        self.update_preview()
+
+    def update_preview(self):
+        # Clear old preview
+        for i in reversed(range(self.preview_container_layout.count())):
+            item = self.preview_container_layout.itemAt(i)
+            if item:
+                widget = item.widget()
+                if widget:
+                    widget.setParent(None)
+        
+        name = self.name_input.text() or "New Card"
+        cost = self.cost_input.value()
+        power = self.power_input.value()
+        civ = self.civ_input.currentText()
+        
+        self.preview_card = CardWidget(0, name, cost, power, civ)
+        self.preview_container_layout.addWidget(self.preview_card)
 
     def get_next_id(self):
         if not os.path.exists(self.csv_path):

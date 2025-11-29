@@ -6,18 +6,20 @@ from PyQt6.QtWidgets import (
 )
 import dm_ai_module
 from gui.card_editor import CardEditor
+from gui.widgets.card_widget import CardWidget
 
 
 class DeckBuilder(QWidget):
-    def __init__(self, card_db):
+    def __init__(self, card_db, civ_map=None):
         super().__init__()
         self.card_db = card_db
+        self.civ_map = civ_map or {}
         self.current_deck = []
         self.init_ui()
 
     def init_ui(self):
         self.setWindowTitle("Deck Builder")
-        self.resize(800, 600)
+        self.resize(1000, 700)
         layout = QHBoxLayout(self)
 
         # Left: Card Database
@@ -28,6 +30,7 @@ class DeckBuilder(QWidget):
         left_panel.addWidget(self.search_bar)
 
         self.card_list = QListWidget()
+        self.card_list.itemClicked.connect(self.show_preview_from_db)
         self.card_list.itemDoubleClicked.connect(self.add_card)
         left_panel.addWidget(self.card_list)
         
@@ -37,6 +40,15 @@ class DeckBuilder(QWidget):
         left_panel.addWidget(new_card_btn)
 
         layout.addLayout(left_panel)
+        
+        # Center: Preview
+        center_panel = QVBoxLayout()
+        center_panel.addWidget(QLabel("Preview"))
+        self.preview_container = QWidget()
+        self.preview_layout = QVBoxLayout(self.preview_container)
+        center_panel.addWidget(self.preview_container)
+        center_panel.addStretch()
+        layout.addLayout(center_panel)
 
         # Right: Current Deck
         right_panel = QVBoxLayout()
@@ -44,6 +56,7 @@ class DeckBuilder(QWidget):
         right_panel.addWidget(self.deck_count_label)
 
         self.deck_list = QListWidget()
+        self.deck_list.itemClicked.connect(self.show_preview_from_deck)
         self.deck_list.itemDoubleClicked.connect(self.remove_card)
         right_panel.addWidget(self.deck_list)
 
@@ -59,6 +72,36 @@ class DeckBuilder(QWidget):
         layout.addLayout(right_panel)
 
         self.populate_card_list()
+
+    def show_preview_from_db(self, item):
+        try:
+            cid = int(item.text().split(']')[0][1:])
+            self.update_preview(cid)
+        except:
+            pass
+
+    def show_preview_from_deck(self, item):
+        try:
+            cid = int(item.text().split(']')[0][1:])
+            self.update_preview(cid)
+        except:
+            pass
+
+    def update_preview(self, card_id):
+        # Clear old
+        for i in reversed(range(self.preview_layout.count())):
+            item = self.preview_layout.itemAt(i)
+            if item:
+                widget = item.widget()
+                if widget:
+                    widget.setParent(None)
+        
+        if card_id in self.card_db:
+            card = self.card_db[card_id]
+            civ = self.civ_map.get(card_id, "COLORLESS")
+            
+            widget = CardWidget(card.id, card.name, card.cost, card.power, civ)
+            self.preview_layout.addWidget(widget)
 
     def open_card_editor(self):
         editor = CardEditor("data/cards.csv", self)

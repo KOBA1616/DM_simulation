@@ -11,5 +11,28 @@ Desktop.ini
 !.vscode/extensions.json
 *.code-workspace
 
-# Logs
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Logs & Data
 *.log
+data/analytics/
+data/generations/
+data/logs/
+
+# Models
+models/*.pth
+
+# Build
+bin/
+build/
+*.pyd
+*.so
+*.dll
+*.exe
+*.obj

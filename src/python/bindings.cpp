@@ -36,12 +36,23 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("ATTACK_CREATURE", ActionType::ATTACK_CREATURE)
         .export_values();
 
+    py::enum_<Civilization>(m, "Civilization")
+        .value("NONE", Civilization::NONE)
+        .value("LIGHT", Civilization::LIGHT)
+        .value("WATER", Civilization::WATER)
+        .value("DARKNESS", Civilization::DARKNESS)
+        .value("FIRE", Civilization::FIRE)
+        .value("NATURE", Civilization::NATURE)
+        .value("ZERO", Civilization::ZERO)
+        .export_values();
+
     // Core Structures
     py::class_<CardDefinition>(m, "CardDefinition")
         .def_readonly("id", &CardDefinition::id)
         .def_readonly("name", &CardDefinition::name)
         .def_readonly("cost", &CardDefinition::cost)
-        .def_readonly("power", &CardDefinition::power);
+        .def_readonly("power", &CardDefinition::power)
+        .def_readonly("civilization", &CardDefinition::civilization);
 
     py::class_<CardInstance>(m, "CardInstance")
         .def_readonly("card_id", &CardInstance::card_id)
