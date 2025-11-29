@@ -110,8 +110,32 @@ def train_loop():
     games_per_iter = TRAIN_CFG['games_per_iteration']
     batch_size = TRAIN_CFG['batch_size']
     
-    for iteration in range(iterations):
-        print(f"Iteration {iteration + 1}/{iterations}")
+    # Resume Logic
+    start_iteration = 0
+    models_dir = os.path.join(os.path.dirname(__file__), '..', TRAIN_CFG['checkpoint_dir'])
+    os.makedirs(models_dir, exist_ok=True)
+    
+    model_files = glob.glob(os.path.join(models_dir, "model_iter_*.pth"))
+    if model_files:
+        def get_iter(f):
+            try:
+                return int(os.path.basename(f).replace("model_iter_", "").replace(".pth", ""))
+            except ValueError:
+                return -1
+        
+        latest_model = max(model_files, key=get_iter)
+        latest_iter = get_iter(latest_model)
+        
+        if latest_iter >= 0:
+            print(f"Resuming from iteration {latest_iter} (loading {os.path.basename(latest_model)})")
+            try:
+                network.load_state_dict(torch.load(latest_model, map_location=device))
+                start_iteration = latest_iter + 1
+            except Exception as e:
+                print(f"Failed to load model: {e}")
+    
+    for iteration in range(start_iteration, start_iteration + iterations):
+        print(f"Iteration {iteration}/{start_iteration + iterations - 1}")
         
         # Self Play
         network.eval()
