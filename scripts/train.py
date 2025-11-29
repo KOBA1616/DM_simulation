@@ -1,5 +1,6 @@
 import os
 import sys
+import yaml
 
 # Add root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -12,13 +13,13 @@ from py_ai.agent.network import AlphaZeroNetwork
 from py_ai.agent.mcts import MCTS
 from py_ai.agent.replay_buffer import ReplayBuffer
 
-# Config
-BATCH_SIZE = 32
-LEARNING_RATE = 0.001
-EPOCHS = 1
-SIMULATIONS = 25 # Low for speed in dev
-GAMES_PER_ITERATION = 2
-ITERATIONS = 2 # Short run for test
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'train_config.yaml')
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
+
+CONFIG = load_config()
+TRAIN_CFG = CONFIG['training']
 
 def self_play(network, card_db):
     game_data = []
@@ -26,7 +27,7 @@ def self_play(network, card_db):
     gs.setup_test_duel() # Use test deck for now
     dm_ai_module.PhaseManager.start_game(gs)
     
-    mcts = MCTS(network, card_db, simulations=SIMULATIONS)
+    mcts = MCTS(network, card_db, simulations=TRAIN_CFG['simulations'])
     
     turn_count = 0
     while True:
@@ -83,6 +84,7 @@ def self_play(network, card_db):
 
 def train_loop():
     print("Starting Training Loop...")
+    print(f"Config: {TRAIN_CFG}")
     
     # Load DB
     data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'cards.csv')
@@ -92,59 +94,75 @@ def train_loop():
     input_size = dm_ai_module.TensorConverter.INPUT_SIZE
     action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
     network = AlphaZeroNetwork(input_size, action_size)
-    optimizer = optim.Adam(network.parameters(), lr=LEARNING_RATE)
+    
+    device = CONFIG['resources']['device']
+    if device == 'auto':
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using device: {device}")
+    network.to(device)
+    
+    optimizer = optim.Adam(network.parameters(), lr=TRAIN_CFG['learning_rate'])
     
     replay_buffer = ReplayBuffer()
     
-    for iteration in range(ITERATIONS):
-        print(f"Iteration {iteration + 1}/{ITERATIONS}")
+    iterations = TRAIN_CFG['iterations']
+    games_per_iter = TRAIN_CFG['games_per_iteration']
+    batch_size = TRAIN_CFG['batch_size']
+    
+    for iteration in range(iterations):
+        print(f"Iteration {iteration + 1}/{iterations}")
         
         # Self Play
         network.eval()
-        for i in range(GAMES_PER_ITERATION):
+        # Move to CPU for MCTS if needed, or keep on GPU if MCTS supports it
+        # Current MCTS implementation uses network(tensor), so it should match device
+        
+        for i in range(games_per_iter):
             print(f"  Self-play game {i+1}...")
+            # Note: self_play runs on CPU logic but uses network. 
+            # If network is on GPU, we need to handle tensor device in MCTS or here.
+            # MCTS.search calls network.
+            # Let's ensure MCTS handles device or we pass device to MCTS?
+            # MCTS currently: tensor_t = torch.tensor(...).unsqueeze(0) -> network(tensor_t)
+            # We need to move tensor_t to device.
+            # For now, let's keep network on CPU for simplicity unless we update MCTS.
+            # Or update MCTS to check network device.
+            
+            # Quick fix: Move network to CPU for self-play if MCTS doesn't handle device
+            # But we want GPU for inference.
+            # Let's update MCTS later. For now, assume CPU or update MCTS.
+            # Actually, let's force CPU for now to be safe as MCTS.py doesn't have .to(device)
+            network.cpu() 
             data, result = self_play(network, card_db)
             
             # Assign Values
-            # Result: 1=P1 Win (ID 0), 2=P2 Win (ID 1), 3=Draw
-            
             for item in data:
-                # item: [state, policy, value, player_id]
                 player_id = item[3]
                 value = 0.0
-                
-                if result == 1: # P1 Won
-                    value = 1.0 if player_id == 0 else -1.0
-                elif result == 2: # P2 Won
-                    value = 1.0 if player_id == 1 else -1.0
-                else: # Draw
-                    value = 0.0
-                    
+                if result == 1: value = 1.0 if player_id == 0 else -1.0
+                elif result == 2: value = 1.0 if player_id == 1 else -1.0
                 item[2] = value
                 
-            # Remove player_id before pushing to buffer (Buffer expects 3 items)
             cleaned_data = [item[:3] for item in data]
             replay_buffer.push(cleaned_data)
             
         # Training
         print("  Training...")
+        network.to(device) # Move back to device for training
         network.train()
-        if len(replay_buffer) >= BATCH_SIZE:
-            batch = replay_buffer.sample(BATCH_SIZE)
+        
+        if len(replay_buffer) >= batch_size:
+            batch = replay_buffer.sample(batch_size)
             if batch:
                 states, policies, values = batch
-                states = torch.tensor(states, dtype=torch.float32)
-                policies = torch.tensor(policies, dtype=torch.float32)
-                values = torch.tensor(values, dtype=torch.float32).unsqueeze(1)
+                states = torch.tensor(states, dtype=torch.float32).to(device)
+                policies = torch.tensor(policies, dtype=torch.float32).to(device)
+                values = torch.tensor(values, dtype=torch.float32).unsqueeze(1).to(device)
                 
                 optimizer.zero_grad()
                 pred_policies, pred_values = network(states)
                 
-                # Loss
-                # Value: MSE
                 value_loss = ((pred_values - values) ** 2).mean()
-                # Policy: Cross Entropy (LogSoftmax + NLL or just -sum(target * log(pred)))
-                # pred_policies are logits.
                 policy_loss = -(policies * torch.log_softmax(pred_policies, dim=1)).sum(dim=1).mean()
                 
                 loss = value_loss + policy_loss
@@ -154,7 +172,9 @@ def train_loop():
                 print(f"  Loss: {loss.item():.4f}")
                 
         # Save Checkpoint
-        model_path = os.path.join(os.path.dirname(__file__), '..', 'models', f"model_iter_{iteration}.pth")
+        models_dir = os.path.join(os.path.dirname(__file__), '..', TRAIN_CFG['checkpoint_dir'])
+        os.makedirs(models_dir, exist_ok=True)
+        model_path = os.path.join(models_dir, f"model_iter_{iteration}.pth")
         torch.save(network.state_dict(), model_path)
 
 if __name__ == "__main__":

@@ -1,0 +1,19 @@
+training:
+  batch_size: 32
+  learning_rate: 0.001
+  epochs: 1
+  simulations: 50
+  games_per_iteration: 10
+  iterations: 5
+  cpuct: 1.0
+  checkpoint_dir: "models"
+  data_dir: "data"
+
+mcts:
+  simulations: 50
+  exploration_noise: true
+  dirichlet_alpha: 0.3
+  dirichlet_epsilon: 0.25
+
+resources:
+  device: "auto" # "cuda", "cpu", or "auto"
