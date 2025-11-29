@@ -8,6 +8,7 @@
     - **AlphaZero-based**: MCTS + MLPによる自己対戦強化学習。
     - **Evolutionary**: 評価ベースのサイドボード交換によるデッキ進化。
     - **Scientific**: PyQt6による可視化とヒートマップ分析。
+    - **Version Control**: 各開発ステップ完了ごとにGitコミットを行い、進捗を確実に保存する。
 
 ## 2. システムアーキテクチャ (System Architecture)
 
@@ -163,6 +164,8 @@ dm_simulator/
 - **Config**: `config.json` による外部パラメータ管理 [Q84].
 
 ## 8. 実装ロードマップ (Step-by-Step Implementation)
+
+**Note**: 各ステップの完了時には必ずGitコミットを行い、変更を保存すること。
 
 ### Phase 1: Foundation (基盤構築)
 - **Project Setup**: CMakeLists.txt 作成、ディレクトリ構造作成。
