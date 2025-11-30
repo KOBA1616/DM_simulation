@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox, QSplitter,
-    QCheckBox, QGroupBox, QRadioButton, QButtonGroup
+    QCheckBox, QGroupBox, QRadioButton, QButtonGroup, QScrollArea
 )
 from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
@@ -238,7 +238,11 @@ class GameWindow(QMainWindow):
         self.board_splitter.addWidget(self.p0_zones)
         self.board_layout.addWidget(self.board_splitter)
         
-        self.center_splitter.addWidget(self.board_panel)
+        # Wrap Board in ScrollArea to prevent layout break
+        self.board_scroll = QScrollArea()
+        self.board_scroll.setWidget(self.board_panel)
+        self.board_scroll.setWidgetResizable(True)
+        self.center_splitter.addWidget(self.board_scroll)
         
         # MCTS View (Bottom)
         self.mcts_view = MCTSView()
