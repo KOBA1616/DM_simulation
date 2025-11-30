@@ -1,5 +1,6 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QLabel, QProgressBar, QHeaderView
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QLabel, QProgressBar, QHeaderView, QTabWidget
 from PyQt6.QtCore import Qt
+from .mcts_graph_view import MCTSGraphView
 
 class MCTSView(QWidget):
     def __init__(self, parent=None):
@@ -13,13 +14,21 @@ class MCTSView(QWidget):
         self.label.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.label)
         
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs)
+        
+        # Tab 1: Tree Table
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels(["Action", "Visits", "Value (Q)", "Prior (P)"])
         header = self.tree.header()
         if header:
             header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.tree.setColumnWidth(0, 200) # Initial width, but resize mode might override
-        layout.addWidget(self.tree)
+        self.tree.setColumnWidth(0, 200)
+        self.tabs.addTab(self.tree, "Table View")
+        
+        # Tab 2: Graph View
+        self.graph_view = MCTSGraphView()
+        self.tabs.addTab(self.graph_view, "Graph View")
         
         self.win_rate_bar = QProgressBar()
         self.win_rate_bar.setRange(0, 100)
@@ -28,6 +37,8 @@ class MCTSView(QWidget):
 
     def update_from_data(self, tree_data):
         self.tree.clear()
+        self.graph_view.update_from_data(tree_data)
+        
         if not tree_data:
             return
 
