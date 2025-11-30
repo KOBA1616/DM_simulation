@@ -1,110 +1,165 @@
-# Current Game Rules & Implementation Status (v2.2)
+# 現在のゲームルールと実装状況 (v2.2)
 
-This document outlines the game rules currently implemented in the C++ engine (`dm::engine`) and how they map to the source code.
+このドキュメントは、C++エンジン (`dm::engine`) に現在実装されているゲームルールと、それらがソースコードのどこに対応しているかを概説します。
 
-## 1. Game Flow & Turn Structure
-**Implementation**: `src/engine/flow/phase_manager.cpp`
+## 1. ゲームフローとターンの構造
+**実装**: `src/engine/flow/phase_manager.cpp`
 
-The game follows a strict phase sequence managed by `PhaseManager`.
+ゲームは `PhaseManager` によって管理される厳格なフェーズシーケンスに従います。
 
-### Phase Sequence
-1.  **START_OF_TURN**
-    *   **Rules**:
-        *   Active Player's mana and creatures untap (`ManaSystem::untap_all`).
-        *   Summoning Sickness is removed from Active Player's creatures.
-        *   `AT_START_OF_TURN` effects are queued.
-    *   **Transition**: Automatically proceeds to `DRAW`.
+### フェーズシーケンス
+1.  **START_OF_TURN (ターン開始)**
+    *   **ルール**:
+        *   アクティブプレイヤーのマナとクリーチャーがアンタップされる (`ManaSystem::untap_all`)。
+        *   アクティブプレイヤーのクリーチャーから召喚酔いが取り除かれる。
+        *   `AT_START_OF_TURN` (ターン開始時) 効果がキューに追加される。
+    *   **遷移**: 自動的に `DRAW` フェーズへ進む。
 
-2.  **DRAW**
-    *   **Rules**:
-        *   Active Player draws 1 card.
-        *   **Exception**: Player 1 skips draw on the very first turn (Turn 1).
-        *   **Loss Condition**: If deck is empty when drawing, player loses (`check_game_over`).
-    *   **Transition**: Automatically proceeds to `MANA`.
+2.  **DRAW (ドロー)**
+    *   **ルール**:
+        *   アクティブプレイヤーはカードを1枚引く。
+        *   **例外**: 先攻プレイヤーの最初のターン (Turn 1) はドローをスキップする。
+        *   **敗北条件**: ドロー時にデッキが空の場合、そのプレイヤーは敗北する (`check_game_over`)。
+    *   **遷移**: 自動的に `MANA` フェーズへ進む。
 
-3.  **MANA**
-    *   **Rules**:
-        *   Player *may* charge 1 card from hand to Mana Zone.
-        *   **Implementation**: `ActionGenerator` generates `MANA_CHARGE` actions for all cards in hand, plus a `PASS` action.
-    *   **Transition**: Ends when player performs an action (Charge or Pass). Proceeds to `MAIN`.
+3.  **MANA (マナチャージ)**
+    *   **ルール**:
+        *   プレイヤーは手札から1枚までマナゾーンにチャージできる。
+        *   **実装**: `ActionGenerator` は手札の全カードに対する `MANA_CHARGE` アクションと、`PASS` アクションを生成する。
+    *   **遷移**: プレイヤーがアクション (チャージまたはパス) を実行すると終了し、`MAIN` フェーズへ進む。
 
-4.  **MAIN**
-    *   **Rules**:
-        *   Player may summon creatures or cast spells.
-        *   **Cost System** (`ManaSystem::can_pay_cost`):
-            *   Total Cost <= Number of Untapped Mana.
-            *   At least 1 mana of the card's civilization must be included (unless Zero civ).
-    *   **Transition**: Ends when player chooses `PASS`. Proceeds to `ATTACK`.
+4.  **MAIN (メイン)**
+    *   **ルール**:
+        *   プレイヤーはクリーチャーを召喚したり、呪文を唱えたりできる。
+        *   **コストシステム** (`ManaSystem::can_pay_cost`):
+            *   合計コスト <= アンタップ状態のマナ数。
+            *   カードの文明のマナが少なくとも1つ含まれている必要がある (ゼロ文明を除く)。
+    *   **遷移**: プレイヤーが `PASS` を選択すると終了し、`ATTACK` フェーズへ進む。
 
-5.  **ATTACK**
-    *   **Rules**:
-        *   Player may attack with any creature that is **Untapped** and does **not have Summoning Sickness**.
-        *   **Targets**: Opponent Player or Opponent's **Tapped** Creature.
-        *   **Multiple Attacks**: There is **NO restriction** on the number of attacks per turn. The phase continues until the player chooses `PASS` or runs out of attackers.
-        *   **Tapping**: Attacking causes the creature to Tap (`EffectResolver::resolve_attack`).
-    *   **Transition**:
-        *   If `ATTACK_PLAYER` or `ATTACK_CREATURE` is chosen -> Proceeds to `BLOCK`.
-        *   If `PASS` is chosen -> Proceeds to `END_OF_TURN`.
+5.  **ATTACK (攻撃)**
+    *   **ルール**:
+        *   プレイヤーは **アンタップ状態** かつ **召喚酔いしていない** クリーチャーで攻撃できる。
+        *   **対象**: 相手プレイヤー または 相手の **タップ状態** のクリーチャー。
+        *   **複数回攻撃**: 1ターンあたりの攻撃回数に **制限はない**。プレイヤーが `PASS` を選択するか、攻撃可能なクリーチャーがいなくなるまでフェーズは継続する。
+        *   **タップ**: 攻撃するとクリーチャーはタップされる (`EffectResolver::resolve_attack`)。
+    *   **遷移**:
+        *   `ATTACK_PLAYER` または `ATTACK_CREATURE` が選択された場合 -> `BLOCK` フェーズへ進む。
+        *   `PASS` が選択された場合 -> `END_OF_TURN` フェーズへ進む。
 
-6.  **BLOCK**
-    *   **Rules**:
-        *   Non-Active Player (Defender) may block with a creature having `BLOCKER` keyword.
-        *   Blocker must be Untapped.
-        *   Blocking Taps the blocker.
-    *   **Transition**:
-        *   After Block (or Pass), Battle is resolved (`EffectResolver::execute_battle`).
-        *   Game returns to `ATTACK` phase.
+6.  **BLOCK (ブロック)**
+    *   **ルール**:
+        *   非アクティブプレイヤー (防御側) は `BLOCKER` (ブロッカー) 能力を持つクリーチャーでブロックできる。
+        *   ブロッカーはアンタップ状態でなければならない。
+        *   ブロックするとブロッカーはタップされる。
+    *   **遷移**:
+        *   ブロック (またはパス) 後、バトルが解決される (`EffectResolver::execute_battle`)。
+        *   ゲームは `ATTACK` フェーズに戻る。
 
-7.  **END_OF_TURN**
-    *   **Rules**:
-        *   `AT_END_OF_TURN` effects are queued.
-        *   Active Player switches.
-    *   **Transition**: Proceeds to `START_OF_TURN`.
+7.  **END_OF_TURN (ターン終了)**
+    *   **ルール**:
+        *   `AT_END_OF_TURN` (ターン終了時) 効果がキューに追加される。
+        *   アクティブプレイヤーが交代する。
+    *   **遷移**: `START_OF_TURN` フェーズへ進む。
 
-## 2. Battle Logic
-**Implementation**: `src/engine/effects/effect_resolver.cpp`
+## 2. バトルロジック
+**実装**: `src/engine/effects/effect_resolver.cpp`
 
-### Battle Resolution (`execute_battle`)
-1.  **Power Calculation**:
-    *   Base Power is retrieved from `CardDefinition`.
-    *   **Power Attacker**: If attacking, `power_attacker_bonus` is added.
-2.  **Outcome**:
-    *   Attacker Power > Defender Power -> Defender destroyed.
-    *   Attacker Power < Defender Power -> Attacker destroyed.
-    *   Attacker Power = Defender Power -> Both destroyed.
-3.  **Special Abilities**:
-    *   **Slayer**: If a Slayer loses or draws, the winner is also destroyed.
-4.  **Shield Break** (If attacking player and unblocked):
-    *   **Breaker Count**:
-        *   Default: 1
-        *   `DOUBLE_BREAKER`: 2
-        *   `TRIPLE_BREAKER`: 3
-    *   Shields are moved to Hand.
-    *   **Shield Trigger**: If a shield has `SHIELD_TRIGGER`, it can be played immediately for free (`resolve_use_shield_trigger`).
+### バトル解決 (`execute_battle`)
+1.  **パワー計算**:
+    *   基本パワーは `CardDefinition` から取得される。
+    *   **パワーアタッカー**: 攻撃中の場合、`power_attacker_bonus` が加算される。
+2.  **結果判定**:
+    *   攻撃側パワー > 防御側パワー -> 防御側が破壊される。
+    *   攻撃側パワー < 防御側パワー -> 攻撃側が破壊される。
+    *   攻撃側パワー = 防御側パワー -> 両方が破壊される。
+3.  **特殊能力**:
+    *   **スレイヤー**: スレイヤーが敗北または引き分けた場合、勝者も破壊される。
+4.  **シールドブレイク** (プレイヤーへの攻撃がブロックされなかった場合):
+    *   **ブレイク数**:
+        *   デフォルト: 1枚
+        *   `DOUBLE_BREAKER` (W・ブレイカー): 2枚
+        *   `TRIPLE_BREAKER` (T・ブレイカー): 3枚
+    *   シールドは手札に加えられる。
+    *   **シールドトリガー**: シールドが `SHIELD_TRIGGER` を持っている場合、コストを支払わずに即座に使用できる (`resolve_use_shield_trigger`)。
 
-## 3. Card Abilities (Keywords)
-**Implementation**: `src/core/card_def.hpp`, `src/engine/effects/effect_resolver.cpp`
+## 3. カード能力 (キーワード)
+**実装**: `src/core/card_def.hpp`, `src/engine/effects/effect_resolver.cpp`
 
-*   **SPEED_ATTACKER**: Ignores Summoning Sickness.
-*   **BLOCKER**: Can redirect attacks to self.
-*   **SLAYER**: Destroys opponent in battle regardless of power.
-*   **POWER_ATTACKER**: Gains power during attack.
-*   **DOUBLE/TRIPLE_BREAKER**: Breaks extra shields.
-*   **SHIELD_TRIGGER**: Casts for free when broken.
-*   **EVOLUTION**: Can be placed on top of another creature (Logic partially implemented in `resolve_play_card`).
+*   **SPEED_ATTACKER (スピードアタッカー)**: 召喚酔いを無視する。
+*   **BLOCKER (ブロッカー)**: 攻撃を自身に向けさせることができる。
+*   **SLAYER (スレイヤー)**: バトルで負けた時、相手を破壊する。
+*   **POWER_ATTACKER (パワーアタッカー)**: 攻撃中、パワーが増加する。
+*   **DOUBLE/TRIPLE_BREAKER (W/T・ブレイカー)**: 追加のシールドをブレイクする。
+*   **SHIELD_TRIGGER (S・トリガー)**: ブレイクされた時に無料で唱えることができる。
+*   **EVOLUTION (進化)**: 別のクリーチャーの上に重ねて出すことができる (ロジックは `resolve_play_card` に部分的に実装済み)。
 
-## 4. Win Conditions
-**Implementation**: `src/engine/flow/phase_manager.cpp`
+## 4. 勝利条件
+**実装**: `src/engine/flow/phase_manager.cpp`
 
-1.  **Direct Attack**: Attacking player with 0 shields.
-2.  **Deck Out**: Drawing from an empty deck.
-3.  **Turn Limit**: Reaching 100 turns (Result: Draw).
+1.  **ダイレクトアタック**: シールドが0枚のプレイヤーへの攻撃が成功する。
+2.  **ライブラリアウト**: 空のデッキからカードを引こうとする。
+3.  **ターン制限**: 100ターンに到達する (結果: 引き分け)。
 
-## 5. AI & Automation
-*   **Action Generation**: `ActionGenerator` enumerates all legal moves based on the rules above.
-*   **Resolution**: `EffectResolver` applies the changes deterministically.
-*   **MCTS**: Explores the game tree using these rules.
+## 5. AIと自動化
+*   **アクション生成**: `ActionGenerator` は上記のルールに基づいて全ての合法手を列挙する。
+*   **解決**: `EffectResolver` は決定論的に変更を適用する。
+*   **MCTS**: これらのルールを使用してゲーム木を探索する。
 
 ---
-**Note on "1 Turn 1 Attack"**:
-The engine explicitly supports multiple attacks. The `ATTACK` phase is a loop. After an attack resolves (and potential block/battle), the state returns to `ATTACK` phase, and `ActionGenerator` will generate attack actions for any remaining untaped creatures. The turn only ends when the AI (or player) explicitly chooses `PASS`.
+**「1ターン1回攻撃」に関する注記**:
+エンジンは複数回の攻撃を明示的にサポートしています。`ATTACK` フェーズはループになっています。攻撃が解決された後（そしてブロック/バトルの可能性があった後）、状態は `ATTACK` フェーズに戻り、`ActionGenerator` は残りのアンタップ状態のクリーチャーに対して攻撃アクションを生成します。ターンはAI（またはプレイヤー）が明示的に `PASS` を選択したときにのみ終了します。
+
+---
+
+## 6. 2ターン目までの想定動作 (シミュレーション)
+
+以下は、標準的なゲーム開始から2ターン目までのフェーズ遷移とアクションの例です。
+
+### 1ターン目 (先攻: Player 1)
+1.  **START_OF_TURN**: アンタップ処理（なし）。
+2.  **DRAW**: **スキップ** (先攻1ターン目のルール)。
+3.  **MANA**: 手札から1枚マナチャージ (マナ: 1)。
+4.  **MAIN**:
+    *   1コストのクリーチャーがいれば召喚可能。
+    *   通常は何もせず `PASS`。
+5.  **ATTACK**:
+    *   召喚したクリーチャーがいても召喚酔いのため攻撃不可。
+    *   `PASS` を選択。
+6.  **END_OF_TURN**: ターン終了。Player 2へ交代。
+
+### 1ターン目 (後攻: Player 2)
+1.  **START_OF_TURN**: アンタップ処理（なし）。
+2.  **DRAW**: カードを1枚引く。
+3.  **MANA**: 手札から1枚マナチャージ (マナ: 1)。
+4.  **MAIN**:
+    *   1コストのクリーチャーがいれば召喚可能。
+    *   `PASS`。
+5.  **ATTACK**:
+    *   `PASS`。
+6.  **END_OF_TURN**: ターン終了。Player 1へ交代。
+
+### 2ターン目 (先攻: Player 1)
+1.  **START_OF_TURN**: マナをアンタップ。
+2.  **DRAW**: カードを1枚引く。
+3.  **MANA**: 手札から1枚マナチャージ (マナ: 2)。
+4.  **MAIN**:
+    *   2コストのクリーチャー（例: ブレイズ・クローなど）を召喚。
+    *   残りマナ: 0。
+    *   `PASS`。
+5.  **ATTACK**:
+    *   1ターン目に召喚したクリーチャーがいれば攻撃可能。
+    *   今回召喚したクリーチャーは召喚酔い。
+    *   攻撃可能なクリーチャーがいなければ `PASS`。
+6.  **END_OF_TURN**: ターン終了。
+
+### 2ターン目 (後攻: Player 2)
+1.  **START_OF_TURN**: マナをアンタップ。
+2.  **DRAW**: カードを1枚引く。
+3.  **MANA**: 手札から1枚マナチャージ (マナ: 2)。
+4.  **MAIN**:
+    *   2コストのクリーチャーを召喚、または呪文を使用。
+    *   `PASS`。
+5.  **ATTACK**:
+    *   1ターン目に召喚したクリーチャーがいれば攻撃可能。
+    *   `PASS`。
+6.  **END_OF_TURN**: ターン終了。
