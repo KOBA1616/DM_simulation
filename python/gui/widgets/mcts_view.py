@@ -10,7 +10,7 @@ class MCTSView(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
         
-        self.label = QLabel("AI Thought Process (MCTS)")
+        self.label = QLabel("AI思考プロセス (MCTS)")
         self.label.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.label)
         
@@ -19,20 +19,20 @@ class MCTSView(QWidget):
         
         # Tab 1: Tree Table
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Action", "Visits", "Value (Q)", "Prior (P)"])
+        self.tree.setHeaderLabels(["アクション", "訪問回数", "評価値 (Q)", "優先度 (P)"])
         header = self.tree.header()
         if header:
             header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.tree.setColumnWidth(0, 200)
-        self.tabs.addTab(self.tree, "Table View")
+        self.tabs.addTab(self.tree, "テーブル表示")
         
         # Tab 2: Graph View
         self.graph_view = MCTSGraphView()
-        self.tabs.addTab(self.graph_view, "Graph View")
+        self.tabs.addTab(self.graph_view, "グラフ表示")
         
         self.win_rate_bar = QProgressBar()
         self.win_rate_bar.setRange(0, 100)
-        self.win_rate_bar.setFormat("Win Rate: %p%")
+        self.win_rate_bar.setFormat("勝率予測: %p%")
         layout.addWidget(self.win_rate_bar)
 
     def update_from_data(self, tree_data):
