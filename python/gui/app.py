@@ -63,10 +63,10 @@ class GameWindow(QMainWindow):
         self.info_panel.setFixedWidth(280)
         self.info_layout = QVBoxLayout(self.info_panel)
         
-        self.turn_label = QLabel("Turn: 1")
+        self.turn_label = QLabel("ターン: 1")
         self.turn_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        self.phase_label = QLabel("Phase: START")
-        self.active_label = QLabel("Active: P0")
+        self.phase_label = QLabel("フェーズ: START")
+        self.active_label = QLabel("手番: P0")
         self.info_layout.addWidget(self.turn_label)
         self.info_layout.addWidget(self.phase_label)
         self.info_layout.addWidget(self.active_label)
@@ -76,18 +76,18 @@ class GameWindow(QMainWindow):
         self.info_layout.addWidget(self.card_detail_panel)
         
         # Controls Group
-        ctrl_group = QGroupBox("Controls")
+        ctrl_group = QGroupBox("操作")
         ctrl_layout = QVBoxLayout()
         
-        self.start_btn = QPushButton("Start Simulation")
+        self.start_btn = QPushButton("シミュレーション開始")
         self.start_btn.clicked.connect(self.toggle_simulation)
         ctrl_layout.addWidget(self.start_btn)
         
-        self.step_button = QPushButton("Step Phase")
+        self.step_button = QPushButton("フェーズを進める")
         self.step_button.clicked.connect(self.step_phase)
         ctrl_layout.addWidget(self.step_button)
         
-        self.reset_btn = QPushButton("Reset Game")
+        self.reset_btn = QPushButton("ゲームリセット")
         self.reset_btn.clicked.connect(self.reset_game)
         ctrl_layout.addWidget(self.reset_btn)
         
@@ -95,11 +95,11 @@ class GameWindow(QMainWindow):
         self.info_layout.addWidget(ctrl_group)
         
         # Player Mode Group
-        mode_group = QGroupBox("Player Modes")
+        mode_group = QGroupBox("プレイヤー設定")
         mode_layout = QVBoxLayout()
         
-        self.p0_human_radio = QRadioButton("P0: Human")
-        self.p0_ai_radio = QRadioButton("P0: AI")
+        self.p0_human_radio = QRadioButton("P0 (自分): 人間")
+        self.p0_ai_radio = QRadioButton("P0 (自分): AI")
         self.p0_ai_radio.setChecked(True)
         self.p0_group = QButtonGroup()
         self.p0_group.addButton(self.p0_human_radio)
@@ -108,8 +108,8 @@ class GameWindow(QMainWindow):
         mode_layout.addWidget(self.p0_human_radio)
         mode_layout.addWidget(self.p0_ai_radio)
         
-        self.p1_human_radio = QRadioButton("P1: Human")
-        self.p1_ai_radio = QRadioButton("P1: AI")
+        self.p1_human_radio = QRadioButton("P1 (相手): 人間")
+        self.p1_ai_radio = QRadioButton("P1 (相手): AI")
         self.p1_ai_radio.setChecked(True)
         self.p1_group = QButtonGroup()
         self.p1_group.addButton(self.p1_human_radio)
@@ -121,36 +121,36 @@ class GameWindow(QMainWindow):
         mode_group.setLayout(mode_layout)
         self.info_layout.addWidget(mode_group)
         
-        self.deck_builder_button = QPushButton("Deck Builder")
+        self.deck_builder_button = QPushButton("デッキ構築")
         self.deck_builder_button.clicked.connect(self.open_deck_builder)
         self.info_layout.addWidget(self.deck_builder_button)
 
-        self.card_editor_button = QPushButton("Card Editor")
+        self.card_editor_button = QPushButton("カード編集")
         self.card_editor_button.clicked.connect(self.open_card_editor)
         self.info_layout.addWidget(self.card_editor_button)
 
         # Deck Loading Controls
-        deck_group = QGroupBox("Deck Management")
+        deck_group = QGroupBox("デッキ管理")
         deck_layout = QVBoxLayout()
 
-        self.load_deck_btn = QPushButton("Load Deck P0 (Player)")
+        self.load_deck_btn = QPushButton("デッキ読込 P0 (自分)")
         self.load_deck_btn.clicked.connect(self.load_deck_p0)
         deck_layout.addWidget(self.load_deck_btn)
 
-        self.load_deck_p1_btn = QPushButton("Load Deck P1 (Opponent)")
+        self.load_deck_p1_btn = QPushButton("デッキ読込 P1 (相手)")
         self.load_deck_p1_btn.clicked.connect(self.load_deck_p1)
         deck_layout.addWidget(self.load_deck_p1_btn)
 
         deck_group.setLayout(deck_layout)
         self.info_layout.addWidget(deck_group)
         
-        self.god_view_check = QCheckBox("God View (Show Opponent Hand)")
+        self.god_view_check = QCheckBox("神の視点 (相手の手札を表示)")
         self.god_view_check.setChecked(False)
         self.god_view_check.stateChanged.connect(self.update_ui)
         self.info_layout.addWidget(self.god_view_check)
 
         # Help Button
-        self.help_btn = QPushButton("Help / Instructions")
+        self.help_btn = QPushButton("ヘルプ / 説明")
         self.help_btn.setStyleSheet("background-color: #e1f5fe; color: #0277bd; font-weight: bold;")
         self.help_btn.clicked.connect(self.show_help)
         self.info_layout.addWidget(self.help_btn)
@@ -170,42 +170,59 @@ class GameWindow(QMainWindow):
         # P1 (Opponent) Zones
         self.p1_zones = QWidget()
         self.p1_layout = QVBoxLayout(self.p1_zones)
-        self.p1_hand = ZoneWidget("P1 Hand")
-        self.p1_mana = ZoneWidget("P1 Mana")
-        self.p1_battle = ZoneWidget("P1 Battle")
-        self.p1_shield = ZoneWidget("P1 Shield")
+        self.p1_hand = ZoneWidget("P1 手札")
+        self.p1_mana = ZoneWidget("P1 マナ")
+        self.p1_graveyard = ZoneWidget("P1 墓地")
+        self.p1_battle = ZoneWidget("P1 バトルゾーン")
+        self.p1_shield = ZoneWidget("P1 シールド")
         
         self.p1_layout.addWidget(self.p1_hand)
-        self.p1_layout.addWidget(self.p1_mana)
-        self.p1_layout.addWidget(self.p1_battle)
+        
+        # Group Mana and Graveyard horizontally for P1
+        p1_mana_grave_layout = QHBoxLayout()
+        p1_mana_grave_layout.addWidget(self.p1_mana, stretch=2)
+        p1_mana_grave_layout.addWidget(self.p1_graveyard, stretch=1)
+        self.p1_layout.addLayout(p1_mana_grave_layout)
+        
         self.p1_layout.addWidget(self.p1_shield)
+        self.p1_layout.addWidget(self.p1_battle)
         
         # P0 (Player) Zones
         self.p0_zones = QWidget()
         self.p0_layout = QVBoxLayout(self.p0_zones)
-        self.p0_battle = ZoneWidget("P0 Battle")
-        self.p0_shield = ZoneWidget("P0 Shield")
-        self.p0_mana = ZoneWidget("P0 Mana")
-        self.p0_hand = ZoneWidget("P0 Hand")
+        self.p0_battle = ZoneWidget("P0 バトルゾーン")
+        self.p0_shield = ZoneWidget("P0 シールド")
+        self.p0_mana = ZoneWidget("P0 マナ")
+        self.p0_graveyard = ZoneWidget("P0 墓地")
+        self.p0_hand = ZoneWidget("P0 手札")
         
         # Connect signals
         self.p0_hand.card_clicked.connect(self.on_card_clicked)
         self.p0_mana.card_clicked.connect(self.on_card_clicked)
         self.p0_battle.card_clicked.connect(self.on_card_clicked)
+        self.p0_graveyard.card_clicked.connect(self.on_card_clicked)
         
         self.p0_hand.card_hovered.connect(self.on_card_hovered)
         self.p0_mana.card_hovered.connect(self.on_card_hovered)
         self.p0_battle.card_hovered.connect(self.on_card_hovered)
         self.p0_shield.card_hovered.connect(self.on_card_hovered)
+        self.p0_graveyard.card_hovered.connect(self.on_card_hovered)
         
         self.p1_hand.card_hovered.connect(self.on_card_hovered)
         self.p1_mana.card_hovered.connect(self.on_card_hovered)
         self.p1_battle.card_hovered.connect(self.on_card_hovered)
         self.p1_shield.card_hovered.connect(self.on_card_hovered)
+        self.p1_graveyard.card_hovered.connect(self.on_card_hovered)
         
         self.p0_layout.addWidget(self.p0_battle)
         self.p0_layout.addWidget(self.p0_shield)
-        self.p0_layout.addWidget(self.p0_mana)
+        
+        # Group Mana and Graveyard horizontally for P0
+        p0_mana_grave_layout = QHBoxLayout()
+        p0_mana_grave_layout.addWidget(self.p0_mana, stretch=2)
+        p0_mana_grave_layout.addWidget(self.p0_graveyard, stretch=1)
+        self.p0_layout.addLayout(p0_mana_grave_layout)
+        
         self.p0_layout.addWidget(self.p0_hand)
         
         # Splitter for P1 and P0 areas
@@ -577,11 +594,13 @@ class GameWindow(QMainWindow):
         self.p0_mana.update_cards(convert_zone(p0.mana_zone), self.card_db, self.civ_map)
         self.p0_battle.update_cards(convert_zone(p0.battle_zone), self.card_db, self.civ_map)
         self.p0_shield.update_cards(convert_zone(p0.shield_zone), self.card_db, self.civ_map)
+        self.p0_graveyard.update_cards(convert_zone(p0.graveyard), self.card_db, self.civ_map)
         
         self.p1_hand.update_cards(convert_zone(p1.hand, hide=not god_view), self.card_db, self.civ_map)
         self.p1_mana.update_cards(convert_zone(p1.mana_zone), self.card_db, self.civ_map)
         self.p1_battle.update_cards(convert_zone(p1.battle_zone), self.card_db, self.civ_map)
         self.p1_shield.update_cards(convert_zone(p1.shield_zone, hide=not god_view), self.card_db, self.civ_map)
+        self.p1_graveyard.update_cards(convert_zone(p1.graveyard), self.card_db, self.civ_map)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
