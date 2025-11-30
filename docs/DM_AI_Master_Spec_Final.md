@@ -1,4 +1,4 @@
-# Duel Masters AI Simulator - Ultimate Master Specification (v2.1)
+# Duel Masters AI Simulator - Ultimate Master Specification (v2.2)
 
 ## 1. プロジェクト概要 (Project Overview)
 - **プロジェクト名**: DM_AI_Simulator
@@ -31,6 +31,7 @@ dm_simulation/
 ├── config/                     # Runtime Configs (rules.json, train_config.yaml)
 ├── data/                       # Assets
 │   ├── cards.csv               # Card DB
+│   ├── card_effects.json       # Card Effect Definitions (for Generator)
 │   ├── decks/                  # Deck Files
 │   └── logs/                   # Debug Logs
 ├── docs/                       # Documentation
@@ -40,7 +41,7 @@ dm_simulation/
 │   ├── engine/                 # [dm::engine] Game Logic
 │   │   ├── action_gen/         # ActionGenerator
 │   │   ├── flow/               # PhaseManager
-│   │   ├── effects/            # EffectResolver
+│   │   ├── effects/            # EffectResolver, GeneratedEffects
 │   │   └── mana/               # ManaSystem
 │   ├── ai/                     # [dm::ai] AI Components
 │   │   ├── mcts/               # C++ MCTS Implementation [New]
@@ -54,6 +55,9 @@ dm_simulation/
 │   │   └── widgets/            # Custom Widgets (GraphView, DetailPanel)
 │   ├── py_ai/                  # Python AI Modules (Training, GA)
 │   └── scripts/                # Entry Points (train.py, test_ai.py)
+├── tests/                      # Integration Tests
+│   ├── test_card_creation_integration.py
+│   └── test_spiral_gate.py
 ├── tools/                      # Development Tools
 │   └── card_gen/               # Card Logic Generator (JSON -> C++) [New]
 ├── models/                     # Trained Models
@@ -72,7 +76,10 @@ dm_simulation/
 
 ### 3.2 カードデータ構造 (card_def.hpp)
 - **ID管理**: CardID (uint16_t).
-- **AltCostKeywords**: GZero, RevolutionChange, MachFighter, GStrike 等をフラグ管理.
+- **Keywords**:
+    - **Basic**: `SPEED_ATTACKER`, `BLOCKER`, `SLAYER`, `EVOLUTION`.
+    - **Breakers**: `DOUBLE_BREAKER`, `TRIPLE_BREAKER`.
+    - **Parameterized**: `POWER_ATTACKER` (Bonus Value).
 - **Filter Parsing**: CSVロード時に文字列条件をID化して保持.
 - **Mode Selection**: ModalEffectGroup 構造体による複数選択管理.
 
@@ -122,8 +129,9 @@ dm_simulation/
 
 ### 7.2 開発補助
 - **Card Generator**: `tools/card_gen/`
-    - JSON定義ファイルからC++のカード効果実装コード (`generated_effects.hpp`) を自動生成。
-    - 単純な効果（ドロー、マナブースト、破壊）の実装工数を大幅に削減。
+    - JSON定義ファイル (`data/card_effects.json`) からC++のカード効果実装コード (`generated_effects.hpp`) を自動生成。
+    - **Supported Effects**: `mana_charge`, `draw_card`, `tap_all`, `destroy`, `bounce`.
+    - 単純な効果（ドロー、マナブースト、破壊、バウンス）の実装工数を大幅に削減。
 - **Deck Builder**: GUI内蔵エディタ.
 
 ## 8. C++統合提案 (C++ Integration Proposal)
@@ -132,6 +140,7 @@ dm_simulation/
 - **Core Logic**: 完全にC++化済み (`dm::engine`).
 - **Search**: MCTSをC++に移植し、Pythonオーバーヘッドを排除。
 - **Evaluation**: 単純なヒューリスティック評価はC++で完結。
+- **Keyword Support**: `SLAYER`, `POWER_ATTACKER`, `BREAKER` 系のロジックを `EffectResolver` に実装済み。
 
 ### 8.2 今後の統合ロードマップ
 1.  **Neural Network Inference in C++**:

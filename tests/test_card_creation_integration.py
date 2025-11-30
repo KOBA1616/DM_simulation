@@ -4,7 +4,11 @@ import csv
 from PyQt6.QtWidgets import QApplication
 
 # Add python/ to path so we can import gui modules
-sys.path.append(os.path.abspath("python"))
+# Assuming this script is run from project root or tests/
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if project_root not in sys.path:
+    sys.path.append(os.path.join(project_root, "python"))
+    sys.path.append(project_root) # For dm_ai_module if it's in root
 
 from gui.card_editor import CardEditor
 import dm_ai_module
