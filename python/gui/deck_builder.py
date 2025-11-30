@@ -4,9 +4,11 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
     QPushButton, QLabel, QLineEdit, QMessageBox, QFileDialog
 )
+from PyQt6.QtCore import Qt
 import dm_ai_module
 from gui.card_editor import CardEditor
 from gui.widgets.card_widget import CardWidget
+from gui.widgets.card_detail_panel import CardDetailPanel
 
 
 class DeckBuilder(QWidget):
@@ -44,9 +46,17 @@ class DeckBuilder(QWidget):
         # Center: Preview
         center_panel = QVBoxLayout()
         center_panel.addWidget(QLabel("Preview"))
+        
+        # Visual Preview
         self.preview_container = QWidget()
         self.preview_layout = QVBoxLayout(self.preview_container)
+        self.preview_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         center_panel.addWidget(self.preview_container)
+        
+        # Detail Panel
+        self.card_detail_panel = CardDetailPanel()
+        center_panel.addWidget(self.card_detail_panel)
+        
         center_panel.addStretch()
         layout.addLayout(center_panel)
 
@@ -102,6 +112,10 @@ class DeckBuilder(QWidget):
             
             widget = CardWidget(card.id, card.name, card.cost, card.power, civ)
             self.preview_layout.addWidget(widget)
+            
+            self.card_detail_panel.update_card(card, self.civ_map)
+        else:
+            self.card_detail_panel.update_card(None)
 
     def open_card_editor(self):
         editor = CardEditor("data/cards.csv", self)
