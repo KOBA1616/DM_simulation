@@ -57,11 +57,18 @@ class GameWindow(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QHBoxLayout(self.central_widget)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Main Splitter (Left: Info, Center: Board, Right: Log)
+        self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.main_layout.addWidget(self.main_splitter)
         
         # Left Panel (Game Info & Controls)
         self.info_panel = QWidget()
-        self.info_panel.setFixedWidth(280)
+        self.info_panel.setMinimumWidth(280)
         self.info_layout = QVBoxLayout(self.info_panel)
+        
+        self.main_splitter.addWidget(self.info_panel)
         
         self.turn_label = QLabel("ターン: 1")
         self.turn_label.setStyleSheet("font-size: 16px; font-weight: bold;")
@@ -161,8 +168,6 @@ class GameWindow(QMainWindow):
         self.mcts_view = MCTSView()
         self.info_layout.addWidget(self.mcts_view)
         
-        self.main_layout.addWidget(self.info_panel)
-        
         # Center Panel (Board)
         self.board_panel = QWidget()
         self.board_layout = QVBoxLayout(self.board_panel)
@@ -231,14 +236,17 @@ class GameWindow(QMainWindow):
         self.board_splitter.addWidget(self.p0_zones)
         self.board_layout.addWidget(self.board_splitter)
         
-        self.main_layout.addWidget(self.board_panel, stretch=2)
+        self.main_splitter.addWidget(self.board_panel)
         
         # Right Panel (Logs)
         self.log_list = QListWidget()
-        self.log_list.setFixedWidth(250)
-        self.main_layout.addWidget(self.log_list)
+        self.main_splitter.addWidget(self.log_list)
+        
+        # Set initial splitter sizes
+        self.main_splitter.setSizes([300, 1200, 300])
         
         self.update_ui()
+        self.showMaximized()
         
     def load_civilizations(self, filepath):
         civ_map = {}
@@ -310,30 +318,30 @@ class GameWindow(QMainWindow):
 
     def show_help(self):
         help_text = """
-        <h2>DM AI Simulator Guide</h2>
-        <p><b>Basic Controls:</b></p>
+        <h2>DM AI シミュレーター ガイド</h2>
+        <p><b>基本操作:</b></p>
         <ul>
-            <li><b>Start Simulation:</b> Starts the AI vs AI or AI vs Human game loop.</li>
-            <li><b>Step Phase:</b> Advances the game by one phase or action manually.</li>
-            <li><b>Reset Game:</b> Restarts the game with current decks.</li>
+            <li><b>シミュレーション開始:</b> AI対AI、またはAI対人間のゲームループを開始します。</li>
+            <li><b>フェーズを進める:</b> ゲームを1フェーズまたは1アクション手動で進めます。</li>
+            <li><b>ゲームリセット:</b> 現在のデッキでゲームを再起動します。</li>
         </ul>
-        <p><b>Player Modes:</b></p>
+        <p><b>プレイヤー設定:</b></p>
         <ul>
-            <li><b>Human:</b> You control the actions. Click cards to play/use them.</li>
-            <li><b>AI:</b> The AI plays automatically using MCTS.</li>
+            <li><b>人間:</b> あなたが操作します。カードをクリックしてプレイ/使用します。</li>
+            <li><b>AI:</b> AIがMCTS（モンテカルロ木探索）を使用して自動的にプレイします。</li>
         </ul>
-        <p><b>Deck Management:</b></p>
+        <p><b>デッキ管理:</b></p>
         <ul>
-            <li><b>Deck Builder:</b> Create and save custom decks.</li>
-            <li><b>Load Deck P0/P1:</b> Load a saved JSON deck for Player (P0) or Opponent (P1).</li>
+            <li><b>デッキ構築:</b> カスタムデッキを作成・保存します。</li>
+            <li><b>デッキ読込 P0/P1:</b> 保存されたJSONデッキを自分(P0)または相手(P1)に読み込みます。</li>
         </ul>
-        <p><b>Views:</b></p>
+        <p><b>表示設定:</b></p>
         <ul>
-            <li><b>God View:</b> Check this to see the opponent's hand and shields.</li>
-            <li><b>MCTS View:</b> Shows the AI's thought process (search tree).</li>
+            <li><b>神の視点:</b> チェックを入れると、相手の手札とシールドを確認できます。</li>
+            <li><b>MCTS View:</b> AIの思考プロセス（探索木）を表示します。</li>
         </ul>
         """
-        QMessageBox.information(self, "Help / Instructions", help_text)
+        QMessageBox.information(self, "ヘルプ / 説明", help_text)
         
     def toggle_simulation(self):
         if self.is_running:
