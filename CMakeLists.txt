@@ -43,6 +43,7 @@ set(SRC_ENGINE
     src/engine/flow/phase_manager.cpp
     src/engine/effects/effect_resolver.cpp
     src/engine/mana/mana_system.cpp
+    src/engine/utils/determinizer.cpp
 )
 
 # Utils (Phase 1)

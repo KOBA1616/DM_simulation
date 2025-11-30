@@ -40,7 +40,7 @@ int main() {
             game_state.players[1].deck.emplace_back(cid, i + 100);
         }
 
-        PhaseManager::start_game(game_state);
+        PhaseManager::start_game(game_state, card_db);
 
         // 3. Game Loop
         int steps = 0;
@@ -60,7 +60,7 @@ int main() {
             if (actions.empty()) {
                 // Should not happen if PASS is always available in relevant phases
                 // But Start/Draw/End phases might not have actions, just auto-transition
-                PhaseManager::next_phase(game_state);
+                PhaseManager::next_phase(game_state, card_db);
                 continue;
             }
 
@@ -75,7 +75,7 @@ int main() {
 
             // If PASS, move phase
             if (action.type == ActionType::PASS) {
-                PhaseManager::next_phase(game_state);
+                PhaseManager::next_phase(game_state, card_db);
             }
             
             // print_state(game_state);

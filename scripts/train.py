@@ -85,8 +85,12 @@ def self_play(network, card_db):
             temp = 0.1 # Almost deterministic
 
         # MCTS Search
+        # Determinize before search
+        search_state = gs.clone()
+        dm_ai_module.Determinizer.determinize(search_state, gs.active_player_id)
+
         # Returns policy vector (std::vector<float>)
-        policy = mcts.search(gs, TRAIN_CFG['simulations'], evaluator, add_noise=True, temperature=temp)
+        policy = mcts.search(search_state, TRAIN_CFG['simulations'], evaluator, add_noise=True, temperature=temp)
         policy = np.array(policy)
                 
         # Store data
@@ -178,8 +182,22 @@ def train_loop():
         if latest_iter >= 0:
             print(f"Resuming from iteration {latest_iter} (loading {os.path.basename(latest_model)})")
             try:
-                network.load_state_dict(torch.load(latest_model, map_location=device))
-                start_iteration = latest_iter + 1
+                state_dict = torch.load(latest_model, map_location=device)
+                # Check shape compatibility
+                current_dict = network.state_dict()
+                compatible = True
+                for k, v in state_dict.items():
+                    if k in current_dict:
+                        if v.shape != current_dict[k].shape:
+                            print(f"Shape mismatch for {k}: {v.shape} vs {current_dict[k].shape}")
+                            compatible = False
+                            break
+                
+                if compatible:
+                    network.load_state_dict(state_dict)
+                    start_iteration = latest_iter + 1
+                else:
+                    print("Model architecture changed. Starting fresh.")
             except Exception as e:
                 print(f"Failed to load model: {e}")
     
