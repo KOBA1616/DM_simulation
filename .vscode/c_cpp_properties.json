@@ -14,12 +14,7 @@
             "cStandard": "c11",
             "cppStandard": "c++20",
             "intelliSenseMode": "windows-gcc-x64"
-        }
-    ],
-    "version": 4
-}
-{
-    "configurations": [
+        },
         {
             "name": "Win32",
             "includePath": [
