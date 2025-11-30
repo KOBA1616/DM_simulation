@@ -6,6 +6,7 @@ training:
   games_per_iteration: 10
   iterations: 10
   cpuct: 1.0
+  mcts_batch_size: 8
   checkpoint_dir: "models"
   data_dir: "data"
 

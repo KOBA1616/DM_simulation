@@ -11,7 +11,6 @@ import torch.optim as optim
 import numpy as np
 import dm_ai_module
 from py_ai.agent.network import AlphaZeroNetwork
-from py_ai.agent.mcts import MCTS
 from py_ai.agent.replay_buffer import ReplayBuffer
 
 def load_config():
@@ -25,110 +24,7 @@ TRAIN_CFG = CONFIG['training']
 def fast_forward(state, card_db):
     dm_ai_module.PhaseManager.fast_forward(state, card_db)
 
-def self_play(network, card_db):
-    game_data = []
-    gs = dm_ai_module.GameState(np.random.randint(100000))
-    gs.setup_test_duel() # Use test deck for now
-    dm_ai_module.PhaseManager.start_game(gs, card_db)
-    
-    mcts_cfg = CONFIG['mcts']
-    mcts = MCTS(
-        network, 
-        card_db, 
-        simulations=TRAIN_CFG['simulations'], 
-        c_puct=TRAIN_CFG['cpuct'],
-        dirichlet_alpha=mcts_cfg['dirichlet_alpha'],
-        dirichlet_epsilon=mcts_cfg['dirichlet_epsilon']
-    )
-    
-    turn_count = 0
-    while True:
-        turn_count += 1
-        if turn_count > 200: # Safety
-            break
-            
-        # Fast Forward to decision point
-        fast_forward(gs, card_db)
-        
-        # Check Game Over after fast forward
-        is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
-        if is_over:
-            return game_data, result
 
-        # MCTS
-        root = mcts.search(gs, add_noise=True)
-        
-        # Policy Target with Temperature
-        policy_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
-        policy = np.zeros(policy_size)
-        
-        visits = np.array([child.visit_count for child in root.children])
-        
-        if len(visits) == 0:
-            break # Game Over
-            
-        # Temperature Schedule
-        if turn_count < 30:
-            temp = 1.0
-        else:
-            temp = 0.1 # Almost deterministic
-            
-        if temp < 1e-3:
-            best_idx = np.argmax(visits)
-            probs = np.zeros_like(visits, dtype=float)
-            probs[best_idx] = 1.0
-        else:
-            visits_temp = visits ** (1.0 / temp)
-            probs = visits_temp / visits_temp.sum()
-        
-        for child, prob in zip(root.children, probs):
-            idx = dm_ai_module.ActionEncoder.action_to_index(child.action)
-            if idx >= 0:
-                policy[idx] = prob
-                
-        # Store data
-        # State needs to be converted to tensor
-        state_tensor = dm_ai_module.TensorConverter.convert_to_tensor(gs, gs.active_player_id, card_db)
-        # Store (state, policy, value_placeholder, active_player_id)
-        game_data.append([state_tensor, policy, None, gs.active_player_id]) 
-        
-        # Select Action
-        # In training, sample from probs. In eval, pick max.
-        # Let's sample.
-        chosen_child = np.random.choice(root.children, p=probs)
-        action = chosen_child.action
-        
-        # Apply Action
-        dm_ai_module.EffectResolver.resolve_action(gs, action, card_db)
-        if action.type == dm_ai_module.ActionType.PASS:
-            dm_ai_module.PhaseManager.next_phase(gs, card_db)
-            
-        # Check Game Over
-        is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
-        if is_over:
-            # Result: 1=P1_WIN, 2=P2_WIN, 3=DRAW
-            return game_data, result
-            
-    return game_data, 0 # Draw/Timeout
-
-import torch
-import torch.optim as optim
-import numpy as np
-import dm_ai_module
-from py_ai.agent.network import AlphaZeroNetwork
-# from py_ai.agent.mcts import MCTS # Removed Python MCTS
-from py_ai.agent.replay_buffer import ReplayBuffer
-
-def load_config():
-    config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'train_config.yaml')
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
-
-CONFIG = load_config()
-TRAIN_CFG = CONFIG['training']
-
-def fast_forward(state, card_db):
-    dm_ai_module.PhaseManager.fast_forward(state, card_db)
 
 def self_play(network, card_db):
     game_data = []
@@ -142,21 +38,31 @@ def self_play(network, card_db):
         card_db, 
         mcts_cfg.get('cpuct', 1.0), # Config might use different key or default
         mcts_cfg['dirichlet_alpha'],
-        mcts_cfg['dirichlet_epsilon']
+        mcts_cfg['dirichlet_epsilon'],
+        TRAIN_CFG.get('mcts_batch_size', 8)
     )
     
     # Evaluator callback for C++ MCTS
     device = next(network.parameters()).device # Get device from network
     
-    def evaluator(state):
-        # Convert state to tensor
-        # Note: TensorConverter needs card_db now
-        tensor = dm_ai_module.TensorConverter.convert_to_tensor(state, state.active_player_id, card_db)
-        tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0).to(device)
+    def evaluator(states):
+        # states is list[GameState]
+        tensors = []
+        for s in states:
+            t = dm_ai_module.TensorConverter.convert_to_tensor(s, s.active_player_id, card_db)
+            tensors.append(t)
+        
+        # Stack tensors
+        if not tensors:
+            return [], []
+            
+        batch_tensor = torch.tensor(np.array(tensors), dtype=torch.float32).to(device)
+        
         with torch.no_grad():
-            policy_logits, value = network(tensor_t)
-        # Return as (list[float], float)
-        return policy_logits.cpu().squeeze(0).tolist(), value.item()
+            policy_logits, values = network(batch_tensor)
+            
+        # Return (list[list[float]], list[float])
+        return policy_logits.cpu().tolist(), values.cpu().squeeze(1).tolist()
     
     turn_count = 0
     while True:
@@ -300,7 +206,7 @@ def train_loop():
             # But we want GPU for inference.
             # Let's update MCTS later. For now, assume CPU or update MCTS.
             # Actually, let's force CPU for now to be safe as MCTS.py doesn't have .to(device)
-            network.cpu() 
+            # network.cpu() 
             data, result = self_play(network, card_db)
             
             # Assign Values

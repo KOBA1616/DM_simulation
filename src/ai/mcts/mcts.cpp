@@ -14,80 +14,103 @@ namespace dm::ai {
     using namespace dm::core;
     using namespace dm::engine;
 
-    MCTS::MCTS(const std::map<CardID, CardDefinition>& card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon)
-        : card_db_(card_db), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon) {}
+    MCTS::MCTS(const std::map<CardID, CardDefinition>& card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size)
+        : card_db_(card_db), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size) {}
 
-    std::vector<float> MCTS::search(const GameState& root_state, int simulations, EvaluatorCallback evaluator, bool add_noise, float temperature) {
+    std::vector<float> MCTS::search(const GameState& root_state, int simulations, BatchEvaluatorCallback evaluator, bool add_noise, float temperature) {
         // 1. Clone and Fast Forward Root
         GameState root_gs = root_state; // Copy
         PhaseManager::fast_forward(root_gs, card_db_);
         
         auto root = std::make_unique<MCTSNode>(root_gs);
 
-        // 2. Expand Root
-        expand(root.get(), evaluator);
+        // Initial expansion of root (needs evaluation)
+        // We can treat root as the first batch item
+        // But we need to expand it to start selection.
+        // So we must evaluate root first.
+        std::vector<GameState> root_batch = { root->state };
+        auto [root_policies, root_values] = evaluator(root_batch);
+        expand_node(root.get(), root_policies[0]);
+        backpropagate(root.get(), root_values[0]); // Backprop root value? Usually we don't backprop root value to root parent (null), but we set root stats.
         
         if (add_noise) {
             add_exploration_noise(root.get());
         }
 
-        // 3. Simulations
-        for (int i = 0; i < simulations; ++i) {
-            MCTSNode* node = root.get();
-
-            // Selection
-            while (node->is_expanded()) {
-                MCTSNode* next = select_child(node);
-                if (!next) break;
-                node = next;
-            }
-
-            // Expansion & Evaluation
-            float value = 0.0f;
-            GameResult result;
-            bool is_over = PhaseManager::check_game_over(node->state, result);
+        int simulations_finished = 0;
+        
+        // 3. Simulations Loop
+        while (simulations_finished < simulations) {
+            std::vector<MCTSNode*> batch_nodes;
+            std::vector<GameState> batch_states;
             
-            if (is_over) {
-                // Terminal state value
-                // Value is from perspective of the player who just moved (parent's active player)
-                // Or simply: 1.0 if P1 wins, -1.0 if P2 wins.
-                // Then backprop adjusts based on whose turn it was.
-                // Let's standardize: Value is always from perspective of node->state.active_player_id?
-                // No, AlphaZero usually returns value [-1, 1] for the current player.
-                // If game over, we calculate value for current player.
+            // Fill batch
+            // We loop until we fill the batch OR we run out of simulations to start
+            // Note: We might select the same leaf multiple times if virtual loss isn't high enough or tree is small.
+            // We should avoid adding the exact same node pointer to the batch twice in one go?
+            // Yes, because we can't expand it twice.
+            
+            int current_batch_limit = std::min(batch_size_, simulations - simulations_finished);
+            
+            for (int i = 0; i < current_batch_limit; ++i) {
+                MCTSNode* leaf = select_leaf(root.get());
                 
-                int current_player = node->state.active_player_id;
-                if (result == GameResult::DRAW) value = 0.0f;
-                else if (result == GameResult::P1_WIN) value = (current_player == 0) ? 1.0f : -1.0f;
-                else if (result == GameResult::P2_WIN) value = (current_player == 1) ? 1.0f : -1.0f;
-            } else {
-                // Not terminal, expand
-                // But if we just selected a node that was already expanded?
-                // The while loop goes until a leaf (not expanded).
-                // So node is not expanded here.
-                // Unless it's terminal, in which case is_expanded is false.
+                // Check if leaf is already in batch (pointer comparison)
+                bool already_in_batch = false;
+                for (auto* n : batch_nodes) {
+                    if (n == leaf) {
+                        already_in_batch = true;
+                        break;
+                    }
+                }
                 
-                // Check if we can expand (generate actions)
-                // expand() calls evaluator which returns value
-                // But expand() logic needs to be careful not to double-expand if already visited?
-                // In standard MCTS, we expand a leaf once.
-                // If visit_count > 0, we might need to expand?
-                // AlphaZero: Expand leaf, evaluate, backprop.
-                
-                // If node has 0 visits, we evaluate it.
-                // If node has visits but no children (terminal), we use terminal value.
-                
-                // Actually, expand() populates children.
-                value = expand(node, evaluator);
-                // value = node->value(); // The value comes from the evaluator called in expand
-                
-                // Wait, expand() sets children. The value of the node itself comes from the network.
-                // We need to capture that value.
-                // Let's refactor expand to return value.
-            }
+                if (already_in_batch) {
+                    // If we picked the same leaf again, it means virtual loss wasn't enough to divert us.
+                    // We should stop filling the batch and process what we have.
+                    // Revert the virtual loss for this duplicate selection (since select_leaf added it)
+                    revert_virtual_loss(leaf);
+                    break;
+                }
 
-            // Backpropagation
-            backpropagate(node, value);
+                // Check Terminal
+                GameResult result;
+                bool is_over = PhaseManager::check_game_over(leaf->state, result);
+                
+                if (is_over) {
+                    float value = 0.0f;
+                    int current_player = leaf->state.active_player_id;
+                    if (result == GameResult::DRAW) value = 0.0f;
+                    else if (result == GameResult::P1_WIN) value = (current_player == 0) ? 1.0f : -1.0f;
+                    else if (result == GameResult::P2_WIN) value = (current_player == 1) ? 1.0f : -1.0f;
+                    
+                    backpropagate(leaf, value);
+                    revert_virtual_loss(leaf);
+                    simulations_finished++;
+                } else {
+                    batch_nodes.push_back(leaf);
+                    batch_states.push_back(leaf->state);
+                }
+            }
+            
+            if (batch_nodes.empty()) {
+                if (simulations_finished >= simulations) break;
+                // If we are here, it means we only found terminal nodes or duplicates.
+                // If duplicates, we broke the loop.
+                // If we have no nodes to evaluate, we continue (simulations_finished was incremented for terminals).
+                continue;
+            }
+            
+            // Evaluate Batch
+            auto [policies, values] = evaluator(batch_states);
+            
+            // Process Results
+            for (size_t i = 0; i < batch_nodes.size(); ++i) {
+                MCTSNode* node = batch_nodes[i];
+                expand_node(node, policies[i]);
+                backpropagate(node, values[i]);
+                revert_virtual_loss(node);
+                simulations_finished++;
+            }
         }
 
         // 4. Compute Policy
@@ -134,28 +157,11 @@ namespace dm::ai {
         return policy;
     }
 
-    float MCTS::expand(MCTSNode* node, EvaluatorCallback evaluator) {
-        // Check Game Over first? Already checked in loop.
-        
-        // Generate Actions
+    void MCTS::expand_node(MCTSNode* node, const std::vector<float>& policy_logits) {
         auto actions = ActionGenerator::generate_legal_actions(node->state, card_db_);
         
-        if (actions.empty()) {
-            // No actions? Pass or Terminal?
-            // If not terminal but no actions, it's a pass (should be generated) or stuck.
-            // Assuming ActionGenerator always returns something if not game over.
-            return 0.0f;
-        }
+        if (actions.empty()) return;
 
-        // Evaluate
-        auto [policy_logits, value] = evaluator(node->state);
-        
-        // Create Children
-        // We need to normalize policy logits to probabilities?
-        // Usually Python side does softmax. Let's assume we get probabilities or logits?
-        // The callback signature says vector<float>.
-        // Let's assume they are probabilities (softmaxed).
-        
         for (const auto& action : actions) {
             int idx = ActionEncoder::action_to_index(action);
             float p = 0.0f;
@@ -163,8 +169,7 @@ namespace dm::ai {
                 p = policy_logits[idx];
             }
             
-            // Create Child
-            GameState next_state = node->state; // Copy
+            GameState next_state = node->state;
             EffectResolver::resolve_action(next_state, action, card_db_);
             if (action.type == ActionType::PASS) {
                 PhaseManager::next_phase(next_state, card_db_);
@@ -178,53 +183,56 @@ namespace dm::ai {
             
             node->children.push_back(std::move(child));
         }
-        
-        return value;
     }
 
-    MCTSNode* MCTS::select_child(MCTSNode* node) {
-        MCTSNode* best_child = nullptr;
-        float best_score = -std::numeric_limits<float>::infinity();
+    MCTSNode* MCTS::select_leaf(MCTSNode* node) {
+        while (node->is_expanded()) {
+            MCTSNode* best_child = nullptr;
+            float best_score = -std::numeric_limits<float>::infinity();
 
-        for (const auto& child : node->children) {
-            float q = child->value();
-            // UCB
-            // c_puct * P(s,a) * sqrt(sum(N)) / (1 + N)
-            float u = c_puct_ * child->prior * std::sqrt(static_cast<float>(node->visit_count)) / (1.0f + child->visit_count);
-            
-            // Q is from perspective of child's active player.
-            // We are at 'node' (Parent).
-            // If child's active player is same as parent's, Q is good.
-            // If child's active player is opponent, Q is bad for us.
-            // AlphaZero: v is from perspective of current player.
-            // If child state is opponent's turn, the network returns v for opponent.
-            // So for us, it is -v.
-            // However, child->value() averages the backpropagated values.
-            // In backprop, we flip value.
-            // So child->value() should already be "Value for the player who made the move (Parent's active player)"?
-            // Let's check backprop.
-            
-            float score = q + u;
-            if (score > best_score) {
-                best_score = score;
-                best_child = child.get();
+            for (const auto& child : node->children) {
+                float q = child->value();
+                // UCB with Virtual Loss in visit_count (handled by value())
+                // c_puct * P(s,a) * sqrt(sum(N)) / (1 + N)
+                // We need parent's visit count including virtual loss?
+                // Usually parent visit count is sum of children visits.
+                // If we added virtual loss to children, parent visit count should reflect that?
+                // No, we add virtual loss to the node itself.
+                // When we traverse, we add virtual loss to every node on the path.
+                
+                float u = c_puct_ * child->prior * std::sqrt(static_cast<float>(node->visit_count + node->virtual_loss)) / (1.0f + child->visit_count + child->virtual_loss);
+                
+                float score = q + u;
+                if (score > best_score) {
+                    best_score = score;
+                    best_child = child.get();
+                }
             }
+            
+            if (!best_child) break; // Should not happen if expanded
+            
+            // Apply Virtual Loss
+            node->virtual_loss++;
+            node = best_child;
         }
-        return best_child;
+        
+        // Apply Virtual Loss to the leaf itself
+        node->virtual_loss++;
+        return node;
+    }
+
+    void MCTS::revert_virtual_loss(MCTSNode* node) {
+        while (node) {
+            node->virtual_loss--;
+            node = node->parent;
+        }
     }
 
     void MCTS::backpropagate(MCTSNode* node, float value) {
         while (node) {
             node->visit_count++;
             node->value_sum += value;
-            
-            // Flip value for parent
-            // If parent's active player is different from current node's active player?
-            // Usually in 2-player zero-sum:
-            // Value is always relative to the player whose turn it is at that node.
-            // So when moving up to parent, we flip.
             value = -value;
-            
             node = node->parent;
         }
     }
