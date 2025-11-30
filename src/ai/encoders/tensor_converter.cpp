@@ -27,12 +27,30 @@ namespace dm::ai {
         const Player& self = game_state.players[player_view];
         const Player& opp = game_state.players[1 - player_view];
 
+        auto encode_card_feature = [&](CardID cid) -> float {
+            if (!card_db.count(cid)) return 0.0f;
+            const auto& def = card_db.at(cid);
+            // Normalize power (cap to 100 for scaling), cost (cap to 20), civ-popcount, type flag
+            float pwr = 0.0f;
+            if (def.power >= POWER_INFINITY) pwr = 1.0f;
+            else pwr = std::min(def.power, 100) / 100.0f;
+            float cost = std::min(def.cost, 20) / 20.0f;
+            uint8_t civv = static_cast<uint8_t>(def.civilization);
+            // civ-popcount normalized
+            int pop = 0;
+            for (int b = 0; b < 8; ++b) if (civv & (1u << b)) ++pop;
+            float civ_norm = static_cast<float>(pop) / 6.0f;
+            float type_flag = (def.type == CardType::CREATURE) ? 1.0f : 0.0f;
+            // Combine into a single stable float in [0,1]
+            return pwr * 0.7f + cost * 0.15f + civ_norm * 0.1f + type_flag * 0.05f;
+        };
+
         auto encode_player = [&](const Player& p, bool is_self) {
             // Hand
             if (is_self) {
                 for (int i = 0; i < MAX_HAND_SIZE; ++i) {
                     if (i < (int)p.hand.size()) {
-                        tensor.push_back(static_cast<float>(p.hand[i].card_id));
+                        tensor.push_back(encode_card_feature(p.hand[i].card_id));
                     } else {
                         tensor.push_back(0.0f);
                     }
@@ -56,16 +74,16 @@ namespace dm::ai {
                     if (val & static_cast<uint8_t>(Civilization::ZERO)) civ_counts[6]++;
                 }
             }
-            // Push counts for L, W, D, F, N, Z (Indices 1-6)
+            // Push counts for L, W, D, F, N, Z (Indices 1-6) normalized by max mana size
             for(int i=1; i<=6; ++i) {
-                tensor.push_back(static_cast<float>(civ_counts[i]));
+                tensor.push_back(static_cast<float>(civ_counts[i]) / static_cast<float>(MAX_MANA_SIZE));
             }
 
             // Battle Zone
             for (int i = 0; i < MAX_BATTLE_SIZE; ++i) {
                 if (i < (int)p.battle_zone.size()) {
                     const auto& c = p.battle_zone[i];
-                    tensor.push_back(static_cast<float>(c.card_id));
+                    tensor.push_back(encode_card_feature(c.card_id));
                     tensor.push_back(c.is_tapped ? 1.0f : 0.0f);
                     tensor.push_back(c.summoning_sickness ? 1.0f : 0.0f);
                 } else {
@@ -83,7 +101,7 @@ namespace dm::ai {
                 if (i < (int)p.graveyard.size()) {
                     int idx = (int)p.graveyard.size() - 1 - i;
                     if (idx >= 0) {
-                        tensor.push_back(static_cast<float>(p.graveyard[idx].card_id));
+                        tensor.push_back(encode_card_feature(p.graveyard[idx].card_id));
                     } else {
                         tensor.push_back(0.0f);
                     }
@@ -102,11 +120,8 @@ namespace dm::ai {
     std::vector<float> TensorConverter::convert_batch_flat(const std::vector<GameState>& states, const std::map<CardID, CardDefinition>& card_db) {
         std::vector<float> batch_tensor;
         batch_tensor.reserve(states.size() * INPUT_SIZE);
-
+        // For performance, avoid unnecessary reallocations by appending directly.
         for (const auto& state : states) {
-            // We can optimize this by inlining or refactoring, but for now just call convert_to_tensor
-            // Note: convert_to_tensor allocates a vector. To optimize, we should refactor encode logic to append to existing vector.
-            // But let's trust RVO or just append.
             std::vector<float> t = convert_to_tensor(state, state.active_player_id, card_db);
             batch_tensor.insert(batch_tensor.end(), t.begin(), t.end());
         }
