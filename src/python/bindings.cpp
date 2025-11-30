@@ -16,6 +16,7 @@
 #include "../utils/csv_loader.hpp"
 
 #include "../ai/self_play/parallel_runner.hpp"
+#include "../engine/utils/dev_tools.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -27,6 +28,17 @@ PYBIND11_MODULE(dm_ai_module, m) {
     m.doc() = "Duel Masters AI Simulator Core Module";
 
     // Enums
+    py::enum_<Zone>(m, "Zone")
+        .value("DECK", Zone::DECK)
+        .value("HAND", Zone::HAND)
+        .value("MANA", Zone::MANA)
+        .value("BATTLE", Zone::BATTLE)
+        .value("GRAVEYARD", Zone::GRAVEYARD)
+        .value("SHIELD", Zone::SHIELD)
+        .value("HYPER_SPATIAL", Zone::HYPER_SPATIAL)
+        .value("GR_DECK", Zone::GR_DECK)
+        .export_values();
+
     py::enum_<Phase>(m, "Phase")
         .value("START_OF_TURN", Phase::START_OF_TURN)
         .value("DRAW", Phase::DRAW)
@@ -63,13 +75,47 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("ZERO", Civilization::ZERO)
         .export_values();
 
+    py::enum_<CardType>(m, "CardType")
+        .value("CREATURE", CardType::CREATURE)
+        .value("SPELL", CardType::SPELL)
+        .value("EVOLUTION_CREATURE", CardType::EVOLUTION_CREATURE)
+        .value("CROSS_GEAR", CardType::CROSS_GEAR)
+        .value("CASTLE", CardType::CASTLE)
+        .value("PSYCHIC_CREATURE", CardType::PSYCHIC_CREATURE)
+        .value("GR_CREATURE", CardType::GR_CREATURE)
+        .export_values();
+
     // Core Structures
+    py::class_<CardKeywords>(m, "CardKeywords")
+        .def_property_readonly("g_zero", [](const CardKeywords& k) { return k.g_zero; })
+        .def_property_readonly("revolution_change", [](const CardKeywords& k) { return k.revolution_change; })
+        .def_property_readonly("mach_fighter", [](const CardKeywords& k) { return k.mach_fighter; })
+        .def_property_readonly("g_strike", [](const CardKeywords& k) { return k.g_strike; })
+        .def_property_readonly("speed_attacker", [](const CardKeywords& k) { return k.speed_attacker; })
+        .def_property_readonly("blocker", [](const CardKeywords& k) { return k.blocker; })
+        .def_property_readonly("slayer", [](const CardKeywords& k) { return k.slayer; })
+        .def_property_readonly("double_breaker", [](const CardKeywords& k) { return k.double_breaker; })
+        .def_property_readonly("triple_breaker", [](const CardKeywords& k) { return k.triple_breaker; })
+        .def_property_readonly("power_attacker", [](const CardKeywords& k) { return k.power_attacker; })
+        .def_property_readonly("shield_trigger", [](const CardKeywords& k) { return k.shield_trigger; })
+        .def_property_readonly("evolution", [](const CardKeywords& k) { return k.evolution; })
+        .def_property_readonly("cip", [](const CardKeywords& k) { return k.cip; })
+        .def_property_readonly("at_attack", [](const CardKeywords& k) { return k.at_attack; })
+        .def_property_readonly("at_block", [](const CardKeywords& k) { return k.at_block; })
+        .def_property_readonly("at_start_of_turn", [](const CardKeywords& k) { return k.at_start_of_turn; })
+        .def_property_readonly("at_end_of_turn", [](const CardKeywords& k) { return k.at_end_of_turn; })
+        .def_property_readonly("destruction", [](const CardKeywords& k) { return k.destruction; });
+
     py::class_<CardDefinition>(m, "CardDefinition")
         .def_readonly("id", &CardDefinition::id)
         .def_readonly("name", &CardDefinition::name)
         .def_readonly("cost", &CardDefinition::cost)
         .def_readonly("power", &CardDefinition::power)
-        .def_readonly("civilization", &CardDefinition::civilization);
+        .def_readonly("power_attacker_bonus", &CardDefinition::power_attacker_bonus)
+        .def_readonly("civilization", &CardDefinition::civilization)
+        .def_readonly("type", &CardDefinition::type)
+        .def_readonly("races", &CardDefinition::races)
+        .def_readonly("keywords", &CardDefinition::keywords);
 
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<CardID, int>())
@@ -152,6 +198,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<CsvLoader>(m, "CsvLoader")
         .def_static("load_cards", &CsvLoader::load_cards);
+
+    py::class_<DevTools>(m, "DevTools")
+        .def_static("move_cards", &DevTools::move_cards,
+            py::arg("state"), py::arg("player_id"), py::arg("source"), py::arg("target"), py::arg("count"), py::arg("card_id_filter") = -1);
 
     // AI
     py::class_<TensorConverter>(m, "TensorConverter")

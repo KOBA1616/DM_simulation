@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
 from gui.deck_builder import DeckBuilder
+from gui.card_editor import CardEditor
 from gui.widgets.zone_widget import ZoneWidget
 from gui.widgets.mcts_view import MCTSView
 from gui.widgets.card_detail_panel import CardDetailPanel
@@ -112,6 +113,10 @@ class GameWindow(QMainWindow):
         self.deck_builder_button = QPushButton("Deck Builder")
         self.deck_builder_button.clicked.connect(self.open_deck_builder)
         self.info_layout.addWidget(self.deck_builder_button)
+
+        self.card_editor_button = QPushButton("Card Editor")
+        self.card_editor_button.clicked.connect(self.open_card_editor)
+        self.info_layout.addWidget(self.card_editor_button)
 
         self.load_deck_btn = QPushButton("Load Deck P0")
         self.load_deck_btn.clicked.connect(self.load_deck_p0)
@@ -210,6 +215,10 @@ class GameWindow(QMainWindow):
         self.deck_builder = DeckBuilder(self.card_db, self.civ_map)
         self.deck_builder.show()
 
+    def open_card_editor(self):
+        self.card_editor = CardEditor("data/cards.csv")
+        self.card_editor.show()
+
     def load_deck_p0(self):
         os.makedirs("data/decks", exist_ok=True)
         fname, _ = QFileDialog.getOpenFileName(
@@ -302,7 +311,7 @@ class GameWindow(QMainWindow):
             pass
         
         if card_id >= 0:
-            card_data = self.card_db.get_card(card_id)
+            card_data = self.card_db.get(card_id)
             if card_data:
                 self.card_detail_panel.update_card(card_data, self.civ_map)
         else:
@@ -409,15 +418,20 @@ class GameWindow(QMainWindow):
                 # Update MCTS View
                 def convert_tree_data(node):
                     if not node: return None
+                    
+                    # Determine name
+                    name = node.action.to_string()
+                    if node.action.type == dm_ai_module.ActionType.PASS:
+                        name = "PASS"
+                    elif not name: # Fallback
+                        name = "Unknown"
+
                     data = {
-                        "name": node.action.to_string() if node.action.type != dm_ai_module.ActionType.PASS else "Root" if not node.parent else "PASS", # Root action is garbage?
+                        "name": name,
                         "visits": node.visit_count,
                         "value": node.value,
                         "children": []
                     }
-                    # Root node action is undefined/empty.
-                    if not node.action.to_string():
-                         data["name"] = "Root"
 
                     # Limit depth for view?
                     # MCTSView handles recursion.

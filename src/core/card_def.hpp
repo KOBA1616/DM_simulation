@@ -16,6 +16,10 @@ namespace dm::core {
         bool g_strike : 1;
         bool speed_attacker : 1;
         bool blocker : 1;
+        bool slayer : 1;          // Added
+        bool double_breaker : 1;  // Added
+        bool triple_breaker : 1;  // Added
+        bool power_attacker : 1;  // Added (Flag only, value in definition)
         bool shield_trigger : 1;
         bool evolution : 1;
         // Triggers
@@ -41,6 +45,7 @@ namespace dm::core {
         CardType type;
         int cost;
         int power; // POWER_INFINITY for infinite
+        int power_attacker_bonus; // Added for Power Attacker value
         std::vector<std::string> races; // Storing as string for now, could be enum later
         
         CardKeywords keywords;

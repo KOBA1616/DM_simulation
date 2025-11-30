@@ -125,6 +125,15 @@ namespace dm::utils {
             std::string keywords = trim(cell);
             if (keywords.find("BLOCKER") != std::string::npos) def.keywords.blocker = true;
             if (keywords.find("SPEED_ATTACKER") != std::string::npos) def.keywords.speed_attacker = true;
+            if (keywords.find("SLAYER") != std::string::npos) def.keywords.slayer = true;
+            if (keywords.find("DOUBLE_BREAKER") != std::string::npos) def.keywords.double_breaker = true;
+            if (keywords.find("TRIPLE_BREAKER") != std::string::npos) def.keywords.triple_breaker = true;
+            if (keywords.find("POWER_ATTACKER") != std::string::npos) {
+                def.keywords.power_attacker = true;
+                // TODO: Parse value like POWER_ATTACKER_3000? Or separate column?
+                // For now, assume fixed bonus or handle later.
+                def.power_attacker_bonus = 0; // Placeholder
+            }
             if (keywords.find("SHIELD_TRIGGER") != std::string::npos) def.keywords.shield_trigger = true;
             if (keywords.find("G_STRIKE") != std::string::npos) def.keywords.g_strike = true;
             if (keywords.find("MACH_FIGHTER") != std::string::npos) def.keywords.mach_fighter = true;

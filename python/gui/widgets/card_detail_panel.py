@@ -32,10 +32,44 @@ class CardDetailPanel(QWidget):
             return
 
         civ = "COLORLESS"
-        if civ_map and card_data.id in civ_map:
+        # Use civ from card_data if available (it is exposed now)
+        if hasattr(card_data, 'civilization'):
+             civ = str(card_data.civilization).split('.')[-1]
+        elif civ_map and card_data.id in civ_map:
             civ = civ_map[card_data.id]
             
         self.name_label.setText(card_data.name)
         self.info_label.setText(f"Cost: {card_data.cost} | Power: {card_data.power} | Civ: {civ}")
         
-        self.text_area.setText(f"ID: {card_data.id}\nType: {card_data.type}")
+        text = f"ID: {card_data.id}\n"
+        text += f"Type: {str(card_data.type).split('.')[-1]}\n"
+        
+        if hasattr(card_data, 'races') and card_data.races:
+            text += f"Races: {', '.join(card_data.races)}\n"
+            
+        if hasattr(card_data, 'keywords'):
+            k = card_data.keywords
+            kws = []
+            if k.blocker: kws.append("Blocker")
+            if k.speed_attacker: kws.append("Speed Attacker")
+            if k.slayer: kws.append("Slayer")
+            if k.double_breaker: kws.append("W-Breaker")
+            if k.triple_breaker: kws.append("T-Breaker")
+            if k.power_attacker: kws.append(f"Power Attacker +{card_data.power_attacker_bonus}")
+            if k.shield_trigger: kws.append("Shield Trigger")
+            if k.g_strike: kws.append("G-Strike")
+            if k.mach_fighter: kws.append("Mach Fighter")
+            if k.revolution_change: kws.append("Revolution Change")
+            if k.g_zero: kws.append("G-Zero")
+            if k.evolution: kws.append("Evolution")
+            if k.cip: kws.append("CIP")
+            if k.at_attack: kws.append("At Attack")
+            if k.at_block: kws.append("At Block")
+            if k.at_start_of_turn: kws.append("Start of Turn")
+            if k.at_end_of_turn: kws.append("End of Turn")
+            if k.destruction: kws.append("On Destroy")
+            
+            if kws:
+                text += f"Keywords: {', '.join(kws)}\n"
+        
+        self.text_area.setText(text)
