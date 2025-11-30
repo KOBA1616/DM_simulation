@@ -164,13 +164,15 @@ class GameWindow(QMainWindow):
         
         self.info_layout.addStretch()
         
-        # MCTS View
-        self.mcts_view = MCTSView()
-        self.info_layout.addWidget(self.mcts_view)
+        self.main_splitter.addWidget(self.info_panel)
         
-        # Center Panel (Board)
+        # Center Panel (Board + MCTS)
+        self.center_splitter = QSplitter(Qt.Orientation.Vertical)
+        
+        # Board Panel
         self.board_panel = QWidget()
         self.board_layout = QVBoxLayout(self.board_panel)
+        self.board_layout.setContentsMargins(0, 0, 0, 0)
         
         # P1 (Opponent) Zones
         self.p1_zones = QWidget()
@@ -236,7 +238,13 @@ class GameWindow(QMainWindow):
         self.board_splitter.addWidget(self.p0_zones)
         self.board_layout.addWidget(self.board_splitter)
         
-        self.main_splitter.addWidget(self.board_panel)
+        self.center_splitter.addWidget(self.board_panel)
+        
+        # MCTS View (Bottom)
+        self.mcts_view = MCTSView()
+        self.center_splitter.addWidget(self.mcts_view)
+        
+        self.main_splitter.addWidget(self.center_splitter)
         
         # Right Panel (Logs)
         self.log_list = QListWidget()
@@ -244,6 +252,7 @@ class GameWindow(QMainWindow):
         
         # Set initial splitter sizes
         self.main_splitter.setSizes([300, 1200, 300])
+        self.center_splitter.setSizes([700, 300])
         
         self.update_ui()
         self.showMaximized()
