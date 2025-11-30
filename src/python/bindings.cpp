@@ -137,8 +137,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("action_to_index", &ActionEncoder::action_to_index);
 
     py::class_<MCTS>(m, "MCTS")
-        .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float>(),
-             py::arg("card_db"), py::arg("c_puct") = 1.0f, py::arg("dirichlet_alpha") = 0.3f, py::arg("dirichlet_epsilon") = 0.25f)
+        .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int>(),
+             py::arg("card_db"), py::arg("c_puct") = 1.0f, py::arg("dirichlet_alpha") = 0.3f, py::arg("dirichlet_epsilon") = 0.25f, py::arg("batch_size") = 1)
         .def("search", &MCTS::search, py::call_guard<py::gil_scoped_release>(),
              py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f);
 }
