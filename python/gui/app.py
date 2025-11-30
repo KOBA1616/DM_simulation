@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox, QSplitter,
-    QCheckBox, QGroupBox, QRadioButton, QButtonGroup, QScrollArea
+    QCheckBox, QGroupBox, QRadioButton, QButtonGroup, QScrollArea, QDockWidget
 )
 from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
@@ -54,21 +54,15 @@ class GameWindow(QMainWindow):
         self.is_processing = False
 
         # UI Setup
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.main_layout = QHBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Main Splitter (Left: Info, Center: Board, Right: Log)
-        self.main_splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.main_layout.addWidget(self.main_splitter)
-        
-        # Left Panel (Game Info & Controls)
+        # Dock: Info Panel
+        self.info_dock = QDockWidget("Game Info", self)
+        self.info_dock.setObjectName("InfoDock")
+        self.info_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.info_panel = QWidget()
         self.info_panel.setMinimumWidth(280)
         self.info_layout = QVBoxLayout(self.info_panel)
-        
-        self.main_splitter.addWidget(self.info_panel)
+        self.info_dock.setWidget(self.info_panel)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.info_dock)
         
         self.turn_label = QLabel("ターン: 1")
         self.turn_label.setStyleSheet("font-size: 16px; font-weight: bold;")
@@ -164,12 +158,7 @@ class GameWindow(QMainWindow):
         
         self.info_layout.addStretch()
         
-        self.main_splitter.addWidget(self.info_panel)
-        
-        # Center Panel (Board + MCTS)
-        self.center_splitter = QSplitter(Qt.Orientation.Vertical)
-        
-        # Board Panel
+        # Board Panel (Central Widget)
         self.board_panel = QWidget()
         self.board_layout = QVBoxLayout(self.board_panel)
         self.board_layout.setContentsMargins(0, 0, 0, 0)
@@ -238,25 +227,27 @@ class GameWindow(QMainWindow):
         self.board_splitter.addWidget(self.p0_zones)
         self.board_layout.addWidget(self.board_splitter)
         
-        # Wrap Board in ScrollArea to prevent layout break
+        # Wrap Board in ScrollArea
         self.board_scroll = QScrollArea()
         self.board_scroll.setWidget(self.board_panel)
         self.board_scroll.setWidgetResizable(True)
-        self.center_splitter.addWidget(self.board_scroll)
+        self.setCentralWidget(self.board_scroll)
         
-        # MCTS View (Bottom)
+        # MCTS View (Dock)
+        self.mcts_dock = QDockWidget("MCTS Analysis", self)
+        self.mcts_dock.setObjectName("MCTSDock")
+        self.mcts_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         self.mcts_view = MCTSView()
-        self.center_splitter.addWidget(self.mcts_view)
+        self.mcts_dock.setWidget(self.mcts_view)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.mcts_dock)
         
-        self.main_splitter.addWidget(self.center_splitter)
-        
-        # Right Panel (Logs)
+        # Logs (Dock)
+        self.log_dock = QDockWidget("Logs", self)
+        self.log_dock.setObjectName("LogDock")
+        self.log_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         self.log_list = QListWidget()
-        self.main_splitter.addWidget(self.log_list)
-        
-        # Set initial splitter sizes
-        self.main_splitter.setSizes([300, 1200, 300])
-        self.center_splitter.setSizes([700, 300])
+        self.log_dock.setWidget(self.log_list)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.log_dock)
         
         self.update_ui()
         self.showMaximized()
