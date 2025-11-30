@@ -19,6 +19,20 @@ namespace dm::engine {
         return nullptr;
     }
 
+    // Helper to generate a new unique instance id
+    static int generate_instance_id(GameState& game_state) {
+        int max_id = -1;
+        for (auto &p : game_state.players) {
+            for (auto &c : p.hand) if (c.instance_id > max_id) max_id = c.instance_id;
+            for (auto &c : p.battle_zone) if (c.instance_id > max_id) max_id = c.instance_id;
+            for (auto &c : p.mana_zone) if (c.instance_id > max_id) max_id = c.instance_id;
+            for (auto &c : p.shield_zone) if (c.instance_id > max_id) max_id = c.instance_id;
+            for (auto &c : p.graveyard) if (c.instance_id > max_id) max_id = c.instance_id;
+            for (auto &c : p.deck) if (c.instance_id > max_id) max_id = c.instance_id;
+        }
+        return max_id + 1;
+    }
+
     void GenericCardSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id) {
         CardInstance* instance = find_instance(game_state, source_instance_id);
         if (!instance) return;
@@ -48,7 +62,7 @@ namespace dm::engine {
             // If action expects target selection, use provided targets
             if (action.scope == TargetScope::TARGET_SELECT) {
                 // Only handle actions that operate on targets (DESTROY, RETURN_TO_HAND, TAP, UNTAP)
-                if (action.type == ActionType::DESTROY) {
+                if (action.type == EffectActionType::DESTROY) {
                     for (int tid : targets) {
                         for (auto &p : game_state.players) {
                             auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
@@ -60,7 +74,7 @@ namespace dm::engine {
                             }
                         }
                     }
-                } else if (action.type == ActionType::RETURN_TO_HAND) {
+                } else if (action.type == EffectActionType::RETURN_TO_HAND) {
                     for (int tid : targets) {
                         for (auto &p : game_state.players) {
                             auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
@@ -72,12 +86,12 @@ namespace dm::engine {
                             }
                         }
                     }
-                } else if (action.type == ActionType::TAP) {
+                } else if (action.type == EffectActionType::TAP) {
                     for (int tid : targets) {
                         CardInstance* inst = find_instance(game_state, tid);
                         if (inst) inst->is_tapped = true;
                     }
-                } else if (action.type == ActionType::UNTAP) {
+                } else if (action.type == EffectActionType::UNTAP) {
                     for (int tid : targets) {
                         CardInstance* inst = find_instance(game_state, tid);
                         if (inst) inst->is_tapped = false;
@@ -105,7 +119,7 @@ namespace dm::engine {
         // Player& opponent = game_state.get_non_active_player();
 
         switch (action.type) {
-            case ActionType::DRAW_CARD: {
+            case EffectActionType::DRAW_CARD: {
                 int count = action.value1;
                 for (int i = 0; i < count; ++i) {
                     if (active.deck.empty()) {
@@ -118,7 +132,7 @@ namespace dm::engine {
                 }
                 break;
             }
-            case ActionType::ADD_MANA: {
+            case EffectActionType::ADD_MANA: {
                 int count = action.value1;
                 for (int i = 0; i < count; ++i) {
                     if (active.deck.empty()) break;
@@ -129,11 +143,11 @@ namespace dm::engine {
                 }
                 break;
             }
-            case ActionType::DESTROY: {
+            case EffectActionType::DESTROY: {
                 // If action requires target selection, create a pending effect and return
                 if (action.scope == TargetScope::TARGET_SELECT) {
                     PendingEffect pe(EffectType::DESTRUCTION, source_instance_id, game_state.get_active_player().id);
-                    pe.num_targets_needed = action.filter.count ? action.filter.count : action.value1;
+                    pe.num_targets_needed = action.filter.count.has_value() ? action.filter.count.value() : action.value1;
                     EffectDef ed;
                     ed.trigger = TriggerType::NONE;
                     ed.condition = ConditionDef{"NONE", 0, ""};
@@ -159,7 +173,7 @@ namespace dm::engine {
                 }
                 break;
             }
-            case ActionType::RETURN_TO_HAND: {
+            case EffectActionType::RETURN_TO_HAND: {
                 auto targets = select_targets(game_state, action, source_instance_id);
                 for (int tid : targets) {
                     for (auto &p : game_state.players) {
@@ -174,7 +188,7 @@ namespace dm::engine {
                 }
                 break;
             }
-            case ActionType::TAP: {
+            case EffectActionType::TAP: {
                 auto targets = select_targets(game_state, action, source_instance_id);
                 for (int tid : targets) {
                     CardInstance* inst = find_instance(game_state, tid);
@@ -182,7 +196,106 @@ namespace dm::engine {
                 }
                 break;
             }
-            case ActionType::UNTAP: {
+            case EffectActionType::MODIFY_POWER: {
+                // Modify power of target(s) by value1 (can be negative)
+                if (action.scope == TargetScope::TARGET_SELECT) {
+                    PendingEffect pe(EffectType::DESTRUCTION, source_instance_id, game_state.get_active_player().id);
+                    pe.num_targets_needed = action.filter.count.has_value() ? action.filter.count.value() : action.value1;
+                    EffectDef ed;
+                    ed.trigger = TriggerType::NONE;
+                    ed.condition = ConditionDef{"NONE", 0, ""};
+                    ed.actions = { action };
+                    pe.effect_def = ed;
+                    game_state.pending_effects.push_back(pe);
+                    return;
+                }
+
+                auto targets = select_targets(game_state, action, source_instance_id);
+                for (int tid : targets) {
+                    CardInstance* inst = find_instance(game_state, tid);
+                    if (inst) {
+                        inst->power_mod += action.value1;
+                    }
+                }
+                break;
+            }
+            case EffectActionType::SUMMON_TOKEN: {
+                int token_id = action.value1;
+                int count = action.value2 > 0 ? action.value2 : 1;
+                for (int i = 0; i < count; ++i) {
+                    int iid = generate_instance_id(game_state);
+                    CardInstance token((CardID)token_id, iid);
+                    token.summoning_sickness = true;
+                    game_state.get_active_player().battle_zone.push_back(token);
+                }
+                break;
+            }
+            case EffectActionType::LOOK_AND_ADD: {
+                int look = action.value1 > 0 ? action.value1 : 1;
+                std::vector<CardInstance> looked;
+                for (int i = 0; i < look; ++i) {
+                    if (active.deck.empty()) break;
+                    looked.push_back(active.deck.back());
+                    active.deck.pop_back();
+                }
+
+                // Find first matching card according to filter
+                int chosen_idx = -1;
+                // Inline filter check (similar to select_targets.matches_filter)
+                auto inline_matches = [&](const CardInstance& ci, const FilterDef& f, int owner_id) -> bool {
+                    const dm::core::CardData* cd = dm::engine::CardRegistry::get_card_data(ci.card_id);
+                    if (!cd) return false;
+                    if (!f.types.empty()) {
+                        bool ok = false;
+                        for (const auto &t : f.types) if (t == cd->type) { ok = true; break; }
+                        if (!ok) return false;
+                    }
+                    if (!f.civilizations.empty()) {
+                        bool ok = false;
+                        for (const auto &civ : f.civilizations) if (civ == cd->civilization) { ok = true; break; }
+                        if (!ok) return false;
+                    }
+                    if (f.min_power.has_value() && cd->power < f.min_power.value()) return false;
+                    if (f.max_power.has_value() && cd->power > f.max_power.value()) return false;
+                    if (!f.races.empty()) {
+                        bool ok = false;
+                        for (const auto &r : f.races) {
+                            for (const auto &cr : cd->races) if (r == cr) { ok = true; break; }
+                            if (ok) break;
+                        }
+                        if (!ok) return false;
+                    }
+                    if (f.is_tapped.has_value()) if (ci.is_tapped != f.is_tapped.value()) return false;
+                    if (f.owner.has_value()) {
+                        std::string o = f.owner.value();
+                        if (o == "SELF" && owner_id != game_state.get_active_player().id) return false;
+                        if (o == "OPPONENT" && owner_id == game_state.get_active_player().id) return false;
+                    }
+                    return true;
+                };
+
+                for (size_t i = 0; i < looked.size(); ++i) {
+                    if (inline_matches(looked[i], action.filter, active.id)) {
+                        chosen_idx = (int)i;
+                        break;
+                    }
+                }
+
+                if (chosen_idx != -1) {
+                    // Add chosen to hand
+                    active.hand.push_back(looked[chosen_idx]);
+                    // Return others to deck preserving original order (top remains top)
+                    for (int i = (int)looked.size() - 1; i >= 0; --i) {
+                        if (i == chosen_idx) continue;
+                        active.deck.push_back(looked[i]);
+                    }
+                } else {
+                    // No match: return all to deck in reverse to preserve order
+                    for (int i = (int)looked.size() - 1; i >= 0; --i) active.deck.push_back(looked[i]);
+                }
+                break;
+            }
+            case EffectActionType::UNTAP: {
                 auto targets = select_targets(game_state, action, source_instance_id);
                 for (int tid : targets) {
                     CardInstance* inst = find_instance(game_state, tid);
@@ -190,7 +303,7 @@ namespace dm::engine {
                 }
                 break;
             }
-            case ActionType::BREAK_SHIELD: {
+            case EffectActionType::BREAK_SHIELD: {
                 // Break opponent shields up to value1 times
                 Player& opponent = game_state.get_non_active_player();
                 int times = action.value1 > 0 ? action.value1 : 1;
@@ -219,40 +332,82 @@ namespace dm::engine {
         Player& active = game_state.get_active_player();
         Player& opponent = game_state.get_non_active_player();
 
-        auto matches_filter = [&](const CardInstance& ci, const FilterDef& f) -> bool {
-            // Minimal matching: type/civ/power ranges
+        auto matches_filter = [&](const CardInstance& ci, const FilterDef& f, int owner_id) -> bool {
+            const dm::core::CardData* cd = dm::engine::CardRegistry::get_card_data(ci.card_id);
+            if (!cd) return false;
+
+            // types
             if (!f.types.empty()) {
-                // We don't have runtime CardDefinition mapping here (only instance.card_id), so skip type check for now
+                bool ok = false;
+                for (const auto &t : f.types) {
+                    if (t == cd->type) { ok = true; break; }
+                }
+                if (!ok) return false;
             }
-            if (f.min_power && ci.card_id) {
-                // Can't get power from instance; skip
+
+            // civilizations
+            if (!f.civilizations.empty()) {
+                bool ok = false;
+                for (const auto &civ : f.civilizations) {
+                    if (civ == cd->civilization) { ok = true; break; }
+                }
+                if (!ok) return false;
             }
+
+            // power range
+            if (f.min_power.has_value() && cd->power < f.min_power.value()) return false;
+            if (f.max_power.has_value() && cd->power > f.max_power.value()) return false;
+
+            // races (any overlap)
+            if (!f.races.empty()) {
+                bool ok = false;
+                for (const auto &r : f.races) {
+                    for (const auto &cr : cd->races) {
+                        if (r == cr) { ok = true; break; }
+                    }
+                    if (ok) break;
+                }
+                if (!ok) return false;
+            }
+
+            // tapped state
+            if (f.is_tapped.has_value()) {
+                if (ci.is_tapped != f.is_tapped.value()) return false;
+            }
+
+            // owner filter: f.owner can be "SELF"/"OPPONENT"/"BOTH"
+            if (f.owner.has_value()) {
+                std::string o = f.owner.value();
+                if (o == "SELF" && owner_id != game_state.get_active_player().id) return false;
+                if (o == "OPPONENT" && owner_id == game_state.get_active_player().id) return false;
+                // BOTH allows either
+            }
+
             return true;
         };
 
         if (action.scope == TargetScope::PLAYER_SELF) {
             // select from active player's battle zone
             for (auto &c : active.battle_zone) {
-                if (action.filter.count && action.filter.count > 0) {
-                    // collect up to count
-                    if ((int)out.size() >= action.filter.count) break;
+                if (action.filter.count.has_value()) {
+                    if ((int)out.size() >= action.filter.count.value()) break;
                 }
-                if (matches_filter(c, action.filter)) out.push_back(c.instance_id);
+                if (matches_filter(c, action.filter, active.id)) out.push_back(c.instance_id);
             }
         } else if (action.scope == TargetScope::PLAYER_OPPONENT) {
             for (auto &c : opponent.battle_zone) {
-                if (action.filter.count && action.filter.count > 0) {
-                    if ((int)out.size() >= action.filter.count) break;
+                if (action.filter.count.has_value()) {
+                    if ((int)out.size() >= action.filter.count.value()) break;
                 }
-                if (matches_filter(c, action.filter)) out.push_back(c.instance_id);
+                if (matches_filter(c, action.filter, opponent.id)) out.push_back(c.instance_id);
             }
         } else if (action.scope == TargetScope::ALL_FILTERED) {
             for (auto &p : game_state.players) {
                 for (auto &c : p.battle_zone) {
-                    if (action.filter.count && action.filter.count > 0) {
-                        if ((int)out.size() >= action.filter.count) break;
+                    if (action.filter.count.has_value()) {
+                        if ((int)out.size() >= action.filter.count.value()) break;
                     }
-                    if (matches_filter(c, action.filter)) out.push_back(c.instance_id);
+                    if (matches_filter(c, action.filter, p.id)) out.push_back(c.instance_id);
                 }
             }
         } else if (action.scope == TargetScope::TARGET_SELECT) {

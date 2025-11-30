@@ -30,7 +30,7 @@ namespace dm::core {
         NONE
     };
 
-    enum class ActionType {
+    enum class EffectActionType {
         DRAW_CARD,
         ADD_MANA,
         DESTROY,
@@ -61,7 +61,7 @@ namespace dm::core {
     };
 
     struct ActionDef {
-        ActionType type = ActionType::NONE;
+        EffectActionType type = EffectActionType::NONE;
         TargetScope scope = TargetScope::NONE;
         FilterDef filter;
         int value1 = 0;
@@ -138,19 +138,19 @@ namespace dm::core {
         {TargetScope::ALL_FILTERED, "ALL_FILTERED"}
     })
 
-    NLOHMANN_JSON_SERIALIZE_ENUM(ActionType, {
-        {ActionType::NONE, "NONE"},
-        {ActionType::DRAW_CARD, "DRAW_CARD"},
-        {ActionType::ADD_MANA, "ADD_MANA"},
-        {ActionType::DESTROY, "DESTROY"},
-        {ActionType::RETURN_TO_HAND, "RETURN_TO_HAND"},
-        {ActionType::SEND_TO_MANA, "SEND_TO_MANA"},
-        {ActionType::TAP, "TAP"},
-        {ActionType::UNTAP, "UNTAP"},
-        {ActionType::MODIFY_POWER, "MODIFY_POWER"},
-        {ActionType::BREAK_SHIELD, "BREAK_SHIELD"},
-        {ActionType::LOOK_AND_ADD, "LOOK_AND_ADD"},
-        {ActionType::SUMMON_TOKEN, "SUMMON_TOKEN"}
+    NLOHMANN_JSON_SERIALIZE_ENUM(EffectActionType, {
+        {EffectActionType::NONE, "NONE"},
+        {EffectActionType::DRAW_CARD, "DRAW_CARD"},
+        {EffectActionType::ADD_MANA, "ADD_MANA"},
+        {EffectActionType::DESTROY, "DESTROY"},
+        {EffectActionType::RETURN_TO_HAND, "RETURN_TO_HAND"},
+        {EffectActionType::SEND_TO_MANA, "SEND_TO_MANA"},
+        {EffectActionType::TAP, "TAP"},
+        {EffectActionType::UNTAP, "UNTAP"},
+        {EffectActionType::MODIFY_POWER, "MODIFY_POWER"},
+        {EffectActionType::BREAK_SHIELD, "BREAK_SHIELD"},
+        {EffectActionType::LOOK_AND_ADD, "LOOK_AND_ADD"},
+        {EffectActionType::SUMMON_TOKEN, "SUMMON_TOKEN"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(FilterDef, owner, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, count)
