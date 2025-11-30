@@ -327,6 +327,12 @@ class GameWindow(QMainWindow):
                 dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
                 self.log_list.addItem(f"P{active_pid} Auto-Pass")
             else:
+                # Determinize for AI
+                # Clone state
+                search_state = self.gs.clone()
+                # Shuffle opponent's hidden zones
+                dm_ai_module.Determinizer.determinize(search_state, active_pid)
+
                 # Use C++ MCTS
                 mcts = dm_ai_module.MCTS(self.card_db, 1.0, 0.3, 0.25, 1) # Batch size 1 for GUI (simple)
                 
@@ -361,7 +367,7 @@ class GameWindow(QMainWindow):
                     return policies, values
 
                 # Search
-                policy = mcts.search(self.gs, 50, heuristic_evaluator, True, 1.0)
+                policy = mcts.search(search_state, 50, heuristic_evaluator, True, 1.0)
                 
                 # Select Action (Argmax of policy)
                 best_idx = -1

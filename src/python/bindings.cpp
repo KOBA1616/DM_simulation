@@ -9,6 +9,7 @@
 #include "../ai/encoders/tensor_converter.hpp"
 #include "../ai/encoders/action_encoder.hpp"
 #include "../ai/mcts/mcts.hpp"
+#include "../engine/utils/determinizer.hpp"
 #include "../utils/csv_loader.hpp"
 
 namespace py = pybind11;
@@ -124,6 +125,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("resolve_action", &EffectResolver::resolve_action);
 
     // Utils
+    py::class_<Determinizer>(m, "Determinizer")
+        .def_static("determinize", &Determinizer::determinize);
+
     py::class_<CsvLoader>(m, "CsvLoader")
         .def_static("load_cards", &CsvLoader::load_cards);
 
