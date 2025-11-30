@@ -1,4 +1,5 @@
 #include "effect_resolver.hpp"
+#include "generated_effects.hpp"
 #include "../mana/mana_system.hpp"
 #include <iostream>
 #include <algorithm>
@@ -236,37 +237,8 @@ namespace dm::engine {
 
         if (card_id == 0) return; // Source gone?
 
-        if (card_id == 1) { // Bronze-Arm Tribe
-            if (!controller.deck.empty()) {
-                CardInstance top = controller.deck.back();
-                controller.deck.pop_back();
-                top.is_tapped = true; // Mana charge from effect usually enters tapped?
-                // "Put the top card of your deck into your mana zone." - Usually enters untapped unless specified.
-                // Bronze-Arm Tribe: "Put the top card of your deck into your mana zone." -> Untapped.
-                top.is_tapped = false;
-                controller.mana_zone.push_back(top);
-            }
-        } else if (card_id == 2) { // Aqua Hulcus
-            if (!controller.deck.empty()) {
-                CardInstance top = controller.deck.back();
-                controller.deck.pop_back();
-                controller.hand.push_back(top);
-            }
-        } else if (card_id == 3) { // Holy Awe
-            for (auto& c : opponent.battle_zone) {
-                c.is_tapped = true;
-            }
-        } else if (card_id == 5) { // Terror Pit
-            if (!effect.target_instance_ids.empty()) {
-                int target_id = effect.target_instance_ids[0];
-                auto it = std::find_if(opponent.battle_zone.begin(), opponent.battle_zone.end(),
-                    [target_id](const CardInstance& c) { return c.instance_id == target_id; });
-                if (it != opponent.battle_zone.end()) {
-                    opponent.graveyard.push_back(*it);
-                    opponent.battle_zone.erase(it);
-                }
-            }
-        }
+        // Use Generated Effects
+        GeneratedEffects::resolve(game_state, effect, card_id);
     }
 
     void EffectResolver::resolve_use_shield_trigger(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {

@@ -4,8 +4,9 @@ import random
 import json
 import csv
 
-# Add root to path
+# Add python/ and root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -17,6 +18,7 @@ import dm_ai_module
 from gui.deck_builder import DeckBuilder
 from gui.widgets.zone_widget import ZoneWidget
 from gui.widgets.mcts_view import MCTSView
+from gui.widgets.card_detail_panel import CardDetailPanel
 # from gui.ai.mcts_python import PythonMCTS # Removed
 
 
@@ -56,6 +58,10 @@ class GameWindow(QMainWindow):
         self.info_layout.addWidget(self.turn_label)
         self.info_layout.addWidget(self.phase_label)
         self.info_layout.addWidget(self.active_label)
+        
+        # Card Detail Panel
+        self.card_detail_panel = CardDetailPanel()
+        self.info_layout.addWidget(self.card_detail_panel)
         
         # Controls Group
         ctrl_group = QGroupBox("Controls")
@@ -153,6 +159,16 @@ class GameWindow(QMainWindow):
         self.p0_hand.card_clicked.connect(self.on_card_clicked)
         self.p0_mana.card_clicked.connect(self.on_card_clicked)
         self.p0_battle.card_clicked.connect(self.on_card_clicked)
+        
+        self.p0_hand.card_hovered.connect(self.on_card_hovered)
+        self.p0_mana.card_hovered.connect(self.on_card_hovered)
+        self.p0_battle.card_hovered.connect(self.on_card_hovered)
+        self.p0_shield.card_hovered.connect(self.on_card_hovered)
+        
+        self.p1_hand.card_hovered.connect(self.on_card_hovered)
+        self.p1_mana.card_hovered.connect(self.on_card_hovered)
+        self.p1_battle.card_hovered.connect(self.on_card_hovered)
+        self.p1_shield.card_hovered.connect(self.on_card_hovered)
         
         self.p0_layout.addWidget(self.p0_battle)
         self.p0_layout.addWidget(self.p0_shield)
@@ -279,6 +295,19 @@ class GameWindow(QMainWindow):
             # Let's just log and pick first for MVP.
             self.log_list.addItem(f"Multiple actions found. Executing first.")
             self.execute_action(relevant_actions[0])
+
+    def on_card_hovered(self, card_id):
+        if card_id == -1:
+            # Hidden card or mouse left
+            pass
+        
+        if card_id >= 0:
+            card_data = self.card_db.get_card(card_id)
+            if card_data:
+                self.card_detail_panel.update_card(card_data, self.civ_map)
+        else:
+            # Maybe clear?
+            pass
 
     def execute_action(self, action):
         dm_ai_module.EffectResolver.resolve_action(
