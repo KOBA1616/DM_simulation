@@ -1,14 +1,21 @@
 #include "tensor_converter.hpp"
 #include "../../core/constants.hpp"
+#include "../../core/card_def.hpp"
+#include "../../core/types.hpp"
 #include <algorithm>
+#include <map>
+#include <iostream>
 
 namespace dm::ai {
 
     using namespace dm::core;
 
-    std::vector<float> TensorConverter::convert_to_tensor(const GameState& game_state, int player_view) {
+    std::vector<float> TensorConverter::convert_to_tensor(const GameState& game_state, int player_view, const std::map<CardID, CardDefinition>& card_db) {
         std::vector<float> tensor;
         tensor.reserve(INPUT_SIZE);
+
+        // Debug
+        // std::cout << "DB Size: " << card_db.size() << std::endl;
 
         // 1. Global Features
         tensor.push_back(static_cast<float>(game_state.turn_number) / static_cast<float>(TURN_LIMIT));
@@ -31,36 +38,28 @@ namespace dm::ai {
                     }
                 }
             } else {
-                // Opponent hand is masked, just count?
-                // But we allocated space for slots in INPUT_SIZE calculation above?
-                // "Opp: Hand(1)" in comment.
-                // Wait, my calculation: (20 + ... ) for Self, (1 + ...) for Opp.
-                // So for Opp, we just push count.
                 tensor.push_back(static_cast<float>(p.hand.size()));
             }
 
             // Mana (Civ counts)
-            int civ_counts[6] = {0}; // L, W, D, F, N, Z
+            int civ_counts[7] = {0}; // 0=unused, 1=L, 2=W, 3=D, 4=F, 5=N, 6=Z
             for (const auto& c : p.mana_zone) {
-                // We need CardDefinition to know civ. 
-                // But GameState doesn't have CardDB reference inside easily?
-                // We might need to pass CardDB or store Civ in CardInstance?
-                // For now, let's assume we can't get Civ without DB.
-                // But TensorConverter usually needs DB.
-                // Let's assume we just pass ID for now or 0 if we can't look it up.
-                // Or better, CardInstance should probably cache basic info if performance is key.
-                // For this implementation, I'll just count raw number of cards in mana for now, 
-                // OR I need to change signature to accept DB.
-                // Let's change signature in next step if needed. 
-                // For now, just push 0s or raw IDs?
-                // Spec says "Mana: 文明別枚数カウントに圧縮".
-                // I will assume I can't do it without DB.
-                // Let's just output raw IDs for Mana for now (up to 20?)
-                // But I defined INPUT_SIZE based on counts.
-                // Let's just push 0s for now and fix later or assume passed DB.
+                if (card_db.count(c.card_id)) {
+                    Civilization civ = card_db.at(c.card_id).civilization;
+                    uint8_t val = static_cast<uint8_t>(civ);
+                    
+                    if (val & static_cast<uint8_t>(Civilization::LIGHT)) civ_counts[1]++;
+                    if (val & static_cast<uint8_t>(Civilization::WATER)) civ_counts[2]++;
+                    if (val & static_cast<uint8_t>(Civilization::DARKNESS)) civ_counts[3]++;
+                    if (val & static_cast<uint8_t>(Civilization::FIRE)) civ_counts[4]++;
+                    if (val & static_cast<uint8_t>(Civilization::NATURE)) civ_counts[5]++;
+                    if (val & static_cast<uint8_t>(Civilization::ZERO)) civ_counts[6]++;
+                }
             }
-            // Placeholder for Mana Civs (6 floats)
-            for(int i=0; i<6; ++i) tensor.push_back(0.0f); 
+            // Push counts for L, W, D, F, N, Z (Indices 1-6)
+            for(int i=1; i<=6; ++i) {
+                tensor.push_back(static_cast<float>(civ_counts[i]));
+            }
 
             // Battle Zone
             for (int i = 0; i < MAX_BATTLE_SIZE; ++i) {
@@ -82,7 +81,6 @@ namespace dm::ai {
             // Graveyard (Latest 20)
             for (int i = 0; i < MAX_GRAVE_SEARCH; ++i) {
                 if (i < (int)p.graveyard.size()) {
-                    // Latest is at back?
                     int idx = (int)p.graveyard.size() - 1 - i;
                     if (idx >= 0) {
                         tensor.push_back(static_cast<float>(p.graveyard[idx].card_id));

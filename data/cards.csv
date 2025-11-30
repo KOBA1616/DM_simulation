@@ -1,6 +1,6 @@
 ID,Name,Civilization,Type,Cost,Power,Races,Keywords
-1,Bronze-Arm Tribe,NATURE,CREATURE,3,1000,Beast Folk,
-2,Aqua Hulcus,WATER,CREATURE,3,2000,Liquid People,
+1,Bronze-Arm Tribe,NATURE,CREATURE,3,1000,Beast Folk,CIP
+2,Aqua Hulcus,WATER,CREATURE,3,2000,Liquid People,CIP
 3,Holy Awe,LIGHT,SPELL,6,0,,SHIELD_TRIGGER
 4,Bolshack Dragon,FIRE,CREATURE,6,6000,Armored Dragon,SPEED_ATTACKER
 5,Terror Pit,DARKNESS,SPELL,6,0,,SHIELD_TRIGGER

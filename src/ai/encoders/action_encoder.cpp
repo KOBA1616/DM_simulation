@@ -66,10 +66,36 @@ namespace dm::ai {
         }
         offset += ACTION_SELECT_TARGET_SIZE;
 
-        // 6. PASS (580)
+        // 6. PASS / RESOLVE_EFFECT / USE_SHIELD_TRIGGER (580 - 582)
+        // We need to map these new actions to indices.
+        // PASS is 580.
+        // RESOLVE_EFFECT could be 581.
+        // USE_SHIELD_TRIGGER could be 582.
+        // But wait, USE_SHIELD_TRIGGER needs to know WHICH trigger if multiple?
+        // ActionGenerator uses slot_index for these.
+        // Let's expand the space slightly or map them.
+        
         if (action.type == ActionType::PASS) {
             return offset;
         }
+        offset += 1;
+
+        if (action.type == ActionType::RESOLVE_EFFECT) {
+             // Just one generic resolve action for now? 
+             // Or do we need to distinguish?
+             // ActionGenerator generates RESOLVE_EFFECT with slot_index.
+             // But usually we resolve the top of stack or specific one.
+             // If we have multiple pending, we might need selection.
+             // For now, map to single index 581.
+             return offset;
+        }
+        offset += 1;
+
+        if (action.type == ActionType::USE_SHIELD_TRIGGER) {
+            // Map to 582
+            return offset;
+        }
+        offset += 1;
         
         return -1;
     }

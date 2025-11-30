@@ -7,6 +7,67 @@ namespace dm::engine {
 
     std::vector<Action> ActionGenerator::generate_legal_actions(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         std::vector<Action> actions;
+
+        // 0. Pending Effects (The Stack)
+        if (!game_state.pending_effects.empty()) {
+            // Priority: AP -> NAP
+            bool ap_has_effects = false;
+            for (const auto& eff : game_state.pending_effects) {
+                if (eff.controller == game_state.active_player_id) {
+                    ap_has_effects = true;
+                    break;
+                }
+            }
+            
+            PlayerID priority_player = ap_has_effects ? game_state.active_player_id : (1 - game_state.active_player_id);
+            
+            for (size_t i = 0; i < game_state.pending_effects.size(); ++i) {
+                const auto& eff = game_state.pending_effects[i];
+                if (eff.controller == priority_player) {
+                    // Check if we need targets
+                    if (eff.num_targets_needed > (int)eff.target_instance_ids.size()) {
+                        // Generate SELECT_TARGET actions
+                        // For now, assume target is opponent creature (e.g. Terror Pit)
+                        // In real implementation, we need filter info from CardDefinition
+                        const Player& opponent = game_state.players[1 - priority_player];
+                        for (size_t j = 0; j < opponent.battle_zone.size(); ++j) {
+                            Action select;
+                            select.type = ActionType::SELECT_TARGET;
+                            select.target_instance_id = opponent.battle_zone[j].instance_id;
+                            select.slot_index = static_cast<int>(i); // Effect index
+                            actions.push_back(select);
+                        }
+                        // If no targets, maybe pass? Or auto-resolve?
+                        // Spec says "Maximize fulfillment". If no targets, effect might fizzle or skip targeting.
+                        if (actions.empty()) {
+                             Action resolve;
+                             resolve.type = ActionType::RESOLVE_EFFECT;
+                             resolve.slot_index = static_cast<int>(i);
+                             actions.push_back(resolve);
+                        }
+                    } else if (eff.type == EffectType::SHIELD_TRIGGER) {
+                        Action use;
+                        use.type = ActionType::USE_SHIELD_TRIGGER;
+                        use.source_instance_id = eff.source_instance_id;
+                        use.target_player = eff.controller;
+                        use.slot_index = static_cast<int>(i); // Store index
+                        actions.push_back(use);
+                        
+                        Action pass;
+                        pass.type = ActionType::RESOLVE_EFFECT;
+                        pass.slot_index = static_cast<int>(i); // Store index
+                        actions.push_back(pass);
+                    } else {
+                        Action resolve;
+                        resolve.type = ActionType::RESOLVE_EFFECT;
+                        resolve.slot_index = static_cast<int>(i); // Store index
+                        actions.push_back(resolve);
+                    }
+                }
+            }
+            return actions;
+        }
+
         const Player& active_player = game_state.players[game_state.active_player_id];
         const Player& opponent = game_state.players[1 - game_state.active_player_id];
 
@@ -84,6 +145,38 @@ namespace dm::engine {
                 }
                 // 2. Pass (End Attack Phase)
                 {
+                    Action pass;
+                    pass.type = ActionType::PASS;
+                    actions.push_back(pass);
+                }
+                break;
+
+            case Phase::BLOCK:
+                // Generate Block actions for NAP
+                // Note: In BLOCK phase, active_player is still the turn player, but NAP acts.
+                // We need to check who is supposed to act.
+                // Usually ActionGenerator generates actions for the "decision maker".
+                // If MCTS calls this, it expects actions for the current decision maker.
+                // We might need to handle this in MCTS or here.
+                // For now, let's assume we generate actions for NAP if phase is BLOCK.
+                {
+                    const Player& defender = opponent; // NAP
+                    for (size_t i = 0; i < defender.battle_zone.size(); ++i) {
+                        const auto& card = defender.battle_zone[i];
+                        if (!card.is_tapped) {
+                            if (card_db.count(card.card_id)) {
+                                const auto& def = card_db.at(card.card_id);
+                                if (def.keywords.blocker) {
+                                    Action block;
+                                    block.type = ActionType::BLOCK;
+                                    block.source_instance_id = card.instance_id;
+                                    block.slot_index = static_cast<int>(i);
+                                    actions.push_back(block);
+                                }
+                            }
+                        }
+                    }
+                    // Pass (Don't Block)
                     Action pass;
                     pass.type = ActionType::PASS;
                     actions.push_back(pass);

@@ -33,16 +33,7 @@ class MCTS:
         self.dirichlet_epsilon = dirichlet_epsilon
 
     def _fast_forward(self, state):
-        while True:
-            is_over, _ = dm_ai_module.PhaseManager.check_game_over(state)
-            if is_over:
-                break
-            actions = dm_ai_module.ActionGenerator.generate_legal_actions(
-                state, self.card_db
-            )
-            if actions:
-                break
-            dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+        dm_ai_module.PhaseManager.fast_forward(state, self.card_db)
 
     def search(self, root_state, add_noise=False):
         root_state_clone = root_state.clone()
@@ -157,7 +148,7 @@ class MCTS:
 
         # Evaluate with Network
         tensor = dm_ai_module.TensorConverter.convert_to_tensor(
-            node.state, node.state.active_player_id
+            node.state, node.state.active_player_id, self.card_db
         )
         tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0)
 

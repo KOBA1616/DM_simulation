@@ -1,6 +1,8 @@
 #pragma once
 #include "../../core/game_state.hpp"
+#include "../../core/card_def.hpp"
 #include <vector>
+#include <map>
 
 namespace dm::ai {
 
@@ -15,7 +17,7 @@ namespace dm::ai {
             // Battle props: ID, Tapped, Sickness
             // Mana: Light, Water, Darkness, Fire, Nature, Zero counts
 
-        static std::vector<float> convert_to_tensor(const dm::core::GameState& game_state, int player_view);
+        static std::vector<float> convert_to_tensor(const dm::core::GameState& game_state, int player_view, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
     };
 
 }

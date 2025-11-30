@@ -132,6 +132,14 @@ namespace dm::utils {
             if (keywords.find("G_ZERO") != std::string::npos) def.keywords.g_zero = true;
             if (keywords.find("EVOLUTION") != std::string::npos) def.keywords.evolution = true;
             
+            // Triggers
+            if (keywords.find("CIP") != std::string::npos) def.keywords.cip = true;
+            if (keywords.find("AT_ATTACK") != std::string::npos) def.keywords.at_attack = true;
+            if (keywords.find("AT_BLOCK") != std::string::npos) def.keywords.at_block = true;
+            if (keywords.find("AT_START_OF_TURN") != std::string::npos) def.keywords.at_start_of_turn = true;
+            if (keywords.find("AT_END_OF_TURN") != std::string::npos) def.keywords.at_end_of_turn = true;
+            if (keywords.find("ON_DESTROY") != std::string::npos) def.keywords.destruction = true;
+            
             card_db[def.id] = def;
         }
 

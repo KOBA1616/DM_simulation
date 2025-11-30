@@ -55,6 +55,7 @@ namespace dm::core {
         MANA,
         MAIN,
         ATTACK,
+        BLOCK, // Added for blocking step
         END_OF_TURN
     };
 

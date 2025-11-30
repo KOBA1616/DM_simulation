@@ -23,14 +23,7 @@ CONFIG = load_config()
 TRAIN_CFG = CONFIG['training']
 
 def fast_forward(state, card_db):
-    while True:
-        is_over, _ = dm_ai_module.PhaseManager.check_game_over(state)
-        if is_over:
-            break
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
-        if actions:
-            break
-        dm_ai_module.PhaseManager.next_phase(state, card_db)
+    dm_ai_module.PhaseManager.fast_forward(state, card_db)
 
 def self_play(network, card_db):
     game_data = []
@@ -95,7 +88,7 @@ def self_play(network, card_db):
                 
         # Store data
         # State needs to be converted to tensor
-        state_tensor = dm_ai_module.TensorConverter.convert_to_tensor(gs, gs.active_player_id)
+        state_tensor = dm_ai_module.TensorConverter.convert_to_tensor(gs, gs.active_player_id, card_db)
         # Store (state, policy, value_placeholder, active_player_id)
         game_data.append([state_tensor, policy, None, gs.active_player_id]) 
         
