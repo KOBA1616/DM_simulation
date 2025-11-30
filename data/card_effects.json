@@ -40,5 +40,16 @@
                 "count": 1
             }
         ]
+    },
+    {
+        "id": 6,
+        "name": "Spiral Gate",
+        "effects": [
+            {
+                "type": "bounce",
+                "target": "select_creature",
+                "count": 1
+            }
+        ]
     }
 ]
