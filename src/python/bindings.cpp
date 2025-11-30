@@ -9,6 +9,7 @@
 #include "../ai/encoders/tensor_converter.hpp"
 #include "../ai/encoders/action_encoder.hpp"
 #include "../ai/mcts/mcts.hpp"
+#include "../ai/evaluator/heuristic_evaluator.hpp"
 #include "../engine/utils/determinizer.hpp"
 #include "../utils/csv_loader.hpp"
 
@@ -140,6 +141,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
         .def_static("action_to_index", &ActionEncoder::action_to_index);
 
+    py::class_<HeuristicEvaluator>(m, "HeuristicEvaluator")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("evaluate", &HeuristicEvaluator::evaluate);
+
     py::class_<MCTSNode>(m, "MCTSNode")
         .def_readonly("visit_count", &MCTSNode::visit_count)
         .def_readonly("value_sum", &MCTSNode::value_sum)
@@ -159,5 +164,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
              py::arg("card_db"), py::arg("c_puct") = 1.0f, py::arg("dirichlet_alpha") = 0.3f, py::arg("dirichlet_epsilon") = 0.25f, py::arg("batch_size") = 1)
         .def("search", &MCTS::search, py::call_guard<py::gil_scoped_release>(),
              py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f)
+        .def("search_with_heuristic", [](MCTS& self, const GameState& root, int sims, HeuristicEvaluator& evaluator, bool noise, float temp) {
+            return self.search(root, sims, [&](const std::vector<GameState>& states){
+                return evaluator.evaluate(states);
+            }, noise, temp);
+        }, py::call_guard<py::gil_scoped_release>(),
+           py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f)
         .def("get_last_root", &MCTS::get_last_root, py::return_value_policy::reference);
 }

@@ -111,6 +111,11 @@ class GameWindow(QMainWindow):
         self.load_deck_btn.clicked.connect(self.load_deck_p0)
         self.info_layout.addWidget(self.load_deck_btn)
         
+        self.god_view_check = QCheckBox("God View (Show Opponent Hand)")
+        self.god_view_check.setChecked(False)
+        self.god_view_check.stateChanged.connect(self.update_ui)
+        self.info_layout.addWidget(self.god_view_check)
+        
         self.info_layout.addStretch()
         
         # MCTS View
@@ -336,38 +341,11 @@ class GameWindow(QMainWindow):
                 # Use C++ MCTS
                 mcts = dm_ai_module.MCTS(self.card_db, 1.0, 0.3, 0.25, 1) # Batch size 1 for GUI (simple)
                 
-                def heuristic_evaluator(states):
-                    policies = []
-                    values = []
-                    for s in states:
-                        # Simple Heuristic
-                        p0_shields = len(s.players[0].shield_zone)
-                        p1_shields = len(s.players[1].shield_zone)
-                        diff = p0_shields - p1_shields
-                        
-                        # Value for active player
-                        val = diff * 0.1
-                        if s.active_player_id == 1:
-                            val = -val
-                        
-                        # Clamp
-                        val = max(-1.0, min(1.0, val))
-                        values.append(val)
-                        
-                        # Uniform policy
-                        legal = dm_ai_module.ActionGenerator.generate_legal_actions(s, self.card_db)
-                        policy = [0.0] * dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
-                        if legal:
-                            prob = 1.0 / len(legal)
-                            for a in legal:
-                                idx = dm_ai_module.ActionEncoder.action_to_index(a)
-                                if idx >= 0:
-                                    policy[idx] = prob
-                        policies.append(policy)
-                    return policies, values
+                # Use C++ Heuristic Evaluator
+                evaluator = dm_ai_module.HeuristicEvaluator(self.card_db)
 
-                # Search
-                policy = mcts.search(search_state, 50, heuristic_evaluator, True, 1.0)
+                # Search using C++ evaluator (no Python callback overhead)
+                policy = mcts.search_with_heuristic(search_state, 50, evaluator, True, 1.0)
                 
                 # Select Action (Argmax of policy)
                 best_idx = -1
@@ -464,18 +442,24 @@ class GameWindow(QMainWindow):
         p1 = self.gs.players[1]
         
         # Helper to convert C++ vector to list of dicts
-        def convert_zone(zone_cards):
+        def convert_zone(zone_cards, hide=False):
+            if hide:
+                return [{'id': -1, 'tapped': c.is_tapped} for c in zone_cards] # -1 for hidden
             return [{'id': c.card_id, 'tapped': c.is_tapped} for c in zone_cards]
             
+        # P0 is Human (usually), P1 is Opponent
+        # If God View is OFF, hide P1 Hand and Shield
+        god_view = self.god_view_check.isChecked()
+        
         self.p0_hand.update_cards(convert_zone(p0.hand), self.card_db, self.civ_map)
         self.p0_mana.update_cards(convert_zone(p0.mana_zone), self.card_db, self.civ_map)
         self.p0_battle.update_cards(convert_zone(p0.battle_zone), self.card_db, self.civ_map)
         self.p0_shield.update_cards(convert_zone(p0.shield_zone), self.card_db, self.civ_map)
         
-        self.p1_hand.update_cards(convert_zone(p1.hand), self.card_db, self.civ_map)
+        self.p1_hand.update_cards(convert_zone(p1.hand, hide=not god_view), self.card_db, self.civ_map)
         self.p1_mana.update_cards(convert_zone(p1.mana_zone), self.card_db, self.civ_map)
         self.p1_battle.update_cards(convert_zone(p1.battle_zone), self.card_db, self.civ_map)
-        self.p1_shield.update_cards(convert_zone(p1.shield_zone), self.card_db, self.civ_map)
+        self.p1_shield.update_cards(convert_zone(p1.shield_zone, hide=not god_view), self.card_db, self.civ_map)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
