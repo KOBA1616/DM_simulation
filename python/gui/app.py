@@ -36,6 +36,17 @@ class GameWindow(QMainWindow):
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
         self.civ_map = self.load_civilizations("data/cards.csv")
         
+        # Default Decks (from setup_test_duel logic)
+        self.p0_deck_ids = [i for i in range(40)] # Placeholder, actual logic in C++ setup_test_duel is different
+        self.p1_deck_ids = [i + 100 for i in range(40)] # Placeholder
+        
+        # We should probably capture the deck from the initial state if possible, 
+        # but C++ setup_test_duel hardcodes it. 
+        # Let's just rely on reset_game using these if they are set, 
+        # or default setup_test_duel if not.
+        self.p0_deck_ids = None
+        self.p1_deck_ids = None
+
         # Simulation Timer
         self.timer = QTimer()
         self.timer.timeout.connect(self.step_phase)
@@ -118,14 +129,31 @@ class GameWindow(QMainWindow):
         self.card_editor_button.clicked.connect(self.open_card_editor)
         self.info_layout.addWidget(self.card_editor_button)
 
-        self.load_deck_btn = QPushButton("Load Deck P0")
+        # Deck Loading Controls
+        deck_group = QGroupBox("Deck Management")
+        deck_layout = QVBoxLayout()
+
+        self.load_deck_btn = QPushButton("Load Deck P0 (Player)")
         self.load_deck_btn.clicked.connect(self.load_deck_p0)
-        self.info_layout.addWidget(self.load_deck_btn)
+        deck_layout.addWidget(self.load_deck_btn)
+
+        self.load_deck_p1_btn = QPushButton("Load Deck P1 (Opponent)")
+        self.load_deck_p1_btn.clicked.connect(self.load_deck_p1)
+        deck_layout.addWidget(self.load_deck_p1_btn)
+
+        deck_group.setLayout(deck_layout)
+        self.info_layout.addWidget(deck_group)
         
         self.god_view_check = QCheckBox("God View (Show Opponent Hand)")
         self.god_view_check.setChecked(False)
         self.god_view_check.stateChanged.connect(self.update_ui)
         self.info_layout.addWidget(self.god_view_check)
+
+        # Help Button
+        self.help_btn = QPushButton("Help / Instructions")
+        self.help_btn.setStyleSheet("background-color: #e1f5fe; color: #0277bd; font-weight: bold;")
+        self.help_btn.clicked.connect(self.show_help)
+        self.info_layout.addWidget(self.help_btn)
         
         self.info_layout.addStretch()
         
@@ -233,18 +261,62 @@ class GameWindow(QMainWindow):
                     QMessageBox.warning(self, "Invalid Deck", "Deck must have 40 cards.")
                     return
 
-                new_gs = dm_ai_module.GameState(random.randint(0, 10000))
-                new_gs.setup_test_duel()
-                new_gs.set_deck(0, deck_ids)
-                dm_ai_module.PhaseManager.start_game(new_gs, self.card_db)
-                self.gs = new_gs
+                self.p0_deck_ids = deck_ids
+                self.reset_game()
                 
-                self.log_list.clear()
                 self.log_list.addItem(f"Loaded Deck for P0: {os.path.basename(fname)}")
-                self.update_ui()
                 
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to load deck: {e}")
+
+    def load_deck_p1(self):
+        os.makedirs("data/decks", exist_ok=True)
+        fname, _ = QFileDialog.getOpenFileName(
+            self, "Load Deck P1", "data/decks", "JSON Files (*.json)"
+        )
+        if fname:
+            try:
+                with open(fname, 'r') as f:
+                    deck_ids = json.load(f)
+                
+                if len(deck_ids) != 40:
+                    QMessageBox.warning(self, "Invalid Deck", "Deck must have 40 cards.")
+                    return
+
+                self.p1_deck_ids = deck_ids
+                self.reset_game()
+                
+                self.log_list.addItem(f"Loaded Deck for P1: {os.path.basename(fname)}")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to load deck: {e}")
+
+    def show_help(self):
+        help_text = """
+        <h2>DM AI Simulator Guide</h2>
+        <p><b>Basic Controls:</b></p>
+        <ul>
+            <li><b>Start Simulation:</b> Starts the AI vs AI or AI vs Human game loop.</li>
+            <li><b>Step Phase:</b> Advances the game by one phase or action manually.</li>
+            <li><b>Reset Game:</b> Restarts the game with current decks.</li>
+        </ul>
+        <p><b>Player Modes:</b></p>
+        <ul>
+            <li><b>Human:</b> You control the actions. Click cards to play/use them.</li>
+            <li><b>AI:</b> The AI plays automatically using MCTS.</li>
+        </ul>
+        <p><b>Deck Management:</b></p>
+        <ul>
+            <li><b>Deck Builder:</b> Create and save custom decks.</li>
+            <li><b>Load Deck P0/P1:</b> Load a saved JSON deck for Player (P0) or Opponent (P1).</li>
+        </ul>
+        <p><b>Views:</b></p>
+        <ul>
+            <li><b>God View:</b> Check this to see the opponent's hand and shields.</li>
+            <li><b>MCTS View:</b> Shows the AI's thought process (search tree).</li>
+        </ul>
+        """
+        QMessageBox.information(self, "Help / Instructions", help_text)
         
     def toggle_simulation(self):
         if self.is_running:
@@ -263,6 +335,13 @@ class GameWindow(QMainWindow):
         
         self.gs = dm_ai_module.GameState(random.randint(0, 10000))
         self.gs.setup_test_duel()
+        
+        # Apply custom decks if loaded
+        if self.p0_deck_ids:
+            self.gs.set_deck(0, self.p0_deck_ids)
+        if self.p1_deck_ids:
+            self.gs.set_deck(1, self.p1_deck_ids)
+            
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
         
         self.log_list.clear()
