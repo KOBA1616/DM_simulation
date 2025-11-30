@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/functional.h>
 #include "../core/game_state.hpp"
 #include "../core/card_def.hpp"
 #include "../engine/action_gen/action_generator.hpp"
@@ -7,6 +8,7 @@
 #include "../engine/flow/phase_manager.hpp"
 #include "../ai/encoders/tensor_converter.hpp"
 #include "../ai/encoders/action_encoder.hpp"
+#include "../ai/mcts/mcts.hpp"
 #include "../utils/csv_loader.hpp"
 
 namespace py = pybind11;
@@ -133,4 +135,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<ActionEncoder>(m, "ActionEncoder")
         .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
         .def_static("action_to_index", &ActionEncoder::action_to_index);
+
+    py::class_<MCTS>(m, "MCTS")
+        .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float>(),
+             py::arg("card_db"), py::arg("c_puct") = 1.0f, py::arg("dirichlet_alpha") = 0.3f, py::arg("dirichlet_epsilon") = 0.25f)
+        .def("search", &MCTS::search, py::call_guard<py::gil_scoped_release>(),
+             py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f);
 }

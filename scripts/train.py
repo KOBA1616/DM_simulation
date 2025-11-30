@@ -111,6 +111,121 @@ def self_play(network, card_db):
             
     return game_data, 0 # Draw/Timeout
 
+import torch
+import torch.optim as optim
+import numpy as np
+import dm_ai_module
+from py_ai.agent.network import AlphaZeroNetwork
+# from py_ai.agent.mcts import MCTS # Removed Python MCTS
+from py_ai.agent.replay_buffer import ReplayBuffer
+
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'train_config.yaml')
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
+
+CONFIG = load_config()
+TRAIN_CFG = CONFIG['training']
+
+def fast_forward(state, card_db):
+    dm_ai_module.PhaseManager.fast_forward(state, card_db)
+
+def self_play(network, card_db):
+    game_data = []
+    gs = dm_ai_module.GameState(np.random.randint(100000))
+    gs.setup_test_duel() # Use test deck for now
+    dm_ai_module.PhaseManager.start_game(gs, card_db)
+    
+    mcts_cfg = CONFIG['mcts']
+    # Use C++ MCTS
+    mcts = dm_ai_module.MCTS(
+        card_db, 
+        mcts_cfg.get('cpuct', 1.0), # Config might use different key or default
+        mcts_cfg['dirichlet_alpha'],
+        mcts_cfg['dirichlet_epsilon']
+    )
+    
+    # Evaluator callback for C++ MCTS
+    device = next(network.parameters()).device # Get device from network
+    
+    def evaluator(state):
+        # Convert state to tensor
+        # Note: TensorConverter needs card_db now
+        tensor = dm_ai_module.TensorConverter.convert_to_tensor(state, state.active_player_id, card_db)
+        tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0).to(device)
+        with torch.no_grad():
+            policy_logits, value = network(tensor_t)
+        # Return as (list[float], float)
+        return policy_logits.cpu().squeeze(0).tolist(), value.item()
+    
+    turn_count = 0
+    while True:
+        turn_count += 1
+        if turn_count > 200: # Safety
+            break
+            
+        # Fast Forward to decision point
+        fast_forward(gs, card_db)
+        
+        # Check Game Over after fast forward
+        is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
+        if is_over:
+            return game_data, result
+
+        # Temperature Schedule
+        if turn_count < 30:
+            temp = 1.0
+        else:
+            temp = 0.1 # Almost deterministic
+
+        # MCTS Search
+        # Returns policy vector (std::vector<float>)
+        policy = mcts.search(gs, TRAIN_CFG['simulations'], evaluator, add_noise=True, temperature=temp)
+        policy = np.array(policy)
+                
+        # Store data
+        # State needs to be converted to tensor
+        state_tensor = dm_ai_module.TensorConverter.convert_to_tensor(gs, gs.active_player_id, card_db)
+        # Store (state, policy, value_placeholder, active_player_id)
+        game_data.append([state_tensor, policy, None, gs.active_player_id]) 
+        
+        # Select Action
+        legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+        
+        if not legal_actions:
+            break # Should not happen if game not over
+
+        action_probs = []
+        for action in legal_actions:
+            idx = dm_ai_module.ActionEncoder.action_to_index(action)
+            if 0 <= idx < len(policy):
+                action_probs.append(policy[idx])
+            else:
+                action_probs.append(0.0)
+        
+        action_probs = np.array(action_probs)
+        if action_probs.sum() > 0:
+            action_probs /= action_probs.sum()
+        else:
+            # Fallback (uniform)
+            action_probs = np.ones(len(legal_actions)) / len(legal_actions)
+            
+        chosen_idx = np.random.choice(len(legal_actions), p=action_probs)
+        action = legal_actions[chosen_idx]
+        
+        # Apply Action
+        dm_ai_module.EffectResolver.resolve_action(gs, action, card_db)
+        if action.type == dm_ai_module.ActionType.PASS:
+            dm_ai_module.PhaseManager.next_phase(gs, card_db)
+            
+        # Check Game Over
+        is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
+        if is_over:
+            # Result: 1=P1_WIN, 2=P2_WIN, 3=DRAW
+            return game_data, result
+            
+    return game_data, 0 # Draw/Timeout
+
 def train_loop():
     print("Starting Training Loop...")
     print(f"Config: {TRAIN_CFG}")
