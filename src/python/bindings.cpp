@@ -136,9 +136,24 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
         .def_static("action_to_index", &ActionEncoder::action_to_index);
 
+    py::class_<MCTSNode>(m, "MCTSNode")
+        .def_readonly("visit_count", &MCTSNode::visit_count)
+        .def_readonly("value_sum", &MCTSNode::value_sum)
+        .def_readonly("prior", &MCTSNode::prior)
+        .def_property_readonly("value", &MCTSNode::value)
+        .def_property_readonly("action", [](const MCTSNode& n) { return n.action_from_parent; })
+        .def_property_readonly("children", [](const MCTSNode& n) {
+            std::vector<const MCTSNode*> result;
+            for (const auto& child : n.children) {
+                result.push_back(child.get());
+            }
+            return result;
+        }, py::return_value_policy::reference);
+
     py::class_<MCTS>(m, "MCTS")
         .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int>(),
              py::arg("card_db"), py::arg("c_puct") = 1.0f, py::arg("dirichlet_alpha") = 0.3f, py::arg("dirichlet_epsilon") = 0.25f, py::arg("batch_size") = 1)
         .def("search", &MCTS::search, py::call_guard<py::gil_scoped_release>(),
-             py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f);
+             py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f)
+        .def("get_last_root", &MCTS::get_last_root, py::return_value_policy::reference);
 }

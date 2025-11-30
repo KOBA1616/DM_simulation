@@ -21,6 +21,8 @@ namespace dm::ai {
         int virtual_loss = 0; // For batch MCTS
 
         MCTSNode(const dm::core::GameState& s) : state(s) {}
+        MCTSNode(const MCTSNode&) = delete;
+        MCTSNode& operator=(const MCTSNode&) = delete;
         
         bool is_expanded() const { return !children.empty(); }
         
@@ -46,12 +48,17 @@ namespace dm::ai {
         // Run MCTS search
         std::vector<float> search(const dm::core::GameState& root_state, int simulations, BatchEvaluatorCallback evaluator, bool add_noise = false, float temperature = 1.0f);
 
+        // Get the root of the last search tree (for visualization)
+        const MCTSNode* get_last_root() const { return last_root_.get(); }
+
     private:
         std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
         float c_puct_;
         float dirichlet_alpha_;
         float dirichlet_epsilon_;
         int batch_size_;
+        
+        std::unique_ptr<MCTSNode> last_root_;
 
         // Helpers
         void expand_node(MCTSNode* node, const std::vector<float>& policy_logits);

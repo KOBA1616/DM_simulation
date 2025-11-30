@@ -17,7 +17,7 @@ import dm_ai_module
 from gui.deck_builder import DeckBuilder
 from gui.widgets.zone_widget import ZoneWidget
 from gui.widgets.mcts_view import MCTSView
-from gui.ai.mcts_python import PythonMCTS
+# from gui.ai.mcts_python import PythonMCTS # Removed
 
 
 class GameWindow(QMainWindow):
@@ -327,17 +327,107 @@ class GameWindow(QMainWindow):
                 dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
                 self.log_list.addItem(f"P{active_pid} Auto-Pass")
             else:
-                # Use MCTS to decide action
-                mcts = PythonMCTS(self.card_db, simulations=50) 
+                # Use C++ MCTS
+                mcts = dm_ai_module.MCTS(self.card_db, 1.0, 0.3, 0.25, 1) # Batch size 1 for GUI (simple)
                 
-                # Pass a lambda to check if simulation should stop
-                mcts.should_stop = lambda: was_running_at_start and not self.is_running
+                def heuristic_evaluator(states):
+                    policies = []
+                    values = []
+                    for s in states:
+                        # Simple Heuristic
+                        p0_shields = len(s.players[0].shield_zone)
+                        p1_shields = len(s.players[1].shield_zone)
+                        diff = p0_shields - p1_shields
+                        
+                        # Value for active player
+                        val = diff * 0.1
+                        if s.active_player_id == 1:
+                            val = -val
+                        
+                        # Clamp
+                        val = max(-1.0, min(1.0, val))
+                        values.append(val)
+                        
+                        # Uniform policy
+                        legal = dm_ai_module.ActionGenerator.generate_legal_actions(s, self.card_db)
+                        policy = [0.0] * dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
+                        if legal:
+                            prob = 1.0 / len(legal)
+                            for a in legal:
+                                idx = dm_ai_module.ActionEncoder.action_to_index(a)
+                                if idx >= 0:
+                                    policy[idx] = prob
+                        policies.append(policy)
+                    return policies, values
+
+                # Search
+                policy = mcts.search(self.gs, 50, heuristic_evaluator, True, 1.0)
                 
-                best_action = mcts.search(self.gs)
+                # Select Action (Argmax of policy)
+                best_idx = -1
+                best_prob = -1.0
+                for i, p in enumerate(policy):
+                    if p > best_prob:
+                        best_prob = p
+                        best_idx = i
+                
+                best_action = None
+                if best_idx >= 0:
+                    # Find action object matching index
+                    # We need to regenerate actions to find the object
+                    # Or we can use the tree root children
+                    root = mcts.get_last_root()
+                    if root:
+                        # Find child with highest visits (usually matches policy if temp -> 0, but here temp=1.0)
+                        # Actually policy is returned based on visits.
+                        # So we can just pick action from legal actions that matches index?
+                        # But multiple actions might map to same index? (Hopefully not)
+                        # Better to use tree children.
+                        best_child = None
+                        max_visits = -1
+                        for child in root.children:
+                            if child.visit_count > max_visits:
+                                max_visits = child.visit_count
+                                best_child = child
+                        
+                        if best_child:
+                            best_action = best_child.action
                 
                 # Update MCTS View
-                tree_data = mcts.get_tree_data()
-                self.mcts_view.update_from_data(tree_data)
+                def convert_tree_data(node):
+                    if not node: return None
+                    data = {
+                        "name": node.action.to_string() if node.action.type != dm_ai_module.ActionType.PASS else "Root" if not node.parent else "PASS", # Root action is garbage?
+                        "visits": node.visit_count,
+                        "value": node.value,
+                        "children": []
+                    }
+                    # Root node action is undefined/empty.
+                    if not node.action.to_string():
+                         data["name"] = "Root"
+
+                    # Limit depth for view?
+                    # MCTSView handles recursion.
+                    # But C++ tree might be deep.
+                    # Let's just do 2 levels.
+                    if node.visit_count > 1: # Only expand visited nodes
+                         for child in node.children:
+                             data["children"].append(convert_tree_data(child))
+                    return data
+
+                root = mcts.get_last_root()
+                if root:
+                    # Root action is dummy.
+                    tree_data = {
+                        "name": "Root",
+                        "visits": root.visit_count,
+                        "value": root.value,
+                        "children": []
+                    }
+                    for child in root.children:
+                        tree_data["children"].append(convert_tree_data(child))
+                    
+                    self.mcts_view.update_from_data(tree_data)
                 
                 if was_running_at_start and not self.is_running:
                     self.log_list.addItem("Simulation stopped.")
