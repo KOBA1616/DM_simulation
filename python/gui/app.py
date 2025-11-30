@@ -174,13 +174,13 @@ class GameWindow(QMainWindow):
         
         self.p1_layout.addWidget(self.p1_hand)
         
-        # Group Mana and Graveyard horizontally for P1
-        p1_mana_grave_layout = QHBoxLayout()
-        p1_mana_grave_layout.addWidget(self.p1_mana, stretch=2)
-        p1_mana_grave_layout.addWidget(self.p1_graveyard, stretch=1)
-        self.p1_layout.addLayout(p1_mana_grave_layout)
+        # Group Mana, Shield, Graveyard horizontally for P1
+        p1_row2 = QHBoxLayout()
+        p1_row2.addWidget(self.p1_mana, stretch=3)
+        p1_row2.addWidget(self.p1_shield, stretch=2)
+        p1_row2.addWidget(self.p1_graveyard, stretch=1)
+        self.p1_layout.addLayout(p1_row2)
         
-        self.p1_layout.addWidget(self.p1_shield)
         self.p1_layout.addWidget(self.p1_battle)
         
         # P0 (Player) Zones
@@ -211,13 +211,13 @@ class GameWindow(QMainWindow):
         self.p1_graveyard.card_hovered.connect(self.on_card_hovered)
         
         self.p0_layout.addWidget(self.p0_battle)
-        self.p0_layout.addWidget(self.p0_shield)
         
-        # Group Mana and Graveyard horizontally for P0
-        p0_mana_grave_layout = QHBoxLayout()
-        p0_mana_grave_layout.addWidget(self.p0_mana, stretch=2)
-        p0_mana_grave_layout.addWidget(self.p0_graveyard, stretch=1)
-        self.p0_layout.addLayout(p0_mana_grave_layout)
+        # Group Mana, Shield, Graveyard horizontally for P0
+        p0_row2 = QHBoxLayout()
+        p0_row2.addWidget(self.p0_mana, stretch=3)
+        p0_row2.addWidget(self.p0_shield, stretch=2)
+        p0_row2.addWidget(self.p0_graveyard, stretch=1)
+        self.p0_layout.addLayout(p0_row2)
         
         self.p0_layout.addWidget(self.p0_hand)
         
@@ -227,11 +227,8 @@ class GameWindow(QMainWindow):
         self.board_splitter.addWidget(self.p0_zones)
         self.board_layout.addWidget(self.board_splitter)
         
-        # Wrap Board in ScrollArea
-        self.board_scroll = QScrollArea()
-        self.board_scroll.setWidget(self.board_panel)
-        self.board_scroll.setWidgetResizable(True)
-        self.setCentralWidget(self.board_scroll)
+        # Set Central Widget directly (No ScrollArea)
+        self.setCentralWidget(self.board_panel)
         
         # MCTS View (Dock)
         self.mcts_dock = QDockWidget("MCTS Analysis", self)
@@ -240,6 +237,7 @@ class GameWindow(QMainWindow):
         self.mcts_view = MCTSView()
         self.mcts_dock.setWidget(self.mcts_view)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.mcts_dock)
+        self.mcts_dock.setFloating(True) # Start floating
         
         # Logs (Dock)
         self.log_dock = QDockWidget("Logs", self)

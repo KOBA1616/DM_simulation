@@ -28,7 +28,7 @@ class ZoneWidget(QWidget):
         # Scroll Area for Cards
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setMinimumHeight(160) 
+        self.scroll_area.setMinimumHeight(150) 
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         
         self.card_container = QWidget()
