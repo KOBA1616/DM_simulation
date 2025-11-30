@@ -1,49 +1,69 @@
 import random
 import numpy as np
-from collections import deque
 
 class ReplayBuffer:
-    def __init__(self, capacity=10000, golden_ratio=0.3):
+    def __init__(self, capacity=10000, golden_ratio=0.2):
         self.capacity = capacity
-        self.golden_ratio = golden_ratio
-        self.buffer = deque(maxlen=int(capacity * (1 - golden_ratio)))
-        self.golden_buffer = deque(maxlen=int(capacity * golden_ratio))
+        self.golden_capacity = int(capacity * golden_ratio)
+        self.regular_capacity = capacity - self.golden_capacity
+        
+        self.regular_buffer = []
+        self.golden_buffer = []
+        self.regular_idx = 0
+        self.golden_idx = 0
         
     def push(self, game_data, is_golden=False):
         """
         game_data: list of (state_tensor, policy_target, value_target)
         """
-        if is_golden:
-            self.golden_buffer.extend(game_data)
-        else:
-            self.buffer.extend(game_data)
+        target_buffer = self.golden_buffer if is_golden else self.regular_buffer
+        target_cap = self.golden_capacity if is_golden else self.regular_capacity
+        
+        # If we receive a batch of data, we can extend.
+        # But to maintain a circular buffer efficiently with lists, 
+        # we usually just append and then slice, or overwrite.
+        # For simplicity and performance in Python:
+        # Just append. If len > cap, remove from beginning.
+        # This is O(k) where k is amount added.
+        
+        target_buffer.extend(game_data)
+        
+        excess = len(target_buffer) - target_cap
+        if excess > 0:
+            # Slicing is O(N) copy, but N is capacity. 
+            # Doing this every step is okay if batch is large enough.
+            # Better: del target_buffer[:excess]
+            del target_buffer[:excess]
             
     def sample(self, batch_size):
-        total_len = len(self.buffer) + len(self.golden_buffer)
+        total_len = len(self.regular_buffer) + len(self.golden_buffer)
         if total_len < batch_size:
             return None
             
-        # Mix samples
-        # Simple random sampling from both
-        # Or strictly follow ratio?
-        # Let's just sample from combined list for simplicity now, 
-        # or sample proportionally if we want to enforce ratio in batch.
+        # Determine how many samples from golden buffer
+        # Try to respect the ratio in the batch, or just sample uniformly from available data?
+        # AlphaZero usually samples uniformly from the window.
+        # "Golden Games" implies we want to keep them longer, not necessarily sample them more frequently per se,
+        # but if they stay longer, they get sampled more over time.
         
-        # Efficient sampling:
-        # We can't easily sample from deque without converting to list.
-        # But converting large deque to list is slow.
-        # Usually we use a fixed size list with pointer.
-        # For this prototype, let's just use random.sample on list(deque) which is slow but works.
-        # Optimization: Use list and replace random indices.
+        # Let's sample uniformly from the union.
+        # To avoid concatenating lists (O(N)), we pick indices.
         
-        combined = list(self.buffer) + list(self.golden_buffer)
-        batch = random.sample(combined, batch_size)
+        n_regular = len(self.regular_buffer)
+        n_golden = len(self.golden_buffer)
+        
+        indices = np.random.randint(0, n_regular + n_golden, size=batch_size)
         
         state_batch = []
         policy_batch = []
         value_batch = []
         
-        for s, p, v in batch:
+        for idx in indices:
+            if idx < n_regular:
+                s, p, v = self.regular_buffer[idx]
+            else:
+                s, p, v = self.golden_buffer[idx - n_regular]
+                
             state_batch.append(s)
             policy_batch.append(p)
             value_batch.append(v)
@@ -55,4 +75,4 @@ class ReplayBuffer:
         )
         
     def __len__(self):
-        return len(self.buffer) + len(self.golden_buffer)
+        return len(self.regular_buffer) + len(self.golden_buffer)
