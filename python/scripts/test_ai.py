@@ -12,9 +12,9 @@ from py_ai.agent.network import AlphaZeroNetwork
 from py_ai.agent.mcts import MCTS
 
 # Load DB
-db_path = os.path.join(os.path.dirname(__file__), '..', "data", "cards.csv")
+db_path = os.path.join(os.path.dirname(__file__), '../../data/cards.csv')
 if not os.path.exists(db_path):
-    print("Error: cards.csv not found")
+    print(f"Error: cards.csv not found at {db_path}")
     sys.exit(1)
 
 try:
@@ -24,7 +24,7 @@ try:
     # Init Game
     gs = dm_ai_module.GameState(123)
     gs.setup_test_duel()
-    dm_ai_module.PhaseManager.start_game(gs)
+    dm_ai_module.PhaseManager.start_game(gs, card_db)
 
     # Init Network
     input_size = dm_ai_module.TensorConverter.INPUT_SIZE

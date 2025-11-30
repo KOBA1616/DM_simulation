@@ -15,15 +15,28 @@ namespace dm::ai {
         values.reserve(states.size());
 
         for (const auto& state : states) {
-            // 1. Calculate Value (Shield Difference)
+            // 1. Calculate Value
             // P0 perspective
-            int p0_shields = (int)state.players[0].shield_zone.size();
-            int p1_shields = (int)state.players[1].shield_zone.size();
-            float diff = (float)(p0_shields - p1_shields);
-            
-            // Normalize roughly to [-1, 1] (5 shields max usually)
-            float val = diff * 0.2f; 
-            val = std::max(-1.0f, std::min(1.0f, val));
+            const auto& p0 = state.players[0];
+            const auto& p1 = state.players[1];
+
+            float score = 0.0f;
+
+            // Shield Advantage (High weight)
+            score += (p0.shield_zone.size() - p1.shield_zone.size()) * 0.2f;
+
+            // Hand Advantage (Medium weight)
+            score += (p0.hand.size() - p1.hand.size()) * 0.05f;
+
+            // Battle Zone Advantage (Medium weight)
+            // Ideally power sum, but count is a good proxy for now
+            score += (p0.battle_zone.size() - p1.battle_zone.size()) * 0.1f;
+
+            // Mana Advantage (Low weight, mostly for early game)
+            score += (p0.mana_zone.size() - p1.mana_zone.size()) * 0.02f;
+
+            // Normalize roughly to [-1, 1]
+            float val = std::max(-1.0f, std::min(1.0f, score));
 
             // Value is always from the perspective of the current player for MCTS?
             // Usually AlphaZero value head returns value for the current player or always P0?

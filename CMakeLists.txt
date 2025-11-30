@@ -58,6 +58,8 @@ set(SRC_AI
     src/ai/encoders/action_encoder.cpp
     src/ai/mcts/mcts.cpp
     src/ai/evaluator/heuristic_evaluator.cpp
+    src/ai/self_play/self_play.cpp
+    src/ai/self_play/parallel_runner.cpp
 )
 
 # --- Targets ---

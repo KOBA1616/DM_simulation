@@ -6,6 +6,7 @@ import glob
 # Add root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../build')))
 
 import torch
 import torch.optim as optim
@@ -15,7 +16,7 @@ from py_ai.agent.network import AlphaZeroNetwork
 from py_ai.agent.replay_buffer import ReplayBuffer
 
 def load_config():
-    config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'train_config.yaml')
+    config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config', 'train_config.yaml')
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
@@ -27,122 +28,76 @@ def fast_forward(state, card_db):
 
 
 
-def self_play(network, card_db):
-    game_data = []
-    gs = dm_ai_module.GameState(np.random.randint(100000))
-    gs.setup_test_duel() # Use test deck for now
-    dm_ai_module.PhaseManager.start_game(gs, card_db)
-    
-    mcts_cfg = CONFIG['mcts']
-    # Use C++ MCTS
-    mcts = dm_ai_module.MCTS(
-        card_db, 
-        mcts_cfg.get('cpuct', 1.0), # Config might use different key or default
-        mcts_cfg['dirichlet_alpha'],
-        mcts_cfg['dirichlet_epsilon'],
+def parallel_self_play(network, card_db, num_games):
+    # Setup ParallelRunner
+    runner = dm_ai_module.ParallelRunner(
+        card_db,
+        TRAIN_CFG['simulations'],
         TRAIN_CFG.get('mcts_batch_size', 8)
     )
     
-    # Evaluator callback for C++ MCTS
-    device = next(network.parameters()).device # Get device from network
+    initial_states = []
+    for _ in range(num_games):
+        gs = dm_ai_module.GameState(np.random.randint(100000))
+        gs.setup_test_duel()
+        dm_ai_module.PhaseManager.start_game(gs, card_db)
+        initial_states.append(gs)
+    
+    device = next(network.parameters()).device
     
     def evaluator(states):
-        # states is list[GameState]
-        tensors = []
-        for s in states:
-            t = dm_ai_module.TensorConverter.convert_to_tensor(s, s.active_player_id, card_db)
-            tensors.append(t)
-        
-        # Stack tensors
-        if not tensors:
+        if not states:
             return [], []
             
-        batch_tensor = torch.tensor(np.array(tensors), dtype=torch.float32).to(device)
+        # Use C++ batch conversion
+        flat_data = dm_ai_module.TensorConverter.convert_batch_flat(states, card_db)
+        input_size = dm_ai_module.TensorConverter.INPUT_SIZE
+        
+        # Create tensor directly from flat data
+        # Note: This creates a copy. To avoid copy, we'd need buffer protocol support in binding.
+        batch_tensor = torch.tensor(flat_data, dtype=torch.float32).view(-1, input_size).to(device)
         
         with torch.no_grad():
             policy_logits, values = network(batch_tensor)
             
-        # Return (list[list[float]], list[float])
         return policy_logits.cpu().tolist(), values.cpu().squeeze(1).tolist()
+
+    # Run games in parallel
+    # Use num_threads = num_games for simplicity, or limit to CPU cores
+    num_threads = min(num_games, os.cpu_count() or 4)
+    results = runner.play_games(initial_states, evaluator, 1.0, True, num_threads)
     
-    turn_count = 0
-    while True:
-        turn_count += 1
-        if turn_count > 200: # Safety
-            break
+    all_game_data = []
+    
+    for info in results:
+        result = info.result
+        game_data = []
+        for i in range(len(info.states)):
+            s = info.states[i]
+            p = info.policies[i]
+            pid = info.active_players[i]
             
-        # Fast Forward to decision point
-        fast_forward(gs, card_db)
-        
-        # Check Game Over after fast forward
-        is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
-        if is_over:
-            return game_data, result
-
-        # Temperature Schedule
-        if turn_count < 30:
-            temp = 1.0
-        else:
-            temp = 0.1 # Almost deterministic
-
-        # MCTS Search
-        # Determinize before search
-        search_state = gs.clone()
-        dm_ai_module.Determinizer.determinize(search_state, gs.active_player_id)
-
-        # Returns policy vector (std::vector<float>)
-        policy = mcts.search(search_state, TRAIN_CFG['simulations'], evaluator, add_noise=True, temperature=temp)
-        policy = np.array(policy)
-                
-        # Store data
-        # State needs to be converted to tensor
-        state_tensor = dm_ai_module.TensorConverter.convert_to_tensor(gs, gs.active_player_id, card_db)
-        # Store (state, policy, value_placeholder, active_player_id)
-        game_data.append([state_tensor, policy, None, gs.active_player_id]) 
-        
-        # Select Action
-        legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
-        
-        if not legal_actions:
-            break # Should not happen if game not over
-
-        action_probs = []
-        for action in legal_actions:
-            idx = dm_ai_module.ActionEncoder.action_to_index(action)
-            if 0 <= idx < len(policy):
-                action_probs.append(policy[idx])
-            else:
-                action_probs.append(0.0)
-        
-        action_probs = np.array(action_probs)
-        if action_probs.sum() > 0:
-            action_probs /= action_probs.sum()
-        else:
-            # Fallback (uniform)
-            action_probs = np.ones(len(legal_actions)) / len(legal_actions)
+            t = dm_ai_module.TensorConverter.convert_to_tensor(s, pid, card_db)
+            game_data.append([t, np.array(p), None, pid])
             
-        chosen_idx = np.random.choice(len(legal_actions), p=action_probs)
-        action = legal_actions[chosen_idx]
-        
-        # Apply Action
-        dm_ai_module.EffectResolver.resolve_action(gs, action, card_db)
-        if action.type == dm_ai_module.ActionType.PASS:
-            dm_ai_module.PhaseManager.next_phase(gs, card_db)
+        # Assign Values
+        for item in game_data:
+            player_id = item[3]
+            value = 0.0
+            if result == dm_ai_module.GameResult.P1_WIN: value = 1.0 if player_id == 0 else -1.0
+            elif result == dm_ai_module.GameResult.P2_WIN: value = 1.0 if player_id == 1 else -1.0
+            item[2] = value
             
-        # Check Game Over
-        is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
-        if is_over:
-            # Result: 1=P1_WIN, 2=P2_WIN, 3=DRAW
-            return game_data, result
+        all_game_data.extend([item[:3] for item in game_data])
             
-    return game_data, 0 # Draw/Timeout
+    return all_game_data
 
 def train_loop():
     print("Starting Training Loop...")
     print(f"Config: {TRAIN_CFG}")
     
     # Load DB
-    data_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'cards.csv')
+    data_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'cards.csv')
     card_db = dm_ai_module.CsvLoader.load_cards(data_path)
     
     # Init Network
@@ -207,41 +162,13 @@ def train_loop():
         
         # Self Play
         network.eval()
-        # Move to CPU for MCTS if needed, or keep on GPU if MCTS supports it
-        # Current MCTS implementation uses network(tensor), so it should match device
         
-        for i in range(games_per_iter):
-            print(f"  Self-play game {i+1}...")
-            # Note: self_play runs on CPU logic but uses network. 
-            # If network is on GPU, we need to handle tensor device in MCTS or here.
-            # MCTS.search calls network.
-            # Let's ensure MCTS handles device or we pass device to MCTS?
-            # MCTS currently: tensor_t = torch.tensor(...).unsqueeze(0) -> network(tensor_t)
-            # We need to move tensor_t to device.
-            # For now, let's keep network on CPU for simplicity unless we update MCTS.
-            # Or update MCTS to check network device.
-            
-            # Quick fix: Move network to CPU for self-play if MCTS doesn't handle device
-            # But we want GPU for inference.
-            # Let's update MCTS later. For now, assume CPU or update MCTS.
-            # Actually, let's force CPU for now to be safe as MCTS.py doesn't have .to(device)
-            # network.cpu() 
-            data, result = self_play(network, card_db)
-            
-            # Assign Values
-            for item in data:
-                player_id = item[3]
-                value = 0.0
-                if result == 1: value = 1.0 if player_id == 0 else -1.0
-                elif result == 2: value = 1.0 if player_id == 1 else -1.0
-                item[2] = value
-                
-            cleaned_data = [item[:3] for item in data]
-            replay_buffer.push(cleaned_data)
+        print(f"  Running {games_per_iter} parallel games...")
+        new_data = parallel_self_play(network, card_db, games_per_iter)
+        replay_buffer.push(new_data)
             
         # Training
         print("  Training...")
-        network.to(device) # Move back to device for training
         network.train()
         
         if len(replay_buffer) >= batch_size:

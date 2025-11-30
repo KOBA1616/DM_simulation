@@ -99,4 +99,18 @@ namespace dm::ai {
         return tensor;
     }
 
+    std::vector<float> TensorConverter::convert_batch_flat(const std::vector<GameState>& states, const std::map<CardID, CardDefinition>& card_db) {
+        std::vector<float> batch_tensor;
+        batch_tensor.reserve(states.size() * INPUT_SIZE);
+
+        for (const auto& state : states) {
+            // We can optimize this by inlining or refactoring, but for now just call convert_to_tensor
+            // Note: convert_to_tensor allocates a vector. To optimize, we should refactor encode logic to append to existing vector.
+            // But let's trust RVO or just append.
+            std::vector<float> t = convert_to_tensor(state, state.active_player_id, card_db);
+            batch_tensor.insert(batch_tensor.end(), t.begin(), t.end());
+        }
+        return batch_tensor;
+    }
+
 }
