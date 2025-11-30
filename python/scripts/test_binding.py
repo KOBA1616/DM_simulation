@@ -1,5 +1,11 @@
 import sys
 import os
+
+if os.name == 'nt' and hasattr(os, 'add_dll_directory'):
+    try:
+        os.add_dll_directory(r"C:\Program Files (x86)\mingw64\bin")
+    except Exception:
+        pass
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 

@@ -23,15 +23,17 @@ endif()
 find_package(pybind11 REQUIRED)
 
 # nlohmann_json for Generic Card System (Phase 3)
-include(FetchContent)
-FetchContent_Declare(
-    json
-    URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
-)
-FetchContent_MakeAvailable(json)
+# Using local vendor copy to avoid FetchContent policy issues
+# include(FetchContent)
+# FetchContent_Declare(
+#     json
+#     URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
+# )
+# FetchContent_MakeAvailable(json)
 
 # --- Include Directories ---
 include_directories(src)
+include_directories(third_party)
 
 # --- Source Files ---
 # Define source files variables for better organization
@@ -82,7 +84,7 @@ add_library(dm_core STATIC
     ${SRC_UTILS}
     ${SRC_AI}
 )
-target_link_libraries(dm_core PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(dm_core PUBLIC) # nlohmann_json::nlohmann_json removed (header-only)
 
 # Executable for C++ Testing/Validation (Phase 1 & 2)
 add_executable(dm_sim_test
