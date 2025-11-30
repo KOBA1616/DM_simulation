@@ -11,6 +11,7 @@
 #include "../ai/mcts/mcts.hpp"
 #include "../ai/evaluator/heuristic_evaluator.hpp"
 #include "../ai/self_play/self_play.hpp"
+#include "../ai/self_play/parallel_runner.hpp"
 #include "../engine/utils/determinizer.hpp"
 #include "../utils/csv_loader.hpp"
 
