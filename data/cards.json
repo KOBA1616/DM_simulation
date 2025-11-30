@@ -1,0 +1,46 @@
+[
+  {
+    "id": 1,
+    "name": "Bronze-Arm Tribe",
+    "cost": 3,
+    "civilization": "NATURE",
+    "power": 1000,
+    "type": "CREATURE",
+    "races": ["Beast Folk"],
+    "effects": [
+      {
+        "trigger": "ON_PLAY",
+        "condition": { "type": "NONE" },
+        "actions": [
+          {
+            "type": "ADD_MANA",
+            "scope": "PLAYER_SELF",
+            "value1": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Aqua Hulcus",
+    "cost": 3,
+    "civilization": "WATER",
+    "power": 2000,
+    "type": "CREATURE",
+    "races": ["Liquid People"],
+    "effects": [
+      {
+        "trigger": "ON_PLAY",
+        "condition": { "type": "NONE" },
+        "actions": [
+          {
+            "type": "DRAW_CARD",
+            "scope": "PLAYER_SELF",
+            "value1": 1
+          }
+        ]
+      }
+    ]
+  }
+]
