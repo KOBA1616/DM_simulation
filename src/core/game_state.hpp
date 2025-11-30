@@ -25,8 +25,20 @@ namespace dm::core {
         int source_instance_id;
         PlayerID controller;
         
+        // Targeting
+        std::vector<int> target_instance_ids;
+        int num_targets_needed = 0;
+
         PendingEffect(EffectType t, int src, PlayerID p) 
             : type(t), source_instance_id(src), controller(p) {}
+    };
+
+    struct AttackRequest {
+        int source_instance_id;
+        int target_instance_id; // -1 if attacking player
+        PlayerID target_player; // Valid if target_instance_id == -1
+        bool is_blocked = false;
+        int blocker_instance_id = -1;
     };
 
     struct Player {
@@ -50,6 +62,9 @@ namespace dm::core {
         
         // Pending Effects Pool [Spec 4.1, 4.2]
         std::vector<PendingEffect> pending_effects;
+
+        // Current Attack Context
+        AttackRequest current_attack;
 
         // Determinism: std::mt19937 inside State [Q69]
         std::mt19937 rng;

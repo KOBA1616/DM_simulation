@@ -1,5 +1,6 @@
 #include "phase_manager.hpp"
 #include "../mana/mana_system.hpp"
+#include "../action_gen/action_generator.hpp"
 #include "../../core/constants.hpp"
 #include <iostream>
 
@@ -81,6 +82,22 @@ namespace dm::engine {
         move_card(player.deck, player.hand);
     }
 
+    void PhaseManager::fast_forward(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+        GameResult result;
+        while (true) {
+            if (check_game_over(game_state, result)) {
+                return;
+            }
+            
+            auto actions = ActionGenerator::generate_legal_actions(game_state, card_db);
+            if (!actions.empty()) {
+                return;
+            }
+            
+            next_phase(game_state, card_db);
+        }
+    }
+
     bool PhaseManager::check_game_over(GameState& game_state, GameResult& result) {
         // Check Winner Flag (Direct Attack)
         if (game_state.winner != GameResult::NONE) {
@@ -156,6 +173,10 @@ namespace dm::engine {
                         }
                     }
                 }
+                break;
+            case Phase::BLOCK:
+                // Should normally be handled by resolve_block/execute_battle, but as a fallback:
+                game_state.current_phase = Phase::ATTACK;
                 break;
             case Phase::END_OF_TURN:
                 // Switch turn

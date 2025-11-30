@@ -12,7 +12,8 @@ namespace dm::core {
         ATTACK_CREATURE,
         BLOCK,
         USE_SHIELD_TRIGGER,
-        SELECT_TARGET
+        SELECT_TARGET,
+        RESOLVE_EFFECT
     };
 
     struct Action {

@@ -12,7 +12,8 @@ namespace dm::ai {
             dm::core::ACTION_ATTACK_SIZE + 
             dm::core::ACTION_BLOCK_SIZE + 
             dm::core::ACTION_SELECT_TARGET_SIZE + 
-            dm::core::ACTION_PASS_SIZE;
+            dm::core::ACTION_PASS_SIZE + 
+            10; // Extra buffer for RESOLVE, USE_SHIELD_TRIGGER etc.
 
         // Maps an Action to a unique index in the policy vector
         static int action_to_index(const dm::core::Action& action);

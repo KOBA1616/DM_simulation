@@ -25,6 +25,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("MANA", Phase::MANA)
         .value("MAIN", Phase::MAIN)
         .value("ATTACK", Phase::ATTACK)
+        .value("BLOCK", Phase::BLOCK)
         .value("END_OF_TURN", Phase::END_OF_TURN)
         .export_values();
 
@@ -34,6 +35,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("PLAY_CARD", ActionType::PLAY_CARD)
         .value("ATTACK_PLAYER", ActionType::ATTACK_PLAYER)
         .value("ATTACK_CREATURE", ActionType::ATTACK_CREATURE)
+        .value("RESOLVE_EFFECT", ActionType::RESOLVE_EFFECT)
         .export_values();
 
     py::enum_<Civilization>(m, "Civilization")
@@ -106,6 +108,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<PhaseManager>(m, "PhaseManager")
         .def_static("start_game", &PhaseManager::start_game)
         .def_static("next_phase", &PhaseManager::next_phase)
+        .def_static("fast_forward", &PhaseManager::fast_forward)
         .def_static("check_game_over", [](GameState& gs) {
             GameResult res;
             bool over = PhaseManager::check_game_over(gs, res);
