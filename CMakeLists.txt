@@ -22,6 +22,14 @@ endif()
 # Pybind11 is required for Python bindings (Phase 3)
 find_package(pybind11 REQUIRED)
 
+# nlohmann_json for Generic Card System (Phase 3)
+include(FetchContent)
+FetchContent_Declare(
+    json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
+)
+FetchContent_MakeAvailable(json)
+
 # --- Include Directories ---
 include_directories(src)
 
@@ -45,6 +53,8 @@ set(SRC_ENGINE
     src/engine/mana/mana_system.cpp
     src/engine/utils/determinizer.cpp
     src/engine/utils/dev_tools.cpp
+    src/engine/card_system/card_registry.cpp
+    src/engine/card_system/generic_card_system.cpp
 )
 
 # Utils (Phase 1)
@@ -72,6 +82,7 @@ add_library(dm_core STATIC
     ${SRC_UTILS}
     ${SRC_AI}
 )
+target_link_libraries(dm_core PUBLIC nlohmann_json::nlohmann_json)
 
 # Executable for C++ Testing/Validation (Phase 1 & 2)
 add_executable(dm_sim_test
