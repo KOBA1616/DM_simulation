@@ -46,6 +46,26 @@ namespace dm::engine {
                         }
                     }
                     break;
+                case 6: // Spiral Gate
+                    if (!effect.target_instance_ids.empty()) {
+                        int target_id = effect.target_instance_ids[0];
+                        // Check opponent
+                        auto it_opp = std::find_if(opponent.battle_zone.begin(), opponent.battle_zone.end(),
+                            [target_id](const dm::core::CardInstance& c) { return c.instance_id == target_id; });
+                        if (it_opp != opponent.battle_zone.end()) {
+                            opponent.hand.push_back(*it_opp);
+                            opponent.battle_zone.erase(it_opp);
+                        } else {
+                            // Check self
+                            auto it_self = std::find_if(controller.battle_zone.begin(), controller.battle_zone.end(),
+                                [target_id](const dm::core::CardInstance& c) { return c.instance_id == target_id; });
+                            if (it_self != controller.battle_zone.end()) {
+                                controller.hand.push_back(*it_self);
+                                controller.battle_zone.erase(it_self);
+                            }
+                        }
+                    }
+                    break;
                 default:
                     break;
             }

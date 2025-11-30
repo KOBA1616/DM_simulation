@@ -4,3 +4,4 @@ ID,Name,Civilization,Type,Cost,Power,Races,Keywords
 3,Holy Awe,LIGHT,SPELL,6,0,,SHIELD_TRIGGER
 4,Bolshack Dragon,FIRE,CREATURE,6,6000,Armored Dragon,SPEED_ATTACKER
 5,Terror Pit,DARKNESS,SPELL,6,0,,SHIELD_TRIGGER
+6,Spiral Gate,WATER,SPELL,2,0,,SHIELD_TRIGGER
