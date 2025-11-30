@@ -10,8 +10,11 @@
 #include "../ai/encoders/action_encoder.hpp"
 #include "../ai/mcts/mcts.hpp"
 #include "../ai/evaluator/heuristic_evaluator.hpp"
+#include "../ai/self_play/self_play.hpp"
 #include "../engine/utils/determinizer.hpp"
 #include "../utils/csv_loader.hpp"
+
+#include "../ai/self_play/parallel_runner.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -42,6 +45,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("RESOLVE_EFFECT", ActionType::RESOLVE_EFFECT)
         .export_values();
 
+    py::enum_<GameResult>(m, "GameResult")
+        .value("NONE", GameResult::NONE)
+        .value("P1_WIN", GameResult::P1_WIN)
+        .value("P2_WIN", GameResult::P2_WIN)
+        .value("DRAW", GameResult::DRAW)
+        .export_values();
+
     py::enum_<Civilization>(m, "Civilization")
         .value("NONE", Civilization::NONE)
         .value("LIGHT", Civilization::LIGHT)
@@ -61,9 +71,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly("civilization", &CardDefinition::civilization);
 
     py::class_<CardInstance>(m, "CardInstance")
+        .def(py::init<CardID, int>())
         .def_readonly("card_id", &CardInstance::card_id)
         .def_readonly("instance_id", &CardInstance::instance_id)
-        .def_readonly("is_tapped", &CardInstance::is_tapped);
+        .def_readwrite("is_tapped", &CardInstance::is_tapped)
+        .def_readwrite("summoning_sickness", &CardInstance::summoning_sickness);
 
     py::class_<Player>(m, "Player")
         .def_readonly("id", &Player::id)
@@ -93,12 +105,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
                 player.deck.emplace_back(cid, instance_id_counter++);
             }
         })
+        .def("add_test_card_to_battle", [](GameState& s, int player_id, int card_id, int instance_id, bool tapped, bool sick) {
+             if (player_id < 0 || player_id >= 2) return;
+             CardInstance c(card_id, instance_id);
+             c.is_tapped = tapped;
+             c.summoning_sickness = sick;
+             s.players[player_id].battle_zone.push_back(c);
+        })
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("current_phase", &GameState::current_phase)
         .def_readonly("players", &GameState::players);
 
     py::class_<Action>(m, "Action")
+        .def(py::init<>())
         .def_readwrite("type", &Action::type)
         .def_readwrite("card_id", &Action::card_id)
         .def_readwrite("source_instance_id", &Action::source_instance_id)
@@ -135,7 +155,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     // AI
     py::class_<TensorConverter>(m, "TensorConverter")
         .def_readonly_static("INPUT_SIZE", &TensorConverter::INPUT_SIZE)
-        .def_static("convert_to_tensor", &TensorConverter::convert_to_tensor);
+        .def_static("convert_to_tensor", &TensorConverter::convert_to_tensor)
+        .def_static("convert_batch_flat", &TensorConverter::convert_batch_flat);
 
     py::class_<ActionEncoder>(m, "ActionEncoder")
         .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
@@ -168,7 +189,29 @@ PYBIND11_MODULE(dm_ai_module, m) {
             return self.search(root, sims, [&](const std::vector<GameState>& states){
                 return evaluator.evaluate(states);
             }, noise, temp);
-        }, py::call_guard<py::gil_scoped_release>(),
-           py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f)
+        }, py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f)
         .def("get_last_root", &MCTS::get_last_root, py::return_value_policy::reference);
+
+    py::class_<GameResultInfo>(m, "GameResultInfo")
+        .def_readonly("result", &GameResultInfo::result)
+        .def_readonly("turn_count", &GameResultInfo::turn_count)
+        .def_readonly("states", &GameResultInfo::states)
+        .def_readonly("policies", &GameResultInfo::policies)
+        .def_readonly("active_players", &GameResultInfo::active_players);
+
+    py::class_<SelfPlay>(m, "SelfPlay")
+        .def(py::init<const std::map<CardID, CardDefinition>&, int, int>(),
+             py::arg("card_db"), py::arg("mcts_simulations") = 50, py::arg("batch_size") = 1)
+        .def("play_game", [](SelfPlay& self, GameState initial_state, std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<GameState>&)> evaluator, float temp, bool noise) {
+            return self.play_game(initial_state, evaluator, temp, noise);
+        }, py::call_guard<py::gil_scoped_release>(),
+           py::arg("initial_state"), py::arg("evaluator"), py::arg("temperature") = 1.0f, py::arg("add_noise") = true);
+
+    py::class_<ParallelRunner>(m, "ParallelRunner")
+        .def(py::init<const std::map<CardID, CardDefinition>&, int, int>(),
+             py::arg("card_db"), py::arg("mcts_simulations") = 50, py::arg("batch_size") = 1)
+        .def("play_games", [](ParallelRunner& self, const std::vector<GameState>& initial_states, std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<GameState>&)> evaluator, float temp, bool noise, int num_threads) {
+            return self.play_games(initial_states, evaluator, temp, noise, num_threads);
+        }, py::call_guard<py::gil_scoped_release>(),
+           py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature") = 1.0f, py::arg("add_noise") = true, py::arg("num_threads") = 4);
 }

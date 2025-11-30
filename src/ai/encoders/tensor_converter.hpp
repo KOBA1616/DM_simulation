@@ -18,6 +18,9 @@ namespace dm::ai {
             // Mana: Light, Water, Darkness, Fire, Nature, Zero counts
 
         static std::vector<float> convert_to_tensor(const dm::core::GameState& game_state, int player_view, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        
+        // Batch conversion
+        static std::vector<float> convert_batch_flat(const std::vector<dm::core::GameState>& states, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
     };
 
 }

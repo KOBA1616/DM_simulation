@@ -7,7 +7,8 @@ import dm_ai_module
 def test_heuristic():
     print("Testing HeuristicEvaluator...")
     try:
-        card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
+        db_path = os.path.join(os.path.dirname(__file__), '../../data/cards.csv')
+        card_db = dm_ai_module.CsvLoader.load_cards(db_path)
         evaluator = dm_ai_module.HeuristicEvaluator(card_db)
         print("Evaluator created.")
         
