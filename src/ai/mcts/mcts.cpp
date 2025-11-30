@@ -22,7 +22,8 @@ namespace dm::ai {
         GameState root_gs = root_state; // Copy
         PhaseManager::fast_forward(root_gs, card_db_);
         
-        auto root = std::make_unique<MCTSNode>(root_gs);
+        last_root_ = std::make_unique<MCTSNode>(root_gs);
+        MCTSNode* root = last_root_.get();
 
         // Initial expansion of root (needs evaluation)
         // We can treat root as the first batch item
@@ -30,11 +31,11 @@ namespace dm::ai {
         // So we must evaluate root first.
         std::vector<GameState> root_batch = { root->state };
         auto [root_policies, root_values] = evaluator(root_batch);
-        expand_node(root.get(), root_policies[0]);
-        backpropagate(root.get(), root_values[0]); // Backprop root value? Usually we don't backprop root value to root parent (null), but we set root stats.
+        expand_node(root, root_policies[0]);
+        backpropagate(root, root_values[0]); // Backprop root value? Usually we don't backprop root value to root parent (null), but we set root stats.
         
         if (add_noise) {
-            add_exploration_noise(root.get());
+            add_exploration_noise(root);
         }
 
         int simulations_finished = 0;
@@ -53,7 +54,7 @@ namespace dm::ai {
             int current_batch_limit = std::min(batch_size_, simulations - simulations_finished);
             
             for (int i = 0; i < current_batch_limit; ++i) {
-                MCTSNode* leaf = select_leaf(root.get());
+                MCTSNode* leaf = select_leaf(root);
                 
                 // Check if leaf is already in batch (pointer comparison)
                 bool already_in_batch = false;
