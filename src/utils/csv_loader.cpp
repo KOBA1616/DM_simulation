@@ -130,9 +130,22 @@ namespace dm::utils {
             if (keywords.find("TRIPLE_BREAKER") != std::string::npos) def.keywords.triple_breaker = true;
             if (keywords.find("POWER_ATTACKER") != std::string::npos) {
                 def.keywords.power_attacker = true;
-                // TODO: Parse value like POWER_ATTACKER_3000? Or separate column?
-                // For now, assume fixed bonus or handle later.
-                def.power_attacker_bonus = 0; // Placeholder
+                // Parse value like POWER_ATTACKER_3000
+                size_t pos = keywords.find("POWER_ATTACKER_");
+                if (pos != std::string::npos) {
+                    try {
+                        // Find end of number
+                        size_t start = pos + 15; // Length of "POWER_ATTACKER_"
+                        size_t end = keywords.find_first_not_of("0123456789", start);
+                        std::string val_str = keywords.substr(start, end - start);
+                        def.power_attacker_bonus = std::stoi(val_str);
+                    } catch (...) {
+                        def.power_attacker_bonus = 0;
+                    }
+                } else {
+                    // Default or error?
+                    def.power_attacker_bonus = 0;
+                }
             }
             if (keywords.find("SHIELD_TRIGGER") != std::string::npos) def.keywords.shield_trigger = true;
             if (keywords.find("G_STRIKE") != std::string::npos) def.keywords.g_strike = true;

@@ -91,6 +91,31 @@ namespace dm::engine {
         // Wait, resolve_action passes card_db.
     }
 
+    int EffectResolver::get_creature_power(const CardInstance& creature, const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+        if (card_db.find(creature.card_id) == card_db.end()) return 0;
+        const auto& def = card_db.at(creature.card_id);
+        int power = def.power;
+
+        // Power Attacker
+        if (game_state.current_phase == Phase::ATTACK || game_state.current_phase == Phase::BLOCK) {
+            if (game_state.current_attack.source_instance_id == creature.instance_id) {
+                if (def.keywords.power_attacker) {
+                    power += def.power_attacker_bonus;
+                }
+            }
+        }
+        return power;
+    }
+
+    int EffectResolver::get_breaker_count(const CardInstance& creature, const std::map<CardID, CardDefinition>& card_db) {
+        if (card_db.find(creature.card_id) == card_db.end()) return 1;
+        const auto& def = card_db.at(creature.card_id);
+        
+        if (def.keywords.triple_breaker) return 3;
+        if (def.keywords.double_breaker) return 2;
+        return 1;
+    }
+
     void EffectResolver::execute_battle(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         Player& active = game_state.get_active_player();
         Player& opponent = game_state.get_non_active_player();
@@ -115,12 +140,16 @@ namespace dm::engine {
             if (blocker_it == opponent.battle_zone.end()) return; // Blocker gone?
             CardInstance blocker = *blocker_it;
 
-            int attacker_power = card_db.at(attacker.card_id).power;
-            int blocker_power = card_db.at(blocker.card_id).power;
+            int attacker_power = get_creature_power(attacker, game_state, card_db);
+            int blocker_power = get_creature_power(blocker, game_state, card_db);
             
             // Battle Logic
             bool destroy_attacker = (attacker_power <= blocker_power);
             bool destroy_blocker = (blocker_power <= attacker_power);
+
+            // Slayer
+            if (card_db.at(attacker.card_id).keywords.slayer) destroy_blocker = true;
+            if (card_db.at(blocker.card_id).keywords.slayer) destroy_attacker = true;
 
             if (destroy_attacker) {
                 auto it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
@@ -144,21 +173,26 @@ namespace dm::engine {
             if (target_id == -1) {
                 // Attack Player
                 // Break Shield
-                if (!opponent.shield_zone.empty()) {
-                    CardInstance shield = opponent.shield_zone.back();
-                    opponent.shield_zone.pop_back();
-                    opponent.hand.push_back(shield);
+                int break_count = get_breaker_count(attacker, card_db);
+                
+                for (int i = 0; i < break_count; ++i) {
+                    if (!opponent.shield_zone.empty()) {
+                        CardInstance shield = opponent.shield_zone.back();
+                        opponent.shield_zone.pop_back();
+                        opponent.hand.push_back(shield);
 
-                    if (card_db.count(shield.card_id)) {
-                        const auto& def = card_db.at(shield.card_id);
-                        if (def.keywords.shield_trigger) {
-                            game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield.instance_id, opponent.id);
+                        if (card_db.count(shield.card_id)) {
+                            const auto& def = card_db.at(shield.card_id);
+                            if (def.keywords.shield_trigger) {
+                                game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield.instance_id, opponent.id);
+                            }
                         }
+                    } else {
+                        // Direct Attack
+                        if (active.id == 0) game_state.winner = GameResult::P1_WIN;
+                        else game_state.winner = GameResult::P2_WIN;
+                        break; // Game Over
                     }
-                } else {
-                    // Direct Attack
-                    if (active.id == 0) game_state.winner = GameResult::P1_WIN;
-                    else game_state.winner = GameResult::P2_WIN;
                 }
             } else {
                 // Attack Creature
@@ -167,11 +201,15 @@ namespace dm::engine {
                 
                 if (defender_it != opponent.battle_zone.end()) {
                     CardInstance defender = *defender_it;
-                    int attacker_power = card_db.at(attacker.card_id).power;
-                    int defender_power = card_db.at(defender.card_id).power;
+                    int attacker_power = get_creature_power(attacker, game_state, card_db);
+                    int defender_power = get_creature_power(defender, game_state, card_db);
 
                     bool destroy_attacker = (attacker_power <= defender_power);
                     bool destroy_defender = (defender_power <= attacker_power);
+
+                    // Slayer
+                    if (card_db.at(attacker.card_id).keywords.slayer) destroy_defender = true;
+                    if (card_db.at(defender.card_id).keywords.slayer) destroy_attacker = true;
 
                     if (destroy_attacker) {
                         auto it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),

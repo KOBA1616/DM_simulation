@@ -23,6 +23,10 @@ namespace dm::engine {
         static void resolve_block(dm::core::GameState& game_state, const dm::core::Action& action);
         static void resolve_select_target(dm::core::GameState& game_state, const dm::core::Action& action);
         static void execute_battle(dm::core::GameState& game_state, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+
+        // Helper functions for generic keyword handling
+        static int get_creature_power(const dm::core::CardInstance& creature, const dm::core::GameState& game_state, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        static int get_breaker_count(const dm::core::CardInstance& creature, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
     };
 
 }
