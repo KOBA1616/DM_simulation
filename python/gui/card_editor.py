@@ -2,7 +2,7 @@ import csv
 import os
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
-    QComboBox, QSpinBox, QPushButton, QMessageBox, QFormLayout, QFrame, QWidget
+    QComboBox, QSpinBox, QPushButton, QMessageBox, QFormLayout, QFrame, QWidget, QCheckBox, QGridLayout, QScrollArea
 )
 from gui.widgets.card_widget import CardWidget
 
@@ -17,7 +17,9 @@ class CardEditor(QDialog):
     def init_ui(self):
         main_layout = QHBoxLayout(self)
         
-        # Left: Form
+        # Left: Form (Scrollable)
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
         form_widget = QWidget()
         form_layout = QVBoxLayout(form_widget)
         form = QFormLayout()
@@ -33,12 +35,12 @@ class CardEditor(QDialog):
         form.addRow("Name:", self.name_input)
 
         self.civ_input = QComboBox()
-        self.civ_input.addItems(["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE"])
+        self.civ_input.addItems(["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"])
         self.civ_input.currentTextChanged.connect(self.update_preview)
         form.addRow("Civilization:", self.civ_input)
 
         self.type_input = QComboBox()
-        self.type_input.addItems(["CREATURE", "SPELL"])
+        self.type_input.addItems(["CREATURE", "SPELL", "EVOLUTION_CREATURE"])
         form.addRow("Type:", self.type_input)
 
         self.cost_input = QSpinBox()
@@ -53,12 +55,29 @@ class CardEditor(QDialog):
         form.addRow("Power:", self.power_input)
 
         self.races_input = QLineEdit()
-        self.races_input.setPlaceholderText("Comma separated (e.g. Human, Dragon)")
+        self.races_input.setPlaceholderText("Semicolon separated (e.g. Human; Dragon)")
         form.addRow("Races:", self.races_input)
 
-        self.keywords_input = QLineEdit()
-        self.keywords_input.setPlaceholderText("Comma separated (e.g. BLOCKER, SPEED_ATTACKER)")
-        form.addRow("Keywords:", self.keywords_input)
+        # Keywords Checkboxes
+        keywords_label = QLabel("Keywords:")
+        form.addRow(keywords_label)
+        
+        self.keywords_layout = QGridLayout()
+        self.keyword_checkboxes = {}
+        keywords_list = [
+            "BLOCKER", "SPEED_ATTACKER", "SHIELD_TRIGGER", "SLAYER",
+            "DOUBLE_BREAKER", "TRIPLE_BREAKER", "POWER_ATTACKER",
+            "EVOLUTION", "CIP", "AT_ATTACK", "AT_BLOCK", 
+            "AT_START_OF_TURN", "AT_END_OF_TURN", "ON_DESTROY",
+            "G_STRIKE", "MACH_FIGHTER", "REVOLUTION_CHANGE", "G_ZERO"
+        ]
+        
+        for i, kw in enumerate(keywords_list):
+            cb = QCheckBox(kw)
+            self.keyword_checkboxes[kw] = cb
+            self.keywords_layout.addWidget(cb, i // 2, i % 2)
+            
+        form.addRow(self.keywords_layout)
 
         form_layout.addLayout(form)
 
@@ -72,7 +91,8 @@ class CardEditor(QDialog):
         btn_layout.addWidget(cancel_btn)
         form_layout.addLayout(btn_layout)
         
-        main_layout.addWidget(form_widget)
+        scroll_area.setWidget(form_widget)
+        main_layout.addWidget(scroll_area, 2) # Give form more space
         
         # Right: Preview
         preview_layout = QVBoxLayout()
@@ -87,7 +107,7 @@ class CardEditor(QDialog):
         preview_layout.addWidget(self.preview_container)
         preview_layout.addStretch()
         
-        main_layout.addLayout(preview_layout)
+        main_layout.addLayout(preview_layout, 1)
         
         self.update_preview()
 
@@ -124,15 +144,25 @@ class CardEditor(QDialog):
         return max_id + 1
 
     def save_card(self):
+        # Collect keywords
+        selected_keywords = []
+        for kw, cb in self.keyword_checkboxes.items():
+            if cb.isChecked():
+                selected_keywords.append(kw)
+        keywords_str = ";".join(selected_keywords)
+
+        # Handle Races (replace commas with semicolons just in case, remove quotes)
+        races_str = self.races_input.text().strip().replace(",", ";").replace('"', '')
+
         data = [
             str(self.id_input.value()),
-            self.name_input.text().strip(),
+            self.name_input.text().strip().replace(",", "").replace('"', ''),
             self.civ_input.currentText(),
             self.type_input.currentText(),
             str(self.cost_input.value()),
             str(self.power_input.value()),
-            self.races_input.text().strip(),
-            self.keywords_input.text().strip()
+            races_str,
+            keywords_str
         ]
 
         if not data[1]:

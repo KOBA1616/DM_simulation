@@ -163,16 +163,30 @@ namespace dm::ai {
         
         if (actions.empty()) return;
 
+        // Softmax normalization for priors
+        float sum_exp = 0.0f;
+        std::vector<float> priors;
+        priors.reserve(actions.size());
+
         for (const auto& action : actions) {
             int idx = ActionEncoder::action_to_index(action);
-            float p = 0.0f;
+            float logit = 0.0f;
             if (idx >= 0 && idx < (int)policy_logits.size()) {
-                p = policy_logits[idx];
+                logit = policy_logits[idx];
             }
+            // Use exp for softmax
+            float p = std::exp(logit);
+            priors.push_back(p);
+            sum_exp += p;
+        }
+
+        for (size_t i = 0; i < actions.size(); ++i) {
+            const auto& action = actions[i];
+            float p = priors[i] / sum_exp; // Normalize
             
             GameState next_state = node->state;
             EffectResolver::resolve_action(next_state, action, card_db_);
-            if (action.type == ActionType::PASS) {
+            if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
                 PhaseManager::next_phase(next_state, card_db_);
             }
             PhaseManager::fast_forward(next_state, card_db_);

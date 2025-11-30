@@ -44,6 +44,7 @@ set(SRC_ENGINE
     src/engine/effects/effect_resolver.cpp
     src/engine/mana/mana_system.cpp
     src/engine/utils/determinizer.cpp
+    src/engine/utils/dev_tools.cpp
 )
 
 # Utils (Phase 1)
