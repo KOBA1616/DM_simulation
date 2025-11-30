@@ -629,7 +629,17 @@ class GameWindow(QMainWindow):
         self.p1_graveyard.update_cards(convert_zone(p1.graveyard), self.card_db, self.civ_map)
 
 if __name__ == "__main__":
+    import signal
+    
+    # Allow Ctrl+C to work in terminal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     app = QApplication(sys.argv)
     window = GameWindow()
     window.show()
-    sys.exit(app.exec())
+    
+    try:
+        sys.exit(app.exec())
+    except KeyboardInterrupt:
+        print("\nApplication interrupted by user.")
+        sys.exit(0)
