@@ -5,6 +5,8 @@
 #include <array>
 #include <random>
 #include <stdexcept>
+#include <optional>
+#include "card_json_types.hpp"
 
 namespace dm::core {
 
@@ -24,10 +26,13 @@ namespace dm::core {
         EffectType type;
         int source_instance_id;
         PlayerID controller;
-        
+
         // Targeting
         std::vector<int> target_instance_ids;
         int num_targets_needed = 0;
+
+        // Optional: carry the EffectDef (from JSON) for later resolution after target selection
+        std::optional<EffectDef> effect_def;
 
         PendingEffect(EffectType t, int src, PlayerID p) 
             : type(t), source_instance_id(src), controller(p) {}

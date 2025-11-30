@@ -1,5 +1,7 @@
 #include "effect_resolver.hpp"
 #include "generated_effects.hpp"
+#include "../card_system/generic_card_system.hpp"
+#include "../card_system/card_registry.hpp"
 #include "../mana/mana_system.hpp"
 #include <iostream>
 #include <algorithm>
@@ -246,6 +248,7 @@ namespace dm::engine {
         }
 
         PendingEffect effect = game_state.pending_effects[index];
+        // copy pending effect then erase from queue
         game_state.pending_effects.erase(game_state.pending_effects.begin() + index);
 
         // TODO: Implement specific effect logic based on effect.type and source card
@@ -275,7 +278,33 @@ namespace dm::engine {
 
         if (card_id == 0) return; // Source gone?
 
-        // Use Generated Effects
+        // If the pending effect carries an EffectDef (from JSON), resolve it using any selected targets
+        if (effect.effect_def.has_value()) {
+            dm::engine::GenericCardSystem::resolve_effect_with_targets(game_state, effect.effect_def.value(), effect.target_instance_ids, effect.source_instance_id);
+            return;
+        }
+
+        // Prefer GenericCardSystem for resolving effects via JSON definitions
+        const dm::core::CardData* data = dm::engine::CardRegistry::get_card_data(card_id);
+        if (data) {
+            dm::core::TriggerType trig = dm::core::TriggerType::NONE;
+            switch (effect.type) {
+                case EffectType::CIP: trig = dm::core::TriggerType::ON_PLAY; break;
+                case EffectType::AT_ATTACK: trig = dm::core::TriggerType::ON_ATTACK; break;
+                case EffectType::DESTRUCTION: trig = dm::core::TriggerType::ON_DESTROY; break;
+                case EffectType::SHIELD_TRIGGER: trig = dm::core::TriggerType::S_TRIGGER; break;
+                case EffectType::AT_START_OF_TURN: trig = dm::core::TriggerType::TURN_START; break;
+                case EffectType::AT_END_OF_TURN: trig = dm::core::TriggerType::PASSIVE_CONST; break;
+                default: trig = dm::core::TriggerType::NONE; break;
+            }
+
+            if (trig != dm::core::TriggerType::NONE) {
+                dm::engine::GenericCardSystem::resolve_trigger(game_state, trig, effect.source_instance_id);
+                return;
+            }
+        }
+
+        // Fallback: existing generated-effects resolver
         GeneratedEffects::resolve(game_state, effect, card_id);
     }
 
@@ -358,15 +387,10 @@ namespace dm::engine {
             }
             
             player.battle_zone.push_back(card);
-            
-            // CIP Effects (Enter the Battlefield) would go here
+
+            // CIP Effects (Enter the Battlefield): delegate to GenericCardSystem
             if (def.keywords.cip) {
-                PendingEffect cip(EffectType::CIP, card.instance_id, player.id);
-                // Hardcode targeting requirement for Terror Pit (ID 5) or similar
-                if (card.card_id == 5) { // Terror Pit
-                     cip.num_targets_needed = 1;
-                }
-                game_state.pending_effects.push_back(cip);
+                dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
             }
         } else if (def.type == CardType::SPELL) {
             // Spell effects would go here
