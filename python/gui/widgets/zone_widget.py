@@ -4,6 +4,7 @@ from .card_widget import CardWidget
 
 class ZoneWidget(QWidget):
     card_clicked = pyqtSignal(int, int) # card_id, instance_id
+    card_hovered = pyqtSignal(int) # card_id
 
     def __init__(self, title, parent=None):
         super().__init__(parent)
@@ -66,10 +67,12 @@ class ZoneWidget(QWidget):
                     civ, tapped, instance_id
                 )
                 widget.clicked.connect(lambda i_id, c_id=cid: self.card_clicked.emit(c_id, i_id))
+                widget.hovered.connect(self.card_hovered.emit)
                 self.card_layout.addWidget(widget)
                 self.cards.append(widget)
             else:
                 # Unknown/Masked
                 widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id)
                 widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
+                widget.hovered.connect(self.card_hovered.emit)
                 self.card_layout.addWidget(widget)

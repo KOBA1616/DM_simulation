@@ -4,6 +4,7 @@ from PyQt6.QtGui import QColor, QPalette, QMouseEvent
 
 class CardWidget(QFrame):
     clicked = pyqtSignal(int) # Emits instance_id
+    hovered = pyqtSignal(int) # Emits card_id
 
     def __init__(self, card_id, card_name, cost, power, civ, tapped=False, instance_id=-1, parent=None):
         super().__init__(parent)
@@ -22,6 +23,10 @@ class CardWidget(QFrame):
         
         self.init_ui()
         self.update_style()
+
+    def enterEvent(self, event):
+        self.hovered.emit(self.card_id)
+        super().enterEvent(event)
 
     def init_ui(self):
         layout = QVBoxLayout(self)
