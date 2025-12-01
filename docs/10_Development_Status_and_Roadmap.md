@@ -92,3 +92,36 @@
 
 この記録は要件定義書の公式ログとして保存しました。
 
+## 10.5 2025-12-05 開発進捗更新 (Development Update)
+
+本節は、Phase 3 (Result Stats) および Phase 4 (Scenario Training) の初期実装完了に伴う記録です。
+
+### 実施済み実装 (Completed Implementations)
+
+#### 1. Result Stats System (Spec 15)
+- **C++ Core**:
+    - `CardStats` 構造体に `record_usage` メソッドを追加し、使用回数・早期/終盤使用率・トリガー発動率・コスト軽減額の集計ロジックを実装しました。
+    - `GameState` クラスに `on_card_play` フックを追加し、カードプレイ時およびシールドトリガー使用時に統計を自動更新する仕組みを構築しました。
+    - `EffectResolver` 内でカード使用イベントをフックし、統計システムへ通知するように変更しました。
+- **Python Bindings**:
+    - `get_card_stats` 関数を公開し、C++内で集計された統計データを Python 辞書形式で取得可能にしました。
+- **Data Pipeline**:
+    - `python/scripts/collect_stats.py` を作成しました。これにより、指定回数のランダム対戦（またはAI対戦）をバッチ実行し、集計結果を `data/card_stats_collected.json` に保存するパイプラインが確立されました。
+
+#### 2. Scenario Training Mode (Spec 16)
+- **C++ Core**:
+    - `ScenarioConfig` 構造体を定義し、手札・マナ・バトルゾーン・シールド・墓地の状態を詳細に設定可能にしました。
+    - `GameInstance` クラスを作成し、`reset_with_scenario(config)` メソッドを実装しました。これにより、任意の盤面状態（詰将棋や特定のコンボ始動盤面）からゲームを開始できるようになりました。
+- **Python Bindings**:
+    - `ScenarioConfig` および `GameInstance` を Python に公開し、スクリプトからシナリオを定義・実行可能にしました。
+- **Testing**:
+    - `tests/test_scenario.py` を作成し、シナリオモードが意図通りに盤面を構築できることを検証しました。
+
+### 今後の課題 (Remaining Tasks)
+1.  **Win Rate Logic**: 現在 `on_game_finished` フックは空実装であり、勝敗統計（Win Contribution）はまだ正しく計算されません。これには「実際に勝利に貢献したカード」の追跡ロジックが必要です。
+2.  **Scenario Shield Config**: 現在の `ScenarioConfig` では「自分のシールド」を設定するフィールドが不足しており、防御的なシナリオ（シールド0枚からの耐久など）の表現力が制限されています。
+3.  **Integration**: 強化学習ループ（Trainer）への統合は未実施です。今回作成した `GameInstance` を学習ワーカーに組み込む必要があります。
+
+### 次のアクション (Next Actions)
+- `on_game_finished` の実装による勝率統計の完成。
+- AI学習ループへのシナリオモードの統合（特定の失敗ケースをシナリオ化して反復練習させる）。
