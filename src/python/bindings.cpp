@@ -319,7 +319,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<DevTools>(m, "DevTools")
         .def_static("move_cards", &DevTools::move_cards,
-            py::arg("state"), py::arg("player_id"), py::arg("source"), py::arg("target"), py::arg("count"), py::arg("card_id_filter") = -1);
+            py::arg("state"), py::arg("player_id"), py::arg("source"), py::arg("target"), py::arg("count"), py::arg("card_id_filter") = -1)
+        .def_static("trigger_loop_detection", &DevTools::trigger_loop_detection);
 
     // CardRegistry JSON loader (for GenericCardSystem)
     m.def("card_registry_load_from_json", &dm::engine::CardRegistry::load_from_json, "Load card definitions from a JSON string into the CardRegistry");

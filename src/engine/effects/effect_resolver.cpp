@@ -57,6 +57,9 @@ namespace dm::engine {
             default:
                 break;
         }
+
+        // Update loop check after action resolution
+        game_state.update_loop_check();
     }
 
     void EffectResolver::resolve_select_target(GameState& game_state, const Action& action) {
