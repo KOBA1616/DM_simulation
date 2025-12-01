@@ -29,7 +29,9 @@ namespace dm::ai {
         // Prefer flat callback (zero-copy path in Python binding) if registered
         if (dm::python::has_flat_batch_callback()) {
             try {
+                #ifdef AI_DEBUG
                 fprintf(stderr, "NeuralEvaluator: calling flat batch callback (n=%zu, stride=%d)\n", n, stride);
+                #endif
                 BatchOutput out = dm::python::call_flat_batch_callback(flat, n, stride);
                 return out;
             } catch (const std::exception& e) {
