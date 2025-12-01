@@ -118,10 +118,24 @@
     - `tests/test_scenario.py` を作成し、シナリオモードが意図通りに盤面を構築できることを検証しました。
 
 ### 今後の課題 (Remaining Tasks)
-1.  **Win Rate Logic**: 現在 `on_game_finished` フックは空実装であり、勝敗統計（Win Contribution）はまだ正しく計算されません。これには「実際に勝利に貢献したカード」の追跡ロジックが必要です。
-2.  **Scenario Shield Config**: 現在の `ScenarioConfig` では「自分のシールド」を設定するフィールドが不足しており、防御的なシナリオ（シールド0枚からの耐久など）の表現力が制限されています。
-3.  **Integration**: 強化学習ループ（Trainer）への統合は未実施です。今回作成した `GameInstance` を学習ワーカーに組み込む必要があります。
+1.  **Integration**: 強化学習ループ（Trainer）への統合は未実施です。今回作成した `GameInstance` を学習ワーカーに組み込む必要があります。
 
 ### 次のアクション (Next Actions)
-- `on_game_finished` の実装による勝率統計の完成。
 - AI学習ループへのシナリオモードの統合（特定の失敗ケースをシナリオ化して反復練習させる）。
+
+## 10.6 2025-12-06 開発進捗更新 (Development Update)
+
+本節は、Phase 3およびPhase 4の残課題解消に伴う記録です。
+
+### 実施済み実装 (Completed Implementations)
+
+#### 1. Win Rate Logic (Spec 15)
+- `GameState::on_game_finished` フックの実装を完了しました。「勝利貢献度 (Win Contribution)」、「逆転勝利 (Comeback Win)」、「決定打 (Finish Blow)」の計算ロジックが正常に機能することを確認しました。
+- `PhaseManager::check_game_over` 内でゲーム終了を検知した際に、自動的に `on_game_finished` が呼び出されるように修正しました。また、`stats_recorded` フラグを導入し、統計の二重計上を防止しました。
+
+#### 2. Scenario Shield Config (Spec 16)
+- `ScenarioConfig` 構造体に `my_shields` フィールドを追加（確認）し、プレイヤー自身のシールド構成をカスタマイズ可能にしました。
+- Python バインディングおよび `GameInstance` の初期化ロジックにおいても `my_shields` が正しく反映されることを検証しました（`tests/verify_shield_config.py` による検証済み）。
+
+### 次のアクション (Next Actions)
+- **Integration**: 強化学習トレーナー（RL Loop）において `GameInstance` と `ScenarioConfig` を活用し、特定の局面からの学習を開始する。
