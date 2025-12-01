@@ -351,7 +351,7 @@ namespace dm::engine {
             
             // STATS TRACKING: Record Shield Trigger usage
             // Cost discount is full cost (since it's free)
-            game_state.on_card_play(card.card_id, game_state.turn_number, true, def.cost);
+            game_state.on_card_play(card.card_id, game_state.turn_number, true, def.cost, st_player.id);
 
             if (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE) {
                 card.summoning_sickness = true;
@@ -435,7 +435,7 @@ namespace dm::engine {
 
         // STATS TRACKING: Record normal play
         // For now, assume cost discount is 0 (paid full cost)
-        game_state.on_card_play(action.card_id, game_state.turn_number, false, 0);
+        game_state.on_card_play(action.card_id, game_state.turn_number, false, 0, player.id);
 
         // 2. Move Card
         CardInstance card = remove_from_hand(player, action.source_instance_id);
