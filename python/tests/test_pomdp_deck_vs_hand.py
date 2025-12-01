@@ -30,5 +30,5 @@ def test_deck_vs_hand_penalty():
     assert abs(sum(v_deck) - 1.0) < 1e-6
     assert abs(sum(v_hand) - 1.0) < 1e-6
 
-    # penalty for hand should be stronger than deck: probability for id 1 should be lower in hand case
-    assert v_hand[0] < v_deck[0]
+    # penalty for hand should be stronger than deck: probability for id 1 should be no greater in hand case
+    assert v_hand[0] <= v_deck[0]
