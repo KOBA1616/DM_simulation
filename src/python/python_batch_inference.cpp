@@ -41,6 +41,16 @@ namespace dm::python {
         return (bool)g_flat_callback;
     }
 
+    void clear_batch_callback() {
+        std::lock_guard<std::mutex> lk(g_cb_mutex);
+        g_callback = nullptr;
+    }
+
+    void clear_flat_batch_callback() {
+        std::lock_guard<std::mutex> lk(g_flat_cb_mutex);
+        g_flat_callback = nullptr;
+    }
+
     BatchOutput call_flat_batch_callback(const std::vector<float>& flat, size_t n, size_t stride) {
         FlatBatchCallback cb_copy;
         {
@@ -51,16 +61,6 @@ namespace dm::python {
             throw std::runtime_error("No flat batch inference callback registered");
         }
         return cb_copy(flat, n, stride);
-    }
-
-    void clear_batch_callback() {
-        std::lock_guard<std::mutex> lk(g_cb_mutex);
-        g_callback = nullptr;
-    }
-
-    void clear_flat_batch_callback() {
-        std::lock_guard<std::mutex> lk(g_flat_cb_mutex);
-        g_flat_callback = nullptr;
     }
 
 }
