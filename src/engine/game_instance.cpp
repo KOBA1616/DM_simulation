@@ -78,6 +78,11 @@ namespace dm::engine {
             me.graveyard.emplace_back((CardID)cid, instance_id_counter++);
         }
 
+        // My Shields (Player 0)
+        for (int cid : config.my_shields) {
+             me.shield_zone.emplace_back((CardID)cid, instance_id_counter++);
+        }
+
         // 3. Setup Enemy Resources (Player 1)
         Player& enemy = state.players[1];
 

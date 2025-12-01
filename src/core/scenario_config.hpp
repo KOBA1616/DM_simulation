@@ -9,6 +9,7 @@ namespace dm::core {
         std::vector<int> my_battle_zone;
         std::vector<int> my_mana_zone;
         std::vector<int> my_grave_yard;
+        std::vector<int> my_shields;
 
         int enemy_shield_count = 5;
         std::vector<int> enemy_battle_zone;
