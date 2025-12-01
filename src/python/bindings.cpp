@@ -17,6 +17,9 @@
 #include "../engine/utils/determinizer.hpp"
 #include "../utils/csv_loader.hpp"
 
+#include "../ai/pomdp/pomdp.hpp"
+#include "../ai/pomdp/parametric_belief.hpp"
+
 #include "../ai/self_play/parallel_runner.hpp"
 #include "../engine/utils/dev_tools.hpp"
 #include "../python/python_batch_inference.hpp"
@@ -604,4 +607,19 @@ PYBIND11_MODULE(dm_ai_module, m) {
         py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
             .def(py::init<const std::map<CardID, CardDefinition>&>())
             .def("evaluate", &NeuralEvaluator::evaluate);
+
+        // POMDP Inference (Requirement 11) - lightweight stub exposed to Python
+        py::class_<dm::ai::POMDPInference>(m, "POMDPInference")
+            .def(py::init<>())
+            .def("initialize", &dm::ai::POMDPInference::initialize, py::arg("card_db"))
+            .def("update_belief", &dm::ai::POMDPInference::update_belief, py::arg("state"))
+            .def("infer_action", &dm::ai::POMDPInference::infer_action, py::arg("state"))
+            .def("get_belief_vector", &dm::ai::POMDPInference::get_belief_vector);
+
+        // Parametric belief model (simple per-card probabilities)
+        py::class_<dm::ai::ParametricBelief>(m, "ParametricBelief")
+            .def(py::init<>())
+            .def("initialize", &dm::ai::ParametricBelief::initialize, py::arg("card_db"))
+            .def("update", &dm::ai::ParametricBelief::update, py::arg("state"))
+            .def("get_vector", &dm::ai::ParametricBelief::get_vector);
 }
