@@ -65,6 +65,7 @@ set(SRC_CORE
     src/core/constants.hpp
     src/core/card_def.hpp
     src/core/game_state.hpp
+    src/core/game_state_stats.cpp
     src/core/action.hpp
 )
 
