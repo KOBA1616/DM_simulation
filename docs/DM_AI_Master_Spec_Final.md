@@ -46,3 +46,11 @@
     - **Phase 3**: AIの高度化 (Deep Sets, LibTorch, PBT)。
     - **Phase 4**: コンテンツ拡充 (Card Generator)。
     - **Phase 5**: メタゲーム解明 (MAP-Elites, Co-evolution)。
+
+### [11. 詳細実装ステップ (Detailed Implementation Steps)](./11_Detailed_Implementation_Steps.md)
+- 開発の具体的な手順とチェックリスト。
+
+### [12. PBT導入設計書 (PBT Design Spec)](./12_PBT_Design_Spec.md)
+- **Population-Based Training**: Kaggle環境における自律進化型AI集団の構築設計。
+- **Evolution Cycle**: 順次学習、リーグ戦、淘汰と変異のサイクル定義。
+- **Niche Protection**: 多様性保護のためのロジック。
