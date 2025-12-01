@@ -17,12 +17,17 @@ jobs:
           python-version: '3.12'
 
       - name: Install pip dependencies
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          pip install pytest numpy
+          pip install pytest numpy pybind11
 
-      - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Configure CMake (use pybind11 cmake dir)
+        shell: pwsh
+        run: |
+          $pybind_dir = (python -m pybind11 --cmakedir).Trim()
+          Write-Host "pybind11 cmake dir: $pybind_dir"
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$pybind_dir"
 
       - name: Build (Release)
         run: cmake --build build --config Release --parallel
