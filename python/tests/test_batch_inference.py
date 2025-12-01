@@ -9,7 +9,7 @@ def sample_model(batch):
     return policies, values
 
 
-def run_test():
+def test_batch_inference_basic():
     print('registering sample model')
     dm_ai_module.register_batch_inference(sample_model)
     print('registered?', dm_ai_module.has_batch_inference_registered())
@@ -31,4 +31,4 @@ def run_test():
 
 
 if __name__ == '__main__':
-    run_test()
+    test_batch_inference_basic()
