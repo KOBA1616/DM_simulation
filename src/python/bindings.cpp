@@ -346,7 +346,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
                 });
 
                 // Create numpy array that references the shared vector, using capsule as base/owner
-                py::array_t<float> arr({(ssize_t)n, (ssize_t)stride}, {(ssize_t)(stride * sizeof(float)), (ssize_t)sizeof(float)}, data_ptr->data(), base_capsule);
+                py::array_t<float> arr({(py::ssize_t)n, (py::ssize_t)stride}, {(py::ssize_t)(stride * sizeof(float)), (py::ssize_t)sizeof(float)}, data_ptr->data(), base_capsule);
 
 #ifdef AI_DEBUG
                 fprintf(stderr, "bindings: about to call Python func with ndarray shape=(%zu,%zu)\n", n, stride);
@@ -380,27 +380,27 @@ PYBIND11_MODULE(dm_ai_module, m) {
                         py::array p_arr = py_policies.cast<py::array>();
                         py::buffer_info info = p_arr.request();
                         if (info.ndim == 2) {
-                            ssize_t rows = info.shape[0];
-                            ssize_t cols = info.shape[1];
+                            py::ssize_t rows = info.shape[0];
+                            py::ssize_t cols = info.shape[1];
                             out.first.resize((size_t)rows);
 
                             // Try fast paths based on dtype
                             std::string fmt = info.format;
                             if (fmt == py::format_descriptor<float>::format()) {
                                 float* base = static_cast<float*>(info.ptr);
-                                for (ssize_t i = 0; i < rows; ++i) {
+                                for (py::ssize_t i = 0; i < rows; ++i) {
                                     out.first[(size_t)i].assign(base + i*cols, base + i*cols + cols);
                                 }
                             } else if (fmt == py::format_descriptor<double>::format()) {
                                 double* base = static_cast<double*>(info.ptr);
-                                for (ssize_t i = 0; i < rows; ++i) {
+                                for (py::ssize_t i = 0; i < rows; ++i) {
                                     auto &dst = out.first[(size_t)i];
                                     dst.resize((size_t)cols);
-                                    for (ssize_t j = 0; j < cols; ++j) dst[(size_t)j] = static_cast<float>(base[i*cols + j]);
+                                    for (py::ssize_t j = 0; j < cols; ++j) dst[(size_t)j] = static_cast<float>(base[i*cols + j]);
                                 }
                             } else {
                                 // Fallback: element-wise conversion (handles non-contiguous or other dtypes)
-                                for (ssize_t i = 0; i < rows; ++i) {
+                                for (py::ssize_t i = 0; i < rows; ++i) {
                                     py::object row_obj = p_arr[py::int_(i)];
                                     py::iterable row_iter = row_obj.cast<py::iterable>();
                                     auto &dst = out.first[(size_t)i];
@@ -425,7 +425,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
                         py::array v_arr = py_values.cast<py::array>();
                         py::buffer_info info = v_arr.request();
                         if (info.ndim == 1) {
-                            ssize_t len = info.shape[0];
+                            py::ssize_t len = info.shape[0];
                             std::string fmt = info.format;
                             if (fmt == py::format_descriptor<float>::format()) {
                                 float* base = static_cast<float*>(info.ptr);
@@ -433,11 +433,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
                             } else if (fmt == py::format_descriptor<double>::format()) {
                                 double* base = static_cast<double*>(info.ptr);
                                 out.second.resize((size_t)len);
-                                for (ssize_t i = 0; i < len; ++i) out.second[(size_t)i] = static_cast<float>(base[i]);
+                                for (py::ssize_t i = 0; i < len; ++i) out.second[(size_t)i] = static_cast<float>(base[i]);
                             } else {
                                 // fallback
                                 out.second.reserve((size_t)len);
-                                for (ssize_t i = 0; i < len; ++i) out.second.push_back(v_arr[py::int_(i)].cast<float>());
+                                for (py::ssize_t i = 0; i < len; ++i) out.second.push_back(v_arr[py::int_(i)].cast<float>());
                             }
                         }
                     } else if (py::isinstance<py::list>(py_values)) {
@@ -471,21 +471,21 @@ PYBIND11_MODULE(dm_ai_module, m) {
                             py::array p_arr = py_policies2.cast<py::array>();
                             py::buffer_info info = p_arr.request();
                             if (info.ndim == 2) {
-                                ssize_t rows = info.shape[0];
-                                ssize_t cols = info.shape[1];
+                                py::ssize_t rows = info.shape[0];
+                                py::ssize_t cols = info.shape[1];
                                 out.first.resize((size_t)rows);
                                 std::string fmt = info.format;
                                 if (fmt == py::format_descriptor<float>::format()) {
                                     float* base = static_cast<float*>(info.ptr);
-                                    for (ssize_t i = 0; i < rows; ++i) out.first[(size_t)i].assign(base + i*cols, base + i*cols + cols);
+                                    for (py::ssize_t i = 0; i < rows; ++i) out.first[(size_t)i].assign(base + i*cols, base + i*cols + cols);
                                 } else if (fmt == py::format_descriptor<double>::format()) {
                                     double* base = static_cast<double*>(info.ptr);
-                                    for (ssize_t i = 0; i < rows; ++i) {
+                                    for (py::ssize_t i = 0; i < rows; ++i) {
                                         auto &dst = out.first[(size_t)i]; dst.resize((size_t)cols);
-                                        for (ssize_t j = 0; j < cols; ++j) dst[(size_t)j] = static_cast<float>(base[i*cols + j]);
+                                        for (py::ssize_t j = 0; j < cols; ++j) dst[(size_t)j] = static_cast<float>(base[i*cols + j]);
                                     }
                                 } else {
-                                    for (ssize_t i = 0; i < rows; ++i) {
+                                    for (py::ssize_t i = 0; i < rows; ++i) {
                                         py::object row_obj = p_arr[py::int_(i)];
                                         py::iterable row_iter = row_obj.cast<py::iterable>();
                                         auto &dst = out.first[(size_t)i];
@@ -511,7 +511,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
                             py::array v_arr = py_values2.cast<py::array>();
                             py::buffer_info info = v_arr.request();
                             if (info.ndim == 1) {
-                                ssize_t len = info.shape[0];
+                                py::ssize_t len = info.shape[0];
                                 std::string fmt = info.format;
                                 if (fmt == py::format_descriptor<float>::format()) {
                                     float* base = static_cast<float*>(info.ptr);
@@ -519,9 +519,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
                                 } else if (fmt == py::format_descriptor<double>::format()) {
                                     double* base = static_cast<double*>(info.ptr);
                                     out.second.resize((size_t)len);
-                                    for (ssize_t i = 0; i < len; ++i) out.second[(size_t)i] = static_cast<float>(base[i]);
+                                    for (py::ssize_t i = 0; i < len; ++i) out.second[(size_t)i] = static_cast<float>(base[i]);
                                 } else {
-                                    for (ssize_t i = 0; i < info.shape[0]; ++i) out.second.push_back(v_arr[py::int_(i)].cast<float>());
+                                    for (py::ssize_t i = 0; i < info.shape[0]; ++i) out.second.push_back(v_arr[py::int_(i)].cast<float>());
                                 }
                             }
                         } else if (py::isinstance<py::list>(py_values2)) {
