@@ -32,7 +32,16 @@ if(NOT pybind11_FOUND)
     )
     FetchContent_MakeAvailable(pybind11)
 endif()
-find_package(pybind11 CONFIG REQUIRED)
+if(NOT pybind11_FOUND)
+    # If FetchContent made pybind11 available, mark it as found so downstream
+    # commands (e.g., pybind11_add_module) can use the targets. If not found,
+    # fail early with a helpful message.
+    if(TARGET pybind11::module)
+        set(pybind11_FOUND TRUE)
+    else()
+        message(FATAL_ERROR "pybind11 not found and FetchContent did not provide it.\nEnsure network access or install pybind11 via package manager.")
+    endif()
+endif()
 
 # Optional: LibTorch for C++ inference (Phase 3.3)
 option(USE_LIBTORCH "Enable LibTorch-based C++ inference (optional)" OFF)
@@ -111,6 +120,10 @@ add_library(dm_core STATIC
     ${SRC_AI}
 )
 target_link_libraries(dm_core PUBLIC) # nlohmann_json::nlohmann_json removed (header-only)
+
+# Ensure objects in the static library are position-independent so they
+# can be linked into a Python extension/shared library on ELF platforms.
+set_target_properties(dm_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Executable for C++ Testing/Validation (Phase 1 & 2)
 add_executable(dm_sim_test
