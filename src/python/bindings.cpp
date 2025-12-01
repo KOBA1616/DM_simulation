@@ -21,6 +21,8 @@
 #include "../engine/utils/dev_tools.hpp"
 #include "../python/python_batch_inference.hpp"
 #include "../ai/evaluator/neural_evaluator.hpp"
+#include "../core/scenario_config.hpp"
+#include "../engine/game_instance.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -140,6 +142,23 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly("shield_zone", &Player::shield_zone)
         .def_readonly("graveyard", &Player::graveyard);
 
+    py::class_<ScenarioConfig>(m, "ScenarioConfig")
+        .def(py::init<>())
+        .def_readwrite("my_mana", &ScenarioConfig::my_mana)
+        .def_readwrite("my_hand_cards", &ScenarioConfig::my_hand_cards)
+        .def_readwrite("my_battle_zone", &ScenarioConfig::my_battle_zone)
+        .def_readwrite("my_mana_zone", &ScenarioConfig::my_mana_zone)
+        .def_readwrite("my_grave_yard", &ScenarioConfig::my_grave_yard)
+        .def_readwrite("enemy_shield_count", &ScenarioConfig::enemy_shield_count)
+        .def_readwrite("enemy_battle_zone", &ScenarioConfig::enemy_battle_zone)
+        .def_readwrite("enemy_can_use_trigger", &ScenarioConfig::enemy_can_use_trigger)
+        .def_readwrite("loop_proof_mode", &ScenarioConfig::loop_proof_mode);
+
+    py::class_<GameInstance>(m, "GameInstance")
+        .def(py::init<uint32_t, const std::map<CardID, CardDefinition>&>())
+        .def("reset_with_scenario", &GameInstance::reset_with_scenario)
+        .def_property_readonly("state", &GameInstance::get_state, py::return_value_policy::reference);
+
     py::class_<GameState>(m, "GameState")
         .def(py::init<uint32_t>())
         .def("clone", [](const GameState& s) { return GameState(s); })
@@ -172,6 +191,25 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly("players", &GameState::players);
 
     // Expose stats/POMDP helpers as module-level helpers (wrappers)
+    m.def("get_card_stats", [](const GameState &s) {
+        // Return a dict of id -> stats dict
+        py::dict result;
+        for (const auto& kv : s.global_card_stats) {
+            CardID cid = kv.first;
+            const CardStats& stats = kv.second;
+            py::dict d;
+            d["play_count"] = stats.play_count;
+            d["win_count"] = stats.win_count;
+            d["sum_early_usage"] = stats.sum_early_usage;
+            d["sum_late_usage"] = stats.sum_late_usage;
+            d["sum_trigger_rate"] = stats.sum_trigger_rate;
+            d["sum_cost_discount"] = stats.sum_cost_discount;
+            // Add other stats if needed for debug/analysis, but play_count is most important for now
+            result[py::cast(cid)] = d;
+        }
+        return result;
+    }, py::arg("state"));
+
     m.def("initialize_card_stats", [](GameState &s, const std::map<CardID, CardDefinition> &card_db, int deck_size) {
         for (const auto &p : card_db) {
             CardID cid = p.first;
