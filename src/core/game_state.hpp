@@ -105,7 +105,8 @@ namespace dm::core {
         void compute_initial_deck_sums(const std::vector<CardID>& deck_list);
 
         // Stats tracking
-        std::vector<CardID> played_cards_history_this_game[2];
+        // Stores pair of (CardID, TurnNumber)
+        std::vector<std::pair<CardID, int>> played_cards_history_this_game[2];
         void on_card_play(CardID cid, int turn, bool is_trigger, int cost_diff, PlayerID pid);
         void on_game_finished(GameResult result);
 

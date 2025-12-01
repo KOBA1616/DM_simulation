@@ -100,6 +100,9 @@ def run_games(num_games, output_file):
                 break
 
         # Game Over or Limit Reached
+        if is_over:
+             gs.on_game_finished(result)
+
         # Collect Stats
         game_stats = dm_ai_module.get_card_stats(gs)
 
@@ -121,6 +124,35 @@ def run_games(num_games, output_file):
                 m['sum_trigger_rate'] += stats['sum_trigger_rate']
                 m['sum_cost_discount'] += stats['sum_cost_discount']
 
+                # Add other fields (Step 1 in Phase 3)
+                m.setdefault('sum_hand_adv', 0.0)
+                m.setdefault('sum_board_adv', 0.0)
+                m.setdefault('sum_mana_adv', 0.0)
+                m.setdefault('sum_shield_dmg', 0.0)
+                m.setdefault('sum_hand_var', 0.0)
+                m.setdefault('sum_board_var', 0.0)
+                m.setdefault('sum_survival_rate', 0.0)
+                m.setdefault('sum_effect_death', 0.0)
+                m.setdefault('sum_win_contribution', 0.0)
+                m.setdefault('sum_comeback_win', 0.0)
+                m.setdefault('sum_finish_blow', 0.0)
+                m.setdefault('sum_deck_consumption', 0.0)
+
+                m['sum_hand_adv'] += stats.get('sum_hand_adv', 0.0)
+                m['sum_board_adv'] += stats.get('sum_board_adv', 0.0)
+                m['sum_mana_adv'] += stats.get('sum_mana_adv', 0.0)
+                m['sum_shield_dmg'] += stats.get('sum_shield_dmg', 0.0)
+
+                m['sum_hand_var'] += stats.get('sum_hand_var', 0.0)
+                m['sum_board_var'] += stats.get('sum_board_var', 0.0)
+                m['sum_survival_rate'] += stats.get('sum_survival_rate', 0.0)
+                m['sum_effect_death'] += stats.get('sum_effect_death', 0.0)
+
+                m['sum_win_contribution'] += stats.get('sum_win_contribution', 0.0)
+                m['sum_comeback_win'] += stats.get('sum_comeback_win', 0.0)
+                m['sum_finish_blow'] += stats.get('sum_finish_blow', 0.0)
+                m['sum_deck_consumption'] += stats.get('sum_deck_consumption', 0.0)
+
         if (i+1) % 10 == 0:
             print(f"Finished game {i+1}/{num_games}")
 
@@ -131,12 +163,24 @@ def run_games(num_games, output_file):
     # Format: array of {id: ..., play_count: ..., sums: [...]}
     output_data = []
     for cid, m in master_stats.items():
-        # Create sums array (16 dims, only first 4 implemented so far)
+        # Create sums array (16 dims)
         sums = [0.0] * 16
         sums[0] = m['sum_early_usage']
         sums[1] = m['sum_late_usage']
         sums[2] = m['sum_trigger_rate']
         sums[3] = m['sum_cost_discount']
+        sums[4] = m['sum_hand_adv']
+        sums[5] = m['sum_board_adv']
+        sums[6] = m['sum_mana_adv']
+        sums[7] = m['sum_shield_dmg']
+        sums[8] = m['sum_hand_var']
+        sums[9] = m['sum_board_var']
+        sums[10] = m['sum_survival_rate']
+        sums[11] = m['sum_effect_death']
+        sums[12] = m['sum_win_contribution']
+        sums[13] = m['sum_comeback_win']
+        sums[14] = m['sum_finish_blow']
+        sums[15] = m['sum_deck_consumption']
 
         output_data.append({
             "id": cid,

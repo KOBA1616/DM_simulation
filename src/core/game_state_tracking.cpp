@@ -14,7 +14,7 @@ namespace dm::core {
         }
         // Record per-game history for win rate calculation
         if (pid == 0 || pid == 1) {
-            played_cards_history_this_game[pid].push_back(cid);
+            played_cards_history_this_game[pid].push_back({cid, turn});
         }
     }
 
@@ -24,12 +24,25 @@ namespace dm::core {
         else if (result == GameResult::P2_WIN) winner_id = 1;
 
         if (winner_id != -1) {
+            bool is_comeback = (players[winner_id].shield_zone.empty());
+            int winning_turn = turn_number;
+
             // Update stats for cards played by the winner
-            for (CardID cid : played_cards_history_this_game[winner_id]) {
+            for (const auto& entry : played_cards_history_this_game[winner_id]) {
+                CardID cid = entry.first;
+                int played_turn = entry.second;
+
                 auto it = global_card_stats.find(cid);
                 if (it != global_card_stats.end()) {
                     it->second.win_count++;
                     it->second.sum_win_contribution += 1.0;
+
+                    if (is_comeback) {
+                        it->second.sum_comeback_win += 1.0;
+                    }
+                    if (played_turn == winning_turn) {
+                        it->second.sum_finish_blow += 1.0;
+                    }
                 }
             }
             // Optional: Track loss stats or differential?
