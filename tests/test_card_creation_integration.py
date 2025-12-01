@@ -1,7 +1,12 @@
 import sys
 import os
 import csv
-from PyQt6.QtWidgets import QApplication
+import pytest
+
+try:
+    from PyQt6.QtWidgets import QApplication
+except ImportError:
+    QApplication = None
 
 # Add python/ to path so we can import gui modules
 # Assuming this script is run from project root or tests/
@@ -10,12 +15,23 @@ if project_root not in sys.path:
     sys.path.append(os.path.join(project_root, "python"))
     sys.path.append(project_root) # For dm_ai_module if it's in root
 
-from gui.card_editor import CardEditor
+try:
+    from gui.card_editor import CardEditor
+except ImportError:
+    CardEditor = None
+    
 import dm_ai_module
 
-def verify():
+def test_verify():
+    if QApplication is None or CardEditor is None:
+        pytest.skip("PyQt6 or gui module not available")
+
     # QApplication is required for QWidgets
-    app = QApplication(sys.argv)
+    # We need to check if an instance already exists (e.g. from other tests)
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+        
     csv_path = "data/test_cards_verify.csv"
     
     # Ensure data directory exists
@@ -87,4 +103,4 @@ def verify():
     print("Test cleanup complete.")
 
 if __name__ == "__main__":
-    verify()
+    test_verify()
