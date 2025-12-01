@@ -188,10 +188,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
              s.players[player_id].battle_zone.push_back(c);
         })
         .def("on_game_finished", &GameState::on_game_finished)
+        .def("calculate_hash", &GameState::calculate_hash)
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("current_phase", &GameState::current_phase)
-        .def_readonly("players", &GameState::players);
+        .def_readonly("players", &GameState::players)
+        .def_readonly("winner", &GameState::winner);
 
     // Expose stats/POMDP helpers as module-level helpers (wrappers)
     m.def("get_card_stats", [](const GameState &s) {
