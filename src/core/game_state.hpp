@@ -118,6 +118,9 @@ namespace dm::core {
         Player& get_non_active_player() {
             return players[1 - active_player_id];
         }
+
+        // Loop detection / State Identity
+        uint64_t calculate_hash() const;
         
         // Error Handling [Q43, Q87]
         void panic(const char* message) const {
