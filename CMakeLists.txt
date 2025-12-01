@@ -75,6 +75,7 @@ set(SRC_CORE
     src/core/card_def.hpp
     src/core/game_state.hpp
     src/core/game_state_stats.cpp
+    src/core/game_state_tracking.cpp
     src/core/action.hpp
 )
 
@@ -88,6 +89,7 @@ set(SRC_ENGINE
     src/engine/utils/dev_tools.cpp
     src/engine/card_system/card_registry.cpp
     src/engine/card_system/generic_card_system.cpp
+    src/engine/game_instance.cpp
 )
 
 # Utils (Phase 1)
