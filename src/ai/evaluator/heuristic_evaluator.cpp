@@ -2,6 +2,7 @@
 #include "../../engine/action_gen/action_generator.hpp"
 #include "../encoders/action_encoder.hpp"
 #include <algorithm>
+#include "../inference/torch_model.hpp"
 
 namespace dm::ai {
 
@@ -69,5 +70,7 @@ namespace dm::ai {
 
         return {policies, values};
     }
+
+// If LibTorch is enabled, prepare a NeuralEvaluator wrapper here in future.
 
 }

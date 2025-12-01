@@ -22,6 +22,15 @@ endif()
 # Pybind11 is required for Python bindings (Phase 3)
 find_package(pybind11 REQUIRED)
 
+# Optional: LibTorch for C++ inference (Phase 3.3)
+option(USE_LIBTORCH "Enable LibTorch-based C++ inference (optional)" OFF)
+if(USE_LIBTORCH)
+    find_package(Torch REQUIRED)
+    message(STATUS "LibTorch enabled")
+else()
+    message(STATUS "LibTorch disabled (USE_LIBTORCH=OFF)")
+endif()
+
 # nlohmann_json for Generic Card System (Phase 3)
 # Using local vendor copy to avoid FetchContent policy issues
 # include(FetchContent)
@@ -71,8 +80,12 @@ set(SRC_AI
     src/ai/encoders/action_encoder.cpp
     src/ai/mcts/mcts.cpp
     src/ai/evaluator/heuristic_evaluator.cpp
+    src/ai/evaluator/neural_evaluator.cpp
     src/ai/self_play/self_play.cpp
     src/ai/self_play/parallel_runner.cpp
+    src/python/python_batch_inference.cpp
+    # Optional neural evaluator / inference (guarded by USE_LIBTORCH)
+    $<$<BOOL:${USE_LIBTORCH}>:src/ai/inference/torch_model.cpp>
 )
 
 # --- Targets ---
@@ -97,3 +110,9 @@ pybind11_add_module(dm_ai_module
     src/python/bindings.cpp
 )
 target_link_libraries(dm_ai_module PRIVATE dm_core)
+
+if(USE_LIBTORCH)
+    target_link_libraries(dm_core PRIVATE ${TORCH_LIBRARIES})
+    target_compile_definitions(dm_core PUBLIC USE_LIBTORCH)
+    target_link_libraries(dm_ai_module PRIVATE ${TORCH_LIBRARIES})
+endif()

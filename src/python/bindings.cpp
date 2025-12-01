@@ -1,11 +1,13 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
+#include <pybind11/numpy.h>
 #include "../core/game_state.hpp"
 #include "../core/card_def.hpp"
 #include "../engine/action_gen/action_generator.hpp"
 #include "../engine/effects/effect_resolver.hpp"
 #include "../engine/flow/phase_manager.hpp"
+#include "../engine/card_system/card_registry.hpp"
 #include "../ai/encoders/tensor_converter.hpp"
 #include "../ai/encoders/action_encoder.hpp"
 #include "../ai/mcts/mcts.hpp"
@@ -17,6 +19,8 @@
 
 #include "../ai/self_play/parallel_runner.hpp"
 #include "../engine/utils/dev_tools.hpp"
+#include "../python/python_batch_inference.hpp"
+#include "../ai/evaluator/neural_evaluator.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -55,6 +59,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("PLAY_CARD", ActionType::PLAY_CARD)
         .value("ATTACK_PLAYER", ActionType::ATTACK_PLAYER)
         .value("ATTACK_CREATURE", ActionType::ATTACK_CREATURE)
+        .value("BLOCK", ActionType::BLOCK)
+        .value("USE_SHIELD_TRIGGER", ActionType::USE_SHIELD_TRIGGER)
+        .value("SELECT_TARGET", ActionType::SELECT_TARGET)
         .value("RESOLVE_EFFECT", ActionType::RESOLVE_EFFECT)
         .export_values();
 
@@ -192,6 +199,24 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<EffectResolver>(m, "EffectResolver")
         .def_static("resolve_action", &EffectResolver::resolve_action);
 
+    // Debug helper to inspect pending effects (type, source_instance_id, controller)
+    m.def("get_pending_effects_info", [](const GameState& s) {
+        std::vector<std::tuple<int,int,int>> out;
+        for (const auto &pe : s.pending_effects) {
+            out.emplace_back((int)pe.type, pe.source_instance_id, (int)pe.controller);
+        }
+        return out;
+    });
+
+    // Verbose debug helper: include num_targets_needed, selected targets count, has_effect_def
+    m.def("get_pending_effects_verbose", [](const GameState& s) {
+        std::vector<std::tuple<int,int,int,int,int,bool>> out;
+        for (const auto &pe : s.pending_effects) {
+            out.emplace_back((int)pe.type, pe.source_instance_id, (int)pe.controller, pe.num_targets_needed, (int)pe.target_instance_ids.size(), (bool)pe.effect_def.has_value());
+        }
+        return out;
+    });
+
     // Utils
     py::class_<Determinizer>(m, "Determinizer")
         .def_static("determinize", &Determinizer::determinize);
@@ -202,6 +227,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<DevTools>(m, "DevTools")
         .def_static("move_cards", &DevTools::move_cards,
             py::arg("state"), py::arg("player_id"), py::arg("source"), py::arg("target"), py::arg("count"), py::arg("card_id_filter") = -1);
+
+    // CardRegistry JSON loader (for GenericCardSystem)
+    m.def("card_registry_load_from_json", &dm::engine::CardRegistry::load_from_json, "Load card definitions from a JSON string into the CardRegistry");
 
     // AI
     py::class_<TensorConverter>(m, "TensorConverter")
@@ -265,4 +293,142 @@ PYBIND11_MODULE(dm_ai_module, m) {
             return self.play_games(initial_states, evaluator, temp, noise, num_threads);
         }, py::call_guard<py::gil_scoped_release>(),
            py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature") = 1.0f, py::arg("add_noise") = true, py::arg("num_threads") = 4);
+
+        // Batch inference registration: allow Python to register a batched model callback
+        m.def("register_batch_inference", [](py::function func) {
+            dm::python::BatchCallback cb = [func](const dm::python::BatchInput& in) -> dm::python::BatchOutput {
+                py::gil_scoped_acquire acquire;
+                py::list py_in;
+                for (size_t i = 0; i < in.size(); ++i) {
+                    py::list row;
+                    for (size_t j = 0; j < in[i].size(); ++j) row.append(in[i][j]);
+                    py_in.append(row);
+                }
+
+                py::object result = func(py_in);
+                // Expect (policies, values)
+                py::tuple tup = result.cast<py::tuple>();
+                py::list py_policies = tup[0].cast<py::list>();
+                py::list py_values = tup[1].cast<py::list>();
+
+                dm::python::BatchOutput out;
+                out.first.reserve(py_policies.size());
+                out.second.reserve(py_values.size());
+
+                for (auto item : py_policies) {
+                    py::list plist = item.cast<py::list>();
+                    std::vector<float> pv;
+                    pv.reserve(plist.size());
+                    for (auto v : plist) pv.push_back(v.cast<float>());
+                    out.first.push_back(std::move(pv));
+                }
+
+                for (auto v : py_values) out.second.push_back(v.cast<float>());
+                return out;
+            };
+
+            dm::python::set_batch_callback(cb);
+        }, "Register a Python function for batch inference. The function should accept a list of feature-lists and return (policies_list, values_list)");
+
+        // Register a Python function that accepts a NumPy ndarray of shape (batch, stride).
+        // This tries to minimize per-row allocations by passing a single contiguous buffer.
+        m.def("register_batch_inference_numpy", [](py::function func) {
+            dm::python::FlatBatchCallback cb = [func](const std::vector<float>& flat, size_t n, size_t stride) -> dm::python::BatchOutput {
+                py::gil_scoped_acquire acquire;
+
+                // Make a shared copy of flat to ensure lifetime when NumPy views it.
+                auto data_ptr = std::make_shared<std::vector<float>>(flat);
+                // Create capsule holding shared_ptr to keep memory alive
+                py::capsule free_when_done(new std::shared_ptr<std::vector<float>>(data_ptr), [](void *v){
+                    auto p = reinterpret_cast<std::shared_ptr<std::vector<float>>*>(v);
+                    delete p;
+                });
+
+                // Create numpy array that references the shared vector
+                std::vector<ssize_t> shape = { (ssize_t)n, (ssize_t)stride };
+                std::vector<ssize_t> strides = { (ssize_t)(stride * sizeof(float)), (ssize_t)sizeof(float) };
+                py::array arr(py::buffer_info(
+                    data_ptr->data(),                          /* data as void* */
+                    sizeof(float),                             /* size of each element */
+                    py::format_descriptor<float>::format(),    /* data type */
+                    2,                                          /* ndim */
+                    shape,                                     /* shape */
+                    strides                                     /* strides */
+                ));
+                // attach capsule to array so the shared_ptr is kept alive
+                arr.attr("__capsule_owner__") = free_when_done;
+
+                py::object result = func(arr);
+                // Debug: print result type and repr to stderr
+                try {
+                    std::string rtype = std::string(py::str(result.get_type()));
+                    std::string rrepr = std::string(py::str(result));
+                    fprintf(stderr, "bindings: result type=%s repr=%s\n", rtype.c_str(), rrepr.c_str());
+                } catch (...) {}
+
+                // Expect (policies, values)
+                dm::python::BatchOutput out;
+
+                if (py::isinstance<py::tuple>(result)) {
+                    py::tuple tup = result.cast<py::tuple>();
+                    py::object py_policies = tup[0];
+                    py::object py_values = tup[1];
+
+                    // Policies: accept ndarray or list
+                    if (py::isinstance<py::array>(py_policies)) {
+                        py::array p_arr = py_policies.cast<py::array>();
+                        py::buffer_info info = p_arr.request();
+                        if (info.ndim == 2) {
+                            ssize_t rows = info.shape[0];
+                            ssize_t cols = info.shape[1];
+                            out.first.resize((size_t)rows);
+                            float* base = static_cast<float*>(info.ptr);
+                            for (ssize_t i = 0; i < rows; ++i) {
+                                out.first[(size_t)i].assign(base + i*cols, base + i*cols + cols);
+                            }
+                        }
+                    } else if (py::isinstance<py::list>(py_policies)) {
+                        py::list plist = py_policies.cast<py::list>();
+                        out.first.reserve(plist.size());
+                        for (auto item : plist) {
+                            py::list row = item.cast<py::list>();
+                            std::vector<float> pv;
+                            pv.reserve(row.size());
+                            for (auto v : row) pv.push_back(v.cast<float>());
+                            out.first.push_back(std::move(pv));
+                        }
+                    }
+
+                    // Values: accept ndarray or list
+                    if (py::isinstance<py::array>(py_values)) {
+                        py::array v_arr = py_values.cast<py::array>();
+                        py::buffer_info info = v_arr.request();
+                        if (info.ndim == 1) {
+                            float* base = static_cast<float*>(info.ptr);
+                            out.second.assign(base, base + info.shape[0]);
+                        }
+                    } else if (py::isinstance<py::list>(py_values)) {
+                        py::list vlist = py_values.cast<py::list>();
+                        out.second.reserve(vlist.size());
+                        for (auto vv : vlist) out.second.push_back(vv.cast<float>());
+                    }
+                }
+
+                return out;
+            };
+
+            dm::python::set_flat_batch_callback(cb);
+        }, "Register a Python function that accepts a NumPy ndarray of shape (batch, stride) and returns (policies, values)");
+
+        m.def("has_batch_inference_registered", []() {
+            return dm::python::has_batch_callback();
+        });
+
+        m.def("has_flat_batch_inference_registered", []() {
+            return dm::python::has_flat_batch_callback();
+        });
+
+        py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
+            .def(py::init<const std::map<CardID, CardDefinition>&>())
+            .def("evaluate", &NeuralEvaluator::evaluate);
 }

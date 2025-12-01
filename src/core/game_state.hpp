@@ -16,6 +16,7 @@ namespace dm::core {
         bool is_tapped = false;
         bool summoning_sickness = false;
         bool is_face_down = false; // For shields or terror pit etc? Shields are face down by default.
+        int power_mod = 0; // temporary/ongoing power modifications applied by effects
         
         // Constructors
         CardInstance() : card_id(0), instance_id(-1) {}
