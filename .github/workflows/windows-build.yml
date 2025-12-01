@@ -26,8 +26,13 @@ jobs:
         shell: pwsh
         run: |
           $pybind_dir = (python -m pybind11 --cmakedir).Trim()
+          if ([string]::IsNullOrWhiteSpace($pybind_dir)) {
+            Write-Error "pybind11 cmake dir is empty. Make sure pybind11 is installed and python -m pybind11 --cmakedir works."
+            exit 1
+          }
           Write-Host "pybind11 cmake dir: $pybind_dir"
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$pybind_dir"
+          # Pass both CMAKE_PREFIX_PATH and pybind11_DIR to help CMake locate pybind11 on Windows
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$pybind_dir" -Dpybind11_DIR="$pybind_dir"
 
       - name: Build (Release)
         run: cmake --build build --config Release --parallel
