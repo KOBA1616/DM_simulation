@@ -36,6 +36,8 @@ namespace dm::engine {
         }
 
         start_turn(game_state, card_db);
+        // Initial state loop check
+        game_state.update_loop_check();
     }
 
     void PhaseManager::start_turn(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
@@ -101,7 +103,7 @@ namespace dm::engine {
     bool PhaseManager::check_game_over(GameState& game_state, GameResult& result) {
         bool is_over = false;
 
-        // Check Winner Flag (Direct Attack)
+        // Check Winner Flag (Direct Attack or Loop)
         if (game_state.winner != GameResult::NONE) {
             result = game_state.winner;
             is_over = true;
@@ -144,6 +146,8 @@ namespace dm::engine {
     }
 
     void PhaseManager::next_phase(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+        // Record state before transition? No, record after.
+
         switch (game_state.current_phase) {
             case Phase::START_OF_TURN:
                 game_state.current_phase = Phase::DRAW;
@@ -187,6 +191,9 @@ namespace dm::engine {
                 start_turn(game_state, card_db);
                 break;
         }
+
+        // Update loop check after phase transition
+        game_state.update_loop_check();
     }
 
 }
