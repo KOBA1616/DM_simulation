@@ -19,6 +19,17 @@ class ParametricBelief {
 public:
     ParametricBelief() {}
 
+    // Configure weights: strong_weight applies to hand/battle/shield/graveyard
+    // deck_weight applies to cards appearing in deck listings (weaker evidence)
+    void set_weights(float strong_w, float deck_w) {
+        strong_weight = strong_w;
+        deck_weight = deck_w;
+    }
+
+    std::pair<float,float> get_weights() const {
+        return {strong_weight, deck_weight};
+    }
+
     // Initialize uniform prior over known card ids
     void initialize(const std::map<uint16_t, CardDefinition>& card_db) {
         probs.clear();
@@ -43,11 +54,11 @@ public:
         // Cards appearing in deck listings are weaker evidence (penalize less).
         std::map<uint16_t, float> seen_weight;
         for (const auto &player : state.players) {
-            for (const auto &c : player.hand) seen_weight[c.card_id] += 1.0f; // strong
-            for (const auto &c : player.battle_zone) seen_weight[c.card_id] += 1.0f; // strong
-            for (const auto &c : player.shield_zone) seen_weight[c.card_id] += 1.0f; // strong
-            for (const auto &c : player.graveyard) seen_weight[c.card_id] += 1.0f; // strong
-            for (const auto &c : player.deck) seen_weight[c.card_id] += 0.25f; // weak evidence
+            for (const auto &c : player.hand) seen_weight[c.card_id] += strong_weight; // strong
+            for (const auto &c : player.battle_zone) seen_weight[c.card_id] += strong_weight; // strong
+            for (const auto &c : player.shield_zone) seen_weight[c.card_id] += strong_weight; // strong
+            for (const auto &c : player.graveyard) seen_weight[c.card_id] += strong_weight; // strong
+            for (const auto &c : player.deck) seen_weight[c.card_id] += deck_weight; // weak evidence
         }
 
         // Penalize probabilities for seen cards proportionally to weight, then renormalize
@@ -78,6 +89,8 @@ public:
 
 private:
     std::map<uint16_t, float> probs;
+    float strong_weight = 1.0f;
+    float deck_weight = 0.25f;
 };
 
 } // namespace ai

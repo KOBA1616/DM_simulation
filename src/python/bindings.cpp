@@ -622,5 +622,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
             .def("initialize", &dm::ai::ParametricBelief::initialize, py::arg("card_db"))
             .def("initialize_ids", &dm::ai::ParametricBelief::initialize_ids, py::arg("ids"))
             .def("update", &dm::ai::ParametricBelief::update, py::arg("state"))
-            .def("get_vector", &dm::ai::ParametricBelief::get_vector);
+            .def("get_vector", &dm::ai::ParametricBelief::get_vector)
+            .def("set_weights", [](dm::ai::ParametricBelief &b, float strong_w, float deck_w){ b.set_weights(strong_w, deck_w); }, py::arg("strong_weight")=1.0f, py::arg("deck_weight")=0.25f)
+            .def("get_weights", [](const dm::ai::ParametricBelief &b){ auto p = b.get_weights(); return py::make_tuple(p.first, p.second); });
 }
