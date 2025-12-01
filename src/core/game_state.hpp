@@ -1,11 +1,13 @@
 #pragma once
 #include "types.hpp"
 #include "constants.hpp"
+#include "card_stats.hpp"
 #include <vector>
 #include <array>
 #include <random>
 #include <stdexcept>
 #include <optional>
+#include <map>
 #include "card_json_types.hpp"
 
 namespace dm::core {
@@ -75,10 +77,25 @@ namespace dm::core {
         // Determinism: std::mt19937 inside State [Q69]
         std::mt19937 rng;
 
+        // Result Stats / POMDP support
+        // Map CardID -> aggregated CardStats (sums and counts)
+        std::map<CardID, CardStats> global_card_stats;
+
+        // Initial deck aggregate sums (sum over cards placed in initial deck)
+        CardStats initial_deck_stats_sum;
+        CardStats visible_stats_sum;
+        int initial_deck_count = 40;
+        int visible_card_count = 0;
+
         GameState(uint32_t seed) : rng(seed) {
             players[0].id = 0;
             players[1].id = 1;
         }
+
+        // POMDP helpers
+        void on_card_reveal(CardID cid);
+        std::vector<float> vectorize_card_stats(CardID cid) const;
+        std::vector<float> get_library_potential() const;
 
         Player& get_active_player() {
             return players[active_player_id];
