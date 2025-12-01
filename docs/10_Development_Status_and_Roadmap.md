@@ -67,3 +67,28 @@
 今後の実装は原則として以下のドキュメントに従って進めること。
 
 - **[11. 詳細実装計画書 (Detailed Implementation Steps)](./11_Detailed_Implementation_Steps.md)**
+
+## 10.4 2025-12-01 現在の開発段階（要件定義書への記録）
+
+この節は、2025-12-01 時点での実装進捗を要件定義書として残すためのまとめです。
+
+- 実施済み（重要なマイルストーン）
+    - `docs/` に PBT, POMDP（隠れ情報推論）, Meta-Game Curriculum, Result Stats, Scenario Training に関する設計仕様を追加。
+    - C++ 側に `CardStats` 構造体を導入し、`GameState` に統計集計用のフィールドを追加（`global_card_stats`, `initial_deck_stats_sum`, `visible_stats_sum` 等）。
+    - POMDP 補助関数 `on_card_reveal()`, `vectorize_card_stats()`, `get_library_potential()` を実装。
+    - 初期化関数 `initialize_card_stats()` を実装し、カード DB 参照で `global_card_stats` エントリを確保する機能を追加。
+    - 履歴統計の読み込み機能 `load_card_stats_from_json()` と、デッキから初期合算を計算する `compute_initial_deck_sums()` を追加（`data/card_stats.json` のサンプルあり）。
+    - Python バインディングにラッパー実装を追加し、バインディング経由で初期化やベクトル化関数を呼べるようにした。
+    - ローカルでの CMake ビルドを実行し、`dm_core` / `dm_sim_test` / `dm_ai_module` が生成されることを確認。
+
+- 残課題 / 注意点
+    - Windows 上での Python 拡張モジュールのロードにおいて、MinGW ビルドのランタイム DLL 依存で ImportError（DLL load failed）が発生。現在 PATH 調整等で診断中。
+    - 実データ運用のために、履歴統計の収集・保存フォーマット（JSON/CSV）の最終仕様化が必要。
+
+- 次の優先タスク（推奨順）
+    1. Python の拡張モジュール読み込み問題を解決し、bindings の自動テストを動かす。
+    2. 履歴統計フォーマットの確定と収集パイプラインの実装（トレーニング出力から統計を生成するスクリプト）。
+    3. Python 側のユニットテスト (pytest) を追加して回帰を防止。
+
+この記録は要件定義書の公式ログとして保存しました。
+
