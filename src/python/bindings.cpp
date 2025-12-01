@@ -172,6 +172,25 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly("players", &GameState::players);
 
     // Expose stats/POMDP helpers as module-level helpers (wrappers)
+    m.def("get_card_stats", [](const GameState &s) {
+        // Return a dict of id -> stats dict
+        py::dict result;
+        for (const auto& kv : s.global_card_stats) {
+            CardID cid = kv.first;
+            const CardStats& stats = kv.second;
+            py::dict d;
+            d["play_count"] = stats.play_count;
+            d["win_count"] = stats.win_count;
+            d["sum_early_usage"] = stats.sum_early_usage;
+            d["sum_late_usage"] = stats.sum_late_usage;
+            d["sum_trigger_rate"] = stats.sum_trigger_rate;
+            d["sum_cost_discount"] = stats.sum_cost_discount;
+            // Add other stats if needed for debug/analysis, but play_count is most important for now
+            result[py::cast(cid)] = d;
+        }
+        return result;
+    }, py::arg("state"));
+
     m.def("initialize_card_stats", [](GameState &s, const std::map<CardID, CardDefinition> &card_db, int deck_size) {
         for (const auto &p : card_db) {
             CardID cid = p.first;
