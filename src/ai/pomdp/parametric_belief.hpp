@@ -38,21 +38,26 @@ public:
     // Naive update: reduce probability for cards that are visible in the provided state
     void update(const GameState &state) {
         if (probs.empty()) return;
-        // Collect visible card ids from both players (hand, battle, shield, graveyard)
-        std::map<uint16_t, int> seen_count;
+        // Collect visible card ids from both players and zone-weight them.
+        // Cards seen in hand/battle/shield/graveyard are strong evidence and should be penalized more.
+        // Cards appearing in deck listings are weaker evidence (penalize less).
+        std::map<uint16_t, float> seen_weight;
         for (const auto &player : state.players) {
-            for (const auto &c : player.hand) seen_count[c.card_id]++;
-            for (const auto &c : player.battle_zone) seen_count[c.card_id]++;
-            for (const auto &c : player.shield_zone) seen_count[c.card_id]++;
-            for (const auto &c : player.graveyard) seen_count[c.card_id]++;
-            for (const auto &c : player.deck) seen_count[c.card_id]++;
+            for (const auto &c : player.hand) seen_weight[c.card_id] += 1.0f; // strong
+            for (const auto &c : player.battle_zone) seen_weight[c.card_id] += 1.0f; // strong
+            for (const auto &c : player.shield_zone) seen_weight[c.card_id] += 1.0f; // strong
+            for (const auto &c : player.graveyard) seen_weight[c.card_id] += 1.0f; // strong
+            for (const auto &c : player.deck) seen_weight[c.card_id] += 0.25f; // weak evidence
         }
 
-        // Penalize probabilities for seen cards and renormalize
+        // Penalize probabilities for seen cards proportionally to weight, then renormalize
         for (auto &p : probs) {
-            auto it = seen_count.find(p.first);
-            if (it != seen_count.end()) {
-                p.second *= 0.25f; // reduce confidence for observed ones
+            auto it = seen_weight.find(p.first);
+            if (it != seen_weight.end() && it->second > 0.0f) {
+                // stronger weight => stronger penalty; map weight to multiplier in (0,1]
+                float weight = it->second;
+                float multiplier = 1.0f / (1.0f + weight); // e.g., weight 1 -> 0.5, weight 4 -> 0.2
+                p.second *= multiplier;
             }
         }
 
