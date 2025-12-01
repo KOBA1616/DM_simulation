@@ -21,6 +21,8 @@
 #include "../engine/utils/dev_tools.hpp"
 #include "../python/python_batch_inference.hpp"
 #include "../ai/evaluator/neural_evaluator.hpp"
+#include "../core/scenario_config.hpp"
+#include "../engine/game_instance.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -139,6 +141,23 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly("battle_zone", &Player::battle_zone)
         .def_readonly("shield_zone", &Player::shield_zone)
         .def_readonly("graveyard", &Player::graveyard);
+
+    py::class_<ScenarioConfig>(m, "ScenarioConfig")
+        .def(py::init<>())
+        .def_readwrite("my_mana", &ScenarioConfig::my_mana)
+        .def_readwrite("my_hand_cards", &ScenarioConfig::my_hand_cards)
+        .def_readwrite("my_battle_zone", &ScenarioConfig::my_battle_zone)
+        .def_readwrite("my_mana_zone", &ScenarioConfig::my_mana_zone)
+        .def_readwrite("my_grave_yard", &ScenarioConfig::my_grave_yard)
+        .def_readwrite("enemy_shield_count", &ScenarioConfig::enemy_shield_count)
+        .def_readwrite("enemy_battle_zone", &ScenarioConfig::enemy_battle_zone)
+        .def_readwrite("enemy_can_use_trigger", &ScenarioConfig::enemy_can_use_trigger)
+        .def_readwrite("loop_proof_mode", &ScenarioConfig::loop_proof_mode);
+
+    py::class_<GameInstance>(m, "GameInstance")
+        .def(py::init<uint32_t, const std::map<CardID, CardDefinition>&>())
+        .def("reset_with_scenario", &GameInstance::reset_with_scenario)
+        .def_property_readonly("state", &GameInstance::get_state, py::return_value_policy::reference);
 
     py::class_<GameState>(m, "GameState")
         .def(py::init<uint32_t>())
