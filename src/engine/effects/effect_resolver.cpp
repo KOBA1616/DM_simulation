@@ -349,6 +349,10 @@ namespace dm::engine {
             CardInstance card = remove_from_hand(st_player, action.source_instance_id);
             const CardDefinition& def = card_db.at(card.card_id);
             
+            // STATS TRACKING: Record Shield Trigger usage
+            // Cost discount is full cost (since it's free)
+            game_state.on_card_play(card.card_id, game_state.turn_number, true, def.cost);
+
             if (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE) {
                 card.summoning_sickness = true;
                 if (def.keywords.speed_attacker) card.summoning_sickness = false;
@@ -428,6 +432,10 @@ namespace dm::engine {
             // Should not happen if action was legal
             return;
         }
+
+        // STATS TRACKING: Record normal play
+        // For now, assume cost discount is 0 (paid full cost)
+        game_state.on_card_play(action.card_id, game_state.turn_number, false, 0);
 
         // 2. Move Card
         CardInstance card = remove_from_hand(player, action.source_instance_id);
