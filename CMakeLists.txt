@@ -32,7 +32,16 @@ if(NOT pybind11_FOUND)
     )
     FetchContent_MakeAvailable(pybind11)
 endif()
-find_package(pybind11 CONFIG REQUIRED)
+if(NOT pybind11_FOUND)
+    # If FetchContent made pybind11 available, mark it as found so downstream
+    # commands (e.g., pybind11_add_module) can use the targets. If not found,
+    # fail early with a helpful message.
+    if(TARGET pybind11::module)
+        set(pybind11_FOUND TRUE)
+    else()
+        message(FATAL_ERROR "pybind11 not found and FetchContent did not provide it.\nEnsure network access or install pybind11 via package manager.")
+    endif()
+endif()
 
 # Optional: LibTorch for C++ inference (Phase 3.3)
 option(USE_LIBTORCH "Enable LibTorch-based C++ inference (optional)" OFF)
