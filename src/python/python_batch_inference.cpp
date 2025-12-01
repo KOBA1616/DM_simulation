@@ -53,4 +53,14 @@ namespace dm::python {
         return cb_copy(flat, n, stride);
     }
 
+    void clear_batch_callback() {
+        std::lock_guard<std::mutex> lk(g_cb_mutex);
+        g_callback = nullptr;
+    }
+
+    void clear_flat_batch_callback() {
+        std::lock_guard<std::mutex> lk(g_flat_cb_mutex);
+        g_flat_callback = nullptr;
+    }
+
 }

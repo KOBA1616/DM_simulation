@@ -23,6 +23,10 @@ namespace dm::python {
     // Flat API: set/get/call when providing a contiguous flat buffer
     void set_flat_batch_callback(FlatBatchCallback cb);
     bool has_flat_batch_callback();
+
+    // Clear registered callbacks
+    void clear_batch_callback();
+    void clear_flat_batch_callback();
     BatchOutput call_flat_batch_callback(const std::vector<float>& flat, size_t n, size_t stride);
 
 }
