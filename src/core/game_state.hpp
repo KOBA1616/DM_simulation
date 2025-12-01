@@ -67,6 +67,12 @@ namespace dm::core {
         PlayerID active_player_id = 0;
         Phase current_phase = Phase::START_OF_TURN;
         GameResult winner = GameResult::NONE;
+
+        // Loop Detection
+        std::vector<uint64_t> hash_history;
+        bool loop_proven = false;
+        void update_loop_check();
+
         std::array<Player, 2> players;
         
         // Pending Effects Pool [Spec 4.1, 4.2]
