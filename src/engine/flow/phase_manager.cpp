@@ -99,47 +99,46 @@ namespace dm::engine {
     }
 
     bool PhaseManager::check_game_over(GameState& game_state, GameResult& result) {
+        bool is_over = false;
+
         // Check Winner Flag (Direct Attack)
         if (game_state.winner != GameResult::NONE) {
             result = game_state.winner;
+            is_over = true;
+        } else {
+            // Check Deck Out
+            // "Deck Out (Hard): 山札の最後の1枚を引いた瞬間に敗北 [Q27]"
+            bool p1_deck_empty = game_state.players[0].deck.empty();
+            bool p2_deck_empty = game_state.players[1].deck.empty();
+
+            if (p1_deck_empty && p2_deck_empty) {
+                result = GameResult::DRAW;
+                game_state.winner = result;
+                is_over = true;
+            } else if (p1_deck_empty) {
+                result = GameResult::P2_WIN;
+                game_state.winner = result;
+                is_over = true;
+            } else if (p2_deck_empty) {
+                result = GameResult::P1_WIN;
+                game_state.winner = result;
+                is_over = true;
+            } else if (game_state.turn_number > TURN_LIMIT) {
+                // Check Turn Limit
+                result = GameResult::DRAW;
+                game_state.winner = result;
+                is_over = true;
+            }
+        }
+
+        if (is_over) {
+            if (!game_state.stats_recorded) {
+                game_state.on_game_finished(result);
+                game_state.stats_recorded = true;
+            }
             return true;
         }
 
-        // Check Deck Out
-        // "Deck Out (Hard): 山札の最後の1枚を引いた瞬間に敗北 [Q27]"
-        // This means if deck is empty when trying to draw, or just empty?
-        // Usually it's when you *must* draw but cannot.
-        // But spec says "Last card drawn -> Loss". Wait.
-        // "山札の最後の1枚を引いた瞬間に敗北" -> Lose the moment you draw the last card?
-        // That sounds like "If deck becomes empty, you lose".
-        
-        bool p1_deck_empty = game_state.players[0].deck.empty();
-        bool p2_deck_empty = game_state.players[1].deck.empty();
-
-        if (p1_deck_empty && p2_deck_empty) {
-            result = GameResult::DRAW;
-            return true;
-        }
-        if (p1_deck_empty) {
-            result = GameResult::P2_WIN;
-            return true;
-        }
-        if (p2_deck_empty) {
-            result = GameResult::P1_WIN;
-            return true;
-        }
-
-        // Check Turn Limit
-        if (game_state.turn_number > TURN_LIMIT) {
-            result = GameResult::DRAW;
-            return true;
-        }
-
-        // Check Direct Attack (Shields 0 and hit) - This is handled in Battle logic usually.
-        // But we can check if a player has lost flag set?
-        // For now, let's assume Battle logic sets a flag or we check shields here if needed.
-        // But "Direct Attack" is an event.
-        
         result = GameResult::NONE;
         return false;
     }
