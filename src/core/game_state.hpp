@@ -104,6 +104,10 @@ namespace dm::core {
         // Given an explicit deck list (vector of CardIDs), compute initial_deck_stats_sum as sum of per-card averages
         void compute_initial_deck_sums(const std::vector<CardID>& deck_list);
 
+        // Stats tracking
+        void on_card_play(CardID cid, int turn, bool is_trigger, int cost_diff);
+        void on_game_finished(GameResult result);
+
         Player& get_active_player() {
             return players[active_player_id];
         }
