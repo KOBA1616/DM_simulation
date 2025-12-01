@@ -116,15 +116,16 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property_readonly("destruction", [](const CardKeywords& k) { return k.destruction; });
 
     py::class_<CardDefinition>(m, "CardDefinition")
-        .def_readonly("id", &CardDefinition::id)
-        .def_readonly("name", &CardDefinition::name)
-        .def_readonly("cost", &CardDefinition::cost)
-        .def_readonly("power", &CardDefinition::power)
-        .def_readonly("power_attacker_bonus", &CardDefinition::power_attacker_bonus)
-        .def_readonly("civilization", &CardDefinition::civilization)
-        .def_readonly("type", &CardDefinition::type)
-        .def_readonly("races", &CardDefinition::races)
-        .def_readonly("keywords", &CardDefinition::keywords);
+        .def(py::init<>())
+        .def_readwrite("id", &CardDefinition::id)
+        .def_readwrite("name", &CardDefinition::name)
+        .def_readwrite("cost", &CardDefinition::cost)
+        .def_readwrite("power", &CardDefinition::power)
+        .def_readwrite("power_attacker_bonus", &CardDefinition::power_attacker_bonus)
+        .def_readwrite("civilization", &CardDefinition::civilization)
+        .def_readwrite("type", &CardDefinition::type)
+        .def_readwrite("races", &CardDefinition::races)
+        .def_readwrite("keywords", &CardDefinition::keywords);
 
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<CardID, int>())
@@ -149,6 +150,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("my_battle_zone", &ScenarioConfig::my_battle_zone)
         .def_readwrite("my_mana_zone", &ScenarioConfig::my_mana_zone)
         .def_readwrite("my_grave_yard", &ScenarioConfig::my_grave_yard)
+        .def_readwrite("my_shields", &ScenarioConfig::my_shields)
         .def_readwrite("enemy_shield_count", &ScenarioConfig::enemy_shield_count)
         .def_readwrite("enemy_battle_zone", &ScenarioConfig::enemy_battle_zone)
         .def_readwrite("enemy_can_use_trigger", &ScenarioConfig::enemy_can_use_trigger)
@@ -205,6 +207,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
             d["sum_late_usage"] = stats.sum_late_usage;
             d["sum_trigger_rate"] = stats.sum_trigger_rate;
             d["sum_cost_discount"] = stats.sum_cost_discount;
+            d["sum_win_contribution"] = stats.sum_win_contribution;
+            d["sum_comeback_win"] = stats.sum_comeback_win;
+            d["sum_finish_blow"] = stats.sum_finish_blow;
             // Add other stats if needed for debug/analysis, but play_count is most important for now
             result[py::cast(cid)] = d;
         }
