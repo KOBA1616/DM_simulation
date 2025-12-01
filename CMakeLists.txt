@@ -76,6 +76,7 @@ set(SRC_CORE
     src/core/game_state.hpp
     src/core/game_state_stats.cpp
     src/core/game_state_tracking.cpp
+    src/core/game_state_hash.cpp
     src/core/action.hpp
 )
 
