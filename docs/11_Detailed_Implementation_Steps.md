@@ -11,6 +11,7 @@
     1.  `CardStats` 構造体を定義し、16次元のスタッツ（Early Usage, Hand Adv等）を蓄積するメンバ変数を追加する。
     2.  `GameState` クラスに `global_card_stats` マップを追加し、対戦終了時に結果を集計するロジックを実装する。
     3.  `vectorize_card_stats(card_id)` 関数を実装し、正規化された16次元ベクトルを返すようにする。
+    4.  **Convergence Strategy**: 学習初期（Mask Phase）のために、全スタッツを0で埋めるフラグまたは引数を `vectorize` 関数に追加する。
 
 ### Step 2: 非公開領域推論の実装 (POMDP / Self-Inference)
 *   **参照**: [13. 非公開領域推論システム設計書](./13_POMDP_Inference_Spec.md)
@@ -39,6 +40,7 @@
     1.  `ScenarioConfig` 構造体を定義（手札、マナ、盤面の指定）。
     2.  `reset_with_scenario(config)` 関数を実装し、指定された状態でゲームを開始できるようにする。
     3.  Pythonバインディング (`dm_ai_module`) に `reset_scenario` を公開する。
+    4.  **Batch Optimization**: シナリオモードの並列実行を高速化するため、`GameInstance` プールを活用する仕組みを検討する。
 
 ### Step 2: ループ検知と特訓ループ (Loop Detection & Drill)
 *   **参照**: [16. シナリオ・トレーニング設計書](./16_Scenario_Training_Spec.md)
