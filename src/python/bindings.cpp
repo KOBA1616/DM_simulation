@@ -620,6 +620,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         py::class_<dm::ai::ParametricBelief>(m, "ParametricBelief")
             .def(py::init<>())
             .def("initialize", &dm::ai::ParametricBelief::initialize, py::arg("card_db"))
+            .def("initialize_ids", &dm::ai::ParametricBelief::initialize_ids, py::arg("ids"))
             .def("update", &dm::ai::ParametricBelief::update, py::arg("state"))
             .def("get_vector", &dm::ai::ParametricBelief::get_vector);
 }
