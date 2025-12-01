@@ -39,15 +39,17 @@
 - **Replay Buffer**: Hybrid Buffer (Sliding Window + Golden Games).
 - **Seed Mgmt**: 学習マネージャーによるシード配布.
 
-## 5.5 リーグ学習 (League Training)
-- **Objective**: 自己対戦（Self-Play）における「忘却（Catastrophic Forgetting）」と「ジャンケンの円環（Rock-Paper-Scissors Cycle）」の防止。
-- **Method**:
-    - 過去のチェックポイント（モデル）を「リーグ（対戦相手プール）」として保存。
-    - 学習中のエージェント（Main Agent）の対戦相手を以下の比率でランダムに選択する。
-        - **80%**: 最新の自分（Self-Play） - 強くなるため。
-        - **10%**: 過去の自分（Past Agents） - 弱点克服と忘却防止のため。
-        - **10%**: ルールベースBot（Rule-based Bots） - 特定のハメ技や極端な戦略への対策。
-- **Effect**: 特定のメタに過剰適応することを防ぎ、あらゆる戦法に対応できるロバスト（堅牢）なAIを育成する。
+## 5.5 Meta-Game Curriculum & League (メタゲーム・カリキュラム)
+- **詳細仕様**: [14. メタゲーム・カリキュラム設計書 (Meta-Game Curriculum Spec)](./14_Meta_Game_Curriculum_Spec.md) を参照。
+- **Objective**: 特定のデッキにしか勝てない「特化型AI」ではなく、あらゆる戦況に対応できる「汎用型AI」を育成する。
+- **Phase 1: Dual Curriculum (二極化カリキュラム)**:
+    - **Aggro Mode**: 速度とリーサル計算を学習。
+    - **Control Mode**: リソース管理と盤面支配を学習。
+    - これらを交互に行うことで、攻守のバランス感覚（Value Network）を養う。
+- **Phase 2: Meta-Game League (メタゲーム・リーグ)**:
+    - **Participants**: 最新の自分、過去の自分、環境トップの固定デッキ（アグロ・コントロール）、コンボ特化AI。
+    - **Adaptive Matchmaking**: 勝率の低い（苦手な）相手と優先的に対戦させることで、弱点を効率的に克服する。
+- **Effect**: 「ジャンケンの円環」を抜け出し、メタゲームの進化に合わせて成長し続けるAIを実現する。
 
 ## 5.6 Population Based Training (PBT)
 - **詳細仕様**: [12. PBT導入設計書 (PBT Design Spec)](./12_PBT_Design_Spec.md) を参照。
@@ -79,3 +81,33 @@
         - ランダムに対戦相手を選ぶのではなく、**「現在のメタゲームにおいて、学習中のエージェントにとって最も脅威となる（攻略すべき）相手」**を優先的にサンプリングする。
         - 例: 三すくみ（A > B > C > A）において、自分がAなら、苦手なCの出現率を上げる。
 - **Effect**: 常に「今の自分にとって一番痛いところを突いてくる相手」と戦う環境を自動構築し、特定のメタに依存しない真の強さを獲得する。
+
+## 5.9 Hidden Information Inference (POMDP)
+- **詳細仕様**: [13. 非公開領域推論システム設計書 (POMDP Inference Spec)](./13_POMDP_Inference_Spec.md) を参照。
+- **Objective**: 「見えていない情報（相手の手札、シールド）」を確率的に推論し、リスク管理とブラフ読みを可能にする。
+- **Method**:
+    - **Self-Inference (O(1))**: 自分の山札・シールドの中身は、初期デッキと公開情報の差分から正確な確率分布（16次元スタッツ）を計算して入力する。
+    - **Opponent-Inference (Distillation)**:
+        - **Teacher Model**: 学習時のみ、相手の手札が見えている「神の視点」を持つ教師モデルを使用。
+        - **Student Model**: 本番用モデルは、教師モデルの行動分布（Logits）を模倣するように学習（蒸留）することで、間接的に「相手の手札を読む直感」を獲得する。
+- **Effect**: 「山札にトリガーがないからブロックする」「相手がマナを残したから警戒する」といった、上級者のような高度な判断を実現する。
+
+## 5.10 Result Stats & Autonomous Evolution (結果スタッツと自律進化)
+- **詳細仕様**: [15. 結果スタッツ設計書 (Result Stats Spec)](./15_Result_Stats_Spec.md) を参照。
+- **Objective**: 人間の主観（タグ付け）を排除し、シミュレーション結果のみから「カードの強さ」を定義する。
+- **Method**:
+    - **16-dim Stats**: 各カードの使用タイミング、アドバンテージ、勝率貢献度などを16次元のベクトルとして数値化。
+    - **Learning Cycle**:
+        1.  **Observer**: ランダム対戦で初期スタッツを収集。
+        2.  **Learner**: スタッツを元にAIがプレイングとデッキ構築を学習。
+        3.  **Refinement**: 賢くなったAI同士の対戦でスタッツを更新（コンボカードの再評価）。
+- **Effect**: 未知のカードや新弾カードに対しても、AIが自ら「使い方」と「強さ」を発見し、メタゲームを進化させ続ける。
+
+## 5.11 Scenario Training (シナリオ・トレーニング)
+- **詳細仕様**: [16. シナリオ・トレーニング設計書 (Scenario Training Spec)](./16_Scenario_Training_Spec.md) を参照。
+- **Objective**: 確率の低い複雑なコンボや、終盤の詰み手順（リーサル）を効率的に学習させる。
+- **Method**:
+    - **Scenario Setup**: C++エンジンに「特定の盤面（手札、マナ、場）」からゲームを開始する機能を実装。
+    - **The Drill**: 学習初期に「コンボパーツが揃った状態」からの特訓を繰り返すことで、手順を丸暗記させる。
+    - **Loop Detection**: 同一局面の繰り返しを検知し、「ループ証明完了」として報酬を与える。
+- **Effect**: ランダム探索では発見困難な無限ループや即死コンボを、AIが確実に実行できるようになる。

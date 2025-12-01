@@ -33,40 +33,34 @@
 
 ## 10.2 今後の開発計画 (Future Roadmap)
 
-### Phase 3: 基盤の高速化と柔軟化 (Foundation for Scale)
-**目的**: 数千種類のカードと数百万回の対戦に耐えうる「速度」と「拡張性」を確保する。
-1.  **C++ Inference (LibTorch)**:
-    - Python側の推論をC++ (LibTorch) に移行する。
-    - **Note**: 量子化（Int8）は実装難易度が高いため**採用せず**、**Float32** での実装とする。
-    - **Risk Management**: ビルド環境構築の難易度が高いため、トラブル時は**実装を後回し（凍結）**とし、Python推論での開発を継続する。
-2.  **Generic Card System (Interpreter) & Refactoring**:
-    - JSON定義を読み込んで動作する `GenericCard` クラスとエンジンを実装。
-    - **Special Effects Handler**: JSONで表現しきれない特殊効果（Extra Win, Extra Turn等）は、**別ファイル（C++）で管理する専用のハンドラ**として実装し、JSONからフックできるようにする。
-    - **Refactoring**: 現在の登録カード種類が少ないため、**既存カードも全てJSON定義へ移行（リファクタリング）** し、コードベースを統一する。これにより保守性を最大化する。
-3.  **Card Generator GUI Tool**:
-    - 開発者がGUI操作でカード効果を定義し、JSONを自動生成するツールを開発する。
-    - **Features**:
-        - **Visual Editor**: トリガー、条件、効果をノードやリストで直感的に編集。
-        - **LLM Assistant**: **Gemini API** を利用し、自然言語からJSONを自動生成する機能。
+### Phase 3: AIコアの進化 (AI Core Evolution)
+**目的**: 「結果スタッツ」と「非公開領域推論」を実装し、AIの基礎知能を飛躍的に向上させる。
+1.  **Result Stats System (Spec 15)**:
+    - C++エンジンに `CardStats` 構造体を実装し、16次元のスタッツを収集・ベクトル化する。
+    - 人間のタグ付けを廃止し、データ駆動でのカード評価基盤を確立する。
+2.  **POMDP & Distillation (Spec 13)**:
+    - 相手の手札・シールドを推論するための Teacher-Student 蒸留システムを構築する。
+    - C++エンジンに「自分自身の山札確率」を計算する `Self-Inference` ロジックを実装する。
 
-### Phase 4: 知能の深化とコンテンツ拡充 (Intelligence & Expansion)
-**目的**: AIに「カードの意味」を理解させ、カードプールを一気に拡大する。
-1.  **LLM Text Embeddings (NLP × RL)**:
-    - カードテキストをベクトル化して入力するパイプラインを構築。
-    - Phase 3で構築したカードシステムと連携し、新カード追加時の「ゼロショット適応」を実現する。
-2.  **Auxiliary Tasks (補助タスク)**:
-    - 勝敗以外の予測タスク（次状態予測など）を追加し、スパースな報酬問題を解決する。
-3.  **カード量産 (Mass Production)**:
-    - ジェネレーターを用いて主要カード（100〜200種）を実装し、環境を多様化させる。
+### Phase 4: 高度な学習手法 (Advanced Training)
+**目的**: 複雑なコンボやメタゲームの駆け引きを習得させる。
+1.  **Scenario Training (Spec 16)**:
+    - 特定盤面から開始する「詰将棋モード」を実装し、無限ループやリーサル手順を特訓する。
+2.  **Meta-Game Curriculum (Spec 14)**:
+    - アグロ/コントロールを交互に学習する「Dual Curriculum」を導入。
+    - 苦手な相手と優先的に戦う「Adaptive League」を構築する。
 
-### Phase 5: メタゲームと進化 (Evolution & Meta-Game)
-**目的**: 人間の介入なしに、最強デッキとプレイングを自動発見する。
-1.  **League Training & PSRO**:
-    - 計算リソースを **リーグ学習（League Training）** に集中させる。
-    - 過去の自分や多様なエージェントとの対戦をスケジューリングし、メタゲームの均衡点（ナッシュ均衡）を目指す。
-    - **Note**: PBT（Population Based Training）は計算コストが過大なため、本フェーズでは優先度を下げ（Optional）、リーグ学習による強さの向上を優先する。
-2.  **Quality-Diversity (MAP-Elites) & Co-evolution**:
-    - デッキ構築とプレイングを共進化させ、未知のコンボや「変な勝ち方」をするデッキを発掘する。
+### Phase 5: 自律進化エコシステム (Autonomous Ecosystem)
+**目的**: 人間の介入なしに最強デッキを発見し続けるシステムを完成させる。
+1.  **PBT & Kaggle Integration (Spec 12)**:
+    - Kaggle Notebooks 上で動作する PBT (Population Based Training) 環境を構築。
+    - 24時間稼働によるハイパーパラメータ探索とデッキ進化を実現する。
+
+### Parallel Track: コンテンツ拡充 (Content Expansion)
+**目的**: カードプールを拡大し、環境の多様性を確保する。
+1.  **Generic Card Generator (Spec 9)**:
+    - GUI操作とLLM補助によるカード量産ツールを開発する。
+    - 既存カードをJSON定義へ完全移行する。
 
 ## 10.3 詳細実装計画 (Detailed Plan)
 低級モデルやコンテキスト制限のある環境での開発を支援するため、タスクを極小単位に分解した詳細計画書を作成した。
