@@ -171,6 +171,53 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("current_phase", &GameState::current_phase)
         .def_readonly("players", &GameState::players);
 
+    // Expose stats/POMDP helpers as module-level helpers (wrappers)
+    m.def("initialize_card_stats", [](GameState &s, const std::map<CardID, CardDefinition> &card_db, int deck_size) {
+        for (const auto &p : card_db) {
+            CardID cid = p.first;
+            if (s.global_card_stats.find(cid) == s.global_card_stats.end()) {
+                s.global_card_stats.emplace(cid, CardStats{});
+            }
+        }
+        s.initial_deck_count = deck_size;
+        s.visible_card_count = 0;
+        s.visible_stats_sum = CardStats{};
+        s.initial_deck_stats_sum = CardStats{};
+    }, py::arg("state"), py::arg("card_db"), py::arg("deck_size") = 40);
+
+    m.def("vectorize_card_stats", [](const GameState &s, CardID cid){
+        auto it = s.global_card_stats.find(cid);
+        if (it != s.global_card_stats.end()) return it->second.to_vector();
+        return std::vector<float>(16, 0.0f);
+    }, py::arg("state"), py::arg("card_id"));
+
+    m.def("get_library_potential", [](const GameState &s){
+        int remaining = s.initial_deck_count - s.visible_card_count;
+        if (remaining <= 0) return std::vector<float>(16, 0.0f);
+        std::vector<float> potential(16, 0.0f);
+        potential[0] = static_cast<float>((s.initial_deck_stats_sum.sum_early_usage - s.visible_stats_sum.sum_early_usage) / remaining);
+        potential[1] = static_cast<float>((s.initial_deck_stats_sum.sum_late_usage - s.visible_stats_sum.sum_late_usage) / remaining);
+        potential[2] = static_cast<float>((s.initial_deck_stats_sum.sum_trigger_rate - s.visible_stats_sum.sum_trigger_rate) / remaining);
+        potential[3] = static_cast<float>((s.initial_deck_stats_sum.sum_cost_discount - s.visible_stats_sum.sum_cost_discount) / remaining);
+
+        potential[4] = static_cast<float>((s.initial_deck_stats_sum.sum_hand_adv - s.visible_stats_sum.sum_hand_adv) / remaining);
+        potential[5] = static_cast<float>((s.initial_deck_stats_sum.sum_board_adv - s.visible_stats_sum.sum_board_adv) / remaining);
+        potential[6] = static_cast<float>((s.initial_deck_stats_sum.sum_mana_adv - s.visible_stats_sum.sum_mana_adv) / remaining);
+        potential[7] = static_cast<float>((s.initial_deck_stats_sum.sum_shield_dmg - s.visible_stats_sum.sum_shield_dmg) / remaining);
+
+        potential[8] = static_cast<float>((s.initial_deck_stats_sum.sum_hand_var - s.visible_stats_sum.sum_hand_var) / remaining);
+        potential[9] = static_cast<float>((s.initial_deck_stats_sum.sum_board_var - s.visible_stats_sum.sum_board_var) / remaining);
+        potential[10] = static_cast<float>((s.initial_deck_stats_sum.sum_survival_rate - s.visible_stats_sum.sum_survival_rate) / remaining);
+        potential[11] = static_cast<float>((s.initial_deck_stats_sum.sum_effect_death - s.visible_stats_sum.sum_effect_death) / remaining);
+
+        potential[12] = static_cast<float>((s.initial_deck_stats_sum.sum_win_contribution - s.visible_stats_sum.sum_win_contribution) / remaining);
+        potential[13] = static_cast<float>((s.initial_deck_stats_sum.sum_comeback_win - s.visible_stats_sum.sum_comeback_win) / remaining);
+        potential[14] = static_cast<float>((s.initial_deck_stats_sum.sum_finish_blow - s.visible_stats_sum.sum_finish_blow) / remaining);
+        potential[15] = static_cast<float>((s.initial_deck_stats_sum.sum_deck_consumption - s.visible_stats_sum.sum_deck_consumption) / remaining);
+
+        return potential;
+    }, py::arg("state"));
+
     py::class_<Action>(m, "Action")
         .def(py::init<>())
         .def_readwrite("type", &Action::type)
