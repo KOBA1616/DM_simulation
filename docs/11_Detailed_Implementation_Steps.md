@@ -3,11 +3,49 @@
 本ドキュメントは、開発リソース（AIモデルの性能やコンテキスト制限）が限られた状態でも開発を継続できるよう、タスクを極小単位（Step-by-Step）に分解したものである。
 各ステップは「入力（編集するファイル）」と「出力（期待される動作）」が明確になっており、順次実行することでPhase 3以降の実装が完了する。
 
----
 
-## Phase 3.1: 汎用カードシステム統合 (Generic Card System Integration)
+### 付録: Python↔C++ バッチ推論 API（まとめ）
 
-**目的**: C++エンジンがJSON定義のカードデータを読み込み、正しく動作するようにする。
+このリポジトリでは、C++ 側から Python モデルを効率よく呼び出すために 2 つのバッチ API をサポートします。
+
+- `register_batch_inference(func)`
+    - 旧来の行毎リスト（`list[list[float]]`）を受け取る方式。Python 側のシンプルな関数互換性を保つために残しています。
+    - Python 関数は `(policies_list, values_list)` を返す必要があります。
+
+- `register_batch_inference_numpy(func)` (flat / NumPy path)
+    - C++ が連続したバッファ（`std::vector<float>`）を用意し、Python へ `numpy.ndarray`（shape=(batch, stride)）として渡します。
+    - Python 関数は `(policies, values)` を返します。`policies` は `numpy.ndarray(float32)` または `list[list[float]]`、`values` は 1D ndarray または list を受け付けます。
+    - 返却 ndarray は `float32` が高速で安全。`float64` もサポートして C++ 側で `float32` に変換します。
+
+ライフタイムと安全性
+- C++ 側は `std::shared_ptr<std::vector<float>>` を作り、その所有ポインタを `py::capsule` に格納して `py::array_t<float>` の `base` として渡します。これにより Python 側の ndarray が C++ のメモリを参照している間、メモリが保持されます。
+- ただし、プログラム終了時やベンチ実行後には明示的に `clear_batch_inference_numpy()`（C++ binding）を呼んで登録を解除してください。これによりクロスランゲージの参照が残ることで起こる不具合を防げます。
+
+使用例（簡易）
+
+```python
+import numpy as np
+import dm_ai_module
+
+def numpy_model(arr: np.ndarray):
+        batch = arr.shape[0]
+        policies = np.zeros((batch, dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE), dtype=np.float32)
+        values = np.zeros((batch,), dtype=np.float32)
+        return policies, values
+
+dm_ai_module.register_batch_inference_numpy(numpy_model)
+# NeuralEvaluator を使った評価を行う
+dm_ai_module.clear_batch_inference_numpy()
+```
+
+ベンチ実行
+- スクリプト: `python/tests/benchmark_batch_inference.py` を参照。各サブベンチ後に `clear_batch_inference*()` を呼んで GC しています。
+
+注意点
+- Python で `register_batch_inference_numpy` に登録する関数は、可能なら `float32` かつ C-contiguous な `numpy.ndarray` を返すようにしてください。そうすることで C++ 側の高速パスが有効になります。
+- デバッグ出力は `AI_DEBUG` を有効にしてビルドしたときのみ出力されます。
+
+```
 
 ### Step 1: EffectResolverへのフック実装
 *   **対象ファイル**: `src/engine/effects/effect_resolver.cpp`
