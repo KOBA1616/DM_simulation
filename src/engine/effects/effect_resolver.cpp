@@ -248,8 +248,20 @@ namespace dm::engine {
         }
 
         PendingEffect effect = game_state.pending_effects[index];
-        // copy pending effect then erase from queue
-        game_state.pending_effects.erase(game_state.pending_effects.begin() + index);
+        std::cerr << "[EffectResolver] Resolving pending effect index=" << index << " type=" << (int)effect.type << " src=" << effect.source_instance_id << " controller=" << (int)effect.controller << " has_effect_def=" << (int)effect.effect_def.has_value() << " num_targets_needed=" << effect.num_targets_needed << " targets_selected=" << effect.target_instance_ids.size() << "\n";
+        // If this pending effect carries a JSON EffectDef and requires targets,
+        // wait until enough targets have been selected before popping it.
+        if (effect.effect_def.has_value()) {
+            if (effect.num_targets_needed > static_cast<int>(effect.target_instance_ids.size())) {
+                // Not enough targets selected yet - keep the pending effect in the queue
+                return;
+            }
+            // Enough targets have been selected - remove from queue and resolve
+            game_state.pending_effects.erase(game_state.pending_effects.begin() + index);
+        } else {
+            // copy pending effect then erase from queue for non-JSON-backed effects
+            game_state.pending_effects.erase(game_state.pending_effects.begin() + index);
+        }
 
         // TODO: Implement specific effect logic based on effect.type and source card
         Player& controller = game_state.players[effect.controller];
@@ -264,17 +276,17 @@ namespace dm::engine {
         // We need to find the card instance to know its ID.
         
         CardID card_id = 0;
-        // Search Battle Zone
-        auto it_bz = std::find_if(controller.battle_zone.begin(), controller.battle_zone.end(),
-            [&](const CardInstance& c) { return c.instance_id == effect.source_instance_id; });
-        if (it_bz != controller.battle_zone.end()) card_id = it_bz->card_id;
-        
-        // Search Graveyard (for Spells)
-        if (card_id == 0) {
-             auto it_gy = std::find_if(controller.graveyard.begin(), controller.graveyard.end(),
-                [&](const CardInstance& c) { return c.instance_id == effect.source_instance_id; });
-             if (it_gy != controller.graveyard.end()) card_id = it_gy->card_id;
-        }
+        // Search all common zones for source instance to find the CardID
+        auto find_in_vec = [&](const std::vector<CardInstance>& vec)->CardID{
+            for (const auto& c : vec) if (c.instance_id == effect.source_instance_id) return c.card_id;
+            return (CardID)0;
+        };
+
+        card_id = find_in_vec(controller.battle_zone);
+        if (card_id == 0) card_id = find_in_vec(controller.hand);
+        if (card_id == 0) card_id = find_in_vec(controller.mana_zone);
+        if (card_id == 0) card_id = find_in_vec(controller.graveyard);
+        if (card_id == 0) card_id = find_in_vec(controller.shield_zone);
 
         if (card_id == 0) return; // Source gone?
 
@@ -299,8 +311,30 @@ namespace dm::engine {
             }
 
             if (trig != dm::core::TriggerType::NONE) {
-                dm::engine::GenericCardSystem::resolve_trigger(game_state, trig, effect.source_instance_id);
-                return;
+                    // If the card's JSON effects contain actions that require target selection,
+                    // create a PendingEffect for selection instead of immediately resolving.
+                    bool created_selection_pe = false;
+                    for (const auto &ef : data->effects) {
+                        for (const auto &act : ef.actions) {
+                            if (act.scope == dm::core::TargetScope::TARGET_SELECT) {
+                                PendingEffect sel(effect.type, effect.source_instance_id, effect.controller);
+                                sel.num_targets_needed = act.filter.count.has_value() ? act.filter.count.value() : 1;
+                                EffectDef ed;
+                                ed.trigger = TriggerType::NONE;
+                                ed.condition = ConditionDef{"NONE", 0, ""};
+                                ed.actions = { act };
+                                sel.effect_def = ed;
+                                game_state.pending_effects.push_back(sel);
+                                created_selection_pe = true;
+                                break;
+                            }
+                        }
+                        if (created_selection_pe) break;
+                    }
+                    if (created_selection_pe) return;
+
+                    dm::engine::GenericCardSystem::resolve_trigger(game_state, trig, effect.source_instance_id);
+                    return;
             }
         }
 
@@ -321,19 +355,41 @@ namespace dm::engine {
                 if (def.keywords.evolution) card.summoning_sickness = false;
                 st_player.battle_zone.push_back(card);
                 
-                // Trigger CIP
+                // Trigger CIP via GenericCardSystem: create PendingEffect populated from CardRegistry
                 if (def.keywords.cip) {
                     PendingEffect cip(EffectType::CIP, card.instance_id, st_player.id);
-                    if (card.card_id == 5) cip.num_targets_needed = 1;
+                    const dm::core::CardData* data = dm::engine::CardRegistry::get_card_data(card.card_id);
+                    if (data && !data->effects.empty()) {
+                        cip.effect_def = data->effects[0];
+                        int needed = 0;
+                        for (const auto& act : data->effects[0].actions) {
+                            if (act.scope == dm::core::TargetScope::TARGET_SELECT) {
+                                if (act.filter.count.has_value()) needed += act.filter.count.value();
+                                else needed += 1;
+                            }
+                        }
+                        cip.num_targets_needed = needed;
+                    }
                     game_state.pending_effects.push_back(cip);
                 }
 
             } else if (def.type == CardType::SPELL) {
                 st_player.graveyard.push_back(card);
                 
-                // Trigger Spell Effect
+                // Trigger Spell Effect: populate effect_def/target count from CardRegistry when available
                 PendingEffect spell_effect(EffectType::CIP, card.instance_id, st_player.id);
-                if (card.card_id == 5) spell_effect.num_targets_needed = 1;
+                const dm::core::CardData* sdata = dm::engine::CardRegistry::get_card_data(card.card_id);
+                if (sdata && !sdata->effects.empty()) {
+                    spell_effect.effect_def = sdata->effects[0];
+                    int needed = 0;
+                    for (const auto& act : sdata->effects[0].actions) {
+                        if (act.scope == dm::core::TargetScope::TARGET_SELECT) {
+                            if (act.filter.count.has_value()) needed += act.filter.count.value();
+                            else needed += 1;
+                        }
+                    }
+                    spell_effect.num_targets_needed = needed;
+                }
                 game_state.pending_effects.push_back(spell_effect);
             }
         } catch (...) {
@@ -393,15 +449,22 @@ namespace dm::engine {
                 dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
             }
         } else if (def.type == CardType::SPELL) {
-            // Spell effects would go here
-            // For spells, effect happens immediately or goes to stack?
-            // Spec says "EffectResolver (Stack Machine)". Spells go to stack.
-            PendingEffect spell_effect(EffectType::CIP, card.instance_id, player.id); // Use CIP type for spell resolution for now
-             if (card.card_id == 5) { // Terror Pit
-                 spell_effect.num_targets_needed = 1;
+            // Spell effects: create PendingEffect and populate effect_def/target count from CardRegistry when available
+            PendingEffect spell_effect(EffectType::CIP, card.instance_id, player.id);
+            const dm::core::CardData* sdata = dm::engine::CardRegistry::get_card_data(card.card_id);
+            if (sdata && !sdata->effects.empty()) {
+                spell_effect.effect_def = sdata->effects[0];
+                int needed = 0;
+                for (const auto& act : sdata->effects[0].actions) {
+                    if (act.scope == dm::core::TargetScope::TARGET_SELECT) {
+                        if (act.filter.count.has_value()) needed += act.filter.count.value();
+                        else needed += 1;
+                    }
+                }
+                spell_effect.num_targets_needed = needed;
             }
             game_state.pending_effects.push_back(spell_effect);
-            
+
             // Go to graveyard
             player.graveyard.push_back(card);
         }

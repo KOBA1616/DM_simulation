@@ -1,17 +1,14 @@
 #pragma once
-#include "../../core/game_state.hpp"
-#include "../../core/card_def.hpp"
 #include "evaluator.hpp"
-#include <vector>
 #include <map>
+#include "../../core/card_def.hpp"
 
 namespace dm::ai {
 
-    class HeuristicEvaluator : public IEvaluator {
+    class NeuralEvaluator : public IEvaluator {
     public:
-        HeuristicEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        NeuralEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
 
-        // Implements IEvaluator
         std::pair<std::vector<std::vector<float>>, std::vector<float>>
         evaluate(const std::vector<dm::core::GameState>& states) override;
 

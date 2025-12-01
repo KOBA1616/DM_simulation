@@ -146,7 +146,22 @@ namespace dm::engine {
             case EffectActionType::DESTROY: {
                 // If action requires target selection, create a pending effect and return
                 if (action.scope == TargetScope::TARGET_SELECT) {
-                    PendingEffect pe(EffectType::DESTRUCTION, source_instance_id, game_state.get_active_player().id);
+                    // Determine controller (owner) of the source instance
+                    PlayerID owner = game_state.get_active_player().id;
+                    for (auto &p : game_state.players) {
+                        // search all zones for source_instance_id
+                        auto found = std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.battle_zone.end()) { owner = p.id; break; }
+                        found = std::find_if(p.hand.begin(), p.hand.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.hand.end()) { owner = p.id; break; }
+                        found = std::find_if(p.mana_zone.begin(), p.mana_zone.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.mana_zone.end()) { owner = p.id; break; }
+                        found = std::find_if(p.shield_zone.begin(), p.shield_zone.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.shield_zone.end()) { owner = p.id; break; }
+                        found = std::find_if(p.graveyard.begin(), p.graveyard.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.graveyard.end()) { owner = p.id; break; }
+                    }
+                    PendingEffect pe(EffectType::DESTRUCTION, source_instance_id, owner);
                     pe.num_targets_needed = action.filter.count.has_value() ? action.filter.count.value() : action.value1;
                     EffectDef ed;
                     ed.trigger = TriggerType::NONE;
@@ -174,7 +189,33 @@ namespace dm::engine {
                 break;
             }
             case EffectActionType::RETURN_TO_HAND: {
+                // If this action requires player target selection, create a PendingEffect
+                if (action.scope == TargetScope::TARGET_SELECT) {
+                    PlayerID owner = game_state.get_active_player().id;
+                    for (auto &p : game_state.players) {
+                        auto found = std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.battle_zone.end()) { owner = p.id; break; }
+                        found = std::find_if(p.hand.begin(), p.hand.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.hand.end()) { owner = p.id; break; }
+                        found = std::find_if(p.mana_zone.begin(), p.mana_zone.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.mana_zone.end()) { owner = p.id; break; }
+                        found = std::find_if(p.shield_zone.begin(), p.shield_zone.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.shield_zone.end()) { owner = p.id; break; }
+                        found = std::find_if(p.graveyard.begin(), p.graveyard.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.graveyard.end()) { owner = p.id; break; }
+                    }
+                    PendingEffect pe(EffectType::CIP, source_instance_id, owner);
+                    pe.num_targets_needed = action.filter.count.has_value() ? action.filter.count.value() : action.value1;
+                    EffectDef ed;
+                    ed.trigger = TriggerType::NONE;
+                    ed.condition = ConditionDef{"NONE", 0, ""};
+                    ed.actions = { action };
+                    pe.effect_def = ed;
+                    game_state.pending_effects.push_back(pe);
+                    return;
+                }
                 auto targets = select_targets(game_state, action, source_instance_id);
+                std::cerr << "[GenericCardSystem] RETURN_TO_HAND called. scope=" << (int)action.scope << " targets_count=" << targets.size() << "\n";
                 for (int tid : targets) {
                     for (auto &p : game_state.players) {
                         auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
@@ -199,7 +240,20 @@ namespace dm::engine {
             case EffectActionType::MODIFY_POWER: {
                 // Modify power of target(s) by value1 (can be negative)
                 if (action.scope == TargetScope::TARGET_SELECT) {
-                    PendingEffect pe(EffectType::DESTRUCTION, source_instance_id, game_state.get_active_player().id);
+                    PlayerID owner = game_state.get_active_player().id;
+                    for (auto &p : game_state.players) {
+                        auto found = std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.battle_zone.end()) { owner = p.id; break; }
+                        found = std::find_if(p.hand.begin(), p.hand.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.hand.end()) { owner = p.id; break; }
+                        found = std::find_if(p.mana_zone.begin(), p.mana_zone.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.mana_zone.end()) { owner = p.id; break; }
+                        found = std::find_if(p.shield_zone.begin(), p.shield_zone.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.shield_zone.end()) { owner = p.id; break; }
+                        found = std::find_if(p.graveyard.begin(), p.graveyard.end(), [&](const CardInstance& c){ return c.instance_id == source_instance_id; });
+                        if (found != p.graveyard.end()) { owner = p.id; break; }
+                    }
+                    PendingEffect pe(EffectType::DESTRUCTION, source_instance_id, owner);
                     pe.num_targets_needed = action.filter.count.has_value() ? action.filter.count.value() : action.value1;
                     EffectDef ed;
                     ed.trigger = TriggerType::NONE;
@@ -411,7 +465,15 @@ namespace dm::engine {
                 }
             }
         } else if (action.scope == TargetScope::TARGET_SELECT) {
-            // No auto-selection: rely on pending effect flow. For now, return empty.
+            // Auto-selection fallback for AI: select up to count matching targets across both players
+            int needed = action.filter.count.has_value() ? action.filter.count.value() : 1;
+            for (auto &p : game_state.players) {
+                for (auto &c : p.battle_zone) {
+                    if ((int)out.size() >= needed) break;
+                    if (matches_filter(c, action.filter, p.id)) out.push_back(c.instance_id);
+                }
+                if ((int)out.size() >= needed) break;
+            }
         }
 
         return out;
