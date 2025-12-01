@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <cmath>
 
 namespace dm::core {
 
@@ -26,6 +27,14 @@ namespace dm::core {
         double sum_comeback_win = 0.0;     // 13
         double sum_finish_blow = 0.0;      // 14
         double sum_deck_consumption = 0.0; // 15
+
+        void record_usage(int turn, bool is_trigger, int cost_diff) {
+            play_count++;
+            if (turn <= 3) sum_early_usage += 1.0;
+            if (turn >= 7) sum_late_usage += 1.0;
+            if (is_trigger) sum_trigger_rate += 1.0;
+            sum_cost_discount += static_cast<double>(cost_diff);
+        }
 
         std::vector<float> to_vector() const {
             std::vector<float> vec(16, 0.0f);

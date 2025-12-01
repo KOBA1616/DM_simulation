@@ -75,6 +75,7 @@ set(SRC_CORE
     src/core/card_def.hpp
     src/core/game_state.hpp
     src/core/game_state_stats.cpp
+    src/core/game_state_tracking.cpp
     src/core/action.hpp
 )
 
