@@ -20,7 +20,19 @@ endif()
 
 # --- Dependencies ---
 # Pybind11 is required for Python bindings (Phase 3)
-find_package(pybind11 REQUIRED)
+# Try to find an installed pybind11 first; if not present, fetch it via FetchContent
+include(FetchContent)
+find_package(pybind11 CONFIG QUIET)
+if(NOT pybind11_FOUND)
+    message(STATUS "pybind11 not found via find_package; fetching via FetchContent")
+    FetchContent_Declare(
+        pybind11
+        GIT_REPOSITORY https://github.com/pybind/pybind11.git
+        GIT_TAG v2.11.0
+    )
+    FetchContent_MakeAvailable(pybind11)
+endif()
+find_package(pybind11 CONFIG REQUIRED)
 
 # Optional: LibTorch for C++ inference (Phase 3.3)
 option(USE_LIBTORCH "Enable LibTorch-based C++ inference (optional)" OFF)
