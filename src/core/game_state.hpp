@@ -107,6 +107,7 @@ namespace dm::core {
         // Stats tracking
         // Stores pair of (CardID, TurnNumber)
         std::vector<std::pair<CardID, int>> played_cards_history_this_game[2];
+        bool stats_recorded = false;
         void on_card_play(CardID cid, int turn, bool is_trigger, int cost_diff, PlayerID pid);
         void on_game_finished(GameResult result);
 
