@@ -2,6 +2,7 @@
 #include "types.hpp"
 #include "constants.hpp"
 #include "card_stats.hpp"
+#include "card_def.hpp"
 #include <vector>
 #include <array>
 #include <random>
@@ -96,6 +97,12 @@ namespace dm::core {
         void on_card_reveal(CardID cid);
         std::vector<float> vectorize_card_stats(CardID cid) const;
         std::vector<float> get_library_potential() const;
+        // Initialize card stats map from card DB (creates entries for all known CardIDs)
+        void initialize_card_stats(const std::map<CardID, CardDefinition>& card_db, int deck_size = 40);
+        // Load historical card stats from JSON file (format: array of {id, play_count, averages:[16] or sums:[16]})
+        bool load_card_stats_from_json(const std::string& filepath);
+        // Given an explicit deck list (vector of CardIDs), compute initial_deck_stats_sum as sum of per-card averages
+        void compute_initial_deck_sums(const std::vector<CardID>& deck_list);
 
         Player& get_active_player() {
             return players[active_player_id];

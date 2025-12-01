@@ -6,6 +6,7 @@
 #include <iostream>
 #include <random>
 #include <chrono>
+#include <filesystem>
 
 using namespace dm::core;
 using namespace dm::engine;
@@ -38,6 +39,21 @@ int main() {
             CardID cid = (i % 5) + 1;
             game_state.players[0].deck.emplace_back(cid, i);
             game_state.players[1].deck.emplace_back(cid, i + 100);
+        }
+
+        // If historical stats JSON exists, load and compute initial deck sums
+        std::string stats_path = "data/card_stats.json";
+        if (std::filesystem::exists(stats_path)) {
+            bool ok = game_state.load_card_stats_from_json(stats_path);
+            std::cout << "Loaded historical stats: " << (ok ? "ok" : "fail") << "\n";
+            // Build deck list for player 0 and compute initial sums
+            std::vector<CardID> deck_list;
+            for (const auto &ci : game_state.players[0].deck) deck_list.push_back(ci.card_id);
+            game_state.compute_initial_deck_sums(deck_list);
+            auto pot = game_state.get_library_potential();
+            std::cout << "Initial library potential (first 8 dims): ";
+            for (int i = 0; i < 8; ++i) std::cout << pot[i] << " ";
+            std::cout << "\n";
         }
 
         PhaseManager::start_game(game_state, card_db);

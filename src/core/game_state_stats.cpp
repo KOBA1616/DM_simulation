@@ -1,6 +1,136 @@
 #include "core/game_state.hpp"
+#include <nlohmann/json.hpp>
+#include <fstream>
 
 namespace dm::core {
+
+    void GameState::initialize_card_stats(const std::map<CardID, CardDefinition>& card_db, int deck_size) {
+        // Ensure an entry exists for every card in the DB
+        for (const auto &p : card_db) {
+            CardID cid = p.first;
+            if (global_card_stats.find(cid) == global_card_stats.end()) {
+                global_card_stats.emplace(cid, CardStats{});
+            }
+        }
+
+        // Set deck size and reset visible aggregates
+        initial_deck_count = deck_size;
+        visible_card_count = 0;
+        visible_stats_sum = CardStats{};
+
+        // initial_deck_stats_sum remains zero until historical stats are loaded
+        initial_deck_stats_sum = CardStats{};
+    }
+
+    bool GameState::load_card_stats_from_json(const std::string& filepath) {
+        std::ifstream ifs(filepath);
+        if (!ifs.is_open()) return false;
+
+        nlohmann::json j;
+        try {
+            ifs >> j;
+        } catch (...) {
+            return false;
+        }
+
+        // Expect an array of objects
+        if (!j.is_array()) return false;
+
+        for (const auto &item : j) {
+            if (!item.contains("id")) continue;
+            CardID cid = static_cast<CardID>(item["id"].get<int>());
+            CardStats cs;
+            cs.play_count = item.value("play_count", 0LL);
+
+            // If averages provided, convert to sums by multiplying by play_count
+            if (item.contains("averages") && item["averages"].is_array()) {
+                auto arr = item["averages"];
+                for (size_t k = 0; k < 16 && k < arr.size(); ++k) {
+                    double v = arr[k].get<double>();
+                    double add = v * static_cast<double>(cs.play_count);
+                    switch (k) {
+                        case 0: cs.sum_early_usage = add; break;
+                        case 1: cs.sum_late_usage = add; break;
+                        case 2: cs.sum_trigger_rate = add; break;
+                        case 3: cs.sum_cost_discount = add; break;
+                        case 4: cs.sum_hand_adv = add; break;
+                        case 5: cs.sum_board_adv = add; break;
+                        case 6: cs.sum_mana_adv = add; break;
+                        case 7: cs.sum_shield_dmg = add; break;
+                        case 8: cs.sum_hand_var = add; break;
+                        case 9: cs.sum_board_var = add; break;
+                        case 10: cs.sum_survival_rate = add; break;
+                        case 11: cs.sum_effect_death = add; break;
+                        case 12: cs.sum_win_contribution = add; break;
+                        case 13: cs.sum_comeback_win = add; break;
+                        case 14: cs.sum_finish_blow = add; break;
+                        case 15: cs.sum_deck_consumption = add; break;
+                    }
+                }
+            } else if (item.contains("sums") && item["sums"].is_array()) {
+                auto arr = item["sums"];
+                for (size_t k = 0; k < 16 && k < arr.size(); ++k) {
+                    double v = arr[k].get<double>();
+                    switch (k) {
+                        case 0: cs.sum_early_usage = v; break;
+                        case 1: cs.sum_late_usage = v; break;
+                        case 2: cs.sum_trigger_rate = v; break;
+                        case 3: cs.sum_cost_discount = v; break;
+                        case 4: cs.sum_hand_adv = v; break;
+                        case 5: cs.sum_board_adv = v; break;
+                        case 6: cs.sum_mana_adv = v; break;
+                        case 7: cs.sum_shield_dmg = v; break;
+                        case 8: cs.sum_hand_var = v; break;
+                        case 9: cs.sum_board_var = v; break;
+                        case 10: cs.sum_survival_rate = v; break;
+                        case 11: cs.sum_effect_death = v; break;
+                        case 12: cs.sum_win_contribution = v; break;
+                        case 13: cs.sum_comeback_win = v; break;
+                        case 14: cs.sum_finish_blow = v; break;
+                        case 15: cs.sum_deck_consumption = v; break;
+                    }
+                }
+            }
+
+            global_card_stats[cid] = cs;
+        }
+
+        return true;
+    }
+
+    void GameState::compute_initial_deck_sums(const std::vector<CardID>& deck_list) {
+        // Reset
+        initial_deck_stats_sum = CardStats{};
+        initial_deck_count = static_cast<int>(deck_list.size());
+
+        for (CardID cid : deck_list) {
+            auto it = global_card_stats.find(cid);
+            if (it == global_card_stats.end()) continue;
+            const CardStats &cs = it->second;
+            double denom = cs.play_count > 0 ? static_cast<double>(cs.play_count) : 1.0;
+
+            initial_deck_stats_sum.sum_early_usage += (cs.sum_early_usage / denom);
+            initial_deck_stats_sum.sum_late_usage += (cs.sum_late_usage / denom);
+            initial_deck_stats_sum.sum_trigger_rate += (cs.sum_trigger_rate / denom);
+            initial_deck_stats_sum.sum_cost_discount += (cs.sum_cost_discount / denom);
+
+            initial_deck_stats_sum.sum_hand_adv += (cs.sum_hand_adv / denom);
+            initial_deck_stats_sum.sum_board_adv += (cs.sum_board_adv / denom);
+            initial_deck_stats_sum.sum_mana_adv += (cs.sum_mana_adv / denom);
+            initial_deck_stats_sum.sum_shield_dmg += (cs.sum_shield_dmg / denom);
+
+            initial_deck_stats_sum.sum_hand_var += (cs.sum_hand_var / denom);
+            initial_deck_stats_sum.sum_board_var += (cs.sum_board_var / denom);
+            initial_deck_stats_sum.sum_survival_rate += (cs.sum_survival_rate / denom);
+            initial_deck_stats_sum.sum_effect_death += (cs.sum_effect_death / denom);
+
+            initial_deck_stats_sum.sum_win_contribution += (cs.sum_win_contribution / denom);
+            initial_deck_stats_sum.sum_comeback_win += (cs.sum_comeback_win / denom);
+            initial_deck_stats_sum.sum_finish_blow += (cs.sum_finish_blow / denom);
+            initial_deck_stats_sum.sum_deck_consumption += (cs.sum_deck_consumption / denom);
+        }
+    }
+
 
     void GameState::on_card_reveal(CardID cid) {
         auto it = global_card_stats.find(cid);
