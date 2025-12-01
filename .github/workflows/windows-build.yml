@@ -1,0 +1,41 @@
+name: Windows Build & Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install pip dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest numpy
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Release)
+        run: cmake --build build --config Release --parallel
+
+      - name: Show build pyd files
+        shell: pwsh
+        run: |
+          Write-Host "Looking for .pyd files under build/"
+          Get-ChildItem -Path build -Recurse -Filter "*.pyd" | ForEach-Object { Write-Host $_.FullName }
+
+      - name: Run tests
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}\build\Release;${{ github.workspace }}\build
+        run: |
+          python -m pytest -q
