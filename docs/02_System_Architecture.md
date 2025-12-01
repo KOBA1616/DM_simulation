@@ -49,7 +49,8 @@ dm_simulation/
 │   │   ├── app.py              # Main Window
 │   │   └── widgets/            # Custom Widgets (GraphView, DetailPanel)
 │   ├── py_ai/                  # Python AI Modules (Training, GA)
-│   └── scripts/                # Entry Points (train.py, test_ai.py)
+│   ├── scripts/                # Entry Points (train.py, validator.py)
+│   └── tests/                  # Python Unit & Manual Tests
 ├── tests/                      # Integration Tests
 │   ├── test_card_creation_integration.py
 │   └── test_spiral_gate.py
