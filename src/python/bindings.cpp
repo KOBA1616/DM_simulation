@@ -624,5 +624,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
             .def("update", &dm::ai::ParametricBelief::update, py::arg("state"))
             .def("get_vector", &dm::ai::ParametricBelief::get_vector)
             .def("set_weights", [](dm::ai::ParametricBelief &b, float strong_w, float deck_w){ b.set_weights(strong_w, deck_w); }, py::arg("strong_weight")=1.0f, py::arg("deck_weight")=0.25f)
-            .def("get_weights", [](const dm::ai::ParametricBelief &b){ auto p = b.get_weights(); return py::make_tuple(p.first, p.second); });
+            .def("get_weights", [](const dm::ai::ParametricBelief &b){ auto p = b.get_weights(); return py::make_tuple(p.first, p.second); })
+            .def("update_with_prev", &dm::ai::ParametricBelief::update_with_prev, py::arg("prev_state"), py::arg("state"))
+            .def("set_reveal_weight", &dm::ai::ParametricBelief::set_reveal_weight, py::arg("w"))
+            .def("get_reveal_weight", &dm::ai::ParametricBelief::get_reveal_weight);
 }

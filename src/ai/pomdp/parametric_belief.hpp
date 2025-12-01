@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <numeric>
 #include <algorithm>
+#include <set>
 
 #include "../../core/game_state.hpp"
 #include "../../core/card_def.hpp"
@@ -79,6 +80,60 @@ public:
         for (auto &p : probs) p.second /= sum;
     }
 
+    // Update with previous state: detect transitions (deck -> hand/battle/etc.)
+    // and treat them as reveals (stronger evidence) by adding an extra reveal weight.
+    void update_with_prev(const GameState &prev_state, const GameState &state) {
+        if (probs.empty()) return;
+
+        std::map<uint16_t, float> seen_weight;
+        for (const auto &player : state.players) {
+            for (const auto &c : player.hand) seen_weight[c.card_id] += strong_weight; // strong
+            for (const auto &c : player.battle_zone) seen_weight[c.card_id] += strong_weight; // strong
+            for (const auto &c : player.shield_zone) seen_weight[c.card_id] += strong_weight; // strong
+            for (const auto &c : player.graveyard) seen_weight[c.card_id] += strong_weight; // strong
+            for (const auto &c : player.deck) seen_weight[c.card_id] += deck_weight; // weak evidence
+        }
+
+        // Detect reveals: a card that was in prev_state.deck but now appears in hand/battle/shield/grave
+        for (size_t pid = 0; pid < prev_state.players.size() && pid < state.players.size(); ++pid) {
+            std::set<uint16_t> prev_deck_ids;
+            for (const auto &c : prev_state.players[pid].deck) prev_deck_ids.insert(c.card_id);
+
+            // collect visible zones in current state for this player
+            std::set<uint16_t> curr_visible;
+            for (const auto &c : state.players[pid].hand) curr_visible.insert(c.card_id);
+            for (const auto &c : state.players[pid].battle_zone) curr_visible.insert(c.card_id);
+            for (const auto &c : state.players[pid].shield_zone) curr_visible.insert(c.card_id);
+            for (const auto &c : state.players[pid].graveyard) curr_visible.insert(c.card_id);
+
+            // for intersection, add reveal weight
+            for (auto id : prev_deck_ids) {
+                if (curr_visible.find(id) != curr_visible.end()) {
+                    seen_weight[id] += reveal_weight;
+                }
+            }
+        }
+
+        // Penalize probabilities for seen cards proportionally to weight, then renormalize
+        for (auto &p : probs) {
+            auto it = seen_weight.find(p.first);
+            if (it != seen_weight.end() && it->second > 0.0f) {
+                float weight = it->second;
+                float multiplier = 1.0f / (1.0f + weight);
+                p.second *= multiplier;
+            }
+        }
+
+        // Renormalize
+        float sum = 0.0f;
+        for (const auto &p : probs) sum += p.second;
+        if (sum <= 0.0f) return;
+        for (auto &p : probs) p.second /= sum;
+    }
+
+    void set_reveal_weight(float w) { reveal_weight = w; }
+    float get_reveal_weight() const { return reveal_weight; }
+
     // Return belief vector as probabilities in ascending card id order
     std::vector<float> get_vector() const {
         std::vector<float> out;
@@ -91,6 +146,7 @@ private:
     std::map<uint16_t, float> probs;
     float strong_weight = 1.0f;
     float deck_weight = 0.25f;
+    float reveal_weight = 1.0f; // extra weight applied when a deck->visible transition is detected
 };
 
 } // namespace ai
