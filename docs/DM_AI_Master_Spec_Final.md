@@ -54,3 +54,31 @@
 - **Population-Based Training**: Kaggle環境における自律進化型AI集団の構築設計。
 - **Evolution Cycle**: 順次学習、リーグ戦、淘汰と変異のサイクル定義。
 - **Niche Protection**: 多様性保護のためのロジック。
+
+### [13. 非公開領域推論システム設計書 (POMDP Inference Spec)](./13_POMDP_Inference_Spec.md)
+- **POMDP**: 部分観測マルコフ決定過程への対応。
+- **Teacher-Student Distillation**: 知識の蒸留による「読み」の学習。
+- **16-dim Stats**: 16次元スタッツによる確率推論。
+
+### [14. メタゲーム・カリキュラム設計書 (Meta-Game Curriculum Spec)](./14_Meta_Game_Curriculum_Spec.md)
+- **Dual Curriculum**: アグロとコントロールを交互に学習し、攻守のバランスを習得。
+- **Meta-Game League**: 過去の自分や固定デッキとの対戦によるメタゲーム適応。
+- **Adaptive Matchmaking**: 苦手な相手と優先的に戦うマッチメイキング。
+
+### [15. 結果スタッツ設計書 (Result Stats Spec)](./15_Result_Stats_Spec.md)
+- **Result Stats**: 対戦結果から算出される16次元のカード性能指標。
+- **Autonomous Evolution**: 人間のタグ付けに頼らない自律的なデッキ構築と学習サイクル。
+- **Kaggle Infrastructure**: クラウド資源を活用した24時間学習システム。
+
+### [16. シナリオ・トレーニング設計書 (Scenario Training Spec)](./16_Scenario_Training_Spec.md)
+- **Scenario Mode**: 特定の盤面から開始する「詰将棋」モード。
+- **Combo Mastery**: 無限ループや即死コンボを短時間で習得させる特訓システム。
+- **Loop Detection**: 同一局面の検知によるループ証明ロジック。
+
+### [17. AI向け詳細実装指示書 (Detailed Implementation Instructions)](./17_Detailed_Implementation_Instructions_for_AI.md)
+- **Step-by-Step Guide**: AIアシスタントが実装を行うための、コードレベルの具体的な指示書。
+- **Phase 3-5 Coverage**: 結果スタッツ、POMDP、シナリオモード、PBTの実装詳細。
+
+### [18. 実装計画の実現可能性検討書 (Feasibility Analysis)](./18_Feasibility_Analysis.md)
+- **Gap Analysis**: 現状のコードベースと新要件の差分分析。
+- **Risk Assessment**: 技術的リスクと対策の評価。
