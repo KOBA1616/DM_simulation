@@ -56,4 +56,13 @@ namespace dm::engine {
         return moved_count;
     }
 
+    void DevTools::trigger_loop_detection(GameState& state) {
+        uint64_t current_hash = state.calculate_hash();
+        // Push 2 times so the next update_loop_check finds 2 + 1(current) = 3
+        state.hash_history.push_back(current_hash);
+        state.hash_history.push_back(current_hash);
+        // Explicitly trigger check to update winner status immediately
+        state.update_loop_check();
+    }
+
 }
