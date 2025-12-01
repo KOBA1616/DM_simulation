@@ -1,6 +1,11 @@
 import time
 import numpy as np
 import dm_ai_module
+import faulthandler
+import gc
+
+# enable faulthandler so Python will print a traceback on segfaults
+faulthandler.enable()
 
 
 def make_states(batch):
@@ -26,12 +31,17 @@ def bench_numpy(batch, iters=200):
     def model(arr: np.ndarray):
         # simple zero outputs
         return np.zeros((arr.shape[0], dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE), dtype=np.float32), np.zeros((arr.shape[0],), dtype=np.float32)
-
     dm_ai_module.register_batch_inference_numpy(model)
     ne = dm_ai_module.NeuralEvaluator({})
     states = make_states(batch)
     avg = run_eval(ne, states, iters=iters)
     print(f"numpy avg latency: {avg*1000:.3f} ms per evaluate()")
+    # Clear registration and collect to avoid dangling references / crashes
+    dm_ai_module.clear_batch_inference_numpy()
+    import gc
+    gc.collect()
+    # clear callback to avoid cross-run issues
+    dm_ai_module.clear_batch_inference_numpy()
 
 
 def bench_list(batch, iters=200):
@@ -47,6 +57,11 @@ def bench_list(batch, iters=200):
     states = make_states(batch)
     avg = run_eval(ne, states, iters=iters)
     print(f"list-of-lists avg latency: {avg*1000:.3f} ms per evaluate()")
+    dm_ai_module.clear_batch_inference()
+    import gc
+    gc.collect()
+    # clear callback to avoid cross-run issues
+    dm_ai_module.clear_batch_inference()
 
 
 def main():
@@ -54,6 +69,17 @@ def main():
     for b in batches:
         bench_numpy(b, iters=200 if b<=32 else 100)
         bench_list(b, iters=200 if b<=32 else 100)
+
+    # ensure everything is cleared at the end
+    try:
+        dm_ai_module.clear_batch_inference()
+    except Exception:
+        pass
+    try:
+        dm_ai_module.clear_batch_inference_numpy()
+    except Exception:
+        pass
+    gc.collect()
 
 
 if __name__ == '__main__':
