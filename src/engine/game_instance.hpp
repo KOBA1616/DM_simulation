@@ -8,8 +8,7 @@ namespace dm::engine {
     class GameInstance {
     public:
         core::GameState state;
-        // Store by value to avoid dangling references from Python-bound maps
-        std::map<core::CardID, core::CardDefinition> card_db;
+        const std::map<core::CardID, core::CardDefinition>& card_db;
 
         GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db)
             : state(seed), card_db(db) {}
