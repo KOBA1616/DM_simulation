@@ -1,0 +1,322 @@
+build-windows	Set up job	﻿2025-12-01T03:52:13.8471169Z Current runner version: '2.329.0'
+build-windows	Set up job	2025-12-01T03:52:13.8528950Z ##[group]Runner Image Provisioner
+build-windows	Set up job	2025-12-01T03:52:13.8530205Z Hosted Compute Agent
+build-windows	Set up job	2025-12-01T03:52:13.8531060Z Version: 20251016.436
+build-windows	Set up job	2025-12-01T03:52:13.8532165Z Commit: 8ab8ac8bfd662a3739dab9fe09456aba92132568
+build-windows	Set up job	2025-12-01T03:52:13.8533328Z Build Date: 2025-10-15T20:44:12Z
+build-windows	Set up job	2025-12-01T03:52:13.8534327Z ##[endgroup]
+build-windows	Set up job	2025-12-01T03:52:13.8535144Z ##[group]Operating System
+build-windows	Set up job	2025-12-01T03:52:13.8536110Z Microsoft Windows Server 2025
+build-windows	Set up job	2025-12-01T03:52:13.8537134Z 10.0.26100
+build-windows	Set up job	2025-12-01T03:52:13.8537981Z Datacenter
+build-windows	Set up job	2025-12-01T03:52:13.8538674Z ##[endgroup]
+build-windows	Set up job	2025-12-01T03:52:13.8539281Z ##[group]Runner Image
+build-windows	Set up job	2025-12-01T03:52:13.8540121Z Image: windows-2025
+build-windows	Set up job	2025-12-01T03:52:13.8540821Z Version: 20251102.77.1
+build-windows	Set up job	2025-12-01T03:52:13.8542458Z Included Software: https://github.com/actions/runner-images/blob/win25/20251102.77/images/windows/Windows2025-Readme.md
+build-windows	Set up job	2025-12-01T03:52:13.8544818Z Image Release: https://github.com/actions/runner-images/releases/tag/win25%2F20251102.77
+build-windows	Set up job	2025-12-01T03:52:13.8547044Z ##[endgroup]
+build-windows	Set up job	2025-12-01T03:52:13.8549567Z ##[group]GITHUB_TOKEN Permissions
+build-windows	Set up job	2025-12-01T03:52:13.8552131Z Contents: read
+build-windows	Set up job	2025-12-01T03:52:13.8552933Z Metadata: read
+build-windows	Set up job	2025-12-01T03:52:13.8553772Z Packages: read
+build-windows	Set up job	2025-12-01T03:52:13.8554503Z ##[endgroup]
+build-windows	Set up job	2025-12-01T03:52:13.8557556Z Secret source: Actions
+build-windows	Set up job	2025-12-01T03:52:13.8558504Z Prepare workflow directory
+build-windows	Set up job	2025-12-01T03:52:13.9005278Z Prepare all required actions
+build-windows	Set up job	2025-12-01T03:52:13.9057661Z Getting action download info
+build-windows	Set up job	2025-12-01T03:52:14.1797282Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+build-windows	Set up job	2025-12-01T03:52:14.4898276Z Download action repository 'actions/setup-python@v4' (SHA:7f4fc3e22c37d6ff65e88745f38bd3157c663f7c)
+build-windows	Set up job	2025-12-01T03:52:14.7823796Z Complete job name: build-windows
+build-windows	Checkout	﻿2025-12-01T03:52:14.9159938Z ##[group]Run actions/checkout@v4
+build-windows	Checkout	2025-12-01T03:52:14.9160957Z with:
+build-windows	Checkout	2025-12-01T03:52:14.9161332Z   repository: KOBA1616/DM_simulation
+build-windows	Checkout	2025-12-01T03:52:14.9162058Z   token: ***
+build-windows	Checkout	2025-12-01T03:52:14.9162410Z   ssh-strict: true
+build-windows	Checkout	2025-12-01T03:52:14.9162773Z   ssh-user: git
+build-windows	Checkout	2025-12-01T03:52:14.9163140Z   persist-credentials: true
+build-windows	Checkout	2025-12-01T03:52:14.9163551Z   clean: true
+build-windows	Checkout	2025-12-01T03:52:14.9163915Z   sparse-checkout-cone-mode: true
+build-windows	Checkout	2025-12-01T03:52:14.9164361Z   fetch-depth: 1
+build-windows	Checkout	2025-12-01T03:52:14.9164719Z   fetch-tags: false
+build-windows	Checkout	2025-12-01T03:52:14.9165079Z   show-progress: true
+build-windows	Checkout	2025-12-01T03:52:14.9165453Z   lfs: false
+build-windows	Checkout	2025-12-01T03:52:14.9165779Z   submodules: false
+build-windows	Checkout	2025-12-01T03:52:14.9166150Z   set-safe-directory: true
+build-windows	Checkout	2025-12-01T03:52:14.9166750Z ##[endgroup]
+build-windows	Checkout	2025-12-01T03:52:15.0961824Z Syncing repository: KOBA1616/DM_simulation
+build-windows	Checkout	2025-12-01T03:52:15.0964664Z ##[group]Getting Git version info
+build-windows	Checkout	2025-12-01T03:52:15.0965659Z Working directory is 'D:\a\DM_simulation\DM_simulation'
+build-windows	Checkout	2025-12-01T03:52:15.2126337Z [command]"C:\Program Files\Git\bin\git.exe" version
+build-windows	Checkout	2025-12-01T03:52:15.3996638Z git version 2.51.2.windows.1
+build-windows	Checkout	2025-12-01T03:52:15.4063174Z ##[endgroup]
+build-windows	Checkout	2025-12-01T03:52:15.4088945Z Temporarily overriding HOME='D:\a\_temp\b33c68d2-e589-4c47-8e19-b9b09213a49f' before making global git config changes
+build-windows	Checkout	2025-12-01T03:52:15.4092071Z Adding repository directory to the temporary git global config as a safe directory
+build-windows	Checkout	2025-12-01T03:52:15.4103680Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\DM_simulation\DM_simulation
+build-windows	Checkout	2025-12-01T03:52:15.4434796Z Deleting the contents of 'D:\a\DM_simulation\DM_simulation'
+build-windows	Checkout	2025-12-01T03:52:15.4442812Z ##[group]Initializing the repository
+build-windows	Checkout	2025-12-01T03:52:15.4454118Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\DM_simulation\DM_simulation
+build-windows	Checkout	2025-12-01T03:52:15.4958148Z Initialized empty Git repository in D:/a/DM_simulation/DM_simulation/.git/
+build-windows	Checkout	2025-12-01T03:52:15.5008892Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/KOBA1616/DM_simulation
+build-windows	Checkout	2025-12-01T03:52:15.5413718Z ##[endgroup]
+build-windows	Checkout	2025-12-01T03:52:15.5415393Z ##[group]Disabling automatic garbage collection
+build-windows	Checkout	2025-12-01T03:52:15.5424111Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+build-windows	Checkout	2025-12-01T03:52:15.5743335Z ##[endgroup]
+build-windows	Checkout	2025-12-01T03:52:15.5744856Z ##[group]Setting up auth
+build-windows	Checkout	2025-12-01T03:52:15.5758228Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+build-windows	Checkout	2025-12-01T03:52:15.6096403Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+build-windows	Checkout	2025-12-01T03:52:16.5339888Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+build-windows	Checkout	2025-12-01T03:52:16.5655789Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+build-windows	Checkout	2025-12-01T03:52:17.1365366Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+build-windows	Checkout	2025-12-01T03:52:17.1679901Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+build-windows	Checkout	2025-12-01T03:52:17.7549596Z [command]"C:\Program Files\Git\bin\git.exe" config --local http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+build-windows	Checkout	2025-12-01T03:52:17.7903773Z ##[endgroup]
+build-windows	Checkout	2025-12-01T03:52:17.7904848Z ##[group]Fetching the repository
+build-windows	Checkout	2025-12-01T03:52:17.7925372Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +13b2a0eb51649100ba5fcade3fbf54d15ab46306:refs/remotes/pull/2/merge
+build-windows	Checkout	2025-12-01T03:52:19.5363707Z From https://github.com/KOBA1616/DM_simulation
+build-windows	Checkout	2025-12-01T03:52:19.5372826Z  * [new ref]         13b2a0eb51649100ba5fcade3fbf54d15ab46306 -> pull/2/merge
+build-windows	Checkout	2025-12-01T03:52:19.5596752Z ##[endgroup]
+build-windows	Checkout	2025-12-01T03:52:19.5597627Z ##[group]Determining the checkout info
+build-windows	Checkout	2025-12-01T03:52:19.5599342Z ##[endgroup]
+build-windows	Checkout	2025-12-01T03:52:19.5614835Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+build-windows	Checkout	2025-12-01T03:52:19.5981175Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+build-windows	Checkout	2025-12-01T03:52:19.6349561Z ##[group]Checking out the ref
+build-windows	Checkout	2025-12-01T03:52:19.6363095Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force refs/remotes/pull/2/merge
+build-windows	Checkout	2025-12-01T03:52:20.2256377Z Note: switching to 'refs/remotes/pull/2/merge'.
+build-windows	Checkout	2025-12-01T03:52:20.2257454Z 
+build-windows	Checkout	2025-12-01T03:52:20.2258025Z You are in 'detached HEAD' state. You can look around, make experimental
+build-windows	Checkout	2025-12-01T03:52:20.2259918Z changes and commit them, and you can discard any commits you make in this
+build-windows	Checkout	2025-12-01T03:52:20.2261088Z state without impacting any branches by switching back to a branch.
+build-windows	Checkout	2025-12-01T03:52:20.2261535Z 
+build-windows	Checkout	2025-12-01T03:52:20.2261816Z If you want to create a new branch to retain commits you create, you may
+build-windows	Checkout	2025-12-01T03:52:20.2262478Z do so (now or later) by using -c with the switch command. Example:
+build-windows	Checkout	2025-12-01T03:52:20.2262856Z 
+build-windows	Checkout	2025-12-01T03:52:20.2263051Z   git switch -c <new-branch-name>
+build-windows	Checkout	2025-12-01T03:52:20.2263320Z 
+build-windows	Checkout	2025-12-01T03:52:20.2263459Z Or undo this operation with:
+build-windows	Checkout	2025-12-01T03:52:20.2263700Z 
+build-windows	Checkout	2025-12-01T03:52:20.2263801Z   git switch -
+build-windows	Checkout	2025-12-01T03:52:20.2263988Z 
+build-windows	Checkout	2025-12-01T03:52:20.2264290Z Turn off this advice by setting config variable advice.detachedHead to false
+build-windows	Checkout	2025-12-01T03:52:20.2264734Z 
+build-windows	Checkout	2025-12-01T03:52:20.2265236Z HEAD is now at 13b2a0e Merge 72b639ff9471162c2fde1ad4eb6e55bf467362a7 into bcac05a0255cd83c642ae9b4688692c2993513cc
+build-windows	Checkout	2025-12-01T03:52:20.2418206Z ##[endgroup]
+build-windows	Checkout	2025-12-01T03:52:20.2771889Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+build-windows	Checkout	2025-12-01T03:52:20.3111221Z 13b2a0eb51649100ba5fcade3fbf54d15ab46306
+build-windows	Setup Python 3.12	﻿2025-12-01T03:52:20.3553773Z ##[group]Run actions/setup-python@v4
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.3554886Z with:
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.3555054Z   python-version: 3.12
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.3555254Z   check-latest: false
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.3555552Z   token: ***
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.3555730Z   update-environment: true
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.3555939Z   allow-prereleases: false
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.3556112Z ##[endgroup]
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.5915707Z ##[group]Installed versions
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.6078730Z Successfully set up CPython (3.12.10)
+build-windows	Setup Python 3.12	2025-12-01T03:52:20.6080351Z ##[endgroup]
+build-windows	Install pip dependencies	﻿2025-12-01T03:52:20.6390645Z ##[group]Run python -m pip install --upgrade pip
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6391272Z [36;1mpython -m pip install --upgrade pip[0m
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6391744Z [36;1mpip install pytest numpy pybind11[0m
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6554715Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6555080Z env:
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6555335Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6555769Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6556209Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6556570Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6556921Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Install pip dependencies	2025-12-01T03:52:20.6557201Z ##[endgroup]
+build-windows	Install pip dependencies	2025-12-01T03:52:32.4521112Z Requirement already satisfied: pip in c:\hostedtoolcache\windows\python\3.12.10\x64\lib\site-packages (25.3)
+build-windows	Install pip dependencies	2025-12-01T03:52:34.9195225Z Collecting pytest
+build-windows	Install pip dependencies	2025-12-01T03:52:35.1842143Z   Downloading pytest-9.0.1-py3-none-any.whl.metadata (7.6 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.4474316Z Collecting numpy
+build-windows	Install pip dependencies	2025-12-01T03:52:35.4602543Z   Downloading numpy-2.3.5-cp312-cp312-win_amd64.whl.metadata (60 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.5772504Z Collecting pybind11
+build-windows	Install pip dependencies	2025-12-01T03:52:35.5914537Z   Downloading pybind11-3.0.1-py3-none-any.whl.metadata (10.0 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.6428097Z Collecting colorama>=0.4 (from pytest)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.6540700Z   Downloading colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.7043567Z Collecting iniconfig>=1.0.1 (from pytest)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.7139591Z   Downloading iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.7643514Z Collecting packaging>=22 (from pytest)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.7726754Z   Downloading packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.8221785Z Collecting pluggy<2,>=1.5 (from pytest)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.8311341Z   Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.9180871Z Collecting pygments>=2.7.2 (from pytest)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.9273665Z   Downloading pygments-2.19.2-py3-none-any.whl.metadata (2.5 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:35.9608352Z Downloading pytest-9.0.1-py3-none-any.whl (373 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:36.0328786Z Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:36.0620928Z Downloading numpy-2.3.5-cp312-cp312-win_amd64.whl (12.8 MB)
+build-windows	Install pip dependencies	2025-12-01T03:52:36.3961215Z    ---------------------------------------- 12.8/12.8 MB 40.1 MB/s  0:00:00
+build-windows	Install pip dependencies	2025-12-01T03:52:36.4055075Z Downloading pybind11-3.0.1-py3-none-any.whl (293 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:36.4398110Z Downloading colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:36.4633310Z Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:36.4872597Z Downloading packaging-25.0-py3-none-any.whl (66 kB)
+build-windows	Install pip dependencies	2025-12-01T03:52:36.5094895Z Downloading pygments-2.19.2-py3-none-any.whl (1.2 MB)
+build-windows	Install pip dependencies	2025-12-01T03:52:36.5419677Z    ---------------------------------------- 1.2/1.2 MB 31.1 MB/s  0:00:00
+build-windows	Install pip dependencies	2025-12-01T03:52:36.6516914Z Installing collected packages: pygments, pybind11, pluggy, packaging, numpy, iniconfig, colorama, pytest
+build-windows	Install pip dependencies	2025-12-01T03:52:42.8757458Z 
+build-windows	Install pip dependencies	2025-12-01T03:52:42.8776372Z Successfully installed colorama-0.4.6 iniconfig-2.3.0 numpy-2.3.5 packaging-25.0 pluggy-1.6.0 pybind11-3.0.1 pygments-2.19.2 pytest-9.0.1
+build-windows	Configure CMake (use pybind11 cmake dir)	﻿2025-12-01T03:52:43.4821916Z ##[group]Run $pybind_dir = (python -m pybind11 --cmakedir).Trim()
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4822644Z [36;1m$pybind_dir = (python -m pybind11 --cmakedir).Trim()[0m
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4822995Z [36;1mif ([string]::IsNullOrWhiteSpace($pybind_dir)) {[0m
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4823829Z [36;1m  Write-Error "pybind11 cmake dir is empty. Make sure pybind11 is installed and python -m pybind11 --cmakedir works."[0m
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4824323Z [36;1m  exit 1[0m
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4824488Z [36;1m}[0m
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4824676Z [36;1mWrite-Host "pybind11 cmake dir: $pybind_dir"[0m
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4825085Z [36;1m# Pass both CMAKE_PREFIX_PATH and pybind11_DIR to help CMake locate pybind11 on Windows[0m
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4825668Z [36;1mcmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$pybind_dir" -Dpybind11_DIR="$pybind_dir"[0m
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4897792Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4898096Z env:
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4898369Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4898787Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4899197Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4899561Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4899910Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:43.4900176Z ##[endgroup]
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:44.1787913Z pybind11 cmake dir: C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\pybind11\share\cmake\pybind11
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:45.6736473Z -- Building for: Visual Studio 17 2022
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:55.1218141Z -- The CXX compiler identification is MSVC 19.44.35219.0
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:55.3699314Z -- Detecting CXX compiler ABI info
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.7499278Z -- Detecting CXX compiler ABI info - done
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.7679807Z -- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.7696190Z -- Detecting CXX compile features
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.7738282Z -- Detecting CXX compile features - done
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8511580Z CMake Warning (dev) at C:/hostedtoolcache/windows/Python/3.12.10/x64/Lib/site-packages/pybind11/share/cmake/pybind11/FindPythonLibsNew.cmake:101 (message):
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8513262Z   Policy CMP0148 is not set: The FindPythonInterp and FindPythonLibs modules
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8514214Z   are removed.  Run "cmake --help-policy CMP0148" for policy details.  Use
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8514851Z   the cmake_policy command to set the policy and suppress this warning, or
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8516221Z   preferably upgrade to using FindPython, either by calling it explicitly
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8517131Z   before pybind11, or by setting PYBIND11_FINDPYTHON ON before pybind11.
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8517925Z Call Stack (most recent call first):
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8518904Z   C:/hostedtoolcache/windows/Python/3.12.10/x64/Lib/site-packages/pybind11/share/cmake/pybind11/pybind11Tools.cmake:44 (find_package)
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8520033Z   C:/hostedtoolcache/windows/Python/3.12.10/x64/Lib/site-packages/pybind11/share/cmake/pybind11/pybind11Common.cmake:226 (include)
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8520859Z   C:/hostedtoolcache/windows/Python/3.12.10/x64/Lib/site-packages/pybind11/share/cmake/pybind11/pybind11Config.cmake:257 (include)
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8521404Z   CMakeLists.txt:25 (find_package)
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8521712Z This warning is for project developers.  Use -Wno-dev to suppress it.
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.8521988Z 
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.9725676Z -- Found PythonLibs: C:/hostedtoolcache/windows/Python/3.12.10/x64/libs/python312.lib
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:56.9899940Z -- Performing Test HAS_MSVC_GL_LTCG
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:57.8739126Z -- Performing Test HAS_MSVC_GL_LTCG - Success
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:57.8763317Z -- LibTorch disabled (USE_LIBTORCH=OFF)
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:57.8771385Z -- Configuring done (12.2s)
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:57.9218019Z -- Generating done (0.0s)
+build-windows	Configure CMake (use pybind11 cmake dir)	2025-12-01T03:52:57.9227315Z -- Build files have been written to: D:/a/DM_simulation/DM_simulation/build
+build-windows	Build (Release)	﻿2025-12-01T03:52:58.0437350Z ##[group]Run cmake --build build --config Release --parallel
+build-windows	Build (Release)	2025-12-01T03:52:58.0437821Z [36;1mcmake --build build --config Release --parallel[0m
+build-windows	Build (Release)	2025-12-01T03:52:58.0505517Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+build-windows	Build (Release)	2025-12-01T03:52:58.0505822Z env:
+build-windows	Build (Release)	2025-12-01T03:52:58.0506058Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Build (Release)	2025-12-01T03:52:58.0506466Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+build-windows	Build (Release)	2025-12-01T03:52:58.0506867Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Build (Release)	2025-12-01T03:52:58.0507217Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Build (Release)	2025-12-01T03:52:58.0507562Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Build (Release)	2025-12-01T03:52:58.0507828Z ##[endgroup]
+build-windows	Build (Release)	2025-12-01T03:52:58.4585720Z MSBuild version 17.14.23+b0019275e for .NET Framework
+build-windows	Build (Release)	2025-12-01T03:52:58.4921255Z 
+build-windows	Build (Release)	2025-12-01T03:52:58.9161585Z   1>Checking Build System
+build-windows	Build (Release)	2025-12-01T03:52:59.2853978Z   Building Custom Rule D:/a/DM_simulation/DM_simulation/CMakeLists.txt
+build-windows	Build (Release)	2025-12-01T03:52:59.4427115Z   action_generator.cpp
+build-windows	Build (Release)	2025-12-01T03:53:04.7897323Z   phase_manager.cpp
+build-windows	Build (Release)	2025-12-01T03:53:07.7144176Z D:\a\DM_simulation\DM_simulation\src\engine\flow\phase_manager.cpp(77,45): warning C4100: 'game_state': unreferenced parameter [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:08.3527082Z   effect_resolver.cpp
+build-windows	Build (Release)	2025-12-01T03:53:10.3245572Z D:\a\DM_simulation\DM_simulation\src\engine\effects\effect_resolver.cpp(247,55): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:10.3336069Z D:\a\DM_simulation\DM_simulation\src\engine\effects\effect_resolver.cpp(240,134): warning C4100: 'card_db': unreferenced parameter [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:10.3338198Z D:\a\DM_simulation\DM_simulation\src\engine\effects\effect_resolver.cpp(268,17): warning C4189: 'opponent': local variable is initialized but not referenced [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:10.3394864Z D:\a\DM_simulation\DM_simulation\src\engine\effects\effect_resolver.cpp(473,126): warning C4100: 'card_db': unreferenced parameter [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:11.9446306Z   mana_system.cpp
+build-windows	Build (Release)	2025-12-01T03:53:15.4356670Z   determinizer.cpp
+build-windows	Build (Release)	2025-12-01T03:53:17.3536389Z D:\a\DM_simulation\DM_simulation\src\engine\utils\determinizer.cpp(26,103): warning C4244: 'argument': conversion from '_Rep' to 'unsigned int', possible loss of data [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:17.3538347Z D:\a\DM_simulation\DM_simulation\src\engine\utils\determinizer.cpp(26,103): warning C4244:         with [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:17.3539859Z D:\a\DM_simulation\DM_simulation\src\engine\utils\determinizer.cpp(26,103): warning C4244:         [ [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:17.3541527Z D:\a\DM_simulation\DM_simulation\src\engine\utils\determinizer.cpp(26,103): warning C4244:             _Rep=std::chrono::system_clock::rep [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:17.3543410Z D:\a\DM_simulation\DM_simulation\src\engine\utils\determinizer.cpp(26,103): warning C4244:         ] [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:18.9198001Z   dev_tools.cpp
+build-windows	Build (Release)	2025-12-01T03:53:20.7999670Z D:\a\DM_simulation\DM_simulation\src\engine\utils\dev_tools.cpp(37,20): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:22.3702047Z   card_registry.cpp
+build-windows	Build (Release)	2025-12-01T03:53:25.8779758Z   generic_card_system.cpp
+build-windows	Build (Release)	2025-12-01T03:53:27.7263367Z D:\a\DM_simulation\DM_simulation\src\engine\card_system\generic_card_system.cpp(107,103): warning C4100: 'source_instance_id': unreferenced parameter [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:27.7267219Z D:\a\DM_simulation\DM_simulation\src\engine\card_system\generic_card_system.cpp(107,56): warning C4100: 'game_state': unreferenced parameter [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:27.7503662Z D:\a\DM_simulation\DM_simulation\src\engine\card_system\generic_card_system.cpp(383,108): warning C4100: 'source_instance_id': unreferenced parameter [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:29.3543375Z   csv_loader.cpp
+build-windows	Build (Release)	2025-12-01T03:53:30.3660036Z   tensor_converter.cpp
+build-windows	Build (Release)	2025-12-01T03:53:33.9048000Z   action_encoder.cpp
+build-windows	Build (Release)	2025-12-01T03:53:34.4344204Z   mcts.cpp
+build-windows	Build (Release)	2025-12-01T03:53:38.2666402Z   heuristic_evaluator.cpp
+build-windows	Build (Release)	2025-12-01T03:53:40.3048414Z D:\a\DM_simulation\DM_simulation\src\ai\inference\torch_model.hpp(23,89): warning C4100: 'input': unreferenced parameter [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:40.3050905Z   (compiling source file '../src/ai/evaluator/heuristic_evaluator.cpp')
+build-windows	Build (Release)	2025-12-01T03:53:40.3051452Z   
+build-windows	Build (Release)	2025-12-01T03:53:41.9755838Z   neural_evaluator.cpp
+build-windows	Build (Release)	2025-12-01T03:53:43.9789262Z D:\a\DM_simulation\DM_simulation\src\ai\evaluator\neural_evaluator.cpp(37,44): warning C4101: 'e': unreferenced local variable [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:43.9791583Z D:\a\DM_simulation\DM_simulation\src\ai\evaluator\neural_evaluator.cpp(59,40): warning C4101: 'e': unreferenced local variable [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:45.7307336Z   self_play.cpp
+build-windows	Build (Release)	2025-12-01T03:53:47.7185767Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\self_play.cpp(116,84): warning C4267: 'argument': conversion from 'size_t' to '_Ty', possible loss of data [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:47.7187498Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\self_play.cpp(116,84): warning C4267:         with [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:47.7188969Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\self_play.cpp(116,84): warning C4267:         [ [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:47.7190446Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\self_play.cpp(116,84): warning C4267:             _Ty=int [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:47.7191772Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\self_play.cpp(116,84): warning C4267:         ] [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:49.6599600Z   parallel_runner.cpp
+build-windows	Build (Release)	2025-12-01T03:53:52.8739172Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\parallel_runner.cpp(29,25): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:52.8901356Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\parallel_runner.cpp(107,57): warning C4267: 'argument': conversion from 'size_t' to '_Ty', possible loss of data [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:52.8903387Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\parallel_runner.cpp(107,57): warning C4267:         with [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:52.8904949Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\parallel_runner.cpp(107,57): warning C4267:         [ [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:52.8910348Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\parallel_runner.cpp(107,57): warning C4267:             _Ty=int [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:52.8914125Z D:\a\DM_simulation\DM_simulation\src\ai\self_play\parallel_runner.cpp(107,57): warning C4267:         ] [D:\a\DM_simulation\DM_simulation\build\dm_core.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:53:55.3178429Z   python_batch_inference.cpp
+build-windows	Build (Release)	2025-12-01T03:53:56.2089914Z   Generating Code...
+build-windows	Build (Release)	2025-12-01T03:54:08.0167478Z   dm_core.vcxproj -> D:\a\DM_simulation\DM_simulation\build\Release\dm_core.lib
+build-windows	Build (Release)	2025-12-01T03:54:08.0994218Z   Building Custom Rule D:/a/DM_simulation/DM_simulation/CMakeLists.txt
+build-windows	Build (Release)	2025-12-01T03:54:08.1801798Z   bindings.cpp
+build-windows	Build (Release)	2025-12-01T03:54:11.9514512Z D:\a\DM_simulation\DM_simulation\src\python\bindings.cpp(164,29): warning C4244: 'argument': conversion from 'int' to 'dm::core::CardID', possible loss of data [D:\a\DM_simulation\DM_simulation\build\dm_ai_module.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:54:12.0666239Z D:\a\DM_simulation\DM_simulation\src\python\bindings.cpp(363,68): warning C4996: 'pybind11::detail::object_api<pybind11::handle>::get_type': Call py::type::handle_of(h) or py::type::of(h) instead of h.get_type() [D:\a\DM_simulation\DM_simulation\build\dm_ai_module.vcxproj]
+build-windows	Build (Release)	2025-12-01T03:54:20.2841636Z      Creating library D:/a/DM_simulation/DM_simulation/build/Release/dm_ai_module.lib and object D:/a/DM_simulation/DM_simulation/build/Release/dm_ai_module.exp
+build-windows	Build (Release)	2025-12-01T03:54:20.2901530Z   Generating code
+build-windows	Build (Release)	2025-12-01T03:54:31.2664873Z   Finished generating code
+build-windows	Build (Release)	2025-12-01T03:54:31.5701159Z   dm_ai_module.vcxproj -> D:\a\DM_simulation\DM_simulation\build\Release\dm_ai_module.cp312-win_amd64.pyd
+build-windows	Build (Release)	2025-12-01T03:54:31.6950889Z   Building Custom Rule D:/a/DM_simulation/DM_simulation/CMakeLists.txt
+build-windows	Build (Release)	2025-12-01T03:54:31.8258201Z   main_test.cpp
+build-windows	Build (Release)	2025-12-01T03:54:35.8604147Z   dm_sim_test.vcxproj -> D:\a\DM_simulation\DM_simulation\build\Release\dm_sim_test.exe
+build-windows	Build (Release)	2025-12-01T03:54:35.9178575Z   Building Custom Rule D:/a/DM_simulation/DM_simulation/CMakeLists.txt
+build-windows	Show build pyd files	﻿2025-12-01T03:54:36.1171727Z ##[group]Run Write-Host "Looking for .pyd files under build/"
+build-windows	Show build pyd files	2025-12-01T03:54:36.1172214Z [36;1mWrite-Host "Looking for .pyd files under build/"[0m
+build-windows	Show build pyd files	2025-12-01T03:54:36.1172714Z [36;1mGet-ChildItem -Path build -Recurse -Filter "*.pyd" | ForEach-Object { Write-Host $_.FullName }[0m
+build-windows	Show build pyd files	2025-12-01T03:54:36.1239621Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+build-windows	Show build pyd files	2025-12-01T03:54:36.1239940Z env:
+build-windows	Show build pyd files	2025-12-01T03:54:36.1240184Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Show build pyd files	2025-12-01T03:54:36.1240593Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+build-windows	Show build pyd files	2025-12-01T03:54:36.1240991Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Show build pyd files	2025-12-01T03:54:36.1241348Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Show build pyd files	2025-12-01T03:54:36.1241707Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Show build pyd files	2025-12-01T03:54:36.1241978Z ##[endgroup]
+build-windows	Show build pyd files	2025-12-01T03:54:36.4663407Z Looking for .pyd files under build/
+build-windows	Show build pyd files	2025-12-01T03:54:36.5154158Z D:\a\DM_simulation\DM_simulation\build\Release\dm_ai_module.cp312-win_amd64.pyd
+build-windows	Run tests	﻿2025-12-01T03:54:36.5872841Z ##[group]Run python -m pytest -q
+build-windows	Run tests	2025-12-01T03:54:36.5873194Z [36;1mpython -m pytest -q[0m
+build-windows	Run tests	2025-12-01T03:54:36.5940810Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+build-windows	Run tests	2025-12-01T03:54:36.5941152Z env:
+build-windows	Run tests	2025-12-01T03:54:36.5941407Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Run tests	2025-12-01T03:54:36.5941864Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+build-windows	Run tests	2025-12-01T03:54:36.5942295Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Run tests	2025-12-01T03:54:36.5942684Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Run tests	2025-12-01T03:54:36.5943079Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+build-windows	Run tests	2025-12-01T03:54:36.5943594Z   PYTHONPATH: D:\a\DM_simulation\DM_simulation\build\Release;D:\a\DM_simulation\DM_simulation\build
+build-windows	Run tests	2025-12-01T03:54:36.5944024Z ##[endgroup]
+build-windows	Run tests	2025-12-01T03:54:37.6877794Z .......s....                                                             [100%]
+build-windows	Run tests	2025-12-01T03:54:37.6878741Z 11 passed, 1 skipped in 0.20s
+build-windows	Post Setup Python 3.12	﻿2025-12-01T03:54:37.8492052Z Post job cleanup.
+build-windows	Post Checkout	﻿2025-12-01T03:54:38.1127190Z Post job cleanup.
+build-windows	Post Checkout	2025-12-01T03:54:38.3803321Z [command]"C:\Program Files\Git\bin\git.exe" version
+build-windows	Post Checkout	2025-12-01T03:54:38.4178503Z git version 2.51.2.windows.1
+build-windows	Post Checkout	2025-12-01T03:54:38.4268298Z Temporarily overriding HOME='D:\a\_temp\17e56503-9c15-464d-96f8-a935d431e70f' before making global git config changes
+build-windows	Post Checkout	2025-12-01T03:54:38.4269594Z Adding repository directory to the temporary git global config as a safe directory
+build-windows	Post Checkout	2025-12-01T03:54:38.4283664Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\DM_simulation\DM_simulation
+build-windows	Post Checkout	2025-12-01T03:54:38.4600875Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+build-windows	Post Checkout	2025-12-01T03:54:38.4928961Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+build-windows	Post Checkout	2025-12-01T03:54:39.0617506Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+build-windows	Post Checkout	2025-12-01T03:54:39.0928196Z http.https://github.com/.extraheader
+build-windows	Post Checkout	2025-12-01T03:54:39.0979661Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+build-windows	Post Checkout	2025-12-01T03:54:39.1363007Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+build-windows	Post Checkout	2025-12-01T03:54:39.7186145Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+build-windows	Post Checkout	2025-12-01T03:54:39.7502359Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+build-windows	Complete job	﻿2025-12-01T03:54:40.2979164Z Cleaning up orphan processes
+build-windows	Complete job	2025-12-01T03:54:40.3252281Z Terminate orphan process: pid (7496) (vctip)
+build-windows	Complete job	2025-12-01T03:54:40.3313046Z Terminate orphan process: pid (1988) (MSBuild)
+build-windows	Complete job	2025-12-01T03:54:40.3388702Z Terminate orphan process: pid (5516) (conhost)
