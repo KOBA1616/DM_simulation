@@ -185,6 +185,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
              c.summoning_sickness = sick;
              s.players[player_id].battle_zone.push_back(c);
         })
+        .def("on_game_finished", &GameState::on_game_finished)
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("current_phase", &GameState::current_phase)
