@@ -121,6 +121,10 @@ add_library(dm_core STATIC
 )
 target_link_libraries(dm_core PUBLIC) # nlohmann_json::nlohmann_json removed (header-only)
 
+# Ensure objects in the static library are position-independent so they
+# can be linked into a Python extension/shared library on ELF platforms.
+set_target_properties(dm_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # Executable for C++ Testing/Validation (Phase 1 & 2)
 add_executable(dm_sim_test
     src/main_test.cpp
