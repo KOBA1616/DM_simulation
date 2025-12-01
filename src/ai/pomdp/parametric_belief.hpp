@@ -27,6 +27,14 @@ public:
         for (const auto &p : card_db) probs[p.first] = u;
     }
 
+    // Initialize from a list of card ids (convenience for Python tests)
+    void initialize_ids(const std::vector<uint16_t>& ids) {
+        probs.clear();
+        if (ids.empty()) return;
+        float u = 1.0f / static_cast<float>(ids.size());
+        for (auto id : ids) probs[id] = u;
+    }
+
     // Naive update: reduce probability for cards that are visible in the provided state
     void update(const GameState &state) {
         if (probs.empty()) return;
