@@ -1,5 +1,7 @@
 # 10. 開発状況と今後のロードマップ (Development Status & Roadmap)
 
+**注意: 本ドキュメントのロードマップは [20. 改定ロードマップ (Revised Roadmap)](./20_Revised_Roadmap.md) にて再定義されました。今後の開発は 20_Revised_Roadmap.md に従ってください。**
+
 ## 10.1 現在の開発段階 (Current Status: Phase 2.5)
 **「基盤構築完了・高度化仕様策定フェーズ」**
 
@@ -33,34 +35,7 @@
 
 ## 10.2 今後の開発計画 (Future Roadmap)
 
-### Phase 3: AIコアの進化 (AI Core Evolution)
-**目的**: 「結果スタッツ」と「非公開領域推論」を実装し、AIの基礎知能を飛躍的に向上させる。
-1.  **Result Stats System (Spec 15)**:
-    - C++エンジンに `CardStats` 構造体を実装し、16次元のスタッツを収集・ベクトル化する。
-    - 人間のタグ付けを廃止し、データ駆動でのカード評価基盤を確立する。
-2.  **POMDP & Distillation (Spec 13)**:
-    - 相手の手札・シールドを推論するための Teacher-Student 蒸留システムを構築する。
-    - C++エンジンに「自分自身の山札確率」を計算する `Self-Inference` ロジックを実装する。
-
-### Phase 4: 高度な学習手法 (Advanced Training)
-**目的**: 複雑なコンボやメタゲームの駆け引きを習得させる。
-1.  **Scenario Training (Spec 16)**:
-    - 特定盤面から開始する「詰将棋モード」を実装し、無限ループやリーサル手順を特訓する。
-2.  **Meta-Game Curriculum (Spec 14)**:
-    - アグロ/コントロールを交互に学習する「Dual Curriculum」を導入。
-    - 苦手な相手と優先的に戦う「Adaptive League」を構築する。
-
-### Phase 5: 自律進化エコシステム (Autonomous Ecosystem)
-**目的**: 人間の介入なしに最強デッキを発見し続けるシステムを完成させる。
-1.  **PBT & Kaggle Integration (Spec 12)**:
-    - Kaggle Notebooks 上で動作する PBT (Population Based Training) 環境を構築。
-    - 24時間稼働によるハイパーパラメータ探索とデッキ進化を実現する。
-
-### Parallel Track: コンテンツ拡充 (Content Expansion)
-**目的**: カードプールを拡大し、環境の多様性を確保する。
-1.  **Generic Card Generator (Spec 9)**:
-    - GUI操作とLLM補助によるカード量産ツールを開発する。
-    - 既存カードをJSON定義へ完全移行する。
+*詳細は [docs/20_Revised_Roadmap.md](./20_Revised_Roadmap.md) を参照のこと。*
 
 ## 10.3 詳細実装計画 (Detailed Plan)
 低級モデルやコンテキスト制限のある環境での開発を支援するため、タスクを極小単位に分解した詳細計画書を作成した。
@@ -139,3 +114,7 @@
 
 ### 次のアクション (Next Actions)
 - **Integration**: 強化学習トレーナー（RL Loop）において `GameInstance` と `ScenarioConfig` を活用し、特定の局面からの学習を開始する。
+
+## 10.7 2025-12-07 ロードマップの再定義 (Roadmap Redefined)
+ユーザー要件に基づき、堅牢性と拡張性を重視した新たなロードマップ `docs/20_Revised_Roadmap.md` を策定した。
+今後の開発はこの新ロードマップに従い、フェーズ1（堅牢性確保）から順次進行する。
