@@ -49,7 +49,7 @@ namespace dm::engine {
                 resolve_use_shield_trigger(game_state, action, card_db);
                 break;
             case ActionType::BLOCK:
-                resolve_block(game_state, action);
+                resolve_block(game_state, action, card_db);
                 break;
             case ActionType::SELECT_TARGET:
                 resolve_select_target(game_state, action);
@@ -71,7 +71,7 @@ namespace dm::engine {
         }
     }
 
-    void EffectResolver::resolve_block(GameState& game_state, const Action& action) {
+    void EffectResolver::resolve_block(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
         // Change target of current attack to blocker
         game_state.current_attack.is_blocked = true;
         game_state.current_attack.blocker_instance_id = action.source_instance_id;
@@ -85,15 +85,7 @@ namespace dm::engine {
         }
 
         // Execute Battle immediately after block declaration
-        // (Or should we wait for more steps? Standard DM: Block -> Battle)
-        // Since we don't have "Blocker vs Slayer" timing complexities yet, execute battle.
-        // But wait, resolve_attack was split. We need execute_battle.
-        // Actually, if we are in BLOCK phase, we should transition back to ATTACK or resolve battle then transition.
-        // Let's execute battle here.
-        // But we need card_db.
-        // resolve_block signature needs card_db? Or execute_battle needs it.
-        // Let's change signature of resolve_block to take card_db if needed, or just call execute_battle which takes it.
-        // Wait, resolve_action passes card_db.
+        execute_battle(game_state, card_db);
     }
 
     int EffectResolver::get_creature_power(const CardInstance& creature, const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
