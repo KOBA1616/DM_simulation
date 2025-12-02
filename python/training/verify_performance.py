@@ -65,8 +65,10 @@ class PerformanceVerifier:
 
         dm_ai_module.register_batch_inference_numpy(batch_inference)
 
+    def verify(self, scenario_name, episodes, mcts_sims=800, batch_size=32, num_threads=4):
+        print(f"Verifying performance for '{self.model_name}' on scenario '{scenario_name}'...")
+        print(f"Settings: sims={mcts_sims}, batch_size={batch_size}, threads={num_threads}")
 
-    def run_episode(self, scenario_name, mcts_sims=800):
         if scenario_name not in SCENARIOS:
             raise ValueError(f"Unknown scenario: {scenario_name}")
 
@@ -84,87 +86,63 @@ class PerformanceVerifier:
         config.enemy_battle_zone = config_dict.get("enemy_battle_zone", [])
         config.enemy_can_use_trigger = config_dict.get("enemy_can_use_trigger", False)
 
-        instance = dm_ai_module.GameInstance(int(time.time() * 1000) % 1000000, self.card_db)
-        instance.reset_with_scenario(config)
-        state = instance.state
+        # Prepare initial states
+        initial_states = []
+        for i in range(episodes):
+             instance = dm_ai_module.GameInstance(int(time.time() * 1000 + i) % 1000000, self.card_db)
+             instance.reset_with_scenario(config)
+             initial_states.append(instance.state)
 
-        # Use C++ MCTS
-        mcts = dm_ai_module.MCTS(self.card_db, 1.0, 0.3, 0.25, 8)
-        evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
+        # Setup ParallelRunner
+        # Note: NeuralEvaluator in Python doesn't have parallel logic itself, but C++ ParallelRunner does.
+        # We need to pass a python wrapper around NeuralEvaluator.evaluate.
+        # But wait, NeuralEvaluator is C++ binding.
+        # dm_ai_module.NeuralEvaluator().evaluate is a python-callable that calls C++.
 
-        step_count = 0
-        max_steps = 200
+        # In ParallelRunner.play_games(..., evaluator, ...):
+        # evaluator is std::function taking vector<GameState> returning pair<...>.
+        # We can pass dm_ai_module.NeuralEvaluator(self.card_db).evaluate directly?
+        # Yes, pybind11 should adapt it.
 
-        while True:
-            is_over, result = dm_ai_module.PhaseManager.check_game_over(state)
-            if is_over:
-                return result
+        runner = dm_ai_module.ParallelRunner(self.card_db, mcts_sims, batch_size)
+        neural_evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
 
-            if step_count > max_steps:
-                return 3
+        start_time = time.time()
 
-            policy = mcts.search(state, mcts_sims, evaluator.evaluate, False, 1.0)
+        # Run games
+        # play_games returns vector<GameResultInfo>
+        # but binding for GameResultInfo might need inspection if we use it.
+        # Actually binding returns list of GameResultInfo objects.
+        # GameResultInfo has .result (int)
 
-            best_action_idx = np.argmax(policy)
+        results_info = runner.play_games(initial_states, neural_evaluator.evaluate, 1.0, False, num_threads)
 
-            legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
-            if not legal_actions:
-                 break
+        duration = time.time() - start_time
+        if duration == 0: duration = 0.001
 
-            target_action = None
-            if policy[best_action_idx] == 0:
-                 target_action = legal_actions[0]
-            else:
-                for act in legal_actions:
-                    idx = dm_ai_module.ActionEncoder.action_to_index(act)
-                    if idx == best_action_idx:
-                        target_action = act
-                        break
-
-            if target_action is None:
-                target_action = legal_actions[0]
-
-            dm_ai_module.EffectResolver.resolve_action(state, target_action, self.card_db)
-            if target_action.type == dm_ai_module.ActionType.PASS:
-                dm_ai_module.PhaseManager.next_phase(state, self.card_db)
-
-            dm_ai_module.PhaseManager.fast_forward(state, self.card_db)
-            step_count += 1
-
-    def verify(self, scenario_name, episodes):
-        print(f"Verifying performance for '{self.model_name}' on scenario '{scenario_name}'...")
-
-        results = {
+        # Aggregate Results
+        stats = {
             "P1_WIN": 0,
             "P2_WIN": 0,
             "DRAW": 0
         }
 
-        start_time = time.time()
-        for i in range(episodes):
-            res = self.run_episode(scenario_name)
-            if res == 1:
-                results["P1_WIN"] += 1
-            elif res == 2:
-                results["P2_WIN"] += 1
-            else:
-                results["DRAW"] += 1
-
-            if (i+1) % 10 == 0:
-                print(f"Played {i+1}/{episodes}...")
-
-        duration = time.time() - start_time
-        if duration == 0: duration = 0.001
+        for info in results_info:
+            res_val = info.result # enum int
+            if res_val == 1: stats["P1_WIN"] += 1
+            elif res_val == 2: stats["P2_WIN"] += 1
+            else: stats["DRAW"] += 1
 
         total = episodes
-        win_rate = results["P1_WIN"] / total * 100
+        win_rate = stats["P1_WIN"] / total * 100
 
         print(f"--- Results for {self.model_name} ---")
         print(f"Total Games: {total}")
-        print(f"Wins (P1): {results['P1_WIN']} ({win_rate:.2f}%)")
-        print(f"Losses (P2): {results['P2_WIN']}")
-        print(f"Draws: {results['DRAW']}")
+        print(f"Wins (P1): {stats['P1_WIN']} ({win_rate:.2f}%)")
+        print(f"Losses (P2): {stats['P2_WIN']}")
+        print(f"Draws: {stats['DRAW']}")
         print(f"Time Taken: {duration:.2f}s ({duration/total:.2f}s/game)")
+        print(f"Throughput: {total / duration:.2f} games/s")
 
         return win_rate
 
@@ -173,6 +151,10 @@ if __name__ == "__main__":
     parser.add_argument("--scenario", type=str, default="lethal_puzzle_easy")
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--model", type=str, default=None)
+    parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--sims", type=int, default=800)
+
     args = parser.parse_args()
 
     cards_path = os.path.join(project_root, 'data', 'cards.json')
@@ -184,7 +166,7 @@ if __name__ == "__main__":
 
     verifier = PerformanceVerifier(card_db, args.model)
     try:
-        verifier.verify(args.scenario, args.episodes)
+        verifier.verify(args.scenario, args.episodes, mcts_sims=args.sims, batch_size=args.batch_size, num_threads=args.threads)
     finally:
         # Cleanup to avoid Segfaults
         if hasattr(dm_ai_module, "clear_batch_inference_numpy"):
