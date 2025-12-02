@@ -94,14 +94,16 @@ namespace dm::engine {
         }
 
         // Enemy Shields
-        for (int i = 0; i < config.enemy_shield_count; ++i) {
-             // Use ID 0 or some dummy ID for shields if not specified
-             // Shields are face down, so ID matters for triggers.
-             // If we want to test triggers, we need to specify them.
-             // The config `enemy_can_use_trigger` is a boolean flag, maybe controlling AI behavior?
-             // But for shields, we need cards.
-             // Let's add dummy cards (ID 1) for now.
-             enemy.shield_zone.emplace_back(1, instance_id_counter++);
+        if (!config.enemy_shields.empty()) {
+            for (int cid : config.enemy_shields) {
+                enemy.shield_zone.emplace_back((CardID)cid, instance_id_counter++);
+            }
+        } else {
+            // Fallback to count with dummy cards
+            for (int i = 0; i < config.enemy_shield_count; ++i) {
+                 // Use ID 1 (Standard dummy)
+                 enemy.shield_zone.emplace_back(1, instance_id_counter++);
+            }
         }
 
         // 4. Update Stats / Cache (if any)

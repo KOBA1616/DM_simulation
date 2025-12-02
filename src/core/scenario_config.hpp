@@ -12,6 +12,8 @@ namespace dm::core {
         std::vector<int> my_shields;
 
         int enemy_shield_count = 5;
+        std::vector<int> enemy_shields; // Explicit shield content override
+        int enemy_deck_id = 0;          // For future deck-based generation
         std::vector<int> enemy_battle_zone;
         bool enemy_can_use_trigger = false;
         bool loop_proof_mode = false;
