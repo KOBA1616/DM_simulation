@@ -35,7 +35,8 @@ namespace dm::core {
         CROSS_GEAR,
         CASTLE,
         PSYCHIC_CREATURE,
-        GR_CREATURE
+        GR_CREATURE,
+        TAMASEED
     };
 
     enum class Zone : uint8_t {
