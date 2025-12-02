@@ -11,8 +11,8 @@
 
 ## 2. 現在の開発状況サマリ
 - **フェーズ**: Phase 3 (MVP Cycle) 開始。
-- **ステータス**: JSON Loaderの実装が完了し、データ駆動型のカード追加が可能となった。CardStatsの動作検証も完了。Phase 3のシナリオ学習サイクルの構築に着手する段階。
-- **直近の課題**: GUI Card Editorの実装、およびシナリオモードを用いたデータ収集ループ(Data Collection)の構築。
+- **ステータス**: Phase 3に向けたGUI Card Editorの改修中。JSON Loaderへの完全移行を進めている。
+- **直近の課題**: GUI Card EditorのJSON対応実装、およびシナリオモードを用いたデータ収集ループ(Data Collection)の構築。
 
 今後のロードマップ詳細は [20_Revised_Roadmap.md](./20_Revised_Roadmap.md) を参照。
 
@@ -69,7 +69,7 @@
 
 3.  **汎用カードシステム (Generic Card System)** (Completed)
     - [x] **JSON Loader**: 実装完了。`tests/test_json_loader.py` で動作検証済み。
-4.  **GUIカードエディタ (Card Editor)**
+4.  **GUIカードエディタ (Card Editor)** (In Progress)
     - [ ] **JSON Editor**: 既存のCSVベースのエディタを刷新し、JSON形式で効果（Trigger, Effect）を編集できるGUIツールの開発。
     - [ ] **Integration**: エディタで作成したカードを即座にエンジンにロードしてテストする機能。
 
