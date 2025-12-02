@@ -12,26 +12,17 @@ if bin_path not in sys.path:
 
 import dm_ai_module
 
-# Basic card definitions for testing scenarios
-# In a real setup, we would load these from a DB or JSON
-# For now, we assume IDs map to some cards.
-# ID 1: "Bronze Arm Tribe" (3 mana, Nature, CIP: +1 mana)
-# ID 2: "Aqua Hulcus" (3 mana, Water, CIP: draw 1)
-# ID 3: "Terror Pit" (6 mana, Darkness, Shield Trigger, destroy creature)
-# ID 4: "Bolshack Dragon" (6 mana, Fire, Double Breaker)
-# ID 100+: Dummy enemy cards
-
 # Spec Step 2.2: Define combo practice board definitions in SCENARIOS
 SCENARIOS = {
     "infinite_loop_drill": {
         "description": "Start with a board state that allows an infinite loop. The goal is to prove the loop.",
         "config": {
             "my_mana": 5,
-            "my_hand_cards": [1, 1], # Some combo pieces
-            "my_battle_zone": [2],   # Some combo pieces on board
+            "my_hand_cards": [1, 1], # Bronze-Arm Tribe
+            "my_battle_zone": [2],   # Aqua Hulcus
             "my_mana_zone": [1, 1, 1, 1, 1],
             "my_grave_yard": [],
-            "my_shields": [3],
+            "my_shields": [3], # Holy Awe
             "enemy_shield_count": 5,
             "enemy_battle_zone": [],
             "enemy_can_use_trigger": False,
@@ -42,8 +33,8 @@ SCENARIOS = {
         "description": "Enemy has 0 shields. Win this turn.",
         "config": {
             "my_mana": 3,
-            "my_hand_cards": [1], # Speed Attacker?
-            "my_battle_zone": [1], # Creature ready to attack
+            "my_hand_cards": [1], # Bronze-Arm Tribe
+            "my_battle_zone": [1], # Bronze-Arm Tribe
             "my_mana_zone": [1, 1, 1],
             "my_shields": [3],
             "enemy_shield_count": 0,
@@ -132,18 +123,18 @@ class ScenarioRunner:
         print(f"Training finished. Final success rate: {success_count/episodes:.2f}")
 
 if __name__ == "__main__":
-    # Dummy Card DB
-    card_db = {}
-    for i in range(1, 200):
-        c = dm_ai_module.CardDefinition()
-        c.id = i
-        c.name = f"Card_{i}"
-        c.cost = 3
-        c.civilization = dm_ai_module.Civilization.FIRE
-        c.type = dm_ai_module.CardType.CREATURE
-        c.power = 3000
-        card_db[i] = c
+    # Load actual cards from JSON
+    # Use absolute path to ensure it works regardless of where the script is run from
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+    cards_path = os.path.join(project_root, 'data', 'cards.json')
+
+    if not os.path.exists(cards_path):
+        print(f"Error: cards.json not found at {cards_path}")
+        sys.exit(1)
+
+    print(f"Loading cards from {cards_path}...")
+    card_db = dm_ai_module.JsonLoader.load_cards(cards_path)
+    print(f"Loaded {len(card_db)} cards.")
 
     runner = ScenarioRunner(card_db)
     runner.run_training_loop("lethal_drill_easy", episodes=10)
-    # runner.run_training_loop("infinite_loop_drill", episodes=10)
