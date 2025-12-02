@@ -27,12 +27,18 @@ namespace dm::engine {
             p.mana_zone.clear();
             p.graveyard.clear();
             p.shield_zone.clear();
-            p.deck.clear(); // We might not need deck for scenario?
-            // Usually scenarios assume deck is irrelevant or we can fill it with dummy cards?
+            p.deck.clear();
         }
 
         // Instance ID counter
         int instance_id_counter = 0;
+
+        // Fill decks to prevent immediate deckout
+        for (auto& p : state.players) {
+             for(int i=0; i<30; ++i) {
+                  p.deck.emplace_back((CardID)1, instance_id_counter++);
+             }
+        }
 
         // 2. Setup My Resources (Player 0)
         Player& me = state.players[0];
