@@ -447,7 +447,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
                 });
 
                 // Create numpy array that references the shared vector, using capsule as base/owner
-                py::array_t<float> arr({(py::ssize_t)n, (py::ssize_t)stride}, {(py::ssize_t)(stride * sizeof(float)), (py::ssize_t)sizeof(float)}, data_ptr->data(), base_capsule);
+                std::vector<py::ssize_t> shape = {(py::ssize_t)n, (py::ssize_t)stride};
+                std::vector<py::ssize_t> strides = {(py::ssize_t)(stride * sizeof(float)), (py::ssize_t)sizeof(float)};
+                py::array_t<float> arr(shape, strides, data_ptr->data(), base_capsule);
 
 #ifdef AI_DEBUG
                 fprintf(stderr, "bindings: about to call Python func with ndarray shape=(%zu,%zu)\n", n, stride);
