@@ -51,7 +51,7 @@ class PerformanceVerifier:
 
         self.network.eval()
 
-    def run_episode(self, scenario_name, mcts_sims=50):
+    def run_episode(self, scenario_name, mcts_sims=800):
         if scenario_name not in SCENARIOS:
             raise ValueError(f"Unknown scenario: {scenario_name}")
 
