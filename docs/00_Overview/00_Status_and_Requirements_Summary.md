@@ -55,11 +55,11 @@
 **目的**: 開発環境の不具合を解消し、エンジンの動作を保証するテスト基盤を固める。
 
 1.  **環境安定化 (Environment Stability)**
-    - [ ] **Python Import Issueの解決**: Windows/MinGW環境でのDLLロードエラーを解消し、`import dm_ai_module` を安定させる。
+    - [x] **Python Import Issueの解決**: Windows/MinGW環境でのDLLロードエラーを解消し、`import dm_ai_module` を安定させる。（Linux環境では動作確認済み）
     - [ ] **CI/CDパイプライン**: ビルドとテストの自動化を安定させる。
 2.  **ユニットテスト拡充 (Unit Test Expansion)**
     - [ ] **Core Logic Tests**: マナチャージ、シールドトリガー等の基本動作を検証する `pytest` の追加。
-    - [ ] **CardStats Verification**: 実装された統計機能が正しく数値を集計しているかのテスト。
+    - [x] **CardStats Verification**: 実装された統計機能が正しく数値を集計しているかのテスト。
 
 ### 【優先度 2】拡張性の確立 (Phase 2: Extensibility)
 **目的**: エンジンコードを修正せずに、GUIからカードを追加できる「データ駆動型」環境を構築する。
@@ -143,8 +143,8 @@
 
 上記の優先順位に基づき、以下の順序で着手することを推奨します。
 
-1.  **Fix DLL Error**: まずPythonからC++モジュールを呼べない問題を解決する（最優先）。
-2.  **Test CardStats**: 統計機能が正しいことをテストで保証する。
+1.  **Fix DLL Error**: まずPythonからC++モジュールを呼べない問題を解決する（最優先）。(Linux環境では完了)
+2.  **Test CardStats**: 統計機能が正しいことをテストで保証する。(完了)
 3.  **Implement JSON Loader**: C++側でJSONを読めるようにする。
 4.  **Update Card Editor**: GUIでJSONを作れるようにする。
 5.  **Run Scenario Training**: シナリオモードで学習サイクルを回してみる。
