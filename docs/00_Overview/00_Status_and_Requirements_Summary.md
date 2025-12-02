@@ -11,8 +11,8 @@
 
 ## 2. 現在の開発状況サマリ
 - **フェーズ**: Phase 3 (MVP Cycle) 開始。
-- **ステータス**: Phase 3に向けたGUI Card Editorの改修中。JSON Loaderへの完全移行を進めている。
-- **直近の課題**: GUI Card EditorのJSON対応実装、およびシナリオモードを用いたデータ収集ループ(Data Collection)の構築。
+- **ステータス**: Phase 3 (MVP Cycle) 進行中。
+- **直近の課題**: シナリオモードを用いたデータ収集ループ(Data Collection)の構築と検証。
 
 今後のロードマップ詳細は [20_Revised_Roadmap.md](./20_Revised_Roadmap.md) を参照。
 
@@ -69,14 +69,14 @@
 
 3.  **汎用カードシステム (Generic Card System)** (Completed)
     - [x] **JSON Loader**: 実装完了。`tests/test_json_loader.py` で動作検証済み。
-4.  **GUIカードエディタ (Card Editor)** (In Progress)
-    - [ ] **JSON Editor**: 既存のCSVベースのエディタを刷新し、JSON形式で効果（Trigger, Effect）を編集できるGUIツールの開発。
-    - [ ] **Integration**: エディタで作成したカードを即座にエンジンにロードしてテストする機能。
+4.  **GUIカードエディタ (Card Editor)** (Completed)
+    - [x] **JSON Editor**: 既存のCSVベースのエディタを刷新し、JSON形式で効果（Trigger, Effect）を編集できるGUIツールの開発。
+    - [x] **Integration**: エディタで作成したカードを即座にエンジンにロードしてテストする機能。
 
 ### 【優先度 3】小規模全体試験 (Phase 3: MVP Cycle)
 **目的**: シナリオモードを用いて、AIが「学習によって強くなる」サイクルを実証する。
 
-5.  **データ収集パイプライン (Data Collection)**
+5.  **データ収集パイプライン (Data Collection)** (In Progress)
     - [ ] **Scenario Loop**: 特定のシナリオ（詰めろ盤面など）を繰り返しプレイし、統計データと勝敗を収集するスクリプト。
 6.  **簡易学習ループ (Simple Training)**
     - [ ] **Training Script**: 収集したデータを用いてモデルを更新する学習ループの実装。
