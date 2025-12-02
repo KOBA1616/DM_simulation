@@ -118,3 +118,28 @@
 ## 10.7 2025-12-07 ロードマップの再定義 (Roadmap Redefined)
 ユーザー要件に基づき、堅牢性と拡張性を重視した新たなロードマップ `docs/20_Revised_Roadmap.md` を策定した。
 今後の開発はこの新ロードマップに従い、フェーズ1（堅牢性確保）から順次進行する。
+
+## 10.8 2025-12-07 開発進捗更新 (Development Update)
+
+本節は、Revised Roadmap Phase 1 (Foundation & Robustness) の進捗記録です。
+
+### 実施済み実装 (Completed Implementations)
+
+#### 1. Engine & Unit Test Expansion (Phase 1 Task 1.2)
+- **Unit Testing**:
+    - `tests/test_engine_basics.py` を新規作成し、以下のコア機能が正常に動作することを検証しました。
+        - **Mana Charge**: 手札からマナゾーンへのチャージ。
+        - **Summon Creature**: マナコストを支払ってのクリーチャー召喚、`CardStats` のプレイ回数カウント更新。
+        - **Attack & Block**: クリーチャーによるプレイヤーへの攻撃、シールドブレイク。
+    - 特に、攻撃フェーズへの遷移とブロックフェーズ（パス時のバトル解決）のフローが正しく機能することを確認しました。
+
+- **Engine Logic Fixes**:
+    - `EffectResolver::resolve_block` において、ブロックアクション宣言後に `execute_battle` が呼び出されないバグを修正しました。これにより、ブロックフェーズでパス（ブロックなし）を選択した際に、正しく攻撃処理（シールドブレイクまたはクリーチャー破壊）が実行されるようになりました。
+    - `ActionGenerator` 内のコメントを整理し、フェーズ遷移（MAIN -> ATTACK -> BLOCK）のロジックを明確化しました。
+
+### 次のアクション (Next Actions)
+- **Phase 1 Completion**:
+    - 残る `GameState` ロジック（呪文の使用、トリガー処理等）のテストケース拡充。
+    - CI/CDパイプラインでの自動テスト実行の安定化。
+- **Phase 2 Preparation**:
+    - JSONベースのカード定義システム（`GenericCardSystem`）の実装準備。
