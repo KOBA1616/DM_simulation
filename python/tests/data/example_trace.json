@@ -1,0 +1,23 @@
+[
+  {
+    "step": 0,
+    "players": [
+      { "hand": [], "deck": [], "battle_zone": [], "shield_zone": [], "graveyard": [] },
+      { "hand": [], "deck": [], "battle_zone": [], "shield_zone": [], "graveyard": [] }
+    ]
+  },
+  {
+    "step": 1,
+    "players": [
+      { "hand": [], "deck": [], "battle_zone": [], "shield_zone": [], "graveyard": [] },
+      { "hand": [], "deck": [ {"card_id": 1, "instance_id": 101} ], "battle_zone": [], "shield_zone": [], "graveyard": [] }
+    ]
+  },
+  {
+    "step": 2,
+    "players": [
+      { "hand": [], "deck": [], "battle_zone": [], "shield_zone": [], "graveyard": [] },
+      { "hand": [ {"card_id": 1, "instance_id": 102} ], "deck": [], "battle_zone": [], "shield_zone": [], "graveyard": [] }
+    ]
+  }
+]
