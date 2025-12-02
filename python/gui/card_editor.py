@@ -391,19 +391,54 @@ class CardEditor(QDialog):
     def add_effect_template(self):
         if self.current_card_index < 0: return
 
-        # Add a simple ON_PLAY effect template
-        new_eff = {
-            "trigger": "ON_PLAY",
-            "condition": {"type": "NONE"},
-            "actions": [
-                {
+        # Ask user for template type
+        from PyQt6.QtWidgets import QInputDialog
+        types = ["Draw Card (ON_PLAY)", "Destroy Creature (ON_PLAY)", "Return to Hand (ON_PLAY)", "Mekraid (ON_PLAY)", "Search Top Deck (ON_PLAY)"]
+        item, ok = QInputDialog.getItem(self, "Select Template", "Effect Template:", types, 0, False)
+
+        if ok and item:
+            new_eff = {
+                "trigger": "ON_PLAY",
+                "condition": {"type": "NONE"},
+                "actions": []
+            }
+
+            if "Draw Card" in item:
+                new_eff["actions"].append({
                     "type": "DRAW_CARD",
                     "scope": "PLAYER_SELF",
                     "value1": 1
-                }
-            ]
-        }
-        self.cards_data[self.current_card_index]['effects'].append(new_eff)
+                })
+            elif "Destroy Creature" in item:
+                new_eff["actions"].append({
+                    "type": "DESTROY",
+                    "scope": "TARGET_SELECT",
+                    "value1": 1,
+                    "filter": {"owner": "OPPONENT", "types": ["CREATURE"], "count": 1}
+                })
+            elif "Return to Hand" in item:
+                new_eff["actions"].append({
+                    "type": "RETURN_TO_HAND",
+                    "scope": "TARGET_SELECT",
+                    "value1": 1,
+                    "filter": {"owner": "OPPONENT", "types": ["CREATURE"], "count": 1}
+                })
+            elif "Mekraid" in item:
+                new_eff["actions"].append({
+                    "type": "MEKRAID",
+                    "scope": "PLAYER_SELF",
+                    "value1": 3,
+                    "filter": {"races": ["Magic"], "max_cost": 5}
+                })
+            elif "Search Top Deck" in item:
+                new_eff["actions"].append({
+                    "type": "SEARCH_DECK_BOTTOM",
+                    "scope": "PLAYER_SELF",
+                    "value1": 3,
+                    "filter": {"types": ["SPELL"], "count": 1}
+                })
+
+            self.cards_data[self.current_card_index]['effects'].append(new_eff)
 
         # Refresh Effects List
         self.load_selected_card(self.current_card_index) # Reloads UI

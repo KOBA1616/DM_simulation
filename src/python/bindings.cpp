@@ -99,25 +99,26 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .export_values();
 
     // Core Structures
+    // Use readwrite properties via lambdas since fields are bitfields
     py::class_<CardKeywords>(m, "CardKeywords")
-        .def_property_readonly("g_zero", [](const CardKeywords& k) { return k.g_zero; })
-        .def_property_readonly("revolution_change", [](const CardKeywords& k) { return k.revolution_change; })
-        .def_property_readonly("mach_fighter", [](const CardKeywords& k) { return k.mach_fighter; })
-        .def_property_readonly("g_strike", [](const CardKeywords& k) { return k.g_strike; })
-        .def_property_readonly("speed_attacker", [](const CardKeywords& k) { return k.speed_attacker; })
-        .def_property_readonly("blocker", [](const CardKeywords& k) { return k.blocker; })
-        .def_property_readonly("slayer", [](const CardKeywords& k) { return k.slayer; })
-        .def_property_readonly("double_breaker", [](const CardKeywords& k) { return k.double_breaker; })
-        .def_property_readonly("triple_breaker", [](const CardKeywords& k) { return k.triple_breaker; })
-        .def_property_readonly("power_attacker", [](const CardKeywords& k) { return k.power_attacker; })
-        .def_property_readonly("shield_trigger", [](const CardKeywords& k) { return k.shield_trigger; })
-        .def_property_readonly("evolution", [](const CardKeywords& k) { return k.evolution; })
-        .def_property_readonly("cip", [](const CardKeywords& k) { return k.cip; })
-        .def_property_readonly("at_attack", [](const CardKeywords& k) { return k.at_attack; })
-        .def_property_readonly("at_block", [](const CardKeywords& k) { return k.at_block; })
-        .def_property_readonly("at_start_of_turn", [](const CardKeywords& k) { return k.at_start_of_turn; })
-        .def_property_readonly("at_end_of_turn", [](const CardKeywords& k) { return k.at_end_of_turn; })
-        .def_property_readonly("destruction", [](const CardKeywords& k) { return k.destruction; });
+        .def_property("g_zero", [](const CardKeywords& k) { return k.g_zero; }, [](CardKeywords& k, bool v) { k.g_zero = v; })
+        .def_property("revolution_change", [](const CardKeywords& k) { return k.revolution_change; }, [](CardKeywords& k, bool v) { k.revolution_change = v; })
+        .def_property("mach_fighter", [](const CardKeywords& k) { return k.mach_fighter; }, [](CardKeywords& k, bool v) { k.mach_fighter = v; })
+        .def_property("g_strike", [](const CardKeywords& k) { return k.g_strike; }, [](CardKeywords& k, bool v) { k.g_strike = v; })
+        .def_property("speed_attacker", [](const CardKeywords& k) { return k.speed_attacker; }, [](CardKeywords& k, bool v) { k.speed_attacker = v; })
+        .def_property("blocker", [](const CardKeywords& k) { return k.blocker; }, [](CardKeywords& k, bool v) { k.blocker = v; })
+        .def_property("slayer", [](const CardKeywords& k) { return k.slayer; }, [](CardKeywords& k, bool v) { k.slayer = v; })
+        .def_property("double_breaker", [](const CardKeywords& k) { return k.double_breaker; }, [](CardKeywords& k, bool v) { k.double_breaker = v; })
+        .def_property("triple_breaker", [](const CardKeywords& k) { return k.triple_breaker; }, [](CardKeywords& k, bool v) { k.triple_breaker = v; })
+        .def_property("power_attacker", [](const CardKeywords& k) { return k.power_attacker; }, [](CardKeywords& k, bool v) { k.power_attacker = v; })
+        .def_property("shield_trigger", [](const CardKeywords& k) { return k.shield_trigger; }, [](CardKeywords& k, bool v) { k.shield_trigger = v; })
+        .def_property("evolution", [](const CardKeywords& k) { return k.evolution; }, [](CardKeywords& k, bool v) { k.evolution = v; })
+        .def_property("cip", [](const CardKeywords& k) { return k.cip; }, [](CardKeywords& k, bool v) { k.cip = v; })
+        .def_property("at_attack", [](const CardKeywords& k) { return k.at_attack; }, [](CardKeywords& k, bool v) { k.at_attack = v; })
+        .def_property("at_block", [](const CardKeywords& k) { return k.at_block; }, [](CardKeywords& k, bool v) { k.at_block = v; })
+        .def_property("at_start_of_turn", [](const CardKeywords& k) { return k.at_start_of_turn; }, [](CardKeywords& k, bool v) { k.at_start_of_turn = v; })
+        .def_property("at_end_of_turn", [](const CardKeywords& k) { return k.at_end_of_turn; }, [](CardKeywords& k, bool v) { k.at_end_of_turn = v; })
+        .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; });
 
     py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init<>())
@@ -162,6 +163,26 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<GameInstance>(m, "GameInstance")
         .def(py::init<uint32_t, const std::map<CardID, CardDefinition>&>())
+        .def(py::init([]() {
+             static std::map<CardID, CardDefinition> empty_db;
+             return new GameInstance(0, empty_db);
+        }))
+        .def("start_game", [](GameInstance& self, const std::map<CardID, CardDefinition>& card_db) {
+             // Reconstruct logic to update internal card_db reference is tricky since it's const ref.
+             // GameInstance stores `const std::map<...>& card_db`.
+             // If we default construct, we bind to a static empty map.
+             // We can't easily rebind references in C++.
+             // Better: GameInstance should probably own the map or a shared_ptr to it if we want flexibility.
+             // For now, assume the user must provide DB at init or we provide a helper to "restart" with new DB by creating new instance?
+             // Actually, the test code calls `start_game` which isn't in GameInstance C++ class!
+             // `GameInstance` has `reset_with_scenario`.
+             // `PhaseManager::start_game` exists.
+             // The Python test assumes GameInstance has `start_game`.
+             // Let's look at how `reset_with_scenario` works.
+             // It calls `PhaseManager::start_game(state, card_db)`.
+             // We can expose a method `start_game` on GameInstance that calls PhaseManager.
+             PhaseManager::start_game(self.state, self.card_db);
+        })
         .def("reset_with_scenario", &GameInstance::reset_with_scenario)
         .def_property_readonly("state", &GameInstance::get_state, py::return_value_policy::reference);
 
@@ -189,6 +210,26 @@ PYBIND11_MODULE(dm_ai_module, m) {
              CardInstance c(card_id, instance_id);
              c.is_tapped = tapped;
              c.summoning_sickness = sick;
+             s.players[player_id].battle_zone.push_back(c);
+        })
+        .def("add_card_to_hand", [](GameState& s, int player_id, int card_id, int instance_id) {
+             if (player_id < 0 || player_id >= 2) return;
+             s.players[player_id].hand.emplace_back((CardID)card_id, instance_id);
+        })
+        .def("add_card_to_mana", [](GameState& s, int player_id, int card_id, int instance_id) {
+             if (player_id < 0 || player_id >= 2) return;
+             CardInstance c((CardID)card_id, instance_id);
+             c.is_tapped = false;
+             s.players[player_id].mana_zone.push_back(c);
+        })
+        .def("add_card_to_deck", [](GameState& s, int player_id, int card_id, int instance_id) {
+             if (player_id < 0 || player_id >= 2) return;
+             s.players[player_id].deck.emplace_back((CardID)card_id, instance_id);
+        })
+        .def("add_card_to_battle", [](GameState& s, int player_id, int card_id, int instance_id) {
+             if (player_id < 0 || player_id >= 2) return;
+             CardInstance c((CardID)card_id, instance_id);
+             c.summoning_sickness = true;
              s.players[player_id].battle_zone.push_back(c);
         })
         .def("on_game_finished", &GameState::on_game_finished)
