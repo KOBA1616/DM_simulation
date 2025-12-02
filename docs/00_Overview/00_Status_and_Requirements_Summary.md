@@ -1,5 +1,9 @@
 # デュエル・マスターズ AI シミュレーター 要件定義書兼開発ステータス (2025-12-02版)
 
+## 0. 本ドキュメントの運用方針 (Maintenance Policy)
+本ドキュメントはプロジェクトのマスター要件定義書である。
+**開発が完了した機能、仕様変更、または新たな要件が発生した場合は、必ず本ドキュメントを更新し、常に最新の状態を保つこと。**
+
 ## 1. プロジェクト概要
 本プロジェクトは、TCG「デュエル・マスターズ」の高速かつ拡張性の高いシミュレーターを構築し、AlphaZero/MuZeroベースの高度なAIエージェントを育成することを目的とする。C++20による高速なコアエンジンと、Pythonによる柔軟な学習・GUI環境を統合する。
 
@@ -90,6 +94,49 @@
     - [ ] **Full POMDP**: 推論結果をAIの入力特徴量として完全統合。
         - 参照: [13_POMDP_Inference_Spec.md](../02_Planned_Specs/13_POMDP_Inference_Spec.md)
 
+### 【優先度 5】ハイパフォーマンス学習基盤 (Phase 5: High-Performance Training Infrastructure)
+**目的**: Pythonの柔軟性とC++の速度を融合し、GPU使用率を最大化する「最強の学習環境」を構築する。
+
+10. **C++ 特徴量抽出 (C++ Feature Extraction)**
+    - **目的**: 盤面状態(`GameState`)からニューラルネットワーク入力(`Tensor`)への変換をC++で行い、Python側の負荷とデータ転送コストを削減する。
+    - **内容**: `GameState::to_feature_vector()` を実装し、Pythonには `numpy` 配列（ゼロコピー）として渡す。これは後続のMCTS高速化の前提となる。
+
+11. **非同期バッチMCTS (Asynchronous Batch MCTS)**
+    - **目的**: MCTSの木探索をC++で高速実行しつつ、ニューラルネットワーク推論のみをPython側でバッチ処理（GPU活用）する。
+    - **アーキテクチャ**:
+        1.  **C++ Workers**: 複数のMCTSインスタンスが並列動作。葉ノードの評価が必要になると「推論キュー」にリクエストを積んで待機。
+        2.  **Python Inferencer**: キューからリクエストをまとめて取り出し（バッチ化）、GPUで推論を実行。
+        3.  **Result Distribution**: 推論結果（Policy/Value）を各MCTSワーカーに返し、探索を再開させる。
+    - **要件**: スレッドセーフなキューの実装と、Python/C++間の同期機構。
+
+12. **ベクトル化環境API (Vectorized Environment API)**
+    - **目的**: 上記MCTSを管理し、N個の並列対戦を一括で進めるインターフェース。
+    - **内容**: `VectorGameInstance` クラス。`step_async()` で全環境のMCTSを開始し、`await_results()` で全環境のアクション決定を待つ等の制御を行う。
+
+13. **C++ リプレイバッファ (C++ Replay Buffer)**
+    - **目的**: 生成された大量の学習データ（数百万ステップ分）をPythonのリストではなく、C++のメモリプールで管理し、GCオーバーヘッドを回避する。
+    - **内容**: `add_trajectory()` で対戦ログを格納し、`sample_batch()` で学習用ミニバッチを高速に生成してPythonに渡す。
+
+14. **追加要件 (Optimization Requirements)**
+    - [ ] **バイナリログ形式 (Binary Replay Format)**
+        - 1試合を数KBに圧縮するバイナリ形式の策定と、C++側での高速書き出し/Python側での高速読み込みの実装。
+    - [ ] **確定動作の高速化 (Deterministic Fast-Forward)**
+        - 合法手が1つしかない場合、AI推論をスキップして即時実行するオプションの実装。
+
+### 【優先度 6】クラウド・エコシステム (Phase 6: Cloud Ecosystem)
+**目的**: ローカルPCのリソース制約から解放され、Kaggle等のクラウドGPUリソースを活用して大規模学習を行う。
+
+15. **Kaggle環境対応 (Kaggle Integration)**
+    - **目的**: Kaggle Notebook上でC++エンジンと学習ループを動作させる。
+    - **内容**:
+        - **Setup Script**: Kaggle環境（Linux）でCMakeビルドとPython拡張インストールを自動で行うスクリプト。
+        - **Dataset Sync**: ソースコードや最新モデルをKaggle Datasetとして自動アップロードするCIワークフロー。
+        - **Output Management**: 学習済みモデルやログをWandB (Weights & Biases) 等の外部ストレージに転送する仕組み。
+
+16. **クラウド自動化パイプライン (Cloud Automation)**
+    - **目的**: ローカルからコマンド一つでクラウド上の学習ジョブを開始・回収する。
+    - **内容**: Kaggle API を利用し、ローカルの更新をプッシュ→クラウドで学習→結果をプルするサイクルの自動化。
+
 ---
 
 ## 5. 実装ロードマップ (Implementation Order)
@@ -101,5 +148,7 @@
 3.  **Implement JSON Loader**: C++側でJSONを読めるようにする。
 4.  **Update Card Editor**: GUIでJSONを作れるようにする。
 5.  **Run Scenario Training**: シナリオモードで学習サイクルを回してみる。
+6.  **Optimize with C++**: Phase 5の機能（特徴量抽出 -> C++ MCTS -> バッチ化）を順次実装し、学習速度を向上させる。
+7.  **Deploy to Cloud**: Phase 6のKaggle連携を行い、大規模学習を開始する。
 
 詳細な実装手順は [17_Detailed_Implementation_Instructions_for_AI.md](../02_Planned_Specs/17_Detailed_Implementation_Instructions_for_AI.md) を参照してください。
