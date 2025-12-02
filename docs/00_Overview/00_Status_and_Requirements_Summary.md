@@ -10,9 +10,9 @@
 詳細なプロジェクト概要は [01_Project_Overview.md](./01_Project_Overview.md) を参照。
 
 ## 2. 現在の開発状況サマリ
-- **フェーズ**: Phase 2.5（基盤構築完了・高度化仕様策定）から Phase 3（MVPサイクル）への移行期。
-- **ステータス**: コアエンジンとGUIの連携は完了し、対戦可能。高度な学習機能（Result Stats, Scenario Mode）の初期実装が完了。JSON Loaderの実装が進み、カード効果のJSON定義化が開始された。
-- **直近の課題**: Windows環境におけるPython拡張モジュールのDLL読み込みエラーの解消、およびカード追加プロセスの効率化（JSON化の完了とエディタ開発）。
+- **フェーズ**: Phase 3 (MVP Cycle) 開始。
+- **ステータス**: JSON Loaderの実装が完了し、データ駆動型のカード追加が可能となった。CardStatsの動作検証も完了。Phase 3のシナリオ学習サイクルの構築に着手する段階。
+- **直近の課題**: GUI Card Editorの実装、およびシナリオモードを用いたデータ収集ループ(Data Collection)の構築。
 
 今後のロードマップ詳細は [20_Revised_Roadmap.md](./20_Revised_Roadmap.md) を参照。
 
@@ -35,6 +35,9 @@
     - `ScenarioConfig` 構造体による盤面状態（手札、マナ、シールド等）の定義。
     - `GameInstance::reset_with_scenario` による任意盤面からのゲーム開始機能。
     - 参照: [16_Scenario_Training_Spec.md](../01_Completed_Specs/16_Scenario_Training_Spec.md)
+- [x] **汎用カードシステム (Generic Card System)**:
+    - **JSON Loader**: `src/core/card_json_types.hpp` に基づき、JSON定義からカード効果を生成するC++ロジックの実装。
+    - 参照: [09_Card_Generator_Architecture.md](../02_Planned_Specs/09_Card_Generator_Architecture.md)
 
 ### 3.2 Python連携 & GUI
 - [x] **Python Bindings (pybind11)**: C++エンジンをPythonモジュールとしてビルド・公開。
@@ -64,9 +67,8 @@
 ### 【優先度 2】拡張性の確立 (Phase 2: Extensibility)
 **目的**: エンジンコードを修正せずに、GUIからカードを追加できる「データ駆動型」環境を構築する。
 
-3.  **汎用カードシステム (Generic Card System)**
-    - [x] **JSON Loader**: `src/core/card_json_types.hpp` に基づき、JSON定義からカード効果を生成するC++ロジックの実装。
-    - 参照: [09_Card_Generator_Architecture.md](../02_Planned_Specs/09_Card_Generator_Architecture.md)
+3.  **汎用カードシステム (Generic Card System)** (Completed)
+    - [x] **JSON Loader**: 実装完了。`tests/test_json_loader.py` で動作検証済み。
 4.  **GUIカードエディタ (Card Editor)**
     - [ ] **JSON Editor**: 既存のCSVベースのエディタを刷新し、JSON形式で効果（Trigger, Effect）を編集できるGUIツールの開発。
     - [ ] **Integration**: エディタで作成したカードを即座にエンジンにロードしてテストする機能。

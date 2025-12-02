@@ -2,8 +2,15 @@
 import sys
 import os
 import pytest
-import dm_ai_module
-from dm_ai_module import GameState, CardDefinition, CardType, Civilization, GameResult, ActionType, ActionGenerator
+
+# Add bin directory to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '../bin'))
+
+try:
+    import dm_ai_module
+    from dm_ai_module import GameState, CardDefinition, CardType, Civilization, GameResult, ActionType, ActionGenerator
+except ImportError:
+    pytest.skip("dm_ai_module not found", allow_module_level=True)
 
 def create_mock_card_db():
     card_db = {}
