@@ -243,7 +243,7 @@ namespace dm::engine {
         }
 
         PendingEffect effect = game_state.pending_effects[index];
-        std::cerr << "[EffectResolver] Resolving pending effect index=" << index << " type=" << (int)effect.type << " src=" << effect.source_instance_id << " controller=" << (int)effect.controller << " has_effect_def=" << (int)effect.effect_def.has_value() << " num_targets_needed=" << effect.num_targets_needed << " targets_selected=" << effect.target_instance_ids.size() << "\n";
+        // std::cerr << "[EffectResolver] Resolving pending effect index=" << index << " type=" << (int)effect.type << " src=" << effect.source_instance_id << " controller=" << (int)effect.controller << " has_effect_def=" << (int)effect.effect_def.has_value() << " num_targets_needed=" << effect.num_targets_needed << " targets_selected=" << effect.target_instance_ids.size() << "\n";
         // If this pending effect carries a JSON EffectDef and requires targets,
         // wait until enough targets have been selected before popping it.
         if (effect.effect_def.has_value()) {
