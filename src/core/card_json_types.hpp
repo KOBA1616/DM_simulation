@@ -153,9 +153,9 @@ namespace dm::core {
         {EffectActionType::SUMMON_TOKEN, "SUMMON_TOKEN"}
     })
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(FilterDef, owner, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, count)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ActionDef, type, scope, filter, value1, value2, str_val)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ConditionDef, type, value, str_val)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EffectDef, trigger, condition, actions)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, count)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CardData, id, name, cost, civilization, power, type, races, effects)
 }
