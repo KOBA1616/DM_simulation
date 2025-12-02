@@ -132,6 +132,149 @@ namespace dm::engine {
                 }
                 break;
             }
+            case EffectActionType::SEARCH_DECK_BOTTOM: {
+                int look = action.value1 > 0 ? action.value1 : 1;
+                std::vector<CardInstance> looked;
+                for (int i = 0; i < look; ++i) {
+                    if (active.deck.empty()) break;
+                    looked.push_back(active.deck.back());
+                    active.deck.pop_back();
+                }
+
+                // Inline filter check
+                auto inline_matches = [&](const CardInstance& ci, const FilterDef& f, int owner_id) -> bool {
+                    const dm::core::CardData* cd = dm::engine::CardRegistry::get_card_data(ci.card_id);
+                    if (!cd) return false;
+                    if (!f.types.empty()) {
+                        bool ok = false;
+                        for (const auto &t : f.types) if (t == cd->type) { ok = true; break; }
+                        if (!ok) return false;
+                    }
+                    if (!f.civilizations.empty()) {
+                        bool ok = false;
+                        for (const auto &civ : f.civilizations) if (civ == cd->civilization) { ok = true; break; }
+                        if (!ok) return false;
+                    }
+                    if (f.min_power.has_value() && cd->power < f.min_power.value()) return false;
+                    if (f.max_power.has_value() && cd->power > f.max_power.value()) return false;
+                    if (!f.races.empty()) {
+                        bool ok = false;
+                        for (const auto &r : f.races) {
+                            for (const auto &cr : cd->races) if (r == cr) { ok = true; break; }
+                            if (ok) break;
+                        }
+                        if (!ok) return false;
+                    }
+                    if (f.is_tapped.has_value()) if (ci.is_tapped != f.is_tapped.value()) return false;
+                    if (f.owner.has_value()) {
+                        std::string o = f.owner.value();
+                        if (o == "SELF" && owner_id != game_state.get_active_player().id) return false;
+                        if (o == "OPPONENT" && owner_id == game_state.get_active_player().id) return false;
+                    }
+                    if (f.max_cost.has_value() && cd->cost > f.max_cost.value()) return false;
+                    if (f.min_cost.has_value() && cd->cost < f.min_cost.value()) return false;
+                    return true;
+                };
+
+                // Auto-select first matching card for simplicity (MVP)
+                // In a full implementation, this should trigger a selection state if action.scope is TARGET_SELECT
+                int chosen_idx = -1;
+                for (size_t i = 0; i < looked.size(); ++i) {
+                    if (inline_matches(looked[i], action.filter, active.id)) {
+                        chosen_idx = (int)i;
+                        break;
+                    }
+                }
+
+                if (chosen_idx != -1) {
+                    // Add chosen to hand
+                    active.hand.push_back(looked[chosen_idx]);
+                }
+
+                // Remaining cards go to bottom of deck.
+                // Order is "arbitrary", let's put them in order they were drawn or reverse.
+                // Usually "in any order" allows the player to choose. Here we just push.
+                // Cards popped from back (top). looked[0] is top-most.
+                // Put back to bottom: insert at beginning of vector.
+                for (int i = 0; i < (int)looked.size(); ++i) {
+                    if (i == chosen_idx) continue;
+                    active.deck.insert(active.deck.begin(), looked[i]);
+                }
+                break;
+            }
+            case EffectActionType::MEKRAID: {
+                int look = action.value1 > 0 ? action.value1 : 3;
+                std::vector<CardInstance> looked;
+                for (int i = 0; i < look; ++i) {
+                    if (active.deck.empty()) break;
+                    looked.push_back(active.deck.back());
+                    active.deck.pop_back();
+                }
+
+                auto inline_matches = [&](const CardInstance& ci, const FilterDef& f, int owner_id) -> bool {
+                    const dm::core::CardData* cd = dm::engine::CardRegistry::get_card_data(ci.card_id);
+                    if (!cd) return false;
+                    // MEKRAID Logic: Filter by Race/Civ AND Cost <= max_cost (if specified in filter)
+                    if (!f.types.empty()) {
+                        bool ok = false;
+                        for (const auto &t : f.types) if (t == cd->type) { ok = true; break; }
+                        if (!ok) return false;
+                    }
+                    if (!f.civilizations.empty()) {
+                        bool ok = false;
+                        for (const auto &civ : f.civilizations) if (civ == cd->civilization) { ok = true; break; }
+                        if (!ok) return false;
+                    }
+                    if (!f.races.empty()) {
+                        bool ok = false;
+                        for (const auto &r : f.races) {
+                            for (const auto &cr : cd->races) if (r == cr) { ok = true; break; }
+                            if (ok) break;
+                        }
+                        if (!ok) return false;
+                    }
+                    // For Mekraid, max_cost is usually the constraint for "play for free"
+                    if (f.max_cost.has_value() && cd->cost > f.max_cost.value()) return false;
+
+                    return true;
+                };
+
+                int chosen_idx = -1;
+                for (size_t i = 0; i < looked.size(); ++i) {
+                    if (inline_matches(looked[i], action.filter, active.id)) {
+                        chosen_idx = (int)i;
+                        break;
+                    }
+                }
+
+                if (chosen_idx != -1) {
+                    // Play for free
+                    CardInstance card = looked[chosen_idx];
+                    const dm::core::CardData* def = dm::engine::CardRegistry::get_card_data(card.card_id);
+                    if (def) {
+                        // Logic similar to EffectResolver::resolve_play_card but without paying cost
+                        // STATS: Record play (free)
+                        game_state.on_card_play(card.card_id, game_state.turn_number, false, 0, active.id);
+
+                        if (def->type == "CREATURE" || def->type == "EVOLUTION_CREATURE") {
+                            card.summoning_sickness = true;
+                            active.battle_zone.push_back(card);
+                            resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
+
+                        } else if (def->type == "SPELL") {
+                             active.graveyard.push_back(card);
+                             resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
+                        }
+                    }
+                }
+
+                // Rest to bottom
+                for (int i = 0; i < (int)looked.size(); ++i) {
+                    if (i == chosen_idx) continue;
+                    active.deck.insert(active.deck.begin(), looked[i]);
+                }
+                break;
+            }
             case EffectActionType::ADD_MANA: {
                 int count = action.value1;
                 for (int i = 0; i < count; ++i) {
