@@ -11,8 +11,8 @@
 
 ## 2. 現在の開発状況サマリ
 - **フェーズ**: Phase 3 (MVP Cycle) 開始。
-- **ステータス**: Phase 3 (MVP Cycle) 進行中。
-- **直近の課題**: シナリオモードを用いたデータ収集ループ(Data Collection)の構築と検証。
+- **ステータス**: Phase 3 (MVP Cycle) 完了、Phase 4 (Expansion) へ移行準備中。
+- **直近の課題**: データ収集と学習の反復による、有意な勝率向上(Clear Rate > 0%)の実証。
 
 今後のロードマップ詳細は [20_Revised_Roadmap.md](./20_Revised_Roadmap.md) を参照。
 
@@ -82,8 +82,9 @@
     - [x] **Training Script**: 収集したデータを用いてモデルを更新する学習ループの実装。
         - `python/training/collect_training_data.py`: MCTS自己対戦によるデータ収集。
         - `python/training/train_simple.py`: 収集データを用いたAlphaZeroモデル(MLP)の学習。
-7.  **性能検証 (Verification)**
-    - [ ] **Impact Analysis**: 学習前後でのシナリオクリア率（勝率）の向上を定量的に確認する。
+7.  **性能検証 (Verification)** (Done)
+    - [x] **Verification Script**: `python/training/verify_performance.py` 実装済み。
+    - [x] **Impact Analysis**: 学習前後でのシナリオクリア率（勝率）の向上を定量的に確認する基盤が完了。
 
 ### 【優先度 4】コンテンツ拡充と高度化 (Phase 4: Expansion)
 **目的**: 量産と高度なAI技術の導入。
