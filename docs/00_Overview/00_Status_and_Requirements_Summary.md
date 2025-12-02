@@ -10,9 +10,9 @@
 詳細なプロジェクト概要は [01_Project_Overview.md](./01_Project_Overview.md) を参照。
 
 ## 2. 現在の開発状況サマリ
-- **フェーズ**: Phase 3 (MVP Cycle) 開始。
-- **ステータス**: Phase 3 (MVP Cycle) 完了、Phase 4 (Expansion) へ移行準備中。
-- **直近の課題**: データ収集と学習の反復による、有意な勝率向上(Clear Rate > 0%)の実証。
+- **フェーズ**: Phase 3 (MVP Cycle) 完了、Phase 4 (Expansion) へ移行中。
+- **ステータス**: 学習パイプライン（データ収集→学習→検証）の動作検証完了。現在は初期モデルの性能向上（Clear Rate > 0%）に向けた調整段階。
+- **直近の課題**: `lethal_puzzle_easy` シナリオにおけるAIのクリア率向上（現在は0%）。MCTS探索数の増加や報酬設計の改善が必要。
 
 今後のロードマップ詳細は [20_Revised_Roadmap.md](./20_Revised_Roadmap.md) を参照。
 
@@ -89,7 +89,7 @@
         - `python/training/train_simple.py`: 収集データを用いたAlphaZeroモデル(MLP)の学習。
 9.  **性能検証 (Verification)** (Done)
     - [x] **Verification Script**: `python/training/verify_performance.py` 実装済み。
-    - [x] **Impact Analysis**: 学習前後でのシナリオクリア率（勝率）の向上を定量的に確認する基盤が完了。
+    - [x] **Impact Analysis**: 学習前後でのシナリオクリア率（勝率）の向上を定量的に確認する基盤が完了。(現状勝率0%のため、モデル改善が必要)
 10. **シナリオモード改善 (Scenario Mode Improvement)**
     - [ ] **GUI Scenario Setup**: GUI上で特定のシチュエーション（盤面、手札、シールド等）を自由に設定・保存できる機能。
     - [ ] **Randomized Scenario Training**: 指定されたデッキからランダムにカードを展開して初期盤面を生成し、多様な状況で学習できる仕組み。
