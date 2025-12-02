@@ -64,7 +64,7 @@
     - [x] **Core Logic Tests**: マナチャージ、シールドトリガー等の基本動作を検証する `pytest` の追加。
     - [x] **CardStats Verification**: 実装された統計機能が正しく数値を集計しているかのテスト。
 3.  **ストレステスト (Fuzzing / Stress Test)**
-    - [ ] **Random Action Fuzzing**: `ActionGenerator` が生成する合法手の中から、完全にランダム（あるいは意地悪）な操作を高速で何万回も行い、assertエラーやクラッシュが発生しないか監視するスクリプトを作成する。
+    - [x] **Random Action Fuzzing**: `ActionGenerator` が生成する合法手の中から、完全にランダム（あるいは意地悪）な操作を高速で何万回も行い、assertエラーやクラッシュが発生しないか監視するスクリプトを作成する。 (`python/scripts/stress_test.py`)
 
 ### 【優先度 2】拡張性の確立 (Phase 2: Extensibility)
 **目的**: エンジンコードを修正せずに、GUIからカードを追加できる「データ駆動型」環境を構築する。
