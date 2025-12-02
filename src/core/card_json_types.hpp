@@ -42,6 +42,8 @@ namespace dm::core {
         BREAK_SHIELD,
         LOOK_AND_ADD,
         SUMMON_TOKEN,
+        SEARCH_DECK_BOTTOM,
+        MEKRAID,
         NONE
     };
 
@@ -150,7 +152,9 @@ namespace dm::core {
         {EffectActionType::MODIFY_POWER, "MODIFY_POWER"},
         {EffectActionType::BREAK_SHIELD, "BREAK_SHIELD"},
         {EffectActionType::LOOK_AND_ADD, "LOOK_AND_ADD"},
-        {EffectActionType::SUMMON_TOKEN, "SUMMON_TOKEN"}
+        {EffectActionType::SUMMON_TOKEN, "SUMMON_TOKEN"},
+        {EffectActionType::SEARCH_DECK_BOTTOM, "SEARCH_DECK_BOTTOM"},
+        {EffectActionType::MEKRAID, "MEKRAID"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, count)
