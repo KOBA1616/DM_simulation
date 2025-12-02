@@ -78,8 +78,10 @@
 
 5.  **データ収集パイプライン (Data Collection)** (Done)
     - [x] **Scenario Loop**: 特定のシナリオ（詰めろ盤面など）を繰り返しプレイし、統計データと勝敗を収集するスクリプト。
-6.  **簡易学習ループ (Simple Training)**
-    - [ ] **Training Script**: 収集したデータを用いてモデルを更新する学習ループの実装。
+6.  **簡易学習ループ (Simple Training)** (Done)
+    - [x] **Training Script**: 収集したデータを用いてモデルを更新する学習ループの実装。
+        - `python/training/collect_training_data.py`: MCTS自己対戦によるデータ収集。
+        - `python/training/train_simple.py`: 収集データを用いたAlphaZeroモデル(MLP)の学習。
 7.  **性能検証 (Verification)**
     - [ ] **Impact Analysis**: 学習前後でのシナリオクリア率（勝率）の向上を定量的に確認する。
 
