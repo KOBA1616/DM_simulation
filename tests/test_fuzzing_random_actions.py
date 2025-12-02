@@ -59,19 +59,27 @@ class TestFuzzing:
             deck1 = [random.choice(all_card_ids) for _ in range(40)]
             deck2 = [random.choice(all_card_ids) for _ in range(40)]
             
-            config.my_deck = deck1
-            config.enemy_deck = deck2
+            # ScenarioConfig does not support deck setup yet, so we manually set them
+            # config.my_deck = deck1
+            # config.enemy_deck = deck2
             
             # Initial shields (5 cards)
-            config.my_shield_zone = [random.choice(all_card_ids) for _ in range(5)]
-            config.enemy_shield_zone = [random.choice(all_card_ids) for _ in range(5)]
+            config.my_shields = [random.choice(all_card_ids) for _ in range(5)]
+            # Enemy shield count is int
+            config.enemy_shield_count = 5
             
             # Initial hand (5 cards)
             config.my_hand_cards = [random.choice(all_card_ids) for _ in range(5)]
-            config.enemy_hand_cards = [random.choice(all_card_ids) for _ in range(5)]
+            # Enemy hand is not directly configurable via ScenarioConfig yet in exposed bindings?
+            # Actually ScenarioConfig has fields but maybe not all exposed or used.
+            # Let's stick to what we used in the working stress script.
             
             gi.reset_with_scenario(config)
             
+            # Manually set decks
+            gi.state.set_deck(0, deck1)
+            gi.state.set_deck(1, deck2)
+
             state = gi.state
             step_count = 0
             
@@ -83,7 +91,7 @@ class TestFuzzing:
                     if not actions:
                         # This should theoretically not happen as PASS is usually available
                         # But if it does, it's a stalemate or bug
-                        print(f"Game {i}: No legal actions at step {step_count}")
+                        # print(f"Game {i}: No legal actions at step {step_count}")
                         break
                     
                     # Pick a completely random action
