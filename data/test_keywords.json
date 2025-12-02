@@ -1,0 +1,59 @@
+[
+  {
+    "id": 8888,
+    "name": "Test Keyword Creature",
+    "cost": 5,
+    "civilization": "FIRE",
+    "power": 3000,
+    "type": "CREATURE",
+    "races": ["Armored Dragon"],
+    "effects": [
+      {
+        "trigger": "ON_PLAY",
+        "condition": {"type": "NONE"},
+        "actions": []
+      },
+      {
+        "trigger": "ON_ATTACK",
+        "condition": {"type": "NONE"},
+        "actions": []
+      },
+      {
+        "trigger": "ON_DESTROY",
+        "condition": {"type": "NONE"},
+        "actions": []
+      },
+      {
+        "trigger": "PASSIVE_CONST",
+        "condition": {"type": "NONE"},
+        "actions": [
+          {
+            "type": "NONE",
+            "str_val": "BLOCKER"
+          },
+          {
+            "type": "NONE",
+            "str_val": "SPEED_ATTACKER"
+          },
+          {
+            "type": "NONE",
+            "str_val": "SLAYER"
+          },
+          {
+            "type": "NONE",
+            "str_val": "DOUBLE_BREAKER"
+          },
+          {
+            "type": "NONE",
+            "str_val": "TRIPLE_BREAKER"
+          },
+          {
+            "type": "NONE",
+            "str_val": "POWER_ATTACKER",
+            "value1": 4000
+          }
+        ]
+      }
+    ]
+  }
+]
