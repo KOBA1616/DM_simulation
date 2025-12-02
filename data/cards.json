@@ -2,127 +2,51 @@
   {
     "id": 1,
     "name": "Bronze-Arm Tribe",
-    "cost": 3,
-    "civilization": "NATURE",
-    "power": 1000,
     "type": "CREATURE",
+    "civilization": "NATURE",
+    "cost": 3,
+    "power": 1000,
     "races": ["Beast Folk"],
     "effects": [
-      {
-        "trigger": "ON_PLAY",
-        "condition": { "type": "NONE", "value": 0, "str_val": "" },
-        "actions": [
-          {
-            "type": "ADD_MANA",
-            "scope": "PLAYER_SELF",
-            "filter": { "owner": null, "types": [], "civilizations": [], "races": [], "min_cost": null, "max_cost": null, "min_power": null, "max_power": null, "is_tapped": null, "is_blocker": null, "count": null },
-            "value1": 1,
-            "value2": 0,
-            "str_val": ""
-          }
-        ]
-      }
+        {
+            "trigger": "ON_PLAY",
+            "actions": [
+                {
+                    "type": "ADD_MANA",
+                    "scope": "PLAYER_SELF",
+                    "value1": 1
+                }
+            ]
+        }
     ]
   },
   {
     "id": 2,
-    "name": "Aqua Hulcus",
-    "cost": 3,
-    "civilization": "WATER",
-    "power": 2000,
+    "name": "Speed Attacker",
     "type": "CREATURE",
-    "races": ["Liquid People"],
+    "civilization": "FIRE",
+    "cost": 3,
+    "power": 3000,
+    "races": ["Human"],
     "effects": [
-      {
-        "trigger": "ON_PLAY",
-        "condition": { "type": "NONE", "value": 0, "str_val": "" },
-        "actions": [
-          {
-            "type": "DRAW_CARD",
-            "scope": "PLAYER_SELF",
-            "filter": { "owner": null, "types": [], "civilizations": [], "races": [], "min_cost": null, "max_cost": null, "min_power": null, "max_power": null, "is_tapped": null, "is_blocker": null, "count": null },
-            "value1": 1,
-            "value2": 0,
-            "str_val": ""
-          }
-        ]
-      }
+        {
+            "trigger": "PASSIVE_CONST",
+            "actions": [
+                {
+                    "str_val": "SPEED_ATTACKER"
+                }
+            ]
+        }
     ]
-  }
-  ,
+  },
   {
     "id": 3,
-    "name": "Holy Awe",
-    "cost": 2,
-    "civilization": "LIGHT",
-    "power": 0,
+    "name": "Fire Mana",
     "type": "SPELL",
-    "races": [],
-    "effects": [
-      {
-        "trigger": "ON_PLAY",
-        "condition": { "type": "NONE", "value": 0, "str_val": "" },
-        "actions": [
-          {
-            "type": "TAP",
-            "scope": "PLAYER_OPPONENT",
-            "filter": { "owner": null, "types": [], "civilizations": [], "races": [], "min_cost": null, "max_cost": null, "min_power": null, "max_power": null, "is_tapped": null, "is_blocker": null, "count": null },
-            "value1": 0,
-            "value2": 0,
-            "str_val": ""
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "id": 5,
-    "name": "Terror Pit",
-    "cost": 6,
-    "civilization": "DARKNESS",
+    "civilization": "FIRE",
+    "cost": 1,
     "power": 0,
-    "type": "SPELL",
     "races": [],
-    "effects": [
-      {
-        "trigger": "S_TRIGGER",
-        "condition": { "type": "NONE", "value": 0, "str_val": "" },
-        "actions": [
-          {
-            "type": "DESTROY",
-            "scope": "TARGET_SELECT",
-            "filter": { "owner": null, "types": ["CREATURE"], "civilizations": [], "races": [], "min_cost": null, "max_cost": null, "min_power": null, "max_power": null, "is_tapped": null, "is_blocker": null, "count": null },
-            "value1": 0,
-            "value2": 0,
-            "str_val": ""
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "id": 6,
-    "name": "Spiral Gate",
-    "cost": 4,
-    "civilization": "LIGHT",
-    "power": 0,
-    "type": "SPELL",
-    "races": [],
-    "effects": [
-      {
-        "trigger": "ON_PLAY",
-        "condition": { "type": "NONE", "value": 0, "str_val": "" },
-        "actions": [
-          {
-            "type": "RETURN_TO_HAND",
-            "scope": "TARGET_SELECT",
-            "filter": { "owner": null, "types": ["CREATURE"], "civilizations": [], "races": [], "min_cost": null, "max_cost": null, "min_power": null, "max_power": null, "is_tapped": null, "is_blocker": null, "count": null },
-            "value1": 0,
-            "value2": 0,
-            "str_val": ""
-          }
-        ]
-      }
-    ]
+    "effects": []
   }
 ]
