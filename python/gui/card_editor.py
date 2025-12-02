@@ -38,8 +38,8 @@ class CardEditor(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to save JSON: {e}")
 
     def init_ui(self):
-        main_layout = QHBoxLayout(self)
-
+        # Create layouts without setting parent immediately
+        
         # Left: Card List
         list_layout = QVBoxLayout()
         self.card_list = QListWidget()
@@ -55,8 +55,6 @@ class CardEditor(QDialog):
         btn_layout.addWidget(del_btn)
         list_layout.addLayout(btn_layout)
 
-        main_layout.addLayout(list_layout, 1)
-
         # Middle: Form (Tabs)
         self.tabs = QTabWidget()
 
@@ -69,8 +67,6 @@ class CardEditor(QDialog):
         self.effects_tab = QWidget()
         self.setup_effects_tab()
         self.tabs.addTab(self.effects_tab, "Effects")
-
-        main_layout.addWidget(self.tabs, 2)
 
         # Right: Preview
         preview_layout = QVBoxLayout()
@@ -85,51 +81,26 @@ class CardEditor(QDialog):
         preview_layout.addWidget(self.preview_container)
         preview_layout.addStretch()
 
-        main_layout.addLayout(preview_layout, 1)
-
         # Bottom Buttons
         action_layout = QHBoxLayout()
         save_btn = QPushButton("Save All")
         save_btn.clicked.connect(self.save_data)
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.reject)
+        action_layout.addWidget(save_btn)
+        action_layout.addWidget(close_btn)
 
-        # Adjust layout
-        # We need a vertical layout for the whole dialog
-        # Top: Horizontal (List, Tabs, Preview)
-        # Bottom: Buttons
-        
-        # Since main_layout is already created as QHBoxLayout and populated,
-        # we can't easily switch it to QVBoxLayout on 'self'.
-        # However, we can create a container for the top part.
-
-        # Correction: I should have started with a VBox for main_layout.
-        # But since I've already added widgets to 'main_layout' (which is HBox),
-        # I will wrap the buttons in a widget/layout and add it? No, HBox flows L->R.
-
-        # Let's clean up:
-        # Create a new central widget and layout if possible, or just reparent.
-        # Given the "messy" code flagged in review, let's do it cleanly.
-
-        # 1. Create a container for the top 3 columns
-        top_container = QWidget()
-        top_layout = QHBoxLayout(top_container)
+        # Assemble Layouts
+        # Top container for 3 columns
+        top_layout = QHBoxLayout()
         top_layout.addLayout(list_layout, 1)
         top_layout.addWidget(self.tabs, 2)
         top_layout.addLayout(preview_layout, 1)
 
-        # 2. Create a root VBox layout for the dialog
-        root_layout = QVBoxLayout()
-        root_layout.addWidget(top_container)
+        # Root layout
+        root_layout = QVBoxLayout(self)
+        root_layout.addLayout(top_layout)
         root_layout.addLayout(action_layout)
-
-        # 3. Apply to self (requires clearing the initial main_layout if it was set to self)
-        # The initial `main_layout = QHBoxLayout(self)` set the layout.
-        # We need to delete it.
-        if self.layout():
-            QWidget().setLayout(self.layout()) # Hack to unparent
-
-        self.setLayout(root_layout)
 
         self.refresh_list()
 
