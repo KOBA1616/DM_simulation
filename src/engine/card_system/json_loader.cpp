@@ -33,46 +33,33 @@ namespace dm::engine {
         def.races = data.races;
 
         // Keywords mapping from effects
-        // This is where we need to scan effects to set boolean flags for the engine
-        // The engine currently relies on flags like .keywords.blocker
-        // The JSON system has "PASSIVE_CONST" triggers or similar.
+        // The engine relies on boolean flags in CardKeywords.
+        // We infer these from TriggerType and/or PASSIVE_CONST actions.
 
         for (const auto& eff : data.effects) {
-            // Check for keyword-like effects
-            // This logic depends on how JSON represents keywords.
-            // If the JSON has a "keywords" field we should use it.
-            // Checking card_json_types.hpp... it DOES NOT have a keywords list in CardData struct!
-            // It only has 'effects'.
-            // So we must infer keywords or we need to update CardData to include keywords.
-
-            // However, the CardData struct in `card_json_types.hpp` only has:
-            // id, name, cost, civilization, power, type, races, effects.
-
-            // If the user intends to replace CSV with JSON, JSON should support keywords.
-            // Typically keywords like "Blocker" are modeled as passive effects.
-            // But the legacy engine needs the boolean flag.
-
-            // Let's assume for now we look at effect triggers or actions?
-            // Or maybe we should update `card_json_types.hpp` to include keywords?
-            // The instruction is "Implement JSON Loader: src/core/card_json_types.hpp based...".
-            // So I should stick to what `card_json_types.hpp` has.
-
-            // If `card_json_types.hpp` lacks keywords, maybe they are in 'effects'?
-            // TriggerType::PASSIVE_CONST ?
-            // Let's assume for now we map what we can.
-
+            // 1. Trigger Flags
             if (eff.trigger == TriggerType::S_TRIGGER) def.keywords.shield_trigger = true;
+            if (eff.trigger == TriggerType::ON_PLAY) def.keywords.cip = true;
+            if (eff.trigger == TriggerType::ON_ATTACK) def.keywords.at_attack = true;
+            if (eff.trigger == TriggerType::ON_DESTROY) def.keywords.destruction = true;
 
-            // Checking actions for specific keywords?
-            // Usually "Blocker" is a capability.
-            // If the JSON schema doesn't have it, we might be missing it.
-            // But let's look at `card_json_types.hpp` again.
-            // It has TriggerType::PASSIVE_CONST.
-            // Maybe the condition or action string says "BLOCKER"?
-
-            for (const auto& action : eff.actions) {
-                // If action.str_val contains "BLOCKER" etc?
-                // This is speculative.
+            // 2. Passive Keywords (Blocker, Speed Attacker, etc.)
+            // Convention: TriggerType::PASSIVE_CONST with ActionType::NONE and str_val="KEYWORD"
+            if (eff.trigger == TriggerType::PASSIVE_CONST) {
+                for (const auto& action : eff.actions) {
+                    if (action.str_val == "BLOCKER") def.keywords.blocker = true;
+                    if (action.str_val == "SPEED_ATTACKER") def.keywords.speed_attacker = true;
+                    if (action.str_val == "SLAYER") def.keywords.slayer = true;
+                    if (action.str_val == "DOUBLE_BREAKER") def.keywords.double_breaker = true;
+                    if (action.str_val == "TRIPLE_BREAKER") def.keywords.triple_breaker = true;
+                    if (action.str_val == "POWER_ATTACKER") {
+                        def.keywords.power_attacker = true;
+                        def.power_attacker_bonus = action.value1;
+                    }
+                    if (action.str_val == "EVOLUTION") def.keywords.evolution = true;
+                    if (action.str_val == "MACH_FIGHTER") def.keywords.mach_fighter = true;
+                    if (action.str_val == "G_STRIKE") def.keywords.g_strike = true;
+                }
             }
         }
 
