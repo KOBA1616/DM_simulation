@@ -16,6 +16,7 @@
 #include "../ai/self_play/parallel_runner.hpp"
 #include "../engine/utils/determinizer.hpp"
 #include "../utils/csv_loader.hpp"
+#include "../engine/card_system/json_loader.hpp"
 
 #include "../ai/pomdp/pomdp.hpp"
 #include "../ai/pomdp/parametric_belief.hpp"
@@ -319,6 +320,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<CsvLoader>(m, "CsvLoader")
         .def_static("load_cards", &CsvLoader::load_cards);
+
+    py::class_<dm::engine::JsonLoader>(m, "JsonLoader")
+        .def_static("load_cards", &dm::engine::JsonLoader::load_cards);
 
     py::class_<DevTools>(m, "DevTools")
         .def_static("move_cards", &DevTools::move_cards,
