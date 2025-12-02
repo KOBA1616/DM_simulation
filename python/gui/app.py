@@ -32,9 +32,9 @@ class GameWindow(QMainWindow):
         # Game State
         self.gs = dm_ai_module.GameState(42)
         self.gs.setup_test_duel()
-        self.card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
+        self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
-        self.civ_map = self.load_civilizations("data/cards.csv")
+        self.civ_map = self.load_civilizations_from_json("data/cards.json")
         
         # Default Decks (from setup_test_duel logic)
         self.p0_deck_ids = [i for i in range(40)] # Placeholder, actual logic in C++ setup_test_duel is different
@@ -250,20 +250,18 @@ class GameWindow(QMainWindow):
         self.update_ui()
         self.showMaximized()
         
-    def load_civilizations(self, filepath):
+    def load_civilizations_from_json(self, filepath):
         civ_map = {}
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    try:
-                        cid = int(row['ID'])
-                        civ = row['Civilization']
+                cards = json.load(f)
+                for card in cards:
+                    cid = card.get('id')
+                    civ = card.get('civilization')
+                    if cid is not None and civ is not None:
                         civ_map[cid] = civ
-                    except ValueError:
-                        continue
         except Exception as e:
-            print(f"Error loading civilizations: {e}")
+            print(f"Error loading civilizations from json: {e}")
         return civ_map
 
     def open_deck_builder(self):
@@ -271,7 +269,7 @@ class GameWindow(QMainWindow):
         self.deck_builder.show()
 
     def open_card_editor(self):
-        self.card_editor = CardEditor("data/cards.csv")
+        self.card_editor = CardEditor("data/cards.json")
         self.card_editor.show()
 
     def load_deck_p0(self):
