@@ -555,6 +555,10 @@ namespace dm::engine {
             if (f.min_power.has_value() && cd->power < f.min_power.value()) return false;
             if (f.max_power.has_value() && cd->power > f.max_power.value()) return false;
 
+            // cost range
+            if (f.min_cost.has_value() && cd->cost < f.min_cost.value()) return false;
+            if (f.max_cost.has_value() && cd->cost > f.max_cost.value()) return false;
+
             // races (any overlap)
             if (!f.races.empty()) {
                 bool ok = false;
@@ -570,6 +574,13 @@ namespace dm::engine {
             // tapped state
             if (f.is_tapped.has_value()) {
                 if (ci.is_tapped != f.is_tapped.value()) return false;
+            }
+
+            // is evolution
+            if (f.is_evolution.has_value()) {
+                // If checking for evolution, need to check card type
+                bool is_evo = (cd->type == "EVOLUTION_CREATURE");
+                if (is_evo != f.is_evolution.value()) return false;
             }
 
             // owner filter: f.owner can be "SELF"/"OPPONENT"/"BOTH"
