@@ -11,8 +11,8 @@
 
 ## 2. 現在の開発状況サマリ
 - **フェーズ**: Phase 2.5（基盤構築完了・高度化仕様策定）から Phase 3（MVPサイクル）への移行期。
-- **ステータス**: コアエンジンとGUIの連携は完了し、対戦可能。高度な学習機能（Result Stats, Scenario Mode）の初期実装が完了。
-- **直近の課題**: Windows環境におけるPython拡張モジュールのDLL読み込みエラーの解消、およびカード追加プロセスの効率化（JSON化）。
+- **ステータス**: コアエンジンとGUIの連携は完了し、対戦可能。高度な学習機能（Result Stats, Scenario Mode）の初期実装が完了。JSON Loaderの実装が進み、カード効果のJSON定義化が開始された。
+- **直近の課題**: Windows環境におけるPython拡張モジュールのDLL読み込みエラーの解消、およびカード追加プロセスの効率化（JSON化の完了とエディタ開発）。
 
 今後のロードマップ詳細は [20_Revised_Roadmap.md](./20_Revised_Roadmap.md) を参照。
 
@@ -65,7 +65,7 @@
 **目的**: エンジンコードを修正せずに、GUIからカードを追加できる「データ駆動型」環境を構築する。
 
 3.  **汎用カードシステム (Generic Card System)**
-    - [ ] **JSON Loader**: `src/core/card_json_types.hpp` に基づき、JSON定義からカード効果を生成するC++ロジックの実装。
+    - [x] **JSON Loader**: `src/core/card_json_types.hpp` に基づき、JSON定義からカード効果を生成するC++ロジックの実装。
     - 参照: [09_Card_Generator_Architecture.md](../02_Planned_Specs/09_Card_Generator_Architecture.md)
 4.  **GUIカードエディタ (Card Editor)**
     - [ ] **JSON Editor**: 既存のCSVベースのエディタを刷新し、JSON形式で効果（Trigger, Effect）を編集できるGUIツールの開発。
