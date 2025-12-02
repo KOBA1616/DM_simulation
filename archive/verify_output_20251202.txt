@@ -1,0 +1,11 @@
+Scenario loaded. Turn: 5
+Scenario loaded. Turn: 5
+Using device: cpu
+Using random initialized model (Baseline).
+Verifying performance for 'Random/Untrained' on scenario 'lethal_puzzle_easy'...
+--- Results for Random/Untrained ---
+Total Games: 2
+Wins (P1): 0 (0.00%)
+Losses (P2): 0
+Draws: 2
+Time Taken: 231.55s (115.78s/game)
