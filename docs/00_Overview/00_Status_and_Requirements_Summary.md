@@ -71,14 +71,14 @@
 15. **C++ Self-Play & Batch Inference**
     - [x] `dm::ai::MCTS` のC++実装完了。
     - [x] Pythonコールバックによるバッチ推論の疎通確認 (`verify_performance.py` で実証)。
-    - [ ] **ParallelRunner**: 複数スレッドで同時にMCTSを回し、GPUバッチサイズを埋める仕組みの実装と検証が次のステップ。
+    - [x] **ParallelRunner**: 複数スレッドで同時にMCTSを回し、GPUバッチサイズを埋める仕組みの実装完了 (`src/ai/self_play/parallel_runner.cpp`)。検証スクリプトによる動作確認中。
 
 ---
 
 ## 5. 実装ロードマップ (Implementation Order)
 
 1.  **Optimize with C++ (Phase 5)**:
-    - `ParallelRunner` を `verify_performance.py` または新規学習スクリプトに組み込み、GPU使用率を最大化して学習速度を100倍以上（秒間数千手）にする。
+    - `ParallelRunner` の動作検証を行い、`verify_performance.py` または新規学習スクリプトに組み込んで学習速度を100倍以上（秒間数千手）にする。
 2.  **Train Robust Model**:
     - 高速化した環境で `lethal_puzzle_easy` を解けるモデルを学習する。
 3.  **Deploy to Cloud (Phase 6)**:
