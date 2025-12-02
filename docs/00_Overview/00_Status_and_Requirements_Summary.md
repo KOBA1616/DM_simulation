@@ -10,11 +10,15 @@
 詳細なプロジェクト概要は [01_Project_Overview.md](./01_Project_Overview.md) を参照。
 
 ## 2. 現在の開発状況サマリ
-- **フェーズ**: Phase 3 (MVP Cycle) 完了、Phase 4 (Expansion) へ移行中。
-- **ステータス**: 学習パイプライン（データ収集→学習→検証）の動作検証完了。検証スクリプトによるベンチマーク取得を実施済み。
+- **フェーズ**: Phase 4 (Expansion) へ移行中。
+- **ステータス**:
+    - 学習パイプライン（データ収集→学習→検証）の動作検証完了。
+    - ディレクトリ構成の整理完了 (不要ファイルの `archive/` への移動)。
+    - 検証スクリプト (`verify_performance.py`) によるベンチマーク取得を確認済み。
 - **直近の課題**:
     - **推論速度のボトルネック**: `lethal_puzzle_easy` 検証において、Pythonループ(MCTS 800)で180秒、C++ MCTS + Python推論で120秒/ゲームを要し、実用的な学習速度が出ていない。
     - **勝率0%**: 十分な探索回数(800)でもランダム初期化モデルではパズルを解けず、Draw（時間切れ）となる。
+    - **レガシー資産**: `data/cards.csv` は `data/cards.json` に移行済みだが、一部のテスト (`tests/test_fuzzing_random_actions.py` 等) で依然として使用されている。
     - **対策**: Phase 5 (High-Performance Training Infrastructure) の実装を前倒しし、並列自己対戦 (Requirement 15) とC++推論パイプラインを確立する必要がある。
 
 ---
@@ -45,6 +49,7 @@
 ### 【優先度 1】基盤と堅牢性の確保 (Phase 1: Foundation & Robustness)
 - [x] **環境安定化**: `import dm_ai_module` 安定化済み。
 - [x] **ユニットテスト**: `pytest` による基本テスト実装済み。
+- [x] **ディレクトリ整理**: 不要ファイルのアーカイブ化と整理完了。
 
 ### 【優先度 2】拡張性の確立 (Phase 2: Extensibility)
 - [x] **JSON Loader / Card Editor**: 実装完了。
