@@ -1,0 +1,44 @@
+[
+  {
+    "id": 9999,
+    "name": "Test Json Creature",
+    "civilization": "FIRE",
+    "type": "CREATURE",
+    "cost": 2,
+    "power": 2000,
+    "races": ["Dragon"],
+    "effects": [
+      {
+        "trigger": "S_TRIGGER",
+        "condition": {"type": "NONE", "value": 0, "str_val": ""},
+        "actions": []
+      },
+      {
+         "trigger": "PASSIVE_CONST",
+         "condition": {"type": "NONE"},
+         "actions": [
+             {
+                 "type": "NONE",
+                 "scope": "NONE",
+                 "filter": {
+                    "owner": null,
+                    "types": [],
+                    "civilizations": [],
+                    "races": [],
+                    "min_cost": null,
+                    "max_cost": null,
+                    "min_power": null,
+                    "max_power": null,
+                    "is_tapped": null,
+                    "is_blocker": null,
+                    "count": null
+                 },
+                 "value1": 0,
+                 "value2": 0,
+                 "str_val": "SPEED_ATTACKER"
+             }
+         ]
+      }
+    ]
+  }
+]

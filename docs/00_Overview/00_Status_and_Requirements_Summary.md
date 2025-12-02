@@ -58,7 +58,7 @@
     - [x] **Python Import Issueの解決**: Windows/MinGW環境でのDLLロードエラーを解消し、`import dm_ai_module` を安定させる。（Linux環境では動作確認済み）
     - [ ] **CI/CDパイプライン**: ビルドとテストの自動化を安定させる。
 2.  **ユニットテスト拡充 (Unit Test Expansion)**
-    - [ ] **Core Logic Tests**: マナチャージ、シールドトリガー等の基本動作を検証する `pytest` の追加。
+    - [x] **Core Logic Tests**: マナチャージ、シールドトリガー等の基本動作を検証する `pytest` の追加。
     - [x] **CardStats Verification**: 実装された統計機能が正しく数値を集計しているかのテスト。
 
 ### 【優先度 2】拡張性の確立 (Phase 2: Extensibility)
