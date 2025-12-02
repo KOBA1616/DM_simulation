@@ -16,6 +16,7 @@ namespace dm::core {
         S_TRIGGER,
         TURN_START,
         PASSIVE_CONST,
+        ON_OTHER_ENTER,
         NONE
     };
 
@@ -44,6 +45,9 @@ namespace dm::core {
         SUMMON_TOKEN,
         SEARCH_DECK_BOTTOM,
         MEKRAID,
+        DISCARD,
+        PLAY_FROM_ZONE,
+        COST_REFERENCE,
         NONE
     };
 
@@ -59,6 +63,7 @@ namespace dm::core {
         std::optional<int> max_power;
         std::optional<bool> is_tapped;
         std::optional<bool> is_blocker;
+        std::optional<bool> is_evolution;
         std::optional<int> count; // For selection
     };
 
@@ -69,6 +74,10 @@ namespace dm::core {
         int value1 = 0;
         int value2 = 0;
         std::string str_val;
+        bool optional = false;
+        std::string target_player;
+        std::string source_zone;
+        std::string destination_zone;
     };
 
     struct ConditionDef {
@@ -126,7 +135,8 @@ namespace dm::core {
         {TriggerType::ON_DESTROY, "ON_DESTROY"},
         {TriggerType::S_TRIGGER, "S_TRIGGER"},
         {TriggerType::TURN_START, "TURN_START"},
-        {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"}
+        {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"},
+        {TriggerType::ON_OTHER_ENTER, "ON_OTHER_ENTER"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(TargetScope, {
@@ -154,11 +164,14 @@ namespace dm::core {
         {EffectActionType::LOOK_AND_ADD, "LOOK_AND_ADD"},
         {EffectActionType::SUMMON_TOKEN, "SUMMON_TOKEN"},
         {EffectActionType::SEARCH_DECK_BOTTOM, "SEARCH_DECK_BOTTOM"},
-        {EffectActionType::MEKRAID, "MEKRAID"}
+        {EffectActionType::MEKRAID, "MEKRAID"},
+        {EffectActionType::DISCARD, "DISCARD"},
+        {EffectActionType::PLAY_FROM_ZONE, "PLAY_FROM_ZONE"},
+        {EffectActionType::COST_REFERENCE, "COST_REFERENCE"}
     })
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, count)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, optional, target_player, source_zone, destination_zone)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CardData, id, name, cost, civilization, power, type, races, effects)
