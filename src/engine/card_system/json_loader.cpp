@@ -26,6 +26,8 @@ namespace dm::engine {
         // Type mapping
         if (data.type == "CREATURE") def.type = CardType::CREATURE;
         else if (data.type == "SPELL") def.type = CardType::SPELL;
+        else if (data.type == "EVOLUTION_CREATURE") def.type = CardType::EVOLUTION_CREATURE;
+        else if (data.type == "TAMASEED") def.type = CardType::TAMASEED;
         // ... add others
 
         def.cost = data.cost;
