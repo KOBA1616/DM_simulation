@@ -107,7 +107,9 @@ namespace dm::engine {
                         }
                     }
                 }
+
                 // 2. Pass
+                // Transition to ATTACK phase via PhaseManager::next_phase()
                 {
                     Action pass;
                     pass.type = ActionType::PASS;
