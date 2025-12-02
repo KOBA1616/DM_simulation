@@ -20,7 +20,7 @@ namespace dm::engine {
         static void resolve_attack(dm::core::GameState& game_state, const dm::core::Action& action, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
         static void resolve_pending_effect(dm::core::GameState& game_state, const dm::core::Action& action, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
         static void resolve_use_shield_trigger(dm::core::GameState& game_state, const dm::core::Action& action, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
-        static void resolve_block(dm::core::GameState& game_state, const dm::core::Action& action);
+        static void resolve_block(dm::core::GameState& game_state, const dm::core::Action& action, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
         static void resolve_select_target(dm::core::GameState& game_state, const dm::core::Action& action);
         static void execute_battle(dm::core::GameState& game_state, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
 
