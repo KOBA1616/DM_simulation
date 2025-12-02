@@ -29,6 +29,29 @@
 *   **Performance:** Move loop detection and heavy logic to C++ (In Progress).
 *   **Data Driven:** Use JSON for all card logic.
 
+### 3.3. Future Feature Backlog (User Requested)
+*   **System & Engine:**
+    *   **Zone Movement Args:** Expand arguments for zone movement functions (ゾーン移動関数の引数を拡充).
+    *   **Draw Monitor:** Monitor draw count per turn (各ターンでのドロー枚数の監視).
+    *   **Cost Reduction:** Generic cost reduction functions (コスト軽減用汎用関数の実装).
+    *   **Battle Zone Checks:** Reference specific costs in Battle Zone (バトルゾーンの特定コストを参照する).
+    *   **Graveyard Logic:** Logic for "When placed in graveyard, if it was in BZ (including under evo)" (墓地に置かれた時、バトルゾーンにあれば...).
+*   **Card Mechanics:**
+    *   **Just Diver:** Hexproof/Untargetable (ジャストダイバー).
+    *   **Alternative Cost:** G-Zero, Sympathy, etc. (代替コスト).
+    *   **Meteorburn:** Evolution source cost (メテオバーン).
+    *   **Neo Evolution:** Creature/Evolution hybrid (ネオ進化カード).
+    *   **Ninja Strike:** (ニンジャストライク).
+    *   **Unblockable (Temp):** Attack unblockable with duration (攻撃時ブロック禁止効果の実装(効果期限)).
+    *   **Global Removal:** Board wipe (全体除去).
+    *   **Attack Restriction:** (攻撃制限).
+    *   **Anti-Cheat (Meta):** Counters to cost cheating (踏み倒しメタ).
+    *   **Mana Recovery:** (マナ回収).
+    *   **Reanimation:** (蘇生).
+    *   **Modal Effects:** Choose 1 of N (モード).
+*   **Tools:**
+    *   **GUI Extension:** Expand Card Creation GUI (カード作成GUIの拡張).
+
 ## 4. Known Issues / Risks
 *   **Lethal Puzzle:** Current AI fails `lethal_puzzle_easy` (0% WR). Optimization target.
 *   **Complex Effects:** Multi-step effects (Search, Shield Trigger options) need robust handling in C++.
