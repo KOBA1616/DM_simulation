@@ -26,10 +26,9 @@ except ImportError:
 from py_ai.agent.network import AlphaZeroNetwork
 from py_ai.agent.mcts import MCTS
 
-# Import SCENARIOS from collect_data to avoid duplication
-# We assume collect_data.py is in the same directory
+# Import SCENARIOS from scenario_definitions
 sys.path.append(os.path.dirname(__file__))
-from collect_data import SCENARIOS
+from scenario_definitions import SCENARIOS
 
 class TrainingDataCollector:
     def __init__(self, card_db, model_path=None):
@@ -105,6 +104,9 @@ class TrainingDataCollector:
             policy_sum = np.sum(policy)
             if policy_sum > 0:
                 policy /= policy_sum
+            else:
+                # Should not happen if children exist, but just in case
+                policy[:] = 1.0 / len(policy)
 
             # Store example
             # Note: We need to store the state vector relative to the current player
@@ -118,6 +120,12 @@ class TrainingDataCollector:
             # Select Action (Temperature = 1 for first k moves, then 0)
             # For simple training, let's just pick max visit count
             # or sample from policy
+
+            # Re-normalize just to be super safe against float errors
+            p_sum = np.sum(policy)
+            if abs(p_sum - 1.0) > 1e-6:
+                policy /= p_sum
+
             action_idx = np.random.choice(len(policy), p=policy)
 
             # Find the child corresponding to this index
@@ -184,7 +192,7 @@ class TrainingDataCollector:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--scenario", type=str, default="lethal_drill_easy")
+    parser.add_argument("--scenario", type=str, default="lethal_puzzle_easy")
     parser.add_argument("--episodes", type=int, default=10)
     parser.add_argument("--output", type=str, default="training_data.npz")
     parser.add_argument("--model", type=str, default=None)
