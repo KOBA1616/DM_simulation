@@ -1,3 +1,4 @@
+
 # 17. AI向け詳細実装指示書 (Detailed Implementation Instructions for AI)
 
 本ドキュメントは、GitHub Copilot (GPT-5 mini相当) などのAIアシスタントが、コンテキストを最小限に抑えつつ、迷いなく実装を行うための超詳細な指示書である。
@@ -277,3 +278,93 @@ class PBTWorker:
 1.  **コンパイルエラー回避**: ヘッダーファイルのインクルード順序に注意する。`types.hpp` -> `constants.hpp` -> `card_stats.hpp` -> `game_state.hpp` の順。
 2.  **Pythonバインディング**: `std::vector` などのSTLコンテナは `pybind11/stl.h` によって自動変換されるが、ポインタの所有権（`py::return_value_policy`）に注意する。
 3.  **デバッグ**: `AI_DEBUG` マクロを使用して、詳細なログ出力を埋め込むこと。
+4.  **ビルド環境 (Windows) の恒久的 PATH 設定**: 以下の `scripts/setup_build_env.ps1` を実行するか、記載の `setx` コマンドで必要なツールをユーザPATHに追加してください。これにより、`cmake`、Python の `Scripts`（`pytest` 等）が常に利用可能になります。
+
+### Windows: 恒久的 PATH の設定（手順）
+
+推奨: リポジトリに含めた `scripts/setup_build_env.ps1` を PowerShell で実行してください。スクリプトはユーザPATHに `CMake` と Python のインストールフォルダおよび `Scripts` を追加し、`winget` が使える場合は `CMake` を自動でインストールします。
+
+手動で行う場合（PowerShell）:
+
+```powershell
+# 1) CMake を winget でインストール（winget が使える場合）
+winget install --id Kitware.CMake -e
+
+# 2) 恒久的にユーザ PATH を更新（例 — CMake と Python のパスを追加）
+$current = [Environment]::GetEnvironmentVariable("Path","User")
+$add = @(
+    'C:\Program Files\CMake\bin',
+    "$env:LOCALAPPDATA\Programs\Python\Python311",
+    "$env:LOCALAPPDATA\Programs\Python\Python311\Scripts"
+)
+foreach ($p in $add) {
+    if ($current -notlike "*${p}*") { $current = "$current;$p" }
+}
+setx Path $current
+
+# 3) pip dev 依存をインストール
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
+
+# 注意: setx は即時のシェルセッションに反映されません。新しい PowerShell を開いて下さい。
+```
+
+検証: 新しい PowerShell を開き `cmake --version` と `pytest --version` を実行して、両方が見つかることを確認してください。
+
+
+## ParametricBelief の利用方法（追記）
+
+このリポジトリで実装した `ParametricBelief` は、局所的で高速な確率モデルとしてPOMDPの第1フェーズに用いるための実装です。以下は設計意図とPythonからの具体的な利用例、テスト手順です。
+
+- **主なAPI（C++ / Pythonバインド）**:
+    - `ParametricBelief()` : デフォルトコンストラクタ。
+    - `initialize(card_library)` : カードライブラリを与えて内部確率表を初期化。
+    - `initialize_ids(list_of_card_ids)` : IDリストで初期化する軽量API。
+    - `update(prev_state, state)` : 直前状態 `prev_state` と現在状態 `state` を与えて差分更新。デッキ->可視ゾーン（手札/バトル/シールド/墓地）への移動を「reveal」として扱い、強い情報重みを適用します。
+    - `update(state)` : 単独の状態差分更新（単純運用向け）。
+    - `get_vector()` : 現在のbeliefをベクトル化して返す（numpy互換の配列へ変換される）。
+    - `set_weights(strong_weight, deck_weight)` : 基本のペナルティ/重みを設定。
+    - `set_reveal_weight(w)` / `get_reveal_weight()` : デッキ->可視（reveal）時に適用する追加重みを設定/取得。
+
+- **推奨ワークフロー（Python）**:
+
+```python
+from dm_ai_module import ParametricBelief
+
+# 1) 初期化: カードIDリストから初期化
+pb = ParametricBelief()
+pb.initialize_ids([101, 102, 103, 104])
+
+# 2) 必要に応じて重みを調整
+pb.set_weights(1.0, 0.25)        # strong_weight=1.0, deck_weight=0.25
+pb.set_reveal_weight(1.5)        # reveal時の追加重み
+
+# 3) トレース再生ループ内で差分更新
+#    prev_state / state はリポジトリの GameState 互換の軽量辞書/オブジェクト
+pb.update(prev_state, state)
+
+# 4) beliefを取得して解析・テスト
+vec = pb.get_vector()   # numpy配列として受け取れる
+```
+
+- **テスト & デバッグ**:
+    - トレースベースの統合テストは `python/tests/` に配置されています。例: `python/tests/data/trace_battle.json`。
+    - ローカルでpytestを走らせる際は、ビルドした拡張モジュールのパスを `PYTHONPATH` に追加してください（Windows PowerShellの例）:
+
+```powershell
+$env:PYTHONPATH = "$PWD/build/python"; pytest -q python/tests/test_pomdp_trace_battle.py
+```
+
+    - CIでは `PYTHONPATH` を設定済みのワークフローを用いています。テストが期待通りに失敗する場合は、`test_pomdp_transition.py` と `test_pomdp_weights.py` を確認し、`set_weights` / `set_reveal_weight` の値を調整してください。
+
+- **デバッグのヒント**:
+    - 初期化直後は均等分布（同確率）になりやすいため、トレースにおける「reveal」を正しく検出できていないと期待する不等式（例えば、visible側の確率が下がる等）が発生しません。`update_with_prev(prev_state, state)` を使って、遷移の種類（deck->hand など）を正しく検出してください。
+    - deterministic traceで再現性を確保するため、`set_reveal_weight` を段階的に大きくして挙動が変わるか確認してください（例: 1.0 -> 2.0）。
+
+---
+
+### 次の推奨作業
+- `POMDP: Add more traces (battle/shield/graveyard)` を優先して完了してください（`python/tests/data/` に新規トレースを追加し、対応する `python/tests/test_pomdp_trace_*.py` を追加）。
+- その後、`docs/` にあるこの節を `README` か `docs/POMDP_ParametricBelief_Usage.md` として分離し、開発者向け手順として参照可能にしてください。
+
+---
