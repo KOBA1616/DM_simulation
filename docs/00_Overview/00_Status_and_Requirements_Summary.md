@@ -7,6 +7,7 @@
 
 ## 2. 現在のステータス
 *   **エンジン:** `GameState`、`ActionGenerator`、`EffectResolver`を備えたC++20コア。汎用的な効果解決（Effect Buffer, Stack Zone）を実装済み。
+*   **進捗:** 革命チェンジのエンジン実装、JSON対応、GUIエディタ統合が完了。
 *   **Pythonバインディング:** `pybind11`統合 (`dm_ai_module`)。
 *   **AI:** AlphaZeroスタイルのMCTS (`ParallelRunner`) + PyTorch学習 (`train_simple.py`)。
 *   **GUI:** Python `tkinter` ベース (`app.py`, `card_editor.py`) ※注: `card_editor.py`はPyQt6ベースに変更されています。
@@ -27,11 +28,11 @@
 ### 3.3. 開発中の汎用エンジン機能 (PLAN-002残り)
 
 #### 革命チェンジ (現在の最優先タスク)
-*   **現状:** 専用アクション `REVOLUTION_CHANGE` とトリガー `ON_ATTACK_FROM_HAND` の基本ロジックは実装済みだが、条件判定がハードコードされており汎用性に欠ける。
+*   **現状:** 専用アクション `REVOLUTION_CHANGE` とトリガー `ON_ATTACK_FROM_HAND` の基本ロジックは実装済み。`FilterDef` による条件判定も実装され、`tests/test_revolution_change.py` で検証済み。GUIエディタからの設定も可能となった。
 *   **タスク:**
-    *   `FilterDef` を使用して革命チェンジの条件（火文明のドラゴンなど）をJSONで定義可能にする。
-    *   GUIエディタから革命チェンジの条件を設定できるようにする。
-    *   `tests/test_revolution_change.py` を作成し、動作を完全に検証する。
+    *   [完了] `FilterDef` を使用して革命チェンジの条件（火文明のドラゴンなど）をJSONで定義可能にする。
+    *   [完了] `tests/test_revolution_change.py` を作成し、動作を完全に検証する。
+    *   [完了] GUIエディタから革命チェンジの条件を設定できるようにする。
 
 #### その他機能統合
 *   **ゾーン移動の完全統合 (`MOVE_CARD`):** `DESTROY`, `RETURN_TO_HAND`, `SEND_TO_MANA`, `DRAW_CARD` 等を統合。

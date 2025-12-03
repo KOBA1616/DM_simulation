@@ -110,6 +110,7 @@ namespace dm::core {
         std::string type;
         std::vector<std::string> races;
         std::vector<EffectDef> effects;
+        std::optional<FilterDef> revolution_change_condition;
     };
 
 } // namespace dm::core
@@ -189,5 +190,5 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CardData, id, name, cost, civilization, power, type, races, effects)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilization, power, type, races, effects, revolution_change_condition)
 }

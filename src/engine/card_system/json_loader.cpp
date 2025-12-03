@@ -34,6 +34,12 @@ namespace dm::engine {
         def.power = data.power;
         def.races = data.races;
 
+        // Revolution Change
+        if (data.revolution_change_condition.has_value()) {
+            def.revolution_change_condition = data.revolution_change_condition;
+            def.keywords.revolution_change = true;
+        }
+
         // Keywords mapping from effects
         // The engine relies on boolean flags in CardKeywords.
         // We infer these from TriggerType and/or PASSIVE_CONST actions.
