@@ -22,6 +22,8 @@
 *   **汎用アクション:**
     *   **ステータス:** `TAP`、`UNTAP`、`DESTROY`、`RETURN_TO_HAND` が `GenericCardSystem` に実装済み。
 *   **Pythonバインディング:** `FilterDef` と `ActionDef` をサポートするように更新されました。
+*   **ハイパーエナジー:**
+    *   **ステータス:** 実装・検証完了。`ActionType.PLAY_CARD` の `target_player=254` を用いたタップ処理フローを確立。`tests/test_hyper_energy.py` にて検証済み。
 
 ### 3.4. 汎用エンジン機能 (完了分)
 *   **一般化されたターゲット選択:**
