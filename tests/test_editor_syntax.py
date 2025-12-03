@@ -1,19 +1,15 @@
 import sys
 import unittest
-try:
-    from PyQt6.QtWidgets import QApplication
-    from python.gui.card_editor import CardEditor
-except ImportError:
-    # If PyQt6 is not installed in environment, we might skip or fail.
-    # But usually in this sandbox it is installed.
-    # The 'python' path might need adjustment.
-    pass
-
-# We need to make sure python/ is in sys.path
-sys.path.append('python')
+import importlib.util
 
 class TestCardEditorSyntax(unittest.TestCase):
     def test_import(self):
+        # check if PyQt6 is installed
+        if importlib.util.find_spec("PyQt6") is None:
+            print("PyQt6 not installed, skipping test")
+            return
+
+        sys.path.append('python')
         try:
             from gui.card_editor import CardEditor
         except ImportError as e:

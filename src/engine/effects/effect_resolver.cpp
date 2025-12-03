@@ -354,47 +354,23 @@ namespace dm::engine {
                 if (def.keywords.evolution) card.summoning_sickness = false;
                 st_player.battle_zone.push_back(card);
                 
-                // Trigger CIP via GenericCardSystem: create PendingEffect populated from CardRegistry
+                // Trigger CIP via GenericCardSystem
                 if (def.keywords.cip) {
-                    PendingEffect cip(EffectType::CIP, card.instance_id, st_player.id);
-                    const dm::core::CardData* data = dm::engine::CardRegistry::get_card_data(card.card_id);
-                    if (data && !data->effects.empty()) {
-                        cip.effect_def = data->effects[0];
-                        int needed = 0;
-                        for (const auto& act : data->effects[0].actions) {
-                            if (act.scope == dm::core::TargetScope::TARGET_SELECT) {
-                                if (act.filter.count.has_value()) needed += act.filter.count.value();
-                                else needed += 1;
-                            }
-                        }
-                        cip.num_targets_needed = needed;
-                    }
-                    game_state.pending_effects.push_back(cip);
+                     dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
                 }
 
             } else if (def.type == CardType::SPELL) {
                 st_player.graveyard.push_back(card);
                 
-                // Trigger Spell Effect: populate effect_def/target count from CardRegistry when available
-                PendingEffect spell_effect(EffectType::CIP, card.instance_id, st_player.id);
-                const dm::core::CardData* sdata = dm::engine::CardRegistry::get_card_data(card.card_id);
-                if (sdata && !sdata->effects.empty()) {
-                    spell_effect.effect_def = sdata->effects[0];
-                    int needed = 0;
-                    for (const auto& act : sdata->effects[0].actions) {
-                        if (act.scope == dm::core::TargetScope::TARGET_SELECT) {
-                            if (act.filter.count.has_value()) needed += act.filter.count.value();
-                            else needed += 1;
-                        }
-                    }
-                    spell_effect.num_targets_needed = needed;
-                }
-                game_state.pending_effects.push_back(spell_effect);
+                // Trigger Spell Effect (Treat as CIP for spell logic in GenericCardSystem)
+                // In GenericCardSystem, Spell effects are defined as TriggerType::ON_PLAY for simplicity.
+                dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
             }
         } catch (...) {
             // Card not found or other error
         }
 
+        // Remove the pending SHIELD_TRIGGER effect that triggered this
         if (!game_state.pending_effects.empty()) {
              int index = action.slot_index;
              if (index >= 0 && index < static_cast<int>(game_state.pending_effects.size())) {
@@ -452,24 +428,11 @@ namespace dm::engine {
                 dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
             }
         } else if (def.type == CardType::SPELL) {
-            // Spell effects: create PendingEffect and populate effect_def/target count from CardRegistry when available
-            PendingEffect spell_effect(EffectType::CIP, card.instance_id, player.id);
-            const dm::core::CardData* sdata = dm::engine::CardRegistry::get_card_data(card.card_id);
-            if (sdata && !sdata->effects.empty()) {
-                spell_effect.effect_def = sdata->effects[0];
-                int needed = 0;
-                for (const auto& act : sdata->effects[0].actions) {
-                    if (act.scope == dm::core::TargetScope::TARGET_SELECT) {
-                        if (act.filter.count.has_value()) needed += act.filter.count.value();
-                        else needed += 1;
-                    }
-                }
-                spell_effect.num_targets_needed = needed;
-            }
-            game_state.pending_effects.push_back(spell_effect);
-
             // Go to graveyard
             player.graveyard.push_back(card);
+
+            // Spell effects: Use GenericCardSystem
+            dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
         }
     }
 
