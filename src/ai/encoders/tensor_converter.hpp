@@ -9,18 +9,45 @@ namespace dm::ai {
     class TensorConverter {
     public:
         // Returns the size of the input tensor
+        // Updated to support Unified Masked/Full Representation
+        // Structure:
+        // [Global Features (10)]
+        // [Self Player Features]
+        //   - Hand Count (1)
+        //   - Hand Cards (20)  <- Explicit slots
+        //   - Mana (6)
+        //   - Battle Zone (20 * 3)
+        //   - Shield Count (1)
+        //   - Graveyard (20)
+        // [Opp Player Features]
+        //   - Hand Count (1)
+        //   - Hand Cards (20)  <- Explicit slots (Masked=0, Full=Values)
+        //   - Mana (6)
+        //   - Battle Zone (20 * 3)
+        //   - Shield Count (1)
+        //   - Graveyard (20)
+
         static constexpr int INPUT_SIZE = 
             10 + // Global (Turn, Phase, etc)
-            (20 + 6 + 20 * 3 + 1 + 20) + // Self: Hand(20), Mana(6 civs), Battle(20*3 props), Shield(1), Grave(20)
-            (1 + 6 + 20 * 3 + 1 + 20);   // Opp: Hand(1), Mana(6 civs), Battle(20*3 props), Shield(1), Grave(20)
-            // Note: Opponent Hand is masked (count only)
-            // Battle props: ID, Tapped, Sickness
-            // Mana: Light, Water, Darkness, Fire, Nature, Zero counts
+            (1 + 20 + 6 + 20 * 3 + 1 + 20) + // Self: HandCnt(1), Hand(20), ...
+            (1 + 20 + 6 + 20 * 3 + 1 + 20);  // Opp: HandCnt(1), Hand(20), ...
 
-        static std::vector<float> convert_to_tensor(const dm::core::GameState& game_state, int player_view, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        // Convert single state.
+        // mask_opponent_hand: If true, opp hand slots are 0.0f. If false, filled with card info.
+        static std::vector<float> convert_to_tensor(
+            const dm::core::GameState& game_state,
+            int player_view,
+            const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
+            bool mask_opponent_hand = true
+        );
         
-        // Batch conversion
-        static std::vector<float> convert_batch_flat(const std::vector<dm::core::GameState>& states, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        // Batch conversion (Defaults to masked for standard training/inference usually,
+        // but can be overridden. For now, we assume simple batch uses mask=true or exposes arg)
+        static std::vector<float> convert_batch_flat(
+            const std::vector<dm::core::GameState>& states,
+            const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
+            bool mask_opponent_hand = true
+        );
     };
 
 }
