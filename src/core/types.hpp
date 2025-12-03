@@ -81,6 +81,13 @@ namespace dm::core {
         DRAW
     };
 
+    // Resolve Type for Pending Effects
+    enum class ResolveType : uint8_t {
+        NONE,
+        TARGET_SELECT,
+        EFFECT_RESOLUTION
+    };
+
     // Forward declaration for CostModifier
     struct FilterDef; // Defined in card_json_types.hpp, but circular dependency risk if we include it here.
                       // For now, we will define CostModifier in game_state.hpp or similar where we can include card_json_types.hpp

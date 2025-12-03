@@ -13,7 +13,6 @@ namespace dm::engine {
         struct CardProperties;
 
         // Generic validator
-        // optimization: pass card_controller explicitly to avoid O(N) lookup
         template<typename CardType>
         static bool is_valid_target(const dm::core::CardInstance& card,
                                     const CardType& card_def,
@@ -131,9 +130,7 @@ namespace dm::engine {
             return c.type == "EVOLUTION_CREATURE";
         }
         static bool is_blocker(const dm::core::CardData& c) {
-            // Check effects/keywords? JSON usually has keywords or effects
-            // This is hard without parsing effects. Assume false for now or check effects list?
-            return false;
+            return false; // Not easily checking keywords here
         }
     };
 
