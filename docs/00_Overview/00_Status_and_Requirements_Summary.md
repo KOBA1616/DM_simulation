@@ -100,15 +100,13 @@
 #### 1. データ収集 (Data Collection) の完全C++化
 `collect_training_data.py` のボトルネック（Python/C++間のオーバーヘッド）を解消するため、ループ処理をC++へ移行します。
 
-1.  **HeuristicAgentのC++移植:**
-    *   `dm::ai::HeuristicAgent` クラスを作成。
-    *   マナチャージ、コスト最大カードの使用、攻撃・ブロック判断ロジックを `ActionGenerator` 等を利用して実装。
-2.  **DataCollectorクラスの作成:**
-    *   `GameInstance` を生成し、`PhaseManager` でゲーム終了までループ。
-    *   各ステップで `TensorConverter` を呼び出し、特徴量とポリシーをメモリ (`std::vector`) に蓄積。
-3.  **Pythonバインディングの更新:**
-    *   `dm_ai_module.collect_data_batch(episodes=1000)` で呼び出し可能にする。
-    *   蓄積データをPython側に一括返却。
+*   **HeuristicAgentのC++移植:** (完了)
+    *   `dm::ai::HeuristicAgent` クラスを作成完了。
+    *   基本的なロジック（マナチャージ、コスト順プレイ、攻撃・ブロック）を実装済み。
+*   **DataCollectorクラスの作成:** (完了)
+    *   `DataCollector` クラスを実装し、指定エピソード数だけ自己対戦を実行しデータを蓄積する機能を作成完了。
+*   **Pythonバインディングの更新:** (完了)
+    *   `dm_ai_module.collect_data_batch(episodes=1000)` を実装し、蓄積された状態・ポリシー・価値を一括返却可能。
 
 #### 2. エフェクトバッファによる汎用アクションシステム
 アクションの結果を次のアクションに渡すための **「エフェクトバッファ (Effect Buffer)」** を導入します。

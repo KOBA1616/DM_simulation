@@ -27,6 +27,8 @@
 #include "../ai/evaluator/neural_evaluator.hpp"
 #include "../core/scenario_config.hpp"
 #include "../engine/game_instance.hpp"
+#include "../ai/agents/heuristic_agent.hpp"
+#include "../ai/data_collection/data_collector.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -651,6 +653,23 @@ PYBIND11_MODULE(dm_ai_module, m) {
             return self.play_games(initial_states, evaluator, temp, noise, num_threads);
         }, py::call_guard<py::gil_scoped_release>(),
            py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature") = 1.0f, py::arg("add_noise") = true, py::arg("num_threads") = 4);
+
+    // HeuristicAgent & DataCollector (PLAN-002)
+    py::class_<HeuristicAgent>(m, "HeuristicAgent")
+        .def(py::init<int, const std::map<CardID, CardDefinition>&>())
+        .def("get_action", &HeuristicAgent::get_action);
+
+    py::class_<CollectedBatch>(m, "CollectedBatch")
+        .def_readonly("states", &CollectedBatch::states)
+        .def_readonly("policies", &CollectedBatch::policies)
+        .def_readonly("values", &CollectedBatch::values);
+
+    py::class_<DataCollector>(m, "DataCollector")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("collect_data_batch", [](DataCollector& self, int episodes) {
+            return self.collect_data_batch(episodes);
+        }, py::call_guard<py::gil_scoped_release>(),
+           py::arg("episodes"));
 
         // Batch inference registration: allow Python to register a batched model callback
         m.def("register_batch_inference", [](py::function func) {
