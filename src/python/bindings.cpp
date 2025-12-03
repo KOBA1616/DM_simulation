@@ -394,6 +394,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<CostModifier>(m, "CostModifier")
         .def(py::init<>())
         .def_readwrite("reduction_amount", &CostModifier::reduction_amount)
+        .def_readwrite("condition_filter", &CostModifier::condition_filter)
         .def_readwrite("turns_remaining", &CostModifier::turns_remaining)
         .def_readwrite("controller", &CostModifier::controller)
         .def_readwrite("source_instance_id", &CostModifier::source_instance_id);

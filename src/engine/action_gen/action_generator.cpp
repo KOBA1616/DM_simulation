@@ -196,7 +196,7 @@ namespace dm::engine {
                     const auto& card = active_player.hand[i];
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
-                        if (ManaSystem::can_pay_cost(active_player, def, card_db)) {
+                        if (ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
                             Action action;
                             action.type = ActionType::PLAY_CARD;
                             action.card_id = card.card_id;
