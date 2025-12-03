@@ -1,5 +1,6 @@
 #include "generic_card_system.hpp"
 #include "card_registry.hpp"
+#include "target_utils.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -525,108 +526,54 @@ namespace dm::engine {
 
     std::vector<int> GenericCardSystem::select_targets(GameState& game_state, const ActionDef& action, int source_instance_id) {
         std::vector<int> out;
-        // Basic implementation: support PLAYER_SELF, PLAYER_OPPONENT, ALL_FILTERED, TARGET_SELECT with count
         Player& active = game_state.get_active_player();
-        Player& opponent = game_state.get_non_active_player();
+        // Player& opponent = game_state.get_non_active_player(); // Unused here
+        int active_id = active.id;
 
         auto matches_filter = [&](const CardInstance& ci, const FilterDef& f, int owner_id) -> bool {
             const dm::core::CardData* cd = dm::engine::CardRegistry::get_card_data(ci.card_id);
             if (!cd) return false;
 
-            // types
-            if (!f.types.empty()) {
-                bool ok = false;
-                for (const auto &t : f.types) {
-                    if (t == cd->type) { ok = true; break; }
-                }
-                if (!ok) return false;
-            }
-
-            // civilizations
-            if (!f.civilizations.empty()) {
-                bool ok = false;
-                for (const auto &civ : f.civilizations) {
-                    if (civ == cd->civilization) { ok = true; break; }
-                }
-                if (!ok) return false;
-            }
-
-            // power range
-            if (f.min_power.has_value() && cd->power < f.min_power.value()) return false;
-            if (f.max_power.has_value() && cd->power > f.max_power.value()) return false;
-
-            // cost range
-            if (f.min_cost.has_value() && cd->cost < f.min_cost.value()) return false;
-            if (f.max_cost.has_value() && cd->cost > f.max_cost.value()) return false;
-
-            // races (any overlap)
-            if (!f.races.empty()) {
-                bool ok = false;
-                for (const auto &r : f.races) {
-                    for (const auto &cr : cd->races) {
-                        if (r == cr) { ok = true; break; }
-                    }
-                    if (ok) break;
-                }
-                if (!ok) return false;
-            }
-
-            // tapped state
-            if (f.is_tapped.has_value()) {
-                if (ci.is_tapped != f.is_tapped.value()) return false;
-            }
-
-            // is evolution
-            if (f.is_evolution.has_value()) {
-                // If checking for evolution, need to check card type
-                bool is_evo = (cd->type == "EVOLUTION_CREATURE");
-                if (is_evo != f.is_evolution.value()) return false;
-            }
-
-            // owner filter: f.owner can be "SELF"/"OPPONENT"/"BOTH"
-            if (f.owner.has_value()) {
-                std::string o = f.owner.value();
-                if (o == "SELF" && owner_id != game_state.get_active_player().id) return false;
-                if (o == "OPPONENT" && owner_id == game_state.get_active_player().id) return false;
-                // BOTH allows either
-            }
-
-            return true;
+            return TargetUtils::is_valid_target(ci, *cd, f, active.id, owner_id);
         };
 
-        if (action.scope == TargetScope::PLAYER_SELF) {
-            // select from active player's battle zone
-            for (auto &c : active.battle_zone) {
-                if (action.filter.count.has_value()) {
-                    if ((int)out.size() >= action.filter.count.value()) break;
-                }
-                if (matches_filter(c, action.filter, active.id)) out.push_back(c.instance_id);
-            }
-        } else if (action.scope == TargetScope::PLAYER_OPPONENT) {
-            for (auto &c : opponent.battle_zone) {
-                if (action.filter.count.has_value()) {
-                    if ((int)out.size() >= action.filter.count.value()) break;
-                }
-                if (matches_filter(c, action.filter, opponent.id)) out.push_back(c.instance_id);
-            }
-        } else if (action.scope == TargetScope::ALL_FILTERED) {
-            for (auto &p : game_state.players) {
-                for (auto &c : p.battle_zone) {
-                    if (action.filter.count.has_value()) {
-                        if ((int)out.size() >= action.filter.count.value()) break;
-                    }
-                    if (matches_filter(c, action.filter, p.id)) out.push_back(c.instance_id);
+        int needed = action.filter.count.has_value() ? action.filter.count.value() : 1;
+
+        // Iterate based on zones or scope
+        // If zones is specified, it overrides Scope logic somewhat, or acts as a refinement
+        // Scope defines WHOSE zones or WHICH zones roughly.
+
+        // Helper to check specific zones
+        auto check_zone = [&](const std::vector<CardInstance>& zone, int owner_id) {
+            for (const auto& c : zone) {
+                if ((int)out.size() >= needed) return;
+                if (matches_filter(c, action.filter, owner_id)) {
+                    out.push_back(c.instance_id);
                 }
             }
-        } else if (action.scope == TargetScope::TARGET_SELECT) {
-            // Auto-selection fallback for AI: select up to count matching targets across both players
-            int needed = action.filter.count.has_value() ? action.filter.count.value() : 1;
-            for (auto &p : game_state.players) {
-                for (auto &c : p.battle_zone) {
-                    if ((int)out.size() >= needed) break;
-                    if (matches_filter(c, action.filter, p.id)) out.push_back(c.instance_id);
-                }
-                if ((int)out.size() >= needed) break;
+        };
+
+        // Determine which players to check
+        std::vector<int> players_to_check;
+        if (action.scope == TargetScope::PLAYER_SELF) players_to_check.push_back(active.id);
+        else if (action.scope == TargetScope::PLAYER_OPPONENT) players_to_check.push_back(1 - active.id);
+        else { // ALL, TARGET_SELECT etc
+            players_to_check.push_back(active.id);
+            players_to_check.push_back(1 - active.id);
+        }
+
+        // Determine which zones to check
+        std::vector<std::string> zones = action.filter.zones;
+        if (zones.empty()) zones = {"BATTLE_ZONE"}; // Default
+
+        for (int pid : players_to_check) {
+            Player& p = game_state.players[pid];
+            for (const auto& z : zones) {
+                if (z == "BATTLE_ZONE") check_zone(p.battle_zone, pid);
+                else if (z == "MANA_ZONE") check_zone(p.mana_zone, pid);
+                else if (z == "GRAVEYARD") check_zone(p.graveyard, pid);
+                else if (z == "HAND") check_zone(p.hand, pid);
+                else if (z == "SHIELD_ZONE") check_zone(p.shield_zone, pid);
             }
         }
 

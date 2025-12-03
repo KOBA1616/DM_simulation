@@ -54,6 +54,7 @@ namespace dm::core {
     // JSON Structures
     struct FilterDef {
         std::optional<std::string> owner; // "SELF", "OPPONENT", "BOTH"
+        std::vector<std::string> zones;   // "BATTLE_ZONE", "MANA_ZONE", "GRAVEYARD", "HAND", "DECK", "SHIELD_ZONE"
         std::vector<std::string> types;   // "CREATURE", "SPELL"
         std::vector<std::string> civilizations;
         std::vector<std::string> races;
@@ -170,7 +171,7 @@ namespace dm::core {
         {EffectActionType::COST_REFERENCE, "COST_REFERENCE"}
     })
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, optional, target_player, source_zone, destination_zone)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
