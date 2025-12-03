@@ -20,13 +20,13 @@
 *   **GUIエディタ:** `card_editor.py`を更新し、上記効果のテンプレートを追加しました。
 *   **一貫性のあるJSONデータ:** ユニットテストが通過するように、必須のテストカード (デーモン・ハンド、スパイラル・ゲート) を`data/cards.json`に追加しました。
 *   **EffectResolverのリファクタリング:** 呪文およびシールドトリガーの効果解決において`GenericCardSystem`を優先的に使用するように`EffectResolver`をリファクタリングし、コードの重複を削減しました。
+*   **汎用ターゲット選択の修正:** `ActionGenerator`が`SELECT_TARGET`アクションを正しく処理し、ターゲット選択後に`RESOLVE_EFFECT`アクションを生成するように修正しました。また、`PendingEffect`がアクション定義を保持するように改善しました。
 
 ## 3. 要件 (アクティブ)
 
-### 3.1. 汎用エンジン機能 (部分的に実装済み)
+### 3.1. 汎用エンジン機能 (実装済み/テスト済み)
 *   **汎用ターゲット選択:**
-    *   **ステータス:** `TargetUtils` と `GenericCardSystem::select_targets` を実装済み。
-    *   **課題:** 手動検証テスト (`tests/manual/test_generic_targeting.py`) において、カードプレイ後に `SELECT_TARGET` アクションが生成されない問題が発生しています。`EffectResolver` 統合の調査が必要です。
+    *   **ステータス:** 実装済み。`tests/manual/test_generic_targeting.py` で検証完了。`SELECT_TARGET` -> `RESOLVE_EFFECT` のフローが正常に動作します。
 *   **汎用アクション:**
     *   **ステータス:** `TAP`、`UNTAP`、`DESTROY`、`RETURN_TO_HAND` が `GenericCardSystem` に実装済み。
 *   **Pythonバインディング:** `FilterDef` と `ActionDef` をサポートするように更新されました。
@@ -47,17 +47,10 @@
 エンジンの修正なしでより幅広いカード効果をサポートするため、以下の汎用機能を実装します:
 
 *   **一般化されたターゲット選択:**
-    *   **仕様:** `ActionType::SELECT_TARGET` アクションを生成する関数 `select_target(source, filter, count, optional)`。
-    *   **引数:**
-        *   `optional` (bool): trueの場合、プレイヤーは選択しない (パス) ことを選べる。
-        *   `zones` (list): 選択元の有効なゾーン (例: BattleZone, ManaZone)。
-        *   `filter` (Condition/FilterDef): 制約 (文明、種族、パワー、タップ状態)。
-        *   `count` (min/max): 必要なターゲット数。
-    *   **目標:** `ActionGenerator` 内のハードコードされたターゲットロジックを置き換え、JSON定義のターゲット選択をサポートする。
+    *   **完了:** `ActionType::SELECT_TARGET` フローの実装と修正が完了しました。
 
 *   **一般化されたタップ/アンタップ:**
-    *   **仕様:** 任意のターゲットインスタンスに対して実行可能な汎用効果アクション `TAP` / `UNTAP`。
-    *   **統合:** 呪文、クリーチャー効果 (CIP)、またはS・トリガーによってトリガー可能。
+    *   **完了:** `TAP` / `UNTAP` 効果アクションタイプの実装完了。
 
 *   **コスト軽減システム:**
     *   **仕様:** アクティブなコスト修正を管理するシステム。
@@ -93,6 +86,6 @@
 *   **データの一貫性:** `data/cards.csv` はレガシーであり、`data/cards.json` とは異なります (特にID 2と3)。新規開発は厳密に `cards.json` に依存する必要があります。
 
 ## 5. 次のステップ
-1.  **進行中:** **汎用エンジン機能** (ターゲット選択、タップ、コスト軽減) の実装。
-2.  新しいターゲットセレクターを使用するように `ActionGenerator` をリファクタリング。
+1.  **進行中:** **コスト軽減システム** の実装。
+2.  既存のカード定義を新しい汎用アクション形式に移行。
 3.  フェーズ5のC++機能抽出を継続。
