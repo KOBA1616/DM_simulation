@@ -1,95 +1,98 @@
-# Requirement Definition 00: Status and Requirements Summary
+# 要件定義書 00: ステータスと要件の概要
 
-## 1. Project Overview
-**Goal:** Develop a Duel Masters AI/Agent system with a C++ engine and Python bindings.
-**Current Phase:** Phase 5 (Generic Engine Functions & Feature Extraction)
-**Focus:** Robustness, Verifiability, Risk Management.
+## 1. プロジェクト概要
+**目標:** C++エンジンとPythonバインディングを使用したデュエル・マスターズAI/エージェントシステムの開発。
+**現在のフェーズ:** フェーズ5 (汎用エンジン機能と特徴量抽出)
+**焦点:** 堅牢性、検証可能性、リスク管理。
 
-## 2. Current Status
-*   **Engine:** C++20 core with `GameState`, `ActionGenerator`, `EffectResolver`.
-*   **Python Bindings:** `pybind11` integration (`dm_ai_module`).
-*   **AI:** AlphaZero-style MCTS (`ParallelRunner`) + PyTorch training (`train_simple.py`).
-*   **GUI:** Python `tkinter` based (`app.py`, `card_editor.py`).
-*   **Data:** JSON-based card definitions (`data/cards.json`).
+## 2. 現在のステータス
+*   **エンジン:** `GameState`、`ActionGenerator`、`EffectResolver`を備えたC++20コア。
+*   **Pythonバインディング:** `pybind11`統合 (`dm_ai_module`)。
+*   **AI:** AlphaZeroスタイルのMCTS (`ParallelRunner`) + PyTorch学習 (`train_simple.py`)。
+*   **GUI:** Python `tkinter` ベース (`app.py`, `card_editor.py`) ※注: `card_editor.py`はPyQt6ベースに変更されています。
+*   **データ:** JSONベースのカード定義 (`data/cards.json`)。
 
-### 2.1. Implemented Features (Recent)
-*   **Speed Attacker / Evolution Logic:** Fixed engine to allow creatures with `Speed Attacker` or `Evolution` to attack immediately (ignoring summoning sickness). Verified via `verify_lethal_puzzle.py`.
-*   **Bounce (Return to Hand):** Implemented `RETURN_TO_HAND` action type in C++ engine and GUI templates.
-*   **Deck Search/Look:** Implemented `SEARCH_DECK_BOTTOM` (Look at top N, Add selected to hand, Return rest to bottom).
-*   **Mekraid:** Implemented `MEKRAID` (Look at top 3, Play condition, Return rest to bottom).
-*   **GUI Editor:** Updated `card_editor.py` with templates for the above effects.
-*   **Consistent JSON Data:** Updated `data/cards.json` to include essential test cards (Terror Pit, Spiral Gate) to ensure unit tests pass.
-*   **Effect Resolver Refactor:** Refactored `EffectResolver` to prioritize `GenericCardSystem` for spell and shield trigger effect resolution, reducing code duplication.
+### 2.1. 実装済み機能 (最近)
+*   **スピードアタッカー / 進化ロジック:** `スピードアタッカー`や`進化`を持つクリーチャーが（召喚酔いを無視して）即座に攻撃できるようにエンジンを修正しました。`verify_lethal_puzzle.py`で検証済み。
+*   **バウンス (手札に戻す):** C++エンジンおよびGUIテンプレートで`RETURN_TO_HAND`アクションタイプを実装しました。
+*   **デッキ探索/確認:** `SEARCH_DECK_BOTTOM` (上からN枚見て、選択したものを手札に加え、残りを一番下に戻す) を実装しました。
+*   **メクレイド:** `MEKRAID` (上から3枚見て、条件に合うものを出し、残りを一番下に戻す) を実装しました。
+*   **GUIエディタ:** `card_editor.py`を更新し、上記効果のテンプレートを追加しました。
+*   **一貫性のあるJSONデータ:** ユニットテストが通過するように、必須のテストカード (デーモン・ハンド、スパイラル・ゲート) を`data/cards.json`に追加しました。
+*   **EffectResolverのリファクタリング:** 呪文およびシールドトリガーの効果解決において`GenericCardSystem`を優先的に使用するように`EffectResolver`をリファクタリングし、コードの重複を削減しました。
 
-## 3. Requirements (Active)
+## 3. 要件 (アクティブ)
 
-### 3.1. Generic Engine Functions (Partially Implemented)
-*   **Generic Targeting:**
-    *   **Status:** `TargetUtils` and `GenericCardSystem::select_targets` implemented.
-    *   **Issues:** Manual verification test (`tests/manual/test_generic_targeting.py`) fails to generate `SELECT_TARGET` actions after card play. Investigation into `EffectResolver` integration required.
-*   **Generic Actions:**
-    *   **Status:** `TAP`, `UNTAP`, `DESTROY`, `RETURN_TO_HAND` implemented in `GenericCardSystem`.
-*   **Python Bindings:** Updated to support `FilterDef` and `ActionDef`.
+### 3.1. 汎用エンジン機能 (部分的に実装済み)
+*   **汎用ターゲット選択:**
+    *   **ステータス:** `TargetUtils` と `GenericCardSystem::select_targets` を実装済み。
+    *   **課題:** 手動検証テスト (`tests/manual/test_generic_targeting.py`) において、カードプレイ後に `SELECT_TARGET` アクションが生成されない問題が発生しています。`EffectResolver` 統合の調査が必要です。
+*   **汎用アクション:**
+    *   **ステータス:** `TAP`、`UNTAP`、`DESTROY`、`RETURN_TO_HAND` が `GenericCardSystem` に実装済み。
+*   **Pythonバインディング:** `FilterDef` と `ActionDef` をサポートするように更新されました。
 
-### 3.2. GUI & Card Effects Expansion
-*   **Look at Top Deck (Refinement):**
-    *   **Private vs Public:** Ensure visualization differentiates between private info (Executor only) and public info (Both players). *Implementation note: `SEARCH_DECK_BOTTOM` handles the logic, but frontend visualization of "revealed" cards needs verification.*
+### 3.2. GUI & カード効果の拡張
+*   **山札の上を見る (改善):**
+    *   **非公開 vs 公開:** 非公開情報 (実行者のみ) と公開情報 (両プレイヤー) の区別を視覚化する必要があります。*実装メモ: `SEARCH_DECK_BOTTOM` はロジックを処理しますが、フロントエンドでの「公開された」カードの視覚化には検証が必要です。*
+*   **カード作成補助 (日本語化 & 視覚化):**
+    *   **日本語化:** GUI上のキーワード能力や汎用能力の選択を日本語で行えるようにする。
+    *   **視覚的ビルダ:** トリガー条件、対象ゾーン、処理（見る、表向きにする、手札に戻す、参照など）、対象数、対象条件、コスト軽減などを視覚的に選択・組み合わせて複雑な効果を実装できる機能を追加する。
 
-### 3.2. Core Features (Existing)
-*   **Loop Detection:** Hash-based state tracking to prevent infinite loops (Implemented).
-*   **Performance:** Move loop detection and heavy logic to C++ (In Progress).
-*   **Data Driven:** Use JSON for all card logic.
+### 3.2. コア機能 (既存)
+*   **ループ検出:** 無限ループを防ぐためのハッシュベースの状態追跡 (実装済み)。
+*   **パフォーマンス:** ループ検出と重いロジックをC++に移行 (進行中)。
+*   **データ駆動:** すべてのカードロジックにJSONを使用。
 
-### 3.3. Generic Engine Functions (New - Development Priority)
-To support a wider range of card effects without engine modification, the following generic functions will be implemented:
+### 3.3. 汎用エンジン機能 (新規 - 開発優先)
+エンジンの修正なしでより幅広いカード効果をサポートするため、以下の汎用機能を実装します:
 
-*   **Generalized Target Selection:**
-    *   **Spec:** A function `select_target(source, filter, count, optional)` that generates `ActionType::SELECT_TARGET` actions.
-    *   **Arguments:**
-        *   `optional` (bool): If true, player can choose not to select (pass).
-        *   `zones` (list): Valid zones to select from (e.g., BattleZone, ManaZone).
-        *   `filter` (Condition/FilterDef): Constraints (Civilization, Race, Power, Tapped state).
-        *   `count` (min/max): Number of targets required.
-    *   **Goal:** Replace hardcoded targeting logic in `ActionGenerator` and support JSON-defined targeting.
+*   **一般化されたターゲット選択:**
+    *   **仕様:** `ActionType::SELECT_TARGET` アクションを生成する関数 `select_target(source, filter, count, optional)`。
+    *   **引数:**
+        *   `optional` (bool): trueの場合、プレイヤーは選択しない (パス) ことを選べる。
+        *   `zones` (list): 選択元の有効なゾーン (例: BattleZone, ManaZone)。
+        *   `filter` (Condition/FilterDef): 制約 (文明、種族、パワー、タップ状態)。
+        *   `count` (min/max): 必要なターゲット数。
+    *   **目標:** `ActionGenerator` 内のハードコードされたターゲットロジックを置き換え、JSON定義のターゲット選択をサポートする。
 
-*   **Generalized Tap/Untap:**
-    *   **Spec:** A generic effect action `TAP` / `UNTAP` executable on any target instance.
-    *   **Integration:** Can be triggered by spells, creature effects (CIP), or S-Triggers.
+*   **一般化されたタップ/アンタップ:**
+    *   **仕様:** 任意のターゲットインスタンスに対して実行可能な汎用効果アクション `TAP` / `UNTAP`。
+    *   **統合:** 呪文、クリーチャー効果 (CIP)、またはS・トリガーによってトリガー可能。
 
-*   **Cost Reduction System:**
-    *   **Spec:** A system to manage active cost modifiers.
-    *   **Components:**
-        *   `CostModifier` struct: `{ condition, reduction_amount, turn_limit, valid_cards_filter }`.
-        *   `GameState.active_modifiers`: List of active modifiers.
-        *   `ManaSystem.get_cost(card)`: Calculates final cost applying modifiers (min cost 1).
+*   **コスト軽減システム:**
+    *   **仕様:** アクティブなコスト修正を管理するシステム。
+    *   **コンポーネント:**
+        *   `CostModifier` 構造体: `{ condition, reduction_amount, turn_limit, valid_cards_filter }`。
+        *   `GameState.active_modifiers`: アクティブな修正のリスト。
+        *   `ManaSystem.get_cost(card)`: 修正を適用して最終コストを計算 (最小コスト1)。
 
-### 3.4. Future Feature Backlog (User Requested)
-*   **System & Engine:**
-    *   **Draw Monitor:** Monitor draw count per turn (各ターンでのドロー枚数の監視).
-    *   **Battle Zone Checks:** Reference specific costs in Battle Zone (バトルゾーンの特定コストを参照する).
-    *   **Graveyard Logic:** Logic for "When placed in graveyard, if it was in BZ (including under evo)" (墓地に置かれた時、バトルゾーンにあれば...).
-*   **Card Mechanics:**
-    *   **Just Diver:** Hexproof/Untargetable (ジャストダイバー).
-    *   **Alternative Cost:** G-Zero, Sympathy, etc. (代替コスト).
-    *   **Meteorburn:** Evolution source cost (メテオバーン).
-    *   **Neo Evolution:** Creature/Evolution hybrid (ネオ進化カード).
-    *   **Ninja Strike:** (ニンジャストライク).
-    *   **Unblockable (Temp):** Attack unblockable with duration (攻撃時ブロック禁止効果の実装(効果期限)).
-    *   **Global Removal:** Board wipe (全体除去).
-    *   **Attack Restriction:** (攻撃制限).
-    *   **Anti-Cheat (Meta):** Counters to cost cheating (踏み倒しメタ).
-    *   **Mana Recovery:** (マナ回収).
-    *   **Reanimation:** (蘇生).
-    *   **Modal Effects:** Choose 1 of N (モード).
-*   **Tools:**
-    *   **GUI Extension:** Expand Card Creation GUI (カード作成GUIの拡張).
+### 3.4. 将来の機能バックログ (ユーザー要望)
+*   **システム & エンジン:**
+    *   **ドロー監視:** 各ターンでのドロー枚数の監視。
+    *   **バトルゾーンチェック:** バトルゾーンの特定コストを参照する機能。
+    *   **墓地ロジック:** 「墓地に置かれた時、バトルゾーンにあれば...」 (墓地に置かれた時、バトルゾーン(進化元含む)にあれば...)。
+*   **カードメカニクス:**
+    *   **ジャストダイバー:** 選ばれない/攻撃されない (ジャストダイバー)。
+    *   **代替コスト:** G・ゼロ、シンパシーなど (代替コスト)。
+    *   **メテオバーン:** 進化元コスト (メテオバーン)。
+    *   **NEO進化:** クリーチャー/進化ハイブリッド (NEO進化)。
+    *   **ニンジャ・ストライク:** (ニンジャ・ストライク)。
+    *   **ブロック不可 (一時的):** 攻撃時ブロック禁止効果の実装(効果期限)。
+    *   **全体除去:** 盤面リセット (全体除去)。
+    *   **攻撃制限:** (攻撃制限)。
+    *   **アンチチート (メタ):** コスト踏み倒しメタ (踏み倒しメタ)。
+    *   **マナ回収:** (マナ回収)。
+    *   **リアニメイト:** (蘇生)。
+    *   **モード効果:** N個から1つ選択 (モード)。
+*   **ツール:**
+    *   **GUI拡張:** カード作成GUIの拡張 (視覚的な効果ビルダの実装)。
 
-## 4. Known Issues / Risks
-*   **Complex Effects:** Multi-step effects (Search, Shield Trigger options) need robust handling in C++.
-*   **Memory Usage:** High simulation counts in `verify_performance.py` may cause memory allocation errors (`std::bad_alloc`). Verification at low scale (sims=2) passes.
-*   **Data Consistency:** `data/cards.csv` is legacy and differs from `data/cards.json` (specifically IDs 2 and 3). New development should rely strictly on `cards.json`.
+## 4. 既知の問題 / リスク
+*   **複雑な効果:** 複数ステップの効果 (探索、シールドトリガーの選択) はC++での堅牢な処理が必要です。
+*   **メモリ使用量:** `verify_performance.py` でのシミュレーション回数が多いと、メモリアロケーションエラー (`std::bad_alloc`) が発生する可能性があります。小規模 (sims=2) での検証は通過します。
+*   **データの一貫性:** `data/cards.csv` はレガシーであり、`data/cards.json` とは異なります (特にID 2と3)。新規開発は厳密に `cards.json` に依存する必要があります。
 
-## 5. Next Steps
-1.  **In Progress:** Implement **Generic Engine Functions** (Targeting, Tap, Cost Reduction).
-2.  Refactor `ActionGenerator` to use the new Target Selector.
-3.  Continue Phase 5 C++ feature extraction.
+## 5. 次のステップ
+1.  **進行中:** **汎用エンジン機能** (ターゲット選択、タップ、コスト軽減) の実装。
+2.  新しいターゲットセレクターを使用するように `ActionGenerator` をリファクタリング。
+3.  フェーズ5のC++機能抽出を継続。
