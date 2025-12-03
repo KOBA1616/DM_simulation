@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
         "./"
-    ]
+    ],
+    "cmake.generator": "MinGW Makefiles"
 }
