@@ -22,6 +22,7 @@
 *   **EffectResolverのリファクタリング:** 呪文およびシールドトリガーの効果解決において`GenericCardSystem`を優先的に使用するように`EffectResolver`をリファクタリングし、コードの重複を削減しました。
 *   **汎用ターゲット選択の修正:** `ActionGenerator`が`SELECT_TARGET`アクションを正しく処理し、ターゲット選択後に`RESOLVE_EFFECT`アクションを生成するように修正しました。また、`PendingEffect`がアクション定義を保持するように改善しました。
 *   **Effect Bufferと汎用原子アクション:** [PLAN-002] Section 2完了。`LOOK_TO_BUFFER`, `SELECT_FROM_BUFFER`, `PLAY_FROM_BUFFER`, `MOVE_BUFFER_TO_ZONE` を実装し、中断・再開可能な選択ロジックを確立しました。`tests/test_effect_buffer.py` で動作検証済み。
+*   **スタックゾーンとコスト計算:** [PLAN-002] Section 3完了。カードプレイ時に一時的に`stack_zone`を経由し、`get_projected_cost`および`auto_tap_mana`（軽減適用済み）を使用してコストを支払うフローを確立しました。`tests/test_engine_basics.py` および `tests/test_cost_modifier.py` で検証済み。
 
 ## 3. 要件 (アクティブ)
 
@@ -122,7 +123,7 @@
 *   **メリット:** ガチンコ・ジャッジ、各種サーチ、メクレイド等をエンジンの改造なしにJSONの組み合わせで実装可能。
 
 #### 3. スタック（宣言）ゾーンとコスト計算の再構築
-**ステータス:** 実装開始 (Stack Zone & Projected Cost added)
+**ステータス:** 完了 (Implemented & Verified)
 プレイプロセスを「宣言」「コスト計算」「解決」に分解し、**「スタックゾーン (Stack Zone)」** を導入します。
 
 1.  **処理フロー:**
