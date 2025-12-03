@@ -121,7 +121,23 @@ namespace dm::engine {
                 // 1. Attack with creatures
                 for (size_t i = 0; i < active_player.battle_zone.size(); ++i) {
                     const auto& card = active_player.battle_zone[i];
-                    if (!card.is_tapped && !card.summoning_sickness) {
+
+                    bool can_attack = !card.is_tapped;
+                    if (can_attack) {
+                        // Check Summoning Sickness vs Speed Attacker / Evolution
+                        if (card.summoning_sickness) {
+                            if (card_db.count(card.card_id)) {
+                                const auto& def = card_db.at(card.card_id);
+                                if (!def.keywords.speed_attacker && !def.keywords.evolution) {
+                                    can_attack = false;
+                                }
+                            } else {
+                                can_attack = false; // Unknown card, default to sick
+                            }
+                        }
+                    }
+
+                    if (can_attack) {
                         // Attack Player
                         Action attack_player;
                         attack_player.type = ActionType::ATTACK_PLAYER;
