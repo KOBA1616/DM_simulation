@@ -61,6 +61,7 @@ namespace dm::engine {
                     if (action.str_val == "EVOLUTION") def.keywords.evolution = true;
                     if (action.str_val == "MACH_FIGHTER") def.keywords.mach_fighter = true;
                     if (action.str_val == "G_STRIKE") def.keywords.g_strike = true;
+                    if (action.str_val == "HYPER_ENERGY") def.keywords.hyper_energy = true;
                 }
             }
         }
