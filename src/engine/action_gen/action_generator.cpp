@@ -128,6 +128,51 @@ namespace dm::engine {
                     pass.slot_index = static_cast<int>(i);
                     actions.push_back(pass);
                 }
+                // Handle Revolution Change (ON_ATTACK_FROM_HAND)
+                else if (eff.type == EffectType::ON_ATTACK_FROM_HAND) {
+                    const Player& player = game_state.players[eff.controller];
+
+                    // Generate USE_ABILITY actions for all valid Revolution Change cards in Hand
+                    // Revolution Change: Requires Civ/Race match with the ATTACKING creature (eff.source_instance_id)
+                    // We need to look up the Attacker.
+                    // The attacker should still be in Battle Zone.
+
+                    bool can_use = false;
+                    auto attacker_it = std::find_if(player.battle_zone.begin(), player.battle_zone.end(),
+                        [&](const CardInstance& c) { return c.instance_id == eff.source_instance_id; });
+
+                    if (attacker_it != player.battle_zone.end()) {
+                        const CardDefinition& attacker_def = card_db.at(attacker_it->card_id);
+
+                        for (size_t k = 0; k < player.hand.size(); ++k) {
+                            const auto& card = player.hand[k];
+                            if (card_db.count(card.card_id)) {
+                                const auto& def = card_db.at(card.card_id);
+                                if (def.keywords.revolution_change) {
+                                    // Check Conditions (Simplified: assume valid if keyword set for now,
+                                    // or check generic matching logic if we had it exposed easily).
+                                    // TODO: Implement strict checks based on Revolution Change requirement (Fire, Dragon, etc.)
+                                    // For now, if the card has 'revolution_change' keyword, we allow it.
+
+                                    Action use;
+                                    use.type = ActionType::USE_ABILITY;
+                                    use.source_instance_id = card.instance_id; // Card in hand to use
+                                    use.slot_index = static_cast<int>(k); // Index in hand
+                                    // We don't link back to the pending effect index in generic Action,
+                                    // but we assume EffectResolver finds it (Step 0 checks active pending effects).
+                                    actions.push_back(use);
+                                    can_use = true;
+                                }
+                            }
+                        }
+                    }
+
+                    // Always allow PASS (Don't use Revolution Change)
+                    Action pass;
+                    pass.type = ActionType::RESOLVE_EFFECT; // Consumes the pending effect without doing anything
+                    pass.slot_index = static_cast<int>(i);
+                    actions.push_back(pass);
+                }
                 // Legacy / Fallback for non-generic selection (if any)
                 else if (eff.num_targets_needed > (int)eff.target_instance_ids.size()) {
                      // Fallback to old hardcoded logic if resolve_type wasn't set to TARGET_SELECT
