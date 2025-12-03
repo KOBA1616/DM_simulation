@@ -77,6 +77,16 @@ namespace dm::engine {
                             else if (zone_str == "HAND") zone_ptr = &target_player.hand;
                             else if (zone_str == "GRAVEYARD") zone_ptr = &target_player.graveyard;
                             else if (zone_str == "SHIELD_ZONE") zone_ptr = &target_player.shield_zone;
+                            else if (zone_str == "EFFECT_BUFFER" || zone_str == "BUFFER") {
+                                // Effect buffer is global in GameState, but we iterate per player context for logic
+                                // Check if this player is the "owner" of the search?
+                                // Usually LOOK_TO_BUFFER comes from Deck which is player-specific.
+                                // Let's check game_state.effect_buffer.
+                                // We iterate players_to_check, but the buffer is global.
+                                // We should only check it once per call, or just assign it.
+                                // Since logic iterates players, we can just assign the buffer.
+                                zone_ptr = &game_state.effect_buffer;
+                            }
 
                             if (zone_ptr) {
                                 for (const auto& card : *zone_ptr) {
