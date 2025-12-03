@@ -2,6 +2,7 @@
 #include "generated_effects.hpp"
 #include "../card_system/generic_card_system.hpp"
 #include "../card_system/card_registry.hpp"
+#include "../card_system/target_utils.hpp"
 #include "../mana/mana_system.hpp"
 #include <iostream>
 #include <algorithm>
@@ -677,9 +678,6 @@ namespace dm::engine {
         // Check for Revolution Change Triggers (ON_ATTACK_FROM_HAND)
         bool revolution_change_triggered = false;
 
-        // Debug: Check Hand
-        // std::cerr << "Checking Hand for Rev Change. Hand size: " << active.hand.size() << "\n";
-
         CardInstance attacker = *attacker_it; // Copy to be safe
         const CardDefinition& attacker_def = card_db.at(attacker.card_id);
 
@@ -687,23 +685,41 @@ namespace dm::engine {
             if (card_db.count(card.card_id)) {
                 const auto& def = card_db.at(card.card_id);
                 bool has_rev_change = def.keywords.revolution_change;
-                // std::cerr << "Card " << card.card_id << " has_rev_change=" << has_rev_change << "\n";
+
                 if (has_rev_change) {
-                    // Check conditions: Civilization or Race usually.
-                    // Revolution Change: Fire (Switch with a Fire creature)
-                    // We need to check if the attacker matches the requirement.
-                    // This logic is specific to the card.
-                    // IMPORTANT: We need to know IF it matches.
-                    // For now, let's Push the PendingEffect if ANY RevChange card exists,
-                    // and ActionGenerator will filter if it's actually usable.
-                    // If ActionGenerator produces no actions (PASS only), then we resolve PASS immediately?
+                    bool matches = true;
+                    // Check Data-Driven Condition if available
+                    if (def.revolution_change_condition.has_value()) {
+                        // Use TargetUtils to validate the attacker against the condition
+                        // We check if 'attacker' (the card instance) satisfies the filter.
+                        // The filter is 'def.revolution_change_condition'.
+                        // owner="SELF" implies the attacker must be ours (which it is).
+                        matches = TargetUtils::is_valid_target(attacker, attacker_def,
+                                                               def.revolution_change_condition.value(),
+                                                               active.id, active.id);
+                    }
 
-                    // To avoid infinite loops or empty checks, we only push if we haven't already?
-                    // No, this is a one-time event per attack declaration.
+                    if (matches) {
+                        game_state.pending_effects.emplace_back(EffectType::ON_ATTACK_FROM_HAND, attacker.instance_id, active.id);
+                        revolution_change_triggered = true;
+                        // We continue searching other cards too, but only one 'trigger' flag is needed to stop phase transition.
+                        // Actually, if multiple cards trigger, we might want multiple pending effects?
+                        // Or just one "Phase" of "Choose Rev Change"?
+                        // The current logic creates one PE per card.
+                        // But wait, the PE stores 'attacker.instance_id'. It does NOT store which card in hand triggered it.
+                        // This means if we have 2 RevChange cards, we add 2 identical PEs?
+                        // If they have different conditions, maybe only one triggers?
+                        // If both trigger, we have 2 PEs.
+                        // But how does `resolve_use_ability` know WHICH card to swap?
+                        // `resolve_use_ability` uses `action.source_instance_id` (the card in hand).
+                        // So the PEs just serve as a "lock" to prevent proceeding to Block phase until resolved/passed.
 
-                    game_state.pending_effects.emplace_back(EffectType::ON_ATTACK_FROM_HAND, attacker.instance_id, active.id);
-                    revolution_change_triggered = true;
-                    break; // Only need one pending effect to trigger the choice phase
+                        // BUT: If we have multiple PEs, we have to resolve them one by one.
+                        // If we use one, the attacker leaves play. The other PEs become invalid.
+                        // That is handled in `resolve_use_ability`: if attacker missing, remove PE.
+
+                        // So it seems fine to add multiple PEs.
+                    }
                 }
             }
         }
@@ -711,16 +727,6 @@ namespace dm::engine {
         // Transition to BLOCK Phase only if no interrupts
         if (!revolution_change_triggered) {
             game_state.current_phase = Phase::BLOCK;
-        } else {
-            // Stay in ATTACK phase but with pending effect?
-            // Or use a transient phase?
-            // ActionGenerator handles pending effects regardless of phase.
-            // But if we stay in ATTACK phase, standard attack actions might be generated again?
-            // No, ActionGenerator prioritizes PendingEffects (Step 0).
-            // So as long as PendingEffect exists, standard actions are suppressed or secondary.
-            // Wait, ActionGenerator DOES suppress other actions if PendingEffects exist.
-            // "If !game_state.pending_effects.empty() ... return actions;"
-            // So we are safe.
         }
     }
 
