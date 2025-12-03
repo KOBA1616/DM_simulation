@@ -326,8 +326,8 @@ namespace dm::engine {
                                     action.target_slot_index = taps; // Encodes "Hyper Mode: Tap N"
                                     // We need to differentiate this from normal play in EffectResolver.
                                     // Maybe add a flag? Action struct is fixed.
-                                    // Use target_player = -2 to signify Hyper Energy?
-                                    action.target_player = -2;
+                                    // Use target_player = 254 to signify Hyper Energy
+                                    action.target_player = 254;
                                     actions.push_back(action);
                                 }
                             }
