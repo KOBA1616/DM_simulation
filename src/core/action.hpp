@@ -13,7 +13,8 @@ namespace dm::core {
         BLOCK,
         USE_SHIELD_TRIGGER,
         SELECT_TARGET,
-        RESOLVE_EFFECT
+        RESOLVE_EFFECT,
+        USE_ABILITY // For things like Revolution Change, Ninja Strike
     };
 
     struct Action {
