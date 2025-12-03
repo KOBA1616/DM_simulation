@@ -589,8 +589,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
     // AI
     py::class_<TensorConverter>(m, "TensorConverter")
         .def_readonly_static("INPUT_SIZE", &TensorConverter::INPUT_SIZE)
-        .def_static("convert_to_tensor", &TensorConverter::convert_to_tensor)
-        .def_static("convert_batch_flat", &TensorConverter::convert_batch_flat);
+        .def_static("convert_to_tensor", &TensorConverter::convert_to_tensor,
+            py::arg("game_state"), py::arg("player_view"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
+        .def_static("convert_batch_flat", &TensorConverter::convert_batch_flat,
+            py::arg("states"), py::arg("card_db"), py::arg("mask_opponent_hand") = true);
 
     py::class_<ActionEncoder>(m, "ActionEncoder")
         .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
