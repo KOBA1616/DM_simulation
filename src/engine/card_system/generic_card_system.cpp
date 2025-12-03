@@ -17,6 +17,9 @@ namespace dm::engine {
             for (auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
             for (auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
         }
+        // Also check effect buffer
+        for (auto& c : game_state.effect_buffer) if (c.instance_id == instance_id) return &c;
+
         return nullptr;
     }
 
@@ -51,7 +54,23 @@ namespace dm::engine {
     void GenericCardSystem::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id) {
         if (!check_condition(game_state, effect.condition, source_instance_id)) return;
 
-        for (const auto& action : effect.actions) {
+        for (size_t i = 0; i < effect.actions.size(); ++i) {
+            const auto& action = effect.actions[i];
+            // If action expects target selection, interrupt execution and push PendingEffect with continuation
+            if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
+                EffectDef continuation;
+                continuation.trigger = TriggerType::NONE;
+                continuation.condition = ConditionDef{"NONE", 0, ""};
+                // Store current action (so resolve_effect_with_targets can see it/ack it) and all remaining actions
+                // NOTE: We MUST include the current action in continuation so resolve_effect_with_targets knows
+                // what the targets were for!
+                for (size_t j = i; j < effect.actions.size(); ++j) {
+                    continuation.actions.push_back(effect.actions[j]);
+                }
+                select_targets(game_state, action, source_instance_id, continuation);
+                return; // Stop execution
+            }
+
             resolve_action(game_state, action, source_instance_id);
         }
     }
@@ -100,6 +119,35 @@ namespace dm::engine {
                         CardInstance* inst = find_instance(game_state, tid);
                         if (inst) inst->is_tapped = false;
                     }
+                } else if (action.type == EffectActionType::PLAY_FROM_BUFFER) {
+                    // This handles PLAY_FROM_BUFFER with selected targets
+                    Player& active = game_state.get_active_player();
+
+                    for (int tid : targets) {
+                         auto it = std::find_if(game_state.effect_buffer.begin(), game_state.effect_buffer.end(),
+                             [tid](const CardInstance& c){ return c.instance_id == tid; });
+
+                         if (it != game_state.effect_buffer.end()) {
+                             CardInstance card = *it;
+                             game_state.effect_buffer.erase(it);
+
+                             // Play it
+                             const dm::core::CardData* def = dm::engine::CardRegistry::get_card_data(card.card_id);
+                             if (def) {
+                                 game_state.on_card_play(card.card_id, game_state.turn_number, false, 0, active.id);
+                                 if (def->type == "CREATURE" || def->type == "EVOLUTION_CREATURE") {
+                                     card.summoning_sickness = true;
+                                     active.battle_zone.push_back(card);
+                                     resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
+                                 } else if (def->type == "SPELL") {
+                                     active.graveyard.push_back(card);
+                                     resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
+                                 }
+                             }
+                         }
+                    }
+                } else if (action.type == EffectActionType::SELECT_FROM_BUFFER) {
+                     // No-op (acknowledgment that selection happened for this action)
                 }
                 // other action types could be added as needed
             } else {
@@ -114,7 +162,7 @@ namespace dm::engine {
         return true;
     }
 
-    std::vector<int> GenericCardSystem::select_targets(GameState& game_state, const ActionDef& action, int source_instance_id) {
+    std::vector<int> GenericCardSystem::select_targets(GameState& game_state, const ActionDef& action, int source_instance_id, const EffectDef& continuation) {
         // Push a pending effect to ask for selection
         PlayerID controller = game_state.active_player_id; // Default
 
@@ -140,12 +188,8 @@ namespace dm::engine {
 
         pending.optional = action.optional;
 
-        // Wrap action in EffectDef for resumption
-        EffectDef ed;
-        ed.trigger = TriggerType::NONE;
-        ed.condition = ConditionDef{"NONE", 0, ""};
-        ed.actions = { action }; // Store the action to be executed
-        pending.effect_def = ed;
+        // Store the continuation EffectDef for resumption
+        pending.effect_def = continuation;
 
         game_state.pending_effects.push_back(pending);
 
@@ -156,9 +200,17 @@ namespace dm::engine {
     void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id) {
 
         // 1. Check if we need to select targets first
+        // If we are here, it means resolve_effect called us directly for a non-selection action,
+        // OR resolve_effect_with_targets called us for a non-selection action.
+        // If an action requires selection, resolve_effect should have caught it and deferred.
+        // BUT if resolve_action is called standalone (e.g. from tests or elsewhere), we need to handle it.
         if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
-            select_targets(game_state, action, source_instance_id);
-            return;
+             EffectDef ed;
+             ed.trigger = TriggerType::NONE;
+             ed.condition = ConditionDef{"NONE", 0, ""};
+             ed.actions = { action };
+             select_targets(game_state, action, source_instance_id, ed);
+             return;
         }
 
         Player& active = game_state.get_active_player();
@@ -359,6 +411,99 @@ namespace dm::engine {
                     if (i == chosen_idx) continue;
                     active.deck.insert(active.deck.begin(), looked[i]);
                 }
+                break;
+            }
+            case EffectActionType::LOOK_TO_BUFFER: {
+                // Move top N cards from source_zone (default: DECK) to effect_buffer
+                int count = action.value1 > 0 ? action.value1 : std::stoi(action.value.empty() ? "1" : action.value);
+
+                std::vector<CardInstance>* source = nullptr;
+                if (action.source_zone == "DECK" || action.source_zone.empty()) {
+                    source = &active.deck;
+                } else if (action.source_zone == "HAND") {
+                    source = &active.hand;
+                }
+                // Add other zones if needed
+
+                if (source) {
+                    for (int i = 0; i < count; ++i) {
+                        if (source->empty()) break;
+                        CardInstance c = source->back();
+                        source->pop_back();
+                        // When moving to buffer, we usually reveal it (or at least it's known to the logic)
+                        // is_face_down should be false unless it's a secret look?
+                        // For Gachinko Judge, it's face up. For Search, it's known to owner (face up to them).
+                        // Let's assume face up for now.
+                        c.is_face_down = false;
+                        game_state.effect_buffer.push_back(c);
+                    }
+                }
+                break;
+            }
+            case EffectActionType::SELECT_FROM_BUFFER: {
+                // Trigger target selection from buffer
+                // If we reached here in resolve_action, it means scope was NOT TARGET_SELECT?
+                // OR we are calling resolve_action for this specific logic?
+                // But SELECT_FROM_BUFFER usually implies target selection.
+                // If it was called via resolve_effect, it should have been caught by the check at top of loop.
+                // If it was called via resolve_effect_with_targets, it's ignored/no-op?
+
+                // If we are here, and scope IS TARGET_SELECT, we already returned at top of function.
+                // If scope is NOT TARGET_SELECT, then maybe it's just a "Select All" or "Random"?
+                // If so, we should handle it.
+                break;
+            }
+            case EffectActionType::PLAY_FROM_BUFFER: {
+                // Play cards designated by targets (if any) or ALL in buffer?
+                // Usually used after SELECT_FROM_BUFFER, so targets are in `targets` argument of resolve_effect_with_targets
+                // But here we are in resolve_action which is called if NO targets were needed OR after they are selected?
+                // Wait, if SELECT_FROM_BUFFER was called, it created a PendingEffect.
+                // When that resolves, it calls resolve_effect_with_targets.
+                // resolve_effect_with_targets calls resolve_action for each action in the effect.
+
+                // We need to know WHICH cards were selected.
+                // The `targets` are passed to `resolve_effect_with_targets` but NOT `resolve_action`.
+                // We need to change `resolve_action` signature or logic.
+                // However, `resolve_effect_with_targets` handles `DESTROY`, `RETURN_TO_HAND` etc. by looking at targets.
+                // It iterates targets and does something.
+                // For `PLAY_FROM_BUFFER`, we need to do the same.
+
+                // BUT `resolve_effect_with_targets` calls `resolve_action` in the `else` block!
+                // So `PLAY_FROM_BUFFER` here won't know the targets.
+
+                // We must handle `PLAY_FROM_BUFFER` inside `resolve_effect_with_targets`!
+                break;
+            }
+            case EffectActionType::MOVE_BUFFER_TO_ZONE: {
+                // Move remaining cards in buffer to destination
+                std::vector<CardInstance>* dest = nullptr;
+                if (action.destination_zone == "DECK_BOTTOM") {
+                    dest = &active.deck;
+                    // Usually we put them on bottom. `deck` is a vector, back is top.
+                    // So insert at begin.
+                    // Also random order? Or specific?
+                    // "Put the rest on the bottom of your deck in any order."
+                    // We just dump them.
+                    for (auto& c : game_state.effect_buffer) {
+                        active.deck.insert(active.deck.begin(), c);
+                    }
+                    game_state.effect_buffer.clear();
+                }
+                else if (action.destination_zone == "GRAVEYARD") {
+                    dest = &active.graveyard;
+                    for (auto& c : game_state.effect_buffer) {
+                        active.graveyard.push_back(c);
+                    }
+                    game_state.effect_buffer.clear();
+                }
+                else if (action.destination_zone == "HAND") {
+                    dest = &active.hand;
+                     for (auto& c : game_state.effect_buffer) {
+                        active.hand.push_back(c);
+                    }
+                    game_state.effect_buffer.clear();
+                }
+                // Add others as needed
                 break;
             }
             default:

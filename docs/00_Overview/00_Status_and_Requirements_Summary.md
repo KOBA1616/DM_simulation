@@ -21,6 +21,7 @@
 *   **一貫性のあるJSONデータ:** ユニットテストが通過するように、必須のテストカード (デーモン・ハンド、スパイラル・ゲート) を`data/cards.json`に追加しました。
 *   **EffectResolverのリファクタリング:** 呪文およびシールドトリガーの効果解決において`GenericCardSystem`を優先的に使用するように`EffectResolver`をリファクタリングし、コードの重複を削減しました。
 *   **汎用ターゲット選択の修正:** `ActionGenerator`が`SELECT_TARGET`アクションを正しく処理し、ターゲット選択後に`RESOLVE_EFFECT`アクションを生成するように修正しました。また、`PendingEffect`がアクション定義を保持するように改善しました。
+*   **Effect Bufferと汎用原子アクション:** [PLAN-002] Section 2完了。`LOOK_TO_BUFFER`, `SELECT_FROM_BUFFER`, `PLAY_FROM_BUFFER`, `MOVE_BUFFER_TO_ZONE` を実装し、中断・再開可能な選択ロジックを確立しました。`tests/test_effect_buffer.py` で動作検証済み。
 
 ## 3. 要件 (アクティブ)
 
@@ -108,13 +109,14 @@
 *   **Pythonバインディングの更新:** (完了)
     *   `dm_ai_module.collect_data_batch(episodes=1000)` を実装し、蓄積された状態・ポリシー・価値を一括返却可能。
 
-#### 2. エフェクトバッファによる汎用アクションシステム
+#### 2. エフェクトバッファによる汎用アクションシステム (完了)
 アクションの結果を次のアクションに渡すための **「エフェクトバッファ (Effect Buffer)」** を導入します。
 
+*   **ステータス:** 完了 (Verified via `tests/test_effect_buffer.py`)
 *   **アーキテクチャ:** `GameState` に `std::vector<CardInstance> effect_buffer` を追加。
 *   **新設する汎用原子アクション (Atomic Actions):**
     *   **`LOOK_TO_BUFFER`**: 指定ゾーンの上からN枚をバッファへ移動。
-    *   **`SELECT_FROM_BUFFER`**: バッファ内から条件に合うカードを選択済み状態にする。
+    *   **`SELECT_FROM_BUFFER`**: バッファ内から条件に合うカードを選択済み状態にする。継続（Continuation）EffectDefをサポート。
     *   **`PLAY_FROM_BUFFER`**: 選択済みカードをプレイ（踏み倒しフラグ対応）。
     *   **`MOVE_BUFFER_TO_ZONE`**: バッファに残ったカードを指定ゾーンへ移動（順序指定対応）。
 *   **メリット:** ガチンコ・ジャッジ、各種サーチ、メクレイド等をエンジンの改造なしにJSONの組み合わせで実装可能。

@@ -15,7 +15,7 @@ namespace dm::engine {
         
     private:
         static void resolve_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id);
-        static std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id);
+        static std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation);
         static bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id);
     };
 }
