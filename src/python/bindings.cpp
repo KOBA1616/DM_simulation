@@ -98,9 +98,153 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("GR_CREATURE", CardType::GR_CREATURE)
         .export_values();
 
+    py::enum_<TriggerType>(m, "TriggerType")
+        .value("NONE", TriggerType::NONE)
+        .value("ON_PLAY", TriggerType::ON_PLAY)
+        .value("ON_ATTACK", TriggerType::ON_ATTACK)
+        .value("ON_DESTROY", TriggerType::ON_DESTROY)
+        .value("S_TRIGGER", TriggerType::S_TRIGGER)
+        .value("TURN_START", TriggerType::TURN_START)
+        .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
+        .value("ON_OTHER_ENTER", TriggerType::ON_OTHER_ENTER)
+        .export_values();
+
+    py::enum_<TargetScope>(m, "TargetScope")
+        .value("NONE", TargetScope::NONE)
+        .value("SELF", TargetScope::SELF)
+        .value("PLAYER_SELF", TargetScope::PLAYER_SELF)
+        .value("PLAYER_OPPONENT", TargetScope::PLAYER_OPPONENT)
+        .value("ALL_PLAYERS", TargetScope::ALL_PLAYERS)
+        .value("TARGET_SELECT", TargetScope::TARGET_SELECT)
+        .value("RANDOM", TargetScope::RANDOM)
+        .value("ALL_FILTERED", TargetScope::ALL_FILTERED)
+        .export_values();
+
+    py::enum_<EffectActionType>(m, "EffectActionType")
+        .value("NONE", EffectActionType::NONE)
+        .value("DRAW_CARD", EffectActionType::DRAW_CARD)
+        .value("ADD_MANA", EffectActionType::ADD_MANA)
+        .value("DESTROY", EffectActionType::DESTROY)
+        .value("RETURN_TO_HAND", EffectActionType::RETURN_TO_HAND)
+        .value("SEND_TO_MANA", EffectActionType::SEND_TO_MANA)
+        .value("TAP", EffectActionType::TAP)
+        .value("UNTAP", EffectActionType::UNTAP)
+        .value("MODIFY_POWER", EffectActionType::MODIFY_POWER)
+        .value("BREAK_SHIELD", EffectActionType::BREAK_SHIELD)
+        .value("LOOK_AND_ADD", EffectActionType::LOOK_AND_ADD)
+        .value("SUMMON_TOKEN", EffectActionType::SUMMON_TOKEN)
+        .value("SEARCH_DECK_BOTTOM", EffectActionType::SEARCH_DECK_BOTTOM)
+        .value("MEKRAID", EffectActionType::MEKRAID)
+        .value("DISCARD", EffectActionType::DISCARD)
+        .value("PLAY_FROM_ZONE", EffectActionType::PLAY_FROM_ZONE)
+        .value("COST_REFERENCE", EffectActionType::COST_REFERENCE)
+        .export_values();
+
+    // JSON Structures
+    py::class_<FilterDef>(m, "FilterDef")
+        .def(py::init<>())
+        .def(py::init([](std::optional<std::string> owner,
+                         std::vector<std::string> zones,
+                         std::vector<std::string> types,
+                         std::vector<std::string> civilizations,
+                         std::vector<std::string> races,
+                         std::optional<int> min_cost,
+                         std::optional<int> max_cost,
+                         std::optional<int> min_power,
+                         std::optional<int> max_power,
+                         std::optional<bool> is_tapped,
+                         std::optional<bool> is_blocker,
+                         std::optional<bool> is_evolution,
+                         std::optional<int> count) {
+            FilterDef f;
+            f.owner = owner;
+            f.zones = zones;
+            f.types = types;
+            f.civilizations = civilizations;
+            f.races = races;
+            f.min_cost = min_cost;
+            f.max_cost = max_cost;
+            f.min_power = min_power;
+            f.max_power = max_power;
+            f.is_tapped = is_tapped;
+            f.is_blocker = is_blocker;
+            f.is_evolution = is_evolution;
+            f.count = count;
+            return f;
+        }),
+        py::arg("owner") = std::nullopt,
+        py::arg("zones") = std::vector<std::string>{},
+        py::arg("types") = std::vector<std::string>{},
+        py::arg("civilizations") = std::vector<std::string>{},
+        py::arg("races") = std::vector<std::string>{},
+        py::arg("min_cost") = std::nullopt,
+        py::arg("max_cost") = std::nullopt,
+        py::arg("min_power") = std::nullopt,
+        py::arg("max_power") = std::nullopt,
+        py::arg("is_tapped") = std::nullopt,
+        py::arg("is_blocker") = std::nullopt,
+        py::arg("is_evolution") = std::nullopt,
+        py::arg("count") = std::nullopt)
+        .def_readwrite("owner", &FilterDef::owner)
+        .def_readwrite("zones", &FilterDef::zones)
+        .def_readwrite("types", &FilterDef::types)
+        .def_readwrite("civilizations", &FilterDef::civilizations)
+        .def_readwrite("races", &FilterDef::races)
+        .def_readwrite("min_cost", &FilterDef::min_cost)
+        .def_readwrite("max_cost", &FilterDef::max_cost)
+        .def_readwrite("min_power", &FilterDef::min_power)
+        .def_readwrite("max_power", &FilterDef::max_power)
+        .def_readwrite("is_tapped", &FilterDef::is_tapped)
+        .def_readwrite("is_blocker", &FilterDef::is_blocker)
+        .def_readwrite("is_evolution", &FilterDef::is_evolution)
+        .def_readwrite("count", &FilterDef::count);
+
+    py::class_<ActionDef>(m, "ActionDef")
+        .def(py::init<>())
+        .def(py::init([](EffectActionType type, TargetScope scope, FilterDef filter) {
+             ActionDef a;
+             a.type = type;
+             a.scope = scope;
+             a.filter = filter;
+             return a;
+        }), py::arg("type") = EffectActionType::NONE, py::arg("scope") = TargetScope::NONE, py::arg("filter") = FilterDef())
+        .def_readwrite("type", &ActionDef::type)
+        .def_readwrite("scope", &ActionDef::scope)
+        .def_readwrite("filter", &ActionDef::filter)
+        .def_readwrite("value1", &ActionDef::value1)
+        .def_readwrite("value2", &ActionDef::value2)
+        .def_readwrite("str_val", &ActionDef::str_val)
+        .def_readwrite("value", &ActionDef::value)
+        .def_readwrite("optional", &ActionDef::optional)
+        .def_readwrite("target_player", &ActionDef::target_player)
+        .def_readwrite("source_zone", &ActionDef::source_zone)
+        .def_readwrite("destination_zone", &ActionDef::destination_zone)
+        .def_readwrite("target_choice", &ActionDef::target_choice);
+
+    py::class_<ConditionDef>(m, "ConditionDef")
+        .def(py::init<>())
+        .def_readwrite("type", &ConditionDef::type)
+        .def_readwrite("value", &ConditionDef::value)
+        .def_readwrite("str_val", &ConditionDef::str_val);
+
+    py::class_<EffectDef>(m, "EffectDef")
+        .def(py::init<>())
+        .def(py::init([](TriggerType trigger, ConditionDef condition, std::vector<ActionDef> actions) {
+            EffectDef e;
+            e.trigger = trigger;
+            e.condition = condition;
+            e.actions = actions;
+            return e;
+        }), py::arg("trigger") = TriggerType::NONE, py::arg("condition") = ConditionDef(), py::arg("actions") = std::vector<ActionDef>{})
+        .def_readwrite("trigger", &EffectDef::trigger)
+        .def_readwrite("condition", &EffectDef::condition)
+        .def_readwrite("actions", &EffectDef::actions);
+
+
     // Core Structures
     // Use readwrite properties via lambdas since fields are bitfields
     py::class_<CardKeywords>(m, "CardKeywords")
+        .def(py::init<>())
         .def_property("g_zero", [](const CardKeywords& k) { return k.g_zero; }, [](CardKeywords& k, bool v) { k.g_zero = v; })
         .def_property("revolution_change", [](const CardKeywords& k) { return k.revolution_change; }, [](CardKeywords& k, bool v) { k.revolution_change = v; })
         .def_property("mach_fighter", [](const CardKeywords& k) { return k.mach_fighter; }, [](CardKeywords& k, bool v) { k.mach_fighter = v; })
@@ -122,6 +266,44 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init<>())
+        .def(py::init([](int id, std::string name, std::string civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
+            CardDefinition d;
+            d.id = id;
+            d.name = name;
+            // Map string civ to enum
+            if (civ == "LIGHT") d.civilization = Civilization::LIGHT;
+            else if (civ == "WATER") d.civilization = Civilization::WATER;
+            else if (civ == "DARKNESS") d.civilization = Civilization::DARKNESS;
+            else if (civ == "FIRE") d.civilization = Civilization::FIRE;
+            else if (civ == "NATURE") d.civilization = Civilization::NATURE;
+            else d.civilization = Civilization::ZERO;
+
+            d.races = races;
+            d.cost = cost;
+            d.power = power;
+            d.keywords = keywords;
+
+            // NOTE: CardDefinition in C++ doesn't store 'effects' as EffectDef usually.
+            // It stores them parsed. But here we assume CardDefinition from card_json_types.hpp?
+            // Wait, bindings.cpp includes card_def.hpp which defines Runtime CardDefinition.
+            // The JSON logic uses card_json_types::CardData.
+
+            // This binding is confusing because C++ uses two different structs.
+            // 1. dm::core::CardDefinition (runtime, optimized)
+            // 2. dm::core::CardData (json, parsing)
+
+            // For testing, we want to inject runtime definitions.
+            // Runtime definitions don't have 'std::vector<EffectDef> effects'.
+            // They have 'std::vector<int> filter_ids' and 'std::vector<ModalEffectGroup> modes'.
+            // The actual effects logic is usually looked up via ID or hardcoded in engine for older cards,
+            // OR we are migrating to GenericCardSystem which uses JSON data.
+
+            // IF we want to use GenericCardSystem, we need to populate the `CardRegistry`.
+            // The `CardRegistry` maps ID -> CardData (JSON struct).
+
+            // So we should expose `CardRegistry::register_card(CardData)`.
+            return d;
+        }), py::arg("id"), py::arg("name"), py::arg("civilization"), py::arg("races"), py::arg("cost"), py::arg("power"), py::arg("keywords"), py::arg("effects"))
         .def_readwrite("id", &CardDefinition::id)
         .def_readwrite("name", &CardDefinition::name)
         .def_readwrite("cost", &CardDefinition::cost)
@@ -131,6 +313,29 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("type", &CardDefinition::type)
         .def_readwrite("races", &CardDefinition::races)
         .def_readwrite("keywords", &CardDefinition::keywords);
+
+    // Expose CardData for Generic System Registration
+    py::class_<CardData>(m, "CardData")
+         .def(py::init([](int id, std::string name, int cost, std::string civ, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects){
+             CardData d;
+             d.id = id;
+             d.name = name;
+             d.cost = cost;
+             d.civilization = civ;
+             d.power = power;
+             d.type = type;
+             d.races = races;
+             d.effects = effects;
+             return d;
+         }), py::arg("id"), py::arg("name"), py::arg("cost"), py::arg("civilization"), py::arg("power"), py::arg("type"), py::arg("races"), py::arg("effects"));
+
+    // Function to register CardData to Registry
+    m.def("register_card_data", [](const CardData& data) {
+        // Register into CardRegistry
+        nlohmann::json j = data;
+        std::string s = j.dump();
+        dm::engine::CardRegistry::load_from_json(s);
+    });
 
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<CardID, int>())
