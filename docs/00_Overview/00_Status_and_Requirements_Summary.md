@@ -13,6 +13,7 @@
 *   **Data:** JSON-based card definitions (`data/cards.json`).
 
 ### 2.1. Implemented Features (Recent)
+*   **Speed Attacker / Evolution Logic:** Fixed engine to allow creatures with `Speed Attacker` or `Evolution` to attack immediately (ignoring summoning sickness).
 *   **Bounce (Return to Hand):** Implemented `RETURN_TO_HAND` action type in C++ engine and GUI templates.
 *   **Deck Search/Look:** Implemented `SEARCH_DECK_BOTTOM` (Look at top N, Add selected to hand, Return rest to bottom).
 *   **Mekraid:** Implemented `MEKRAID` (Look at top 3, Play condition, Return rest to bottom).
@@ -53,10 +54,9 @@
     *   **GUI Extension:** Expand Card Creation GUI (カード作成GUIの拡張).
 
 ## 4. Known Issues / Risks
-*   **Lethal Puzzle:** Current AI fails `lethal_puzzle_easy` (0% WR). Optimization target.
 *   **Complex Effects:** Multi-step effects (Search, Shield Trigger options) need robust handling in C++.
+*   **Memory Usage:** High simulation counts in `verify_performance.py` may cause memory allocation errors.
 
 ## 5. Next Steps
 1.  Verify AI performance with new effects (if applicable to scenarios).
-2.  Address Lethal Puzzle performance (0% WR).
-3.  Continue Phase 5 C++ feature extraction.
+2.  Continue Phase 5 C++ feature extraction (Focus on performance and memory stability).
