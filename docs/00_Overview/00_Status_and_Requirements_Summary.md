@@ -13,11 +13,13 @@
 *   **Data:** JSON-based card definitions (`data/cards.json`).
 
 ### 2.1. Implemented Features (Recent)
-*   **Speed Attacker / Evolution Logic:** Fixed engine to allow creatures with `Speed Attacker` or `Evolution` to attack immediately (ignoring summoning sickness).
+*   **Speed Attacker / Evolution Logic:** Fixed engine to allow creatures with `Speed Attacker` or `Evolution` to attack immediately (ignoring summoning sickness). Verified via `verify_lethal_puzzle.py`.
 *   **Bounce (Return to Hand):** Implemented `RETURN_TO_HAND` action type in C++ engine and GUI templates.
 *   **Deck Search/Look:** Implemented `SEARCH_DECK_BOTTOM` (Look at top N, Add selected to hand, Return rest to bottom).
 *   **Mekraid:** Implemented `MEKRAID` (Look at top 3, Play condition, Return rest to bottom).
 *   **GUI Editor:** Updated `card_editor.py` with templates for the above effects.
+*   **Consistent JSON Data:** Updated `data/cards.json` to include essential test cards (Terror Pit, Spiral Gate) to ensure unit tests pass.
+*   **Effect Resolver Refactor:** Refactored `EffectResolver` to prioritize `GenericCardSystem` for spell and shield trigger effect resolution, reducing code duplication.
 
 ## 3. Requirements (Active)
 
@@ -76,7 +78,8 @@ To support a wider range of card effects without engine modification, the follow
 
 ## 4. Known Issues / Risks
 *   **Complex Effects:** Multi-step effects (Search, Shield Trigger options) need robust handling in C++.
-*   **Memory Usage:** High simulation counts in `verify_performance.py` may cause memory allocation errors.
+*   **Memory Usage:** High simulation counts in `verify_performance.py` may cause memory allocation errors (`std::bad_alloc`). Verification at low scale (sims=2) passes.
+*   **Data Consistency:** `data/cards.csv` is legacy and differs from `data/cards.json` (specifically IDs 2 and 3). New development should rely strictly on `cards.json`.
 
 ## 5. Next Steps
 1.  Implement **Generic Engine Functions** (Targeting, Tap, Cost Reduction).

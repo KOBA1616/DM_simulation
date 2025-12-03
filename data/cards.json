@@ -48,5 +48,62 @@
     "power": 0,
     "races": [],
     "effects": []
+  },
+  {
+    "id": 5,
+    "name": "Terror Pit",
+    "type": "SPELL",
+    "civilization": "DARKNESS",
+    "cost": 6,
+    "power": 0,
+    "races": [],
+    "keywords": {
+        "shield_trigger": true
+    },
+    "effects": [
+        {
+            "trigger": "ON_PLAY",
+            "actions": [
+                {
+                    "type": "DESTROY",
+                    "scope": "TARGET_SELECT",
+                    "filter": {
+                        "zones": ["BATTLE_ZONE"],
+                        "target_player": "OPPONENT",
+                        "card_type": "CREATURE",
+                        "count": 1
+                    }
+                }
+            ]
+        }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "Spiral Gate",
+    "type": "SPELL",
+    "civilization": "WATER",
+    "cost": 2,
+    "power": 0,
+    "races": [],
+    "keywords": {
+        "shield_trigger": true
+    },
+    "effects": [
+        {
+            "trigger": "ON_PLAY",
+            "actions": [
+                {
+                    "type": "RETURN_TO_HAND",
+                    "scope": "TARGET_SELECT",
+                    "filter": {
+                        "zones": ["BATTLE_ZONE"],
+                        "card_type": "CREATURE",
+                        "count": 1
+                    }
+                }
+            ]
+        }
+    ]
   }
 ]
