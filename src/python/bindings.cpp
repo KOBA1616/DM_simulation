@@ -289,7 +289,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property("at_block", [](const CardKeywords& k) { return k.at_block; }, [](CardKeywords& k, bool v) { k.at_block = v; })
         .def_property("at_start_of_turn", [](const CardKeywords& k) { return k.at_start_of_turn; }, [](CardKeywords& k, bool v) { k.at_start_of_turn = v; })
         .def_property("at_end_of_turn", [](const CardKeywords& k) { return k.at_end_of_turn; }, [](CardKeywords& k, bool v) { k.at_end_of_turn = v; })
-        .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; });
+        .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; })
+        .def_property("hyper_energy", [](const CardKeywords& k) { return k.hyper_energy; }, [](CardKeywords& k, bool v) { k.hyper_energy = v; });
 
     py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init<>())
