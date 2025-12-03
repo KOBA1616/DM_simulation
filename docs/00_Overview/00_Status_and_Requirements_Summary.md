@@ -28,9 +28,9 @@
 
 #### 革命チェンジとハイパーエナジー
 *   **革命チェンジ:**
-    *   専用アクション `REVOLUTION_CHANGE` と、トリガー `ON_ATTACK_FROM_HAND` を新設。
-    *   条件に汎用 `FilterDef` を使用し、GUIから設定可能にする。
-*   **ハイパーエナジー:**
+    *   専用アクション `REVOLUTION_CHANGE` と、トリガー `ON_ATTACK_FROM_HAND` を新設。(Basic Logic Implemented)
+    *   条件に汎用 `FilterDef` を使用し、GUIから設定可能にする。(Partially Implemented)
+*   **ハイパーエナジー:** (開発中 - Phase 5 Priority)
     *   「1体タップしてプレイ」「2体タップしてプレイ」などのパターンをそれぞれ独立したアクションとして生成する。
     *   AIは単一のポリシー出力でコスト支払い方法を選択可能にする。
 
