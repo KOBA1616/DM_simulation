@@ -34,6 +34,10 @@ namespace dm::engine {
 
         // Calculate cost with modifiers
         static int get_adjusted_cost(const dm::core::GameState& game_state, const dm::core::Player& player, const dm::core::CardDefinition& card_def);
+
+        // Virtual cost calculation for AI/Legality checks [PLAN-002]
+        // Currently aliases get_adjusted_cost, but reserved for future "Active Reduction" logic (Hyper Energy, etc.)
+        static int get_projected_cost(const dm::core::GameState& game_state, const dm::core::Player& player, const dm::core::CardDefinition& card_def);
     };
 
 }
