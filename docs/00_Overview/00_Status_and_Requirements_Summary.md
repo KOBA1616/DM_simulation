@@ -3,10 +3,10 @@
 ## 1. プロジェクト概要
 **目標:** C++エンジンとPythonバインディングを使用したデュエル・マスターズAI/エージェントシステムの開発。
 **現在のフェーズ:** フェーズ5 (汎用エンジン機能と特徴量抽出)
-**焦点:** 堅牢性、検証可能性、リスク管理。
+**焦点:** 堅牢性、検証可能性、リスク管理。特に、革命チェンジをはじめとする複雑なカード効果の「データ駆動化」と、それを支える汎用エンジン機能の完成に注力している。
 
 ## 2. 現在のステータス
-*   **エンジン:** `GameState`、`ActionGenerator`、`EffectResolver`を備えたC++20コア。
+*   **エンジン:** `GameState`、`ActionGenerator`、`EffectResolver`を備えたC++20コア。汎用的な効果解決（Effect Buffer, Stack Zone）を実装済み。
 *   **Pythonバインディング:** `pybind11`統合 (`dm_ai_module`)。
 *   **AI:** AlphaZeroスタイルのMCTS (`ParallelRunner`) + PyTorch学習 (`train_simple.py`)。
 *   **GUI:** Python `tkinter` ベース (`app.py`, `card_editor.py`) ※注: `card_editor.py`はPyQt6ベースに変更されています。
@@ -26,14 +26,12 @@
 
 ### 3.3. 開発中の汎用エンジン機能 (PLAN-002残り)
 
-#### 革命チェンジとハイパーエナジー
-*   **革命チェンジ:**
-    *   専用アクション `REVOLUTION_CHANGE` と、トリガー `ON_ATTACK_FROM_HAND` を新設。(Basic Logic Implemented)
-    *   条件に汎用 `FilterDef` を使用し、GUIから設定可能にする。(Partially Implemented)
-*   **ハイパーエナジー:** (実装・検証完了)
-    *   「1体タップしてプレイ」「2体タップしてプレイ」などのパターンをそれぞれ独立したアクションとして生成する。
-    *   `ActionType.PLAY_CARD` で `target_player=254` (メタデータ) を使用し、解決時に `target_slot_index` 分のクリーチャーをタップする処理を実装済み。
-    *   `tests/test_hyper_energy.py` にて、アクション生成、コスト軽減、タップ処理のフローを検証済み。
+#### 革命チェンジ (現在の最優先タスク)
+*   **現状:** 専用アクション `REVOLUTION_CHANGE` とトリガー `ON_ATTACK_FROM_HAND` の基本ロジックは実装済みだが、条件判定がハードコードされており汎用性に欠ける。
+*   **タスク:**
+    *   `FilterDef` を使用して革命チェンジの条件（火文明のドラゴンなど）をJSONで定義可能にする。
+    *   GUIエディタから革命チェンジの条件を設定できるようにする。
+    *   `tests/test_revolution_change.py` を作成し、動作を完全に検証する。
 
 #### その他機能統合
 *   **ゾーン移動の完全統合 (`MOVE_CARD`):** `DESTROY`, `RETURN_TO_HAND`, `SEND_TO_MANA`, `DRAW_CARD` 等を統合。
