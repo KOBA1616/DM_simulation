@@ -25,6 +25,11 @@ namespace dm::engine {
         static void resolve_use_ability(dm::core::GameState& game_state, const dm::core::Action& action, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
         static void execute_battle(dm::core::GameState& game_state, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
 
+    public:
+        // Helper to finalize a play from stack (used by Hyper Energy)
+        static void resolve_play_from_stack(dm::core::GameState& game_state, int stack_instance_id, int cost_reduction, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+
+    private:
         // Helper functions for generic keyword handling
         static int get_creature_power(const dm::core::CardInstance& creature, const dm::core::GameState& game_state, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
         static int get_breaker_count(const dm::core::CardInstance& creature, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);

@@ -379,12 +379,13 @@ namespace dm::engine {
         if (card_id == 0) card_id = find_in_vec(controller.mana_zone);
         if (card_id == 0) card_id = find_in_vec(controller.graveyard);
         if (card_id == 0) card_id = find_in_vec(controller.shield_zone);
+        if (card_id == 0) card_id = find_in_vec(game_state.stack_zone);
 
         if (card_id == 0) return; // Source gone?
 
         // If the pending effect carries an EffectDef (from JSON), resolve it using any selected targets
         if (effect.effect_def.has_value()) {
-            dm::engine::GenericCardSystem::resolve_effect_with_targets(game_state, effect.effect_def.value(), effect.target_instance_ids, effect.source_instance_id);
+            dm::engine::GenericCardSystem::resolve_effect_with_targets(game_state, effect.effect_def.value(), effect.target_instance_ids, effect.source_instance_id, card_db);
             return;
         }
 
@@ -507,8 +508,51 @@ namespace dm::engine {
         game_state.stack_zone.push_back(card);
 
         // --- STEP 2: COST CALCULATION & PAYMENT ---
-        // Use auto_tap_mana with GameState for Cost Modifiers
-        if (!ManaSystem::auto_tap_mana(game_state, player, def, card_db)) {
+        bool payment_success = false;
+
+        // Check for Hyper Energy Mode
+        if (action.target_player == 254) { // Convention: -2 means Hyper Energy Play
+             int required_taps = action.target_slot_index; // Stored here
+
+             // Interrupt for Target Selection
+             PendingEffect pending(EffectType::NONE, card.instance_id, player.id);
+             pending.resolve_type = ResolveType::TARGET_SELECT;
+
+             FilterDef filter;
+             filter.zones = {"BATTLE_ZONE"};
+             filter.owner = "SELF";
+             filter.is_tapped = false; // Must be untapped
+
+             pending.filter = filter;
+             pending.num_targets_needed = required_taps;
+
+             // Continuation
+             EffectDef continuation;
+             continuation.trigger = TriggerType::NONE;
+             continuation.condition = ConditionDef{"NONE", 0, ""};
+
+             ActionDef finish_action;
+             finish_action.type = EffectActionType::COST_REFERENCE;
+             finish_action.str_val = "FINISH_HYPER_ENERGY"; // Marker
+             finish_action.scope = TargetScope::TARGET_SELECT; // Ensure it enters the selection block
+             finish_action.value1 = required_taps; // Remember how many taps
+             finish_action.source_zone = "STACK"; // Card is in Stack
+
+             continuation.actions.push_back(finish_action);
+             pending.effect_def = continuation;
+
+             game_state.pending_effects.push_back(pending);
+             return;
+
+        } else {
+            // Normal Cost
+            // Use auto_tap_mana with GameState for Cost Modifiers
+            if (ManaSystem::auto_tap_mana(game_state, player, def, card_db)) {
+                payment_success = true;
+            }
+        }
+
+        if (!payment_success) {
             // Failed to pay cost - rollback (return to hand)
             game_state.stack_zone.pop_back();
             player.hand.push_back(card);
@@ -549,6 +593,58 @@ namespace dm::engine {
             player.graveyard.push_back(card);
 
             // Spell effects: Use GenericCardSystem
+            dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
+        }
+    }
+
+    void EffectResolver::resolve_play_from_stack(GameState& game_state, int stack_instance_id, int cost_reduction, const std::map<CardID, CardDefinition>& card_db) {
+        // 1. Find Card in Stack
+        auto s_it = std::find_if(game_state.stack_zone.begin(), game_state.stack_zone.end(),
+             [stack_instance_id](const CardInstance& c) { return c.instance_id == stack_instance_id; });
+
+        if (s_it == game_state.stack_zone.end()) return; // Card gone?
+        CardInstance card = *s_it;
+        Player& player = game_state.get_active_player(); // Assume active player owns stack card
+        const CardDefinition& def = card_db.at(card.card_id);
+
+        // 2. Pay Mana with Reduction
+        // Apply temporary modifier
+        CostModifier mod;
+        mod.reduction_amount = cost_reduction;
+        // Apply to everything (this specific card check handled by flow)
+        mod.condition_filter.types = {};
+        mod.turns_remaining = 1;
+        mod.controller = player.id;
+        mod.source_instance_id = -1; // System generated
+
+        game_state.active_modifiers.push_back(mod);
+        bool payment_success = ManaSystem::auto_tap_mana(game_state, player, def, card_db);
+        game_state.active_modifiers.pop_back(); // Remove immediately
+
+        if (!payment_success) {
+            // Failed payment? Rollback to hand.
+            game_state.stack_zone.erase(s_it);
+            player.hand.push_back(card);
+            return;
+        }
+
+        // 3. Stats & Move to Zone (Reusing similar logic)
+        game_state.on_card_play(card.card_id, game_state.turn_number, false, cost_reduction, player.id);
+
+        game_state.stack_zone.erase(s_it);
+
+        if (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE) {
+            card.summoning_sickness = true;
+            if (def.keywords.speed_attacker) card.summoning_sickness = false;
+            if (def.keywords.evolution) card.summoning_sickness = false;
+
+            player.battle_zone.push_back(card);
+
+            if (def.keywords.cip) {
+                dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
+            }
+        } else if (def.type == CardType::SPELL) {
+            player.graveyard.push_back(card);
             dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
         }
     }
