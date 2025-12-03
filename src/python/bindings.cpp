@@ -71,6 +71,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("USE_SHIELD_TRIGGER", ActionType::USE_SHIELD_TRIGGER)
         .value("SELECT_TARGET", ActionType::SELECT_TARGET)
         .value("RESOLVE_EFFECT", ActionType::RESOLVE_EFFECT)
+        .value("USE_ABILITY", ActionType::USE_ABILITY)
         .export_values();
 
     py::enum_<GameResult>(m, "GameResult")
@@ -121,6 +122,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SHIELD_TRIGGER", EffectType::SHIELD_TRIGGER)
         .value("G_STRIKE", EffectType::G_STRIKE)
         .value("DESTRUCTION", EffectType::DESTRUCTION)
+        .value("ON_ATTACK_FROM_HAND", EffectType::ON_ATTACK_FROM_HAND)
         .export_values();
 
     py::enum_<ResolveType>(m, "ResolveType")
@@ -162,6 +164,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SELECT_FROM_BUFFER", EffectActionType::SELECT_FROM_BUFFER)
         .value("PLAY_FROM_BUFFER", EffectActionType::PLAY_FROM_BUFFER)
         .value("MOVE_BUFFER_TO_ZONE", EffectActionType::MOVE_BUFFER_TO_ZONE)
+        .value("REVOLUTION_CHANGE", EffectActionType::REVOLUTION_CHANGE)
         .export_values();
 
     // JSON Structures
