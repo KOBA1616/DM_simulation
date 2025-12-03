@@ -35,6 +35,15 @@ namespace dm::engine {
 
                 // Handle Generic Target Selection
                 if (eff.resolve_type == ResolveType::TARGET_SELECT) {
+                    // Check if we have enough targets already
+                    if (eff.target_instance_ids.size() >= eff.num_targets_needed) {
+                        Action resolve;
+                        resolve.type = ActionType::RESOLVE_EFFECT;
+                        resolve.slot_index = static_cast<int>(i);
+                        actions.push_back(resolve);
+                        continue; // Skip generation of SELECT_TARGET
+                    }
+
                     const auto& filter = eff.filter;
                     bool found_target = false;
 

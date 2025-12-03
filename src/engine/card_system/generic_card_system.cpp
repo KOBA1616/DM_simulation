@@ -140,6 +140,13 @@ namespace dm::engine {
 
         pending.optional = action.optional;
 
+        // Wrap action in EffectDef for resumption
+        EffectDef ed;
+        ed.trigger = TriggerType::NONE;
+        ed.condition = ConditionDef{"NONE", 0, ""};
+        ed.actions = { action }; // Store the action to be executed
+        pending.effect_def = ed;
+
         game_state.pending_effects.push_back(pending);
 
         // Return empty. The logic will resume when 'resolve_effect_with_targets' is called
