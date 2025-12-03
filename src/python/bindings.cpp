@@ -340,7 +340,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("civilization", &CardDefinition::civilization)
         .def_readwrite("type", &CardDefinition::type)
         .def_readwrite("races", &CardDefinition::races)
-        .def_readwrite("keywords", &CardDefinition::keywords);
+        .def_readwrite("keywords", &CardDefinition::keywords)
+        .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition);
 
     // Expose CardData for Generic System Registration
     py::class_<CardData>(m, "CardData")

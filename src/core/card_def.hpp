@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <bitset>
+#include <optional>
+#include "card_json_types.hpp" // Include for FilterDef
 
 namespace dm::core {
 
@@ -57,6 +59,10 @@ namespace dm::core {
 
         // Modes
         std::vector<ModalEffectGroup> modes;
+
+        // Revolution Change Condition (Data-driven)
+        // If has_value(), this filter applies to the attacking creature.
+        std::optional<FilterDef> revolution_change_condition;
     };
 
 }
