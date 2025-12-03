@@ -70,7 +70,8 @@ namespace dm::core {
         AT_END_OF_TURN,    // ターン終了時
         SHIELD_TRIGGER,    // S・トリガー
         G_STRIKE,          // G・ストライク
-        DESTRUCTION        // 破壊時
+        DESTRUCTION,       // 破壊時
+        ON_ATTACK_FROM_HAND // Revolution Change
     };
     
     // Result of a game

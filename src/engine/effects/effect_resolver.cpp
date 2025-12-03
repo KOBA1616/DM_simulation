@@ -54,6 +54,9 @@ namespace dm::engine {
             case ActionType::SELECT_TARGET:
                 resolve_select_target(game_state, action);
                 break;
+            case ActionType::USE_ABILITY:
+                resolve_use_ability(game_state, action, card_db);
+                break;
             default:
                 break;
         }
@@ -69,6 +72,100 @@ namespace dm::engine {
         if (index >= 0 && index < static_cast<int>(game_state.pending_effects.size())) {
             game_state.pending_effects[index].target_instance_ids.push_back(action.target_instance_id);
         }
+    }
+
+    void EffectResolver::resolve_use_ability(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
+        // Handle Revolution Change, Ninja Strike, etc.
+        if (game_state.pending_effects.empty()) return;
+
+        // Find the pending effect
+        int pe_index = -1;
+        // In ActionGenerator, USE_ABILITY slot_index usually points to the hand index.
+        // We need to know WHICH pending effect triggered this.
+        // Currently Action struct doesn't link back to PendingEffect index for USE_ABILITY unless we use slot_index for that.
+        // But ActionGenerator::generate_legal_actions for USE_ABILITY (to be implemented) should set slot_index to hand index?
+        // Wait, for SHIELD_TRIGGER, slot_index IS the pending effect index.
+        // For USE_ABILITY, let's assume slot_index is the hand index (to identify the card),
+        // BUT we also need to clear the Pending Effect.
+
+        // Let's adopt the convention: For USE_ABILITY, the pending effect is the one at the FRONT (or we scan).
+        // Since Revolution Change is an interruption, it should be at the top of the stack.
+
+        // Actually, we need to know specifically which PendingEffect this action is resolving.
+        // Let's assume the ActionGenerator sets `target_slot_index` to the PendingEffect index?
+        // Or we just look for the first matching PendingEffect type.
+
+        // Let's implement the logic for REVOLUTION_CHANGE specifically for now.
+        // We scan pending effects for ON_ATTACK_FROM_HAND.
+
+        int target_pe_index = -1;
+        for (int i = 0; i < (int)game_state.pending_effects.size(); ++i) {
+             if (game_state.pending_effects[i].type == EffectType::ON_ATTACK_FROM_HAND) {
+                 target_pe_index = i;
+                 break;
+             }
+        }
+
+        if (target_pe_index == -1) return;
+
+        Player& player = game_state.get_active_player(); // Attacking player
+
+        // Execute Revolution Change Swap
+        // 1. Return Attacking Creature to Hand
+        int attacker_id = game_state.current_attack.source_instance_id;
+
+        auto attacker_it = std::find_if(player.battle_zone.begin(), player.battle_zone.end(),
+            [attacker_id](const CardInstance& c) { return c.instance_id == attacker_id; });
+
+        if (attacker_it != player.battle_zone.end()) {
+            CardInstance returned_creature = *attacker_it;
+            // Untap it upon return? Rules say: "Return to hand."
+            // Tapped status in hand is irrelevant usually, but good to reset.
+            returned_creature.is_tapped = false;
+            player.battle_zone.erase(attacker_it);
+            player.hand.push_back(returned_creature);
+        } else {
+            // Attacker missing? Revolution Change fails?
+            // Rules: If attacker leaves before resolution, change fails?
+            // "You may switch that creature with this creature."
+            // If that creature is gone, you can't switch.
+            game_state.pending_effects.erase(game_state.pending_effects.begin() + target_pe_index);
+            return;
+        }
+
+        // 2. Put Revolution Change Creature into Battle Zone
+        try {
+            CardInstance new_creature = remove_from_hand(player, action.source_instance_id);
+
+            // Inherit State?
+            // "It enters the battle zone tapped and attacking."
+            new_creature.is_tapped = true;
+            new_creature.summoning_sickness = false; // It's attacking, so effective speed attacker
+
+            player.battle_zone.push_back(new_creature);
+
+            // Update Global Attack State
+            game_state.current_attack.source_instance_id = new_creature.instance_id;
+
+            // Trigger CIP
+            if (card_db.count(new_creature.card_id)) {
+                const auto& def = card_db.at(new_creature.card_id);
+                if (def.keywords.cip) {
+                    dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, new_creature.instance_id);
+                }
+            }
+
+        } catch (...) {
+            // Error handling
+        }
+
+        // Remove the PendingEffect
+        if (target_pe_index < (int)game_state.pending_effects.size()) {
+             game_state.pending_effects.erase(game_state.pending_effects.begin() + target_pe_index);
+        }
+
+        // Transition to BLOCK Phase to continue the attack sequence (opponent gets to block)
+        game_state.current_phase = Phase::BLOCK;
     }
 
     void EffectResolver::resolve_block(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
@@ -463,7 +560,10 @@ namespace dm::engine {
         auto attacker_it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
             [action](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
         
-        if (attacker_it == active.battle_zone.end()) return;
+        if (attacker_it == active.battle_zone.end()) {
+             std::cerr << "Attacker not found in BZ: " << action.source_instance_id << "\n";
+             return;
+        }
         attacker_it->is_tapped = true;
 
         // Setup Attack Context
@@ -478,8 +578,54 @@ namespace dm::engine {
             game_state.current_attack.target_instance_id = action.target_instance_id;
         }
 
-        // Transition to BLOCK Phase
-        game_state.current_phase = Phase::BLOCK;
+        // Check for Revolution Change Triggers (ON_ATTACK_FROM_HAND)
+        bool revolution_change_triggered = false;
+
+        // Debug: Check Hand
+        // std::cerr << "Checking Hand for Rev Change. Hand size: " << active.hand.size() << "\n";
+
+        CardInstance attacker = *attacker_it; // Copy to be safe
+        const CardDefinition& attacker_def = card_db.at(attacker.card_id);
+
+        for (const auto& card : active.hand) {
+            if (card_db.count(card.card_id)) {
+                const auto& def = card_db.at(card.card_id);
+                bool has_rev_change = def.keywords.revolution_change;
+                // std::cerr << "Card " << card.card_id << " has_rev_change=" << has_rev_change << "\n";
+                if (has_rev_change) {
+                    // Check conditions: Civilization or Race usually.
+                    // Revolution Change: Fire (Switch with a Fire creature)
+                    // We need to check if the attacker matches the requirement.
+                    // This logic is specific to the card.
+                    // IMPORTANT: We need to know IF it matches.
+                    // For now, let's Push the PendingEffect if ANY RevChange card exists,
+                    // and ActionGenerator will filter if it's actually usable.
+                    // If ActionGenerator produces no actions (PASS only), then we resolve PASS immediately?
+
+                    // To avoid infinite loops or empty checks, we only push if we haven't already?
+                    // No, this is a one-time event per attack declaration.
+
+                    game_state.pending_effects.emplace_back(EffectType::ON_ATTACK_FROM_HAND, attacker.instance_id, active.id);
+                    revolution_change_triggered = true;
+                    break; // Only need one pending effect to trigger the choice phase
+                }
+            }
+        }
+
+        // Transition to BLOCK Phase only if no interrupts
+        if (!revolution_change_triggered) {
+            game_state.current_phase = Phase::BLOCK;
+        } else {
+            // Stay in ATTACK phase but with pending effect?
+            // Or use a transient phase?
+            // ActionGenerator handles pending effects regardless of phase.
+            // But if we stay in ATTACK phase, standard attack actions might be generated again?
+            // No, ActionGenerator prioritizes PendingEffects (Step 0).
+            // So as long as PendingEffect exists, standard actions are suppressed or secondary.
+            // Wait, ActionGenerator DOES suppress other actions if PendingEffects exist.
+            // "If !game_state.pending_effects.empty() ... return actions;"
+            // So we are safe.
+        }
     }
 
 }
