@@ -253,6 +253,33 @@ class CardEditor(QDialog):
         self.shield_trigger_cb.stateChanged.connect(self.update_current_card_data)
         form.addRow(self.shield_trigger_cb)
 
+        # Revolution Change
+        self.rev_change_group = QGroupBox("Revolution Change (革命チェンジ)")
+        self.rev_change_group.setCheckable(True)
+        self.rev_change_group.setChecked(False)
+        self.rev_change_group.toggled.connect(self.update_current_card_data)
+        rev_layout = QGridLayout(self.rev_change_group)
+
+        rev_layout.addWidget(QLabel("Civ (文明):"), 0, 0)
+        self.rev_civ_input = QLineEdit()
+        self.rev_civ_input.setPlaceholderText("FIRE, etc.")
+        self.rev_civ_input.textChanged.connect(self.update_current_card_data)
+        rev_layout.addWidget(self.rev_civ_input, 0, 1)
+
+        rev_layout.addWidget(QLabel("Race (種族):"), 1, 0)
+        self.rev_race_input = QLineEdit()
+        self.rev_race_input.setPlaceholderText("Dragon, etc.")
+        self.rev_race_input.textChanged.connect(self.update_current_card_data)
+        rev_layout.addWidget(self.rev_race_input, 1, 1)
+
+        rev_layout.addWidget(QLabel("Min Cost:"), 2, 0)
+        self.rev_cost_spin = QSpinBox()
+        self.rev_cost_spin.setRange(0, 99)
+        self.rev_cost_spin.valueChanged.connect(self.update_current_card_data)
+        rev_layout.addWidget(self.rev_cost_spin, 2, 1)
+
+        form.addRow(self.rev_change_group)
+
         scroll.setWidget(form_widget)
         layout.addWidget(scroll)
 
@@ -441,6 +468,19 @@ class CardEditor(QDialog):
         st_kw = card.get('keywords', {}).get('shield_trigger', False)
         self.shield_trigger_cb.setChecked(st_kw)
 
+        # Revolution Change check
+        rev_cond = card.get('revolution_change_condition', None)
+        if rev_cond:
+            self.rev_change_group.setChecked(True)
+            self.rev_civ_input.setText(",".join(rev_cond.get('civilizations', [])))
+            self.rev_race_input.setText(",".join(rev_cond.get('races', [])))
+            self.rev_cost_spin.setValue(rev_cond.get('min_cost', 0))
+        else:
+            self.rev_change_group.setChecked(False)
+            self.rev_civ_input.setText("")
+            self.rev_race_input.setText("")
+            self.rev_cost_spin.setValue(5)
+
         # Load Effects List
         self.refresh_effects_list()
 
@@ -458,6 +498,10 @@ class CardEditor(QDialog):
         for cb in self.keyword_checkboxes.values():
             cb.blockSignals(block)
         self.shield_trigger_cb.blockSignals(block)
+        self.rev_change_group.blockSignals(block)
+        self.rev_civ_input.blockSignals(block)
+        self.rev_race_input.blockSignals(block)
+        self.rev_cost_spin.blockSignals(block)
 
     def update_current_card_data(self):
         if self.current_card_index < 0:
@@ -482,6 +526,20 @@ class CardEditor(QDialog):
         else:
             if 'keywords' in card and 'shield_trigger' in card['keywords']:
                 del card['keywords']['shield_trigger']
+
+        # Sync Revolution Change
+        if self.rev_change_group.isChecked():
+            rev_cond = {}
+            civs = [c.strip() for c in self.rev_civ_input.text().split(',') if c.strip()]
+            if civs: rev_cond['civilizations'] = civs
+            races = [r.strip() for r in self.rev_race_input.text().split(',') if r.strip()]
+            if races: rev_cond['races'] = races
+            min_cost = self.rev_cost_spin.value()
+            if min_cost > 0: rev_cond['min_cost'] = min_cost
+            card['revolution_change_condition'] = rev_cond
+        else:
+            if 'revolution_change_condition' in card:
+                del card['revolution_change_condition']
 
         # Sync Keyword Checkboxes to PASSIVE_CONST
         new_effects = []
