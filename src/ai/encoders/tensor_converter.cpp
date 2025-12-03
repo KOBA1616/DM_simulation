@@ -10,12 +10,14 @@ namespace dm::ai {
 
     using namespace dm::core;
 
-    std::vector<float> TensorConverter::convert_to_tensor(const GameState& game_state, int player_view, const std::map<CardID, CardDefinition>& card_db) {
+    std::vector<float> TensorConverter::convert_to_tensor(
+        const GameState& game_state,
+        int player_view,
+        const std::map<CardID, CardDefinition>& card_db,
+        bool mask_opponent_hand
+    ) {
         std::vector<float> tensor;
         tensor.reserve(INPUT_SIZE);
-
-        // Debug
-        // std::cout << "DB Size: " << card_db.size() << std::endl;
 
         // 1. Global Features
         tensor.push_back(static_cast<float>(game_state.turn_number) / static_cast<float>(TURN_LIMIT));
@@ -45,18 +47,17 @@ namespace dm::ai {
             return pwr * 0.7f + cost * 0.15f + civ_norm * 0.1f + type_flag * 0.05f;
         };
 
-        auto encode_player = [&](const Player& p, bool is_self) {
-            // Hand
-            if (is_self) {
-                for (int i = 0; i < MAX_HAND_SIZE; ++i) {
-                    if (i < (int)p.hand.size()) {
-                        tensor.push_back(encode_card_feature(p.hand[i].card_id));
-                    } else {
-                        tensor.push_back(0.0f);
-                    }
+        auto encode_player = [&](const Player& p, bool is_self_or_full_info) {
+            // Hand Count (Always Visible)
+            tensor.push_back(static_cast<float>(p.hand.size()) / static_cast<float>(MAX_HAND_SIZE));
+
+            // Hand Cards
+            for (int i = 0; i < MAX_HAND_SIZE; ++i) {
+                if (i < (int)p.hand.size() && is_self_or_full_info) {
+                    tensor.push_back(encode_card_feature(p.hand[i].card_id));
+                } else {
+                    tensor.push_back(0.0f); // Zero padding or Masked
                 }
-            } else {
-                tensor.push_back(static_cast<float>(p.hand.size()));
             }
 
             // Mana (Civ counts)
@@ -111,18 +112,24 @@ namespace dm::ai {
             }
         };
 
+        // Self: Always full info
         encode_player(self, true);
-        encode_player(opp, false);
+
+        // Opponent: Full info ONLY if mask_opponent_hand is FALSE
+        encode_player(opp, !mask_opponent_hand);
 
         return tensor;
     }
 
-    std::vector<float> TensorConverter::convert_batch_flat(const std::vector<GameState>& states, const std::map<CardID, CardDefinition>& card_db) {
+    std::vector<float> TensorConverter::convert_batch_flat(
+        const std::vector<GameState>& states,
+        const std::map<CardID, CardDefinition>& card_db,
+        bool mask_opponent_hand
+    ) {
         std::vector<float> batch_tensor;
         batch_tensor.reserve(states.size() * INPUT_SIZE);
-        // For performance, avoid unnecessary reallocations by appending directly.
         for (const auto& state : states) {
-            std::vector<float> t = convert_to_tensor(state, state.active_player_id, card_db);
+            std::vector<float> t = convert_to_tensor(state, state.active_player_id, card_db, mask_opponent_hand);
             batch_tensor.insert(batch_tensor.end(), t.begin(), t.end());
         }
         return batch_tensor;

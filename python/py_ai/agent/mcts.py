@@ -147,8 +147,9 @@ class MCTS:
             return 0.0
 
         # Evaluate with Network
+        # Use Masked Tensor (mask_opponent_hand=True) during inference
         tensor = dm_ai_module.TensorConverter.convert_to_tensor(
-            node.state, node.state.active_player_id, self.card_db
+            node.state, node.state.active_player_id, self.card_db, True
         )
         tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0)
 
