@@ -53,7 +53,7 @@
     *   **完了:** `TAP` / `UNTAP` 効果アクションタイプの実装完了。
 
 *   **コスト軽減システム:**
-    *   **仕様:** アクティブなコスト修正を管理するシステム。
+    *   **完了:** `CostModifier` 構造体と `ManaSystem` への統合が完了しました。`tests/test_cost_modifier.py` で検証済み。
     *   **コンポーネント:**
         *   `CostModifier` 構造体: `{ condition, reduction_amount, turn_limit, valid_cards_filter }`。
         *   `GameState.active_modifiers`: アクティブな修正のリスト。
@@ -92,7 +92,7 @@
 ### [PLAN-001] コスト軽減システムの実装
 *   **概要:** `CostModifier` 構造体と `ManaSystem` への統合。
 *   **目的:** シンパシーやコッコ・ルピア等のコスト軽減カードを実装可能にする。
-*   **ステータス:** 進行中。
+*   **ステータス:** 完了 (Verified).
 
 ### [PLAN-002] フェーズ5完了: C++特徴量抽出
 *   **概要:** `GameState` から直接ニューラルネットワークの入力テンソル（`std::vector<float>`）を生成する機能をC++側に実装する。
