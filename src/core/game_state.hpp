@@ -103,6 +103,9 @@ namespace dm::core {
         // Active Cost Modifiers (e.g. Cocco Lupia, Fairy Gift)
         std::vector<CostModifier> active_modifiers;
 
+        // Effect Buffer for complex actions (Search, Gachinko Judge, Mekraid) [PLAN-002]
+        std::vector<CardInstance> effect_buffer;
+
         // Determinism: std::mt19937 inside State [Q69]
         std::mt19937 rng;
 
