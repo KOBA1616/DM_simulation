@@ -1,8 +1,8 @@
+#include "../effects/effect_resolver.hpp"
 #include "generic_card_system.hpp"
 #include "card_registry.hpp"
 #include "target_utils.hpp"
 #include <algorithm>
-#include <iostream>
 
 namespace dm::engine {
 
@@ -75,7 +75,7 @@ namespace dm::engine {
         }
     }
 
-    void GenericCardSystem::resolve_effect_with_targets(GameState& game_state, const EffectDef& effect, const std::vector<int>& targets, int source_instance_id) {
+    void GenericCardSystem::resolve_effect_with_targets(GameState& game_state, const EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         if (!check_condition(game_state, effect.condition, source_instance_id)) return;
 
         for (const auto& action : effect.actions) {
@@ -148,6 +148,113 @@ namespace dm::engine {
                     }
                 } else if (action.type == EffectActionType::SELECT_FROM_BUFFER) {
                      // No-op (acknowledgment that selection happened for this action)
+                } else if (action.type == EffectActionType::COST_REFERENCE && action.str_val == "FINISH_HYPER_ENERGY") {
+                    // Handle Hyper Energy Finalization
+                    // 1. Tap the selected targets
+                    for (int tid : targets) {
+                        for (auto &p : game_state.players) {
+                             auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
+                                [tid](const CardInstance& c){ return c.instance_id == tid; });
+                             if (it != p.battle_zone.end()) {
+                                 it->is_tapped = true;
+                             }
+                        }
+                    }
+
+                    // 2. Delegate Play Logic to EffectResolver
+                    int taps = action.value1;
+                    int reduction = taps * 2;
+
+                    // Retrieve card definition from CardRegistry
+                    // Ideally we should have card_db here, but we don't.
+                    // However, EffectResolver needs card_db.
+                    // We need to fetch card_db from somewhere OR GenericCardSystem doesn't support card_db access?
+                    // GenericCardSystem relies on CardRegistry for logic inside its own methods (resolve_trigger).
+
+                    // PROBLEM: EffectResolver::resolve_play_from_stack requires `card_db` map.
+                    // GenericCardSystem doesn't have it.
+
+                    // Solution: We cannot call EffectResolver::resolve_play_from_stack if we don't have card_db.
+                    // BUT EffectResolver calls US.
+                    // EffectResolver::resolve_pending_effect HAS card_db.
+                    // It passes it to GenericCardSystem::resolve_effect_with_targets? No.
+
+                    // Look at signature:
+                    // `resolve_effect_with_targets(GameState& game_state, const EffectDef& effect, const std::vector<int>& targets, int source_instance_id)`
+
+                    // It DOES NOT have card_db.
+
+                    // This is a design limitation.
+                    // To properly refactor, we need to pass card_db to GenericCardSystem methods.
+                    // But that requires changing many signatures.
+
+                    // Alternative: Construct a temporary map from CardRegistry? Expensive.
+                    // Or rely on CardRegistry alone? EffectResolver needs CardDefinition (runtime). CardRegistry stores CardData (json).
+                    // JsonLoader populates both.
+
+                    // If we assume `CardRegistry::get_card_data(id)` gives us what we need, we can build a lightweight map?
+                    // Or simpler:
+                    // `EffectResolver::resolve_play_from_stack` is static.
+                    // Does it strictly need the full card_db map?
+                    // It uses it to lookup `def`.
+                    // `ManaSystem::auto_tap_mana` uses it.
+
+                    // Ideally, we should update `resolve_effect_with_targets` to take `card_db`.
+                    // But `GenericCardSystem` is supposed to be generic?
+
+                    // For now, to satisfy the requirement of "Robustness" and "Fixing Code Duplication",
+                    // we HAVE TO use `EffectResolver::resolve_play_from_stack`.
+                    // And we MUST find a way to get card_db.
+
+                    // Since I cannot easily change the signature of `resolve_effect_with_targets` without breaking other callers
+                    // (though there are few callers currently), I will try to update the signature.
+                    // Callers: `EffectResolver::resolve_pending_effect` (has db).
+
+                    // Let's modify `resolve_effect_with_targets` signature in header and cpp.
+
+                    // But first, let's just write the code assuming `card_db` is available,
+                    // and I will update the signature in the next step.
+                    // Oh wait, I am in `overwrite_file_with_block` step for GenericCardSystem? No, `replace`.
+
+                    // I will fail to compile if I use `card_db` here without it being an argument.
+                    // So I MUST update signature.
+
+                    // This plan is getting complex.
+                    // Fallback: Can we invoke `EffectResolver` without `card_db`? No.
+
+                    // Wait, `EffectResolver` methods all take `card_db`.
+
+                    // Okay, I will modify `GenericCardSystem::resolve_effect_with_targets` to take `card_db` in a separate step.
+                    // For THIS step, I will replace the logic with a TODO or a minimal implementation that calls the new helper
+                    // assuming I fix the signature.
+
+                    // Actually, I can't leave it broken.
+                    // I should define a global or singleton accessor? No.
+
+                    // I will change the signature.
+                    // `void resolve_effect_with_targets(..., const std::map<CardID, CardDefinition>* card_db = nullptr)`
+                    // If card_db is null, we can't do certain things.
+
+                    // But `EffectResolver` always has it.
+
+                    // Let's assume for this specific edit, I will write the code to call `EffectResolver::resolve_play_from_stack(game_state, source_instance_id, reduction, *card_db_ptr);`.
+                    // And I will ensure `card_db_ptr` is available.
+
+                    // Wait, I can't introduce `card_db_ptr` in this block without changing the function signature around it.
+                    // `replace_with_git_merge_diff` replaces lines INSIDE the function.
+
+                    // I need to update the function signature.
+                    // This requires overwriting the file or a larger replacement.
+
+                    // Let's stick to using `EffectResolver` but we need `card_db`.
+                    // Is there any other way?
+                    // `GameInstance` has it? `GameInstance` is not global.
+
+                    // Okay, I will update `GenericCardSystem::resolve_effect_with_targets` signature in the next step.
+                    // For now, I will write the code as if `card_db` is passed as an argument named `card_db`.
+                    // I will rely on `GenericCardSystem.hpp` update.
+
+                    EffectResolver::resolve_play_from_stack(game_state, source_instance_id, reduction, card_db);
                 }
                 // other action types could be added as needed
             } else {

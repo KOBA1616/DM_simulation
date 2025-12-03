@@ -29,6 +29,8 @@ namespace dm::core {
         bool at_start_of_turn : 1;
         bool at_end_of_turn : 1;
         bool destruction : 1;     // Destruction Trigger
+
+        bool hyper_energy : 1;    // Added for Phase 5 (Hyper Energy)
     };
 
     // Mode Selection: ModalEffectGroup 構造体による複数選択管理 [Q71]

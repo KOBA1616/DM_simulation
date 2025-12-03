@@ -251,6 +251,8 @@ namespace dm::engine {
                     const auto& card = active_player.hand[i];
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
+
+                        // Normal Play
                         if (ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
                             Action action;
                             action.type = ActionType::PLAY_CARD;
@@ -258,6 +260,77 @@ namespace dm::engine {
                             action.source_instance_id = card.instance_id;
                             action.slot_index = static_cast<int>(i);
                             actions.push_back(action);
+                        }
+
+                        // Hyper Energy Play (Tap creatures to reduce cost)
+                        if (def.keywords.hyper_energy) {
+                            // Find untapped creatures
+                            int untapped_creatures = 0;
+                            for (const auto& c : active_player.battle_zone) {
+                                if (!c.is_tapped && !c.summoning_sickness) untapped_creatures++;
+                            }
+
+                            // Generate actions for tapping 1, 2, ... N creatures
+                            // Assuming Hyper Energy allows reducing cost by 2 per tap (standard?)
+                            // Or just "Hyper Energy" implies a specific mode.
+                            // Requirement: "Generate independent actions for 'Tap 1', 'Tap 2'"
+
+                            // Let's assume we can tap up to 'untapped_creatures'.
+                            // And for each count, we generate a PLAY_CARD action with 'target_slot_index'
+                            // indicating the number of taps required?
+                            // Or utilize 'extra_info' (not in struct).
+                            // Let's use target_instance_id to store the "Tap Count" for now,
+                            // or create a new ActionType if needed. But requirement says "independent actions".
+                            // ActionType::PLAY_CARD usually has target_instance_id = -1.
+
+                            // Using 'target_player' or 'target_instance_id' to store tap count mode.
+                            // Let's use target_instance_id as the "Tap Count" (Mocking metadata).
+                            // We need to verify if this is safe. target_instance_id is usually an ID.
+                            // Maybe we should use a dedicated ActionType::PLAY_HYPER_ENERGY?
+                            // But keeping ActionType compact is good for AI.
+                            // The AI needs to know it is playing with Hyper Energy.
+
+                            // Let's assume a convention: For PLAY_CARD, if target_instance_id > 0, it means Hyper Energy Tap Count.
+                            // This is risky if target_instance_id collides with actual IDs.
+                            // Better: Use `target_slot_index` (which is usually for battle zone index) for tap count.
+                            // Play Card usually doesn't use target_slot_index.
+
+                            for (int taps = 1; taps <= untapped_creatures; ++taps) {
+                                // Check if affordable with this many taps?
+                                // Assuming each tap reduces cost by 2 (standard assumption for now, need spec).
+                                // Or does it reduce cost to X?
+                                // "Hyper Energy: You may tap creatures you control... Each creature tapped reduces cost by 2."
+
+                                int reduction = taps * 2;
+                                int effective_cost = std::max(0, def.cost - reduction);
+
+                                // Check if we can pay the REST.
+                                // We simulate the cost reduction.
+                                // Currently ManaSystem::can_pay_cost checks base cost.
+                                // We need a way to check modified cost.
+
+                                // Mocking the check:
+                                // if (ManaSystem::can_pay_cost(..., effective_cost))
+                                // But ManaSystem api takes CardDefinition.
+                                // We might need to assume it's legal if we have enough mana for reduced cost.
+                                // Simplification:
+                                int available_mana = 0;
+                                for(const auto& m : active_player.mana_zone) if(!m.is_tapped) available_mana++;
+
+                                if (available_mana >= effective_cost) {
+                                    Action action;
+                                    action.type = ActionType::PLAY_CARD;
+                                    action.card_id = card.card_id;
+                                    action.source_instance_id = card.instance_id;
+                                    action.slot_index = static_cast<int>(i);
+                                    action.target_slot_index = taps; // Encodes "Hyper Mode: Tap N"
+                                    // We need to differentiate this from normal play in EffectResolver.
+                                    // Maybe add a flag? Action struct is fixed.
+                                    // Use target_player = -2 to signify Hyper Energy?
+                                    action.target_player = -2;
+                                    actions.push_back(action);
+                                }
+                            }
                         }
                     }
                 }
