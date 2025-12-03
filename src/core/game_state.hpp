@@ -103,6 +103,9 @@ namespace dm::core {
         // Active Cost Modifiers (e.g. Cocco Lupia, Fairy Gift)
         std::vector<CostModifier> active_modifiers;
 
+        // Stack Zone for declared cards (waiting for cost payment) [PLAN-002]
+        std::vector<CardInstance> stack_zone;
+
         // Effect Buffer for complex actions (Search, Gachinko Judge, Mekraid) [PLAN-002]
         std::vector<CardInstance> effect_buffer;
 

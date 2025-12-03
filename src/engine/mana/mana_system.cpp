@@ -187,4 +187,16 @@ namespace dm::engine {
         }
     }
 
+    int ManaSystem::get_projected_cost(const GameState& game_state, const Player& player, const CardDefinition& card_def) {
+        // [PLAN-002] Virtual Cost Calculation
+        // For now, this is identical to get_adjusted_cost which handles Base -> Passive Modifiers.
+        // Future: Add Active Reduction logic here (e.g., if card has Hyper Energy, check if it CAN be paid by tapping creatures).
+        // For G-Zero, if condition met, return 0. (Not yet implemented in get_adjusted_cost, should be added here).
+
+        // TODO: G-Zero Logic
+        // if (card_def.keywords.g_zero && check_g_zero_condition(game_state, player, card_def)) return 0;
+
+        return get_adjusted_cost(game_state, player, card_def);
+    }
+
 }
