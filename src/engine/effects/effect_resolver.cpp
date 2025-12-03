@@ -398,19 +398,39 @@ namespace dm::engine {
         Player& player = game_state.get_active_player();
         const CardDefinition& def = card_db.at(action.card_id);
 
-        // 1. Pay Cost (Auto-tap)
-        if (!ManaSystem::auto_tap_mana(player, def, card_db)) {
-            // Should not happen if action was legal
+        // --- STEP 1: DECLARATION (Hand -> Stack) ---
+        // Verify card is in hand and move to Stack Zone
+        auto it = std::find_if(player.hand.begin(), player.hand.end(),
+            [action](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
+
+        if (it == player.hand.end()) return; // Error: Card not in hand
+
+        CardInstance card = *it;
+        player.hand.erase(it);
+        game_state.stack_zone.push_back(card);
+
+        // --- STEP 2: COST CALCULATION & PAYMENT ---
+        // Use auto_tap_mana with GameState for Cost Modifiers
+        if (!ManaSystem::auto_tap_mana(game_state, player, def, card_db)) {
+            // Failed to pay cost - rollback (return to hand)
+            game_state.stack_zone.pop_back();
+            player.hand.push_back(card);
             return;
         }
 
         // STATS TRACKING: Record normal play
-        // For now, assume cost discount is 0 (paid full cost)
+        // For now, assume cost discount is 0 (paid full cost) - TODO: Calculate actual paid cost
         game_state.on_card_play(action.card_id, game_state.turn_number, false, 0, player.id);
 
-        // 2. Move Card
-        CardInstance card = remove_from_hand(player, action.source_instance_id);
+        // --- STEP 3: RESOLUTION (Stack -> Zone) ---
+        // Remove from Stack Zone
+        auto s_it = std::find_if(game_state.stack_zone.begin(), game_state.stack_zone.end(),
+             [action](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
+        if (s_it != game_state.stack_zone.end()) {
+            game_state.stack_zone.erase(s_it);
+        }
 
+        // Move to destination (Battle Zone or Graveyard)
         if (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE) {
             // Summoning Sickness
             card.summoning_sickness = true;
