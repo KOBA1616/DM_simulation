@@ -34,6 +34,10 @@ namespace dm::core {
         // Targeting
         std::vector<int> target_instance_ids;
         int num_targets_needed = 0;
+        ResolveType resolve_type = ResolveType::NONE;
+
+        FilterDef filter; // The filter used for selection
+        bool optional = false; // If true, can choose to select nothing (PASS)
 
         // Optional: carry the EffectDef (from JSON) for later resolution after target selection
         std::optional<EffectDef> effect_def;

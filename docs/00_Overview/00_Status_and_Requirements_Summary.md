@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 **Goal:** Develop a Duel Masters AI/Agent system with a C++ engine and Python bindings.
-**Current Phase:** Phase 5 (C++ Feature Extraction & Parallelization)
+**Current Phase:** Phase 5 (Generic Engine Functions & Feature Extraction)
 **Focus:** Robustness, Verifiability, Risk Management.
 
 ## 2. Current Status
@@ -23,7 +23,15 @@
 
 ## 3. Requirements (Active)
 
-### 3.1. GUI & Card Effects Expansion
+### 3.1. Generic Engine Functions (Partially Implemented)
+*   **Generic Targeting:**
+    *   **Status:** `TargetUtils` and `GenericCardSystem::select_targets` implemented.
+    *   **Issues:** Manual verification test (`tests/manual/test_generic_targeting.py`) fails to generate `SELECT_TARGET` actions after card play. Investigation into `EffectResolver` integration required.
+*   **Generic Actions:**
+    *   **Status:** `TAP`, `UNTAP`, `DESTROY`, `RETURN_TO_HAND` implemented in `GenericCardSystem`.
+*   **Python Bindings:** Updated to support `FilterDef` and `ActionDef`.
+
+### 3.2. GUI & Card Effects Expansion
 *   **Look at Top Deck (Refinement):**
     *   **Private vs Public:** Ensure visualization differentiates between private info (Executor only) and public info (Both players). *Implementation note: `SEARCH_DECK_BOTTOM` handles the logic, but frontend visualization of "revealed" cards needs verification.*
 
@@ -82,6 +90,6 @@ To support a wider range of card effects without engine modification, the follow
 *   **Data Consistency:** `data/cards.csv` is legacy and differs from `data/cards.json` (specifically IDs 2 and 3). New development should rely strictly on `cards.json`.
 
 ## 5. Next Steps
-1.  Implement **Generic Engine Functions** (Targeting, Tap, Cost Reduction).
+1.  **In Progress:** Implement **Generic Engine Functions** (Targeting, Tap, Cost Reduction).
 2.  Refactor `ActionGenerator` to use the new Target Selector.
 3.  Continue Phase 5 C++ feature extraction.
