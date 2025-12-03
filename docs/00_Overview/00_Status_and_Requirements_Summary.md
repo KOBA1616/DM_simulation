@@ -30,9 +30,10 @@
 *   **革命チェンジ:**
     *   専用アクション `REVOLUTION_CHANGE` と、トリガー `ON_ATTACK_FROM_HAND` を新設。(Basic Logic Implemented)
     *   条件に汎用 `FilterDef` を使用し、GUIから設定可能にする。(Partially Implemented)
-*   **ハイパーエナジー:** (実装完了 - Verification Needed)
+*   **ハイパーエナジー:** (実装・検証完了)
     *   「1体タップしてプレイ」「2体タップしてプレイ」などのパターンをそれぞれ独立したアクションとして生成する。
-    *   AIは単一のポリシー出力でコスト支払い方法を選択可能にする。(Action target encoding実装済み)
+    *   `ActionType.PLAY_CARD` で `target_player=254` (メタデータ) を使用し、解決時に `target_slot_index` 分のクリーチャーをタップする処理を実装済み。
+    *   `tests/test_hyper_energy.py` にて、アクション生成、コスト軽減、タップ処理のフローを検証済み。
 
 #### その他機能統合
 *   **ゾーン移動の完全統合 (`MOVE_CARD`):** `DESTROY`, `RETURN_TO_HAND`, `SEND_TO_MANA`, `DRAW_CARD` 等を統合。
