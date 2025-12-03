@@ -81,4 +81,10 @@ namespace dm::core {
         DRAW
     };
 
+    // Forward declaration for CostModifier
+    struct FilterDef; // Defined in card_json_types.hpp, but circular dependency risk if we include it here.
+                      // For now, we will define CostModifier in game_state.hpp or similar where we can include card_json_types.hpp
+                      // Or we can define a simple runtime filter structure here if needed.
+                      // Let's rely on inclusion order or forward declare properly.
+
 }
