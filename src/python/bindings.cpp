@@ -111,6 +111,24 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("ON_OTHER_ENTER", TriggerType::ON_OTHER_ENTER)
         .export_values();
 
+    py::enum_<EffectType>(m, "EffectType")
+        .value("NONE", EffectType::NONE)
+        .value("CIP", EffectType::CIP)
+        .value("AT_ATTACK", EffectType::AT_ATTACK)
+        .value("AT_BLOCK", EffectType::AT_BLOCK)
+        .value("AT_START_OF_TURN", EffectType::AT_START_OF_TURN)
+        .value("AT_END_OF_TURN", EffectType::AT_END_OF_TURN)
+        .value("SHIELD_TRIGGER", EffectType::SHIELD_TRIGGER)
+        .value("G_STRIKE", EffectType::G_STRIKE)
+        .value("DESTRUCTION", EffectType::DESTRUCTION)
+        .export_values();
+
+    py::enum_<ResolveType>(m, "ResolveType")
+        .value("NONE", ResolveType::NONE)
+        .value("TARGET_SELECT", ResolveType::TARGET_SELECT)
+        .value("EFFECT_RESOLUTION", ResolveType::EFFECT_RESOLUTION)
+        .export_values();
+
     py::enum_<TargetScope>(m, "TargetScope")
         .value("NONE", TargetScope::NONE)
         .value("SELF", TargetScope::SELF)
@@ -140,6 +158,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("DISCARD", EffectActionType::DISCARD)
         .value("PLAY_FROM_ZONE", EffectActionType::PLAY_FROM_ZONE)
         .value("COST_REFERENCE", EffectActionType::COST_REFERENCE)
+        .value("LOOK_TO_BUFFER", EffectActionType::LOOK_TO_BUFFER)
+        .value("SELECT_FROM_BUFFER", EffectActionType::SELECT_FROM_BUFFER)
+        .value("PLAY_FROM_BUFFER", EffectActionType::PLAY_FROM_BUFFER)
+        .value("MOVE_BUFFER_TO_ZONE", EffectActionType::MOVE_BUFFER_TO_ZONE)
         .export_values();
 
     // JSON Structures

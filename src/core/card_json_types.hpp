@@ -48,6 +48,10 @@ namespace dm::core {
         DISCARD,
         PLAY_FROM_ZONE,
         COST_REFERENCE,
+        LOOK_TO_BUFFER,
+        SELECT_FROM_BUFFER,
+        PLAY_FROM_BUFFER,
+        MOVE_BUFFER_TO_ZONE,
         NONE
     };
 
@@ -170,7 +174,11 @@ namespace dm::core {
         {EffectActionType::MEKRAID, "MEKRAID"},
         {EffectActionType::DISCARD, "DISCARD"},
         {EffectActionType::PLAY_FROM_ZONE, "PLAY_FROM_ZONE"},
-        {EffectActionType::COST_REFERENCE, "COST_REFERENCE"}
+        {EffectActionType::COST_REFERENCE, "COST_REFERENCE"},
+        {EffectActionType::LOOK_TO_BUFFER, "LOOK_TO_BUFFER"},
+        {EffectActionType::SELECT_FROM_BUFFER, "SELECT_FROM_BUFFER"},
+        {EffectActionType::PLAY_FROM_BUFFER, "PLAY_FROM_BUFFER"},
+        {EffectActionType::MOVE_BUFFER_TO_ZONE, "MOVE_BUFFER_TO_ZONE"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count)
