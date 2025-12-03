@@ -30,11 +30,32 @@
 *   **Performance:** Move loop detection and heavy logic to C++ (In Progress).
 *   **Data Driven:** Use JSON for all card logic.
 
-### 3.3. Future Feature Backlog (User Requested)
+### 3.3. Generic Engine Functions (New - Development Priority)
+To support a wider range of card effects without engine modification, the following generic functions will be implemented:
+
+*   **Generalized Target Selection:**
+    *   **Spec:** A function `select_target(source, filter, count, optional)` that generates `ActionType::SELECT_TARGET` actions.
+    *   **Arguments:**
+        *   `optional` (bool): If true, player can choose not to select (pass).
+        *   `zones` (list): Valid zones to select from (e.g., BattleZone, ManaZone).
+        *   `filter` (Condition/FilterDef): Constraints (Civilization, Race, Power, Tapped state).
+        *   `count` (min/max): Number of targets required.
+    *   **Goal:** Replace hardcoded targeting logic in `ActionGenerator` and support JSON-defined targeting.
+
+*   **Generalized Tap/Untap:**
+    *   **Spec:** A generic effect action `TAP` / `UNTAP` executable on any target instance.
+    *   **Integration:** Can be triggered by spells, creature effects (CIP), or S-Triggers.
+
+*   **Cost Reduction System:**
+    *   **Spec:** A system to manage active cost modifiers.
+    *   **Components:**
+        *   `CostModifier` struct: `{ condition, reduction_amount, turn_limit, valid_cards_filter }`.
+        *   `GameState.active_modifiers`: List of active modifiers.
+        *   `ManaSystem.get_cost(card)`: Calculates final cost applying modifiers (min cost 1).
+
+### 3.4. Future Feature Backlog (User Requested)
 *   **System & Engine:**
-    *   **Zone Movement Args:** Expand arguments for zone movement functions (ゾーン移動関数の引数を拡充).
     *   **Draw Monitor:** Monitor draw count per turn (各ターンでのドロー枚数の監視).
-    *   **Cost Reduction:** Generic cost reduction functions (コスト軽減用汎用関数の実装).
     *   **Battle Zone Checks:** Reference specific costs in Battle Zone (バトルゾーンの特定コストを参照する).
     *   **Graveyard Logic:** Logic for "When placed in graveyard, if it was in BZ (including under evo)" (墓地に置かれた時、バトルゾーンにあれば...).
 *   **Card Mechanics:**
@@ -58,5 +79,6 @@
 *   **Memory Usage:** High simulation counts in `verify_performance.py` may cause memory allocation errors.
 
 ## 5. Next Steps
-1.  Verify AI performance with new effects (if applicable to scenarios).
-2.  Continue Phase 5 C++ feature extraction (Focus on performance and memory stability).
+1.  Implement **Generic Engine Functions** (Targeting, Tap, Cost Reduction).
+2.  Refactor `ActionGenerator` to use the new Target Selector.
+3.  Continue Phase 5 C++ feature extraction.

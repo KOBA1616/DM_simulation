@@ -186,6 +186,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("reset_with_scenario", &GameInstance::reset_with_scenario)
         .def_property_readonly("state", &GameInstance::get_state, py::return_value_policy::reference);
 
+    py::class_<CostModifier>(m, "CostModifier")
+        .def(py::init<>())
+        .def_readwrite("reduction_amount", &CostModifier::reduction_amount)
+        .def_readwrite("turns_remaining", &CostModifier::turns_remaining)
+        .def_readwrite("controller", &CostModifier::controller)
+        .def_readwrite("source_instance_id", &CostModifier::source_instance_id);
+
     py::class_<GameState>(m, "GameState")
         .def(py::init<uint32_t>())
         .def("clone", [](const GameState& s) { return GameState(s); })
@@ -238,7 +245,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("current_phase", &GameState::current_phase)
         .def_readonly("players", &GameState::players)
-        .def_readonly("winner", &GameState::winner);
+        .def_readonly("winner", &GameState::winner)
+        .def_readwrite("active_modifiers", &GameState::active_modifiers);
 
     // Expose stats/POMDP helpers as module-level helpers (wrappers)
     m.def("get_card_stats", [](const GameState &s) {
