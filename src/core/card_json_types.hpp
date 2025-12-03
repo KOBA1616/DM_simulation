@@ -17,6 +17,7 @@ namespace dm::core {
         TURN_START,
         PASSIVE_CONST,
         ON_OTHER_ENTER,
+        ON_ATTACK_FROM_HAND,
         NONE
     };
 
@@ -52,6 +53,7 @@ namespace dm::core {
         SELECT_FROM_BUFFER,
         PLAY_FROM_BUFFER,
         MOVE_BUFFER_TO_ZONE,
+        REVOLUTION_CHANGE,
         NONE
     };
 
@@ -143,7 +145,8 @@ namespace dm::core {
         {TriggerType::S_TRIGGER, "S_TRIGGER"},
         {TriggerType::TURN_START, "TURN_START"},
         {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"},
-        {TriggerType::ON_OTHER_ENTER, "ON_OTHER_ENTER"}
+        {TriggerType::ON_OTHER_ENTER, "ON_OTHER_ENTER"},
+        {TriggerType::ON_ATTACK_FROM_HAND, "ON_ATTACK_FROM_HAND"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(TargetScope, {
@@ -178,7 +181,8 @@ namespace dm::core {
         {EffectActionType::LOOK_TO_BUFFER, "LOOK_TO_BUFFER"},
         {EffectActionType::SELECT_FROM_BUFFER, "SELECT_FROM_BUFFER"},
         {EffectActionType::PLAY_FROM_BUFFER, "PLAY_FROM_BUFFER"},
-        {EffectActionType::MOVE_BUFFER_TO_ZONE, "MOVE_BUFFER_TO_ZONE"}
+        {EffectActionType::MOVE_BUFFER_TO_ZONE, "MOVE_BUFFER_TO_ZONE"},
+        {EffectActionType::REVOLUTION_CHANGE, "REVOLUTION_CHANGE"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count)
