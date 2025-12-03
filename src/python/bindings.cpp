@@ -476,7 +476,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("current_phase", &GameState::current_phase)
         .def_readonly("players", &GameState::players)
         .def_readonly("winner", &GameState::winner)
-        .def_readwrite("active_modifiers", &GameState::active_modifiers);
+        .def_readwrite("active_modifiers", &GameState::active_modifiers)
+        .def_readwrite("stack_zone", &GameState::stack_zone);
 
     // Expose stats/POMDP helpers as module-level helpers (wrappers)
     m.def("get_card_stats", [](const GameState &s) {
