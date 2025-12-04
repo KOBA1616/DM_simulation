@@ -15,9 +15,10 @@ namespace dm::core {
         SELECT_TARGET,
         RESOLVE_EFFECT,
         USE_ABILITY, // For things like Revolution Change, Ninja Strike
-        DECLARE_PLAY, // New
-        PAY_COST,     // New
-        RESOLVE_PLAY  // New
+        DECLARE_PLAY, // Atomic
+        PAY_COST,     // Atomic
+        RESOLVE_PLAY, // Atomic
+        PLAY_CARD_INTERNAL // For stacked play actions
     };
 
     struct Action {
@@ -30,6 +31,9 @@ namespace dm::core {
         // ML Helper
         int slot_index = -1; // Index in Hand/BattleZone for source
         int target_slot_index = -1; // Index in BattleZone for target
+
+        // Spawn Source for PLAY_CARD_INTERNAL
+        SpawnSource spawn_source = SpawnSource::HAND_SUMMON;
         
         // For debugging
         std::string to_string() const {

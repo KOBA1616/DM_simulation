@@ -60,6 +60,13 @@ namespace dm::core {
         END_OF_TURN
     };
 
+    // SpawnSource: How a card is being put into the Battle Zone
+    enum class SpawnSource : uint8_t {
+        HAND_SUMMON,    // Normal summon from hand (includes G-Zero, Speed Attacker logic checks)
+        EFFECT_SUMMON,  // Summon via effect (S-Trigger, Mekraid, etc.)
+        EFFECT_PUT      // Put directly into battle zone (Reanimate, etc.)
+    };
+
     // Effect Types for Pending Stack
     enum class EffectType : uint8_t {
         NONE,
@@ -71,7 +78,9 @@ namespace dm::core {
         SHIELD_TRIGGER,    // S・トリガー
         G_STRIKE,          // G・ストライク
         DESTRUCTION,       // 破壊時
-        ON_ATTACK_FROM_HAND // Revolution Change
+        ON_ATTACK_FROM_HAND, // Revolution Change
+        INTERNAL_PLAY,     // For stacking play actions (Gatekeeper)
+        META_COUNTER       // For Meta Counter (Counter play at end of turn)
     };
     
     // Result of a game
@@ -90,9 +99,6 @@ namespace dm::core {
     };
 
     // Forward declaration for CostModifier
-    struct FilterDef; // Defined in card_json_types.hpp, but circular dependency risk if we include it here.
-                      // For now, we will define CostModifier in game_state.hpp or similar where we can include card_json_types.hpp
-                      // Or we can define a simple runtime filter structure here if needed.
-                      // Let's rely on inclusion order or forward declare properly.
+    struct FilterDef;
 
 }
