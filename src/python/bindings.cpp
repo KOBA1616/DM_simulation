@@ -76,6 +76,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("DECLARE_PLAY", ActionType::DECLARE_PLAY)
         .value("PAY_COST", ActionType::PAY_COST)
         .value("RESOLVE_PLAY", ActionType::RESOLVE_PLAY)
+        .value("RESOLVE_BATTLE", ActionType::RESOLVE_BATTLE)
+        .value("BREAK_SHIELD", ActionType::BREAK_SHIELD)
         .export_values();
 
     py::enum_<GameResult>(m, "GameResult")
@@ -129,6 +131,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("ON_ATTACK_FROM_HAND", EffectType::ON_ATTACK_FROM_HAND)
         .value("INTERNAL_PLAY", EffectType::INTERNAL_PLAY)
         .value("META_COUNTER", EffectType::META_COUNTER)
+        .value("RESOLVE_BATTLE", EffectType::RESOLVE_BATTLE)
+        .value("BREAK_SHIELD", EffectType::BREAK_SHIELD)
         .export_values();
 
     py::enum_<SpawnSource>(m, "SpawnSource")

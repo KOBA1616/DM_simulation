@@ -18,7 +18,9 @@ namespace dm::core {
         DECLARE_PLAY, // Atomic
         PAY_COST,     // Atomic
         RESOLVE_PLAY, // Atomic
-        PLAY_CARD_INTERNAL // For stacked play actions
+        PLAY_CARD_INTERNAL, // For stacked play actions
+        RESOLVE_BATTLE, // Battle resolution (Power comparison)
+        BREAK_SHIELD   // Shield break
     };
 
     struct Action {
