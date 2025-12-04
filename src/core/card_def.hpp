@@ -74,6 +74,9 @@ namespace dm::core {
 
         // Hand Triggers (e.g. Meta Counter, Ninja Strike)
         std::vector<HandTrigger> hand_triggers;
+
+        // Reaction Abilities
+        std::vector<ReactionAbility> reaction_abilities;
     };
 
 }
