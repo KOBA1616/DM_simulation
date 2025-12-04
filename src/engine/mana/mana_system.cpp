@@ -12,6 +12,9 @@ namespace dm::engine {
     int ManaSystem::get_adjusted_cost(const GameState& game_state, const Player& player, const CardDefinition& card_def) {
         int cost = card_def.cost;
 
+        // If base cost is 0, it stays 0 (e.g. dummy test card)
+        if (cost <= 0) return 0;
+
         for (const auto& mod : game_state.active_modifiers) {
             if (mod.controller != player.id) continue;
 
@@ -32,7 +35,15 @@ namespace dm::engine {
             }
         }
 
-        if (cost < 1) cost = 1; // Minimum cost is 1
+        if (cost < 1) cost = 1; // Minimum cost is 1 (except if base was 0, handled above? No, wait.)
+
+        // Re-checking logic:
+        // Regular cost reduction rules say min cost is 1.
+        // But if the card ITSELF has cost 0 (like a token or dummy), it should be 0.
+        // Also G-Zero makes it 0.
+        // Since we don't have G-Zero fully here yet, let's respect base cost.
+        if (card_def.cost > 0 && cost < 1) cost = 1;
+
         return cost;
     }
 
