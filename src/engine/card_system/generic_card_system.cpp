@@ -96,6 +96,8 @@ namespace dm::engine {
                     }
                 } else if (action.type == EffectActionType::RETURN_TO_HAND) {
                     for (int tid : targets) {
+                        bool found = false;
+                        // Check Battle Zones
                         for (auto &p : game_state.players) {
                             auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
                                 [tid](const CardInstance& c){ return c.instance_id == tid; });
@@ -105,7 +107,21 @@ namespace dm::engine {
                                 // Reset state
                                 p.hand.back().is_tapped = false;
                                 p.hand.back().summoning_sickness = true;
+                                found = true;
                                 break;
+                            }
+                        }
+                        // Check Buffer
+                        if (!found) {
+                            auto it = std::find_if(game_state.effect_buffer.begin(), game_state.effect_buffer.end(),
+                                [tid](const CardInstance& c){ return c.instance_id == tid; });
+                            if (it != game_state.effect_buffer.end()) {
+                                Player& active = game_state.get_active_player(); // Buffer usually belongs to active
+                                active.hand.push_back(*it);
+                                game_state.effect_buffer.erase(it);
+                                active.hand.back().is_tapped = false;
+                                active.hand.back().summoning_sickness = true;
+                                found = true;
                             }
                         }
                     }
