@@ -85,6 +85,7 @@ namespace dm::engine {
             case ActionType::PAY_COST:
             case ActionType::RESOLVE_PLAY:
             case ActionType::PLAY_CARD:
+            case ActionType::PLAY_CARD_INTERNAL:
                 resolve_play_card(game_state, action, card_db);
                 break;
             case ActionType::ATTACK_PLAYER:
@@ -562,6 +563,76 @@ namespace dm::engine {
 
     void EffectResolver::resolve_play_card(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
         Player& player = game_state.get_active_player();
+
+        // INTERNAL PLAY: Pending Effect (Anywhere) -> Stack -> Resolve
+        if (action.type == ActionType::PLAY_CARD_INTERNAL) {
+            // Find the pending effect
+            int index = action.slot_index;
+            if (index < 0 || index >= static_cast<int>(game_state.pending_effects.size())) {
+                return; // Error
+            }
+
+            // Should match type
+            const auto& pe = game_state.pending_effects[index];
+            if (pe.type != EffectType::INTERNAL_PLAY && pe.type != EffectType::META_COUNTER) {
+                return;
+            }
+
+            int card_instance_id = action.source_instance_id;
+
+            // Locate the card. It could be in Buffer, Hand, or anywhere depending on the effect.
+            // Usually internal play moves it to stack first.
+            CardInstance* card_ptr = nullptr;
+            std::vector<CardInstance>* source_zone = nullptr;
+
+            auto find_and_set = [&](std::vector<CardInstance>& zone) {
+                auto it = std::find_if(zone.begin(), zone.end(),
+                    [card_instance_id](const CardInstance& c) { return c.instance_id == card_instance_id; });
+                if (it != zone.end()) {
+                    card_ptr = &(*it);
+                    source_zone = &zone;
+                    return true;
+                }
+                return false;
+            };
+
+            // Check Buffer first (Mekraid, etc.)
+            if (!find_and_set(game_state.effect_buffer)) {
+                // Check Hand (Shield Trigger, Meta Counter)
+                // Note: Shield Trigger adds to Hand first, then queues SHIELD_TRIGGER effect.
+                // But wait, Shield Trigger uses USE_SHIELD_TRIGGER action which calls resolve_use_shield_trigger.
+                // It does NOT use PLAY_CARD_INTERNAL yet. We plan to migrate it.
+                // For now, assume Buffer or Hand.
+                // We must check the controller's zones.
+                Player& controller = game_state.players[pe.controller];
+                if (!find_and_set(controller.hand)) {
+                     if (!find_and_set(controller.graveyard)) { // Reanimate?
+                         // ...
+                     }
+                }
+            }
+
+            if (card_ptr && source_zone) {
+                CardInstance card = *card_ptr;
+                source_zone->erase(std::remove_if(source_zone->begin(), source_zone->end(),
+                    [card_instance_id](const CardInstance& c) { return c.instance_id == card_instance_id; }),
+                    source_zone->end());
+
+                // Move to Stack
+                game_state.stack_zone.push_back(card);
+
+                // Remove Pending Effect
+                game_state.pending_effects.erase(game_state.pending_effects.begin() + index);
+
+                // Call resolve_play_from_stack
+                // Assuming cost 0 for internal play (Mekraid, S-Trigger, etc.)
+                // Or do we read it from somewhere?
+                // For now, assume free/reduced to 0.
+                // Using 999 to ensure cost is fully covered (as cost_reduction)
+                resolve_play_from_stack(game_state, card.instance_id, 999, action.spawn_source, card_db);
+            }
+            return;
+        }
 
         // DECLARE: Hand -> Stack
         if (action.type == ActionType::DECLARE_PLAY) {
