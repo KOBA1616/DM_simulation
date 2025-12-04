@@ -80,7 +80,9 @@ namespace dm::core {
         DESTRUCTION,       // 破壊時
         ON_ATTACK_FROM_HAND, // Revolution Change
         INTERNAL_PLAY,     // For stacking play actions (Gatekeeper)
-        META_COUNTER       // For Meta Counter (Counter play at end of turn)
+        META_COUNTER,      // For Meta Counter (Counter play at end of turn)
+        RESOLVE_BATTLE,    // For pending battle resolution
+        BREAK_SHIELD       // For pending shield break
     };
     
     // Result of a game
