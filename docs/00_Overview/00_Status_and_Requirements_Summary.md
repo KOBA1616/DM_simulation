@@ -14,11 +14,11 @@
 *   **データ:** JSONベースのカード定義 (`data/cards.json`)。
 
 ## 3. 現在の開発段階 (Current Development Stage)
-**ステータス:** **メタカウンターとエンジンコア拡張 - インフラ整備完了**
+**ステータス:** **バトル処理の原子アクション化 - 実装完了**
 
-これまでの開発で、基本的なゲームルールといくつかの複雑なキーワード能力（革命チェンジ等）を実装しました。
-現在は、メタカウンター機能の実装に向けたエンジンコアの拡張フェーズにあります。
-`TurnStats` による「マナ踏み倒しプレイ」の検知機能、`SpawnSource` などの型定義、Pythonバインディングの更新が完了しました。
+エンジンのリファクタリングフェーズにおいて、バトル解決処理の分解（`execute_battle` の `RESOLVE_BATTLE` と `BREAK_SHIELD` への分離）が完了しました。
+これにより、ブロック後の処理やシールドブレイクが独立したアクションとして `ActionGenerator` によって生成され、`PendingEffect` を経由して制御されるようになりました。
+これはシールド焼却や、より複雑な攻撃解決ロジック（置換効果など）を実装するための基盤となります。
 
 ## 4. アクティブな要件とタスク (Uncompleted Tasks)
 
@@ -32,11 +32,11 @@
 *   **RESOLVE_PLAY:** スタックにあるカードを適切なゾーン（バトルゾーンまたは墓地）に移動させ、ON_PLAY（CIP）効果を誘発させるアクション。
     *   *メリット:* G・ゼロ/踏み倒し（PAY_COSTスキップ）、墓地詠唱（ソース変更）、シールドトリガーの共通化が可能になります。
 
-#### 2. execute_battle の分解（バトル解決とブレイクの分離）
-現在の `execute_battle` 関数（勝敗判定とブレイク処理の混在）を分解します。
+#### 2. execute_battle の分解（バトル解決とブレイクの分離） (完了)
+現在の `execute_battle` 関数（勝敗判定とブレイク処理の混在）を分解しました。
 *   **RESOLVE_BATTLE:** クリーチャー同士のパワーを比較し、敗北した方を破壊するアクション。
 *   **BREAK_SHIELD:** （攻撃成功時）シールドを1枚指定して手札に加え、S・トリガー判定を行うアクション。W・ブレイカー等はこれを複数回生成します。
-    *   *メリット:* シールド焼却（`BURN_SHIELD`アクションへの置換）などの実装が容易になります。
+    *   *実装詳細:* ブロックフェーズの終了時 (`PASS`) に、状況に応じて `RESOLVE_BATTLE` または `BREAK_SHIELD` の `PendingEffect` を発行し、それを `ActionGenerator` がアクションに変換して処理するフローに変更しました。
 
 #### 3. マナチャージの汎用化
 *   **MANA_CHARGE → MOVE_CARD:** マナチャージを汎用的な `MOVE_CARD` (Destination: MANA_ZONE) に統合します。
@@ -83,32 +83,24 @@
 #### 1. コア型定義とデータ構造の整備 (完了)
 - **Action と Types の更新** (完了)
     - `src/core/types.hpp` に `SpawnSource` enum を追加します。
-        - `HAND_SUMMON` (手札からの通常召喚, G・ゼロ)
-        - `EFFECT_SUMMON` (S・トリガー, メクレイド, コスト踏み倒し召喚)
-        - `EFFECT_PUT` (リアニメイト, 踏み倒し出し)
-    - `src/core/types.hpp` に新しい `EffectType` として `INTERNAL_PLAY`, `META_COUNTER` を追加します。
-    - `src/core/action.hpp` に `ActionType::PLAY_CARD_INTERNAL` を追加し、`Action` 構造体に `spawn_source` フィールド（または既存フィールドの流用）を追加します。
+    - `src/core/types.hpp` に新しい `EffectType` として `INTERNAL_PLAY`, `META_COUNTER`, `RESOLVE_BATTLE`, `BREAK_SHIELD` を追加します。
+    - `src/core/action.hpp` に `ActionType::PLAY_CARD_INTERNAL`, `RESOLVE_BATTLE`, `BREAK_SHIELD` を追加します。
 - **カード定義の更新** (完了)
     - `src/core/card_def.hpp` の `CardKeywords` に `bool meta_counter_play` を追加します。
-    - `src/engine/card_system/json_loader.cpp` を更新し、JSON からこのキーワードをパースできるようにします。
 - **ゲーム状態の更新** (完了)
     - `src/core/game_state.hpp` に `struct TurnStats` を定義し、メンバとして `bool played_without_mana` を持たせます。
-    - `GameState` クラスに `TurnStats turn_stats` を追加します。
 
 #### 2. ターン統計機能の実装 (マナ踏み倒し検知) (完了)
 - **リセット処理** (完了)
     - `src/engine/flow/phase_manager.cpp` の `start_turn` メソッド内で、`turn_stats` をリセットする処理を追加します。
 - **フラグ更新処理** (完了)
     - `src/engine/mana/mana_system.hpp` (または `cpp`) を修正し、カードプレイ時に「支払われたマナ（タップされたマナ）」が0枚であるかを確認します。
-    - 0枚の場合、`game_state.turn_stats.played_without_mana` を `true` に設定します（コスト軽減で1マナ払った場合は除外）。
 
 #### 3. エンジンフローのリファクタリング (スタックとゲートキーパー)
 - **EffectResolver の拡張**
     - `src/engine/effects/effect_resolver.cpp` の `resolve_play_from_stack` を修正し、`SpawnSource` 引数を受け取れるようにします。
     - **ゲートキーパー (Gatekeeper) ロジックの実装**:
         - カードがバトルゾーンに出る直前に、「移動先決定ロジック」を挟みます。
-        - ここで将来的に実装されるメタカード（「マナよりコストが大きいならマナ送り」等）の判定フックを作成します。
-        - デフォルトでは `Battle Zone` を返しますが、条件によって `Mana Zone`, `Deck Bottom`, `Graveyard` に変更できるようにします。
     - `ActionType::PLAY_CARD_INTERNAL` を処理するケースを追加し、`resolve_play_from_stack` へ委譲します。
 - **ActionGenerator の更新**
     - `src/engine/action_gen/action_generator.cpp` を更新し、`EffectType::INTERNAL_PLAY` や `META_COUNTER` が `pending_effects` にある場合、`PLAY_CARD_INTERNAL` アクションを生成するようにします。
@@ -118,25 +110,16 @@
     - 以下の箇所で、直接バトルゾーンに追加している処理を廃止し、代わりに `PendingEffect` (Type: `INTERNAL_PLAY`) を積む形に変更します。
         - `src/engine/card_system/generic_card_system.cpp`: メクレイド (MEKRAID)、バッファからのプレイ
         - `src/engine/effects/effect_resolver.cpp`: S・トリガー (SHIELD_TRIGGER) の解決処理
-        - その他のリアニメイト処理
 
 #### 5. カウンター踏み倒し機能の実装
 - **ターン終了時のチェック**
-    - `src/engine/flow/phase_manager.cpp` の `next_phase` (END_OF_TURN 処理、またはターン切り替え前) に以下のロジックを追加します。
-        1. `game_state.turn_stats.played_without_mana` が `true` かチェック。
-        2. 自分の手札をスキャンし、`meta_counter_play` を持つカードを探す。
-        3. 該当カードがある場合、**自分のバトルゾーン**に同名のカードが存在しないか確認する。
-        4. 条件を満たすカードがあれば、`PendingEffect` (Type: `META_COUNTER`) を積む。
+    - `src/engine/flow/phase_manager.cpp` の `next_phase` にロジックを追加します。
 - **解決フロー**
-    - 積まれた `META_COUNTER` は `ActionGenerator` によってアクション化され、スタック経由（`PLAY_CARD_INTERNAL`）で解決されます（召喚扱い `SpawnSource::EFFECT_SUMMON`）。
+    - 積まれた `META_COUNTER` は `ActionGenerator` によってアクション化され、スタック経由（`PLAY_CARD_INTERNAL`）で解決されます。
 
 #### 6. 検証
 - **テスト作成**
-    - `tests/test_meta_counter.py` を作成し、以下を検証します。
-        - マナなしプレイ時のフラグ検知。
-        - ターン終了時のカウンター発動（条件合致時）。
-        - 同名カードがある場合の発動阻止。
-        - スタック経由でのカードプレイ（ゲートキーパー）が正常に動作すること。
+    - `tests/test_meta_counter.py` を作成し検証します。
 - **Pre-commit**
     - 全テストの通過を確認し、コードフォーマット等を整えます。
 

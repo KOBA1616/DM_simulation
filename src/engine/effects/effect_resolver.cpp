@@ -28,17 +28,53 @@ namespace dm::engine {
         switch (action.type) {
             case ActionType::PASS:
                 if (game_state.current_phase == Phase::BLOCK) {
-                    // Pass in Block Phase means "No Block" -> Resolve Battle
-                    execute_battle(game_state, card_db);
+                    // Pass in Block Phase means "No Block" -> Transition to battle resolution
+                    // Instead of immediate execution, we queue the resolution action logic.
+                    // But effectively, we are ending the BLOCK phase.
+
+                    // Logic check: Blocked or Unblocked?
+                    // If is_blocked, it's a battle between creatures.
+                    // If not blocked, check target.
+                    //    If target is creature -> Battle between creatures.
+                    //    If target is player -> Shield Break.
+
+                    // We use PendingEffects to drive the ActionGenerator.
+
+                    bool is_blocked = game_state.current_attack.is_blocked;
+                    int target_id = game_state.current_attack.target_instance_id;
+
+                    if (is_blocked || target_id != -1) {
+                         // Creature Battle
+                         game_state.pending_effects.emplace_back(EffectType::RESOLVE_BATTLE, game_state.current_attack.source_instance_id, game_state.active_player_id);
+                    } else {
+                         // Player Attack (Shield Break)
+                         int attacker_id = game_state.current_attack.source_instance_id;
+                         Player& active = game_state.get_active_player();
+                         auto attacker_it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
+                            [attacker_id](const CardInstance& c) { return c.instance_id == attacker_id; });
+
+                         int break_count = 1;
+                         if (attacker_it != active.battle_zone.end()) {
+                             break_count = get_breaker_count(*attacker_it, card_db);
+                         }
+
+                         for (int i=0; i<break_count; ++i) {
+                             game_state.pending_effects.emplace_back(EffectType::BREAK_SHIELD, attacker_id, game_state.active_player_id);
+                         }
+                    }
+
+                    // Phase stays BLOCK or moves to ATTACK?
+                    // Usually we stay in a resolution phase until queue is empty, then go back to ATTACK.
+                    // But here we rely on ActionGenerator to pick up PendingEffects.
                 }
                 break;
             case ActionType::MANA_CHARGE:
                 resolve_mana_charge(game_state, action);
                 break;
-            case ActionType::DECLARE_PLAY: // New Entry Point
-            case ActionType::PAY_COST:     // New Entry Point
-            case ActionType::RESOLVE_PLAY: // New Entry Point
-            case ActionType::PLAY_CARD:    // Legacy/Atomic Wrapper (still used by tests?)
+            case ActionType::DECLARE_PLAY:
+            case ActionType::PAY_COST:
+            case ActionType::RESOLVE_PLAY:
+            case ActionType::PLAY_CARD:
                 resolve_play_card(game_state, action, card_db);
                 break;
             case ActionType::ATTACK_PLAYER:
@@ -59,6 +95,12 @@ namespace dm::engine {
                 break;
             case ActionType::USE_ABILITY:
                 resolve_use_ability(game_state, action, card_db);
+                break;
+            case ActionType::RESOLVE_BATTLE:
+                resolve_battle_outcome(game_state, card_db);
+                break;
+            case ActionType::BREAK_SHIELD:
+                resolve_break_shield(game_state, action, card_db);
                 break;
             default:
                 break;
@@ -139,7 +181,8 @@ namespace dm::engine {
         if (it != defender.battle_zone.end()) {
             it->is_tapped = true;
         }
-        execute_battle(game_state, card_db);
+        // Instead of executing battle immediately, we queue the battle resolution.
+        game_state.pending_effects.emplace_back(EffectType::RESOLVE_BATTLE, game_state.current_attack.source_instance_id, game_state.active_player_id);
     }
 
     int EffectResolver::get_creature_power(const CardInstance& creature, const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
@@ -166,7 +209,17 @@ namespace dm::engine {
         return 1;
     }
 
-    void EffectResolver::execute_battle(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    // Renamed and Refactored from execute_battle
+    void EffectResolver::resolve_battle_outcome(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+        // Clear the pending effect if this was triggered by one
+        // We look for the first RESOLVE_BATTLE effect
+        for (size_t i = 0; i < game_state.pending_effects.size(); ++i) {
+            if (game_state.pending_effects[i].type == EffectType::RESOLVE_BATTLE) {
+                game_state.pending_effects.erase(game_state.pending_effects.begin() + i);
+                break;
+            }
+        }
+
         Player& active = game_state.get_active_player();
         Player& opponent = game_state.get_non_active_player();
         
@@ -178,9 +231,14 @@ namespace dm::engine {
         auto attacker_it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
             [attacker_id](const CardInstance& c) { return c.instance_id == attacker_id; });
         
-        if (attacker_it == active.battle_zone.end()) return;
+        if (attacker_it == active.battle_zone.end()) {
+             // Attacker gone? Remove pending effects associated?
+             // Actually, if attacker is gone, battle fizzles.
+             return;
+        }
         CardInstance attacker = *attacker_it;
 
+        // Resolve Creature Battle (Blocked or Target Creature)
         if (is_blocked) {
             auto blocker_it = std::find_if(opponent.battle_zone.begin(), opponent.battle_zone.end(),
                 [blocker_id](const CardInstance& c) { return c.instance_id == blocker_id; });
@@ -213,65 +271,142 @@ namespace dm::engine {
                     opponent.battle_zone.erase(it);
                 }
             }
+        } else if (target_id != -1) {
+             // Attack Creature (Unblocked)
+             auto defender_it = std::find_if(opponent.battle_zone.begin(), opponent.battle_zone.end(),
+                [target_id](const CardInstance& c) { return c.instance_id == target_id; });
 
-        } else {
-            if (target_id == -1) {
-                int break_count = get_breaker_count(attacker, card_db);
-                
-                for (int i = 0; i < break_count; ++i) {
-                    if (!opponent.shield_zone.empty()) {
-                        CardInstance shield = opponent.shield_zone.back();
-                        opponent.shield_zone.pop_back();
-                        opponent.hand.push_back(shield);
+            if (defender_it != opponent.battle_zone.end()) {
+                CardInstance defender = *defender_it;
+                int attacker_power = get_creature_power(attacker, game_state, card_db);
+                int defender_power = get_creature_power(defender, game_state, card_db);
 
-                        if (card_db.count(shield.card_id)) {
-                            const auto& def = card_db.at(shield.card_id);
-                            if (def.keywords.shield_trigger) {
-                                game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield.instance_id, opponent.id);
-                            }
-                        }
-                    } else {
-                        if (active.id == 0) game_state.winner = GameResult::P1_WIN;
-                        else game_state.winner = GameResult::P2_WIN;
-                        break;
+                bool destroy_attacker = (attacker_power <= defender_power);
+                bool destroy_defender = (defender_power <= attacker_power);
+
+                if (card_db.at(attacker.card_id).keywords.slayer) destroy_defender = true;
+                if (card_db.at(defender.card_id).keywords.slayer) destroy_attacker = true;
+
+                if (destroy_attacker) {
+                    auto it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
+                        [attacker_id](const CardInstance& c) { return c.instance_id == attacker_id; });
+                    if (it != active.battle_zone.end()) {
+                        active.graveyard.push_back(*it);
+                        active.battle_zone.erase(it);
                     }
                 }
-            } else {
-                auto defender_it = std::find_if(opponent.battle_zone.begin(), opponent.battle_zone.end(),
-                    [target_id](const CardInstance& c) { return c.instance_id == target_id; });
-                
-                if (defender_it != opponent.battle_zone.end()) {
-                    CardInstance defender = *defender_it;
-                    int attacker_power = get_creature_power(attacker, game_state, card_db);
-                    int defender_power = get_creature_power(defender, game_state, card_db);
-
-                    bool destroy_attacker = (attacker_power <= defender_power);
-                    bool destroy_defender = (defender_power <= attacker_power);
-
-                    if (card_db.at(attacker.card_id).keywords.slayer) destroy_defender = true;
-                    if (card_db.at(defender.card_id).keywords.slayer) destroy_attacker = true;
-
-                    if (destroy_attacker) {
-                        auto it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
-                            [attacker_id](const CardInstance& c) { return c.instance_id == attacker_id; });
-                        if (it != active.battle_zone.end()) {
-                            active.graveyard.push_back(*it);
-                            active.battle_zone.erase(it);
-                        }
-                    }
-                    if (destroy_defender) {
-                        auto it = std::find_if(opponent.battle_zone.begin(), opponent.battle_zone.end(),
-                            [target_id](const CardInstance& c) { return c.instance_id == target_id; });
-                        if (it != opponent.battle_zone.end()) {
-                            opponent.graveyard.push_back(*it);
-                            opponent.battle_zone.erase(it);
-                        }
+                if (destroy_defender) {
+                    auto it = std::find_if(opponent.battle_zone.begin(), opponent.battle_zone.end(),
+                        [target_id](const CardInstance& c) { return c.instance_id == target_id; });
+                    if (it != opponent.battle_zone.end()) {
+                        opponent.graveyard.push_back(*it);
+                        opponent.battle_zone.erase(it);
                     }
                 }
             }
         }
-        
+
+        // Return to ATTACK phase (end of battle)
         game_state.current_phase = Phase::ATTACK;
+    }
+
+    void EffectResolver::resolve_break_shield(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
+         // Clear the pending effect if this was triggered by one
+         // If action.slot_index is provided and valid, use it. Otherwise search for first BREAK_SHIELD.
+         // ActionGenerator sets slot_index.
+         if (action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
+             if (game_state.pending_effects[action.slot_index].type == EffectType::BREAK_SHIELD) {
+                 game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
+             } else {
+                 // Fallback search
+                 for (size_t i = 0; i < game_state.pending_effects.size(); ++i) {
+                    if (game_state.pending_effects[i].type == EffectType::BREAK_SHIELD) {
+                        game_state.pending_effects.erase(game_state.pending_effects.begin() + i);
+                        break;
+                    }
+                }
+             }
+         } else {
+             // Fallback search
+             for (size_t i = 0; i < game_state.pending_effects.size(); ++i) {
+                if (game_state.pending_effects[i].type == EffectType::BREAK_SHIELD) {
+                    game_state.pending_effects.erase(game_state.pending_effects.begin() + i);
+                    break;
+                }
+            }
+         }
+
+         // Single Shield Break
+         Player& active = game_state.get_active_player();
+         Player& opponent = game_state.get_non_active_player();
+
+         if (!opponent.shield_zone.empty()) {
+            // Default to top shield if no target specified (legacy support)
+            // Or use action.target_slot_index / action.target_instance_id
+
+            // For now, let's just pop back as per old logic for consistency,
+            // unless we want to support specific targeting.
+            CardInstance shield = opponent.shield_zone.back();
+            opponent.shield_zone.pop_back();
+
+            opponent.hand.push_back(shield);
+
+            if (card_db.count(shield.card_id)) {
+                const auto& def = card_db.at(shield.card_id);
+                if (def.keywords.shield_trigger) {
+                    game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield.instance_id, opponent.id);
+                }
+            }
+        } else {
+             // Direct Attack Success
+             if (active.id == 0) game_state.winner = GameResult::P1_WIN;
+             else game_state.winner = GameResult::P2_WIN;
+        }
+
+        // If no more BREAK_SHIELD pending, return to ATTACK phase
+        bool more_breaks = false;
+        for(const auto& pe : game_state.pending_effects) {
+            if (pe.type == EffectType::BREAK_SHIELD) {
+                more_breaks = true;
+                break;
+            }
+        }
+        if (!more_breaks && game_state.winner == GameResult::NONE) {
+             game_state.current_phase = Phase::ATTACK;
+        }
+    }
+
+    // Deprecated / Forwarder
+    void EffectResolver::execute_battle(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+         // This should generally not be called anymore if we rely on queueing,
+         // but if existing code calls it, we can forward to the new logic.
+         // However, execute_battle did BOTH battle and break.
+
+         // Let's implement it by inspecting state and calling the new helpers immediately.
+         bool is_blocked = game_state.current_attack.is_blocked;
+         int target_id = game_state.current_attack.target_instance_id;
+
+         if (is_blocked || target_id != -1) {
+             resolve_battle_outcome(game_state, card_db);
+         } else {
+             int attacker_id = game_state.current_attack.source_instance_id;
+             Player& active = game_state.get_active_player();
+             auto attacker_it = std::find_if(active.battle_zone.begin(), active.battle_zone.end(),
+                [attacker_id](const CardInstance& c) { return c.instance_id == attacker_id; });
+
+             int break_count = 1;
+             if (attacker_it != active.battle_zone.end()) {
+                 break_count = get_breaker_count(*attacker_it, card_db);
+             }
+
+             // Loop breaks immediately
+             for(int i=0; i<break_count; ++i) {
+                 // Fake an action
+                 Action a;
+                 resolve_break_shield(game_state, a, card_db);
+                 if (game_state.winner != GameResult::NONE) break;
+             }
+         }
     }
 
     void EffectResolver::resolve_pending_effect(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
@@ -283,6 +418,22 @@ namespace dm::engine {
         }
 
         PendingEffect effect = game_state.pending_effects[index];
+
+        // Handle Special Pending Effects that map to Actions
+        // (Though ideally ActionGenerator should generate specific Actions for these)
+        if (effect.type == EffectType::RESOLVE_BATTLE) {
+             game_state.pending_effects.erase(game_state.pending_effects.begin() + index);
+             resolve_battle_outcome(game_state, card_db);
+             return;
+        }
+        if (effect.type == EffectType::BREAK_SHIELD) {
+             game_state.pending_effects.erase(game_state.pending_effects.begin() + index);
+             // Create a dummy action or use the passed one?
+             Action dummy;
+             resolve_break_shield(game_state, dummy, card_db);
+             return;
+        }
+
         if (effect.effect_def.has_value()) {
             if (effect.num_targets_needed > static_cast<int>(effect.target_instance_ids.size())) {
                 return;
@@ -412,25 +563,7 @@ namespace dm::engine {
              CardInstance card = *it;
              player.hand.erase(it);
 
-             // Check Hyper Energy Metadata
              if (action.target_player == 254) {
-                 // Store metadata on the card instance in stack?
-                 // Or just assume subsequent RESOLVE handles it if we do it immediately?
-                 // But atomic actions mean we stop here.
-                 // We need to persist the "Hyper Energy Mode" state.
-                 // Let's use `is_tapped` on stack card to mean "Paid" and maybe abuse `summoning_sickness` or something else?
-                 // Or we need a `StackFrame` structure instead of just `CardInstance`.
-                 // Since we can't change `CardInstance` struct easily without recompiling everything,
-                 // let's use a temporary map in GameState or rely on inference.
-
-                 // Actually, Hyper Energy declaration SHOULD trigger target selection immediately if it's atomic?
-                 // No, DECLARE just puts it on stack.
-                 // Then PAY_COST logic should see it's Hyper Energy.
-                 // But the card on stack doesn't know it was declared as Hyper Energy.
-                 // We might need to handle Hyper Energy setup during DECLARE.
-
-                 // If we create a PendingEffect for tapping creatures NOW, that handles the "Cost Payment" phase.
-
                  int required_taps = action.target_slot_index;
 
                  PendingEffect pending(EffectType::NONE, card.instance_id, player.id);
@@ -442,26 +575,9 @@ namespace dm::engine {
                  pending.filter = filter;
                  pending.num_targets_needed = required_taps;
 
-                 // Continuation that effectively "Pays the Cost"
-                 // When this resolves, we mark the stack card as paid.
-                 // But wait, the stack card isn't added yet.
-
-                 // So:
-                 // 1. Add card to Stack.
-                 // 2. Add PendingEffect to tap creatures.
-                 // 3. When PendingEffect resolves, it should trigger "Set Paid".
-
-                 // However, normal PAY_COST is an action generated by ActionGenerator.
-                 // If we have a PendingEffect, ActionGenerator generates SELECT_TARGET.
-                 // So the flow becomes: DECLARE -> (Stack + PendingEffect) -> SELECT_TARGETs -> RESOLVE_EFFECT (Taps) -> (Stack Paid) -> RESOLVE_PLAY.
-
-                 // We need to link the PendingEffect back to the Stack Card.
-                 // The PendingEffect source_instance_id matches the card.
-
-                 // We need a custom EffectAction to mark "Paid".
                  EffectDef continuation;
                  ActionDef mark_paid;
-                 mark_paid.type = EffectActionType::COST_REFERENCE; // Abuse this type?
+                 mark_paid.type = EffectActionType::COST_REFERENCE;
                  mark_paid.str_val = "MARK_STACK_PAID";
                  continuation.actions.push_back(mark_paid);
                  pending.effect_def = continuation;
@@ -477,15 +593,13 @@ namespace dm::engine {
         if (action.type == ActionType::PAY_COST) {
             if (game_state.stack_zone.empty()) return;
             CardInstance& card = game_state.stack_zone.back();
-            // Verify action matches card?
             if (card.instance_id != action.source_instance_id) return;
 
             const CardDefinition& def = card_db.at(card.card_id);
             if (ManaSystem::auto_tap_mana(game_state, player, def, card_db)) {
-                card.is_tapped = true; // Mark as Paid
+                card.is_tapped = true;
                 game_state.on_card_play(card.card_id, game_state.turn_number, false, 0, player.id);
             } else {
-                // Fail -> Return to hand
                 player.hand.push_back(card);
                 game_state.stack_zone.pop_back();
             }
@@ -495,7 +609,6 @@ namespace dm::engine {
         // RESOLVE_PLAY: Stack -> Zone
         if (action.type == ActionType::RESOLVE_PLAY) {
             if (game_state.stack_zone.empty()) return;
-            // Remove from Stack
             CardInstance card = game_state.stack_zone.back();
             game_state.stack_zone.pop_back();
 
@@ -506,8 +619,7 @@ namespace dm::engine {
                 if (def.keywords.speed_attacker) card.summoning_sickness = false;
                 if (def.keywords.evolution) card.summoning_sickness = false;
 
-                // Reset tapped state (used for "Paid" flag)
-                card.is_tapped = false; // Creatures enter untapped usually
+                card.is_tapped = false;
 
                 player.battle_zone.push_back(card);
                 if (def.keywords.cip) {
@@ -523,23 +635,15 @@ namespace dm::engine {
 
         // LEGACY PLAY_CARD (Atomic)
         if (action.type == ActionType::PLAY_CARD) {
-            // Forward to DECLARE -> PAY -> RESOLVE sequentially
-            // 1. Declare
             auto it = std::find_if(player.hand.begin(), player.hand.end(),
                 [action](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
             if (it == player.hand.end()) return;
             
-            // Handle Hyper Energy atomic shortcut
             if (action.target_player == 254) {
-                 // Delegate to helper or just execute logic directly if we want to keep legacy support simple
-                 // For legacy PLAY_CARD with hyper energy, we assume it's fully validated and targets are automatic?
-                 // No, atomic PLAY_CARD with Hyper Energy means "Pay by Tapping N".
-                 // Logic:
                  CardInstance card = *it;
                  player.hand.erase(it);
-                 game_state.stack_zone.push_back(card); // Put on stack
+                 game_state.stack_zone.push_back(card);
 
-                 // Execute taps
                  int taps_needed = action.target_slot_index;
                  int taps_done = 0;
                  for (auto& c : player.battle_zone) {
@@ -549,11 +653,6 @@ namespace dm::engine {
                          if (taps_done >= taps_needed) break;
                      }
                  }
-
-                 // Pay remaining cost?
-                 // We skip actual mana payment logic here for legacy atomic if we assume it was checked.
-                 // But let's be safe.
-                 // ... For now, just mark paid and resolve.
                  resolve_play_from_stack(game_state, card.instance_id, taps_done * 2, card_db);
                  return;
             }
@@ -564,15 +663,13 @@ namespace dm::engine {
 
             const CardDefinition& def = card_db.at(card.card_id);
             if (ManaSystem::auto_tap_mana(game_state, player, def, card_db)) {
-                 game_state.stack_zone.back().is_tapped = true; // Paid
+                 game_state.stack_zone.back().is_tapped = true;
                  game_state.on_card_play(card.card_id, game_state.turn_number, false, 0, player.id);
 
-                 // Resolve
                  Action res_act = action;
                  res_act.type = ActionType::RESOLVE_PLAY;
                  resolve_play_card(game_state, res_act, card_db);
             } else {
-                 // Rollback
                  game_state.stack_zone.pop_back();
                  player.hand.push_back(card);
             }

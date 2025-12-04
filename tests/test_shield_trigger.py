@@ -55,7 +55,19 @@ def test_shield_trigger_flow():
     pass_act.type = dm_ai_module.ActionType.PASS
     dm_ai_module.EffectResolver.resolve_action(gs, pass_act, card_db)
 
-    print('After PASS:')
+    print('After PASS (Waiting for BREAK_SHIELD):')
+    print(' Pending effects:', dm_ai_module.get_pending_effects_info(gs))
+
+    # Expect BREAK_SHIELD pending effect (EffectType 13)
+    # We must execute it. The test previously assumed immediate break.
+
+    # Execute BREAK_SHIELD action
+    break_act = dm_ai_module.Action()
+    break_act.type = dm_ai_module.ActionType.BREAK_SHIELD
+    break_act.slot_index = 0
+    dm_ai_module.EffectResolver.resolve_action(gs, break_act, card_db)
+
+    print('After BREAK_SHIELD:')
     print(' Player0 battle:', [c.instance_id for c in gs.players[0].battle_zone])
     print(' Player1 shield:', [c.instance_id for c in gs.players[1].shield_zone])
     print(' Player1 hand:', [c.instance_id for c in gs.players[1].hand])

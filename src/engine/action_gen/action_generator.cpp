@@ -126,6 +126,23 @@ namespace dm::engine {
                     pass.slot_index = static_cast<int>(i);
                     actions.push_back(pass);
                 }
+                else if (eff.type == EffectType::RESOLVE_BATTLE) {
+                     Action action;
+                     action.type = ActionType::RESOLVE_BATTLE;
+                     action.slot_index = static_cast<int>(i);
+                     actions.push_back(action);
+                }
+                else if (eff.type == EffectType::BREAK_SHIELD) {
+                     Action action;
+                     action.type = ActionType::BREAK_SHIELD;
+                     action.slot_index = static_cast<int>(i);
+                     // Allow targeting specific shields?
+                     // For now, we generate one action. If we want manual selection,
+                     // we would loop through enemy shields and generate actions for each.
+                     // But EffectResolver logic currently pops back.
+                     // Let's implement fully later. For now, automatic single action.
+                     actions.push_back(action);
+                }
                 else if (eff.num_targets_needed > (int)eff.target_instance_ids.size()) {
                      if (actions.empty()) {
                          Action resolve;
