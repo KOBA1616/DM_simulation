@@ -55,3 +55,43 @@
     *   専用アクション `REVOLUTION_CHANGE` とトリガー `ON_ATTACK_FROM_HAND` の実装。
     *   `FilterDef` を使用した革命チェンジ条件（文明、種族、コスト）の定義。
     *   GUIエディタでの設定機能。
+
+### [Refactoring Phase] 原子アクション分解とメタカウンター (Atomic Actions & Meta Counter)
+
+#### バトル処理の原子アクション化 - 実装完了
+エンジンのリファクタリングフェーズにおいて、バトル解決処理の分解（`execute_battle` の `RESOLVE_BATTLE` と `BREAK_SHIELD` への分離）が完了しました。
+これにより、ブロック後の処理やシールドブレイクが独立したアクションとして `ActionGenerator` によって生成され、`PendingEffect` を経由して制御されるようになりました。
+これはシールド焼却や、より複雑な攻撃解決ロジック（置換効果など）を実装するための基盤となります。
+
+#### PLAY_CARD 処理の3段階分解 (完了)
+現在の `resolve_play_card` は「宣言」「コスト支払い」「解決」を一括で行っていますが、これを以下のアクションに分解しました。
+*   **DECLARE_PLAY:** カードをソース領域（手札、墓地など）から「スタック領域」へ移動させるアクション。
+*   **PAY_COST:** マナコストを計算し、マナをタップするアクション。支払いに失敗した場合は失敗を返す。
+*   **RESOLVE_PLAY:** スタックにあるカードを適切なゾーン（バトルゾーンまたは墓地）に移動させ、ON_PLAY（CIP）効果を誘発させるアクション。
+    *   *メリット:* G・ゼロ/踏み倒し（PAY_COSTスキップ）、墓地詠唱（ソース変更）、シールドトリガーの共通化が可能になります。
+
+#### execute_battle の分解（バトル解決とブレイクの分離） (完了)
+現在の `execute_battle` 関数（勝敗判定とブレイク処理の混在）を分解しました。
+*   **RESOLVE_BATTLE:** クリーチャー同士のパワーを比較し、敗北した方を破壊するアクション。
+*   **BREAK_SHIELD:** （攻撃成功時）シールドを1枚指定して手札に加え、S・トリガー判定を行うアクション。W・ブレイカー等はこれを複数回生成します。
+    *   *実装詳細:* ブロックフェーズの終了時 (`PASS`) に、状況に応じて `RESOLVE_BATTLE` または `BREAK_SHIELD` の `PendingEffect` を発行し、それを `ActionGenerator` がアクションに変換して処理するフローに変更しました。
+
+#### マナチャージの汎用化 (完了)
+*   **MANA_CHARGE → MOVE_CARD:** マナチャージを汎用的な `MOVE_CARD` (Destination: MANA_ZONE) に統合します。
+    *   *実装詳細:* `ActionType` に `MOVE_CARD` を追加し、マナフェーズでのアクション生成を `MOVE_CARD` に移行しました。`EffectResolver` での処理も対応済みです。（後方互換性のため `MANA_CHARGE` Enumは維持していますが、生成ロジックは更新されています）
+
+#### コア型定義とデータ構造の整備 (完了)
+- **Action と Types の更新** (完了)
+    - `src/core/types.hpp` に `SpawnSource` enum を追加します。
+    - `src/core/types.hpp` に新しい `EffectType` として `INTERNAL_PLAY`, `META_COUNTER`, `RESOLVE_BATTLE`, `BREAK_SHIELD` を追加します。
+    - `src/core/action.hpp` に `ActionType::PLAY_CARD_INTERNAL`, `RESOLVE_BATTLE`, `BREAK_SHIELD` を追加します。
+- **カード定義の更新** (完了)
+    - `src/core/card_def.hpp` の `CardKeywords` に `bool meta_counter_play` を追加します。
+- **ゲーム状態の更新** (完了)
+    - `src/core/game_state.hpp` に `struct TurnStats` を定義し、メンバとして `bool played_without_mana` を持たせます。
+
+#### ターン統計機能の実装 (マナ踏み倒し検知) (完了)
+- **リセット処理** (完了)
+    - `src/engine/flow/phase_manager.cpp` の `start_turn` メソッド内で、`turn_stats` をリセットする処理を追加します。
+- **フラグ更新処理** (完了)
+    - `src/engine/mana/mana_system.hpp` (または `cpp`) を修正し、カードプレイ時に「支払われたマナ（タップされたマナ）」が0枚であるかを確認します。
