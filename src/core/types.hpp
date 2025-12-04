@@ -82,7 +82,8 @@ namespace dm::core {
         INTERNAL_PLAY,     // For stacking play actions (Gatekeeper)
         META_COUNTER,      // For Meta Counter (Counter play at end of turn)
         RESOLVE_BATTLE,    // For pending battle resolution
-        BREAK_SHIELD       // For pending shield break
+        BREAK_SHIELD,      // For pending shield break
+        REACTION_WINDOW    // For Ninja Strike / Strike Back reaction windows
     };
     
     // Result of a game
