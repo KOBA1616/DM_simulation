@@ -1,6 +1,7 @@
 #include "action_generator.hpp"
 #include "engine/card_system/target_utils.hpp"
 #include "engine/mana/mana_system.hpp"
+#include "engine/flow/reaction_system.hpp"
 
 namespace dm::engine {
 
@@ -156,6 +157,57 @@ namespace dm::engine {
                     }
                     actions.push_back(action);
                 }
+                 else if (eff.type == EffectType::REACTION_WINDOW) {
+                     // Generate DECLARE_REACTION actions for matching cards in hand.
+                     // The pending effect's controller is the player who can react.
+
+                     // We need to re-verify conditions or just trust they were checked?
+                     // check_and_open_window already verified potential existence.
+                     // Now we list legal cards.
+
+                     const auto& player = game_state.players[eff.controller];
+                     std::string event_type = eff.reaction_context.has_value() ? eff.reaction_context->trigger_event : "";
+
+                     // Iterate hand
+                     for (size_t k = 0; k < player.hand.size(); ++k) {
+                         const auto& card = player.hand[k];
+                         if (!card_db.count(card.card_id)) continue;
+                         const auto& def = card_db.at(card.card_id);
+
+                         bool legal = false;
+                         for (const auto& r : def.reaction_abilities) {
+                             if (r.condition.trigger_event == event_type) {
+                                 if (ReactionSystem::check_condition(game_state, r, card, eff.controller, card_db)) {
+                                     legal = true;
+                                     break;
+                                 }
+                             }
+                         }
+
+                         if (legal) {
+                             Action act;
+                             act.type = ActionType::DECLARE_REACTION;
+                             act.source_instance_id = card.instance_id;
+                             act.target_player = eff.controller;
+                             act.slot_index = static_cast<int>(k); // Use slot in hand? Or slot in pending?
+                             // We need to know which pending effect triggered this window?
+                             // Actually, since pending effects are processed top-down, we know it's index 'i'.
+                             // We don't store 'i' in action usually for this purpose, but we can.
+                             // But DECLARE_REACTION uses the card.
+                             // Resolving this action will NOT remove the pending effect (window),
+                             // unless we implement logic to do so.
+                             // Wait, user can use multiple.
+
+                             actions.push_back(act);
+                         }
+                     }
+
+                     // Always offer PASS (close window)
+                     Action pass;
+                     pass.type = ActionType::RESOLVE_EFFECT; // Use RESOLVE_EFFECT to signal "Done with this pending effect"
+                     pass.slot_index = static_cast<int>(i);
+                     actions.push_back(pass);
+                 }
                 else if (eff.num_targets_needed > (int)eff.target_instance_ids.size()) {
                      if (actions.empty()) {
                          Action resolve;
