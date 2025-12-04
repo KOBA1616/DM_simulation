@@ -148,12 +148,12 @@ namespace dm::engine {
                     action.type = ActionType::PLAY_CARD_INTERNAL;
                     action.source_instance_id = eff.source_instance_id;
                     action.slot_index = static_cast<int>(i);
-                    // SpawnSource should be determined by EffectType?
-                    // Internal play usually comes from effects.
-                    // Meta counter usually comes from Hand via effect logic?
-                    // Actually, resolve_play_from_stack takes SpawnSource.
-                    // We can default to EFFECT_SUMMON for now, or refine later.
-                    action.spawn_source = SpawnSource::EFFECT_SUMMON;
+
+                    if (eff.type == EffectType::META_COUNTER) {
+                        action.spawn_source = SpawnSource::HAND_SUMMON;
+                    } else {
+                        action.spawn_source = SpawnSource::EFFECT_SUMMON;
+                    }
                     actions.push_back(action);
                 }
                 else if (eff.num_targets_needed > (int)eff.target_instance_ids.size()) {
@@ -280,6 +280,15 @@ namespace dm::engine {
 
         // Active Player Actions
         switch (game_state.current_phase) {
+            case Phase::START_OF_TURN:
+            case Phase::DRAW:
+                // No actions, auto-advance via next_phase usually, or we can emit PASS
+                {
+                    Action pass;
+                    pass.type = ActionType::PASS;
+                    actions.push_back(pass);
+                }
+                break;
             case Phase::MANA:
                 for (size_t i = 0; i < active_player.hand.size(); ++i) {
                     const auto& card = active_player.hand[i];
@@ -307,6 +316,7 @@ namespace dm::engine {
                         // Use DECLARE_PLAY instead of PLAY_CARD
                         // We check legality roughly here, but strict check happens at PAY_COST
                         // However, to avoid spamming invalid actions, we can do a preliminary check.
+
                         if (ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
                             Action action;
                             action.type = ActionType::DECLARE_PLAY; // Changed from PLAY_CARD
