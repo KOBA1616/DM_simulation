@@ -73,6 +73,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SELECT_TARGET", ActionType::SELECT_TARGET)
         .value("RESOLVE_EFFECT", ActionType::RESOLVE_EFFECT)
         .value("USE_ABILITY", ActionType::USE_ABILITY)
+        .value("DECLARE_PLAY", ActionType::DECLARE_PLAY)
+        .value("PAY_COST", ActionType::PAY_COST)
+        .value("RESOLVE_PLAY", ActionType::RESOLVE_PLAY)
         .export_values();
 
     py::enum_<GameResult>(m, "GameResult")
@@ -311,6 +314,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
             d.cost = cost;
             d.power = power;
             d.keywords = keywords;
+            d.type = CardType::CREATURE; // Default to CREATURE
 
             // NOTE: CardDefinition in C++ doesn't store 'effects' as EffectDef usually.
             // It stores them parsed. But here we assume CardDefinition from card_json_types.hpp?
