@@ -27,7 +27,7 @@ namespace dm::engine {
 
     public:
         // Helper to finalize a play from stack (used by Hyper Energy)
-        static void resolve_play_from_stack(dm::core::GameState& game_state, int stack_instance_id, int cost_reduction, dm::core::SpawnSource spawn_source, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        static void resolve_play_from_stack(dm::core::GameState& game_state, int stack_instance_id, int cost_reduction, dm::core::SpawnSource spawn_source, dm::core::PlayerID controller, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
 
     private:
         static void resolve_battle_outcome(dm::core::GameState& game_state, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);

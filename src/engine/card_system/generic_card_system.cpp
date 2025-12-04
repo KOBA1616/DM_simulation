@@ -144,22 +144,10 @@ namespace dm::engine {
                              [tid](const CardInstance& c){ return c.instance_id == tid; });
 
                          if (it != game_state.effect_buffer.end()) {
-                             CardInstance card = *it;
-                             game_state.effect_buffer.erase(it);
-
-                             // Play it
-                             const dm::core::CardData* def = dm::engine::CardRegistry::get_card_data(card.card_id);
-                             if (def) {
-                                 game_state.on_card_play(card.card_id, game_state.turn_number, false, 0, active.id);
-                                 if (def->type == "CREATURE" || def->type == "EVOLUTION_CREATURE") {
-                                     card.summoning_sickness = true;
-                                     active.battle_zone.push_back(card);
-                                     resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
-                                 } else if (def->type == "SPELL") {
-                                     active.graveyard.push_back(card);
-                                     resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
-                                 }
-                             }
+                             // Do NOT remove from buffer yet.
+                             // PLAY_CARD_INTERNAL will find it in buffer and move it to stack.
+                             // Just queue the pending effect.
+                             game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, tid, active.id);
                          }
                     }
                 } else if (action.type == EffectActionType::SELECT_FROM_BUFFER) {
@@ -180,7 +168,8 @@ namespace dm::engine {
                     // 2. Delegate Play Logic to EffectResolver
                     int taps = action.value1;
                     int reduction = taps * 2;
-                    EffectResolver::resolve_play_from_stack(game_state, source_instance_id, reduction, SpawnSource::HAND_SUMMON, card_db);
+                    // Hyper Energy is typically used by the active player (owner of the card).
+                    EffectResolver::resolve_play_from_stack(game_state, source_instance_id, reduction, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db);
                 }
                 // other action types could be added as needed
             } else {
