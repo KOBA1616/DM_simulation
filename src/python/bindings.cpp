@@ -80,6 +80,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("PLAY_CARD_INTERNAL", ActionType::PLAY_CARD_INTERNAL)
         .value("RESOLVE_BATTLE", ActionType::RESOLVE_BATTLE)
         .value("BREAK_SHIELD", ActionType::BREAK_SHIELD)
+        .value("DECLARE_REACTION", ActionType::DECLARE_REACTION)
         .export_values();
 
     py::enum_<GameResult>(m, "GameResult")
@@ -135,6 +136,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("META_COUNTER", EffectType::META_COUNTER)
         .value("RESOLVE_BATTLE", EffectType::RESOLVE_BATTLE)
         .value("BREAK_SHIELD", EffectType::BREAK_SHIELD)
+        .value("REACTION_WINDOW", EffectType::REACTION_WINDOW)
         .export_values();
 
     py::enum_<SpawnSource>(m, "SpawnSource")

@@ -42,6 +42,14 @@ namespace dm::core {
         // Optional: carry the EffectDef (from JSON) for later resolution after target selection
         std::optional<EffectDef> effect_def;
 
+        // Optional context for REACTION_WINDOW
+        struct ReactionContext {
+            std::string trigger_event; // The event being reacted to (e.g., "ON_BLOCK_OR_ATTACK")
+            int attacking_creature_id = -1; // Instance ID of attacker
+            int blocked_creature_id = -1;
+        };
+        std::optional<ReactionContext> reaction_context;
+
         PendingEffect(EffectType t, int src, PlayerID p) 
             : type(t), source_instance_id(src), controller(p) {}
     };
