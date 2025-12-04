@@ -13,7 +13,7 @@ namespace dm::engine {
         // Resolve an effect using explicit targets (used for TARGET_SELECT pending effects)
         static void resolve_effect_with_targets(dm::core::GameState& game_state, const dm::core::EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db = {});
         
-    private:
+        // Exposed for bindings/testing
         static void resolve_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id);
         static std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation);
         static bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id);
