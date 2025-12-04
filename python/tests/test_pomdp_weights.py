@@ -12,8 +12,9 @@ def test_weights_make_hand_stronger_than_deck():
     vec0 = b.get_vector()
 
     s_deck = dm_ai_module.GameState(0)
-    ci = dm_ai_module.CardInstance(1, 101)
-    s_deck.players[1].deck.append(ci)
+    # ci = dm_ai_module.CardInstance(1, 101)
+    # s_deck.players[1].deck.append(ci)
+    s_deck.add_card_to_deck(1, 1, 101)
 
     b_deck = dm_ai_module.ParametricBelief()
     b_deck.initialize_ids([1,2,3])
@@ -22,8 +23,9 @@ def test_weights_make_hand_stronger_than_deck():
     v_deck = b_deck.get_vector()
 
     s_hand = dm_ai_module.GameState(0)
-    ci2 = dm_ai_module.CardInstance(1, 102)
-    s_hand.players[1].hand.append(ci2)
+    # ci2 = dm_ai_module.CardInstance(1, 102)
+    # s_hand.players[1].hand.append(ci2)
+    s_hand.add_card_to_hand(1, 1, 102)
 
     b_hand = dm_ai_module.ParametricBelief()
     b_hand.initialize_ids([1,2,3])

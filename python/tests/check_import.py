@@ -4,6 +4,7 @@ import os
 
 # Add bin to path to simulate the environment
 sys.path.append(os.path.join(os.getcwd(), 'bin'))
+sys.path.append(os.path.join(os.getcwd(), 'build'))
 
 try:
     import dm_ai_module
