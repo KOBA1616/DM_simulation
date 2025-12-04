@@ -51,11 +51,12 @@ class TestEngineBasics:
         # Find mana charge action
         charge_action = None
         for action in actions:
-            if action.type == dm_ai_module.ActionType.MANA_CHARGE:
+            # We updated the engine to use MOVE_CARD for mana charging in Phase.MANA
+            if action.type == dm_ai_module.ActionType.MOVE_CARD or action.type == dm_ai_module.ActionType.MANA_CHARGE:
                 charge_action = action
                 break
 
-        assert charge_action is not None, "Mana charge action should be available"
+        assert charge_action is not None, "Mana charge action should be available (MOVE_CARD or MANA_CHARGE)"
 
         # Execute action
         dm_ai_module.EffectResolver.resolve_action(state, charge_action, self.card_db)
