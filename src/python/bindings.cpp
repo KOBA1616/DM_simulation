@@ -17,6 +17,7 @@
 #include "../engine/utils/determinizer.hpp"
 #include "../utils/csv_loader.hpp"
 #include "../engine/card_system/json_loader.hpp"
+#include "../engine/card_system/generic_card_system.hpp"
 
 #include "../ai/pomdp/pomdp.hpp"
 #include "../ai/pomdp/parametric_belief.hpp"
@@ -482,7 +483,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly("players", &GameState::players)
         .def_readonly("winner", &GameState::winner)
         .def_readwrite("active_modifiers", &GameState::active_modifiers)
-        .def_readwrite("stack_zone", &GameState::stack_zone);
+        .def_readwrite("stack_zone", &GameState::stack_zone)
+        .def_readwrite("effect_buffer", &GameState::effect_buffer);
 
     // Expose stats/POMDP helpers as module-level helpers (wrappers)
     m.def("get_card_stats", [](const GameState &s) {
@@ -608,6 +610,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<dm::engine::JsonLoader>(m, "JsonLoader")
         .def_static("load_cards", &dm::engine::JsonLoader::load_cards);
+
+    py::class_<GenericCardSystem>(m, "GenericCardSystem")
+        .def_static("resolve_action", &GenericCardSystem::resolve_action)
+        .def_static("resolve_effect", &GenericCardSystem::resolve_effect)
+        .def_static("resolve_effect_with_targets", &GenericCardSystem::resolve_effect_with_targets)
+        .def_static("resolve_trigger", &GenericCardSystem::resolve_trigger)
+        .def_static("check_condition", &GenericCardSystem::check_condition);
 
     py::class_<DevTools>(m, "DevTools")
         .def_static("move_cards", &DevTools::move_cards,
