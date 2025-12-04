@@ -43,6 +43,9 @@ namespace dm::engine {
     void PhaseManager::start_turn(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         Player& active_player = game_state.get_active_player();
         
+        // Reset Turn Stats
+        game_state.turn_stats = TurnStats{};
+
         // Untap
         ManaSystem::untap_all(active_player);
 

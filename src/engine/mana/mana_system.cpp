@@ -100,6 +100,7 @@ namespace dm::engine {
         }
 
         int cost_remaining = get_adjusted_cost(game_state, player, card_def);
+        int paid_mana = 0;
         bool civ_requirement_met = (card_def.civilization == Civilization::ZERO);
 
         // First pass: Try to tap a card that satisfies the civilization requirement
@@ -110,6 +111,7 @@ namespace dm::engine {
                     if ((mana_card_def.civilization & card_def.civilization) != Civilization::NONE) {
                         card.is_tapped = true;
                         cost_remaining--;
+                        paid_mana++;
                         civ_requirement_met = true;
                         break;
                     }
@@ -124,8 +126,22 @@ namespace dm::engine {
                 if (!card.is_tapped) {
                     card.is_tapped = true;
                     cost_remaining--;
+                    paid_mana++;
                 }
             }
+        }
+
+        // Check if played without mana (Meta Counter logic)
+        // If paid_mana is 0, it means it was free (e.g. G-Zero, or heavily reduced to 0 but minimum cost is 1 so this branch handles purely 0 payment)
+        // Note: get_adjusted_cost enforces minimum 1 unless it's a special mechanic not using cost (like G-Zero).
+        // However, if cost_remaining was 0 initially (due to some other effect not yet implemented, or G-Zero overriding logic), paid_mana would be 0.
+        // Currently get_adjusted_cost ensures >= 1.
+        // But if we have G-Zero in the future, cost_remaining could be 0.
+        // The requirement says: "If paid_mana (tapped mana) is 0, set played_without_mana = true".
+        // Even if cost was reduced to 1, paid_mana would be 1.
+        // So this only triggers if truly 0 mana was tapped.
+        if (paid_mana == 0) {
+            game_state.turn_stats.played_without_mana = true;
         }
 
         // Decrement turns_remaining for one-shot modifiers (turns_remaining == 1)
