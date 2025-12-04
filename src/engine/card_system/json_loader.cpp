@@ -40,6 +40,21 @@ namespace dm::engine {
             def.keywords.revolution_change = true;
         }
 
+        // Keywords from explicit 'keywords' block (e.g. S-Trigger)
+        if (data.keywords.has_value()) {
+            const auto& kws = *data.keywords;
+            if (kws.count("shield_trigger") && kws.at("shield_trigger")) def.keywords.shield_trigger = true;
+            if (kws.count("blocker") && kws.at("blocker")) def.keywords.blocker = true;
+            if (kws.count("speed_attacker") && kws.at("speed_attacker")) def.keywords.speed_attacker = true;
+            if (kws.count("slayer") && kws.at("slayer")) def.keywords.slayer = true;
+            if (kws.count("double_breaker") && kws.at("double_breaker")) def.keywords.double_breaker = true;
+            if (kws.count("triple_breaker") && kws.at("triple_breaker")) def.keywords.triple_breaker = true;
+            if (kws.count("mach_fighter") && kws.at("mach_fighter")) def.keywords.mach_fighter = true;
+            if (kws.count("evolution") && kws.at("evolution")) def.keywords.evolution = true;
+            if (kws.count("g_strike") && kws.at("g_strike")) def.keywords.g_strike = true;
+            // Add other keywords as needed
+        }
+
         // Keywords mapping from effects
         // The engine relies on boolean flags in CardKeywords.
         // We infer these from TriggerType and/or PASSIVE_CONST actions.
