@@ -32,6 +32,7 @@ namespace dm::engine {
     private:
         static void resolve_battle_outcome(dm::core::GameState& game_state, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
         static void resolve_break_shield(dm::core::GameState& game_state, const dm::core::Action& action, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        static void resolve_reaction(dm::core::GameState& game_state, const dm::core::Action& action, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
 
         // Helper functions for generic keyword handling
         static int get_creature_power(const dm::core::CardInstance& creature, const dm::core::GameState& game_state, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
