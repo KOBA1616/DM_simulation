@@ -22,8 +22,8 @@ namespace dm::core {
         int power_mod = 0; // temporary/ongoing power modifications applied by effects
         
         // Constructors
-        CardInstance() : card_id(0), instance_id(-1) {}
-        CardInstance(CardID cid, int iid) : card_id(cid), instance_id(iid) {}
+        CardInstance() : card_id(0), instance_id(-1), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
+        CardInstance(CardID cid, int iid) : card_id(cid), instance_id(iid), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
     };
 
     struct PendingEffect {
