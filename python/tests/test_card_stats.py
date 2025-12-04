@@ -61,7 +61,7 @@ def test_card_stats_tracking():
     actions = ActionGenerator.generate_legal_actions(state, card_db)
     play_action = None
     for action in actions:
-        if action.type == ActionType.PLAY_CARD and action.card_id == 1:
+        if (action.type == ActionType.PLAY_CARD or action.type == ActionType.DECLARE_PLAY) and action.card_id == 1:
             play_action = action
             break
 
@@ -69,6 +69,34 @@ def test_card_stats_tracking():
 
     # Execute action
     dm_ai_module.EffectResolver.resolve_action(state, play_action, card_db)
+    
+    # If using DECLARE_PLAY, we might need to follow up with PAY_COST and RESOLVE_PLAY
+    # But EffectResolver might handle the chain if we are just testing stats?
+    # No, EffectResolver.resolve_action just does one step.
+    # If we use DECLARE_PLAY, the card goes to stack.
+    # Then we need to generate actions again to get PAY_COST.
+    
+    if play_action.type == ActionType.DECLARE_PLAY:
+        # Step 2: PAY_COST
+        actions = ActionGenerator.generate_legal_actions(state, card_db)
+        pay_action = None
+        for action in actions:
+            if action.type == ActionType.PAY_COST:
+                pay_action = action
+                break
+        if pay_action:
+             dm_ai_module.EffectResolver.resolve_action(state, pay_action, card_db)
+             
+        # Step 3: RESOLVE_PLAY
+        actions = ActionGenerator.generate_legal_actions(state, card_db)
+        resolve_action = None
+        for action in actions:
+            if action.type == ActionType.RESOLVE_PLAY:
+                resolve_action = action
+                break
+        if resolve_action:
+             dm_ai_module.EffectResolver.resolve_action(state, resolve_action, card_db)
+
 
     # Check stats again
     stats_after = dm_ai_module.get_card_stats(state)
@@ -103,8 +131,19 @@ def test_card_stats_win_contribution():
     # Play Aqua Hulcus (Card 2)
     state.current_phase = dm_ai_module.Phase.MAIN
     actions = ActionGenerator.generate_legal_actions(state, card_db)
-    play_action = [a for a in actions if a.type == ActionType.PLAY_CARD and a.card_id == 2][0]
+    play_action = [a for a in actions if (a.type == ActionType.PLAY_CARD or a.type == ActionType.DECLARE_PLAY) and a.card_id == 2][0]
     dm_ai_module.EffectResolver.resolve_action(state, play_action, card_db)
+
+    if play_action.type == ActionType.DECLARE_PLAY:
+        # Pay Cost
+        actions = ActionGenerator.generate_legal_actions(state, card_db)
+        pay_action = [a for a in actions if a.type == ActionType.PAY_COST][0]
+        dm_ai_module.EffectResolver.resolve_action(state, pay_action, card_db)
+        # Resolve Play
+        actions = ActionGenerator.generate_legal_actions(state, card_db)
+        resolve_action = [a for a in actions if a.type == ActionType.RESOLVE_PLAY][0]
+        dm_ai_module.EffectResolver.resolve_action(state, resolve_action, card_db)
+
 
     # Proceed to Attack Phase
     state.current_phase = dm_ai_module.Phase.ATTACK
@@ -127,8 +166,20 @@ def test_card_stats_win_contribution():
     pass_action = [a for a in actions if a.type == ActionType.PASS][0]
     dm_ai_module.EffectResolver.resolve_action(state, pass_action, card_db)
 
+    # Resolve Battle or Break Shield
+    actions = ActionGenerator.generate_legal_actions(state, card_db)
+    resolve_action = None
+    for a in actions:
+        if a.type == ActionType.RESOLVE_BATTLE or a.type == ActionType.BREAK_SHIELD:
+            resolve_action = a
+            break
+
+    if resolve_action:
+        dm_ai_module.EffectResolver.resolve_action(state, resolve_action, card_db)
+
     # Trigger game over check via fast_forward
     dm_ai_module.PhaseManager.fast_forward(state, card_db)
+
 
     assert state.winner == dm_ai_module.GameResult.P1_WIN
 

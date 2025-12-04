@@ -52,7 +52,7 @@ class TestEngineBasics:
         charge_action = None
         for action in actions:
             # We updated the engine to use MOVE_CARD for mana charging in Phase.MANA
-            if action.type == dm_ai_module.ActionType.MANA_CHARGE:
+            if action.type == dm_ai_module.ActionType.MANA_CHARGE or action.type == dm_ai_module.ActionType.MOVE_CARD:
                 charge_action = action
                 break
 
