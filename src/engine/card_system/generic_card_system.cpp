@@ -421,25 +421,20 @@ namespace dm::engine {
                 }
 
                 if (chosen_idx != -1) {
-                    // Play for free
+                    // Refactored to use PendingEffect (Stack) for proper gatekeeper/trigger handling
                     CardInstance card = looked[chosen_idx];
-                    const dm::core::CardData* def = dm::engine::CardRegistry::get_card_data(card.card_id);
-                    if (def) {
-                        game_state.on_card_play(card.card_id, game_state.turn_number, false, 0, active.id);
 
-                        if (def->type == "CREATURE" || def->type == "EVOLUTION_CREATURE") {
-                            card.summoning_sickness = true;
-                            active.battle_zone.push_back(card);
-                            resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
+                    // Move chosen card to Buffer first so PendingEffect can find it
+                    game_state.effect_buffer.push_back(card);
 
-                        } else if (def->type == "SPELL") {
-                             active.graveyard.push_back(card);
-                             resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
-                        }
-                    }
+                    // Queue Internal Play
+                    game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, card.instance_id, active.id);
                 }
 
                 // Rest to bottom
+                // Note: The chosen card is NOT in 'looked' anymore? No, 'looked' is local copy.
+                // We popped from deck.
+                // If we put chosen into Buffer, we shouldn't put it back in deck.
                 for (int i = 0; i < (int)looked.size(); ++i) {
                     if (i == chosen_idx) continue;
                     active.deck.insert(active.deck.begin(), looked[i]);

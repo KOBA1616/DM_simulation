@@ -77,6 +77,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("DECLARE_PLAY", ActionType::DECLARE_PLAY)
         .value("PAY_COST", ActionType::PAY_COST)
         .value("RESOLVE_PLAY", ActionType::RESOLVE_PLAY)
+        .value("PLAY_CARD_INTERNAL", ActionType::PLAY_CARD_INTERNAL)
         .value("RESOLVE_BATTLE", ActionType::RESOLVE_BATTLE)
         .value("BREAK_SHIELD", ActionType::BREAK_SHIELD)
         .export_values();
