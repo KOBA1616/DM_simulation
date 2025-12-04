@@ -33,6 +33,7 @@ namespace dm::core {
         bool destruction : 1;     // Destruction Trigger
 
         bool hyper_energy : 1;    // Added for Phase 5 (Hyper Energy)
+        bool meta_counter_play : 1; // Added for Phase 5 (Meta Counter)
     };
 
     // Mode Selection: ModalEffectGroup 構造体による複数選択管理 [Q71]
