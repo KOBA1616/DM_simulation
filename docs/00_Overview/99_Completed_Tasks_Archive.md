@@ -48,3 +48,10 @@
 
 #### 3. スタック（宣言）ゾーンとコスト計算の再構築
 *   **ステータス:** 完了 (Implemented & Verified)
+
+### [PLAN-003] 革命チェンジ (Revolution Change)
+*   **概要:** 革命チェンジのエンジン実装とGUI統合。
+*   **ステータス:** 完了 (Verified via `tests/test_revolution_change.py`)
+    *   専用アクション `REVOLUTION_CHANGE` とトリガー `ON_ATTACK_FROM_HAND` の実装。
+    *   `FilterDef` を使用した革命チェンジ条件（文明、種族、コスト）の定義。
+    *   GUIエディタでの設定機能。
