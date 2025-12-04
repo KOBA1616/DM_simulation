@@ -65,6 +65,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::enum_<ActionType>(m, "ActionType")
         .value("PASS", ActionType::PASS)
         .value("MANA_CHARGE", ActionType::MANA_CHARGE)
+        .value("MOVE_CARD", ActionType::MOVE_CARD)
         .value("PLAY_CARD", ActionType::PLAY_CARD)
         .value("ATTACK_PLAYER", ActionType::ATTACK_PLAYER)
         .value("ATTACK_CREATURE", ActionType::ATTACK_CREATURE)
