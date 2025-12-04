@@ -43,6 +43,13 @@ namespace dm::core {
         // Details on effects would go here or be referenced by ID
     };
 
+    // Generic Hand Trigger Definition
+    struct HandTrigger {
+        TriggerType trigger_type; // e.g. AT_END_OF_TURN
+        ConditionDef condition;   // e.g. OPPONENT_PLAYED_WITHOUT_MANA
+        // Action is implicitly "Play this card for 0" for now, or can be expanded later
+    };
+
     struct CardDefinition {
         CardID id;
         std::string name;
@@ -64,6 +71,9 @@ namespace dm::core {
         // Revolution Change Condition (Data-driven)
         // If has_value(), this filter applies to the attacking creature.
         std::optional<FilterDef> revolution_change_condition;
+
+        // Hand Triggers (e.g. Meta Counter, Ninja Strike)
+        std::vector<HandTrigger> hand_triggers;
     };
 
 }
