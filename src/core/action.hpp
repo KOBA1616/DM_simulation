@@ -14,7 +14,10 @@ namespace dm::core {
         USE_SHIELD_TRIGGER,
         SELECT_TARGET,
         RESOLVE_EFFECT,
-        USE_ABILITY // For things like Revolution Change, Ninja Strike
+        USE_ABILITY, // For things like Revolution Change, Ninja Strike
+        DECLARE_PLAY, // New
+        PAY_COST,     // New
+        RESOLVE_PLAY  // New
     };
 
     struct Action {
