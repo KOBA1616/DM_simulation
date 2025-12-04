@@ -4,6 +4,7 @@
 #include "../card_system/card_registry.hpp"
 #include "../card_system/target_utils.hpp"
 #include "../mana/mana_system.hpp"
+#include "../flow/reaction_system.hpp" // Added
 #include <algorithm>
 #include <iostream>
 
@@ -113,6 +114,9 @@ namespace dm::engine {
             case ActionType::BREAK_SHIELD:
                 resolve_break_shield(game_state, action, card_db);
                 break;
+            case ActionType::DECLARE_REACTION:
+                resolve_reaction(game_state, action, card_db);
+                break;
             default:
                 break;
         }
@@ -192,6 +196,23 @@ namespace dm::engine {
         if (it != defender.battle_zone.end()) {
             it->is_tapped = true;
         }
+
+        // Ninja Strike / Strike Back check on Block
+        // "Whenever ... blocks or is blocked"
+        // Active Player (Attacker) might use Ninja Strike because their creature "is blocked"?
+        // Or Defender because they "blocked"?
+        // Ninja Strike text: "Whenever ... blocks OR IS BLOCKED".
+
+        // Check Defender's Reactions (e.g. they blocked)
+        bool reaction_opened = ReactionSystem::check_and_open_window(
+             game_state, card_db, "ON_BLOCK_OR_ATTACK", defender.id
+        );
+
+        // Check Attacker's Reactions (e.g. they were blocked)
+        bool reaction_opened_attacker = ReactionSystem::check_and_open_window(
+             game_state, card_db, "ON_BLOCK_OR_ATTACK", game_state.active_player_id
+        );
+
         // Instead of executing battle immediately, we queue the battle resolution.
         game_state.pending_effects.emplace_back(EffectType::RESOLVE_BATTLE, game_state.current_attack.source_instance_id, game_state.active_player_id);
     }
@@ -858,8 +879,95 @@ namespace dm::engine {
         }
 
         if (!revolution_change_triggered) {
-            game_state.current_phase = Phase::BLOCK;
+            // Check for Reactions (Ninja Strike, etc.)
+            // Ninja Strike triggers on Attack or Block.
+            // Check Opponent's Hand.
+            bool reaction_opened = ReactionSystem::check_and_open_window(
+                game_state, card_db, "ON_BLOCK_OR_ATTACK", game_state.get_non_active_player().id
+            );
+
+            // Also check Attacking Player's hand? Ninja Strike is usually defensive but rules allow offensive usage if conditions met.
+            // Actually, Ninja Strike is "Whenever one of your creatures blocks or is blocked OR whenever your opponent attacks".
+            // So on Attack: Opponent can use Ninja Strike. Attacker cannot (unless he blocks?).
+            // Wait, Ninja Strike text: "Whenever your opponent attacks or blocks". NO.
+            // Ninja Strike text: "Whenever your opponent attacks OR blocks". (JAP: 「相手のクリーチャーが攻撃またはブロックした時」)
+            // Wait, standard Ninja Strike text: "相手のターン中に、シノビが攻撃またはブロックした時" ? No.
+            // "ニンジャ・ストライク X（相手のクリーチャーが攻撃またはブロックした時、...）"
+            // "Whenever an opponent's creature attacks or blocks".
+
+            // So, when ACTIVE player attacks:
+            //   NON-ACTIVE player can use Ninja Strike.
+
+            if (!reaction_opened) {
+                 game_state.current_phase = Phase::BLOCK;
+            } else {
+                 // The pending effect REACTION_WINDOW will pause the flow.
+                 // We do NOT change phase yet, or we assume we are still in ATTACK phase but handling stack.
+                 // Actually, Ninja Strike happens "At the end of the attack step" or "During attack"?
+                 // It's a triggered ability.
+                 // If we open a window, ActionGenerator will produce actions.
+                 // After window closes, we proceed to BLOCK phase?
+                 // Wait, Ninja Strike timing is "At the start of attack step" effectively?
+                 // No, it's a Trigger. "When attacks".
+                 // So we queue it.
+                 // But ReactionSystem adds a REACTION_WINDOW pending effect.
+                 // We need to ensure that when that resolves/is passed, we move to BLOCK phase.
+                 // That transition needs to happen.
+
+                 // How do we track "After Reaction Window"?
+                 // We can rely on PhaseManager or ActionGenerator.
+                 // For now, let's leave current_phase as ATTACK.
+                 // But wait, if we don't change phase, ActionGenerator might generate ATTACK actions again?
+                 // No, ActionGenerator prioritizes PendingEffects.
+                 // Once REACTION_WINDOW is cleared, what happens?
+                 // We need to transition to BLOCK.
+                 // We might need a state flag "attack_declared_reaction_checked".
+                 // OR, we can just say: If we are in ATTACK phase and have an active attack,
+                 // and no pending effects, we move to BLOCK.
+                 // But ActionGenerator::generate_legal_actions does this?
+                 // Currently, resolve_attack sets Phase::BLOCK directly.
+                 // If we don't set it here, we stay in ATTACK.
+                 // And ActionGenerator will see "Phase::ATTACK" and "No Pending Effects" (after window closes).
+                 // It might try to generate attacks again.
+                 // We need to move to BLOCK *after* the window closes.
+                 // The REACTION_WINDOW pending effect should probably have a callback or we use a distinct phase?
+
+                 // Simpler approach:
+                 // We set Phase::BLOCK immediately, BUT because we pushed a PendingEffect,
+                 // the ActionGenerator will generate actions for that PendingEffect (Reaction)
+                 // BEFORE generating BLOCK actions.
+                 // Block actions are generated in Phase::BLOCK.
+                 // If we are in Phase::BLOCK, can we use Ninja Strike?
+                 // Ninja Strike usage is "When attacks".
+                 // If we move to BLOCK phase, the blockers are declared.
+                 // If Ninja Strike puts a blocker into play, it needs to be before Block declaration.
+                 // So we must resolve Ninja Strike BEFORE Block Phase starts (or at start of Block Phase).
+
+                 // So setting Phase::BLOCK here is correct, PROVIDED ActionGenerator
+                 // checks PendingEffects BEFORE Block actions.
+                 // ActionGenerator typically checks PendingEffects first.
+
+                 game_state.current_phase = Phase::BLOCK;
+            }
         }
+    }
+
+    void EffectResolver::resolve_reaction(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
+         Player& controller = game_state.players[action.target_player];
+
+         // Ninja Strike Logic: Play for free (Cost 0) from Hand
+         // The action.source_instance_id points to the card in hand
+
+         CardInstance card = remove_from_hand(controller, action.source_instance_id);
+
+         // Move to Stack first as per protocol for resolve_play_from_stack
+         game_state.stack_zone.push_back(card);
+
+         // Use Cost Reduction 999 to simulate "No Cost" / "Free Play"
+         // This ensures ManaSystem::auto_tap_mana is skipped or pays 0
+         resolve_play_from_stack(game_state, card.instance_id, 999, SpawnSource::HAND_SUMMON, controller.id, card_db);
+
+         // The REACTION_WINDOW pending effect remains, allowing multiple Ninja Strikes.
     }
 
 }
