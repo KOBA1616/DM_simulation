@@ -30,7 +30,7 @@ namespace dm::ai {
         // 1. Mana Charge
         std::vector<Action> mana_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == ActionType::MANA_CHARGE) {
+            if (action.type == ActionType::MANA_CHARGE || action.type == ActionType::MOVE_CARD) {
                 mana_actions.push_back(action);
             }
         }
