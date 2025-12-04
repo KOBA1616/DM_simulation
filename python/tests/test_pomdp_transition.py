@@ -9,13 +9,15 @@ def test_transition_reveal_penalty():
 
     # prev state: card 1 is only in deck
     prev = dm_ai_module.GameState(0)
-    ci_prev = dm_ai_module.CardInstance(1, 201)
-    prev.players[1].deck.append(ci_prev)
+    # ci_prev = dm_ai_module.CardInstance(1, 201)
+    # prev.players[1].deck.append(ci_prev)
+    prev.add_card_to_deck(1, 1, 201)
 
     # curr state: card 1 moved to hand (a reveal)
     curr = dm_ai_module.GameState(0)
-    ci_curr = dm_ai_module.CardInstance(1, 201)
-    curr.players[1].hand.append(ci_curr)
+    # ci_curr = dm_ai_module.CardInstance(1, 201)
+    # curr.players[1].hand.append(ci_curr)
+    curr.add_card_to_hand(1, 1, 201)
 
     b_reveal = dm_ai_module.ParametricBelief()
     b_reveal.initialize_ids([1, 2, 3])
