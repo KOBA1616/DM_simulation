@@ -14,35 +14,16 @@
 *   **データ:** JSONベースのカード定義 (`data/cards.json`)。
 
 ## 3. 現在の開発段階 (Current Development Stage)
-**ステータス:** **バトル処理の原子アクション化 - 実装完了**
+**ステータス:** **エンジンフローのリファクタリングとメタカウンター実装**
 
-エンジンのリファクタリングフェーズにおいて、バトル解決処理の分解（`execute_battle` の `RESOLVE_BATTLE` と `BREAK_SHIELD` への分離）が完了しました。
-これにより、ブロック後の処理やシールドブレイクが独立したアクションとして `ActionGenerator` によって生成され、`PendingEffect` を経由して制御されるようになりました。
-これはシールド焼却や、より複雑な攻撃解決ロジック（置換効果など）を実装するための基盤となります。
+原子アクション分解（プレイ、バトル、マナチャージ）が完了し、現在はスタックとゲートキーパーの統合、およびメタカウンター踏み倒し機能の実装フェーズに移行しています。
 
 ## 4. アクティブな要件とタスク (Uncompleted Tasks)
 
 ### 4.1. エンジンリファクタリング：原子アクション分解
 以下の提案に基づき、エンジンのコアアクション処理を分解・再定義します。これにより、コードの重複を排除し、新しいメカニクス（G・ゼロ、シールド焼却など）の実装を容易にします。
 
-#### 1. PLAY_CARD 処理の3段階分解 (完了)
-現在の `resolve_play_card` は「宣言」「コスト支払い」「解決」を一括で行っていますが、これを以下のアクションに分解しました。
-*   **DECLARE_PLAY:** カードをソース領域（手札、墓地など）から「スタック領域」へ移動させるアクション。
-*   **PAY_COST:** マナコストを計算し、マナをタップするアクション。支払いに失敗した場合は失敗を返す。
-*   **RESOLVE_PLAY:** スタックにあるカードを適切なゾーン（バトルゾーンまたは墓地）に移動させ、ON_PLAY（CIP）効果を誘発させるアクション。
-    *   *メリット:* G・ゼロ/踏み倒し（PAY_COSTスキップ）、墓地詠唱（ソース変更）、シールドトリガーの共通化が可能になります。
-
-#### 2. execute_battle の分解（バトル解決とブレイクの分離） (完了)
-現在の `execute_battle` 関数（勝敗判定とブレイク処理の混在）を分解しました。
-*   **RESOLVE_BATTLE:** クリーチャー同士のパワーを比較し、敗北した方を破壊するアクション。
-*   **BREAK_SHIELD:** （攻撃成功時）シールドを1枚指定して手札に加え、S・トリガー判定を行うアクション。W・ブレイカー等はこれを複数回生成します。
-    *   *実装詳細:* ブロックフェーズの終了時 (`PASS`) に、状況に応じて `RESOLVE_BATTLE` または `BREAK_SHIELD` の `PendingEffect` を発行し、それを `ActionGenerator` がアクションに変換して処理するフローに変更しました。
-
-#### 3. マナチャージの汎用化 (完了)
-*   **MANA_CHARGE → MOVE_CARD:** マナチャージを汎用的な `MOVE_CARD` (Destination: MANA_ZONE) に統合します。
-    *   *実装詳細:* `ActionType` に `MOVE_CARD` を追加し、マナフェーズでのアクション生成を `MOVE_CARD` に移行しました。`EffectResolver` での処理も対応済みです。（後方互換性のため `MANA_CHARGE` Enumは維持していますが、生成ロジックは更新されています）
-
-#### 4. 汎用アクションの完全定義
+#### 1. 汎用アクションの完全定義
 *   **A. MOVE_CARD (完全共通化) (一部完了):**
     *   アクション: `MOVE_CARD(source_zone, dest_zone, card_instance_id)`
     *   破壊、バウンス、ドロー、シールド化を全て統合し、「ゾーンを離れた時/置かれた時」のフック処理を一元化します。
@@ -55,7 +36,7 @@
 *   **D. BATTLE_CREATURES:**
     *   ブレイク要素を排除した純粋なバトル処理として定義します。
 
-#### 5. その他機能拡張のためのアクション
+#### 2. その他機能拡張のためのアクション
 *   **APPLY_MODIFIER (継続的効果):**
     *   アクション: `APPLY_MODIFIER(modifier_def, duration, target_filter)`
     *   コスト軽減やパワー修正を履歴に残るアクションとして定義し、AIが理由を追跡可能にします。
@@ -82,23 +63,7 @@
 
 ### 4.4. 実装計画：メタカウンターとエンジンコア拡張
 
-#### 1. コア型定義とデータ構造の整備 (完了)
-- **Action と Types の更新** (完了)
-    - `src/core/types.hpp` に `SpawnSource` enum を追加します。
-    - `src/core/types.hpp` に新しい `EffectType` として `INTERNAL_PLAY`, `META_COUNTER`, `RESOLVE_BATTLE`, `BREAK_SHIELD` を追加します。
-    - `src/core/action.hpp` に `ActionType::PLAY_CARD_INTERNAL`, `RESOLVE_BATTLE`, `BREAK_SHIELD` を追加します。
-- **カード定義の更新** (完了)
-    - `src/core/card_def.hpp` の `CardKeywords` に `bool meta_counter_play` を追加します。
-- **ゲーム状態の更新** (完了)
-    - `src/core/game_state.hpp` に `struct TurnStats` を定義し、メンバとして `bool played_without_mana` を持たせます。
-
-#### 2. ターン統計機能の実装 (マナ踏み倒し検知) (完了)
-- **リセット処理** (完了)
-    - `src/engine/flow/phase_manager.cpp` の `start_turn` メソッド内で、`turn_stats` をリセットする処理を追加します。
-- **フラグ更新処理** (完了)
-    - `src/engine/mana/mana_system.hpp` (または `cpp`) を修正し、カードプレイ時に「支払われたマナ（タップされたマナ）」が0枚であるかを確認します。
-
-#### 3. エンジンフローのリファクタリング (スタックとゲートキーパー)
+#### 1. エンジンフローのリファクタリング (スタックとゲートキーパー)
 - **EffectResolver の拡張**
     - `src/engine/effects/effect_resolver.cpp` の `resolve_play_from_stack` を修正し、`SpawnSource` 引数を受け取れるようにします。
     - **ゲートキーパー (Gatekeeper) ロジックの実装**:
@@ -107,19 +72,19 @@
 - **ActionGenerator の更新**
     - `src/engine/action_gen/action_generator.cpp` を更新し、`EffectType::INTERNAL_PLAY` や `META_COUNTER` が `pending_effects` にある場合、`PLAY_CARD_INTERNAL` アクションを生成するようにします。
 
-#### 4. 既存メカニクスのスタック移行
+#### 2. 既存メカニクスのスタック移行
 - **直接 `push_back` の廃止**
     - 以下の箇所で、直接バトルゾーンに追加している処理を廃止し、代わりに `PendingEffect` (Type: `INTERNAL_PLAY`) を積む形に変更します。
         - `src/engine/card_system/generic_card_system.cpp`: メクレイド (MEKRAID)、バッファからのプレイ
         - `src/engine/effects/effect_resolver.cpp`: S・トリガー (SHIELD_TRIGGER) の解決処理
 
-#### 5. カウンター踏み倒し機能の実装
+#### 3. カウンター踏み倒し機能の実装
 - **ターン終了時のチェック**
     - `src/engine/flow/phase_manager.cpp` の `next_phase` にロジックを追加します。
 - **解決フロー**
     - 積まれた `META_COUNTER` は `ActionGenerator` によってアクション化され、スタック経由（`PLAY_CARD_INTERNAL`）で解決されます。
 
-#### 6. 検証
+#### 4. 検証
 - **テスト作成**
     - `tests/test_meta_counter.py` を作成し検証します。
 - **Pre-commit**
