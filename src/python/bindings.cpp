@@ -127,6 +127,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("G_STRIKE", EffectType::G_STRIKE)
         .value("DESTRUCTION", EffectType::DESTRUCTION)
         .value("ON_ATTACK_FROM_HAND", EffectType::ON_ATTACK_FROM_HAND)
+        .value("INTERNAL_PLAY", EffectType::INTERNAL_PLAY)
+        .value("META_COUNTER", EffectType::META_COUNTER)
+        .export_values();
+
+    py::enum_<SpawnSource>(m, "SpawnSource")
+        .value("HAND_SUMMON", SpawnSource::HAND_SUMMON)
+        .value("EFFECT_SUMMON", SpawnSource::EFFECT_SUMMON)
+        .value("EFFECT_PUT", SpawnSource::EFFECT_PUT)
         .export_values();
 
     py::enum_<ResolveType>(m, "ResolveType")
@@ -294,7 +302,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property("at_start_of_turn", [](const CardKeywords& k) { return k.at_start_of_turn; }, [](CardKeywords& k, bool v) { k.at_start_of_turn = v; })
         .def_property("at_end_of_turn", [](const CardKeywords& k) { return k.at_end_of_turn; }, [](CardKeywords& k, bool v) { k.at_end_of_turn = v; })
         .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; })
-        .def_property("hyper_energy", [](const CardKeywords& k) { return k.hyper_energy; }, [](CardKeywords& k, bool v) { k.hyper_energy = v; });
+        .def_property("hyper_energy", [](const CardKeywords& k) { return k.hyper_energy; }, [](CardKeywords& k, bool v) { k.hyper_energy = v; })
+        .def_property("meta_counter_play", [](const CardKeywords& k) { return k.meta_counter_play; }, [](CardKeywords& k, bool v) { k.meta_counter_play = v; });
 
     py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init<>())
@@ -373,7 +382,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<CardID, int>())
-        .def_readonly("card_id", &CardInstance::card_id)
+        .def_readwrite("card_id", &CardInstance::card_id)
         .def_readonly("instance_id", &CardInstance::instance_id)
         .def_readwrite("is_tapped", &CardInstance::is_tapped)
         .def_readwrite("summoning_sickness", &CardInstance::summoning_sickness);
@@ -433,6 +442,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("controller", &CostModifier::controller)
         .def_readwrite("source_instance_id", &CostModifier::source_instance_id);
 
+    py::class_<TurnStats>(m, "TurnStats")
+        .def(py::init<>())
+        .def_readwrite("played_without_mana", &TurnStats::played_without_mana);
+
     py::class_<GameState>(m, "GameState")
         .def(py::init<uint32_t>())
         .def("clone", [](const GameState& s) { return GameState(s); })
@@ -488,7 +501,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly("winner", &GameState::winner)
         .def_readwrite("active_modifiers", &GameState::active_modifiers)
         .def_readwrite("stack_zone", &GameState::stack_zone)
-        .def_readwrite("effect_buffer", &GameState::effect_buffer);
+        .def_readwrite("effect_buffer", &GameState::effect_buffer)
+        .def_readwrite("turn_stats", &GameState::turn_stats);
 
     // Expose stats/POMDP helpers as module-level helpers (wrappers)
     m.def("get_card_stats", [](const GameState &s) {
@@ -568,6 +582,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("target_player", &Action::target_player)
         .def_readwrite("slot_index", &Action::slot_index)
         .def_readwrite("target_slot_index", &Action::target_slot_index)
+        .def_readwrite("spawn_source", &Action::spawn_source)
         .def("to_string", &Action::to_string);
 
     // Engine Classes

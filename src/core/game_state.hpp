@@ -69,6 +69,12 @@ namespace dm::core {
         PlayerID controller;
     };
 
+    // Phase 5: Turn Stats for Meta Counter logic
+    struct TurnStats {
+        bool played_without_mana = false; // True if a card was played with 0 actual mana paid (except cost reduction down to >= 1)
+        // Add more stats here as needed (e.g. spells cast count, creatures summoned count)
+    };
+
     struct Player {
         PlayerID id;
         std::vector<CardInstance> hand;
@@ -108,6 +114,9 @@ namespace dm::core {
 
         // Effect Buffer for complex actions (Search, Gachinko Judge, Mekraid) [PLAN-002]
         std::vector<CardInstance> effect_buffer;
+
+        // Turn Stats [Phase 5]
+        TurnStats turn_stats;
 
         // Determinism: std::mt19937 inside State [Q69]
         std::mt19937 rng;
