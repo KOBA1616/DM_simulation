@@ -94,7 +94,7 @@ class TestEngineBasics:
         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
         play_action = None
         for action in actions:
-            if action.type == dm_ai_module.ActionType.PLAY_CARD and action.card_id == creature_id:
+            if (action.type == dm_ai_module.ActionType.PLAY_CARD or action.type == dm_ai_module.ActionType.DECLARE_PLAY) and action.card_id == creature_id:
                 play_action = action
                 break
 
@@ -104,6 +104,27 @@ class TestEngineBasics:
         dm_ai_module.initialize_card_stats(state, self.card_db, 40)
 
         dm_ai_module.EffectResolver.resolve_action(state, play_action, self.card_db)
+
+        if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
+            # Step 2: PAY_COST
+            actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+            pay_action = None
+            for action in actions:
+                if action.type == dm_ai_module.ActionType.PAY_COST:
+                    pay_action = action
+                    break
+            if pay_action:
+                 dm_ai_module.EffectResolver.resolve_action(state, pay_action, self.card_db)
+            
+            # Step 3: RESOLVE_PLAY
+            actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+            resolve_action = None
+            for action in actions:
+                if action.type == dm_ai_module.ActionType.RESOLVE_PLAY:
+                    resolve_action = action
+                    break
+            if resolve_action:
+                 dm_ai_module.EffectResolver.resolve_action(state, resolve_action, self.card_db)
 
         assert len(p0.battle_zone) == 1
         assert p0.battle_zone[0].card_id == creature_id
