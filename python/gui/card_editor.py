@@ -84,7 +84,8 @@ JP_TEXT = {
     "POWER_ATTACKER": "パワーアタッカー",
     "EVOLUTION": "進化",
     "MACH_FIGHTER": "マッハファイター",
-    "G_STRIKE": "G・ストライク"
+    "G_STRIKE": "G・ストライク",
+    "JUST_DIVER": "ジャストダイバー"
 }
 
 def tr(key):
@@ -237,7 +238,8 @@ class CardEditor(QDialog):
         keywords_list = [
             "BLOCKER", "SPEED_ATTACKER", "SLAYER",
             "DOUBLE_BREAKER", "TRIPLE_BREAKER", "POWER_ATTACKER",
-            "EVOLUTION", "MACH_FIGHTER", "G_STRIKE"
+            "EVOLUTION", "MACH_FIGHTER", "G_STRIKE",
+            "JUST_DIVER"
         ]
         
         for i, kw in enumerate(keywords_list):
@@ -252,6 +254,11 @@ class CardEditor(QDialog):
         self.shield_trigger_cb = QCheckBox(tr("SHIELD_TRIGGER"))
         self.shield_trigger_cb.stateChanged.connect(self.update_current_card_data)
         form.addRow(self.shield_trigger_cb)
+
+        # Hyper Energy (Special Action)
+        self.hyper_energy_cb = QCheckBox("Hyper Energy (ハイパーエナジー)")
+        self.hyper_energy_cb.stateChanged.connect(self.update_current_card_data)
+        form.addRow(self.hyper_energy_cb)
 
         # Revolution Change
         self.rev_change_group = QGroupBox("Revolution Change (革命チェンジ)")
@@ -468,6 +475,15 @@ class CardEditor(QDialog):
         st_kw = card.get('keywords', {}).get('shield_trigger', False)
         self.shield_trigger_cb.setChecked(st_kw)
 
+        # Hyper Energy check
+        has_hyper = False
+        for eff in effects:
+            for act in eff.get('actions', []):
+                if act.get('type') == 'COST_REFERENCE' and act.get('str_val') == 'HYPER_ENERGY':
+                    has_hyper = True
+                    break
+        self.hyper_energy_cb.setChecked(has_hyper)
+
         # Revolution Change check
         rev_cond = card.get('revolution_change_condition', None)
         if rev_cond:
@@ -498,6 +514,7 @@ class CardEditor(QDialog):
         for cb in self.keyword_checkboxes.values():
             cb.blockSignals(block)
         self.shield_trigger_cb.blockSignals(block)
+        self.hyper_energy_cb.blockSignals(block)
         self.rev_change_group.blockSignals(block)
         self.rev_civ_input.blockSignals(block)
         self.rev_race_input.blockSignals(block)
@@ -526,6 +543,38 @@ class CardEditor(QDialog):
         else:
             if 'keywords' in card and 'shield_trigger' in card['keywords']:
                 del card['keywords']['shield_trigger']
+
+        # Sync Hyper Energy
+        # 1. Remove existing Hyper Energy actions/effects
+        cleaned_effects_for_hyper = []
+        for eff in card.get('effects', []):
+            new_actions = []
+            for act in eff.get('actions', []):
+                if not (act.get('type') == 'COST_REFERENCE' and act.get('str_val') == 'HYPER_ENERGY'):
+                    new_actions.append(act)
+
+            # Keep effect if it has other actions or if it's not a pure Hyper Energy container (e.g. not NONE trigger)
+            # Actually, if trigger is NONE and actions empty, we drop it.
+            if new_actions or eff.get('trigger') != 'NONE':
+                eff['actions'] = new_actions
+                cleaned_effects_for_hyper.append(eff)
+
+        card['effects'] = cleaned_effects_for_hyper
+
+        # 2. Add back if checked
+        if self.hyper_energy_cb.isChecked():
+            # Add a new effect for Hyper Energy
+            card['effects'].append({
+                "trigger": "NONE",
+                "condition": {"type": "NONE"},
+                "actions": [{
+                    "type": "COST_REFERENCE",
+                    "str_val": "HYPER_ENERGY",
+                    "value1": 0,
+                    "scope": "PLAYER_SELF",
+                    "filter": {}
+                }]
+            })
 
         # Sync Revolution Change
         if self.rev_change_group.isChecked():

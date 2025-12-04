@@ -7,6 +7,7 @@ import csv
 # Add python/ and root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../bin')))
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -20,6 +21,7 @@ from gui.card_editor import CardEditor
 from gui.widgets.zone_widget import ZoneWidget
 from gui.widgets.mcts_view import MCTSView
 from gui.widgets.card_detail_panel import CardDetailPanel
+from gui.simulation_dialog import SimulationDialog
 # from gui.ai.mcts_python import PythonMCTS # Removed
 
 
@@ -129,6 +131,10 @@ class GameWindow(QMainWindow):
         self.card_editor_button = QPushButton("カード編集")
         self.card_editor_button.clicked.connect(self.open_card_editor)
         self.info_layout.addWidget(self.card_editor_button)
+
+        self.sim_dialog_button = QPushButton("バッチシミュレーション")
+        self.sim_dialog_button.clicked.connect(self.open_simulation_dialog)
+        self.info_layout.addWidget(self.sim_dialog_button)
 
         # Deck Loading Controls
         deck_group = QGroupBox("デッキ管理")
@@ -271,6 +277,10 @@ class GameWindow(QMainWindow):
     def open_card_editor(self):
         self.card_editor = CardEditor("data/cards.json")
         self.card_editor.show()
+
+    def open_simulation_dialog(self):
+        self.sim_dialog = SimulationDialog(self.card_db, self)
+        self.sim_dialog.show()
 
     def load_deck_p0(self):
         os.makedirs("data/decks", exist_ok=True)
