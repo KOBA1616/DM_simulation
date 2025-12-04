@@ -65,9 +65,9 @@
 
 #### 1. エンジンフローのリファクタリング (スタックとゲートキーパー)
 - **EffectResolver の拡張**
-    - `src/engine/effects/effect_resolver.cpp` の `resolve_play_from_stack` を修正し、`SpawnSource` 引数を受け取れるようにします。
+    - [完了] `src/engine/effects/effect_resolver.cpp` の `resolve_play_from_stack` を修正し、`SpawnSource` 引数を受け取れるようにしました。
     - **ゲートキーパー (Gatekeeper) ロジックの実装**:
-        - カードがバトルゾーンに出る直前に、「移動先決定ロジック」を挟みます。
+        - [完了] カードがバトルゾーンに出る直前に、「移動先決定ロジック」を挟みます（SpawnSourceによる分岐準備完了）。
     - `ActionType::PLAY_CARD_INTERNAL` を処理するケースを追加し、`resolve_play_from_stack` へ委譲します。
 - **ActionGenerator の更新**
     - `src/engine/action_gen/action_generator.cpp` を更新し、`EffectType::INTERNAL_PLAY` や `META_COUNTER` が `pending_effects` にある場合、`PLAY_CARD_INTERNAL` アクションを生成するようにします。
