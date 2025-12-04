@@ -1,6 +1,10 @@
 {
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
     "python.analysis.extraPaths": [
-        "./"
+        "./",
+        "./build",
+        "./bin",
+        "./python"
     ],
     "cmake.generator": "MinGW Makefiles"
 }
