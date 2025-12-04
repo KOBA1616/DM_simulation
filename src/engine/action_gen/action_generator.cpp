@@ -143,6 +143,19 @@ namespace dm::engine {
                      // Let's implement fully later. For now, automatic single action.
                      actions.push_back(action);
                 }
+                else if (eff.type == EffectType::INTERNAL_PLAY || eff.type == EffectType::META_COUNTER) {
+                    Action action;
+                    action.type = ActionType::PLAY_CARD_INTERNAL;
+                    action.source_instance_id = eff.source_instance_id;
+                    action.slot_index = static_cast<int>(i);
+                    // SpawnSource should be determined by EffectType?
+                    // Internal play usually comes from effects.
+                    // Meta counter usually comes from Hand via effect logic?
+                    // Actually, resolve_play_from_stack takes SpawnSource.
+                    // We can default to EFFECT_SUMMON for now, or refine later.
+                    action.spawn_source = SpawnSource::EFFECT_SUMMON;
+                    actions.push_back(action);
+                }
                 else if (eff.num_targets_needed > (int)eff.target_instance_ids.size()) {
                      if (actions.empty()) {
                          Action resolve;
