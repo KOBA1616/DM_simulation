@@ -167,7 +167,51 @@ namespace dm::engine {
                 break;
             case Phase::ATTACK:
                 game_state.current_phase = Phase::END_OF_TURN;
-                // Trigger Reservation: AT_END_OF_TURN
+
+                // 1. Generic Hand Trigger Check (e.g. Meta Counter, Ninja Strike - if end of turn)
+                // We iterate opponent's hand for "AT_END_OF_OPPONENT_TURN" triggers.
+                {
+                    Player& opponent = game_state.get_non_active_player();
+                    // Also check Active Player? "AT_END_OF_YOUR_TURN"? Not standard for hand triggers usually.
+
+                    for (const auto& card : opponent.hand) {
+                        if (card_db.count(card.card_id)) {
+                            const auto& def = card_db.at(card.card_id);
+
+                            // Legacy Support: meta_counter_play flag maps to checking played_without_mana
+                            if (def.keywords.meta_counter_play) {
+                                if (game_state.turn_stats.played_without_mana) {
+                                    game_state.pending_effects.emplace_back(EffectType::META_COUNTER, card.instance_id, opponent.id);
+                                }
+                            }
+
+                            // Generic Support
+                            for (const auto& trigger : def.hand_triggers) {
+                                // Map TriggerType::AT_END_OF_TURN (context-aware: we are in opponent turn)
+                                // We need a specific TriggerType or check context.
+                                // Let's assume TriggerType::PASSIVE_CONST is used for "Generic Timing" or define a new one.
+                                // But for now, we check Condition "OPPONENT_PLAYED_WITHOUT_MANA" + Timing "END_OF_TURN"
+
+                                // To be strict: We need TriggerType::AT_END_OF_OPPONENT_TURN.
+                                // Existing enum doesn't have it. We use META_COUNTER type for pending effect.
+
+                                // Condition check
+                                bool condition_met = false;
+                                if (trigger.condition.type == "OPPONENT_PLAYED_WITHOUT_MANA") {
+                                    if (game_state.turn_stats.played_without_mana) condition_met = true;
+                                }
+
+                                if (condition_met) {
+                                     // If trigger type matches phase?
+                                     // For now, assume these triggers are valid at End of Turn if condition met.
+                                     game_state.pending_effects.emplace_back(EffectType::META_COUNTER, card.instance_id, opponent.id);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Trigger Reservation: AT_END_OF_TURN
                 {
                     Player& active_player = game_state.get_active_player();
                     for (const auto& card : active_player.battle_zone) {

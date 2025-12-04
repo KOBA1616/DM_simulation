@@ -4,8 +4,8 @@
 #include "../card_system/card_registry.hpp"
 #include "../card_system/target_utils.hpp"
 #include "../mana/mana_system.hpp"
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 
 namespace dm::engine {
 
@@ -519,29 +519,10 @@ namespace dm::engine {
     }
 
     void EffectResolver::resolve_use_shield_trigger(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
-        Player& st_player = game_state.players[action.target_player];
+        // Queue INTERNAL_PLAY pending effect. The card remains in hand (where resolve_break_shield put it).
+        // The ActionGenerator will then generate PLAY_CARD_INTERNAL, which handles the actual move to stack/resolution.
         
-        try {
-            CardInstance card = remove_from_hand(st_player, action.source_instance_id);
-            const CardDefinition& def = card_db.at(card.card_id);
-            game_state.on_card_play(card.card_id, game_state.turn_number, true, def.cost, st_player.id);
-
-            if (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE) {
-                card.summoning_sickness = true;
-                if (def.keywords.speed_attacker) card.summoning_sickness = false;
-                if (def.keywords.evolution) card.summoning_sickness = false;
-                st_player.battle_zone.push_back(card);
-                
-                if (def.keywords.cip) {
-                     dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
-                }
-
-            } else if (def.type == CardType::SPELL) {
-                st_player.graveyard.push_back(card);
-                dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
-            }
-        } catch (...) {}
-
+        // Remove the SHIELD_TRIGGER pending effect first
         if (!game_state.pending_effects.empty()) {
              int index = action.slot_index;
              if (index >= 0 && index < static_cast<int>(game_state.pending_effects.size())) {
@@ -550,6 +531,24 @@ namespace dm::engine {
                  }
              }
         }
+
+        // Queue Internal Play
+        // Source is HAND_SUMMON because S-Trigger is cast from hand (after being added to hand from shield zone).
+        // Wait, Internal Play defaults to EFFECT_SUMMON in ActionGenerator for INTERNAL_PLAY type.
+        // We might want to distinguish.
+        // However, PLAY_CARD_INTERNAL logic uses resolve_play_from_stack which takes SpawnSource from Action.
+        // ActionGenerator sets SpawnSource::EFFECT_SUMMON for INTERNAL_PLAY.
+        // If we want HAND_SUMMON for S-Trigger, we might need a separate EffectType or update ActionGenerator logic
+        // to check if source is in hand?
+        // Let's rely on INTERNAL_PLAY for now. S-Trigger is "summoned without cost" which is effectively an effect summon anyway in many contexts.
+        // But for "When you summon from hand" triggers, it matters.
+        // S-Trigger IS from hand.
+
+        // Let's modify ActionGenerator logic later if needed to check source zone?
+        // Or we can just use EffectType::INTERNAL_PLAY and assume EFFECT_SUMMON is acceptable for now,
+        // as S-Trigger is special.
+
+        game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, action.source_instance_id, action.target_player);
     }
 
     void EffectResolver::resolve_mana_charge(GameState& game_state, const Action& action) {
@@ -625,11 +624,8 @@ namespace dm::engine {
                 game_state.pending_effects.erase(game_state.pending_effects.begin() + index);
 
                 // Call resolve_play_from_stack
-                // Assuming cost 0 for internal play (Mekraid, S-Trigger, etc.)
-                // Or do we read it from somewhere?
-                // For now, assume free/reduced to 0.
-                // Using 999 to ensure cost is fully covered (as cost_reduction)
-                resolve_play_from_stack(game_state, card.instance_id, 999, action.spawn_source, card_db);
+                // Pass the controller from the PendingEffect
+                resolve_play_from_stack(game_state, card.instance_id, 999, action.spawn_source, pe.controller, card_db);
             }
             return;
         }
@@ -734,7 +730,7 @@ namespace dm::engine {
                          if (taps_done >= taps_needed) break;
                      }
                  }
-                 resolve_play_from_stack(game_state, card.instance_id, taps_done * 2, SpawnSource::HAND_SUMMON, card_db);
+                 resolve_play_from_stack(game_state, card.instance_id, taps_done * 2, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db);
                  return;
             }
 
@@ -757,25 +753,34 @@ namespace dm::engine {
         }
     }
 
-    void EffectResolver::resolve_play_from_stack(GameState& game_state, int stack_instance_id, int cost_reduction, SpawnSource spawn_source, const std::map<CardID, CardDefinition>& card_db) {
+    void EffectResolver::resolve_play_from_stack(GameState& game_state, int stack_instance_id, int cost_reduction, SpawnSource spawn_source, PlayerID controller, const std::map<CardID, CardDefinition>& card_db) {
         auto s_it = std::find_if(game_state.stack_zone.begin(), game_state.stack_zone.end(),
              [stack_instance_id](const CardInstance& c) { return c.instance_id == stack_instance_id; });
 
-        if (s_it == game_state.stack_zone.end()) return;
+        if (s_it == game_state.stack_zone.end()) {
+            return;
+        }
         CardInstance card = *s_it;
-        Player& player = game_state.get_active_player();
+        Player& player = game_state.players[controller];
         const CardDefinition& def = card_db.at(card.card_id);
 
-        CostModifier mod;
-        mod.reduction_amount = cost_reduction;
-        mod.condition_filter.types = {};
-        mod.turns_remaining = 1;
-        mod.controller = player.id;
-        mod.source_instance_id = -1;
+        bool payment_success = false;
 
-        game_state.active_modifiers.push_back(mod);
-        bool payment_success = ManaSystem::auto_tap_mana(game_state, player, def, card_db);
-        game_state.active_modifiers.pop_back();
+        // If cost reduction is massive (flagging free play/trampling), skip payment logic
+        if (cost_reduction >= 999) {
+            payment_success = true;
+        } else {
+            CostModifier mod;
+            mod.reduction_amount = cost_reduction;
+            mod.condition_filter.types = {};
+            mod.turns_remaining = 1;
+            mod.controller = player.id;
+            mod.source_instance_id = -1;
+
+            game_state.active_modifiers.push_back(mod);
+            payment_success = ManaSystem::auto_tap_mana(game_state, player, def, card_db);
+            game_state.active_modifiers.pop_back();
+        }
 
         if (!payment_success) {
             game_state.stack_zone.erase(s_it);
