@@ -7,6 +7,7 @@ namespace dm::core {
     enum class ActionType : uint8_t {
         PASS,
         MANA_CHARGE,
+        MOVE_CARD,
         PLAY_CARD,
         ATTACK_PLAYER,
         ATTACK_CREATURE,

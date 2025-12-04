@@ -38,13 +38,15 @@
 *   **BREAK_SHIELD:** （攻撃成功時）シールドを1枚指定して手札に加え、S・トリガー判定を行うアクション。W・ブレイカー等はこれを複数回生成します。
     *   *実装詳細:* ブロックフェーズの終了時 (`PASS`) に、状況に応じて `RESOLVE_BATTLE` または `BREAK_SHIELD` の `PendingEffect` を発行し、それを `ActionGenerator` がアクションに変換して処理するフローに変更しました。
 
-#### 3. マナチャージの汎用化
+#### 3. マナチャージの汎用化 (完了)
 *   **MANA_CHARGE → MOVE_CARD:** マナチャージを汎用的な `MOVE_CARD` (Destination: MANA_ZONE) に統合します。
+    *   *実装詳細:* `ActionType` に `MOVE_CARD` を追加し、マナフェーズでのアクション生成を `MOVE_CARD` に移行しました。`EffectResolver` での処理も対応済みです。（後方互換性のため `MANA_CHARGE` Enumは維持していますが、生成ロジックは更新されています）
 
 #### 4. 汎用アクションの完全定義
-*   **A. MOVE_CARD (完全共通化):**
+*   **A. MOVE_CARD (完全共通化) (一部完了):**
     *   アクション: `MOVE_CARD(source_zone, dest_zone, card_instance_id)`
     *   破壊、バウンス、ドロー、シールド化を全て統合し、「ゾーンを離れた時/置かれた時」のフック処理を一元化します。
+    *   *現状:* マナチャージのみ先行して実装済み。
 *   **B. TAP_CARD / UNTAP_CARD (分離):**
     *   アクション: `TAP_CARD(target_instance_id)`
     *   攻撃、ブロック、支払いに含まれるタップ処理を分離し、効果によるタップ/アンタップを容易にします。

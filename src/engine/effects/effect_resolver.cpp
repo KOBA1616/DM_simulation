@@ -71,6 +71,16 @@ namespace dm::engine {
             case ActionType::MANA_CHARGE:
                 resolve_mana_charge(game_state, action);
                 break;
+            case ActionType::MOVE_CARD:
+                // For now, in Phase::MANA, this implies MANA_CHARGE
+                // In future, we decode destination from action.
+                if (game_state.current_phase == Phase::MANA) {
+                    resolve_mana_charge(game_state, action);
+                } else {
+                    // Generic handler (stub for now, or implement if needed)
+                    // For now, let's assume it might be used for other moves later.
+                }
+                break;
             case ActionType::DECLARE_PLAY:
             case ActionType::PAY_COST:
             case ActionType::RESOLVE_PLAY:
