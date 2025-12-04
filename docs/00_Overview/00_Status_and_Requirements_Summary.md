@@ -14,11 +14,11 @@
 *   **データ:** JSONベースのカード定義 (`data/cards.json`)。
 
 ## 3. 現在の開発段階 (Current Development Stage)
-**ステータス:** **原子アクション分解によるエンジンリファクタリング (PLAY_CARD処理の3段階分解 - 完了)**
+**ステータス:** **メタカウンターとエンジンコア拡張 - インフラ整備完了**
 
 これまでの開発で、基本的なゲームルールといくつかの複雑なキーワード能力（革命チェンジ等）を実装しました。
-現在は、エンジン内部の処理を「原子アクション（Atomic Actions）」に分解・再構築するフェーズにあります。
-`PLAY_CARD` アクションを `DECLARE_PLAY`（宣言・スタック移動）, `PAY_COST`（コスト支払い）, `RESOLVE_PLAY`（解決） の3つの原子アクションに分解する実装が完了しました。
+現在は、メタカウンター機能の実装に向けたエンジンコアの拡張フェーズにあります。
+`TurnStats` による「マナ踏み倒しプレイ」の検知機能、`SpawnSource` などの型定義、Pythonバインディングの更新が完了しました。
 
 ## 4. アクティブな要件とタスク (Uncompleted Tasks)
 
@@ -80,25 +80,25 @@
 
 ### 4.4. 実装計画：メタカウンターとエンジンコア拡張
 
-#### 1. コア型定義とデータ構造の整備
-- **Action と Types の更新**
+#### 1. コア型定義とデータ構造の整備 (完了)
+- **Action と Types の更新** (完了)
     - `src/core/types.hpp` に `SpawnSource` enum を追加します。
         - `HAND_SUMMON` (手札からの通常召喚, G・ゼロ)
         - `EFFECT_SUMMON` (S・トリガー, メクレイド, コスト踏み倒し召喚)
         - `EFFECT_PUT` (リアニメイト, 踏み倒し出し)
     - `src/core/types.hpp` に新しい `EffectType` として `INTERNAL_PLAY`, `META_COUNTER` を追加します。
     - `src/core/action.hpp` に `ActionType::PLAY_CARD_INTERNAL` を追加し、`Action` 構造体に `spawn_source` フィールド（または既存フィールドの流用）を追加します。
-- **カード定義の更新**
+- **カード定義の更新** (完了)
     - `src/core/card_def.hpp` の `CardKeywords` に `bool meta_counter_play` を追加します。
     - `src/engine/card_system/json_loader.cpp` を更新し、JSON からこのキーワードをパースできるようにします。
-- **ゲーム状態の更新**
+- **ゲーム状態の更新** (完了)
     - `src/core/game_state.hpp` に `struct TurnStats` を定義し、メンバとして `bool played_without_mana` を持たせます。
     - `GameState` クラスに `TurnStats turn_stats` を追加します。
 
-#### 2. ターン統計機能の実装 (マナ踏み倒し検知)
-- **リセット処理**
+#### 2. ターン統計機能の実装 (マナ踏み倒し検知) (完了)
+- **リセット処理** (完了)
     - `src/engine/flow/phase_manager.cpp` の `start_turn` メソッド内で、`turn_stats` をリセットする処理を追加します。
-- **フラグ更新処理**
+- **フラグ更新処理** (完了)
     - `src/engine/mana/mana_system.hpp` (または `cpp`) を修正し、カードプレイ時に「支払われたマナ（タップされたマナ）」が0枚であるかを確認します。
     - 0枚の場合、`game_state.turn_stats.played_without_mana` を `true` に設定します（コスト軽減で1マナ払った場合は除外）。
 
