@@ -164,13 +164,22 @@ class TestEngineBasics:
 
         assert pass_action is not None, "Should be able to pass in block phase"
 
-        # Resolve PASS in BLOCK phase -> executes battle
+        # Resolve PASS in BLOCK phase -> queues BREAK_SHIELD
         dm_ai_module.EffectResolver.resolve_action(state, pass_action, self.card_db)
 
+        # Now we must execute the queued BREAK_SHIELD action
+        # Generate actions again
+        pending_actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+        break_action = None
+        for action in pending_actions:
+            if action.type == dm_ai_module.ActionType.BREAK_SHIELD:
+                break_action = action
+                break
+
+        assert break_action is not None, "BREAK_SHIELD action should be generated"
+        dm_ai_module.EffectResolver.resolve_action(state, break_action, self.card_db)
+
         # Check shield count
-        # Wait, if shield break triggers a shield trigger, it might go to pending effects
-        # But for basic test, we assume no trigger or trigger goes to pending
-        # Shield should be removed from shield zone
         assert len(p1.shield_zone) == 0
 
     def test_card_stats_initialization(self):
