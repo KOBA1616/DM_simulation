@@ -40,6 +40,9 @@ namespace dm::engine {
             def.keywords.revolution_change = true;
         }
 
+        // Reaction Abilities
+        def.reaction_abilities = data.reaction_abilities;
+
         // Keywords from explicit 'keywords' block (e.g. S-Trigger)
         if (data.keywords.has_value()) {
             const auto& kws = *data.keywords;
