@@ -180,7 +180,7 @@ namespace dm::engine {
                     // 2. Delegate Play Logic to EffectResolver
                     int taps = action.value1;
                     int reduction = taps * 2;
-                    EffectResolver::resolve_play_from_stack(game_state, source_instance_id, reduction, card_db);
+                    EffectResolver::resolve_play_from_stack(game_state, source_instance_id, reduction, SpawnSource::HAND_SUMMON, card_db);
                 }
                 // other action types could be added as needed
             } else {

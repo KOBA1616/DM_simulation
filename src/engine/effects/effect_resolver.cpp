@@ -663,7 +663,7 @@ namespace dm::engine {
                          if (taps_done >= taps_needed) break;
                      }
                  }
-                 resolve_play_from_stack(game_state, card.instance_id, taps_done * 2, card_db);
+                 resolve_play_from_stack(game_state, card.instance_id, taps_done * 2, SpawnSource::HAND_SUMMON, card_db);
                  return;
             }
 
@@ -686,7 +686,7 @@ namespace dm::engine {
         }
     }
 
-    void EffectResolver::resolve_play_from_stack(GameState& game_state, int stack_instance_id, int cost_reduction, const std::map<CardID, CardDefinition>& card_db) {
+    void EffectResolver::resolve_play_from_stack(GameState& game_state, int stack_instance_id, int cost_reduction, SpawnSource spawn_source, const std::map<CardID, CardDefinition>& card_db) {
         auto s_it = std::find_if(game_state.stack_zone.begin(), game_state.stack_zone.end(),
              [stack_instance_id](const CardInstance& c) { return c.instance_id == stack_instance_id; });
 
@@ -715,10 +715,15 @@ namespace dm::engine {
         game_state.on_card_play(card.card_id, game_state.turn_number, false, cost_reduction, player.id);
         game_state.stack_zone.erase(s_it);
 
+        // Gatekeeper Logic: Determine destination
         if (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE) {
             card.summoning_sickness = true;
             if (def.keywords.speed_attacker) card.summoning_sickness = false;
             if (def.keywords.evolution) card.summoning_sickness = false;
+
+            // Future expansion: Check SpawnSource for specific overrides
+            // e.g. if (spawn_source == SpawnSource::EFFECT_PUT) ...
+
             card.is_tapped = false;
 
             player.battle_zone.push_back(card);
