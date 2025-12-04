@@ -21,6 +21,13 @@ namespace dm::core {
         NONE
     };
 
+    enum class ReactionType {
+        NONE,
+        NINJA_STRIKE,
+        STRIKE_BACK,
+        REVOLUTION_0_TRIGGER
+    };
+
     enum class TargetScope {
         SELF,
         PLAYER_SELF,
@@ -101,6 +108,20 @@ namespace dm::core {
         std::vector<ActionDef> actions;
     };
 
+    struct ReactionCondition {
+        std::string trigger_event; // "ON_BLOCK_OR_ATTACK", "ON_SHIELD_ADD"
+        bool civilization_match = false;
+        int mana_count_min = 0;
+        bool same_civilization_shield = false;
+    };
+
+    struct ReactionAbility {
+        ReactionType type = ReactionType::NONE;
+        int cost = 0;
+        std::string zone;
+        ReactionCondition condition;
+    };
+
     struct CardData {
         int id;
         std::string name;
@@ -112,6 +133,7 @@ namespace dm::core {
         std::vector<EffectDef> effects;
         std::optional<FilterDef> revolution_change_condition;
         std::optional<std::map<std::string, bool>> keywords;
+        std::vector<ReactionAbility> reaction_abilities;
     };
 
 } // namespace dm::core
@@ -149,6 +171,13 @@ namespace dm::core {
         {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"},
         {TriggerType::ON_OTHER_ENTER, "ON_OTHER_ENTER"},
         {TriggerType::ON_ATTACK_FROM_HAND, "ON_ATTACK_FROM_HAND"}
+    })
+
+    NLOHMANN_JSON_SERIALIZE_ENUM(ReactionType, {
+        {ReactionType::NONE, "NONE"},
+        {ReactionType::NINJA_STRIKE, "NINJA_STRIKE"},
+        {ReactionType::STRIKE_BACK, "STRIKE_BACK"},
+        {ReactionType::REVOLUTION_0_TRIGGER, "REVOLUTION_0_TRIGGER"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(TargetScope, {
@@ -191,5 +220,7 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilization, power, type, races, effects, revolution_change_condition, keywords)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilization, power, type, races, effects, revolution_change_condition, keywords, reaction_abilities)
 }
