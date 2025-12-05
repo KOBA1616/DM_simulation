@@ -20,7 +20,8 @@ namespace dm::core {
         bool summoning_sickness = false;
         bool is_face_down = false; // For shields or terror pit etc? Shields are face down by default.
         int power_mod = 0; // temporary/ongoing power modifications applied by effects
-        
+        int turn_played = -1; // Turn number when this card was put into the battle zone (for Just Diver/SS)
+
         // Constructors
         CardInstance() : card_id(0), instance_id(-1), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
         CardInstance(CardID cid, int iid) : card_id(cid), instance_id(iid), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
