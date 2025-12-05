@@ -59,6 +59,7 @@ namespace dm::engine {
                             else if (zone_str == "HAND") zone_ptr = &target_player.hand;
                             else if (zone_str == "GRAVEYARD") zone_ptr = &target_player.graveyard;
                             else if (zone_str == "SHIELD_ZONE") zone_ptr = &target_player.shield_zone;
+                            else if (zone_str == "DECK") zone_ptr = &target_player.deck;
                             else if (zone_str == "EFFECT_BUFFER" || zone_str == "BUFFER") {
                                 zone_ptr = &game_state.effect_buffer;
                             }
