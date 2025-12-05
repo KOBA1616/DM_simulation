@@ -26,7 +26,15 @@ class Trainer:
 
         print(f"Loading data from {data_file}...")
         data = np.load(data_file)
-        self.states = torch.tensor(data['states'], dtype=torch.float32)
+
+        # Handle both old format (states_masked) and new format (states)
+        if 'states' in data:
+            self.states = torch.tensor(data['states'], dtype=torch.float32)
+        elif 'states_masked' in data:
+            self.states = torch.tensor(data['states_masked'], dtype=torch.float32)
+        else:
+            raise KeyError("Neither 'states' nor 'states_masked' found in npz file")
+
         self.policies = torch.tensor(data['policies'], dtype=torch.float32)
         self.values = torch.tensor(data['values'], dtype=torch.float32).unsqueeze(1)
 
