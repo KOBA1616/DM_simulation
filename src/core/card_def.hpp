@@ -32,6 +32,7 @@ namespace dm::core {
         bool at_end_of_turn : 1;
         bool destruction : 1;     // Destruction Trigger
 
+        bool just_diver : 1;      // Just Diver
         bool hyper_energy : 1;    // Added for Phase 5 (Hyper Energy)
         bool meta_counter_play : 1; // Added for Phase 5 (Meta Counter)
     };
