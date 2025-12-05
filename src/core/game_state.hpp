@@ -43,6 +43,9 @@ namespace dm::core {
         // Optional: carry the EffectDef (from JSON) for later resolution after target selection
         std::optional<EffectDef> effect_def;
 
+        // Phase 5: Execution Context (Variable Linking)
+        std::map<std::string, int> execution_context;
+
         // Optional context for REACTION_WINDOW
         struct ReactionContext {
             std::string trigger_event; // The event being reacted to (e.g., "ON_BLOCK_OR_ATTACK")

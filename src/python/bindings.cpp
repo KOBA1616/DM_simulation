@@ -197,6 +197,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SHUFFLE_DECK", EffectActionType::SHUFFLE_DECK)
         .value("ADD_SHIELD", EffectActionType::ADD_SHIELD)
         .value("SEND_SHIELD_TO_GRAVE", EffectActionType::SEND_SHIELD_TO_GRAVE)
+        .value("SEND_TO_DECK_BOTTOM", EffectActionType::SEND_TO_DECK_BOTTOM)
         .export_values();
 
     // JSON Structures
@@ -652,9 +653,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("load_cards", &dm::engine::JsonLoader::load_cards);
 
     py::class_<GenericCardSystem>(m, "GenericCardSystem")
-        .def_static("resolve_action", &GenericCardSystem::resolve_action)
+        .def_static("resolve_action", py::overload_cast<GameState&, const ActionDef&, int>(&GenericCardSystem::resolve_action))
         .def_static("resolve_effect", &GenericCardSystem::resolve_effect)
-        .def_static("resolve_effect_with_targets", &GenericCardSystem::resolve_effect_with_targets)
+        .def_static("resolve_effect_with_targets", py::overload_cast<GameState&, const EffectDef&, const std::vector<int>&, int, const std::map<CardID, CardDefinition>&>(&GenericCardSystem::resolve_effect_with_targets))
         .def_static("resolve_trigger", &GenericCardSystem::resolve_trigger)
         .def_static("check_condition", &GenericCardSystem::check_condition);
 
