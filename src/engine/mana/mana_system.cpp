@@ -13,6 +13,8 @@ namespace dm::engine {
         int cost = card_def.cost;
 
         // If base cost is 0, it stays 0 (e.g. dummy test card)
+        // IMPORTANT: For get_adjusted_cost, if base is 0, we return 0.
+        // This allows played_without_mana to be true for 0 cost cards.
         if (cost <= 0) return 0;
 
         for (const auto& mod : game_state.active_modifiers) {
@@ -115,13 +117,15 @@ namespace dm::engine {
         bool civ_requirement_met = (card_def.civilization == Civilization::ZERO);
 
         // First pass: Try to tap a card that satisfies the civilization requirement
-        if (!civ_requirement_met) {
+        // Only if we actually need to pay some cost. If cost is 0, we don't tap anything.
+        if (!civ_requirement_met && cost_remaining > 0) {
             for (auto& card : player.mana_zone) {
                 if (!card.is_tapped) {
                     const auto& mana_card_def = card_db.at(card.card_id);
                     if ((mana_card_def.civilization & card_def.civilization) != Civilization::NONE) {
                         card.is_tapped = true;
-                        cost_remaining--;
+                        // Reduce cost ONLY if we needed to pay cost
+                        if (cost_remaining > 0) cost_remaining--;
                         paid_mana++;
                         civ_requirement_met = true;
                         break;
