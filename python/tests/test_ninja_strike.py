@@ -9,12 +9,43 @@ except ImportError:
     sys.exit(1)
 
 import pytest
+import json
 
 def test_ninja_strike_flow():
     # 1. Load Cards
     loader = dm_ai_module.JsonLoader
-    # Ensure data/ninja_test.json exists (created in earlier step)
-    cards = loader.load_cards("data/ninja_test.json")
+
+    # Ensure data/ninja_test.json exists
+    ninja_json_path = "data/ninja_test.json"
+    ninja_data = [
+        {
+            "id": 9999,
+            "name": "Ninja Strike Unit",
+            "type": "CREATURE",
+            "civilization": "LIGHT",
+            "races": ["Shinobi"],
+            "cost": 7,
+            "power": 5000,
+            "keywords": {},
+            "effects": [],
+            "reaction_abilities": [
+                {
+                    "type": "NINJA_STRIKE",
+                    "cost": 7,
+                    "zone": "HAND",
+                    "condition": {
+                        "trigger_event": "ON_BLOCK_OR_ATTACK",
+                        "civilization_match": True,
+                        "mana_count_min": 7
+                    }
+                }
+            ]
+        }
+    ]
+    with open(ninja_json_path, 'w') as f:
+        json.dump(ninja_data, f)
+
+    cards = loader.load_cards(ninja_json_path)
     if 9999 not in cards:
         pytest.fail("NinjaTest card not found")
 
@@ -22,28 +53,27 @@ def test_ninja_strike_flow():
     game_state = dm_ai_module.GameState(42)
     card_db = cards
 
+    # Register data for registry
+    for cid, cdef in card_db.items():
+        # JsonLoader creates CardData with correct types, but when creating explicitly we need string for civ.
+        # But JsonLoader already loaded it?
+        # JsonLoader loads into a map.
+        # We need to register for Generic functions.
+        # Use helper:
+        cdata = dm_ai_module.CardData(cid, cdef.name, cdef.cost,
+                                      cdef.civilization.name, # Use name for string
+                                      cdef.power, "CREATURE", cdef.races, [])
+        dm_ai_module.register_card_data(cdata)
+
     # Initialize players
     p1 = game_state.players[0]
     p2 = game_state.players[1]
 
     # Give P1 an attacker
-    # Assuming ID 1 exists as dummy or use 9999 modified
-    # We need a valid attacker definition. Let's create a dummy attacker if needed or use 9999.
     attacker_card_id = 9999
 
-    # Setup P1 Battle Zone
-    # Use helper if available, or manual setup via python bindings if exposed
-    # Since direct member access to vector might be copy-only, use exposed methods if any.
-    # bindings.cpp says we can access battle_zone.
-    # But modifying the list from python usually doesn't reflect in C++ unless using wrappers.
-    # We need "add_card_to_battle" or similar.
-    # Or we can use "move_card" from DevTools if exposed?
-    # dm_ai_module.DevTools.move_cards?
-
-    # Let's try to set up using add_card_to_battle helper if it exists in bindings.
-    # If not, we might struggle to set up state.
-    # Looking at memory, `add_test_card_to_battle` exists.
-
+    # We need to manually add it to battle zone since we don't have a distinct attacker card in json
+    # Use helper
     game_state.add_test_card_to_battle(0, attacker_card_id, 100, False, False) # P1, ID, InstanceID, Tapped, Sick
 
     # Setup P2 Hand with Ninja Strike
@@ -78,23 +108,16 @@ def test_ninja_strike_flow():
     pending = dm_ai_module.get_pending_effects_info(game_state)
     print("Pending Effects:", pending)
 
-    # Check if we have REACTION_WINDOW (Enum value might be exposed as int or property)
-    # EffectType.REACTION_WINDOW was added at the end.
-    # Need to verify if python bindings updated automatically?
-    # Bindings usually need update if they map enums explicitly.
-    # I didn't update `src/python/bindings.cpp`. This is a risk.
-    # If I didn't update bindings, I can't check Enum value by name.
-    # But the C++ code runs.
-
     # 7. Generate Actions (Should see DECLARE_REACTION)
     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, card_db)
     ninja_action = None
     for a in actions:
         print(f"Action: {a.type}, Source: {a.source_instance_id}")
-        # If bindings not updated, ActionType.DECLARE_REACTION might not exist in Python.
-        # It will show as generic int or error if strict enum.
         if a.type == dm_ai_module.ActionType.DECLARE_REACTION:
             ninja_action = a
+
+    # If Ninja Strike fails, check civ
+    print(f"Card Civ: {cards[9999].civilization}")
 
     assert ninja_action is not None, "Should have Ninja Strike action"
 
@@ -103,7 +126,6 @@ def test_ninja_strike_flow():
 
     # 9. Verify Ninja in Battle Zone
     p2_battle = game_state.players[1].battle_zone
-    # Since bindings return copy, we fetch again.
     has_ninja = False
     for c in p2_battle:
         if c.instance_id == 300:
