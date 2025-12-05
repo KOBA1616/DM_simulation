@@ -62,6 +62,9 @@ namespace dm::engine {
         EffectResolver::resolve_effect(game_state, effect, source_instance_id, {});
     }
 
+    // Forward declaration of private helper
+    // static void resolve_mekraid_internal(GameState& game_state, int card_instance_id, PlayerID player_id);
+
     void GenericCardSystem::resolve_effect_with_targets(GameState& game_state, const EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         if (!check_condition(game_state, effect.condition, source_instance_id)) return;
 
