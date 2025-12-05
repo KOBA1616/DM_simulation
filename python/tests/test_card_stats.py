@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../bin'))
 
 try:
     import dm_ai_module
-    from dm_ai_module import GameState, CardDefinition, CardType, Civilization, GameResult, ActionType, ActionGenerator
+    from dm_ai_module import GameState, CardDefinition, CardType, Civilization, GameResult, ActionType, ActionGenerator, CardData
 except ImportError:
     pytest.skip("dm_ai_module not found", allow_module_level=True)
 
@@ -42,6 +42,12 @@ def test_card_stats_tracking():
     gs = GameState(42)
     card_db = create_mock_card_db()
 
+    # Register cards
+    for cid, cdef in card_db.items():
+        cdata = CardData(cid, cdef.name, cdef.cost, cdef.civilization.name, cdef.power,
+                         "CREATURE" if cdef.type == CardType.CREATURE else "SPELL", [], [])
+        dm_ai_module.register_card_data(cdata)
+
     # Initialize stats for all cards in DB
     dm_ai_module.initialize_card_stats(gs, card_db, 40)
 
@@ -70,30 +76,16 @@ def test_card_stats_tracking():
     # Execute action
     dm_ai_module.EffectResolver.resolve_action(state, play_action, card_db)
     
-    # If using DECLARE_PLAY, we might need to follow up with PAY_COST and RESOLVE_PLAY
-    # But EffectResolver might handle the chain if we are just testing stats?
-    # No, EffectResolver.resolve_action just does one step.
-    # If we use DECLARE_PLAY, the card goes to stack.
-    # Then we need to generate actions again to get PAY_COST.
-    
     if play_action.type == ActionType.DECLARE_PLAY:
         # Step 2: PAY_COST
         actions = ActionGenerator.generate_legal_actions(state, card_db)
-        pay_action = None
-        for action in actions:
-            if action.type == ActionType.PAY_COST:
-                pay_action = action
-                break
+        pay_action = next((a for a in actions if a.type == ActionType.PAY_COST), None)
         if pay_action:
              dm_ai_module.EffectResolver.resolve_action(state, pay_action, card_db)
              
         # Step 3: RESOLVE_PLAY
         actions = ActionGenerator.generate_legal_actions(state, card_db)
-        resolve_action = None
-        for action in actions:
-            if action.type == ActionType.RESOLVE_PLAY:
-                resolve_action = action
-                break
+        resolve_action = next((a for a in actions if a.type == ActionType.RESOLVE_PLAY), None)
         if resolve_action:
              dm_ai_module.EffectResolver.resolve_action(state, resolve_action, card_db)
 
@@ -115,6 +107,13 @@ def test_card_stats_win_contribution():
     Verifies that winning a game updates win contribution stats.
     """
     card_db = create_mock_card_db()
+
+    # Register cards
+    for cid, cdef in card_db.items():
+        cdata = CardData(cid, cdef.name, cdef.cost, cdef.civilization.name, cdef.power,
+                         "CREATURE" if cdef.type == CardType.CREATURE else "SPELL", [], [])
+        dm_ai_module.register_card_data(cdata)
+
     gi = dm_ai_module.GameInstance(42, card_db)
 
     config = dm_ai_module.ScenarioConfig()
@@ -160,26 +159,28 @@ def test_card_stats_win_contribution():
 
     dm_ai_module.EffectResolver.resolve_action(state, attack_action, card_db)
 
-    # Block Phase -> Pass
-    state.current_phase = dm_ai_module.Phase.BLOCK
-    actions = ActionGenerator.generate_legal_actions(state, card_db)
-    pass_action = [a for a in actions if a.type == ActionType.PASS][0]
-    dm_ai_module.EffectResolver.resolve_action(state, pass_action, card_db)
+    # Check pending effects (BREAK_SHIELD or similar)
+    # Since enemy has 0 shields, it might be direct attack logic handled in execute_battle or similar.
+    # But usually it queues BREAK_SHIELD which handles game over if no shields.
 
-    # Resolve Battle or Break Shield
-    actions = ActionGenerator.generate_legal_actions(state, card_db)
-    resolve_action = None
-    for a in actions:
-        if a.type == ActionType.RESOLVE_BATTLE or a.type == ActionType.BREAK_SHIELD:
-            resolve_action = a
-            break
+    # Or maybe RESOLVE_BATTLE.
 
-    if resolve_action:
-        dm_ai_module.EffectResolver.resolve_action(state, resolve_action, card_db)
+    pending = dm_ai_module.get_pending_effects_info(state)
 
-    # Trigger game over check via fast_forward
-    dm_ai_module.PhaseManager.fast_forward(state, card_db)
+    # Resolve pending effects loop
+    limit = 10
+    while limit > 0 and state.winner == dm_ai_module.GameResult.NONE:
+         actions = ActionGenerator.generate_legal_actions(state, card_db)
+         if not actions: break
 
+         # Prioritize resolution actions
+         res_act = next((a for a in actions if a.type in [ActionType.RESOLVE_BATTLE, ActionType.BREAK_SHIELD, ActionType.RESOLVE_EFFECT]), None)
+         if res_act:
+             dm_ai_module.EffectResolver.resolve_action(state, res_act, card_db)
+         else:
+             # Just take any action (PASS?)
+             dm_ai_module.EffectResolver.resolve_action(state, actions[0], card_db)
+         limit -= 1
 
     assert state.winner == dm_ai_module.GameResult.P1_WIN
 

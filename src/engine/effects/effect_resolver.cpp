@@ -89,7 +89,19 @@ namespace dm::engine {
              case ActionType::PLAY_CARD_INTERNAL:
              {
                  int stack_id = action.source_instance_id;
-                 resolve_play_from_stack(game_state, stack_id, 999, action.spawn_source, game_state.active_player_id, card_db);
+                 PlayerID controller = action.target_player; // Use target_player as controller
+
+                 // If source is HAND, move to stack first
+                 if (action.spawn_source == SpawnSource::HAND_SUMMON) {
+                     Player& player = game_state.players[controller];
+                     auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == stack_id; });
+                     if (it != player.hand.end()) {
+                         CardInstance c = *it;
+                         player.hand.erase(it);
+                         game_state.stack_zone.push_back(c);
+                     }
+                 }
+                 resolve_play_from_stack(game_state, stack_id, 999, action.spawn_source, controller, card_db);
                  break;
              }
              case ActionType::RESOLVE_BATTLE:
