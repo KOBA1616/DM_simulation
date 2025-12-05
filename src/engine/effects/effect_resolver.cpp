@@ -171,6 +171,14 @@ namespace dm::engine {
 
         GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_ATTACK, card.instance_id);
 
+        // Transition to BLOCK phase immediately if not already (assuming single attack resolution flow)
+        // Note: ReactionSystem might push a window, but phase transition is usually explicit in engine flow.
+        // However, existing test expectation implies transition happens here or soon after.
+        // If we set phase to BLOCK, ActionGenerator will generate BLOCK/PASS actions.
+        if (game_state.current_phase == Phase::ATTACK) {
+            game_state.current_phase = Phase::BLOCK;
+        }
+
         ReactionSystem::check_and_open_window(game_state, card_db, "ON_ATTACK", defender.id);
     }
 
@@ -355,6 +363,7 @@ namespace dm::engine {
         if (card_db.count(card.card_id)) def = &card_db.at(card.card_id);
 
         if (def && def->type == CardType::SPELL) {
+            // std::cout << "resolve_play_from_stack: resolving spell " << card.card_id << " instance " << card.instance_id << std::endl;
             player.graveyard.push_back(card);
             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
             game_state.turn_stats.spells_cast_this_turn++;
@@ -372,7 +381,7 @@ namespace dm::engine {
     }
 
     void EffectResolver::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context) {
-        GenericCardSystem::resolve_effect(game_state, effect, source_instance_id);
+        GenericCardSystem::resolve_effect_with_context(game_state, effect, source_instance_id, execution_context);
     }
 
     void EffectResolver::resolve_reaction(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {

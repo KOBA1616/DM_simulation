@@ -10,6 +10,7 @@ namespace dm::engine {
         
         // Execute a specific effect definition
         static void resolve_effect(dm::core::GameState& game_state, const dm::core::EffectDef& effect, int source_instance_id);
+        static void resolve_effect_with_context(dm::core::GameState& game_state, const dm::core::EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context);
         // Resolve an effect using explicit targets (used for TARGET_SELECT pending effects)
         static void resolve_effect_with_targets(dm::core::GameState& game_state, const dm::core::EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db = {});
         
