@@ -7,16 +7,16 @@
 
 ## 2. 現在のステータス
 *   **エンジン:** `GameState`、`ActionGenerator`、`EffectResolver`を備えたC++20コア。汎用的な効果解決（Effect Buffer, Stack Zone）を実装済み。
-*   **進捗:** 基本的な対戦、コスト軽減、ハイパーエナジー、革命チェンジの実装が完了。メタカウンター（コスト0での踏み倒しメタ）も実装・検証済み。
+*   **進捗:** 基本的な対戦、コスト軽減、ハイパーエナジー、革命チェンジの実装が完了。メタカウンター（コスト0での踏み倒しメタ）も実装・検証済み。**ジャストダイバー実装完了。**
 *   **Pythonバインディング:** `pybind11`統合 (`dm_ai_module`)。
 *   **AI:** AlphaZeroスタイルのMCTS (`ParallelRunner`) + PyTorch学習 (`train_simple.py`)。
 *   **GUI:** Python `tkinter` ベース (`app.py`) および `PyQt6` ベース (`card_editor.py`)。
 *   **データ:** JSONベースのカード定義 (`data/cards.json`)。
 
 ## 3. 現在の開発段階 (Current Development Stage)
-**ステータス:** **メタカウンター実装完了 / 原子アクション分解（スタック移行）完了**
+**ステータス:** **ジャストダイバー実装完了**
 
-原子アクション分解（プレイ、バトル、マナチャージ）が完了し、スタックとゲートキーパーの統合、およびメタカウンター踏み倒し機能の実装と検証が完了しました。
+メタカウンター実装に続き、ユーザー要望の高かった「ジャストダイバー」を実装しました。これにより、選ばれない能力（アンタッチャブル）の一時的付与が可能になりました。
 
 ## 4. アクティブな要件とタスク (Uncompleted Tasks)
 
@@ -41,66 +41,25 @@
 *   **システム & エンジン:**
     *   ドロー監視、墓地ロジックの拡張。
 *   **カードメカニクス:**
-    *   ジャストダイバー、代替コスト、メテオバーン、NEO進化、ニンジャ・ストライク、ブロック不可、全体除去、攻撃制限、アンチチート、マナ回収、リアニメイト、モード効果。
+    *   [実装済] ジャストダイバー
+    *   代替コスト、メテオバーン、NEO進化、ニンジャ・ストライク、ブロック不可、全体除去、攻撃制限、アンチチート、マナ回収、リアニメイト、モード効果。
 
-### 4.4. 実装完了：メタカウンターとエンジンコア拡張
-
-#### 1. エンジンフローのリファクタリング (スタックとゲートキーパー)
-- **EffectResolver の拡張**
-    - [完了] `src/engine/effects/effect_resolver.cpp` の `resolve_play_from_stack` を修正し、`SpawnSource` 引数を受け取れるようにしました。
-    - **ゲートキーパー (Gatekeeper) ロジックの実装**:
-        - [完了] カードがバトルゾーンに出る直前に、「移動先決定ロジック」を挟みます。
-    - [完了] `ActionType::PLAY_CARD_INTERNAL` を処理するケースを追加し、`resolve_play_from_stack` へ委譲しました。
-- **ActionGenerator の更新**
-    - [完了] `src/engine/action_gen/action_generator.cpp` を更新し、`EffectType::INTERNAL_PLAY` や `META_COUNTER` が `pending_effects` にある場合、`PLAY_CARD_INTERNAL` アクションを生成するようにしました。
-
-#### 2. 既存メカニクスのスタック移行
-- **直接 `push_back` の廃止**
-    - [完了] `GenericCardSystem::mekraid` および バッファからのプレイ処理を `PendingEffect` (Type: `INTERNAL_PLAY`) を使用するようにリファクタリングしました。
-    - [完了] S・トリガー (SHIELD_TRIGGER) も `INTERNAL_PLAY` フローに統合しました。
-
-#### 3. カウンター踏み倒し機能の実装
-- **ターン終了時のチェック**
-    - [完了] `src/engine/flow/phase_manager.cpp` の `next_phase` にロジックを追加し、相手ターン中にマナを支払わずにプレイされたカードがある場合（`played_without_mana` フラグ）、`META_COUNTER` 保留効果を生成します。
-- **解決フロー**
-    - [完了] 積まれた `META_COUNTER` は `ActionGenerator` によって `PLAY_CARD_INTERNAL` アクション化され、スタック経由で解決されます。
-
-#### 4. 検証
-- **テスト作成**
-    - [完了] `tests/test_meta_counter.py` を作成し、0コスト呪文の使用に対するカウンター発動を検証しました。また、0コストカード使用時に文明支払いのためにマナタップを強制しないよう `ManaSystem` を修正しました。
-
-### 4.5. 実装方針まとめ：動的値参照とカードエディタの拡張 (実装完了)
+### 4.6. 実装完了：ジャストダイバー (Just Diver)
 
 #### 1. 概要
-「マナゾーンの文明数分ドロー」や「ドローした枚数分コスト軽減」といった複雑な効果を実現するため、**「レジスタ（変数）連携システム」**を導入しました。
+「このクリーチャーが出た時、次の自分のターンのはじめまで、相手に選ばれず、攻撃されない」という能力を実装しました。
 
-#### 2. C++ エンジン拡張 (src/core/)
-*   **2.1 データ構造の変更 (ActionDef の拡張) [完了]**
-    *   `input_value_key`, `output_value_key` を追加。
+#### 2. C++ エンジン拡張
+*   **CardKeywords:** `just_diver` フラグを追加。
+*   **CardInstance:** `turn_played` (プレイされたターン) を記録するフィールドを追加。
+*   **TargetUtils:** `is_valid_target` に `GameState` を渡し、ターン経過判定を行うロジックを追加。
+    *   自分のターン終了後、相手ターン中も継続し、次の自分のターン開始時に効果が切れるように判定。
+*   **EffectResolver:** カードプレイ時に `turn_played` を現在のターン数に設定するように更新。
 
-*   **2.2 新規アクションタイプ (EffectActionType) [完了]**
-    *   `COUNT_CARDS`
-    *   `GET_GAME_STAT`
-    *   `APPLY_MODIFIER`
-    *   `REVEAL_CARDS`
-    *   `REGISTER_DELAYED_EFFECT`
-    *   `RESET_INSTANCE`
-
-*   **2.3 統計情報の拡充 (TurnStats) [完了]**
-    *   `cards_drawn_this_turn`
-    *   `cards_discarded_this_turn`
-    *   `creatures_played_this_turn`
-    *   `spells_cast_this_turn`
-
-*   **2.4 ロジックの実装 (EffectResolver) [完了]**
-    *   `resolve_effect` に `execution_context` を実装し、変数連携をサポート。
-
-#### 3. カードエディタ (GUI) の改良 (python/gui/card_editor.py) [一部完了]
-*   **入力UI:** アクション詳細設定に `Input Key` と `Output Key` の入力フィールドを追加。
-*   **今後の課題:** 「スマート化」UI（直感的な参照設定）は未実装だが、JSONベースでの編集は可能になった。
-
-#### 4. テストと検証 [完了]
-*   `tests/test_dynamic_values.py`: `COUNT_CARDS` と `GET_GAME_STAT` の動作確認済み。
+#### 3. 検証
+*   `tests/test_just_diver.py`:
+    *   プレイしたターンに相手が選べないことを確認。
+    *   次の自分のターン開始以降（または相手の次のターン）に選べるようになることを確認（仕様上の期限切れ動作）。
 
 ## 5. 既知の問題 / リスク
 *   **複雑な効果:** 複数ステップの効果 (探索、シールドトリガーの選択) はC++での堅牢な処理が必要です。
