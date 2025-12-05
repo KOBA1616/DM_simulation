@@ -1,302 +1,254 @@
-import json
+import sys
 import os
-from PyQt6.QtCore import Qt
+import json
+import logging
+from PyQt6.QtCore import Qt, QSize, QModelIndex, QMimeData, QByteArray, QDataStream, QIODevice
+from PyQt6.QtGui import QStandardItemModel, QStandardItem, QAction, QDrag, QIcon, QColor
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
-    QComboBox, QSpinBox, QPushButton, QMessageBox, QFormLayout, QWidget, QCheckBox, QGridLayout, QScrollArea, QTabWidget, QGroupBox, QListWidget, QListWidgetItem,
-    QStackedWidget, QTextEdit
+    QMainWindow, QSplitter, QTreeView, QWidget, QVBoxLayout, QHBoxLayout,
+    QStackedWidget, QGroupBox, QComboBox, QLineEdit, QSpinBox,
+    QFormLayout, QLabel, QPushButton, QMenu, QMessageBox, QAbstractItemView,
+    QScrollArea, QGridLayout, QCheckBox, QApplication
 )
-from gui.widgets.card_widget import CardWidget
 from gui.localization import tr
 
-class CardEditor(QDialog):
-    def __init__(self, json_path, parent=None):
+# Constants
+ROLE_NODE_TYPE = Qt.ItemDataRole.UserRole + 1
+ROLE_DATA_REF = Qt.ItemDataRole.UserRole + 2 # We will store the data dict here
+
+NODE_ROOT = 0
+NODE_CARD = 1
+NODE_KEYWORDS = 2
+NODE_EFFECT = 3
+NODE_ACTION = 4
+
+class CardTreeModel(QStandardItemModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setHorizontalHeaderLabels(["Hierarchy"])
+
+    def flags(self, index):
+        default_flags = super().flags(index)
+        if index.isValid():
+            return default_flags | Qt.ItemFlag.ItemIsDragEnabled | Qt.ItemFlag.ItemIsDropEnabled
+        return default_flags | Qt.ItemFlag.ItemIsDropEnabled
+
+    def canDropMimeData(self, data, action, row, column, parent_index):
+        # Allow dropping generally, relying on visual cues and subsequent validation if needed.
+        # For InternalMove in TreeView, usually it just works for reordering.
+        return super().canDropMimeData(data, action, row, column, parent_index)
+
+class CardEditor(QMainWindow):
+    def __init__(self, json_path="data/cards.json", parent=None):
         super().__init__(parent)
         self.json_path = json_path
         self.setWindowTitle(tr("Card Editor"))
-        self.resize(1000, 700)
-        self.cards_data = []
-        self.current_card_index = -1
-        self.load_data()
+        self.resize(1300, 800)
+
         self.init_ui()
-
-    def load_data(self):
-        if os.path.exists(self.json_path):
-            try:
-                with open(self.json_path, 'r', encoding='utf-8') as f:
-                    self.cards_data = json.load(f)
-            except Exception as e:
-                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load JSON')}: {e}")
-                self.cards_data = []
-        else:
-            self.cards_data = []
-
-    def save_data(self):
-        try:
-            with open(self.json_path, 'w', encoding='utf-8') as f:
-                json.dump(self.cards_data, f, indent=2, ensure_ascii=False)
-            QMessageBox.information(self, tr("Success"), tr("Cards saved successfully!"))
-        except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
+        self.load_data()
 
     def init_ui(self):
-        # Left: Card List
-        list_layout = QVBoxLayout()
-        self.card_list = QListWidget()
-        self.card_list.currentRowChanged.connect(self.load_selected_card)
-        list_layout.addWidget(self.card_list)
+        # Splitter
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.setCentralWidget(self.splitter)
 
+        # Left: Tree
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+
+        self.tree_view = QTreeView()
+        self.model = CardTreeModel()
+        self.tree_view.setModel(self.model)
+        self.tree_view.setHeaderHidden(True)
+        self.tree_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.tree_view.setDragEnabled(True)
+        self.tree_view.setAcceptDrops(True)
+        self.tree_view.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tree_view.customContextMenuRequested.connect(self.open_context_menu)
+        self.tree_view.selectionModel().selectionChanged.connect(self.on_selection_changed)
+
+        left_layout.addWidget(self.tree_view)
+
+        # Buttons
         btn_layout = QHBoxLayout()
-        add_btn = QPushButton(tr("New Card"))
-        add_btn.clicked.connect(self.create_new_card)
-
-        del_btn = QPushButton(tr("Delete Card"))
-        del_btn.clicked.connect(self.delete_current_card)
-        btn_layout.addWidget(add_btn)
-        btn_layout.addWidget(del_btn)
-        list_layout.addLayout(btn_layout)
-
-        # Middle: Form (Tabs)
-        self.tabs = QTabWidget()
-
-        # Tab 1: Basic Info & Keywords
-        self.basic_tab = QWidget()
-        self.setup_basic_tab()
-        self.tabs.addTab(self.basic_tab, tr("Card Details"))
-
-        # Tab 2: Effects (Visual Builder)
-        self.effects_tab = QWidget()
-        self.setup_effects_tab()
-        self.tabs.addTab(self.effects_tab, tr("Effects"))
-
-        # Right: Preview
-        preview_layout = QVBoxLayout()
-        preview_label = QLabel(tr("Preview"))
-        preview_label.setStyleSheet("font-weight: bold;")
-        preview_layout.addWidget(preview_label)
-
-        self.preview_container = QWidget()
-        self.preview_container_layout = QVBoxLayout(self.preview_container)
-        self.preview_card = None
-
-        preview_layout.addWidget(self.preview_container)
-        preview_layout.addStretch()
-
-        # Bottom Buttons
-        action_layout = QHBoxLayout()
-        save_btn = QPushButton(tr("Save to JSON"))
-        save_btn.clicked.connect(self.save_data)
-        close_btn = QPushButton(tr("Close"))
-        close_btn.clicked.connect(self.reject)
-        action_layout.addWidget(save_btn)
-        action_layout.addWidget(close_btn)
-
-        # Assemble Layouts
-        top_layout = QHBoxLayout()
-        top_layout.addLayout(list_layout, 1)
-        top_layout.addWidget(self.tabs, 3)
-        top_layout.addLayout(preview_layout, 1)
-
-        root_layout = QVBoxLayout(self)
-        root_layout.addLayout(top_layout)
-        root_layout.addLayout(action_layout)
-
-        self.refresh_list()
-
-    def setup_basic_tab(self):
-        layout = QVBoxLayout(self.basic_tab)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        form_widget = QWidget()
-        form = QFormLayout(form_widget)
-
-        self.id_input = QSpinBox()
-        self.id_input.setRange(1, 9999)
-        form.addRow(tr("ID") + ":", self.id_input)
-
-        self.name_input = QLineEdit()
-        self.name_input.textChanged.connect(self.update_preview)
-        self.name_input.textChanged.connect(self.update_current_card_data)
-        form.addRow(tr("Name") + ":", self.name_input)
-
-        self.civ_input = QComboBox()
-        self.civ_input.addItems(["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"])
-        self.civ_input.currentTextChanged.connect(self.update_preview)
-        self.civ_input.currentTextChanged.connect(self.update_current_card_data)
-        form.addRow(tr("Civilization") + ":", self.civ_input)
-
-        self.type_input = QComboBox()
-        self.type_input.addItems(["CREATURE", "SPELL", "EVOLUTION_CREATURE"])
-        self.type_input.currentTextChanged.connect(self.update_current_card_data)
-        form.addRow(tr("Type") + ":", self.type_input)
-
-        self.cost_input = QSpinBox()
-        self.cost_input.setRange(0, 99)
-        self.cost_input.valueChanged.connect(self.update_preview)
-        self.cost_input.valueChanged.connect(self.update_current_card_data)
-        form.addRow(tr("Cost") + ":", self.cost_input)
-
-        self.power_input = QSpinBox()
-        self.power_input.setRange(0, 99999)
-        self.power_input.setSingleStep(500)
-        self.power_input.valueChanged.connect(self.update_preview)
-        self.power_input.valueChanged.connect(self.update_current_card_data)
-        form.addRow(tr("Power") + ":", self.power_input)
-
-        self.races_input = QLineEdit()
-        self.races_input.setPlaceholderText(tr("Races"))
-        self.races_input.textChanged.connect(self.update_current_card_data)
-        form.addRow(tr("Races") + ":", self.races_input)
-
-        # Keywords
-        keywords_label = QLabel(tr("Keywords") + ":")
-        form.addRow(keywords_label)
+        self.add_card_btn = QPushButton(tr("New Card"))
+        self.add_card_btn.clicked.connect(self.on_add_card_clicked)
+        self.save_btn = QPushButton(tr("Save"))
+        self.save_btn.clicked.connect(self.save_data)
+        btn_layout.addWidget(self.add_card_btn)
+        btn_layout.addWidget(self.save_btn)
+        left_layout.addLayout(btn_layout)
         
-        self.keywords_layout = QGridLayout()
+        self.splitter.addWidget(left_widget)
+        
+        # Right: Property Inspector
+        self.inspector_container = QWidget()
+        self.inspector_layout = QVBoxLayout(self.inspector_container)
+        self.stacked_widget = QStackedWidget()
+
+        # 0: Empty
+        self.page_empty = QLabel("Select an item to edit")
+        self.page_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.stacked_widget.addWidget(self.page_empty)
+
+        # 1: Card Editor
+        self.page_card = QWidget()
+        self.setup_card_ui(self.page_card)
+        self.stacked_widget.addWidget(self.page_card)
+
+        # 2: Keywords Editor
+        self.page_keywords = QWidget()
+        self.setup_keywords_ui(self.page_keywords)
+        self.stacked_widget.addWidget(self.page_keywords)
+
+        # 3: Effect Editor
+        self.page_effect = QWidget()
+        self.setup_effect_ui(self.page_effect)
+        self.stacked_widget.addWidget(self.page_effect)
+
+        # 4: Action Editor
+        self.page_action = QWidget()
+        self.setup_action_ui(self.page_action)
+        self.stacked_widget.addWidget(self.page_action)
+
+        self.inspector_layout.addWidget(self.stacked_widget)
+        self.splitter.addWidget(self.inspector_container)
+
+        self.splitter.setSizes([400, 800])
+
+    def setup_card_ui(self, parent):
+        layout = QVBoxLayout(parent)
+        form = QFormLayout()
+
+        self.card_id_edit = QSpinBox()
+        self.card_id_edit.setRange(1, 99999)
+        self.card_id_edit.valueChanged.connect(self.on_card_data_changed)
+        form.addRow(tr("ID"), self.card_id_edit)
+
+        self.card_name_edit = QLineEdit()
+        self.card_name_edit.textChanged.connect(self.on_card_data_changed)
+        form.addRow(tr("Name"), self.card_name_edit)
+
+        self.card_civ_combo = QComboBox()
+        self.card_civ_combo.addItems(["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"])
+        self.card_civ_combo.currentTextChanged.connect(self.on_card_data_changed)
+        form.addRow(tr("Civilization"), self.card_civ_combo)
+
+        self.card_type_combo = QComboBox()
+        self.card_type_combo.addItems(["CREATURE", "SPELL", "EVOLUTION_CREATURE"])
+        self.card_type_combo.currentTextChanged.connect(self.on_card_data_changed)
+        form.addRow(tr("Type"), self.card_type_combo)
+
+        self.card_cost_spin = QSpinBox()
+        self.card_cost_spin.setRange(0, 99)
+        self.card_cost_spin.valueChanged.connect(self.on_card_data_changed)
+        form.addRow(tr("Cost"), self.card_cost_spin)
+
+        self.card_power_spin = QSpinBox()
+        self.card_power_spin.setRange(0, 99999)
+        self.card_power_spin.setSingleStep(500)
+        self.card_power_spin.valueChanged.connect(self.on_card_data_changed)
+        form.addRow(tr("Power"), self.card_power_spin)
+
+        self.card_races_edit = QLineEdit()
+        self.card_races_edit.setPlaceholderText("Race1, Race2")
+        self.card_races_edit.textChanged.connect(self.on_card_data_changed)
+        form.addRow(tr("Races"), self.card_races_edit)
+
+        layout.addLayout(form)
+
+        # Add Effect Button
+        add_eff_btn = QPushButton(tr("Add Effect"))
+        add_eff_btn.clicked.connect(self.on_add_effect_clicked)
+        layout.addWidget(add_eff_btn)
+
+        layout.addStretch()
+
+    def setup_keywords_ui(self, parent):
+        layout = QVBoxLayout(parent)
         self.keyword_checkboxes = {}
-        keywords_list = [
-            "BLOCKER", "SPEED_ATTACKER", "SLAYER",
-            "DOUBLE_BREAKER", "TRIPLE_BREAKER", "POWER_ATTACKER",
-            "EVOLUTION", "MACH_FIGHTER", "G_STRIKE",
-            "JUST_DIVER"
+        keywords = [
+            "BLOCKER", "SPEED_ATTACKER", "SLAYER", "DOUBLE_BREAKER",
+            "TRIPLE_BREAKER", "POWER_ATTACKER", "EVOLUTION",
+            "MACH_FIGHTER", "G_STRIKE", "JUST_DIVER"
         ]
-        
-        for i, kw in enumerate(keywords_list):
-            cb = QCheckBox()
-
-            label = kw.replace("_", " ").title() # "SPEED_ATTACKER" -> "Speed Attacker"
-            if kw == "BLOCKER": label = "Blocker"
-            # Use localization key if it matches English enum name or custom key
-            # Assuming keys in localization.py handle specific keyword strings if added
-            # For now use English label wrapped in tr() which returns input if no match
-            # But "Blocker" -> "ブロッカー" is in localization.py
-
-            cb.setText(tr(label))
-
-            cb.stateChanged.connect(self.update_current_card_data)
+        grid = QGridLayout()
+        for i, kw in enumerate(keywords):
+            cb = QCheckBox(tr(kw))
+            cb.stateChanged.connect(self.on_keywords_changed)
             self.keyword_checkboxes[kw] = cb
-            self.keywords_layout.addWidget(cb, i // 2, i % 2)
-            
-        form.addRow(self.keywords_layout)
+            grid.addWidget(cb, i // 2, i % 2)
 
-        # Shield Trigger (Special Keyword)
-        self.shield_trigger_cb = QCheckBox(tr("S_TRIGGER"))
-        self.shield_trigger_cb.stateChanged.connect(self.update_current_card_data)
-        form.addRow(self.shield_trigger_cb)
+        layout.addLayout(grid)
 
-        # Hyper Energy (Special Action)
-        self.hyper_energy_cb = QCheckBox(tr("Hyper Energy")) # tr() will return English if not found, but it's consistent
-        self.hyper_energy_cb.stateChanged.connect(self.update_current_card_data)
-        form.addRow(self.hyper_energy_cb)
+        # Shield Trigger
+        self.st_check = QCheckBox(tr("S_TRIGGER"))
+        self.st_check.stateChanged.connect(self.on_keywords_changed)
+        layout.addWidget(self.st_check)
 
         # Revolution Change
-        self.rev_change_group = QGroupBox(tr("REVOLUTION_CHANGE"))
-        self.rev_change_group.setCheckable(True)
-        self.rev_change_group.setChecked(False)
-        self.rev_change_group.toggled.connect(self.update_current_card_data)
-        rev_layout = QGridLayout(self.rev_change_group)
-
-        rev_layout.addWidget(QLabel(tr("Civilization") + ":"), 0, 0)
-        self.rev_civ_input = QLineEdit()
-        self.rev_civ_input.setPlaceholderText("FIRE, etc.")
-        self.rev_civ_input.textChanged.connect(self.update_current_card_data)
-        rev_layout.addWidget(self.rev_civ_input, 0, 1)
-
-        rev_layout.addWidget(QLabel(tr("Races") + ":"), 1, 0)
-        self.rev_race_input = QLineEdit()
-        self.rev_race_input.setPlaceholderText("Dragon, etc.")
-        self.rev_race_input.textChanged.connect(self.update_current_card_data)
-        rev_layout.addWidget(self.rev_race_input, 1, 1)
-
-        rev_layout.addWidget(QLabel(tr("Min Cost") + ":"), 2, 0)
+        self.rev_group = QGroupBox(tr("REVOLUTION_CHANGE"))
+        self.rev_group.setCheckable(True)
+        self.rev_group.toggled.connect(self.on_keywords_changed)
+        rev_form = QFormLayout(self.rev_group)
+        self.rev_civ_edit = QLineEdit()
+        self.rev_civ_edit.textChanged.connect(self.on_keywords_changed)
+        rev_form.addRow(tr("Civilizations"), self.rev_civ_edit)
+        self.rev_race_edit = QLineEdit()
+        self.rev_race_edit.textChanged.connect(self.on_keywords_changed)
+        rev_form.addRow(tr("Races"), self.rev_race_edit)
         self.rev_cost_spin = QSpinBox()
         self.rev_cost_spin.setRange(0, 99)
-        self.rev_cost_spin.valueChanged.connect(self.update_current_card_data)
-        rev_layout.addWidget(self.rev_cost_spin, 2, 1)
+        self.rev_cost_spin.valueChanged.connect(self.on_keywords_changed)
+        rev_form.addRow(tr("Min Cost"), self.rev_cost_spin)
+        layout.addWidget(self.rev_group)
 
-        form.addRow(self.rev_change_group)
+        layout.addStretch()
 
-        scroll.setWidget(form_widget)
-        layout.addWidget(scroll)
+    def setup_effect_ui(self, parent):
+        layout = QVBoxLayout(parent)
+        form = QFormLayout()
 
-    def setup_effects_tab(self):
-        layout = QVBoxLayout(self.effects_tab)
-
-        # Split: List of Effects (Top) and Effect Detail Editor (Bottom)
-
-        # Top: List
-        list_group = QGroupBox(tr("Effects"))
-        list_layout = QVBoxLayout(list_group)
-        self.effects_list = QListWidget()
-        self.effects_list.currentRowChanged.connect(self.load_selected_effect)
-        list_layout.addWidget(self.effects_list)
-
-        btn_layout = QHBoxLayout()
-        add_eff_btn = QPushButton(tr("Add Effect"))
-        add_eff_btn.clicked.connect(self.create_new_effect)
-        rem_eff_btn = QPushButton(tr("Remove Effect"))
-        rem_eff_btn.clicked.connect(self.remove_effect)
-        btn_layout.addWidget(add_eff_btn)
-        btn_layout.addWidget(rem_eff_btn)
-        list_layout.addLayout(btn_layout)
-
-        layout.addWidget(list_group, 1)
-
-        # Bottom: Editor
-        editor_group = QGroupBox(tr("Effect"))
-        editor_layout = QVBoxLayout(editor_group)
-
-        # Trigger
-        trig_layout = QHBoxLayout()
-        trig_layout.addWidget(QLabel(tr("Trigger") + ":"))
         self.eff_trigger_combo = QComboBox()
         triggers = ["ON_PLAY", "ON_ATTACK", "ON_DESTROY", "PASSIVE_CONST", "TURN_START", "ON_OTHER_ENTER", "ON_ATTACK_FROM_HAND"]
         for t in triggers:
             self.eff_trigger_combo.addItem(tr(t), t)
-        trig_layout.addWidget(self.eff_trigger_combo)
-        editor_layout.addLayout(trig_layout)
+        self.eff_trigger_combo.currentIndexChanged.connect(self.on_effect_changed)
+        form.addRow(tr("Trigger"), self.eff_trigger_combo)
 
-        # Condition
-        cond_layout = QHBoxLayout()
-        cond_layout.addWidget(QLabel(tr("Condition") + ":"))
+        # Simple condition editor
+        self.eff_cond_type = QComboBox()
+        conds = ["NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH", "OPPONENT_PLAYED_WITHOUT_MANA"]
+        for c in conds:
+            self.eff_cond_type.addItem(c, c)
+        self.eff_cond_type.currentIndexChanged.connect(self.on_effect_changed)
+        form.addRow(tr("Condition Type"), self.eff_cond_type)
 
-        self.eff_cond_type_combo = QComboBox()
-        cond_types = ["NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH", "OPPONENT_PLAYED_WITHOUT_MANA"]
-        for c in cond_types:
-            self.eff_cond_type_combo.addItem(c, c)
-        cond_layout.addWidget(self.eff_cond_type_combo)
+        self.eff_cond_val = QSpinBox()
+        self.eff_cond_val.valueChanged.connect(self.on_effect_changed)
+        form.addRow(tr("Value"), self.eff_cond_val)
 
-        cond_layout.addWidget(QLabel(tr("Value 1") + ":"))
-        self.eff_cond_val_spin = QSpinBox()
-        self.eff_cond_val_spin.setRange(0, 99)
-        cond_layout.addWidget(self.eff_cond_val_spin)
+        self.eff_cond_str = QLineEdit()
+        self.eff_cond_str.textChanged.connect(self.on_effect_changed)
+        form.addRow(tr("String Value"), self.eff_cond_str)
 
-        cond_layout.addWidget(QLabel(tr("String Value") + ":"))
-        self.eff_cond_str_edit = QLineEdit()
-        self.eff_cond_str_edit.setPlaceholderText("FIRE, etc.")
-        cond_layout.addWidget(self.eff_cond_str_edit)
+        layout.addLayout(form)
 
-        editor_layout.addLayout(cond_layout)
-
-        # Action List inside Effect
-        self.eff_action_list_widget = QListWidget()
-        self.eff_action_list_widget.setFixedHeight(80)
-        self.eff_action_list_widget.currentRowChanged.connect(self.load_selected_action)
-        editor_layout.addWidget(QLabel(tr("Actions") + ":"))
-        editor_layout.addWidget(self.eff_action_list_widget)
-
-        act_btn_layout = QHBoxLayout()
+        # Add Action Button
         add_act_btn = QPushButton(tr("Add Action"))
-        add_act_btn.clicked.connect(self.add_action_to_effect)
-        rem_act_btn = QPushButton(tr("Remove Action"))
-        rem_act_btn.clicked.connect(self.remove_action_from_effect)
-        act_btn_layout.addWidget(add_act_btn)
-        act_btn_layout.addWidget(rem_act_btn)
-        editor_layout.addLayout(act_btn_layout)
+        add_act_btn.clicked.connect(self.on_add_action_clicked)
+        layout.addWidget(add_act_btn)
 
-        # Action Detail Editor
-        self.action_detail_group = QGroupBox(tr("Action"))
-        detail_form = QFormLayout(self.action_detail_group)
+        layout.addStretch()
+
+    def setup_action_ui(self, parent):
+        layout = QVBoxLayout(parent)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        form = QFormLayout(content)
 
         self.act_type_combo = QComboBox()
         actions = [
@@ -305,340 +257,364 @@ class CardEditor(QDialog):
             "REVOLUTION_CHANGE", "COUNT_CARDS", "GET_GAME_STAT", "APPLY_MODIFIER", "REVEAL_CARDS",
             "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE"
         ]
+        actions.sort()
         for a in actions:
             self.act_type_combo.addItem(tr(a), a)
-        detail_form.addRow(tr("Action Type") + ":", self.act_type_combo)
+        self.act_type_combo.currentIndexChanged.connect(self.on_action_changed)
+        self.act_type_combo.currentIndexChanged.connect(self.update_dynamic_labels)
+        form.addRow(tr("Action Type"), self.act_type_combo)
 
-        self.act_scope_combo = QComboBox()
+        # Variable Linking
+        self.act_input_key = QComboBox() # Dynamic
+        self.act_input_key.setEditable(True)
+        self.act_input_key.editTextChanged.connect(self.on_action_changed) # Capture manual edits too
+        self.act_input_key.currentIndexChanged.connect(self.on_input_key_selected)
+        form.addRow(tr("Input Key"), self.act_input_key)
+
+        self.act_output_key = QLineEdit()
+        self.act_output_key.textChanged.connect(self.on_action_changed)
+        form.addRow(tr("Output Key"), self.act_output_key)
+
+        # Other fields (Scope, Value1, Value2, String, Filter...)
+        self.act_scope = QComboBox()
         scopes = ["PLAYER_SELF", "PLAYER_OPPONENT", "TARGET_SELECT", "ALL_PLAYERS", "RANDOM", "ALL_FILTERED", "NONE"]
         for s in scopes:
-            self.act_scope_combo.addItem(tr(s), s)
-        detail_form.addRow(tr("Scope") + ":", self.act_scope_combo)
+            self.act_scope.addItem(tr(s), s)
+        self.act_scope.currentIndexChanged.connect(self.on_action_changed)
+        form.addRow(tr("Scope"), self.act_scope)
 
-        # Filter Settings
-        filter_box = QGroupBox(tr("Filter"))
-        filter_layout = QGridLayout(filter_box)
+        self.act_val1 = QSpinBox()
+        self.act_val1.setRange(-1, 9999)
+        self.act_val1.valueChanged.connect(self.on_action_changed)
+        self.act_val1_label = QLabel(tr("Value 1"))
+        form.addRow(self.act_val1_label, self.act_val1)
 
-        filter_layout.addWidget(QLabel(tr("Zones") + ":"), 0, 0)
-        self.zone_checks = {}
-        zones = ["BATTLE_ZONE", "MANA_ZONE", "HAND", "GRAVEYARD", "SHIELD_ZONE", "DECK"]
-        zones_layout = QGridLayout()
-        for i, z in enumerate(zones):
-            cb = QCheckBox(tr(z))
-            self.zone_checks[z] = cb
-            zones_layout.addWidget(cb, i // 3, i % 3)
-        filter_layout.addLayout(zones_layout, 0, 1)
+        self.act_val2 = QSpinBox()
+        self.act_val2.setRange(-1, 9999)
+        self.act_val2.valueChanged.connect(self.on_action_changed)
+        self.act_val2_label = QLabel(tr("Value 2"))
+        form.addRow(self.act_val2_label, self.act_val2)
 
-        filter_layout.addWidget(QLabel(tr("Target Player") + ":"), 1, 0)
-        self.filter_player_combo = QComboBox()
-        self.filter_player_combo.addItems(["NONE", "SELF", "OPPONENT", "BOTH"])
-        filter_layout.addWidget(self.filter_player_combo, 1, 1)
+        self.act_str = QLineEdit()
+        self.act_str.textChanged.connect(self.on_action_changed)
+        form.addRow(tr("String Value"), self.act_str)
 
-        filter_layout.addWidget(QLabel(tr("Card Types") + ":"), 2, 0)
-        self.filter_type_combo = QComboBox()
-        self.filter_type_combo.addItems(["NONE", "CREATURE", "SPELL"])
-        filter_layout.addWidget(self.filter_type_combo, 2, 1)
+        # Filter (Zones, Civ, Race, Cost, Power, Flags)
+        self.act_filter_zones = QLineEdit()
+        self.act_filter_zones.setPlaceholderText("BATTLE_ZONE, HAND etc")
+        self.act_filter_zones.textChanged.connect(self.on_action_changed)
+        form.addRow(tr("Filter Zones"), self.act_filter_zones)
 
-        filter_layout.addWidget(QLabel(tr("Count") + ":"), 3, 0)
-        self.filter_count_spin = QSpinBox()
-        self.filter_count_spin.setRange(0, 20)
-        filter_layout.addWidget(self.filter_count_spin, 3, 1)
+        self.act_filter_civ = QLineEdit()
+        self.act_filter_civ.textChanged.connect(self.on_action_changed)
+        form.addRow(tr("Filter Civ"), self.act_filter_civ)
 
-        # New Filter Fields (Civilization, Race, Cost, Power, Tapped, Blocker, Evolution)
-
-        filter_layout.addWidget(QLabel(tr("Civilizations") + ":"), 4, 0)
-        self.filter_civ_input = QLineEdit()
-        self.filter_civ_input.setPlaceholderText("FIRE, DARKNESS")
-        filter_layout.addWidget(self.filter_civ_input, 4, 1)
-
-        filter_layout.addWidget(QLabel(tr("Races") + ":"), 5, 0)
-        self.filter_race_input = QLineEdit()
-        self.filter_race_input.setPlaceholderText("Dragon, Cyber Lord")
-        filter_layout.addWidget(self.filter_race_input, 5, 1)
+        self.act_filter_race = QLineEdit()
+        self.act_filter_race.textChanged.connect(self.on_action_changed)
+        form.addRow(tr("Filter Race"), self.act_filter_race)
 
         # Cost Range
         cost_layout = QHBoxLayout()
-        self.filter_min_cost_spin = QSpinBox()
-        self.filter_min_cost_spin.setRange(-1, 99)
-        self.filter_min_cost_spin.setValue(-1) # -1 means Ignore
+        self.act_filter_min_cost = QSpinBox()
+        self.act_filter_min_cost.setRange(-1, 99)
+        self.act_filter_min_cost.setValue(-1)
+        self.act_filter_min_cost.valueChanged.connect(self.on_action_changed)
         cost_layout.addWidget(QLabel(tr("Min") + ":"))
-        cost_layout.addWidget(self.filter_min_cost_spin)
-        self.filter_max_cost_spin = QSpinBox()
-        self.filter_max_cost_spin.setRange(-1, 99)
-        self.filter_max_cost_spin.setValue(-1)
+        cost_layout.addWidget(self.act_filter_min_cost)
+
+        self.act_filter_max_cost = QSpinBox()
+        self.act_filter_max_cost.setRange(-1, 99)
+        self.act_filter_max_cost.setValue(-1)
+        self.act_filter_max_cost.valueChanged.connect(self.on_action_changed)
         cost_layout.addWidget(QLabel(tr("Max") + ":"))
-        cost_layout.addWidget(self.filter_max_cost_spin)
-        filter_layout.addWidget(QLabel(tr("Cost") + ":"), 6, 0)
-        filter_layout.addLayout(cost_layout, 6, 1)
+        cost_layout.addWidget(self.act_filter_max_cost)
+        form.addRow(tr("Filter Cost"), cost_layout)
 
         # Power Range
         power_layout = QHBoxLayout()
-        self.filter_min_power_spin = QSpinBox()
-        self.filter_min_power_spin.setRange(-1, 99999)
-        self.filter_min_power_spin.setSingleStep(500)
-        self.filter_min_power_spin.setValue(-1)
+        self.act_filter_min_power = QSpinBox()
+        self.act_filter_min_power.setRange(-1, 99999)
+        self.act_filter_min_power.setSingleStep(500)
+        self.act_filter_min_power.setValue(-1)
+        self.act_filter_min_power.valueChanged.connect(self.on_action_changed)
         power_layout.addWidget(QLabel(tr("Min") + ":"))
-        power_layout.addWidget(self.filter_min_power_spin)
-        self.filter_max_power_spin = QSpinBox()
-        self.filter_max_power_spin.setRange(-1, 99999)
-        self.filter_max_power_spin.setSingleStep(500)
-        self.filter_max_power_spin.setValue(-1)
+        power_layout.addWidget(self.act_filter_min_power)
+
+        self.act_filter_max_power = QSpinBox()
+        self.act_filter_max_power.setRange(-1, 99999)
+        self.act_filter_max_power.setSingleStep(500)
+        self.act_filter_max_power.setValue(-1)
+        self.act_filter_max_power.valueChanged.connect(self.on_action_changed)
         power_layout.addWidget(QLabel(tr("Max") + ":"))
-        power_layout.addWidget(self.filter_max_power_spin)
-        filter_layout.addWidget(QLabel(tr("Power") + ":"), 7, 0)
-        filter_layout.addLayout(power_layout, 7, 1)
+        power_layout.addWidget(self.act_filter_max_power)
+        form.addRow(tr("Filter Power"), power_layout)
 
-        # Boolean Flags (Tapped, Blocker, Evolution)
-        # Using Combo for Ignore/True/False
-        flags_layout = QGridLayout()
+        # Flags
+        self.act_filter_tapped = QComboBox()
+        self.act_filter_tapped.addItems([tr("Ignore"), tr("True"), tr("False")])
+        self.act_filter_tapped.currentIndexChanged.connect(self.on_action_changed)
+        form.addRow(tr("Tapped"), self.act_filter_tapped)
 
-        flags_layout.addWidget(QLabel(tr("Tapped") + ":"), 0, 0)
-        self.filter_tapped_combo = QComboBox()
-        self.filter_tapped_combo.addItems([tr("Ignore"), tr("True"), tr("False")])
-        flags_layout.addWidget(self.filter_tapped_combo, 0, 1)
-
-        flags_layout.addWidget(QLabel(tr("Blocker") + ":"), 1, 0)
-        self.filter_blocker_combo = QComboBox()
-        self.filter_blocker_combo.addItems([tr("Ignore"), tr("True"), tr("False")])
-        flags_layout.addWidget(self.filter_blocker_combo, 1, 1)
-
-        flags_layout.addWidget(QLabel(tr("Evolution") + ":"), 2, 0)
-        self.filter_evolution_combo = QComboBox()
-        self.filter_evolution_combo.addItems([tr("Ignore"), tr("True"), tr("False")])
-        flags_layout.addWidget(self.filter_evolution_combo, 2, 1)
-
-        filter_layout.addLayout(flags_layout, 8, 0, 1, 2)
+        self.act_filter_blocker = QComboBox()
+        self.act_filter_blocker.addItems([tr("Ignore"), tr("True"), tr("False")])
+        self.act_filter_blocker.currentIndexChanged.connect(self.on_action_changed)
+        form.addRow(tr("Blocker"), self.act_filter_blocker)
         
-        detail_form.addRow(filter_box)
+        self.act_filter_evolution = QComboBox()
+        self.act_filter_evolution.addItems([tr("Ignore"), tr("True"), tr("False")])
+        self.act_filter_evolution.currentIndexChanged.connect(self.on_action_changed)
+        form.addRow(tr("Evolution"), self.act_filter_evolution)
 
-        # Generic Values
-        self.val1_label = QLabel(tr("Value 1") + ":")
-        self.val1_spin = QSpinBox()
-        self.val1_spin.setRange(0, 99)
-        detail_form.addRow(self.val1_label, self.val1_spin)
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
 
-        self.val2_label = QLabel(tr("Value 2") + ":")
-        self.val2_spin = QSpinBox()
-        self.val2_spin.setRange(0, 99)
-        detail_form.addRow(self.val2_label, self.val2_spin)
+    # --- Data Loading ---
 
-        self.str_val_edit = QLineEdit()
-        detail_form.addRow(tr("String Value") + ":", self.str_val_edit)
+    def load_data(self):
+        self.model.clear()
+        self.model.setHorizontalHeaderLabels(["Cards"])
+        root = self.model.invisibleRootItem()
 
-        # Phase 5: Dynamic Variables
-        self.input_key_edit = QLineEdit()
-        detail_form.addRow(tr("Input Key") + ":", self.input_key_edit)
-        self.output_key_edit = QLineEdit()
-        detail_form.addRow(tr("Output Key") + ":", self.output_key_edit)
+        if os.path.exists(self.json_path):
+            try:
+                with open(self.json_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    for card in data:
+                        self.add_card_to_tree(root, card)
+            except Exception as e:
+                print(f"Error loading: {e}")
 
-        # Connect Action Type change to dynamic labels
-        self.act_type_combo.currentIndexChanged.connect(self.update_dynamic_labels)
+    def add_card_to_tree(self, root, card_data):
+        name = f"{card_data.get('id', '?')} - {card_data.get('name', 'No Name')}"
+        item = QStandardItem(name)
+        item.setData(NODE_CARD, ROLE_NODE_TYPE)
+        item.setData(card_data, ROLE_DATA_REF)
+        root.appendRow(item)
 
-        # Apply Button
-        apply_btn = QPushButton(tr("Update Action"))
-        apply_btn.clicked.connect(self.apply_action_changes)
-        detail_form.addRow(apply_btn)
+        # Keywords Node
+        kw_item = QStandardItem(tr("Keywords"))
+        kw_item.setData(NODE_KEYWORDS, ROLE_NODE_TYPE)
+        kw_item.setData(card_data, ROLE_DATA_REF)
+        item.appendRow(kw_item)
 
-        editor_layout.addWidget(self.action_detail_group)
-        layout.addWidget(editor_group, 2)
+        # Effects
+        for eff in card_data.get('effects', []):
+            if eff.get('trigger') == 'PASSIVE_CONST' and self.is_keyword_effect(eff):
+                continue
+            self.add_effect_to_tree(item, eff)
 
-    def refresh_list(self):
-        self.card_list.clear()
-        for card in self.cards_data:
-            item = QListWidgetItem(f"{card.get('id')} - {card.get('name')}")
-            item.setData(Qt.ItemDataRole.UserRole, card.get('id'))
-            self.card_list.addItem(item)
+    def is_keyword_effect(self, eff):
+        if eff.get('trigger') != 'PASSIVE_CONST': return False
+        for act in eff.get('actions', []):
+            if act.get('str_val') in ["BLOCKER", "SPEED_ATTACKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER", "POWER_ATTACKER", "EVOLUTION", "MACH_FIGHTER", "G_STRIKE", "JUST_DIVER"]:
+                return True
+        return False
 
-    def create_new_card(self):
-        new_id = 1
-        if self.cards_data:
-            new_id = max(c.get('id', 0) for c in self.cards_data) + 1
+    def add_effect_to_tree(self, card_item, eff_data):
+        trig = eff_data.get('trigger', 'NONE')
+        item = QStandardItem(tr(trig))
+        item.setData(NODE_EFFECT, ROLE_NODE_TYPE)
+        item.setData(eff_data, ROLE_DATA_REF)
+        card_item.appendRow(item)
         
-        new_card = {
-            "id": new_id,
-            "name": "New Card",
-            "civilization": "FIRE",
-            "type": "CREATURE",
-            "cost": 1,
-            "power": 1000,
-            "races": [],
-            "effects": []
-        }
-        self.cards_data.append(new_card)
-        self.refresh_list()
-        self.card_list.setCurrentRow(self.card_list.count() - 1)
+        for act in eff_data.get('actions', []):
+            self.add_action_to_tree(item, act)
 
-    def delete_current_card(self):
-        row = self.card_list.currentRow()
-        if row >= 0:
-            del self.cards_data[row]
-            self.refresh_list()
-            self.current_card_index = -1
-            # Clear UI
+        return item
 
-    def load_selected_card(self, row):
-        if row < 0 or row >= len(self.cards_data):
+    def add_action_to_tree(self, eff_item, act_data):
+        atype = act_data.get('type', 'NONE')
+        item = QStandardItem(tr(atype))
+        item.setData(NODE_ACTION, ROLE_NODE_TYPE)
+        item.setData(act_data, ROLE_DATA_REF)
+        eff_item.appendRow(item)
+        return item
+
+    # --- Selection & UI Update ---
+
+    def on_selection_changed(self, selected, deselected):
+        indexes = selected.indexes()
+        if not indexes:
+            self.stacked_widget.setCurrentWidget(self.page_empty)
             return
         
-        self.current_card_index = row
-        card = self.cards_data[row]
+        index = indexes[0]
+        item = self.model.itemFromIndex(index)
+        node_type = item.data(ROLE_NODE_TYPE)
+        data = item.data(ROLE_DATA_REF)
         
-        self.block_signals_recursive(True)
+        self.block_signals(True)
+        
+        if node_type == NODE_CARD:
+            self.stacked_widget.setCurrentWidget(self.page_card)
+            self.populate_card_ui(data)
+        elif node_type == NODE_KEYWORDS:
+            self.stacked_widget.setCurrentWidget(self.page_keywords)
+            self.populate_keywords_ui(data)
+        elif node_type == NODE_EFFECT:
+            self.stacked_widget.setCurrentWidget(self.page_effect)
+            self.populate_effect_ui(data)
+        elif node_type == NODE_ACTION:
+            self.stacked_widget.setCurrentWidget(self.page_action)
+            self.populate_action_ui(data)
+            self.update_variable_suggestions(item)
+        else:
+            self.stacked_widget.setCurrentWidget(self.page_empty)
 
-        self.id_input.setValue(card.get('id', 0))
-        self.name_input.setText(card.get('name', ''))
-        self.civ_input.setCurrentText(card.get('civilization', 'FIRE'))
-        self.type_input.setCurrentText(card.get('type', 'CREATURE'))
-        self.cost_input.setValue(card.get('cost', 0))
-        self.power_input.setValue(card.get('power', 0))
+        self.block_signals(False)
+
+    def block_signals(self, block):
+        inputs = [
+            self.card_id_edit, self.card_name_edit, self.card_civ_combo, self.card_type_combo,
+            self.card_cost_spin, self.card_power_spin, self.card_races_edit,
+            self.st_check, self.rev_group, self.rev_civ_edit, self.rev_race_edit, self.rev_cost_spin,
+            self.eff_trigger_combo, self.eff_cond_type, self.eff_cond_val, self.eff_cond_str,
+            self.act_type_combo, self.act_input_key, self.act_output_key, self.act_scope, self.act_val1, self.act_val2,
+            self.act_str, self.act_filter_zones, self.act_filter_civ, self.act_filter_race,
+            self.act_filter_min_cost, self.act_filter_max_cost,
+            self.act_filter_min_power, self.act_filter_max_power,
+            self.act_filter_tapped, self.act_filter_blocker, self.act_filter_evolution
+        ]
+        for w in inputs: w.blockSignals(block)
+        for w in self.keyword_checkboxes.values(): w.blockSignals(block)
+
+    def update_dynamic_labels(self):
+        act_type = self.act_type_combo.currentText() # Use text or data
+        # Assuming tr maps back or we use keys. data is safest.
+        act_type_key = self.act_type_combo.currentData()
         
-        races = card.get('races', [])
-        self.races_input.setText(", ".join(races))
-        
-        # Keywords check (PASSIVE_CONST sync)
-        effects = card.get('effects', [])
-        active_keywords = set()
-        for eff in effects:
+        if act_type_key == "APPLY_MODIFIER":
+            self.act_val1_label.setText(tr("Reduction Amount"))
+            self.act_val2_label.setText(tr("Duration (Turns)"))
+        else:
+            self.act_val1_label.setText(tr("Value 1"))
+            self.act_val2_label.setText(tr("Value 2"))
+
+    def populate_card_ui(self, data):
+        self.card_id_edit.setValue(data.get('id', 0))
+        self.card_name_edit.setText(data.get('name', ''))
+        self.card_civ_combo.setCurrentText(data.get('civilization', 'FIRE'))
+        self.card_type_combo.setCurrentText(data.get('type', 'CREATURE'))
+        self.card_cost_spin.setValue(data.get('cost', 0))
+        self.card_power_spin.setValue(data.get('power', 0))
+        self.card_races_edit.setText(", ".join(data.get('races', [])))
+
+    def populate_keywords_ui(self, data):
+        active = set()
+        for eff in data.get('effects', []):
             if eff.get('trigger') == 'PASSIVE_CONST':
                 for act in eff.get('actions', []):
                     if 'str_val' in act:
-                        active_keywords.add(act['str_val'])
+                        active.add(act['str_val'])
+
+        kws = data.get('keywords', {})
+        if kws.get('shield_trigger'): self.st_check.setChecked(True)
+        else: self.st_check.setChecked(False)
         
         for kw, cb in self.keyword_checkboxes.items():
-            cb.setChecked(kw in active_keywords)
+            cb.setChecked(kw in active)
 
-        # Shield Trigger check (Root keyword)
-        st_kw = card.get('keywords', {}).get('shield_trigger', False)
-        self.shield_trigger_cb.setChecked(st_kw)
-
-        # Hyper Energy check
-        has_hyper = False
-        for eff in effects:
-            for act in eff.get('actions', []):
-                if act.get('type') == 'COST_REFERENCE' and act.get('str_val') == 'HYPER_ENERGY':
-                    has_hyper = True
-                    break
-        self.hyper_energy_cb.setChecked(has_hyper)
-
-        # Revolution Change
-        rev_cond = card.get('revolution_change_condition', None)
-        if rev_cond:
-            self.rev_change_group.setChecked(True)
-            self.rev_civ_input.setText(",".join(rev_cond.get('civilizations', [])))
-            self.rev_race_input.setText(",".join(rev_cond.get('races', [])))
-            self.rev_cost_spin.setValue(rev_cond.get('min_cost', 0))
+        rc = data.get('revolution_change_condition')
+        if rc:
+            self.rev_group.setChecked(True)
+            self.rev_civ_edit.setText(", ".join(rc.get('civilizations', [])))
+            self.rev_race_edit.setText(", ".join(rc.get('races', [])))
+            self.rev_cost_spin.setValue(rc.get('min_cost', 0))
         else:
-            self.rev_change_group.setChecked(False)
-            self.rev_civ_input.setText("")
-            self.rev_race_input.setText("")
-            self.rev_cost_spin.setValue(5)
+            self.rev_group.setChecked(False)
 
-        # Load Effects List
-        self.refresh_effects_list()
+    def populate_effect_ui(self, data):
+        idx = self.eff_trigger_combo.findData(data.get('trigger', 'NONE'))
+        if idx >= 0: self.eff_trigger_combo.setCurrentIndex(idx)
 
-        self.block_signals_recursive(False)
-        self.update_preview()
+        cond = data.get('condition', {})
+        cidx = self.eff_cond_type.findData(cond.get('type', 'NONE'))
+        if cidx >= 0: self.eff_cond_type.setCurrentIndex(cidx)
+        self.eff_cond_val.setValue(cond.get('value', 0))
+        self.eff_cond_str.setText(cond.get('str_val', ''))
 
-    def block_signals_recursive(self, block):
-        self.id_input.blockSignals(block)
-        self.name_input.blockSignals(block)
-        self.civ_input.blockSignals(block)
-        self.type_input.blockSignals(block)
-        self.cost_input.blockSignals(block)
-        self.power_input.blockSignals(block)
-        self.races_input.blockSignals(block)
-        for cb in self.keyword_checkboxes.values():
-            cb.blockSignals(block)
-        self.shield_trigger_cb.blockSignals(block)
-        self.hyper_energy_cb.blockSignals(block)
-        self.rev_change_group.blockSignals(block)
-        self.rev_civ_input.blockSignals(block)
-        self.rev_race_input.blockSignals(block)
-        self.rev_cost_spin.blockSignals(block)
+    def populate_action_ui(self, data):
+        idx = self.act_type_combo.findData(data.get('type', 'NONE'))
+        if idx >= 0: self.act_type_combo.setCurrentIndex(idx)
 
-    def update_current_card_data(self):
-        if self.current_card_index < 0:
-            return
+        # Trigger dynamic label update
+        self.update_dynamic_labels()
 
-        card = self.cards_data[self.current_card_index]
+        self.act_input_key.setEditText(data.get('input_value_key', ''))
+        self.act_output_key.setText(data.get('output_value_key', ''))
 
-        card['id'] = self.id_input.value()
-        card['name'] = self.name_input.text()
-        card['civilization'] = self.civ_input.currentText()
-        card['type'] = self.type_input.currentText()
-        card['cost'] = self.cost_input.value()
-        card['power'] = self.power_input.value()
+        sidx = self.act_scope.findData(data.get('scope', 'NONE'))
+        if sidx >= 0: self.act_scope.setCurrentIndex(sidx)
 
-        races_str = self.races_input.text()
-        card['races'] = [r.strip() for r in races_str.split(',')] if races_str.strip() else []
+        self.act_val1.setValue(data.get('value1', 0))
+        self.act_val2.setValue(data.get('value2', 0))
+        self.act_str.setText(data.get('str_val', ''))
 
-        # Sync Shield Trigger
-        if self.shield_trigger_cb.isChecked():
-            if 'keywords' not in card: card['keywords'] = {}
-            card['keywords']['shield_trigger'] = True
+        filt = data.get('filter', {})
+        self.act_filter_zones.setText(", ".join(filt.get('zones', [])))
+        self.act_filter_civ.setText(", ".join(filt.get('civilizations', [])))
+        self.act_filter_race.setText(", ".join(filt.get('races', [])))
+
+        self.act_filter_min_cost.setValue(filt.get('min_cost', -1) if filt.get('min_cost') is not None else -1)
+        self.act_filter_max_cost.setValue(filt.get('max_cost', -1) if filt.get('max_cost') is not None else -1)
+        self.act_filter_min_power.setValue(filt.get('min_power', -1) if filt.get('min_power') is not None else -1)
+        self.act_filter_max_power.setValue(filt.get('max_power', -1) if filt.get('max_power') is not None else -1)
+
+        def set_bool_combo(combo, key):
+            val = filt.get(key)
+            if val is None: combo.setCurrentIndex(0)
+            elif val is True: combo.setCurrentIndex(1)
+            else: combo.setCurrentIndex(2)
+
+        set_bool_combo(self.act_filter_tapped, 'is_tapped')
+        set_bool_combo(self.act_filter_blocker, 'is_blocker')
+        set_bool_combo(self.act_filter_evolution, 'is_evolution')
+
+    # --- Data Saving (Sync UI to Data Ref) ---
+
+    def on_card_data_changed(self):
+        item = self.get_selected_item()
+        if not item or item.data(ROLE_NODE_TYPE) != NODE_CARD: return
+        data = item.data(ROLE_DATA_REF)
+
+        data['id'] = self.card_id_edit.value()
+        data['name'] = self.card_name_edit.text()
+        data['civilization'] = self.card_civ_combo.currentText()
+        data['type'] = self.card_type_combo.currentText()
+        data['cost'] = self.card_cost_spin.value()
+        data['power'] = self.card_power_spin.value()
+        races = self.card_races_edit.text().split(',')
+        data['races'] = [r.strip() for r in races if r.strip()]
+
+        item.setText(f"{data['id']} - {data['name']}")
+
+    def on_keywords_changed(self):
+        item = self.get_selected_item()
+        if not item or item.data(ROLE_NODE_TYPE) != NODE_KEYWORDS: return
+        data = item.data(ROLE_DATA_REF)
+
+        if self.st_check.isChecked():
+            if 'keywords' not in data: data['keywords'] = {}
+            data['keywords']['shield_trigger'] = True
         else:
-            if 'keywords' in card and 'shield_trigger' in card['keywords']:
-                del card['keywords']['shield_trigger']
+            if 'keywords' in data and 'shield_trigger' in data['keywords']:
+                del data['keywords']['shield_trigger']
 
-        # Sync Hyper Energy
-        # 1. Remove existing Hyper Energy actions/effects
-        cleaned_effects_for_hyper = []
-        for eff in card.get('effects', []):
-            new_actions = []
-            for act in eff.get('actions', []):
-                if not (act.get('type') == 'COST_REFERENCE' and act.get('str_val') == 'HYPER_ENERGY'):
-                    new_actions.append(act)
-
-            if new_actions or eff.get('trigger') != 'NONE':
-                eff['actions'] = new_actions
-                cleaned_effects_for_hyper.append(eff)
-
-        card['effects'] = cleaned_effects_for_hyper
-
-        # 2. Add back if checked
-        if self.hyper_energy_cb.isChecked():
-            card['effects'].append({
-                "trigger": "NONE",
-                "condition": {"type": "NONE"},
-                "actions": [{
-                    "type": "COST_REFERENCE",
-                    "str_val": "HYPER_ENERGY",
-                    "value1": 0,
-                    "scope": "PLAYER_SELF",
-                    "filter": {}
-                }]
-            })
-
-        # Sync Revolution Change
-        if self.rev_change_group.isChecked():
-            rev_cond = {}
-            civs = [c.strip() for c in self.rev_civ_input.text().split(',') if c.strip()]
-            if civs: rev_cond['civilizations'] = civs
-            races = [r.strip() for r in self.rev_race_input.text().split(',') if r.strip()]
-            if races: rev_cond['races'] = races
-            min_cost = self.rev_cost_spin.value()
-            if min_cost > 0: rev_cond['min_cost'] = min_cost
-            card['revolution_change_condition'] = rev_cond
+        if self.rev_group.isChecked():
+            rc = {}
+            civs = [c.strip() for c in self.rev_civ_edit.text().split(',') if c.strip()]
+            if civs: rc['civilizations'] = civs
+            races = [r.strip() for r in self.rev_race_edit.text().split(',') if r.strip()]
+            if races: rc['races'] = races
+            if self.rev_cost_spin.value() > 0: rc['min_cost'] = self.rev_cost_spin.value()
+            data['revolution_change_condition'] = rc
         else:
-            if 'revolution_change_condition' in card:
-                del card['revolution_change_condition']
+            if 'revolution_change_condition' in data:
+                del data['revolution_change_condition']
 
-        # Sync Keyword Checkboxes to PASSIVE_CONST
         new_effects = []
-        existing_effects = card.get('effects', [])
-
-        known_keywords = set(self.keyword_checkboxes.keys())
-
-        for eff in existing_effects:
-            if eff.get('trigger') == 'PASSIVE_CONST':
-                actions_to_keep = []
-                for act in eff.get('actions', []):
-                    if act.get('str_val') not in known_keywords:
-                        actions_to_keep.append(act)
-                if actions_to_keep:
-                    eff['actions'] = actions_to_keep
-                    new_effects.append(eff)
-            else:
+        for eff in data.get('effects', []):
+            if not self.is_keyword_effect(eff):
                 new_effects.append(eff)
 
         active_kws = []
@@ -647,273 +623,72 @@ class CardEditor(QDialog):
                 active_kws.append(kw)
 
         if active_kws:
-            actions = []
-            for kw in active_kws:
-                actions.append({
-                    "type": "NONE",
-                    "scope": "NONE",
-                    "filter": {},
-                    "value1": 0,
-                    "value2": 0,
-                    "str_val": kw
-                })
+            actions = [{"type": "NONE", "scope": "NONE", "str_val": kw, "value1": 0} for kw in active_kws]
             new_effects.append({
                 "trigger": "PASSIVE_CONST",
-                "condition": {"type": "NONE", "value": 0, "str_val": ""},
+                "condition": {"type": "NONE"},
                 "actions": actions
             })
 
-        card['effects'] = new_effects
+        data['effects'] = new_effects
 
-        item = self.card_list.item(self.current_card_index)
-        if item:
-            item.setText(f"{card['id']} - {card['name']}")
+    def on_input_key_selected(self, index):
+        if index < 0: return
+        key = self.act_input_key.itemData(index)
+        if key:
+            self.act_input_key.setEditText(key)
 
-        if self.tabs.currentWidget() == self.effects_tab:
-             self.refresh_effects_list()
-
-    def update_preview(self):
-        for i in reversed(range(self.preview_container_layout.count())):
-            item = self.preview_container_layout.itemAt(i)
-            if item and item.widget():
-                item.widget().setParent(None)
+    def on_effect_changed(self):
+        item = self.get_selected_item()
+        if not item or item.data(ROLE_NODE_TYPE) != NODE_EFFECT: return
+        data = item.data(ROLE_DATA_REF)
         
-        name = self.name_input.text() or "New Card"
-        cost = self.cost_input.value()
-        power = self.power_input.value()
-        civ = self.civ_input.currentText()
+        data['trigger'] = self.eff_trigger_combo.currentData()
         
-        self.preview_card = CardWidget(0, name, cost, power, civ)
-        self.preview_container_layout.addWidget(self.preview_card)
+        cond_type = self.eff_cond_type.currentText()
+        val = self.eff_cond_val.value()
+        str_val = self.eff_cond_str.text()
+        data['condition'] = {"type": cond_type, "value": val, "str_val": str_val}
 
-    # --- Effects Logic ---
+        item.setText(tr(data['trigger']))
 
-    def refresh_effects_list(self):
-        if self.current_card_index < 0: return
-        self.effects_list.clear()
-        effects = self.cards_data[self.current_card_index].get('effects', [])
-        for i, eff in enumerate(effects):
-            trig = eff.get('trigger', 'NONE')
-            action_count = len(eff.get('actions', []))
-            self.effects_list.addItem(f"#{i}: {tr(trig)} ({action_count} actions)")
+    def on_action_changed(self):
+        item = self.get_selected_item()
+        if not item or item.data(ROLE_NODE_TYPE) != NODE_ACTION: return
+        data = item.data(ROLE_DATA_REF)
 
-    def create_new_effect(self):
-        if self.current_card_index < 0: return
-        new_eff = {
-            "trigger": "ON_PLAY",
-            "condition": {"type": "NONE"},
-            "actions": []
-        }
-        self.cards_data[self.current_card_index]['effects'].append(new_eff)
-        self.refresh_effects_list()
-        self.effects_list.setCurrentRow(self.effects_list.count() - 1)
+        data['type'] = self.act_type_combo.currentData()
+        data['input_value_key'] = self.act_input_key.currentText()
+        data['output_value_key'] = self.act_output_key.text()
+        data['scope'] = self.act_scope.currentData()
+        data['value1'] = self.act_val1.value()
+        data['value2'] = self.act_val2.value()
+        data['str_val'] = self.act_str.text()
 
-    def remove_effect(self):
-        if self.current_card_index < 0: return
-        row = self.effects_list.currentRow()
-        if row >= 0:
-            del self.cards_data[self.current_card_index]['effects'][row]
-            self.refresh_effects_list()
-
-    def load_selected_effect(self, row):
-        if row < 0:
-            self.eff_trigger_combo.setEnabled(False)
-            self.eff_action_list_widget.clear()
-            return
-
-        self.eff_trigger_combo.setEnabled(True)
-        effect = self.cards_data[self.current_card_index]['effects'][row]
-
-        trig_val = effect.get('trigger', 'ON_PLAY')
-        idx = self.eff_trigger_combo.findData(trig_val)
-        if idx >= 0: self.eff_trigger_combo.setCurrentIndex(idx)
-        else: self.eff_trigger_combo.setCurrentIndex(0)
-
-        self.eff_trigger_combo.currentIndexChanged.disconnect() if self.eff_trigger_combo.receivers(self.eff_trigger_combo.currentIndexChanged) else None
-        self.eff_trigger_combo.currentIndexChanged.connect(lambda: self.update_effect_trigger(row))
-
-        # Load Condition
-        cond = effect.get('condition', {"type": "NONE", "value": 0, "str_val": ""})
-
-        c_idx = self.eff_cond_type_combo.findData(cond.get('type', 'NONE'))
-        if c_idx >= 0: self.eff_cond_type_combo.setCurrentIndex(c_idx)
-        else: self.eff_cond_type_combo.setCurrentIndex(0)
-
-        self.eff_cond_val_spin.setValue(cond.get('value', 0))
-        self.eff_cond_str_edit.setText(cond.get('str_val', ''))
-
-        # Connect condition signals
-        self.eff_cond_type_combo.currentIndexChanged.disconnect() if self.eff_cond_type_combo.receivers(self.eff_cond_type_combo.currentIndexChanged) else None
-        self.eff_cond_type_combo.currentIndexChanged.connect(lambda: self.update_effect_condition(row))
-
-        self.eff_cond_val_spin.valueChanged.disconnect() if self.eff_cond_val_spin.receivers(self.eff_cond_val_spin.valueChanged) else None
-        self.eff_cond_val_spin.valueChanged.connect(lambda: self.update_effect_condition(row))
-
-        self.eff_cond_str_edit.textChanged.disconnect() if self.eff_cond_str_edit.receivers(self.eff_cond_str_edit.textChanged) else None
-        self.eff_cond_str_edit.textChanged.connect(lambda: self.update_effect_condition(row))
-
-        self.eff_action_list_widget.clear()
-        for i, act in enumerate(effect.get('actions', [])):
-            act_type = act.get('type', 'NONE')
-            self.eff_action_list_widget.addItem(f"{i}: {tr(act_type)}")
-
-    def update_effect_trigger(self, row):
-        new_trig = self.eff_trigger_combo.currentData()
-        self.cards_data[self.current_card_index]['effects'][row]['trigger'] = new_trig
-        item = self.effects_list.item(row)
-        if item:
-            action_count = len(self.cards_data[self.current_card_index]['effects'][row]['actions'])
-            item.setText(f"#{row}: {tr(new_trig)} ({action_count} actions)")
-
-    def update_effect_condition(self, row):
-        if row < 0 or row >= len(self.cards_data[self.current_card_index]['effects']): return
-
-        cond_type = self.eff_cond_type_combo.currentData()
-        val = self.eff_cond_val_spin.value()
-        str_val = self.eff_cond_str_edit.text()
-
-        self.cards_data[self.current_card_index]['effects'][row]['condition'] = {
-            "type": cond_type,
-            "value": val,
-            "str_val": str_val
-        }
-
-    def add_action_to_effect(self):
-        row = self.effects_list.currentRow()
-        if row < 0: return
-
-        new_action = {
-            "type": "DESTROY",
-            "scope": "TARGET_SELECT",
-            "value1": 1,
-            "filter": {"zones": ["BATTLE_ZONE"], "count": 1}
-        }
-        self.cards_data[self.current_card_index]['effects'][row]['actions'].append(new_action)
-        self.load_selected_effect(row) # Refresh action list
-        self.eff_action_list_widget.setCurrentRow(self.eff_action_list_widget.count() - 1)
-
-    def remove_action_from_effect(self):
-        eff_row = self.effects_list.currentRow()
-        act_row = self.eff_action_list_widget.currentRow()
-        if eff_row >= 0 and act_row >= 0:
-            del self.cards_data[self.current_card_index]['effects'][eff_row]['actions'][act_row]
-            self.load_selected_effect(eff_row)
-
-    def update_dynamic_labels(self):
-        act_type = self.act_type_combo.currentData()
-        if act_type == "APPLY_MODIFIER":
-            self.val1_label.setText(tr("Reduction Amount") + ":")
-            self.val2_label.setText(tr("Duration (Turns)") + ":")
-        else:
-            self.val1_label.setText(tr("Value 1") + ":")
-            self.val2_label.setText(tr("Value 2") + ":")
-
-    def load_selected_action(self, act_row):
-        eff_row = self.effects_list.currentRow()
-        if eff_row < 0 or act_row < 0: return
-
-        action = self.cards_data[self.current_card_index]['effects'][eff_row]['actions'][act_row]
-
-        # Populate form
-        idx = self.act_type_combo.findData(action.get('type', 'DESTROY'))
-        if idx >= 0: self.act_type_combo.setCurrentIndex(idx)
-
-        # Update dynamic labels based on the loaded action
-        self.update_dynamic_labels()
-
-        idx = self.act_scope_combo.findData(action.get('scope', 'TARGET_SELECT'))
-        if idx >= 0: self.act_scope_combo.setCurrentIndex(idx)
-
-        # Filter
-        filt = action.get('filter', {})
-        zones = filt.get('zones', [])
-        for z, cb in self.zone_checks.items():
-            cb.setChecked(z in zones)
-
-        tp = filt.get('owner', 'NONE')
-        if tp == 'NONE' or tp is None:
-             tp = filt.get('target_player', 'NONE')
-
-        self.filter_player_combo.setCurrentText(tp if isinstance(tp, str) else 'NONE')
-
-        types = filt.get('types', [])
-        ftype = 'NONE'
-        if 'CREATURE' in types: ftype = 'CREATURE'
-        if 'SPELL' in types: ftype = 'SPELL'
-        self.filter_type_combo.setCurrentText(ftype)
-
-        self.filter_count_spin.setValue(filt.get('count', 1))
-
-        # New Fields Load
-        civs = filt.get('civilizations', [])
-        self.filter_civ_input.setText(", ".join(civs))
-
-        races = filt.get('races', [])
-        self.filter_race_input.setText(", ".join(races))
-
-        self.filter_min_cost_spin.setValue(filt.get('min_cost', -1) if filt.get('min_cost') is not None else -1)
-        self.filter_max_cost_spin.setValue(filt.get('max_cost', -1) if filt.get('max_cost') is not None else -1)
-        self.filter_min_power_spin.setValue(filt.get('min_power', -1) if filt.get('min_power') is not None else -1)
-        self.filter_max_power_spin.setValue(filt.get('max_power', -1) if filt.get('max_power') is not None else -1)
-
-        # Helper to set combo from optional bool
-        def set_bool_combo(combo, key):
-            val = filt.get(key)
-            if val is None: combo.setCurrentIndex(0) # Ignore
-            elif val is True: combo.setCurrentIndex(1) # True
-            else: combo.setCurrentIndex(2) # False
-
-        set_bool_combo(self.filter_tapped_combo, 'is_tapped')
-        set_bool_combo(self.filter_blocker_combo, 'is_blocker')
-        set_bool_combo(self.filter_evolution_combo, 'is_evolution')
-
-        self.val1_spin.setValue(action.get('value1', 0))
-        self.val2_spin.setValue(action.get('value2', 0))
-        self.str_val_edit.setText(action.get('str_val', ''))
-        self.input_key_edit.setText(action.get('input_value_key', ''))
-        self.output_key_edit.setText(action.get('output_value_key', ''))
-
-    def apply_action_changes(self):
-        eff_row = self.effects_list.currentRow()
-        act_row = self.eff_action_list_widget.currentRow()
-        if eff_row < 0 or act_row < 0: return
-
-        # Build action object
-        new_act = {
-            "type": self.act_type_combo.currentData(),
-            "scope": self.act_scope_combo.currentData(),
-            "value1": self.val1_spin.value(),
-            "value2": self.val2_spin.value(),
-            "str_val": self.str_val_edit.text(),
-            "input_value_key": self.input_key_edit.text(),
-            "output_value_key": self.output_key_edit.text()
-        }
-
-        # Build filter
-        zones = [z for z, cb in self.zone_checks.items() if cb.isChecked()]
-        target_player = self.filter_player_combo.currentText()
-        card_type = self.filter_type_combo.currentText()
-
-        filt = {}
+        filt = data.get('filter', {})
+        zones = [z.strip() for z in self.act_filter_zones.text().split(',') if z.strip()]
         if zones: filt['zones'] = zones
-        if target_player != "NONE": filt['owner'] = target_player
-        if card_type != "NONE": filt['types'] = [card_type]
-        count = self.filter_count_spin.value()
-        if count > 0: filt['count'] = count
+        else: filt.pop('zones', None)
 
-        # New Fields Save
-        civs_str = self.filter_civ_input.text()
-        if civs_str.strip():
-            filt['civilizations'] = [c.strip() for c in civs_str.split(',') if c.strip()]
+        civs = [c.strip() for c in self.act_filter_civ.text().split(',') if c.strip()]
+        if civs: filt['civilizations'] = civs
+        else: filt.pop('civilizations', None)
 
-        races_str = self.filter_race_input.text()
-        if races_str.strip():
-            filt['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
+        races = [r.strip() for r in self.act_filter_race.text().split(',') if r.strip()]
+        if races: filt['races'] = races
+        else: filt.pop('races', None)
 
-        if self.filter_min_cost_spin.value() != -1: filt['min_cost'] = self.filter_min_cost_spin.value()
-        if self.filter_max_cost_spin.value() != -1: filt['max_cost'] = self.filter_max_cost_spin.value()
-        if self.filter_min_power_spin.value() != -1: filt['min_power'] = self.filter_min_power_spin.value()
-        if self.filter_max_power_spin.value() != -1: filt['max_power'] = self.filter_max_power_spin.value()
+        if self.act_filter_min_cost.value() != -1: filt['min_cost'] = self.act_filter_min_cost.value()
+        else: filt.pop('min_cost', None)
+
+        if self.act_filter_max_cost.value() != -1: filt['max_cost'] = self.act_filter_max_cost.value()
+        else: filt.pop('max_cost', None)
+
+        if self.act_filter_min_power.value() != -1: filt['min_power'] = self.act_filter_min_power.value()
+        else: filt.pop('min_power', None)
+
+        if self.act_filter_max_power.value() != -1: filt['max_power'] = self.act_filter_max_power.value()
+        else: filt.pop('max_power', None)
 
         def get_bool_from_combo(combo):
             idx = combo.currentIndex()
@@ -921,14 +696,174 @@ class CardEditor(QDialog):
             if idx == 1: return True
             return False
 
-        if (val := get_bool_from_combo(self.filter_tapped_combo)) is not None: filt['is_tapped'] = val
-        if (val := get_bool_from_combo(self.filter_blocker_combo)) is not None: filt['is_blocker'] = val
-        if (val := get_bool_from_combo(self.filter_evolution_combo)) is not None: filt['is_evolution'] = val
+        if (val := get_bool_from_combo(self.act_filter_tapped)) is not None: filt['is_tapped'] = val
+        else: filt.pop('is_tapped', None)
 
-        new_act['filter'] = filt
+        if (val := get_bool_from_combo(self.act_filter_blocker)) is not None: filt['is_blocker'] = val
+        else: filt.pop('is_blocker', None)
 
-        self.cards_data[self.current_card_index]['effects'][eff_row]['actions'][act_row] = new_act
+        if (val := get_bool_from_combo(self.act_filter_evolution)) is not None: filt['is_evolution'] = val
+        else: filt.pop('is_evolution', None)
 
-        # Refresh list label
-        self.eff_action_list_widget.currentItem().setText(f"{act_row}: {tr(new_act['type'])}")
-        QMessageBox.information(self, tr("Success"), tr("Action updated!"))
+        data['filter'] = filt
+
+        item.setText(tr(data['type']))
+
+    def get_selected_item(self):
+        idx = self.tree_view.currentIndex()
+        if not idx.isValid(): return None
+        return self.model.itemFromIndex(idx)
+
+    # --- Variable Linking Logic ---
+
+    def update_variable_suggestions(self, current_action_item):
+        self.act_input_key.clear()
+        self.act_input_key.addItem("")
+
+        effect_item = current_action_item.parent()
+        if not effect_item: return
+
+        current_row = current_action_item.row()
+
+        for i in range(current_row):
+            sibling = effect_item.child(i)
+            if not sibling: continue
+
+            act_data = sibling.data(ROLE_DATA_REF)
+            out_key = act_data.get('output_value_key')
+            act_type = act_data.get('type', '?')
+
+            if out_key:
+                label = f"{out_key} (from #{i} {tr(act_type)})"
+                self.act_input_key.addItem(label, out_key)
+
+        current_val = current_action_item.data(ROLE_DATA_REF).get('input_value_key', '')
+        self.act_input_key.setEditText(current_val)
+
+    # --- Context Menu & Structure Edit ---
+
+    def open_context_menu(self, position):
+        index = self.tree_view.indexAt(position)
+        if not index.isValid():
+            menu = QMenu()
+            menu.addAction(tr("New Card"), self.on_add_card_clicked)
+            menu.exec(self.tree_view.viewport().mapToGlobal(position))
+            return
+
+        item = self.model.itemFromIndex(index)
+        node_type = item.data(ROLE_NODE_TYPE)
+
+        menu = QMenu()
+
+        if node_type == NODE_CARD:
+            menu.addAction(tr("Add Effect"), self.on_add_effect_clicked)
+            menu.addAction(tr("Delete Card"), lambda: self.delete_item(index))
+        elif node_type == NODE_EFFECT:
+            menu.addAction(tr("Add Action"), self.on_add_action_clicked)
+            menu.addAction(tr("Delete Effect"), lambda: self.delete_item(index))
+        elif node_type == NODE_ACTION:
+            menu.addAction(tr("Delete Action"), lambda: self.delete_item(index))
+
+        menu.exec(self.tree_view.viewport().mapToGlobal(position))
+
+    def on_add_card_clicked(self):
+        root = self.model.invisibleRootItem()
+        new_item = self.add_new_card(root)
+        self.tree_view.setCurrentIndex(new_item.index())
+
+    def on_add_effect_clicked(self):
+        item = self.get_selected_item()
+        if item and item.data(ROLE_NODE_TYPE) == NODE_CARD:
+            new_item = self.add_new_effect(item)
+            self.tree_view.expand(item.index())
+            self.tree_view.setCurrentIndex(new_item.index())
+
+    def on_add_action_clicked(self):
+        item = self.get_selected_item()
+        if item and item.data(ROLE_NODE_TYPE) == NODE_EFFECT:
+            new_item = self.add_new_action(item)
+            self.tree_view.expand(item.index())
+            self.tree_view.setCurrentIndex(new_item.index())
+
+    def add_new_card(self, root):
+        max_id = 0
+        for i in range(root.rowCount()):
+            item = root.child(i)
+            if item.data(ROLE_NODE_TYPE) == NODE_CARD:
+                cid = item.data(ROLE_DATA_REF).get('id', 0)
+                if cid > max_id: max_id = cid
+
+        new_data = {"id": max_id + 1, "name": "New Card", "effects": []}
+        return self.add_card_to_tree(root, new_data)
+
+    def add_new_effect(self, card_item):
+        card_data = card_item.data(ROLE_DATA_REF)
+        new_eff = {"trigger": "ON_PLAY", "actions": []}
+        card_data.setdefault('effects', []).append(new_eff)
+        return self.add_effect_to_tree(card_item, new_eff)
+
+    def add_new_action(self, effect_item):
+        eff_data = effect_item.data(ROLE_DATA_REF)
+        new_act = {"type": "DESTROY"}
+        eff_data.setdefault('actions', []).append(new_act)
+        return self.add_action_to_tree(effect_item, new_act)
+
+    def delete_item(self, index):
+        item = self.model.itemFromIndex(index)
+        parent_item = item.parent() or self.model.invisibleRootItem()
+        parent_data = parent_item.data(ROLE_DATA_REF)
+        item_data = item.data(ROLE_DATA_REF)
+        node_type = item.data(ROLE_NODE_TYPE)
+
+        if node_type == NODE_EFFECT:
+            if item_data in parent_data.get('effects', []):
+                parent_data['effects'].remove(item_data)
+
+        elif node_type == NODE_ACTION:
+            if item_data in parent_data.get('actions', []):
+                parent_data['actions'].remove(item_data)
+
+        self.model.removeRow(index.row(), index.parent())
+
+    def save_data(self):
+        cards = []
+        root = self.model.invisibleRootItem()
+        for i in range(root.rowCount()):
+            card_item = root.child(i)
+            if card_item.data(ROLE_NODE_TYPE) != NODE_CARD: continue
+
+            c_data = card_item.data(ROLE_DATA_REF)
+
+            new_effects = []
+            for eff in c_data.get('effects', []):
+                 if self.is_keyword_effect(eff):
+                     new_effects.append(eff)
+
+            for j in range(card_item.rowCount()):
+                eff_item = card_item.child(j)
+                if eff_item.data(ROLE_NODE_TYPE) == NODE_EFFECT:
+                    e_data = eff_item.data(ROLE_DATA_REF)
+                    new_actions = []
+                    for k in range(eff_item.rowCount()):
+                        act_item = eff_item.child(k)
+                        if act_item.data(ROLE_NODE_TYPE) == NODE_ACTION:
+                            new_actions.append(act_item.data(ROLE_DATA_REF))
+
+                    e_data['actions'] = new_actions
+                    new_effects.append(e_data)
+
+            c_data['effects'] = new_effects
+            cards.append(c_data)
+
+        try:
+            with open(self.json_path, 'w', encoding='utf-8') as f:
+                json.dump(cards, f, indent=2, ensure_ascii=False)
+            QMessageBox.information(self, tr("Success"), tr("Cards saved successfully!"))
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = CardEditor()
+    window.show()
+    sys.exit(app.exec())
