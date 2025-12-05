@@ -12,11 +12,16 @@ namespace dm::engine {
         static void resolve_effect(dm::core::GameState& game_state, const dm::core::EffectDef& effect, int source_instance_id);
         static void resolve_effect_with_context(dm::core::GameState& game_state, const dm::core::EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context);
         // Resolve an effect using explicit targets (used for TARGET_SELECT pending effects)
+        static void resolve_effect_with_targets(dm::core::GameState& game_state, const dm::core::EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::map<std::string, int>& execution_context);
+        // Overload for backward compatibility
         static void resolve_effect_with_targets(dm::core::GameState& game_state, const dm::core::EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db = {});
-        
+
         // Exposed for bindings/testing
+        static void resolve_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context);
+        // Overload for backward compatibility/bindings
         static void resolve_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id);
-        static std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation);
+
+        static std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation, std::map<std::string, int>& execution_context);
         static bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id);
     };
 }
