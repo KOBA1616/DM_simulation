@@ -719,6 +719,9 @@ namespace dm::engine {
 
                 card.is_tapped = false;
 
+                // Set turn_played for Just Diver / Summoning Sickness tracking
+                card.turn_played = game_state.turn_number;
+
                 player.battle_zone.push_back(card);
                 if (def.keywords.cip) {
                     dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
@@ -823,6 +826,9 @@ namespace dm::engine {
 
             card.is_tapped = false;
 
+            // Set turn_played for Just Diver / Summoning Sickness tracking
+            card.turn_played = game_state.turn_number;
+
             player.battle_zone.push_back(card);
 
             // Phase 5: Stats
@@ -888,7 +894,7 @@ namespace dm::engine {
                     for (const auto& c : vec) {
                          const CardData* cd = CardRegistry::get_card_data(c.card_id);
                          if (cd) {
-                             if (TargetUtils::is_valid_target(c, *cd, action.filter, active.id, owner_id)) {
+                             if (TargetUtils::is_valid_target(c, *cd, action.filter, game_state, active.id, owner_id)) {
                                  count++;
                              }
                          }
@@ -994,6 +1000,7 @@ namespace dm::engine {
                     if (def.revolution_change_condition.has_value()) {
                         matches = TargetUtils::is_valid_target(attacker, attacker_def,
                                                                def.revolution_change_condition.value(),
+                                                               game_state,
                                                                active.id, active.id);
                     }
                     if (matches) {
