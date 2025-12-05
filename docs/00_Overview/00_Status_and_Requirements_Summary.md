@@ -7,48 +7,30 @@
 
 ## 2. 現在のステータス
 *   **エンジン:** `GameState`、`ActionGenerator`、`EffectResolver`を備えたC++20コア。汎用的な効果解決（Effect Buffer, Stack Zone）を実装済み。
-*   **進捗:** 基本的な対戦、コスト軽減、ハイパーエナジー、革命チェンジの実装が完了。
+*   **進捗:** 基本的な対戦、コスト軽減、ハイパーエナジー、革命チェンジの実装が完了。メタカウンター（コスト0での踏み倒しメタ）も実装・検証済み。
 *   **Pythonバインディング:** `pybind11`統合 (`dm_ai_module`)。
 *   **AI:** AlphaZeroスタイルのMCTS (`ParallelRunner`) + PyTorch学習 (`train_simple.py`)。
 *   **GUI:** Python `tkinter` ベース (`app.py`) および `PyQt6` ベース (`card_editor.py`)。
 *   **データ:** JSONベースのカード定義 (`data/cards.json`)。
 
 ## 3. 現在の開発段階 (Current Development Stage)
-**ステータス:** **エンジンフローのリファクタリングとメタカウンター実装**
+**ステータス:** **メタカウンター実装完了 / 原子アクション分解（スタック移行）完了**
 
-原子アクション分解（プレイ、バトル、マナチャージ）が完了し、現在はスタックとゲートキーパーの統合、およびメタカウンター踏み倒し機能の実装フェーズに移行しています。
+原子アクション分解（プレイ、バトル、マナチャージ）が完了し、スタックとゲートキーパーの統合、およびメタカウンター踏み倒し機能の実装と検証が完了しました。
 
 ## 4. アクティブな要件とタスク (Uncompleted Tasks)
 
-### 4.1. エンジンリファクタリング：原子アクション分解
-以下の提案に基づき、エンジンのコアアクション処理を分解・再定義します。これにより、コードの重複を排除し、新しいメカニクス（G・ゼロ、シールド焼却など）の実装を容易にします。
-
-#### 1. 汎用アクションの完全定義
-*   **A. MOVE_CARD (完全共通化) (一部完了):**
-    *   アクション: `MOVE_CARD(source_zone, dest_zone, card_instance_id)`
-    *   破壊、バウンス、ドロー、シールド化を全て統合し、「ゾーンを離れた時/置かれた時」のフック処理を一元化します。
-    *   *現状:* マナチャージのみ先行して実装済み。
-*   **B. TAP_CARD / UNTAP_CARD (分離):**
-    *   アクション: `TAP_CARD(target_instance_id)`
-    *   攻撃、ブロック、支払いに含まれるタップ処理を分離し、効果によるタップ/アンタップを容易にします。
-*   **C. SHUFFLE_DECK:**
-    *   サーチや回復効果のために単独アクション化します。
-*   **D. BATTLE_CREATURES:**
-    *   ブレイク要素を排除した純粋なバトル処理として定義します。
+### 4.1. エンジンリファクタリング：原子アクション分解 (完了)
+*   **A. MOVE_CARD (完全共通化):** マナチャージ等の実装完了。
+*   **B. TAP_CARD / UNTAP_CARD:** 分離済み。
+*   **C. SHUFFLE_DECK:** 実装済み。
+*   **D. BATTLE_CREATURES:** `RESOLVE_BATTLE` と `BREAK_SHIELD` に分解完了。
 
 #### 2. その他機能拡張のためのアクション (実装完了)
-*   **APPLY_MODIFIER (継続的効果):**
-    *   アクション: `APPLY_MODIFIER(modifier_def, duration, target_filter)`
-    *   コスト軽減やパワー修正を履歴に残るアクションとして定義し、AIが理由を追跡可能にします。
-*   **REVEAL_CARDS (公開):**
-    *   アクション: `REVEAL_CARDS(zone, indices, visibility_scope)`
-    *   「見る」処理を明確化し、AIの観測情報（Observation）更新ロジックと連動させます。
-*   **REGISTER_DELAYED_EFFECT (遅延誘発):**
-    *   アクション: `REGISTER_DELAYED_EFFECT(trigger_condition, effect_def)`
-    *   「ターン終了時」などの効果予約をデータ駆動（JSON）で行えるようにします。
-*   **RESET_INSTANCE (初期化):**
-    *   アクション: `RESET_INSTANCE(instance_id)`
-    *   ゾーン移動時の召喚酔いや修正値のリセットを明示的なアクションとして分離します。
+*   **APPLY_MODIFIER (継続的効果):** 実装済み。
+*   **REVEAL_CARDS (公開):** 実装済み。
+*   **REGISTER_DELAYED_EFFECT (遅延誘発):** スタブ実装済み。
+*   **RESET_INSTANCE (初期化):** 実装済み。
 
 ### 4.2. GUI & カード効果の拡張
 *   **カード作成補助 (日本語化 & 視覚化):**
@@ -61,34 +43,31 @@
 *   **カードメカニクス:**
     *   ジャストダイバー、代替コスト、メテオバーン、NEO進化、ニンジャ・ストライク、ブロック不可、全体除去、攻撃制限、アンチチート、マナ回収、リアニメイト、モード効果。
 
-### 4.4. 実装計画：メタカウンターとエンジンコア拡張
+### 4.4. 実装完了：メタカウンターとエンジンコア拡張
 
 #### 1. エンジンフローのリファクタリング (スタックとゲートキーパー)
 - **EffectResolver の拡張**
     - [完了] `src/engine/effects/effect_resolver.cpp` の `resolve_play_from_stack` を修正し、`SpawnSource` 引数を受け取れるようにしました。
     - **ゲートキーパー (Gatekeeper) ロジックの実装**:
-        - [完了] カードがバトルゾーンに出る直前に、「移動先決定ロジック」を挟みます（SpawnSourceによる分岐準備完了）。
-    - `ActionType::PLAY_CARD_INTERNAL` を処理するケースを追加し、`resolve_play_from_stack` へ委譲します。
+        - [完了] カードがバトルゾーンに出る直前に、「移動先決定ロジック」を挟みます。
+    - [完了] `ActionType::PLAY_CARD_INTERNAL` を処理するケースを追加し、`resolve_play_from_stack` へ委譲しました。
 - **ActionGenerator の更新**
-    - `src/engine/action_gen/action_generator.cpp` を更新し、`EffectType::INTERNAL_PLAY` や `META_COUNTER` が `pending_effects` にある場合、`PLAY_CARD_INTERNAL` アクションを生成するようにします。
+    - [完了] `src/engine/action_gen/action_generator.cpp` を更新し、`EffectType::INTERNAL_PLAY` や `META_COUNTER` が `pending_effects` にある場合、`PLAY_CARD_INTERNAL` アクションを生成するようにしました。
 
 #### 2. 既存メカニクスのスタック移行
 - **直接 `push_back` の廃止**
-    - 以下の箇所で、直接バトルゾーンに追加している処理を廃止し、代わりに `PendingEffect` (Type: `INTERNAL_PLAY`) を積む形に変更します。
-        - `src/engine/card_system/generic_card_system.cpp`: メクレイド (MEKRAID)、バッファからのプレイ
-        - `src/engine/effects/effect_resolver.cpp`: S・トリガー (SHIELD_TRIGGER) の解決処理
+    - [完了] `GenericCardSystem::mekraid` および バッファからのプレイ処理を `PendingEffect` (Type: `INTERNAL_PLAY`) を使用するようにリファクタリングしました。
+    - [完了] S・トリガー (SHIELD_TRIGGER) も `INTERNAL_PLAY` フローに統合しました。
 
 #### 3. カウンター踏み倒し機能の実装
 - **ターン終了時のチェック**
-    - `src/engine/flow/phase_manager.cpp` の `next_phase` にロジックを追加します。
+    - [完了] `src/engine/flow/phase_manager.cpp` の `next_phase` にロジックを追加し、相手ターン中にマナを支払わずにプレイされたカードがある場合（`played_without_mana` フラグ）、`META_COUNTER` 保留効果を生成します。
 - **解決フロー**
-    - 積まれた `META_COUNTER` は `ActionGenerator` によってアクション化され、スタック経由（`PLAY_CARD_INTERNAL`）で解決されます。
+    - [完了] 積まれた `META_COUNTER` は `ActionGenerator` によって `PLAY_CARD_INTERNAL` アクション化され、スタック経由で解決されます。
 
 #### 4. 検証
 - **テスト作成**
-    - `tests/test_meta_counter.py` を作成し検証します。
-- **Pre-commit**
-    - 全テストの通過を確認し、コードフォーマット等を整えます。
+    - [完了] `tests/test_meta_counter.py` を作成し、0コスト呪文の使用に対するカウンター発動を検証しました。また、0コストカード使用時に文明支払いのためにマナタップを強制しないよう `ManaSystem` を修正しました。
 
 ### 4.5. 実装方針まとめ：動的値参照とカードエディタの拡張 (実装完了)
 
