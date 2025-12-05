@@ -26,7 +26,7 @@ class CardEditor(QDialog):
                 with open(self.json_path, 'r', encoding='utf-8') as f:
                     self.cards_data = json.load(f)
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to load JSON: {e}")
+                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load JSON')}: {e}")
                 self.cards_data = []
         else:
             self.cards_data = []
@@ -35,9 +35,9 @@ class CardEditor(QDialog):
         try:
             with open(self.json_path, 'w', encoding='utf-8') as f:
                 json.dump(self.cards_data, f, indent=2, ensure_ascii=False)
-            QMessageBox.information(self, "Success", tr("Cards saved successfully!"))
+            QMessageBox.information(self, tr("Success"), tr("Cards saved successfully!"))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save JSON: {e}")
+            QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
 
     def init_ui(self):
         # Left: Card List
@@ -47,27 +47,10 @@ class CardEditor(QDialog):
         list_layout.addWidget(self.card_list)
 
         btn_layout = QHBoxLayout()
-        add_btn = QPushButton(tr("new_card")) # Using translation key if available, else literal
-        add_btn.setText(tr("New Card") if tr("new_card") == "new_card" else tr("new_card")) # Fallback logic or just use keys
-        # Let's standardize on using the keys from localization.py
-        add_btn.setText(tr("New Card"))
+        add_btn = QPushButton(tr("New Card"))
         add_btn.clicked.connect(self.create_new_card)
 
         del_btn = QPushButton(tr("Delete Card"))
-        del_btn.setText(tr("Delete Card") if tr("delete_card") == "delete_card" else tr("delete_card"))
-        del_btn.setText(tr("Card Details")) # Wait, I don't have Delete Card in localization.py? I added "Card Details".
-        # Let's stick to the keys I defined in localization.py or literals that are mapped.
-        # "new_card" wasn't in localization.py, "Card Editor" was.
-        # I will use English keys that match localization.py keys.
-
-        del_btn.setText(tr("Remove Effect")) # Placeholder? No.
-        del_btn.setText("Delete") # I didn't add Delete to localization.py.
-        # I should have been more thorough with localization.py.
-        # I will use English text, and if tr() returns the same, it's English. If Japanese map exists, it works.
-        # I'll update localization.py later if needed, but for now use what I have.
-        del_btn.setText(tr("Remove Action")) # Re-using remove action text for card delete? No.
-        del_btn.setText("Delete Card")
-
         del_btn.clicked.connect(self.delete_current_card)
         btn_layout.addWidget(add_btn)
         btn_layout.addWidget(del_btn)
@@ -88,8 +71,7 @@ class CardEditor(QDialog):
 
         # Right: Preview
         preview_layout = QVBoxLayout()
-        preview_label = QLabel(tr("Card Details")) # Reuse
-        preview_label.setText("Preview")
+        preview_label = QLabel(tr("Preview"))
         preview_label.setStyleSheet("font-weight: bold;")
         preview_layout.addWidget(preview_label)
 
@@ -105,7 +87,6 @@ class CardEditor(QDialog):
         save_btn = QPushButton(tr("Save to JSON"))
         save_btn.clicked.connect(self.save_data)
         close_btn = QPushButton(tr("Close"))
-        close_btn.setText("Close")
         close_btn.clicked.connect(self.reject)
         action_layout.addWidget(save_btn)
         action_layout.addWidget(close_btn)
@@ -181,14 +162,16 @@ class CardEditor(QDialog):
         ]
         
         for i, kw in enumerate(keywords_list):
-            cb = QCheckBox(tr(kw)) # Localization key for keywords needs to be handled? I put keys in localization.py? No, I put values.
-            # I need to use the KEY (English) to get the value.
-            # I don't have BLOCKER in localization.py keys... wait, I checked localization.py content.
-            # "Blocker": "ブロッカー".
-            # I will use "Blocker" instead of "BLOCKER".
+            cb = QCheckBox()
+
             label = kw.replace("_", " ").title() # "SPEED_ATTACKER" -> "Speed Attacker"
             if kw == "BLOCKER": label = "Blocker"
-            cb.setText(tr(label) if tr(label) != label else kw) # Try to translate title case, else use raw
+            # Use localization key if it matches English enum name or custom key
+            # Assuming keys in localization.py handle specific keyword strings if added
+            # For now use English label wrapped in tr() which returns input if no match
+            # But "Blocker" -> "ブロッカー" is in localization.py
+
+            cb.setText(tr(label))
 
             cb.stateChanged.connect(self.update_current_card_data)
             self.keyword_checkboxes[kw] = cb
@@ -202,7 +185,7 @@ class CardEditor(QDialog):
         form.addRow(self.shield_trigger_cb)
 
         # Hyper Energy (Special Action)
-        self.hyper_energy_cb = QCheckBox("Hyper Energy")
+        self.hyper_energy_cb = QCheckBox(tr("Hyper Energy")) # tr() will return English if not found, but it's consistent
         self.hyper_energy_cb.stateChanged.connect(self.update_current_card_data)
         form.addRow(self.hyper_energy_cb)
 
@@ -260,8 +243,7 @@ class CardEditor(QDialog):
         layout.addWidget(list_group, 1)
 
         # Bottom: Editor
-        editor_group = QGroupBox(tr("Card Details")) # "Visual Editor"
-        editor_group.setTitle("Effect Editor")
+        editor_group = QGroupBox(tr("Effect"))
         editor_layout = QVBoxLayout(editor_group)
 
         # Trigger
@@ -281,7 +263,7 @@ class CardEditor(QDialog):
         self.eff_cond_type_combo = QComboBox()
         cond_types = ["NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH", "OPPONENT_PLAYED_WITHOUT_MANA"]
         for c in cond_types:
-            self.eff_cond_type_combo.addItem(c, c) # Use raw string for now, or translate later
+            self.eff_cond_type_combo.addItem(c, c)
         cond_layout.addWidget(self.eff_cond_type_combo)
 
         cond_layout.addWidget(QLabel(tr("Value 1") + ":"))
@@ -342,7 +324,7 @@ class CardEditor(QDialog):
         zones = ["BATTLE_ZONE", "MANA_ZONE", "HAND", "GRAVEYARD", "SHIELD_ZONE", "DECK"]
         zones_layout = QGridLayout()
         for i, z in enumerate(zones):
-            cb = QCheckBox(tr(z) if tr(z) != z else z)
+            cb = QCheckBox(tr(z))
             self.zone_checks[z] = cb
             zones_layout.addWidget(cb, i // 3, i % 3)
         filter_layout.addLayout(zones_layout, 0, 1)
@@ -453,7 +435,7 @@ class CardEditor(QDialog):
         self.act_type_combo.currentIndexChanged.connect(self.update_dynamic_labels)
 
         # Apply Button
-        apply_btn = QPushButton("Update Action")
+        apply_btn = QPushButton(tr("Update Action"))
         apply_btn.clicked.connect(self.apply_action_changes)
         detail_form.addRow(apply_btn)
 
@@ -538,7 +520,7 @@ class CardEditor(QDialog):
                     break
         self.hyper_energy_cb.setChecked(has_hyper)
 
-        # Revolution Change check
+        # Revolution Change
         rev_cond = card.get('revolution_change_condition', None)
         if rev_cond:
             self.rev_change_group.setChecked(True)
@@ -949,4 +931,4 @@ class CardEditor(QDialog):
 
         # Refresh list label
         self.eff_action_list_widget.currentItem().setText(f"{act_row}: {tr(new_act['type'])}")
-        QMessageBox.information(self, "Success", tr("Action updated!"))
+        QMessageBox.information(self, tr("Success"), tr("Action updated!"))
