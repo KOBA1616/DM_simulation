@@ -22,6 +22,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **モデル**: ResNetベースのニューラルネットワーク (`AlphaZeroNetwork` in PyTorch).
 *   **推論**: C++からのバッチ推論コールバック (`register_batch_inference_numpy`)。
 *   **データ収集**: 自己対戦による学習データ生成 (`collect_training_data.py`).
+    *   **改善**: `dm_ai_module.DataCollector` を使用したC++ループによる高速収集へ移行完了 (2025/XX/XX)。
 *   **学習ループ**: `train_simple.py` によるモデル更新。
 
 ### 2.3 GUI (Python/PyQt6)
@@ -59,7 +60,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 4.  **AI学習データ生成の制御**
     *   現状: `collect_training_data.py` が `dm_ai_module.DataCollector` を呼んでいるが、ループ制御の一部がPython。
-    *   移行案: `DataCollector` が指定エピソード数を完遂するまでPythonに制御を戻さないようにする (現状も近い形だが、メモリ管理を厳密にするためC++側で完結させる)。
+    *   移行案: `DataCollector` が指定エピソード数を完遂するまでPythonに制御を戻さないようにする。
+    *   **Status**: 完了 (2025/XX/XX) - `python/training/collect_training_data.py` をリファクタリングし、`dm_ai_module.DataCollector` のC++ループを使用するように変更。
 
 ### 3.4 変数連携システム (Variable Linking System)
 
