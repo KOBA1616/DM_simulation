@@ -224,10 +224,99 @@ namespace dm::engine {
              select_targets(game_state, action, source_instance_id, ed);
              return;
         }
+        // Also handle SEARCH_DECK which implicitly selects from deck
+        if (action.type == EffectActionType::SEARCH_DECK) {
+             EffectDef ed;
+             ed.trigger = TriggerType::NONE;
+             ed.condition = ConditionDef{"NONE", 0, ""};
+
+             // Construct continuation: Move to Destination + Shuffle
+             ActionDef move_act;
+             move_act.type = EffectActionType::RETURN_TO_HAND; // Default
+             if (action.destination_zone == "MANA_ZONE") {
+                 move_act.type = EffectActionType::SEND_TO_MANA;
+             }
+             // Add logic for other zones if needed
+
+             ActionDef shuffle_act;
+             shuffle_act.type = EffectActionType::SHUFFLE_DECK;
+
+             ed.actions = { move_act, shuffle_act };
+
+             // Override filter zones to DECK if not set
+             ActionDef mod_action = action;
+             if (mod_action.filter.zones.empty()) {
+                 mod_action.filter.zones = {"DECK"};
+             }
+             if (!mod_action.filter.owner.has_value()) {
+                 mod_action.filter.owner = "SELF";
+             }
+             select_targets(game_state, mod_action, source_instance_id, ed);
+             return;
+        }
 
         Player& active = game_state.get_active_player();
 
         switch (action.type) {
+            case EffectActionType::SHUFFLE_DECK: {
+                std::shuffle(active.deck.begin(), active.deck.end(), game_state.rng);
+                break;
+            }
+            case EffectActionType::SEARCH_DECK: {
+                 // If we are here, selection is done (or not needed?).
+                 // Actually, SEARCH_DECK is usually "Look -> Select -> Move -> Shuffle".
+                 // If this is called AFTER select_targets, we might need to handle the MOVE part here?
+                 // But select_targets returns void and queues a PendingEffect.
+                 // The continuation EffectDef has this same action.
+                 // So when it comes back here via resolve_effect_with_targets, we are in resolve_action again?
+                 // NO, resolve_effect_with_targets iterates targets and does logic.
+                 // It only calls resolve_action(game_state, action, ...) if it falls through to 'else'.
+
+                 // So we need to handle the SEARCH_DECK logic inside resolve_effect_with_targets or here.
+                 // If we are here, it means either:
+                 // 1. Called directly (handled above by dispatching selection).
+                 // 2. Called from resolve_effect_with_targets's fallback.
+
+                 // If called from resolve_effect_with_targets fallback, it means we have targets?
+                 // No, resolve_effect_with_targets passes 'targets' list separately.
+                 // resolve_action doesn't take 'targets'.
+
+                 // So we must handle SEARCH_DECK in resolve_effect_with_targets, NOT here in resolve_action
+                 // unless it's the shuffle part?
+                 // Or we implement SEARCH_DECK as a composite:
+                 // The "Action" itself, when executed with targets, moves them.
+                 // But resolve_action doesn't know targets.
+
+                 // Thus, SEARCH_DECK must be handled in resolve_effect_with_targets.
+                 // If we are here, it's a bug or a non-targeting search (shuffle only?).
+                 std::shuffle(active.deck.begin(), active.deck.end(), game_state.rng);
+                 break;
+            }
+            case EffectActionType::ADD_SHIELD: {
+                // Source? Default DECK.
+                std::vector<CardInstance>* source = &active.deck;
+                if (action.source_zone == "HAND") source = &active.hand;
+                else if (action.source_zone == "GRAVEYARD") source = &active.graveyard;
+
+                if (!source->empty()) {
+                    CardInstance c = source->back();
+                    source->pop_back();
+                    c.is_face_down = true; // Shield
+                    active.shield_zone.push_back(c);
+                }
+                break;
+            }
+            case EffectActionType::SEND_SHIELD_TO_GRAVE: {
+                // Should have been handled by resolve_effect_with_targets for selection
+                // If here, implies non-targeted? (e.g. "Send one of your shields to graveyard")
+                // For MVP, if no targets provided but we are here, we might just pick the top one?
+                if (!active.shield_zone.empty()) {
+                    CardInstance c = active.shield_zone.back();
+                    active.shield_zone.pop_back();
+                    active.graveyard.push_back(c);
+                }
+                break;
+            }
             case EffectActionType::DRAW_CARD: {
                 int count = action.value1 > 0 ? action.value1 : std::stoi(action.value.empty() ? "1" : action.value);
                 for (int i = 0; i < count; ++i) {
