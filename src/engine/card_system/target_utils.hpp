@@ -17,10 +17,16 @@ namespace dm::engine {
         static bool is_valid_target(const dm::core::CardInstance& card,
                                     const CardType& card_def,
                                     const dm::core::FilterDef& filter,
+                                    const dm::core::GameState& game_state,
                                     dm::core::PlayerID source_controller,
                                     dm::core::PlayerID card_controller) {
 
             using Props = CardProperties<CardType>;
+
+            // NOTE: Just Diver logic is handled in ActionGenerator/Attacking logic specifically for "Selection" actions.
+            // is_valid_target handles general filter compliance (e.g. for counting).
+            // If we put Just Diver here, counting effects (e.g. "Destroy all creatures") would skip it, which is wrong.
+            // Just Diver protects against CHOOSING/TARGETING.
 
             // 1. Owner Check
             if (filter.owner.has_value()) {
@@ -75,6 +81,30 @@ namespace dm::engine {
 
             return true;
         }
+
+        // Helper to check Just Diver status specifically
+        // Returns true if the card is currently protected by Just Diver
+        static bool is_protected_by_just_diver(const dm::core::CardInstance& card,
+                                               const dm::core::CardDefinition& def,
+                                               const dm::core::GameState& game_state,
+                                               dm::core::PlayerID opponent_id) { // opponent_id is who is trying to target
+             if (!def.keywords.just_diver) return false;
+
+             dm::core::PlayerID controller = 1 - opponent_id; // Assumes 2 players
+
+             // If source is OPPONENT (source_controller != card_controller)
+             // (Implied by calling this function with opponent_id)
+
+             // Check turn logic
+             // Protected if (current_turn <= turn_played) for P0 owner
+             if (controller == 0) {
+                 if (game_state.turn_number == card.turn_played) return true;
+             } else {
+                 if (game_state.turn_number <= card.turn_played + 1) return true;
+             }
+             return false;
+        }
+
     };
 
     // Specializations
