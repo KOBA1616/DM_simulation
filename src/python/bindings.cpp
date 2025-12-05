@@ -119,6 +119,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("TURN_START", TriggerType::TURN_START)
         .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
         .value("ON_OTHER_ENTER", TriggerType::ON_OTHER_ENTER)
+        .value("ON_BLOCK", TriggerType::ON_BLOCK)
         .export_values();
 
     py::enum_<EffectType>(m, "EffectType")
@@ -191,6 +192,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("REVEAL_CARDS", EffectActionType::REVEAL_CARDS)
         .value("REGISTER_DELAYED_EFFECT", EffectActionType::REGISTER_DELAYED_EFFECT)
         .value("RESET_INSTANCE", EffectActionType::RESET_INSTANCE)
+        .value("SEARCH_DECK", EffectActionType::SEARCH_DECK)
+        .value("SHUFFLE_DECK", EffectActionType::SHUFFLE_DECK)
+        .value("ADD_SHIELD", EffectActionType::ADD_SHIELD)
+        .value("SEND_SHIELD_TO_GRAVE", EffectActionType::SEND_SHIELD_TO_GRAVE)
         .export_values();
 
     // JSON Structures
