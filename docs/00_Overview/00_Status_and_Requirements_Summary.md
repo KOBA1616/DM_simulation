@@ -1,150 +1,67 @@
-# 要件定義書 00: ステータスと要件の概要 (Status and Requirements Summary)
+# Status and Requirements Summary (要件定義書 00)
 
-## 1. プロジェクト概要 (Project Overview)
-**目標:** C++エンジンとPythonバインディングを使用した、デュエル・マスターズAI/エージェントシステムの開発。
-**究極の目標:** 数千〜数万試合規模の並列対戦とPBT (Population Based Training) を通じた「自筆進化エコシステム」の構築。
-**現在のフェーズ:** フェーズ5完了・フェーズ6移行期 (Generic Functions Cleanup & Search/Shield Mechanics)
-**焦点:** 堅牢性、検証可能性、リスク管理。エンジンの「原子アクション」化による複雑な処理の安定化。
+このドキュメントはプロジェクトの現在のステータス、実装済み機能、および次のステップの要件をまとめたマスタードキュメントです。
 
-## 2. 現在のステータス (Current Status)
-*   **エンジン:** C++20コア (`GameState`, `ActionGenerator`, `EffectResolver`)。汎用効果処理 (`GenericCardSystem`) とスタック処理 (`Stack Zone`) が安定稼働中。
-*   **実装済みメカニクス:**
-    *   基本バトル、シールドブレイク、S・トリガー。
-    *   コスト軽減システム (Active Modifiers)。
-    *   ハイパーエナジー (Hyper Energy)。
-    *   革命チェンジ (Revolution Change)。
-    *   ジャストダイバー (Just Diver)。
-    *   メタカウンター (コスト踏み倒しメタ)。
-    *   汎用アクション: `COUNT_CARDS`, `APPLY_MODIFIER` (継続効果), `RESET_INSTANCE` 等。
-*   **ツール:**
-    *   GUIカードエディタ (`python/gui/card_editor.py`): 日本語化対応、詳細フィルタ・条件編集機能、視覚的エフェクトビルダ完備。
-    *   データ収集: `collect_training_data.py` (C++ `DataCollector` 使用)。
-    *   検証: `verify_performance.py` (並列MCTS)。
+## 1. 概要 (Overview)
 
-## 3. 今後のロードマップと実装計画 (Roadmap & Implementation Plan)
+Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
-### 【直近】フェーズ 6: サーチとシールド操作 (Search & Shield Handling)
-**目標:** 「山札からの探索」と「シールドの追加・焼却」を汎用アクションとして実装し、カードプールの表現力を大幅に向上させる。
+## 2. 実装済み機能 (Completed Features)
 
-#### 実装予定機能 (Planned Features)
-1.  **サーチ (Search System):**
-    *   **アクション:** `SEARCH_DECK` (または `LOOK_AT_DECK` + `SELECT_FROM_DECK`)。
-    *   **処理:** 山札を見る -> 条件に合うカードを選択 -> 手札/バトルゾーン等へ移動 -> **山札をシャッフル**。
-    *   **課題:** シャッフル処理の公平性と、選択肢の提示方法（GUIおよびAIアクション空間）。
-2.  **シールド操作 (Shield Manipulation):**
-    *   **シールド追加:** 山札/手札/墓地からシールド化 (`ADD_SHIELD`)。
-    *   **シールド焼却:** ブレイク扱いでないシールドの墓地送り (`SEND_SHIELD_TO_GRAVE`)。
-    *   **要件:** S・トリガーのチェック有無をフラグで制御可能にする。
+### 2.1 コアエンジン (C++)
+*   **基本ルール**: ターンの進行、マナチャージ、召喚、攻撃、ブロック、シールドブレイク、勝利条件。
+*   **ゾーン管理**: 山札、手札、マナゾーン、バトルゾーン、シールドゾーン、墓地。
+*   **カード効果**:
+    *   `dm::engine::GenericCardSystem` によるJSONベースの効果処理。
+    *   Trigger: ON_PLAY, ON_ATTACK, ON_DESTROY, S_TRIGGER, PASSIVE_CONST (Speed Attacker, Blocker, etc.), ON_ATTACK_FROM_HAND (Revolution Change).
+    *   Actions: DRAW, ADD_MANA, DESTROY, TAP, UNTAP, RETURN_TO_HAND, SEARCH_DECK, SHUFFLE_DECK, ADD_SHIELD, SEND_SHIELD_TO_GRAVE, MEKRAID, REVOLUTION_CHANGE.
+*   **JSON読み込み**: `dm::engine::JsonLoader` によるカード定義のロード。
+*   **シミュレーション**: `dm::ai::MCTS` および `dm::ai::ParallelRunner` による並列モンテカルロ木探索。
 
-#### テスト項目 (Test Items for Phase 6)
-*   **サーチ機能:**
-    *   [x] 山札から指定条件（文明、種族）のカードを正しく抽出できるか。 (Verified)
-    *   [x] 抽出後、残りの山札がシャッフルされているか（順序がランダム化されているか）。 (Verified)
-    *   [ ] 対象がない場合（「見つからなかった」）の処理が正しく行われるか。
-*   **シールド操作:**
-    *   [x] 山札の一番上がシールドに追加され、シールド枚数が増加するか。 (Verified)
-    *   [ ] シールド追加時、最大枚数制限（もしあれば）やイベント発動の有無。
-    *   [x] 効果によるシールド除去（ボルメテウス等）でS・トリガーが発動**しない**ことの確認。 (Verified)
+### 2.2 AI & 学習 (Python/C++)
+*   **モデル**: ResNetベースのニューラルネットワーク (`AlphaZeroNetwork` in PyTorch).
+*   **推論**: C++からのバッチ推論コールバック (`register_batch_inference_numpy`)。
+*   **データ収集**: 自己対戦による学習データ生成 (`collect_training_data.py`).
+*   **学習ループ**: `train_simple.py` によるモデル更新。
 
-### 【短期】フェーズ 7: 複雑な解決チェーン (Complex Resolution Chains)
-**目標:** 複数の効果が連鎖する処理（連鎖、GR召喚、複雑なループ証明など）の基盤強化。
+### 2.3 GUI (Python/PyQt6)
+*   **カードエディタ**: カードデータの作成・編集 (JSON形式)。日本語対応。
+*   **シミュレーション対話**: 対戦の観戦やデバッグ。
 
-*   **予定:** `EffectBuffer` の活用拡大、割り込み処理の一般化。
-*   **テスト:** 効果処理中の別効果の割り込みと、解決順序の厳密なテスト。
+## 3. 次のステップの要件 (Next Requirements)
 
-### 【中期】フェーズ 8: AIモデルの刷新 (AI Model Refinement)
-**目標:** 現在のResNetベースから、Transformer (Self-Attention) アーキテクチャへの移行。
+### 3.1 テストコードの整理と動作確認
+*   `tests/` ディレクトリ内のアドホックなテストを `python/tests/` へ統合。
+*   原子アクション (Draw, Mana Charge, Tap, Break Shield, Move Card) の動作を検証する `python/tests/test_atomic_actions.py` の作成と維持。
+*   **Status**: 完了 (2025/XX/XX)
 
-*   **概要:** 盤面のカード間の相互作用（シナジー、コンボ）をAttentionメカニズムで捉える。
-*   **計画:**
-    *   入力特徴量の再設計（シーケンスデータ化）。
-    *   Transformerモデルの実装 (`python/py_ai/agent/transformer_model.py`)。
-    *   小規模学習による概念実証。
+### 3.2 GUIの日本語化拡充
+*   `python/gui/card_editor.py` および `localization.py` を更新し、英語のハードコードを排除して日本語表示に対応する。
+*   **Status**: 完了 (2025/XX/XX)
 
-### 【長期】自筆進化エコシステム (Self-written Evolution Ecosystem)
-**目標:** 人手の調整なしに、AI同士の対戦を通じてメタゲームが進化する環境の構築。
+### 3.3 PythonコードのC++移行 (Migration Candidates)
 
-*   **PBT (Population Based Training):**
-    *   数千〜数万試合の並列実行。
-    *   勝者の重みを敗者にコピー・変異させる進化的アルゴリズム。
-*   **デッキ生成:**
-    *   AIによるデッキ構築・調整機能の統合。
+パフォーマンス向上とロジックの堅牢化のため、以下のPython実装部分をC++へ移行することを計画しています。
 
-## 4. 未解決タスク・バックログ (Backlog)
-*   **システム:**
-    *   ドロー操作のフック拡充（引いたカードの確認）。
-    *   墓地利用ロジックの汎用化（リアニメイト、墓地回収の汎用アクション化）。
-*   **カードメカニクス:**
-    *   進化クリーチャー（進化元選択ロジック）。
-    *   ゴッド・リンク、サイキック・クリーチャー（超次元）。
-    *   ニンジャ・ストライク（相手ターン中の割り込み処理の一般化）。
+1.  **シナリオ実行 (`ScenarioRunner`)**
+    *   現状: `python/training/scenario_runner.py` でPython側でゲームループを回している。
+    *   移行案: `src/core/scenario_config.hpp` は既にC++にあるため、`GameInstance::run_scenario(ScenarioConfig)` のようなメソッドをC++側に実装し、Pythonからは呼び出すだけにする。
+    *   メリット: Python <-> C++ のオーバーヘッド削減、高速化。
 
-## 5. 追加要件定義: カードエディタ改善と最強デッキ作成AI (Additional Requirements: Card Editor & AI)
+2.  **デッキ進化/検証 (`DeckEvolution` / `VerifyPerformance`)**
+    *   現状: `verify_deck_evolution.py` や `verify_performance.py` の一部ロジックがPython。
+    *   移行案: 進化ロジック (遺伝的アルゴリズムの選択・交叉など) はPythonでも良いが、評価のための対戦実行ループは完全に `ParallelRunner` (C++) に任せる。
+    *   補足: 既に `ParallelRunner` を使用しているが、セットアップや結果集計をよりC++側へ寄せ、Pythonは設定と起動のみにする。
 
-### カードエディタおよびGUI機能強化要件
-*   **多色カード実装**: カードエディタ上で多色（マルチカラー）カードを設定・実装できるようにする。
-*   **進化クリーチャー対応**: 能力「進化」を選択した際、カードタイプを自動的に「進化クリーチャー」に変更するロジック。
-*   **GUIレイアウト修正**: GUIが下側に伸びすぎて操作ができない問題を解決（スクロール対応やレイアウト調整）。
-*   **日本語化の推進**: さらなるGUIおよびカードエディタの日本語化。
-*   **効果リストタブの改善**:
-    *   選択項目をテキスト入力からプルダウン形式へ変更。
-    *   **ロジックマスク機能**: 能力と効果を組み合わせる際、システム上矛盾する（参照できない）組み合わせを選択肢から除外（マスク）する機能。
-*   **視覚的GUI (Visual Scripting)**: エフェクトバッファを使用する複雑な能力（探索、メクレイド等）について、ノードと矢印でつなぎ視覚的にわかりやすくするGUIの実装。
-*   **デッキ編集機能**: デッキのカード自動入れ替え機能の確認、特定カードの固定機能の実装検討。
+3.  **複雑なカード効果のPython側ロジック (もしあれば)**
+    *   現状: ほぼ全てのカード効果は `GenericCardSystem` (C++) に移行済み。
+    *   確認事項: Python側で `register_card_functions` 等を使って実装されているレガシーな効果があれば、JSON定義 + C++実装へ完全移行する。
 
-### AIによる最強デッキ作成機能（自動進化システム）実装要件
+4.  **AI学習データ生成の制御**
+    *   現状: `collect_training_data.py` が `dm_ai_module.DataCollector` を呼んでいるが、ループ制御の一部がPython。
+    *   移行案: `DataCollector` が指定エピソード数を完遂するまでPythonに制御を戻さないようにする (現状も近い形だが、メモリ管理を厳密にするためC++側で完結させる)。
 
-#### 1. 目的
-現在のランダムなカード入れ替え機能を刷新し、ユーザーの意図（固定カード、候補プール）と、実際の対戦データに基づく貢献度評価（使用率・関与率）を取り入れた、より効率的で強力なデッキ構築AIを作成する。
-
-#### 2. 機能要件
-
-**A. デッキ進化ロジックの改善 (Smart Evolution)**
-*   **現状**: 全カードプールからランダムに入れ替え、勝率のみで評価。
-*   **改善**:
-    *   **評価指標の刷新**: 勝率だけでなく、カード個別の「貢献度 (Score)」を計測する。
-    *   **淘汰ロジック**: 貢献度が低い（＝デッキに入っているが役に立っていない）カードを優先的に削除対象とする。
-    *   **補充ロジック**: 削除された枠には、全カードからではなく「候補プール」からカードを補充する。
-
-**B. 特定カードの固定機能 (Fixed Cards)**
-*   ユーザーが指定した「固定カード (Core Cards)」は、貢献度に関わらず削除・入れ替えの対象外とする。
-*   これにより、コンセプト（切札や必須パーツ）を維持したまま、周囲の潤滑油カードのみを最適化できる。
-
-**C. 候補カードプールの導入 (Candidate Pool)**
-*   ユーザーが指定した「入れ替え候補カード群」の中からのみ、新カードを採用する。
-*   これにより、デッキの色（文明）やマナカーブが崩壊するのを防ぐ。
-
-#### 3. 実装詳細：貢献度評価ロジック (Voluntary Interaction Score)
-対戦シミュレーション (`MCTS`/`ParallelRunner`) において、各カードIDごとに以下のポイントを集計し、有用性を定量化する。
-
-*   **評価基準（ポイント加算）**
-    *   **プレイ・能力発動（5点 / 回）**
-        *   対象アクション: `PLAY_CARD`, `USE_ABILITY`, `USE_SHIELD_TRIGGER`
-        *   意図: カード本来の効果を使用した場合。
-        *   特記事項: 「捨てられた時」の効果（マッドネス等）も、能力が発動すればここでカウントされ、有用とみなされる。
-    *   **リソースとしての利用（2点 / 回）**
-        *   対象アクション:
-            *   `MANA_CHARGE`: マナゾーンに置かれた（色事故防止、マナ加速への貢献）。
-            *   `SELECT_TARGET`: プレイヤー自身の意思で選択された（手札コストとして捨てた、進化元にした、墓地回収した等）。
-        *   意図: 直接プレイしなくても、デッキの動きを支えたカードを評価する。
-    *   **死に札判定（0点）**
-        *   手札に引いたが、上記のいずれのアクションにも関与せずゲームが終了した場合。
-*   **スコア算出式**
-    *   `Score = (合計貢献ポイント) / (そのカードが手札(または公開領域)に見えた回数 + ε)`
-    *   Scoreが低い順に、削除候補（入れ替え対象）となる。
-
-#### 4. 開発・検証プロセス
-*   **基盤整備**: `verify_deck_evolution.py` を作成し、`JsonLoader` ベースでの動作環境を構築。(スクリプト枠組み作成完了、ロジック実装待ち)
-*   **トラッキング実装**: `DeckEvolution` クラス内の対戦ループに、上記のポイント加算ロジックを実装。アクションの `source` および `target` を監視する。
-*   **API設計**:
-    *   `fixed_cards: list[int]` (絶対に残すID)
-    *   `candidate_pool: list[int]` (新しく入れるIDの候補)
-*   **検証**:
-    *   固定カードが削除されないこと。
-    *   「手札に来ても使われない重いカード」等が正しく削除されること。
-    *   「コストとして捨てられただけのカード」も削除されずに残ること（0点扱いにならないこと）。
-
-## 6. 開発規約 (Development Conventions)
-*   **言語:** コミットメッセージ、ドキュメント、PRコメントは日本語推奨。
-*   **検証:** 新機能追加時は必ず単体テスト (`tests/`) と検証スクリプトを作成すること。
-*   **データ:** `data/cards.csv` は廃止。`data/cards.json` を正とする。
+## 4. 今後のロードマップ (Roadmap)
+*   **Phase 6**: サーチ、シールド操作の実装 (完了)。
+*   **Phase 7**: 高度なギミック (超次元、GRなど) の検討。
+*   **Phase 8**: AIモデルの高度化 (Transformerなど)。
