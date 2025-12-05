@@ -18,6 +18,7 @@ namespace dm::core {
         PASSIVE_CONST,
         ON_OTHER_ENTER,
         ON_ATTACK_FROM_HAND,
+        ON_BLOCK,
         NONE
     };
 
@@ -68,6 +69,10 @@ namespace dm::core {
         REVEAL_CARDS,
         REGISTER_DELAYED_EFFECT,
         RESET_INSTANCE,
+        SEARCH_DECK,
+        SHUFFLE_DECK,
+        ADD_SHIELD,
+        SEND_SHIELD_TO_GRAVE,
         NONE
     };
 
@@ -180,7 +185,8 @@ namespace dm::core {
         {TriggerType::TURN_START, "TURN_START"},
         {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"},
         {TriggerType::ON_OTHER_ENTER, "ON_OTHER_ENTER"},
-        {TriggerType::ON_ATTACK_FROM_HAND, "ON_ATTACK_FROM_HAND"}
+        {TriggerType::ON_ATTACK_FROM_HAND, "ON_ATTACK_FROM_HAND"},
+        {TriggerType::ON_BLOCK, "ON_BLOCK"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(ReactionType, {
@@ -229,7 +235,11 @@ namespace dm::core {
         {EffectActionType::APPLY_MODIFIER, "APPLY_MODIFIER"},
         {EffectActionType::REVEAL_CARDS, "REVEAL_CARDS"},
         {EffectActionType::REGISTER_DELAYED_EFFECT, "REGISTER_DELAYED_EFFECT"},
-        {EffectActionType::RESET_INSTANCE, "RESET_INSTANCE"}
+        {EffectActionType::RESET_INSTANCE, "RESET_INSTANCE"},
+        {EffectActionType::SEARCH_DECK, "SEARCH_DECK"},
+        {EffectActionType::SHUFFLE_DECK, "SHUFFLE_DECK"},
+        {EffectActionType::ADD_SHIELD, "ADD_SHIELD"},
+        {EffectActionType::SEND_SHIELD_TO_GRAVE, "SEND_SHIELD_TO_GRAVE"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count)
