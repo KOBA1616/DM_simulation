@@ -825,13 +825,139 @@ namespace dm::engine {
 
             player.battle_zone.push_back(card);
 
+            // Phase 5: Stats
+            game_state.turn_stats.creatures_played_this_turn++;
+
             if (def.keywords.cip) {
                 dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
             }
         } else if (def.type == CardType::SPELL) {
             card.is_tapped = false;
             player.graveyard.push_back(card);
+
+            // Phase 5: Stats
+            game_state.turn_stats.spells_cast_this_turn++;
+
             dm::engine::GenericCardSystem::resolve_trigger(game_state, dm::core::TriggerType::ON_PLAY, card.instance_id);
+        }
+    }
+
+    // Phase 5: New Resolve Effect with Execution Context
+    void EffectResolver::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context) {
+        if (!GenericCardSystem::check_condition(game_state, effect.condition, source_instance_id)) return;
+
+        for (size_t i = 0; i < effect.actions.size(); ++i) {
+            ActionDef action = effect.actions[i]; // Copy to modify values
+
+            // Dynamic Value Substitution (Input)
+            if (!action.input_value_key.empty()) {
+                if (execution_context.count(action.input_value_key)) {
+                    // Overwrite value1 or value (legacy str)
+                    action.value1 = execution_context[action.input_value_key];
+                    action.value = std::to_string(action.value1);
+                }
+            }
+
+            // Handle Target Selection Interruption
+            if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
+                EffectDef continuation;
+                continuation.trigger = TriggerType::NONE;
+                continuation.condition = ConditionDef{"NONE", 0, ""};
+                // Propagate execution_context?
+                // Currently context is local to this frame.
+                // We should theoretically embed context in continuation or PendingEffect.
+                // But PendingEffect doesn't store generic context yet.
+                // For "Chain" actions, we might need to.
+                // For MVP, assume context is consumed immediately or regenerated.
+                // (To properly support cross-select variable persistence, we'd need to add context to PendingEffect)
+
+                for (size_t j = i; j < effect.actions.size(); ++j) {
+                    continuation.actions.push_back(effect.actions[j]);
+                }
+                GenericCardSystem::select_targets(game_state, action, source_instance_id, continuation);
+                return; // Stop execution
+            }
+
+            // Phase 5: New Actions Implementation
+            if (action.type == EffectActionType::COUNT_CARDS) {
+                int count = 0;
+                Player& active = game_state.get_active_player();
+
+                // Helper to count in vector
+                auto count_in_vec = [&](const std::vector<CardInstance>& vec, PlayerID owner_id) {
+                    for (const auto& c : vec) {
+                         const CardData* cd = CardRegistry::get_card_data(c.card_id);
+                         if (cd) {
+                             if (TargetUtils::is_valid_target(c, *cd, action.filter, active.id, owner_id)) {
+                                 count++;
+                             }
+                         }
+                    }
+                };
+
+                // Determine players to check based on filter.owner
+                // Default to SELF if unspecified
+                std::vector<Player*> players_to_check;
+                std::string own_req = action.filter.owner.value_or("SELF");
+
+                if (own_req == "SELF") {
+                    players_to_check.push_back(&active);
+                } else if (own_req == "OPPONENT") {
+                    players_to_check.push_back(&game_state.get_non_active_player());
+                } else if (own_req == "BOTH") {
+                    players_to_check.push_back(&active);
+                    players_to_check.push_back(&game_state.get_non_active_player());
+                } else {
+                    // Fallback to SELF
+                    players_to_check.push_back(&active);
+                }
+
+                if (!action.filter.zones.empty()) {
+                    for (Player* p : players_to_check) {
+                        for (const auto& zone : action.filter.zones) {
+                            if (zone == "MANA_ZONE") count_in_vec(p->mana_zone, p->id);
+                            else if (zone == "BATTLE_ZONE") count_in_vec(p->battle_zone, p->id);
+                            else if (zone == "HAND") count_in_vec(p->hand, p->id);
+                            else if (zone == "GRAVEYARD") count_in_vec(p->graveyard, p->id);
+                            else if (zone == "SHIELD_ZONE") count_in_vec(p->shield_zone, p->id);
+                        }
+                    }
+                }
+
+                if (!action.output_value_key.empty()) {
+                    execution_context[action.output_value_key] = count;
+                }
+
+            } else if (action.type == EffectActionType::GET_GAME_STAT) {
+                int val = 0;
+                if (action.str_val == "cards_drawn_this_turn") val = game_state.turn_stats.cards_drawn_this_turn;
+                else if (action.str_val == "cards_discarded_this_turn") val = game_state.turn_stats.cards_discarded_this_turn;
+                else if (action.str_val == "creatures_played_this_turn") val = game_state.turn_stats.creatures_played_this_turn;
+                else if (action.str_val == "spells_cast_this_turn") val = game_state.turn_stats.spells_cast_this_turn;
+
+                if (!action.output_value_key.empty()) {
+                    execution_context[action.output_value_key] = val;
+                }
+
+            } else if (action.type == EffectActionType::APPLY_MODIFIER) {
+                CostModifier mod;
+                // Basic implementation for cost reduction modifier
+                mod.reduction_amount = action.value1;
+                mod.condition_filter = action.filter;
+                mod.turns_remaining = action.value2 > 0 ? action.value2 : 1;
+                mod.controller = game_state.active_player_id;
+                mod.source_instance_id = source_instance_id;
+                game_state.active_modifiers.push_back(mod);
+
+            } else if (action.type == EffectActionType::REVEAL_CARDS) {
+                // Stub
+            } else if (action.type == EffectActionType::REGISTER_DELAYED_EFFECT) {
+                // Stub
+            } else if (action.type == EffectActionType::RESET_INSTANCE) {
+                // Stub
+            } else {
+                GenericCardSystem::resolve_action(game_state, action, source_instance_id);
+            }
         }
     }
 
