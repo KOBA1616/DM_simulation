@@ -68,7 +68,17 @@ namespace dm::engine {
                                     if (card_db.count(card.card_id) == 0) continue;
                                     const auto& def = card_db.at(card.card_id);
 
-                                    if (TargetUtils::is_valid_target(card, def, filter, decision_maker, (PlayerID)pid)) {
+                                    if (TargetUtils::is_valid_target(card, def, filter, game_state, decision_maker, (PlayerID)pid)) {
+                                        // Specific Check for Just Diver on SELECTION
+                                        // is_valid_target allows general filtering (e.g. counting)
+                                        // But here we are generating SELECT_TARGET actions for manual choice.
+                                        // Just Diver prevents being CHOSEN by OPPONENT.
+                                        if (decision_maker != pid) { // Choosing opponent's card
+                                            if (TargetUtils::is_protected_by_just_diver(card, def, game_state, decision_maker)) {
+                                                continue; // Cannot select this target
+                                            }
+                                        }
+
                                         Action select;
                                         select.type = ActionType::SELECT_TARGET;
                                         select.target_instance_id = card.instance_id;
@@ -441,6 +451,15 @@ namespace dm::engine {
                         for (size_t j = 0; j < opponent.battle_zone.size(); ++j) {
                             const auto& opp_card = opponent.battle_zone[j];
                             if (opp_card.is_tapped) {
+
+                                // Check Just Diver (Cannot be Attacked)
+                                if (card_db.count(opp_card.card_id)) {
+                                    const auto& opp_def = card_db.at(opp_card.card_id);
+                                    if (TargetUtils::is_protected_by_just_diver(opp_card, opp_def, game_state, active_player.id)) {
+                                        continue; // Cannot attack this creature
+                                    }
+                                }
+
                                 Action attack_creature;
                                 attack_creature.type = ActionType::ATTACK_CREATURE;
                                 attack_creature.source_instance_id = card.instance_id;
