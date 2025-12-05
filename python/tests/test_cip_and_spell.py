@@ -61,25 +61,45 @@ def test_spell_return_to_hand():
     # Add a creature to opponent battle zone
     gs.add_test_card_to_battle(1, 1, 5001, False, False)
 
-    # Play spiral gate
+    # Play spiral gate (Follow play transaction)
+    # 1. Declare Play
     act = dm_ai_module.Action(); act.type = dm_ai_module.ActionType.PLAY_CARD; act.card_id = 6
     act.source_instance_id = gs.players[0].hand[0].instance_id
     dm_ai_module.EffectResolver.resolve_action(gs, act, card_db)
 
-    # Resolve pending effect (spell)
-    if dm_ai_module.get_pending_effects_info(gs):
-        # First, resolve the spell pending (which may create a pending effect with targets)
-        r = dm_ai_module.Action(); r.type = dm_ai_module.ActionType.RESOLVE_EFFECT; r.slot_index = 0
-        dm_ai_module.EffectResolver.resolve_action(gs, r, card_db)
+    # 2. Pay Cost (Auto-pay)
+    # Ideally use ActionGenerator but here we manually resolve for test
+    pay = dm_ai_module.Action(); pay.type = dm_ai_module.ActionType.PAY_COST
+    # Need source_instance_id from stack?
+    # Stack has the card.
+    stack_card = gs.stack_zone[-1]
+    pay.source_instance_id = stack_card.instance_id
+    dm_ai_module.EffectResolver.resolve_action(gs, pay, card_db)
 
-    # If a target selection pending remains, auto-select and resolve
-    if dm_ai_module.get_pending_effects_info(gs):
-        # Use select target action and resolve
-        sel = dm_ai_module.Action(); sel.type = dm_ai_module.ActionType.SELECT_TARGET; sel.slot_index = 0
-        sel.target_instance_id = 5001
-        dm_ai_module.EffectResolver.resolve_action(gs, sel, card_db)
-        fin = dm_ai_module.Action(); fin.type = dm_ai_module.ActionType.RESOLVE_EFFECT; fin.slot_index = 0
-        dm_ai_module.EffectResolver.resolve_action(gs, fin, card_db)
+    # 3. Resolve Play (Spells go to grave, triggers execute)
+    res = dm_ai_module.Action(); res.type = dm_ai_module.ActionType.RESOLVE_PLAY
+    res.source_instance_id = stack_card.instance_id
+    dm_ai_module.EffectResolver.resolve_action(gs, res, card_db)
+
+    # Check pending effects. Spells resolve immediately, so we might go straight to Target Select.
+    pending = dm_ai_module.get_pending_effects_info(gs)
+    if pending:
+        # If it's Target Select (EffectType.NONE usually), we select directly.
+        # If it's a queued trigger (e.g. CIP), we resolve it first.
+        ptype = pending[0][0]
+
+        if ptype != 0: # Not NONE/TargetSelect, assume Trigger (e.g. CIP)
+             r = dm_ai_module.Action(); r.type = dm_ai_module.ActionType.RESOLVE_EFFECT; r.slot_index = 0
+             dm_ai_module.EffectResolver.resolve_action(gs, r, card_db)
+             pending = dm_ai_module.get_pending_effects_info(gs)
+
+        if pending:
+            # Now we should be at Target Select
+            sel = dm_ai_module.Action(); sel.type = dm_ai_module.ActionType.SELECT_TARGET; sel.slot_index = 0
+            sel.target_instance_id = 5001
+            dm_ai_module.EffectResolver.resolve_action(gs, sel, card_db)
+            fin = dm_ai_module.Action(); fin.type = dm_ai_module.ActionType.RESOLVE_EFFECT; fin.slot_index = 0
+            dm_ai_module.EffectResolver.resolve_action(gs, fin, card_db)
 
     # Now confirm opponent creature moved to hand
     opp = gs.players[1]
