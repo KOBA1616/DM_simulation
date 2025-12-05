@@ -430,13 +430,15 @@ class CardEditor(QDialog):
         detail_form.addRow(filter_box)
 
         # Generic Values
+        self.val1_label = QLabel(tr("Value 1") + ":")
         self.val1_spin = QSpinBox()
         self.val1_spin.setRange(0, 99)
-        detail_form.addRow(tr("Value 1") + ":", self.val1_spin)
+        detail_form.addRow(self.val1_label, self.val1_spin)
 
+        self.val2_label = QLabel(tr("Value 2") + ":")
         self.val2_spin = QSpinBox()
         self.val2_spin.setRange(0, 99)
-        detail_form.addRow(tr("Value 2") + ":", self.val2_spin)
+        detail_form.addRow(self.val2_label, self.val2_spin)
 
         self.str_val_edit = QLineEdit()
         detail_form.addRow(tr("String Value") + ":", self.str_val_edit)
@@ -446,6 +448,9 @@ class CardEditor(QDialog):
         detail_form.addRow(tr("Input Key") + ":", self.input_key_edit)
         self.output_key_edit = QLineEdit()
         detail_form.addRow(tr("Output Key") + ":", self.output_key_edit)
+
+        # Connect Action Type change to dynamic labels
+        self.act_type_combo.currentIndexChanged.connect(self.update_dynamic_labels)
 
         # Apply Button
         apply_btn = QPushButton("Update Action")
@@ -812,6 +817,15 @@ class CardEditor(QDialog):
             del self.cards_data[self.current_card_index]['effects'][eff_row]['actions'][act_row]
             self.load_selected_effect(eff_row)
 
+    def update_dynamic_labels(self):
+        act_type = self.act_type_combo.currentData()
+        if act_type == "APPLY_MODIFIER":
+            self.val1_label.setText(tr("Reduction Amount") + ":")
+            self.val2_label.setText(tr("Duration (Turns)") + ":")
+        else:
+            self.val1_label.setText(tr("Value 1") + ":")
+            self.val2_label.setText(tr("Value 2") + ":")
+
     def load_selected_action(self, act_row):
         eff_row = self.effects_list.currentRow()
         if eff_row < 0 or act_row < 0: return
@@ -821,6 +835,9 @@ class CardEditor(QDialog):
         # Populate form
         idx = self.act_type_combo.findData(action.get('type', 'DESTROY'))
         if idx >= 0: self.act_type_combo.setCurrentIndex(idx)
+
+        # Update dynamic labels based on the loaded action
+        self.update_dynamic_labels()
 
         idx = self.act_scope_combo.findData(action.get('scope', 'TARGET_SELECT'))
         if idx >= 0: self.act_scope_combo.setCurrentIndex(idx)
