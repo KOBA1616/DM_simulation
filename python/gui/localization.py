@@ -9,6 +9,15 @@ TRANSLATIONS = {
     "Open": "開く",
     "Save": "保存",
     "Close": "閉じる",
+    "New Card": "新規カード",
+    "Delete Card": "カード削除",
+    "Preview": "プレビュー",
+    "Action updated!": "アクションが更新されました！",
+    "Cards saved successfully!": "カードが正常に保存されました！",
+    "Error": "エラー",
+    "Success": "成功",
+    "Failed to load JSON": "JSONの読み込みに失敗しました",
+    "Failed to save JSON": "JSONの保存に失敗しました",
 
     # Card Details
     "Card Details": "カード詳細",
@@ -26,6 +35,7 @@ TRANSLATIONS = {
     "Add Effect": "効果を追加",
     "Remove Effect": "効果を削除",
     "Reaction Abilities": "リアクション能力", # Ninja Strike etc
+    "REVOLUTION_CHANGE": "革命チェンジ",
 
     # Effect Definition
     "Effect": "効果",
@@ -49,6 +59,8 @@ TRANSLATIONS = {
     "Output Key": "出力変数キー",
     "Optional": "任意効果",
     "Update Action": "アクション更新",
+    "Reduction Amount": "軽減量",
+    "Duration (Turns)": "持続ターン",
 
     # Filter Definition
     "Filter": "フィルタ",
@@ -61,6 +73,8 @@ TRANSLATIONS = {
     "Max Cost": "最大コスト",
     "Min Power": "最小パワー",
     "Max Power": "最大パワー",
+    "Min": "最小",
+    "Max": "最大",
     "Tapped": "タップ状態",
     "Blocker": "ブロッカー",
     "Evolution": "進化",
@@ -119,6 +133,7 @@ TRANSLATIONS = {
     "REVEAL_CARDS": "カードを公開",
     "REGISTER_DELAYED_EFFECT": "遅延効果登録",
     "RESET_INSTANCE": "カード状態リセット",
+    "Hyper Energy": "ハイパーエナジー",
 
     # Scope
     "PLAYER_SELF": "自分",
