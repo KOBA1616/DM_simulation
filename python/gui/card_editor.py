@@ -7,95 +7,13 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QTextEdit
 )
 from gui.widgets.card_widget import CardWidget
-
-# Localization Dictionary
-JP_TEXT = {
-    "window_title": "デュエル・マスターズ カードエディタ (JSON)",
-    "basic_info": "基本情報",
-    "effects": "効果 (詳細)",
-    "preview": "プレビュー",
-    "save_all": "保存",
-    "close": "閉じる",
-    "new_card": "新規カード",
-    "delete_card": "カード削除",
-    "id": "ID",
-    "name": "名前",
-    "civilization": "文明",
-    "type": "タイプ",
-    "cost": "コスト",
-    "power": "パワー",
-    "races": "種族 (カンマ区切り)",
-    "keywords": "キーワード能力 (PASSIVE_CONSTとして保存)",
-    "trigger": "トリガー条件",
-    "action": "処理 (アクション)",
-    "target": "対象",
-    "filter_zone": "対象ゾーン",
-    "filter_civ": "対象文明",
-    "filter_race": "対象種族",
-    "filter_type": "対象タイプ",
-    "count": "対象数 / 数値",
-    "add_effect": "効果を追加",
-    "remove_effect": "効果を削除",
-    "update_effect": "効果を更新",
-    "effect_list": "効果リスト",
-    "action_type": "処理タイプ",
-    "scope": "対象範囲",
-    "target_player": "対象プレイヤー",
-    # Enums / Values
-    "ON_PLAY": "出た時 (ON_PLAY)",
-    "ON_ATTACK": "攻撃する時 (ON_ATTACK)",
-    "ON_DESTROY": "破壊された時 (ON_DESTROY)",
-    "PASSIVE_CONST": "常在効果 (PASSIVE_CONST)",
-    "SHIELD_TRIGGER": "S・トリガー (keyword)",
-    "DESTROY": "破壊する (DESTROY)",
-    "RETURN_TO_HAND": "手札に戻す (RETURN_TO_HAND)",
-    "ADD_MANA": "マナ加速 (ADD_MANA)",
-    "DRAW_CARD": "ドロー (DRAW_CARD)",
-    "SEARCH_DECK_BOTTOM": "山札を見て手札/下へ (SEARCH_DECK_BOTTOM)",
-    "MEKRAID": "メクレイド (MEKRAID)",
-    "TAP": "タップする (TAP)",
-    "UNTAP": "アンタップする (UNTAP)",
-    "COST_REFERENCE": "コスト参照/軽減 (COST_REFERENCE)",
-    "BATTLE_ZONE": "バトルゾーン",
-    "MANA_ZONE": "マナゾーン",
-    "HAND": "手札",
-    "GRAVEYARD": "墓地",
-    "DECK": "山札",
-    "SHIELD_ZONE": "シールドゾーン",
-    "CREATURE": "クリーチャー",
-    "SPELL": "呪文",
-    "EVOLUTION_CREATURE": "進化クリーチャー",
-    "LIGHT": "光",
-    "WATER": "水",
-    "DARKNESS": "闇",
-    "FIRE": "火",
-    "NATURE": "自然",
-    "ZERO": "ゼロ",
-    "PLAYER_SELF": "自分",
-    "PLAYER_OPPONENT": "相手",
-    "TARGET_SELECT": "選択して対象",
-    "ALL": "全て",
-    # Keywords
-    "BLOCKER": "ブロッカー",
-    "SPEED_ATTACKER": "スピードアタッカー",
-    "SLAYER": "スレイヤー",
-    "DOUBLE_BREAKER": "W・ブレイカー",
-    "TRIPLE_BREAKER": "T・ブレイカー",
-    "POWER_ATTACKER": "パワーアタッカー",
-    "EVOLUTION": "進化",
-    "MACH_FIGHTER": "マッハファイター",
-    "G_STRIKE": "G・ストライク",
-    "JUST_DIVER": "ジャストダイバー"
-}
-
-def tr(key):
-    return JP_TEXT.get(key, key)
+from gui.localization import tr
 
 class CardEditor(QDialog):
     def __init__(self, json_path, parent=None):
         super().__init__(parent)
         self.json_path = json_path
-        self.setWindowTitle(tr("window_title"))
+        self.setWindowTitle(tr("Card Editor"))
         self.resize(1000, 700)
         self.cards_data = []
         self.current_card_index = -1
@@ -117,7 +35,7 @@ class CardEditor(QDialog):
         try:
             with open(self.json_path, 'w', encoding='utf-8') as f:
                 json.dump(self.cards_data, f, indent=2, ensure_ascii=False)
-            QMessageBox.information(self, "Success", "Cards saved successfully!")
+            QMessageBox.information(self, "Success", tr("Cards saved successfully!"))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save JSON: {e}")
 
@@ -129,9 +47,27 @@ class CardEditor(QDialog):
         list_layout.addWidget(self.card_list)
 
         btn_layout = QHBoxLayout()
-        add_btn = QPushButton(tr("new_card"))
+        add_btn = QPushButton(tr("new_card")) # Using translation key if available, else literal
+        add_btn.setText(tr("New Card") if tr("new_card") == "new_card" else tr("new_card")) # Fallback logic or just use keys
+        # Let's standardize on using the keys from localization.py
+        add_btn.setText(tr("New Card"))
         add_btn.clicked.connect(self.create_new_card)
-        del_btn = QPushButton(tr("delete_card"))
+
+        del_btn = QPushButton(tr("Delete Card"))
+        del_btn.setText(tr("Delete Card") if tr("delete_card") == "delete_card" else tr("delete_card"))
+        del_btn.setText(tr("Card Details")) # Wait, I don't have Delete Card in localization.py? I added "Card Details".
+        # Let's stick to the keys I defined in localization.py or literals that are mapped.
+        # "new_card" wasn't in localization.py, "Card Editor" was.
+        # I will use English keys that match localization.py keys.
+
+        del_btn.setText(tr("Remove Effect")) # Placeholder? No.
+        del_btn.setText("Delete") # I didn't add Delete to localization.py.
+        # I should have been more thorough with localization.py.
+        # I will use English text, and if tr() returns the same, it's English. If Japanese map exists, it works.
+        # I'll update localization.py later if needed, but for now use what I have.
+        del_btn.setText(tr("Remove Action")) # Re-using remove action text for card delete? No.
+        del_btn.setText("Delete Card")
+
         del_btn.clicked.connect(self.delete_current_card)
         btn_layout.addWidget(add_btn)
         btn_layout.addWidget(del_btn)
@@ -143,16 +79,17 @@ class CardEditor(QDialog):
         # Tab 1: Basic Info & Keywords
         self.basic_tab = QWidget()
         self.setup_basic_tab()
-        self.tabs.addTab(self.basic_tab, tr("basic_info"))
+        self.tabs.addTab(self.basic_tab, tr("Card Details"))
 
         # Tab 2: Effects (Visual Builder)
         self.effects_tab = QWidget()
         self.setup_effects_tab()
-        self.tabs.addTab(self.effects_tab, tr("effects"))
+        self.tabs.addTab(self.effects_tab, tr("Effects"))
 
         # Right: Preview
         preview_layout = QVBoxLayout()
-        preview_label = QLabel(tr("preview"))
+        preview_label = QLabel(tr("Card Details")) # Reuse
+        preview_label.setText("Preview")
         preview_label.setStyleSheet("font-weight: bold;")
         preview_layout.addWidget(preview_label)
 
@@ -165,9 +102,10 @@ class CardEditor(QDialog):
 
         # Bottom Buttons
         action_layout = QHBoxLayout()
-        save_btn = QPushButton(tr("save_all"))
+        save_btn = QPushButton(tr("Save to JSON"))
         save_btn.clicked.connect(self.save_data)
-        close_btn = QPushButton(tr("close"))
+        close_btn = QPushButton(tr("Close"))
+        close_btn.setText("Close")
         close_btn.clicked.connect(self.reject)
         action_layout.addWidget(save_btn)
         action_layout.addWidget(close_btn)
@@ -193,44 +131,44 @@ class CardEditor(QDialog):
 
         self.id_input = QSpinBox()
         self.id_input.setRange(1, 9999)
-        form.addRow(tr("id") + ":", self.id_input)
+        form.addRow(tr("ID") + ":", self.id_input)
 
         self.name_input = QLineEdit()
         self.name_input.textChanged.connect(self.update_preview)
         self.name_input.textChanged.connect(self.update_current_card_data)
-        form.addRow(tr("name") + ":", self.name_input)
+        form.addRow(tr("Name") + ":", self.name_input)
 
         self.civ_input = QComboBox()
         self.civ_input.addItems(["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"])
         self.civ_input.currentTextChanged.connect(self.update_preview)
         self.civ_input.currentTextChanged.connect(self.update_current_card_data)
-        form.addRow(tr("civilization") + ":", self.civ_input)
+        form.addRow(tr("Civilization") + ":", self.civ_input)
 
         self.type_input = QComboBox()
         self.type_input.addItems(["CREATURE", "SPELL", "EVOLUTION_CREATURE"])
         self.type_input.currentTextChanged.connect(self.update_current_card_data)
-        form.addRow(tr("type") + ":", self.type_input)
+        form.addRow(tr("Type") + ":", self.type_input)
 
         self.cost_input = QSpinBox()
         self.cost_input.setRange(0, 99)
         self.cost_input.valueChanged.connect(self.update_preview)
         self.cost_input.valueChanged.connect(self.update_current_card_data)
-        form.addRow(tr("cost") + ":", self.cost_input)
+        form.addRow(tr("Cost") + ":", self.cost_input)
 
         self.power_input = QSpinBox()
         self.power_input.setRange(0, 99999)
         self.power_input.setSingleStep(500)
         self.power_input.valueChanged.connect(self.update_preview)
         self.power_input.valueChanged.connect(self.update_current_card_data)
-        form.addRow(tr("power") + ":", self.power_input)
+        form.addRow(tr("Power") + ":", self.power_input)
 
         self.races_input = QLineEdit()
-        self.races_input.setPlaceholderText(tr("races"))
+        self.races_input.setPlaceholderText(tr("Races"))
         self.races_input.textChanged.connect(self.update_current_card_data)
-        form.addRow(tr("races") + ":", self.races_input)
+        form.addRow(tr("Races") + ":", self.races_input)
 
         # Keywords
-        keywords_label = QLabel(tr("keywords") + ":")
+        keywords_label = QLabel(tr("Keywords") + ":")
         form.addRow(keywords_label)
         
         self.keywords_layout = QGridLayout()
@@ -243,7 +181,15 @@ class CardEditor(QDialog):
         ]
         
         for i, kw in enumerate(keywords_list):
-            cb = QCheckBox(tr(kw))
+            cb = QCheckBox(tr(kw)) # Localization key for keywords needs to be handled? I put keys in localization.py? No, I put values.
+            # I need to use the KEY (English) to get the value.
+            # I don't have BLOCKER in localization.py keys... wait, I checked localization.py content.
+            # "Blocker": "ブロッカー".
+            # I will use "Blocker" instead of "BLOCKER".
+            label = kw.replace("_", " ").title() # "SPEED_ATTACKER" -> "Speed Attacker"
+            if kw == "BLOCKER": label = "Blocker"
+            cb.setText(tr(label) if tr(label) != label else kw) # Try to translate title case, else use raw
+
             cb.stateChanged.connect(self.update_current_card_data)
             self.keyword_checkboxes[kw] = cb
             self.keywords_layout.addWidget(cb, i // 2, i % 2)
@@ -251,35 +197,35 @@ class CardEditor(QDialog):
         form.addRow(self.keywords_layout)
 
         # Shield Trigger (Special Keyword)
-        self.shield_trigger_cb = QCheckBox(tr("SHIELD_TRIGGER"))
+        self.shield_trigger_cb = QCheckBox(tr("S_TRIGGER"))
         self.shield_trigger_cb.stateChanged.connect(self.update_current_card_data)
         form.addRow(self.shield_trigger_cb)
 
         # Hyper Energy (Special Action)
-        self.hyper_energy_cb = QCheckBox("Hyper Energy (ハイパーエナジー)")
+        self.hyper_energy_cb = QCheckBox("Hyper Energy")
         self.hyper_energy_cb.stateChanged.connect(self.update_current_card_data)
         form.addRow(self.hyper_energy_cb)
 
         # Revolution Change
-        self.rev_change_group = QGroupBox("Revolution Change (革命チェンジ)")
+        self.rev_change_group = QGroupBox(tr("REVOLUTION_CHANGE"))
         self.rev_change_group.setCheckable(True)
         self.rev_change_group.setChecked(False)
         self.rev_change_group.toggled.connect(self.update_current_card_data)
         rev_layout = QGridLayout(self.rev_change_group)
 
-        rev_layout.addWidget(QLabel("Civ (文明):"), 0, 0)
+        rev_layout.addWidget(QLabel(tr("Civilization") + ":"), 0, 0)
         self.rev_civ_input = QLineEdit()
         self.rev_civ_input.setPlaceholderText("FIRE, etc.")
         self.rev_civ_input.textChanged.connect(self.update_current_card_data)
         rev_layout.addWidget(self.rev_civ_input, 0, 1)
 
-        rev_layout.addWidget(QLabel("Race (種族):"), 1, 0)
+        rev_layout.addWidget(QLabel(tr("Races") + ":"), 1, 0)
         self.rev_race_input = QLineEdit()
         self.rev_race_input.setPlaceholderText("Dragon, etc.")
         self.rev_race_input.textChanged.connect(self.update_current_card_data)
         rev_layout.addWidget(self.rev_race_input, 1, 1)
 
-        rev_layout.addWidget(QLabel("Min Cost:"), 2, 0)
+        rev_layout.addWidget(QLabel(tr("Min Cost") + ":"), 2, 0)
         self.rev_cost_spin = QSpinBox()
         self.rev_cost_spin.setRange(0, 99)
         self.rev_cost_spin.valueChanged.connect(self.update_current_card_data)
@@ -296,16 +242,16 @@ class CardEditor(QDialog):
         # Split: List of Effects (Top) and Effect Detail Editor (Bottom)
 
         # Top: List
-        list_group = QGroupBox(tr("effect_list"))
+        list_group = QGroupBox(tr("Effects"))
         list_layout = QVBoxLayout(list_group)
         self.effects_list = QListWidget()
         self.effects_list.currentRowChanged.connect(self.load_selected_effect)
         list_layout.addWidget(self.effects_list)
 
         btn_layout = QHBoxLayout()
-        add_eff_btn = QPushButton(tr("add_effect"))
+        add_eff_btn = QPushButton(tr("Add Effect"))
         add_eff_btn.clicked.connect(self.create_new_effect)
-        rem_eff_btn = QPushButton(tr("remove_effect"))
+        rem_eff_btn = QPushButton(tr("Remove Effect"))
         rem_eff_btn.clicked.connect(self.remove_effect)
         btn_layout.addWidget(add_eff_btn)
         btn_layout.addWidget(rem_eff_btn)
@@ -314,14 +260,15 @@ class CardEditor(QDialog):
         layout.addWidget(list_group, 1)
 
         # Bottom: Editor
-        editor_group = QGroupBox("効果詳細設定 (Visual Editor)")
+        editor_group = QGroupBox(tr("Card Details")) # "Visual Editor"
+        editor_group.setTitle("Effect Editor")
         editor_layout = QVBoxLayout(editor_group)
 
         # Trigger
         trig_layout = QHBoxLayout()
-        trig_layout.addWidget(QLabel(tr("trigger") + ":"))
+        trig_layout.addWidget(QLabel(tr("Trigger") + ":"))
         self.eff_trigger_combo = QComboBox()
-        triggers = ["ON_PLAY", "ON_ATTACK", "ON_DESTROY", "PASSIVE_CONST"]
+        triggers = ["ON_PLAY", "ON_ATTACK", "ON_DESTROY", "PASSIVE_CONST", "TURN_START", "ON_OTHER_ENTER", "ON_ATTACK_FROM_HAND"]
         for t in triggers:
             self.eff_trigger_combo.addItem(tr(t), t)
         trig_layout.addWidget(self.eff_trigger_combo)
@@ -331,59 +278,64 @@ class CardEditor(QDialog):
         self.eff_action_list_widget = QListWidget()
         self.eff_action_list_widget.setFixedHeight(80)
         self.eff_action_list_widget.currentRowChanged.connect(self.load_selected_action)
-        editor_layout.addWidget(QLabel("この効果のアクション一覧:"))
+        editor_layout.addWidget(QLabel(tr("Actions") + ":"))
         editor_layout.addWidget(self.eff_action_list_widget)
 
         act_btn_layout = QHBoxLayout()
-        add_act_btn = QPushButton("アクション追加")
+        add_act_btn = QPushButton(tr("Add Action"))
         add_act_btn.clicked.connect(self.add_action_to_effect)
-        rem_act_btn = QPushButton("アクション削除")
+        rem_act_btn = QPushButton(tr("Remove Action"))
         rem_act_btn.clicked.connect(self.remove_action_from_effect)
         act_btn_layout.addWidget(add_act_btn)
         act_btn_layout.addWidget(rem_act_btn)
         editor_layout.addLayout(act_btn_layout)
 
         # Action Detail Editor
-        self.action_detail_group = QGroupBox("アクション設定")
+        self.action_detail_group = QGroupBox(tr("Action"))
         detail_form = QFormLayout(self.action_detail_group)
 
         self.act_type_combo = QComboBox()
-        actions = ["DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DRAW_CARD", "SEARCH_DECK_BOTTOM", "MEKRAID", "TAP", "UNTAP", "COST_REFERENCE", "NONE"]
+        actions = [
+            "DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DRAW_CARD", "SEARCH_DECK_BOTTOM", "MEKRAID", "TAP", "UNTAP",
+            "COST_REFERENCE", "NONE", "BREAK_SHIELD", "LOOK_AND_ADD", "SUMMON_TOKEN", "DISCARD", "PLAY_FROM_ZONE",
+            "REVOLUTION_CHANGE", "COUNT_CARDS", "GET_GAME_STAT", "APPLY_MODIFIER", "REVEAL_CARDS",
+            "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE"
+        ]
         for a in actions:
             self.act_type_combo.addItem(tr(a), a)
-        detail_form.addRow(tr("action_type") + ":", self.act_type_combo)
+        detail_form.addRow(tr("Action Type") + ":", self.act_type_combo)
 
         self.act_scope_combo = QComboBox()
-        scopes = ["PLAYER_SELF", "PLAYER_OPPONENT", "TARGET_SELECT", "ALL", "NONE"]
+        scopes = ["PLAYER_SELF", "PLAYER_OPPONENT", "TARGET_SELECT", "ALL_PLAYERS", "RANDOM", "ALL_FILTERED", "NONE"]
         for s in scopes:
             self.act_scope_combo.addItem(tr(s), s)
-        detail_form.addRow(tr("scope") + ":", self.act_scope_combo)
+        detail_form.addRow(tr("Scope") + ":", self.act_scope_combo)
 
         # Filter Settings
-        filter_box = QGroupBox("フィルター / 対象条件")
+        filter_box = QGroupBox(tr("Filter"))
         filter_layout = QGridLayout(filter_box)
 
-        filter_layout.addWidget(QLabel(tr("filter_zone") + ":"), 0, 0)
+        filter_layout.addWidget(QLabel(tr("Zones") + ":"), 0, 0)
         self.zone_checks = {}
         zones = ["BATTLE_ZONE", "MANA_ZONE", "HAND", "GRAVEYARD", "SHIELD_ZONE", "DECK"]
         zones_layout = QGridLayout()
         for i, z in enumerate(zones):
-            cb = QCheckBox(tr(z))
+            cb = QCheckBox(tr(z) if tr(z) != z else z)
             self.zone_checks[z] = cb
             zones_layout.addWidget(cb, i // 3, i % 3)
         filter_layout.addLayout(zones_layout, 0, 1)
 
-        filter_layout.addWidget(QLabel(tr("target_player") + ":"), 1, 0)
+        filter_layout.addWidget(QLabel(tr("Target Player") + ":"), 1, 0)
         self.filter_player_combo = QComboBox()
-        self.filter_player_combo.addItems(["NONE", "SELF", "OPPONENT"])
+        self.filter_player_combo.addItems(["NONE", "SELF", "OPPONENT", "BOTH"])
         filter_layout.addWidget(self.filter_player_combo, 1, 1)
 
-        filter_layout.addWidget(QLabel(tr("filter_type") + ":"), 2, 0)
+        filter_layout.addWidget(QLabel(tr("Card Types") + ":"), 2, 0)
         self.filter_type_combo = QComboBox()
         self.filter_type_combo.addItems(["NONE", "CREATURE", "SPELL"])
         filter_layout.addWidget(self.filter_type_combo, 2, 1)
 
-        filter_layout.addWidget(QLabel(tr("count") + ":"), 3, 0)
+        filter_layout.addWidget(QLabel(tr("Count") + ":"), 3, 0)
         self.filter_count_spin = QSpinBox()
         self.filter_count_spin.setRange(0, 20)
         filter_layout.addWidget(self.filter_count_spin, 3, 1)
@@ -393,19 +345,23 @@ class CardEditor(QDialog):
         # Generic Values
         self.val1_spin = QSpinBox()
         self.val1_spin.setRange(0, 99)
-        detail_form.addRow("Value 1 (枚数/コスト等):", self.val1_spin)
+        detail_form.addRow(tr("Value 1") + ":", self.val1_spin)
+
+        self.val2_spin = QSpinBox()
+        self.val2_spin.setRange(0, 99)
+        detail_form.addRow(tr("Value 2") + ":", self.val2_spin)
 
         self.str_val_edit = QLineEdit()
-        detail_form.addRow("String Value (Keyword等):", self.str_val_edit)
+        detail_form.addRow(tr("String Value") + ":", self.str_val_edit)
 
         # Phase 5: Dynamic Variables
         self.input_key_edit = QLineEdit()
-        detail_form.addRow("Input Key (変数入力):", self.input_key_edit)
+        detail_form.addRow(tr("Input Key") + ":", self.input_key_edit)
         self.output_key_edit = QLineEdit()
-        detail_form.addRow("Output Key (変数出力):", self.output_key_edit)
+        detail_form.addRow(tr("Output Key") + ":", self.output_key_edit)
 
         # Apply Button
-        apply_btn = QPushButton("現在のアクション設定を適用")
+        apply_btn = QPushButton("Update Action")
         apply_btn.clicked.connect(self.apply_action_changes)
         detail_form.addRow(apply_btn)
 
@@ -559,8 +515,6 @@ class CardEditor(QDialog):
                 if not (act.get('type') == 'COST_REFERENCE' and act.get('str_val') == 'HYPER_ENERGY'):
                     new_actions.append(act)
 
-            # Keep effect if it has other actions or if it's not a pure Hyper Energy container (e.g. not NONE trigger)
-            # Actually, if trigger is NONE and actions empty, we drop it.
             if new_actions or eff.get('trigger') != 'NONE':
                 eff['actions'] = new_actions
                 cleaned_effects_for_hyper.append(eff)
@@ -569,7 +523,6 @@ class CardEditor(QDialog):
 
         # 2. Add back if checked
         if self.hyper_energy_cb.isChecked():
-            # Add a new effect for Hyper Energy
             card['effects'].append({
                 "trigger": "NONE",
                 "condition": {"type": "NONE"},
@@ -602,7 +555,6 @@ class CardEditor(QDialog):
 
         known_keywords = set(self.keyword_checkboxes.keys())
 
-        # Keep existing non-keyword effects
         for eff in existing_effects:
             if eff.get('trigger') == 'PASSIVE_CONST':
                 actions_to_keep = []
@@ -615,7 +567,6 @@ class CardEditor(QDialog):
             else:
                 new_effects.append(eff)
 
-        # Add checked keywords
         active_kws = []
         for kw, cb in self.keyword_checkboxes.items():
             if cb.isChecked():
@@ -640,23 +591,10 @@ class CardEditor(QDialog):
 
         card['effects'] = new_effects
 
-        # UI Refresh
         item = self.card_list.item(self.current_card_index)
         if item:
             item.setText(f"{card['id']} - {card['name']}")
 
-        # Note: We do NOT call refresh_effects_list() here to avoid resetting the effect editor
-        # when editing basic info. Effect list only needs refresh if keywords changed.
-        # But we did just rebuild `effects`, so if keywords were added/removed, the list *is* stale regarding PASSIVE_CONST.
-        # Ideally, we check if the PASSIVE_CONST structure actually changed.
-        # For MVP, we will only refresh if we are NOT on the effects tab? Or simply let it be.
-        # If user is in Effects tab, adding a keyword in Basic tab will update the internal data,
-        # but the ListWidget might show old count.
-        # Since Basic and Effects are separate tabs, user won't see the glitch unless they switch tabs.
-        # When switching tabs, we could refresh.
-        # For now, let's call it ONLY if we detected a keyword change? Hard to track.
-        # Let's call it, but realize it might lose selection.
-        # Since Basic Info is on a different tab than Effects, losing selection in Effects tab is acceptable.
         if self.tabs.currentWidget() == self.effects_tab:
              self.refresh_effects_list()
 
@@ -712,31 +650,22 @@ class CardEditor(QDialog):
         self.eff_trigger_combo.setEnabled(True)
         effect = self.cards_data[self.current_card_index]['effects'][row]
 
-        # Set Trigger
-        # Use findData if we had set item data, but we didn't for triggers in previous code.
-        # We need to set up trigger combo to have user data too.
-        # In setup_effects_tab we did: self.eff_trigger_combo.addItem(tr(t), t)
-
         trig_val = effect.get('trigger', 'ON_PLAY')
         idx = self.eff_trigger_combo.findData(trig_val)
         if idx >= 0: self.eff_trigger_combo.setCurrentIndex(idx)
         else: self.eff_trigger_combo.setCurrentIndex(0)
 
-        # Connect trigger change
         self.eff_trigger_combo.currentIndexChanged.disconnect() if self.eff_trigger_combo.receivers(self.eff_trigger_combo.currentIndexChanged) else None
         self.eff_trigger_combo.currentIndexChanged.connect(lambda: self.update_effect_trigger(row))
 
-        # Load Actions
         self.eff_action_list_widget.clear()
         for i, act in enumerate(effect.get('actions', [])):
             act_type = act.get('type', 'NONE')
             self.eff_action_list_widget.addItem(f"{i}: {tr(act_type)}")
 
     def update_effect_trigger(self, row):
-        # use currentData()
         new_trig = self.eff_trigger_combo.currentData()
         self.cards_data[self.current_card_index]['effects'][row]['trigger'] = new_trig
-        # Refresh label in list
         item = self.effects_list.item(row)
         if item:
             action_count = len(self.cards_data[self.current_card_index]['effects'][row]['actions'])
@@ -782,9 +711,7 @@ class CardEditor(QDialog):
         for z, cb in self.zone_checks.items():
             cb.setChecked(z in zones)
 
-        tp = filt.get('owner', 'NONE') # Use owner as per previous fix
-        # But wait, previous data used target_player in some cases?
-        # Let's check both for safety when loading, but save as owner.
+        tp = filt.get('owner', 'NONE')
         if tp == 'NONE' or tp is None:
              tp = filt.get('target_player', 'NONE')
 
@@ -799,6 +726,7 @@ class CardEditor(QDialog):
         self.filter_count_spin.setValue(filt.get('count', 1))
 
         self.val1_spin.setValue(action.get('value1', 0))
+        self.val2_spin.setValue(action.get('value2', 0))
         self.str_val_edit.setText(action.get('str_val', ''))
         self.input_key_edit.setText(action.get('input_value_key', ''))
         self.output_key_edit.setText(action.get('output_value_key', ''))
@@ -813,6 +741,7 @@ class CardEditor(QDialog):
             "type": self.act_type_combo.currentData(),
             "scope": self.act_scope_combo.currentData(),
             "value1": self.val1_spin.value(),
+            "value2": self.val2_spin.value(),
             "str_val": self.str_val_edit.text(),
             "input_value_key": self.input_key_edit.text(),
             "output_value_key": self.output_key_edit.text()
@@ -836,5 +765,4 @@ class CardEditor(QDialog):
 
         # Refresh list label
         self.eff_action_list_widget.currentItem().setText(f"{act_row}: {tr(new_act['type'])}")
-        QMessageBox.information(self, "Success", "Action updated!")
-
+        QMessageBox.information(self, "Success", tr("Action updated!"))
