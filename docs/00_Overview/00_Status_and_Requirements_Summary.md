@@ -25,7 +25,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **学習ループ**: `train_simple.py` によるモデル更新。
 
 ### 2.3 GUI (Python/PyQt6)
-*   **カードエディタ**: カードデータの作成・編集 (JSON形式)。日本語対応。
+*   **カードエディタ**: カードデータの作成・編集 (JSON形式)。日本語対応。Ver 2.0 (Logic Tree + Property Inspector) へ改修済み。
 *   **シミュレーション対話**: 対戦の観戦やデバッグ。
 
 ## 3. 次のステップの要件 (Next Requirements)
@@ -73,6 +73,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **既存アクションの拡張**:
     *   `DRAW_CARD` 等で `input_value_key` が設定されている場合、固定値ではなくコンテキスト内の変数値を使用する。
 *   **目的**: 「自分のクリーチャーの数だけドローする」「マナゾーンの文明数分ドローして戻す」といった複雑な効果をJSON定義のみで実現可能にする。
+*   **Status**: 完了 (2025/XX/XX) - C++側実装およびエディタ側対応済み。
 
 ### 3.5 カードエディタ GUI実装仕様 (Ver 2.0)
 
@@ -103,6 +104,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   表示形式: `"{key} (from #{index} {type})"`
 *   **C. データ永続化 (Saving)**:
     *   `export_model_to_json()`: ツリーのルートから Card -> Effect -> Action を再帰的に辿り、`UserRole` のデータを結合して完全なJSONリストを再構築する。
+
+**Status**: 完了 (2025/XX/XX)
 
 ## 4. 今後のロードマップ (Roadmap)
 *   **Phase 6**: サーチ、シールド操作の実装 (完了)。
