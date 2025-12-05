@@ -318,6 +318,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property("at_start_of_turn", [](const CardKeywords& k) { return k.at_start_of_turn; }, [](CardKeywords& k, bool v) { k.at_start_of_turn = v; })
         .def_property("at_end_of_turn", [](const CardKeywords& k) { return k.at_end_of_turn; }, [](CardKeywords& k, bool v) { k.at_end_of_turn = v; })
         .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; })
+        .def_property("just_diver", [](const CardKeywords& k) { return k.just_diver; }, [](CardKeywords& k, bool v) { k.just_diver = v; })
         .def_property("hyper_energy", [](const CardKeywords& k) { return k.hyper_energy; }, [](CardKeywords& k, bool v) { k.hyper_energy = v; })
         .def_property("meta_counter_play", [](const CardKeywords& k) { return k.meta_counter_play; }, [](CardKeywords& k, bool v) { k.meta_counter_play = v; });
 
@@ -401,7 +402,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("card_id", &CardInstance::card_id)
         .def_readonly("instance_id", &CardInstance::instance_id)
         .def_readwrite("is_tapped", &CardInstance::is_tapped)
-        .def_readwrite("summoning_sickness", &CardInstance::summoning_sickness);
+        .def_readwrite("summoning_sickness", &CardInstance::summoning_sickness)
+        .def_readwrite("turn_played", &CardInstance::turn_played);
 
     py::class_<Player>(m, "Player")
         .def_readonly("id", &Player::id)
