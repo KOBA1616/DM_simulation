@@ -274,6 +274,28 @@ class CardEditor(QDialog):
         trig_layout.addWidget(self.eff_trigger_combo)
         editor_layout.addLayout(trig_layout)
 
+        # Condition
+        cond_layout = QHBoxLayout()
+        cond_layout.addWidget(QLabel(tr("Condition") + ":"))
+
+        self.eff_cond_type_combo = QComboBox()
+        cond_types = ["NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH", "OPPONENT_PLAYED_WITHOUT_MANA"]
+        for c in cond_types:
+            self.eff_cond_type_combo.addItem(c, c) # Use raw string for now, or translate later
+        cond_layout.addWidget(self.eff_cond_type_combo)
+
+        cond_layout.addWidget(QLabel(tr("Value 1") + ":"))
+        self.eff_cond_val_spin = QSpinBox()
+        self.eff_cond_val_spin.setRange(0, 99)
+        cond_layout.addWidget(self.eff_cond_val_spin)
+
+        cond_layout.addWidget(QLabel(tr("String Value") + ":"))
+        self.eff_cond_str_edit = QLineEdit()
+        self.eff_cond_str_edit.setPlaceholderText("FIRE, etc.")
+        cond_layout.addWidget(self.eff_cond_str_edit)
+
+        editor_layout.addLayout(cond_layout)
+
         # Action List inside Effect
         self.eff_action_list_widget = QListWidget()
         self.eff_action_list_widget.setFixedHeight(80)
@@ -723,6 +745,26 @@ class CardEditor(QDialog):
         self.eff_trigger_combo.currentIndexChanged.disconnect() if self.eff_trigger_combo.receivers(self.eff_trigger_combo.currentIndexChanged) else None
         self.eff_trigger_combo.currentIndexChanged.connect(lambda: self.update_effect_trigger(row))
 
+        # Load Condition
+        cond = effect.get('condition', {"type": "NONE", "value": 0, "str_val": ""})
+
+        c_idx = self.eff_cond_type_combo.findData(cond.get('type', 'NONE'))
+        if c_idx >= 0: self.eff_cond_type_combo.setCurrentIndex(c_idx)
+        else: self.eff_cond_type_combo.setCurrentIndex(0)
+
+        self.eff_cond_val_spin.setValue(cond.get('value', 0))
+        self.eff_cond_str_edit.setText(cond.get('str_val', ''))
+
+        # Connect condition signals
+        self.eff_cond_type_combo.currentIndexChanged.disconnect() if self.eff_cond_type_combo.receivers(self.eff_cond_type_combo.currentIndexChanged) else None
+        self.eff_cond_type_combo.currentIndexChanged.connect(lambda: self.update_effect_condition(row))
+
+        self.eff_cond_val_spin.valueChanged.disconnect() if self.eff_cond_val_spin.receivers(self.eff_cond_val_spin.valueChanged) else None
+        self.eff_cond_val_spin.valueChanged.connect(lambda: self.update_effect_condition(row))
+
+        self.eff_cond_str_edit.textChanged.disconnect() if self.eff_cond_str_edit.receivers(self.eff_cond_str_edit.textChanged) else None
+        self.eff_cond_str_edit.textChanged.connect(lambda: self.update_effect_condition(row))
+
         self.eff_action_list_widget.clear()
         for i, act in enumerate(effect.get('actions', [])):
             act_type = act.get('type', 'NONE')
@@ -735,6 +777,19 @@ class CardEditor(QDialog):
         if item:
             action_count = len(self.cards_data[self.current_card_index]['effects'][row]['actions'])
             item.setText(f"#{row}: {tr(new_trig)} ({action_count} actions)")
+
+    def update_effect_condition(self, row):
+        if row < 0 or row >= len(self.cards_data[self.current_card_index]['effects']): return
+
+        cond_type = self.eff_cond_type_combo.currentData()
+        val = self.eff_cond_val_spin.value()
+        str_val = self.eff_cond_str_edit.text()
+
+        self.cards_data[self.current_card_index]['effects'][row]['condition'] = {
+            "type": cond_type,
+            "value": val,
+            "str_val": str_val
+        }
 
     def add_action_to_effect(self):
         row = self.effects_list.currentRow()
