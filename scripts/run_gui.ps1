@@ -21,8 +21,8 @@ if (Test-Path $mingwBin) {
     }
 }
 
-# Add build directory to PYTHONPATH so python can find dm_ai_module
-$env:PYTHONPATH = "$buildDir;$env:PYTHONPATH"
+# Add build directory and python source directory to PYTHONPATH
+$env:PYTHONPATH = "$buildDir;$projectRoot/python;$env:PYTHONPATH"
 
 Write-Host "Starting GUI..."
 python "$projectRoot/python/gui/app.py"
