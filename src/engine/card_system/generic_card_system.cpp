@@ -3,6 +3,7 @@
 #include "card_registry.hpp"
 #include "target_utils.hpp"
 #include <algorithm>
+#include <iostream>
 
 namespace dm::engine {
 
@@ -52,27 +53,13 @@ namespace dm::engine {
     }
 
     void GenericCardSystem::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id) {
-        if (!check_condition(game_state, effect.condition, source_instance_id)) return;
+        // Delegate to EffectResolver's new signature with context
+        // But since this method is static and doesn't have the context, we call EffectResolver's static method?
+        // Actually, GenericCardSystem::resolve_effect is often called from outside EffectResolver (e.g. initial trigger).
+        // To support variables, we should probably start a fresh context or use EffectResolver.
 
-        for (size_t i = 0; i < effect.actions.size(); ++i) {
-            const auto& action = effect.actions[i];
-            // If action expects target selection, interrupt execution and push PendingEffect with continuation
-            if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
-                EffectDef continuation;
-                continuation.trigger = TriggerType::NONE;
-                continuation.condition = ConditionDef{"NONE", 0, ""};
-                // Store current action (so resolve_effect_with_targets can see it/ack it) and all remaining actions
-                // NOTE: We MUST include the current action in continuation so resolve_effect_with_targets knows
-                // what the targets were for!
-                for (size_t j = i; j < effect.actions.size(); ++j) {
-                    continuation.actions.push_back(effect.actions[j]);
-                }
-                select_targets(game_state, action, source_instance_id, continuation);
-                return; // Stop execution
-            }
-
-            resolve_action(game_state, action, source_instance_id);
-        }
+        // Use EffectResolver::resolve_effect which initializes a context
+        EffectResolver::resolve_effect(game_state, effect, source_instance_id, {});
     }
 
     void GenericCardSystem::resolve_effect_with_targets(GameState& game_state, const EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
@@ -239,7 +226,7 @@ namespace dm::engine {
 
         switch (action.type) {
             case EffectActionType::DRAW_CARD: {
-                int count = std::stoi(action.value.empty() ? "1" : action.value);
+                int count = action.value1 > 0 ? action.value1 : std::stoi(action.value.empty() ? "1" : action.value);
                 for (int i = 0; i < count; ++i) {
                     if (active.deck.empty()) {
                         game_state.winner = (active.id == 0) ? GameResult::P2_WIN : GameResult::P1_WIN;
@@ -248,6 +235,8 @@ namespace dm::engine {
                     CardInstance c = active.deck.back();
                     active.deck.pop_back();
                     active.hand.push_back(c);
+                    // Phase 5: Stats
+                    game_state.turn_stats.cards_drawn_this_turn++;
                 }
                 break;
             }
