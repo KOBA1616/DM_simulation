@@ -82,7 +82,7 @@ class CardEditor(QMainWindow):
         left_layout.addLayout(btn_layout)
         
         self.splitter.addWidget(left_widget)
-        
+
         # Right: Property Inspector
         self.inspector_container = QWidget()
         self.inspector_layout = QVBoxLayout(self.inspector_container)
@@ -416,7 +416,7 @@ class CardEditor(QMainWindow):
         item.setData(NODE_EFFECT, ROLE_NODE_TYPE)
         item.setData(eff_data, ROLE_DATA_REF)
         card_item.appendRow(item)
-        
+
         for act in eff_data.get('actions', []):
             self.add_action_to_tree(item, act)
 
@@ -632,19 +632,13 @@ class CardEditor(QMainWindow):
 
         data['effects'] = new_effects
 
-    def on_input_key_selected(self, index):
-        if index < 0: return
-        key = self.act_input_key.itemData(index)
-        if key:
-            self.act_input_key.setEditText(key)
-
     def on_effect_changed(self):
         item = self.get_selected_item()
         if not item or item.data(ROLE_NODE_TYPE) != NODE_EFFECT: return
         data = item.data(ROLE_DATA_REF)
-        
+
         data['trigger'] = self.eff_trigger_combo.currentData()
-        
+
         cond_type = self.eff_cond_type.currentText()
         val = self.eff_cond_val.value()
         str_val = self.eff_cond_str.text()
@@ -861,6 +855,12 @@ class CardEditor(QMainWindow):
             QMessageBox.information(self, tr("Success"), tr("Cards saved successfully!"))
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
+
+    def on_input_key_selected(self, index):
+        if index < 0: return
+        key = self.act_input_key.itemData(index)
+        if key:
+            self.act_input_key.setEditText(key)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
