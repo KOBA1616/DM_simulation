@@ -28,6 +28,32 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **カードエディタ**: カードデータの作成・編集 (JSON形式)。日本語対応。Ver 2.0 (Logic Tree + Property Inspector) へ改修済み。
 *   **シミュレーション対話**: 対戦の観戦やデバッグ。
 
+### 2.4 テスト状況と課題 (Testing Status & Identified Issues) (2025/XX/XX 更新)
+
+#### テスト実行結果
+既存のPythonテストスイート (`python/tests/`) に対して網羅的な実行を行い、以下の修正を行いました。
+*   **テストコードの修正**: C++バインディング (`dm_ai_module`) の最新仕様に合わせて `CardData` コンストラクタ呼び出し等を修正しました。
+*   **非推奨コードの削除**: `ActionType.DIRECT_ATTACK` 等の削除された定数への参照を修正しました。
+
+#### 特定された課題 (Engine Issues)
+テスト実行により、C++エンジン側の以下の挙動に関する課題が特定されました。
+
+1.  **Meta Counter (Internal Play) の挙動不整合**
+    *   **現象**: `ActionType::PLAY_CARD_INTERNAL` が手札 (`HAND_SUMMON`) から生成された場合、`EffectResolver` がカードをスタックへ移動せず、手札に残ったまま解決しようとして失敗する。
+    *   **原因**: `EffectResolver` の `resolve_play_from_stack` は、スタックまたはバッファ内のカードのみを検索対象としており、手札からの直接的な内部プレイを想定していない（あるいは移動ロジックが欠落している）。
+    *   **対策案**: `EffectResolver` 内で `SpawnSource::HAND_SUMMON` の場合に手札からスタックへの移動処理を追加する（ただし、安易な追加はイテレータ無効化によるSegfaultを引き起こすため、慎重な実装が必要）。
+
+2.  **Ninja Strike (Reaction System) の不発**
+    *   **現象**: Ninja Strikeの条件を満たす状況下でも、`EffectResolver` から `ReactionSystem` が呼び出された際にリアクションウィンドウ（`PendingEffect`）が生成されない。
+    *   **原因**: テスト環境における `JsonLoader` と `ReactionSystem` の間のデータ連携（`reaction_abilities` の読み込みや文明判定など）に不整合がある可能性がある。
+
+3.  **Just Diver (Play Action) の生成失敗**
+    *   **現象**: Just Diverを持つクリーチャーのプレイアクションが生成されない場合がある。
+    *   **原因**: テストコード内でのマナゾーン操作（Pythonのリストコピー操作）による状態不整合、あるいはフェーズ設定（`Phase.MAIN`）の漏れなどが要因として考えられる。
+
+4.  **Pythonバインディングの制約**
+    *   `std::vector` を返すプロパティ（`mana_zone` 等）はPython側ではコピーとなるため、要素への代入（`is_tapped = False`）がC++側に反映されない。テストコードでは `add_card_to_mana` 等の専用ヘルパーを使用する必要がある。
+
 ## 3. 次のステップの要件 (Next Requirements)
 
 ### 3.1 テストコードの整理と動作確認
