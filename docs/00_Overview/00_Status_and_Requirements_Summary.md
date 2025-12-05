@@ -61,6 +61,19 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   現状: `collect_training_data.py` が `dm_ai_module.DataCollector` を呼んでいるが、ループ制御の一部がPython。
     *   移行案: `DataCollector` が指定エピソード数を完遂するまでPythonに制御を戻さないようにする (現状も近い形だが、メモリ管理を厳密にするためC++側で完結させる)。
 
+### 3.4 変数連携システム (Variable Linking System)
+
+アクション間で値を渡すための「実行コンテキスト (execution_context)」を強化し、動的な数値参照を実現します。
+
+*   **コンテキストの実装**: `PendingEffect` および `GenericCardSystem` 内で `std::map<std::string, int> execution_context` を保持・伝播させる。
+*   **新規アクション**:
+    *   `COUNT_CARDS`: 指定ゾーン（BATTLE_ZONE, GRAVEYARD等）の条件に合うカード数をカウントし、変数に保存する。
+    *   `GET_GAME_STAT`: マナゾーンの文明数 (`MANA_CIVILIZATION_COUNT`) 等の統計値を取得し、変数に保存する。
+    *   `SEND_TO_DECK_BOTTOM`: 手札等から選択したカードを山札の下に送る。
+*   **既存アクションの拡張**:
+    *   `DRAW_CARD` 等で `input_value_key` が設定されている場合、固定値ではなくコンテキスト内の変数値を使用する。
+*   **目的**: 「自分のクリーチャーの数だけドローする」「マナゾーンの文明数分ドローして戻す」といった複雑な効果をJSON定義のみで実現可能にする。
+
 ## 4. 今後のロードマップ (Roadmap)
 *   **Phase 6**: サーチ、シールド操作の実装 (完了)。
 *   **Phase 7**: 高度なギミック (超次元、GRなど) の検討。

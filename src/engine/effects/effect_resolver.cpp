@@ -74,7 +74,8 @@ namespace dm::engine {
                      if (!game_state.pending_effects.empty() && action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
                          auto& pe = game_state.pending_effects[action.slot_index];
                          if (pe.resolve_type == ResolveType::TARGET_SELECT && pe.effect_def) {
-                             GenericCardSystem::resolve_effect_with_targets(game_state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db);
+                             // Pass execution context from pending effect
+                             GenericCardSystem::resolve_effect_with_targets(game_state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
                          }
                          if (action.slot_index < (int)game_state.pending_effects.size()) {
                              game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
