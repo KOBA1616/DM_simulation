@@ -398,6 +398,12 @@ class CardEditor(QDialog):
         self.str_val_edit = QLineEdit()
         detail_form.addRow("String Value (Keyword等):", self.str_val_edit)
 
+        # Phase 5: Dynamic Variables
+        self.input_key_edit = QLineEdit()
+        detail_form.addRow("Input Key (変数入力):", self.input_key_edit)
+        self.output_key_edit = QLineEdit()
+        detail_form.addRow("Output Key (変数出力):", self.output_key_edit)
+
         # Apply Button
         apply_btn = QPushButton("現在のアクション設定を適用")
         apply_btn.clicked.connect(self.apply_action_changes)
@@ -794,6 +800,8 @@ class CardEditor(QDialog):
 
         self.val1_spin.setValue(action.get('value1', 0))
         self.str_val_edit.setText(action.get('str_val', ''))
+        self.input_key_edit.setText(action.get('input_value_key', ''))
+        self.output_key_edit.setText(action.get('output_value_key', ''))
 
     def apply_action_changes(self):
         eff_row = self.effects_list.currentRow()
@@ -805,7 +813,9 @@ class CardEditor(QDialog):
             "type": self.act_type_combo.currentData(),
             "scope": self.act_scope_combo.currentData(),
             "value1": self.val1_spin.value(),
-            "str_val": self.str_val_edit.text()
+            "str_val": self.str_val_edit.text(),
+            "input_value_key": self.input_key_edit.text(),
+            "output_value_key": self.output_key_edit.text()
         }
 
         # Build filter
