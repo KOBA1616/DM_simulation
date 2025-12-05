@@ -54,6 +54,8 @@ def test_just_diver():
     # Cheat mana
     game.add_card_to_mana(0, 1, 900)
     game.add_card_to_mana(0, 1, 901) # 2 mana
+    # Add EXTRA MANA to be safe (cost is 2, mana is 3)
+    game.add_card_to_mana(0, 1, 902)
 
     # Generate PLAY action (DECLARE_PLAY)
     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
