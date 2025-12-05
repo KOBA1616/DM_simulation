@@ -30,6 +30,7 @@
 #include "../engine/game_instance.hpp"
 #include "../ai/agents/heuristic_agent.hpp"
 #include "../ai/data_collection/data_collector.hpp"
+#include "../ai/scenario/scenario_executor.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -440,23 +441,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
              return new GameInstance(0, empty_db);
         }))
         .def("start_game", [](GameInstance& self, const std::map<CardID, CardDefinition>& card_db) {
-             // Reconstruct logic to update internal card_db reference is tricky since it's const ref.
-             // GameInstance stores `const std::map<...>& card_db`.
-             // If we default construct, we bind to a static empty map.
-             // We can't easily rebind references in C++.
-             // Better: GameInstance should probably own the map or a shared_ptr to it if we want flexibility.
-             // For now, assume the user must provide DB at init or we provide a helper to "restart" with new DB by creating new instance?
-             // Actually, the test code calls `start_game` which isn't in GameInstance C++ class!
-             // `GameInstance` has `reset_with_scenario`.
-             // `PhaseManager::start_game` exists.
-             // The Python test assumes GameInstance has `start_game`.
-             // Let's look at how `reset_with_scenario` works.
-             // It calls `PhaseManager::start_game(state, card_db)`.
-             // We can expose a method `start_game` on GameInstance that calls PhaseManager.
              PhaseManager::start_game(self.state, self.card_db);
         })
         .def("reset_with_scenario", &GameInstance::reset_with_scenario)
         .def_property_readonly("state", &GameInstance::get_state, py::return_value_policy::reference);
+
+    py::class_<ScenarioExecutor>(m, "ScenarioExecutor")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("run_scenario", &ScenarioExecutor::run_scenario, py::arg("config"), py::arg("max_steps") = 1000);
 
     py::class_<CostModifier>(m, "CostModifier")
         .def(py::init<>())
