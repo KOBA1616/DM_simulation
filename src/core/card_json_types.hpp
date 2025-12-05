@@ -61,6 +61,13 @@ namespace dm::core {
         PLAY_FROM_BUFFER,
         MOVE_BUFFER_TO_ZONE,
         REVOLUTION_CHANGE,
+        // Phase 5: Dynamic Value Reference & Refactoring
+        COUNT_CARDS,
+        GET_GAME_STAT,
+        APPLY_MODIFIER,
+        REVEAL_CARDS,
+        REGISTER_DELAYED_EFFECT,
+        RESET_INSTANCE,
         NONE
     };
 
@@ -94,6 +101,9 @@ namespace dm::core {
         std::string source_zone;
         std::string destination_zone;
         std::string target_choice; // Legacy compat
+        // Phase 5: Variable Linking
+        std::string input_value_key;
+        std::string output_value_key;
     };
 
     struct ConditionDef {
@@ -213,11 +223,17 @@ namespace dm::core {
         {EffectActionType::SELECT_FROM_BUFFER, "SELECT_FROM_BUFFER"},
         {EffectActionType::PLAY_FROM_BUFFER, "PLAY_FROM_BUFFER"},
         {EffectActionType::MOVE_BUFFER_TO_ZONE, "MOVE_BUFFER_TO_ZONE"},
-        {EffectActionType::REVOLUTION_CHANGE, "REVOLUTION_CHANGE"}
+        {EffectActionType::REVOLUTION_CHANGE, "REVOLUTION_CHANGE"},
+        {EffectActionType::COUNT_CARDS, "COUNT_CARDS"},
+        {EffectActionType::GET_GAME_STAT, "GET_GAME_STAT"},
+        {EffectActionType::APPLY_MODIFIER, "APPLY_MODIFIER"},
+        {EffectActionType::REVEAL_CARDS, "REVEAL_CARDS"},
+        {EffectActionType::REGISTER_DELAYED_EFFECT, "REGISTER_DELAYED_EFFECT"},
+        {EffectActionType::RESET_INSTANCE, "RESET_INSTANCE"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)

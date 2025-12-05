@@ -80,7 +80,10 @@ namespace dm::core {
     // Phase 5: Turn Stats for Meta Counter logic
     struct TurnStats {
         bool played_without_mana = false; // True if a card was played with 0 actual mana paid (except cost reduction down to >= 1)
-        // Add more stats here as needed (e.g. spells cast count, creatures summoned count)
+        int cards_drawn_this_turn = 0;
+        int cards_discarded_this_turn = 0;
+        int creatures_played_this_turn = 0;
+        int spells_cast_this_turn = 0;
     };
 
     struct Player {
