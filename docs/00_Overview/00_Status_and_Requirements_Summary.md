@@ -45,8 +45,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 1.  **シナリオ実行 (`ScenarioRunner`)**
     *   現状: `python/training/scenario_runner.py` でPython側でゲームループを回している。
-    *   移行案: `src/core/scenario_config.hpp` は既にC++にあるため、`GameInstance::run_scenario(ScenarioConfig)` のようなメソッドをC++側に実装し、Pythonからは呼び出すだけにする。
-    *   メリット: Python <-> C++ のオーバーヘッド削減、高速化。
+    *   移行案: `ScenarioExecutor` (C++) を実装し、対戦ループをC++側で完結させる。
+    *   **Status**: 完了 (2025/12/XX) - `ScenarioExecutor` クラス実装済み、`ScenarioRunner` から利用。
 
 2.  **デッキ進化/検証 (`DeckEvolution` / `VerifyPerformance`)**
     *   現状: `verify_deck_evolution.py` や `verify_performance.py` の一部ロジックがPython。

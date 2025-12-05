@@ -114,6 +114,7 @@ set(SRC_AI
     src/ai/self_play/parallel_runner.cpp
     src/ai/agents/heuristic_agent.cpp
     src/ai/data_collection/data_collector.cpp
+    src/ai/scenario/scenario_executor.cpp
     src/python/python_batch_inference.cpp
     # Optional neural evaluator / inference (guarded by USE_LIBTORCH)
     $<$<BOOL:${USE_LIBTORCH}>:src/ai/inference/torch_model.cpp>
