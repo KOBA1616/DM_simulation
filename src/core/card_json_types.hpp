@@ -73,6 +73,7 @@ namespace dm::core {
         SHUFFLE_DECK,
         ADD_SHIELD,
         SEND_SHIELD_TO_GRAVE,
+        SEND_TO_DECK_BOTTOM,
         NONE
     };
 
@@ -239,7 +240,8 @@ namespace dm::core {
         {EffectActionType::SEARCH_DECK, "SEARCH_DECK"},
         {EffectActionType::SHUFFLE_DECK, "SHUFFLE_DECK"},
         {EffectActionType::ADD_SHIELD, "ADD_SHIELD"},
-        {EffectActionType::SEND_SHIELD_TO_GRAVE, "SEND_SHIELD_TO_GRAVE"}
+        {EffectActionType::SEND_SHIELD_TO_GRAVE, "SEND_SHIELD_TO_GRAVE"},
+        {EffectActionType::SEND_TO_DECK_BOTTOM, "SEND_TO_DECK_BOTTOM"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count)
