@@ -339,6 +339,71 @@ class CardEditor(QDialog):
         self.filter_count_spin = QSpinBox()
         self.filter_count_spin.setRange(0, 20)
         filter_layout.addWidget(self.filter_count_spin, 3, 1)
+
+        # New Filter Fields (Civilization, Race, Cost, Power, Tapped, Blocker, Evolution)
+
+        filter_layout.addWidget(QLabel(tr("Civilizations") + ":"), 4, 0)
+        self.filter_civ_input = QLineEdit()
+        self.filter_civ_input.setPlaceholderText("FIRE, DARKNESS")
+        filter_layout.addWidget(self.filter_civ_input, 4, 1)
+
+        filter_layout.addWidget(QLabel(tr("Races") + ":"), 5, 0)
+        self.filter_race_input = QLineEdit()
+        self.filter_race_input.setPlaceholderText("Dragon, Cyber Lord")
+        filter_layout.addWidget(self.filter_race_input, 5, 1)
+
+        # Cost Range
+        cost_layout = QHBoxLayout()
+        self.filter_min_cost_spin = QSpinBox()
+        self.filter_min_cost_spin.setRange(-1, 99)
+        self.filter_min_cost_spin.setValue(-1) # -1 means Ignore
+        cost_layout.addWidget(QLabel(tr("Min") + ":"))
+        cost_layout.addWidget(self.filter_min_cost_spin)
+        self.filter_max_cost_spin = QSpinBox()
+        self.filter_max_cost_spin.setRange(-1, 99)
+        self.filter_max_cost_spin.setValue(-1)
+        cost_layout.addWidget(QLabel(tr("Max") + ":"))
+        cost_layout.addWidget(self.filter_max_cost_spin)
+        filter_layout.addWidget(QLabel(tr("Cost") + ":"), 6, 0)
+        filter_layout.addLayout(cost_layout, 6, 1)
+
+        # Power Range
+        power_layout = QHBoxLayout()
+        self.filter_min_power_spin = QSpinBox()
+        self.filter_min_power_spin.setRange(-1, 99999)
+        self.filter_min_power_spin.setSingleStep(500)
+        self.filter_min_power_spin.setValue(-1)
+        power_layout.addWidget(QLabel(tr("Min") + ":"))
+        power_layout.addWidget(self.filter_min_power_spin)
+        self.filter_max_power_spin = QSpinBox()
+        self.filter_max_power_spin.setRange(-1, 99999)
+        self.filter_max_power_spin.setSingleStep(500)
+        self.filter_max_power_spin.setValue(-1)
+        power_layout.addWidget(QLabel(tr("Max") + ":"))
+        power_layout.addWidget(self.filter_max_power_spin)
+        filter_layout.addWidget(QLabel(tr("Power") + ":"), 7, 0)
+        filter_layout.addLayout(power_layout, 7, 1)
+
+        # Boolean Flags (Tapped, Blocker, Evolution)
+        # Using Combo for Ignore/True/False
+        flags_layout = QGridLayout()
+
+        flags_layout.addWidget(QLabel(tr("Tapped") + ":"), 0, 0)
+        self.filter_tapped_combo = QComboBox()
+        self.filter_tapped_combo.addItems([tr("Ignore"), tr("True"), tr("False")])
+        flags_layout.addWidget(self.filter_tapped_combo, 0, 1)
+
+        flags_layout.addWidget(QLabel(tr("Blocker") + ":"), 1, 0)
+        self.filter_blocker_combo = QComboBox()
+        self.filter_blocker_combo.addItems([tr("Ignore"), tr("True"), tr("False")])
+        flags_layout.addWidget(self.filter_blocker_combo, 1, 1)
+
+        flags_layout.addWidget(QLabel(tr("Evolution") + ":"), 2, 0)
+        self.filter_evolution_combo = QComboBox()
+        self.filter_evolution_combo.addItems([tr("Ignore"), tr("True"), tr("False")])
+        flags_layout.addWidget(self.filter_evolution_combo, 2, 1)
+
+        filter_layout.addLayout(flags_layout, 8, 0, 1, 2)
         
         detail_form.addRow(filter_box)
 
@@ -725,6 +790,29 @@ class CardEditor(QDialog):
 
         self.filter_count_spin.setValue(filt.get('count', 1))
 
+        # New Fields Load
+        civs = filt.get('civilizations', [])
+        self.filter_civ_input.setText(", ".join(civs))
+
+        races = filt.get('races', [])
+        self.filter_race_input.setText(", ".join(races))
+
+        self.filter_min_cost_spin.setValue(filt.get('min_cost', -1) if filt.get('min_cost') is not None else -1)
+        self.filter_max_cost_spin.setValue(filt.get('max_cost', -1) if filt.get('max_cost') is not None else -1)
+        self.filter_min_power_spin.setValue(filt.get('min_power', -1) if filt.get('min_power') is not None else -1)
+        self.filter_max_power_spin.setValue(filt.get('max_power', -1) if filt.get('max_power') is not None else -1)
+
+        # Helper to set combo from optional bool
+        def set_bool_combo(combo, key):
+            val = filt.get(key)
+            if val is None: combo.setCurrentIndex(0) # Ignore
+            elif val is True: combo.setCurrentIndex(1) # True
+            else: combo.setCurrentIndex(2) # False
+
+        set_bool_combo(self.filter_tapped_combo, 'is_tapped')
+        set_bool_combo(self.filter_blocker_combo, 'is_blocker')
+        set_bool_combo(self.filter_evolution_combo, 'is_evolution')
+
         self.val1_spin.setValue(action.get('value1', 0))
         self.val2_spin.setValue(action.get('value2', 0))
         self.str_val_edit.setText(action.get('str_val', ''))
@@ -758,6 +846,30 @@ class CardEditor(QDialog):
         if card_type != "NONE": filt['types'] = [card_type]
         count = self.filter_count_spin.value()
         if count > 0: filt['count'] = count
+
+        # New Fields Save
+        civs_str = self.filter_civ_input.text()
+        if civs_str.strip():
+            filt['civilizations'] = [c.strip() for c in civs_str.split(',') if c.strip()]
+
+        races_str = self.filter_race_input.text()
+        if races_str.strip():
+            filt['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
+
+        if self.filter_min_cost_spin.value() != -1: filt['min_cost'] = self.filter_min_cost_spin.value()
+        if self.filter_max_cost_spin.value() != -1: filt['max_cost'] = self.filter_max_cost_spin.value()
+        if self.filter_min_power_spin.value() != -1: filt['min_power'] = self.filter_min_power_spin.value()
+        if self.filter_max_power_spin.value() != -1: filt['max_power'] = self.filter_max_power_spin.value()
+
+        def get_bool_from_combo(combo):
+            idx = combo.currentIndex()
+            if idx == 0: return None
+            if idx == 1: return True
+            return False
+
+        if (val := get_bool_from_combo(self.filter_tapped_combo)) is not None: filt['is_tapped'] = val
+        if (val := get_bool_from_combo(self.filter_blocker_combo)) is not None: filt['is_blocker'] = val
+        if (val := get_bool_from_combo(self.filter_evolution_combo)) is not None: filt['is_evolution'] = val
 
         new_act['filter'] = filt
 
