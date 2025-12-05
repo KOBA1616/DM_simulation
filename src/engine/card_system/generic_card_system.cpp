@@ -40,26 +40,48 @@ namespace dm::engine {
 
     void GenericCardSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id) {
         CardInstance* instance = find_instance(game_state, source_instance_id);
-        if (!instance) return;
+        if (!instance) {
+            std::cout << "resolve_trigger: instance not found: " << source_instance_id << std::endl;
+            return;
+        }
 
         const CardData* data = CardRegistry::get_card_data(instance->card_id);
-        if (!data) return;
+        if (!data) {
+            std::cout << "resolve_trigger: data not found for card_id: " << instance->card_id << std::endl;
+            return;
+        }
 
+        bool triggered = false;
         for (const auto& effect : data->effects) {
             if (effect.trigger == trigger) {
+                triggered = true;
+                // std::cout << "resolve_trigger: matched trigger " << (int)trigger << " for card " << source_instance_id << std::endl;
                 resolve_effect(game_state, effect, source_instance_id);
+            } else {
+                // std::cout << "resolve_trigger: mismatch trigger " << (int)effect.trigger << " vs " << (int)trigger << std::endl;
             }
+        }
+        if (!triggered) {
+             std::cout << "resolve_trigger: no effect with matching trigger found. Trigger: " << (int)trigger << std::endl;
         }
     }
 
     void GenericCardSystem::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id) {
-        // Delegate to EffectResolver's new signature with context
-        // But since this method is static and doesn't have the context, we call EffectResolver's static method?
-        // Actually, GenericCardSystem::resolve_effect is often called from outside EffectResolver (e.g. initial trigger).
-        // To support variables, we should probably start a fresh context or use EffectResolver.
+        resolve_effect_with_context(game_state, effect, source_instance_id, {});
+    }
 
-        // Use EffectResolver::resolve_effect which initializes a context
-        EffectResolver::resolve_effect(game_state, effect, source_instance_id, {});
+    void GenericCardSystem::resolve_effect_with_context(GameState& game_state, const EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context) {
+        if (!check_condition(game_state, effect.condition, source_instance_id)) {
+            // std::cout << "resolve_effect_with_context: condition check failed" << std::endl;
+            return;
+        }
+
+        // Iterate actions
+        for (const auto& action : effect.actions) {
+            // std::cout << "resolve_effect_with_context: resolving action type " << (int)action.type << std::endl;
+            // TODO: variable replacement using context if needed
+            resolve_action(game_state, action, source_instance_id);
+        }
     }
 
     // Forward declaration of private helper
@@ -114,6 +136,21 @@ namespace dm::engine {
                                 found = true;
                             }
                         }
+                        // Check Mana Zone (rare, but possible if filters allow)
+                        if (!found) {
+                            for (auto &p : game_state.players) {
+                                auto it = std::find_if(p.mana_zone.begin(), p.mana_zone.end(),
+                                    [tid](const CardInstance& c){ return c.instance_id == tid; });
+                                if (it != p.mana_zone.end()) {
+                                    p.hand.push_back(*it);
+                                    p.mana_zone.erase(it);
+                                    p.hand.back().is_tapped = false;
+                                    p.hand.back().summoning_sickness = true;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
                     }
                 } else if (action.type == EffectActionType::TAP) {
                     for (int tid : targets) {
@@ -140,6 +177,37 @@ namespace dm::engine {
                              game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, tid, active.id);
                          }
                     }
+                } else if (action.type == EffectActionType::SEND_SHIELD_TO_GRAVE) {
+                    for (int tid : targets) {
+                        for (auto &p : game_state.players) {
+                             auto it = std::find_if(p.shield_zone.begin(), p.shield_zone.end(),
+                                [tid](const CardInstance& c){ return c.instance_id == tid; });
+                             if (it != p.shield_zone.end()) {
+                                 p.graveyard.push_back(*it);
+                                 p.shield_zone.erase(it);
+                                 break;
+                             }
+                        }
+                    }
+                } else if (action.type == EffectActionType::SEARCH_DECK) {
+                    // SEARCH_DECK logic in resolve_effect_with_targets
+                    // 1. Move selected targets to hand
+                    Player& active = game_state.get_active_player();
+                    // Targets are usually from deck.
+                    // We assume selection filter was applied to Deck.
+
+                    for (int tid : targets) {
+                         auto it = std::find_if(active.deck.begin(), active.deck.end(),
+                             [tid](const CardInstance& c){ return c.instance_id == tid; });
+                         if (it != active.deck.end()) {
+                             active.hand.push_back(*it);
+                             active.deck.erase(it);
+                         }
+                    }
+
+                    // 2. Shuffle Deck (Implicit)
+                    std::shuffle(active.deck.begin(), active.deck.end(), game_state.rng);
+
                 } else if (action.type == EffectActionType::SELECT_FROM_BUFFER) {
                      // No-op (acknowledgment that selection happened for this action)
                 } else if (action.type == EffectActionType::COST_REFERENCE && action.str_val == "FINISH_HYPER_ENERGY") {

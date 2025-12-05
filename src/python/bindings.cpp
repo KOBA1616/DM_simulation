@@ -408,7 +408,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readonly("instance_id", &CardInstance::instance_id)
         .def_readwrite("is_tapped", &CardInstance::is_tapped)
         .def_readwrite("summoning_sickness", &CardInstance::summoning_sickness)
-        .def_readwrite("turn_played", &CardInstance::turn_played);
+        .def_readwrite("turn_played", &CardInstance::turn_played)
+        .def_readwrite("is_face_down", &CardInstance::is_face_down);
 
     py::class_<Player>(m, "Player")
         .def_readonly("id", &Player::id)
