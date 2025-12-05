@@ -32,7 +32,7 @@ namespace dm::engine {
 
             // source_controller is player.id
             // card_controller is also player.id (it's our card we want to play)
-            if (TargetUtils::is_valid_target(dummy_inst, card_def, mod.condition_filter, player.id, player.id)) {
+            if (TargetUtils::is_valid_target(dummy_inst, card_def, mod.condition_filter, game_state, player.id, player.id)) {
                 cost -= mod.reduction_amount;
             }
         }
