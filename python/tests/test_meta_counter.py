@@ -29,6 +29,13 @@ class TestMetaCounter(unittest.TestCase):
         self.zero_card_def.type = CardType.SPELL
         self.card_db[self.zero_card_id] = self.zero_card_def
 
+        # Register CardData for Registry
+        for cid, cdef in self.card_db.items():
+            # Fix: Use cdef.civilization.name to pass string
+            cdata = CardData(cid, cdef.name, cdef.cost, cdef.civilization.name, cdef.power if cdef.power > 0 else 0,
+                             "CREATURE" if cdef.type == CardType.CREATURE else "SPELL", cdef.races, [])
+            dm_ai_module.register_card_data(cdata)
+
         # Initialize Game
         PhaseManager.start_game(self.game, self.card_db)
 
@@ -97,11 +104,8 @@ class TestMetaCounter(unittest.TestCase):
         PhaseManager.next_phase(self.game, self.card_db)
 
         # 6. Verify Pending Effect
-        # PendingEffects are not directly exposed as a list property on GameState in Python bindings (my memory was wrong or incomplete)
-        # Use get_pending_effects_info helper
         pe_info = dm_ai_module.get_pending_effects_info(self.game)
         self.assertEqual(len(pe_info), 1, "Should have pending META_COUNTER")
-        # tuple: (type, source_instance_id, controller)
         pe_type, pe_source, pe_controller = pe_info[0]
         self.assertEqual(pe_type, int(EffectType.META_COUNTER))
         self.assertEqual(pe_controller, 1)
@@ -118,6 +122,17 @@ class TestMetaCounter(unittest.TestCase):
         EffectResolver.resolve_action(self.game, internal_play, self.card_db)
 
         # Check Battle Zone
+        # If C++ fix works, card should be in Battle Zone.
+        # If it failed to summon, it might be in grave or hand?
+        # Check graveyard
+        p1_grave = p1.graveyard
+        if len(p1_grave) > 0:
+            print(f"Card went to graveyard: {p1_grave[0].card_id}")
+
+        # Check Hand (if failed)
+        if len(p1.hand) > 0:
+            print(f"Card stayed in hand: {p1.hand[0].card_id}")
+
         self.assertEqual(len(p1.battle_zone), 1)
         self.assertEqual(p1.battle_zone[0].card_id, self.meta_card_id)
 
