@@ -185,6 +185,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("PLAY_FROM_BUFFER", EffectActionType::PLAY_FROM_BUFFER)
         .value("MOVE_BUFFER_TO_ZONE", EffectActionType::MOVE_BUFFER_TO_ZONE)
         .value("REVOLUTION_CHANGE", EffectActionType::REVOLUTION_CHANGE)
+        .value("COUNT_CARDS", EffectActionType::COUNT_CARDS)
+        .value("GET_GAME_STAT", EffectActionType::GET_GAME_STAT)
+        .value("APPLY_MODIFIER", EffectActionType::APPLY_MODIFIER)
+        .value("REVEAL_CARDS", EffectActionType::REVEAL_CARDS)
+        .value("REGISTER_DELAYED_EFFECT", EffectActionType::REGISTER_DELAYED_EFFECT)
+        .value("RESET_INSTANCE", EffectActionType::RESET_INSTANCE)
         .export_values();
 
     // JSON Structures
@@ -266,7 +272,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("target_player", &ActionDef::target_player)
         .def_readwrite("source_zone", &ActionDef::source_zone)
         .def_readwrite("destination_zone", &ActionDef::destination_zone)
-        .def_readwrite("target_choice", &ActionDef::target_choice);
+        .def_readwrite("target_choice", &ActionDef::target_choice)
+        .def_readwrite("input_value_key", &ActionDef::input_value_key)
+        .def_readwrite("output_value_key", &ActionDef::output_value_key);
 
     py::class_<ConditionDef>(m, "ConditionDef")
         .def(py::init<>())
@@ -452,7 +460,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<TurnStats>(m, "TurnStats")
         .def(py::init<>())
-        .def_readwrite("played_without_mana", &TurnStats::played_without_mana);
+        .def_readwrite("played_without_mana", &TurnStats::played_without_mana)
+        .def_readwrite("cards_drawn_this_turn", &TurnStats::cards_drawn_this_turn)
+        .def_readwrite("cards_discarded_this_turn", &TurnStats::cards_discarded_this_turn)
+        .def_readwrite("creatures_played_this_turn", &TurnStats::creatures_played_this_turn)
+        .def_readwrite("spells_cast_this_turn", &TurnStats::spells_cast_this_turn);
 
     py::class_<GameState>(m, "GameState")
         .def(py::init<uint32_t>())
