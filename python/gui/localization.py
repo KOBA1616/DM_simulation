@@ -8,6 +8,7 @@ TRANSLATIONS = {
     "File": "ファイル",
     "Open": "開く",
     "Save": "保存",
+    "Close": "閉じる",
 
     # Card Details
     "Card Details": "カード詳細",
@@ -47,6 +48,7 @@ TRANSLATIONS = {
     "Input Key": "入力変数キー",
     "Output Key": "出力変数キー",
     "Optional": "任意効果",
+    "Update Action": "アクション更新",
 
     # Filter Definition
     "Filter": "フィルタ",
@@ -54,6 +56,7 @@ TRANSLATIONS = {
     "Zones": "ゾーン",
     "Card Types": "カードタイプ",
     "Civilizations": "文明フィルタ",
+    "Races": "種族フィルタ",
     "Min Cost": "最小コスト",
     "Max Cost": "最大コスト",
     "Min Power": "最小パワー",
@@ -62,11 +65,15 @@ TRANSLATIONS = {
     "Blocker": "ブロッカー",
     "Evolution": "進化",
     "Count": "枚数",
+    "Ignore": "指定なし",
+    "True": "はい",
+    "False": "いいえ",
 
     # Common Values
     "NONE": "なし",
     "CREATURE": "クリーチャー",
     "SPELL": "呪文",
+    "EVOLUTION_CREATURE": "進化クリーチャー",
     "LIGHT": "光",
     "WATER": "水",
     "DARKNESS": "闇",
@@ -111,7 +118,23 @@ TRANSLATIONS = {
     "APPLY_MODIFIER": "修正を適用 (継続効果)",
     "REVEAL_CARDS": "カードを公開",
     "REGISTER_DELAYED_EFFECT": "遅延効果登録",
-    "RESET_INSTANCE": "カード状態リセット"
+    "RESET_INSTANCE": "カード状態リセット",
+
+    # Scope
+    "PLAYER_SELF": "自分",
+    "PLAYER_OPPONENT": "相手",
+    "TARGET_SELECT": "選択",
+    "ALL_PLAYERS": "両者",
+    "RANDOM": "ランダム",
+    "ALL_FILTERED": "全て(フィルタ)",
+
+    # Zones
+    "BATTLE_ZONE": "バトルゾーン",
+    "MANA_ZONE": "マナゾーン",
+    "HAND": "手札",
+    "GRAVEYARD": "墓地",
+    "SHIELD_ZONE": "シールドゾーン",
+    "DECK": "山札"
 }
 
 def tr(text):
