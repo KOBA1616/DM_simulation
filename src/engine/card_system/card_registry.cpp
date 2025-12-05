@@ -29,6 +29,7 @@ namespace dm::engine {
         if (it != cards.end()) {
             return &it->second;
         }
+        std::cerr << "CardRegistry: card not found for ID " << id << ". Total cards: " << cards.size() << std::endl;
         return nullptr;
     }
 
