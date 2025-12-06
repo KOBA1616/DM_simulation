@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QTreeView, QAbstractItemView
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt, QModelIndex
+from gui.localization import tr
 
 class LogicTreeWidget(QTreeView):
     def __init__(self, parent=None):
@@ -29,13 +30,13 @@ class LogicTreeWidget(QTreeView):
 
             for eff_idx, effect in enumerate(card.get('effects', [])):
                 trig = effect.get('trigger', 'NONE')
-                eff_item = QStandardItem(f"Effect: {trig}")
+                eff_item = QStandardItem(f"{tr('Effect')}: {tr(trig)}")
                 eff_item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
                 eff_item.setData(effect, Qt.ItemDataRole.UserRole + 2)
 
                 for act_idx, action in enumerate(effect.get('actions', [])):
                     act_type = action.get('type', 'NONE')
-                    act_item = QStandardItem(f"Action: {act_type}")
+                    act_item = QStandardItem(f"{tr('Action')}: {tr(act_type)}")
                     act_item.setData("ACTION", Qt.ItemDataRole.UserRole + 1)
                     act_item.setData(action, Qt.ItemDataRole.UserRole + 2)
                     eff_item.appendRow(act_item)
