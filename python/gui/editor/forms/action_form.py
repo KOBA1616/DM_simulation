@@ -93,7 +93,24 @@ class ActionEditForm(QWidget):
 
     def on_type_changed(self):
         # Update UI state first
-        self.update_ui_state(self.type_combo.currentData())
+        action_type = self.type_combo.currentData()
+        self.update_ui_state(action_type)
+
+        # Automated Variable Linking: Auto-generate output key if needed
+        if self.current_item:
+            config = ACTION_UI_CONFIG.get(action_type, {})
+            if config.get("produces_output", False):
+                current_out = self.output_key_edit.text()
+                if not current_out:
+                    # Generate unique key: var_{TYPE}_{ROW}
+                    row = self.current_item.row()
+                    new_key = f"var_{action_type}_{row}"
+                    self.output_key_edit.setText(new_key)
+            else:
+                # If it doesn't produce output, maybe clear it?
+                # Better to leave it unless user clears it, to avoid accidental data loss.
+                pass
+
         # Then update data
         self.update_data()
 
@@ -168,10 +185,10 @@ class ActionEditForm(QWidget):
             sib_data = sibling.data(Qt.ItemDataRole.UserRole + 2)
             out_key = sib_data.get('output_value_key')
             if out_key:
-                # Format: "{key} (from #{index} {type})"
-                # Translate type for display
+                # Format: "Step {index}: {Type} ({key})"
+                # This aligns with requirement: "Explicit Selection of Input Source"
                 type_disp = tr(sib_data.get('type'))
-                label = f"{out_key} (from #{i} {type_disp})"
+                label = f"Step {i}: {type_disp} ({out_key})"
                 self.input_key_combo.addItem(label, out_key) # Store actual key in UserData
 
     def update_data(self):
