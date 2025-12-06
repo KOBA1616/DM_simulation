@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QGridLayout, QLabel
 from PyQt6.QtCore import Qt
 from gui.localization import tr
+from gui.editor.forms.action_config import ACTION_UI_CONFIG
 
 class ActionEditForm(QWidget):
     def __init__(self, parent=None):
@@ -28,7 +29,7 @@ class ActionEditForm(QWidget):
             self.scope_combo.addItem(tr(s), s)
         layout.addRow(tr("Scope"), self.scope_combo)
 
-        # Filter (Simplified for now, can be expanded)
+        # Filter
         self.filter_group = QGroupBox(tr("Filter"))
         f_layout = QGridLayout(self.filter_group)
 
@@ -55,14 +56,20 @@ class ActionEditForm(QWidget):
 
         layout.addRow(self.filter_group)
 
+        # Labels for dynamic values, stored to update later
+        self.val1_label = QLabel(tr("Value 1"))
         self.val1_spin = QSpinBox()
-        layout.addRow(tr("Value 1"), self.val1_spin)
+        self.val1_spin.setRange(-9999, 9999) # Allow wider range
+        layout.addRow(self.val1_label, self.val1_spin)
 
+        self.val2_label = QLabel(tr("Value 2"))
         self.val2_spin = QSpinBox()
-        layout.addRow(tr("Value 2"), self.val2_spin)
+        self.val2_spin.setRange(-9999, 9999)
+        layout.addRow(self.val2_label, self.val2_spin)
 
+        self.str_val_label = QLabel(tr("String Value"))
         self.str_val_edit = QLineEdit()
-        layout.addRow(tr("String Value"), self.str_val_edit)
+        layout.addRow(self.str_val_label, self.str_val_edit)
 
         # Variable Linking
         self.input_key_combo = QComboBox()
@@ -73,13 +80,47 @@ class ActionEditForm(QWidget):
         layout.addRow(tr("Output Key"), self.output_key_edit)
 
         # Connect signals
-        self.type_combo.currentIndexChanged.connect(self.update_data)
+        self.type_combo.currentIndexChanged.connect(self.on_type_changed) # New handler
         self.scope_combo.currentIndexChanged.connect(self.update_data)
         self.val1_spin.valueChanged.connect(self.update_data)
         self.val2_spin.valueChanged.connect(self.update_data)
         self.str_val_edit.textChanged.connect(self.update_data)
         self.input_key_combo.currentTextChanged.connect(self.update_data)
         self.output_key_edit.textChanged.connect(self.update_data)
+
+        # Initialize UI state
+        self.update_ui_state(self.type_combo.currentData())
+
+    def on_type_changed(self):
+        # Update UI state first
+        self.update_ui_state(self.type_combo.currentData())
+        # Then update data
+        self.update_data()
+
+    def update_ui_state(self, action_type):
+        if not action_type: return
+
+        config = ACTION_UI_CONFIG.get(action_type, ACTION_UI_CONFIG["NONE"])
+
+        # Update Labels
+        self.val1_label.setText(tr(config["val1_label"]))
+        self.val2_label.setText(tr(config["val2_label"]))
+        self.str_val_label.setText(tr(config["str_label"]))
+
+        # Update Visibility
+        self.val1_label.setVisible(config["val1_visible"])
+        self.val1_spin.setVisible(config["val1_visible"])
+
+        self.val2_label.setVisible(config["val2_visible"])
+        self.val2_spin.setVisible(config["val2_visible"])
+
+        self.str_val_label.setVisible(config["str_visible"])
+        self.str_val_edit.setVisible(config["str_visible"])
+
+        self.filter_group.setVisible(config["filter_visible"])
+
+        # Update Tooltips
+        self.type_combo.setToolTip(tr(config.get("tooltip", "")))
 
     def set_data(self, item):
         self.current_item = item
@@ -88,7 +129,10 @@ class ActionEditForm(QWidget):
         self.block_signals(True)
 
         t_idx = self.type_combo.findData(data.get('type', 'NONE'))
-        if t_idx >= 0: self.type_combo.setCurrentIndex(t_idx)
+        if t_idx >= 0:
+            self.type_combo.setCurrentIndex(t_idx)
+            # Explicitly update UI state when loading data
+            self.update_ui_state(self.type_combo.itemData(t_idx))
 
         s_idx = self.scope_combo.findData(data.get('scope', 'NONE'))
         if s_idx >= 0: self.scope_combo.setCurrentIndex(s_idx)
