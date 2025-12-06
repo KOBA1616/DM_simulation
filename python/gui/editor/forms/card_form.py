@@ -2,11 +2,11 @@ from PyQt6.QtWidgets import QWidget, QFormLayout, QLineEdit, QComboBox, QSpinBox
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from gui.localization import tr
+from gui.editor.forms.base_form import BaseEditForm
 
-class CardEditForm(QWidget):
+class CardEditForm(BaseEditForm):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.current_item = None
         self.keyword_checks = {} # Map key -> QCheckBox
         self.setup_ui()
 
@@ -22,6 +22,9 @@ class CardEditForm(QWidget):
 
         self.civ_combo = QComboBox()
         civs = ["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"]
+        self.populate_combo(self.civ_combo, civs, data_func=lambda x: x)
+
+        # Apply colors
         civ_colors = {
             "LIGHT": QColor("goldenrod"),
             "WATER": QColor("blue"),
@@ -30,17 +33,15 @@ class CardEditForm(QWidget):
             "NATURE": QColor("green"),
             "ZERO": QColor("gray")
         }
-        for c in civs:
-            self.civ_combo.addItem(tr(c), c)
-            idx = self.civ_combo.count() - 1
-            if c in civ_colors:
-                self.civ_combo.setItemData(idx, civ_colors[c], Qt.ItemDataRole.ForegroundRole)
+        for i in range(self.civ_combo.count()):
+            data = self.civ_combo.itemData(i)
+            if data in civ_colors:
+                self.civ_combo.setItemData(i, civ_colors[data], Qt.ItemDataRole.ForegroundRole)
         layout.addRow(tr("Civilization"), self.civ_combo)
 
         self.type_combo = QComboBox()
         types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE"]
-        for t in types:
-            self.type_combo.addItem(tr(t), t)
+        self.populate_combo(self.type_combo, types, data_func=lambda x: x)
         layout.addRow(tr("Type"), self.type_combo)
 
         self.cost_spin = QSpinBox()
@@ -59,7 +60,6 @@ class CardEditForm(QWidget):
         kw_group = QGroupBox(tr("Keywords"))
         kw_layout = QGridLayout(kw_group)
 
-        # List of keywords to support in UI
         keywords_list = [
             "speed_attacker", "blocker", "slayer",
             "double_breaker", "triple_breaker", "shield_trigger",
@@ -67,9 +67,6 @@ class CardEditForm(QWidget):
             "hyper_energy", "shield_burn"
         ]
 
-        # Use localized names for labels if possible
-        # Map snake_case to Title Case for lookup in tr() if needed,
-        # or just use tr(Title Case)
         kw_map = {
             "speed_attacker": "Speed Attacker",
             "blocker": "Blocker",
@@ -91,7 +88,7 @@ class CardEditForm(QWidget):
             cb = QCheckBox(tr(kw_map[k]))
             kw_layout.addWidget(cb, row, col)
             self.keyword_checks[k] = cb
-            cb.stateChanged.connect(self.update_data) # Connect directly
+            cb.stateChanged.connect(self.update_data)
 
             col += 1
             if col > 2: # 3 columns
@@ -100,7 +97,7 @@ class CardEditForm(QWidget):
 
         layout.addRow(kw_group)
 
-        # Connect signals (existing)
+        # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
         self.civ_combo.currentIndexChanged.connect(self.update_data)
@@ -109,39 +106,26 @@ class CardEditForm(QWidget):
         self.power_spin.valueChanged.connect(self.update_data)
         self.races_edit.textChanged.connect(self.update_data)
 
-    def set_data(self, item):
-        self.current_item = item
+    def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
-        self.block_signals(True)
         self.id_spin.setValue(data.get('id', 0))
         self.name_edit.setText(data.get('name', ''))
 
-        civ_idx = self.civ_combo.findData(data.get('civilization', 'FIRE'))
-        if civ_idx >= 0:
-            self.civ_combo.setCurrentIndex(civ_idx)
-
-        type_idx = self.type_combo.findData(data.get('type', 'CREATURE'))
-        if type_idx >= 0:
-            self.type_combo.setCurrentIndex(type_idx)
+        self.set_combo_by_data(self.civ_combo, data.get('civilization', 'FIRE'))
+        self.set_combo_by_data(self.type_combo, data.get('type', 'CREATURE'))
 
         self.cost_spin.setValue(data.get('cost', 0))
         self.power_spin.setValue(data.get('power', 0))
         self.races_edit.setText(", ".join(data.get('races', [])))
 
         # Load Keywords
-        # Keywords might be a dict { "speed_attacker": true } in JSON
         kw_data = data.get('keywords', {})
         for k, cb in self.keyword_checks.items():
             is_checked = kw_data.get(k, False)
             cb.setChecked(is_checked)
 
-        self.block_signals(False)
-
-    def update_data(self):
-        if not self.current_item: return
-        data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
-
+    def _save_data(self, data):
         data['id'] = self.id_spin.value()
         data['name'] = self.name_edit.text()
         data['civilization'] = self.civ_combo.currentData()
@@ -156,15 +140,12 @@ class CardEditForm(QWidget):
         for k, cb in self.keyword_checks.items():
             if cb.isChecked():
                 kw_data[k] = True
-
-        # Only set if not empty to keep JSON clean? Or explicit?
-        # Explicit is better for now.
         data['keywords'] = kw_data
 
-        self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
-        self.current_item.setText(f"{data['id']} - {data['name']}")
+    def _get_display_text(self, data):
+        return f"{data.get('id', 0)} - {data.get('name', '')}"
 
-    def block_signals(self, block):
+    def block_signals_all(self, block):
         self.id_spin.blockSignals(block)
         self.name_edit.blockSignals(block)
         self.civ_combo.blockSignals(block)
