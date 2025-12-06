@@ -125,17 +125,9 @@ ACTION_UI_CONFIG = {
     "COUNT_CARDS": {
         "val1_label": "Value 1", "val1_visible": False,
         "val2_label": "Value 2", "val2_visible": False,
-        "str_label": "String Value", "str_visible": False,
+        "str_label": "Mode (CARDS/CIVILIZATIONS)", "str_visible": True,
         "filter_visible": True,
-        "tooltip": "Counts cards matching Filter and stores in Output Key.",
-        "produces_output": True
-    },
-    "GET_GAME_STAT": {
-        "val1_label": "Value 1", "val1_visible": False,
-        "val2_label": "Value 2", "val2_visible": False,
-        "str_label": "Stat Type (e.g. MANA_CIVILIZATIONS)", "str_visible": True,
-        "filter_visible": False,
-        "tooltip": "Gets a game statistic and stores in Output Key.",
+        "tooltip": "Counts cards or civilizations matching Filter and stores in Output Key.",
         "produces_output": True
     },
     "APPLY_MODIFIER": {
