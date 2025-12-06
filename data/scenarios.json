@@ -1,0 +1,33 @@
+[
+  {
+    "name": "infinite_loop_setup",
+    "description": "A setup where an infinite loop is possible if played correctly.",
+    "config": {
+      "my_mana": 6,
+      "my_hand_cards": [1, 1],
+      "my_battle_zone": [2],
+      "my_mana_zone": [3, 3, 3, 3, 3, 3],
+      "my_grave_yard": [],
+      "my_shields": [1, 1, 1, 1, 1],
+      "enemy_shield_count": 5,
+      "enemy_battle_zone": [],
+      "enemy_can_use_trigger": false,
+      "loop_proof_mode": true
+    }
+  },
+  {
+    "name": "lethal_puzzle_easy",
+    "description": "Win in one turn.",
+    "config": {
+      "my_mana": 3,
+      "my_hand_cards": [2],
+      "my_battle_zone": [],
+      "my_mana_zone": [3, 3, 3],
+      "my_shields": [],
+      "enemy_shield_count": 0,
+      "enemy_battle_zone": [],
+      "enemy_can_use_trigger": false,
+      "loop_proof_mode": false
+    }
+  }
+]
