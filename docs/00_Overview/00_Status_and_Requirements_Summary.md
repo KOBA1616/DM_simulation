@@ -44,12 +44,14 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   **Status**: **修正完了 (2025/XX/XX)** - `ActionGenerator` にコントローラー情報の伝播を追加し、`EffectResolver` に `PLAY_CARD_INTERNAL` 実行後のPending Effect削除処理を追加しました。`python/tests/test_meta_counter.py` を通過することを確認済み。
 
 2.  **Ninja Strike (Reaction System) の不発**
-    *   **現象**: Ninja Strikeの条件を満たす状況下でも、`EffectResolver` から `ReactionSystem` が呼び出された際にリアクションウィンドウ（`PendingEffect`）が生成されない。
-    *   **原因**: テスト環境における `JsonLoader` と `ReactionSystem` の間のデータ連携（`reaction_abilities` の読み込みや文明判定など）に不整合がある可能性がある。
+    *   **現象**: Ninja Strikeの条件を満たす状況下でも、リアクションウィンドウ（`PendingEffect`）が生成されるものの、`DECLARE_REACTION` アクションが生成されない。
+    *   **原因**: エンジンイベント `"ON_ATTACK"` と JSON定義 `"ON_BLOCK_OR_ATTACK"` の文字列完全一致比較により、条件不一致と判定されていた。
+    *   **Status**: **修正完了 (2025/02/XX)** - `ReactionSystem` および `ActionGenerator` にて、`"ON_BLOCK_OR_ATTACK"` が `"ON_ATTACK"`/`"ON_BLOCK"` イベントにもマッチするように緩和処理を追加。`python/tests/test_ninja_strike.py` を通過。
 
 3.  **Just Diver (Play Action) の生成失敗**
-    *   **現象**: Just Diverを持つクリーチャーのプレイアクションが生成されない場合がある。
-    *   **原因**: テストコード内でのマナゾーン操作（Pythonのリストコピー操作）による状態不整合、あるいはフェーズ設定（`Phase.MAIN`）の漏れなどが要因として考えられる。
+    *   **現象**: Just Diverを持つクリーチャーのプレイアクションは生成されるが、プレイ後のターンでも対戦相手が対象に取れてしまう。
+    *   **原因**: クリーチャーがバトルゾーンに出る際、`CardInstance.turn_played` プロパティが設定されておらず、期間判定（「このターン」）が正しく機能していなかった。
+    *   **Status**: **修正完了 (2025/02/XX)** - `EffectResolver::resolve_play_from_stack` にて `turn_played` を設定するよう修正。`python/tests/test_just_diver.py` を通過。
 
 4.  **Pythonバインディングの制約**
     *   `std::vector` を返すプロパティ（`mana_zone` 等）はPython側ではコピーとなるため、要素への代入（`is_tapped = False`）がC++側に反映されない。テストコードでは `add_card_to_mana` 等の専用ヘルパーを使用する必要がある。
