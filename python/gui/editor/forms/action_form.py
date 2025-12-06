@@ -33,8 +33,8 @@ class ActionEditForm(QWidget):
         self.filter_group = QGroupBox(tr("Filter"))
         f_layout = QGridLayout(self.filter_group)
 
-        # Add a help/usage label
-        help_label = QLabel(tr("Select zones to target. Set Count > 0 to require a specific number of cards."))
+        # Add a help/usage label (Localized text from localization.py)
+        help_label = QLabel(tr("Filter Help"))
         help_label.setWordWrap(True)
         help_label.setStyleSheet("color: gray; font-style: italic;")
         f_layout.addWidget(help_label, 0, 0, 1, 2)
@@ -69,7 +69,15 @@ class ActionEditForm(QWidget):
 
         self.str_val_label = QLabel(tr("String Value"))
         self.str_val_edit = QLineEdit()
+        self.str_val_combo = QComboBox() # Added ComboBox for select stats
+
+        # Populate Stats (Keys are English, UI is Japanese via tr())
+        stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT"]
+        for s in stats:
+            self.str_val_combo.addItem(tr(s), s)
+
         layout.addRow(self.str_val_label, self.str_val_edit)
+        layout.addRow("", self.str_val_combo) # Add to layout, label managed by update_ui_state
 
         # Variable Linking
         self.input_key_combo = QComboBox()
@@ -85,6 +93,7 @@ class ActionEditForm(QWidget):
         self.val1_spin.valueChanged.connect(self.update_data)
         self.val2_spin.valueChanged.connect(self.update_data)
         self.str_val_edit.textChanged.connect(self.update_data)
+        self.str_val_combo.currentIndexChanged.connect(self.update_data) # Connect combo
         self.input_key_combo.currentTextChanged.connect(self.update_data)
         self.output_key_edit.textChanged.connect(self.update_data)
 
@@ -131,8 +140,15 @@ class ActionEditForm(QWidget):
         self.val2_label.setVisible(config["val2_visible"])
         self.val2_spin.setVisible(config["val2_visible"])
 
-        self.str_val_label.setVisible(config["str_visible"])
-        self.str_val_edit.setVisible(config["str_visible"])
+        # Special handling for GET_GAME_STAT to show combo instead of edit
+        if action_type == "GET_GAME_STAT":
+            self.str_val_label.setVisible(True)
+            self.str_val_edit.setVisible(False)
+            self.str_val_combo.setVisible(True)
+        else:
+            self.str_val_label.setVisible(config["str_visible"])
+            self.str_val_edit.setVisible(config["str_visible"])
+            self.str_val_combo.setVisible(False)
 
         self.filter_group.setVisible(config["filter_visible"])
 
@@ -162,7 +178,14 @@ class ActionEditForm(QWidget):
 
         self.val1_spin.setValue(data.get('value1', 0))
         self.val2_spin.setValue(data.get('value2', 0))
-        self.str_val_edit.setText(data.get('str_val', ''))
+
+        str_val = data.get('str_val', '')
+        self.str_val_edit.setText(str_val)
+
+        # If it's a stat, try to set combo
+        c_idx = self.str_val_combo.findData(str_val)
+        if c_idx >= 0:
+            self.str_val_combo.setCurrentIndex(c_idx)
 
         # Variable Linking Population
         self.populate_input_keys()
@@ -195,7 +218,8 @@ class ActionEditForm(QWidget):
         if not self.current_item: return
         data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
 
-        data['type'] = self.type_combo.currentData()
+        action_type = self.type_combo.currentData()
+        data['type'] = action_type
         data['scope'] = self.scope_combo.currentData()
 
         zones = [z for z, cb in self.zone_checks.items() if cb.isChecked()]
@@ -207,7 +231,12 @@ class ActionEditForm(QWidget):
 
         data['value1'] = self.val1_spin.value()
         data['value2'] = self.val2_spin.value()
-        data['str_val'] = self.str_val_edit.text()
+
+        # Use Combo or Edit based on type
+        if action_type == "GET_GAME_STAT":
+             data['str_val'] = self.str_val_combo.currentData()
+        else:
+             data['str_val'] = self.str_val_edit.text()
 
         # Handle Input Key: if selected from combo, use data; if typed, use text
         idx = self.input_key_combo.currentIndex()
@@ -227,6 +256,7 @@ class ActionEditForm(QWidget):
         self.val1_spin.blockSignals(block)
         self.val2_spin.blockSignals(block)
         self.str_val_edit.blockSignals(block)
+        self.str_val_combo.blockSignals(block)
         self.input_key_combo.blockSignals(block)
         self.output_key_edit.blockSignals(block)
         for cb in self.zone_checks.values():
