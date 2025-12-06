@@ -133,6 +133,45 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 **Status**: 完了 (2025/XX/XX)
 
+### 3.6 C++移行における改修詳細 (C++ Migration Details)
+
+以下の3つのコンポーネントについて、C++側へのロジック移管と最適化を行います。
+
+**1. データ収集の高速化 (DataCollector)**
+*   **対象ファイル**: `src/ai/data_collection/data_collector.hpp`, `.cpp`
+*   **目的**: Pythonで行っているゲームループとデータ蓄積をC++へ移管し、オーバーヘッドを削減する。
+*   **具体的な実装方法**:
+    *   `collect_data_batch_heuristic(int episodes)` メソッドを新規実装する。
+    *   内部で `HeuristicAgent` インスタンスを作成する。
+    *   `episodes` 回数分、`GameInstance` の生成からゲーム終了までをループさせる。
+    *   各ターン、`TensorConverter` を呼び出して `states_masked`, `states_full` を取得し、`HeuristicAgent` の決定した手を `policy` として記録する。
+    *   全てのデータを `CollectedBatch` 構造体（`std::vector` の塊）に格納して返す。
+*   **課題**:
+    *   **メモリ使用量**: 1エピソードあたり平均100ターン、1ターンあたり数KBのデータが発生するため、10万エピソードなどを一度に要求するとメモリ不足になる恐れがある。Python側で適切なチャンクサイズ（例: 1000エピソードごと）に分割して呼び出す設計にする。
+*   **Status**: 完了 (2025/XX/XX)
+
+**2. シナリオ検証の最適化 (ParallelRunner for Scenarios)**
+*   **対象ファイル**: `src/ai/self_play/parallel_runner.hpp`, `.cpp`
+*   **目的**: Python側での `GameInstance` 大量生成（ボトルネック）を回避し、C++内で設定から即座に生成・並列実行する。
+*   **具体的な実装方法**:
+    *   `play_scenario_match(ScenarioConfig config, int num_games, ...)` メソッドを追加する。
+    *   引数として `ScenarioConfig` を受け取る。
+    *   OpenMP等の並列処理ブロック内で、この `config` をコピーして `GameInstance::reset_with_scenario` を呼び出し、初期盤面を作成する。
+    *   その後、既存の並列対戦ロジックを実行する。
+*   **課題**:
+    *   **バインディングの整合性**: `ScenarioConfig` の全フィールドが正しくC++に渡るか確認が必要。特に可変長の配列（手札やマナゾーンのカードIDリスト）の変換コストに注意が必要だが、インスタンス生成コストに比べれば軽微。
+*   **Status**: 完了 (2025/XX/XX)
+
+**3. デッキ進化システムの基盤 (ParallelRunner for Deck Evolution)**
+*   **対象ファイル**: `src/ai/self_play/parallel_runner.hpp`, `.cpp`
+*   **目的**: デッキリスト（カードIDの配列）だけを渡して高速に対戦結果を得られるようにする。
+*   **具体的な実装方法**:
+    *   `play_deck_matchup(vector<int> deck1, vector<int> deck2, int num_games, ...)` を実装する。
+    *   `GameInstance` を生成し、指定されたデッキリストで初期化して対戦を行う。
+*   **再現性の確保**:
+    *   デッキのシャッフルや乱数シードの管理が重要。`ParallelRunner` 内部でスレッドごとに異なるシードを持つ乱数生成器 (`std::mt19937`) を適切に初期化する必要がある。
+*   **Status**: 完了 (2025/XX/XX)
+
 ## 4. 今後のロードマップ (Roadmap)
 *   **Phase 6**: サーチ、シールド操作の実装 (完了)。
 *   **Phase 7**: 高度なギミック (超次元、GRなど) の検討。
