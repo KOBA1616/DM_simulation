@@ -513,6 +513,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
             py::dict d;
             d["play_count"] = stats.play_count;
             d["win_count"] = stats.win_count;
+            d["sum_cost_discount"] = stats.sum_cost_discount;
+            d["sum_early_usage"] = stats.sum_early_usage;
+            d["sum_win_contribution"] = stats.sum_win_contribution;
             result[py::cast(cid)] = d;
         }
         return result;
