@@ -237,8 +237,7 @@ class GameWindow(QMainWindow):
         self.mcts_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         self.mcts_view = MCTSView()
         self.mcts_dock.setWidget(self.mcts_view)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.mcts_dock)
-        self.mcts_dock.setFloating(True) # Start floating
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mcts_dock)
         
         # Logs (Dock)
         self.log_dock = QDockWidget("Logs", self)
