@@ -14,14 +14,19 @@ namespace dm::ai {
         : card_db_(card_db) {}
 
     CollectedBatch DataCollector::collect_data_batch(int episodes) {
+        return collect_data_batch_heuristic(episodes);
+    }
+
+    CollectedBatch DataCollector::collect_data_batch_heuristic(int episodes) {
         CollectedBatch batch;
 
         // Instantiate agents once outside the loop to reuse RNG initialization
         HeuristicAgent agent1(0, card_db_);
         HeuristicAgent agent2(1, card_db_);
 
-        // Pre-calculate decks once if possible, but here we do it per game to support randomization later if needed.
-        // For now, deterministic deck setup.
+        // Pre-calculate decks (using a simple strategy if none provided, but here we assume all cards are available)
+        // In a real scenario, we might want to randomize decks or pass them in.
+        // For now, we construct a simple deck from the DB or default dummy.
         std::vector<dm::core::CardID> deck1, deck2;
         if (!card_db_.empty()) {
             std::vector<dm::core::CardID> available_ids;
@@ -39,12 +44,11 @@ namespace dm::ai {
 
         for (int i = 0; i < episodes; ++i) {
             // Setup game
-            // Use seed 0 or random?
-            dm::engine::GameInstance game(0, card_db_);
+            // Use random seed based on time/iteration
+            uint32_t seed = static_cast<uint32_t>(i) + std::chrono::system_clock::now().time_since_epoch().count();
+            dm::engine::GameInstance game(seed, card_db_);
 
-            // Manually setup decks since GameInstance constructor doesn't do it fully for us unless we use PhaseManager::start_game which needs state setup
-            // Actually PhaseManager::start_game expects decks to be in players
-
+            // Manually setup decks
             int instance_counter = 0;
             auto setup_deck = [&](dm::core::Player& p, const std::vector<dm::core::CardID>& deck_list) {
                 p.deck.clear();
@@ -66,7 +70,6 @@ namespace dm::ai {
             int max_steps = 1000;
             int step = 0;
 
-            // Ensure game result is NONE before starting loop (start_game resets it usually, but double check)
             while (game.state.winner == dm::core::GameResult::NONE && step < max_steps) {
                 step++;
                 int active_player = game.state.active_player_id;
@@ -74,12 +77,10 @@ namespace dm::ai {
                 dm::engine::ActionGenerator action_gen;
                 auto legal_actions = action_gen.generate_legal_actions(game.state, card_db_);
 
-                // If no actions, it might be a phase where no decisions are needed (just transition)
-                // e.g. START_OF_TURN with no triggers, DRAW phase (auto draw), etc.
+                // If no actions, transition phase
                 if (legal_actions.empty()) {
                      dm::engine::PhaseManager::next_phase(game.state, card_db_);
 
-                     // Check for game over after phase change
                      dm::core::GameResult res;
                      if(dm::engine::PhaseManager::check_game_over(game.state, res)){
                         game.state.winner = res;
@@ -87,6 +88,7 @@ namespace dm::ai {
                      continue;
                 }
 
+                // Choose action
                 dm::core::Action chosen_action;
                 if (active_player == 0) {
                     chosen_action = agent1.get_action(game.state, legal_actions);
@@ -122,7 +124,6 @@ namespace dm::ai {
                      break;
                 }
 
-                // Explicit check for game over if PhaseManager didn't catch it
                 dm::core::GameResult res;
                 if(dm::engine::PhaseManager::check_game_over(game.state, res)){
                     game.state.winner = res;
@@ -139,17 +140,12 @@ namespace dm::ai {
             } else if (game.state.winner == dm::core::GameResult::P2_WIN) {
                 result_p0 = -1.0f;
                 result_p1 = 1.0f;
-            } else {
-                // Draw
-                result_p0 = 0.0f;
-                result_p1 = 0.0f;
             }
 
             for (size_t k = 0; k < game_states.size(); ++k) {
                 batch.states.push_back(game_states[k]);
                 batch.policies.push_back(game_policies[k]);
 
-                // Value depends on whose turn it was
                 if (game_players[k] == 0) {
                     batch.values.push_back(result_p0);
                 } else {
