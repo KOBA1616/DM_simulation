@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QLabel
+from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit
 from PyQt6.QtCore import Qt
 from gui.localization import tr
 
@@ -12,21 +12,38 @@ class EffectEditForm(QWidget):
         layout = QFormLayout(self)
 
         self.trigger_combo = QComboBox()
-        self.trigger_combo.addItems(["ON_PLAY", "ON_ATTACK", "ON_DESTROY", "PASSIVE_CONST", "TURN_START", "ON_OTHER_ENTER", "ON_ATTACK_FROM_HAND", "S_TRIGGER", "NONE"])
+        triggers = [
+            "ON_PLAY", "ON_ATTACK", "ON_DESTROY", "S_TRIGGER", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
+            "ON_ATTACK_FROM_HAND"
+        ]
+        for t in triggers:
+            self.trigger_combo.addItem(tr(t), t)
         layout.addRow(tr("Trigger"), self.trigger_combo)
 
+        # Condition (Simplified)
+        self.condition_group = QGroupBox(tr("Condition"))
+        c_layout = QGridLayout(self.condition_group)
         self.cond_type_combo = QComboBox()
-        self.cond_type_combo.addItems(["NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH", "OPPONENT_PLAYED_WITHOUT_MANA"])
-        layout.addRow(tr("Condition Type"), self.cond_type_combo)
+        cond_types = ["NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH", "OPPONENT_PLAYED_WITHOUT_MANA"]
+        for c in cond_types:
+            self.cond_type_combo.addItem(tr(c), c)
+
+        c_layout.addWidget(QLabel(tr("Type")), 0, 0)
+        c_layout.addWidget(self.cond_type_combo, 0, 1)
 
         self.cond_val_spin = QSpinBox()
-        layout.addRow(tr("Condition Value"), self.cond_val_spin)
+        c_layout.addWidget(QLabel(tr("Value")), 1, 0)
+        c_layout.addWidget(self.cond_val_spin, 1, 1)
 
         self.cond_str_edit = QLineEdit()
-        layout.addRow(tr("Condition String"), self.cond_str_edit)
+        c_layout.addWidget(QLabel(tr("String Value")), 2, 0)
+        c_layout.addWidget(self.cond_str_edit, 2, 1)
 
-        self.trigger_combo.currentTextChanged.connect(self.update_data)
-        self.cond_type_combo.currentTextChanged.connect(self.update_data)
+        layout.addRow(self.condition_group)
+
+        # Connect signals
+        self.trigger_combo.currentIndexChanged.connect(self.update_data)
+        self.cond_type_combo.currentIndexChanged.connect(self.update_data)
         self.cond_val_spin.valueChanged.connect(self.update_data)
         self.cond_str_edit.textChanged.connect(self.update_data)
 
@@ -35,9 +52,16 @@ class EffectEditForm(QWidget):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
         self.block_signals(True)
-        self.trigger_combo.setCurrentText(data.get('trigger', 'NONE'))
+
+        trig_idx = self.trigger_combo.findData(data.get('trigger', 'ON_PLAY'))
+        if trig_idx >= 0:
+            self.trigger_combo.setCurrentIndex(trig_idx)
+
         cond = data.get('condition', {})
-        self.cond_type_combo.setCurrentText(cond.get('type', 'NONE'))
+        cond_idx = self.cond_type_combo.findData(cond.get('type', 'NONE'))
+        if cond_idx >= 0:
+            self.cond_type_combo.setCurrentIndex(cond_idx)
+
         self.cond_val_spin.setValue(cond.get('value', 0))
         self.cond_str_edit.setText(cond.get('str_val', ''))
         self.block_signals(False)
@@ -46,15 +70,20 @@ class EffectEditForm(QWidget):
         if not self.current_item: return
         data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
 
-        data['trigger'] = self.trigger_combo.currentText()
-        data['condition'] = {
-            'type': self.cond_type_combo.currentText(),
-            'value': self.cond_val_spin.value(),
-            'str_val': self.cond_str_edit.text()
-        }
+        data['trigger'] = self.trigger_combo.currentData()
+
+        cond = {}
+        cond['type'] = self.cond_type_combo.currentData()
+        cond['value'] = self.cond_val_spin.value()
+        str_val = self.cond_str_edit.text()
+        if str_val: cond['str_val'] = str_val
+        data['condition'] = cond
 
         self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
-        self.current_item.setText(f"Effect: {data['trigger']}")
+        # We need to translate the trigger back for display or just use the Japanese text?
+        # LogicTreeWidget handles the display text update usually, but here we update it explicitly.
+        # Let's use tr() on the data value.
+        self.current_item.setText(f"{tr('Effect')}: {tr(data['trigger'])}")
 
     def block_signals(self, block):
         self.trigger_combo.blockSignals(block)
