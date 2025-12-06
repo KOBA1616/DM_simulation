@@ -23,6 +23,27 @@ TRANSLATIONS = {
     "Property Inspector": "プロパティ・インスペクタ",
     "Select an item to edit": "編集する項目を選択してください",
     "Main Toolbar": "メインツールバー",
+    "Tools": "ツール",
+    "Batch Simulation": "バッチシミュレーション",
+
+    # Batch Simulation
+    "Batch Simulation / Verification": "バッチシミュレーション / 検証",
+    "Settings": "設定",
+    "Scenario": "シナリオ",
+    "Evaluator": "評価器 (Evaluator)",
+    "Games": "ゲーム数",
+    "Threads": "スレッド数",
+    "MCTS Sims": "MCTSシミュレーション数",
+    "Run Simulation": "シミュレーション開始",
+    "Cancel": "キャンセル",
+    "Starting simulation": "シミュレーションを開始します",
+    "Completed": "完了",
+    "Wins": "勝利",
+    "Losses": "敗北",
+    "Draws": "引き分け",
+    "Throughput": "スループット",
+    "Simulation Error": "シミュレーションエラー",
+    "Warning: No model_v1.pth found. Using random weights.": "警告: model_v1.pthが見つかりません。ランダムな重みを使用します。",
 
     # Card Details
     "Card Details": "カード詳細",
@@ -161,7 +182,19 @@ TRANSLATIONS = {
     "HAND": "手札",
     "GRAVEYARD": "墓地",
     "SHIELD_ZONE": "シールドゾーン",
-    "DECK": "山札"
+    "DECK": "山札",
+
+    # Keywords
+    "Speed Attacker": "スピードアタッカー",
+    "Blocker": "ブロッカー",
+    "Slayer": "スレイヤー",
+    "Double Breaker": "W・ブレイカー",
+    "Triple Breaker": "T・ブレイカー",
+    "Shield Trigger": "S・トリガー",
+    "Just Diver": "ジャストダイバー",
+    "Mach Fighter": "マッハファイター",
+    "G Strike": "G・ストライク",
+    "Evolution": "進化",
 }
 
 def tr(text):
