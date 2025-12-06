@@ -19,11 +19,15 @@ class CardEditForm(QWidget):
         layout.addRow(tr("Name"), self.name_edit)
 
         self.civ_combo = QComboBox()
-        self.civ_combo.addItems(["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"])
+        civs = ["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"]
+        for c in civs:
+            self.civ_combo.addItem(tr(c), c)
         layout.addRow(tr("Civilization"), self.civ_combo)
 
         self.type_combo = QComboBox()
-        self.type_combo.addItems(["CREATURE", "SPELL", "EVOLUTION_CREATURE"])
+        types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE"]
+        for t in types:
+            self.type_combo.addItem(tr(t), t)
         layout.addRow(tr("Type"), self.type_combo)
 
         self.cost_spin = QSpinBox()
@@ -41,8 +45,8 @@ class CardEditForm(QWidget):
         # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
-        self.civ_combo.currentTextChanged.connect(self.update_data)
-        self.type_combo.currentTextChanged.connect(self.update_data)
+        self.civ_combo.currentIndexChanged.connect(self.update_data)
+        self.type_combo.currentIndexChanged.connect(self.update_data)
         self.cost_spin.valueChanged.connect(self.update_data)
         self.power_spin.valueChanged.connect(self.update_data)
         self.races_edit.textChanged.connect(self.update_data)
@@ -54,8 +58,16 @@ class CardEditForm(QWidget):
         self.block_signals(True)
         self.id_spin.setValue(data.get('id', 0))
         self.name_edit.setText(data.get('name', ''))
-        self.civ_combo.setCurrentText(data.get('civilization', 'FIRE'))
-        self.type_combo.setCurrentText(data.get('type', 'CREATURE'))
+
+        # Find index for data
+        civ_idx = self.civ_combo.findData(data.get('civilization', 'FIRE'))
+        if civ_idx >= 0:
+            self.civ_combo.setCurrentIndex(civ_idx)
+
+        type_idx = self.type_combo.findData(data.get('type', 'CREATURE'))
+        if type_idx >= 0:
+            self.type_combo.setCurrentIndex(type_idx)
+
         self.cost_spin.setValue(data.get('cost', 0))
         self.power_spin.setValue(data.get('power', 0))
         self.races_edit.setText(", ".join(data.get('races', [])))
@@ -67,8 +79,8 @@ class CardEditForm(QWidget):
 
         data['id'] = self.id_spin.value()
         data['name'] = self.name_edit.text()
-        data['civilization'] = self.civ_combo.currentText()
-        data['type'] = self.type_combo.currentText()
+        data['civilization'] = self.civ_combo.currentData()
+        data['type'] = self.type_combo.currentData()
         data['cost'] = self.cost_spin.value()
         data['power'] = self.power_spin.value()
         races_str = self.races_edit.text()

@@ -6,11 +6,13 @@ TRANSLATIONS = {
     "Load from JSON": "JSONから読み込み",
     "Save to JSON": "JSONへ保存",
     "File": "ファイル",
+    "Edit": "編集",
     "Open": "開く",
     "Save": "保存",
     "Close": "閉じる",
     "New Card": "新規カード",
     "Delete Card": "カード削除",
+    "Delete Item": "削除",
     "Preview": "プレビュー",
     "Action updated!": "アクションが更新されました！",
     "Cards saved successfully!": "カードが正常に保存されました！",
@@ -18,6 +20,9 @@ TRANSLATIONS = {
     "Success": "成功",
     "Failed to load JSON": "JSONの読み込みに失敗しました",
     "Failed to save JSON": "JSONの保存に失敗しました",
+    "Property Inspector": "プロパティ・インスペクタ",
+    "Select an item to edit": "編集する項目を選択してください",
+    "Main Toolbar": "メインツールバー",
 
     # Card Details
     "Card Details": "カード詳細",
@@ -105,6 +110,12 @@ TRANSLATIONS = {
     "ON_OTHER_ENTER": "他クリーチャー登場時",
     "ON_ATTACK_FROM_HAND": "手札から攻撃時 (革命チェンジ等)",
 
+    # Enums - Conditions
+    "MANA_ARMED": "マナ武装",
+    "SHIELD_COUNT": "シールド枚数",
+    "CIVILIZATION_MATCH": "文明一致",
+    "OPPONENT_PLAYED_WITHOUT_MANA": "相手がマナを払わずにプレイ",
+
     # Enums - Actions
     "DRAW_CARD": "ドロー",
     "ADD_MANA": "マナ加速",
@@ -134,6 +145,7 @@ TRANSLATIONS = {
     "REGISTER_DELAYED_EFFECT": "遅延効果登録",
     "RESET_INSTANCE": "カード状態リセット",
     "Hyper Energy": "ハイパーエナジー",
+    "SEND_TO_DECK_BOTTOM": "山札下へ送る",
 
     # Scope
     "PLAYER_SELF": "自分",
