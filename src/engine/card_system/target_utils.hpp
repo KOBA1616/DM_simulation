@@ -90,18 +90,15 @@ namespace dm::engine {
                                                dm::core::PlayerID opponent_id) { // opponent_id is who is trying to target
              if (!def.keywords.just_diver) return false;
 
-             dm::core::PlayerID controller = 1 - opponent_id; // Assumes 2 players
+             // Just Diver lasts until the start of the next turn of the owner.
+             // Counting logic (Round-based):
+             // T1 (P0): Protected. tn=1, tp=1. 1 <= 1 (True)
+             // T1 (P1): Protected. tn=1, tp=1. 1 <= 1 (True)
+             // T2 (P0): Start of next turn -> Expired. tn=2, tp=1. 2 <= 1 (False)
 
-             // If source is OPPONENT (source_controller != card_controller)
-             // (Implied by calling this function with opponent_id)
+             // This simple logic works for both players if turn_number increments at start of P0 turn (Round count).
+             if (game_state.turn_number <= card.turn_played) return true;
 
-             // Check turn logic
-             // Protected if (current_turn <= turn_played) for P0 owner
-             if (controller == 0) {
-                 if (game_state.turn_number == card.turn_played) return true;
-             } else {
-                 if (game_state.turn_number <= card.turn_played + 1) return true;
-             }
              return false;
         }
 
