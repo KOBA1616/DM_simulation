@@ -146,7 +146,17 @@ ACTION_UI_CONFIG = {
         "produces_output": True,
         "can_be_optional": False
     },
-    "COUNT_CARDS": {
+    # Unified Measure/Count UI Configuration
+    "MEASURE_COUNT": {
+        "val1_label": "Value 1", "val1_visible": False,
+        "val2_label": "Value 2", "val2_visible": False,
+        "str_label": "Mode (CARDS/CIVILIZATIONS)", "str_visible": True,
+        "filter_visible": True,
+        "tooltip": "Counts cards or civilizations matching Filter and stores in Output Key.",
+        "produces_output": True,
+        "can_be_optional": False
+    },
+    "COUNT_CARDS": { # Legacy/Internal use mapping
         "val1_label": "Value 1", "val1_visible": False,
         "val2_label": "Value 2", "val2_visible": False,
         "str_label": "Mode (CARDS/CIVILIZATIONS)", "str_visible": True,
