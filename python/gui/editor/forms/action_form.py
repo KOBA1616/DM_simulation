@@ -31,19 +31,26 @@ class ActionEditForm(QWidget):
         # Filter (Simplified for now, can be expanded)
         self.filter_group = QGroupBox(tr("Filter"))
         f_layout = QGridLayout(self.filter_group)
+
+        # Add a help/usage label
+        help_label = QLabel(tr("Select zones to target. Set Count > 0 to require a specific number of cards."))
+        help_label.setWordWrap(True)
+        help_label.setStyleSheet("color: gray; font-style: italic;")
+        f_layout.addWidget(help_label, 0, 0, 1, 2)
+
         self.zone_checks = {}
         zones = ["BATTLE_ZONE", "MANA_ZONE", "HAND", "GRAVEYARD", "SHIELD_ZONE", "DECK"]
         for i, z in enumerate(zones):
             cb = QCheckBox(tr(z)) # Display localized name
-            # Store the internal zone name as a property on the checkbox or just use the key in dict
-            # Since self.zone_checks is a dict {key: checkbox}, we are good.
+            cb.setToolTip(tr(f"Include {z} in target selection"))
             self.zone_checks[z] = cb
-            f_layout.addWidget(cb, i//2, i%2)
+            f_layout.addWidget(cb, (i//2) + 1, i%2)
             cb.stateChanged.connect(self.update_data)
 
         self.filter_count = QSpinBox()
-        f_layout.addWidget(QLabel(tr("Count")), 3, 0)
-        f_layout.addWidget(self.filter_count, 3, 1)
+        self.filter_count.setToolTip(tr("Number of cards to select/count. 0 means all/any."))
+        f_layout.addWidget(QLabel(tr("Count")), 4, 0)
+        f_layout.addWidget(self.filter_count, 4, 1)
         self.filter_count.valueChanged.connect(self.update_data)
 
         layout.addRow(self.filter_group)
