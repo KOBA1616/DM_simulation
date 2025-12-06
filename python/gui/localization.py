@@ -168,6 +168,10 @@ TRANSLATIONS = {
     "Hyper Energy": "ハイパーエナジー",
     "SEND_TO_DECK_BOTTOM": "山札下へ送る",
 
+    # Smart Link
+    "Use result from previous measurement": "直前の計測結果を使用する",
+    "Cards matching filter": "フィルターに一致する枚数",
+
     # Game Stats
     "MANA_CIVILIZATION_COUNT": "マナゾーンの文明数",
     "SHIELD_COUNT": "シールド枚数",
