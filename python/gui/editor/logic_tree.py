@@ -45,8 +45,6 @@ class LogicTreeWidget(QTreeView):
 
             self.model.appendRow(card_item)
 
-        self.expandAll()
-
     def get_full_data_from_model(self):
         """Reconstructs the full JSON list from the tree model."""
         cards = []
