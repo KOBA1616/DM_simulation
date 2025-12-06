@@ -282,7 +282,38 @@ namespace dm::engine {
         } else if (game_state.current_attack.target_instance_id != -1) {
             defender_id = game_state.current_attack.target_instance_id;
         } else {
-            game_state.pending_effects.emplace_back(EffectType::BREAK_SHIELD, attacker_id, game_state.active_player_id);
+            // Check for direct attack if opponent has no shields
+            // Note: Normally BREAK_SHIELD handles picking shields.
+            // If there are NO shields, BREAK_SHIELD logic will set the winner.
+            // But we should verify breaker count to queue the correct number of BREAK_SHIELD effects.
+            // Current simplification queues ONE BREAK_SHIELD.
+            // If we have Double Breaker, we should queue 2 or handle it inside BREAK_SHIELD.
+            // The existing BREAK_SHIELD implementation just breaks the top shield.
+            // To support multi-break, we should probably loop here.
+
+            // For now, to support basic rules and Direct Attack:
+            // If 0 shields, 1 BREAK_SHIELD is enough to trigger win check in resolve_break_shield.
+
+            Player& defender = game_state.get_non_active_player();
+            int breaker_count = 1;
+            // Get breaker count
+            Player& attacker_player = game_state.get_active_player();
+            auto it = std::find_if(attacker_player.battle_zone.begin(), attacker_player.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == attacker_id; });
+            if (it != attacker_player.battle_zone.end()) {
+                breaker_count = get_breaker_count(*it, card_db);
+            }
+
+            if (defender.shield_zone.empty()) {
+                // Direct Attack
+                // We queue one BREAK_SHIELD which will detect empty shields and declare win.
+                 game_state.pending_effects.emplace_back(EffectType::BREAK_SHIELD, attacker_id, game_state.active_player_id);
+            } else {
+                // Break Shields
+                int shields_to_break = std::min((int)defender.shield_zone.size(), breaker_count);
+                for (int i=0; i<shields_to_break; ++i) {
+                     game_state.pending_effects.emplace_back(EffectType::BREAK_SHIELD, attacker_id, game_state.active_player_id);
+                }
+            }
             return;
         }
         
