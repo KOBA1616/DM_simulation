@@ -13,10 +13,11 @@ class ActionEditForm(QWidget):
         layout = QFormLayout(self)
 
         self.type_combo = QComboBox()
+        # Removed GET_GAME_STAT from user facing list, integrated into COUNT_CARDS
         types = [
             "DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DRAW_CARD", "SEARCH_DECK_BOTTOM", "MEKRAID", "TAP", "UNTAP",
             "COST_REFERENCE", "NONE", "BREAK_SHIELD", "LOOK_AND_ADD", "SUMMON_TOKEN", "DISCARD", "PLAY_FROM_ZONE",
-            "REVOLUTION_CHANGE", "COUNT_CARDS", "GET_GAME_STAT", "APPLY_MODIFIER", "REVEAL_CARDS",
+            "REVOLUTION_CHANGE", "COUNT_CARDS", "APPLY_MODIFIER", "REVEAL_CARDS",
             "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE", "SEND_TO_DECK_BOTTOM"
         ]
         for t in types:
@@ -71,8 +72,8 @@ class ActionEditForm(QWidget):
         self.str_val_edit = QLineEdit()
         self.str_val_combo = QComboBox() # Added ComboBox for select stats
 
-        # Populate Stats (Keys are English, UI is Japanese via tr())
-        # Updated to include generic Count options for "Smart Link" behavior
+        # Populate Stats Options
+        self.str_val_combo.addItem(tr("Cards matching filter"), "CARDS_MATCHING_FILTER")
         stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT"]
         for s in stats:
             self.str_val_combo.addItem(tr(s), s)
@@ -88,16 +89,20 @@ class ActionEditForm(QWidget):
         self.input_key_combo.setEditable(True)
         layout.addRow(tr("Input Key"), self.input_key_combo)
 
+        # Output Key - Hidden from user to simplify UI
+        self.output_key_label = QLabel(tr("Output Key"))
         self.output_key_edit = QLineEdit()
-        layout.addRow(tr("Output Key"), self.output_key_edit)
+        layout.addRow(self.output_key_label, self.output_key_edit)
+        self.output_key_label.setVisible(False)
+        self.output_key_edit.setVisible(False)
 
         # Connect signals
-        self.type_combo.currentIndexChanged.connect(self.on_type_changed) # New handler
+        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
         self.scope_combo.currentIndexChanged.connect(self.update_data)
         self.val1_spin.valueChanged.connect(self.update_data)
         self.val2_spin.valueChanged.connect(self.update_data)
         self.str_val_edit.textChanged.connect(self.update_data)
-        self.str_val_combo.currentIndexChanged.connect(self.update_data) # Connect combo
+        self.str_val_combo.currentIndexChanged.connect(self.on_stat_mode_changed) # Updated handler
         self.smart_link_check.stateChanged.connect(self.on_smart_link_changed)
         self.input_key_combo.currentTextChanged.connect(self.update_data)
         self.output_key_edit.textChanged.connect(self.update_data)
@@ -113,7 +118,17 @@ class ActionEditForm(QWidget):
         # Automated Variable Linking: Auto-generate output key if needed
         if self.current_item:
             config = ACTION_UI_CONFIG.get(action_type, {})
-            if config.get("produces_output", False):
+            # Also generate for COUNT_CARDS / GET_GAME_STAT (which are merged in UI)
+            effective_type = action_type
+            if action_type == "COUNT_CARDS":
+                 # Check internal type via str_val? No, just check if it produces output.
+                 # COUNT_CARDS config says produces_output=True
+                 pass
+
+            produces = config.get("produces_output", False)
+            if action_type == "GET_GAME_STAT": produces = True # Explicit check if passed directly
+
+            if produces:
                 current_out = self.output_key_edit.text()
                 if not current_out:
                     # Generate unique key: var_{TYPE}_{ROW}
@@ -121,11 +136,14 @@ class ActionEditForm(QWidget):
                     new_key = f"var_{action_type}_{row}"
                     self.output_key_edit.setText(new_key)
             else:
-                # If it doesn't produce output, maybe clear it?
-                # Better to leave it unless user clears it, to avoid accidental data loss.
                 pass
 
         # Then update data
+        self.update_data()
+
+    def on_stat_mode_changed(self):
+        # Update UI visibility based on the selected mode in the unified combo
+        self.update_ui_state(self.type_combo.currentData())
         self.update_data()
 
     def on_smart_link_changed(self):
@@ -133,7 +151,6 @@ class ActionEditForm(QWidget):
         is_checked = self.smart_link_check.isChecked()
 
         # 1. Update Visibility of Value 1
-        # Check config for current type to know if it should be visible otherwise
         action_type = self.type_combo.currentData()
         config = ACTION_UI_CONFIG.get(action_type, ACTION_UI_CONFIG["NONE"])
 
@@ -142,28 +159,26 @@ class ActionEditForm(QWidget):
 
         # 2. Logic to auto-set input key if checked
         if is_checked:
-            # Find the most recent compatible output from siblings
             self.populate_input_keys()
             count = self.input_key_combo.count()
             if count > 0:
-                # Pick the last one (most recent)
-                # Items are added in order 0..row-1, so last item is nearest
                 last_idx = count - 1
                 key = self.input_key_combo.itemData(last_idx)
                 self.input_key_combo.setCurrentIndex(last_idx)
-                # self.update_data() will be called by signal
-            else:
-                # No input available
-                pass
         else:
-            # If unchecked, maybe clear input key?
-            # User wants to manually input value, so clearing input key is logical
             self.input_key_combo.setCurrentText("")
+
+        # Trigger update data to save the change
+        self.update_data()
 
     def update_ui_state(self, action_type):
         if not action_type: return
 
         config = ACTION_UI_CONFIG.get(action_type, ACTION_UI_CONFIG["NONE"])
+
+        # Unified Logic: Treat GET_GAME_STAT as COUNT_CARDS for UI config purposes
+        if action_type == "GET_GAME_STAT":
+            config = ACTION_UI_CONFIG.get("COUNT_CARDS", config)
 
         # Update Labels
         self.val1_label.setText(tr(config["val1_label"]))
@@ -171,10 +186,6 @@ class ActionEditForm(QWidget):
         self.str_val_label.setText(tr(config["str_label"]))
 
         # Smart Link Visibility
-        # Show checkbox if action supports input (val1) and not producing output itself (usually)
-        # OR just if val1 is visible.
-        # Logic: If config[val1_visible] is True, we can potentially link it.
-        # But some actions like DRAW_CARD produce output AND take input.
         can_link_input = config["val1_visible"]
         self.smart_link_check.setVisible(can_link_input)
 
@@ -187,33 +198,23 @@ class ActionEditForm(QWidget):
         self.val2_label.setVisible(config["val2_visible"])
         self.val2_spin.setVisible(config["val2_visible"])
 
-        # Special handling for COUNT_CARDS and GET_GAME_STAT to unified dropdown
+        # Special handling for unified COUNT_CARDS / GET_GAME_STAT
         if action_type == "GET_GAME_STAT" or action_type == "COUNT_CARDS":
             self.str_val_label.setVisible(True)
             self.str_val_edit.setVisible(False)
             self.str_val_combo.setVisible(True)
 
-            # Repopulate combo based on type context or merge them?
-            # We want to offer "Cards Matching Filter" and "Mana Civs" etc.
-            self.str_val_combo.blockSignals(True)
-            self.str_val_combo.clear()
-
-            # Add "Count Cards" option
-            self.str_val_combo.addItem(tr("Cards matching filter"), "CARDS_MATCHING_FILTER")
-
-            # Add Stat options
-            stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT"]
-            for s in stats:
-                self.str_val_combo.addItem(tr(s), s)
-
-            self.str_val_combo.blockSignals(False)
-
+            # Determine filter visibility based on Combo Selection
+            current_mode = self.str_val_combo.currentData()
+            if current_mode == "CARDS_MATCHING_FILTER" or current_mode is None:
+                self.filter_group.setVisible(True)
+            else:
+                self.filter_group.setVisible(False)
         else:
             self.str_val_label.setVisible(config["str_visible"])
             self.str_val_edit.setVisible(config["str_visible"])
             self.str_val_combo.setVisible(False)
-
-        self.filter_group.setVisible(config["filter_visible"])
+            self.filter_group.setVisible(config["filter_visible"])
 
         # Update Tooltips
         self.type_combo.setToolTip(tr(config.get("tooltip", "")))
@@ -224,23 +225,35 @@ class ActionEditForm(QWidget):
 
         self.block_signals(True)
 
-        # 1. Determine Input Key / Smart Link state first, as it affects UI layout in update_ui_state
         input_key = data.get('input_value_key', '')
-
-        # Set Smart Link Checkbox state
-        # If input key is set, assume smart link is active (hides value)
         if input_key:
             self.smart_link_check.setChecked(True)
         else:
             self.smart_link_check.setChecked(False)
 
-        # 2. Set Action Type
-        t_idx = self.type_combo.findData(data.get('type', 'NONE'))
+        # Set Action Type
+        raw_type = data.get('type', 'NONE')
+
+        # UI Mapping: GET_GAME_STAT -> COUNT_CARDS
+        ui_type = raw_type
+        if raw_type == "GET_GAME_STAT":
+            ui_type = "COUNT_CARDS"
+
+        t_idx = self.type_combo.findData(ui_type)
         if t_idx >= 0:
             self.type_combo.setCurrentIndex(t_idx)
-            # Explicitly update UI state when loading data
-            # Now smart_link_check is already set, so update_ui_state will respect it
-            self.update_ui_state(self.type_combo.itemData(t_idx))
+
+        # Handle Mode Combo for Unified Type
+        str_val = data.get('str_val', '')
+        if raw_type == "COUNT_CARDS":
+             c_idx = self.str_val_combo.findData("CARDS_MATCHING_FILTER")
+             if c_idx >= 0: self.str_val_combo.setCurrentIndex(c_idx)
+        elif raw_type == "GET_GAME_STAT":
+             c_idx = self.str_val_combo.findData(str_val)
+             if c_idx >= 0: self.str_val_combo.setCurrentIndex(c_idx)
+
+        # Now update UI state (which relies on combo values being set)
+        self.update_ui_state(ui_type)
 
         s_idx = self.scope_combo.findData(data.get('scope', 'NONE'))
         if s_idx >= 0: self.scope_combo.setCurrentIndex(s_idx)
@@ -254,23 +267,7 @@ class ActionEditForm(QWidget):
         self.val1_spin.setValue(data.get('value1', 0))
         self.val2_spin.setValue(data.get('value2', 0))
 
-        str_val = data.get('str_val', '')
         self.str_val_edit.setText(str_val)
-
-        # If it's a stat or count mode
-        action_type = data.get('type', 'NONE')
-        if action_type == "COUNT_CARDS":
-            # Default to "Cards matching filter" if str_val is empty
-            if not str_val:
-                c_idx = self.str_val_combo.findData("CARDS_MATCHING_FILTER")
-                if c_idx >= 0: self.str_val_combo.setCurrentIndex(c_idx)
-            else:
-                 # Should not happen typically unless COUNT_CARDS stores str_val
-                 pass
-        elif action_type == "GET_GAME_STAT":
-             c_idx = self.str_val_combo.findData(str_val)
-             if c_idx >= 0:
-                self.str_val_combo.setCurrentIndex(c_idx)
 
         # Variable Linking Population
         self.populate_input_keys()
@@ -294,10 +291,9 @@ class ActionEditForm(QWidget):
             out_key = sib_data.get('output_value_key')
             if out_key:
                 # Format: "Step {index}: {Type} ({key})"
-                # This aligns with requirement: "Explicit Selection of Input Source"
                 type_disp = tr(sib_data.get('type'))
                 label = f"Step {i}: {type_disp} ({out_key})"
-                self.input_key_combo.addItem(label, out_key) # Store actual key in UserData
+                self.input_key_combo.addItem(label, out_key)
 
     def update_data(self):
         if not self.current_item: return
@@ -305,27 +301,24 @@ class ActionEditForm(QWidget):
 
         action_type = self.type_combo.currentData()
 
-        # Handle "Smart Link" for Count Type switching
-        # If user selected "Cards matching filter" in COUNT_CARDS/GET_GAME_STAT mode, ensure type is COUNT_CARDS
-        # If user selected "Mana Civilizations" etc, ensure type is GET_GAME_STAT
-        if action_type == "COUNT_CARDS" or action_type == "GET_GAME_STAT":
+        # Handle Unified Type Logic: Map UI to Internal Type
+        if action_type == "COUNT_CARDS":
             selected_mode = self.str_val_combo.currentData()
+
             if selected_mode == "CARDS_MATCHING_FILTER":
-                action_type = "COUNT_CARDS"
-                # Clear str_val for COUNT_CARDS? Or just ignore it?
-                # Best to clear it to avoid confusion
-                data['str_val'] = ""
-            elif selected_mode in ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT"]:
-                action_type = "GET_GAME_STAT"
+                data['type'] = "COUNT_CARDS"
+                data['str_val'] = "" # Clear str_val for standard count
+            else:
+                # It's a Stat
+                data['type'] = "GET_GAME_STAT"
                 data['str_val'] = selected_mode
+        else:
+            data['type'] = action_type
+            # For non-stat types, read string edit
+            # But wait, did we overwrite str_val for COUNT_CARDS above? Yes.
+            # If we are here, it's NOT COUNT_CARDS (UI type).
+            data['str_val'] = self.str_val_edit.text()
 
-            # If type changed, we might need to update type_combo?
-            # Updating type_combo triggers update_ui_state which might be disruptive if done recursively?
-            # But we are in update_data. We just set data['type'].
-            # The tree view updates from this data.
-            # But the Form UI needs to stay consistent.
-
-        data['type'] = action_type
         data['scope'] = self.scope_combo.currentData()
 
         zones = [z for z, cb in self.zone_checks.items() if cb.isChecked()]
@@ -338,21 +331,33 @@ class ActionEditForm(QWidget):
         data['value1'] = self.val1_spin.value()
         data['value2'] = self.val2_spin.value()
 
-        # Use Combo or Edit based on type (Logic handled above for Count/Stat)
-        if action_type != "GET_GAME_STAT" and action_type != "COUNT_CARDS":
-             data['str_val'] = self.str_val_edit.text()
-
-        # Handle Input Key: if selected from combo, use data; if typed, use text
+        # Input Key
         idx = self.input_key_combo.currentIndex()
         if idx >= 0 and self.input_key_combo.currentText() == self.input_key_combo.itemText(idx):
              data['input_value_key'] = self.input_key_combo.itemData(idx)
         else:
              data['input_value_key'] = self.input_key_combo.currentText()
 
-        data['output_value_key'] = self.output_key_edit.text()
+        # Output Key
+        # If empty and we should produce output, generate it now (safety net)
+        out_key = self.output_key_edit.text()
+        if not out_key:
+             config = ACTION_UI_CONFIG.get(data['type'], {}) # Use actual type
+             if config.get("produces_output", False):
+                  row = self.current_item.row()
+                  out_key = f"var_{data['type']}_{row}"
+                  self.output_key_edit.setText(out_key) # Update UI too
+
+        data['output_value_key'] = out_key
 
         self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
-        self.current_item.setText(f"{tr('Action')}: {tr(data['type'])}")
+
+        # Update display text in tree
+        display_type = tr(data['type'])
+        if data['type'] == "GET_GAME_STAT":
+             display_type = f"{tr('GET_GAME_STAT')} ({tr(data['str_val'])})"
+
+        self.current_item.setText(f"{tr('Action')}: {display_type}")
 
     def block_signals(self, block):
         self.type_combo.blockSignals(block)

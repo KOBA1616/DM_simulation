@@ -1,37 +1,37 @@
 
 import dm_ai_module
+import json
+import os
 
-SCENARIOS = {
-    "infinite_loop_setup": {
-        "description": "A setup where an infinite loop is possible if played correctly.",
-        "config": {
-            "my_mana": 6,
-            "my_hand_cards": [1, 1], # Assuming ID 1 is some relevant card
-            "my_battle_zone": [2],   # Assuming ID 2 is some creature
-            "my_mana_zone": [3, 3, 3, 3, 3, 3],
-            "my_grave_yard": [],
-            "my_shields": [1, 1, 1, 1, 1],
-            "enemy_shield_count": 5,
-            "enemy_battle_zone": [],
-            "enemy_can_use_trigger": False,
-            "loop_proof_mode": True
-        }
-    },
-    "lethal_puzzle_easy": {
-        "description": "Win in one turn.",
-        "config": {
-            "my_mana": 3,
-            "my_hand_cards": [2], # Rusher?
-            "my_battle_zone": [],
-            "my_mana_zone": [3, 3, 3],
-            "my_shields": [],
-            "enemy_shield_count": 0,
-            "enemy_battle_zone": [],
-            "enemy_can_use_trigger": False,
-            "loop_proof_mode": False
-        }
-    }
-}
+SCENARIOS = {}
+
+def load_scenarios():
+    global SCENARIOS
+    # Try to find data/scenarios.json
+    paths = [
+        "data/scenarios.json",
+        "../data/scenarios.json",
+        "../../data/scenarios.json"
+    ]
+    json_path = None
+    for p in paths:
+        if os.path.exists(p):
+            json_path = p
+            break
+
+    if json_path:
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data_list = json.load(f)
+                SCENARIOS = { item["name"]: item for item in data_list }
+        except Exception as e:
+            print(f"Error loading scenarios: {e}")
+            SCENARIOS = {}
+    else:
+        print("Warning: data/scenarios.json not found.")
+
+# Load on import
+load_scenarios()
 
 def get_scenario_config(name):
     if name not in SCENARIOS:

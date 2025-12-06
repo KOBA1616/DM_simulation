@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
 from gui.deck_builder import DeckBuilder
 from gui.card_editor import CardEditor
+from gui.editor.scenario_editor import ScenarioEditor
 from gui.widgets.zone_widget import ZoneWidget
 from gui.widgets.mcts_view import MCTSView
 from gui.widgets.card_detail_panel import CardDetailPanel
@@ -126,6 +127,10 @@ class GameWindow(QMainWindow):
         self.card_editor_button = QPushButton("カード編集")
         self.card_editor_button.clicked.connect(self.open_card_editor)
         self.info_layout.addWidget(self.card_editor_button)
+
+        self.scenario_editor_button = QPushButton("シナリオエディタ")
+        self.scenario_editor_button.clicked.connect(self.open_scenario_editor)
+        self.info_layout.addWidget(self.scenario_editor_button)
 
         self.sim_dialog_button = QPushButton("バッチシミュレーション")
         self.sim_dialog_button.clicked.connect(self.open_simulation_dialog)
@@ -271,6 +276,10 @@ class GameWindow(QMainWindow):
     def open_card_editor(self):
         self.card_editor = CardEditor("data/cards.json")
         self.card_editor.show()
+
+    def open_scenario_editor(self):
+        self.scenario_editor = ScenarioEditor(self)
+        self.scenario_editor.show()
 
     def open_simulation_dialog(self):
         self.sim_dialog = SimulationDialog(self.card_db, self)
