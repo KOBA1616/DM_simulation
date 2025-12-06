@@ -49,11 +49,22 @@ class ActionEditForm(QWidget):
             f_layout.addWidget(cb, (i//2) + 1, i%2)
             cb.stateChanged.connect(self.update_data)
 
-        self.filter_count = QSpinBox()
-        self.filter_count.setToolTip(tr("Number of cards to select/count. 0 means all/any."))
-        f_layout.addWidget(QLabel(tr("Count")), 4, 0)
-        f_layout.addWidget(self.filter_count, 4, 1)
-        self.filter_count.valueChanged.connect(self.update_data)
+        # Filter Count Mode Selection (Option 3 Implementation)
+        self.filter_mode_label = QLabel(tr("Selection Mode"))
+        self.filter_mode_combo = QComboBox()
+        self.filter_mode_combo.addItem(tr("All/Any"), 0)
+        self.filter_mode_combo.addItem(tr("Fixed Number"), 1)
+
+        self.filter_count_spin = QSpinBox()
+        self.filter_count_spin.setRange(1, 99)
+        self.filter_count_spin.setToolTip(tr("Number of cards to select/count."))
+
+        f_layout.addWidget(self.filter_mode_label, 4, 0)
+        f_layout.addWidget(self.filter_mode_combo, 4, 1)
+        f_layout.addWidget(self.filter_count_spin, 5, 1)
+
+        self.filter_mode_combo.currentIndexChanged.connect(self.on_filter_mode_changed)
+        self.filter_count_spin.valueChanged.connect(self.update_data)
 
         layout.addRow(self.filter_group)
 
@@ -109,6 +120,7 @@ class ActionEditForm(QWidget):
 
         # Initialize UI state
         self.update_ui_state(self.type_combo.currentData())
+        self.on_filter_mode_changed() # Init filter UI state
 
     def on_type_changed(self):
         # Update UI state first
@@ -118,15 +130,8 @@ class ActionEditForm(QWidget):
         # Automated Variable Linking: Auto-generate output key if needed
         if self.current_item:
             config = ACTION_UI_CONFIG.get(action_type, {})
-            # Also generate for COUNT_CARDS / GET_GAME_STAT (which are merged in UI)
-            effective_type = action_type
-            if action_type == "COUNT_CARDS":
-                 # Check internal type via str_val? No, just check if it produces output.
-                 # COUNT_CARDS config says produces_output=True
-                 pass
-
             produces = config.get("produces_output", False)
-            if action_type == "GET_GAME_STAT": produces = True # Explicit check if passed directly
+            if action_type == "GET_GAME_STAT": produces = True
 
             if produces:
                 current_out = self.output_key_edit.text()
@@ -169,6 +174,13 @@ class ActionEditForm(QWidget):
             self.input_key_combo.setCurrentText("")
 
         # Trigger update data to save the change
+        self.update_data()
+
+    def on_filter_mode_changed(self):
+        # 0 = All/Any, 1 = Fixed Number
+        mode = self.filter_mode_combo.currentData()
+        is_fixed = (mode == 1)
+        self.filter_count_spin.setVisible(is_fixed)
         self.update_data()
 
     def update_ui_state(self, action_type):
@@ -262,7 +274,17 @@ class ActionEditForm(QWidget):
         zones = filt.get('zones', [])
         for z, cb in self.zone_checks.items():
             cb.setChecked(z in zones)
-        self.filter_count.setValue(filt.get('count', 0))
+
+        # Filter Count Mode Logic
+        count_val = filt.get('count', 0)
+        if count_val > 0:
+             self.filter_mode_combo.setCurrentIndex(1) # Fixed Number
+             self.filter_count_spin.setValue(count_val)
+             self.filter_count_spin.setVisible(True)
+        else:
+             self.filter_mode_combo.setCurrentIndex(0) # All/Any
+             self.filter_count_spin.setValue(1) # Default if switched
+             self.filter_count_spin.setVisible(False)
 
         self.val1_spin.setValue(data.get('value1', 0))
         self.val2_spin.setValue(data.get('value2', 0))
@@ -324,8 +346,16 @@ class ActionEditForm(QWidget):
         zones = [z for z, cb in self.zone_checks.items() if cb.isChecked()]
         filt = {}
         if zones: filt['zones'] = zones
-        count = self.filter_count.value()
-        if count > 0: filt['count'] = count
+
+        # Filter Count Logic based on Mode
+        mode = self.filter_mode_combo.currentData()
+        if mode == 1: # Fixed Number
+             count = self.filter_count_spin.value()
+             if count > 0: filt['count'] = count
+        else:
+             # All/Any -> count = 0 (omitted or explicit 0)
+             pass
+
         data['filter'] = filt
 
         data['value1'] = self.val1_spin.value()
@@ -370,4 +400,5 @@ class ActionEditForm(QWidget):
         self.output_key_edit.blockSignals(block)
         for cb in self.zone_checks.values():
             cb.blockSignals(block)
-        self.filter_count.blockSignals(block)
+        self.filter_mode_combo.blockSignals(block) # New
+        self.filter_count_spin.blockSignals(block) # New
