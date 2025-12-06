@@ -368,19 +368,42 @@ namespace dm::engine {
          CardInstance shield = defender.shield_zone.back();
          defender.shield_zone.pop_back();
 
-         bool is_trigger = false;
-         if (card_db.count(shield.card_id)) {
-             const auto& def = card_db.at(shield.card_id);
-             if (def.keywords.shield_trigger) {
-                 is_trigger = true;
+         // Check for Shield Burn (Incineration) on the attacker
+         bool shield_burn = false;
+         // source_instance_id is the attacker
+         Player& attacker_player = game_state.get_active_player(); // Attacker is usually active player
+         auto it = std::find_if(attacker_player.battle_zone.begin(), attacker_player.battle_zone.end(),
+             [&](const CardInstance& c){ return c.instance_id == action.source_instance_id; });
+
+         if (it != attacker_player.battle_zone.end()) {
+             if (card_db.count(it->card_id)) {
+                 if (card_db.at(it->card_id).keywords.shield_burn) {
+                     shield_burn = true;
+                 }
              }
          }
 
-         if (is_trigger) {
-             defender.hand.push_back(shield);
-             game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield.instance_id, defender.id);
+         if (shield_burn) {
+             // Shield Burn: Put to graveyard, NO trigger check
+             defender.graveyard.push_back(shield);
+             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, shield.instance_id); // Treated as destroyed? Usually just sent to grave.
+             // Standard burn just sends to grave.
          } else {
-             defender.hand.push_back(shield);
+             // Normal Break
+             bool is_trigger = false;
+             if (card_db.count(shield.card_id)) {
+                 const auto& def = card_db.at(shield.card_id);
+                 if (def.keywords.shield_trigger) {
+                     is_trigger = true;
+                 }
+             }
+
+             if (is_trigger) {
+                 defender.hand.push_back(shield);
+                 game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield.instance_id, defender.id);
+             } else {
+                 defender.hand.push_back(shield);
+             }
          }
     }
 
