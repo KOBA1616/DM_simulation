@@ -45,6 +45,8 @@ class LogicTreeWidget(QTreeView):
 
             self.model.appendRow(card_item)
 
+        self.expandAll()
+
     def get_full_data_from_model(self):
         """Reconstructs the full JSON list from the tree model."""
         cards = []
@@ -81,12 +83,27 @@ class LogicTreeWidget(QTreeView):
         return cards
 
     def add_new_card(self):
+        # Auto-increment ID logic
+        max_id = 0
+        root = self.model.invisibleRootItem()
+        for i in range(root.rowCount()):
+            card_item = root.child(i)
+            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
+            if card_data and 'id' in card_data:
+                try:
+                    cid = int(card_data['id'])
+                    if cid > max_id:
+                        max_id = cid
+                except ValueError:
+                    pass
+
+        new_id = max_id + 1
+
         new_card = {
-            "id": 0, "name": "New Card", "civilization": "FIRE", "type": "CREATURE",
+            "id": new_id, "name": "New Card", "civilization": "FIRE", "type": "CREATURE",
             "cost": 1, "power": 1000, "races": [], "effects": []
         }
-        # Auto-increment ID logic should be handled by caller or here
-        # For now just add item
+
         item = QStandardItem(f"{new_card['id']} - {new_card['name']}")
         item.setData("CARD", Qt.ItemDataRole.UserRole + 1)
         item.setData(new_card, Qt.ItemDataRole.UserRole + 2)
