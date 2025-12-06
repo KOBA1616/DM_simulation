@@ -17,21 +17,6 @@ class LogicTreeWidget(QTreeView):
 
         # Signals
         # We rely on selectionModel().selectionChanged for external updates
-        self.selectionModel().selectionChanged.connect(self.on_selection_changed)
-
-    def on_selection_changed(self, selected, deselected):
-        indexes = selected.indexes()
-        if not indexes:
-            return
-
-        # We only care about the first selected item in SingleSelection mode
-        # Note: selected.indexes() returns all selected cells (columns). We just check the first one.
-        index = indexes[0]
-
-        # Check if it's a CARD
-        item_type = index.data(Qt.ItemDataRole.UserRole + 1)
-        if item_type == "CARD":
-            self.expandRecursively(index)
 
     def load_data(self, cards_data):
         self.model.clear()
