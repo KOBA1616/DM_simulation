@@ -16,7 +16,7 @@ class ActionEditForm(QWidget):
         # Removed GET_GAME_STAT from user facing list, integrated into COUNT_CARDS
         types = [
             "DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DRAW_CARD", "SEARCH_DECK_BOTTOM", "MEKRAID", "TAP", "UNTAP",
-            "COST_REFERENCE", "NONE", "BREAK_SHIELD", "LOOK_AND_ADD", "SUMMON_TOKEN", "DISCARD", "PLAY_FROM_ZONE",
+            "COST_REFERENCE", "COST_REDUCTION", "NONE", "BREAK_SHIELD", "LOOK_AND_ADD", "SUMMON_TOKEN", "DISCARD", "PLAY_FROM_ZONE",
             "REVOLUTION_CHANGE", "COUNT_CARDS", "APPLY_MODIFIER", "REVEAL_CARDS",
             "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE", "SEND_TO_DECK_BOTTOM"
         ]
@@ -107,6 +107,10 @@ class ActionEditForm(QWidget):
         self.val2_spin.setRange(-9999, 9999)
         layout.addRow(self.val2_label, self.val2_spin)
 
+        # Arbitrary Amount Checkbox
+        self.arbitrary_check = QCheckBox(tr("Arbitrary Amount (Up to N)"))
+        layout.addRow(self.arbitrary_check)
+
         # Variable Linking
         self.smart_link_check = QCheckBox(tr("Use result from previous measurement"))
         layout.addRow(self.smart_link_check)
@@ -130,6 +134,7 @@ class ActionEditForm(QWidget):
         self.val2_spin.valueChanged.connect(self.update_data)
         self.str_val_edit.textChanged.connect(self.update_data)
         self.str_val_combo.currentIndexChanged.connect(self.on_stat_mode_changed) # Updated handler
+        self.arbitrary_check.stateChanged.connect(self.update_data)
         self.smart_link_check.stateChanged.connect(self.on_smart_link_changed)
         self.input_key_combo.currentTextChanged.connect(self.update_data)
         self.output_key_edit.textChanged.connect(self.update_data)
@@ -210,6 +215,8 @@ class ActionEditForm(QWidget):
         # Unified Logic: Treat GET_GAME_STAT as COUNT_CARDS for UI config purposes
         if action_type == "GET_GAME_STAT":
             config = ACTION_UI_CONFIG.get("COUNT_CARDS", config)
+        elif action_type == "COST_REDUCTION":
+            config = ACTION_UI_CONFIG.get("COST_REDUCTION", config)
 
         # Update Labels
         self.val1_label.setText(tr(config["val1_label"]))
@@ -219,6 +226,9 @@ class ActionEditForm(QWidget):
         # Smart Link Visibility
         can_link_input = config["val1_visible"]
         self.smart_link_check.setVisible(can_link_input)
+
+        # Arbitrary Amount Visibility
+        self.arbitrary_check.setVisible(config.get("can_be_optional", False))
 
         is_smart_linked = self.smart_link_check.isChecked() and can_link_input
 
@@ -263,7 +273,9 @@ class ActionEditForm(QWidget):
         self.type_combo.setToolTip(tr(config.get("tooltip", "")))
 
     def set_data(self, item):
-        self.current_item = item
+        # CRITICAL FIX: Unset current_item first to prevent overwrite
+        self.current_item = None
+
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
         self.block_signals(True)
@@ -276,18 +288,27 @@ class ActionEditForm(QWidget):
 
         # Set Action Type
         raw_type = data.get('type', 'NONE')
+        str_val = data.get('str_val', '')
 
-        # UI Mapping: GET_GAME_STAT -> COUNT_CARDS
+        # UI Mapping
         ui_type = raw_type
         if raw_type == "GET_GAME_STAT":
             ui_type = "COUNT_CARDS"
+        elif raw_type == "COST_REFERENCE":
+             # Distinguish between REFERENCE and REDUCTION based on mode?
+             # For now, let's assume if the user selected COST_REDUCTION previously, it was saved as COST_REFERENCE.
+             # But how do we distinguish?
+             # Maybe we don't map back perfectly yet, or we check something.
+             # If I implement COST_REDUCTION as APPY_MODIFIER internally, check that.
+             pass
+        elif raw_type == "APPLY_MODIFIER" and str_val == "COST":
+             ui_type = "COST_REDUCTION"
 
         t_idx = self.type_combo.findData(ui_type)
         if t_idx >= 0:
             self.type_combo.setCurrentIndex(t_idx)
 
         # Handle Mode Combo for Unified Type
-        str_val = data.get('str_val', '')
         if raw_type == "COUNT_CARDS":
              c_idx = self.str_val_combo.findData("CARDS_MATCHING_FILTER")
              if c_idx >= 0: self.str_val_combo.setCurrentIndex(c_idx)
@@ -322,12 +343,17 @@ class ActionEditForm(QWidget):
 
         self.str_val_edit.setText(str_val)
 
+        # Optional (Arbitrary Amount)
+        self.arbitrary_check.setChecked(data.get('optional', False))
+
         # Variable Linking Population
-        self.populate_input_keys()
-        # Intelligent setting of input key combo:
-        # 1. Try to find the item data that matches the key
-        # 2. If found, set index (shows friendly text)
-        # 3. If not found, set text directly (legacy/fallback)
+        # We need item context to populate input keys
+        # We temporarily set current_item to item just for this call?
+        # No, populate_input_keys uses self.current_item.
+        # But we set it to None.
+        # We can pass item to populate_input_keys.
+        self.populate_input_keys(item)
+
         found_idx = -1
         for i in range(self.input_key_combo.count()):
              if self.input_key_combo.itemData(i) == input_key:
@@ -337,21 +363,29 @@ class ActionEditForm(QWidget):
         if found_idx >= 0:
              self.input_key_combo.setCurrentIndex(found_idx)
         else:
-             self.input_key_combo.setCurrentText(input_key)
+             # Fallback if key exists but not found in tree (e.g. deleted step)
+             # If we want to hide it, we might just show "Unknown" or add it as text
+             if input_key:
+                 self.input_key_combo.addItem(input_key, input_key)
+                 self.input_key_combo.setCurrentIndex(self.input_key_combo.count()-1)
 
         self.output_key_edit.setText(data.get('output_value_key', ''))
 
         self.block_signals(False)
 
-    def populate_input_keys(self):
+        # Finally set current item
+        self.current_item = item
+
+    def populate_input_keys(self, item=None):
         self.input_key_combo.clear()
-        if not self.current_item: return
+        target_item = item if item else self.current_item
+        if not target_item: return
 
         # Traverse siblings upwards
-        parent = self.current_item.parent()
+        parent = target_item.parent()
         if not parent: return
 
-        row = self.current_item.row()
+        row = target_item.row()
         for i in range(row):
             sibling = parent.child(i)
             sib_data = sibling.data(Qt.ItemDataRole.UserRole + 2)
@@ -365,12 +399,6 @@ class ActionEditForm(QWidget):
 
     def update_data(self):
         if not self.current_item: return
-
-        # Verify that the current item in the form matches the one we intend to update
-        # This prevents accidental overwrites if signals fire during transition
-        # (Though blockSignals usually prevents this, this is a safety check)
-        # However, checking object identity is tricky if the model wraps it.
-        # But self.current_item is the QStandardItem.
 
         data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
         if data is None: data = {} # Safety
@@ -388,6 +416,11 @@ class ActionEditForm(QWidget):
                 # It's a Stat
                 data['type'] = "GET_GAME_STAT"
                 data['str_val'] = selected_mode
+
+        elif action_type == "COST_REDUCTION":
+            data['type'] = "APPLY_MODIFIER" # Map to engine support
+            data['str_val'] = "COST" # Mode
+
         else:
             data['type'] = action_type
             # For non-stat types, read string edit
@@ -415,11 +448,15 @@ class ActionEditForm(QWidget):
         data['value1'] = self.val1_spin.value()
         data['value2'] = self.val2_spin.value()
 
+        data['optional'] = self.arbitrary_check.isChecked()
+
         # Input Key
         idx = self.input_key_combo.currentIndex()
-        if idx >= 0 and self.input_key_combo.currentText() == self.input_key_combo.itemText(idx):
+        if idx >= 0:
+             # Use itemData which holds the raw key
              data['input_value_key'] = self.input_key_combo.itemData(idx)
         else:
+             # Fallback (should not happen with Editable=False)
              data['input_value_key'] = self.input_key_combo.currentText()
 
         # Output Key
@@ -440,6 +477,8 @@ class ActionEditForm(QWidget):
         display_type = tr(data['type'])
         if data['type'] == "GET_GAME_STAT":
              display_type = f"{tr('GET_GAME_STAT')} ({tr(data['str_val'])})"
+        elif data['type'] == "APPLY_MODIFIER" and data['str_val'] == "COST":
+             display_type = tr("COST_REDUCTION")
 
         self.current_item.setText(f"{tr('Action')}: {display_type}")
 
@@ -454,5 +493,7 @@ class ActionEditForm(QWidget):
         self.output_key_edit.blockSignals(block)
         for cb in self.zone_checks.values():
             cb.blockSignals(block)
-        self.filter_mode_combo.blockSignals(block) # New
-        self.filter_count_spin.blockSignals(block) # New
+        self.filter_mode_combo.blockSignals(block)
+        self.filter_count_spin.blockSignals(block)
+        self.arbitrary_check.blockSignals(block) # New
+        self.smart_link_check.blockSignals(block) # New
