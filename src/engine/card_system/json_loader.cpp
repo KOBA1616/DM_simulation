@@ -56,6 +56,7 @@ namespace dm::engine {
             if (kws.count("evolution") && kws.at("evolution")) def.keywords.evolution = true;
             if (kws.count("g_strike") && kws.at("g_strike")) def.keywords.g_strike = true;
             if (kws.count("just_diver") && kws.at("just_diver")) def.keywords.just_diver = true;
+            if (kws.count("shield_burn") && kws.at("shield_burn")) def.keywords.shield_burn = true;
             // Add other keywords as needed
         }
 
@@ -89,6 +90,7 @@ namespace dm::engine {
                     if (action.str_val == "JUST_DIVER") def.keywords.just_diver = true;
                     if (action.str_val == "HYPER_ENERGY") def.keywords.hyper_energy = true;
                     if (action.str_val == "META_COUNTER") def.keywords.meta_counter_play = true;
+                    if (action.str_val == "SHIELD_BURN") def.keywords.shield_burn = true;
                 }
             }
         }
