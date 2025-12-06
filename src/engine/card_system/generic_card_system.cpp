@@ -241,6 +241,16 @@ namespace dm::engine {
 
     bool GenericCardSystem::check_condition(GameState& game_state, const ConditionDef& condition, int source_instance_id) {
         if (condition.type == "NONE") return true;
+
+        PlayerID controller = get_controller(game_state, source_instance_id);
+
+        if (condition.type == "DURING_YOUR_TURN") {
+            return game_state.active_player_id == controller;
+        }
+        if (condition.type == "DURING_OPPONENT_TURN") {
+            return game_state.active_player_id != controller;
+        }
+
         return true;
     }
 
@@ -422,6 +432,17 @@ namespace dm::engine {
                     result = (int)controller.shield_zone.size();
                 } else if (action.str_val == "HAND_COUNT") {
                     result = (int)controller.hand.size();
+                } else if (action.str_val == "CARDS_DRAWN_THIS_TURN") {
+                    // This stat is stored in TurnStats.
+                    // However, TurnStats might be global or specific to the turn player?
+                    // The request implies "cards drawn this turn" likely by the player?
+                    // TurnStats currently aggregates globally in `game_state.turn_stats` but `on_card_play` logic uses it.
+                    // Wait, `DRAW_CARD` logic:
+                    // if (controller.id == game_state.active_player_id) { game_state.turn_stats.cards_drawn_this_turn++; }
+                    // So `turn_stats` only tracks the ACTIVE player's draws.
+                    // If this action is called by the opponent (e.g. "If opponent drawn cards"), we need to be careful.
+                    // But usually "cards drawn this turn" refers to the current turn's activity.
+                    result = game_state.turn_stats.cards_drawn_this_turn;
                 }
 
                 if (!action.output_value_key.empty()) {
