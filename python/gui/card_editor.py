@@ -86,7 +86,14 @@ class CardEditor(QMainWindow):
     def on_selection_changed(self, selected, deselected):
         indexes = selected.indexes()
         if indexes:
-            self.inspector.set_selection(indexes[0])
+            index = indexes[0]
+            self.inspector.set_selection(index)
+            # Auto-expand if it's a card and not already expanded
+            item = self.tree_widget.model.itemFromIndex(index)
+            if item:
+                type_ = item.data(Qt.ItemDataRole.UserRole + 1)
+                if type_ == "CARD":
+                    self.tree_widget.expand(index)
         else:
             self.inspector.set_selection(None)
 
