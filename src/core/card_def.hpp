@@ -35,6 +35,7 @@ namespace dm::core {
         bool just_diver : 1;      // Just Diver
         bool hyper_energy : 1;    // Added for Phase 5 (Hyper Energy)
         bool meta_counter_play : 1; // Added for Phase 5 (Meta Counter)
+        bool shield_burn : 1;     // Shield Incineration (Burn)
     };
 
     // Mode Selection: ModalEffectGroup 構造体による複数選択管理 [Q71]
