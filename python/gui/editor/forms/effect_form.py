@@ -33,6 +33,18 @@ CONDITION_UI_CONFIG = {
         "show_str": False,
         "label_val": "Value",
         "label_str": "String"
+    },
+    "DURING_YOUR_TURN": {
+        "show_val": False,
+        "show_str": False,
+        "label_val": "Value",
+        "label_str": "String"
+    },
+    "DURING_OPPONENT_TURN": {
+        "show_val": False,
+        "show_str": False,
+        "label_val": "Value",
+        "label_str": "String"
     }
 }
 
@@ -58,7 +70,10 @@ class EffectEditForm(QWidget):
         self.condition_group = QGroupBox(tr("Condition"))
         c_layout = QGridLayout(self.condition_group)
         self.cond_type_combo = QComboBox()
-        cond_types = ["NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH", "OPPONENT_PLAYED_WITHOUT_MANA"]
+        cond_types = [
+            "NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH",
+            "OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN"
+        ]
         for c in cond_types:
             self.cond_type_combo.addItem(tr(c), c)
 
