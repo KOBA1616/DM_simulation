@@ -293,7 +293,21 @@ class ActionEditForm(QWidget):
 
         # Variable Linking Population
         self.populate_input_keys()
-        self.input_key_combo.setCurrentText(input_key)
+        # Intelligent setting of input key combo:
+        # 1. Try to find the item data that matches the key
+        # 2. If found, set index (shows friendly text)
+        # 3. If not found, set text directly (legacy/fallback)
+        found_idx = -1
+        for i in range(self.input_key_combo.count()):
+             if self.input_key_combo.itemData(i) == input_key:
+                  found_idx = i
+                  break
+
+        if found_idx >= 0:
+             self.input_key_combo.setCurrentIndex(found_idx)
+        else:
+             self.input_key_combo.setCurrentText(input_key)
+
         self.output_key_edit.setText(data.get('output_value_key', ''))
 
         self.block_signals(False)
@@ -319,7 +333,15 @@ class ActionEditForm(QWidget):
 
     def update_data(self):
         if not self.current_item: return
+
+        # Verify that the current item in the form matches the one we intend to update
+        # This prevents accidental overwrites if signals fire during transition
+        # (Though blockSignals usually prevents this, this is a safety check)
+        # However, checking object identity is tricky if the model wraps it.
+        # But self.current_item is the QStandardItem.
+
         data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
+        if data is None: data = {} # Safety
 
         action_type = self.type_combo.currentData()
 
