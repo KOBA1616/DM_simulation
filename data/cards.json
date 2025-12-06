@@ -133,6 +133,7 @@
           {
             "filter": {},
             "input_value_key": "var_COUNT_CARDS_0",
+            "optional": true,
             "output_value_key": "var_COUNT_CARDS_0",
             "scope": "PLAYER_SELF",
             "str_val": "MANA_CIVILIZATION_COUNT",
@@ -146,7 +147,8 @@
                 "HAND"
               ]
             },
-            "input_value_key": "var_DESTROY_1",
+            "input_value_key": "var_COUNT_CARDS_0",
+            "optional": false,
             "output_value_key": "var_SEND_TO_DECK_BOTTOM_2",
             "scope": "PLAYER_SELF",
             "str_val": "",
@@ -173,7 +175,58 @@
   {
     "civilization": "WATER",
     "cost": 7,
-    "effects": [],
+    "effects": [
+      {
+        "actions": [
+          {
+            "filter": {},
+            "input_value_key": "",
+            "optional": true,
+            "output_value_key": "var_DRAW_CARD_0",
+            "scope": "PLAYER_SELF",
+            "str_val": "",
+            "type": "DRAW_CARD",
+            "value1": 3,
+            "value2": 0
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_PLAY"
+      },
+      {
+        "actions": [
+          {
+            "filter": {},
+            "input_value_key": "",
+            "optional": false,
+            "output_value_key": "var_COUNT_CARDS_0",
+            "scope": "PLAYER_SELF",
+            "str_val": "CARDS_DRAWN_THIS_TURN",
+            "type": "GET_GAME_STAT",
+            "value1": 0,
+            "value2": 0
+          },
+          {
+            "filter": {},
+            "input_value_key": "var_COUNT_CARDS_0",
+            "optional": false,
+            "output_value_key": "var_DESTROY_1",
+            "scope": "PLAYER_SELF",
+            "str_val": "",
+            "type": "COST_REFERENCE",
+            "value1": 0,
+            "value2": 0
+          }
+        ],
+        "condition": {
+          "type": "DURING_YOUR_TURN",
+          "value": 0
+        },
+        "trigger": "PASSIVE_CONST"
+      }
+    ],
     "id": 8,
     "keywords": {
       "blocker": true
