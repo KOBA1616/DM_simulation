@@ -27,7 +27,15 @@ namespace dm::engine {
 
                 for (const auto& reaction : def.reaction_abilities) {
                     // Check Event Type Match
-                    if (reaction.condition.trigger_event != trigger_event) continue;
+                    bool event_match = (reaction.condition.trigger_event == trigger_event);
+                    if (!event_match) {
+                        if (reaction.condition.trigger_event == "ON_BLOCK_OR_ATTACK") {
+                            if (trigger_event == "ON_ATTACK" || trigger_event == "ON_BLOCK") {
+                                event_match = true;
+                            }
+                        }
+                    }
+                    if (!event_match) continue;
 
                     // Check other conditions (Mana Count, Civ Match)
                     if (!check_condition(game_state, reaction, card, reaction_player_id, card_db)) continue;
