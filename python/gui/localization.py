@@ -150,6 +150,8 @@ TRANSLATIONS = {
     "SHIELD_COUNT": "シールド枚数",
     "CIVILIZATION_MATCH": "文明一致",
     "OPPONENT_PLAYED_WITHOUT_MANA": "相手がマナを払わずにプレイ",
+    "DURING_YOUR_TURN": "自分のターン中",
+    "DURING_OPPONENT_TURN": "相手のターン中",
 
     # Enums - Actions
     "DRAW_CARD": "ドロー",
@@ -190,6 +192,10 @@ TRANSLATIONS = {
     "MANA_CIVILIZATION_COUNT": "マナゾーンの文明数",
     "SHIELD_COUNT": "シールド枚数",
     "HAND_COUNT": "手札枚数",
+    "CARDS_DRAWN_THIS_TURN": "このターンに引いたカードの枚数",
+
+    # UI Labels
+    "Mode": "モード",
 
     # Filter Help
     "Filter Help": "対象を選択するゾーンを指定してください。「枚数」を0にすると「すべて/任意」になります。1以上にするとその枚数を選択します。",

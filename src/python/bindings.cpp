@@ -609,6 +609,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<GenericCardSystem>(m, "GenericCardSystem")
         .def_static("resolve_action", py::overload_cast<GameState&, const ActionDef&, int>(&GenericCardSystem::resolve_action))
+        .def_static("resolve_action_with_context", [](GameState& state, const ActionDef& action, int source_id, std::map<std::string, int> context) {
+            GenericCardSystem::resolve_action(state, action, source_id, context);
+            return context;
+        }, "Resolve action with context and return updated context")
         .def_static("resolve_effect", &GenericCardSystem::resolve_effect)
         .def_static("resolve_effect_with_targets", py::overload_cast<GameState&, const EffectDef&, const std::vector<int>&, int, const std::map<CardID, CardDefinition>&>(&GenericCardSystem::resolve_effect_with_targets))
         .def_static("resolve_trigger", &GenericCardSystem::resolve_trigger)

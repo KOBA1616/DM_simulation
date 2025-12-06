@@ -66,6 +66,34 @@ class ActionEditForm(QWidget):
         self.filter_mode_combo.currentIndexChanged.connect(self.on_filter_mode_changed)
         self.filter_count_spin.valueChanged.connect(self.update_data)
 
+        # Re-ordering: Mode (str_val_combo) should be above Filter
+        # Since Filter is self.filter_group added via layout.addRow, we need to insert before it?
+        # QFormLayout adds rows sequentially.
+        # We constructed scope above.
+
+        # New Order: Scope -> Mode -> Filter -> Values -> Variable Link
+
+        self.str_val_label = QLabel(tr("String Value"))
+        self.str_val_edit = QLineEdit()
+        self.str_val_combo = QComboBox() # Added ComboBox for select stats
+
+        # Populate Stats Options
+        self.str_val_combo.addItem(tr("Cards matching filter"), "CARDS_MATCHING_FILTER")
+        stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT", "CARDS_DRAWN_THIS_TURN"]
+        for s in stats:
+            self.str_val_combo.addItem(tr(s), s)
+
+        # Add Mode (str_val) related widgets to layout NOW (before filter group)
+        # Note: label visibility is managed by update_ui_state, but position is here.
+        layout.addRow(self.str_val_label, self.str_val_edit)
+
+        # We need to control the visibility of the "Mode" label explicitly.
+        # QFormLayout returns a QFormLayout.ItemRole (layout item), which is hard to access later.
+        # Instead, we create a QLabel explicitly and add it as a row with the widget,
+        # so we can reference the label later.
+        self.mode_label = QLabel(tr("Mode"))
+        layout.addRow(self.mode_label, self.str_val_combo)
+
         layout.addRow(self.filter_group)
 
         # Labels for dynamic values, stored to update later
@@ -79,26 +107,14 @@ class ActionEditForm(QWidget):
         self.val2_spin.setRange(-9999, 9999)
         layout.addRow(self.val2_label, self.val2_spin)
 
-        self.str_val_label = QLabel(tr("String Value"))
-        self.str_val_edit = QLineEdit()
-        self.str_val_combo = QComboBox() # Added ComboBox for select stats
-
-        # Populate Stats Options
-        self.str_val_combo.addItem(tr("Cards matching filter"), "CARDS_MATCHING_FILTER")
-        stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT"]
-        for s in stats:
-            self.str_val_combo.addItem(tr(s), s)
-
-        layout.addRow(self.str_val_label, self.str_val_edit)
-        layout.addRow("", self.str_val_combo) # Add to layout, label managed by update_ui_state
-
         # Variable Linking
         self.smart_link_check = QCheckBox(tr("Use result from previous measurement"))
         layout.addRow(self.smart_link_check)
 
         self.input_key_combo = QComboBox()
-        self.input_key_combo.setEditable(True)
-        layout.addRow(tr("Input Key"), self.input_key_combo)
+        self.input_key_combo.setEditable(False) # Disable editing to hide raw keys
+        self.input_key_label = QLabel(tr("Input Key"))
+        layout.addRow(self.input_key_label, self.input_key_combo)
 
         # Output Key - Hidden from user to simplify UI
         self.output_key_label = QLabel(tr("Output Key"))
@@ -162,16 +178,19 @@ class ActionEditForm(QWidget):
         self.val1_label.setVisible(config["val1_visible"] and not is_checked)
         self.val1_spin.setVisible(config["val1_visible"] and not is_checked)
 
+        self.input_key_label.setVisible(is_checked)
+        self.input_key_combo.setVisible(is_checked)
+
         # 2. Logic to auto-set input key if checked
         if is_checked:
             self.populate_input_keys()
             count = self.input_key_combo.count()
             if count > 0:
+                # Default to last available output
                 last_idx = count - 1
-                key = self.input_key_combo.itemData(last_idx)
                 self.input_key_combo.setCurrentIndex(last_idx)
         else:
-            self.input_key_combo.setCurrentText("")
+            self.input_key_combo.setCurrentIndex(-1)
 
         # Trigger update data to save the change
         self.update_data()
@@ -212,8 +231,11 @@ class ActionEditForm(QWidget):
 
         # Special handling for unified COUNT_CARDS / GET_GAME_STAT
         if action_type == "GET_GAME_STAT" or action_type == "COUNT_CARDS":
-            self.str_val_label.setVisible(True)
+            self.str_val_label.setVisible(False) # Hide the generic label
             self.str_val_edit.setVisible(False)
+
+            # Show Mode Combo and its label
+            self.mode_label.setVisible(True)
             self.str_val_combo.setVisible(True)
 
             # Determine filter visibility based on Combo Selection
@@ -225,8 +247,17 @@ class ActionEditForm(QWidget):
         else:
             self.str_val_label.setVisible(config["str_visible"])
             self.str_val_edit.setVisible(config["str_visible"])
+
+            # Hide Mode Combo and its label
+            self.mode_label.setVisible(False)
             self.str_val_combo.setVisible(False)
+
             self.filter_group.setVisible(config["filter_visible"])
+
+        # Hide Input Key stuff by default unless Smart Link is checked
+        # Actually, smart_link_check visibility is controlled above.
+        self.input_key_label.setVisible(self.smart_link_check.isChecked())
+        self.input_key_combo.setVisible(self.smart_link_check.isChecked())
 
         # Update Tooltips
         self.type_combo.setToolTip(tr(config.get("tooltip", "")))
@@ -293,7 +324,21 @@ class ActionEditForm(QWidget):
 
         # Variable Linking Population
         self.populate_input_keys()
-        self.input_key_combo.setCurrentText(input_key)
+        # Intelligent setting of input key combo:
+        # 1. Try to find the item data that matches the key
+        # 2. If found, set index (shows friendly text)
+        # 3. If not found, set text directly (legacy/fallback)
+        found_idx = -1
+        for i in range(self.input_key_combo.count()):
+             if self.input_key_combo.itemData(i) == input_key:
+                  found_idx = i
+                  break
+
+        if found_idx >= 0:
+             self.input_key_combo.setCurrentIndex(found_idx)
+        else:
+             self.input_key_combo.setCurrentText(input_key)
+
         self.output_key_edit.setText(data.get('output_value_key', ''))
 
         self.block_signals(False)
@@ -319,7 +364,15 @@ class ActionEditForm(QWidget):
 
     def update_data(self):
         if not self.current_item: return
+
+        # Verify that the current item in the form matches the one we intend to update
+        # This prevents accidental overwrites if signals fire during transition
+        # (Though blockSignals usually prevents this, this is a safety check)
+        # However, checking object identity is tricky if the model wraps it.
+        # But self.current_item is the QStandardItem.
+
         data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
+        if data is None: data = {} # Safety
 
         action_type = self.type_combo.currentData()
 
