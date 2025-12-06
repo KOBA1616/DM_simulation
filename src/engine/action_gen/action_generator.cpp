@@ -188,7 +188,15 @@ namespace dm::engine {
 
                          bool legal = false;
                          for (const auto& r : def.reaction_abilities) {
-                             if (r.condition.trigger_event == event_type) {
+                             bool event_match = (r.condition.trigger_event == event_type);
+                             if (!event_match) {
+                                 if (r.condition.trigger_event == "ON_BLOCK_OR_ATTACK") {
+                                     if (event_type == "ON_ATTACK" || event_type == "ON_BLOCK") {
+                                         event_match = true;
+                                     }
+                                 }
+                             }
+                             if (event_match) {
                                  if (ReactionSystem::check_condition(game_state, r, card, eff.controller, card_db)) {
                                      legal = true;
                                      break;
