@@ -102,6 +102,11 @@ namespace dm::engine {
                      }
                  }
                  resolve_play_from_stack(game_state, stack_id, 999, action.spawn_source, controller, card_db);
+
+                 // Remove pending effect after execution
+                 if (!game_state.pending_effects.empty() && action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
+                     game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
+                 }
                  break;
              }
              case ActionType::RESOLVE_BATTLE:

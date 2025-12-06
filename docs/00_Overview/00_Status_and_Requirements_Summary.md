@@ -41,7 +41,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 1.  **Meta Counter (Internal Play) の挙動不整合**
     *   **現象**: `ActionType::PLAY_CARD_INTERNAL` が手札 (`HAND_SUMMON`) から生成された場合、`EffectResolver` がカードをスタックへ移動せず、手札に残ったまま解決しようとして失敗する。
     *   **原因**: `EffectResolver` の `resolve_play_from_stack` は、スタックまたはバッファ内のカードのみを検索対象としており、手札からの直接的な内部プレイを想定していない（あるいは移動ロジックが欠落している）。
-    *   **対策案**: `EffectResolver` 内で `SpawnSource::HAND_SUMMON` の場合に手札からスタックへの移動処理を追加する（ただし、安易な追加はイテレータ無効化によるSegfaultを引き起こすため、慎重な実装が必要）。
+    *   **Status**: **修正完了 (2025/XX/XX)** - `ActionGenerator` にコントローラー情報の伝播を追加し、`EffectResolver` に `PLAY_CARD_INTERNAL` 実行後のPending Effect削除処理を追加しました。`python/tests/test_meta_counter.py` を通過することを確認済み。
 
 2.  **Ninja Strike (Reaction System) の不発**
     *   **現象**: Ninja Strikeの条件を満たす状況下でも、`EffectResolver` から `ReactionSystem` が呼び出された際にリアクションウィンドウ（`PendingEffect`）が生成されない。
