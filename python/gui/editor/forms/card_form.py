@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QFormLayout, QLineEdit, QComboBox, QSpinBox, QCheckBox, QLabel, QGridLayout, QGroupBox
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from gui.localization import tr
 
 class CardEditForm(QWidget):
@@ -20,8 +21,19 @@ class CardEditForm(QWidget):
 
         self.civ_combo = QComboBox()
         civs = ["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"]
+        civ_colors = {
+            "LIGHT": QColor("goldenrod"),
+            "WATER": QColor("blue"),
+            "DARKNESS": QColor("darkGray"),
+            "FIRE": QColor("red"),
+            "NATURE": QColor("green"),
+            "ZERO": QColor("gray")
+        }
         for c in civs:
             self.civ_combo.addItem(tr(c), c)
+            idx = self.civ_combo.count() - 1
+            if c in civ_colors:
+                self.civ_combo.setItemData(idx, civ_colors[c], Qt.ItemDataRole.ForegroundRole)
         layout.addRow(tr("Civilization"), self.civ_combo)
 
         self.type_combo = QComboBox()
