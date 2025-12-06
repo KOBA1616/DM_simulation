@@ -25,13 +25,29 @@ class LogicTreeWidget(QTreeView):
             return
 
         # We only care about the first selected item in SingleSelection mode
-        # Note: selected.indexes() returns all selected cells (columns). We just check the first one.
         index = indexes[0]
 
         # Check if it's a CARD
         item_type = index.data(Qt.ItemDataRole.UserRole + 1)
         if item_type == "CARD":
-            self.expandRecursively(index)
+            # Just ensure it is visible, don't auto expand anymore,
+            # let the click handler do the toggle to avoid conflict or double action
+            pass
+
+    def mousePressEvent(self, event):
+        # We need to capture the click to implement toggle logic
+        # But calling super().mousePressEvent(event) will process selection.
+        # We want to check if we clicked on a valid index.
+        index = self.indexAt(event.pos())
+        if index.isValid():
+             item_type = index.data(Qt.ItemDataRole.UserRole + 1)
+             if item_type == "CARD":
+                 if self.isExpanded(index):
+                     self.collapse(index)
+                 else:
+                     self.expandRecursively(index)
+
+        super().mousePressEvent(event)
 
     def load_data(self, cards_data):
         self.model.clear()
