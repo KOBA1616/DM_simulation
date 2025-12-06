@@ -7,6 +7,7 @@ class CardEditForm(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.current_item = None
+        self.keyword_checks = {} # Map key -> QCheckBox
         self.setup_ui()
 
     def setup_ui(self):
@@ -54,7 +55,49 @@ class CardEditForm(QWidget):
         self.races_edit = QLineEdit()
         layout.addRow(tr("Races"), self.races_edit)
 
-        # Connect signals
+        # Keywords Section
+        kw_group = QGroupBox(tr("Keywords"))
+        kw_layout = QGridLayout(kw_group)
+
+        # List of keywords to support in UI
+        keywords_list = [
+            "speed_attacker", "blocker", "slayer",
+            "double_breaker", "triple_breaker", "shield_trigger",
+            "evolution", "just_diver", "mach_fighter", "g_strike"
+        ]
+
+        # Use localized names for labels if possible
+        # Map snake_case to Title Case for lookup in tr() if needed,
+        # or just use tr(Title Case)
+        kw_map = {
+            "speed_attacker": "Speed Attacker",
+            "blocker": "Blocker",
+            "slayer": "Slayer",
+            "double_breaker": "Double Breaker",
+            "triple_breaker": "Triple Breaker",
+            "shield_trigger": "Shield Trigger",
+            "evolution": "Evolution",
+            "just_diver": "Just Diver",
+            "mach_fighter": "Mach Fighter",
+            "g_strike": "G Strike"
+        }
+
+        row = 0
+        col = 0
+        for k in keywords_list:
+            cb = QCheckBox(tr(kw_map[k]))
+            kw_layout.addWidget(cb, row, col)
+            self.keyword_checks[k] = cb
+            cb.stateChanged.connect(self.update_data) # Connect directly
+
+            col += 1
+            if col > 2: # 3 columns
+                col = 0
+                row += 1
+
+        layout.addRow(kw_group)
+
+        # Connect signals (existing)
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
         self.civ_combo.currentIndexChanged.connect(self.update_data)
@@ -71,7 +114,6 @@ class CardEditForm(QWidget):
         self.id_spin.setValue(data.get('id', 0))
         self.name_edit.setText(data.get('name', ''))
 
-        # Find index for data
         civ_idx = self.civ_combo.findData(data.get('civilization', 'FIRE'))
         if civ_idx >= 0:
             self.civ_combo.setCurrentIndex(civ_idx)
@@ -83,6 +125,14 @@ class CardEditForm(QWidget):
         self.cost_spin.setValue(data.get('cost', 0))
         self.power_spin.setValue(data.get('power', 0))
         self.races_edit.setText(", ".join(data.get('races', [])))
+
+        # Load Keywords
+        # Keywords might be a dict { "speed_attacker": true } in JSON
+        kw_data = data.get('keywords', {})
+        for k, cb in self.keyword_checks.items():
+            is_checked = kw_data.get(k, False)
+            cb.setChecked(is_checked)
+
         self.block_signals(False)
 
     def update_data(self):
@@ -98,6 +148,16 @@ class CardEditForm(QWidget):
         races_str = self.races_edit.text()
         data['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
 
+        # Update Keywords
+        kw_data = {}
+        for k, cb in self.keyword_checks.items():
+            if cb.isChecked():
+                kw_data[k] = True
+
+        # Only set if not empty to keep JSON clean? Or explicit?
+        # Explicit is better for now.
+        data['keywords'] = kw_data
+
         self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
         self.current_item.setText(f"{data['id']} - {data['name']}")
 
@@ -109,3 +169,5 @@ class CardEditForm(QWidget):
         self.cost_spin.blockSignals(block)
         self.power_spin.blockSignals(block)
         self.races_edit.blockSignals(block)
+        for cb in self.keyword_checks.values():
+            cb.blockSignals(block)
