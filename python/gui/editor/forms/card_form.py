@@ -63,7 +63,8 @@ class CardEditForm(QWidget):
         keywords_list = [
             "speed_attacker", "blocker", "slayer",
             "double_breaker", "triple_breaker", "shield_trigger",
-            "evolution", "just_diver", "mach_fighter", "g_strike"
+            "evolution", "just_diver", "mach_fighter", "g_strike",
+            "hyper_energy"
         ]
 
         # Use localized names for labels if possible
