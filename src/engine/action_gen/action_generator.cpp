@@ -159,6 +159,7 @@ namespace dm::engine {
                     Action action;
                     action.type = ActionType::PLAY_CARD_INTERNAL;
                     action.source_instance_id = eff.source_instance_id;
+                    action.target_player = eff.controller;
                     action.slot_index = static_cast<int>(i);
 
                     if (eff.type == EffectType::META_COUNTER) {
