@@ -357,9 +357,10 @@ class ActionEditForm(QWidget):
             sib_data = sibling.data(Qt.ItemDataRole.UserRole + 2)
             out_key = sib_data.get('output_value_key')
             if out_key:
-                # Format: "Step {index}: {Type} ({key})"
+                # Format: "Step {index}: {Type}"
+                # Hiding the raw key from user view as requested
                 type_disp = tr(sib_data.get('type'))
-                label = f"Step {i}: {type_disp} ({out_key})"
+                label = f"Step {i}: {type_disp}"
                 self.input_key_combo.addItem(label, out_key)
 
     def update_data(self):
