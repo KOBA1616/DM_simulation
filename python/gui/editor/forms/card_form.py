@@ -79,7 +79,8 @@ class CardEditForm(QWidget):
             "evolution": "Evolution",
             "just_diver": "Just Diver",
             "mach_fighter": "Mach Fighter",
-            "g_strike": "G Strike"
+            "g_strike": "G Strike",
+            "hyper_energy": "Hyper Energy"
         }
 
         row = 0
