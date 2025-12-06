@@ -390,6 +390,7 @@ namespace dm::engine {
             if (def && def->keywords.speed_attacker) card.summoning_sickness = false;
             if (def && def->keywords.evolution) card.summoning_sickness = false;
 
+            card.turn_played = game_state.turn_number;
             player.battle_zone.push_back(card);
             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
             game_state.turn_stats.creatures_played_this_turn++;
