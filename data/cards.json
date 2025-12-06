@@ -1,109 +1,186 @@
 [
   {
-    "id": 1,
-    "name": "Bronze-Arm Tribe",
-    "type": "CREATURE",
     "civilization": "NATURE",
     "cost": 3,
-    "power": 1000,
-    "races": ["Beast Folk"],
     "effects": [
-        {
-            "trigger": "ON_PLAY",
-            "actions": [
-                {
-                    "type": "ADD_MANA",
-                    "scope": "PLAYER_SELF",
-                    "value1": 1
-                }
-            ]
-        }
-    ]
+      {
+        "actions": [
+          {
+            "scope": "PLAYER_SELF",
+            "type": "ADD_MANA",
+            "value1": 1
+          }
+        ],
+        "trigger": "ON_PLAY"
+      }
+    ],
+    "id": 1,
+    "name": "Bronze-Arm Tribe",
+    "power": 1000,
+    "races": [
+      "Beast Folk"
+    ],
+    "type": "CREATURE"
   },
   {
-    "id": 2,
-    "name": "Speed Attacker",
-    "type": "CREATURE",
     "civilization": "FIRE",
     "cost": 3,
-    "power": 3000,
-    "races": ["Human"],
     "effects": [
-        {
-            "trigger": "PASSIVE_CONST",
-            "actions": [
-                {
-                    "str_val": "SPEED_ATTACKER"
-                }
-            ]
-        }
-    ]
+      {
+        "actions": [
+          {
+            "str_val": "SPEED_ATTACKER"
+          }
+        ],
+        "trigger": "PASSIVE_CONST"
+      }
+    ],
+    "id": 2,
+    "name": "Speed Attacker",
+    "power": 3000,
+    "races": [
+      "Human"
+    ],
+    "type": "CREATURE"
   },
   {
-    "id": 3,
-    "name": "Fire Mana",
-    "type": "SPELL",
     "civilization": "FIRE",
     "cost": 1,
+    "effects": [],
+    "id": 3,
+    "name": "Fire Mana",
     "power": 0,
     "races": [],
-    "effects": []
+    "type": "SPELL"
   },
   {
-    "id": 5,
-    "name": "Terror Pit",
-    "type": "SPELL",
     "civilization": "DARKNESS",
     "cost": 6,
+    "effects": [
+      {
+        "actions": [
+          {
+            "filter": {
+              "card_type": "CREATURE",
+              "count": 1,
+              "target_player": "OPPONENT",
+              "zones": [
+                "BATTLE_ZONE"
+              ]
+            },
+            "scope": "TARGET_SELECT",
+            "type": "DESTROY"
+          }
+        ],
+        "trigger": "ON_PLAY"
+      }
+    ],
+    "id": 5,
+    "keywords": {
+      "shield_trigger": true
+    },
+    "name": "Terror Pit",
     "power": 0,
     "races": [],
-    "keywords": {
-        "shield_trigger": true
-    },
-    "effects": [
-        {
-            "trigger": "ON_PLAY",
-            "actions": [
-                {
-                    "type": "DESTROY",
-                    "scope": "TARGET_SELECT",
-                    "filter": {
-                        "zones": ["BATTLE_ZONE"],
-                        "target_player": "OPPONENT",
-                        "card_type": "CREATURE",
-                        "count": 1
-                    }
-                }
-            ]
-        }
-    ]
+    "type": "SPELL"
   },
   {
-    "id": 6,
-    "name": "Spiral Gate",
-    "type": "SPELL",
     "civilization": "WATER",
     "cost": 2,
+    "effects": [
+      {
+        "actions": [
+          {
+            "filter": {
+              "card_type": "CREATURE",
+              "count": 1,
+              "zones": [
+                "BATTLE_ZONE"
+              ]
+            },
+            "scope": "TARGET_SELECT",
+            "type": "RETURN_TO_HAND"
+          }
+        ],
+        "trigger": "ON_PLAY"
+      }
+    ],
+    "id": 6,
+    "keywords": {
+      "shield_trigger": true
+    },
+    "name": "Spiral Gate",
     "power": 0,
     "races": [],
-    "keywords": {
-        "shield_trigger": true
-    },
+    "type": "SPELL"
+  },
+  {
+    "civilization": "WATER",
+    "cost": 2,
     "effects": [
-        {
-            "trigger": "ON_PLAY",
-            "actions": [
-                {
-                    "type": "RETURN_TO_HAND",
-                    "scope": "TARGET_SELECT",
-                    "filter": {
-                        "zones": ["BATTLE_ZONE"],
-                        "card_type": "CREATURE",
-                        "count": 1
-                    }
-                }
-            ]
-        }
-    ]
+      {
+        "actions": [
+          {
+            "filter": {},
+            "input_value_key": "",
+            "output_value_key": "var_COUNT_CARDS_0",
+            "scope": "PLAYER_SELF",
+            "str_val": "MANA_CIVILIZATION_COUNT",
+            "type": "GET_GAME_STAT",
+            "value1": 0,
+            "value2": 0
+          },
+          {
+            "filter": {},
+            "input_value_key": "var_COUNT_CARDS_0",
+            "output_value_key": "var_COUNT_CARDS_0",
+            "scope": "PLAYER_SELF",
+            "str_val": "MANA_CIVILIZATION_COUNT",
+            "type": "DRAW_CARD",
+            "value1": 0,
+            "value2": 0
+          },
+          {
+            "filter": {
+              "zones": [
+                "HAND"
+              ]
+            },
+            "input_value_key": "var_DESTROY_1",
+            "output_value_key": "var_SEND_TO_DECK_BOTTOM_2",
+            "scope": "PLAYER_SELF",
+            "str_val": "",
+            "type": "SEND_TO_DECK_BOTTOM",
+            "value1": 0,
+            "value2": 0
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_PLAY"
+      }
+    ],
+    "id": 7,
+    "keywords": {},
+    "name": "月光電人オボロカゲロウ",
+    "power": 1000,
+    "races": [
+      "グレートメカオー"
+    ],
+    "type": "CREATURE"
+  },
+  {
+    "civilization": "WATER",
+    "cost": 7,
+    "effects": [],
+    "id": 8,
+    "keywords": {
+      "blocker": true
+    },
+    "name": "絶海の虎将ティガウォック",
+    "power": 6000,
+    "races": [],
+    "type": "CREATURE"
   }
 ]
