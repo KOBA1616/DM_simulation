@@ -178,6 +178,14 @@ ACTION_UI_CONFIG = {
         "tooltip": "Resets card instance.",
         "produces_output": False
     },
+    "SELECT_NUMBER": {
+        "val1_label": "Max Value (Static)", "val1_visible": True,
+        "val2_label": "Value 2", "val2_visible": False,
+        "str_label": "String Value", "str_visible": False,
+        "filter_visible": False,
+        "tooltip": "Prompt AI to select a number between Min and Max. Use 'Input Key' to set Max dynamically.",
+        "produces_output": True
+    },
      "NONE": {
         "val1_label": "Value 1", "val1_visible": False,
         "val2_label": "Value 2", "val2_visible": False,

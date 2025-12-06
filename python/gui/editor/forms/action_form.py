@@ -96,6 +96,13 @@ class ActionEditForm(QWidget):
         self.smart_link_check = QCheckBox(tr("Use result from previous measurement"))
         layout.addRow(self.smart_link_check)
 
+        # Optional Effect Check (Start from 0) - For SELECT_NUMBER
+        self.optional_check = QCheckBox(tr("Optional (Start from 0)"))
+        self.optional_check.setToolTip(tr("If checked, the AI can choose '0' (None). Range becomes 0 to Max."))
+        layout.addRow(self.optional_check)
+        self.optional_check.setVisible(False) # Hidden by default
+        self.optional_check.stateChanged.connect(self.update_data)
+
         self.input_key_combo = QComboBox()
         self.input_key_combo.setEditable(True)
         layout.addRow(tr("Input Key"), self.input_key_combo)
@@ -199,9 +206,16 @@ class ActionEditForm(QWidget):
 
         # Smart Link Visibility
         can_link_input = config["val1_visible"]
+        # Special Case: SELECT_NUMBER always allows smart link (input key) for Max Value
+        if action_type == "SELECT_NUMBER":
+             can_link_input = True
+
         self.smart_link_check.setVisible(can_link_input)
 
         is_smart_linked = self.smart_link_check.isChecked() and can_link_input
+
+        # Optional Check Visibility (Only for SELECT_NUMBER)
+        self.optional_check.setVisible(action_type == "SELECT_NUMBER")
 
         # Update Visibility
         self.val1_label.setVisible(config["val1_visible"] and not is_smart_linked)
@@ -254,6 +268,13 @@ class ActionEditForm(QWidget):
         t_idx = self.type_combo.findData(ui_type)
         if t_idx >= 0:
             self.type_combo.setCurrentIndex(t_idx)
+
+        # Optional Flag (stored in value2 for SELECT_NUMBER as 0 or 1)
+        if ui_type == "SELECT_NUMBER":
+             is_opt = (data.get('value2', 0) == 1)
+             self.optional_check.setChecked(is_opt)
+        else:
+             self.optional_check.setChecked(False)
 
         # Handle Mode Combo for Unified Type
         str_val = data.get('str_val', '')
@@ -381,7 +402,12 @@ class ActionEditForm(QWidget):
         data['filter'] = filt
 
         data['value1'] = self.val1_spin.value()
-        data['value2'] = self.val2_spin.value()
+
+        # Special logic for SELECT_NUMBER optional flag in value2
+        if action_type == "SELECT_NUMBER":
+             data['value2'] = 1 if self.optional_check.isChecked() else 0
+        else:
+             data['value2'] = self.val2_spin.value()
 
         # Input Key
         idx = self.input_key_combo.currentIndex()
@@ -424,3 +450,4 @@ class ActionEditForm(QWidget):
             cb.blockSignals(block)
         self.filter_mode_combo.blockSignals(block) # New
         self.filter_count_spin.blockSignals(block) # New
+        self.optional_check.blockSignals(block) # New
