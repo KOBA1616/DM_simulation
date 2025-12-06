@@ -119,6 +119,9 @@ TRANSLATIONS = {
     "Ignore": "指定なし",
     "True": "はい",
     "False": "いいえ",
+    "Selection Mode": "選択モード",
+    "All/Any": "すべて / 任意",
+    "Fixed Number": "枚数指定",
 
     # Common Values
     "NONE": "なし",
