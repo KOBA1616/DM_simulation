@@ -25,6 +25,7 @@ TRANSLATIONS = {
     "Main Toolbar": "メインツールバー",
     "Tools": "ツール",
     "Batch Simulation": "バッチシミュレーション",
+    "Scenario Editor": "シナリオエディタ",
 
     # Batch Simulation
     "Batch Simulation / Verification": "バッチシミュレーション / 検証",
@@ -44,6 +45,16 @@ TRANSLATIONS = {
     "Throughput": "スループット",
     "Simulation Error": "シミュレーションエラー",
     "Warning: No model_v1.pth found. Using random weights.": "警告: model_v1.pthが見つかりません。ランダムな重みを使用します。",
+
+    # Scenario Editor
+    "Scenarios": "シナリオ一覧",
+    "Name (ID)": "名前 (ID)",
+    "Description": "説明",
+    "Configuration (JSON)": "設定 (JSON)",
+    "Save All to File": "ファイルに保存",
+    "Scenarios saved successfully!": "シナリオが正常に保存されました！",
+    "New": "新規作成",
+    "Delete": "削除",
 
     # Card Details
     "Card Details": "カード詳細",
