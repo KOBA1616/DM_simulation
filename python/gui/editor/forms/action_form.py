@@ -83,6 +83,13 @@ class ActionEditForm(QWidget):
         for s in stats:
             self.str_val_combo.addItem(tr(s), s)
 
+        # Add Ref Mode Combo (New Requirement)
+        self.ref_mode_combo = QComboBox()
+        # Populate Ref Mode Options
+        ref_modes = ["SYM_CREATURE", "SYM_SPELL", "G_ZERO", "HYPER_ENERGY", "NONE"]
+        for rm in ref_modes:
+            self.ref_mode_combo.addItem(tr(rm), rm)
+
         # Add Mode (str_val) related widgets to layout NOW (before filter group)
         # Note: label visibility is managed by update_ui_state, but position is here.
         layout.addRow(self.str_val_label, self.str_val_edit)
@@ -93,6 +100,10 @@ class ActionEditForm(QWidget):
         # so we can reference the label later.
         self.mode_label = QLabel(tr("Mode"))
         layout.addRow(self.mode_label, self.str_val_combo)
+
+        # Add Ref Mode Combo row (hidden by default)
+        self.ref_mode_label = QLabel(tr("Ref Mode"))
+        layout.addRow(self.ref_mode_label, self.ref_mode_combo)
 
         layout.addRow(self.filter_group)
 
@@ -134,6 +145,7 @@ class ActionEditForm(QWidget):
         self.val2_spin.valueChanged.connect(self.update_data)
         self.str_val_edit.textChanged.connect(self.update_data)
         self.str_val_combo.currentIndexChanged.connect(self.on_stat_mode_changed) # Updated handler
+        self.ref_mode_combo.currentIndexChanged.connect(self.update_data) # New handler
         self.arbitrary_check.stateChanged.connect(self.update_data)
         self.smart_link_check.stateChanged.connect(self.on_smart_link_changed)
         self.input_key_combo.currentTextChanged.connect(self.update_data)
@@ -248,12 +260,30 @@ class ActionEditForm(QWidget):
             self.mode_label.setVisible(True)
             self.str_val_combo.setVisible(True)
 
+            # Hide Ref Mode
+            self.ref_mode_label.setVisible(False)
+            self.ref_mode_combo.setVisible(False)
+
             # Determine filter visibility based on Combo Selection
             current_mode = self.str_val_combo.currentData()
             if current_mode == "CARDS_MATCHING_FILTER" or current_mode is None:
                 self.filter_group.setVisible(True)
             else:
                 self.filter_group.setVisible(False)
+
+        elif action_type == "COST_REFERENCE":
+            # New Ref Mode Combo Logic
+            self.str_val_label.setVisible(False)
+            self.str_val_edit.setVisible(False)
+
+            self.mode_label.setVisible(False)
+            self.str_val_combo.setVisible(False)
+
+            self.ref_mode_label.setVisible(True)
+            self.ref_mode_combo.setVisible(True)
+
+            self.filter_group.setVisible(config["filter_visible"])
+
         else:
             self.str_val_label.setVisible(config["str_visible"])
             self.str_val_edit.setVisible(config["str_visible"])
@@ -261,6 +291,10 @@ class ActionEditForm(QWidget):
             # Hide Mode Combo and its label
             self.mode_label.setVisible(False)
             self.str_val_combo.setVisible(False)
+
+            # Hide Ref Mode
+            self.ref_mode_label.setVisible(False)
+            self.ref_mode_combo.setVisible(False)
 
             self.filter_group.setVisible(config["filter_visible"])
 
@@ -295,11 +329,7 @@ class ActionEditForm(QWidget):
         if raw_type == "GET_GAME_STAT":
             ui_type = "COUNT_CARDS"
         elif raw_type == "COST_REFERENCE":
-             # Distinguish between REFERENCE and REDUCTION based on mode?
-             # For now, let's assume if the user selected COST_REDUCTION previously, it was saved as COST_REFERENCE.
-             # But how do we distinguish?
-             # Maybe we don't map back perfectly yet, or we check something.
-             # If I implement COST_REDUCTION as APPY_MODIFIER internally, check that.
+             # Already handled by default mapping, but we set combo later
              pass
         elif raw_type == "APPLY_MODIFIER" and str_val == "COST":
              ui_type = "COST_REDUCTION"
@@ -315,6 +345,17 @@ class ActionEditForm(QWidget):
         elif raw_type == "GET_GAME_STAT":
              c_idx = self.str_val_combo.findData(str_val)
              if c_idx >= 0: self.str_val_combo.setCurrentIndex(c_idx)
+
+        # Handle Ref Mode Combo
+        if raw_type == "COST_REFERENCE":
+            r_idx = self.ref_mode_combo.findData(str_val)
+            if r_idx >= 0:
+                self.ref_mode_combo.setCurrentIndex(r_idx)
+            else:
+                # If custom value (unlikely but safe), add it?
+                # Or default to NONE?
+                # For now assume it's one of the options or we default
+                self.ref_mode_combo.setCurrentIndex(self.ref_mode_combo.findData("NONE"))
 
         # Now update UI state (which relies on combo values being set)
         self.update_ui_state(ui_type)
@@ -341,7 +382,9 @@ class ActionEditForm(QWidget):
         self.val1_spin.setValue(data.get('value1', 0))
         self.val2_spin.setValue(data.get('value2', 0))
 
-        self.str_val_edit.setText(str_val)
+        # Only set text if not using combos
+        if ui_type != "COUNT_CARDS" and ui_type != "GET_GAME_STAT" and ui_type != "COST_REFERENCE":
+             self.str_val_edit.setText(str_val)
 
         # Optional (Arbitrary Amount)
         self.arbitrary_check.setChecked(data.get('optional', False))
@@ -421,11 +464,15 @@ class ActionEditForm(QWidget):
             data['type'] = "APPLY_MODIFIER" # Map to engine support
             data['str_val'] = "COST" # Mode
 
+        elif action_type == "COST_REFERENCE":
+            data['type'] = "COST_REFERENCE"
+            data['str_val'] = self.ref_mode_combo.currentData()
+
         else:
             data['type'] = action_type
             # For non-stat types, read string edit
             # But wait, did we overwrite str_val for COUNT_CARDS above? Yes.
-            # If we are here, it's NOT COUNT_CARDS (UI type).
+            # If we are here, it's NOT COUNT_CARDS (UI type) and NOT COST_REFERENCE.
             data['str_val'] = self.str_val_edit.text()
 
         data['scope'] = self.scope_combo.currentData()
@@ -479,6 +526,8 @@ class ActionEditForm(QWidget):
              display_type = f"{tr('GET_GAME_STAT')} ({tr(data['str_val'])})"
         elif data['type'] == "APPLY_MODIFIER" and data['str_val'] == "COST":
              display_type = tr("COST_REDUCTION")
+        elif data['type'] == "COST_REFERENCE":
+             display_type = f"{tr('COST_REFERENCE')} ({tr(data['str_val'])})"
 
         self.current_item.setText(f"{tr('Action')}: {display_type}")
 
@@ -497,3 +546,4 @@ class ActionEditForm(QWidget):
         self.filter_count_spin.blockSignals(block)
         self.arbitrary_check.blockSignals(block) # New
         self.smart_link_check.blockSignals(block) # New
+        self.ref_mode_combo.blockSignals(block) # New
