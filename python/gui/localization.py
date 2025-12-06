@@ -168,6 +168,14 @@ TRANSLATIONS = {
     "Hyper Energy": "ハイパーエナジー",
     "SEND_TO_DECK_BOTTOM": "山札下へ送る",
 
+    # Game Stats
+    "MANA_CIVILIZATION_COUNT": "マナゾーンの文明数",
+    "SHIELD_COUNT": "シールド枚数",
+    "HAND_COUNT": "手札枚数",
+
+    # Filter Help
+    "Filter Help": "対象を選択するゾーンを指定してください。「枚数」を0にすると「すべて/任意」になります。1以上にするとその枚数を選択します。",
+
     # Scope
     "PLAYER_SELF": "自分",
     "PLAYER_OPPONENT": "相手",
