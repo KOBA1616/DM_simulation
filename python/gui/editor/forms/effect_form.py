@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit
 from PyQt6.QtCore import Qt
 from gui.localization import tr
+from gui.editor.forms.base_form import BaseEditForm
 
 # Configuration for Condition UI logic
 CONDITION_UI_CONFIG = {
@@ -48,10 +49,9 @@ CONDITION_UI_CONFIG = {
     }
 }
 
-class EffectEditForm(QWidget):
+class EffectEditForm(BaseEditForm):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.current_item = None
         self.setup_ui()
 
     def setup_ui(self):
@@ -62,8 +62,7 @@ class EffectEditForm(QWidget):
             "ON_PLAY", "ON_ATTACK", "ON_DESTROY", "S_TRIGGER", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
             "ON_ATTACK_FROM_HAND"
         ]
-        for t in triggers:
-            self.trigger_combo.addItem(tr(t), t)
+        self.populate_combo(self.trigger_combo, triggers, data_func=lambda x: x)
         layout.addRow(tr("Trigger"), self.trigger_combo)
 
         # Condition (Simplified)
@@ -74,8 +73,7 @@ class EffectEditForm(QWidget):
             "NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH",
             "OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN"
         ]
-        for c in cond_types:
-            self.cond_type_combo.addItem(tr(c), c)
+        self.populate_combo(self.cond_type_combo, cond_types, data_func=lambda x: x)
 
         c_layout.addWidget(QLabel(tr("Type")), 0, 0)
         c_layout.addWidget(self.cond_type_combo, 0, 1)
@@ -125,33 +123,21 @@ class EffectEditForm(QWidget):
         self.lbl_str.setVisible(show_str)
         self.cond_str_edit.setVisible(show_str)
 
-    def set_data(self, item):
-        self.current_item = item
+    def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
-        self.block_signals(True)
-
-        trig_idx = self.trigger_combo.findData(data.get('trigger', 'ON_PLAY'))
-        if trig_idx >= 0:
-            self.trigger_combo.setCurrentIndex(trig_idx)
+        self.set_combo_by_data(self.trigger_combo, data.get('trigger', 'ON_PLAY'))
 
         cond = data.get('condition', {})
         ctype = cond.get('type', 'NONE')
-        cond_idx = self.cond_type_combo.findData(ctype)
-        if cond_idx >= 0:
-            self.cond_type_combo.setCurrentIndex(cond_idx)
+        self.set_combo_by_data(self.cond_type_combo, ctype)
 
         self.cond_val_spin.setValue(cond.get('value', 0))
         self.cond_str_edit.setText(cond.get('str_val', ''))
 
         self.update_ui_visibility(ctype)
 
-        self.block_signals(False)
-
-    def update_data(self):
-        if not self.current_item: return
-        data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
-
+    def _save_data(self, data):
         data['trigger'] = self.trigger_combo.currentData()
 
         cond = {}
@@ -161,13 +147,10 @@ class EffectEditForm(QWidget):
         if str_val: cond['str_val'] = str_val
         data['condition'] = cond
 
-        self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
-        # We need to translate the trigger back for display or just use the Japanese text?
-        # LogicTreeWidget handles the display text update usually, but here we update it explicitly.
-        # Let's use tr() on the data value.
-        self.current_item.setText(f"{tr('Effect')}: {tr(data['trigger'])}")
+    def _get_display_text(self, data):
+        return f"{tr('Effect')}: {tr(data.get('trigger', ''))}"
 
-    def block_signals(self, block):
+    def block_signals_all(self, block):
         self.trigger_combo.blockSignals(block)
         self.cond_type_combo.blockSignals(block)
         self.cond_val_spin.blockSignals(block)
