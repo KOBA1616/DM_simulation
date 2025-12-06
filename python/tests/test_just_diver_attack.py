@@ -77,7 +77,10 @@ def test_just_diver_attack():
     jd_creature = p0_battle[0]
 
     # Re-setup with Speed Attacker to tap it via attack
-    card_db[1].keywords.speed_attacker = True
+    # Note: We must update the struct copy and assign back for it to stick
+    k = card_db[1].keywords
+    k.speed_attacker = True
+    card_db[1].keywords = k
 
     # Reset game
     game = dm_ai_module.GameState(100)
@@ -157,19 +160,16 @@ def test_just_diver_attack():
     # 3. Fast Forward to expiry
     # P1 (T1) -> P0 (T2) [Expired] -> P1 (T2) [Expired, can attack]
 
+    # Advance turn to 2 (Start of owner's next turn)
     game.turn_number = 2
-    game.active_player_id = 1
 
-    # Simulate P0 Turn 2
-    game.active_player_id = 0
-    game.current_phase = dm_ai_module.Phase.ATTACK
-    # Attack again
-    actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
-    att_action = next((a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER), None)
-    if att_action:
-        dm_ai_module.EffectResolver.resolve_action(game, att_action, card_db)
+    # We must explicitly untap/clear summoning sickness for the new turn for consistency,
+    # or just assume previous state persists but SS is irrelevant for defending.
+    # However, if it was Tapped in T1, it remains Tapped in T2 unless untap_all is called.
+    # PhaseManager::start_turn would call untap_all.
+    # Here we are skipping start_turn, so it remains Tapped (which is what we want for it to be attackable).
 
-    # T2 P1
+    # Switch to Opponent (P1)
     game.active_player_id = 1
     game.current_phase = dm_ai_module.Phase.ATTACK
 
