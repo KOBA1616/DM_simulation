@@ -22,7 +22,7 @@ class CardEditor(QMainWindow):
 
     def init_ui(self):
         # Toolbar
-        toolbar = QToolBar("Main Toolbar")
+        toolbar = QToolBar(tr("Main Toolbar"))
         self.addToolBar(toolbar)
 
         new_act = QAction(tr("New Card"), self)
@@ -112,7 +112,8 @@ class CardEditor(QMainWindow):
             
         if target_item:
             new_eff = {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "actions": []}
-            self.tree_widget.add_child_item(target_item.index(), "EFFECT", new_eff, "Effect: ON_PLAY")
+            label = f"{tr('Effect')}: {tr('ON_PLAY')}"
+            self.tree_widget.add_child_item(target_item.index(), "EFFECT", new_eff, label)
 
     def add_action(self):
         idx = self.tree_widget.currentIndex()
@@ -129,7 +130,8 @@ class CardEditor(QMainWindow):
 
         if target_item:
             new_act = {"type": "DESTROY", "scope": "TARGET_SELECT", "value1": 0, "filter": {}}
-            self.tree_widget.add_child_item(target_item.index(), "ACTION", new_act, "Action: DESTROY")
+            label = f"{tr('Action')}: {tr('DESTROY')}"
+            self.tree_widget.add_child_item(target_item.index(), "ACTION", new_act, label)
 
     def delete_item(self):
         self.tree_widget.remove_current_item()
