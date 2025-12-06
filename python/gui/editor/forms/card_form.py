@@ -64,7 +64,7 @@ class CardEditForm(QWidget):
             "speed_attacker", "blocker", "slayer",
             "double_breaker", "triple_breaker", "shield_trigger",
             "evolution", "just_diver", "mach_fighter", "g_strike",
-            "hyper_energy"
+            "hyper_energy", "shield_burn"
         ]
 
         # Use localized names for labels if possible
@@ -81,7 +81,8 @@ class CardEditForm(QWidget):
             "just_diver": "Just Diver",
             "mach_fighter": "Mach Fighter",
             "g_strike": "G Strike",
-            "hyper_energy": "Hyper Energy"
+            "hyper_energy": "Hyper Energy",
+            "shield_burn": "Shield Burn (Incineration)"
         }
 
         row = 0

@@ -327,7 +327,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; })
         .def_property("just_diver", [](const CardKeywords& k) { return k.just_diver; }, [](CardKeywords& k, bool v) { k.just_diver = v; })
         .def_property("hyper_energy", [](const CardKeywords& k) { return k.hyper_energy; }, [](CardKeywords& k, bool v) { k.hyper_energy = v; })
-        .def_property("meta_counter_play", [](const CardKeywords& k) { return k.meta_counter_play; }, [](CardKeywords& k, bool v) { k.meta_counter_play = v; });
+        .def_property("meta_counter_play", [](const CardKeywords& k) { return k.meta_counter_play; }, [](CardKeywords& k, bool v) { k.meta_counter_play = v; })
+        .def_property("shield_burn", [](const CardKeywords& k) { return k.shield_burn; }, [](CardKeywords& k, bool v) { k.shield_burn = v; });
 
     py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init<>())
