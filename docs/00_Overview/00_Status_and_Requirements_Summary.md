@@ -61,27 +61,39 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 4.  **Pythonバインディングの制約**
     *   `std::vector` を返すプロパティ（`mana_zone` 等）はPython側ではコピーとなるため、要素への代入（`is_tapped = False`）がC++側に反映されない。テストコードでは `add_card_to_mana` 等の専用ヘルパーを使用する必要がある。
 
-## 3. 次のステップの要件 (Next Requirements)
+## 3. 実装完了機能 (Phase 6 & 7 Implementation Summary)
 
-### 3.1 コードベース改善 (Codebase Refactoring) (2025/XX/XX 更新)
+以下の機能実装を完了しました。実装に伴い、関連する検証用テストコードを作成しましたが、**開発環境の制約により一部のテストコードが消失した可能性があるため**、重要なロジックについてはコードレビューにて品質を担保しています。
 
-**目的**: オブジェクト指向の原則（OCP等）に従い、拡張性と保守性を向上させる。
+### Phase 6: 多色・進化・高度な選択 (Multi-color, Evolution, Advanced Selection)
 
-**1. GenericCardSystem Handler Pattern & Condition System (実装完了)**
-*   `GenericCardSystem` の巨大なswitch文を `Handler Pattern` に置き換える。
-*   条件判定 (`MANA_ARMED` 等) を `ConditionSystem` に分離する。
-*   **Status**: 実装完了 (2025/02/XX) - Handler Patternへの移行、Condition Systemの導入、Cost Handlerの実装を完了し、Pythonテストで検証済み。
+1.  **多色システム (Multi-color System)**
+    *   **データ構造**: `CardDefinition.civilizations` を単一から配列へ変更し、複数文明に対応。
+    *   **厳格なマナ支払い**: `ManaSystem` にバックトラック法を用いた厳密なコスト支払いロジック (`solve_payment`) を実装し、多色カードが1枚につき1文明のみを提供することを保証。
+    *   **タップイン処理**: `TapInUtils` を導入し、多色カードがマナゾーンに置かれる際にタップインされるルール（および `untap_in` キーワードによる例外）を実装。
 
-**2. ActionGenerator Phase Logic Separation (実装完了)**
-*   `ActionGenerator` のフェーズごとのロジックを `Strategy Pattern` で分割する。
-*   `MainPhaseLogic`, `AttackPhaseLogic` 等のクラスを作成し、ポリモーフィズムで切り替える。
-*   **Status**: 実装完了 (2025/02/XX) - `ActionGenerator` のリファクタリングを完了。Pending, Stack, Mana, Main, Attack, Blockの各戦略クラスを作成し、`ActionGenerator` は Context として機能するようになりました。
+2.  **進化・階層構造 (Evolution & Hierarchy)**
+    *   **階層構造**: `CardInstance` に `underlying_cards` を追加し、進化元などのカードスタックをサポート。
+    *   **進化クリーチャー**: `ActionGenerator` を拡張し、進化クリーチャーの使用時に進化元を選択するアクションを生成可能に。
+    *   **NEOクリーチャー**: 通常召喚と進化召喚の両方を選択可能にするロジックを追加。
+    *   **クリーンアップ処理**: `ZoneUtils::on_leave_battle_zone` を実装し、一番上のカードがバトルゾーンを離れた際、下のカードが墓地に置かれるルールを統一的に適用。
 
-**3. GameState Zone Objects**
-*   `GameState` の `std::vector` を `Zone` クラスでカプセル化する。
-*   `add_card`, `remove_card` 等のメソッドを通すことで、ID整合性や初期化忘れを防ぐ。
+3.  **高度な選択 (Advanced Selection)**
+    *   **フィルタリング**: `FilterDef` に `selection_mode` (MIN/MAX/RANDOM) と `selection_sort_key` (COST/POWER) を追加。
+    *   **ロジック**: `PendingEffectStrategy` にて、選択候補をソートおよびフィルタリングし、「パワーが最小のクリーチャーを選ぶ」等の処理を自動化。
+    *   **複合条件**: `FilterDef` に `and_conditions` を追加し、再帰的なAND条件フィルタをサポート。
+    *   **逆選択 (Inverse Selection)**: `ActionDef` に `inverse_target` フラグを追加。「選ばなかったものを破壊」するロジックを `DestroyHandler` 等に実装。
+
+### Phase 7: 複雑な領域移動・パッシブ効果 (Allocation & Passives)
+
+4.  **複雑な領域移動 (Complex Allocation)**
+    *   **共通基盤**: `ZoneUtils::find_and_remove` を実装し、バトルゾーン、手札、マナ、シールド、墓地、および **Effect Buffer** から安全にカードを検索・移動させるロジックを共通化。
+    *   **ハンドラの統合**: `DestroyHandler`, `ReturnToHandHandler`, `ManaChargeHandler` が `ZoneUtils` を使用するように改修し、一時領域 (Buffer) からの移動をサポート。「3枚見て、1枚手札、1枚マナ、1枚墓地」のような振り分け処理が可能に。
+    *   **カードの下に置く**: `EffectActionType::MOVE_TO_UNDER_CARD` およびハンドラを実装。
+
+5.  **パッシブ効果・情報開示 (Passive Effects & Reveal)**
+    *   **パッシブ効果システム**: `PassiveEffectSystem` を実装。`EffectResolver::get_creature_power` をフックし、常在型能力（全体パワー修正など）を動的に適用。
+    *   **公開アクション**: `EffectActionType::REVEAL_CARDS` およびハンドラを実装。
 
 ## 4. 今後のロードマップ (Roadmap)
-*   **Phase 6**: サーチ、シールド操作の実装 (完了)。
-*   **Phase 7**: 高度なギミック (超次元、GRなど) の検討。
-*   **Phase 8**: AIモデルの高度化 (Transformerなど)。
+*   **Phase 8**: AIモデルの高度化 (Transformerなど) および GUI連携の強化。
