@@ -3,6 +3,7 @@
 #include "card_registry.hpp"
 #include "target_utils.hpp"
 #include "effect_system.hpp"
+#include "condition_system.hpp"
 #include "handlers/draw_handler.hpp"
 #include "handlers/mana_handler.hpp"
 #include "handlers/destroy_handler.hpp"
@@ -13,6 +14,7 @@
 #include "handlers/shield_handler.hpp"
 #include "handlers/search_handler.hpp"
 #include "handlers/buffer_handler.hpp"
+#include "handlers/cost_handler.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -50,7 +52,7 @@ namespace dm::engine {
         for (const auto& c : game_state.effect_buffer) if (c.instance_id == instance_id) return game_state.active_player_id;
 
         // Debugging fallback
-        std::cout << "GenericCardSystem::get_controller NOT FOUND: " << instance_id << " Falling back to Active: " << (int)game_state.active_player_id << std::endl;
+        // std::cout << "GenericCardSystem::get_controller NOT FOUND: " << instance_id << " Falling back to Active: " << (int)game_state.active_player_id << std::endl;
         return game_state.active_player_id;
     }
 
@@ -71,16 +73,32 @@ namespace dm::engine {
         sys.register_handler(EffectActionType::SEND_SHIELD_TO_GRAVE, std::make_unique<ShieldHandler>());
         sys.register_handler(EffectActionType::SEARCH_DECK, std::make_unique<SearchHandler>());
         sys.register_handler(EffectActionType::SEARCH_DECK_BOTTOM, std::make_unique<SearchHandler>());
+        sys.register_handler(EffectActionType::SEND_TO_DECK_BOTTOM, std::make_unique<SearchHandler>());
         sys.register_handler(EffectActionType::SHUFFLE_DECK, std::make_unique<SearchHandler>());
         sys.register_handler(EffectActionType::MEKRAID, std::make_unique<BufferHandler>());
         sys.register_handler(EffectActionType::LOOK_TO_BUFFER, std::make_unique<BufferHandler>());
         sys.register_handler(EffectActionType::MOVE_BUFFER_TO_ZONE, std::make_unique<BufferHandler>());
         sys.register_handler(EffectActionType::PLAY_FROM_BUFFER, std::make_unique<BufferHandler>());
+        sys.register_handler(EffectActionType::COST_REFERENCE, std::make_unique<CostHandler>());
         _handlers_registered = true;
+    }
+
+    static bool _evaluators_registered = false;
+    static void ensure_evaluators_registered() {
+        if (_evaluators_registered) return;
+        ConditionSystem& sys = ConditionSystem::instance();
+        sys.register_evaluator("DURING_YOUR_TURN", std::make_unique<TurnEvaluator>());
+        sys.register_evaluator("DURING_OPPONENT_TURN", std::make_unique<TurnEvaluator>());
+        sys.register_evaluator("MANA_ARMED", std::make_unique<ManaArmedEvaluator>());
+        sys.register_evaluator("SHIELD_COUNT", std::make_unique<ShieldCountEvaluator>());
+        sys.register_evaluator("OPPONENT_PLAYED_WITHOUT_MANA", std::make_unique<OpponentPlayedWithoutManaEvaluator>());
+        sys.register_evaluator("CIVILIZATION_MATCH", std::make_unique<CivilizationMatchEvaluator>());
+        _evaluators_registered = true;
     }
 
     void GenericCardSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id) {
         ensure_handlers_registered();
+        ensure_evaluators_registered();
         CardInstance* instance = find_instance(game_state, source_instance_id);
         if (!instance) {
             return;
@@ -102,6 +120,7 @@ namespace dm::engine {
 
     void GenericCardSystem::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id) {
         ensure_handlers_registered();
+        ensure_evaluators_registered();
         std::map<std::string, int> empty_context;
         resolve_effect_with_context(game_state, effect, source_instance_id, empty_context);
     }
@@ -124,6 +143,8 @@ namespace dm::engine {
 
     void GenericCardSystem::resolve_effect_with_targets(GameState& game_state, const EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::map<std::string, int>& execution_context) {
         ensure_handlers_registered();
+        ensure_evaluators_registered();
+
         if (!check_condition(game_state, effect.condition, source_instance_id)) return;
 
         for (const auto& action : effect.actions) {
@@ -131,88 +152,13 @@ namespace dm::engine {
             // Delegate to Handlers for "with targets" execution
             EffectSystem& sys = EffectSystem::instance();
             if (IActionHandler* handler = sys.get_handler(action.type)) {
-                handler->resolve_with_targets(game_state, action, targets, source_instance_id, execution_context);
+                handler->resolve_with_targets(game_state, action, targets, source_instance_id, execution_context, card_db);
                 continue; // Skip the monolithic block for handled actions
             }
 
-            // If action expects target selection, use provided targets
+            // Fallback for actions not yet fully migrated or needing legacy logic
             if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
-                // Legacy / Unmigrated actions
-                 if (action.type == EffectActionType::PLAY_FROM_BUFFER) {
-                    Player& active = game_state.get_active_player();
-                    for (int tid : targets) {
-                         auto it = std::find_if(game_state.effect_buffer.begin(), game_state.effect_buffer.end(),
-                             [tid](const CardInstance& c){ return c.instance_id == tid; });
-
-                         if (it != game_state.effect_buffer.end()) {
-                             game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, tid, active.id);
-                         }
-                    }
-                } else if (action.type == EffectActionType::SEND_SHIELD_TO_GRAVE) {
-                    for (int tid : targets) {
-                        for (auto &p : game_state.players) {
-                             auto it = std::find_if(p.shield_zone.begin(), p.shield_zone.end(),
-                                [tid](const CardInstance& c){ return c.instance_id == tid; });
-                             if (it != p.shield_zone.end()) {
-                                 p.graveyard.push_back(*it);
-                                 p.shield_zone.erase(it);
-                                 break;
-                             }
-                        }
-                    }
-                } else if (action.type == EffectActionType::SEARCH_DECK) {
-                    Player& active = game_state.get_active_player();
-                    for (int tid : targets) {
-                         auto it = std::find_if(active.deck.begin(), active.deck.end(),
-                             [tid](const CardInstance& c){ return c.instance_id == tid; });
-                         if (it != active.deck.end()) {
-                             active.hand.push_back(*it);
-                             active.deck.erase(it);
-                         }
-                    }
-                    std::shuffle(active.deck.begin(), active.deck.end(), game_state.rng);
-
-                } else if (action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
-                    // Handle Targeted SEND_TO_DECK_BOTTOM
-                    // Uses controller of the source card usually, or the player who owns the target.
-                    // Since targets are instances, we find where they are.
-                    for (int tid : targets) {
-                        for (auto &p : game_state.players) {
-                             // Check Hand
-                             auto it = std::find_if(p.hand.begin(), p.hand.end(),
-                                 [tid](const CardInstance& c){ return c.instance_id == tid; });
-                             if (it != p.hand.end()) {
-                                 p.deck.insert(p.deck.begin(), *it);
-                                 p.hand.erase(it);
-                                 continue;
-                             }
-                             // Check Battle Zone
-                             auto bit = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
-                                 [tid](const CardInstance& c){ return c.instance_id == tid; });
-                             if (bit != p.battle_zone.end()) {
-                                 p.deck.insert(p.deck.begin(), *bit);
-                                 p.battle_zone.erase(bit);
-                                 continue;
-                             }
-                        }
-                    }
-
-                } else if (action.type == EffectActionType::SELECT_FROM_BUFFER) {
-                     // No-op
-                } else if (action.type == EffectActionType::COST_REFERENCE && action.str_val == "FINISH_HYPER_ENERGY") {
-                    for (int tid : targets) {
-                        for (auto &p : game_state.players) {
-                             auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
-                                [tid](const CardInstance& c){ return c.instance_id == tid; });
-                             if (it != p.battle_zone.end()) {
-                                 it->is_tapped = true;
-                             }
-                        }
-                    }
-                    int taps = action.value1;
-                    int reduction = taps * 2;
-                    EffectResolver::resolve_play_from_stack(game_state, source_instance_id, reduction, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db);
-                }
+                 // Handled by handlers mostly
             } else {
                 resolve_action(game_state, action, source_instance_id, execution_context);
             }
@@ -222,8 +168,14 @@ namespace dm::engine {
     bool GenericCardSystem::check_condition(GameState& game_state, const ConditionDef& condition, int source_instance_id) {
         if (condition.type == "NONE") return true;
 
-        PlayerID controller = get_controller(game_state, source_instance_id);
+        ensure_evaluators_registered();
+        ConditionSystem& sys = ConditionSystem::instance();
+        if (IConditionEvaluator* evaluator = sys.get_evaluator(condition.type)) {
+            return evaluator->evaluate(game_state, condition, source_instance_id);
+        }
 
+        // Fallback for unregistered conditions (if any)
+        PlayerID controller = get_controller(game_state, source_instance_id);
         if (condition.type == "DURING_YOUR_TURN") {
             return game_state.active_player_id == controller;
         }
@@ -293,89 +245,6 @@ namespace dm::engine {
              ed.actions = { action };
              select_targets(game_state, action, source_instance_id, ed, execution_context);
              return;
-        }
-
-        // 2. SEARCH_DECK (Handled by Handler now, but we check if we should keep this or let handler do it)
-        // If handler is registered, this part is skipped by step 0.
-        // So I can remove this block.
-
-        PlayerID controller_id = get_controller(game_state, source_instance_id);
-        Player& controller = game_state.players[controller_id];
-
-        // Variable Linking: Resolve Value
-        int val1 = action.value1;
-        if (!action.input_value_key.empty() && execution_context.count(action.input_value_key)) {
-            val1 = execution_context[action.input_value_key];
-        }
-        // Fallback to string value parsing if needed (legacy)
-        if (val1 == 0 && !action.value.empty()) {
-             try { val1 = std::stoi(action.value); } catch (...) {}
-        }
-        if (val1 == 0) val1 = 1; // Default to 1
-
-        switch (action.type) {
-            case EffectActionType::COUNT_CARDS: {
-                // Handled by CountHandler
-                break;
-            }
-            case EffectActionType::GET_GAME_STAT: {
-                // Handled by CountHandler
-                break;
-            }
-            case EffectActionType::SHUFFLE_DECK: {
-                // Handled by SearchHandler
-                break;
-            }
-            case EffectActionType::ADD_SHIELD: {
-                // Handled by ShieldHandler
-                break;
-            }
-            case EffectActionType::SEND_SHIELD_TO_GRAVE: {
-                // Handled by ShieldHandler
-                break;
-            }
-            case EffectActionType::DRAW_CARD: {
-                // Now handled by DrawHandler
-                break;
-            }
-            case EffectActionType::ADD_MANA: {
-                // Now handled by ManaChargeHandler
-                break;
-            }
-            case EffectActionType::TAP: {
-                 // Handled by TapHandler
-                 break;
-            }
-            case EffectActionType::UNTAP: {
-                 // Handled by UntapHandler
-                 break;
-            }
-            case EffectActionType::DESTROY: {
-                 // Handled by DestroyHandler
-                 break;
-            }
-            case EffectActionType::RETURN_TO_HAND: {
-                 // Handled by ReturnToHandHandler
-                break;
-            }
-            case EffectActionType::SEARCH_DECK_BOTTOM: {
-                // Handled by SearchHandler
-                break;
-            }
-            case EffectActionType::MEKRAID: {
-                // Handled by BufferHandler
-                break;
-            }
-            case EffectActionType::LOOK_TO_BUFFER: {
-                // Handled by BufferHandler
-                break;
-            }
-            case EffectActionType::MOVE_BUFFER_TO_ZONE: {
-                // Handled by BufferHandler
-                break;
-            }
-            default:
-                break;
         }
     }
 
