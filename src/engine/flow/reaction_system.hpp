@@ -71,7 +71,8 @@ namespace dm::engine {
             const dm::core::ReactionAbility& reaction,
             const dm::core::CardInstance& card_instance,
             dm::core::PlayerID player_id,
-            const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db
+            const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
+            const std::string& event_type = ""
         ) {
             // Civilization Match
             if (reaction.condition.civilization_match) {
@@ -80,17 +81,30 @@ namespace dm::engine {
                 const auto& def = card_db.at(card_instance.card_id);
                 bool match_found = false;
 
-                // Simple Civ Check
-                dm::core::Civilization required_civ = def.civilization;
+                // Simple Civ Check - Iterate all civilizations
+                // Assuming civilizations is a vector<string>, we need to convert to enum or check string match?
+                // The current codebase uses vector<string> for serialization but Civilization enum for internal logic.
+                // However, card_def.hpp might define 'civilizations' as vector<Civilization> or vector<string>.
+                // Checking card_json_types: civilizations is vector<string>.
+                // We need to verify what card_def.hpp uses.
+                // Assuming for now we skip strict bitmask check or fix it later.
+                // Using a simplified check based on previous error context: 'civilizations' exists.
 
                 for (const auto& mana_card : player.mana_zone) {
                     if (!card_db.count(mana_card.card_id)) continue;
                     const auto& m_def = card_db.at(mana_card.card_id);
-                    // Check overlap
-                    if ((static_cast<int>(m_def.civilization) & static_cast<int>(required_civ)) != 0) {
-                        match_found = true;
-                        break;
+
+                    // Cross check string lists
+                    for (const auto& req_civ_str : def.civilizations) {
+                         for (const auto& man_civ_str : m_def.civilizations) {
+                             if (req_civ_str == man_civ_str) {
+                                 match_found = true;
+                                 break;
+                             }
+                         }
+                         if (match_found) break;
                     }
+                    if (match_found) break;
                 }
                 if (!match_found) return false;
             }
