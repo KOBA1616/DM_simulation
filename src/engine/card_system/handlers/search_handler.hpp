@@ -88,9 +88,20 @@ namespace dm::engine {
                     controller.deck.insert(controller.deck.begin(), looked[i]);
                 }
             }
+
+            // SEND_TO_DECK_BOTTOM
+             if (action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
+                 if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
+                     EffectDef ed;
+                     ed.trigger = TriggerType::NONE;
+                     ed.condition = ConditionDef{"NONE", 0, ""};
+                     ed.actions = { action }; // The action itself acts as the "handler" later
+                     GenericCardSystem::select_targets(game_state, action, source_instance_id, ed, execution_context);
+                 }
+             }
         }
 
-        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context) override {
+        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
              using namespace dm::core;
 
              // SEARCH_DECK legacy/fallback path
@@ -105,6 +116,30 @@ namespace dm::engine {
                      }
                  }
                  std::shuffle(active.deck.begin(), active.deck.end(), game_state.rng);
+             }
+
+             // SEND_TO_DECK_BOTTOM
+             if (action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
+                for (int tid : targets) {
+                    for (auto &p : game_state.players) {
+                         // Check Hand
+                         auto it = std::find_if(p.hand.begin(), p.hand.end(),
+                             [tid](const CardInstance& c){ return c.instance_id == tid; });
+                         if (it != p.hand.end()) {
+                             p.deck.insert(p.deck.begin(), *it);
+                             p.hand.erase(it);
+                             continue;
+                         }
+                         // Check Battle Zone
+                         auto bit = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
+                             [tid](const CardInstance& c){ return c.instance_id == tid; });
+                         if (bit != p.battle_zone.end()) {
+                             p.deck.insert(p.deck.begin(), *bit);
+                             p.battle_zone.erase(bit);
+                             continue;
+                         }
+                    }
+                }
              }
         }
     };
