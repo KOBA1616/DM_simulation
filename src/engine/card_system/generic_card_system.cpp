@@ -40,19 +40,14 @@ namespace dm::engine {
 
     // Helper to determine controller of an instance
     PlayerID GenericCardSystem::get_controller(const GameState& game_state, int instance_id) {
-        for (const auto& p : game_state.players) {
-            for (const auto& c : p.battle_zone) if (c.instance_id == instance_id) return p.id;
-            for (const auto& c : p.hand) if (c.instance_id == instance_id) return p.id;
-            for (const auto& c : p.mana_zone) if (c.instance_id == instance_id) return p.id;
-            for (const auto& c : p.shield_zone) if (c.instance_id == instance_id) return p.id;
-            for (const auto& c : p.graveyard) if (c.instance_id == instance_id) return p.id;
-            for (const auto& c : p.deck) if (c.instance_id == instance_id) return p.id;
+        // Phase A: Use O(1) owner map lookup
+        if (instance_id >= 0 && instance_id < (int)game_state.card_owner_map.size()) {
+            return game_state.card_owner_map[instance_id];
         }
-        // Also check effect buffer
-        for (const auto& c : game_state.effect_buffer) if (c.instance_id == instance_id) return game_state.active_player_id;
 
-        // Debugging fallback
-        // std::cout << "GenericCardSystem::get_controller NOT FOUND: " << instance_id << " Falling back to Active: " << (int)game_state.active_player_id << std::endl;
+        // Fallback for instances not in map (should not happen if initialized correctly)
+        // or Effect Buffer if they are temp instances?
+        // For now, return active player as fallback, but this path should be rare/avoided.
         return game_state.active_player_id;
     }
 
@@ -230,22 +225,16 @@ namespace dm::engine {
     void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context) {
         ensure_handlers_registered();
 
-        // 0. Delegate to Handlers if registered
+        // Delegate to Handlers
         EffectSystem& sys = EffectSystem::instance();
         if (IActionHandler* handler = sys.get_handler(action.type)) {
             handler->resolve(game_state, action, source_instance_id, execution_context);
             return;
         }
 
-        // 1. Dispatch Target Selection
-        if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
-             EffectDef ed;
-             ed.trigger = TriggerType::NONE;
-             ed.condition = ConditionDef{"NONE", 0, ""};
-             ed.actions = { action };
-             select_targets(game_state, action, source_instance_id, ed, execution_context);
-             return;
-        }
+        // Phase B: GenericCardSystem is now a pure dispatcher.
+        // If no handler is found, we do nothing.
+        // Target selection must be handled by the specific handler.
     }
 
 }

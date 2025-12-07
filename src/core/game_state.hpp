@@ -136,6 +136,10 @@ namespace dm::core {
         // Determinism: std::mt19937 inside State [Q69]
         std::mt19937 rng;
 
+        // Owner Map [Phase A]
+        // Index is instance_id, Value is owner PlayerID
+        std::vector<PlayerID> card_owner_map;
+
         // Result Stats / POMDP support
         // Map CardID -> aggregated CardStats (sums and counts)
         std::map<CardID, CardStats> global_card_stats;
