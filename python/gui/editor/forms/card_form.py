@@ -97,6 +97,23 @@ class CardEditForm(BaseEditForm):
 
         layout.addRow(kw_group)
 
+        # AI Configuration Section
+        ai_group = QGroupBox(tr("AI Configuration"))
+        ai_layout = QFormLayout(ai_group)
+
+        self.key_card_check = QCheckBox(tr("Is Key Card / Combo Piece"))
+        ai_layout.addRow(self.key_card_check)
+
+        self.ai_score_spin = QSpinBox()
+        self.ai_score_spin.setRange(-1000, 1000)
+        self.ai_score_spin.setSingleStep(10)
+        ai_layout.addRow(tr("AI Importance Score"), self.ai_score_spin)
+
+        layout.addRow(ai_group)
+
+        self.key_card_check.stateChanged.connect(self.update_data)
+        self.ai_score_spin.valueChanged.connect(self.update_data)
+
         # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
@@ -125,6 +142,11 @@ class CardEditForm(BaseEditForm):
             is_checked = kw_data.get(k, False)
             cb.setChecked(is_checked)
 
+        # Load AI Config
+        ai_data = data.get('ai_config', {})
+        self.key_card_check.setChecked(ai_data.get('is_key_card', False))
+        self.ai_score_spin.setValue(ai_data.get('score', 0))
+
     def _save_data(self, data):
         data['id'] = self.id_spin.value()
         data['name'] = self.name_edit.text()
@@ -142,6 +164,12 @@ class CardEditForm(BaseEditForm):
                 kw_data[k] = True
         data['keywords'] = kw_data
 
+        # Update AI Config
+        data['ai_config'] = {
+            'is_key_card': self.key_card_check.isChecked(),
+            'score': self.ai_score_spin.value()
+        }
+
     def _get_display_text(self, data):
         return f"{data.get('id', 0)} - {data.get('name', '')}"
 
@@ -155,3 +183,5 @@ class CardEditForm(BaseEditForm):
         self.races_edit.blockSignals(block)
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
+        self.key_card_check.blockSignals(block)
+        self.ai_score_spin.blockSignals(block)

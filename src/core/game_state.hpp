@@ -178,6 +178,11 @@ namespace dm::core {
             players[1].id = 1;
         }
 
+        GameState() : rng(0) {
+            players[0].id = 0;
+            players[1].id = 1;
+        }
+
         // POMDP helpers
         void on_card_reveal(CardID cid);
         std::vector<float> vectorize_card_stats(CardID cid) const;
