@@ -1,7 +1,7 @@
 #pragma once
 #include "core/game_state.hpp"
 #include "core/card_json_types.hpp"
-#include "generic_card_system.hpp" // For get_controller
+#include "generic_card_system.hpp"
 
 namespace dm::engine {
 
@@ -29,12 +29,34 @@ namespace dm::engine {
             return nullptr;
         }
 
+        bool evaluate_def(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) {
+            if (condition.type == "NONE" || condition.type.empty()) return true;
+            if (IConditionEvaluator* eval = get_evaluator(condition.type)) {
+                return eval->evaluate(state, condition, source_instance_id);
+            }
+            // Fallback: If unknown condition, default to false or true?
+            // Usually safest to false if logic missing.
+            return false;
+        }
+
     private:
         ConditionSystem() = default;
         std::map<std::string, std::unique_ptr<IConditionEvaluator>> evaluators;
     };
 
-    // Concrete Evaluators
+    // ... (Evaluator implementations will be in .cpp or defined here if header-only was intended, but avoiding redefinition errors if included multiple times)
+    // Actually, generic_card_system.cpp had them inline? No, they were in generic_card_system.cpp in previous context but here I see them in header?
+    // The file `condition_system.hpp` I read earlier had the implementations INLINE.
+    // If I keep them inline in header, I must mark them `inline` or put them in `.cpp`.
+    // The previous file content I read was `src/engine/card_system/condition_system.hpp`.
+    // It seems they were defined in class body, which is implicitly inline.
+    // I will keep them there but ensure I didn't break anything.
+    // Actually, `GenericCardSystem.cpp` had `ensure_evaluators_registered` which created `std::make_unique<TurnEvaluator>()`.
+    // This implies `TurnEvaluator` must be visible to `GenericCardSystem.cpp`.
+    // So keeping them in header is correct.
+
+    // I will include the implementations I read back into this file to preserve them.
+    // And add `evaluate_def` helper.
 
     class TurnEvaluator : public IConditionEvaluator {
     public:
@@ -60,11 +82,15 @@ namespace dm::engine {
             Player& controller = state.players[controller_id];
 
             int count = 0;
-            std::string civ = condition.str_val; // e.g., "FIRE"
+            std::string civ = condition.str_val;
             for (const auto& card : controller.mana_zone) {
                 const CardData* cd = CardRegistry::get_card_data(card.card_id);
-                if (cd && cd->civilization == civ) {
-                    count++;
+                // civ logic
+                // CardData now has `civilizations` vector.
+                if (cd) {
+                    bool match = false;
+                    for(const auto& c : cd->civilizations) if(c == civ) match = true;
+                    if (match) count++;
                 }
             }
             return count >= condition.value;
@@ -77,23 +103,6 @@ namespace dm::engine {
             using namespace dm::core;
             PlayerID controller_id = GenericCardSystem::get_controller(state, source_instance_id);
             Player& controller = state.players[controller_id];
-
-            if (condition.str_val == "MAX") {
-                 return (int)controller.shield_zone.size() <= condition.value;
-            }
-            // Default "MIN" or exact? Usually "has X or fewer" (recheck logic elsewhere, but let's assume value is threshold)
-            // Existing logic was mostly implicit or checked elsewhere.
-            // Let's implement standard ">= value" or "<= value" depending on usage.
-            // Usually Shield Trigger conditions are "If you have 0 shields".
-            // But ConditionDef is generic.
-            // If condition.value is 0, maybe it means == 0?
-            // "SHIELD_COUNT" usually implies checking own shields.
-
-            // NOTE: The current codebase didn't implement logic for SHIELD_COUNT in GenericCardSystem::check_condition!
-            // It only had "DURING_YOUR/OPPONENT_TURN".
-            // So this is new/extension logic.
-            // I'll implement "Self Shield Count <= value" for now as that's common (Revolution).
-
             return (int)controller.shield_zone.size() <= condition.value;
         }
     };
@@ -101,21 +110,6 @@ namespace dm::engine {
     class OpponentPlayedWithoutManaEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) override {
-            // Checks if opponent played a card without paying mana this turn.
-            // This flag is in state.turn_stats.played_without_mana?
-            // Or tracked per player?
-            // state.turn_stats has `played_without_mana` boolean.
-            // But does it distinguish WHO played it?
-            // "played_without_mana" seems to be a global flag for the *turn player*?
-            // Or maybe it tracks if *any* card was played without mana?
-            // Memory says: "The played_without_mana flag in TurnStats is set by ManaSystem::auto_tap_mana when a card is paid for with 0 mana."
-            // If it's in TurnStats, it's global for the turn.
-            // If condition is OPPONENT_PLAYED_WITHOUT_MANA, it implies we check if the opponent (who is likely the active player during their turn) did it.
-
-            // If it's my turn, opponent can't play cards (except via triggers/ninjas).
-            // Usually this condition (Meta Counter) triggers on Opponent's turn.
-            // So if it's Opponent's turn (Active Player = Opponent), checking TurnStats is correct.
-
             return state.turn_stats.played_without_mana;
         }
     };
@@ -127,17 +121,14 @@ namespace dm::engine {
              PlayerID controller_id = GenericCardSystem::get_controller(state, source_instance_id);
              Player& controller = state.players[controller_id];
 
-             // Check if I have a card of civilization X in Battle Zone or Mana?
-             // Usually "If you have a Fire creature".
              std::string civ = condition.str_val;
-             // Check Battle Zone
              for (const auto& card : controller.battle_zone) {
                  const CardData* cd = CardRegistry::get_card_data(card.card_id);
-                 if (cd && cd->civilization == civ) return true;
+                 if (cd) {
+                     for(const auto& c : cd->civilizations) if(c == civ) return true;
+                 }
              }
-             // Check Mana Zone? Usually not, that's Mana Armed.
              return false;
         }
     };
-
 }

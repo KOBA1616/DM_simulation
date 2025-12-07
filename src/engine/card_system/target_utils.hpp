@@ -3,6 +3,7 @@
 #include "../../core/card_json_types.hpp"
 #include "../../core/card_def.hpp"
 #include "card_registry.hpp"
+#include <algorithm>
 
 namespace dm::engine {
 
@@ -22,11 +23,6 @@ namespace dm::engine {
                                     dm::core::PlayerID card_controller) {
 
             using Props = CardProperties<CardType>;
-
-            // NOTE: Just Diver logic is handled in ActionGenerator/Attacking logic specifically for "Selection" actions.
-            // is_valid_target handles general filter compliance (e.g. for counting).
-            // If we put Just Diver here, counting effects (e.g. "Destroy all creatures") would skip it, which is wrong.
-            // Just Diver protects against CHOOSING/TARGETING.
 
             // 1. Owner Check
             if (filter.owner.has_value()) {
@@ -79,6 +75,15 @@ namespace dm::engine {
                 if (is_blocker != filter.is_blocker.value()) return false;
             }
 
+            // 8. Composite AND Conditions (Step 3-2)
+            if (!filter.and_conditions.empty()) {
+                for (const auto& sub_filter : filter.and_conditions) {
+                    if (!is_valid_target(card, card_def, sub_filter, game_state, source_controller, card_controller)) {
+                        return false;
+                    }
+                }
+            }
+
             return true;
         }
 
@@ -88,15 +93,9 @@ namespace dm::engine {
                                                const dm::core::CardDefinition& def,
                                                const dm::core::GameState& game_state,
                                                dm::core::PlayerID opponent_id) { // opponent_id is who is trying to target
+             (void)opponent_id; // Unused parameter fix
              if (!def.keywords.just_diver) return false;
 
-             // Just Diver lasts until the start of the next turn of the owner.
-             // Counting logic (Round-based):
-             // T1 (P0): Protected. tn=1, tp=1. 1 <= 1 (True)
-             // T1 (P1): Protected. tn=1, tp=1. 1 <= 1 (True)
-             // T2 (P0): Start of next turn -> Expired. tn=2, tp=1. 2 <= 1 (False)
-
-             // This simple logic works for both players if turn_number increments at start of P0 turn (Round count).
              if (game_state.turn_number <= card.turn_played) return true;
 
              return false;
@@ -123,7 +122,7 @@ namespace dm::engine {
             else if (civ_str == "DARKNESS") target_civ = Civilization::DARKNESS;
             else if (civ_str == "ZERO") target_civ = Civilization::ZERO;
 
-            return (c.civilization & target_civ) != Civilization::NONE;
+            return c.has_civilization(target_civ);
         }
         static bool match_type(const dm::core::CardDefinition& c, const std::string& type_str) {
             using namespace dm::core;
@@ -148,7 +147,7 @@ namespace dm::engine {
             return false;
         }
         static bool match_civilization(const dm::core::CardData& c, const std::string& civ_str) {
-            return c.civilization == civ_str;
+             return std::find(c.civilizations.begin(), c.civilizations.end(), civ_str) != c.civilizations.end();
         }
         static bool match_type(const dm::core::CardData& c, const std::string& type_str) {
             return c.type == type_str;
