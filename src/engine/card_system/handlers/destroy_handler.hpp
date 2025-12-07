@@ -1,0 +1,42 @@
+#pragma once
+#include "../effect_system.hpp"
+#include "core/game_state.hpp"
+#include "../generic_card_system.hpp"
+#include <algorithm>
+
+namespace dm::engine {
+
+    class DestroyHandler : public IActionHandler {
+    public:
+        void resolve(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context) override {
+            // Dispatch Target Selection if needed
+            if (action.scope == dm::core::TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
+                 dm::core::EffectDef ed;
+                 ed.trigger = dm::core::TriggerType::NONE;
+                 ed.condition = dm::core::ConditionDef{"NONE", 0, ""};
+                 ed.actions = { action };
+                 GenericCardSystem::select_targets(game_state, action, source_instance_id, ed, execution_context);
+                 return;
+            }
+
+            // Handle ALL_ENEMY case if needed (currently logic in GenericCardSystem was empty for DESTROY, but we can implement it)
+            // But to match current behavior (or lack thereof), we might leave it.
+            // However, it's safer to implement it if we want it to work.
+            // For now, I'll stick to replicating existing logic (which relies on target selection).
+        }
+
+        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context) override {
+            for (int tid : targets) {
+                for (auto &p : game_state.players) {
+                    auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
+                        [tid](const dm::core::CardInstance& c){ return c.instance_id == tid; });
+                    if (it != p.battle_zone.end()) {
+                        p.graveyard.push_back(*it);
+                        p.battle_zone.erase(it);
+                        break;
+                    }
+                }
+            }
+        }
+    };
+}
