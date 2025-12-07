@@ -18,14 +18,9 @@ namespace dm::engine {
                  GenericCardSystem::select_targets(game_state, action, source_instance_id, ed, execution_context);
                  return;
             }
-
-            // Handle ALL_ENEMY case if needed (currently logic in GenericCardSystem was empty for DESTROY, but we can implement it)
-            // But to match current behavior (or lack thereof), we might leave it.
-            // However, it's safer to implement it if we want it to work.
-            // For now, I'll stick to replicating existing logic (which relies on target selection).
         }
 
-        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context) override {
+        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
             for (int tid : targets) {
                 for (auto &p : game_state.players) {
                     auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
