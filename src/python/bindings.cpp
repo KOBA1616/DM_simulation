@@ -5,18 +5,24 @@
 #include "../core/card_def.hpp"
 #include "../engine/mana/mana_system.hpp"
 #include "../engine/action_gen/action_generator.hpp"
-#include "../engine/effect_resolver.hpp"
+#include "../engine/effects/effect_resolver.hpp"
 #include "../engine/game_instance.hpp"
-#include "../engine/json_loader.hpp"
+#include "../engine/card_system/json_loader.hpp"
 #include "../core/scenario_config.hpp"
 #include "../engine/card_system/generic_card_system.hpp"
-#include "../engine/utils/game_utils.hpp"
+#include "../engine/utils/zone_utils.hpp"
 #include "../engine/card_system/target_utils.hpp"
-#include "../core/game_state_tracking.cpp"
+#include "../engine/flow/phase_manager.hpp"
+#include "../engine/card_system/card_registry.hpp"
+#include "../ai/scenario/scenario_executor.hpp"
+#include "../ai/self_play/parallel_runner.hpp"
+#include "../core/card_stats.hpp"
+#include "../core/game_state_tracking.cpp" // Bad practice but keeping as per existing structure for now if needed for initialize_card_stats implementation access
 
 namespace py = pybind11;
 using namespace dm::core;
 using namespace dm::engine;
+using namespace dm::ai;
 
 // Helpers for Pybind
 std::string civilization_to_string(Civilization c) {
@@ -71,10 +77,29 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::enum_<Zone>(m, "Zone")
         .value("DECK", Zone::DECK)
         .value("HAND", Zone::HAND)
-        .value("MANA", Zone::MANA_ZONE) // Mapped to MANA_ZONE in Py if needed, checking existing code use
-        .value("BATTLE", Zone::BATTLE_ZONE)
+        .value("MANA", Zone::MANA) // Fixed: MANA_ZONE -> MANA
+        .value("BATTLE", Zone::BATTLE) // Fixed: BATTLE_ZONE -> BATTLE
         .value("GRAVEYARD", Zone::GRAVEYARD)
-        .value("SHIELD", Zone::SHIELD_ZONE)
+        .value("SHIELD", Zone::SHIELD) // Fixed: SHIELD_ZONE -> SHIELD
+        .export_values();
+
+    py::enum_<EffectType>(m, "EffectType")
+        .value("NONE", EffectType::NONE)
+        .value("CIP", EffectType::CIP)
+        .value("AT_ATTACK", EffectType::AT_ATTACK)
+        .value("AT_BLOCK", EffectType::AT_BLOCK)
+        .value("AT_START_OF_TURN", EffectType::AT_START_OF_TURN)
+        .value("AT_END_OF_TURN", EffectType::AT_END_OF_TURN)
+        .value("SHIELD_TRIGGER", EffectType::SHIELD_TRIGGER)
+        .value("G_STRIKE", EffectType::G_STRIKE)
+        .value("DESTRUCTION", EffectType::DESTRUCTION)
+        .value("ON_ATTACK_FROM_HAND", EffectType::ON_ATTACK_FROM_HAND)
+        .value("INTERNAL_PLAY", EffectType::INTERNAL_PLAY)
+        .value("META_COUNTER", EffectType::META_COUNTER)
+        .value("RESOLVE_BATTLE", EffectType::RESOLVE_BATTLE)
+        .value("BREAK_SHIELD", EffectType::BREAK_SHIELD)
+        .value("REACTION_WINDOW", EffectType::REACTION_WINDOW)
+        .value("TRIGGER_ABILITY", EffectType::TRIGGER_ABILITY)
         .export_values();
 
     py::enum_<EffectActionType>(m, "EffectActionType")
@@ -145,24 +170,24 @@ PYBIND11_MODULE(dm_ai_module, m) {
     // Structs
     py::class_<CardKeywords>(m, "CardKeywords")
         .def(py::init<>())
-        .def_readwrite("g_zero", &CardKeywords::g_zero)
-        .def_readwrite("revolution_change", &CardKeywords::revolution_change)
-        .def_readwrite("mach_fighter", &CardKeywords::mach_fighter)
-        .def_readwrite("g_strike", &CardKeywords::g_strike)
-        .def_readwrite("speed_attacker", &CardKeywords::speed_attacker)
-        .def_readwrite("blocker", &CardKeywords::blocker)
-        .def_readwrite("slayer", &CardKeywords::slayer)
-        .def_readwrite("double_breaker", &CardKeywords::double_breaker)
-        .def_readwrite("triple_breaker", &CardKeywords::triple_breaker)
-        .def_readwrite("shield_trigger", &CardKeywords::shield_trigger)
-        .def_readwrite("evolution", &CardKeywords::evolution)
-        .def_readwrite("cip", &CardKeywords::cip)
-        .def_readwrite("at_attack", &CardKeywords::at_attack)
-        .def_readwrite("destruction", &CardKeywords::destruction)
-        .def_readwrite("just_diver", &CardKeywords::just_diver)
-        .def_readwrite("hyper_energy", &CardKeywords::hyper_energy)
-        .def_readwrite("shield_burn", &CardKeywords::shield_burn)
-        .def_readwrite("untap_in", &CardKeywords::untap_in);
+        .def_property("g_zero", [](CardKeywords& k){ return k.g_zero; }, [](CardKeywords& k, bool v){ k.g_zero = v; })
+        .def_property("revolution_change", [](CardKeywords& k){ return k.revolution_change; }, [](CardKeywords& k, bool v){ k.revolution_change = v; })
+        .def_property("mach_fighter", [](CardKeywords& k){ return k.mach_fighter; }, [](CardKeywords& k, bool v){ k.mach_fighter = v; })
+        .def_property("g_strike", [](CardKeywords& k){ return k.g_strike; }, [](CardKeywords& k, bool v){ k.g_strike = v; })
+        .def_property("speed_attacker", [](CardKeywords& k){ return k.speed_attacker; }, [](CardKeywords& k, bool v){ k.speed_attacker = v; })
+        .def_property("blocker", [](CardKeywords& k){ return k.blocker; }, [](CardKeywords& k, bool v){ k.blocker = v; })
+        .def_property("slayer", [](CardKeywords& k){ return k.slayer; }, [](CardKeywords& k, bool v){ k.slayer = v; })
+        .def_property("double_breaker", [](CardKeywords& k){ return k.double_breaker; }, [](CardKeywords& k, bool v){ k.double_breaker = v; })
+        .def_property("triple_breaker", [](CardKeywords& k){ return k.triple_breaker; }, [](CardKeywords& k, bool v){ k.triple_breaker = v; })
+        .def_property("shield_trigger", [](CardKeywords& k){ return k.shield_trigger; }, [](CardKeywords& k, bool v){ k.shield_trigger = v; })
+        .def_property("evolution", [](CardKeywords& k){ return k.evolution; }, [](CardKeywords& k, bool v){ k.evolution = v; })
+        .def_property("cip", [](CardKeywords& k){ return k.cip; }, [](CardKeywords& k, bool v){ k.cip = v; })
+        .def_property("at_attack", [](CardKeywords& k){ return k.at_attack; }, [](CardKeywords& k, bool v){ k.at_attack = v; })
+        .def_property("destruction", [](CardKeywords& k){ return k.destruction; }, [](CardKeywords& k, bool v){ k.destruction = v; })
+        .def_property("just_diver", [](CardKeywords& k){ return k.just_diver; }, [](CardKeywords& k, bool v){ k.just_diver = v; })
+        .def_property("hyper_energy", [](CardKeywords& k){ return k.hyper_energy; }, [](CardKeywords& k, bool v){ k.hyper_energy = v; })
+        .def_property("shield_burn", [](CardKeywords& k){ return k.shield_burn; }, [](CardKeywords& k, bool v){ k.shield_burn = v; })
+        .def_property("untap_in", [](CardKeywords& k){ return k.untap_in; }, [](CardKeywords& k, bool v){ k.untap_in = v; });
 
     py::class_<FilterDef>(m, "FilterDef")
         .def(py::init<>())
@@ -265,8 +290,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("source_instance_id", &Action::source_instance_id)
         .def_readwrite("target_instance_id", &Action::target_instance_id)
         .def_readwrite("target_player", &Action::target_player)
-        .def_readwrite("target_slot_index", &Action::target_slot_index) // Used for mana payment
-        .def_readwrite("mana_payment", &Action::mana_payment); // std::vector<int>
+        .def_readwrite("slot_index", &Action::slot_index) // Exposed for EffectResolver
+        .def_readwrite("target_slot_index", &Action::target_slot_index); // Used for mana payment
 
     py::class_<GameState>(m, "GameState")
         .def(py::init<int>())
@@ -277,9 +302,18 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("get_card_def", [](GameState& s, CardID id, const std::map<CardID, CardDefinition>& db) {
             return db.at(id);
         })
-        .def("add_card_to_hand", &GameState::add_card_to_hand)
-        .def("add_card_to_mana", &GameState::add_card_to_mana)
-        .def("add_card_to_deck", &GameState::add_card_to_deck)
+        .def("add_card_to_hand", [](GameState& s, PlayerID pid, CardID cid, int iid) {
+             CardInstance c; c.card_id = cid; c.instance_id = iid;
+             s.players[pid].hand.push_back(c);
+        })
+        .def("add_card_to_mana", [](GameState& s, PlayerID pid, CardID cid, int iid) {
+             CardInstance c; c.card_id = cid; c.instance_id = iid;
+             s.players[pid].mana_zone.push_back(c);
+        })
+        .def("add_card_to_deck", [](GameState& s, PlayerID pid, CardID cid, int iid) {
+             CardInstance c; c.card_id = cid; c.instance_id = iid;
+             s.players[pid].deck.push_back(c);
+        })
         .def("add_test_card_to_battle", [](GameState& s, PlayerID pid, CardID cid, int iid, bool tapped, bool sick) {
              CardInstance c;
              c.card_id = cid;
@@ -289,7 +323,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
              c.turn_played = s.turn_number; // Default to current turn
              s.players[pid].battle_zone.push_back(c);
         })
-        .def("calculate_hash", &GameState::calculate_hash);
+        .def("calculate_hash", &GameState::calculate_hash)
+        .def("initialize_card_stats", &GameState::initialize_card_stats); // Bind as member function
 
     // Classes / Systems
     py::class_<JsonLoader>(m, "JsonLoader")
@@ -304,8 +339,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("generate_legal_actions", &ActionGenerator::generate_legal_actions);
 
     py::class_<EffectResolver>(m, "EffectResolver")
-        .def_static("resolve_action", &EffectResolver::resolve_action)
-        .def_static("resolve_trigger", &EffectResolver::resolve_trigger);
+        .def_static("resolve_action", &EffectResolver::resolve_action);
+        // resolve_trigger is private in EffectResolver, so not exposed.
 
     py::class_<ManaSystem>(m, "ManaSystem")
         .def_static("can_pay_cost",
@@ -315,20 +350,19 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("get_adjusted_cost", &ManaSystem::get_adjusted_cost);
 
     py::class_<GenericCardSystem>(m, "GenericCardSystem")
-        .def_static("resolve_action_with_context", [](GameState& state, PlayerID pid, const Action& action, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
-             GenericCardSystem::resolve_action_with_context(state, pid, action, db, ctx);
+        .def_static("resolve_action_with_context", [](GameState& state, const ActionDef& action, int source_id, std::map<std::string, int> ctx) {
+             GenericCardSystem::resolve_action(state, action, source_id, ctx);
              return ctx;
         })
-        .def_static("resolve_effect_with_targets", [](GameState& state, PlayerID pid, EffectDef& effect, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
-             GenericCardSystem::resolve_effect_with_targets(state, pid, effect, db, ctx);
+        .def_static("resolve_effect_with_targets", [](GameState& state, EffectDef& effect, const std::vector<int>& targets, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
+             GenericCardSystem::resolve_effect_with_targets(state, effect, targets, source_id, db, ctx);
              return ctx; // Return context as it might be modified
         });
 
     py::class_<CardRegistry>(m, "CardRegistry")
-        .def_static("get_instance", &CardRegistry::get_instance, py::return_value_policy::reference)
-        .def("register", &CardRegistry::register_card)
-        .def("load_from_json", &CardRegistry::load_from_json)
-        .def("get_all", &CardRegistry::get_all);
+        .def_static("get_card_data", &CardRegistry::get_card_data, py::return_value_policy::reference)
+        .def_static("load_from_json", &CardRegistry::load_from_json)
+        .def_static("get_all_cards", &CardRegistry::get_all_cards);
 
     // AI & Training
     py::class_<ScenarioConfig>(m, "ScenarioConfig")
@@ -345,11 +379,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("loop_proof_mode", &ScenarioConfig::loop_proof_mode);
 
     py::class_<ScenarioExecutor>(m, "ScenarioExecutor")
-        .def(py::init<>())
+        .def(py::init<const std::map<dm::core::CardID, dm::core::CardDefinition>&>()) // Pass required args
         .def("run_scenario", &ScenarioExecutor::run_scenario);
 
     py::class_<ParallelRunner>(m, "ParallelRunner")
-         .def(py::init<const std::map<CardID, CardDefinition>&, const std::string&>())
+         .def(py::init<const std::map<CardID, CardDefinition>&, int, int>()) // Pass required args
          .def("play_games", &ParallelRunner::play_games)
          .def("play_scenario_match", &ParallelRunner::play_scenario_match)
          .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
@@ -362,8 +396,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("sum_early_usage", &CardStats::sum_early_usage)
         .def_readwrite("sum_win_contribution", &CardStats::sum_win_contribution);
 
-    m.def("initialize_card_stats", &initialize_card_stats);
-    m.def("get_card_stats", &get_card_stats);
+    // m.def("initialize_card_stats", &initialize_card_stats); // Removed, bound to GameState
+    // m.def("get_card_stats", &get_card_stats); // Removed
 
     // Debug
     m.def("get_pending_effects_info", [](const GameState& state) {

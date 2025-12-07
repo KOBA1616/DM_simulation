@@ -83,7 +83,8 @@ namespace dm::core {
         META_COUNTER,      // For Meta Counter (Counter play at end of turn)
         RESOLVE_BATTLE,    // For pending battle resolution
         BREAK_SHIELD,      // For pending shield break
-        REACTION_WINDOW    // For Ninja Strike / Strike Back reaction windows
+        REACTION_WINDOW,   // For Ninja Strike / Strike Back reaction windows
+        TRIGGER_ABILITY    // Generic queued trigger (new Stack System)
     };
     
     // Result of a game
