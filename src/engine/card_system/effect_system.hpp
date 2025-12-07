@@ -1,6 +1,7 @@
 #pragma once
 #include "core/game_state.hpp"
 #include "core/card_json_types.hpp"
+#include "core/card_def.hpp"
 #include <map>
 #include <memory>
 #include <string>
@@ -12,7 +13,7 @@ namespace dm::engine {
     public:
         virtual ~IActionHandler() = default;
         virtual void resolve(dm::core::GameState& state, const dm::core::ActionDef& action, int source_id, std::map<std::string, int>& context) = 0;
-        virtual void resolve_with_targets(dm::core::GameState& state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context) {}
+        virtual void resolve_with_targets(dm::core::GameState& state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {}
     };
 
     class EffectSystem {

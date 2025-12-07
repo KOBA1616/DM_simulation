@@ -64,10 +64,10 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 **目的**: オブジェクト指向の原則（OCP等）に従い、拡張性と保守性を向上させる。
 
-**1. GenericCardSystem Handler Pattern (実装完了)**
+**1. GenericCardSystem Handler Pattern & Condition System (実装完了)**
 *   `GenericCardSystem` の巨大なswitch文を `Handler Pattern` に置き換える。
-*   各アクションタイプ (`DRAW`, `TAP`, `DESTROY`...) を個別のハンドラクラスに分割し、`EffectSystem` で管理する。
-*   **Status**: 実装完了 (2025/02/XX) - 全てのアクションタイプをハンドラへ移行済み。Controller判定ロジックの修正を含めて検証完了。
+*   条件判定 (`MANA_ARMED` 等) を `ConditionSystem` に分離する。
+*   **Status**: 実装完了 (2025/02/XX) - Handler Patternへの移行、Condition Systemの導入、Cost Handlerの実装を完了し、Pythonテストで検証済み。
 
 **2. ActionGenerator Phase Logic Separation**
 *   `ActionGenerator` のフェーズごとのロジックを `Strategy Pattern` で分割する。
