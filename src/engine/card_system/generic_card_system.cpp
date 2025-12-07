@@ -15,6 +15,8 @@
 #include "handlers/search_handler.hpp"
 #include "handlers/buffer_handler.hpp"
 #include "handlers/cost_handler.hpp"
+#include "handlers/hierarchy_handler.hpp"
+#include "handlers/reveal_handler.hpp" // Added
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -75,6 +77,8 @@ namespace dm::engine {
         sys.register_handler(EffectActionType::MOVE_BUFFER_TO_ZONE, std::make_unique<BufferHandler>());
         sys.register_handler(EffectActionType::PLAY_FROM_BUFFER, std::make_unique<BufferHandler>());
         sys.register_handler(EffectActionType::COST_REFERENCE, std::make_unique<CostHandler>());
+        sys.register_handler(EffectActionType::MOVE_TO_UNDER_CARD, std::make_unique<MoveToUnderCardHandler>());
+        sys.register_handler(EffectActionType::REVEAL_CARDS, std::make_unique<RevealHandler>()); // Registered
         _handlers_registered = true;
     }
 
