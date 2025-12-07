@@ -24,12 +24,6 @@ namespace dm::engine {
 
             if (action.type == EffectActionType::MEKRAID) {
                 int look = val1;
-                if (look == 1) look = 3; // Default for Mekraid? Or is value1 passed correctly? Assuming value1 holds N.
-                // Wait, logic in GenericCardSystem says: if (look == 1) look = 3;
-                // This implies Mekraid usually looks at 3. If passed 0 -> 1 -> 3.
-                // If passed 3 -> 3 -> 3.
-                // If passed 2 -> 2.
-                // I will keep the logic.
                 if (look == 1) look = 3;
 
                 std::vector<CardInstance> looked;
@@ -103,7 +97,7 @@ namespace dm::engine {
             }
         }
 
-        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context) override {
+        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
              using namespace dm::core;
              if (action.type == EffectActionType::PLAY_FROM_BUFFER) {
                  Player& active = game_state.get_active_player();
