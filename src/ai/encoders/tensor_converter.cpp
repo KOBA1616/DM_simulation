@@ -37,8 +37,11 @@ namespace dm::ai {
             if (def.power >= POWER_INFINITY) pwr = 1.0f;
             else pwr = std::min(def.power, 100) / 100.0f;
             float cost = std::min(def.cost, 20) / 20.0f;
-            uint8_t civv = static_cast<uint8_t>(def.civilization);
+
             // civ-popcount normalized
+            uint8_t civv = 0;
+            for (auto c : def.civilizations) civv |= static_cast<uint8_t>(c);
+
             int pop = 0;
             for (int b = 0; b < 8; ++b) if (civv & (1u << b)) ++pop;
             float civ_norm = static_cast<float>(pop) / 6.0f;
@@ -64,8 +67,8 @@ namespace dm::ai {
             int civ_counts[7] = {0}; // 0=unused, 1=L, 2=W, 3=D, 4=F, 5=N, 6=Z
             for (const auto& c : p.mana_zone) {
                 if (card_db.count(c.card_id)) {
-                    Civilization civ = card_db.at(c.card_id).civilization;
-                    uint8_t val = static_cast<uint8_t>(civ);
+                    uint8_t val = 0;
+                    for (auto civ : card_db.at(c.card_id).civilizations) val |= static_cast<uint8_t>(civ);
                     
                     if (val & static_cast<uint8_t>(Civilization::LIGHT)) civ_counts[1]++;
                     if (val & static_cast<uint8_t>(Civilization::WATER)) civ_counts[2]++;
