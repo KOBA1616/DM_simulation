@@ -2,6 +2,17 @@
 #include "generic_card_system.hpp"
 #include "card_registry.hpp"
 #include "target_utils.hpp"
+#include "effect_system.hpp"
+#include "handlers/draw_handler.hpp"
+#include "handlers/mana_handler.hpp"
+#include "handlers/destroy_handler.hpp"
+#include "handlers/return_to_hand_handler.hpp"
+#include "handlers/tap_handler.hpp"
+#include "handlers/untap_handler.hpp"
+#include "handlers/count_handler.hpp"
+#include "handlers/shield_handler.hpp"
+#include "handlers/search_handler.hpp"
+#include "handlers/buffer_handler.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -26,7 +37,7 @@ namespace dm::engine {
     }
 
     // Helper to determine controller of an instance
-    static PlayerID get_controller(const GameState& game_state, int instance_id) {
+    PlayerID GenericCardSystem::get_controller(const GameState& game_state, int instance_id) {
         for (const auto& p : game_state.players) {
             for (const auto& c : p.battle_zone) if (c.instance_id == instance_id) return p.id;
             for (const auto& c : p.hand) if (c.instance_id == instance_id) return p.id;
@@ -35,14 +46,41 @@ namespace dm::engine {
             for (const auto& c : p.graveyard) if (c.instance_id == instance_id) return p.id;
             for (const auto& c : p.deck) if (c.instance_id == instance_id) return p.id;
         }
-        // If in buffer, assume active player (usually)
-        // But for triggered effects, source might be anywhere.
-        // If not found, return active player as fallback or throw?
-        // Let's fallback to active player.
+        // Also check effect buffer
+        for (const auto& c : game_state.effect_buffer) if (c.instance_id == instance_id) return game_state.active_player_id;
+
+        // Debugging fallback
+        std::cout << "GenericCardSystem::get_controller NOT FOUND: " << instance_id << " Falling back to Active: " << (int)game_state.active_player_id << std::endl;
         return game_state.active_player_id;
     }
 
+    // Singleton Registration Helper
+    static bool _handlers_registered = false;
+    static void ensure_handlers_registered() {
+        if (_handlers_registered) return;
+        EffectSystem& sys = EffectSystem::instance();
+        sys.register_handler(EffectActionType::DRAW_CARD, std::make_unique<DrawHandler>());
+        sys.register_handler(EffectActionType::ADD_MANA, std::make_unique<ManaChargeHandler>());
+        sys.register_handler(EffectActionType::DESTROY, std::make_unique<DestroyHandler>());
+        sys.register_handler(EffectActionType::RETURN_TO_HAND, std::make_unique<ReturnToHandHandler>());
+        sys.register_handler(EffectActionType::TAP, std::make_unique<TapHandler>());
+        sys.register_handler(EffectActionType::UNTAP, std::make_unique<UntapHandler>());
+        sys.register_handler(EffectActionType::COUNT_CARDS, std::make_unique<CountHandler>());
+        sys.register_handler(EffectActionType::GET_GAME_STAT, std::make_unique<CountHandler>());
+        sys.register_handler(EffectActionType::ADD_SHIELD, std::make_unique<ShieldHandler>());
+        sys.register_handler(EffectActionType::SEND_SHIELD_TO_GRAVE, std::make_unique<ShieldHandler>());
+        sys.register_handler(EffectActionType::SEARCH_DECK, std::make_unique<SearchHandler>());
+        sys.register_handler(EffectActionType::SEARCH_DECK_BOTTOM, std::make_unique<SearchHandler>());
+        sys.register_handler(EffectActionType::SHUFFLE_DECK, std::make_unique<SearchHandler>());
+        sys.register_handler(EffectActionType::MEKRAID, std::make_unique<BufferHandler>());
+        sys.register_handler(EffectActionType::LOOK_TO_BUFFER, std::make_unique<BufferHandler>());
+        sys.register_handler(EffectActionType::MOVE_BUFFER_TO_ZONE, std::make_unique<BufferHandler>());
+        sys.register_handler(EffectActionType::PLAY_FROM_BUFFER, std::make_unique<BufferHandler>());
+        _handlers_registered = true;
+    }
+
     void GenericCardSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id) {
+        ensure_handlers_registered();
         CardInstance* instance = find_instance(game_state, source_instance_id);
         if (!instance) {
             return;
@@ -63,6 +101,7 @@ namespace dm::engine {
     }
 
     void GenericCardSystem::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id) {
+        ensure_handlers_registered();
         std::map<std::string, int> empty_context;
         resolve_effect_with_context(game_state, effect, source_instance_id, empty_context);
     }
@@ -84,81 +123,22 @@ namespace dm::engine {
     }
 
     void GenericCardSystem::resolve_effect_with_targets(GameState& game_state, const EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::map<std::string, int>& execution_context) {
+        ensure_handlers_registered();
         if (!check_condition(game_state, effect.condition, source_instance_id)) return;
 
         for (const auto& action : effect.actions) {
+
+            // Delegate to Handlers for "with targets" execution
+            EffectSystem& sys = EffectSystem::instance();
+            if (IActionHandler* handler = sys.get_handler(action.type)) {
+                handler->resolve_with_targets(game_state, action, targets, source_instance_id, execution_context);
+                continue; // Skip the monolithic block for handled actions
+            }
+
             // If action expects target selection, use provided targets
             if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
-                // Only handle actions that operate on targets (DESTROY, RETURN_TO_HAND, TAP, UNTAP)
-                if (action.type == EffectActionType::DESTROY) {
-                    for (int tid : targets) {
-                        for (auto &p : game_state.players) {
-                            auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
-                                [tid](const CardInstance& c){ return c.instance_id == tid; });
-                            if (it != p.battle_zone.end()) {
-                                p.graveyard.push_back(*it);
-                                p.battle_zone.erase(it);
-                                break;
-                            }
-                        }
-                    }
-                } else if (action.type == EffectActionType::RETURN_TO_HAND) {
-                    for (int tid : targets) {
-                        bool found = false;
-                        // Check Battle Zones
-                        for (auto &p : game_state.players) {
-                            auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
-                                [tid](const CardInstance& c){ return c.instance_id == tid; });
-                            if (it != p.battle_zone.end()) {
-                                p.hand.push_back(*it);
-                                p.battle_zone.erase(it);
-                                // Reset state
-                                p.hand.back().is_tapped = false;
-                                p.hand.back().summoning_sickness = true;
-                                found = true;
-                                break;
-                            }
-                        }
-                        // Check Buffer
-                        if (!found) {
-                            auto it = std::find_if(game_state.effect_buffer.begin(), game_state.effect_buffer.end(),
-                                [tid](const CardInstance& c){ return c.instance_id == tid; });
-                            if (it != game_state.effect_buffer.end()) {
-                                Player& active = game_state.get_active_player(); // Buffer usually belongs to active
-                                active.hand.push_back(*it);
-                                game_state.effect_buffer.erase(it);
-                                active.hand.back().is_tapped = false;
-                                active.hand.back().summoning_sickness = true;
-                                found = true;
-                            }
-                        }
-                        // Check Mana Zone (rare, but possible if filters allow)
-                        if (!found) {
-                            for (auto &p : game_state.players) {
-                                auto it = std::find_if(p.mana_zone.begin(), p.mana_zone.end(),
-                                    [tid](const CardInstance& c){ return c.instance_id == tid; });
-                                if (it != p.mana_zone.end()) {
-                                    p.hand.push_back(*it);
-                                    p.mana_zone.erase(it);
-                                    p.hand.back().is_tapped = false;
-                                    p.hand.back().summoning_sickness = true;
-                                    found = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                } else if (action.type == EffectActionType::TAP) {
-                    for (int tid : targets) {
-                        CardInstance* inst = find_instance(game_state, tid);
-                        if (inst) inst->is_tapped = true;
-                    }
-                } else if (action.type == EffectActionType::UNTAP) {
-                    for (int tid : targets) {
-                        CardInstance* inst = find_instance(game_state, tid);
-                        if (inst) inst->is_tapped = false;
-                    }
-                } else if (action.type == EffectActionType::PLAY_FROM_BUFFER) {
+                // Legacy / Unmigrated actions
+                 if (action.type == EffectActionType::PLAY_FROM_BUFFER) {
                     Player& active = game_state.get_active_player();
                     for (int tid : targets) {
                          auto it = std::find_if(game_state.effect_buffer.begin(), game_state.effect_buffer.end(),
@@ -296,6 +276,14 @@ namespace dm::engine {
     }
 
     void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context) {
+        ensure_handlers_registered();
+
+        // 0. Delegate to Handlers if registered
+        EffectSystem& sys = EffectSystem::instance();
+        if (IActionHandler* handler = sys.get_handler(action.type)) {
+            handler->resolve(game_state, action, source_instance_id, execution_context);
+            return;
+        }
 
         // 1. Dispatch Target Selection
         if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
@@ -307,33 +295,9 @@ namespace dm::engine {
              return;
         }
 
-        // 2. SEARCH_DECK
-        if (action.type == EffectActionType::SEARCH_DECK) {
-             EffectDef ed;
-             ed.trigger = TriggerType::NONE;
-             ed.condition = ConditionDef{"NONE", 0, ""};
-
-             ActionDef move_act;
-             move_act.type = EffectActionType::RETURN_TO_HAND;
-             if (action.destination_zone == "MANA_ZONE") {
-                 move_act.type = EffectActionType::SEND_TO_MANA;
-             }
-
-             ActionDef shuffle_act;
-             shuffle_act.type = EffectActionType::SHUFFLE_DECK;
-
-             ed.actions = { move_act, shuffle_act };
-
-             ActionDef mod_action = action;
-             if (mod_action.filter.zones.empty()) {
-                 mod_action.filter.zones = {"DECK"};
-             }
-             if (!mod_action.filter.owner.has_value()) {
-                 mod_action.filter.owner = "SELF";
-             }
-             select_targets(game_state, mod_action, source_instance_id, ed, execution_context);
-             return;
-        }
+        // 2. SEARCH_DECK (Handled by Handler now, but we check if we should keep this or let handler do it)
+        // If handler is registered, this part is skipped by step 0.
+        // So I can remove this block.
 
         PlayerID controller_id = get_controller(game_state, source_instance_id);
         Player& controller = game_state.players[controller_id];
@@ -351,353 +315,63 @@ namespace dm::engine {
 
         switch (action.type) {
             case EffectActionType::COUNT_CARDS: {
-                int count = 0;
-                // Use TargetUtils-like logic or manual scan
-                // Filter is in action.filter
-                const auto& f = action.filter;
-
-                auto check_zone = [&](const std::vector<CardInstance>& zone, int owner_id) {
-                     for (const auto& card : zone) {
-                         const CardData* cd = CardRegistry::get_card_data(card.card_id);
-                         if (!cd) continue;
-
-                         if (!f.types.empty()) {
-                             bool match = false;
-                             for(auto& t : f.types) if(t == cd->type) match = true;
-                             if(!match) continue;
-                         }
-                         if (!f.civilizations.empty()) {
-                             bool match = false;
-                             for(auto& c : f.civilizations) if(c == cd->civilization) match = true;
-                             if(!match) continue;
-                         }
-                         if (!f.races.empty()) {
-                             bool match = false;
-                             for(auto& r : f.races) {
-                                 for(auto& cr : cd->races) if(r == cr) match = true;
-                             }
-                             if(!match) continue;
-                         }
-                         if (f.owner.has_value()) {
-                             if (f.owner == "SELF" && owner_id != controller_id) continue;
-                             if (f.owner == "OPPONENT" && owner_id == controller_id) continue;
-                         }
-
-                         count++;
-                     }
-                };
-
-                for (const auto& z : f.zones) {
-                    if (z == "BATTLE_ZONE") {
-                        check_zone(game_state.players[0].battle_zone, 0);
-                        check_zone(game_state.players[1].battle_zone, 1);
-                    } else if (z == "GRAVEYARD") {
-                        check_zone(game_state.players[0].graveyard, 0);
-                        check_zone(game_state.players[1].graveyard, 1);
-                    } else if (z == "MANA_ZONE") {
-                         check_zone(game_state.players[0].mana_zone, 0);
-                         check_zone(game_state.players[1].mana_zone, 1);
-                    } else if (z == "HAND") {
-                         check_zone(game_state.players[0].hand, 0);
-                         check_zone(game_state.players[1].hand, 1);
-                    } else if (z == "SHIELD_ZONE") {
-                         check_zone(game_state.players[0].shield_zone, 0);
-                         check_zone(game_state.players[1].shield_zone, 1);
-                    }
-                }
-
-                if (!action.output_value_key.empty()) {
-                    execution_context[action.output_value_key] = count;
-                }
+                // Handled by CountHandler
                 break;
             }
             case EffectActionType::GET_GAME_STAT: {
-                int result = 0;
-                if (action.str_val == "MANA_CIVILIZATION_COUNT") {
-                    std::set<std::string> civs;
-                    for (const auto& c : controller.mana_zone) {
-                        const CardData* cd = CardRegistry::get_card_data(c.card_id);
-                        if (cd) {
-                             std::string s = cd->civilization;
-                             size_t pos = 0;
-                             while ((pos = s.find('/')) != std::string::npos) {
-                                 civs.insert(s.substr(0, pos));
-                                 s.erase(0, pos + 1);
-                             }
-                             if (!s.empty()) civs.insert(s);
-                        }
-                    }
-                    result = (int)civs.size();
-                } else if (action.str_val == "SHIELD_COUNT") {
-                    result = (int)controller.shield_zone.size();
-                } else if (action.str_val == "HAND_COUNT") {
-                    result = (int)controller.hand.size();
-                } else if (action.str_val == "CARDS_DRAWN_THIS_TURN") {
-                    // This stat is stored in TurnStats.
-                    // However, TurnStats might be global or specific to the turn player?
-                    // The request implies "cards drawn this turn" likely by the player?
-                    // TurnStats currently aggregates globally in `game_state.turn_stats` but `on_card_play` logic uses it.
-                    // Wait, `DRAW_CARD` logic:
-                    // if (controller.id == game_state.active_player_id) { game_state.turn_stats.cards_drawn_this_turn++; }
-                    // So `turn_stats` only tracks the ACTIVE player's draws.
-                    // If this action is called by the opponent (e.g. "If opponent drawn cards"), we need to be careful.
-                    // But usually "cards drawn this turn" refers to the current turn's activity.
-                    result = game_state.turn_stats.cards_drawn_this_turn;
-                }
-
-                if (!action.output_value_key.empty()) {
-                    execution_context[action.output_value_key] = result;
-                }
+                // Handled by CountHandler
                 break;
             }
             case EffectActionType::SHUFFLE_DECK: {
-                std::shuffle(controller.deck.begin(), controller.deck.end(), game_state.rng);
+                // Handled by SearchHandler
                 break;
             }
             case EffectActionType::ADD_SHIELD: {
-                std::vector<CardInstance>* source = &controller.deck;
-                if (action.source_zone == "HAND") source = &controller.hand;
-                else if (action.source_zone == "GRAVEYARD") source = &controller.graveyard;
-
-                if (!source->empty()) {
-                    CardInstance c = source->back();
-                    source->pop_back();
-                    c.is_face_down = true;
-                    controller.shield_zone.push_back(c);
-                }
+                // Handled by ShieldHandler
                 break;
             }
             case EffectActionType::SEND_SHIELD_TO_GRAVE: {
-                if (!controller.shield_zone.empty()) {
-                    CardInstance c = controller.shield_zone.back();
-                    controller.shield_zone.pop_back();
-                    controller.graveyard.push_back(c);
-                }
+                // Handled by ShieldHandler
                 break;
             }
             case EffectActionType::DRAW_CARD: {
-                int count = val1;
-                for (int i = 0; i < count; ++i) {
-                    if (controller.deck.empty()) {
-                        game_state.winner = (controller.id == 0) ? GameResult::P2_WIN : GameResult::P1_WIN;
-                        return;
-                    }
-                    CardInstance c = controller.deck.back();
-                    controller.deck.pop_back();
-                    controller.hand.push_back(c);
-                    // Update turn stats only if controller is active player
-                    if (controller.id == game_state.active_player_id) {
-                        game_state.turn_stats.cards_drawn_this_turn++;
-                    }
-                }
+                // Now handled by DrawHandler
                 break;
             }
             case EffectActionType::ADD_MANA: {
-                int count = val1;
-                for (int i = 0; i < count; ++i) {
-                    if (controller.deck.empty()) break;
-                    CardInstance c = controller.deck.back();
-                    controller.deck.pop_back();
-                    c.is_tapped = false;
-                    controller.mana_zone.push_back(c);
-                }
+                // Now handled by ManaChargeHandler
                 break;
             }
             case EffectActionType::TAP: {
-                 if (action.target_choice == "ALL_ENEMY") {
-                     int enemy = 1 - controller.id;
-                     for (auto& c : game_state.players[enemy].battle_zone) {
-                         c.is_tapped = true;
-                     }
-                 }
+                 // Handled by TapHandler
                  break;
             }
             case EffectActionType::UNTAP: {
-                 if (action.target_choice == "ALL_SELF") {
-                     for (auto& c : controller.battle_zone) {
-                         c.is_tapped = false;
-                     }
-                 }
+                 // Handled by UntapHandler
                  break;
             }
             case EffectActionType::DESTROY: {
+                 // Handled by DestroyHandler
                  break;
             }
             case EffectActionType::RETURN_TO_HAND: {
-                if (action.target_choice == "ALL_ENEMY") {
-                     int enemy_idx = 1 - controller.id;
-                     auto& bz = game_state.players[enemy_idx].battle_zone;
-                     for (auto& c : bz) {
-                         game_state.players[enemy_idx].hand.push_back(c);
-                         game_state.players[enemy_idx].hand.back().is_tapped = false;
-                         game_state.players[enemy_idx].hand.back().summoning_sickness = true;
-                         game_state.players[enemy_idx].hand.back().power_mod = 0;
-                     }
-                     bz.clear();
-                }
+                 // Handled by ReturnToHandHandler
                 break;
             }
             case EffectActionType::SEARCH_DECK_BOTTOM: {
-                int look = val1;
-                std::vector<CardInstance> looked;
-                for (int i = 0; i < look; ++i) {
-                    if (controller.deck.empty()) break;
-                    looked.push_back(controller.deck.back());
-                    controller.deck.pop_back();
-                }
-
-                auto inline_matches = [&](const CardInstance& ci, const FilterDef& f, int owner_id) -> bool {
-                    const dm::core::CardData* cd = dm::engine::CardRegistry::get_card_data(ci.card_id);
-                    if (!cd) return false;
-                    if (!f.types.empty()) {
-                        bool ok = false;
-                        for (const auto &t : f.types) if (t == cd->type) { ok = true; break; }
-                        if (!ok) return false;
-                    }
-                    if (!f.civilizations.empty()) {
-                        bool ok = false;
-                        for (const auto &civ : f.civilizations) if (civ == cd->civilization) { ok = true; break; }
-                        if (!ok) return false;
-                    }
-                    if (f.min_power.has_value() && cd->power < f.min_power.value()) return false;
-                    if (f.max_power.has_value() && cd->power > f.max_power.value()) return false;
-                    if (!f.races.empty()) {
-                        bool ok = false;
-                        for (const auto &r : f.races) {
-                            for (const auto &cr : cd->races) if (r == cr) { ok = true; break; }
-                            if (ok) break;
-                        }
-                        if (!ok) return false;
-                    }
-                    if (f.is_tapped.has_value()) if (ci.is_tapped != f.is_tapped.value()) return false;
-                    if (f.owner.has_value()) {
-                        std::string o = f.owner.value();
-                        if (o == "SELF" && owner_id != controller.id) return false;
-                        if (o == "OPPONENT" && owner_id == controller.id) return false;
-                    }
-                    if (f.max_cost.has_value() && cd->cost > f.max_cost.value()) return false;
-                    if (f.min_cost.has_value() && cd->cost < f.min_cost.value()) return false;
-                    return true;
-                };
-
-                int chosen_idx = -1;
-                for (size_t i = 0; i < looked.size(); ++i) {
-                    if (inline_matches(looked[i], action.filter, controller.id)) {
-                        chosen_idx = (int)i;
-                        break;
-                    }
-                }
-
-                if (chosen_idx != -1) {
-                    controller.hand.push_back(looked[chosen_idx]);
-                }
-
-                for (int i = 0; i < (int)looked.size(); ++i) {
-                    if (i == chosen_idx) continue;
-                    controller.deck.insert(controller.deck.begin(), looked[i]);
-                }
+                // Handled by SearchHandler
                 break;
             }
             case EffectActionType::MEKRAID: {
-                int look = val1;
-                if (look == 1) look = 3;
-
-                std::vector<CardInstance> looked;
-                for (int i = 0; i < look; ++i) {
-                    if (controller.deck.empty()) break;
-                    looked.push_back(controller.deck.back());
-                    controller.deck.pop_back();
-                }
-
-                auto inline_matches = [&](const CardInstance& ci, const FilterDef& f, int owner_id) -> bool {
-                    const dm::core::CardData* cd = dm::engine::CardRegistry::get_card_data(ci.card_id);
-                    if (!cd) return false;
-                    if (!f.types.empty()) {
-                        bool ok = false;
-                        for (const auto &t : f.types) if (t == cd->type) { ok = true; break; }
-                        if (!ok) return false;
-                    }
-                    if (!f.civilizations.empty()) {
-                        bool ok = false;
-                        for (const auto &civ : f.civilizations) if (civ == cd->civilization) { ok = true; break; }
-                        if (!ok) return false;
-                    }
-                    if (!f.races.empty()) {
-                        bool ok = false;
-                        for (const auto &r : f.races) {
-                            for (const auto &cr : cd->races) if (r == cr) { ok = true; break; }
-                            if (ok) break;
-                        }
-                        if (!ok) return false;
-                    }
-                    if (f.max_cost.has_value() && cd->cost > f.max_cost.value()) return false;
-
-                    return true;
-                };
-
-                int chosen_idx = -1;
-                for (size_t i = 0; i < looked.size(); ++i) {
-                    if (inline_matches(looked[i], action.filter, controller.id)) {
-                        chosen_idx = (int)i;
-                        break;
-                    }
-                }
-
-                if (chosen_idx != -1) {
-                    CardInstance card = looked[chosen_idx];
-                    game_state.effect_buffer.push_back(card);
-                    game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, card.instance_id, controller.id);
-                }
-
-                for (int i = 0; i < (int)looked.size(); ++i) {
-                    if (i == chosen_idx) continue;
-                    controller.deck.insert(controller.deck.begin(), looked[i]);
-                }
+                // Handled by BufferHandler
                 break;
             }
             case EffectActionType::LOOK_TO_BUFFER: {
-                int count = val1;
-                std::vector<CardInstance>* source = nullptr;
-                if (action.source_zone == "DECK" || action.source_zone.empty()) {
-                    source = &controller.deck;
-                } else if (action.source_zone == "HAND") {
-                    source = &controller.hand;
-                }
-
-                if (source) {
-                    for (int i = 0; i < count; ++i) {
-                        if (source->empty()) break;
-                        CardInstance c = source->back();
-                        source->pop_back();
-                        c.is_face_down = false;
-                        game_state.effect_buffer.push_back(c);
-                    }
-                }
+                // Handled by BufferHandler
                 break;
             }
             case EffectActionType::MOVE_BUFFER_TO_ZONE: {
-                std::vector<CardInstance>* dest = nullptr;
-                if (action.destination_zone == "DECK_BOTTOM") {
-                    dest = &controller.deck;
-                    for (auto& c : game_state.effect_buffer) {
-                        controller.deck.insert(controller.deck.begin(), c);
-                    }
-                    game_state.effect_buffer.clear();
-                }
-                else if (action.destination_zone == "GRAVEYARD") {
-                    dest = &controller.graveyard;
-                    for (auto& c : game_state.effect_buffer) {
-                        controller.graveyard.push_back(c);
-                    }
-                    game_state.effect_buffer.clear();
-                }
-                else if (action.destination_zone == "HAND") {
-                    dest = &controller.hand;
-                     for (auto& c : game_state.effect_buffer) {
-                        controller.hand.push_back(c);
-                    }
-                    game_state.effect_buffer.clear();
-                }
+                // Handled by BufferHandler
                 break;
             }
             default:
