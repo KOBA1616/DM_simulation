@@ -16,6 +16,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   `dm::engine::GenericCardSystem` によるJSONベースの効果処理。
     *   Trigger: ON_PLAY, ON_ATTACK, ON_DESTROY, S_TRIGGER, PASSIVE_CONST (Speed Attacker, Blocker, etc.), ON_ATTACK_FROM_HAND (Revolution Change).
     *   Actions: DRAW, ADD_MANA, DESTROY, TAP, UNTAP, RETURN_TO_HAND, SEARCH_DECK, SHUFFLE_DECK, ADD_SHIELD, SEND_SHIELD_TO_GRAVE, MEKRAID, REVOLUTION_CHANGE.
+*   **アクション生成**:
+    *   **ActionGeneratorのリファクタリング完了 (2025/02/XX)**: `ActionGenerator` 内の巨大な条件分岐を廃止し、`Strategy Pattern` を導入しました。Pending Effects, Stack, 各フェーズ (Mana, Main, Attack, Block) のロジックは独立した `IActionStrategy` 実装クラスに分割されました。
 *   **JSON読み込み**: `dm::engine::JsonLoader` によるカード定義のロード。
 *   **シミュレーション**: `dm::ai::MCTS` および `dm::ai::ParallelRunner` による並列モンテカルロ木探索。
 
@@ -34,6 +36,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 #### テスト実行結果
 既存のPythonテストスイート (`python/tests/`) に対して網羅的な実行を行い、以下の修正を行いました。
 *   **GenericCardSystemのリファクタリング**: `Handler Pattern` への移行に伴い、`GenericCardSystem::get_controller` のロジックを修正し、全てのハンドラで統一的に使用するようにしました。これにより、シールドトリガー発動時のコントローラー判定（Active Playerとの混同）によるバグが修正されました。
+*   **ActionGeneratorのリファクタリング**: `Strategy Pattern` への移行に伴い、各戦略クラスへの分割と統合を行いました。既存のテストケース (`test_atomic_actions.py`, `test_engine_basics.py`) を通過し、機能的な回帰がないことを確認しました。
 *   **テストコードの修正**: C++バインディング (`dm_ai_module`) の最新仕様に合わせて `CardData` コンストラクタ呼び出し等を修正しました。
 *   **非推奨コードの削除**: `ActionType.DIRECT_ATTACK` 等の削除された定数への参照を修正しました。
 
@@ -69,9 +72,10 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   条件判定 (`MANA_ARMED` 等) を `ConditionSystem` に分離する。
 *   **Status**: 実装完了 (2025/02/XX) - Handler Patternへの移行、Condition Systemの導入、Cost Handlerの実装を完了し、Pythonテストで検証済み。
 
-**2. ActionGenerator Phase Logic Separation**
+**2. ActionGenerator Phase Logic Separation (実装完了)**
 *   `ActionGenerator` のフェーズごとのロジックを `Strategy Pattern` で分割する。
 *   `MainPhaseLogic`, `AttackPhaseLogic` 等のクラスを作成し、ポリモーフィズムで切り替える。
+*   **Status**: 実装完了 (2025/02/XX) - `ActionGenerator` のリファクタリングを完了。Pending, Stack, Mana, Main, Attack, Blockの各戦略クラスを作成し、`ActionGenerator` は Context として機能するようになりました。
 
 **3. GameState Zone Objects**
 *   `GameState` の `std::vector` を `Zone` クラスでカプセル化する。

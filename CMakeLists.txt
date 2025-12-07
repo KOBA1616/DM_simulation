@@ -86,6 +86,9 @@ set(SRC_CORE
 # Engine (Phase 2)
 set(SRC_ENGINE
     src/engine/action_gen/action_generator.cpp
+    src/engine/action_gen/strategies/pending_strategy.cpp
+    src/engine/action_gen/strategies/stack_strategy.cpp
+    src/engine/action_gen/strategies/phase_strategies.cpp
     src/engine/flow/phase_manager.cpp
     src/engine/effects/effect_resolver.cpp
     src/engine/mana/mana_system.cpp
