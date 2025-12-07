@@ -16,6 +16,7 @@
 #include "../engine/card_system/card_registry.hpp"
 #include "../ai/scenario/scenario_executor.hpp"
 #include "../ai/self_play/parallel_runner.hpp"
+#include "../ai/evaluator/beam_search_evaluator.hpp"
 #include "../core/card_stats.hpp"
 #include "../core/game_state_tracking.cpp" // Bad practice but keeping as per existing structure for now if needed for initialize_card_stats implementation access
 
@@ -365,6 +366,19 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("get_all_cards", &CardRegistry::get_all_cards);
 
     // AI & Training
+    py::class_<BeamSearchConfig>(m, "BeamSearchConfig")
+        .def(py::init<>())
+        .def_readwrite("beam_width", &BeamSearchConfig::beam_width)
+        .def_readwrite("max_depth", &BeamSearchConfig::max_depth)
+        .def_readwrite("weight_shield_diff", &BeamSearchConfig::weight_shield_diff)
+        .def_readwrite("weight_board_power", &BeamSearchConfig::weight_board_power)
+        .def_readwrite("key_card_scores", &BeamSearchConfig::key_card_scores); // Expose map
+
+    py::class_<BeamSearchEvaluator>(m, "BeamSearchEvaluator")
+        .def(py::init<const std::map<dm::core::CardID, dm::core::CardDefinition>&, BeamSearchConfig>(),
+             py::arg("card_db"), py::arg("config") = BeamSearchConfig())
+        .def("evaluate", &BeamSearchEvaluator::evaluate);
+
     py::class_<ScenarioConfig>(m, "ScenarioConfig")
         .def(py::init<>())
         .def_readwrite("my_mana", &ScenarioConfig::my_mana)

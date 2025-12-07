@@ -247,7 +247,14 @@ namespace dm::ai {
         while (node) {
             node->visit_count++;
             node->value_sum += value;
-            value = -value;
+
+            if (node->parent) {
+                // If the active player changed between parent and child, invert the value.
+                // If the active player is the same (e.g. consecutive turns), the value perspective remains the same.
+                if (node->parent->state.active_player_id != node->state.active_player_id) {
+                    value = -value;
+                }
+            }
             node = node->parent;
         }
     }
