@@ -12,6 +12,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **基本ルール**: ターンの進行、マナチャージ、召喚、攻撃、ブロック、シールドブレイク、勝利条件。
 *   **ゾーン管理**: 山札、手札、マナゾーン、バトルゾーン、シールドゾーン、墓地。
 *   **カード効果**:
+    *   **GenericCardSystemのリファクタリング完了 (2025/02/XX)**: `GenericCardSystem` 内の巨大な `switch` 文を廃止し、`Handler/Command Pattern` を導入しました。各アクションタイプ (`DRAW_CARD`, `TAP`, `DESTROY` など) は独立した `IActionHandler` クラスに分割され、`EffectSystem` レジストリによって管理されます。
     *   `dm::engine::GenericCardSystem` によるJSONベースの効果処理。
     *   Trigger: ON_PLAY, ON_ATTACK, ON_DESTROY, S_TRIGGER, PASSIVE_CONST (Speed Attacker, Blocker, etc.), ON_ATTACK_FROM_HAND (Revolution Change).
     *   Actions: DRAW, ADD_MANA, DESTROY, TAP, UNTAP, RETURN_TO_HAND, SEARCH_DECK, SHUFFLE_DECK, ADD_SHIELD, SEND_SHIELD_TO_GRAVE, MEKRAID, REVOLUTION_CHANGE.
@@ -32,6 +33,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 #### テスト実行結果
 既存のPythonテストスイート (`python/tests/`) に対して網羅的な実行を行い、以下の修正を行いました。
+*   **GenericCardSystemのリファクタリング**: `Handler Pattern` への移行に伴い、`GenericCardSystem::get_controller` のロジックを修正し、全てのハンドラで統一的に使用するようにしました。これにより、シールドトリガー発動時のコントローラー判定（Active Playerとの混同）によるバグが修正されました。
 *   **テストコードの修正**: C++バインディング (`dm_ai_module`) の最新仕様に合わせて `CardData` コンストラクタ呼び出し等を修正しました。
 *   **非推奨コードの削除**: `ActionType.DIRECT_ATTACK` 等の削除された定数への参照を修正しました。
 
@@ -58,29 +60,22 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ## 3. 次のステップの要件 (Next Requirements)
 
-### 3.1 カードエディタ ユーザビリティ改善 (GUI UX Improvements) (2025/XX/XX 追加)
+### 3.1 コードベース改善 (Codebase Refactoring) (2025/XX/XX 更新)
 
-**目的**: 汎用的なGUIにより生じている「入力項目の分かりにくさ」と「変数管理の手間」を解消する。
+**目的**: オブジェクト指向の原則（OCP等）に従い、拡張性と保守性を向上させる。
 
-**1. コンテキストに応じたUIの動的変更**
-*   **ラベルの動的変更**: `Action Type` の選択に応じて、汎用的な `Value 1`, `Value 2` ラベルを具体的な意味（例: `Value 1` -> "枚数", `Value 2` -> "持続ターン"）に変更する。
-*   **不要項目の非表示/無効化**: 選択中の `Action Type` で使用しないフィールド（例: ドロー時の `String Value` や `Filter`）をグレーアウトまたは非表示にし、入力すべき項目を明確化する。
-*   **ツールチップの充実**: 各入力項目にマウスホバー時、そのアクションタイプでの具体的な使用方法を表示する。
+**1. GenericCardSystem Handler Pattern (実装完了)**
+*   `GenericCardSystem` の巨大なswitch文を `Handler Pattern` に置き換える。
+*   各アクションタイプ (`DRAW`, `TAP`, `DESTROY`...) を個別のハンドラクラスに分割し、`EffectSystem` で管理する。
+*   **Status**: 実装完了 (2025/02/XX) - 全てのアクションタイプをハンドラへ移行済み。Controller判定ロジックの修正を含めて検証完了。
 
-**2. 変数連携の自動化と可視化 (Automated Variable Linking)**
-*   **変数名の自動管理 (Implicit Variable Naming)**:
-    *   ユーザーが手動で `Output Key` (変数名) を入力する手間を排除する。
-    *   値を生成するアクション（`GET_GAME_STAT`等）を選択した際、システムが内部的に一意なキー（または自動生成された名前）を割り当てる。
-*   **入力ソースの明示的選択**:
-    *   後続のアクションの `Input Key` 選択肢において、単なる変数名ではなく「ステップ1: 文明数取得の結果」のように、どのアクションの出力であるかを分かりやすく表示する。
-    *   これにより、ユーザーは「変数名」を意識することなく、ロジックの流れ（フロー）として値を参照できる。
+**2. ActionGenerator Phase Logic Separation**
+*   `ActionGenerator` のフェーズごとのロジックを `Strategy Pattern` で分割する。
+*   `MainPhaseLogic`, `AttackPhaseLogic` 等のクラスを作成し、ポリモーフィズムで切り替える。
 
-**3. テンプレート機能 (Templates)**
-*   よく使われるアクションの組み合わせ（例: 「マナ武装」「〜枚引いて〜枚捨てる」）をプリセットとして提供し、ワンクリックで展開できる機能を検討する。
-
-**Status**: 実装予定 (Planned)
-*   **1. コンテキストに応じたUIの動的変更**: 実装完了 (2025/XX/XX)
-*   **2. 変数連携の自動化と可視化**: 実装完了 (2025/XX/XX)
+**3. GameState Zone Objects**
+*   `GameState` の `std::vector` を `Zone` クラスでカプセル化する。
+*   `add_card`, `remove_card` 等のメソッドを通すことで、ID整合性や初期化忘れを防ぐ。
 
 ## 4. 今後のロードマップ (Roadmap)
 *   **Phase 6**: サーチ、シールド操作の実装 (完了)。
