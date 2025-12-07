@@ -2,9 +2,10 @@
 #include "../effect_system.hpp"
 #include "core/game_state.hpp"
 #include "../generic_card_system.hpp"
-#include "engine/card_system/card_registry.hpp"
+#include "../card_registry.hpp"
 #include <set>
 #include <string>
+#include <algorithm>
 
 namespace dm::engine {
 
@@ -32,7 +33,15 @@ namespace dm::engine {
                          }
                          if (!f.civilizations.empty()) {
                              bool match = false;
-                             for(auto& c : f.civilizations) if(c == cd->civilization) match = true;
+                             for(auto& fc : f.civilizations) {
+                                 for(auto& cc : cd->civilizations) {
+                                     if(fc == cc) {
+                                         match = true;
+                                         break;
+                                     }
+                                 }
+                                 if(match) break;
+                             }
                              if(!match) continue;
                          }
                          if (!f.races.empty()) {
@@ -80,13 +89,9 @@ namespace dm::engine {
                     for (const auto& c : controller.mana_zone) {
                         const CardData* cd = CardRegistry::get_card_data(c.card_id);
                         if (cd) {
-                             std::string s = cd->civilization;
-                             size_t pos = 0;
-                             while ((pos = s.find('/')) != std::string::npos) {
-                                 civs.insert(s.substr(0, pos));
-                                 s.erase(0, pos + 1);
+                             for (const auto& civ_str : cd->civilizations) {
+                                 civs.insert(civ_str);
                              }
-                             if (!s.empty()) civs.insert(s);
                         }
                     }
                     result = (int)civs.size();
