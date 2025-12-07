@@ -2,8 +2,13 @@
 #include "../../core/game_state.hpp"
 #include "../../core/action.hpp"
 #include "../../core/card_def.hpp"
+#include "action_strategy.hpp"
+#include "strategies/pending_strategy.hpp"
+#include "strategies/stack_strategy.hpp"
+#include "strategies/phase_strategies.hpp"
 #include <vector>
 #include <map>
+#include <memory>
 
 namespace dm::engine {
 
