@@ -80,6 +80,9 @@ namespace dm::engine {
                          auto& pe = game_state.pending_effects[action.slot_index];
                          if (pe.resolve_type == ResolveType::TARGET_SELECT && pe.effect_def) {
                              GenericCardSystem::resolve_effect_with_targets(game_state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
+                         } else if (pe.type == EffectType::TRIGGER_ABILITY && pe.effect_def) {
+                             // Stack System: Execute queued trigger
+                             GenericCardSystem::resolve_effect(game_state, *pe.effect_def, pe.source_instance_id);
                          }
                          if (action.slot_index < (int)game_state.pending_effects.size()) {
                              game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
@@ -362,6 +365,7 @@ namespace dm::engine {
     }
 
     void EffectResolver::resolve_play_from_stack(GameState& game_state, int stack_instance_id, int cost_reduction, SpawnSource spawn_source, PlayerID controller, const std::map<CardID, CardDefinition>& card_db, int evo_source_id) {
+        // Search in stack first
         auto& stack = game_state.stack_zone;
         auto it = std::find_if(stack.begin(), stack.end(), [&](const CardInstance& c){ return c.instance_id == stack_instance_id; });
         CardInstance card;
