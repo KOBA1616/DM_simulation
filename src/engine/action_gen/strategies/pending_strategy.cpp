@@ -2,6 +2,7 @@
 #include "../../card_system/target_utils.hpp"
 #include "../../flow/reaction_system.hpp"
 #include <algorithm>
+#include <vector>
 
 namespace dm::engine {
 
@@ -12,20 +13,12 @@ namespace dm::engine {
         const auto& game_state = ctx.game_state;
         const auto& card_db = ctx.card_db;
 
-        // Determine decision maker for pending effects
-        // Usually active player, but if pending effect is controlled by opponent (e.g. they need to select target),
-        // we must check who controls the pending effects.
-        // The original logic checked if AP has any pending effects.
-
         PlayerID decision_maker = game_state.active_player_id;
         bool ap_has = false;
         for (const auto& eff : game_state.pending_effects) {
             if (eff.controller == game_state.active_player_id) { ap_has = true; break; }
         }
         decision_maker = ap_has ? game_state.active_player_id : (1 - game_state.active_player_id);
-
-        // If the context active_player_id is strictly the turn player, we might need to be careful.
-        // But here we locally determine `decision_maker`.
 
         for (size_t i = 0; i < game_state.pending_effects.size(); ++i) {
             const auto& eff = game_state.pending_effects[i];
@@ -42,6 +35,13 @@ namespace dm::engine {
 
                 const auto& filter = eff.filter;
                 bool found_target = false;
+
+                // Collect valid candidates for sorting/filtering
+                struct Candidate {
+                    CardInstance card;
+                    const CardDefinition* def;
+                };
+                std::vector<Candidate> candidates;
 
                 for (const auto& zone_str : filter.zones) {
                     std::vector<int> players_to_check;
@@ -76,23 +76,58 @@ namespace dm::engine {
                                 const auto& def = card_db.at(card.card_id);
 
                                 if (TargetUtils::is_valid_target(card, def, filter, game_state, decision_maker, (PlayerID)pid)) {
-                                    // Specific Check for Just Diver on SELECTION
-                                    if (decision_maker != pid) { // Choosing opponent's card
+                                    if (decision_maker != pid) {
                                         if (TargetUtils::is_protected_by_just_diver(card, def, game_state, decision_maker)) {
-                                            continue; // Cannot select this target
+                                            continue;
                                         }
                                     }
-
-                                    Action select;
-                                    select.type = ActionType::SELECT_TARGET;
-                                    select.target_instance_id = card.instance_id;
-                                    select.slot_index = static_cast<int>(i);
-                                    actions.push_back(select);
-                                    found_target = true;
+                                    candidates.push_back({card, &def});
                                 }
                             }
                         }
                     }
+                }
+
+                // Step 3-1: Apply Selection Mode (MIN/MAX)
+                if (!candidates.empty() && filter.selection_mode.has_value() && filter.selection_sort_key.has_value()) {
+                    std::string mode = filter.selection_mode.value();
+                    std::string key = filter.selection_sort_key.value();
+
+                    if (mode == "MIN" || mode == "MAX") {
+                        // Sort
+                        std::sort(candidates.begin(), candidates.end(), [&](const Candidate& a, const Candidate& b) {
+                            int va = 0, vb = 0;
+                            if (key == "COST") {
+                                va = a.def->cost; vb = b.def->cost;
+                            } else if (key == "POWER") {
+                                va = a.def->power; vb = b.def->power;
+                            }
+
+                            if (mode == "MIN") return va < vb;
+                            else return va > vb;
+                        });
+
+                        // Keep only the best value (handle ties)
+                        int best_val = (key == "COST") ? candidates[0].def->cost : candidates[0].def->power;
+
+                        std::vector<Candidate> best_candidates;
+                        for (const auto& c : candidates) {
+                            int val = (key == "COST") ? c.def->cost : c.def->power;
+                            if (val == best_val) best_candidates.push_back(c);
+                            else break; // Sorted, so we can stop
+                        }
+                        candidates = best_candidates;
+                    }
+                }
+
+                // Generate actions for remaining candidates
+                for (const auto& cand : candidates) {
+                    Action select;
+                    select.type = ActionType::SELECT_TARGET;
+                    select.target_instance_id = cand.card.instance_id;
+                    select.slot_index = static_cast<int>(i);
+                    actions.push_back(select);
+                    found_target = true;
                 }
 
                 if (eff.optional || !found_target) {
@@ -178,19 +213,9 @@ namespace dm::engine {
 
                      bool legal = false;
                      for (const auto& r : def.reaction_abilities) {
-                         bool event_match = (r.condition.trigger_event == event_type);
-                         if (!event_match) {
-                             if (r.condition.trigger_event == "ON_BLOCK_OR_ATTACK") {
-                                 if (event_type == "ON_ATTACK" || event_type == "ON_BLOCK") {
-                                     event_match = true;
-                                 }
-                             }
-                         }
-                         if (event_match) {
-                             if (ReactionSystem::check_condition(game_state, r, card, eff.controller, card_db)) {
-                                 legal = true;
-                                 break;
-                             }
+                         if (ReactionSystem::check_condition(game_state, r, card, eff.controller, card_db, event_type)) {
+                             legal = true;
+                             break;
                          }
                      }
 

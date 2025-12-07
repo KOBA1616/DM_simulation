@@ -5,6 +5,7 @@
 #include <bitset>
 #include <optional>
 #include "card_json_types.hpp" // Include for FilterDef
+#include <algorithm> // For std::find
 
 namespace dm::core {
 
@@ -18,12 +19,13 @@ namespace dm::core {
         bool g_strike : 1;
         bool speed_attacker : 1;
         bool blocker : 1;
-        bool slayer : 1;          // Added
-        bool double_breaker : 1;  // Added
-        bool triple_breaker : 1;  // Added
-        bool power_attacker : 1;  // Added (Flag only, value in definition)
+        bool slayer : 1;
+        bool double_breaker : 1;
+        bool triple_breaker : 1;
+        bool power_attacker : 1;
         bool shield_trigger : 1;
         bool evolution : 1;
+        bool neo : 1;             // Added for Step 2-4 (NEO / G-NEO)
         // Triggers
         bool cip : 1;             // Comes Into Play
         bool at_attack : 1;       // Attack Trigger
@@ -33,9 +35,10 @@ namespace dm::core {
         bool destruction : 1;     // Destruction Trigger
 
         bool just_diver : 1;      // Just Diver
-        bool hyper_energy : 1;    // Added for Phase 5 (Hyper Energy)
-        bool meta_counter_play : 1; // Added for Phase 5 (Meta Counter)
+        bool hyper_energy : 1;    // Phase 5 (Hyper Energy)
+        bool meta_counter_play : 1; // Phase 5 (Meta Counter)
         bool shield_burn : 1;     // Shield Incineration (Burn)
+        bool untap_in : 1;        // Step 1-2 (Multi-color Tap-in Exception)
     };
 
     // Mode Selection: ModalEffectGroup 構造体による複数選択管理 [Q71]
@@ -55,7 +58,7 @@ namespace dm::core {
     struct CardDefinition {
         CardID id;
         std::string name;
-        Civilization civilization;
+        std::vector<Civilization> civilizations; // Changed from single civilization to vector
         CardType type;
         int cost;
         int power; // POWER_INFINITY for infinite
@@ -79,6 +82,17 @@ namespace dm::core {
 
         // Reaction Abilities
         std::vector<ReactionAbility> reaction_abilities;
+
+        // Helper to check for a specific civilization
+        bool has_civilization(Civilization civ) const {
+            if (civ == Civilization::NONE) return civilizations.empty();
+            if (civ == Civilization::ZERO) {
+                 // If purely ZERO (Colorless), it should be explicitly in the list?
+                 // Or implied if list is empty? Assuming explicit ZERO.
+                 return std::find(civilizations.begin(), civilizations.end(), Civilization::ZERO) != civilizations.end();
+            }
+            return std::find(civilizations.begin(), civilizations.end(), civ) != civilizations.end();
+        }
     };
 
 }

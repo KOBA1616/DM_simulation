@@ -74,6 +74,7 @@ namespace dm::core {
         ADD_SHIELD,
         SEND_SHIELD_TO_GRAVE,
         SEND_TO_DECK_BOTTOM,
+        MOVE_TO_UNDER_CARD,
         NONE
     };
 
@@ -92,6 +93,13 @@ namespace dm::core {
         std::optional<bool> is_blocker;
         std::optional<bool> is_evolution;
         std::optional<int> count; // For selection
+
+        // Step 3-1: Advanced Selection
+        std::optional<std::string> selection_mode; // "MIN", "MAX", "RANDOM"
+        std::optional<std::string> selection_sort_key; // "COST", "POWER"
+
+        // Step 3-2: Composite Filters
+        std::vector<FilterDef> and_conditions;
     };
 
     struct ActionDef {
@@ -110,6 +118,8 @@ namespace dm::core {
         // Phase 5: Variable Linking
         std::string input_value_key;
         std::string output_value_key;
+        // Step 3-3: Negative Selection
+        bool inverse_target = false;
     };
 
     struct ConditionDef {
@@ -142,7 +152,7 @@ namespace dm::core {
         int id;
         std::string name;
         int cost;
-        std::string civilization;
+        std::vector<std::string> civilizations; // Changed to vector
         int power;
         std::string type;
         std::vector<std::string> races;
@@ -241,14 +251,15 @@ namespace dm::core {
         {EffectActionType::SHUFFLE_DECK, "SHUFFLE_DECK"},
         {EffectActionType::ADD_SHIELD, "ADD_SHIELD"},
         {EffectActionType::SEND_SHIELD_TO_GRAVE, "SEND_SHIELD_TO_GRAVE"},
-        {EffectActionType::SEND_TO_DECK_BOTTOM, "SEND_TO_DECK_BOTTOM"}
+        {EffectActionType::SEND_TO_DECK_BOTTOM, "SEND_TO_DECK_BOTTOM"},
+        {EffectActionType::MOVE_TO_UNDER_CARD, "MOVE_TO_UNDER_CARD"}
     })
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count, selection_mode, selection_sort_key, and_conditions)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilization, power, type, races, effects, revolution_change_condition, keywords, reaction_abilities)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilizations, power, type, races, effects, revolution_change_condition, keywords, reaction_abilities)
 }
