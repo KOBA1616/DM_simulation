@@ -86,6 +86,31 @@ namespace dm::engine {
         for (int i = 0; i < config.enemy_shield_count; ++i) {
              enemy.shield_zone.emplace_back(1, instance_id_counter++);
         }
+
+        // Initialize Owner Map [Phase A]
+        state.card_owner_map.resize(instance_id_counter);
+
+        // Populate owner map
+        auto populate_owner = [&](const Player& p) {
+            auto register_cards = [&](const std::vector<CardInstance>& cards) {
+                for (const auto& c : cards) {
+                    if (c.instance_id >= 0 && c.instance_id < (int)state.card_owner_map.size()) {
+                        state.card_owner_map[c.instance_id] = p.id;
+                    }
+                }
+            };
+            register_cards(p.hand);
+            register_cards(p.battle_zone);
+            register_cards(p.mana_zone);
+            register_cards(p.graveyard);
+            register_cards(p.shield_zone);
+            register_cards(p.deck);
+            register_cards(p.hyper_spatial_zone);
+            register_cards(p.gr_deck);
+        };
+
+        populate_owner(state.players[0]);
+        populate_owner(state.players[1]);
     }
 
 }
