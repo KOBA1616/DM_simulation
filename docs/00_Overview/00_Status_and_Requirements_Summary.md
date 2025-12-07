@@ -13,6 +13,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **ゾーン管理**: 山札、手札、マナゾーン、バトルゾーン、シールドゾーン、墓地。
 *   **カード効果**:
     *   **GenericCardSystemのリファクタリング完了 (2025/02/XX)**: `GenericCardSystem` 内の巨大な `switch` 文を廃止し、`Handler/Command Pattern` を導入しました。各アクションタイプ (`DRAW_CARD`, `TAP`, `DESTROY` など) は独立した `IActionHandler` クラスに分割され、`EffectSystem` レジストリによって管理されます。
+    *   **スタックシステムの実装 (2025/03/XX)**: トリガー能力 (`ON_PLAY`など) の即時解決を廃止し、`PendingEffect` リスト（スタック）に一度積んでから、プレイヤー（またはAI）が順次解決する仕組みに変更しました。これにより、連鎖的な能力発動や、同時発動時の解決順序選択が可能になりました。
     *   `dm::engine::GenericCardSystem` によるJSONベースの効果処理。
     *   Trigger: ON_PLAY, ON_ATTACK, ON_DESTROY, S_TRIGGER, PASSIVE_CONST (Speed Attacker, Blocker, etc.), ON_ATTACK_FROM_HAND (Revolution Change).
     *   Actions: DRAW, ADD_MANA, DESTROY, TAP, UNTAP, RETURN_TO_HAND, SEARCH_DECK, SHUFFLE_DECK, ADD_SHIELD, SEND_SHIELD_TO_GRAVE, MEKRAID, REVOLUTION_CHANGE.
@@ -95,5 +96,18 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   **パッシブ効果システム**: `PassiveEffectSystem` を実装。`EffectResolver::get_creature_power` をフックし、常在型能力（全体パワー修正など）を動的に適用。
     *   **公開アクション**: `EffectActionType::REVEAL_CARDS` およびハンドラを実装。
 
+### Phase 8 (New): スタックシステムとビルド安定化 (Stack System & Build Stabilization)
+
+6.  **トリガースタック (Trigger Stack System) - 実装済み (2025/03/XX)**
+    *   トリガー能力（CIP等）を即時実行せず、`PendingEffect` (Type: `TRIGGER_ABILITY`) として待機リストに追加。
+    *   `EffectResolver` にて `RESOLVE_EFFECT` アクションを介して順次実行する仕組みを実装。
+    *   `python/tests/test_trigger_stack.py` にて基本動作（トリガーの保留と解決）を検証済み。
+
+7.  **ビルド環境の修復と安定化 (Build Fixes)**
+    *   `CardDefinition` の文明定義（単数→複数）変更に伴うコンパイルエラー（`ManaSystem`, `JsonLoader`, `CsvLoader`, `TensorConverter`）を修正。
+    *   Pythonバインディング (`bindings.cpp`) のインクルード漏れや型定義の不整合（`CardKeywords`, `Zone` Enum）を修正し、`dm_ai_module` の正常ビルドを回復。
+
 ## 4. 今後のロードマップ (Roadmap)
-*   **Phase 8**: AIモデルの高度化 (Transformerなど) および GUI連携の強化。
+*   **レガシーテストの修復**: `test_engine_basics.py` 等、古いバインディング (`GameInstance` クラス等) に依存しているテストコードを最新の `GameState` ベースに更新する。
+*   **スタックシステムの完全な統合**: 既存のAIモデルや戦略が、即時実行ではなくスタック解決アクションを適切に選択できるか、自己対戦を通して検証する。
+*   **Phase 9**: AIモデルの高度化 (Transformerなど) および GUI連携の強化。

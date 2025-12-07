@@ -111,8 +111,17 @@ namespace dm::engine {
         bool triggered = false;
         for (const auto& effect : data->effects) {
             if (effect.trigger == trigger) {
+                // Stack System: Queue the effect instead of resolving immediately
+                PlayerID controller = get_controller(game_state, source_instance_id);
+                PendingEffect pending(EffectType::TRIGGER_ABILITY, source_instance_id, controller);
+                pending.resolve_type = ResolveType::EFFECT_RESOLUTION; // Handled by ActionGenerator
+                pending.effect_def = effect;
+                pending.optional = true; // Most triggers are optional? Or check optional flag?
+                // Actually EffectDef doesn't have optional flag on top level usually, Actions do.
+                // But let's assume players can always choose order, so they are selectable.
+
+                game_state.pending_effects.push_back(pending);
                 triggered = true;
-                resolve_effect(game_state, effect, source_instance_id);
             }
         }
     }

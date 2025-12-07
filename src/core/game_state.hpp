@@ -206,6 +206,30 @@ namespace dm::core {
 
         // Loop detection / State Identity
         uint64_t calculate_hash() const;
+
+        // Instance Lookup Helper (O(1) owner check, O(N) zone scan)
+        // Returns pointer to instance or nullptr if not found
+        // Optimized by checking owner first
+        CardInstance* get_card_instance(int instance_id) {
+             if (instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
+
+             PlayerID owner = card_owner_map[instance_id];
+             if (owner > 1) return nullptr; // Invalid owner?
+
+             Player& p = players[owner];
+             // Check zones in order of likelihood
+             for (auto& c : p.battle_zone) if (c.instance_id == instance_id) return &c;
+             for (auto& c : p.hand) if (c.instance_id == instance_id) return &c;
+             for (auto& c : p.mana_zone) if (c.instance_id == instance_id) return &c;
+             for (auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
+             for (auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
+             for (auto& c : p.deck) if (c.instance_id == instance_id) return &c;
+
+             // Check Effect Buffer (not owned by player usually, but tracked)
+             for (auto& c : effect_buffer) if (c.instance_id == instance_id) return &c;
+
+             return nullptr;
+        }
         
         // Error Handling [Q43, Q87]
         void panic(const char* message) const {
