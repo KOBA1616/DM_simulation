@@ -1,8 +1,8 @@
 #pragma once
 #include "../effect_system.hpp"
 #include "core/game_state.hpp"
-#include "../utils/tap_in_utils.hpp"
-#include "../utils/zone_utils.hpp"
+#include "../../utils/tap_in_utils.hpp"
+#include "../../utils/zone_utils.hpp"
 #include "core/card_def.hpp"
 
 namespace dm::engine {
