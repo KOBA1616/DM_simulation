@@ -77,7 +77,12 @@ namespace dm::utils {
 
             // 3. Civilization
             if (!std::getline(ss, cell, ',')) continue;
-            def.civilization = parse_civilization(cell);
+            // Legacy CSV usually has single civilization.
+            // If it has multiple, they might be separated by / or ;?
+            // Assuming standard CSV format from before, it was single.
+            // We push back to vector.
+            Civilization civ = parse_civilization(cell);
+            def.civilizations.push_back(civ);
 
             // 4. Type
             if (!std::getline(ss, cell, ',')) continue;
