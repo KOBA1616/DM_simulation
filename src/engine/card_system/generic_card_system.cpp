@@ -108,13 +108,23 @@ namespace dm::engine {
             return;
         }
 
+        std::vector<EffectDef> active_effects;
         const CardData* data = CardRegistry::get_card_data(instance->card_id);
-        if (!data) {
-            return;
+        if (data) {
+            active_effects.insert(active_effects.end(), data->effects.begin(), data->effects.end());
+            active_effects.insert(active_effects.end(), data->metamorph_abilities.begin(), data->metamorph_abilities.end());
+        }
+
+        // Check underlying cards for Metamorph
+        for (const auto& under : instance->underlying_cards) {
+            const CardData* under_data = CardRegistry::get_card_data(under.card_id);
+            if (under_data) {
+                active_effects.insert(active_effects.end(), under_data->metamorph_abilities.begin(), under_data->metamorph_abilities.end());
+            }
         }
 
         bool triggered = false;
-        for (const auto& effect : data->effects) {
+        for (const auto& effect : active_effects) {
             if (effect.trigger == trigger) {
                 // Stack System: Queue the effect instead of resolving immediately
                 PlayerID controller = get_controller(game_state, source_instance_id);
