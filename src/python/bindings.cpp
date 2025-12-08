@@ -235,6 +235,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("type", &CardDefinition::type)
         .def_readwrite("races", &CardDefinition::races)
         .def_readwrite("keywords", &CardDefinition::keywords)
+        .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
         .def_readwrite("civilizations", &CardDefinition::civilizations) // Changed to list
         .def_property("civilization",
              [](const CardDefinition& c) {
