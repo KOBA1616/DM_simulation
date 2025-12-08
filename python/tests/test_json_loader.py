@@ -1,14 +1,19 @@
-import pytest
-import os
+
 import sys
+import os
+import unittest
+import pytest
 
 # Add bin directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../bin'))
 
-import dm_ai_module
-from dm_ai_module import GameState, CardDefinition, CardType, Civilization, GameResult, ActionType, ActionGenerator
+try:
+    import dm_ai_module
+    from dm_ai_module import Civilization
+except ImportError:
+    pytest.skip("dm_ai_module not found", allow_module_level=True)
 
-class TestJsonLoader:
+class TestJsonLoader(unittest.TestCase):
     def test_load_json_cards(self):
         """Test loading cards from JSON."""
         filepath = "data/test_cards.json"
@@ -24,7 +29,7 @@ class TestJsonLoader:
                         "id": 1001,
                         "name": "Bronze-Arm Tribe",
                         "type": "CREATURE",
-                        "civilization": "NATURE",
+                        "civilizations": ["NATURE"],
                         "races": ["Beast Folk"],
                         "cost": 3,
                         "power": 1000,
@@ -34,7 +39,7 @@ class TestJsonLoader:
                         "id": 1002,
                         "name": "Aqua Hulcus",
                         "type": "CREATURE",
-                        "civilization": "WATER",
+                        "civilizations": ["WATER"],
                         "races": ["Liquid People"],
                         "cost": 3,
                         "power": 2000,
@@ -63,3 +68,9 @@ class TestJsonLoader:
         # The error "assert <Civilization.NATURE: 16> == 16" suggests they are NOT equal.
         # It's better to compare against the Enum member itself.
         assert bat.civilization == Civilization.NATURE
+
+        # Verify second card content (Aqua Hulcus)
+        assert 1002 in cards
+        ah = cards[1002]
+        assert ah.name == "Aqua Hulcus"
+        assert ah.civilization == Civilization.WATER
