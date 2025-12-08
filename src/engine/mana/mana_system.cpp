@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <iostream>
 #include <set>
+#include <numeric>
+#include <functional>
 
 namespace dm::engine {
 
@@ -32,207 +34,149 @@ namespace dm::engine {
         return cost;
     }
 
-    bool ManaSystem::can_pay_cost(const GameState& game_state, const Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
-        int cost = get_adjusted_cost(game_state, player, card_def);
-
-        int available_mana = 0;
-        Civilization available_civs = Civilization::NONE;
-
-        for (const auto& card : player.mana_zone) {
-            if (!card.is_tapped) {
-                available_mana++;
-                if (card_db.count(card.card_id)) {
-                    const auto& m_def = card_db.at(card.card_id);
-                    for (auto civ : m_def.civilizations) {
-                        available_civs = available_civs | civ;
-                    }
-                }
+    // Internal helper with DB access
+    static std::vector<int> solve_payment_internal(const std::vector<CardInstance>& mana_zone,
+                                              const std::vector<Civilization>& required_civs,
+                                              int total_cost,
+                                              const std::map<CardID, CardDefinition>& card_db) {
+        std::vector<Civilization> colored_reqs;
+        for (auto c : required_civs) {
+            if (c != Civilization::NONE && c != Civilization::ZERO) {
+                colored_reqs.push_back(c);
             }
         }
 
-        if (available_mana < cost) return false;
+        int untapped_count = 0;
+        for (const auto& c : mana_zone) if (!c.is_tapped) untapped_count++;
+        if (untapped_count < total_cost) return {};
 
-        bool is_colorless = card_def.has_civilization(Civilization::ZERO) || card_def.civilizations.empty();
-        if (!is_colorless) {
-             bool match = false;
-             for (auto req_civ : card_def.civilizations) {
-                 if ((available_civs & req_civ) != Civilization::NONE) {
-                     match = true;
-                     break;
-                 }
+        std::vector<int> result;
+        std::vector<bool> used(mana_zone.size(), false);
+
+        // Pre-fetch defs for untapped cards
+        std::vector<const CardDefinition*> mana_defs(mana_zone.size(), nullptr);
+        for(size_t i=0; i<mana_zone.size(); ++i) {
+             if (!mana_zone[i].is_tapped && card_db.count(mana_zone[i].card_id)) {
+                 mana_defs[i] = &card_db.at(mana_zone[i].card_id);
              }
-             if (!match) return false;
         }
 
-        return true;
+        // Recursive lambda
+        std::function<bool(size_t)> solve = [&](size_t req_idx) -> bool {
+            if (req_idx >= colored_reqs.size()) {
+                // Requirements met. Now fill remaining cost with any unused untapped cards.
+                int needed = total_cost - (int)result.size();
+                if (needed == 0) return true;
+
+                for (size_t i = 0; i < mana_zone.size(); ++i) {
+                    if (needed == 0) break;
+                    if (!mana_zone[i].is_tapped && !used[i]) {
+                        used[i] = true;
+                        result.push_back(i);
+                        needed--;
+                    }
+                }
+
+                if (needed == 0) return true;
+                return false; // Not enough filler
+            }
+
+            Civilization req = colored_reqs[req_idx];
+            for (size_t i = 0; i < mana_zone.size(); ++i) {
+                if (mana_defs[i] && !used[i]) {
+                    if (mana_defs[i]->has_civilization(req)) {
+                        used[i] = true;
+                        result.push_back(i);
+
+                        if (solve(req_idx + 1)) return true;
+
+                        result.pop_back();
+                        used[i] = false;
+                    }
+                }
+            }
+            return false;
+        };
+
+        if (colored_reqs.empty()) {
+            // Just fill
+            for (size_t i = 0; i < mana_zone.size(); ++i) {
+                if ((int)result.size() == total_cost) break;
+                if (!mana_zone[i].is_tapped) result.push_back(i);
+            }
+            return result;
+        }
+
+        if (solve(0)) {
+            return result;
+        }
+
+        return {};
+    }
+
+    // Stub for the hpp declaration
+    std::vector<int> ManaSystem::solve_payment(const std::vector<dm::core::CardInstance>& mana_zone,
+                                              const std::vector<dm::core::Civilization>& required_civs,
+                                              int total_cost) {
+        return {};
+    }
+
+    bool ManaSystem::can_pay_cost(const GameState& game_state, const Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
+        int cost = get_adjusted_cost(game_state, player, card_def);
+        auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
+        return !indices.empty();
     }
 
     bool ManaSystem::can_pay_cost(const Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
         int cost = card_def.cost;
-
-        int available_mana = 0;
-        Civilization available_civs = Civilization::NONE;
-
-        for (const auto& card : player.mana_zone) {
-            if (!card.is_tapped) {
-                available_mana++;
-                if (card_db.count(card.card_id)) {
-                    const auto& m_def = card_db.at(card.card_id);
-                    for (auto civ : m_def.civilizations) {
-                        available_civs = available_civs | civ;
-                    }
-                }
-            }
-        }
-
-        if (available_mana < cost) return false;
-
-        bool is_colorless = card_def.has_civilization(Civilization::ZERO) || card_def.civilizations.empty();
-        if (!is_colorless) {
-             bool match = false;
-             for (auto req_civ : card_def.civilizations) {
-                 if ((available_civs & req_civ) != Civilization::NONE) {
-                     match = true;
-                     break;
-                 }
-             }
-             if (!match) return false;
-        }
-
-        return true;
+        auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
+        return !indices.empty();
     }
 
     bool ManaSystem::auto_tap_mana(GameState& game_state, Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
-        if (!can_pay_cost(game_state, player, card_def, card_db)) return false;
+        int cost = get_adjusted_cost(game_state, player, card_def);
 
-        int cost_remaining = get_adjusted_cost(game_state, player, card_def);
-        int paid_mana = 0;
+        auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
+        if (indices.empty()) return false;
 
-        bool is_colorless = card_def.has_civilization(Civilization::ZERO) || card_def.civilizations.empty();
-        bool civ_requirement_met = is_colorless;
-
-        // First pass: Try to tap a card that satisfies the civilization requirement
-        if (!civ_requirement_met && cost_remaining > 0) {
-            for (auto& card : player.mana_zone) {
-                if (!card.is_tapped) {
-                    const auto& mana_card_def = card_db.at(card.card_id);
-                    bool useful = false;
-                    for (auto req_civ : card_def.civilizations) {
-                        for (auto mc : mana_card_def.civilizations) {
-                            if (mc == req_civ) {
-                                useful = true;
-                                break;
-                            }
-                        }
-                        if (useful) break;
-                    }
-
-                    if (useful) {
-                        card.is_tapped = true;
-                        if (cost_remaining > 0) cost_remaining--;
-                        paid_mana++;
-                        civ_requirement_met = true;
-                        break;
-                    }
-                }
-            }
+        // Apply tap
+        for (int idx : indices) {
+            player.mana_zone[idx].is_tapped = true;
         }
 
-        // Second pass: Tap remaining necessary mana
-        if (cost_remaining > 0) {
-            for (auto& card : player.mana_zone) {
-                if (cost_remaining == 0) break;
-                if (!card.is_tapped) {
-                    card.is_tapped = true;
-                    cost_remaining--;
-                    paid_mana++;
-                }
-            }
+        // Logic for "Played without mana"
+        // If cost was > 0, we check if we tapped anything.
+        // Wait, current implementation:
+        // if (paid_mana == 0) -> played_without_mana = true.
+        // If cost 0 (paid_mana 0), played_without_mana = true. Correct.
+        // If cost > 0, paid_mana > 0, false. Correct.
+        // My previous concern was `cost > 0` check.
+
+        if (indices.empty()) { // Should be caught by can_pay_cost unless cost=0
+            if (cost == 0) game_state.turn_stats.played_without_mana = true;
+        } else {
+            // paid > 0, so not played without mana (usually)
+            // Unless reduction made it 0?
+            // If reduction made it 0, indices is empty (cost 0).
+            // So if indices empty, it IS played without mana.
         }
 
-        // If card had a base cost > 0, but we paid 0 mana, set flag.
-        // This covers 0 cost cards (cost == 0) not setting the flag,
-        // and cards reduced to 0 (though normal reduction minimum is 1, G-Zero skips payment).
-        // Wait, auto_tap_mana is called by PAY_COST.
-        // If cost_remaining was 0 at start (e.g. G-Zero or base cost 0), loops didn't run, paid_mana = 0.
-        // If base cost was > 0, we want to flag it.
-        // If base cost was 0, we do NOT want to flag it (e.g. tokens, dummy).
-        // The check `paid_mana == 0 && card_def.cost > 0` seems correct for "Played Without Mana".
-        // HOWEVER, get_adjusted_cost returns minimum 1 for normal reductions.
-        // So `cost_remaining` is at least 1 unless base cost <= 0.
-        // Unless G-Zero logic bypasses this function entirely?
-        // G-Zero usually sets cost to 0 via specific handling or skips auto_tap_mana?
-        // If `ActionType::PAY_COST` calls `auto_tap_mana`, it relies on `get_adjusted_cost`.
-        // If `G_ZERO` is active, `ActionGenerator` might produce a `PAY_COST` with target_slot_index or similar?
-        // Actually, `EffectResolver` calls `auto_tap_mana`.
-        // If `EffectResolver` sees a G-Zero flag or special cost, it might handle it.
-
-        // In the failing test `test_meta_counter_trigger_and_resolution`, the card `self.zero_card_id` has `cost = 0`.
-        // `get_adjusted_cost` returns 0 for cost 0.
-        // `auto_tap_mana` sees `cost_remaining` 0. Loops skip. `paid_mana` 0.
-        // `if (paid_mana == 0 && card_def.cost > 0)` -> 0 > 0 is False.
-        // So `played_without_mana` is NOT set.
-        // The test expects it to be TRUE?
-        // "Player 0 plays 0-cost card"
-        // Meta Counter condition: "Opponent played a card without paying mana?"
-        // Usually, 0-cost cards (like from G-Zero or naturally 0) COUNT for "played without mana" in the OCG rules?
-        // Let's check the rules memory or requirement.
-        // Memory: "The ManaSystem::auto_tap_mana logic was updated to prevent tapping mana for civilization requirements if the card's remaining cost is 0, ensuring played_without_mana is correctly set for 0-cost cards."
-        // This implies it SHOULD be set.
-        // So my check `card_def.cost > 0` is preventing it.
-        // I should remove `&& card_def.cost > 0`?
-        // But if I play a dummy card (token) or start of game setup?
-        // Tokens are "Summoned", not "Played".
-        // If a card is PLAYED and cost was 0, it is "Played without mana".
-        // So yes, I should allow cost 0.
-
-        if (paid_mana == 0) {
-            game_state.turn_stats.played_without_mana = true;
+        // If cost was 0, indices is empty.
+        if (indices.empty()) {
+             game_state.turn_stats.played_without_mana = true;
         }
 
         return true;
     }
 
     bool ManaSystem::auto_tap_mana(Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
-        if (!can_pay_cost(player, card_def, card_db)) return false;
+        int cost = card_def.cost;
 
-        int cost_remaining = card_def.cost;
-        bool is_colorless = card_def.has_civilization(Civilization::ZERO) || card_def.civilizations.empty();
-        bool civ_requirement_met = is_colorless;
+        auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
+        if (indices.empty() && cost > 0) return false;
 
-        if (!civ_requirement_met && cost_remaining > 0) {
-            for (auto& card : player.mana_zone) {
-                if (!card.is_tapped) {
-                    const auto& mana_card_def = card_db.at(card.card_id);
-                     bool useful = false;
-                    for (auto req_civ : card_def.civilizations) {
-                        for (auto mc : mana_card_def.civilizations) {
-                            if (mc == req_civ) {
-                                useful = true;
-                                break;
-                            }
-                        }
-                        if (useful) break;
-                    }
-
-                    if (useful) {
-                        card.is_tapped = true;
-                        cost_remaining--;
-                        civ_requirement_met = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (cost_remaining > 0) {
-            for (auto& card : player.mana_zone) {
-                if (cost_remaining == 0) break;
-                if (!card.is_tapped) {
-                    card.is_tapped = true;
-                    cost_remaining--;
-                }
-            }
+        for (int idx : indices) {
+            player.mana_zone[idx].is_tapped = true;
         }
 
         return true;
