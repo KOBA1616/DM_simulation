@@ -26,9 +26,25 @@ class Trainer:
 
         print(f"Loading data from {data_file}...")
         data = np.load(data_file)
-        self.states = torch.tensor(data['states'], dtype=torch.float32)
+
+        # Determine if we have masked/full states (new format) or just 'states' (old)
+        if 'states_masked' in data:
+            self.states = torch.tensor(data['states_masked'], dtype=torch.float32)
+        elif 'states' in data:
+            self.states = torch.tensor(data['states'], dtype=torch.float32)
+        else:
+             raise ValueError("Data file must contain 'states' or 'states_masked'")
+
         self.policies = torch.tensor(data['policies'], dtype=torch.float32)
         self.values = torch.tensor(data['values'], dtype=torch.float32).unsqueeze(1)
+
+        # Load Masks if available (Step C: Action Masking)
+        if 'masks' in data:
+            self.masks = torch.tensor(data['masks'], dtype=torch.float32)
+            print("Action masks loaded.")
+        else:
+            self.masks = None
+            print("No action masks found in data.")
 
         self.input_size = self.states.shape[1]
         self.action_size = self.policies.shape[1]
@@ -60,10 +76,27 @@ class Trainer:
                 batch_target_policies = self.policies[batch_indices]
                 batch_target_values = self.values[batch_indices]
 
+                batch_masks = None
+                if self.masks is not None:
+                     batch_masks = self.masks[batch_indices]
+
                 pred_policies, pred_values = self.network(batch_states)
 
                 # Value Loss: MSE
                 value_loss = F.mse_loss(pred_values, batch_target_values)
+
+                # Action Masking Logic (Step C)
+                # If we have masks, set the logits of invalid actions to a very small number (-inf)
+                if batch_masks is not None:
+                    # Make sure mask is 1 for legal, 0 for illegal
+                    # (1 - mask) * -1e9
+                    # Or just pred_policies[mask == 0] = -1e9 (requires cloning if leaf?)
+                    # pred_policies is a tensor.
+                    # We can use masked_fill
+
+                    # Convert 0 in mask to True (to fill)
+                    fill_mask = (batch_masks == 0).bool()
+                    pred_policies = pred_policies.masked_fill(fill_mask, -1e9)
 
                 # Policy Loss: Cross Entropy
                 # pred_policies are logits. target is probability distribution.

@@ -17,6 +17,8 @@
 #include "../ai/scenario/scenario_executor.hpp"
 #include "../ai/self_play/parallel_runner.hpp"
 #include "../ai/evaluator/beam_search_evaluator.hpp"
+#include "../ai/encoders/action_encoder.hpp"
+#include "../ai/encoders/tensor_converter.hpp"
 #include "../core/card_stats.hpp"
 #include "../core/game_state_tracking.cpp" // Bad practice but keeping as per existing structure for now if needed for initialize_card_stats implementation access
 
@@ -63,6 +65,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::enum_<CardType>(m, "CardType")
         .value("CREATURE", CardType::CREATURE)
         .value("SPELL", CardType::SPELL)
+        .export_values();
+
+    py::enum_<GameResult>(m, "GameResult")
+        .value("NONE", GameResult::NONE)
+        .value("P1_WIN", GameResult::P1_WIN)
+        .value("P2_WIN", GameResult::P2_WIN)
+        .value("DRAW", GameResult::DRAW)
         .export_values();
 
     py::enum_<Phase>(m, "Phase")
@@ -154,7 +163,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::enum_<ActionType>(m, "ActionType")
         .value("PASS", ActionType::PASS)
         .value("PLAY_CARD", ActionType::PLAY_CARD)
-        .value("ACTIVATE_SHIELD_TRIGGER", ActionType::USE_SHIELD_TRIGGER)
+        .value("USE_SHIELD_TRIGGER", ActionType::USE_SHIELD_TRIGGER)
+        .value("ACTIVATE_SHIELD_TRIGGER", ActionType::USE_SHIELD_TRIGGER) // Alias
         .value("ATTACK_CREATURE", ActionType::ATTACK_CREATURE)
         .value("ATTACK_PLAYER", ActionType::ATTACK_PLAYER)
         .value("BLOCK", ActionType::BLOCK)
@@ -305,6 +315,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("effect_buffer", &GameState::effect_buffer)
+        .def_readwrite("winner", &GameState::winner)
+        .def_readwrite("loop_proven", &GameState::loop_proven)
         .def("get_card_def", [](GameState& s, CardID id, const std::map<CardID, CardDefinition>& db) {
             return db.at(id);
         })
@@ -371,6 +383,15 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("get_all_cards", &CardRegistry::get_all_cards);
 
     // AI & Training
+    py::class_<ActionEncoder>(m, "ActionEncoder")
+        .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
+        .def_static("action_to_index", &ActionEncoder::action_to_index);
+
+    py::class_<TensorConverter>(m, "TensorConverter")
+        .def_readonly_static("INPUT_SIZE", &TensorConverter::INPUT_SIZE)
+        .def_static("convert_to_tensor", &TensorConverter::convert_to_tensor)
+        .def_static("convert_batch_flat", &TensorConverter::convert_batch_flat);
+
     py::class_<ScenarioConfig>(m, "ScenarioConfig")
         .def(py::init<>())
         .def_readwrite("my_mana", &ScenarioConfig::my_mana)
