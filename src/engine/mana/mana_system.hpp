@@ -2,13 +2,8 @@
 #include <vector>
 #include <map>
 #include "../../core/types.hpp"
-
-// Forward declarations
-namespace dm::core {
-    struct GameState;
-    struct Player;
-    struct CardDefinition;
-}
+#include "../../core/game_state.hpp"
+#include "../../core/card_def.hpp"
 
 namespace dm::engine {
 
@@ -38,6 +33,13 @@ namespace dm::engine {
         // Virtual cost calculation for AI/Legality checks [PLAN-002]
         // Currently aliases get_adjusted_cost, but reserved for future "Active Reduction" logic (Hyper Energy, etc.)
         static int get_projected_cost(const dm::core::GameState& game_state, const dm::core::Player& player, const dm::core::CardDefinition& card_def);
+
+    private:
+        // Helper for strict multicolor payment (Rule 817.1a-ish but for payment)
+        // Returns indices of mana cards to tap if successful, empty if failed.
+        static std::vector<int> solve_payment(const std::vector<dm::core::CardInstance>& mana_zone,
+                                              const std::vector<dm::core::Civilization>& required_civs,
+                                              int total_cost);
     };
 
 }

@@ -95,6 +95,10 @@ Pythonバインディング (`bindings.cpp`) の不整合を解消し、テス�
     *   `CardDefinition` の文明定義（単数→複数）変更に伴うコンパイルエラー（`ManaSystem`, `JsonLoader`, `CsvLoader`, `TensorConverter`）を修正。
     *   Pythonバインディング (`bindings.cpp`) のインクルード漏れや型定義の不整合（`CardKeywords`, `Zone` Enum）を修正し、`dm_ai_module` の正常ビルドを回復。
 
+8.  **超魂クロス (Metamorph) および 多色マナ厳格化 (Strict Multicolor Mana) - 実装済み (2025/03/XX)**
+    *   **超魂クロス**: 817.1a (通常能力との共存) および 817.1b (下のカードから超魂能力のみ付与) のルールを実装。`GenericCardSystem::resolve_trigger` にて、`CardDefinition.metamorph_abilities` を用いて能力を適切に合成するロジックを確立。
+    *   **多色マナ支払いの厳格化**: `ManaSystem` にバックトラック法を用いた厳密なコスト支払いロジック (`solve_payment`) を実装。多色カードが1枚につき1文明のみを提供し、かつ必要な全文明を過不足なく満たす組み合わせを探索・適用するように改修。
+
 ## 4. 今後のロードマップ (Roadmap)
 *   **スタックシステムの完全な統合**: 既存のAIモデルや戦略が、即時実行ではなくスタック解決アクションを適切に選択できるか、自己対戦を通して検証する。
 *   **テスト環境の整備**: `test_just_diver.py` や `test_json_loader.py` の失敗原因を特定し、修正する。
