@@ -16,7 +16,9 @@
 #include "handlers/buffer_handler.hpp"
 #include "handlers/cost_handler.hpp"
 #include "handlers/hierarchy_handler.hpp"
-#include "handlers/reveal_handler.hpp" // Added
+#include "handlers/reveal_handler.hpp"
+#include "handlers/select_number_handler.hpp"
+#include "handlers/friend_burst_handler.hpp" // Added
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -78,7 +80,9 @@ namespace dm::engine {
         sys.register_handler(EffectActionType::PLAY_FROM_BUFFER, std::make_unique<BufferHandler>());
         sys.register_handler(EffectActionType::COST_REFERENCE, std::make_unique<CostHandler>());
         sys.register_handler(EffectActionType::MOVE_TO_UNDER_CARD, std::make_unique<MoveToUnderCardHandler>());
-        sys.register_handler(EffectActionType::REVEAL_CARDS, std::make_unique<RevealHandler>()); // Registered
+        sys.register_handler(EffectActionType::REVEAL_CARDS, std::make_unique<RevealHandler>());
+        sys.register_handler(EffectActionType::SELECT_NUMBER, std::make_unique<SelectNumberHandler>());
+        sys.register_handler(EffectActionType::FRIEND_BURST, std::make_unique<FriendBurstHandler>()); // Added
         _handlers_registered = true;
     }
 
@@ -92,6 +96,7 @@ namespace dm::engine {
         sys.register_evaluator("SHIELD_COUNT", std::make_unique<ShieldCountEvaluator>());
         sys.register_evaluator("OPPONENT_PLAYED_WITHOUT_MANA", std::make_unique<OpponentPlayedWithoutManaEvaluator>());
         sys.register_evaluator("CIVILIZATION_MATCH", std::make_unique<CivilizationMatchEvaluator>());
+        sys.register_evaluator("FIRST_ATTACK", std::make_unique<FirstAttackEvaluator>());
         _evaluators_registered = true;
     }
 

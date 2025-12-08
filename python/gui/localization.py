@@ -65,6 +65,8 @@ TRANSLATIONS = {
     "Power": "パワー",
     "Type": "タイプ",
     "Races": "種族",
+    "Twinpact": "ツインパクト",
+    "Edit Spell Side": "呪文側を編集",
 
     # Lists & Groups
     "Keywords": "キーワード能力",
@@ -144,6 +146,7 @@ TRANSLATIONS = {
     "PASSIVE_CONST": "常在効果",
     "ON_OTHER_ENTER": "他クリーチャー登場時",
     "ON_ATTACK_FROM_HAND": "手札から攻撃時 (革命チェンジ等)",
+    "AT_BREAK_SHIELD": "シールドブレイク時",
 
     # Enums - Conditions
     "MANA_ARMED": "マナ武装",
@@ -152,6 +155,7 @@ TRANSLATIONS = {
     "OPPONENT_PLAYED_WITHOUT_MANA": "相手がマナを払わずにプレイ",
     "DURING_YOUR_TURN": "自分のターン中",
     "DURING_OPPONENT_TURN": "相手のターン中",
+    "FIRST_ATTACK": "このターン最初の攻撃",
 
     # Enums - Actions
     "DRAW_CARD": "ドロー",
@@ -184,6 +188,8 @@ TRANSLATIONS = {
     "RESET_INSTANCE": "カード状態リセット",
     "Hyper Energy": "ハイパーエナジー",
     "SEND_TO_DECK_BOTTOM": "山札下へ送る",
+    "SELECT_NUMBER": "数字を選択",
+    "FRIEND_BURST": "フレンド・バースト",
 
     # Smart Link
     "Use result from previous measurement": "直前の計測結果を使用する",
@@ -202,7 +208,8 @@ TRANSLATIONS = {
     "Filter Help": "対象を選択するゾーンを指定してください。「枚数」を0にすると「すべて/任意」になります。1以上にするとその枚数を選択します。",
 
     # Scope
-    "PLAYER_SELF": "自分",
+    "SELF": "自身(カード)",
+    "PLAYER_SELF": "自分(プレイヤー)",
     "PLAYER_OPPONENT": "相手",
     "TARGET_SELECT": "選択",
     "ALL_PLAYERS": "両者",
