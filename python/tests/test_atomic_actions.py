@@ -82,7 +82,7 @@ def test_break_shield():
     state = setup_game()
     card_db = {}
     state.add_card_to_deck(P2_ID, 1, 401)
-    dm_ai_module.DevTools.move_cards(state, P2_ID, dm_ai_module.Zone.DECK, dm_ai_module.Zone.SHIELD, 1)
+    dm_ai_module.DevTools.move_cards(state, P2_ID, dm_ai_module.Zone.DECK, dm_ai_module.Zone.SHIELD, 1, -1)
     grave_def = dm_ai_module.ActionDef()
     grave_def.type = dm_ai_module.EffectActionType.SEND_SHIELD_TO_GRAVE
     state.active_player_id = P2_ID
@@ -94,7 +94,7 @@ def test_move_card_generic():
     state = setup_game()
     card_db = {}
     state.add_card_to_hand(P1_ID, 1, 501)
-    dm_ai_module.DevTools.move_cards(state, P1_ID, dm_ai_module.Zone.HAND, dm_ai_module.Zone.GRAVEYARD, 1)
+    dm_ai_module.DevTools.move_cards(state, P1_ID, dm_ai_module.Zone.HAND, dm_ai_module.Zone.GRAVEYARD, 1, -1)
     assert len(state.players[P1_ID].hand) == 0
     assert len(state.players[P1_ID].graveyard) == 1
 
@@ -111,8 +111,16 @@ def test_condition_system():
     eff.condition = cond
     eff.actions = [act]
     state.add_card_to_deck(0, 1, 9001)
+    # Ensure source instance exists and has an owner, otherwise get_controller defaults to active_player which might be ok but let's be safe
+    # If using instance_id 100, we must add it to a zone or assume it works if get_controller handles it.
+    # GenericCardSystem::get_controller checks owner map.
+    # We should add a dummy card as source.
+    state.add_card_to_hand(0, 1000, 100)
+
     prev_hand = len(state.players[0].hand)
     dm_ai_module.GenericCardSystem.resolve_effect(state, eff, 100)
+    # The source (100) is in hand. Controller is 0. Active player is 0. Condition (YOUR_TURN) passes.
+    # Effect is DRAW 1.
     assert len(state.players[0].hand) == prev_hand + 1
     state.active_player_id = 1
     state.add_card_to_deck(0, 1, 9002)
@@ -167,7 +175,8 @@ def test_hyper_energy_cost_handler():
     state.add_test_card_to_battle(0, 1, 402, False, False)
     targets = [401, 402]
     state.add_card_to_hand(0, 2, 300)
-    dm_ai_module.GenericCardSystem.resolve_effect_with_targets(state, eff, targets, 300, card_db)
+    ctx = {}
+    dm_ai_module.GenericCardSystem.resolve_effect_with_targets(state, eff, targets, 300, card_db, ctx)
     c401 = None
     c402 = None
     for c in state.players[0].battle_zone:

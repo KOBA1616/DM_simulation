@@ -401,14 +401,26 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("add_card_to_hand", [](GameState& s, PlayerID pid, CardID cid, int iid) {
              CardInstance c; c.card_id = cid; c.instance_id = iid;
              s.players[pid].hand.push_back(c);
+             if (iid >= 0) {
+                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
+                 s.card_owner_map[iid] = pid;
+             }
         })
         .def("add_card_to_mana", [](GameState& s, PlayerID pid, CardID cid, int iid) {
              CardInstance c; c.card_id = cid; c.instance_id = iid;
              s.players[pid].mana_zone.push_back(c);
+             if (iid >= 0) {
+                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
+                 s.card_owner_map[iid] = pid;
+             }
         })
         .def("add_card_to_deck", [](GameState& s, PlayerID pid, CardID cid, int iid) {
              CardInstance c; c.card_id = cid; c.instance_id = iid;
              s.players[pid].deck.push_back(c);
+             if (iid >= 0) {
+                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
+                 s.card_owner_map[iid] = pid;
+             }
         })
         .def("add_test_card_to_battle", [](GameState& s, PlayerID pid, CardID cid, int iid, bool tapped, bool sick) {
              CardInstance c;
@@ -418,6 +430,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
              c.summoning_sickness = sick;
              c.turn_played = s.turn_number;
              s.players[pid].battle_zone.push_back(c);
+             if (iid >= 0) {
+                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
+                 s.card_owner_map[iid] = pid;
+             }
+        })
+        .def("add_test_card_to_shield", [](GameState& s, PlayerID pid, CardID cid, int iid) {
+             CardInstance c;
+             c.card_id = cid;
+             c.instance_id = iid;
+             s.players[pid].shield_zone.push_back(c);
+             if (iid >= 0) {
+                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
+                 s.card_owner_map[iid] = pid;
+             }
         })
         .def("set_deck", [](GameState& s, PlayerID pid, const std::vector<int>& card_ids) {
             s.players[pid].deck.clear();
