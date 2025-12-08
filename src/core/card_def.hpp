@@ -4,6 +4,7 @@
 #include <vector>
 #include <bitset>
 #include <optional>
+#include <memory>
 #include "card_json_types.hpp" // Include for FilterDef
 #include <algorithm> // For std::find
 
@@ -82,6 +83,10 @@ namespace dm::core {
 
         // Reaction Abilities
         std::vector<ReactionAbility> reaction_abilities;
+
+        // Twinpact Spell Side (Recursive definition via shared_ptr)
+        // Note: Using shared_ptr to avoid incomplete type issues
+        std::shared_ptr<CardDefinition> spell_side;
 
         // Helper to check for a specific civilization
         bool has_civilization(Civilization civ) const {

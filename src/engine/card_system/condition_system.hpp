@@ -34,8 +34,6 @@ namespace dm::engine {
             if (IConditionEvaluator* eval = get_evaluator(condition.type)) {
                 return eval->evaluate(state, condition, source_instance_id);
             }
-            // Fallback: If unknown condition, default to false or true?
-            // Usually safest to false if logic missing.
             return false;
         }
 
@@ -43,20 +41,6 @@ namespace dm::engine {
         ConditionSystem() = default;
         std::map<std::string, std::unique_ptr<IConditionEvaluator>> evaluators;
     };
-
-    // ... (Evaluator implementations will be in .cpp or defined here if header-only was intended, but avoiding redefinition errors if included multiple times)
-    // Actually, generic_card_system.cpp had them inline? No, they were in generic_card_system.cpp in previous context but here I see them in header?
-    // The file `condition_system.hpp` I read earlier had the implementations INLINE.
-    // If I keep them inline in header, I must mark them `inline` or put them in `.cpp`.
-    // The previous file content I read was `src/engine/card_system/condition_system.hpp`.
-    // It seems they were defined in class body, which is implicitly inline.
-    // I will keep them there but ensure I didn't break anything.
-    // Actually, `GenericCardSystem.cpp` had `ensure_evaluators_registered` which created `std::make_unique<TurnEvaluator>()`.
-    // This implies `TurnEvaluator` must be visible to `GenericCardSystem.cpp`.
-    // So keeping them in header is correct.
-
-    // I will include the implementations I read back into this file to preserve them.
-    // And add `evaluate_def` helper.
 
     class TurnEvaluator : public IConditionEvaluator {
     public:
@@ -85,8 +69,6 @@ namespace dm::engine {
             std::string civ = condition.str_val;
             for (const auto& card : controller.mana_zone) {
                 const CardData* cd = CardRegistry::get_card_data(card.card_id);
-                // civ logic
-                // CardData now has `civilizations` vector.
                 if (cd) {
                     bool match = false;
                     for(const auto& c : cd->civilizations) if(c == civ) match = true;
@@ -129,6 +111,21 @@ namespace dm::engine {
                  }
              }
              return false;
+        }
+    };
+
+    class FirstAttackEvaluator : public IConditionEvaluator {
+    public:
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) override {
+            // First attack of turn means attacks_declared_this_turn is 1?
+            // When trigger evaluates:
+            // "When this creature attacks, if it's the first attack..."
+            // In resolve_attack, we incremented the counter.
+            // So if it's the first attack, counter == 1.
+            // If condition checks BEFORE attack declaration (which is impossible for ON_ATTACK?), then 0.
+            // But triggers run inside resolve_attack AFTER increment.
+            // So `state.turn_stats.attacks_declared_this_turn == 1`.
+            return state.turn_stats.attacks_declared_this_turn == 1;
         }
     };
 }
