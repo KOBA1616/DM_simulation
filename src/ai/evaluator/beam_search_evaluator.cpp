@@ -223,19 +223,13 @@ namespace dm::ai {
         // Scan Hand and Mana for Key Cards
         auto scan_zone = [&](const std::vector<CardInstance>& zone, float multiplier) {
             for (const auto& card : zone) {
-                // std::cout << "DEBUG: Checking Card ID " << card.card_id << std::endl;
                 if (card_db_.find(card.card_id) != card_db_.end()) {
                     const auto& def = card_db_.at(card.card_id);
                     if (def.is_key_card) {
                         float imp = (float)def.ai_importance_score;
                         if (imp == 0) imp = 50.0f; // Default if flagged but score 0
                         danger += imp * multiplier;
-                        // std::cout << "DEBUG: Found Key Card ID " << card.card_id << " Danger: " << (imp * multiplier) << std::endl;
-                    } else {
-                         // std::cout << "DEBUG: Card ID " << card.card_id << " is NOT key card. Key=" << def.is_key_card << " Score=" << def.ai_importance_score << std::endl;
                     }
-                } else {
-                    // std::cout << "DEBUG: Card ID " << card.card_id << " not in DB." << std::endl;
                 }
             }
         };

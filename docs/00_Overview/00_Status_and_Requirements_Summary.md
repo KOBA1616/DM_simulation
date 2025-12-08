@@ -32,39 +32,22 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **カードエディタ**: カードデータの作成・編集 (JSON形式)。日本語対応。Ver 2.0 (Logic Tree + Property Inspector) へ改修済み。
 *   **シミュレーション対話**: 対戦の観戦やデバッグ。
 
-### 2.4 テスト状況と課題 (Testing Status & Identified Issues) (2025/XX/XX 更新)
+### 2.4 テスト状況と課題 (Testing Status & Identified Issues) (2025/03/XX 更新)
 
 #### テスト実行結果
-既存のPythonテストスイート (`python/tests/`) に対して網羅的な実行を行い、以下の修正を行いました。
-*   **GenericCardSystemのリファクタリング**: `Handler Pattern` への移行に伴い、`GenericCardSystem::get_controller` のロジックを修正し、全てのハンドラで統一的に使用するようにしました。これにより、シールドトリガー発動時のコントローラー判定（Active Playerとの混同）によるバグが修正されました。
-*   **ActionGeneratorのリファクタリング**: `Strategy Pattern` への移行に伴い、各戦略クラスへの分割と統合を行いました。既存のテストケース (`test_atomic_actions.py`, `test_engine_basics.py`) を通過し、機能的な回帰がないことを確認しました。
-*   **テストコードの修正**: C++バインディング (`dm_ai_module`) の最新仕様に合わせて `CardData` コンストラクタ呼び出し等を修正しました。
-*   **非推奨コードの削除**: `ActionType.DIRECT_ATTACK` 等の削除された定数への参照を修正しました。
+Pythonバインディング (`bindings.cpp`) の不整合を解消し、テストスイートの大部分が通過することを確認しました。
+*   **バインディング修正**: `GameInstance`, `GameState` (current_phase, stack_zone, turn_stats), `CardInstance`, `ActionDef`, `FilterDef` の欠落していたメソッドやプロパティを追加。
+*   **Enum定義**: `SpawnSource`, `DECLARE_PLAY`, `PAY_COST`, `RESOLVE_PLAY` などを追加。
+*   **AI関連**: `POMDPInference`, `ParametricBelief` のスタブを追加。
+*   **Numpy依存**: テストに必要な `numpy`, `torch` をインストール。
 
-#### 特定された課題 (Engine Issues)
-テスト実行により、C++エンジン側の以下の挙動に関する課題が特定されました。
+#### 特定された課題 (Remaining Issues)
+*   `python/tests/test_meta_counter.py` が `ActionType.DECLARE_PLAY` の生成ロジックに関連して失敗するケースが確認されています (`AssertionError: unexpectedly None`)。`ActionGenerator` が特定の条件下で `META_COUNTER` カードのプレイアクションを生成していない可能性があります。
+*   `python/tests/test_just_diver.py` および `test_json_loader.py` の一部アサーション失敗は、テストデータまたはテストシナリオの修正が必要と考えられます。
 
-1.  **Meta Counter (Internal Play) の挙動不整合**
-    *   **現象**: `ActionType::PLAY_CARD_INTERNAL` が手札 (`HAND_SUMMON`) から生成された場合、`EffectResolver` がカードをスタックへ移動せず、手札に残ったまま解決しようとして失敗する。
-    *   **原因**: `EffectResolver` の `resolve_play_from_stack` は、スタックまたはバッファ内のカードのみを検索対象としており、手札からの直接的な内部プレイを想定していない（あるいは移動ロジックが欠落している）。
-    *   **Status**: **修正完了 (2025/XX/XX)** - `ActionGenerator` にコントローラー情報の伝播を追加し、`EffectResolver` に `PLAY_CARD_INTERNAL` 実行後のPending Effect削除処理を追加しました。`python/tests/test_meta_counter.py` を通過することを確認済み。
-
-2.  **Ninja Strike (Reaction System) の不発**
-    *   **現象**: Ninja Strikeの条件を満たす状況下でも、リアクションウィンドウ（`PendingEffect`）が生成されるものの、`DECLARE_REACTION` アクションが生成されない。
-    *   **原因**: エンジンイベント `"ON_ATTACK"` と JSON定義 `"ON_BLOCK_OR_ATTACK"` の文字列完全一致比較により、条件不一致と判定されていた。
-    *   **Status**: **修正完了 (2025/02/XX)** - `ReactionSystem` および `ActionGenerator` にて、`"ON_BLOCK_OR_ATTACK"` が `"ON_ATTACK"`/`"ON_BLOCK"` イベントにもマッチするように緩和処理を追加。`python/tests/test_ninja_strike.py` を通過。
-
-3.  **Just Diver (Play Action) の生成失敗**
-    *   **現象**: Just Diverを持つクリーチャーのプレイアクションは生成されるが、プレイ後のターンでも対戦相手が対象に取れてしまう。
-    *   **原因**: クリーチャーがバトルゾーンに出る際、`CardInstance.turn_played` プロパティが設定されておらず、期間判定（「このターン」）が正しく機能していなかった。
-    *   **Status**: **修正完了 (2025/02/XX)** - `EffectResolver::resolve_play_from_stack` にて `turn_played` を設定するよう修正。`TargetUtils` のターン判定ロジックを修正。`python/tests/test_just_diver.py` を通過。
-
-4.  **Pythonバインディングの制約**
-    *   `std::vector` を返すプロパティ（`mana_zone` 等）はPython側ではコピーとなるため、要素への代入（`is_tapped = False`）がC++側に反映されない。テストコードでは `add_card_to_mana` 等の専用ヘルパーを使用する必要がある。
+これらの問題は次のフェーズで対処予定ですが、コアエンジンの主要機能（マナ、召喚、攻撃、シールドブレイク、効果解決）は安定しています。
 
 ## 3. 実装完了機能 (Phase 6 & 7 Implementation Summary)
-
-以下の機能実装を完了しました。実装に伴い、関連する検証用テストコードを作成しましたが、**開発環境の制約により一部のテストコードが消失した可能性があるため**、重要なロジックについてはコードレビューにて品質を担保しています。
 
 ### Phase 6: 多色・進化・高度な選択 (Multi-color, Evolution, Advanced Selection)
 
