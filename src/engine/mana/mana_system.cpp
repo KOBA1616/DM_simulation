@@ -150,7 +150,43 @@ namespace dm::engine {
             }
         }
 
-        if (paid_mana == 0 && card_def.cost > 0) {
+        // If card had a base cost > 0, but we paid 0 mana, set flag.
+        // This covers 0 cost cards (cost == 0) not setting the flag,
+        // and cards reduced to 0 (though normal reduction minimum is 1, G-Zero skips payment).
+        // Wait, auto_tap_mana is called by PAY_COST.
+        // If cost_remaining was 0 at start (e.g. G-Zero or base cost 0), loops didn't run, paid_mana = 0.
+        // If base cost was > 0, we want to flag it.
+        // If base cost was 0, we do NOT want to flag it (e.g. tokens, dummy).
+        // The check `paid_mana == 0 && card_def.cost > 0` seems correct for "Played Without Mana".
+        // HOWEVER, get_adjusted_cost returns minimum 1 for normal reductions.
+        // So `cost_remaining` is at least 1 unless base cost <= 0.
+        // Unless G-Zero logic bypasses this function entirely?
+        // G-Zero usually sets cost to 0 via specific handling or skips auto_tap_mana?
+        // If `ActionType::PAY_COST` calls `auto_tap_mana`, it relies on `get_adjusted_cost`.
+        // If `G_ZERO` is active, `ActionGenerator` might produce a `PAY_COST` with target_slot_index or similar?
+        // Actually, `EffectResolver` calls `auto_tap_mana`.
+        // If `EffectResolver` sees a G-Zero flag or special cost, it might handle it.
+
+        // In the failing test `test_meta_counter_trigger_and_resolution`, the card `self.zero_card_id` has `cost = 0`.
+        // `get_adjusted_cost` returns 0 for cost 0.
+        // `auto_tap_mana` sees `cost_remaining` 0. Loops skip. `paid_mana` 0.
+        // `if (paid_mana == 0 && card_def.cost > 0)` -> 0 > 0 is False.
+        // So `played_without_mana` is NOT set.
+        // The test expects it to be TRUE?
+        // "Player 0 plays 0-cost card"
+        // Meta Counter condition: "Opponent played a card without paying mana?"
+        // Usually, 0-cost cards (like from G-Zero or naturally 0) COUNT for "played without mana" in the OCG rules?
+        // Let's check the rules memory or requirement.
+        // Memory: "The ManaSystem::auto_tap_mana logic was updated to prevent tapping mana for civilization requirements if the card's remaining cost is 0, ensuring played_without_mana is correctly set for 0-cost cards."
+        // This implies it SHOULD be set.
+        // So my check `card_def.cost > 0` is preventing it.
+        // I should remove `&& card_def.cost > 0`?
+        // But if I play a dummy card (token) or start of game setup?
+        // Tokens are "Summoned", not "Played".
+        // If a card is PLAYED and cost was 0, it is "Played without mana".
+        // So yes, I should allow cost 0.
+
+        if (paid_mana == 0) {
             game_state.turn_stats.played_without_mana = true;
         }
 
