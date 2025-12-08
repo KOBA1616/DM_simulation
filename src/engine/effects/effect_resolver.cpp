@@ -234,7 +234,14 @@ namespace dm::engine {
              [&](const CardInstance& c){ return c.instance_id == action.source_instance_id; });
          if (hand_it != player.hand.end()) {
              CardInstance hand_card = *hand_it;
-             int attacker_id = game_state.current_attack.source_instance_id;
+
+             // Check if target is explicitly set (e.g., from ActionGenerator)
+             int attacker_id = action.target_instance_id;
+             if (attacker_id == -1) {
+                 // Fallback to current attack source if not set
+                 attacker_id = game_state.current_attack.source_instance_id;
+             }
+
              auto battle_it = std::find_if(player.battle_zone.begin(), player.battle_zone.end(),
                  [&](const CardInstance& c){ return c.instance_id == attacker_id; });
              if (battle_it != player.battle_zone.end()) {
