@@ -181,6 +181,11 @@ namespace dm::core {
         int initial_deck_count = 40;
         int visible_card_count = 0;
 
+        GameState() : rng(0) {
+            players[0].id = 0;
+            players[1].id = 1;
+        }
+
         GameState(uint32_t seed) : rng(seed) {
             players[0].id = 0;
             players[1].id = 1;

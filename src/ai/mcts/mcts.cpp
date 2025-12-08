@@ -247,7 +247,12 @@ namespace dm::ai {
         while (node) {
             node->visit_count++;
             node->value_sum += value;
-            value = -value;
+
+            // Invert value only if the active player changes
+            if (node->parent && node->parent->state.active_player_id != node->state.active_player_id) {
+                value = -value;
+            }
+
             node = node->parent;
         }
     }

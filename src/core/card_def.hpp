@@ -88,6 +88,10 @@ namespace dm::core {
         // Note: Using shared_ptr to avoid incomplete type issues
         std::shared_ptr<CardDefinition> spell_side;
 
+        // AI Metadata
+        bool is_key_card = false;
+        int ai_importance_score = 0;
+
         // Helper to check for a specific civilization
         bool has_civilization(Civilization civ) const {
             if (civ == Civilization::NONE) return civilizations.empty();

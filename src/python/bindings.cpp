@@ -16,6 +16,7 @@
 #include "../engine/card_system/card_registry.hpp"
 #include "../ai/scenario/scenario_executor.hpp"
 #include "../ai/self_play/parallel_runner.hpp"
+#include "../ai/evaluator/beam_search_evaluator.hpp"
 #include "../core/card_stats.hpp"
 #include "../core/game_state_tracking.cpp" // Bad practice but keeping as per existing structure for now if needed for initialize_card_stats implementation access
 
@@ -236,6 +237,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("races", &CardDefinition::races)
         .def_readwrite("keywords", &CardDefinition::keywords)
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
+        .def_readwrite("is_key_card", &CardDefinition::is_key_card)
+        .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
         .def_readwrite("civilizations", &CardDefinition::civilizations) // Changed to list
         .def_property("civilization",
              [](const CardDefinition& c) {
@@ -264,7 +267,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("id", &CardData::id)
         .def_readwrite("effects", &CardData::effects)
         .def_readwrite("revolution_change_condition", &CardData::revolution_change_condition)
-        .def_readwrite("keywords", &CardData::keywords);
+        .def_readwrite("keywords", &CardData::keywords)
+        .def_readwrite("is_key_card", &CardData::is_key_card)
+        .def_readwrite("ai_importance_score", &CardData::ai_importance_score);
 
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<>())
@@ -388,6 +393,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
          .def("play_games", &ParallelRunner::play_games)
          .def("play_scenario_match", &ParallelRunner::play_scenario_match)
          .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
+
+    py::class_<BeamSearchEvaluator>(m, "BeamSearchEvaluator")
+        .def(py::init<const std::map<dm::core::CardID, dm::core::CardDefinition>&, int, int>(),
+             py::arg("card_db"), py::arg("beam_width") = 7, py::arg("max_depth") = 3)
+        .def("evaluate", &BeamSearchEvaluator::evaluate);
 
     // Stats
     py::class_<CardStats>(m, "CardStats")
