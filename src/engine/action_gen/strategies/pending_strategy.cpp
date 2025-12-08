@@ -212,11 +212,20 @@ namespace dm::engine {
                         if (card_db.count(card.card_id)) {
                             const auto& def = card_db.at(card.card_id);
                             if (def.keywords.revolution_change) {
-                                Action use;
-                                use.type = ActionType::USE_ABILITY;
-                                use.source_instance_id = card.instance_id;
-                                use.slot_index = static_cast<int>(k);
-                                actions.push_back(use);
+                                // Validate Condition
+                                bool valid_condition = true;
+                                if (def.revolution_change_condition.has_value()) {
+                                    valid_condition = TargetUtils::is_valid_target(*attacker_it, card_db.at(attacker_it->card_id), def.revolution_change_condition.value(), game_state, eff.controller, eff.controller);
+                                }
+
+                                if (valid_condition) {
+                                    Action use;
+                                    use.type = ActionType::USE_ABILITY;
+                                    use.source_instance_id = card.instance_id;
+                                    use.target_instance_id = attacker_it->instance_id; // Set target to attacker
+                                    use.slot_index = static_cast<int>(k);
+                                    actions.push_back(use);
+                                }
                             }
                         }
                     }
