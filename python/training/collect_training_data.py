@@ -39,9 +39,8 @@ class HeuristicDataCollector:
 
         print(f"Using Card ID {self.valid_card_id} for deck construction.")
 
-        dummy_instance = dm_ai_module.GameInstance(42, self.card_db)
-        dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_instance.state, 0, self.card_db, True)
-        self.input_size = len(dummy_vec)
+        self.dummy_state = dm_ai_module.GameState(100)
+        self.input_size = dm_ai_module.TensorConverter.INPUT_SIZE
         self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
 
         print(f"Config: Input Size={self.input_size}, Action Size={self.action_size}")
@@ -50,30 +49,37 @@ class HeuristicDataCollector:
         self.agent2 = HeuristicAgent(1)
 
     def run_episode(self):
-        instance = dm_ai_module.GameInstance(random.randint(0, 100000), self.card_db)
-        state = instance.state
+        state = dm_ai_module.GameState(1000)
 
-        deck = [self.valid_card_id] * 40
-        state.set_deck(0, deck)
-        state.set_deck(1, deck)
+        for i in range(40):
+            iid_p1 = i
+            iid_p2 = i + 40
+            state.add_card_to_deck(0, self.valid_card_id, iid_p1)
+            state.add_card_to_deck(1, self.valid_card_id, iid_p2)
 
+        state.initialize_card_stats(self.card_db, 1000)
         dm_ai_module.PhaseManager.start_game(state, self.card_db)
 
         examples = []
-
         step_count = 0
-        while True:
-            is_over, result = dm_ai_module.PhaseManager.check_game_over(state)
-            if is_over:
-                return examples, result
+        max_steps = 300
 
-            if step_count > 300:
-                return examples, 3
+        while True:
+            if step_count > max_steps:
+                return examples, dm_ai_module.GameResult.DRAW
+
+            # Correctly check winner enum
+            if state.winner != dm_ai_module.GameResult.NONE:
+                 return examples, state.winner
 
             active_pid = state.active_player_id
             agent = self.agent1 if active_pid == 0 else self.agent2
 
             legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+
+            if not legal_actions:
+                 dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+                 continue
 
             chosen_action = agent.get_action(state, legal_actions, self.card_db)
 
@@ -88,21 +94,29 @@ class HeuristicDataCollector:
             if 0 <= action_idx < self.action_size:
                 policy_vec[action_idx] = 1.0
 
+            mask_vec = np.zeros(self.action_size, dtype=np.float32)
+            for action in legal_actions:
+                idx = dm_ai_module.ActionEncoder.action_to_index(action)
+                if 0 <= idx < self.action_size:
+                    mask_vec[idx] = 1.0
+
             examples.append({
                 "masked_state": masked_tensor,
                 "full_state": full_tensor,
                 "policy": policy_vec,
+                "mask": mask_vec,
                 "player": active_pid
             })
 
             dm_ai_module.EffectResolver.resolve_action(state, chosen_action, self.card_db)
+
             if chosen_action.type == dm_ai_module.ActionType.PASS:
                 dm_ai_module.PhaseManager.next_phase(state, self.card_db)
 
-            dm_ai_module.PhaseManager.fast_forward(state, self.card_db)
+            dm_ai_module.trigger_loop_detection(state)
             step_count += 1
 
-        return examples, 3
+        return examples, dm_ai_module.GameResult.DRAW
 
     def collect_data(self, episodes, output_file):
         print(f"Collecting data... Episodes={episodes}")
@@ -116,40 +130,46 @@ class HeuristicDataCollector:
         for i in range(episodes):
             examples, result = self.run_episode()
 
-            if result == 1: p1_wins += 1
-            elif result == 2: p2_wins += 1
+            if result == dm_ai_module.GameResult.P1_WIN: p1_wins += 1
+            elif result == dm_ai_module.GameResult.P2_WIN: p2_wins += 1
             else: draws += 1
+
+            if (i+1) % 10 == 0:
+                print(f"Progress: {i+1}/{episodes} (Result: {result})")
 
             for ex in examples:
                 player = ex["player"]
                 value = 0.0
-                if result == 1: value = 1.0 if player == 0 else -1.0
-                elif result == 2: value = 1.0 if player == 1 else -1.0
+                if result == dm_ai_module.GameResult.P1_WIN: value = 1.0 if player == 0 else -1.0
+                elif result == dm_ai_module.GameResult.P2_WIN: value = 1.0 if player == 1 else -1.0
 
                 all_data.append({
                     "masked": ex["masked_state"],
                     "full": ex["full_state"],
                     "policy": ex["policy"],
+                    "mask": ex["mask"],
                     "value": value
                 })
-
-            if (i+1) % 10 == 0:
-                print(f"Progress: {i+1}/{episodes}")
 
         duration = time.time() - start_time
         print(f"Done. Time: {duration:.2f}s. Samples: {len(all_data)}")
         print(f"Results: P1={p1_wins}, P2={p2_wins}, Draw={draws}")
 
-        # Save
+        if not all_data:
+            print("No data collected.")
+            return
+
         masked_states = np.array([x["masked"] for x in all_data], dtype=np.float32)
         full_states = np.array([x["full"] for x in all_data], dtype=np.float32)
         policies = np.array([x["policy"] for x in all_data], dtype=np.float32)
+        masks = np.array([x["mask"] for x in all_data], dtype=np.float32)
         values = np.array([x["value"] for x in all_data], dtype=np.float32)
 
         np.savez_compressed(output_file,
             states_masked=masked_states,
             states_full=full_states,
             policies=policies,
+            masks=masks,
             values=values
         )
         print(f"Saved to {output_file}")
