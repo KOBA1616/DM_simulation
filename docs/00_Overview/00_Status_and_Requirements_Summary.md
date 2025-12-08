@@ -41,9 +41,14 @@ Pythonバインディング (`bindings.cpp`) の不整合を解消し、テス�
 *   **AI関連**: `POMDPInference`, `ParametricBelief` のスタブを追加。
 *   **Numpy依存**: テストに必要な `numpy`, `torch` をインストール。
 
+#### 修復済みのテスト (Resolved Issues)
+*   **`python/tests/test_meta_counter.py` の修正**: `ActionGenerator` (PendingEffectStrategy) が生成する `PLAY_CARD_INTERNAL` アクションに `card_id` が正しく設定されておらず、テスト側のフィルタリングで除外されていました。C++側の `PendingEffectStrategy::generate` を修正し、`bindings.cpp` の `add_card_to_hand` 等で `card_owner_map` を正しく更新するようにしたことで、`game_state.get_card_instance` が正常に機能し、`card_id` が設定されるようになりました。
+*   **`python/tests/test_engine_basics.py` のリファクタリング**: 非推奨の `GameInstance` 依存コードを最新の `GameState` と `PhaseManager` を使用する形に書き換え、最新のエンジンAPIとの互換性を確保しました。
+*   **`python/tests/test_atomic_actions.py` の修正**: `DevTools.move_cards` の引数不足およびダミーカードの追加漏れによるテスト失敗を修正しました。
+
 #### 特定された課題 (Remaining Issues)
-*   `python/tests/test_meta_counter.py` が `ActionType.DECLARE_PLAY` の生成ロジックに関連して失敗するケースが確認されています (`AssertionError: unexpectedly None`)。`ActionGenerator` が特定の条件下で `META_COUNTER` カードのプレイアクションを生成していない可能性があります。
 *   `python/tests/test_just_diver.py` および `test_json_loader.py` の一部アサーション失敗は、テストデータまたはテストシナリオの修正が必要と考えられます。
+    *   特に `test_just_diver_attack.py` は、ターン進行 (`turn_number`) と ジャストダイバーの解除タイミングの解釈に齟齬がある可能性があります。
 
 これらの問題は次のフェーズで対処予定ですが、コアエンジンの主要機能（マナ、召喚、攻撃、シールドブレイク、効果解決）は安定しています。
 
@@ -91,8 +96,8 @@ Pythonバインディング (`bindings.cpp`) の不整合を解消し、テス�
     *   Pythonバインディング (`bindings.cpp`) のインクルード漏れや型定義の不整合（`CardKeywords`, `Zone` Enum）を修正し、`dm_ai_module` の正常ビルドを回復。
 
 ## 4. 今後のロードマップ (Roadmap)
-*   **レガシーテストの修復**: `test_engine_basics.py` 等、古いバインディング (`GameInstance` クラス等) に依存しているテストコードを最新の `GameState` ベースに更新する。
 *   **スタックシステムの完全な統合**: 既存のAIモデルや戦略が、即時実行ではなくスタック解決アクションを適切に選択できるか、自己対戦を通して検証する。
+*   **テスト環境の整備**: `test_just_diver.py` や `test_json_loader.py` の失敗原因を特定し、修正する。
 *   **Phase 9**: AIモデルの高度化 (PPO + LSTM アーキテクチャ) および GUI連携の強化。
 
 ## 5. Phase 9 要件定義: AIモデルの高度化 (AI Model Refinement with PPO+LSTM)
