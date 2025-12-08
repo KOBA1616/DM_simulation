@@ -19,6 +19,7 @@ namespace dm::core {
         ON_OTHER_ENTER,
         ON_ATTACK_FROM_HAND,
         ON_BLOCK,
+        AT_BREAK_SHIELD,
         NONE
     };
 
@@ -62,7 +63,6 @@ namespace dm::core {
         PLAY_FROM_BUFFER,
         MOVE_BUFFER_TO_ZONE,
         REVOLUTION_CHANGE,
-        // Phase 5: Dynamic Value Reference & Refactoring
         COUNT_CARDS,
         GET_GAME_STAT,
         APPLY_MODIFIER,
@@ -75,6 +75,8 @@ namespace dm::core {
         SEND_SHIELD_TO_GRAVE,
         SEND_TO_DECK_BOTTOM,
         MOVE_TO_UNDER_CARD,
+        SELECT_NUMBER,
+        FRIEND_BURST, // Added: Friend Burst
         NONE
     };
 
@@ -152,7 +154,7 @@ namespace dm::core {
         int id;
         std::string name;
         int cost;
-        std::vector<std::string> civilizations; // Changed to vector
+        std::vector<std::string> civilizations;
         int power;
         std::string type;
         std::vector<std::string> races;
@@ -160,6 +162,7 @@ namespace dm::core {
         std::optional<FilterDef> revolution_change_condition;
         std::optional<std::map<std::string, bool>> keywords;
         std::vector<ReactionAbility> reaction_abilities;
+        std::shared_ptr<CardData> spell_side;
     };
 
 } // namespace dm::core
@@ -184,6 +187,26 @@ namespace nlohmann {
             }
         }
     };
+
+    // Custom serializer for shared_ptr
+    template <typename T>
+    struct adl_serializer<std::shared_ptr<T>> {
+        static void to_json(json& j, const std::shared_ptr<T>& opt) {
+            if (!opt) {
+                j = nullptr;
+            } else {
+                j = *opt;
+            }
+        }
+
+        static void from_json(const json& j, std::shared_ptr<T>& opt) {
+            if (j.is_null()) {
+                opt = nullptr;
+            } else {
+                opt = std::make_shared<T>(j.get<T>());
+            }
+        }
+    };
 }
 
 namespace dm::core {
@@ -197,7 +220,8 @@ namespace dm::core {
         {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"},
         {TriggerType::ON_OTHER_ENTER, "ON_OTHER_ENTER"},
         {TriggerType::ON_ATTACK_FROM_HAND, "ON_ATTACK_FROM_HAND"},
-        {TriggerType::ON_BLOCK, "ON_BLOCK"}
+        {TriggerType::ON_BLOCK, "ON_BLOCK"},
+        {TriggerType::AT_BREAK_SHIELD, "AT_BREAK_SHIELD"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(ReactionType, {
@@ -252,7 +276,9 @@ namespace dm::core {
         {EffectActionType::ADD_SHIELD, "ADD_SHIELD"},
         {EffectActionType::SEND_SHIELD_TO_GRAVE, "SEND_SHIELD_TO_GRAVE"},
         {EffectActionType::SEND_TO_DECK_BOTTOM, "SEND_TO_DECK_BOTTOM"},
-        {EffectActionType::MOVE_TO_UNDER_CARD, "MOVE_TO_UNDER_CARD"}
+        {EffectActionType::MOVE_TO_UNDER_CARD, "MOVE_TO_UNDER_CARD"},
+        {EffectActionType::SELECT_NUMBER, "SELECT_NUMBER"},
+        {EffectActionType::FRIEND_BURST, "FRIEND_BURST"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count, selection_mode, selection_sort_key, and_conditions)
@@ -261,5 +287,5 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilizations, power, type, races, effects, revolution_change_condition, keywords, reaction_abilities)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilizations, power, type, races, effects, revolution_change_condition, keywords, reaction_abilities, spell_side)
 }

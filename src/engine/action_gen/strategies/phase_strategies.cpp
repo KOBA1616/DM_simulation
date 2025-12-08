@@ -1,6 +1,7 @@
 #include "phase_strategies.hpp"
 #include "../../card_system/target_utils.hpp"
 #include "../../mana/mana_system.hpp"
+#include "../../card_system/passive_effect_system.hpp"
 
 namespace dm::engine {
 
@@ -39,13 +40,43 @@ namespace dm::engine {
             if (card_db.count(card.card_id)) {
                 const auto& def = card_db.at(card.card_id);
 
-                if (ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
+                // Step 3-4: CANNOT_USE_SPELLS check (Creature check comes later if it's Twinpact)
+                bool spell_restricted = false;
+                if (def.type == CardType::SPELL) {
+                    if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_USE_SPELLS, card_db)) {
+                        spell_restricted = true;
+                    }
+                }
+
+                // 1. Standard Play (Creature side if Twinpact)
+                if (!spell_restricted && ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
                     Action action;
                     action.type = ActionType::DECLARE_PLAY;
                     action.card_id = card.card_id;
                     action.source_instance_id = card.instance_id;
                     action.slot_index = static_cast<int>(i);
                     actions.push_back(action);
+                }
+
+                // 2. Twinpact Spell Side Play
+                if (def.spell_side) {
+                    const auto& spell_def = *def.spell_side;
+                    bool side_restricted = false;
+                    if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_USE_SPELLS, card_db)) {
+                        side_restricted = true;
+                    }
+
+                    if (!side_restricted && ManaSystem::can_pay_cost(game_state, active_player, spell_def, card_db)) {
+                        Action action;
+                        action.type = ActionType::DECLARE_PLAY;
+                        action.card_id = card.card_id; // Same ID? Or should we use spell_side ID?
+                        // Usually Twinpact cards share ID but behave differently.
+                        // We use `is_spell_side` flag.
+                        action.source_instance_id = card.instance_id;
+                        action.slot_index = static_cast<int>(i);
+                        action.is_spell_side = true;
+                        actions.push_back(action);
+                    }
                 }
 
                 if (def.keywords.hyper_energy) {
@@ -107,6 +138,13 @@ namespace dm::engine {
                 }
             }
 
+            // Step 3-4: CANNOT_ATTACK check
+            if (can_attack) {
+                if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_ATTACK, card_db)) {
+                    can_attack = false;
+                }
+            }
+
             if (can_attack) {
                 Action attack_player;
                 attack_player.type = ActionType::ATTACK_PLAYER;
@@ -149,12 +187,6 @@ namespace dm::engine {
         const auto& game_state = ctx.game_state;
         const auto& card_db = ctx.card_db;
 
-        // In Block Phase, NAP acts.
-        // The context.active_player_id is set to game_state.active_player_id (Turn Player).
-        // But the strategies should know who is acting.
-        // The implementation in ActionGenerator handled this:
-        // if (game_state.current_phase == Phase::BLOCK) { const Player& defender = opponent; ... }
-
         const Player& defender = game_state.players[1 - game_state.active_player_id];
 
         for (size_t i = 0; i < defender.battle_zone.size(); ++i) {
@@ -163,11 +195,14 @@ namespace dm::engine {
                 if (card_db.count(card.card_id)) {
                     const auto& def = card_db.at(card.card_id);
                     if (def.keywords.blocker) {
-                        Action block;
-                        block.type = ActionType::BLOCK;
-                        block.source_instance_id = card.instance_id;
-                        block.slot_index = static_cast<int>(i);
-                        actions.push_back(block);
+                        // Step 3-4: CANNOT_BLOCK check
+                        if (!PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_BLOCK, card_db)) {
+                            Action block;
+                            block.type = ActionType::BLOCK;
+                            block.source_instance_id = card.instance_id;
+                            block.slot_index = static_cast<int>(i);
+                            actions.push_back(block);
+                        }
                     }
                 }
             }

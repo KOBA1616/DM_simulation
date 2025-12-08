@@ -6,17 +6,16 @@
 #include "../card_system/generic_card_system.hpp"
 #include "../flow/reaction_system.hpp"
 #include "../utils/zone_utils.hpp"
-#include "../card_system/passive_effect_system.hpp" // Added
+#include "../card_system/passive_effect_system.hpp"
 
 #include <iostream>
 #include <algorithm>
 
 namespace dm::engine {
 
-    // ... (keep includes and previous functions)
     using namespace dm::core;
 
-    // Helper to find and remove from hand (keep)
+    // Helper to find and remove from hand
     static CardInstance remove_from_hand(Player& player, int instance_id) {
         auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == instance_id; });
         if (it != player.hand.end()) {
@@ -27,7 +26,6 @@ namespace dm::engine {
         return CardInstance();
     }
 
-    // ... resolve_action ... (keep)
     void EffectResolver::resolve_action(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
         switch (action.type) {
              case ActionType::PASS:
@@ -58,6 +56,11 @@ namespace dm::engine {
                  {
                      int stack_id = action.source_instance_id;
                      int evo_source_id = action.target_instance_id;
+                     // Check destination override if passed via Action struct?
+                     // RESOLVE_PLAY comes from StackStrategy, usually standard play.
+                     // But if we want to override, we should pass it.
+                     // Currently resolve_play_from_stack does not take override.
+                     // But PLAY_CARD_INTERNAL calls resolve_play_from_stack.
                      resolve_play_from_stack(game_state, stack_id, 0, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db, evo_source_id);
                  }
                  break;
@@ -81,7 +84,6 @@ namespace dm::engine {
                          if (pe.resolve_type == ResolveType::TARGET_SELECT && pe.effect_def) {
                              GenericCardSystem::resolve_effect_with_targets(game_state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
                          } else if (pe.type == EffectType::TRIGGER_ABILITY && pe.effect_def) {
-                             // Stack System: Execute queued trigger
                              GenericCardSystem::resolve_effect(game_state, *pe.effect_def, pe.source_instance_id);
                          }
                          if (action.slot_index < (int)game_state.pending_effects.size()) {
@@ -106,7 +108,12 @@ namespace dm::engine {
                          game_state.stack_zone.push_back(c);
                      }
                  }
-                 resolve_play_from_stack(game_state, stack_id, 999, action.spawn_source, controller, card_db);
+
+                 // Step 3-3: Destination Override logic
+                 int dest_override = action.destination_override; // 0=Default, 1=Deck Bottom
+
+                 resolve_play_from_stack(game_state, stack_id, 999, action.spawn_source, controller, card_db, -1, dest_override);
+
                  if (!game_state.pending_effects.empty() && action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
                      game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
                  }
@@ -187,6 +194,7 @@ namespace dm::engine {
         game_state.current_attack.target_player = (action.type == ActionType::ATTACK_PLAYER) ? action.target_player : -1;
         game_state.current_attack.is_blocked = false;
         game_state.current_attack.blocker_instance_id = -1;
+        game_state.turn_stats.attacks_declared_this_turn++;
         GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_ATTACK, card.instance_id);
         if (game_state.current_phase == Phase::ATTACK) {
             game_state.current_phase = Phase::BLOCK;
@@ -245,27 +253,22 @@ namespace dm::engine {
          }
     }
 
-    // Updated with PassiveEffectSystem
     int EffectResolver::get_creature_power(const CardInstance& creature, const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         if (!card_db.count(creature.card_id)) return 0;
         int power = card_db.at(creature.card_id).power;
-        power += creature.power_mod; // Temporary buff (e.g. from Action)
-        // Add Passive Buffs
+        power += creature.power_mod;
         power += PassiveEffectSystem::instance().get_power_buff(game_state, creature, card_db);
         return power;
     }
 
     int EffectResolver::get_breaker_count(const CardInstance& creature, const std::map<CardID, CardDefinition>& card_db) {
          if (!card_db.count(creature.card_id)) return 1;
-         // TODO: Check Granted Keywords via PassiveEffectSystem too?
          const auto& k = card_db.at(creature.card_id).keywords;
-         // Passives not checked yet for breakers, but should be.
          if (k.triple_breaker) return 3;
          if (k.double_breaker) return 2;
          return 1;
     }
 
-    // ... execute_battle, resolve_break_shield, resolve_play_from_stack, etc. (keep) ...
     void EffectResolver::execute_battle(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         int attacker_id = game_state.current_attack.source_instance_id;
         int defender_id = -1;
@@ -331,6 +334,9 @@ namespace dm::engine {
              game_state.winner = (game_state.active_player_id == 0) ? GameResult::P1_WIN : GameResult::P2_WIN;
              return;
          }
+
+         GenericCardSystem::resolve_trigger(game_state, TriggerType::AT_BREAK_SHIELD, action.source_instance_id);
+
          CardInstance shield = defender.shield_zone.back();
          defender.shield_zone.pop_back();
          bool shield_burn = false;
@@ -364,8 +370,8 @@ namespace dm::engine {
          }
     }
 
-    void EffectResolver::resolve_play_from_stack(GameState& game_state, int stack_instance_id, int cost_reduction, SpawnSource spawn_source, PlayerID controller, const std::map<CardID, CardDefinition>& card_db, int evo_source_id) {
-        // Search in stack first
+    // Updated with destination override
+    void EffectResolver::resolve_play_from_stack(GameState& game_state, int stack_instance_id, int cost_reduction, SpawnSource spawn_source, PlayerID controller, const std::map<CardID, CardDefinition>& card_db, int evo_source_id, int dest_override) {
         auto& stack = game_state.stack_zone;
         auto it = std::find_if(stack.begin(), stack.end(), [&](const CardInstance& c){ return c.instance_id == stack_instance_id; });
         CardInstance card;
@@ -392,10 +398,25 @@ namespace dm::engine {
         const CardDefinition* def = nullptr;
         if (card_db.count(card.card_id)) def = &card_db.at(card.card_id);
         if (def && def->type == CardType::SPELL) {
-            player.graveyard.push_back(card);
+
+            // Check destination override
+            if (dest_override == 1) { // Deck Bottom
+                player.deck.insert(player.deck.begin(), card); // Bottom is begin? Or end?
+                // Standard: Back is TOP (Draw pops back). Front is BOTTOM.
+                // Verify ZoneUtils if available, but vector convention in this project:
+                // pop_back = draw. push_back = put on top.
+                // begin = bottom.
+                // So insert at begin.
+            } else {
+                player.graveyard.push_back(card);
+            }
+
             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
             game_state.turn_stats.spells_cast_this_turn++;
         } else {
+            // Creatures always go to Battle Zone (unless other override logic exists?)
+            // Assuming Creature override (e.g. God Link?) is not requested here.
+
             card.summoning_sickness = true;
             if (def && def->keywords.speed_attacker) card.summoning_sickness = false;
             if (def && def->keywords.evolution) card.summoning_sickness = false;
