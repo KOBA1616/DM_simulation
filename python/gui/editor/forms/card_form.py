@@ -1,13 +1,57 @@
-from PyQt6.QtWidgets import QWidget, QFormLayout, QLineEdit, QComboBox, QSpinBox, QCheckBox, QLabel, QGridLayout, QGroupBox
+from PyQt6.QtWidgets import QWidget, QFormLayout, QLineEdit, QComboBox, QSpinBox, QCheckBox, QLabel, QGridLayout, QGroupBox, QPushButton, QDialog, QVBoxLayout, QScrollArea
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from gui.localization import tr
 from gui.editor.forms.base_form import BaseEditForm
 
+# Simplified Spell Side Editor Dialog
+class SpellSideEditor(QDialog):
+    def __init__(self, spell_data, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(tr("Edit Spell Side"))
+        self.spell_data = spell_data or {}
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.layout = QFormLayout(self)
+
+        self.name_edit = QLineEdit(self.spell_data.get('name', ''))
+        self.layout.addRow(tr("Name"), self.name_edit)
+
+        self.cost_spin = QSpinBox()
+        self.cost_spin.setRange(0, 99)
+        self.cost_spin.setValue(self.spell_data.get('cost', 0))
+        self.layout.addRow(tr("Cost"), self.cost_spin)
+
+        # Effects are complex to edit here recursively.
+        # Ideally, we should add Spell Side as a child node in the tree.
+        # But data structure wise, it is a property of the Card.
+        # For now, let's just allow basic property editing.
+        # Effects should be added via the main tree if we restructure.
+        # IF the tree structure supports "Spell Side" node under Card.
+        # The user requested "Implementation of Twinpact".
+        # In UI, usually Twinpact is 1 card with 2 components.
+
+        self.info_label = QLabel(tr("Note: Add effects via the main tree structure if supported, or manually in JSON for now."))
+        self.layout.addRow(self.info_label)
+
+        self.save_btn = QPushButton(tr("Save"))
+        self.save_btn.clicked.connect(self.accept)
+        self.layout.addRow(self.save_btn)
+
+    def get_data(self):
+        return {
+            'name': self.name_edit.text(),
+            'cost': self.cost_spin.value(),
+            'type': 'SPELL', # Force type
+            'effects': self.spell_data.get('effects', []) # Preserve existing effects
+        }
+
 class CardEditForm(BaseEditForm):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.keyword_checks = {} # Map key -> QCheckBox
+        self.spell_side_data = None
         self.setup_ui()
 
     def setup_ui(self):
@@ -55,6 +99,11 @@ class CardEditForm(BaseEditForm):
 
         self.races_edit = QLineEdit()
         layout.addRow(tr("Races"), self.races_edit)
+
+        # Spell Side Button
+        self.spell_side_btn = QPushButton(tr("Edit Spell Side"))
+        self.spell_side_btn.clicked.connect(self.edit_spell_side)
+        layout.addRow(tr("Twinpact"), self.spell_side_btn)
 
         # Keywords Section
         kw_group = QGroupBox(tr("Keywords"))
@@ -119,6 +168,8 @@ class CardEditForm(BaseEditForm):
         self.power_spin.setValue(data.get('power', 0))
         self.races_edit.setText(", ".join(data.get('races', [])))
 
+        self.spell_side_data = data.get('spell_side')
+
         # Load Keywords
         kw_data = data.get('keywords', {})
         for k, cb in self.keyword_checks.items():
@@ -134,6 +185,9 @@ class CardEditForm(BaseEditForm):
         data['power'] = self.power_spin.value()
         races_str = self.races_edit.text()
         data['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
+
+        if self.spell_side_data:
+            data['spell_side'] = self.spell_side_data
 
         # Update Keywords
         kw_data = {}
@@ -155,3 +209,9 @@ class CardEditForm(BaseEditForm):
         self.races_edit.blockSignals(block)
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
+
+    def edit_spell_side(self):
+        editor = SpellSideEditor(self.spell_side_data, self)
+        if editor.exec():
+            self.spell_side_data = editor.get_data()
+            self.update_data()

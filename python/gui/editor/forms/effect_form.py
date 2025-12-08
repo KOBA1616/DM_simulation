@@ -46,6 +46,12 @@ CONDITION_UI_CONFIG = {
         "show_str": False,
         "label_val": "Value",
         "label_str": "String"
+    },
+    "FIRST_ATTACK": {
+        "show_val": False,
+        "show_str": False,
+        "label_val": "Value",
+        "label_str": "String"
     }
 }
 
@@ -60,7 +66,7 @@ class EffectEditForm(BaseEditForm):
         self.trigger_combo = QComboBox()
         triggers = [
             "ON_PLAY", "ON_ATTACK", "ON_DESTROY", "S_TRIGGER", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
-            "ON_ATTACK_FROM_HAND"
+            "ON_ATTACK_FROM_HAND", "AT_BREAK_SHIELD"
         ]
         self.populate_combo(self.trigger_combo, triggers, data_func=lambda x: x)
         layout.addRow(tr("Trigger"), self.trigger_combo)
@@ -71,7 +77,8 @@ class EffectEditForm(BaseEditForm):
         self.cond_type_combo = QComboBox()
         cond_types = [
             "NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH",
-            "OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN"
+            "OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN",
+            "FIRST_ATTACK"
         ]
         self.populate_combo(self.cond_type_combo, cond_types, data_func=lambda x: x)
 

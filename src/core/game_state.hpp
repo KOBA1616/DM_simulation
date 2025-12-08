@@ -26,6 +26,9 @@ namespace dm::core {
         // Cards stacked underneath this card (Evolution sources, etc.)
         std::vector<CardInstance> underlying_cards;
 
+        // Step 4-3: Twinpact State (Set when placed in stack)
+        bool is_spell_side_mode = false;
+
         // Constructors
         CardInstance() : card_id(0), instance_id(-1), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
         CardInstance(CardID cid, int iid) : card_id(cid), instance_id(iid), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
@@ -88,7 +91,11 @@ namespace dm::core {
         // We will focus on BATTLE ZONE passives here.
         BLOCKER_GRANT,
         SPEED_ATTACKER_GRANT,
-        SLAYER_GRANT
+        SLAYER_GRANT,
+        // Step 3-4: Attack/Block Restriction
+        CANNOT_ATTACK,
+        CANNOT_BLOCK,
+        CANNOT_USE_SPELLS // Step 3-x: "Cannot cast spell" (locking)
     };
 
     struct PassiveEffect {
@@ -108,6 +115,7 @@ namespace dm::core {
         int cards_discarded_this_turn = 0;
         int creatures_played_this_turn = 0;
         int spells_cast_this_turn = 0;
+        int attacks_declared_this_turn = 0; // Step 2-3: Track attacks
     };
 
     struct Player {
@@ -204,6 +212,14 @@ namespace dm::core {
             return players[1 - active_player_id];
         }
 
+        const Player& get_active_player() const {
+            return players[active_player_id];
+        }
+
+        const Player& get_non_active_player() const {
+             return players[1 - active_player_id];
+        }
+
         // Loop detection / State Identity
         uint64_t calculate_hash() const;
 
@@ -227,6 +243,25 @@ namespace dm::core {
 
              // Check Effect Buffer (not owned by player usually, but tracked)
              for (auto& c : effect_buffer) if (c.instance_id == instance_id) return &c;
+
+             return nullptr;
+        }
+
+        const CardInstance* get_card_instance(int instance_id) const {
+             if (instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
+
+             PlayerID owner = card_owner_map[instance_id];
+             if (owner > 1) return nullptr;
+
+             const Player& p = players[owner];
+             for (const auto& c : p.battle_zone) if (c.instance_id == instance_id) return &c;
+             for (const auto& c : p.hand) if (c.instance_id == instance_id) return &c;
+             for (const auto& c : p.mana_zone) if (c.instance_id == instance_id) return &c;
+             for (const auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
+             for (const auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
+             for (const auto& c : p.deck) if (c.instance_id == instance_id) return &c;
+
+             for (const auto& c : effect_buffer) if (c.instance_id == instance_id) return &c;
 
              return nullptr;
         }
