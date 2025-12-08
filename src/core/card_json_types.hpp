@@ -163,6 +163,10 @@ namespace dm::core {
         std::optional<std::map<std::string, bool>> keywords;
         std::vector<ReactionAbility> reaction_abilities;
         std::shared_ptr<CardData> spell_side;
+
+        // AI Metadata
+        bool is_key_card = false;
+        int ai_importance_score = 0;
     };
 
 } // namespace dm::core
@@ -287,5 +291,5 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilizations, power, type, races, effects, revolution_change_condition, keywords, reaction_abilities, spell_side)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilizations, power, type, races, effects, revolution_change_condition, keywords, reaction_abilities, spell_side, is_key_card, ai_importance_score)
 }
