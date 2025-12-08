@@ -159,6 +159,7 @@ namespace dm::core {
         std::string type;
         std::vector<std::string> races;
         std::vector<EffectDef> effects;
+        std::vector<EffectDef> metamorph_abilities; // Ultra Soul Cross abilities
         std::optional<FilterDef> revolution_change_condition;
         std::optional<std::map<std::string, bool>> keywords;
         std::vector<ReactionAbility> reaction_abilities;
@@ -291,5 +292,5 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilizations, power, type, races, effects, revolution_change_condition, keywords, reaction_abilities, spell_side, is_key_card, ai_importance_score)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilizations, power, type, races, effects, metamorph_abilities, revolution_change_condition, keywords, reaction_abilities, spell_side, is_key_card, ai_importance_score)
 }
