@@ -255,6 +255,11 @@ namespace dm::engine {
                 action.target_player = eff.controller;
                 action.slot_index = static_cast<int>(i);
 
+                const CardInstance* card = game_state.get_card_instance(eff.source_instance_id);
+                if (card) {
+                    action.card_id = card->card_id;
+                }
+
                 if (eff.type == EffectType::META_COUNTER) {
                     action.spawn_source = SpawnSource::HAND_SUMMON;
                 } else {
