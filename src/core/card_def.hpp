@@ -81,6 +81,11 @@ namespace dm::core {
         // Hand Triggers (e.g. Meta Counter, Ninja Strike)
         std::vector<HandTrigger> hand_triggers;
 
+        // Ultra Soul Cross (Metamorph) Abilities
+        // These are always active on the card itself (Rule 817.1a)
+        // AND granted to the creature above if this card is underneath (Rule 817.1b)
+        std::vector<EffectDef> metamorph_abilities;
+
         // Reaction Abilities
         std::vector<ReactionAbility> reaction_abilities;
 

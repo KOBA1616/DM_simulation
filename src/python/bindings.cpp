@@ -197,6 +197,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .export_values();
 
     // Structs
+    py::class_<PendingEffect>(m, "PendingEffect")
+        .def(py::init<EffectType, int, int>())
+        .def_readwrite("type", &PendingEffect::type)
+        .def_readwrite("source_instance_id", &PendingEffect::source_instance_id)
+        .def_readwrite("controller", &PendingEffect::controller);
+
     py::class_<CardKeywords>(m, "CardKeywords")
         .def(py::init<>())
         .def_property("g_zero", [](CardKeywords& k){ return k.g_zero; }, [](CardKeywords& k, bool v){ k.g_zero = v; })
@@ -318,6 +324,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("type", &CardDefinition::type)
         .def_readwrite("races", &CardDefinition::races)
         .def_readwrite("keywords", &CardDefinition::keywords)
+        .def_readwrite("metamorph_abilities", &CardDefinition::metamorph_abilities)
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
         .def_readwrite("is_key_card", &CardDefinition::is_key_card)
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
@@ -348,6 +355,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         }))
         .def_readwrite("id", &CardData::id)
         .def_readwrite("effects", &CardData::effects)
+        .def_readwrite("metamorph_abilities", &CardData::metamorph_abilities)
         .def_readwrite("revolution_change_condition", &CardData::revolution_change_condition)
         .def_readwrite("keywords", &CardData::keywords)
         .def_readwrite("is_key_card", &CardData::is_key_card)
@@ -362,9 +370,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("is_tapped", &CardInstance::is_tapped)
         .def_readwrite("summoning_sickness", &CardInstance::summoning_sickness)
         .def_readwrite("is_face_down", &CardInstance::is_face_down)
-        .def_readwrite("turn_played", &CardInstance::turn_played);
+        .def_readwrite("turn_played", &CardInstance::turn_played)
+        .def_readwrite("underlying_cards", &CardInstance::underlying_cards);
 
     py::class_<Player>(m, "Player")
+        .def(py::init<>()) // Added default constructor
         .def_readwrite("id", &Player::id)
         .def_readwrite("hand", &Player::hand)
         .def_readwrite("mana_zone", &Player::mana_zone)
@@ -391,6 +401,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("current_phase", &GameState::current_phase)
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("stack_zone", &GameState::stack_zone)
+        .def_readwrite("pending_effects", &GameState::pending_effects)
         .def_readwrite("effect_buffer", &GameState::effect_buffer)
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("winner", &GameState::winner)
@@ -482,11 +493,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<ManaSystem>(m, "ManaSystem")
         .def_static("can_pay_cost",
              static_cast<bool (*)(const GameState&, const Player&, const CardDefinition&, const std::map<CardID, CardDefinition>&)>(&ManaSystem::can_pay_cost))
+        // Bind legacy overload if needed, or remove tests using it.
+        // Or bind as overload.
+        .def_static("can_pay_cost",
+             static_cast<bool (*)(const Player&, const CardDefinition&, const std::map<CardID, CardDefinition>&)>(&ManaSystem::can_pay_cost))
         .def_static("auto_tap_mana",
              static_cast<bool (*)(GameState&, Player&, const CardDefinition&, const std::map<CardID, CardDefinition>&)>(&ManaSystem::auto_tap_mana))
+        .def_static("auto_tap_mana",
+             static_cast<bool (*)(Player&, const CardDefinition&, const std::map<CardID, CardDefinition>&)>(&ManaSystem::auto_tap_mana))
         .def_static("get_adjusted_cost", &ManaSystem::get_adjusted_cost);
 
     py::class_<GenericCardSystem>(m, "GenericCardSystem")
+        .def_static("resolve_trigger", [](GameState& state, TriggerType trigger, int source_id) {
+            GenericCardSystem::resolve_trigger(state, trigger, source_id);
+        })
         .def_static("resolve_effect", &GenericCardSystem::resolve_effect)
         // Overload resolve_action for backward compatibility (no context)
         .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id) {
