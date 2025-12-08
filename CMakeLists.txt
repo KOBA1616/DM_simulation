@@ -113,6 +113,7 @@ set(SRC_AI
     src/ai/mcts/mcts.cpp
     src/ai/evaluator/heuristic_evaluator.cpp
     src/ai/evaluator/neural_evaluator.cpp
+    src/ai/evaluator/beam_search_evaluator.cpp
     src/ai/self_play/self_play.cpp
     src/ai/self_play/parallel_runner.cpp
     src/ai/agents/heuristic_agent.cpp
