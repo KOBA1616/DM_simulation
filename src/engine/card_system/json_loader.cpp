@@ -10,6 +10,9 @@ namespace dm::engine {
     using namespace dm::core;
 
     // Helper to convert CardData (JSON) to CardDefinition (Engine)
+    // Forward declare to allow recursive calls
+    static CardDefinition convert_to_def(const CardData& data);
+
     static CardDefinition convert_to_def(const CardData& data) {
         CardDefinition def;
         def.id = static_cast<CardID>(data.id);
@@ -49,6 +52,11 @@ namespace dm::engine {
 
         // Reaction Abilities
         def.reaction_abilities = data.reaction_abilities;
+
+        // Twinpact Spell Side (Recursive)
+        if (data.spell_side) {
+            def.spell_side = std::make_shared<CardDefinition>(convert_to_def(*data.spell_side));
+        }
 
         // Keywords from explicit 'keywords' block (e.g. S-Trigger)
         if (data.keywords.has_value()) {

@@ -39,6 +39,13 @@ namespace dm::core {
         // Spawn Source for PLAY_CARD_INTERNAL
         SpawnSource spawn_source = SpawnSource::HAND_SUMMON;
         
+        // Step 3-3: Destination Override
+        // 0 = Default (Grave for spell, Battle for creature), 1 = Deck Bottom, 2 = Deck Top, 3 = Hand, 4 = Mana, 5 = Shield
+        uint8_t destination_override = 0;
+
+        // Step 4-1: Twinpact Support
+        bool is_spell_side = false;
+
         // For debugging
         std::string to_string() const {
             // Simplified string representation
