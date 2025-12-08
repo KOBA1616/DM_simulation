@@ -128,6 +128,10 @@ class TestMetaCounter(unittest.TestCase):
         # Actually, for META_COUNTER, it might be USE_ABILITY or similar?
         # Let's check ActionGenerator logic or just look for any action for card 100.
 
+        print("Actions generated:")
+        for a in actions:
+            print(f"Type: {a.type}, CardID: {a.card_id}, SourceInst: {a.source_instance_id}")
+
         meta_action = next((a for a in actions if a.card_id == self.meta_card_id), None)
         # The action type depends on implementation (likely PLAY_CARD or USE_ABILITY)
         self.assertIsNotNone(meta_action)
