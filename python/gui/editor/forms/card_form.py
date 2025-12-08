@@ -146,6 +146,23 @@ class CardEditForm(BaseEditForm):
 
         layout.addRow(kw_group)
 
+        # AI Configuration Section
+        ai_group = QGroupBox(tr("AI Configuration"))
+        ai_layout = QFormLayout(ai_group)
+
+        self.is_key_card_check = QCheckBox(tr("Is Key Card / Combo Piece"))
+        self.is_key_card_check.setToolTip(tr("Mark this card as a high-value target for AI analysis."))
+        self.is_key_card_check.stateChanged.connect(self.update_data)
+        ai_layout.addRow(self.is_key_card_check)
+
+        self.ai_importance_spin = QSpinBox()
+        self.ai_importance_spin.setRange(0, 1000)
+        self.ai_importance_spin.setToolTip(tr("Manual importance score for AI (0 = default)."))
+        self.ai_importance_spin.valueChanged.connect(self.update_data)
+        ai_layout.addRow(tr("AI Importance Score"), self.ai_importance_spin)
+
+        layout.addRow(ai_group)
+
         # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
@@ -176,6 +193,10 @@ class CardEditForm(BaseEditForm):
             is_checked = kw_data.get(k, False)
             cb.setChecked(is_checked)
 
+        # Load AI Data
+        self.is_key_card_check.setChecked(data.get('is_key_card', False))
+        self.ai_importance_spin.setValue(data.get('ai_importance_score', 0))
+
     def _save_data(self, data):
         data['id'] = self.id_spin.value()
         data['name'] = self.name_edit.text()
@@ -196,6 +217,10 @@ class CardEditForm(BaseEditForm):
                 kw_data[k] = True
         data['keywords'] = kw_data
 
+        # Save AI Data
+        data['is_key_card'] = self.is_key_card_check.isChecked()
+        data['ai_importance_score'] = self.ai_importance_spin.value()
+
     def _get_display_text(self, data):
         return f"{data.get('id', 0)} - {data.get('name', '')}"
 
@@ -209,6 +234,8 @@ class CardEditForm(BaseEditForm):
         self.races_edit.blockSignals(block)
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
+        self.is_key_card_check.blockSignals(block)
+        self.ai_importance_spin.blockSignals(block)
 
     def edit_spell_side(self):
         editor = SpellSideEditor(self.spell_side_data, self)
