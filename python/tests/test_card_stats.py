@@ -93,14 +93,15 @@ def test_card_stats_tracking():
     # Check stats again
     stats_after = dm_ai_module.get_card_stats(state)
     assert 1 in stats_after
-    assert stats_after[1]['play_count'] == 1
-    assert stats_after[1]['sum_cost_discount'] == 0 # Cost 3 played with 3 mana
+    # Use attribute access, not dict access
+    assert stats_after[1].play_count == 1
+    assert stats_after[1].sum_cost_discount == 0 # Cost 3 played with 3 mana
 
     # Check early usage
     # Scenario defaults to Turn 5.
     assert state.turn_number == 5
     # So early_usage should be 0.
-    assert stats_after[1]['sum_early_usage'] == 0.0
+    assert stats_after[1].sum_early_usage == 0.0
 
 def test_card_stats_win_contribution():
     """
@@ -187,6 +188,7 @@ def test_card_stats_win_contribution():
     # Check stats for Card 2
     stats = dm_ai_module.get_card_stats(state)
     assert 2 in stats
-    assert stats[2]['play_count'] == 1
-    assert stats[2]['win_count'] == 1
-    assert stats[2]['sum_win_contribution'] == 1.0
+    # Use attribute access
+    assert stats[2].play_count == 1
+    assert stats[2].win_count == 1
+    assert stats[2].sum_win_contribution == 1.0
