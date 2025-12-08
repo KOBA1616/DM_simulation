@@ -107,6 +107,10 @@ namespace dm::engine {
             }
         }
 
+        // AI Metadata
+        def.is_key_card = data.is_key_card;
+        def.ai_importance_score = data.ai_importance_score;
+
         return def;
     }
 
