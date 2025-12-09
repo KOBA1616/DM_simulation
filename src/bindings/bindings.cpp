@@ -207,6 +207,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .export_values();
 
     // Structs
+    py::class_<GameResultInfo>(m, "GameResultInfo")
+        .def(py::init<>())
+        .def_readwrite("result", &GameResultInfo::result)
+        .def_readwrite("turn_count", &GameResultInfo::turn_count)
+        .def_readwrite("states", &GameResultInfo::states)
+        .def_readwrite("policies", &GameResultInfo::policies)
+        .def_readwrite("active_players", &GameResultInfo::active_players);
+
     py::class_<PendingEffect>(m, "PendingEffect")
         .def(py::init<EffectType, int, int>())
         .def_readwrite("type", &PendingEffect::type)
@@ -643,7 +651,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<ParallelRunner>(m, "ParallelRunner")
          .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
-         .def("play_games", &ParallelRunner::play_games)
+         .def("play_games", &ParallelRunner::play_games,
+              py::arg("initial_states"),
+              py::arg("evaluator"),
+              py::arg("temperature") = 1.0f,
+              py::arg("add_noise") = true,
+              py::arg("num_threads") = 4,
+              py::arg("alpha") = 0.0f)
          .def("play_scenario_match", &ParallelRunner::play_scenario_match)
          .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
 
