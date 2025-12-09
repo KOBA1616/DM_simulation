@@ -40,7 +40,8 @@ namespace dm::ai {
             BatchEvaluatorCallback evaluator,
             float temperature = 1.0f,
             bool add_noise = true,
-            int num_threads = 4
+            int num_threads = 4,
+            float alpha = 0.0f
         );
 
         // Run Scenario matches in parallel (Heuristic vs Heuristic)
