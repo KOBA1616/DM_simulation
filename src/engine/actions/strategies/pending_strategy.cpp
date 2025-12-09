@@ -1,6 +1,6 @@
 #include "pending_strategy.hpp"
-#include "../../card_system/target_utils.hpp"
-#include "../../flow/reaction_system.hpp"
+#include "../../systems/card/target_utils.hpp"
+#include "../../systems/flow/reaction_system.hpp"
 #include <algorithm>
 #include <vector>
 
