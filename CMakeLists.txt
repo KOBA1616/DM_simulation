@@ -85,18 +85,18 @@ set(SRC_CORE
 
 # Engine (Phase 2)
 set(SRC_ENGINE
-    src/engine/action_gen/action_generator.cpp
-    src/engine/action_gen/strategies/pending_strategy.cpp
-    src/engine/action_gen/strategies/stack_strategy.cpp
-    src/engine/action_gen/strategies/phase_strategies.cpp
-    src/engine/flow/phase_manager.cpp
+    src/engine/actions/action_generator.cpp
+    src/engine/actions/strategies/pending_strategy.cpp
+    src/engine/actions/strategies/stack_strategy.cpp
+    src/engine/actions/strategies/phase_strategies.cpp
+    src/engine/systems/flow/phase_manager.cpp
     src/engine/effects/effect_resolver.cpp
-    src/engine/mana/mana_system.cpp
+    src/engine/systems/mana/mana_system.cpp
     src/engine/utils/determinizer.cpp
     src/engine/utils/dev_tools.cpp
-    src/engine/card_system/card_registry.cpp
-    src/engine/card_system/generic_card_system.cpp
-    src/engine/card_system/json_loader.cpp
+    src/engine/systems/card/card_registry.cpp
+    src/engine/systems/card/generic_card_system.cpp
+    src/engine/systems/card/json_loader.cpp
     src/engine/game_instance.cpp
 )
 
@@ -119,7 +119,7 @@ set(SRC_AI
     src/ai/agents/heuristic_agent.cpp
     src/ai/data_collection/data_collector.cpp
     src/ai/scenario/scenario_executor.cpp
-    src/python/python_batch_inference.cpp
+    src/bindings/python_batch_inference.cpp
     # Optional neural evaluator / inference (guarded by USE_LIBTORCH)
     $<$<BOOL:${USE_LIBTORCH}>:src/ai/inference/torch_model.cpp>
 )
@@ -147,7 +147,7 @@ target_link_libraries(dm_sim_test PRIVATE dm_core)
 
 # Python Module (Phase 3)
 pybind11_add_module(dm_ai_module
-    src/python/bindings.cpp
+    src/bindings/bindings.cpp
 )
 target_link_libraries(dm_ai_module PRIVATE dm_core)
 

@@ -21,8 +21,8 @@ if (Test-Path $mingwBin) {
     }
 }
 
-# Add build directory and python source directory to PYTHONPATH
-$env:PYTHONPATH = "$buildDir;$projectRoot/python;$env:PYTHONPATH"
+# Add build directory and project root to PYTHONPATH
+$env:PYTHONPATH = "$buildDir;$projectRoot;$env:PYTHONPATH"
 
 Write-Host "Starting GUI..."
-python "$projectRoot/python/gui/app.py"
+python "$projectRoot/dm_toolkit/gui/app.py"

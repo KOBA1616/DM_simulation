@@ -42,7 +42,7 @@ namespace dm::core {
         bool untap_in : 1;        // Step 1-2 (Multi-color Tap-in Exception)
     };
 
-    // Mode Selection: ModalEffectGroup 構造体による複数選択管理 [Q71]
+    // Mode Selection: ModalEffectGroup 構造体による褁E��選択管琁E[Q71]
     struct ModalEffectGroup {
         int group_id;
         std::string description;
@@ -68,7 +68,7 @@ namespace dm::core {
         
         CardKeywords keywords;
 
-        // Filter Parsing: CSVロード時に文字列条件（"OPP_TAPPED"等）をID化して保持 [Q50, Q55]
+        // Filter Parsing: CSVロード時に斁E���E条件�E�EOPP_TAPPED"等）をID化して保持 [Q50, Q55]
         std::vector<int> filter_ids; 
 
         // Modes
