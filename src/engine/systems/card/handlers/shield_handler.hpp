@@ -44,7 +44,7 @@ namespace dm::engine {
             }
         }
 
-        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
+        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& /*context*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
             using namespace dm::core;
              if (action.type == EffectActionType::SEND_SHIELD_TO_GRAVE) {
 
@@ -56,7 +56,7 @@ namespace dm::engine {
                      // We need to know WHOSE shields were targeted.
                      // Filter owner determines it.
                      std::vector<int> players_to_check;
-                     PlayerID decision_maker = game_state.active_player_id; // Default assumption for context
+                     // PlayerID decision_maker = game_state.active_player_id; // Default assumption for context
                      // Actually GenericCardSystem::select_targets uses owner filter.
                      // Here we re-evaluate filter to find universe.
 

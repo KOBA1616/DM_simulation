@@ -118,7 +118,7 @@ namespace dm::ai {
     std::vector<int> ParallelRunner::play_scenario_match(
         const dm::core::ScenarioConfig& config,
         int num_games,
-        int num_threads
+        int /*num_threads*/
     ) {
         std::vector<int> results(num_games);
 
@@ -177,7 +177,7 @@ namespace dm::ai {
         const std::vector<dm::core::CardID>& deck1,
         const std::vector<dm::core::CardID>& deck2,
         int num_games,
-        int num_threads
+        int /*num_threads*/
     ) {
         std::vector<int> results(num_games);
 
