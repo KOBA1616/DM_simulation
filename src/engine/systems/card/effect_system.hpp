@@ -9,11 +9,30 @@
 
 namespace dm::engine {
 
+    struct ResolutionContext {
+        dm::core::GameState& game_state;
+        const dm::core::ActionDef& action;
+        int source_instance_id;
+        std::map<std::string, int>& execution_vars;
+        const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db;
+        const std::vector<int>* targets = nullptr;
+
+        ResolutionContext(
+            dm::core::GameState& state,
+            const dm::core::ActionDef& act,
+            int src,
+            std::map<std::string, int>& vars,
+            const std::map<dm::core::CardID, dm::core::CardDefinition>& db,
+            const std::vector<int>* tgs = nullptr)
+            : game_state(state), action(act), source_instance_id(src),
+              execution_vars(vars), card_db(db), targets(tgs) {}
+    };
+
     class IActionHandler {
     public:
         virtual ~IActionHandler() = default;
-        virtual void resolve(dm::core::GameState& state, const dm::core::ActionDef& action, int source_id, std::map<std::string, int>& context) = 0;
-        virtual void resolve_with_targets(dm::core::GameState& /*state*/, const dm::core::ActionDef& /*action*/, const std::vector<int>& /*targets*/, int /*source_id*/, std::map<std::string, int>& /*context*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) {}
+        virtual void resolve(const ResolutionContext& ctx) = 0;
+        virtual void resolve_with_targets(const ResolutionContext& ctx) {}
     };
 
     class EffectSystem {
