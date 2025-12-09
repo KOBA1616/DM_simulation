@@ -1,12 +1,12 @@
 #include "effect_resolver.hpp"
-#include "../action_gen/action_generator.hpp"
-#include "../mana/mana_system.hpp"
-#include "../card_system/card_registry.hpp"
-#include "../card_system/target_utils.hpp"
-#include "../card_system/generic_card_system.hpp"
-#include "../flow/reaction_system.hpp"
+#include "../actions/action_generator.hpp"
+#include "../systems/mana/mana_system.hpp"
+#include "../systems/card/card_registry.hpp"
+#include "../systems/card/target_utils.hpp"
+#include "../systems/card/generic_card_system.hpp"
+#include "../systems/flow/reaction_system.hpp"
 #include "../utils/zone_utils.hpp"
-#include "../card_system/passive_effect_system.hpp"
+#include "../systems/card/passive_effect_system.hpp"
 
 #include <iostream>
 #include <algorithm>
@@ -29,6 +29,18 @@ namespace dm::engine {
     void EffectResolver::resolve_action(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
         switch (action.type) {
              case ActionType::PASS:
+                 // In BLOCK phase, a pass means no blockers were declared, so queue battle resolution.
+                 if (game_state.current_phase == Phase::BLOCK) {
+                     const bool has_battle_pending = std::any_of(
+                         game_state.pending_effects.begin(),
+                         game_state.pending_effects.end(),
+                         [](const PendingEffect& eff) { return eff.type == EffectType::RESOLVE_BATTLE; }
+                     );
+
+                     if (!has_battle_pending && game_state.current_attack.source_instance_id != -1) {
+                         game_state.pending_effects.emplace_back(EffectType::RESOLVE_BATTLE, game_state.current_attack.source_instance_id, game_state.active_player_id);
+                     }
+                 }
                  break;
              case ActionType::MANA_CHARGE:
              case ActionType::MOVE_CARD:
@@ -48,7 +60,8 @@ namespace dm::engine {
                      if (card && card_db.count(card->card_id)) {
                          const auto& def = card_db.at(card->card_id);
                          ManaSystem::auto_tap_mana(game_state, player, def, card_db);
-                         card->is_tapped = true;
+                        // Mark cost paid so StackStrategy can emit RESOLVE_PLAY
+                        card->is_tapped = true;
                      }
                  }
                  break;
@@ -196,10 +209,19 @@ namespace dm::engine {
         game_state.current_attack.blocker_instance_id = -1;
         game_state.turn_stats.attacks_declared_this_turn++;
         GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_ATTACK, card.instance_id);
+
+        // If attacking the player and they have no shields, declare immediate victory.
+        if (action.type == ActionType::ATTACK_PLAYER && defender.shield_zone.empty()) {
+            game_state.winner = (game_state.active_player_id == 0) ? GameResult::P1_WIN : GameResult::P2_WIN;
+            game_state.on_game_finished(game_state.winner);
+            return;
+        }
+
         if (game_state.current_phase == Phase::ATTACK) {
             game_state.current_phase = Phase::BLOCK;
         }
         ReactionSystem::check_and_open_window(game_state, card_db, "ON_ATTACK", defender.id);
+
     }
 
     void EffectResolver::resolve_block(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
@@ -427,6 +449,8 @@ namespace dm::engine {
             card.summoning_sickness = true;
             if (def && def->keywords.speed_attacker) card.summoning_sickness = false;
             if (def && def->keywords.evolution) card.summoning_sickness = false;
+            // Ensure freshly played creatures enter untapped even though cost payment marks stack card as tapped.
+            card.is_tapped = false;
             card.turn_played = game_state.turn_number;
             if (evo_source_id != -1) {
                 auto s_it = std::find_if(player.battle_zone.begin(), player.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == evo_source_id; });

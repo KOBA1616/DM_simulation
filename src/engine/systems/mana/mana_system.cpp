@@ -123,18 +123,25 @@ namespace dm::engine {
 
     bool ManaSystem::can_pay_cost(const GameState& game_state, const Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
         int cost = get_adjusted_cost(game_state, player, card_def);
+        if (cost <= 0) return true; // Free after reductions
         auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
         return !indices.empty();
     }
 
     bool ManaSystem::can_pay_cost(const Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
         int cost = card_def.cost;
+        if (cost <= 0) return true; // Zero or negative cost is always payable without mana
         auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
         return !indices.empty();
     }
 
     bool ManaSystem::auto_tap_mana(GameState& game_state, Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
         int cost = get_adjusted_cost(game_state, player, card_def);
+
+        if (cost <= 0) {
+            game_state.turn_stats.played_without_mana = true;
+            return true;
+        }
 
         auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
         if (indices.empty()) return false;
@@ -144,27 +151,7 @@ namespace dm::engine {
             player.mana_zone[idx].is_tapped = true;
         }
 
-        // Logic for "Played without mana"
-        // If cost was > 0, we check if we tapped anything.
-        // Wait, current implementation:
-        // if (paid_mana == 0) -> played_without_mana = true.
-        // If cost 0 (paid_mana 0), played_without_mana = true. Correct.
-        // If cost > 0, paid_mana > 0, false. Correct.
-        // My previous concern was `cost > 0` check.
-
-        if (indices.empty()) { // Should be caught by can_pay_cost unless cost=0
-            if (cost == 0) game_state.turn_stats.played_without_mana = true;
-        } else {
-            // paid > 0, so not played without mana (usually)
-            // Unless reduction made it 0?
-            // If reduction made it 0, indices is empty (cost 0).
-            // So if indices empty, it IS played without mana.
-        }
-
-        // If cost was 0, indices is empty.
-        if (indices.empty()) {
-             game_state.turn_stats.played_without_mana = true;
-        }
+        // Paid mana exists, so not "played without mana" for this path
 
         return true;
     }
