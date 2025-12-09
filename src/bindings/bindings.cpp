@@ -579,13 +579,22 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("resolve_trigger", [](GameState& state, TriggerType trigger, int source_id) {
             GenericCardSystem::resolve_trigger(state, trigger, source_id);
         })
-        .def_static("resolve_effect", &GenericCardSystem::resolve_effect)
+        .def_static("resolve_effect", [](GameState& state, const EffectDef& effect, int source_id) {
+             GenericCardSystem::resolve_effect(state, effect, source_id);
+        })
+        .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& effect, int source_id, const std::map<CardID, CardDefinition>& db) {
+             GenericCardSystem::resolve_effect(state, effect, source_id, db);
+        })
         // Overload resolve_action for backward compatibility (no context)
         .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id) {
              GenericCardSystem::resolve_action(state, action, source_id);
         })
         .def_static("resolve_action_with_context", [](GameState& state, const ActionDef& action, int source_id, std::map<std::string, int> ctx) {
              GenericCardSystem::resolve_action(state, action, source_id, ctx);
+             return ctx;
+        })
+        .def_static("resolve_action_with_db", [](GameState& state, const ActionDef& action, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
+             GenericCardSystem::resolve_action(state, action, source_id, ctx, db);
              return ctx;
         })
         .def_static("resolve_effect_with_targets", [](GameState& state, EffectDef& effect, const std::vector<int>& targets, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {

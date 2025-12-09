@@ -130,20 +130,20 @@ namespace dm::engine {
         }
     }
 
-    void GenericCardSystem::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id) {
+    void GenericCardSystem::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         ensure_handlers_registered();
         ensure_evaluators_registered();
         std::map<std::string, int> empty_context;
-        resolve_effect_with_context(game_state, effect, source_instance_id, empty_context);
+        resolve_effect_with_context(game_state, effect, source_instance_id, empty_context, card_db);
     }
 
-    void GenericCardSystem::resolve_effect_with_context(GameState& game_state, const EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context) {
+    void GenericCardSystem::resolve_effect_with_context(GameState& game_state, const EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         if (!check_condition(game_state, effect.condition, source_instance_id)) {
             return;
         }
 
         for (const auto& action : effect.actions) {
-            resolve_action(game_state, action, source_instance_id, execution_context);
+            resolve_action(game_state, action, source_instance_id, execution_context, card_db);
         }
     }
 
@@ -173,7 +173,7 @@ namespace dm::engine {
             if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
                  // Handled by handlers mostly
             } else {
-                resolve_action(game_state, action, source_instance_id, execution_context);
+                resolve_action(game_state, action, source_instance_id, execution_context, card_db);
             }
         }
     }
@@ -239,13 +239,12 @@ namespace dm::engine {
         resolve_action(game_state, action, source_instance_id, empty);
     }
 
-    void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context) {
+    void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         ensure_handlers_registered();
 
         EffectSystem& sys = EffectSystem::instance();
         if (IActionHandler* handler = sys.get_handler(action.type)) {
-            static std::map<dm::core::CardID, dm::core::CardDefinition> empty_db;
-            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, empty_db);
+            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db);
             handler->resolve(ctx);
             return;
         }
