@@ -2,7 +2,7 @@
 #include "../effect_system.hpp"
 #include "../../../../core/game_state.hpp"
 #include "../generic_card_system.hpp"
-#include "../../../../utils/zone_utils.hpp"
+#include "../../../utils/zone_utils.hpp"
 #include <algorithm>
 
 namespace dm::engine {

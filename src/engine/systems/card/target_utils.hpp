@@ -96,9 +96,7 @@ namespace dm::engine {
              (void)opponent_id; // Unused parameter fix
              if (!def.keywords.just_diver) return false;
 
-             if (game_state.turn_number <= card.turn_played) return true;
-
-             return false;
+               return game_state.turn_number == card.turn_played;
         }
 
     };

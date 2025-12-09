@@ -1,7 +1,7 @@
 #include "phase_strategies.hpp"
-#include "../../card_system/target_utils.hpp"
-#include "../../mana/mana_system.hpp"
-#include "../../card_system/passive_effect_system.hpp"
+#include "../../systems/card/target_utils.hpp"
+#include "../../systems/mana/mana_system.hpp"
+#include "../../systems/card/passive_effect_system.hpp"
 
 namespace dm::engine {
 
@@ -158,7 +158,10 @@ namespace dm::engine {
                     if (opp_card.is_tapped) {
                         if (card_db.count(opp_card.card_id)) {
                             const auto& opp_def = card_db.at(opp_card.card_id);
-                            if (TargetUtils::is_protected_by_just_diver(opp_card, opp_def, game_state, active_player.id)) {
+                            bool protected_by_jd = TargetUtils::is_protected_by_just_diver(opp_card, opp_def, game_state, active_player.id);
+                            // Just Diver protection only lasts the turn it entered
+                            if (game_state.turn_number > opp_card.turn_played) protected_by_jd = false;
+                            if (protected_by_jd) {
                                 continue;
                             }
                         }

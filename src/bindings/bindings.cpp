@@ -21,9 +21,11 @@
 #include "../ai/encoders/tensor_converter.hpp"
 #include "../ai/pomdp/pomdp.hpp"
 #include "../ai/pomdp/parametric_belief.hpp"
+#include "../ai/evaluator/neural_evaluator.hpp"
 #include "../core/card_stats.hpp"
 #include "../core/game_state_tracking.cpp"
 #include "../engine/utils/dev_tools.hpp"
+#include "../utils/csv_loader.hpp"
 #include "python_batch_inference.hpp"
 
 namespace py = pybind11;
@@ -163,6 +165,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("NONE", TriggerType::NONE)
         .export_values();
 
+    py::enum_<ReactionType>(m, "ReactionType")
+        .value("NONE", ReactionType::NONE)
+        .value("NINJA_STRIKE", ReactionType::NINJA_STRIKE)
+        .value("STRIKE_BACK", ReactionType::STRIKE_BACK)
+        .value("REVOLUTION_0_TRIGGER", ReactionType::REVOLUTION_0_TRIGGER)
+        .export_values();
+
     py::enum_<TargetScope>(m, "TargetScope")
         .value("SELF", TargetScope::SELF)
         .value("PLAYER_SELF", TargetScope::PLAYER_SELF)
@@ -288,6 +297,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("value", &ConditionDef::value)
         .def_readwrite("str_val", &ConditionDef::str_val);
 
+    py::class_<ReactionCondition>(m, "ReactionCondition")
+        .def(py::init<>())
+        .def_readwrite("trigger_event", &ReactionCondition::trigger_event)
+        .def_readwrite("civilization_match", &ReactionCondition::civilization_match)
+        .def_readwrite("mana_count_min", &ReactionCondition::mana_count_min)
+        .def_readwrite("same_civilization_shield", &ReactionCondition::same_civilization_shield);
+
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
         .def(py::init([](TriggerType trigger, ConditionDef condition, std::vector<ActionDef> actions) {
@@ -300,6 +316,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("trigger", &EffectDef::trigger)
         .def_readwrite("condition", &EffectDef::condition)
         .def_readwrite("actions", &EffectDef::actions);
+
+    py::class_<ReactionAbility>(m, "ReactionAbility")
+        .def(py::init<>())
+        .def_readwrite("type", &ReactionAbility::type)
+        .def_readwrite("cost", &ReactionAbility::cost)
+        .def_readwrite("zone", &ReactionAbility::zone)
+        .def_readwrite("condition", &ReactionAbility::condition);
 
     py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init<>())
@@ -329,6 +352,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("is_key_card", &CardDefinition::is_key_card)
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
         .def_readwrite("civilizations", &CardDefinition::civilizations)
+        .def_readwrite("reaction_abilities", &CardDefinition::reaction_abilities)
         .def_property("civilization",
              [](const CardDefinition& c) {
                  return c.civilizations.empty() ? Civilization::NONE : c.civilizations[0];
@@ -359,8 +383,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("revolution_change_condition", &CardData::revolution_change_condition)
         .def_readwrite("keywords", &CardData::keywords)
         .def_readwrite("is_key_card", &CardData::is_key_card)
-        .def_readwrite("ai_importance_score", &CardData::ai_importance_score);
-
+        .def_readwrite("ai_importance_score", &CardData::ai_importance_score)
+        .def_readwrite("reaction_abilities", &CardData::reaction_abilities);
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<>())
         .def(py::init<CardID, int>()) // Added constructor
@@ -456,6 +480,33 @@ PYBIND11_MODULE(dm_ai_module, m) {
                  s.card_owner_map[iid] = pid;
              }
         })
+        .def("setup_test_duel", [](GameState& s) {
+            // Minimal test setup: clear zones, reset turn, give basic shields.
+            for (auto& p : s.players) {
+                p.hand.clear();
+                p.mana_zone.clear();
+                p.battle_zone.clear();
+                p.shield_zone.clear();
+                p.graveyard.clear();
+                p.deck.clear();
+            }
+            s.card_owner_map.clear();
+            s.turn_number = 1;
+            s.active_player_id = 0;
+            s.current_phase = Phase::MAIN;
+            s.winner = GameResult::NONE;
+            // Add five placeholder shields per player
+            for (PlayerID pid = 0; pid < 2; ++pid) {
+                for (int i = 0; i < 5; ++i) {
+                    CardInstance c;
+                    c.card_id = 0;
+                    c.instance_id = 50000 + pid * 100 + i;
+                    s.players[pid].shield_zone.push_back(c);
+                    if (s.card_owner_map.size() <= (size_t)c.instance_id) s.card_owner_map.resize(c.instance_id + 1, 255);
+                    s.card_owner_map[c.instance_id] = pid;
+                }
+            }
+        })
         .def("set_deck", [](GameState& s, PlayerID pid, const std::vector<int>& card_ids) {
             s.players[pid].deck.clear();
             int instance_id_counter = 1000 * (pid + 1);
@@ -478,6 +529,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<JsonLoader>(m, "JsonLoader")
         .def_static("load_cards", &JsonLoader::load_cards);
+
+    py::class_<dm::utils::CsvLoader>(m, "CsvLoader")
+        .def_static("load_cards", &dm::utils::CsvLoader::load_cards);
 
     py::class_<PhaseManager>(m, "PhaseManager")
         .def_static("start_game", &PhaseManager::start_game)
@@ -612,7 +666,28 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("win_count", &CardStats::win_count)
         .def_readwrite("sum_cost_discount", &CardStats::sum_cost_discount)
         .def_readwrite("sum_early_usage", &CardStats::sum_early_usage)
-        .def_readwrite("sum_win_contribution", &CardStats::sum_win_contribution);
+        .def_readwrite("sum_win_contribution", &CardStats::sum_win_contribution)
+        .def("__getitem__", [](const CardStats& cs, const std::string& key) {
+            if (key == "play_count") return py::cast(cs.play_count);
+            if (key == "win_count") return py::cast(cs.win_count);
+            if (key == "sum_cost_discount") return py::cast(cs.sum_cost_discount);
+            if (key == "sum_early_usage") return py::cast(cs.sum_early_usage);
+            if (key == "sum_win_contribution") return py::cast(cs.sum_win_contribution);
+            if (key == "sum_late_usage") return py::cast(cs.sum_late_usage);
+            if (key == "sum_trigger_rate") return py::cast(cs.sum_trigger_rate);
+            if (key == "sum_hand_adv") return py::cast(cs.sum_hand_adv);
+            if (key == "sum_board_adv") return py::cast(cs.sum_board_adv);
+            if (key == "sum_mana_adv") return py::cast(cs.sum_mana_adv);
+            if (key == "sum_shield_dmg") return py::cast(cs.sum_shield_dmg);
+            if (key == "sum_hand_var") return py::cast(cs.sum_hand_var);
+            if (key == "sum_board_var") return py::cast(cs.sum_board_var);
+            if (key == "sum_survival_rate") return py::cast(cs.sum_survival_rate);
+            if (key == "sum_effect_death") return py::cast(cs.sum_effect_death);
+            if (key == "sum_comeback_win") return py::cast(cs.sum_comeback_win);
+            if (key == "sum_finish_blow") return py::cast(cs.sum_finish_blow);
+            if (key == "sum_deck_consumption") return py::cast(cs.sum_deck_consumption);
+            throw py::key_error("Unknown CardStats key: " + key);
+        });
 
     py::class_<TurnStats>(m, "TurnStats")
         .def(py::init<>())
@@ -622,6 +697,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("creatures_played_this_turn", &TurnStats::creatures_played_this_turn)
         .def_readwrite("spells_cast_this_turn", &TurnStats::spells_cast_this_turn)
         .def_readwrite("attacks_declared_this_turn", &TurnStats::attacks_declared_this_turn);
+
+    py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("evaluate", &NeuralEvaluator::evaluate);
 
     m.def("initialize_card_stats", [](GameState& state, const std::map<CardID, CardDefinition>& db, int deck_size) {
         state.initialize_card_stats(db, deck_size);
@@ -633,6 +712,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     m.def("vectorize_card_stats", [](const GameState& state, CardID cid) {
         return state.vectorize_card_stats(cid);
+    });
+
+    m.def("get_library_potential", [](const GameState& state) {
+        return state.get_library_potential();
     });
 
     m.def("get_pending_effects_info", [](const GameState& state) {
@@ -664,5 +747,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     m.def("register_batch_inference", &dm::python::set_batch_callback);
     m.def("register_batch_inference_numpy", &dm::python::set_flat_batch_callback);
+    m.def("has_batch_inference_registered", &dm::python::has_batch_callback);
     m.def("has_flat_batch_inference_registered", &dm::python::has_flat_batch_callback);
 }
