@@ -1,9 +1,9 @@
 #include "self_play.hpp"
-#include "../../engine/systems/flow/phase_manager.hpp"
-#include "../../engine/effects/effect_resolver.hpp"
-#include "../../engine/utils/determinizer.hpp"
-#include "../../engine/actions/action_generator.hpp"
-#include "../encoders/action_encoder.hpp"
+#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/effects/effect_resolver.hpp"
+#include "engine/utils/determinizer.hpp"
+#include "engine/actions/action_generator.hpp"
+#include "ai/encoders/action_encoder.hpp"
 #include <iostream>
 #include <random>
 

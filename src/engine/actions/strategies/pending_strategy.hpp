@@ -1,5 +1,5 @@
 #pragma once
-#include "../action_strategy.hpp"
+#include "engine/actions/action_strategy.hpp"
 
 namespace dm::engine {
 

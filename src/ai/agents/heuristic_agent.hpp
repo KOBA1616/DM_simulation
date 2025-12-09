@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../core/game_state.hpp"
-#include "../../core/action.hpp"
-#include "../../core/card_def.hpp"
+#include "core/game_state.hpp"
+#include "core/action.hpp"
+#include "core/card_def.hpp"
 #include <vector>
 #include <map>
 #include <random>
