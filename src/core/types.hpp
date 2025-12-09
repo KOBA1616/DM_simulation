@@ -70,17 +70,17 @@ namespace dm::core {
     // Effect Types for Pending Stack
     enum class EffectType : uint8_t {
         NONE,
-        CIP,               // Comes Into Play (逋ｻ蝣ｴ譎・
-        AT_ATTACK,         // 謾ｻ謦・凾
-        AT_BLOCK,          // 繝悶Ο繝・け譎・
-        AT_START_OF_TURN,  // 繧ｿ繝ｼ繝ｳ髢句ｧ区凾
-        AT_END_OF_TURN,    // 繧ｿ繝ｼ繝ｳ邨ゆｺ・凾
-        SHIELD_TRIGGER,    // S繝ｻ繝医Μ繧ｬ繝ｼ
-        G_STRIKE,          // G繝ｻ繧ｹ繝医Λ繧､繧ｯ
-        DESTRUCTION,       // 遐ｴ螢頑凾
+        CIP,               // Comes into play trigger
+        AT_ATTACK,         // Attack trigger
+        AT_BLOCK,          // Block trigger
+        AT_START_OF_TURN,  // Start-of-turn trigger
+        AT_END_OF_TURN,    // End-of-turn trigger
+        SHIELD_TRIGGER,    // S-Trigger
+        G_STRIKE,          // G-Strike
+        DESTRUCTION,       // Destroyed trigger
         ON_ATTACK_FROM_HAND, // Revolution Change
         INTERNAL_PLAY,     // For stacking play actions (Gatekeeper)
-        META_COUNTER,      // For Meta Counter (Counter play at end of turn)
+        META_COUNTER,      // For Meta Counter (counterplay at end of turn)
         RESOLVE_BATTLE,    // For pending battle resolution
         BREAK_SHIELD,      // For pending shield break
         REACTION_WINDOW,   // For Ninja Strike / Strike Back reaction windows

@@ -10,7 +10,8 @@ class MCTSView(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
         
-        self.label = QLabel("AI思老E�Eロセス (MCTS)")
+        # Show the current MCTS processing status
+        self.label = QLabel("AI思考プロセス (MCTS)")
         self.label.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.label)
         
@@ -24,7 +25,7 @@ class MCTSView(QWidget):
         if header:
             header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.tree.setColumnWidth(0, 200)
-        self.tabs.addTab(self.tree, "チE�Eブル表示")
+        self.tabs.addTab(self.tree, "テーブル表示")
         
         # Tab 2: Graph View
         self.graph_view = MCTSGraphView()

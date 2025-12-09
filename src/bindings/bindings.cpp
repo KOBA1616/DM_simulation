@@ -336,14 +336,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init<>())
         // Add constructor matching test expectations: (id, name, civ, races, cost, power, keywords, effects)
-        .def(py::init([](int id, std::string name, std::string civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
+           .def(py::init([](int id, std::string name, std::string civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, [[maybe_unused]] std::vector<EffectDef> effects) {
              CardDefinition d;
              d.id = id; d.name = name; d.civilizations = {string_to_civilization(civ)};
              d.races = races; d.cost = cost; d.power = power; d.keywords = keywords;
              return d;
         }))
         // Overload for Civilization enum
-        .def(py::init([](int id, std::string name, Civilization civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
+           .def(py::init([](int id, std::string name, Civilization civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, [[maybe_unused]] std::vector<EffectDef> effects) {
              CardDefinition d;
              d.id = id; d.name = name; d.civilizations = {civ};
              d.races = races; d.cost = cost; d.power = power; d.keywords = keywords;
@@ -439,7 +439,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("winner", &GameState::winner)
         .def_readwrite("loop_proven", &GameState::loop_proven)
-        .def("get_card_def", [](GameState& s, CardID id, const std::map<CardID, CardDefinition>& db) {
+        .def("get_card_def", [](GameState& /*s*/, CardID id, const std::map<CardID, CardDefinition>& db) {
             return db.at(id);
         })
         .def("add_card_to_hand", [](GameState& s, PlayerID pid, CardID cid, int iid) {

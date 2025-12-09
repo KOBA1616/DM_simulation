@@ -14,11 +14,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Enable warnings
 if(MSVC)
     add_compile_options(/W4)
+    # Force UTF-8 source/exec encoding with MSVC
+    add_compile_options(/utf-8)
 else()
     add_compile_options(-Wall -Wextra -pedantic)
-    # Handle Shift-JIS source files on Windows (MinGW/GCC) to fix "invalid UTF-8 in comment"
+    # Force UTF-8 source/exec encoding on Windows for MinGW/Clang
     if(WIN32)
-        add_compile_options(-finput-charset=CP932)
+        add_compile_options(-finput-charset=UTF-8 -fexec-charset=UTF-8)
     endif()
     # Suppress warnings from nlohmann/json with newer Clang
     add_compile_options(-Wno-deprecated-literal-operator)

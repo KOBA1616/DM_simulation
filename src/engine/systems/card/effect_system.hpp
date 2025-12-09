@@ -32,7 +32,7 @@ namespace dm::engine {
     public:
         virtual ~IActionHandler() = default;
         virtual void resolve(const ResolutionContext& ctx) = 0;
-        virtual void resolve_with_targets(const ResolutionContext& ctx) {}
+        virtual void resolve_with_targets([[maybe_unused]] const ResolutionContext& ctx) {}
     };
 
     class EffectSystem {
