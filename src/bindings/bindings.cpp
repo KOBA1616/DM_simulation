@@ -481,6 +481,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
                  s.card_owner_map[iid] = pid;
              }
         })
+        .def("clear_battle_zone", [](GameState& s, PlayerID pid) {
+             s.players[pid].battle_zone.clear();
+        })
+        .def("clear_shield_zone", [](GameState& s, PlayerID pid) {
+             s.players[pid].shield_zone.clear();
+        })
         .def("setup_test_duel", [](GameState& s) {
             // Minimal test setup: clear zones, reset turn, give basic shields.
             for (auto& p : s.players) {
@@ -593,7 +599,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
          // CardRegistry only has load_from_json.
          // Let's use nlohmann json to serialize.
          nlohmann::json j = data;
-         // Wrap in a list as load_from_json likely expects a list or single object?
+         // Wrap in a list as load_from_json likely expects a list of objects.
          // JsonLoader::load_cards expects a list of objects.
          // CardRegistry::load_from_json expects what?
          // Let's check CardRegistry::load_from_json implementation.

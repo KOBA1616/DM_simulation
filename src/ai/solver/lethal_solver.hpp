@@ -24,8 +24,9 @@ namespace dm::ai {
         struct AttackerInfo {
             int instance_id;
             int power;
-            bool can_be_blocked;
-            // Add more properties later (breaks_double, etc.)
+            int breaks;
+            bool is_unblockable;
+            bool can_attack;
         };
 
         struct BlockerInfo {

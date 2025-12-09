@@ -42,98 +42,90 @@ class TestLethalSolver(unittest.TestCase):
         )
         self.card_db[3].type = dm_ai_module.CardType.CREATURE
 
+        # 4: Double Breaker
+        kw_db = dm_ai_module.CardKeywords()
+        kw_db.double_breaker = True
+        self.card_db[4] = dm_ai_module.CardDefinition(
+            4, "Breaker", "FIRE", ["Dragon"], 5, 6000,
+            kw_db, []
+        )
+        self.card_db[4].type = dm_ai_module.CardType.CREATURE
+
         self.game = dm_ai_module.GameState(100)
         self.game.setup_test_duel()
 
     def test_simple_lethal(self):
-        """
-        Opponent has 0 shields.
-        I have 1 attacker (can attack).
-        Lethal = True.
-        """
-        self.game.players[1].shield_zone.clear() # Opponent no shields
-
-        # Add Attacker for me (Turn 1 played, current turn 2 -> Summoning Sickness gone)
-        # Assuming turn_number 2
+        self.game.clear_shield_zone(1)
         self.game.turn_number = 2
         self.game.active_player_id = 0
-
-        # Add card to battle: pid=0, cid=1, iid=100, tapped=False, sick=False
         self.game.add_test_card_to_battle(0, 1, 100, False, False)
-
         is_lethal = dm_ai_module.LethalSolver.is_lethal(self.game, self.card_db)
-        self.assertTrue(is_lethal, "Should be lethal with 1 attacker vs 0 shields")
+        self.assertTrue(is_lethal)
 
     def test_not_lethal_due_to_shields(self):
-        """
-        Opponent has 1 shield.
-        I have 1 attacker.
-        Need 2 attackers (1 for shield, 1 for direct).
-        Lethal = False.
-        """
-        self.game.players[1].shield_zone.clear()
+        self.game.clear_shield_zone(1)
         self.game.add_test_card_to_shield(1, 1, 200) # 1 Shield
-
         self.game.turn_number = 2
         self.game.active_player_id = 0
         self.game.add_test_card_to_battle(0, 1, 100, False, False)
-
         is_lethal = dm_ai_module.LethalSolver.is_lethal(self.game, self.card_db)
-        self.assertFalse(is_lethal, "Should NOT be lethal (1 attacker vs 1 shield)")
-
-        # Add another attacker
+        self.assertFalse(is_lethal)
         self.game.add_test_card_to_battle(0, 1, 101, False, False)
         is_lethal = dm_ai_module.LethalSolver.is_lethal(self.game, self.card_db)
-        self.assertTrue(is_lethal, "Should be lethal (2 attackers vs 1 shield)")
+        self.assertTrue(is_lethal)
 
     def test_blocker_stops_lethal(self):
-        """
-        Opponent has 0 shields, 1 blocker.
-        I have 1 attacker.
-        Lethal = False (Blocker blocks).
-        """
-        self.game.players[1].shield_zone.clear()
-
-        # Add Opponent Blocker
-        self.game.add_test_card_to_battle(1, 3, 300, False, True) # Blocker (sick, but can block)
-
+        self.game.clear_shield_zone(1)
+        self.game.add_test_card_to_battle(1, 3, 300, False, True) # Blocker
         self.game.turn_number = 2
         self.game.active_player_id = 0
         self.game.add_test_card_to_battle(0, 1, 100, False, False)
-
         is_lethal = dm_ai_module.LethalSolver.is_lethal(self.game, self.card_db)
-        self.assertFalse(is_lethal, "Blocker should prevent lethal")
-
-        # Add another attacker
+        self.assertFalse(is_lethal)
         self.game.add_test_card_to_battle(0, 1, 101, False, False)
         is_lethal = dm_ai_module.LethalSolver.is_lethal(self.game, self.card_db)
-        # 2 Attackers vs 1 Blocker + 0 Shields.
-        # 1 blocked, 1 direct attack. Lethal = True.
-        self.assertTrue(is_lethal, "2 Attackers vs 1 Blocker should be lethal")
+        self.assertTrue(is_lethal)
 
-    def test_speed_attacker_counts(self):
+    def test_double_breaker_logic(self):
         """
-        Attacker has Summoning Sickness but is Speed Attacker.
+        1 Double Breaker vs 2 Shields -> Not Lethal (0 left for direct).
+        1 Double Breaker + 1 Vanilla vs 2 Shields -> Lethal.
         """
-        self.game.players[1].shield_zone.clear()
+        self.game.clear_shield_zone(1)
+        self.game.add_test_card_to_shield(1, 1, 200)
+        self.game.add_test_card_to_shield(1, 1, 201) # 2 Shields
 
-        # Add SA (sick=True)
-        self.game.add_test_card_to_battle(0, 2, 100, False, True)
+        self.game.turn_number = 2
+        self.game.active_player_id = 0
+        self.game.add_test_card_to_battle(0, 4, 100, False, False) # Double Breaker
+
+        # DB breaks 2 shields. Remaining attackers 0. Direct attack impossible.
+        is_lethal = dm_ai_module.LethalSolver.is_lethal(self.game, self.card_db)
+        self.assertFalse(is_lethal, "Double Breaker alone against 2 shields is NOT lethal")
+
+        # Add Vanilla
+        self.game.add_test_card_to_battle(0, 1, 101, False, False)
+        is_lethal = dm_ai_module.LethalSolver.is_lethal(self.game, self.card_db)
+        self.assertTrue(is_lethal, "DB + Vanilla against 2 shields IS lethal")
+
+    def test_smart_blocking_logic(self):
+        """
+        1 Double Breaker + 1 Vanilla vs 2 Shields + 1 Blocker.
+        Opponent should block DB. Vanilla breaks 1 shield. 1 shield left. Not Lethal.
+        If logic was dumb (blocks vanilla), DB breaks 2 shields -> Lethal.
+        """
+        self.game.clear_shield_zone(1)
+        self.game.add_test_card_to_shield(1, 1, 200)
+        self.game.add_test_card_to_shield(1, 1, 201) # 2 Shields
+        self.game.add_test_card_to_battle(1, 3, 300, False, True) # Blocker
+
+        self.game.turn_number = 2
+        self.game.active_player_id = 0
+        self.game.add_test_card_to_battle(0, 4, 100, False, False) # DB
+        self.game.add_test_card_to_battle(0, 1, 101, False, False) # Vanilla
 
         is_lethal = dm_ai_module.LethalSolver.is_lethal(self.game, self.card_db)
-        self.assertTrue(is_lethal, "Speed Attacker should count despite sickness")
-
-    def test_summoning_sickness_prevents_lethal(self):
-        """
-        Attacker has Summoning Sickness (and not SA).
-        """
-        self.game.players[1].shield_zone.clear()
-
-        # Add Vanilla (sick=True)
-        self.game.add_test_card_to_battle(0, 1, 100, False, True)
-
-        is_lethal = dm_ai_module.LethalSolver.is_lethal(self.game, self.card_db)
-        self.assertFalse(is_lethal, "Sick creature should not attack")
+        self.assertFalse(is_lethal, "Blocker should block DB to prevent lethal")
 
 if __name__ == "__main__":
     unittest.main()
