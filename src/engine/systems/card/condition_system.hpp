@@ -91,7 +91,7 @@ namespace dm::engine {
 
     class OpponentPlayedWithoutManaEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/) override {
             return state.turn_stats.played_without_mana;
         }
     };
@@ -116,7 +116,7 @@ namespace dm::engine {
 
     class FirstAttackEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/) override {
             // First attack of turn means attacks_declared_this_turn is 1?
             // When trigger evaluates:
             // "When this creature attacks, if it's the first attack..."

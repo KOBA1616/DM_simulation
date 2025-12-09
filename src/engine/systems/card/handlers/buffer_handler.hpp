@@ -72,23 +72,23 @@ namespace dm::engine {
                     }
                 }
             } else if (action.type == EffectActionType::MOVE_BUFFER_TO_ZONE) {
-                std::vector<CardInstance>* dest = nullptr;
+                // std::vector<CardInstance>* dest = nullptr;
                 if (action.destination_zone == "DECK_BOTTOM") {
-                    dest = &controller.deck;
+                    // dest = &controller.deck;
                     for (auto& c : game_state.effect_buffer) {
                         controller.deck.insert(controller.deck.begin(), c);
                     }
                     game_state.effect_buffer.clear();
                 }
                 else if (action.destination_zone == "GRAVEYARD") {
-                    dest = &controller.graveyard;
+                    // dest = &controller.graveyard;
                     for (auto& c : game_state.effect_buffer) {
                         controller.graveyard.push_back(c);
                     }
                     game_state.effect_buffer.clear();
                 }
                 else if (action.destination_zone == "HAND") {
-                    dest = &controller.hand;
+                    // dest = &controller.hand;
                      for (auto& c : game_state.effect_buffer) {
                         controller.hand.push_back(c);
                     }
@@ -97,7 +97,7 @@ namespace dm::engine {
             }
         }
 
-        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
+        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int /*source_id*/, std::map<std::string, int>& /*context*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
              using namespace dm::core;
              if (action.type == EffectActionType::PLAY_FROM_BUFFER) {
                  Player& active = game_state.get_active_player();

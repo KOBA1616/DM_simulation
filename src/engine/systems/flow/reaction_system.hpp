@@ -72,7 +72,7 @@ namespace dm::engine {
             const dm::core::CardInstance& card_instance,
             dm::core::PlayerID player_id,
             const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
-            const std::string& event_type = ""
+            const std::string& /*event_type*/ = ""
         ) {
             // Civilization Match
             if (reaction.condition.civilization_match) {
