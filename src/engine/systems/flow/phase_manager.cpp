@@ -79,7 +79,7 @@ namespace dm::engine {
         // For now, let's assume the external loop handles the phase state or we add it to GameState.
     }
 
-    void PhaseManager::draw_card(GameState& game_state, Player& player) {
+    void PhaseManager::draw_card(GameState& /*game_state*/, Player& player) {
         if (player.deck.empty()) {
             // Deck out check will happen in check_game_over
             return;
