@@ -60,6 +60,13 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
         *   **可読性**: 引数リストが短縮され、コードが簡潔になる。
         *   **警告解消**: 未使用引数による警告を抑制するための追加コードが不要になる。
 
+2.  **シングルトン依存からの完全脱却 (Complete Removal of Singleton Dependency)**
+    *   **概要**: `SearchHandler` 以外のハンドラおよび `GenericCardSystem` 全体において、`CardRegistry` への直接依存を排除し、`ResolutionContext` (ctx.card_db) 経由でのアクセスを徹底する。
+    *   **残存課題と計画**:
+        *   **他のHandlerへの横展開**: `SearchHandler` 以外で `CardRegistry` を参照している箇所（進化元判定、コスト計算など）を特定し、`ctx.card_db` を使用するように修正する。
+        *   **EffectResolverにおける伝播徹底**: `EffectResolver` から `GenericCardSystem` を呼び出す全経路において、デフォルト引数 `{}` に頼らず、確実に `card_db` を渡すように修正する（バケツリレーの完遂）。
+        *   **CardRegistryの完全隠蔽**: 最終的に Engine 内部ロジックから `CardRegistry::get_card_data` への依存を完全に排除し、`GameState` または `GameInstance` が保持する `card_db` のみを使用する状態にする。これによりマルチスレッド並列実行時の安全性を確立する。
+
 ### Phase 1: 確実性の確保（ロジック強化フェーズ）
 
 **目標**: 「詰み」の見逃しをゼロにし、不用意なトリガー踏みを防ぐ。計算コストの低い「ルールベース」でMCTSを補完する。
