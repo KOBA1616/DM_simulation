@@ -154,6 +154,12 @@ ACTION_UI_CONFIG = {
         "label_value1": "Default/Max (Heuristic)",
         "produces_output": True
     },
+    "DECLARE_NUMBER": {
+        "visible": ["output_value_key", "value1", "value2"],
+        "label_value1": "Min Value",
+        "label_value2": "Max Value",
+        "produces_output": True
+    },
     "FRIEND_BURST": {
         "visible": ["str_val", "filter"],
         "label_str_val": "Race (e.g. Fire Bird)",
