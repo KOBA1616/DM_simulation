@@ -79,12 +79,11 @@ namespace dm::engine {
             // Let's try a safe heuristic:
             // If opponent has creatures, pick the cost of their highest power creature (to destroy it?).
             // If no creatures, pick 5 (common key cost).
-
-            int best_cost = 5;
             const dm::core::Player& opponent = game_state.get_non_active_player();
 
             if (!opponent.battle_zone.empty()) {
                 // Find most powerful creature
+                /*
                 int max_power = -1;
                 for (const auto& c : opponent.battle_zone) {
                     // Check power using cache or DB? We need DB.
@@ -95,6 +94,7 @@ namespace dm::engine {
                     // We need `card_db` for heuristic.
                     // We can't access it here easily.
                 }
+                */
             }
 
             // Fallback: Random 1-10 or Just 5.
