@@ -153,7 +153,7 @@ namespace dm::engine {
         static bool is_evolution(const dm::core::CardData& c) {
             return c.type == "EVOLUTION_CREATURE";
         }
-        static bool is_blocker(const dm::core::CardData& c) {
+        static bool is_blocker(const dm::core::CardData& /*c*/) {
             return false; // Not easily checking keywords here
         }
     };

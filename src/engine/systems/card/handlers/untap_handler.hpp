@@ -26,7 +26,7 @@ namespace dm::engine {
             }
         }
 
-        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
+        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& /*action*/, const std::vector<int>& targets, int /*source_id*/, std::map<std::string, int>& /*context*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
              // Helper to find instance (duplicated)
              auto find_inst = [&](int instance_id) -> dm::core::CardInstance* {
                 for (auto& p : game_state.players) {

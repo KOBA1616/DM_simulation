@@ -115,9 +115,9 @@ namespace dm::engine {
     }
 
     // Stub for the hpp declaration
-    std::vector<int> ManaSystem::solve_payment(const std::vector<dm::core::CardInstance>& mana_zone,
-                                              const std::vector<dm::core::Civilization>& required_civs,
-                                              int total_cost) {
+    std::vector<int> ManaSystem::solve_payment(const std::vector<dm::core::CardInstance>& /*mana_zone*/,
+                                              const std::vector<dm::core::Civilization>& /*required_civs*/,
+                                              int /*total_cost*/) {
         return {};
     }
 
