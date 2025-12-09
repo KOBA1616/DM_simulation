@@ -1,6 +1,6 @@
 #pragma once
-#include "../../core/game_state.hpp"
-#include "../../core/types.hpp"
+#include "core/game_state.hpp"
+#include "core/types.hpp"
 
 namespace dm::engine {
 

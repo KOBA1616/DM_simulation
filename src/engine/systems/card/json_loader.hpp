@@ -1,5 +1,5 @@
 #pragma once
-#include "../../../core/card_def.hpp"
+#include "core/card_def.hpp"
 #include <string>
 #include <map>
 #include <vector>

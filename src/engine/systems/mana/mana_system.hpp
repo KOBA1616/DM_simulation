@@ -1,9 +1,9 @@
 #pragma once
 #include <vector>
 #include <map>
-#include "../../../core/types.hpp"
-#include "../../../core/game_state.hpp"
-#include "../../../core/card_def.hpp"
+#include "core/types.hpp"
+#include "core/game_state.hpp"
+#include "core/card_def.hpp"
 
 namespace dm::engine {
 

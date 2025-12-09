@@ -1,6 +1,6 @@
 #pragma once
-#include "../effect_system.hpp"
-#include "../../../../core/game_state.hpp"
+#include "engine/systems/card/effect_system.hpp"
+#include "core/game_state.hpp"
 #include <iostream>
 
 namespace dm::engine {

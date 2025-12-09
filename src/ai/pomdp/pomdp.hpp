@@ -5,8 +5,8 @@
 #include <map>
 #include <cstdint>
 
-#include "../../core/game_state.hpp"
-#include "../../core/card_def.hpp"
+#include "core/game_state.hpp"
+#include "core/card_def.hpp"
 
 namespace dm {
 namespace ai {

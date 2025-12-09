@@ -1,6 +1,6 @@
 #pragma once
-#include "../../core/action.hpp"
-#include "../../core/constants.hpp"
+#include "core/action.hpp"
+#include "core/constants.hpp"
 
 namespace dm::ai {
 

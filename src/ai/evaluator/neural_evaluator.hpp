@@ -1,7 +1,7 @@
 #pragma once
 #include "evaluator.hpp"
 #include <map>
-#include "../../core/card_def.hpp"
+#include "core/card_def.hpp"
 
 namespace dm::ai {
 
