@@ -48,6 +48,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 **目標**: 拡張性、保守性、可読性を向上させ、将来の機能追加を容易にする。
 
+**ステータス**: 実装完了 (Completed)。
+
 1.  **IActionHandler Context Object パターンの導入**
     *   **概要**: `IActionHandler::resolve_with_targets` 等のメソッド引数が多大で拡張性が低いため、「Context Object パターン」を用いて改善する。
     *   **実装内容**:
@@ -62,10 +64,14 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 2.  **シングルトン依存からの完全脱却 (Complete Removal of Singleton Dependency)**
     *   **概要**: `SearchHandler` 以外のハンドラおよび `GenericCardSystem` 全体において、`CardRegistry` への直接依存を排除し、`ResolutionContext` (ctx.card_db) 経由でのアクセスを徹底する。
-    *   **残存課題と計画**:
-        *   **他のHandlerへの横展開**: `SearchHandler` 以外で `CardRegistry` を参照している箇所（進化元判定、コスト計算など）を特定し、`ctx.card_db` を使用するように修正する。
-        *   **EffectResolverにおける伝播徹底**: `EffectResolver` から `GenericCardSystem` を呼び出す全経路において、デフォルト引数 `{}` に頼らず、確実に `card_db` を渡すように修正する（バケツリレーの完遂）。
-        *   **CardRegistryの完全隠蔽**: 最終的に Engine 内部ロジックから `CardRegistry::get_card_data` への依存を完全に排除し、`GameState` または `GameInstance` が保持する `card_db` のみを使用する状態にする。これによりマルチスレッド並列実行時の安全性を確立する。
+    *   **実装内容**:
+        *   `GenericCardSystem` の `resolve_trigger`, `resolve_effect`, `check_condition` 等の全メソッドが `card_db` (const map&) を引数として受け取るように改修。
+        *   `EffectResolver` から `GenericCardSystem` への呼び出し経路において `card_db` のバケツリレーを実装。
+        *   全 `IActionHandler` の実装 (`SearchHandler`, `DrawHandler`, `CountHandler` 等) において、`CardRegistry` の代わりに `ctx.card_db` を使用するように変更。
+        *   `CardDefinition` (実行時構造体) に `effects` フィールドを追加し、`CardRegistry` (JSON) に依存せずに効果ロジックを参照可能にした。
+    *   **成果**:
+        *   エンジン内部ロジック (`src/engine/`) から `CardRegistry` への依存が、データのロード時 (`JsonLoader`) を除き排除された。
+        *   `GameInstance` ごとに独立した `card_db` で動作可能となり、将来のマルチスレッド並列実行への安全性が確保された。
 
 ### Phase 1: 確実性の確保（ロジック強化フェーズ）
 
