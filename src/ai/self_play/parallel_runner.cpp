@@ -22,7 +22,8 @@ namespace dm::ai {
         BatchEvaluatorCallback evaluator,
         float temperature,
         bool add_noise,
-        int num_threads
+        int num_threads,
+        float alpha
     ) {
         std::vector<GameResultInfo> results(initial_states.size());
         InferenceQueue inf_queue;
@@ -46,7 +47,7 @@ namespace dm::ai {
                 return fut.get();
             };
 
-            results[game_idx] = sp.play_game(initial_states[game_idx], worker_cb, temperature, add_noise);
+            results[game_idx] = sp.play_game(initial_states[game_idx], worker_cb, temperature, add_noise, alpha);
             games_completed++;
             inf_queue.cv.notify_one();
         };

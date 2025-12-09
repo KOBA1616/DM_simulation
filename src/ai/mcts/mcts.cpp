@@ -14,8 +14,8 @@ namespace dm::ai {
     using namespace dm::core;
     using namespace dm::engine;
 
-    MCTS::MCTS(const std::map<CardID, CardDefinition>& card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size)
-        : card_db_(card_db), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size) {}
+    MCTS::MCTS(const std::map<CardID, CardDefinition>& card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size, float alpha)
+        : card_db_(card_db), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size), alpha_(alpha) {}
 
     std::vector<float> MCTS::search(const GameState& root_state, int simulations, BatchEvaluatorCallback evaluator, bool add_noise, float temperature) {
         // 1. Clone and Fast Forward Root
@@ -26,13 +26,10 @@ namespace dm::ai {
         MCTSNode* root = last_root_.get();
 
         // Initial expansion of root (needs evaluation)
-        // We can treat root as the first batch item
-        // But we need to expand it to start selection.
-        // So we must evaluate root first.
         std::vector<GameState> root_batch = { root->state };
         auto [root_policies, root_values] = evaluator(root_batch);
         expand_node(root, root_policies[0]);
-        backpropagate(root, root_values[0]); // Backprop root value? Usually we don't backprop root value to root parent (null), but we set root stats.
+        backpropagate(root, root_values[0]);
         
         if (add_noise) {
             add_exploration_noise(root);
@@ -45,18 +42,11 @@ namespace dm::ai {
             std::vector<MCTSNode*> batch_nodes;
             std::vector<GameState> batch_states;
             
-            // Fill batch
-            // We loop until we fill the batch OR we run out of simulations to start
-            // Note: We might select the same leaf multiple times if virtual loss isn't high enough or tree is small.
-            // We should avoid adding the exact same node pointer to the batch twice in one go?
-            // Yes, because we can't expand it twice.
-            
             int current_batch_limit = std::min(batch_size_, simulations - simulations_finished);
             
             for (int i = 0; i < current_batch_limit; ++i) {
                 MCTSNode* leaf = select_leaf(root);
                 
-                // Check if leaf is already in batch (pointer comparison)
                 bool already_in_batch = false;
                 for (auto* n : batch_nodes) {
                     if (n == leaf) {
@@ -66,14 +56,10 @@ namespace dm::ai {
                 }
                 
                 if (already_in_batch) {
-                    // If we picked the same leaf again, it means virtual loss wasn't enough to divert us.
-                    // We should stop filling the batch and process what we have.
-                    // Revert the virtual loss for this duplicate selection (since select_leaf added it)
                     revert_virtual_loss(leaf);
                     break;
                 }
 
-                // Check Terminal
                 GameResult result;
                 bool is_over = PhaseManager::check_game_over(leaf->state, result);
                 
@@ -95,16 +81,11 @@ namespace dm::ai {
             
             if (batch_nodes.empty()) {
                 if (simulations_finished >= simulations) break;
-                // If we are here, it means we only found terminal nodes or duplicates.
-                // If duplicates, we broke the loop.
-                // If we have no nodes to evaluate, we continue (simulations_finished was incremented for terminals).
                 continue;
             }
             
-            // Evaluate Batch
             auto [policies, values] = evaluator(batch_states);
             
-            // Process Results
             for (size_t i = 0; i < batch_nodes.size(); ++i) {
                 MCTSNode* node = batch_nodes[i];
                 expand_node(node, policies[i]);
@@ -120,7 +101,6 @@ namespace dm::ai {
         if (root->children.empty()) return policy;
 
         if (temperature < 1e-3f) {
-            // Argmax
             MCTSNode* best_child = nullptr;
             int max_visits = -1;
             for (const auto& child : root->children) {
@@ -136,7 +116,6 @@ namespace dm::ai {
                 }
             }
         } else {
-            // Softmax with temperature
             float sum_visits_pow = 0.0f;
             std::vector<float> visits_pow;
             visits_pow.reserve(root->children.size());
@@ -163,7 +142,6 @@ namespace dm::ai {
         
         if (actions.empty()) return;
 
-        // Softmax normalization for priors
         float sum_exp = 0.0f;
         std::vector<float> priors;
         priors.reserve(actions.size());
@@ -174,7 +152,6 @@ namespace dm::ai {
             if (idx >= 0 && idx < (int)policy_logits.size()) {
                 logit = policy_logits[idx];
             }
-            // Use exp for softmax
             float p = std::exp(logit);
             priors.push_back(p);
             sum_exp += p;
@@ -182,7 +159,7 @@ namespace dm::ai {
 
         for (size_t i = 0; i < actions.size(); ++i) {
             const auto& action = actions[i];
-            float p = priors[i] / sum_exp; // Normalize
+            float p = priors[i] / sum_exp;
             
             GameState next_state = node->state;
             EffectResolver::resolve_action(next_state, action, card_db_);
@@ -207,14 +184,13 @@ namespace dm::ai {
 
             for (const auto& child : node->children) {
                 float q = child->value();
-                // UCB with Virtual Loss in visit_count (handled by value())
-                // c_puct * P(s,a) * sqrt(sum(N)) / (1 + N)
-                // We need parent's visit count including virtual loss?
-                // Usually parent visit count is sum of children visits.
-                // If we added virtual loss to children, parent visit count should reflect that?
-                // No, we add virtual loss to the node itself.
-                // When we traverse, we add virtual loss to every node on the path.
                 
+                // Risk-Aware Scoring: Score = Q - alpha * sigma
+                if (alpha_ > 1e-5f && child->visit_count > 1) {
+                    float sigma = child->std_dev();
+                    q -= alpha_ * sigma;
+                }
+
                 float u = c_puct_ * child->prior * std::sqrt(static_cast<float>(node->visit_count + node->virtual_loss)) / (1.0f + child->visit_count + child->virtual_loss);
                 
                 float score = q + u;
@@ -224,14 +200,12 @@ namespace dm::ai {
                 }
             }
             
-            if (!best_child) break; // Should not happen if expanded
+            if (!best_child) break;
             
-            // Apply Virtual Loss
             node->virtual_loss++;
             node = best_child;
         }
         
-        // Apply Virtual Loss to the leaf itself
         node->virtual_loss++;
         return node;
     }
@@ -246,6 +220,16 @@ namespace dm::ai {
     void MCTS::backpropagate(MCTSNode* node, float value) {
         while (node) {
             node->visit_count++;
+
+            // value is the result of the game (-1, 0, 1) from the perspective of the leaf's active player?
+            // No, 'value' passed here is usually from the perspective of the node that was evaluated.
+            // But MCTS backprop flips value if parent player is different.
+
+            // Variance accumulation: E[X^2]
+            // Since value is in range [-1, 1], value^2 is [0, 1].
+            // (-v)^2 == v^2, so we don't need to flip it for squared sum.
+            node->value_squared_sum += value * value;
+
             node->value_sum += value;
 
             // Invert value only if the active player changes
