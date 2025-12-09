@@ -51,7 +51,7 @@ class TestLethalSolver(unittest.TestCase):
         I have 1 attacker (can attack).
         Lethal = True.
         """
-        self.game.players[1].shield_zone.clear() # Opponent no shields
+        self.game.clear_zone(1, dm_ai_module.Zone.SHIELD) # Opponent no shields
 
         # Add Attacker for me (Turn 1 played, current turn 2 -> Summoning Sickness gone)
         # Assuming turn_number 2
@@ -71,7 +71,7 @@ class TestLethalSolver(unittest.TestCase):
         Need 2 attackers (1 for shield, 1 for direct).
         Lethal = False.
         """
-        self.game.players[1].shield_zone.clear()
+        self.game.clear_zone(1, dm_ai_module.Zone.SHIELD)
         self.game.add_test_card_to_shield(1, 1, 200) # 1 Shield
 
         self.game.turn_number = 2
@@ -92,7 +92,7 @@ class TestLethalSolver(unittest.TestCase):
         I have 1 attacker.
         Lethal = False (Blocker blocks).
         """
-        self.game.players[1].shield_zone.clear()
+        self.game.clear_zone(1, dm_ai_module.Zone.SHIELD)
 
         # Add Opponent Blocker
         self.game.add_test_card_to_battle(1, 3, 300, False, True) # Blocker (sick, but can block)
@@ -115,7 +115,7 @@ class TestLethalSolver(unittest.TestCase):
         """
         Attacker has Summoning Sickness but is Speed Attacker.
         """
-        self.game.players[1].shield_zone.clear()
+        self.game.clear_zone(1, dm_ai_module.Zone.SHIELD)
 
         # Add SA (sick=True)
         self.game.add_test_card_to_battle(0, 2, 100, False, True)
@@ -127,7 +127,7 @@ class TestLethalSolver(unittest.TestCase):
         """
         Attacker has Summoning Sickness (and not SA).
         """
-        self.game.players[1].shield_zone.clear()
+        self.game.clear_zone(1, dm_ai_module.Zone.SHIELD)
 
         # Add Vanilla (sick=True)
         self.game.add_test_card_to_battle(0, 1, 100, False, True)
