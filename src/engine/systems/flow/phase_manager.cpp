@@ -112,7 +112,7 @@ namespace dm::engine {
             is_over = true;
         } else {
             // Check Deck Out
-            // "Deck Out (Hard): 山札の最後�E1枚を引いた瞬間に敗北 [Q27]"
+            // "Deck Out (Hard): lose when drawing the last card of the deck [Q27]"
             bool p1_deck_empty = game_state.players[0].deck.empty();
             bool p2_deck_empty = game_state.players[1].deck.empty();
 

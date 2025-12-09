@@ -11,6 +11,32 @@ class ActionEditForm(BaseEditForm):
         super().__init__(parent)
         self.setup_ui()
 
+    def _get_ui_config(self, action_type):
+        """Normalize raw UI config with safe defaults to avoid missing keys."""
+        raw = ACTION_UI_CONFIG.get(action_type, {})
+
+        # Map UI-only types to underlying configs when needed
+        if action_type == "MEASURE_COUNT":
+            raw = ACTION_UI_CONFIG.get("MEASURE_COUNT", ACTION_UI_CONFIG.get("COUNT_CARDS", raw))
+        elif action_type == "COST_REDUCTION":
+            raw = ACTION_UI_CONFIG.get("COST_REDUCTION", raw)
+
+        visible = raw.get("visible", [])
+        vis = lambda key: key in visible
+
+        return {
+            "val1_label": raw.get("label_value1", "Value 1"),
+            "val2_label": raw.get("label_value2", "Value 2"),
+            "str_label": raw.get("label_str_val", "String Value"),
+            "val1_visible": vis("value1"),
+            "val2_visible": vis("value2"),
+            "str_visible": vis("str_val"),
+            "filter_visible": vis("filter"),
+            "can_be_optional": raw.get("can_be_optional", False),
+            "produces_output": raw.get("produces_output", False),
+            "tooltip": raw.get("tooltip", ""),
+        }
+
     def setup_ui(self):
         layout = QFormLayout(self)
 
@@ -96,7 +122,7 @@ class ActionEditForm(BaseEditForm):
         self.update_ui_state(action_type)
 
         if self.current_item and not self._is_populating:
-            config = ACTION_UI_CONFIG.get(action_type, {})
+            config = self._get_ui_config(action_type)
             produces = config.get("produces_output", False)
 
             # Use unified name for linking logic
@@ -113,11 +139,7 @@ class ActionEditForm(BaseEditForm):
 
     def on_smart_link_changed(self, is_checked):
         action_type = self.type_combo.currentData()
-        config = ACTION_UI_CONFIG.get(action_type, ACTION_UI_CONFIG["NONE"])
-
-        # Override config for UI type
-        if action_type == "MEASURE_COUNT":
-             config = ACTION_UI_CONFIG.get("MEASURE_COUNT", config)
+        config = self._get_ui_config(action_type)
 
         self.val1_label.setVisible(config["val1_visible"] and not is_checked)
         self.val1_spin.setVisible(config["val1_visible"] and not is_checked)
@@ -127,14 +149,7 @@ class ActionEditForm(BaseEditForm):
     def update_ui_state(self, action_type):
         if not action_type: return
 
-        config = ACTION_UI_CONFIG.get(action_type, ACTION_UI_CONFIG["NONE"])
-
-        # Unified UI Config Mapping
-        # MEASURE_COUNT maps to logic similar to COUNT_CARDS
-        if action_type == "MEASURE_COUNT":
-             config = ACTION_UI_CONFIG.get("MEASURE_COUNT", config)
-        elif action_type == "COST_REDUCTION":
-            config = ACTION_UI_CONFIG.get("COST_REDUCTION", config)
+        config = self._get_ui_config(action_type)
 
         self.val1_label.setText(tr(config["val1_label"]))
         self.val2_label.setText(tr(config["val2_label"]))
