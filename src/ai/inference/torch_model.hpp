@@ -19,8 +19,8 @@ public:
 #else
     // Stubs when LibTorch not enabled
     TorchModel() {}
-    bool load(const std::string&) { return false; }
-    std::pair<std::vector<float>, std::vector<float>> predict(const std::vector<float>& input) { return { {}, {} }; }
+    bool load([[maybe_unused]] const std::string&) { return false; }
+    std::pair<std::vector<float>, std::vector<float>> predict([[maybe_unused]] const std::vector<float>&) { return { {}, {} }; }
 #endif
 };
 
