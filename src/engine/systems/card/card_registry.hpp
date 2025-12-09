@@ -1,5 +1,5 @@
 #pragma once
-#include "../../../core/card_json_types.hpp"
+#include "core/card_json_types.hpp"
 #include <map>
 #include <string>
 

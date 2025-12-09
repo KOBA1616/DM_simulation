@@ -1,8 +1,8 @@
 #include "heuristic_evaluator.hpp"
-#include "../../engine/actions/action_generator.hpp"
-#include "../encoders/action_encoder.hpp"
+#include "engine/actions/action_generator.hpp"
+#include "ai/encoders/action_encoder.hpp"
 #include <algorithm>
-#include "../inference/torch_model.hpp"
+#include "ai/inference/torch_model.hpp"
 
 namespace dm::ai {
 

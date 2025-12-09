@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../core/game_state.hpp"
-#include "../../core/card_def.hpp"
-#include "../encoders/tensor_converter.hpp"
+#include "core/game_state.hpp"
+#include "core/card_def.hpp"
+#include "ai/encoders/tensor_converter.hpp"
 #include <vector>
 #include <map>
 

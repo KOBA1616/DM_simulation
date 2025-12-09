@@ -1,7 +1,7 @@
 #include "phase_manager.hpp"
-#include "../mana/mana_system.hpp"
-#include "../../actions/action_generator.hpp"
-#include "../../../core/constants.hpp"
+#include "engine/systems/mana/mana_system.hpp"
+#include "engine/actions/action_generator.hpp"
+#include "core/constants.hpp"
 #include <iostream>
 
 namespace dm::engine {

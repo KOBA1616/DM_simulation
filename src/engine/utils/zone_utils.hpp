@@ -1,5 +1,5 @@
 #pragma once
-#include "../../core/game_state.hpp"
+#include "core/game_state.hpp"
 #include <vector>
 #include <algorithm>
 #include <optional>

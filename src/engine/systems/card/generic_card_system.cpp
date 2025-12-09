@@ -1,4 +1,4 @@
-#include "../../effects/effect_resolver.hpp"
+#include "engine/effects/effect_resolver.hpp"
 #include "generic_card_system.hpp"
 #include "card_registry.hpp"
 #include "target_utils.hpp"
