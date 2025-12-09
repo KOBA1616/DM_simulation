@@ -10,18 +10,18 @@ namespace dm::engine {
 
     class SearchHandler : public IActionHandler {
     public:
-        void resolve(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context) override {
+        void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
             // SEARCH_DECK
-            if (action.type == EffectActionType::SEARCH_DECK) {
+            if (ctx.action.type == EffectActionType::SEARCH_DECK) {
                  EffectDef ed;
                  ed.trigger = TriggerType::NONE;
                  ed.condition = ConditionDef{"NONE", 0, ""};
 
                  ActionDef move_act;
                  move_act.type = EffectActionType::RETURN_TO_HAND;
-                 if (action.destination_zone == "MANA_ZONE") {
+                 if (ctx.action.destination_zone == "MANA_ZONE") {
                      move_act.type = EffectActionType::SEND_TO_MANA;
                  }
 
@@ -30,34 +30,34 @@ namespace dm::engine {
 
                  ed.actions = { move_act, shuffle_act };
 
-                 ActionDef mod_action = action;
+                 ActionDef mod_action = ctx.action;
                  if (mod_action.filter.zones.empty()) {
                      mod_action.filter.zones = {"DECK"};
                  }
                  if (!mod_action.filter.owner.has_value()) {
                      mod_action.filter.owner = "SELF";
                  }
-                 GenericCardSystem::select_targets(game_state, mod_action, source_instance_id, ed, execution_context);
+                 GenericCardSystem::select_targets(ctx.game_state, mod_action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
 
             // SHUFFLE_DECK
-            if (action.type == EffectActionType::SHUFFLE_DECK) {
-                PlayerID controller_id = GenericCardSystem::get_controller(game_state, source_instance_id);
-                Player& controller = game_state.players[controller_id];
-                std::shuffle(controller.deck.begin(), controller.deck.end(), game_state.rng);
+            if (ctx.action.type == EffectActionType::SHUFFLE_DECK) {
+                PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                Player& controller = ctx.game_state.players[controller_id];
+                std::shuffle(controller.deck.begin(), controller.deck.end(), ctx.game_state.rng);
             }
 
             // SEARCH_DECK_BOTTOM
-            if (action.type == EffectActionType::SEARCH_DECK_BOTTOM) {
+            if (ctx.action.type == EffectActionType::SEARCH_DECK_BOTTOM) {
                 // Find controller
-                PlayerID controller_id = GenericCardSystem::get_controller(game_state, source_instance_id);
-                Player& controller = game_state.players[controller_id];
+                PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                Player& controller = ctx.game_state.players[controller_id];
 
-                int look = action.value1;
+                int look = ctx.action.value1;
                 // Variable Linking
-                if (!action.input_value_key.empty() && execution_context.count(action.input_value_key)) {
-                    look = execution_context[action.input_value_key];
+                if (!ctx.action.input_value_key.empty() && ctx.execution_vars.count(ctx.action.input_value_key)) {
+                    look = ctx.execution_vars[ctx.action.input_value_key];
                 }
                 if (look == 0) look = 1;
 
@@ -73,7 +73,7 @@ namespace dm::engine {
                     const CardData* cd = CardRegistry::get_card_data(looked[i].card_id);
                     if (!cd) continue;
 
-                    if (TargetUtils::is_valid_target(looked[i], *cd, action.filter, game_state, controller_id, controller_id)) {
+                    if (TargetUtils::is_valid_target(looked[i], *cd, ctx.action.filter, ctx.game_state, controller_id, controller_id)) {
                         chosen_idx = (int)i;
                         break;
                     }
@@ -90,24 +90,25 @@ namespace dm::engine {
             }
 
             // SEND_TO_DECK_BOTTOM
-             if (action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
-                 if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
+             if (ctx.action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
+                 if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                      EffectDef ed;
                      ed.trigger = TriggerType::NONE;
                      ed.condition = ConditionDef{"NONE", 0, ""};
-                     ed.actions = { action }; // The action itself acts as the "handler" later
-                     GenericCardSystem::select_targets(game_state, action, source_instance_id, ed, execution_context);
+                     ed.actions = { ctx.action };
+                     GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  }
              }
         }
 
-        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int /*source_id*/, std::map<std::string, int>& /*context*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
+        void resolve_with_targets(const ResolutionContext& ctx) override {
              using namespace dm::core;
+             if (!ctx.targets) return;
 
              // SEARCH_DECK legacy/fallback path
-             if (action.type == EffectActionType::SEARCH_DECK) {
-                 Player& active = game_state.get_active_player();
-                 for (int tid : targets) {
+             if (ctx.action.type == EffectActionType::SEARCH_DECK) {
+                 Player& active = ctx.game_state.get_active_player();
+                 for (int tid : *ctx.targets) {
                      auto it = std::find_if(active.deck.begin(), active.deck.end(),
                          [tid](const CardInstance& c){ return c.instance_id == tid; });
                      if (it != active.deck.end()) {
@@ -115,13 +116,13 @@ namespace dm::engine {
                          active.deck.erase(it);
                      }
                  }
-                 std::shuffle(active.deck.begin(), active.deck.end(), game_state.rng);
+                 std::shuffle(active.deck.begin(), active.deck.end(), ctx.game_state.rng);
              }
 
              // SEND_TO_DECK_BOTTOM
-             if (action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
-                for (int tid : targets) {
-                    for (auto &p : game_state.players) {
+             if (ctx.action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
+                for (int tid : *ctx.targets) {
+                    for (auto &p : ctx.game_state.players) {
                          // Check Hand
                          auto it = std::find_if(p.hand.begin(), p.hand.end(),
                              [tid](const CardInstance& c){ return c.instance_id == tid; });
