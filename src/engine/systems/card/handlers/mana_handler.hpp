@@ -29,17 +29,8 @@ namespace dm::engine {
                 c.is_tapped = false;
 
                 // Tap-in Logic
-                const CardData* data = CardRegistry::get_card_data(c.card_id);
-                if (data) {
-                    if (data->civilizations.size() > 1) {
-                         bool untap_in = false;
-                         if (data->keywords.has_value() && data->keywords.value().count("untap_in")) {
-                             untap_in = data->keywords.value().at("untap_in");
-                         }
-                         if (!untap_in) {
-                             c.is_tapped = true;
-                         }
-                    }
+                if (ctx.card_db.count(c.card_id)) {
+                    TapInUtils::apply_tap_in_rule(c, ctx.card_db.at(c.card_id));
                 }
 
                 controller.mana_zone.push_back(c);
