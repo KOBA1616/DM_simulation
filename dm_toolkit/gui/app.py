@@ -75,30 +75,30 @@ class GameWindow(QMainWindow):
         self.info_layout.addWidget(self.card_detail_panel)
         
         # Controls Group
-        ctrl_group = QGroupBox("操佁E)
+        ctrl_group = QGroupBox("Controls")
         ctrl_layout = QVBoxLayout()
-        
-        self.start_btn = QPushButton("シミュレーション開姁E)
+
+        self.start_btn = QPushButton("Start Simulation")
         self.start_btn.clicked.connect(self.toggle_simulation)
         ctrl_layout.addWidget(self.start_btn)
-        
-        self.step_button = QPushButton("フェーズを進める")
+
+        self.step_button = QPushButton("Step Phase")
         self.step_button.clicked.connect(self.step_phase)
         ctrl_layout.addWidget(self.step_button)
-        
-        self.reset_btn = QPushButton("ゲームリセチE��")
+
+        self.reset_btn = QPushButton("Reset Game")
         self.reset_btn.clicked.connect(self.reset_game)
         ctrl_layout.addWidget(self.reset_btn)
-        
+
         ctrl_group.setLayout(ctrl_layout)
         self.info_layout.addWidget(ctrl_group)
-        
+
         # Player Mode Group
-        mode_group = QGroupBox("プレイヤー設宁E)
+        mode_group = QGroupBox("Player Mode")
         mode_layout = QVBoxLayout()
-        
-        self.p0_human_radio = QRadioButton("P0 (自刁E: 人閁E)
-        self.p0_ai_radio = QRadioButton("P0 (自刁E: AI")
+
+        self.p0_human_radio = QRadioButton("P0 (Self): Human")
+        self.p0_ai_radio = QRadioButton("P0 (Self): AI")
         self.p0_ai_radio.setChecked(True)
         self.p0_group = QButtonGroup()
         self.p0_group.addButton(self.p0_human_radio)
@@ -107,8 +107,8 @@ class GameWindow(QMainWindow):
         mode_layout.addWidget(self.p0_human_radio)
         mode_layout.addWidget(self.p0_ai_radio)
         
-        self.p1_human_radio = QRadioButton("P1 (相扁E: 人閁E)
-        self.p1_ai_radio = QRadioButton("P1 (相扁E: AI")
+        self.p1_human_radio = QRadioButton("P1 (Opponent): Human")
+        self.p1_ai_radio = QRadioButton("P1 (Opponent): AI")
         self.p1_ai_radio.setChecked(True)
         self.p1_group = QButtonGroup()
         self.p1_group.addButton(self.p1_human_radio)
@@ -120,15 +120,15 @@ class GameWindow(QMainWindow):
         mode_group.setLayout(mode_layout)
         self.info_layout.addWidget(mode_group)
         
-        self.deck_builder_button = QPushButton("チE��キ構篁E)
+        self.deck_builder_button = QPushButton("Deck Builder")
         self.deck_builder_button.clicked.connect(self.open_deck_builder)
         self.info_layout.addWidget(self.deck_builder_button)
 
-        self.card_editor_button = QPushButton("カード編雁E)
+        self.card_editor_button = QPushButton("Card Editor")
         self.card_editor_button.clicked.connect(self.open_card_editor)
         self.info_layout.addWidget(self.card_editor_button)
 
-        self.scenario_editor_button = QPushButton("シナリオエチE��タ")
+        self.scenario_editor_button = QPushButton("Scenario Editor")
         self.scenario_editor_button.clicked.connect(self.open_scenario_editor)
         self.info_layout.addWidget(self.scenario_editor_button)
 
@@ -137,27 +137,27 @@ class GameWindow(QMainWindow):
         self.info_layout.addWidget(self.sim_dialog_button)
 
         # Deck Loading Controls
-        deck_group = QGroupBox("チE��キ管琁E)
+        deck_group = QGroupBox("Deck Management")
         deck_layout = QVBoxLayout()
 
-        self.load_deck_btn = QPushButton("チE��キ読込 P0 (自刁E")
+        self.load_deck_btn = QPushButton("Load Deck P0 (Self)")
         self.load_deck_btn.clicked.connect(self.load_deck_p0)
         deck_layout.addWidget(self.load_deck_btn)
 
-        self.load_deck_p1_btn = QPushButton("チE��キ読込 P1 (相扁E")
+        self.load_deck_p1_btn = QPushButton("Load Deck P1 (Opponent)")
         self.load_deck_p1_btn.clicked.connect(self.load_deck_p1)
         deck_layout.addWidget(self.load_deck_p1_btn)
 
         deck_group.setLayout(deck_layout)
         self.info_layout.addWidget(deck_group)
         
-        self.god_view_check = QCheckBox("神�E視点 (相手�E手札を表示)")
+        self.god_view_check = QCheckBox("God View (show opponent hand)")
         self.god_view_check.setChecked(False)
         self.god_view_check.stateChanged.connect(self.update_ui)
         self.info_layout.addWidget(self.god_view_check)
 
         # Help Button
-        self.help_btn = QPushButton("ヘルチE/ 説昁E)
+        self.help_btn = QPushButton("Help / Manual")
         self.help_btn.setStyleSheet("background-color: #e1f5fe; color: #0277bd; font-weight: bold;")
         self.help_btn.clicked.connect(self.show_help)
         self.info_layout.addWidget(self.help_btn)
@@ -176,10 +176,9 @@ class GameWindow(QMainWindow):
         self.p1_mana = ZoneWidget("P1 マナ")
         self.p1_graveyard = ZoneWidget("P1 墓地")
         self.p1_battle = ZoneWidget("P1 バトルゾーン")
-        self.p1_shield = ZoneWidget("P1 シールチE)
+        self.p1_shield = ZoneWidget("P1 シールド")
         
         self.p1_layout.addWidget(self.p1_hand)
-        
         # Group Mana, Shield, Graveyard horizontally for P1
         p1_row2 = QHBoxLayout()
         p1_row2.addWidget(self.p1_mana, stretch=3)
@@ -193,7 +192,7 @@ class GameWindow(QMainWindow):
         self.p0_zones = QWidget()
         self.p0_layout = QVBoxLayout(self.p0_zones)
         self.p0_battle = ZoneWidget("P0 バトルゾーン")
-        self.p0_shield = ZoneWidget("P0 シールチE)
+        self.p0_shield = ZoneWidget("P0 シールド")
         self.p0_mana = ZoneWidget("P0 マナ")
         self.p0_graveyard = ZoneWidget("P0 墓地")
         self.p0_hand = ZoneWidget("P0 手札")
@@ -331,44 +330,30 @@ class GameWindow(QMainWindow):
 
     def show_help(self):
         help_text = """
-        <h2>DM AI シミュレーター ガイチE/h2>
-        <p><b>基本操佁E</b></p>
+        <h2>DM AI Simulator Help</h2>
+        <p><b>Basics</b></p>
         <ul>
-            <li><b>シミュレーション開姁E</b> AI対AI、また�EAI対人間�Eゲームループを開始します、E/li>
-            <li><b>フェーズを進める:</b> ゲームめEフェーズまた�E1アクション手動で進めます、E/li>
-            <li><b>ゲームリセチE��:</b> 現在のチE��キでゲームを�E起動します、E/li>
+            <li><b>Start Simulation:</b> Begin the game loop.</li>
+            <li><b>Step Phase:</b> Advance one phase/action manually.</li>
+            <li><b>Reset Game:</b> Restart with the current decks.</li>
         </ul>
-        <p><b>プレイヤー設宁E</b></p>
+        <p><b>Player Modes</b></p>
         <ul>
-            <li><b>人閁E</b> あなたが操作します。カードをクリチE��してプレイ/使用します、E/li>
-            <li><b>AI:</b> AIがMCTS�E�モンチE��ルロ木探索�E�を使用して自動的にプレイします、E/li>
+            <li><b>Human:</b> You control actions.</li>
+            <li><b>AI:</b> MCTS-controlled opponent/ally.</li>
         </ul>
-        <p><b>チE��キ管琁E</b></p>
+        <p><b>Deck Management</b></p>
         <ul>
-            <li><b>チE��キ構篁E</b> カスタムチE��キを作�E・保存します、E/li>
-            <li><b>チE��キ読込 P0/P1:</b> 保存されたJSONチE��キを�E刁EP0)また�E相扁EP1)に読み込みます、E/li>
+            <li><b>Deck Builder:</b> Create and save custom decks.</li>
+            <li><b>Load Deck P0/P1:</b> Load saved JSON decks for each player.</li>
         </ul>
-        <p><b>チE��キ構築�EめE��方:</b></p>
-        <ol>
-            <li>「デチE��構築」�EタンをクリチE��してエチE��タを開きます、E/li>
-            <li>左側のカードリストからダブルクリチE��でカードをチE��キに追加します！E0枚）、E/li>
-            <li>右側のチE��キリストからダブルクリチE��でカードを削除します、E/li>
-            <li>「Save Deck」�EタンでJSONファイルとして保存します、E/li>
-        </ol>
-        <p><b>新カード追加況E</b></p>
-        <ol>
-            <li>「カード編雁E���EタンをクリチE��してエチE��タを開きます、E/li>
-            <li>カード名、コスト、パワー、文明などを�E力し「Add/Update」で保存します、E/li>
-            <li>チE�Eタは <code>data/cards.csv</code> に保存され、即座に反映されます、E/li>
-            <li>※褁E��な効果！E・トリガー以外）�E実裁E��はC++エンジンの更新が忁E��です、E/li>
-        </ol>
-        <p><b>表示設宁E</b></p>
+        <p><b>Display</b></p>
         <ul>
-            <li><b>神�E視点:</b> チェチE��を�Eれると、相手�E手札とシールドを確認できます、E/li>
-            <li><b>MCTS View:</b> AIの思老E�Eロセス�E�探索木�E�を表示します、E/li>
+            <li><b>God View:</b> Show opponent hand and shields.</li>
+            <li><b>MCTS View:</b> Inspect AI search tree.</li>
         </ul>
         """
-        QMessageBox.information(self, "ヘルチE/ 説昁E, help_text)
+        QMessageBox.information(self, "Help / Manual", help_text)
         
     def toggle_simulation(self):
         if self.is_running:
