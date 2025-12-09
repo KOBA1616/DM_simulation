@@ -1,41 +1,55 @@
 #pragma once
+
 #include "../../core/game_state.hpp"
 #include "../../core/card_def.hpp"
-#include "../../core/action.hpp"
+// #include "../evaluator/batch_evaluator.hpp" // Removed broken include
 #include <vector>
 #include <memory>
-#include <functional>
 #include <map>
+#include <cmath>
+#include <functional>
+#include "../../core/action.hpp" // Include Action struct definition
 
 namespace dm::ai {
+
+    // Define the callback type directly here or include it from a common place.
+    // Since we don't have a batch_evaluator.hpp, we define it.
+    using BatchEvaluatorCallback = std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<dm::core::GameState>&)>;
 
     struct MCTSNode {
         dm::core::GameState state;
         MCTSNode* parent = nullptr;
-        dm::core::Action action_from_parent; // The action that led to this state
         std::vector<std::unique_ptr<MCTSNode>> children;
+        dm::core::Action action_from_parent;
         
         int visit_count = 0;
         float value_sum = 0.0f;
+        float value_squared_sum = 0.0f; // For variance calculation
         float prior = 0.0f;
-        int virtual_loss = 0; // For batch MCTS
+        int virtual_loss = 0;
 
         MCTSNode(const dm::core::GameState& s) : state(s) {}
-        MCTSNode(const MCTSNode&) = delete;
-        MCTSNode& operator=(const MCTSNode&) = delete;
-        
+
         bool is_expanded() const { return !children.empty(); }
         
-        float value() const { 
-            int effective_visits = visit_count + virtual_loss;
-            if (effective_visits == 0) return 0.0f;
-            // Virtual loss acts as a penalty (assuming max value is 1.0)
-            return (value_sum - (float)virtual_loss) / effective_visits; 
+        float value() const {
+            if (visit_count == 0) return 0.0f;
+            return value_sum / visit_count;
+        }
+
+        // Variance = E[X^2] - (E[X])^2
+        float variance() const {
+            if (visit_count == 0) return 0.0f;
+            float mean = value();
+            // Ensure non-negative due to float precision
+            float var = (value_squared_sum / visit_count) - (mean * mean);
+            return std::max(0.0f, var);
+        }
+
+        float std_dev() const {
+            return std::sqrt(variance());
         }
     };
-
-    // Batch Evaluator Callback: Takes vector of GameStates, returns {BatchPolicy, BatchValue}
-    using BatchEvaluatorCallback = std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<dm::core::GameState>&)>;
 
     class MCTS {
     public:
@@ -43,31 +57,29 @@ namespace dm::ai {
              float c_puct = 1.0f, 
              float dirichlet_alpha = 0.3f, 
              float dirichlet_epsilon = 0.25f,
-             int batch_size = 1);
+             int batch_size = 1,
+             float alpha = 0.0f); // Risk aversion coefficient
 
-        // Run MCTS search
-        std::vector<float> search(const dm::core::GameState& root_state, int simulations, BatchEvaluatorCallback evaluator, bool add_noise = false, float temperature = 1.0f);
-
-        // Get the root of the last search tree (for visualization)
-        const MCTSNode* get_last_root() const { return last_root_.get(); }
+        std::vector<float> search(const dm::core::GameState& root_state,
+                                  int simulations,
+                                  BatchEvaluatorCallback evaluator,
+                                  bool add_noise = true,
+                                  float temperature = 1.0f);
 
     private:
-        std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
+        MCTSNode* select_leaf(MCTSNode* node);
+        void expand_node(MCTSNode* node, const std::vector<float>& policy_logits);
+        void backpropagate(MCTSNode* node, float value);
+        void add_exploration_noise(MCTSNode* node);
+        void revert_virtual_loss(MCTSNode* node);
+
+        const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db_;
         float c_puct_;
         float dirichlet_alpha_;
         float dirichlet_epsilon_;
         int batch_size_;
-        
+        float alpha_; // Risk aversion coefficient
         std::unique_ptr<MCTSNode> last_root_;
-
-        // Helpers
-        void expand_node(MCTSNode* node, const std::vector<float>& policy_logits);
-        MCTSNode* select_leaf(MCTSNode* node); // Selects a leaf and applies virtual loss
-        void backpropagate(MCTSNode* node, float value);
-        void add_exploration_noise(MCTSNode* node);
-        
-        // Undo virtual loss along the path
-        void revert_virtual_loss(MCTSNode* node);
     };
 
 }

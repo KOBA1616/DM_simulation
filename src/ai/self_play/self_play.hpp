@@ -27,7 +27,8 @@ namespace dm::ai {
             dm::core::GameState initial_state,
             BatchEvaluatorCallback evaluator,
             float temperature = 1.0f,
-            bool add_noise = true
+            bool add_noise = true,
+            float alpha = 0.0f
         );
 
     private:
