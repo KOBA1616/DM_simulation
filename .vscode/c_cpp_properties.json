@@ -5,8 +5,10 @@
             "includePath": [
                 "${workspaceFolder}/src",
                 "${workspaceFolder}/cmake",
+                "${workspaceFolder}/third_party",
                 "${workspaceFolder}/.venv/Lib/site-packages/pybind11/include",
-                "C:/Users/mediastation36/AppData/Local/Programs/Python/Python313/Include"
+                "C:/Users/mediastation36/AppData/Local/Programs/Python/Python313/Include",
+                "${env:MYLIB_INCLUDE}"
             ],
             "defines": [
                 "_DEBUG",
