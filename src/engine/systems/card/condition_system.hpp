@@ -8,7 +8,7 @@ namespace dm::engine {
     class IConditionEvaluator {
     public:
         virtual ~IConditionEvaluator() = default;
-        virtual bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) = 0;
+        virtual bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) = 0;
     };
 
     class ConditionSystem {
@@ -29,10 +29,10 @@ namespace dm::engine {
             return nullptr;
         }
 
-        bool evaluate_def(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) {
+        bool evaluate_def(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             if (condition.type == "NONE" || condition.type.empty()) return true;
             if (IConditionEvaluator* eval = get_evaluator(condition.type)) {
-                return eval->evaluate(state, condition, source_instance_id);
+                return eval->evaluate(state, condition, source_instance_id, card_db);
             }
             return false;
         }
@@ -44,7 +44,7 @@ namespace dm::engine {
 
     class TurnEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
             using namespace dm::core;
             PlayerID controller = GenericCardSystem::get_controller(state, source_instance_id);
 
@@ -60,19 +60,26 @@ namespace dm::engine {
 
     class ManaArmedEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
             using namespace dm::core;
             PlayerID controller_id = GenericCardSystem::get_controller(state, source_instance_id);
             Player& controller = state.players[controller_id];
 
             int count = 0;
-            std::string civ = condition.str_val;
+            // Evaluator uses simple string civ (LIGHT etc). CardDefinition uses enum.
+            Civilization target_civ = Civilization::NONE;
+            if (condition.str_val == "LIGHT") target_civ = Civilization::LIGHT;
+            if (condition.str_val == "WATER") target_civ = Civilization::WATER;
+            if (condition.str_val == "DARKNESS") target_civ = Civilization::DARKNESS;
+            if (condition.str_val == "FIRE") target_civ = Civilization::FIRE;
+            if (condition.str_val == "NATURE") target_civ = Civilization::NATURE;
+            if (condition.str_val == "ZERO") target_civ = Civilization::ZERO;
+
             for (const auto& card : controller.mana_zone) {
-                const CardData* cd = CardRegistry::get_card_data(card.card_id);
-                if (cd) {
-                    bool match = false;
-                    for(const auto& c : cd->civilizations) if(c == civ) match = true;
-                    if (match) count++;
+                if (card_db.count(card.card_id)) {
+                    if (card_db.at(card.card_id).has_civilization(target_civ)) {
+                        count++;
+                    }
                 }
             }
             return count >= condition.value;
@@ -81,7 +88,7 @@ namespace dm::engine {
 
     class ShieldCountEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
             using namespace dm::core;
             PlayerID controller_id = GenericCardSystem::get_controller(state, source_instance_id);
             Player& controller = state.players[controller_id];
@@ -91,23 +98,29 @@ namespace dm::engine {
 
     class OpponentPlayedWithoutManaEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
             return state.turn_stats.played_without_mana;
         }
     };
 
     class CivilizationMatchEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
              using namespace dm::core;
              PlayerID controller_id = GenericCardSystem::get_controller(state, source_instance_id);
              Player& controller = state.players[controller_id];
 
-             std::string civ = condition.str_val;
+             Civilization target_civ = Civilization::NONE;
+             if (condition.str_val == "LIGHT") target_civ = Civilization::LIGHT;
+             if (condition.str_val == "WATER") target_civ = Civilization::WATER;
+             if (condition.str_val == "DARKNESS") target_civ = Civilization::DARKNESS;
+             if (condition.str_val == "FIRE") target_civ = Civilization::FIRE;
+             if (condition.str_val == "NATURE") target_civ = Civilization::NATURE;
+             if (condition.str_val == "ZERO") target_civ = Civilization::ZERO;
+
              for (const auto& card : controller.battle_zone) {
-                 const CardData* cd = CardRegistry::get_card_data(card.card_id);
-                 if (cd) {
-                     for(const auto& c : cd->civilizations) if(c == civ) return true;
+                 if (card_db.count(card.card_id)) {
+                     if (card_db.at(card.card_id).has_civilization(target_civ)) return true;
                  }
              }
              return false;
@@ -116,7 +129,7 @@ namespace dm::engine {
 
     class FirstAttackEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
             // First attack of turn means attacks_declared_this_turn is 1?
             // When trigger evaluates:
             // "When this creature attacks, if it's the first attack..."
