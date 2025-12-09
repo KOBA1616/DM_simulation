@@ -8,29 +8,29 @@ namespace dm::engine {
 
     class CostHandler : public IActionHandler {
     public:
-        void resolve(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context) override {
+        void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
-            if (action.type == EffectActionType::COST_REFERENCE) {
-                if (action.str_val == "FINISH_HYPER_ENERGY") {
-                    // Logic implies we need targets (tapped creatures)
-                     if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
+            if (ctx.action.type == EffectActionType::COST_REFERENCE) {
+                if (ctx.action.str_val == "FINISH_HYPER_ENERGY") {
+                     if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                          EffectDef ed;
                          ed.trigger = TriggerType::NONE;
                          ed.condition = ConditionDef{"NONE", 0, ""};
-                         ed.actions = { action };
-                         GenericCardSystem::select_targets(game_state, action, source_instance_id, ed, execution_context);
+                         ed.actions = { ctx.action };
+                         GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                      }
                 }
             }
         }
 
-        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& /*context*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
+        void resolve_with_targets(const ResolutionContext& ctx) override {
              using namespace dm::core;
+             if (!ctx.targets) return;
 
-             if (action.type == EffectActionType::COST_REFERENCE && action.str_val == "FINISH_HYPER_ENERGY") {
-                 for (int tid : targets) {
-                     for (auto &p : game_state.players) {
+             if (ctx.action.type == EffectActionType::COST_REFERENCE && ctx.action.str_val == "FINISH_HYPER_ENERGY") {
+                 for (int tid : *ctx.targets) {
+                     for (auto &p : ctx.game_state.players) {
                           auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
                              [tid](const CardInstance& c){ return c.instance_id == tid; });
                           if (it != p.battle_zone.end()) {
@@ -38,13 +38,13 @@ namespace dm::engine {
                           }
                      }
                  }
-                 int taps = action.value1;
-                 if (taps == 0) taps = (int)targets.size();
+                 int taps = ctx.action.value1;
+                 if (taps == 0) taps = (int)ctx.targets->size();
 
                  int reduction = taps * 2;
 
-                 PlayerID controller = GenericCardSystem::get_controller(game_state, source_id);
-                 EffectResolver::resolve_play_from_stack(game_state, source_id, reduction, SpawnSource::HAND_SUMMON, controller, card_db);
+                 PlayerID controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                 EffectResolver::resolve_play_from_stack(ctx.game_state, ctx.source_instance_id, reduction, SpawnSource::HAND_SUMMON, controller, ctx.card_db);
              }
         }
     };

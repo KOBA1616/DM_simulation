@@ -18,7 +18,7 @@
 #include "handlers/hierarchy_handler.hpp"
 #include "handlers/reveal_handler.hpp"
 #include "handlers/select_number_handler.hpp"
-#include "handlers/friend_burst_handler.hpp" // Added
+#include "handlers/friend_burst_handler.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -44,14 +44,9 @@ namespace dm::engine {
 
     // Helper to determine controller of an instance
     PlayerID GenericCardSystem::get_controller(const GameState& game_state, int instance_id) {
-        // Phase A: Use O(1) owner map lookup
         if (instance_id >= 0 && instance_id < (int)game_state.card_owner_map.size()) {
             return game_state.card_owner_map[instance_id];
         }
-
-        // Fallback for instances not in map (should not happen if initialized correctly)
-        // or Effect Buffer if they are temp instances?
-        // For now, return active player as fallback, but this path should be rare/avoided.
         return game_state.active_player_id;
     }
 
@@ -82,7 +77,7 @@ namespace dm::engine {
         sys.register_handler(EffectActionType::MOVE_TO_UNDER_CARD, std::make_unique<MoveToUnderCardHandler>());
         sys.register_handler(EffectActionType::REVEAL_CARDS, std::make_unique<RevealHandler>());
         sys.register_handler(EffectActionType::SELECT_NUMBER, std::make_unique<SelectNumberHandler>());
-        sys.register_handler(EffectActionType::FRIEND_BURST, std::make_unique<FriendBurstHandler>()); // Added
+        sys.register_handler(EffectActionType::FRIEND_BURST, std::make_unique<FriendBurstHandler>());
         _handlers_registered = true;
     }
 
@@ -115,7 +110,6 @@ namespace dm::engine {
             active_effects.insert(active_effects.end(), data->metamorph_abilities.begin(), data->metamorph_abilities.end());
         }
 
-        // Check underlying cards for Metamorph
         for (const auto& under : instance->underlying_cards) {
             const CardData* under_data = CardRegistry::get_card_data(under.card_id);
             if (under_data) {
@@ -123,20 +117,15 @@ namespace dm::engine {
             }
         }
 
-        // bool triggered = false;
         for (const auto& effect : active_effects) {
             if (effect.trigger == trigger) {
-                // Stack System: Queue the effect instead of resolving immediately
                 PlayerID controller = get_controller(game_state, source_instance_id);
                 PendingEffect pending(EffectType::TRIGGER_ABILITY, source_instance_id, controller);
-                pending.resolve_type = ResolveType::EFFECT_RESOLUTION; // Handled by ActionGenerator
+                pending.resolve_type = ResolveType::EFFECT_RESOLUTION;
                 pending.effect_def = effect;
-                pending.optional = true; // Most triggers are optional? Or check optional flag?
-                // Actually EffectDef doesn't have optional flag on top level usually, Actions do.
-                // But let's assume players can always choose order, so they are selectable.
+                pending.optional = true;
 
                 game_state.pending_effects.push_back(pending);
-                // triggered = true;
             }
         }
     }
@@ -153,7 +142,6 @@ namespace dm::engine {
             return;
         }
 
-        // Pass context by reference to allow updates
         for (const auto& action : effect.actions) {
             resolve_action(game_state, action, source_instance_id, execution_context);
         }
@@ -175,8 +163,10 @@ namespace dm::engine {
             // Delegate to Handlers for "with targets" execution
             EffectSystem& sys = EffectSystem::instance();
             if (IActionHandler* handler = sys.get_handler(action.type)) {
-                handler->resolve_with_targets(game_state, action, targets, source_instance_id, execution_context, card_db);
-                continue; // Skip the monolithic block for handled actions
+                // Create Context
+                ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, &targets);
+                handler->resolve_with_targets(ctx);
+                continue;
             }
 
             // Fallback for actions not yet fully migrated or needing legacy logic
@@ -197,7 +187,6 @@ namespace dm::engine {
             return evaluator->evaluate(game_state, condition, source_instance_id);
         }
 
-        // Fallback for unregistered conditions (if any)
         PlayerID controller = get_controller(game_state, source_instance_id);
         if (condition.type == "DURING_YOUR_TURN") {
             return game_state.active_player_id == controller;
@@ -229,7 +218,7 @@ namespace dm::engine {
             pending.num_targets_needed = 1;
         }
 
-        // Variable Linking: Override count if input_value_key is present in context
+        // Variable Linking
         if (!action.input_value_key.empty()) {
             if (execution_context.count(action.input_value_key)) {
                 pending.num_targets_needed = execution_context[action.input_value_key];
@@ -238,7 +227,7 @@ namespace dm::engine {
 
         pending.optional = action.optional;
         pending.effect_def = continuation;
-        pending.execution_context = execution_context; // Save context
+        pending.execution_context = execution_context;
 
         game_state.pending_effects.push_back(pending);
 
@@ -253,16 +242,13 @@ namespace dm::engine {
     void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context) {
         ensure_handlers_registered();
 
-        // Delegate to Handlers
         EffectSystem& sys = EffectSystem::instance();
         if (IActionHandler* handler = sys.get_handler(action.type)) {
-            handler->resolve(game_state, action, source_instance_id, execution_context);
+            static std::map<dm::core::CardID, dm::core::CardDefinition> empty_db;
+            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, empty_db);
+            handler->resolve(ctx);
             return;
         }
-
-        // Phase B: GenericCardSystem is now a pure dispatcher.
-        // If no handler is found, we do nothing.
-        // Target selection must be handled by the specific handler.
     }
 
 }
