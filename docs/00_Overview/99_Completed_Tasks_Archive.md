@@ -112,3 +112,63 @@
 8.  **超魂クロス (Metamorph) および 多色マナ厳格化 (Strict Multicolor Mana) - 実装済み**
     *   **超魂クロス**: 817.1a (通常能力との共存) および 817.1b (下のカードから超魂能力のみ付与) のルールを実装。`GenericCardSystem::resolve_trigger` にて、`CardDefinition.metamorph_abilities` を用いて能力を適切に合成するロジックを確立。
     *   **多色マナ支払いの厳格化**: `ManaSystem` にバックトラック法を用いた厳密なコスト支払いロジック (`solve_payment`) を実装。多色カードが1枚につき1文明のみを提供し、かつ必要な全文明を過不足なく満たす組み合わせを探索・適用するように改修。
+
+## [2025-XX-XX] Phase 0.5-1: Core Refactoring & Logic Reinforcement
+
+### Phase 0.5: コアエンジンリファクタリング (Core Refactoring)
+
+**目標**: 拡張性、保守性、可読性を向上させ、将来の機能追加を容易にする。
+
+**ステータス**: 実装完了 (Completed)。
+
+1.  **IActionHandler Context Object パターンの導入**
+    *   **概要**: `IActionHandler::resolve_with_targets` 等のメソッド引数が多大で拡張性が低いため、「Context Object パターン」を用いて改善する。
+    *   **実装内容**:
+        *   `ResolutionContext` 構造体の定義 (`effect_system.hpp`): アクション解決に必要な情報（GameState, ActionDef, SourceID, ContextMap, CardDB 等）を集約。
+        *   `IActionHandler` インターフェースの変更: 個別の引数ではなく `const ResolutionContext&` を受け取るように変更。
+        *   各ハンドラ実装クラスの修正: `ManaChargeHandler` 等の実装を修正し、コンテキストから必要な情報のみを取り出すように変更。
+        *   呼び出し元 (`GenericCardSystem`) の修正: コンテキストオブジェクトを生成してハンドラに渡す。
+    *   **メリット**:
+        *   **拡張性**: 将来的に引数が増えても構造体の変更のみで対応可能。
+        *   **可読性**: 引数リストが短縮され、コードが簡潔になる。
+        *   **警告解消**: 未使用引数による警告を抑制するための追加コードが不要になる。
+
+2.  **シングルトン依存からの完全脱却 (Complete Removal of Singleton Dependency)**
+    *   **概要**: `SearchHandler` 以外のハンドラおよび `GenericCardSystem` 全体において、`CardRegistry` への直接依存を排除し、`ResolutionContext` (ctx.card_db) 経由でのアクセスを徹底する。
+    *   **実装内容**:
+        *   `GenericCardSystem` の `resolve_trigger`, `resolve_effect`, `check_condition` 等の全メソッドが `card_db` (const map&) を引数として受け取るように改修。
+        *   `EffectResolver` から `GenericCardSystem` への呼び出し経路において `card_db` のバケツリレーを実装。
+        *   全 `IActionHandler` の実装 (`SearchHandler`, `DrawHandler`, `CountHandler` 等) において、`CardRegistry` の代わりに `ctx.card_db` を使用するように変更。
+        *   `CardDefinition` (実行時構造体) に `effects` フィールドを追加し、`CardRegistry` (JSON) に依存せずに効果ロジックを参照可能にした。
+    *   **成果**:
+        *   エンジン内部ロジック (`src/engine/`) から `CardRegistry` への依存が、データのロード時 (`JsonLoader`) を除き排除された。
+        *   `GameInstance` ごとに独立した `card_db` で動作可能となり、将来のマルチスレッド並列実行への安全性が確保された。
+
+### Phase 1: 確実性の確保（ロジック強化フェーズ）
+
+**目標**: 「詰み」の見逃しをゼロにし、不用意なトリガー踏みを防ぐ。計算コストの低い「ルールベース」でMCTSを補完する。
+
+1.  **堅牢なリーサルソルバー (Robust Lethal Solver) の実装**
+    *   **概要**: 探索の前に「勝てるか」を計算で判定するモジュール。
+    *   **ステータス**: 基本実装完了（`src/ai/solver/lethal_solver.cpp`）。
+    *   **完了済み**: Phase 1.1におけるブロッカー/SA判定のバグ修正およびテストカバレッジの確保。
+    *   **実装内容**:
+        *   `LethalSolver` クラスをC++で作成。
+        *   単純な数合わせだけでなく、`CardDefinition` を参照して以下の要素を考慮する：
+            *   **攻撃能力**: スピードアタッカー (SA)、マッハファイター (MF)、進化クリーチャー。
+            *   **防御能力**: ブロッカー、G・ストライク（確率的考慮または無視）。
+            *   **回避能力**: ブロックされない、アンタッチャブル。
+        *   毎ターン評価を行い、リーサル確定時はそのルートの評価値を最大化し、MCTS探索をバイパスまたは誘導する。
+
+2.  **分散ベースのリスク管理評価 (Variance-Based Risk Evaluation)**
+    *   **概要**: シールド・トリガーによる逆転負けを「分散（リスク）」として評価関数に組み込み、「勝率」と「安定性」のバランスを取る。
+    *   **ステータス**: 実装および検証済み (Phase 1.2完了)。
+    *   **実装内容**:
+        *   MCTSのバックプロパゲーションを改良し、ノードごとに勝率 ($Q$) に加えて、結果の分散（バラつき、$\sigma$）を記録する。
+        *   評価式: $\text{Score} = Q - \alpha \times \sigma$
+            *   $\alpha$ (アルファ): リスク回避係数。
+        *   Pythonバインディング (`ParallelRunner`) に `alpha` パラメータを追加し、実行時にリスク回避係数を調整可能にした。
+        *   **効果**:
+            *   「勝率が高いが即死リスクもある手」は、リスク項によってスコアが抑制される。
+            *   「リスクはあるが、それを補って余りあるほど勝率が高い手」は採用される（過度な保守性を防ぐ）。
+        *   リーサルがないときに無意味にシールドをブレイクする行為を抑制し、攻撃キャンセル（手札に戻す等）の戦略的撤退を学習可能にする。
