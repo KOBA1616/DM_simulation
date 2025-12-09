@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../core/game_state.hpp"
-#include "../../core/card_def.hpp"
-#include "../../core/scenario_config.hpp"
+#include "core/game_state.hpp"
+#include "core/card_def.hpp"
+#include "core/scenario_config.hpp"
 #include "self_play.hpp"
 #include <vector>
 #include <map>

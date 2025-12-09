@@ -1,14 +1,14 @@
 #pragma once
 
-#include "../../core/game_state.hpp"
-#include "../../core/card_def.hpp"
-// #include "../evaluator/batch_evaluator.hpp" // Removed broken include
+#include "core/game_state.hpp"
+#include "core/card_def.hpp"
+// #include "ai/evaluator/batch_evaluator.hpp" // Removed broken include
 #include <vector>
 #include <memory>
 #include <map>
 #include <cmath>
 #include <functional>
-#include "../../core/action.hpp" // Include Action struct definition
+#include "core/action.hpp" // Include Action struct definition
 
 namespace dm::ai {
 
