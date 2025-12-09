@@ -442,6 +442,15 @@ PYBIND11_MODULE(dm_ai_module, m) {
                  s.card_owner_map[iid] = pid;
              }
         })
+        .def("clear_zone", [](GameState& s, PlayerID pid, Zone zone) {
+            if (pid < 0 || pid >= 2) return;
+            if (zone == Zone::SHIELD) s.players[pid].shield_zone.clear();
+            else if (zone == Zone::BATTLE) s.players[pid].battle_zone.clear();
+            else if (zone == Zone::HAND) s.players[pid].hand.clear();
+            else if (zone == Zone::MANA) s.players[pid].mana_zone.clear();
+            else if (zone == Zone::GRAVEYARD) s.players[pid].graveyard.clear();
+            else if (zone == Zone::DECK) s.players[pid].deck.clear();
+        })
         .def("add_card_to_mana", [](GameState& s, PlayerID pid, CardID cid, int iid) {
              CardInstance c; c.card_id = cid; c.instance_id = iid;
              s.players[pid].mana_zone.push_back(c);
