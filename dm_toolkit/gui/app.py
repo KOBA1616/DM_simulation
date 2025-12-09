@@ -1,4 +1,3 @@
-# -*- coding: cp932 -*-
 import sys
 import os
 import random
@@ -63,10 +62,10 @@ class GameWindow(QMainWindow):
         self.info_dock.setWidget(self.info_panel)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.info_dock)
         
-        self.turn_label = QLabel("\x83^\x81[\x83\x93: 1")
+        self.turn_label = QLabel("ターン: 1")
         self.turn_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        self.phase_label = QLabel("\x83t\x83F\x81[\x83Y: START")
-        self.active_label = QLabel("\x8e\xe8\x94\xd4: P0")
+        self.phase_label = QLabel("フェーズ: START")
+        self.active_label = QLabel("手番: P0")
         self.info_layout.addWidget(self.turn_label)
         self.info_layout.addWidget(self.phase_label)
         self.info_layout.addWidget(self.active_label)
@@ -133,7 +132,7 @@ class GameWindow(QMainWindow):
         self.scenario_editor_button.clicked.connect(self.open_scenario_editor)
         self.info_layout.addWidget(self.scenario_editor_button)
 
-        self.sim_dialog_button = QPushButton("\x83o\x83b\x83`\x83V\x83~\x83\x85\x83\x8c\x81[\x83V\x83\x87\x83\x93")
+        self.sim_dialog_button = QPushButton("バッチシミュレーション")
         self.sim_dialog_button.clicked.connect(self.open_simulation_dialog)
         self.info_layout.addWidget(self.sim_dialog_button)
 
@@ -173,11 +172,11 @@ class GameWindow(QMainWindow):
         # P1 (Opponent) Zones
         self.p1_zones = QWidget()
         self.p1_layout = QVBoxLayout(self.p1_zones)
-        self.p1_hand = ZoneWidget("P1 \x8e\xe8\x8eD")
-        self.p1_mana = ZoneWidget("P1 \x83}\x83i")
-        self.p1_graveyard = ZoneWidget("P1 \x95\xe6\x92n")
-        self.p1_battle = ZoneWidget("P1 \x83o\x83g\x83\x8b\x83]\x81[\x83\x93")
-        self.p1_shield = ZoneWidget("P1 \x83V\x81[\x83\x8b\x83h")
+        self.p1_hand = ZoneWidget("P1 手札")
+        self.p1_mana = ZoneWidget("P1 マナ")
+        self.p1_graveyard = ZoneWidget("P1 墓地")
+        self.p1_battle = ZoneWidget("P1 バトルゾーン")
+        self.p1_shield = ZoneWidget("P1 シールド")
         
         self.p1_layout.addWidget(self.p1_hand)
         # Group Mana, Shield, Graveyard horizontally for P1
@@ -192,11 +191,11 @@ class GameWindow(QMainWindow):
         # P0 (Player) Zones
         self.p0_zones = QWidget()
         self.p0_layout = QVBoxLayout(self.p0_zones)
-        self.p0_battle = ZoneWidget("P0 \x83o\x83g\x83\x8b\x83]\x81[\x83\x93")
-        self.p0_shield = ZoneWidget("P0 \x83V\x81[\x83\x8b\x83h")
-        self.p0_mana = ZoneWidget("P0 \x83}\x83i")
-        self.p0_graveyard = ZoneWidget("P0 \x95\xe6\x92n")
-        self.p0_hand = ZoneWidget("P0 \x8e\xe8\x8eD")
+        self.p0_battle = ZoneWidget("P0 バトルゾーン")
+        self.p0_shield = ZoneWidget("P0 シールド")
+        self.p0_mana = ZoneWidget("P0 マナ")
+        self.p0_graveyard = ZoneWidget("P0 墓地")
+        self.p0_hand = ZoneWidget("P0 手札")
         
         # Connect signals
         self.p0_hand.card_clicked.connect(self.on_card_clicked)
