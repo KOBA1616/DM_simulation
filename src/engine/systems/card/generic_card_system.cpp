@@ -123,7 +123,7 @@ namespace dm::engine {
             }
         }
 
-        bool triggered = false;
+        // bool triggered = false;
         for (const auto& effect : active_effects) {
             if (effect.trigger == trigger) {
                 // Stack System: Queue the effect instead of resolving immediately
@@ -136,7 +136,7 @@ namespace dm::engine {
                 // But let's assume players can always choose order, so they are selectable.
 
                 game_state.pending_effects.push_back(pending);
-                triggered = true;
+                // triggered = true;
             }
         }
     }

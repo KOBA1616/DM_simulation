@@ -25,7 +25,7 @@ namespace dm::engine {
             }
         }
 
-        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
+        void resolve_with_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, const std::vector<int>& targets, int source_id, std::map<std::string, int>& /*context*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
              using namespace dm::core;
 
              if (action.type == EffectActionType::COST_REFERENCE && action.str_val == "FINISH_HYPER_ENERGY") {

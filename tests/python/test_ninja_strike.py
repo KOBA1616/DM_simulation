@@ -76,6 +76,10 @@ def test_ninja_strike_flow():
     # Use helper
     game_state.add_test_card_to_battle(0, attacker_card_id, 100, False, False) # P1, ID, InstanceID, Tapped, Sick
 
+    # Give P2 some shields (otherwise P1 wins immediately on attack and no reaction window opens)
+    for i in range(5):
+        game_state.add_test_card_to_shield(1, attacker_card_id, 400+i)
+
     # Setup P2 Hand with Ninja Strike
     # Ninja Test: Cost 7, Civil LIGHT.
     # Condition: Mana >= 7, Civil Match.
