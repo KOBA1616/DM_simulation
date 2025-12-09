@@ -576,8 +576,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("get_adjusted_cost", &ManaSystem::get_adjusted_cost);
 
     py::class_<GenericCardSystem>(m, "GenericCardSystem")
-        .def_static("resolve_trigger", [](GameState& state, TriggerType trigger, int source_id) {
-            GenericCardSystem::resolve_trigger(state, trigger, source_id);
+        .def_static("resolve_trigger", [](GameState& state, TriggerType trigger, int source_id, const std::map<CardID, CardDefinition>& db) {
+            GenericCardSystem::resolve_trigger(state, trigger, source_id, db);
         })
         .def_static("resolve_effect", [](GameState& state, const EffectDef& effect, int source_id) {
             GenericCardSystem::resolve_effect(state, effect, source_id);

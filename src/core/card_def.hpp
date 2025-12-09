@@ -68,6 +68,9 @@ namespace dm::core {
         
         CardKeywords keywords;
 
+        // Primary Effects (Added for removal of CardRegistry dependence)
+        std::vector<EffectDef> effects;
+
         // Filter Parsing: store parsed CSV filter conditions (e.g., "OPP_TAPPED") as IDs [Q50, Q55]
         std::vector<int> filter_ids; 
 

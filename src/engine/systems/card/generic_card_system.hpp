@@ -6,7 +6,7 @@ namespace dm::engine {
     class GenericCardSystem {
     public:
         // Called when a specific event happens (e.g. CIP) for a card instance
-        static void resolve_trigger(dm::core::GameState& game_state, dm::core::TriggerType trigger, int source_instance_id);
+        static void resolve_trigger(dm::core::GameState& game_state, dm::core::TriggerType trigger, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
         
         // Execute a specific effect definition
         static void resolve_effect(dm::core::GameState& game_state, const dm::core::EffectDef& effect, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db = {});
@@ -22,7 +22,9 @@ namespace dm::engine {
         static void resolve_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id);
 
         static std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation, std::map<std::string, int>& execution_context);
-        static bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id);
+
+        // Updated check_condition to accept card_db
+        static bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db = {});
 
         static dm::core::PlayerID get_controller(const dm::core::GameState& game_state, int instance_id);
     };

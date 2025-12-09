@@ -23,22 +23,34 @@ namespace dm::engine {
 
                 auto check_zone = [&](const std::vector<CardInstance>& zone, int owner_id) {
                      for (const auto& card : zone) {
-                         const CardData* cd = CardRegistry::get_card_data(card.card_id);
-                         if (!cd) continue;
+                         if (!ctx.card_db.count(card.card_id)) continue;
+                         const auto& cd = ctx.card_db.at(card.card_id);
 
+                         // Check types (CardDefinition uses CardType enum, Filter uses string)
+                         // For now simplified check or need conversion helper
                          if (!f.types.empty()) {
                              bool match = false;
-                             for(auto& t : f.types) if(t == cd->type) match = true;
+                             // This part requires converting cd.type (enum) to string to match f.types
+                             // or f.types to enum.
+                             // Assuming for now simple "CREATURE"/"SPELL" match via helper or if removed.
+                             // Implementing basic check:
+                             std::string type_str = "CREATURE";
+                             if (cd.type == CardType::SPELL) type_str = "SPELL";
+                             for(auto& t : f.types) if(t == type_str) match = true;
                              if(!match) continue;
                          }
                          if (!f.civilizations.empty()) {
                              bool match = false;
                              for(auto& fc : f.civilizations) {
-                                 for(auto& cc : cd->civilizations) {
-                                     if(fc == cc) {
-                                         match = true;
-                                         break;
-                                     }
+                                 // cd.civilizations is vector<Civilization>
+                                 for(auto& cc : cd.civilizations) {
+                                     if (fc == "LIGHT" && cc == Civilization::LIGHT) match = true;
+                                     if (fc == "WATER" && cc == Civilization::WATER) match = true;
+                                     if (fc == "DARKNESS" && cc == Civilization::DARKNESS) match = true;
+                                     if (fc == "FIRE" && cc == Civilization::FIRE) match = true;
+                                     if (fc == "NATURE" && cc == Civilization::NATURE) match = true;
+                                     if (fc == "ZERO" && cc == Civilization::ZERO) match = true;
+                                     if(match) break;
                                  }
                                  if(match) break;
                              }
@@ -47,7 +59,7 @@ namespace dm::engine {
                          if (!f.races.empty()) {
                              bool match = false;
                              for(auto& r : f.races) {
-                                 for(auto& cr : cd->races) if(r == cr) match = true;
+                                 for(auto& cr : cd.races) if(r == cr) match = true;
                              }
                              if(!match) continue;
                          }
@@ -87,10 +99,15 @@ namespace dm::engine {
                 if (ctx.action.str_val == "MANA_CIVILIZATION_COUNT") {
                     std::set<std::string> civs;
                     for (const auto& c : controller.mana_zone) {
-                        const CardData* cd = CardRegistry::get_card_data(c.card_id);
-                        if (cd) {
-                             for (const auto& civ_str : cd->civilizations) {
-                                 civs.insert(civ_str);
+                        if (ctx.card_db.count(c.card_id)) {
+                             const auto& cd = ctx.card_db.at(c.card_id);
+                             for (const auto& civ : cd.civilizations) {
+                                 if (civ == Civilization::LIGHT) civs.insert("LIGHT");
+                                 if (civ == Civilization::WATER) civs.insert("WATER");
+                                 if (civ == Civilization::DARKNESS) civs.insert("DARKNESS");
+                                 if (civ == Civilization::FIRE) civs.insert("FIRE");
+                                 if (civ == Civilization::NATURE) civs.insert("NATURE");
+                                 if (civ == Civilization::ZERO) civs.insert("ZERO");
                              }
                         }
                     }
