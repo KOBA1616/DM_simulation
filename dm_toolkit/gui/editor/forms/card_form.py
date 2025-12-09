@@ -1,137 +1,59 @@
-from PyQt6.QtWidgets import QWidget, QFormLayout, QLineEdit, QComboBox, QSpinBox, QCheckBox, QLabel, QGridLayout, QGroupBox, QPushButton, QDialog, QVBoxLayout, QScrollArea
+from PyQt6.QtWidgets import (
+    QWidget, QFormLayout, QSpinBox, QCheckBox, QGroupBox,
+    QSplitter, QVBoxLayout, QLabel
+)
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
-from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
-
-# Simplified Spell Side Editor Dialog
-class SpellSideEditor(QDialog):
-    def __init__(self, spell_data, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(tr("Edit Spell Side"))
-        self.spell_data = spell_data or {}
-        self.setup_ui()
-
-    def setup_ui(self):
-        self.layout = QFormLayout(self)
-
-        self.name_edit = QLineEdit(self.spell_data.get('name', ''))
-        self.layout.addRow(tr("Name"), self.name_edit)
-
-        self.cost_spin = QSpinBox()
-        self.cost_spin.setRange(0, 99)
-        self.cost_spin.setValue(self.spell_data.get('cost', 0))
-        self.layout.addRow(tr("Cost"), self.cost_spin)
-
-        # Effects are complex to edit here recursively.
-        # Ideally, we should add Spell Side as a child node in the tree.
-        # But data structure wise, it is a property of the Card.
-        # For now, let's just allow basic property editing.
-        # Effects should be added via the main tree if we restructure.
-        # IF the tree structure supports "Spell Side" node under Card.
-        # The user requested "Implementation of Twinpact".
-        # In UI, usually Twinpact is 1 card with 2 components.
-
-        self.info_label = QLabel(tr("Note: Add effects via the main tree structure if supported, or manually in JSON for now."))
-        self.layout.addRow(self.info_label)
-
-        self.save_btn = QPushButton(tr("Save"))
-        self.save_btn.clicked.connect(self.accept)
-        self.layout.addRow(self.save_btn)
-
-    def get_data(self):
-        return {
-            'name': self.name_edit.text(),
-            'cost': self.cost_spin.value(),
-            'type': 'SPELL', # Force type
-            'effects': self.spell_data.get('effects', []) # Preserve existing effects
-        }
+from dm_toolkit.gui.editor.forms.parts.card_props import CardPropertiesWidget
 
 class CardEditForm(BaseEditForm):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.keyword_checks = {} # Map key -> QCheckBox
-        self.spell_side_data = None
         self.setup_ui()
 
     def setup_ui(self):
-        layout = QFormLayout(self)
+        # Main layout
+        main_layout = QVBoxLayout(self)
+
+        # Top Section: ID and Twinpact Toggle
+        top_form = QFormLayout()
 
         self.id_spin = QSpinBox()
         self.id_spin.setRange(0, 9999)
-        layout.addRow(tr("ID"), self.id_spin)
+        self.id_spin.valueChanged.connect(self.update_data)
+        top_form.addRow(tr("ID"), self.id_spin)
 
-        self.name_edit = QLineEdit()
-        layout.addRow(tr("Name"), self.name_edit)
+        self.twinpact_check = QCheckBox(tr("Is Twinpact Card"))
+        self.twinpact_check.setToolTip(tr("Enable to edit Creature and Spell sides simultaneously."))
+        self.twinpact_check.stateChanged.connect(self.on_twinpact_toggled)
+        top_form.addRow(self.twinpact_check)
 
-        # Replace ComboBox with CivilizationSelector
-        self.civ_selector = CivilizationSelector()
-        self.civ_selector.changed.connect(self.update_data)
-        layout.addRow(tr("Civilization"), self.civ_selector)
+        main_layout.addLayout(top_form)
 
-        self.type_combo = QComboBox()
-        types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE"]
-        self.populate_combo(self.type_combo, types, data_func=lambda x: x)
-        layout.addRow(tr("Type"), self.type_combo)
+        # Splitter for Creature/Spell sides
+        self.splitter = QSplitter(Qt.Orientation.Vertical)
 
-        self.cost_spin = QSpinBox()
-        self.cost_spin.setRange(0, 99)
-        layout.addRow(tr("Cost"), self.cost_spin)
+        # Creature Side (Main)
+        self.creature_group = QGroupBox(tr("Creature Side (Main)"))
+        c_layout = QVBoxLayout(self.creature_group)
+        self.creature_props = CardPropertiesWidget(is_spell_side=False)
+        self.creature_props.dataChanged.connect(self.update_data)
+        c_layout.addWidget(self.creature_props)
+        self.splitter.addWidget(self.creature_group)
 
-        self.power_spin = QSpinBox()
-        self.power_spin.setRange(0, 99999)
-        self.power_spin.setSingleStep(500)
-        layout.addRow(tr("Power"), self.power_spin)
+        # Spell Side (Optional)
+        self.spell_group = QGroupBox(tr("Spell Side"))
+        s_layout = QVBoxLayout(self.spell_group)
+        self.spell_props = CardPropertiesWidget(is_spell_side=True)
+        self.spell_props.dataChanged.connect(self.update_data)
+        s_layout.addWidget(self.spell_props)
+        self.splitter.addWidget(self.spell_group)
 
-        self.races_edit = QLineEdit()
-        layout.addRow(tr("Races"), self.races_edit)
+        # Initially hide spell side
+        self.spell_group.setVisible(False)
 
-        # Spell Side Button
-        self.spell_side_btn = QPushButton(tr("Edit Spell Side"))
-        self.spell_side_btn.clicked.connect(self.edit_spell_side)
-        layout.addRow(tr("Twinpact"), self.spell_side_btn)
-
-        # Keywords Section
-        kw_group = QGroupBox(tr("Keywords"))
-        kw_layout = QGridLayout(kw_group)
-
-        keywords_list = [
-            "speed_attacker", "blocker", "slayer",
-            "double_breaker", "triple_breaker", "shield_trigger",
-            "evolution", "just_diver", "mach_fighter", "g_strike",
-            "hyper_energy", "shield_burn"
-        ]
-
-        kw_map = {
-            "speed_attacker": "Speed Attacker",
-            "blocker": "Blocker",
-            "slayer": "Slayer",
-            "double_breaker": "Double Breaker",
-            "triple_breaker": "Triple Breaker",
-            "shield_trigger": "Shield Trigger",
-            "evolution": "Evolution",
-            "just_diver": "Just Diver",
-            "mach_fighter": "Mach Fighter",
-            "g_strike": "G Strike",
-            "hyper_energy": "Hyper Energy",
-            "shield_burn": "Shield Burn (Incineration)"
-        }
-
-        row = 0
-        col = 0
-        for k in keywords_list:
-            cb = QCheckBox(tr(kw_map[k]))
-            kw_layout.addWidget(cb, row, col)
-            self.keyword_checks[k] = cb
-            cb.stateChanged.connect(self.update_data)
-
-            col += 1
-            if col > 2: # 3 columns
-                col = 0
-                row += 1
-
-        layout.addRow(kw_group)
+        main_layout.addWidget(self.splitter)
 
         # AI Configuration Section
         ai_group = QGroupBox(tr("AI Configuration"))
@@ -148,75 +70,74 @@ class CardEditForm(BaseEditForm):
         self.ai_importance_spin.valueChanged.connect(self.update_data)
         ai_layout.addRow(tr("AI Importance Score"), self.ai_importance_spin)
 
-        layout.addRow(ai_group)
+        main_layout.addWidget(ai_group)
 
-        # Connect signals
-        self.id_spin.valueChanged.connect(self.update_data)
-        self.name_edit.textChanged.connect(self.update_data)
-        self.type_combo.currentIndexChanged.connect(self.update_data)
-        self.cost_spin.valueChanged.connect(self.update_data)
-        self.power_spin.valueChanged.connect(self.update_data)
-        self.races_edit.textChanged.connect(self.update_data)
+    def on_twinpact_toggled(self, state):
+        is_twinpact = (state == Qt.CheckState.Checked.value or state == True)
+        self.spell_group.setVisible(is_twinpact)
+
+        # Update labels for clarity
+        if is_twinpact:
+            self.creature_group.setTitle(tr("Creature Side"))
+        else:
+            self.creature_group.setTitle(tr("Card Properties"))
+
+        self.update_data()
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
         self.id_spin.setValue(data.get('id', 0))
-        self.name_edit.setText(data.get('name', ''))
 
-        # Load Civilization(s)
-        # Check 'civilizations' first, then fallback to 'civilization'
-        civs = data.get('civilizations')
-        if not civs:
-            civ_single = data.get('civilization')
-            if civ_single:
-                civs = [civ_single]
-        self.civ_selector.set_selected_civs(civs)
+        spell_side = data.get('spell_side')
+        has_spell_side = spell_side is not None and isinstance(spell_side, dict)
 
-        self.set_combo_by_data(self.type_combo, data.get('type', 'CREATURE'))
+        self.twinpact_check.setChecked(has_spell_side)
+        self.spell_group.setVisible(has_spell_side)
 
-        self.cost_spin.setValue(data.get('cost', 0))
-        self.power_spin.setValue(data.get('power', 0))
-        self.races_edit.setText(", ".join(data.get('races', [])))
+        # Load Creature/Main Data
+        self.creature_props.load_data(data)
 
-        self.spell_side_data = data.get('spell_side')
+        # Load Spell Data if exists, or default
+        if has_spell_side:
+            self.spell_props.load_data(spell_side)
+        else:
+            # clear or default?
+            self.spell_props.load_data({})
 
-        # Load Keywords
-        kw_data = data.get('keywords', {})
-        for k, cb in self.keyword_checks.items():
-            is_checked = kw_data.get(k, False)
-            cb.setChecked(is_checked)
-
-        # Load AI Data
         self.is_key_card_check.setChecked(data.get('is_key_card', False))
         self.ai_importance_spin.setValue(data.get('ai_importance_score', 0))
 
     def _save_data(self, data):
         data['id'] = self.id_spin.value()
-        data['name'] = self.name_edit.text()
 
-        # Save 'civilizations' as list, and remove 'civilization' if exists to avoid ambiguity
-        data['civilizations'] = self.civ_selector.get_selected_civs()
-        if 'civilization' in data:
-            del data['civilization']
+        # Get data from widgets
+        c_data = self.creature_props.get_data()
 
-        data['type'] = self.type_combo.currentData()
-        data['cost'] = self.cost_spin.value()
-        data['power'] = self.power_spin.value()
-        races_str = self.races_edit.text()
-        data['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
+        # Update main data with creature props
+        # We merge c_data into data, overwriting keys
+        for k, v in c_data.items():
+            data[k] = v
 
-        if self.spell_side_data:
-            data['spell_side'] = self.spell_side_data
+        is_twinpact = self.twinpact_check.isChecked()
 
-        # Update Keywords
-        kw_data = {}
-        for k, cb in self.keyword_checks.items():
-            if cb.isChecked():
-                kw_data[k] = True
-        data['keywords'] = kw_data
+        if is_twinpact:
+            s_data = self.spell_props.get_data()
+            s_data['type'] = 'SPELL' # Enforce type for spell side usually
+            data['spell_side'] = s_data
 
-        # Save AI Data
+            # Auto-format Name: Creature / Spell
+            c_name = c_data.get('name', '')
+            s_name = s_data.get('name', '')
+            if c_name and s_name:
+                data['name'] = f"{c_name} / {s_name}"
+            elif c_name:
+                data['name'] = c_name # Fallback
+        else:
+            if 'spell_side' in data:
+                del data['spell_side']
+
+        # AI Data
         data['is_key_card'] = self.is_key_card_check.isChecked()
         data['ai_importance_score'] = self.ai_importance_spin.value()
 
@@ -225,19 +146,8 @@ class CardEditForm(BaseEditForm):
 
     def block_signals_all(self, block):
         self.id_spin.blockSignals(block)
-        self.name_edit.blockSignals(block)
-        self.civ_selector.blockSignals(block)
-        self.type_combo.blockSignals(block)
-        self.cost_spin.blockSignals(block)
-        self.power_spin.blockSignals(block)
-        self.races_edit.blockSignals(block)
-        for cb in self.keyword_checks.values():
-            cb.blockSignals(block)
+        self.twinpact_check.blockSignals(block)
+        self.creature_props.blockSignals_all(block)
+        self.spell_props.blockSignals_all(block)
         self.is_key_card_check.blockSignals(block)
         self.ai_importance_spin.blockSignals(block)
-
-    def edit_spell_side(self):
-        editor = SpellSideEditor(self.spell_side_data, self)
-        if editor.exec():
-            self.spell_side_data = editor.get_data()
-            self.update_data()
