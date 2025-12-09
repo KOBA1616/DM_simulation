@@ -70,10 +70,10 @@ namespace dm::engine {
 
                 int chosen_idx = -1;
                 for (size_t i = 0; i < looked.size(); ++i) {
-                    const CardData* cd = CardRegistry::get_card_data(looked[i].card_id);
-                    if (!cd) continue;
+                    if (!ctx.card_db.count(looked[i].card_id)) continue;
+                    const auto& cd = ctx.card_db.at(looked[i].card_id);
 
-                    if (TargetUtils::is_valid_target(looked[i], *cd, ctx.action.filter, ctx.game_state, controller_id, controller_id)) {
+                    if (TargetUtils::is_valid_target(looked[i], cd, ctx.action.filter, ctx.game_state, controller_id, controller_id)) {
                         chosen_idx = (int)i;
                         break;
                     }
