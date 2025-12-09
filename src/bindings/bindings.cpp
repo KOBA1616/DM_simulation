@@ -27,6 +27,7 @@
 #include "../engine/utils/dev_tools.hpp"
 #include "../utils/csv_loader.hpp"
 #include "python_batch_inference.hpp"
+#include "../ai/solver/lethal_solver.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -701,6 +702,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def("evaluate", &NeuralEvaluator::evaluate);
+
+    py::class_<LethalSolver>(m, "LethalSolver")
+        .def_static("is_lethal", &LethalSolver::is_lethal);
 
     m.def("initialize_card_stats", [](GameState& state, const std::map<CardID, CardDefinition>& db, int deck_size) {
         state.initialize_card_stats(db, deck_size);
