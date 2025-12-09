@@ -1,7 +1,7 @@
 #pragma once
-#include "../../core/game_state.hpp"
-#include "../../core/action.hpp"
-#include "../../core/card_def.hpp"
+#include "core/game_state.hpp"
+#include "core/action.hpp"
+#include "core/card_def.hpp"
 #include "action_strategy.hpp"
 #include "strategies/pending_strategy.hpp"
 #include "strategies/stack_strategy.hpp"

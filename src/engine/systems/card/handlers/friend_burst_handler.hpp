@@ -1,10 +1,10 @@
 #pragma once
-#include "../effect_system.hpp"
-#include "../../../../core/game_state.hpp"
-#include "../generic_card_system.hpp"
-#include "../../../../core/card_def.hpp"
-#include "../card_registry.hpp"
-#include "../target_utils.hpp"
+#include "engine/systems/card/effect_system.hpp"
+#include "core/game_state.hpp"
+#include "engine/systems/card/generic_card_system.hpp"
+#include "core/card_def.hpp"
+#include "engine/systems/card/card_registry.hpp"
+#include "engine/systems/card/target_utils.hpp"
 #include <iostream>
 
 namespace dm::engine {
