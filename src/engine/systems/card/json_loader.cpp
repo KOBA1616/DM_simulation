@@ -129,6 +129,10 @@ namespace dm::engine {
             if (j.is_array()) {
                 for (const auto& item : j) {
                     CardData card = item.get<CardData>();
+                    // Backward compatibility: allow single "civilization" field
+                    if (card.civilizations.empty() && item.contains("civilization")) {
+                        card.civilizations.push_back(item.at("civilization").get<std::string>());
+                    }
                     // 1. Add to Registry (New System)
                     CardRegistry::load_from_json(item.dump());
 
@@ -137,6 +141,9 @@ namespace dm::engine {
                 }
             } else {
                 CardData card = j.get<CardData>();
+                if (card.civilizations.empty() && j.contains("civilization")) {
+                    card.civilizations.push_back(j.at("civilization").get<std::string>());
+                }
                 CardRegistry::load_from_json(j.dump());
                 result[static_cast<CardID>(card.id)] = convert_to_def(card);
             }
