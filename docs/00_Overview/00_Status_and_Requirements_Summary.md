@@ -31,7 +31,6 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ### 2.4 特定された課題 (Identified Issues)
 以下の問題は、今後の開発において修正・対応が必要な項目です。
 
-*   **`test_just_diver.py` のアサーション失敗**: ターン経過ロジックと `CardInstance.turn_played` の同期問題。
 *   **`test_json_loader.py` のアサーション失敗**: テストデータとJSONスキーマの不整合の可能性。
 
 ※ 完了した詳細な実装タスク（Phase 6-8等）は `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。

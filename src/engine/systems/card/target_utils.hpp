@@ -96,7 +96,12 @@ namespace dm::engine {
              (void)opponent_id; // Unused parameter fix
              if (!def.keywords.just_diver) return false;
 
-               return game_state.turn_number == card.turn_played;
+             // Just Diver protects until the start of the owner's next turn.
+             // Assuming alternating turns:
+             // Turn X: Played (Protected)
+             // Turn X+1: Opponent (Protected)
+             // Turn X+2: Owner (Expired)
+             return game_state.turn_number <= card.turn_played + 1;
         }
 
     };
