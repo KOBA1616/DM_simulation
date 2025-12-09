@@ -26,6 +26,12 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **カードエディタ Ver 2.0**: JSONデータの視覚的な作成・編集、ロジックツリー表示、変数リンク機能。
 *   **シミュレーション**: 対戦の観戦、デバッグ機能、シナリオ実行。
 
+### 2.4 特定された課題 (Identified Issues)
+以下の問題は、今後の開発において修正・対応が必要な項目です。
+
+*   **`test_just_diver.py` のアサーション失敗**: ターン経過ロジックと `CardInstance.turn_played` の同期問題。
+*   **`test_json_loader.py` のアサーション失敗**: テストデータとJSONスキーマの不整合の可能性。
+
 ※ 完了した詳細な実装タスク（Phase 6-8等）は `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
 ---
@@ -94,6 +100,31 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
             *   エージェント同士をリーグ戦形式で競わせ、優秀な個体のパラメータを継承・変異させて次世代を作る。
     *   **期待効果**: 寝ている間にPCを稼働させるだけで、AIがメタゲームの偏り（アグロ偏重など）を自律的に修正し、多様な戦術を獲得する。
 
+2.  **詳細実装仕様: 世代管理システムとストレージ戦略 (Generation Management System)**
+    *   PBT（Population Based Training）を見据えた、モデルとデッキの世代管理およびストレージ最適化の要件。
+    *   **ディレクトリ構造 (Directory Structure)**:
+        ```
+        checkpoints/
+          ├── production/          # 本番稼働用（現在の最強モデル）
+          │    └── best_model.pth
+          │
+          ├── hall_of_fame/        # 殿堂入り（過去の強力なモデル、評価対戦用）
+          │    ├── gen_0010.pth
+          │    ├── gen_0050.pth
+          │    └── gen_0100.pth
+          │
+          └── population/          # 進化中の個体群（一時保存、頻繁に入れ替わる）
+               ├── agent_01/
+               │    ├── gen_0005.pth
+               │    └── deck.json
+               └── agent_02/ ...
+        ```
+    *   **世代保持ポリシー (Retention Policy)**:
+        *   **最新 (Latest)**: 各エージェントにつき、最新3世代のみ保持。
+        *   **殿堂入り (Hall of Fame)**: 対数的間隔 (Gen 1, 2, 4, 8, ...) で永続保存し、多様性を維持する対戦相手として利用。
+    *   **ストレージ管理**:
+        *   学習データ (.npz) は最新の50万〜100万サンプル（スライディングウィンドウ）のみ保持し、自動削除する `cleanup_old_checkpoints()` を実装する。
+
 ### Phase 4: アーキテクチャの刷新（将来的な最適化）
 
 **目標**: さらなる強さと計算効率の追求。
@@ -101,3 +132,11 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 1.  **Linear Attention / DeepSets の導入**
     *   現在のCNN/ResNetベース（固定長入力）から、可変長のカードリストを効率的に扱えるアーキテクチャへ移行。
     *   カード枚数が増えても計算速度が落ちない軽量モデルにより、推論速度（NPS: Nodes Per Second）を向上させ、探索の深さを確保する。
+
+### Phase 5: 将来的なAI拡張 (Future AI Refinement)
+
+1.  **AIモデルの高度化 (PPO + LSTM)**
+    *   Linear Attentionとは別のアプローチとして、強化学習の高度化を検討。
+    *   **基本構成**: Actor-Critic (PPO) + LSTM。
+    *   **入力層**: 盤面ベクトル + カード埋め込み + 墓地・マナのコンボパーツ密度。
+    *   **学習戦略**: 模倣学習 -> 報酬シェイピング -> Action Masking。
