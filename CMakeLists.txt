@@ -73,6 +73,12 @@ endif()
 include_directories(src)
 include_directories(third_party)
 
+# Optional: user-provided include directory for custom libraries
+if(DEFINED ENV{MYLIB_INCLUDE})
+    message(STATUS "Including custom library path: $ENV{MYLIB_INCLUDE}")
+    include_directories($ENV{MYLIB_INCLUDE})
+endif()
+
 # --- Source Files ---
 # Define source files variables for better organization
 
