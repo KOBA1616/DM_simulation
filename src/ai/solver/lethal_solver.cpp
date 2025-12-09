@@ -13,11 +13,6 @@ namespace dm::ai {
         const Player& active_player = game_state.get_active_player();
         const Player& opponent = game_state.get_non_active_player();
 
-        // Debug prints
-        // std::cout << "Lethal Check: Active P" << (int)active_player.id << " vs P" << (int)opponent.id << std::endl;
-        // std::cout << "Active BZone Size: " << active_player.battle_zone.size() << std::endl;
-        // std::cout << "Opp Shields: " << opponent.shield_zone.size() << std::endl;
-
         // 1. Gather Attackers
         std::vector<AttackerInfo> attackers;
 
@@ -28,7 +23,6 @@ namespace dm::ai {
 
             // Summoning Sickness check
             if (card.summoning_sickness) {
-                // std::cout << "Card " << card.card_id << " is sick." << std::endl;
                 // Check Speed Attacker
                 bool has_sa = false;
                 if (card_db.count(card.card_id)) {
@@ -40,17 +34,12 @@ namespace dm::ai {
                 if (!has_sa) can_attack = false;
             }
 
-            // Check attack restrictions (Can't attack players) - TODO
-            // For now assume all creatures can attack players unless specified otherwise.
-
             if (can_attack) {
-                int power = 0; // Needed for power comparisons with blockers
+                int power = 0;
                 if (card_db.count(card.card_id)) {
-                    power = card_db.at(card.card_id).power; // Use base power for now
+                    power = card_db.at(card.card_id).power;
                 }
                 attackers.push_back({card.instance_id, power, true});
-            } else {
-                // std::cout << "Card " << card.card_id << " cannot attack." << std::endl;
             }
         }
 
@@ -69,27 +58,12 @@ namespace dm::ai {
         }
 
         // 3. Simple Lethal Check
-        // Can we break all shields + direct attack?
-        // Attackers needed = Opponent Shields + Opponent Blockers + 1 (Direct Attack)
-
-        // This is a naive heuristic (Count Only).
-        // It assumes every blocker can stop exactly one attack.
-        // It ignores Blockers losing battles (Slayer, High Power) for now.
-        // It ignores Double Breakers.
-
-        // Improvement: Consider breakers
-        // For Step 1 (Basic): Just count.
-
         int shields_count = opponent.shield_zone.size();
         int required_attacks = shields_count + blockers.size() + 1;
-
-        // std::cout << "Attackers: " << attackers.size() << " Required: " << required_attacks << std::endl;
 
         if (attackers.size() >= (size_t)required_attacks) {
             return true;
         }
-
-        // TODO: Detailed simulation (Breaker logic, Power matching) in Phase 1.1
 
         return false;
     }
