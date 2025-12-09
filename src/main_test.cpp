@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cassert>
-#include "engine/card_system/json_loader.hpp"
-#include "engine/card_system/card_registry.hpp"
+#include "engine/systems/card/json_loader.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include "core/card_def.hpp"
 
 int main() {
