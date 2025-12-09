@@ -31,14 +31,16 @@ namespace dm::engine {
             CardInstance* source_card = ctx.game_state.get_card_instance(ctx.source_instance_id);
             if (!source_card) return;
 
-            const CardData* data = CardRegistry::get_card_data(source_card->card_id);
-            if (data && data->spell_side) {
-                const auto& spell_def = *data->spell_side;
+            if (ctx.card_db.count(source_card->card_id)) {
+                const auto& data = ctx.card_db.at(source_card->card_id);
+                if (data.spell_side) {
+                    const auto& spell_def = *data.spell_side;
 
-                ctx.game_state.turn_stats.spells_cast_this_turn++;
+                    ctx.game_state.turn_stats.spells_cast_this_turn++;
 
-                for (const auto& effect : spell_def.effects) {
-                    GenericCardSystem::resolve_effect_with_context(ctx.game_state, effect, ctx.source_instance_id, ctx.execution_vars);
+                    for (const auto& effect : spell_def.effects) {
+                        GenericCardSystem::resolve_effect_with_context(ctx.game_state, effect, ctx.source_instance_id, ctx.execution_vars, ctx.card_db);
+                    }
                 }
             }
         }
