@@ -1,6 +1,6 @@
 #include "neural_evaluator.hpp"
-#include "../encoders/tensor_converter.hpp"
-#include "../../bindings/python_batch_inference.hpp"
+#include "ai/encoders/tensor_converter.hpp"
+#include "bindings/python_batch_inference.hpp"
 #include <stdexcept>
 
 namespace dm::ai {

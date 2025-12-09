@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <utility>
-#include "../../core/game_state.hpp"
+#include "core/game_state.hpp"
 
 namespace dm::ai {
 
