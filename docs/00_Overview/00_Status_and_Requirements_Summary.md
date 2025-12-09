@@ -29,11 +29,11 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **シミュレーション**: 対戦の観戦、デバッグ機能、シナリオ実行。
 
 ### 2.4 特定された課題 (Identified Issues)
-以下の問題は、今後の開発において修正・対応が必要な項目です。
+現在のコアエンジンにおける致命的な既知の不具合は解消されました。
 
-*   **`test_just_diver.py` のアサーション失敗**: ターン経過ロジックと `CardInstance.turn_played` の同期問題。
-*   **`test_json_loader.py` のアサーション失敗**: テストデータとJSONスキーマの不整合の可能性。
-*   **`LethalSolver` の実装と検証**: `LethalSolver`クラスの基本実装を行いましたが、テスト（`test_lethal_solver.py`）でブロッカー処理や攻撃可能判定のロジックに不備が見つかり、アサーションエラーが発生しています。今後の課題として修正が必要です。
+*   **`test_just_diver.py`**: 検証済み (Passed)。
+*   **`test_json_loader.py`**: 検証済み (Passed)。
+*   **`LethalSolver` の実装と検証**: `LethalSolver`の実装バグとテスト環境の不備を修正し、正常に動作することを確認しました (Phase 1.1完了)。
 
 ※ 完了した詳細な実装タスク（Phase 6-8等）は `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
@@ -50,8 +50,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 1.  **堅牢なリーサルソルバー (Robust Lethal Solver) の実装**
     *   **概要**: 探索の前に「勝てるか」を計算で判定するモジュール。
-    *   **ステータス**: 基本実装完了（`src/ai/solver/lethal_solver.cpp`）。Pythonバインディング済み。
-    *   **課題**: 召喚酔いやブロッカーの判定ロジックにバグがあり、テストが通過していない。Phase 1.1として修正が必要。
+    *   **ステータス**: 基本実装完了（`src/ai/solver/lethal_solver.cpp`）。
+    *   **完了済み**: Phase 1.1におけるブロッカー/SA判定のバグ修正およびテストカバレッジの確保。
     *   **実装内容**:
         *   `LethalSolver` クラスをC++で作成。
         *   単純な数合わせだけでなく、`CardDefinition` を参照して以下の要素を考慮する：
