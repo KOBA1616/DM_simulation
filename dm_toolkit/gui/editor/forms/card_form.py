@@ -3,6 +3,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 
 # Simplified Spell Side Editor Dialog
 class SpellSideEditor(QDialog):
@@ -64,24 +65,10 @@ class CardEditForm(BaseEditForm):
         self.name_edit = QLineEdit()
         layout.addRow(tr("Name"), self.name_edit)
 
-        self.civ_combo = QComboBox()
-        civs = ["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"]
-        self.populate_combo(self.civ_combo, civs, data_func=lambda x: x)
-
-        # Apply colors
-        civ_colors = {
-            "LIGHT": QColor("goldenrod"),
-            "WATER": QColor("blue"),
-            "DARKNESS": QColor("darkGray"),
-            "FIRE": QColor("red"),
-            "NATURE": QColor("green"),
-            "ZERO": QColor("gray")
-        }
-        for i in range(self.civ_combo.count()):
-            data = self.civ_combo.itemData(i)
-            if data in civ_colors:
-                self.civ_combo.setItemData(i, civ_colors[data], Qt.ItemDataRole.ForegroundRole)
-        layout.addRow(tr("Civilization"), self.civ_combo)
+        # Replace ComboBox with CivilizationSelector
+        self.civ_selector = CivilizationSelector()
+        self.civ_selector.changed.connect(self.update_data)
+        layout.addRow(tr("Civilization"), self.civ_selector)
 
         self.type_combo = QComboBox()
         types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE"]
@@ -166,7 +153,6 @@ class CardEditForm(BaseEditForm):
         # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
-        self.civ_combo.currentIndexChanged.connect(self.update_data)
         self.type_combo.currentIndexChanged.connect(self.update_data)
         self.cost_spin.valueChanged.connect(self.update_data)
         self.power_spin.valueChanged.connect(self.update_data)
@@ -178,7 +164,15 @@ class CardEditForm(BaseEditForm):
         self.id_spin.setValue(data.get('id', 0))
         self.name_edit.setText(data.get('name', ''))
 
-        self.set_combo_by_data(self.civ_combo, data.get('civilization', 'FIRE'))
+        # Load Civilization(s)
+        # Check 'civilizations' first, then fallback to 'civilization'
+        civs = data.get('civilizations')
+        if not civs:
+            civ_single = data.get('civilization')
+            if civ_single:
+                civs = [civ_single]
+        self.civ_selector.set_selected_civs(civs)
+
         self.set_combo_by_data(self.type_combo, data.get('type', 'CREATURE'))
 
         self.cost_spin.setValue(data.get('cost', 0))
@@ -200,7 +194,12 @@ class CardEditForm(BaseEditForm):
     def _save_data(self, data):
         data['id'] = self.id_spin.value()
         data['name'] = self.name_edit.text()
-        data['civilization'] = self.civ_combo.currentData()
+
+        # Save 'civilizations' as list, and remove 'civilization' if exists to avoid ambiguity
+        data['civilizations'] = self.civ_selector.get_selected_civs()
+        if 'civilization' in data:
+            del data['civilization']
+
         data['type'] = self.type_combo.currentData()
         data['cost'] = self.cost_spin.value()
         data['power'] = self.power_spin.value()
@@ -227,7 +226,7 @@ class CardEditForm(BaseEditForm):
     def block_signals_all(self, block):
         self.id_spin.blockSignals(block)
         self.name_edit.blockSignals(block)
-        self.civ_combo.blockSignals(block)
+        self.civ_selector.blockSignals(block)
         self.type_combo.blockSignals(block)
         self.cost_spin.blockSignals(block)
         self.power_spin.blockSignals(block)
