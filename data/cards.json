@@ -173,6 +173,7 @@
     "type": "CREATURE"
   },
   {
+    "ai_importance_score": 0,
     "civilization": "WATER",
     "cost": 7,
     "effects": [
@@ -228,11 +229,58 @@
       }
     ],
     "id": 8,
+    "is_key_card": false,
     "keywords": {
-      "blocker": true
+      "blocker": true,
+      "double_breaker": true
     },
     "name": "絶海の虎将ティガウォック",
     "power": 6000,
+    "races": [],
+    "type": "CREATURE"
+  },
+  {
+    "ai_importance_score": 0,
+    "civilization": "WATER",
+    "cost": 2,
+    "effects": [
+      {
+        "actions": [
+          {
+            "filter": {},
+            "input_value_key": "",
+            "optional": false,
+            "output_value_key": "var_DRAW_CARD_0",
+            "scope": "PLAYER_SELF",
+            "str_val": "",
+            "type": "DRAW_CARD",
+            "value1": 1,
+            "value2": 0
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_PLAY"
+      }
+    ],
+    "id": 9,
+    "is_key_card": false,
+    "keywords": {},
+    "name": "AQvibrato",
+    "power": 1000,
+    "races": [
+      "マジック"
+    ],
+    "type": "CREATURE"
+  },
+  {
+    "civilization": "FIRE",
+    "cost": 1,
+    "effects": [],
+    "id": 10,
+    "name": "New Card",
+    "power": 1000,
     "races": [],
     "type": "CREATURE"
   }
