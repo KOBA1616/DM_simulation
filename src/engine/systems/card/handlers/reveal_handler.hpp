@@ -1,7 +1,7 @@
 #pragma once
-#include "../effect_system.hpp"
-#include "../../../../core/game_state.hpp"
-#include "../generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
+#include "core/game_state.hpp"
+#include "engine/systems/card/generic_card_system.hpp"
 #include <algorithm>
 #include <iostream>
 

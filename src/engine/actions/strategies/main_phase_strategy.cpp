@@ -1,6 +1,6 @@
 #include "phase_strategies.hpp"
-#include "../../systems/mana/mana_system.hpp"
-#include "../../systems/card/target_utils.hpp"
+#include "engine/systems/mana/mana_system.hpp"
+#include "engine/systems/card/target_utils.hpp"
 #include <iostream>
 
 namespace dm::engine {

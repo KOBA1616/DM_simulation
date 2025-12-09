@@ -1,7 +1,7 @@
 #include "tensor_converter.hpp"
-#include "../../core/constants.hpp"
-#include "../../core/card_def.hpp"
-#include "../../core/types.hpp"
+#include "core/constants.hpp"
+#include "core/card_def.hpp"
+#include "core/types.hpp"
 #include <algorithm>
 #include <map>
 #include <iostream>

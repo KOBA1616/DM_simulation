@@ -1,6 +1,6 @@
 #include "json_loader.hpp"
 #include "card_registry.hpp"
-#include "../../../core/card_json_types.hpp"
+#include "core/card_json_types.hpp"
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>

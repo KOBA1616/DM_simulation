@@ -1,12 +1,12 @@
 #include "effect_resolver.hpp"
-#include "../actions/action_generator.hpp"
-#include "../systems/mana/mana_system.hpp"
-#include "../systems/card/card_registry.hpp"
-#include "../systems/card/target_utils.hpp"
-#include "../systems/card/generic_card_system.hpp"
-#include "../systems/flow/reaction_system.hpp"
-#include "../utils/zone_utils.hpp"
-#include "../systems/card/passive_effect_system.hpp"
+#include "engine/actions/action_generator.hpp"
+#include "engine/systems/mana/mana_system.hpp"
+#include "engine/systems/card/card_registry.hpp"
+#include "engine/systems/card/target_utils.hpp"
+#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/flow/reaction_system.hpp"
+#include "engine/utils/zone_utils.hpp"
+#include "engine/systems/card/passive_effect_system.hpp"
 
 #include <iostream>
 #include <algorithm>

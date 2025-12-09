@@ -1,9 +1,9 @@
 #include "scenario_executor.hpp"
-#include "../../engine/game_instance.hpp"
-#include "../../engine/systems/flow/phase_manager.hpp"
-#include "../../engine/actions/action_generator.hpp"
-#include "../../engine/effects/effect_resolver.hpp"
-#include "../agents/heuristic_agent.hpp"
+#include "engine/game_instance.hpp"
+#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/actions/action_generator.hpp"
+#include "engine/effects/effect_resolver.hpp"
+#include "ai/agents/heuristic_agent.hpp"
 #include <random>
 
 namespace dm::ai {
