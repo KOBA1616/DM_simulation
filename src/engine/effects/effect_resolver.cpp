@@ -224,7 +224,7 @@ namespace dm::engine {
 
     }
 
-    void EffectResolver::resolve_block(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
+    void EffectResolver::resolve_block(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& /*card_db*/) {
          game_state.current_attack.is_blocked = true;
          game_state.current_attack.blocker_instance_id = action.source_instance_id;
          Player& defender = game_state.get_non_active_player();
@@ -237,7 +237,7 @@ namespace dm::engine {
          game_state.pending_effects.emplace_back(EffectType::RESOLVE_BATTLE, action.source_instance_id, game_state.active_player_id);
     }
 
-    void EffectResolver::resolve_use_shield_trigger(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
+    void EffectResolver::resolve_use_shield_trigger(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& /*card_db*/) {
         GenericCardSystem::resolve_trigger(game_state, TriggerType::S_TRIGGER, action.source_instance_id);
     }
 
@@ -250,7 +250,7 @@ namespace dm::engine {
         }
     }
 
-    void EffectResolver::resolve_use_ability(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
+    void EffectResolver::resolve_use_ability(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& /*card_db*/) {
          Player& player = game_state.players[game_state.active_player_id];
          auto hand_it = std::find_if(player.hand.begin(), player.hand.end(),
              [&](const CardInstance& c){ return c.instance_id == action.source_instance_id; });
