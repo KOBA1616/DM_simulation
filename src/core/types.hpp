@@ -70,11 +70,11 @@ namespace dm::core {
     // Effect Types for Pending Stack
     enum class EffectType : uint8_t {
         NONE,
-        CIP,               // Comes Into Play (登場時)
-        AT_ATTACK,         // 攻撃時
-        AT_BLOCK,          // ブロック時
+        CIP,               // Comes Into Play (登場晁E
+        AT_ATTACK,         // 攻撁E��
+        AT_BLOCK,          // ブロチE��晁E
         AT_START_OF_TURN,  // ターン開始時
-        AT_END_OF_TURN,    // ターン終了時
+        AT_END_OF_TURN,    // ターン終亁E��
         SHIELD_TRIGGER,    // S・トリガー
         G_STRIKE,          // G・ストライク
         DESTRUCTION,       // 破壊時

@@ -1,5 +1,5 @@
 #include "heuristic_evaluator.hpp"
-#include "../../engine/action_gen/action_generator.hpp"
+#include "../../engine/actions/action_generator.hpp"
 #include "../encoders/action_encoder.hpp"
 #include <algorithm>
 #include "../inference/torch_model.hpp"
