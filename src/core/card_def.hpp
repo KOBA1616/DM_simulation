@@ -42,7 +42,7 @@ namespace dm::core {
         bool untap_in : 1;        // Step 1-2 (Multi-color Tap-in Exception)
     };
 
-    // Mode Selection: ModalEffectGroup 讒矩菴薙↓繧医ｋ隍・焚驕ｸ謚樒ｮ｡逅・[Q71]
+    // Mode Selection: ModalEffectGroup stores selectable modes [Q71]
     struct ModalEffectGroup {
         int group_id;
         std::string description;
@@ -68,7 +68,7 @@ namespace dm::core {
         
         CardKeywords keywords;
 
-        // Filter Parsing: CSV繝ｭ繝ｼ繝画凾縺ｫ譁・ｭ怜・譚｡莉ｶ・・OPP_TAPPED"遲会ｼ峨ｒID蛹悶＠縺ｦ菫晄戟 [Q50, Q55]
+        // Filter Parsing: store parsed CSV filter conditions (e.g., "OPP_TAPPED") as IDs [Q50, Q55]
         std::vector<int> filter_ids; 
 
         // Modes
