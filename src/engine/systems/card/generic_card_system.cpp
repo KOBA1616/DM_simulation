@@ -95,7 +95,7 @@ namespace dm::engine {
         _evaluators_registered = true;
     }
 
-    void GenericCardSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id) {
+    void GenericCardSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         ensure_handlers_registered();
         ensure_evaluators_registered();
         CardInstance* instance = find_instance(game_state, source_instance_id);
@@ -104,16 +104,16 @@ namespace dm::engine {
         }
 
         std::vector<EffectDef> active_effects;
-        const CardData* data = CardRegistry::get_card_data(instance->card_id);
-        if (data) {
-            active_effects.insert(active_effects.end(), data->effects.begin(), data->effects.end());
-            active_effects.insert(active_effects.end(), data->metamorph_abilities.begin(), data->metamorph_abilities.end());
+        if (card_db.count(instance->card_id)) {
+            const auto& data = card_db.at(instance->card_id);
+            active_effects.insert(active_effects.end(), data.effects.begin(), data.effects.end());
+            active_effects.insert(active_effects.end(), data.metamorph_abilities.begin(), data.metamorph_abilities.end());
         }
 
         for (const auto& under : instance->underlying_cards) {
-            const CardData* under_data = CardRegistry::get_card_data(under.card_id);
-            if (under_data) {
-                active_effects.insert(active_effects.end(), under_data->metamorph_abilities.begin(), under_data->metamorph_abilities.end());
+            if (card_db.count(under.card_id)) {
+                const auto& under_data = card_db.at(under.card_id);
+                active_effects.insert(active_effects.end(), under_data.metamorph_abilities.begin(), under_data.metamorph_abilities.end());
             }
         }
 
@@ -138,7 +138,7 @@ namespace dm::engine {
     }
 
         void GenericCardSystem::resolve_effect_with_context(GameState& game_state, const EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
-        if (!check_condition(game_state, effect.condition, source_instance_id)) {
+        if (!check_condition(game_state, effect.condition, source_instance_id, card_db)) {
             return;
         }
 
@@ -156,7 +156,7 @@ namespace dm::engine {
         ensure_handlers_registered();
         ensure_evaluators_registered();
 
-        if (!check_condition(game_state, effect.condition, source_instance_id)) return;
+        if (!check_condition(game_state, effect.condition, source_instance_id, card_db)) return;
 
         for (const auto& action : effect.actions) {
 
@@ -178,13 +178,13 @@ namespace dm::engine {
         }
     }
 
-    bool GenericCardSystem::check_condition(GameState& game_state, const ConditionDef& condition, int source_instance_id) {
+    bool GenericCardSystem::check_condition(GameState& game_state, const ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         if (condition.type == "NONE") return true;
 
         ensure_evaluators_registered();
         ConditionSystem& sys = ConditionSystem::instance();
         if (IConditionEvaluator* evaluator = sys.get_evaluator(condition.type)) {
-            return evaluator->evaluate(game_state, condition, source_instance_id);
+            return evaluator->evaluate(game_state, condition, source_instance_id, card_db);
         }
 
         PlayerID controller = get_controller(game_state, source_instance_id);
@@ -236,7 +236,8 @@ namespace dm::engine {
 
     void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id) {
         std::map<std::string, int> empty;
-        resolve_action(game_state, action, source_instance_id, empty);
+        std::map<dm::core::CardID, dm::core::CardDefinition> empty_db;
+        resolve_action(game_state, action, source_instance_id, empty, empty_db);
     }
 
     void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {

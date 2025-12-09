@@ -208,7 +208,7 @@ namespace dm::engine {
         game_state.current_attack.is_blocked = false;
         game_state.current_attack.blocker_instance_id = -1;
         game_state.turn_stats.attacks_declared_this_turn++;
-        GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_ATTACK, card.instance_id);
+        GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_ATTACK, card.instance_id, card_db);
 
         // If attacking the player and they have no shields, declare immediate victory.
         if (action.type == ActionType::ATTACK_PLAYER && defender.shield_zone.empty()) {
@@ -224,7 +224,7 @@ namespace dm::engine {
 
     }
 
-    void EffectResolver::resolve_block(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& /*card_db*/) {
+    void EffectResolver::resolve_block(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
          game_state.current_attack.is_blocked = true;
          game_state.current_attack.blocker_instance_id = action.source_instance_id;
          Player& defender = game_state.get_non_active_player();
@@ -232,13 +232,13 @@ namespace dm::engine {
              [&](const CardInstance& c){ return c.instance_id == action.source_instance_id; });
          if (it != defender.battle_zone.end()) {
              it->is_tapped = true;
-             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_BLOCK, it->instance_id);
+             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_BLOCK, it->instance_id, card_db);
          }
          game_state.pending_effects.emplace_back(EffectType::RESOLVE_BATTLE, action.source_instance_id, game_state.active_player_id);
     }
 
-    void EffectResolver::resolve_use_shield_trigger(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& /*card_db*/) {
-        GenericCardSystem::resolve_trigger(game_state, TriggerType::S_TRIGGER, action.source_instance_id);
+    void EffectResolver::resolve_use_shield_trigger(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
+        GenericCardSystem::resolve_trigger(game_state, TriggerType::S_TRIGGER, action.source_instance_id, card_db);
     }
 
     void EffectResolver::resolve_select_target(GameState& game_state, const Action& action) {
@@ -250,7 +250,7 @@ namespace dm::engine {
         }
     }
 
-    void EffectResolver::resolve_use_ability(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& /*card_db*/) {
+    void EffectResolver::resolve_use_ability(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
          Player& player = game_state.players[game_state.active_player_id];
          auto hand_it = std::find_if(player.hand.begin(), player.hand.end(),
              [&](const CardInstance& c){ return c.instance_id == action.source_instance_id; });
@@ -277,7 +277,7 @@ namespace dm::engine {
                  battle_card.is_tapped = false;
                  battle_card.summoning_sickness = true;
                  player.hand.push_back(battle_card);
-                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, hand_card.instance_id);
+                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, hand_card.instance_id, card_db);
              }
          }
     }
@@ -344,7 +344,7 @@ namespace dm::engine {
             if (it != p2.battle_zone.end()) {
                 p2.graveyard.push_back(*it);
                 p2.battle_zone.erase(it);
-                GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, defender_id);
+                GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, defender_id, card_db);
             }
         }
         if (def_wins || draw) {
@@ -352,7 +352,7 @@ namespace dm::engine {
             if (it != p1.battle_zone.end()) {
                 p1.graveyard.push_back(*it);
                 p1.battle_zone.erase(it);
-                GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, attacker_id);
+                GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, attacker_id, card_db);
             }
         }
     }
@@ -364,7 +364,7 @@ namespace dm::engine {
              return;
          }
 
-         GenericCardSystem::resolve_trigger(game_state, TriggerType::AT_BREAK_SHIELD, action.source_instance_id);
+         GenericCardSystem::resolve_trigger(game_state, TriggerType::AT_BREAK_SHIELD, action.source_instance_id, card_db);
 
          CardInstance shield = defender.shield_zone.back();
          defender.shield_zone.pop_back();
@@ -381,7 +381,7 @@ namespace dm::engine {
          }
          if (shield_burn) {
              defender.graveyard.push_back(shield);
-             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, shield.instance_id);
+             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, shield.instance_id, card_db);
          } else {
              bool is_trigger = false;
              if (card_db.count(shield.card_id)) {
@@ -440,7 +440,7 @@ namespace dm::engine {
                 player.graveyard.push_back(card);
             }
 
-            GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
+            GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id, card_db);
             game_state.turn_stats.spells_cast_this_turn++;
         } else {
             // Creatures always go to Battle Zone (unless other override logic exists?)
@@ -461,7 +461,7 @@ namespace dm::engine {
                 }
             }
             player.battle_zone.push_back(card);
-            GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id);
+            GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id, card_db);
             game_state.turn_stats.creatures_played_this_turn++;
         }
         game_state.on_card_play(card.card_id, game_state.turn_number, spawn_source != SpawnSource::HAND_SUMMON, cost_reduction, controller);
