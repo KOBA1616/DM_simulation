@@ -1,8 +1,8 @@
 #include "beam_search_evaluator.hpp"
-#include "../../engine/actions/action_generator.hpp"
-#include "../../engine/effects/effect_resolver.hpp"
-#include "../../engine/systems/flow/phase_manager.hpp"
-#include "../../engine/systems/mana/mana_system.hpp"
+#include "engine/actions/action_generator.hpp"
+#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/mana/mana_system.hpp"
 #include <cmath>
 #include <algorithm>
 #include <iostream>

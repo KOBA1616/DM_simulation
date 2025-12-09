@@ -1,7 +1,7 @@
 #pragma once
-#include "../../core/game_state.hpp"
-#include "../../core/card_def.hpp"
-#include "../mcts/mcts.hpp"
+#include "core/game_state.hpp"
+#include "core/card_def.hpp"
+#include "ai/mcts/mcts.hpp"
 #include <vector>
 #include <map>
 #include <functional>

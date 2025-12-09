@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../../core/game_state.hpp"
-#include "../../core/scenario_config.hpp"
-#include "../../core/card_def.hpp"
-#include "../self_play/self_play.hpp" // For GameResultInfo
+#include "core/game_state.hpp"
+#include "core/scenario_config.hpp"
+#include "core/card_def.hpp"
+#include "ai/self_play/self_play.hpp" // For GameResultInfo
 #include <map>
 #include <vector>
 

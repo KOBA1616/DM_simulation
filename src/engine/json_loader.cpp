@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include "../core/card_def.hpp"
+#include "core/card_def.hpp"
 
 namespace dm::engine {
 

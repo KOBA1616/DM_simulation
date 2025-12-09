@@ -1,8 +1,8 @@
 #pragma once
-#include "../effect_system.hpp"
-#include "../../../../core/game_state.hpp"
-#include "../generic_card_system.hpp"
-#include "../card_registry.hpp"
+#include "engine/systems/card/effect_system.hpp"
+#include "core/game_state.hpp"
+#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include <set>
 #include <string>
 #include <algorithm>

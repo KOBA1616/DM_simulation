@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../core/game_state.hpp"
-#include "../../core/card_def.hpp"
-#include "../../engine/systems/card/target_utils.hpp"
+#include "core/game_state.hpp"
+#include "core/card_def.hpp"
+#include "engine/systems/card/target_utils.hpp"
 #include <map>
 #include <vector>
 
