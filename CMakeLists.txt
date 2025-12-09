@@ -16,6 +16,10 @@ if(MSVC)
     add_compile_options(/W4)
 else()
     add_compile_options(-Wall -Wextra -pedantic)
+    # Handle Shift-JIS source files on Windows (MinGW/GCC) to fix "invalid UTF-8 in comment"
+    if(WIN32)
+        add_compile_options(-finput-charset=CP932)
+    endif()
     # Suppress warnings from nlohmann/json with newer Clang
     add_compile_options(-Wno-deprecated-literal-operator)
 endif()
