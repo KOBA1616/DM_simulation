@@ -21,6 +21,7 @@ namespace dm::engine {
         decision_maker = ap_has ? game_state.active_player_id : (1 - game_state.active_player_id);
 
         // Step 2-1: Strict Spell Priority Logic
+        /*
         bool has_spell_effect = false;
         for (size_t i = 0; i < game_state.pending_effects.size(); ++i) {
             const auto& eff = game_state.pending_effects[i];
@@ -45,6 +46,7 @@ namespace dm::engine {
                 break;
             }
         }
+        */
 
         std::vector<size_t> spell_indices;
         std::vector<size_t> other_indices;
