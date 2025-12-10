@@ -30,6 +30,7 @@
 #include "utils/csv_loader.hpp"
 #include "python_batch_inference.hpp"
 #include "ai/solver/lethal_solver.hpp"
+#include "ai/evolution/deck_evolution.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -712,14 +713,17 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("get_reveal_weight", &ParametricBelief::get_reveal_weight);
 
     py::class_<CardStats>(m, "CardStats")
+        .def(py::init<>()) // Add default constructor
         .def_readwrite("play_count", &CardStats::play_count)
         .def_readwrite("win_count", &CardStats::win_count)
+        .def_readwrite("mana_source_count", &CardStats::mana_source_count)
         .def_readwrite("sum_cost_discount", &CardStats::sum_cost_discount)
         .def_readwrite("sum_early_usage", &CardStats::sum_early_usage)
         .def_readwrite("sum_win_contribution", &CardStats::sum_win_contribution)
         .def("__getitem__", [](const CardStats& cs, const std::string& key) {
             if (key == "play_count") return py::cast(cs.play_count);
             if (key == "win_count") return py::cast(cs.win_count);
+            if (key == "mana_source_count") return py::cast(cs.mana_source_count);
             if (key == "sum_cost_discount") return py::cast(cs.sum_cost_discount);
             if (key == "sum_early_usage") return py::cast(cs.sum_early_usage);
             if (key == "sum_win_contribution") return py::cast(cs.sum_win_contribution);
@@ -784,6 +788,22 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
+
+    py::class_<DeckEvolution>(m, "DeckEvolution")
+        .def(py::init<>())
+        .def_readwrite("active_use_score", &DeckEvolution::active_use_score)
+        .def_readwrite("resource_use_score", &DeckEvolution::resource_use_score)
+        .def_readwrite("win_contribution_weight", &DeckEvolution::win_contribution_weight)
+        .def("calculate_score", &DeckEvolution::calculate_score)
+        .def("evolve_deck", [](DeckEvolution& self,
+                               const std::vector<dm::core::CardID>& current_deck,
+                               const std::map<dm::core::CardID, dm::core::CardStats>& card_stats,
+                               const std::vector<dm::core::CardID>& candidate_pool,
+                               const std::vector<dm::core::CardID>& fixed_cards,
+                               int num_changes) {
+            std::mt19937 rng(std::random_device{}());
+            return self.evolve_deck(current_deck, card_stats, candidate_pool, fixed_cards, num_changes, rng);
+        });
 
     m.def("initialize_card_stats", [](GameState& state, const std::map<CardID, CardDefinition>& db, int deck_size) {
         state.initialize_card_stats(db, deck_size);
