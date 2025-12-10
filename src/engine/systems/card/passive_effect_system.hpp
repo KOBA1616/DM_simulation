@@ -49,6 +49,24 @@ namespace dm::engine {
                         }
                     }
                 }
+                // Lock Spells by Cost
+                if (restriction_type == dm::core::PassiveType::LOCK_SPELL_BY_COST && eff.type == dm::core::PassiveType::LOCK_SPELL_BY_COST) {
+                     // Check if card matches filter (e.g. CardType SPELL)
+                     if (card_db.count(card.card_id)) {
+                        const auto& def = card_db.at(card.card_id);
+                        // Also check cost
+                        if (def.cost == eff.value) {
+                             // Check filter for controller etc.
+                             dm::core::PlayerID controller = 0;
+                            if (card.instance_id < (int)game_state.card_owner_map.size()) {
+                                controller = game_state.card_owner_map[card.instance_id];
+                            }
+                            if (TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, controller)) {
+                                return true;
+                            }
+                        }
+                     }
+                }
             }
             return false;
         }

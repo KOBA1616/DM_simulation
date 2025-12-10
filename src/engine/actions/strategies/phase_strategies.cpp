@@ -46,6 +46,10 @@ namespace dm::engine {
                     if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_USE_SPELLS, card_db)) {
                         spell_restricted = true;
                     }
+                    // Lock by Cost check
+                    if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::LOCK_SPELL_BY_COST, card_db)) {
+                        spell_restricted = true;
+                    }
                 }
 
                 // 1. Standard Play (Creature side if Twinpact)
@@ -63,6 +67,9 @@ namespace dm::engine {
                     const auto& spell_def = *def.spell_side;
                     bool side_restricted = false;
                     if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_USE_SPELLS, card_db)) {
+                        side_restricted = true;
+                    }
+                    if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::LOCK_SPELL_BY_COST, card_db)) {
                         side_restricted = true;
                     }
 
