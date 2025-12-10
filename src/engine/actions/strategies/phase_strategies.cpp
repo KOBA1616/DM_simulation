@@ -129,7 +129,11 @@ namespace dm::engine {
                 if (card.summoning_sickness) {
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
-                        if (!def.keywords.speed_attacker && !def.keywords.evolution) {
+                        bool has_sa = TargetUtils::has_keyword_simple(game_state, card, def, "SPEED_ATTACKER");
+                        bool is_evo = TargetUtils::has_keyword_simple(game_state, card, def, "EVOLUTION"); // EVOLUTION is a keyword? Or Type? Or Prop?
+                        // EVOLUTION as keyword flag in CardKeywords is true.
+
+                        if (!has_sa && !is_evo) {
                             can_attack = false;
                         }
                     } else {
@@ -197,7 +201,7 @@ namespace dm::engine {
             if (!card.is_tapped) {
                 if (card_db.count(card.card_id)) {
                     const auto& def = card_db.at(card.card_id);
-                    if (def.keywords.blocker) {
+                    if (TargetUtils::has_keyword_simple(game_state, card, def, "BLOCKER")) {
                         // Step 3-4: CANNOT_BLOCK check
                         if (!PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_BLOCK, card_db)) {
                             Action block;
