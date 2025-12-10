@@ -17,6 +17,8 @@
 #include "ai/scenario/scenario_executor.hpp"
 #include "ai/self_play/parallel_runner.hpp"
 #include "ai/evaluator/beam_search_evaluator.hpp"
+#include "ai/evaluator/heuristic_evaluator.hpp"
+#include "ai/mcts/mcts.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include "ai/encoders/tensor_converter.hpp"
 #include "ai/pomdp/pomdp.hpp"
@@ -669,7 +671,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
               py::arg("temperature") = 1.0f,
               py::arg("add_noise") = true,
               py::arg("num_threads") = 4,
-              py::arg("alpha") = 0.0f)
+              py::arg("alpha") = 0.0f,
+              py::arg("collect_data") = true,
+              py::call_guard<py::gil_scoped_release>())
          .def("run_pimc_search", &ParallelRunner::run_pimc_search,
               py::arg("observation"),
               py::arg("observer_id"),
@@ -741,9 +745,39 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("spells_cast_this_turn", &TurnStats::spells_cast_this_turn)
         .def_readwrite("attacks_declared_this_turn", &TurnStats::attacks_declared_this_turn);
 
+    py::class_<HeuristicEvaluator>(m, "HeuristicEvaluator")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("evaluate", &HeuristicEvaluator::evaluate);
+
     py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def("evaluate", &NeuralEvaluator::evaluate);
+
+    /*
+    // MCTS Node Exposure for visualization
+    // Specify no copyable and holding via unique_ptr is default but we want to avoid copy construction attempts
+    py::class_<MCTSNode>(m, "MCTSNode")
+        .def_readonly("visit_count", &MCTSNode::visit_count)
+        .def_readonly("action", &MCTSNode::action_from_parent) // Exposed as 'action'
+        .def_property_readonly("value", &MCTSNode::value);
+    */
+
+    py::class_<MCTS>(m, "MCTS")
+        .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int, float>(),
+             py::arg("card_db"), py::arg("c_puct")=1.0f, py::arg("dirichlet_alpha")=0.3f,
+             py::arg("dirichlet_epsilon")=0.25f, py::arg("batch_size")=1, py::arg("alpha")=0.0f)
+        .def("search", &MCTS::search,
+             py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"),
+             py::arg("add_noise")=true, py::arg("temperature")=1.0f,
+             py::call_guard<py::gil_scoped_release>());
+        /*
+        .def("get_last_root", [](MCTS& m) -> MCTSNode* {
+             // Accessing private member requiring modification of MCTS class or friend
+             // Since we can't easily modify private access without file edit,
+             // let's assume we will add get_last_root() to MCTS class.
+             return m.get_last_root();
+        }, py::return_value_policy::reference);
+        */
 
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
