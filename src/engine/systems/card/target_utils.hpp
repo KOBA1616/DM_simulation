@@ -20,7 +20,8 @@ namespace dm::engine {
                                     const dm::core::FilterDef& filter,
                                     const dm::core::GameState& game_state,
                                     dm::core::PlayerID source_controller,
-                                    dm::core::PlayerID card_controller) {
+                                    dm::core::PlayerID card_controller,
+                                    bool ignore_passives = false) {
 
             using Props = CardProperties<CardType>;
 
@@ -71,14 +72,20 @@ namespace dm::engine {
                 if (is_evo != filter.is_evolution.value()) return false;
             }
             if (filter.is_blocker.has_value()) {
-                bool is_blocker = Props::is_blocker(card_def);
+                // Use state-aware check if possible
+                bool is_blocker = false;
+                if (!ignore_passives) {
+                    is_blocker = has_keyword_simple(game_state, card, card_def, "BLOCKER");
+                } else {
+                    is_blocker = Props::has_keyword_intrinsic(card_def, "BLOCKER");
+                }
                 if (is_blocker != filter.is_blocker.value()) return false;
             }
 
             // 8. Composite AND Conditions (Step 3-2)
             if (!filter.and_conditions.empty()) {
                 for (const auto& sub_filter : filter.and_conditions) {
-                    if (!is_valid_target(card, card_def, sub_filter, game_state, source_controller, card_controller)) {
+                    if (!is_valid_target(card, card_def, sub_filter, game_state, source_controller, card_controller, ignore_passives)) {
                         return false;
                     }
                 }
@@ -88,17 +95,55 @@ namespace dm::engine {
         }
 
         // Helper to check Just Diver status specifically
-        // Returns true if the card is currently protected by Just Diver
         static bool is_protected_by_just_diver(const dm::core::CardInstance& card,
                                                const dm::core::CardDefinition& def,
                                                const dm::core::GameState& game_state,
                                                dm::core::PlayerID opponent_id) { // opponent_id is who is trying to target
-             (void)opponent_id; // Unused parameter fix
+             (void)opponent_id;
              if (!def.keywords.just_diver) return false;
-
-               return game_state.turn_number == card.turn_played;
+             return game_state.turn_number == card.turn_played;
         }
 
+        // NEW: Check for keywords including Passive Effects
+        template<typename CardType>
+        static bool has_keyword_simple(const dm::core::GameState& state,
+                                       const dm::core::CardInstance& instance,
+                                       const CardType& def,
+                                       const std::string& keyword) {
+             using Props = CardProperties<CardType>;
+             // 1. Intrinsic
+             if (Props::has_keyword_intrinsic(def, keyword)) return true;
+
+             // 2. Passives
+             // We implement a simplified filter check here to avoid recursion
+             for (const auto& passive : state.passive_effects) {
+                 bool match_type = false;
+                 if (passive.type == dm::core::PassiveType::KEYWORD_GRANT && passive.str_value == keyword) match_type = true;
+                 else if (passive.type == dm::core::PassiveType::BLOCKER_GRANT && keyword == "BLOCKER") match_type = true;
+                 else if (passive.type == dm::core::PassiveType::SPEED_ATTACKER_GRANT && keyword == "SPEED_ATTACKER") match_type = true;
+                 else if (passive.type == dm::core::PassiveType::SLAYER_GRANT && keyword == "SLAYER") match_type = true;
+
+                 if (match_type) {
+                     // Check target filter WITHOUT checking keywords recursively
+                     // We use is_valid_target but we rely on the fact that GRANT_KEYWORD usually
+                     // doesn't filter on the keyword it grants (circular).
+                     // But if it filters on *other* keywords, we recurse.
+                     // To be safe, we might want to pass a flag "ignore_passives" to is_valid_target?
+                     // For now, assume standard usage.
+
+                     // Need controllers
+                     dm::core::PlayerID card_owner = 0;
+                     if (instance.instance_id < (int)state.card_owner_map.size())
+                         card_owner = state.card_owner_map[instance.instance_id];
+
+                     // Avoid recursion: ignore_passives = true
+                     if (is_valid_target(instance, def, passive.target_filter, state, passive.controller, card_owner, true)) {
+                         return true;
+                     }
+                 }
+             }
+             return false;
+        }
     };
 
     // Specializations
@@ -134,6 +179,14 @@ namespace dm::engine {
         static bool is_blocker(const dm::core::CardDefinition& c) {
             return c.keywords.blocker;
         }
+        static bool has_keyword_intrinsic(const dm::core::CardDefinition& c, const std::string& k) {
+            if (k == "BLOCKER") return c.keywords.blocker;
+            if (k == "SPEED_ATTACKER") return c.keywords.speed_attacker;
+            if (k == "SLAYER") return c.keywords.slayer;
+            if (k == "POWER_ATTACKER") return c.keywords.power_attacker;
+            if (k == "MACH_FIGHTER") return c.keywords.mach_fighter;
+            return false;
+        }
     };
 
     template<>
@@ -154,7 +207,11 @@ namespace dm::engine {
             return c.type == "EVOLUTION_CREATURE";
         }
         static bool is_blocker(const dm::core::CardData& /*c*/) {
-            return false; // Not easily checking keywords here
+            return false;
+        }
+        static bool has_keyword_intrinsic(const dm::core::CardData& c, const std::string& k) {
+             if (c.keywords.has_value() && c.keywords->count(k)) return true;
+             return false;
         }
     };
 
