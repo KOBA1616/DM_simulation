@@ -152,6 +152,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SEND_SHIELD_TO_GRAVE", EffectActionType::SEND_SHIELD_TO_GRAVE)
         .value("SEND_TO_DECK_BOTTOM", EffectActionType::SEND_TO_DECK_BOTTOM)
         .value("MOVE_TO_UNDER_CARD", EffectActionType::MOVE_TO_UNDER_CARD)
+        .value("GRANT_KEYWORD", EffectActionType::GRANT_KEYWORD)
         .value("NONE", EffectActionType::NONE)
         .export_values();
 

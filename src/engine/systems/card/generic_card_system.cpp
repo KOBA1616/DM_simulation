@@ -19,6 +19,7 @@
 #include "handlers/reveal_handler.hpp"
 #include "handlers/select_number_handler.hpp"
 #include "handlers/friend_burst_handler.hpp"
+#include "handlers/grant_keyword_handler.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -78,6 +79,7 @@ namespace dm::engine {
         sys.register_handler(EffectActionType::REVEAL_CARDS, std::make_unique<RevealHandler>());
         sys.register_handler(EffectActionType::SELECT_NUMBER, std::make_unique<SelectNumberHandler>());
         sys.register_handler(EffectActionType::FRIEND_BURST, std::make_unique<FriendBurstHandler>());
+        sys.register_handler(EffectActionType::GRANT_KEYWORD, std::make_unique<GrantKeywordHandler>());
         _handlers_registered = true;
     }
 
