@@ -1,16 +1,14 @@
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QLineEdit, QComboBox, QSpinBox,
     QCheckBox, QLabel, QGridLayout, QGroupBox, QPushButton,
-    QVBoxLayout, QScrollArea, QTextEdit
+    QVBoxLayout, QScrollArea
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
-from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
-# Simplified Spell Side Editor Widget (Sub-form)
 class SpellSideWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -32,8 +30,6 @@ class SpellSideWidget(QWidget):
         self.cost_spin.setRange(0, 99)
         layout.addRow(tr("Cost"), self.cost_spin)
 
-        # Note: Effects for spell side should be added in the tree view
-        # We might need a way to indicate that an effect belongs to the spell side
         self.info_label = QLabel(tr("Effects for Spell side are managed in the tree."))
         layout.addRow(self.info_label)
 
@@ -46,9 +42,6 @@ class CardEditForm(BaseEditForm):
         self.setup_ui()
 
     def setup_ui(self):
-        # Main layout is a vertical splitter? Or just VBox?
-        # Requirement: "Enable registering/editing Twinpact cards intuitively... split the editor screen"
-
         main_layout = QVBoxLayout(self)
 
         self.scroll_area = QScrollArea()
@@ -84,18 +77,22 @@ class CardEditForm(BaseEditForm):
         self.populate_combo(self.type_combo, types, data_func=lambda x: x)
         self.form_layout.addRow(tr("Type"), self.type_combo)
 
-        # Cost & Power
+        # Cost
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
         self.form_layout.addRow(tr("Cost"), self.cost_spin)
 
+        # Power (with explicit label for visibility toggling)
         self.power_spin = QSpinBox()
         self.power_spin.setRange(0, 99999)
         self.power_spin.setSingleStep(500)
-        self.form_layout.addRow(tr("Power"), self.power_spin)
+        self.lbl_power = QLabel(tr("Power"))
+        self.form_layout.addRow(self.lbl_power, self.power_spin)
 
+        # Races (with explicit label for potential future toggling)
         self.races_edit = QLineEdit()
-        self.form_layout.addRow(tr("Races"), self.races_edit)
+        self.lbl_races = QLabel(tr("Races"))
+        self.form_layout.addRow(self.lbl_races, self.races_edit)
 
         # Spell Side Widget (Hidden by default)
         self.spell_widget = SpellSideWidget()
@@ -167,15 +164,6 @@ class CardEditForm(BaseEditForm):
 
         self.form_layout.addRow(ai_group)
 
-        # Text Preview Section
-        preview_group = QGroupBox(tr("Generated Text Preview"))
-        preview_layout = QVBoxLayout(preview_group)
-        self.text_preview = QTextEdit()
-        self.text_preview.setReadOnly(True)
-        self.text_preview.setMaximumHeight(150)
-        preview_layout.addWidget(self.text_preview)
-        self.form_layout.addRow(preview_group)
-
         # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
@@ -187,7 +175,6 @@ class CardEditForm(BaseEditForm):
     def toggle_twinpact(self, state):
         self.is_twinpact = (state == Qt.CheckState.Checked.value or state == True)
         self.spell_widget.setVisible(self.is_twinpact)
-        # Force update logic for spell side initialization if needed
         if self.is_twinpact and not self.spell_side_data:
             self.spell_side_data = {
                 'name': '',
@@ -200,17 +187,11 @@ class CardEditForm(BaseEditForm):
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
-        # Generate text preview
-        text = CardTextGenerator.generate_text(data)
-        self.text_preview.setText(text)
-
         self.id_spin.setValue(data.get('id', 0))
 
-        # Name handling for Twinpact
         name = data.get('name', '')
         self.name_edit.setText(name)
 
-        # Load Civilization(s)
         civs = data.get('civilizations')
         if not civs:
             civ_single = data.get('civilization')
@@ -218,13 +199,14 @@ class CardEditForm(BaseEditForm):
                 civs = [civ_single]
         self.civ_selector.set_selected_civs(civs)
 
-        self.set_combo_by_data(self.type_combo, data.get('type', 'CREATURE'))
+        current_type = data.get('type', 'CREATURE')
+        self.set_combo_by_data(self.type_combo, current_type)
+        self.update_type_visibility(current_type)
 
         self.cost_spin.setValue(data.get('cost', 0))
         self.power_spin.setValue(data.get('power', 0))
         self.races_edit.setText(", ".join(data.get('races', [])))
 
-        # Twinpact handling
         self.spell_side_data = data.get('spell_side')
         if self.spell_side_data:
             self.twinpact_check.setChecked(True)
@@ -235,25 +217,22 @@ class CardEditForm(BaseEditForm):
             self.spell_widget.name_edit.clear()
             self.spell_widget.cost_spin.setValue(0)
 
-        # Load Keywords
         kw_data = data.get('keywords', {})
         for k, cb in self.keyword_checks.items():
             is_checked = kw_data.get(k, False)
             cb.setChecked(is_checked)
 
-        # Load AI Data
         self.is_key_card_check.setChecked(data.get('is_key_card', False))
         self.ai_importance_spin.setValue(data.get('ai_importance_score', 0))
 
+    def update_type_visibility(self, type_str):
+        # Hide Power if Spell
+        is_spell = (type_str == "SPELL")
+        self.power_spin.setVisible(not is_spell)
+        self.lbl_power.setVisible(not is_spell)
+
     def _save_data(self, data):
         data['id'] = self.id_spin.value()
-
-        # Sync name logic: if Twinpact, combine names?
-        # Requirement: "Card name split by / should be reflected"
-        # However, for editing, we might want separate fields, but save combined?
-        # Let's keep `name` as the primary card name.
-        # Ideally, `name` = "Creature / Spell"
-
         creature_name = self.name_edit.text()
         data['name'] = creature_name
 
@@ -261,7 +240,10 @@ class CardEditForm(BaseEditForm):
         if 'civilization' in data:
             del data['civilization']
 
-        data['type'] = self.type_combo.currentData()
+        type_str = self.type_combo.currentData()
+        data['type'] = type_str
+        self.update_type_visibility(type_str)
+
         data['cost'] = self.cost_spin.value()
         data['power'] = self.power_spin.value()
         races_str = self.races_edit.text()
@@ -269,50 +251,31 @@ class CardEditForm(BaseEditForm):
 
         if self.twinpact_check.isChecked():
             spell_name = self.spell_widget.name_edit.text()
-            # Construct combined name if needed, but Engine handles separate names in spell_side
             if spell_name:
-                 # Update spell side data
                  if not self.spell_side_data:
                      self.spell_side_data = {'type': 'SPELL', 'effects': []}
-
                  self.spell_side_data['name'] = spell_name
                  self.spell_side_data['cost'] = self.spell_widget.cost_spin.value()
                  self.spell_side_data['type'] = 'SPELL'
-                 # Copy civilizations from parent? Twinpacts usually share civs.
                  self.spell_side_data['civilizations'] = data['civilizations']
-
                  data['spell_side'] = self.spell_side_data
-
-                 # Optional: Update main name to "Creature / Spell" for display
-                 if "/" not in creature_name:
-                     data['name'] = f"{creature_name} / {spell_name}"
             else:
-                 # If empty spell name, maybe warn?
                  pass
         else:
             if 'spell_side' in data:
                 del data['spell_side']
             self.spell_side_data = None
-
-            # Clean up name if it contains /
             if "/" in creature_name:
                 data['name'] = creature_name.split("/")[0].strip()
 
-        # Update Keywords
         kw_data = {}
         for k, cb in self.keyword_checks.items():
             if cb.isChecked():
                 kw_data[k] = True
         data['keywords'] = kw_data
 
-        # Save AI Data
         data['is_key_card'] = self.is_key_card_check.isChecked()
         data['ai_importance_score'] = self.ai_importance_spin.value()
-
-        # Update text preview (using current state)
-        # Note: 'data' is modified in place, so we can use it directly
-        text = CardTextGenerator.generate_text(data)
-        self.text_preview.setText(text)
 
     def _get_display_text(self, data):
         return f"{data.get('id', 0)} - {data.get('name', '')}"
