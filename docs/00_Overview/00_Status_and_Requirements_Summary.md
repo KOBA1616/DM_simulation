@@ -114,7 +114,7 @@ AIが「見えない領域（相手の手札、シールド、山札）」を確
     *   **目的**: 固定デッキでの対戦だけでなく、環境に合わせてデッキ内容を微修正する。
     *   **実装計画**:
         *   カードごとの「勝率貢献度（Win Contribution）」を算出し、貢献度の低いカードを候補プール（`candidate_pool`）のカードと入れ替える遺伝的アルゴリズムを実装。
-        *   **C++化による高速化**: `DeckEvolution` クラスおよび `calculate_interaction_score` ロジックを `src/ai/evolution/` (C++) に移植し、`dm_ai_module` から高速に呼び出せるようにする。
+        *   **C++化による高速化** [Done/Verified]: `DeckEvolution` クラスおよび `calculate_interaction_score` ロジックを `src/ai/evolution/` (C++) に移植し、`dm_ai_module` から高速に呼び出せるようにする。
 
 ### 3.3 [Priority: Future] Phase 4: アーキテクチャ刷新 (Architecture Update)
 
