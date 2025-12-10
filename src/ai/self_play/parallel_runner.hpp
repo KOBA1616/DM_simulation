@@ -41,7 +41,8 @@ namespace dm::ai {
             float temperature = 1.0f,
             bool add_noise = true,
             int num_threads = 4,
-            float alpha = 0.0f
+            float alpha = 0.0f,
+            bool collect_data = true
         );
 
         // Run PIMC Search
