@@ -409,6 +409,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("summoning_sickness", &CardInstance::summoning_sickness)
         .def_readwrite("is_face_down", &CardInstance::is_face_down)
         .def_readwrite("turn_played", &CardInstance::turn_played)
+        .def_readwrite("owner", &CardInstance::owner)
         .def_readwrite("underlying_cards", &CardInstance::underlying_cards);
 
     py::class_<Player>(m, "Player")
@@ -559,7 +560,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<PhaseManager>(m, "PhaseManager")
         .def_static("start_game", &PhaseManager::start_game)
         .def_static("start_turn", &PhaseManager::start_turn)
-        .def_static("next_phase", &PhaseManager::next_phase);
+        .def_static("next_phase", &PhaseManager::next_phase)
+        .def_static("check_game_over", &PhaseManager::check_game_over);
 
     py::class_<ActionGenerator>(m, "ActionGenerator")
         .def_static("generate_legal_actions", &ActionGenerator::generate_legal_actions);

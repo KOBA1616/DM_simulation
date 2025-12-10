@@ -49,15 +49,15 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 
 1.  **基盤リファクタリング (Fundamental Refactoring)**
     *   **UTF-8 統一**: ソースコードおよびドキュメントのエンコーディングをUTF-8に統一し、Shift-JIS環境依存を解消します。
-    *   **テストディレクトリ再編**: `tests/python/` と `python/tests/` の重複を解消し、`tests/` 配下に `python` および `cpp` 用ディレクトリを整理します。
+    *   **テストディレクトリ再編 (Done)**: `src/main_test.cpp` を `tests/cpp/` に移動し、`tests/python/` との役割分担を明確化しました。
     *   **パッケージ構造**: `dm_toolkit` をトップレベルパッケージとして確立し、関連するインポートやパス設定を修正します。
-    *   **CardInstance構造改善**: `src/core/types.hpp` の `CardInstance` 構造体に `owner` (PlayerID) フィールドを追加します。現状の `GameState.card_owner_map` への依存を減らし、可読性とテスト容易性を向上させます。
+    *   **CardInstance構造改善 (Done)**: `src/core/game_state.hpp` の `CardInstance` 構造体に `owner` (PlayerID) フィールドを追加し、Pythonバインディングからもアクセス可能にしました。
     *   **GUIシミュレーション統合**: GUIの「バッチシミュレーション」機能を `ParallelRunner` バックエンド利用に統一し、コード重複の排除と高速化を図ります。
 
 2.  **重要バグ修正 (Critical Bug Fixes)**
     *   **GUI安定化 (Done)**: `MCTS` クラスの Python バインディングに `search` メソッドを露出し、GUI からの呼び出しエラーを修正しました。
     *   **ParallelRunner メモリリーク (Done)**: `collect_data` フラグを導入し、検証実行時に膨大なゲーム状態を保持しないように修正しました。
-    *   **PhaseManagerバインディング修正 (New)**: `AttributeError: type object 'dm_ai_module.PhaseManager' has no attribute 'check_game_over'` エラーに対処するため、バインディング定義を修正します。
+    *   **PhaseManagerバインディング修正 (Done)**: `dm_ai_module.PhaseManager` に `check_game_over` メソッドをバインディングし、`AttributeError` を解消しました。
 
 3.  **機能改善・拡張 (Feature Improvements)**
     *   **新規能力実装 (Done)**: 「数字を宣言し、そのコストの呪文を唱えられなくする」ロック効果 (`LOCK_SPELL_BY_COST`) をエンジンに実装しました。
