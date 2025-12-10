@@ -1,4 +1,0 @@
-[
-  { "step": 0, "players": [ { "hand": [], "deck": [], "battle_zone": [], "shield_zone": [], "graveyard": [] }, { "hand": [], "deck": [], "battle_zone": [], "shield_zone": [], "graveyard": [] } ] },
-  { "step": 1, "players": [ { "hand": [], "deck": [ {"card_id": 5, "instance_id": 201} ], "battle_zone": [], "shield_zone": [], "graveyard": [] }, { "hand": [], "deck": [], "battle_zone": [ {"card_id": 5, "instance_id": 201} ], "shield_zone": [], "graveyard": [] } ] }
-]

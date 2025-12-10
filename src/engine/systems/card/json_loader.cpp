@@ -73,6 +73,7 @@ namespace dm::engine {
             if (kws.count("just_diver") && kws.at("just_diver")) def.keywords.just_diver = true;
             if (kws.count("shield_burn") && kws.at("shield_burn")) def.keywords.shield_burn = true;
             if (kws.count("untap_in") && kws.at("untap_in")) def.keywords.untap_in = true;
+            if (kws.count("unblockable") && kws.at("unblockable")) def.keywords.unblockable = true;
             // Add other keywords as needed
         }
 
@@ -103,6 +104,7 @@ namespace dm::engine {
                     if (action.str_val == "HYPER_ENERGY") def.keywords.hyper_energy = true;
                     if (action.str_val == "META_COUNTER") def.keywords.meta_counter_play = true;
                     if (action.str_val == "SHIELD_BURN") def.keywords.shield_burn = true;
+                    if (action.str_val == "UNBLOCKABLE") def.keywords.unblockable = true;
                 }
             }
         }
