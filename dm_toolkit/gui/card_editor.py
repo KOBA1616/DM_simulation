@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
+from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
 from dm_toolkit.gui.localization import tr
 
 class CardEditor(QMainWindow):
@@ -14,7 +15,7 @@ class CardEditor(QMainWindow):
         super().__init__()
         self.json_path = json_path
         self.setWindowTitle(tr("Card Editor Ver 2.0"))
-        self.resize(1200, 800)
+        self.resize(1400, 800) # Increased width for 3 panes
 
         self.cards_data = []
         self.init_ui()
@@ -45,21 +46,40 @@ class CardEditor(QMainWindow):
         del_act.triggered.connect(self.delete_item)
         toolbar.addAction(del_act)
 
-        # Splitter Layout
+        # Splitter Layout (3 Panes)
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
 
+        # Pane 1: Logic Tree
         self.tree_widget = LogicTreeWidget()
+
+        # Pane 2: Property Inspector
         self.inspector = PropertyInspector()
+
+        # Pane 3: Card Preview
+        self.preview_widget = CardPreviewWidget()
 
         self.splitter.addWidget(self.tree_widget)
         self.splitter.addWidget(self.inspector)
-        self.splitter.setStretchFactor(0, 1)
-        self.splitter.setStretchFactor(1, 2)
+        self.splitter.addWidget(self.preview_widget)
+
+        # Adjust stretch factors
+        self.splitter.setStretchFactor(0, 1) # Tree
+        self.splitter.setStretchFactor(1, 2) # Inspector
+        self.splitter.setStretchFactor(2, 1) # Preview
 
         self.setCentralWidget(self.splitter)
 
         # Signals
         self.tree_widget.selectionModel().selectionChanged.connect(self.on_selection_changed)
+
+        # Connect Data Changes from Inspector to Preview
+        # We need a way to bubble up data changes.
+        # PropertyInspector should probably emit a signal when its active form changes data.
+        # But PropertyInspector holds forms, forms emit dataChanged.
+        # Let's inspect inspector.
+        self.inspector.card_form.dataChanged.connect(self.on_data_changed)
+        self.inspector.effect_form.dataChanged.connect(self.on_data_changed)
+        self.inspector.action_form.dataChanged.connect(self.on_data_changed)
 
     def load_data(self):
         if os.path.exists(self.json_path):
@@ -88,14 +108,26 @@ class CardEditor(QMainWindow):
         if indexes:
             index = indexes[0]
             self.inspector.set_selection(index)
-            # Auto-expand if it's a card and not already expanded
+
+            # Update Preview
             item = self.tree_widget.model.itemFromIndex(index)
+            self.preview_widget.update_preview(item)
+
+            # Auto-expand if it's a card and not already expanded
             if item:
                 type_ = item.data(Qt.ItemDataRole.UserRole + 1)
                 if type_ == "CARD":
                     self.tree_widget.expand(index)
         else:
             self.inspector.set_selection(None)
+            self.preview_widget.update_preview(None)
+
+    def on_data_changed(self):
+        # Refresh preview based on current selection
+        idx = self.tree_widget.currentIndex()
+        if idx.isValid():
+            item = self.tree_widget.model.itemFromIndex(idx)
+            self.preview_widget.update_preview(item)
 
     def new_card(self):
         self.tree_widget.add_new_card()
@@ -107,8 +139,6 @@ class CardEditor(QMainWindow):
         item = self.tree_widget.model.itemFromIndex(idx)
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
         
-        # If Card selected, add Effect
-        # If Effect selected, add Sibling Effect (or nothing?) -> Let's support adding child to Card
         target_item = None
         if type_ == "CARD":
             target_item = item
