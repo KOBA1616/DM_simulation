@@ -670,6 +670,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
               py::arg("add_noise") = true,
               py::arg("num_threads") = 4,
               py::arg("alpha") = 0.0f)
+         .def("run_pimc_search", &ParallelRunner::run_pimc_search,
+              py::arg("observation"),
+              py::arg("observer_id"),
+              py::arg("opponent_deck_candidates"),
+              py::arg("evaluator"),
+              py::arg("num_threads") = 4,
+              py::arg("temperature") = 0.0f)
          .def("play_scenario_match", &ParallelRunner::play_scenario_match)
          .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
 
