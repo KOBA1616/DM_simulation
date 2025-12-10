@@ -588,7 +588,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
             GenericCardSystem::resolve_trigger(state, trigger, source_id, db);
         })
         .def_static("resolve_effect", [](GameState& state, const EffectDef& effect, int source_id) {
-            GenericCardSystem::resolve_effect(state, effect, source_id);
+            GenericCardSystem::resolve_effect(state, effect, source_id, CardRegistry::get_all_definitions());
         })
         .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& effect, int source_id, const std::map<CardID, CardDefinition>& db) {
             GenericCardSystem::resolve_effect(state, effect, source_id, db);
