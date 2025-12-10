@@ -75,14 +75,14 @@ def test_card_stats_tracking():
 
     # Execute action
     dm_ai_module.EffectResolver.resolve_action(state, play_action, card_db)
-    
+
     if play_action.type == ActionType.DECLARE_PLAY:
         # Step 2: PAY_COST
         actions = ActionGenerator.generate_legal_actions(state, card_db)
         pay_action = next((a for a in actions if a.type == ActionType.PAY_COST), None)
         if pay_action:
              dm_ai_module.EffectResolver.resolve_action(state, pay_action, card_db)
-             
+
         # Step 3: RESOLVE_PLAY
         actions = ActionGenerator.generate_legal_actions(state, card_db)
         resolve_action = next((a for a in actions if a.type == ActionType.RESOLVE_PLAY), None)
