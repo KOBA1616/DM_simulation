@@ -7,15 +7,6 @@ def test_trigger_stack_behavior():
     state = GameState(100)
     state.active_player_id = 0
 
-    # Create CardDefinition for testing
-    card_def = CardDefinition()
-    card_def.id = 100
-    card_def.name = "Trigger Creature"
-    card_def.cost = 5
-    card_def.civilization = Civilization.FIRE
-    card_def.power = 5000
-    card_def.keywords.cip = True
-
     import json
     card_json = {
         "id": 100,
@@ -37,9 +28,8 @@ def test_trigger_stack_behavior():
             }
         ]
     }
+    # Load into registry. New bindings ensure correct conversion to definitions.
     CardRegistry.load_from_json(json.dumps(card_json))
-
-    card_db = {100: card_def}
 
     # Add card to hand
     state.add_card_to_hand(0, 100, 1)
@@ -56,6 +46,32 @@ def test_trigger_stack_behavior():
     action.target_player = 0
 
     print("Resolving PLAY_CARD_INTERNAL action...")
+    # Using registry implicitly by passing empty db (if supported) or retrieving it.
+    # But wait, python binding for resolve_action requires db?
+    # No, I updated binding to default to Registry if omitted.
+    # BUT EffectResolver.resolve_action might not have the default bound or I need to check binding again.
+    # EffectResolver binding: .def_static("resolve_action", &EffectResolver::resolve_action);
+    # This takes 3 args: state, action, card_db.
+    # I did NOT update EffectResolver binding. I updated GenericCardSystem bindings.
+    # I should update EffectResolver binding too or pass Registry explicitly.
+    # Let's pass Registry explicitly.
+
+    # Wait, CardRegistry.get_all_definitions() is not bound to Python.
+    # But CardRegistry.get_all_cards() IS bound.
+    # Wait, EffectResolver expects map<CardID, CardDefinition>.
+    # CardRegistry.get_all_cards() returns map<int, CardData>.
+    # They are NOT compatible in Python either (unless pybind does magic conversion, which it likely doesn't for maps).
+
+    # So I cannot easily pass Registry to EffectResolver from Python if I don't bind get_all_definitions.
+    # AND if I don't bind it, I can't use it.
+
+    # However, GenericCardSystem.resolve_trigger fallback logic (which I added to C++) uses Registry internally.
+    # So if I pass an empty DB (or a dummy DB) to EffectResolver, it will call resolve_trigger.
+    # resolve_trigger will check DB, fail, and fallback to Registry.
+    # So this should work!
+
+    card_db = {}
+
     EffectResolver.resolve_action(state, action, card_db)
 
     # Check pending effects
@@ -72,7 +88,7 @@ def test_trigger_stack_behavior():
     resolve_action = Action()
     resolve_action.type = ActionType.RESOLVE_EFFECT
     resolve_action.target_player = 0
-    resolve_action.slot_index = 0 # Index in pending list (Correct field now exposed)
+    resolve_action.slot_index = 0
 
     EffectResolver.resolve_action(state, resolve_action, card_db)
 
