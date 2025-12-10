@@ -42,14 +42,18 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 開発効率と信頼性を向上させるため、以下の修正と機能拡張を最優先で実施します。
 
 1.  **基盤リファクタリング (Fundamental Refactoring)**
-    *   **文明データの型安全化 (Civilization Type Safety)**: 現在、文明データはJSON/Python層で文字列（"FIRE" 等）として扱われており、大文字・小文字の不一致による予期せぬバグ（ゼロ文明化）の原因となっています。データレイヤーにおいて文字列ではなくEnumまたは整数IDとして扱うようにリファクタリングを検討します。
-    *   **UTF-8 統一**: ソースコードおよびドキュメントのエンコーディングをUTF-8に統一し、Shift-JIS環境依存を解消します。
+    *   **文明データの型安全化 (Civilization Type Safety) [完了]**: `Civilization` をEnum化し、JSONローダーおよびPythonバインディングを更新。文字列による曖昧さを排除し、コンパイル時の型チェックを強化しました。
+    *   **UTF-8 統一 [完了]**: ソースコードのエンコーディングを確認・統一しました（現状、明示的なShift-JISファイルは検出されず）。
     *   **パッケージ構造**: `dm_toolkit` をトップレベルパッケージとして確立し、関連するインポートやパス設定を修正します。
     *   **GUIシミュレーション統合**: GUIの「バッチシミュレーション」機能を `ParallelRunner` バックエンド利用に統一し、コード重複の排除と高速化を図ります。
 
 2.  **重要バグ修正 (Critical Bug Fixes)**
-    *   **静的ライブラリ重複問題の解消**: `libdm_core.a` と `dm_ai_module.so` 間でのシングルトン（`CardRegistry`）の多重インスタンス化問題が確認されました。ビルド構成を見直し、実体が確実に一つになるように修正します。
-    *   **プロセス終了時のクラッシュ**: `pybind11` モジュール終了時のスレッド破棄に関連するクラッシュ（gilstate_tss_set error）の調査と修正を行います。
+    *   **静的ライブラリ重複問題の解消 [完了]**: CMake構成を修正し、`dm_core` を `OBJECT` ライブラリとしてビルドすることで、`dm_ai_module.so` へのリンク時のシングルトン重複問題を解消しました。
+    *   **プロセス終了時のクラッシュ [完了]**: `ParallelRunner` 等のスレッド終了処理を見直し、終了時のクラッシュ（gilstate_tss_set error）が解消されたことを確認しました。
+
+3.  **今後の課題 (Future Issues/Known Bugs)**
+    *   **ニンジャ・ストライクのテスト失敗 (Ninja Strike Test Failure)**: `test_ninja_strike.py` が失敗する状態（アクションが生成されない）。型安全化により顕在化したロジックまたはデータ設定の問題である可能性が高く、次回以降の優先調査対象とする。
+    *   **シールド探索のテスト失敗 (Search Shield Test Failure)**: `test_search_shield.py` が失敗する。
 
 ### 3.1 [Priority: High] Phase 4: アーキテクチャ刷新 (Architecture Update)
 

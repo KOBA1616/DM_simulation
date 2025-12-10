@@ -41,6 +41,16 @@ namespace dm::core {
         NONE
     };
 
+    NLOHMANN_JSON_SERIALIZE_ENUM(Civilization, {
+        {Civilization::NONE, "NONE"},
+        {Civilization::LIGHT, "LIGHT"},
+        {Civilization::WATER, "WATER"},
+        {Civilization::DARKNESS, "DARKNESS"},
+        {Civilization::FIRE, "FIRE"},
+        {Civilization::NATURE, "NATURE"},
+        {Civilization::ZERO, "ZERO"}
+    })
+
     enum class EffectActionType {
         DRAW_CARD,
         ADD_MANA,
@@ -86,7 +96,7 @@ namespace dm::core {
         std::optional<std::string> owner; // "SELF", "OPPONENT", "BOTH"
         std::vector<std::string> zones;   // "BATTLE_ZONE", "MANA_ZONE", "GRAVEYARD", "HAND", "DECK", "SHIELD_ZONE"
         std::vector<std::string> types;   // "CREATURE", "SPELL"
-        std::vector<std::string> civilizations;
+        std::vector<Civilization> civilizations;
         std::vector<std::string> races;
         std::optional<int> min_cost;
         std::optional<int> max_cost;
@@ -155,7 +165,7 @@ namespace dm::core {
         int id;
         std::string name;
         int cost;
-        std::vector<std::string> civilizations;
+        std::vector<Civilization> civilizations;
         int power;
         std::string type;
         std::vector<std::string> races;

@@ -155,16 +155,7 @@ namespace dm::engine {
             for (const auto& r : c.races) if (r == race) return true;
             return false;
         }
-        static bool match_civilization(const dm::core::CardDefinition& c, const std::string& civ_str) {
-            using namespace dm::core;
-            Civilization target_civ = Civilization::NONE;
-            if (civ_str == "FIRE") target_civ = Civilization::FIRE;
-            else if (civ_str == "WATER") target_civ = Civilization::WATER;
-            else if (civ_str == "NATURE") target_civ = Civilization::NATURE;
-            else if (civ_str == "LIGHT") target_civ = Civilization::LIGHT;
-            else if (civ_str == "DARKNESS") target_civ = Civilization::DARKNESS;
-            else if (civ_str == "ZERO") target_civ = Civilization::ZERO;
-
+        static bool match_civilization(const dm::core::CardDefinition& c, dm::core::Civilization target_civ) {
             return c.has_civilization(target_civ);
         }
         static bool match_type(const dm::core::CardDefinition& c, const std::string& type_str) {
@@ -197,8 +188,8 @@ namespace dm::engine {
             for (const auto& r : c.races) if (r == race) return true;
             return false;
         }
-        static bool match_civilization(const dm::core::CardData& c, const std::string& civ_str) {
-             return std::find(c.civilizations.begin(), c.civilizations.end(), civ_str) != c.civilizations.end();
+        static bool match_civilization(const dm::core::CardData& c, dm::core::Civilization target_civ) {
+             return std::find(c.civilizations.begin(), c.civilizations.end(), target_civ) != c.civilizations.end();
         }
         static bool match_type(const dm::core::CardData& c, const std::string& type_str) {
             return c.type == type_str;
