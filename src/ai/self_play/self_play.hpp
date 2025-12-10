@@ -28,7 +28,8 @@ namespace dm::ai {
             BatchEvaluatorCallback evaluator,
             float temperature = 1.0f,
             bool add_noise = true,
-            float alpha = 0.0f
+            float alpha = 0.0f,
+            bool collect_data = true
         );
 
     private:

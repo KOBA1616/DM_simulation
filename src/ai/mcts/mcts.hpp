@@ -73,6 +73,9 @@ namespace dm::ai {
         void add_exploration_noise(MCTSNode* node);
         void revert_virtual_loss(MCTSNode* node);
 
+        // Accessor for bindings
+        MCTSNode* get_last_root() { return last_root_.get(); }
+
         const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db_;
         float c_puct_;
         float dirichlet_alpha_;
