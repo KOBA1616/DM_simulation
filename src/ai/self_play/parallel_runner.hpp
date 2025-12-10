@@ -44,6 +44,17 @@ namespace dm::ai {
             float alpha = 0.0f
         );
 
+        // Run PIMC Search
+        // Aggregates MCTS search results from multiple determinized worlds.
+        std::vector<float> run_pimc_search(
+            const dm::core::GameState& observation,
+            dm::core::PlayerID observer_id,
+            const std::vector<dm::core::CardID>& opponent_deck_candidates,
+            BatchEvaluatorCallback evaluator,
+            int num_threads = 4,
+            float temperature = 0.0f
+        );
+
         // Run Scenario matches in parallel (Heuristic vs Heuristic)
         // Returns vector of winner IDs (0=Draw, 1=P1, 2=P2)
         std::vector<int> play_scenario_match(
