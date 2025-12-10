@@ -17,7 +17,7 @@ def test_variable_linking_count_cards():
     card_db = {}
 
     # Dummy Creature
-    creature_def = dm_ai_module.CardData(1, "Dummy Creature", 1, "Fire", 1000, "CREATURE", [], [])
+    creature_def = dm_ai_module.CardData(1, "Dummy Creature", 1, "FIRE", 1000, "CREATURE", [], [])
     dm_ai_module.register_card_data(creature_def)
 
     # Spell with Variable Effect
@@ -44,7 +44,7 @@ def test_variable_linking_count_cards():
 
     effect.actions = [act1, act2]
 
-    spell_def = dm_ai_module.CardData(2, "Variable Spell", 1, "Water", 0, "SPELL", [], [effect])
+    spell_def = dm_ai_module.CardData(2, "Variable Spell", 1, "WATER", 0, "SPELL", [], [effect])
     dm_ai_module.register_card_data(spell_def)
 
     # 3. Setup State
@@ -74,12 +74,12 @@ def test_variable_linking_get_stat():
 
     # Setup Mana Zone with different civs
     # Fire
-    c1 = dm_ai_module.CardData(10, "Fire Card", 1, "Fire", 1000, "CREATURE", [], [])
+    c1 = dm_ai_module.CardData(10, "Fire Card", 1, "FIRE", 1000, "CREATURE", [], [])
     dm_ai_module.register_card_data(c1)
     state.add_card_to_mana(0, 10, 200)
 
     # Water
-    c2 = dm_ai_module.CardData(11, "Water Card", 1, "Water", 1000, "CREATURE", [], [])
+    c2 = dm_ai_module.CardData(11, "Water Card", 1, "WATER", 1000, "CREATURE", [], [])
     dm_ai_module.register_card_data(c2)
     state.add_card_to_mana(0, 11, 201)
 
@@ -87,7 +87,7 @@ def test_variable_linking_get_stat():
     state.add_card_to_mana(0, 10, 202)
 
     # Nature
-    c3 = dm_ai_module.CardData(12, "Nature Card", 1, "Nature", 1000, "CREATURE", [], [])
+    c3 = dm_ai_module.CardData(12, "Nature Card", 1, "NATURE", 1000, "CREATURE", [], [])
     dm_ai_module.register_card_data(c3)
     state.add_card_to_mana(0, 12, 203)
 
