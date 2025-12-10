@@ -333,7 +333,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("zone", &ReactionAbility::zone)
         .def_readwrite("condition", &ReactionAbility::condition);
 
-    py::class_<CardDefinition>(m, "CardDefinition")
+    py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
         .def(py::init<>())
         // Add constructor matching test expectations: (id, name, civ, races, cost, power, keywords, effects)
            .def(py::init([](int id, std::string name, std::string civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, [[maybe_unused]] std::vector<EffectDef> effects) {
@@ -362,6 +362,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
         .def_readwrite("civilizations", &CardDefinition::civilizations)
         .def_readwrite("reaction_abilities", &CardDefinition::reaction_abilities)
+        .def_readwrite("spell_side", &CardDefinition::spell_side)
         .def_property("civilization",
              [](const CardDefinition& c) {
                  return c.civilizations.empty() ? Civilization::NONE : c.civilizations[0];
@@ -372,7 +373,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         )
         .def_readwrite("power_attacker_bonus", &CardDefinition::power_attacker_bonus);
 
-    py::class_<CardData>(m, "CardData")
+    py::class_<CardData, std::shared_ptr<CardData>>(m, "CardData")
         .def(py::init([](int id, std::string name, int cost, std::string civ, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects) {
              CardData d;
              d.id = id; d.name = name; d.cost = cost;
@@ -393,7 +394,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("keywords", &CardData::keywords)
         .def_readwrite("is_key_card", &CardData::is_key_card)
         .def_readwrite("ai_importance_score", &CardData::ai_importance_score)
-        .def_readwrite("reaction_abilities", &CardData::reaction_abilities);
+        .def_readwrite("reaction_abilities", &CardData::reaction_abilities)
+        .def_readwrite("spell_side", &CardData::spell_side);
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<>())
         .def(py::init<CardID, int>()) // Added constructor
