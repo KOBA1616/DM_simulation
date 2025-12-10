@@ -60,13 +60,16 @@ AIが「見えない領域（相手の手札、シールド、山札）」を確
 
 人間の介入なしに、AIが自らデッキを調整し、プレイスタイルを進化させる完全自動ループ（Population Based Training）を構築します。
 
-1.  **自動学習サイクル (The Automation Loop)**
+1.  **自動学習サイクル (The Automation Loop)** [実装完了 / Verified]
     *   **構成**: 以下の3プロセスを常時稼働させるスクリプト群を作成する。
-        *   **Collector**: 複数のエージェント（Population）同士でリーグ戦を行い、学習データと勝率データを生成。
-        *   **Trainer**: 最新のデータを用いてモデルを更新。
-        *   **Gatekeeper**: 新モデルが旧モデルに対して有意に強い（勝率55%以上等）場合のみ `production` モデルを更新。
+        *   **Collector**: `dm_toolkit/training/self_play.py` に `SelfPlayRunner` を実装。`ParallelRunner` を用いて自己対戦を行い、学習データ (`.npz`) を生成。
+        *   **Trainer**: `dm_toolkit/training/train_simple.py` をライブラリ化し、収集したデータを用いてモデルを更新。
+        *   **Gatekeeper**: `dm_toolkit/training/automation_loop.py` に統合。候補モデルと現行モデルの対戦を行い、勝率基準（55%）で更新を判定。
+    *   **ステータス**:
+        *   `dm_toolkit/training/automation_loop.py` にて完全自動ループを実装済み。
+        *   `GenerationManager` による世代・モデルファイル管理機構を実装済み。
 
-2.  **世代管理とストレージ戦略 (Generation Management)**
+2.  **世代管理とストレージ戦略 (Generation Management)** [実装完了 / Verified]
     *   **課題**: 無限に増える学習データとモデルによるディスク圧迫を防ぐ。
     *   **実装計画**:
         *   **階層化保存**:
@@ -74,6 +77,7 @@ AIが「見えない領域（相手の手札、シールド、山札）」を確
             *   `checkpoints/population/`: 進化中の個体群（数十個、成績下位は自動削除）。
             *   `checkpoints/hall_of_fame/`: 過去の節目（Gen 10, 50, 100...）のモデルを永久保存し、強さのベンチマークとして利用。
         *   **データ・プルーニング**: 古い `.npz` 学習データ（例: 50世代前）を自動削除するガベージコレクション機能を実装。
+    *   **ステータス**: `dm_toolkit/training/generation_manager.py` に実装済み。
 
 3.  **デッキ進化 (Deck Evolution)**
     *   **目的**: 固定デッキでの対戦だけでなく、環境に合わせてデッキ内容を微修正する。
