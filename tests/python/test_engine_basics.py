@@ -115,7 +115,7 @@ class TestEngineBasics:
                     break
             if pay_action:
                  dm_ai_module.EffectResolver.resolve_action(state, pay_action, self.card_db)
-            
+
             # Step 3: RESOLVE_PLAY
             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
             resolve_action = None
