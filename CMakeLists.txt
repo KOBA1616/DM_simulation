@@ -155,7 +155,7 @@ set_target_properties(dm_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Executable for C++ Testing/Validation (Phase 1 & 2)
 add_executable(dm_sim_test
-    src/main_test.cpp
+    tests/cpp/main_test.cpp
 )
 target_link_libraries(dm_sim_test PRIVATE dm_core)
 
