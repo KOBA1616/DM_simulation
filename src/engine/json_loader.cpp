@@ -40,10 +40,7 @@ namespace dm::engine {
         def.id = static_cast<CardID>(data.id);
         def.name = data.name;
 
-        def.civilizations.clear();
-        for (const auto& civ_str : data.civilizations) {
-            def.civilizations.push_back(JsonLoader::parse_civilization(civ_str));
-        }
+        def.civilizations = data.civilizations;
 
         def.type = JsonLoader::parse_card_type(data.type);
         def.cost = data.cost;
@@ -146,14 +143,16 @@ namespace dm::engine {
                 // Compatibility Hack: Allow 'civilization' (string) key if 'civilizations' is missing
                 if (item.contains("civilization") && !item.contains("civilizations")) {
                     json item_copy = item;
-                    std::string civ = item_copy["civilization"].get<std::string>();
-                    item_copy["civilizations"] = std::vector<std::string>{civ};
+                    std::string civ_str = item_copy["civilization"].get<std::string>();
+                    // Manually map legacy string to Enum because JSON parser expects Enum string in array
+                    // Actually, since we defined SERIALIZE_ENUM, passing the string "FIRE" in a vector ["FIRE"] works.
+                    item_copy["civilizations"] = std::vector<std::string>{civ_str};
                     item_copy.erase("civilization");
                     data = item_copy.get<CardData>();
                 } else if (item.contains("civilizations") && item["civilizations"].is_string()) {
                     json item_copy = item;
-                    std::string civ = item_copy["civilizations"].get<std::string>();
-                    item_copy["civilizations"] = std::vector<std::string>{civ};
+                    std::string civ_str = item_copy["civilizations"].get<std::string>();
+                    item_copy["civilizations"] = std::vector<std::string>{civ_str};
                     data = item_copy.get<CardData>();
                 } else {
                     data = item.get<CardData>();
