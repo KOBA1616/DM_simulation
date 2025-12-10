@@ -30,6 +30,7 @@
 #include "utils/csv_loader.hpp"
 #include "python_batch_inference.hpp"
 #include "ai/solver/lethal_solver.hpp"
+#include "ai/evolution/deck_evolution.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -784,6 +785,19 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
+
+    py::class_<DeckEvolutionConfig>(m, "DeckEvolutionConfig")
+        .def(py::init<>())
+        .def_readwrite("target_deck_size", &DeckEvolutionConfig::target_deck_size)
+        .def_readwrite("mutation_rate", &DeckEvolutionConfig::mutation_rate)
+        .def_readwrite("synergy_weight", &DeckEvolutionConfig::synergy_weight)
+        .def_readwrite("curve_weight", &DeckEvolutionConfig::curve_weight);
+
+    py::class_<DeckEvolution>(m, "DeckEvolution")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("evolve_deck", &DeckEvolution::evolve_deck)
+        .def("calculate_interaction_score", &DeckEvolution::calculate_interaction_score)
+        .def("get_candidates_by_civ", &DeckEvolution::get_candidates_by_civ);
 
     m.def("initialize_card_stats", [](GameState& state, const std::map<CardID, CardDefinition>& db, int deck_size) {
         state.initialize_card_stats(db, deck_size);

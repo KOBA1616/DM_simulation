@@ -132,6 +132,7 @@ set(SRC_AI
     src/ai/data_collection/data_collector.cpp
     src/ai/scenario/scenario_executor.cpp
     src/ai/solver/lethal_solver.cpp
+    src/ai/evolution/deck_evolution.cpp
     src/bindings/python_batch_inference.cpp
     src/ai/inference/pimc_generator.cpp
     # Optional neural evaluator / inference (guarded by USE_LIBTORCH)
