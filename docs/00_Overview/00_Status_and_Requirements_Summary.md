@@ -110,11 +110,12 @@ AIが「見えない領域（相手の手札、シールド、山札）」を確
         *   **データ・プルーニング**: 古い `.npz` 学習データ（例: 50世代前）を自動削除するガベージコレクション機能を実装。
     *   **ステータス**: `dm_toolkit/training/generation_manager.py` に実装済み。
 
-3.  **デッキ進化 (Deck Evolution)**
+    *   **デッキ進化 (Deck Evolution)** [Done]
     *   **目的**: 固定デッキでの対戦だけでなく、環境に合わせてデッキ内容を微修正する。
-    *   **実装計画**:
-        *   カードごとの「勝率貢献度（Win Contribution）」を算出し、貢献度の低いカードを候補プール（`candidate_pool`）のカードと入れ替える遺伝的アルゴリズムを実装。
-        *   **C++化による高速化**: `DeckEvolution` クラスおよび `calculate_interaction_score` ロジックを `src/ai/evolution/` (C++) に移植し、`dm_ai_module` から高速に呼び出せるようにする。
+        *   **実装内容**:
+            *   `src/ai/evolution/deck_evolution.cpp` に `DeckEvolution` クラスを実装。
+            *   「能動的使用(5点)」と「リソース使用(2点)」に基づく `calculate_interaction_score` ロジックを実装。
+            *   遺伝的アルゴリズムによるデッキ変異ロジックを実装し、Pythonバインディング経由で高速に呼び出し可能にしました。
 
 ### 3.3 [Priority: Future] Phase 4: アーキテクチャ刷新 (Architecture Update)
 

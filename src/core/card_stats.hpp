@@ -7,6 +7,7 @@ namespace dm::core {
     struct CardStats {
         long long play_count = 0;
         long long win_count = 0;
+        long long mana_source_count = 0; // Track how often used as mana
 
         double sum_early_usage = 0.0; // 0
         double sum_late_usage = 0.0;  // 1
@@ -36,10 +37,16 @@ namespace dm::core {
             sum_cost_discount += static_cast<double>(cost_diff);
         }
 
+        void record_mana_source() {
+            mana_source_count++;
+        }
+
         std::vector<float> to_vector() const {
             std::vector<float> vec(16, 0.0f);
-            if (play_count == 0) return vec;
-            double n = static_cast<double>(play_count);
+
+            if (play_count == 0 && mana_source_count == 0) return vec;
+            double n = static_cast<double>(play_count > 0 ? play_count : 1); // Avoid div by zero
+
             vec[0] = static_cast<float>(sum_early_usage / n);
             vec[1] = static_cast<float>(sum_late_usage / n);
             vec[2] = static_cast<float>(sum_trigger_rate / n);

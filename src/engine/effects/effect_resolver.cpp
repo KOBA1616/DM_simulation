@@ -155,6 +155,9 @@ namespace dm::engine {
             player.hand.erase(it);
             card.is_tapped = false;
             player.mana_zone.push_back(card);
+
+            // Record stats for mana usage
+            game_state.global_card_stats[card.card_id].record_mana_source();
         }
     }
 
