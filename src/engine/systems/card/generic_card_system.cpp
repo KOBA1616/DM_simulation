@@ -102,20 +102,44 @@ namespace dm::engine {
         ensure_evaluators_registered();
         CardInstance* instance = find_instance(game_state, source_instance_id);
         if (!instance) {
+            std::cerr << "resolve_trigger: Instance " << source_instance_id << " not found." << std::endl;
             return;
         }
 
         std::vector<EffectDef> active_effects;
+        bool found = false;
         if (card_db.count(instance->card_id)) {
             const auto& data = card_db.at(instance->card_id);
             active_effects.insert(active_effects.end(), data.effects.begin(), data.effects.end());
             active_effects.insert(active_effects.end(), data.metamorph_abilities.begin(), data.metamorph_abilities.end());
+            found = true;
+        }
+
+        if (!found || active_effects.empty()) {
+            const auto& registry = CardRegistry::get_all_definitions();
+            if (registry.count(instance->card_id)) {
+                 const auto& data = registry.at(instance->card_id);
+                 active_effects.insert(active_effects.end(), data.effects.begin(), data.effects.end());
+                 active_effects.insert(active_effects.end(), data.metamorph_abilities.begin(), data.metamorph_abilities.end());
+                 // std::cerr << "resolve_trigger: Fallback to registry for ID " << instance->card_id << ". Effects: " << data.effects.size() << std::endl;
+            } else {
+                 std::cerr << "resolve_trigger: Card ID " << instance->card_id << " not found in DB or Registry." << std::endl;
+            }
         }
 
         for (const auto& under : instance->underlying_cards) {
+            bool found_under = false;
             if (card_db.count(under.card_id)) {
                 const auto& under_data = card_db.at(under.card_id);
                 active_effects.insert(active_effects.end(), under_data.metamorph_abilities.begin(), under_data.metamorph_abilities.end());
+                found_under = true;
+            }
+            if (!found_under) {
+                const auto& registry = CardRegistry::get_all_definitions();
+                if (registry.count(under.card_id)) {
+                    const auto& under_data = registry.at(under.card_id);
+                    active_effects.insert(active_effects.end(), under_data.metamorph_abilities.begin(), under_data.metamorph_abilities.end());
+                }
             }
         }
 

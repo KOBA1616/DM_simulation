@@ -27,7 +27,6 @@ namespace dm::engine {
                          const auto& cd = ctx.card_db.at(card.card_id);
 
                          // Check types (CardDefinition uses CardType enum, Filter uses string)
-                         // For now simplified check or need conversion helper
                          if (!f.types.empty()) {
                              bool match = false;
                              // This part requires converting cd.type (enum) to string to match f.types
