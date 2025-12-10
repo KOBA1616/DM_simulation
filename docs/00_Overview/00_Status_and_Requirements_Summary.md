@@ -48,14 +48,17 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
     *   **UTF-8 統一**: ソースコードおよびドキュメントのエンコーディングをUTF-8に統一し、Shift-JIS環境依存を解消します。
     *   **テストディレクトリ再編**: `tests/python/` と `python/tests/` の重複を解消し、`tests/` 配下に `python` および `cpp` 用ディレクトリを整理します。
     *   **パッケージ構造**: `dm_toolkit` をトップレベルパッケージとして確立し、関連するインポートやパス設定を修正します。
+    *   **CardInstance構造改善**: `src/core/types.hpp` の `CardInstance` 構造体に `owner` (PlayerID) フィールドを追加します。現状の `GameState.card_owner_map` への依存を減らし、可読性とテスト容易性を向上させます。
+    *   **GUIシミュレーション統合**: GUIの「バッチシミュレーション」機能を `ParallelRunner` バックエンド利用に統一し、コード重複の排除と高速化を図ります。
 
 2.  **重要バグ修正 (Critical Bug Fixes)**
     *   **GUI安定化 (Done)**: `MCTS` クラスの Python バインディングに `search` メソッドを露出し、GUI からの呼び出しエラーを修正しました。
     *   **ParallelRunner メモリリーク (Done)**: `collect_data` フラグを導入し、検証実行時に膨大なゲーム状態を保持しないように修正しました。
+    *   **PhaseManagerバインディング修正 (New)**: `AttributeError: type object 'dm_ai_module.PhaseManager' has no attribute 'check_game_over'` エラーに対処するため、バインディング定義を修正します。
 
 3.  **機能改善・拡張 (Feature Improvements)**
     *   **新規能力実装 (Done)**: 「数字を宣言し、そのコストの呪文を唱えられなくする」ロック効果 (`LOCK_SPELL_BY_COST`) をエンジンに実装しました。
-    *   **リーサルソルバー改善 (Pending)**: 除去、ブロックされない効果、タップ効果などによる「ブロッカー数の変動」を考慮した判定ロジックの強化は、次回以降の課題として継続します。
+    *   **リーサルソルバー改善 (Pending)**: 除去、タップ、ブロック不可などを考慮した「動的なブロッカー数変動」に対応する高度な判定ロジックの実装は、次回の優先課題とします。
     *   **データ構造更新**: 必要に応じて `civilization` (string) で記述されているデータの取り扱いを変更・最適化します。
 
 ### 3.1 [Priority: High] Phase 2: 不完全情報の克服 (Imperfect Information / PIMC)
@@ -101,6 +104,7 @@ AIが「見えない領域（相手の手札、シールド、山札）」を確
     *   **目的**: 固定デッキでの対戦だけでなく、環境に合わせてデッキ内容を微修正する。
     *   **実装計画**:
         *   カードごとの「勝率貢献度（Win Contribution）」を算出し、貢献度の低いカードを候補プール（`candidate_pool`）のカードと入れ替える遺伝的アルゴリズムを実装。
+        *   **C++化による高速化**: `DeckEvolution` クラスおよび `calculate_interaction_score` ロジックを `src/ai/evolution/` (C++) に移植し、`dm_ai_module` から高速に呼び出せるようにする。
 
 ### 3.3 [Priority: Future] Phase 4: アーキテクチャ刷新 (Architecture Update)
 
@@ -138,3 +142,15 @@ AI開発と並行して、エディタの残存課題を解消します。
 3.  **エンジン・ロジック拡張**
     *   **フレンド・バースト実装**: アクションに追加。内部処理用IDを自動割り振りし、ユーザーに意識させずに処理する。
     *   **ロック能力の汎用化**: `LOCK_SPELL_BY_COST` を「コスト指定ロック」として汎用化・再定義する。
+
+4.  **シナリオエディタの機能改善 (Scenario Editor Improvements)**
+    *   **ゾーン管理の構造化**: 各ゾーン（Hand, Battle Zone, Mana Zone, Shield Zone, Graveyard）をタブまたはグループで整理し、カードID配列ではなく「カード名のリスト」として管理します。
+    *   **カード検索・追加機能**: カード名、文明、コスト、テキストでの検索・フィルタリング機能を実装します。
+    *   **ドラッグ＆ドロップ**: 検索結果リストから各ゾーンへ直感的にカードを追加できるようにします。
+
+5.  **MCTS 可視化機能の復旧 (Restore MCTS Visualization)**
+    *   **課題**: コンパイル安定性確保のために無効化された `MCTSNode` のPythonバインディング（`search` メソッド等）を復旧し、GUIでの思考過程（探索ツリー）表示を再度可能にします。
+    *   **対応**: `unique_ptr` を含む再帰構造を安全にバインディングする修正が必要です。
+
+6.  **テストカバレッジの拡充 (Test Coverage Expansion)**
+    *   **呪文ロック効果**: エンジン実装済みの「呪文ロック効果」について、JSONデータ定義を含めたエンドツーエンドのテストケースを作成し、動作を保証します。
