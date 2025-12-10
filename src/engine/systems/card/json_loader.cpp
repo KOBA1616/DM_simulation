@@ -19,16 +19,7 @@ namespace dm::engine {
         def.name = data.name;
 
         // Civilization mapping
-        def.civilizations.clear();
-        for (const auto& civ_str : data.civilizations) {
-            if (civ_str == "LIGHT") def.civilizations.push_back(Civilization::LIGHT);
-            else if (civ_str == "WATER") def.civilizations.push_back(Civilization::WATER);
-            else if (civ_str == "DARKNESS") def.civilizations.push_back(Civilization::DARKNESS);
-            else if (civ_str == "FIRE") def.civilizations.push_back(Civilization::FIRE);
-            else if (civ_str == "NATURE") def.civilizations.push_back(Civilization::NATURE);
-            else if (civ_str == "ZERO") def.civilizations.push_back(Civilization::ZERO);
-        }
-        if (def.civilizations.empty()) def.civilizations.push_back(Civilization::ZERO); // Default to Colorless if empty?
+        def.civilizations = data.civilizations;
 
         // Type mapping
         if (data.type == "CREATURE") def.type = CardType::CREATURE;
@@ -133,7 +124,19 @@ namespace dm::engine {
                     CardData card = item.get<CardData>();
                     // Backward compatibility: allow single "civilization" field
                     if (card.civilizations.empty() && item.contains("civilization")) {
-                        card.civilizations.push_back(item.at("civilization").get<std::string>());
+            std::string civ_str = item.at("civilization").get<std::string>();
+            // Since we defined the JSON serializer for Civilization, we cannot push_back string directly.
+            // We must convert manually if we are doing this manual patch.
+            // Actually, CardData::civilizations is vector<Civilization>.
+            // nlohmann::json deserializes string to Enum automatically if using get<Civilization>().
+            // But here we are patching the struct after load.
+            // We should use JsonLoader::parse_civilization logic or similar.
+            if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
+            else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
+            else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);
+            else if (civ_str == "FIRE") card.civilizations.push_back(Civilization::FIRE);
+            else if (civ_str == "NATURE") card.civilizations.push_back(Civilization::NATURE);
+            else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
                     }
                     // 1. Add to Registry (New System)
                     CardRegistry::load_from_json(item.dump());
@@ -144,7 +147,13 @@ namespace dm::engine {
             } else {
                 CardData card = j.get<CardData>();
                 if (card.civilizations.empty() && j.contains("civilization")) {
-                    card.civilizations.push_back(j.at("civilization").get<std::string>());
+            std::string civ_str = j.at("civilization").get<std::string>();
+            if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
+            else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
+            else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);
+            else if (civ_str == "FIRE") card.civilizations.push_back(Civilization::FIRE);
+            else if (civ_str == "NATURE") card.civilizations.push_back(Civilization::NATURE);
+            else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
                 }
                 CardRegistry::load_from_json(j.dump());
                 result[static_cast<CardID>(card.id)] = convert_to_def(card);

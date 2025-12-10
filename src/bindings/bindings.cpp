@@ -254,7 +254,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         // Constructor that takes keyword arguments
         .def(py::init([](std::optional<std::string> owner, std::vector<std::string> zones, std::vector<std::string> types, std::vector<std::string> civilizations, std::vector<std::string> races, std::optional<int> min_cost, std::optional<int> max_cost, std::optional<int> min_power, std::optional<int> max_power, std::optional<bool> is_tapped, std::optional<bool> is_blocker, std::optional<bool> is_evolution, std::optional<int> count) {
             FilterDef f;
-            f.owner = owner; f.zones = zones; f.types = types; f.civilizations = civilizations; f.races = races;
+            f.owner = owner; f.zones = zones; f.types = types;
+            f.civilizations.clear();
+            for(const auto& c : civilizations) f.civilizations.push_back(string_to_civilization(c));
+            f.races = races;
             f.min_cost = min_cost; f.max_cost = max_cost; f.min_power = min_power; f.max_power = max_power;
             f.is_tapped = is_tapped; f.is_blocker = is_blocker; f.is_evolution = is_evolution; f.count = count;
             return f;
@@ -382,16 +385,26 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init([](int id, std::string name, int cost, std::string civ, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects) {
              CardData d;
              d.id = id; d.name = name; d.cost = cost;
-             d.civilizations = {civ};
+             d.civilizations = {string_to_civilization(civ)};
              d.power = power; d.type = type; d.races = races; d.effects = effects;
              return d;
         }))
         .def(py::init([](int id, std::string name, int cost, std::vector<std::string> civs, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects) {
              CardData d;
-             d.id = id; d.name = name; d.cost = cost; d.civilizations = civs;
+             d.id = id; d.name = name; d.cost = cost;
+             d.civilizations.clear();
+             for(const auto& s : civs) d.civilizations.push_back(string_to_civilization(s));
              d.power = power; d.type = type; d.races = races; d.effects = effects;
              return d;
         }))
+        // Overload for proper Enum usage with optional args
+        .def(py::init([](int id, std::string name, int cost, std::vector<Civilization> civs, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects, std::vector<ReactionAbility> reaction_abilities) {
+             CardData d;
+             d.id = id; d.name = name; d.cost = cost; d.civilizations = civs;
+             d.power = power; d.type = type; d.races = races; d.effects = effects;
+             d.reaction_abilities = reaction_abilities;
+             return d;
+        }), py::arg("id"), py::arg("name"), py::arg("cost"), py::arg("civs"), py::arg("power"), py::arg("type"), py::arg("races"), py::arg("effects"), py::arg("reaction_abilities") = std::vector<ReactionAbility>{})
         .def_readwrite("id", &CardData::id)
         .def_readwrite("effects", &CardData::effects)
         .def_readwrite("metamorph_abilities", &CardData::metamorph_abilities)
