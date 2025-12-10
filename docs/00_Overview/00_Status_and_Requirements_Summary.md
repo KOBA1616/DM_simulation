@@ -27,6 +27,9 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
 *   **AlphaZero Pipeline**: データ収集(`DataCollector`) -> 学習(`train_simple.py`) -> 評価(`verify_performance.py`) のサイクルが稼働中。
 *   **ResNet Model**: 現在の標準モデル。
+*   **推論エンジン**:
+    *   **Deck Classifier**: `meta_decks.json` を基に、公開情報から相手デッキタイプを確率的に特定。
+    *   **Hand Estimator**: 相手手札にあるカードを確率的に推定するロジック（基礎実装済み）。
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
@@ -40,11 +43,10 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 
 AIが「見えない領域（相手の手札、シールド、山札）」を確率的に推論し、最適な行動を決定するための機能群です。
 
-1.  **相手手札推定器 (Opponent Hand Estimator)**
-    *   **目的**: 相手のマナゾーン、墓地、プレイされたカードから、相手の手札にあるカードを予測する。
-    *   **実装計画**:
-        *   `meta_decks.json` (環境デッキ定義) を読み込み、相手のデッキタイプを早期に判別する `DeckClassifier` を実装する。
-        *   ベイズ推定を用い、ターン経過とともに「相手の手札に特定カード（例：シールドトリガー、革命チェンジ元）がある確率」を更新するロジックを構築する。
+1.  **相手手札推定器 (Opponent Hand Estimator)** [実装完了 / Verified]
+    *   **ステータス**: `dm_toolkit/ai/inference` に実装済み。
+    *   **機能**: `DeckClassifier` によるデッキ推定と、`HandEstimator` による手札確率計算（簡易ベイズ/頻度ベース）。
+    *   **課題**: ゲーム状態に応じた動的なパラメータ（残り山札数、手札枚数）の連携精度向上。
 
 2.  **PIMC (Perfect Information Monte Carlo) サーチ**
     *   **目的**: 不完全情報を「確定化（Determinization）」した複数の仮想世界で探索を行い、平均的に良い手を打てるようにする。
