@@ -15,7 +15,7 @@ namespace dm::ai {
     SelfPlay::SelfPlay(const std::map<CardID, CardDefinition>& card_db, int mcts_simulations, int batch_size)
         : card_db_(card_db), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
 
-    GameResultInfo SelfPlay::play_game(GameState initial_state, BatchEvaluatorCallback evaluator, float temperature, bool add_noise, float alpha) {
+    GameResultInfo SelfPlay::play_game(GameState initial_state, BatchEvaluatorCallback evaluator, float temperature, bool add_noise, float alpha, bool collect_data) {
         GameResultInfo info;
         GameState state = initial_state;
         
@@ -36,9 +36,11 @@ namespace dm::ai {
 
             std::vector<float> policy = mcts.search(search_state, mcts_simulations_, evaluator, add_noise, temperature);
 
-            info.states.push_back(state);
-            info.policies.push_back(policy);
-            info.active_players.push_back(state.active_player_id);
+            if (collect_data) {
+                info.states.push_back(state);
+                info.policies.push_back(policy);
+                info.active_players.push_back(state.active_player_id);
+            }
 
             auto legal_actions = ActionGenerator::generate_legal_actions(state, card_db_);
             if (legal_actions.empty()) {
