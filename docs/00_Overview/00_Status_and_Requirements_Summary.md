@@ -7,7 +7,7 @@
 ## 1. 概要 (Overview)
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
-現在、Phase 0（基盤構築）および Phase 1（エディタ・エンジン拡張）を完了し、**Phase 2以降の「AI知能の進化と自己学習エコシステム」の構築**へフェーズを移行しています。
+現在、Phase 0（基盤構築）、Phase 1（エディタ・エンジン拡張）および Phase 2（不完全情報対応）の一部を完了し、**Phase 3以降の「AI知能の進化と自己学習エコシステム」の構築**へフェーズを移行しつつあります。
 
 Python側のコードベースは `dm_toolkit` パッケージとして再構築され、モジュール性が向上しました。
 
@@ -30,6 +30,7 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 *   **推論エンジン**:
     *   **Deck Classifier**: `meta_decks.json` を基に、公開情報から相手デッキタイプを確率的に特定。
     *   **Hand Estimator**: 相手手札にあるカードを確率的に推定するロジック（基礎実装済み）。
+    *   **PIMC Search**: C++コアに実装済み（`PIMCGenerator`, `ParallelRunner::run_pimc_search`）。並列化された世界でのMCTS探索結果の集約が可能。
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
@@ -37,7 +38,7 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 
 ## 3. 詳細な開発ロードマップ (Detailed Roadmap)
 
-今後は、AIが人間のような「読み」と「メタゲームへの適応」を行うための機能を実装します。
+今後は、AIが自律的に進化するための「エコシステム」と、より高度な探索アルゴリズムの統合を目指します。
 
 ### 3.1 [Priority: High] Phase 2: 不完全情報の克服 (Imperfect Information / PIMC)
 
@@ -48,11 +49,12 @@ AIが「見えない領域（相手の手札、シールド、山札）」を確
     *   **機能**: `DeckClassifier` によるデッキ推定と、`HandEstimator` による手札確率計算（簡易ベイズ/頻度ベース）。
     *   **課題**: ゲーム状態に応じた動的なパラメータ（残り山札数、手札枚数）の連携精度向上。
 
-2.  **PIMC (Perfect Information Monte Carlo) サーチ**
+2.  **PIMC (Perfect Information Monte Carlo) サーチ** [実装完了 / Verified]
     *   **目的**: 不完全情報を「確定化（Determinization）」した複数の仮想世界で探索を行い、平均的に良い手を打てるようにする。
-    *   **実装計画**:
-        *   推論された確率分布に基づき、相手の手札・シールドをランダムに具体化（サンプリング）して `GameState` を生成する機能をC++エンジンに追加。
-        *   並列探索(`ParallelRunner`)において、スレッドごとに異なる「仮想世界」を割り当てて探索し、ルートノードで結果を集約するロジックを実装する。
+    *   **ステータス**:
+        *   `src/ai/inference/pimc_generator.cpp` にて、候補プールからのランダムサンプリングによる `GameState` 生成機能を実装。
+        *   `src/ai/self_play/parallel_runner.cpp` に `run_pimc_search` を実装し、マルチスレッドでの Determinization -> MCTS -> 集約 を実現。
+        *   Pythonバインディング経由での動作検証済み。
 
 ### 3.2 [Priority: Medium] Phase 3: 自筆進化エコシステム (Self-Evolving Ecosystem)
 
