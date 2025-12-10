@@ -6,6 +6,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import argparse
+from typing import List, Optional
 
 # Ensure bin is in path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -20,39 +21,65 @@ if python_path not in sys.path:
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 
 class Trainer:
-    def __init__(self, data_file, model_path=None, save_path="model.pth"):
-        self.data_file = data_file
+    def __init__(self, data_files: List[str], model_path=None, save_path="model.pth"):
         self.save_path = save_path
 
-        print(f"Loading data from {data_file}...")
-        data = np.load(data_file)
+        # Load multiple data files
+        all_states = []
+        all_policies = []
+        all_values = []
+        all_masks = []
 
-        # Determine if we have masked/full states (new format) or just 'states' (old)
-        if 'states_masked' in data:
-            self.states = torch.tensor(data['states_masked'], dtype=torch.float32)
-        elif 'states' in data:
-            self.states = torch.tensor(data['states'], dtype=torch.float32)
-        else:
-             raise ValueError("Data file must contain 'states' or 'states_masked'")
+        print(f"Loading {len(data_files)} data files...")
 
-        self.policies = torch.tensor(data['policies'], dtype=torch.float32)
-        self.values = torch.tensor(data['values'], dtype=torch.float32).unsqueeze(1)
+        for f in data_files:
+            try:
+                data = np.load(f)
 
-        # Load Masks if available (Step C: Action Masking)
-        if 'masks' in data:
-            self.masks = torch.tensor(data['masks'], dtype=torch.float32)
+                if 'states_masked' in data:
+                    s = data['states_masked']
+                elif 'states' in data:
+                    s = data['states']
+                else:
+                    print(f"Skipping {f}: no states found")
+                    continue
+
+                p = data['policies']
+                v = data['values']
+
+                all_states.append(s)
+                all_policies.append(p)
+                all_values.append(v)
+
+                if 'masks' in data:
+                    all_masks.append(data['masks'])
+            except Exception as e:
+                print(f"Error loading {f}: {e}")
+
+        if not all_states:
+            raise ValueError("No valid data loaded")
+
+        self.states = torch.tensor(np.concatenate(all_states), dtype=torch.float32)
+        self.policies = torch.tensor(np.concatenate(all_policies), dtype=torch.float32)
+        self.values = torch.tensor(np.concatenate(all_values), dtype=torch.float32).unsqueeze(1)
+
+        if all_masks:
+            self.masks = torch.tensor(np.concatenate(all_masks), dtype=torch.float32)
             print("Action masks loaded.")
         else:
             self.masks = None
-            print("No action masks found in data.")
+            print("No action masks found.")
 
         self.input_size = self.states.shape[1]
         self.action_size = self.policies.shape[1]
-        print(f"Data loaded: {len(self.states)} samples. Input={self.input_size}, Action={self.action_size}")
+        print(f"Total Data: {len(self.states)} samples. Input={self.input_size}, Action={self.action_size}")
 
-        self.network = AlphaZeroNetwork(self.input_size, self.action_size)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Training on {self.device}")
+
+        self.network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
         if model_path and os.path.exists(model_path):
-            self.network.load_state_dict(torch.load(model_path))
+            self.network.load_state_dict(torch.load(model_path, map_location=self.device))
             print("Loaded existing model.")
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=0.001)
@@ -61,6 +88,10 @@ class Trainer:
         self.network.train()
         dataset_size = len(self.states)
         indices = np.arange(dataset_size)
+
+        # Move data to device? (Careful with VRAM)
+        # For small datasets, yes. For large, do it in batch.
+        # Assuming fits in CPU RAM, move batches to GPU.
 
         for epoch in range(epochs):
             np.random.shuffle(indices)
@@ -72,37 +103,25 @@ class Trainer:
             for i in range(0, dataset_size, batch_size):
                 batch_indices = indices[i:i+batch_size]
 
-                batch_states = self.states[batch_indices]
-                batch_target_policies = self.policies[batch_indices]
-                batch_target_values = self.values[batch_indices]
+                batch_states = self.states[batch_indices].to(self.device)
+                batch_target_policies = self.policies[batch_indices].to(self.device)
+                batch_target_values = self.values[batch_indices].to(self.device)
 
                 batch_masks = None
                 if self.masks is not None:
-                     batch_masks = self.masks[batch_indices]
+                     batch_masks = self.masks[batch_indices].to(self.device)
 
                 pred_policies, pred_values = self.network(batch_states)
 
                 # Value Loss: MSE
                 value_loss = F.mse_loss(pred_values, batch_target_values)
 
-                # Action Masking Logic (Step C)
-                # If we have masks, set the logits of invalid actions to a very small number (-inf)
+                # Action Masking Logic
                 if batch_masks is not None:
-                    # Make sure mask is 1 for legal, 0 for illegal
-                    # (1 - mask) * -1e9
-                    # Or just pred_policies[mask == 0] = -1e9 (requires cloning if leaf?)
-                    # pred_policies is a tensor.
-                    # We can use masked_fill
-
-                    # Convert 0 in mask to True (to fill)
                     fill_mask = (batch_masks == 0).bool()
                     pred_policies = pred_policies.masked_fill(fill_mask, -1e9)
 
                 # Policy Loss: Cross Entropy
-                # pred_policies are logits. target is probability distribution.
-                # Use KL Divergence or Cross Entropy.
-                # CrossEntropyLoss expects class indices, but we have soft targets.
-                # Use: - sum(target * log_softmax(pred))
                 log_softmax = F.log_softmax(pred_policies, dim=1)
                 policy_loss = -torch.sum(batch_target_policies * log_softmax) / len(batch_indices)
 
@@ -122,13 +141,28 @@ class Trainer:
         torch.save(self.network.state_dict(), self.save_path)
         print(f"Model saved to {self.save_path}")
 
+def train_pipeline(data_files: List[str], input_model: Optional[str], output_model: str, epochs=10):
+    trainer = Trainer(data_files, input_model, output_model)
+    trainer.train(epochs=epochs)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("data_file", type=str, help="Path to .npz data file")
+    parser.add_argument("--data_files", nargs='+', help="Path to .npz data files")
+    parser.add_argument("--data_dir", type=str, help="Directory containing .npz files (alternative to --data_files)")
     parser.add_argument("--model", type=str, default=None, help="Initial model path")
     parser.add_argument("--save", type=str, default="model_v1.pth", help="Save model path")
     parser.add_argument("--epochs", type=int, default=10)
     args = parser.parse_args()
 
-    trainer = Trainer(args.data_file, args.model, args.save)
-    trainer.train(epochs=args.epochs)
+    files = []
+    if args.data_files:
+        files.extend(args.data_files)
+    if args.data_dir and os.path.exists(args.data_dir):
+        import glob
+        files.extend(glob.glob(os.path.join(args.data_dir, "*.npz")))
+
+    if not files:
+        print("No data files provided.")
+        sys.exit(1)
+
+    train_pipeline(files, args.model, args.save, args.epochs)
