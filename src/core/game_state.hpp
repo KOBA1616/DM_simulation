@@ -97,7 +97,8 @@ namespace dm::core {
         // Step 3-4: Attack/Block Restriction
         CANNOT_ATTACK,
         CANNOT_BLOCK,
-        CANNOT_USE_SPELLS // Step 3-x: "Cannot cast spell" (locking)
+        CANNOT_USE_SPELLS, // Step 3-x: "Cannot cast spell" (locking)
+        LOCK_SPELL_BY_COST // "Declare Number -> Prohibit Spells"
     };
 
     struct PassiveEffect {

@@ -25,7 +25,8 @@ namespace dm::ai {
         float temperature,
         bool add_noise,
         int num_threads,
-        float alpha
+        float alpha,
+        bool collect_data
     ) {
         std::vector<GameResultInfo> results(initial_states.size());
         InferenceQueue inf_queue;
@@ -49,7 +50,7 @@ namespace dm::ai {
                 return fut.get();
             };
 
-            results[game_idx] = sp.play_game(initial_states[game_idx], worker_cb, temperature, add_noise, alpha);
+            results[game_idx] = sp.play_game(initial_states[game_idx], worker_cb, temperature, add_noise, alpha, collect_data);
             games_completed++;
             inf_queue.cv.notify_one();
         };

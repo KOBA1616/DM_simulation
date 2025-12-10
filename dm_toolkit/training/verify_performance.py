@@ -115,7 +115,16 @@ class PerformanceVerifier:
         # Actually binding returns list of GameResultInfo objects.
         # GameResultInfo has .result (int)
 
-        results_info = runner.play_games(initial_states, neural_evaluator.evaluate, 1.0, False, num_threads)
+        # Pass collect_data=False to avoid memory accumulation (Memory Leak fix)
+        results_info = runner.play_games(
+            initial_states,
+            neural_evaluator.evaluate,
+            temperature=1.0,
+            add_noise=False,
+            num_threads=num_threads,
+            alpha=0.0,
+            collect_data=False
+        )
 
         duration = time.time() - start_time
         if duration == 0: duration = 0.001
