@@ -17,6 +17,8 @@
 #include "ai/scenario/scenario_executor.hpp"
 #include "ai/self_play/parallel_runner.hpp"
 #include "ai/evaluator/beam_search_evaluator.hpp"
+#include "ai/evaluator/heuristic_evaluator.hpp"
+#include "ai/mcts/mcts.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include "ai/encoders/tensor_converter.hpp"
 #include "ai/pomdp/pomdp.hpp"
@@ -28,6 +30,7 @@
 #include "utils/csv_loader.hpp"
 #include "python_batch_inference.hpp"
 #include "ai/solver/lethal_solver.hpp"
+#include "ai/evolution/deck_evolution.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -243,6 +246,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property("shield_burn", [](CardKeywords& k){ return k.shield_burn; }, [](CardKeywords& k, bool v){ k.shield_burn = v; })
         .def_property("untap_in", [](CardKeywords& k){ return k.untap_in; }, [](CardKeywords& k, bool v){ k.untap_in = v; })
         .def_property("meta_counter_play", [](CardKeywords& k){ return k.meta_counter_play; }, [](CardKeywords& k, bool v){ k.meta_counter_play = v; })
+        .def_property("unblockable", [](CardKeywords& k){ return k.unblockable; }, [](CardKeywords& k, bool v){ k.unblockable = v; })
         .def_property("power_attacker", [](CardKeywords& k){ return k.power_attacker; }, [](CardKeywords& k, bool v){ k.power_attacker = v; });
 
     py::class_<FilterDef>(m, "FilterDef")
@@ -407,6 +411,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("summoning_sickness", &CardInstance::summoning_sickness)
         .def_readwrite("is_face_down", &CardInstance::is_face_down)
         .def_readwrite("turn_played", &CardInstance::turn_played)
+        .def_readwrite("owner", &CardInstance::owner)
         .def_readwrite("underlying_cards", &CardInstance::underlying_cards);
 
     py::class_<Player>(m, "Player")
@@ -557,7 +562,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<PhaseManager>(m, "PhaseManager")
         .def_static("start_game", &PhaseManager::start_game)
         .def_static("start_turn", &PhaseManager::start_turn)
-        .def_static("next_phase", &PhaseManager::next_phase);
+        .def_static("next_phase", &PhaseManager::next_phase)
+        .def_static("check_game_over", &PhaseManager::check_game_over);
 
     py::class_<ActionGenerator>(m, "ActionGenerator")
         .def_static("generate_legal_actions", &ActionGenerator::generate_legal_actions);
@@ -583,7 +589,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
             GenericCardSystem::resolve_trigger(state, trigger, source_id, db);
         })
         .def_static("resolve_effect", [](GameState& state, const EffectDef& effect, int source_id) {
-            GenericCardSystem::resolve_effect(state, effect, source_id);
+            GenericCardSystem::resolve_effect(state, effect, source_id, CardRegistry::get_all_definitions());
         })
         .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& effect, int source_id, const std::map<CardID, CardDefinition>& db) {
             GenericCardSystem::resolve_effect(state, effect, source_id, db);
@@ -669,7 +675,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
               py::arg("temperature") = 1.0f,
               py::arg("add_noise") = true,
               py::arg("num_threads") = 4,
-              py::arg("alpha") = 0.0f)
+              py::arg("alpha") = 0.0f,
+              py::arg("collect_data") = true,
+              py::call_guard<py::gil_scoped_release>())
          .def("run_pimc_search", &ParallelRunner::run_pimc_search,
               py::arg("observation"),
               py::arg("observer_id"),
@@ -741,12 +749,55 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("spells_cast_this_turn", &TurnStats::spells_cast_this_turn)
         .def_readwrite("attacks_declared_this_turn", &TurnStats::attacks_declared_this_turn);
 
+    py::class_<HeuristicEvaluator>(m, "HeuristicEvaluator")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("evaluate", &HeuristicEvaluator::evaluate);
+
     py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def("evaluate", &NeuralEvaluator::evaluate);
 
+    /*
+    // MCTS Node Exposure for visualization
+    // Specify no copyable and holding via unique_ptr is default but we want to avoid copy construction attempts
+    py::class_<MCTSNode>(m, "MCTSNode")
+        .def_readonly("visit_count", &MCTSNode::visit_count)
+        .def_readonly("action", &MCTSNode::action_from_parent) // Exposed as 'action'
+        .def_property_readonly("value", &MCTSNode::value);
+    */
+
+    py::class_<MCTS>(m, "MCTS")
+        .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int, float>(),
+             py::arg("card_db"), py::arg("c_puct")=1.0f, py::arg("dirichlet_alpha")=0.3f,
+             py::arg("dirichlet_epsilon")=0.25f, py::arg("batch_size")=1, py::arg("alpha")=0.0f)
+        .def("search", &MCTS::search,
+             py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"),
+             py::arg("add_noise")=true, py::arg("temperature")=1.0f,
+             py::call_guard<py::gil_scoped_release>());
+        /*
+        .def("get_last_root", [](MCTS& m) -> MCTSNode* {
+             // Accessing private member requiring modification of MCTS class or friend
+             // Since we can't easily modify private access without file edit,
+             // let's assume we will add get_last_root() to MCTS class.
+             return m.get_last_root();
+        }, py::return_value_policy::reference);
+        */
+
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
+
+    py::class_<DeckEvolutionConfig>(m, "DeckEvolutionConfig")
+        .def(py::init<>())
+        .def_readwrite("target_deck_size", &DeckEvolutionConfig::target_deck_size)
+        .def_readwrite("mutation_rate", &DeckEvolutionConfig::mutation_rate)
+        .def_readwrite("synergy_weight", &DeckEvolutionConfig::synergy_weight)
+        .def_readwrite("curve_weight", &DeckEvolutionConfig::curve_weight);
+
+    py::class_<DeckEvolution>(m, "DeckEvolution")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("evolve_deck", &DeckEvolution::evolve_deck)
+        .def("calculate_interaction_score", &DeckEvolution::calculate_interaction_score)
+        .def("get_candidates_by_civ", &DeckEvolution::get_candidates_by_civ);
 
     m.def("initialize_card_stats", [](GameState& state, const std::map<CardID, CardDefinition>& db, int deck_size) {
         state.initialize_card_stats(db, deck_size);

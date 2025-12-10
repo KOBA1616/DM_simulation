@@ -499,7 +499,8 @@ class GameWindow(QMainWindow):
                 evaluator = dm_ai_module.HeuristicEvaluator(self.card_db)
 
                 # Search using C++ evaluator (no Python callback overhead)
-                policy = mcts.search_with_heuristic(search_state, 50, evaluator, True, 1.0)
+                # Note: Pybind11 will convert evaluator.evaluate (a method) into a std::function
+                policy = mcts.search(search_state, 50, evaluator.evaluate, True, 1.0)
                 
                 # Select Action (Argmax of policy)
                 best_idx = -1

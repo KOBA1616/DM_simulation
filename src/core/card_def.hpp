@@ -40,6 +40,7 @@ namespace dm::core {
         bool meta_counter_play : 1; // Phase 5 (Meta Counter)
         bool shield_burn : 1;     // Shield Incineration (Burn)
         bool untap_in : 1;        // Step 1-2 (Multi-color Tap-in Exception)
+        bool unblockable : 1;     // Unblockable
     };
 
     // Mode Selection: ModalEffectGroup stores selectable modes [Q71]
