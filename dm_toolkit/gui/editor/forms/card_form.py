@@ -1,13 +1,14 @@
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QLineEdit, QComboBox, QSpinBox,
     QCheckBox, QLabel, QGridLayout, QGroupBox, QPushButton,
-    QVBoxLayout, QScrollArea
+    QVBoxLayout, QScrollArea, QTextEdit
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
+from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
 # Simplified Spell Side Editor Widget (Sub-form)
 class SpellSideWidget(QWidget):
@@ -166,6 +167,15 @@ class CardEditForm(BaseEditForm):
 
         self.form_layout.addRow(ai_group)
 
+        # Text Preview Section
+        preview_group = QGroupBox(tr("Generated Text Preview"))
+        preview_layout = QVBoxLayout(preview_group)
+        self.text_preview = QTextEdit()
+        self.text_preview.setReadOnly(True)
+        self.text_preview.setMaximumHeight(150)
+        preview_layout.addWidget(self.text_preview)
+        self.form_layout.addRow(preview_group)
+
         # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
@@ -189,6 +199,10 @@ class CardEditForm(BaseEditForm):
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
+
+        # Generate text preview
+        text = CardTextGenerator.generate_text(data)
+        self.text_preview.setText(text)
 
         self.id_spin.setValue(data.get('id', 0))
 
@@ -294,6 +308,11 @@ class CardEditForm(BaseEditForm):
         # Save AI Data
         data['is_key_card'] = self.is_key_card_check.isChecked()
         data['ai_importance_score'] = self.ai_importance_spin.value()
+
+        # Update text preview (using current state)
+        # Note: 'data' is modified in place, so we can use it directly
+        text = CardTextGenerator.generate_text(data)
+        self.text_preview.setText(text)
 
     def _get_display_text(self, data):
         return f"{data.get('id', 0)} - {data.get('name', '')}"
