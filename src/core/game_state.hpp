@@ -21,6 +21,7 @@ namespace dm::core {
         bool is_face_down = false; // For shields or terror pit etc? Shields are face down by default.
         int power_mod = 0; // temporary/ongoing power modifications applied by effects
         int turn_played = -1; // Turn number when this card was put into the battle zone (for Just Diver/SS)
+        PlayerID owner = 255; // 255 = None/Unknown
 
         // Step 2-1: Hierarchy Support
         // Cards stacked underneath this card (Evolution sources, etc.)
@@ -97,7 +98,8 @@ namespace dm::core {
         // Step 3-4: Attack/Block Restriction
         CANNOT_ATTACK,
         CANNOT_BLOCK,
-        CANNOT_USE_SPELLS // Step 3-x: "Cannot cast spell" (locking)
+        CANNOT_USE_SPELLS, // Step 3-x: "Cannot cast spell" (locking)
+        LOCK_SPELL_BY_COST // "Declare Number -> Prohibit Spells"
     };
 
     struct PassiveEffect {

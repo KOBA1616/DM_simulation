@@ -19,7 +19,7 @@ def test_lethal_puzzle_logic():
     # Load scenario config
     config = get_scenario_config('lethal_puzzle_easy')
 
-    gi = dm_ai_module.GameInstance()
+    gi = dm_ai_module.GameInstance(42, card_db)
     gi.reset_with_scenario(config)
 
     state = gi.state
@@ -29,6 +29,7 @@ def test_lethal_puzzle_logic():
     print(f"P0 Hand: {[c.card_id for c in p0.hand]}")
     print(f"P0 Battle: {[c.card_id for c in p0.battle_zone]}")
     print(f"P0 Mana: {[c.card_id for c in p0.mana_zone]}")
+    print(f"P0 Mana Tapped: {[c.is_tapped for c in p0.mana_zone]}")
     print(f"P1 Shields: {len(p1.shield_zone)}")
 
     # Verify setup: Hand has ID 2 (Speed Attacker), Mana has 3 cards.
@@ -44,6 +45,25 @@ def test_lethal_puzzle_logic():
     act_play.card_id = 2
     act_play.source_instance_id = sa_card.instance_id
     dm_ai_module.EffectResolver.resolve_action(state, act_play, card_db)
+
+    # Handle Stack (PAY_COST -> RESOLVE_PLAY)
+    while state.stack_zone:
+        # Generate legal actions (should be PAY_COST or RESOLVE_PLAY)
+        actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+        if not actions:
+            print("FAIL: Stack not empty but no actions.")
+            sys.exit(1)
+        # Pick first action (usually only one for stack)
+        action = actions[0]
+        dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+
+    # Handle Pending Effects (e.g. ON_PLAY)
+    while state.pending_effects:
+        actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+        if not actions:
+            break
+        action = actions[0]
+        dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
 
     # 2. Attack with Speed Attacker
     # Find new instance in BZ
