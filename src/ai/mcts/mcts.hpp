@@ -66,15 +66,16 @@ namespace dm::ai {
                                   bool add_noise = true,
                                   float temperature = 1.0f);
 
+        void revert_virtual_loss(MCTSNode* node);
+
+        // Accessor for bindings
+        MCTSNode* get_last_root() { return last_root_.get(); }
+
     private:
         MCTSNode* select_leaf(MCTSNode* node);
         void expand_node(MCTSNode* node, const std::vector<float>& policy_logits);
         void backpropagate(MCTSNode* node, float value);
         void add_exploration_noise(MCTSNode* node);
-        void revert_virtual_loss(MCTSNode* node);
-
-        // Accessor for bindings
-        MCTSNode* get_last_root() { return last_root_.get(); }
 
         const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db_;
         float c_puct_;
