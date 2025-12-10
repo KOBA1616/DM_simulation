@@ -141,17 +141,16 @@ set(SRC_AI
 
 # --- Targets ---
 
-# Main Simulator Library (Static library for logic)
-add_library(dm_core STATIC
+# Main Simulator Library (Object library to avoid singleton duplication in static linking)
+add_library(dm_core OBJECT
     ${SRC_CORE}
     ${SRC_ENGINE}
     ${SRC_UTILS}
     ${SRC_AI}
 )
-target_link_libraries(dm_core PUBLIC) # nlohmann_json::nlohmann_json removed (header-only)
-
-# Ensure objects in the static library are position-independent so they
-# can be linked into a Python extension/shared library on ELF platforms.
+# target_link_libraries cannot be used with OBJECT libraries in older CMake,
+# but usually it works for interface/public deps in newer versions.
+# We set properties directly.
 set_target_properties(dm_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Executable for C++ Testing/Validation (Phase 1 & 2)
@@ -159,6 +158,9 @@ add_executable(dm_sim_test
     tests/cpp/main_test.cpp
 )
 target_link_libraries(dm_sim_test PRIVATE dm_core)
+if(USE_LIBTORCH)
+    target_link_libraries(dm_sim_test PRIVATE ${TORCH_LIBRARIES})
+endif()
 
 # Python Module (Phase 3)
 pybind11_add_module(dm_ai_module

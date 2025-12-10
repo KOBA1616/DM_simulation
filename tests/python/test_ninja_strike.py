@@ -61,8 +61,9 @@ def test_ninja_strike_flow():
         # We need to register for Generic functions.
         # Use helper:
         cdata = dm_ai_module.CardData(cid, cdef.name, cdef.cost,
-                                      cdef.civilization.name, # Use name for string
-                                      cdef.power, "CREATURE", cdef.races, [])
+                                      [cdef.civilization], # Use list of Enums
+                                      cdef.power, "CREATURE", cdef.races, [],
+                                      cdef.reaction_abilities) # Pass reaction abilities!
         dm_ai_module.register_card_data(cdata)
 
     # Initialize players
