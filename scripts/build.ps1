@@ -1,10 +1,10 @@
-$ErrorActionPreference = "Stop"
-
 param(
     [string]$Config = "Release",
     [string]$Generator = "MinGW Makefiles",
     [switch]$Clean
 )
+
+$ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $projectRoot = Split-Path -Parent $scriptDir
