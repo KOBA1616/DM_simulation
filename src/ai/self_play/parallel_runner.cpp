@@ -5,7 +5,9 @@
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/actions/action_generator.hpp"
 #include "engine/effects/effect_resolver.hpp"
-#include "engine/game_instance.hpp" // Added include
+#include "engine/game_instance.hpp"
+#include "ai/mcts/mcts.hpp" // Added MCTS include
+#include "ai/inference/pimc_generator.hpp" // Added PIMC include
 #include <omp.h>
 #include <random>
 #include <algorithm>
@@ -114,6 +116,132 @@ namespace dm::ai {
         }
 
         return results;
+    }
+
+    std::vector<float> ParallelRunner::run_pimc_search(
+            const dm::core::GameState& observation,
+            dm::core::PlayerID observer_id,
+            const std::vector<dm::core::CardID>& opponent_deck_candidates,
+            BatchEvaluatorCallback evaluator,
+            int num_threads,
+            float temperature
+    ) {
+        // We run num_threads simulations.
+        // Each thread creates a determinized world, runs MCTS on it, and returns the root policy.
+        // Finally we average the policies.
+
+        int num_worlds = num_threads; // One world per thread
+        std::vector<std::vector<float>> policies(num_worlds);
+
+        InferenceQueue inf_queue;
+        std::atomic<int> completed_worlds = 0;
+
+        auto worker_func = [&](int world_idx) {
+            // Generate determinized state
+            uint32_t seed = std::random_device{}();
+            dm::core::GameState determinized_state = dm::ai::inference::PIMCGenerator::generate_determinized_state(
+                observation, card_db_, observer_id, opponent_deck_candidates, seed
+            );
+
+            // MCTS Instance
+            // Parameters: c_puct=1.0, alpha=0 (dirichlet), epsilon=0.25, batch=16, alpha_risk=0.0
+            // We use default params for now, or could pass them.
+            MCTS mcts(card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
+
+            BatchEvaluatorCallback worker_cb = [&](const std::vector<dm::core::GameState>& states) {
+                InferenceRequest req;
+                req.states = states;
+                auto fut = req.promise.get_future();
+
+                {
+                    std::lock_guard<std::mutex> lock(inf_queue.mutex);
+                    inf_queue.queue.push(&req);
+                }
+                inf_queue.cv.notify_one();
+                return fut.get();
+            };
+
+            // Run search
+            // Note: add_noise=false usually for PIMC unless we want exploration in the determinized world too.
+            // Usually yes for MCTS construction.
+            policies[world_idx] = mcts.search(determinized_state, mcts_simulations_, worker_cb, true, temperature);
+
+            completed_worlds++;
+            inf_queue.cv.notify_one();
+        };
+
+        std::vector<std::thread> threads;
+        for (int i = 0; i < num_worlds; ++i) {
+            threads.emplace_back(worker_func, i);
+        }
+
+        // Main thread handles inference
+        while (completed_worlds < num_worlds) {
+            std::vector<InferenceRequest*> batch;
+            {
+                std::unique_lock<std::mutex> lock(inf_queue.mutex);
+                inf_queue.cv.wait_for(lock, std::chrono::milliseconds(1), [&] {
+                    return !inf_queue.queue.empty() || completed_worlds == num_worlds;
+                });
+
+                if (completed_worlds == num_worlds && inf_queue.queue.empty()) break;
+
+                while (!inf_queue.queue.empty()) {
+                    batch.push_back(inf_queue.queue.front());
+                    inf_queue.queue.pop();
+                    if (batch.size() >= 32) break; // Use larger batch size? Or batch_size_?
+                }
+            }
+
+            if (batch.empty()) continue;
+
+            std::vector<dm::core::GameState> all_states;
+            std::vector<int> split_indices;
+            for (auto* req : batch) {
+                all_states.insert(all_states.end(), req->states.begin(), req->states.end());
+                split_indices.push_back(req->states.size());
+            }
+
+            auto result_pair = evaluator(all_states);
+            const auto& all_policies = result_pair.first;
+            const auto& all_values = result_pair.second;
+
+            int offset = 0;
+            for (size_t i = 0; i < batch.size(); ++i) {
+                int count = split_indices[i];
+                std::vector<std::vector<float>> batch_policies;
+                std::vector<float> batch_values;
+                for (int j = 0; j < count; ++j) {
+                    batch_policies.push_back(all_policies[offset + j]);
+                    batch_values.push_back(all_values[offset + j]);
+                }
+                offset += count;
+                batch[i]->promise.set_value({batch_policies, batch_values});
+            }
+        }
+
+        for (auto& t : threads) {
+            if (t.joinable()) t.join();
+        }
+
+        // Aggregate policies
+        if (policies.empty()) return {};
+
+        std::vector<float> aggregated_policy(policies[0].size(), 0.0f);
+        for (const auto& p : policies) {
+            for (size_t i = 0; i < p.size(); ++i) {
+                aggregated_policy[i] += p[i];
+            }
+        }
+
+        // Normalize
+        float sum = 0.0f;
+        for (float v : aggregated_policy) sum += v;
+        if (sum > 1e-6f) {
+            for (auto& v : aggregated_policy) v /= sum;
+        }
+
+        return aggregated_policy;
     }
 
     std::vector<int> ParallelRunner::play_scenario_match(
