@@ -76,3 +76,49 @@
     *   **完了日**: 2024/05/30
     *   **実装内容**:
         *   `ShieldBurn` (シールド焼却), `GrantKeyword` (能力付与), `SearchDeckBottom`, `ReturnToHand` 等の専用ハンドラを `src/engine/systems/card/handlers` に実装し、`GenericCardSystem` から委譲する構成を確立。
+
+---
+
+## Phase 2 & 3: AI Evolution & Refactoring (Completed)
+
+AI知能の進化、不完全情報対応、およびシステム基盤の安定化に関連する完了済みタスク。
+
+### 1. Refactoring & Stabilization (Phase 3.0)
+*   **テストディレクトリ再編 (Test Directory Reorganization)**
+    *   `src/main_test.cpp` を `tests/cpp/` に移動し、`tests/python/` との役割分担を明確化しました。
+*   **CardInstance構造改善 (CardInstance Structure Improvement)**
+    *   `src/core/game_state.hpp` の `CardInstance` 構造体に `owner` (PlayerID) フィールドを追加し、Pythonバインディングからもアクセス可能にしました。
+*   **GUI安定化 (GUI Stabilization)**
+    *   `MCTS` クラスの Python バインディングに `search` メソッドを露出し、GUI からの呼び出しエラーを修正しました。
+*   **ParallelRunner メモリリーク (ParallelRunner Memory Leak)**
+    *   `collect_data` フラグを導入し、検証実行時に膨大なゲーム状態を保持しないように修正しました。
+*   **PhaseManagerバインディング修正 (PhaseManager Binding Fix)**
+    *   `dm_ai_module.PhaseManager` に `check_game_over` メソッドをバインディングし、`AttributeError` を解消しました。
+*   **新規能力実装 (New Ability Implementation)**
+    *   「数字を宣言し、そのコストの呪文を唱えられなくする」ロック効果 (`LOCK_SPELL_BY_COST`) をエンジンに実装しました。
+*   **リーサルソルバー改善 (Lethal Solver Improvement)**
+    *   除去、タップ、ブロック不可などを考慮した高度な判定ロジックを実装しました。
+    *   シールドブレイク優先順序をシミュレートするグリーディヒューリスティックを採用しました。
+
+### 2. Imperfect Information (Phase 3.1)
+*   **相手手札推定器 (Opponent Hand Estimator)**
+    *   `dm_toolkit/ai/inference` に実装済み。`DeckClassifier` と `HandEstimator` を実装。
+*   **PIMC (Perfect Information Monte Carlo) サーチ**
+    *   `src/ai/inference/pimc_generator.cpp` にて候補プールからのサンプリング生成機能を実装。
+    *   `src/ai/self_play/parallel_runner.cpp` に `run_pimc_search` を実装し、並列PIMC探索を実現。
+
+### 3. Self-Evolving Ecosystem (Phase 3.2)
+*   **自動学習サイクル (The Automation Loop)**
+    *   `dm_toolkit/training/automation_loop.py` にて、Collector, Trainer, Gatekeeper の完全自動ループを実装済み。
+*   **世代管理とストレージ戦略 (Generation Management)**
+    *   `dm_toolkit/training/generation_manager.py` にて、階層化保存（Production/Population/Hall of Fame）とデータ自動削除を実装済み。
+*   **デッキ進化 (Deck Evolution)**
+    *   `DeckEvolution` クラスおよび `calculate_interaction_score` ロジックを `src/ai/evolution/` (C++) に移植し、高速化を実現しました。
+
+### 4. User Requested Enhancements (Phase 3.5)
+*   **カードエディタ UI/UX 改善 (Card Editor UI/UX)**
+    *   3ペイン構成への刷新、簡易プレビュー機能、文明選択UIの装飾、呪文パワー入力マスク等を実装済み。
+*   **MCTS 可視化機能の復旧 (Restore MCTS Visualization)**
+    *   `MCTS` クラスに `get_last_root` メソッドを追加・公開し、GUIでのツリー可視化を可能にしました。
+*   **テストカバレッジの拡充 (Test Coverage)**
+    *   エンジン実装済みの「呪文ロック効果」について、エンドツーエンドのテストケースを作成し動作検証を行いました。
