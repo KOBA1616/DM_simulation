@@ -23,7 +23,10 @@
     "type": "CREATURE"
   },
   {
-    "civilization": "FIRE",
+    "ai_importance_score": 0,
+    "civilizations": [
+      "FIRE"
+    ],
     "cost": 3,
     "effects": [
       {
@@ -36,6 +39,8 @@
       }
     ],
     "id": 2,
+    "is_key_card": false,
+    "keywords": {},
     "name": "Speed Attacker",
     "power": 3000,
     "races": [
@@ -54,7 +59,10 @@
     "type": "SPELL"
   },
   {
-    "civilization": "DARKNESS",
+    "ai_importance_score": 0,
+    "civilizations": [
+      "DARKNESS"
+    ],
     "cost": 6,
     "effects": [
       {
@@ -76,6 +84,7 @@
       }
     ],
     "id": 5,
+    "is_key_card": false,
     "keywords": {
       "shield_trigger": true
     },
@@ -85,7 +94,10 @@
     "type": "SPELL"
   },
   {
-    "civilization": "WATER",
+    "ai_importance_score": 0,
+    "civilizations": [
+      "WATER"
+    ],
     "cost": 2,
     "effects": [
       {
@@ -106,6 +118,7 @@
       }
     ],
     "id": 6,
+    "is_key_card": false,
     "keywords": {
       "shield_trigger": true
     },
@@ -174,7 +187,9 @@
   },
   {
     "ai_importance_score": 0,
-    "civilization": "WATER",
+    "civilizations": [
+      "WATER"
+    ],
     "cost": 7,
     "effects": [
       {
@@ -241,7 +256,9 @@
   },
   {
     "ai_importance_score": 0,
-    "civilization": "WATER",
+    "civilizations": [
+      "WATER"
+    ],
     "cost": 2,
     "effects": [
       {
@@ -272,16 +289,6 @@
     "races": [
       "マジック"
     ],
-    "type": "CREATURE"
-  },
-  {
-    "civilization": "FIRE",
-    "cost": 1,
-    "effects": [],
-    "id": 10,
-    "name": "New Card",
-    "power": 1000,
-    "races": [],
     "type": "CREATURE"
   }
 ]
