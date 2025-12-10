@@ -43,12 +43,7 @@ namespace dm::engine {
                              for(auto& fc : f.civilizations) {
                                  // cd.civilizations is vector<Civilization>
                                  for(auto& cc : cd.civilizations) {
-                                     if (fc == "LIGHT" && cc == Civilization::LIGHT) match = true;
-                                     if (fc == "WATER" && cc == Civilization::WATER) match = true;
-                                     if (fc == "DARKNESS" && cc == Civilization::DARKNESS) match = true;
-                                     if (fc == "FIRE" && cc == Civilization::FIRE) match = true;
-                                     if (fc == "NATURE" && cc == Civilization::NATURE) match = true;
-                                     if (fc == "ZERO" && cc == Civilization::ZERO) match = true;
+                                     if (fc == cc) match = true;
                                      if(match) break;
                                  }
                                  if(match) break;

@@ -18,7 +18,13 @@ namespace dm::engine {
                     dm::core::CardData card = item.get<dm::core::CardData>();
                     // Backward compatibility: allow single "civilization" field
                     if (card.civilizations.empty() && item.contains("civilization")) {
-                        card.civilizations.push_back(item.at("civilization").get<std::string>());
+                        std::string civ_str = item.at("civilization").get<std::string>();
+                        if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
+                        else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
+                        else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);
+                        else if (civ_str == "FIRE") card.civilizations.push_back(Civilization::FIRE);
+                        else if (civ_str == "NATURE") card.civilizations.push_back(Civilization::NATURE);
+                        else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
                     }
                     cards[card.id] = card;
                     definitions[static_cast<CardID>(card.id)] = convert_to_def(card);
@@ -27,7 +33,13 @@ namespace dm::engine {
                 // Single object
                 dm::core::CardData card = j.get<dm::core::CardData>();
                 if (card.civilizations.empty() && j.contains("civilization")) {
-                    card.civilizations.push_back(j.at("civilization").get<std::string>());
+                    std::string civ_str = j.at("civilization").get<std::string>();
+                    if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
+                    else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
+                    else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);
+                    else if (civ_str == "FIRE") card.civilizations.push_back(Civilization::FIRE);
+                    else if (civ_str == "NATURE") card.civilizations.push_back(Civilization::NATURE);
+                    else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
                 }
                 cards[card.id] = card;
                 definitions[static_cast<CardID>(card.id)] = convert_to_def(card);
@@ -65,16 +77,7 @@ namespace dm::engine {
         def.name = data.name;
 
         // Civilization mapping
-        def.civilizations.clear();
-        for (const auto& civ_str : data.civilizations) {
-            if (civ_str == "LIGHT") def.civilizations.push_back(Civilization::LIGHT);
-            else if (civ_str == "WATER") def.civilizations.push_back(Civilization::WATER);
-            else if (civ_str == "DARKNESS") def.civilizations.push_back(Civilization::DARKNESS);
-            else if (civ_str == "FIRE") def.civilizations.push_back(Civilization::FIRE);
-            else if (civ_str == "NATURE") def.civilizations.push_back(Civilization::NATURE);
-            else if (civ_str == "ZERO") def.civilizations.push_back(Civilization::ZERO);
-        }
-        if (def.civilizations.empty()) def.civilizations.push_back(Civilization::ZERO);
+        def.civilizations = data.civilizations;
 
         // Type mapping
         if (data.type == "CREATURE") def.type = CardType::CREATURE;

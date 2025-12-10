@@ -142,7 +142,7 @@ def test_revolution_change_flow(game_state):
 
     # Setup Condition
     cond = FilterDef()
-    cond.civilizations = ["FIRE"] # FilterDef uses strings for civs
+    cond.civilizations = [dm_ai_module.Civilization.FIRE]
     cond.races = ["Dragon"] # "Armored Dragon" contains "Dragon" usually?
     # Or strictly "Dragon"?
     # Engine usually does substring or exact match?
