@@ -77,6 +77,7 @@ namespace dm::core {
         MOVE_TO_UNDER_CARD,
         SELECT_NUMBER,
         FRIEND_BURST, // Added: Friend Burst
+        GRANT_KEYWORD, // Added: Grant Keyword
         NONE
     };
 
@@ -283,7 +284,8 @@ namespace dm::core {
         {EffectActionType::SEND_TO_DECK_BOTTOM, "SEND_TO_DECK_BOTTOM"},
         {EffectActionType::MOVE_TO_UNDER_CARD, "MOVE_TO_UNDER_CARD"},
         {EffectActionType::SELECT_NUMBER, "SELECT_NUMBER"},
-        {EffectActionType::FRIEND_BURST, "FRIEND_BURST"}
+        {EffectActionType::FRIEND_BURST, "FRIEND_BURST"},
+        {EffectActionType::GRANT_KEYWORD, "GRANT_KEYWORD"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count, selection_mode, selection_sort_key, and_conditions)

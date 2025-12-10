@@ -229,6 +229,23 @@ namespace dm::engine {
                 game_state.current_phase = Phase::ATTACK;
                 break;
             case Phase::END_OF_TURN:
+                // Cleanup Step: Remove expired modifiers and passive effects
+                {
+                     // Cost Modifiers
+                     auto& mods = game_state.active_modifiers;
+                     mods.erase(std::remove_if(mods.begin(), mods.end(), [](CostModifier& m) {
+                         if (m.turns_remaining > 0) m.turns_remaining--;
+                         return m.turns_remaining == 0;
+                     }), mods.end());
+
+                     // Passive Effects
+                     auto& passives = game_state.passive_effects;
+                     passives.erase(std::remove_if(passives.begin(), passives.end(), [](PassiveEffect& p) {
+                         if (p.turns_remaining > 0) p.turns_remaining--;
+                         return p.turns_remaining == 0;
+                     }), passives.end());
+                }
+
                 // Switch turn
                 game_state.active_player_id = 1 - game_state.active_player_id;
                 if (game_state.active_player_id == 0) {

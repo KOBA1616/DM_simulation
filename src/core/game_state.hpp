@@ -85,6 +85,8 @@ namespace dm::core {
     // Step 5-1: Passive Effects
     enum class PassiveType {
         POWER_MODIFIER,
+        // KEYWORD_GRANT was missing here, but present in handlers.
+        // It must be defined for compilation.
         KEYWORD_GRANT,
         COST_REDUCTION, // Merged with CostModifier? Or keep separate?
         // CostModifier is for HAND/MANA cards. PassiveEffect is usually for BATTLE ZONE.
@@ -106,6 +108,7 @@ namespace dm::core {
         ConditionDef condition; // "If shields 0..."
         int source_instance_id; // The source of the effect (e.g. Rose Castle)
         PlayerID controller;
+        int turns_remaining = -1; // -1 = permanent, 1 = this turn only
     };
 
     // Phase 5: Turn Stats for Meta Counter logic
