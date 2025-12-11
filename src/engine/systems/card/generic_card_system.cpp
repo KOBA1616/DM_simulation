@@ -23,6 +23,7 @@
 #include "handlers/move_card_handler.hpp"
 #include "handlers/cast_spell_handler.hpp"
 #include "handlers/put_creature_handler.hpp"
+#include "handlers/modifier_handler.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -86,6 +87,7 @@ namespace dm::engine {
         sys.register_handler(EffectActionType::MOVE_CARD, std::make_unique<MoveCardHandler>());
         sys.register_handler(EffectActionType::CAST_SPELL, std::make_unique<CastSpellHandler>());
         sys.register_handler(EffectActionType::PUT_CREATURE, std::make_unique<PutCreatureHandler>());
+        sys.register_handler(EffectActionType::APPLY_MODIFIER, std::make_unique<ModifierHandler>());
         _handlers_registered = true;
     }
 

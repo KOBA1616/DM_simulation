@@ -358,6 +358,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
              CardDefinition d;
              d.id = id; d.name = name; d.civilizations = {string_to_civilization(civ)};
              d.races = races; d.cost = cost; d.power = power; d.keywords = keywords;
+             d.type = CardType::CREATURE;
              return d;
         }))
         // Overload for Civilization enum
@@ -365,6 +366,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
              CardDefinition d;
              d.id = id; d.name = name; d.civilizations = {civ};
              d.races = races; d.cost = cost; d.power = power; d.keywords = keywords;
+             d.type = CardType::CREATURE;
              return d;
         }))
         .def_readwrite("id", &CardDefinition::id)

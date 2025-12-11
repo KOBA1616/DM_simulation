@@ -100,12 +100,22 @@ class CardDataManager:
         act_type = action.get('type', 'NONE')
         # Simplified for initial load, Form updates will fix details if needed
         display_type = tr(act_type)
+
         if act_type == "GET_GAME_STAT":
-             display_type = f"{tr('GET_GAME_STAT')} ({tr(action.get('str_val',''))})"
+             display_type = f"{tr('Reference')} {tr(action.get('str_val',''))}"
         elif act_type == "APPLY_MODIFIER" and action.get('str_val') == "COST":
-             display_type = tr("COST_REDUCTION")
+             display_type = tr("Reduce Cost by")
+             if action.get('input_value_key'):
+                 display_type += f" [{action.get('input_value_key')}]"
+             else:
+                 display_type += f" {action.get('value1', 0)}"
         elif act_type == "COST_REFERENCE":
              display_type = f"{tr('COST_REFERENCE')} ({tr(action.get('str_val',''))})"
+        elif act_type in ["SELECT_TARGET", "DESTROY", "RETURN_TO_HAND", "SEND_TO_MANA", "TAP"]:
+             # Try to format "[count] [filter]"
+             count = action.get('filter', {}).get('count')
+             if count:
+                 display_type += f" (Count: {count})"
 
         item = QStandardItem(f"{tr('Action')}: {display_type}")
         item.setData("ACTION", Qt.ItemDataRole.UserRole + 1)
