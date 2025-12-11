@@ -303,6 +303,40 @@ namespace dm::engine {
     void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         ensure_handlers_registered();
 
+        // Check Action-level condition (if any)
+        if (action.condition.has_value()) {
+            // Pass context to condition checker?
+            // Currently check_condition uses GenericCardSystem::check_condition which doesn't take context directly
+            // BUT, for COMPARE_STAT, it might need to look up variables.
+            // check_condition signature: (GameState, ConditionDef, source_id, card_db)
+            // It does NOT currently support context variables.
+            // We need to support it if we want to check "destroyed_count" from context.
+
+            // HACK: If the condition is COMPARE_STAT and the stat_key is in execution_context,
+            // we manually evaluate it here or extend check_condition.
+            // For proper modularity, check_condition should accept context.
+            // Let's implement a local check for context variables for now.
+
+            bool condition_met = false;
+            if (action.condition->type == "COMPARE_STAT" && execution_context.count(action.condition->stat_key)) {
+                int val = execution_context[action.condition->stat_key];
+                int target = action.condition->value;
+                std::string op = action.condition->op;
+                if (op == ">") condition_met = val > target;
+                else if (op == ">=") condition_met = val >= target;
+                else if (op == "<") condition_met = val < target;
+                else if (op == "<=") condition_met = val <= target;
+                else if (op == "=" || op == "==") condition_met = val == target;
+                else if (op == "!=") condition_met = val != target;
+            } else {
+                 condition_met = check_condition(game_state, *action.condition, source_instance_id, card_db);
+            }
+
+            if (!condition_met) {
+                return;
+            }
+        }
+
         EffectSystem& sys = EffectSystem::instance();
         if (IActionHandler* handler = sys.get_handler(action.type)) {
             ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db);
