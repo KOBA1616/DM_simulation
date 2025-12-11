@@ -53,30 +53,17 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
     *   **プロセス終了時のクラッシュ**: [完了] (アーカイブ済み)
 
 3.  **今後の課題 (Future Issues/Known Bugs)**
+    *   **シールド探索のテスト失敗 (Search Shield Test Failure)**: `test_search_shield.py` が失敗する
+        *   今回、Python側のテストコード（register_card_data）で動的に追加したカードデータが、C++側の GenericCardSystem 内で正しく参照できず、一部のユニットテスト（test_search_shield.py）をスキップする必要がありました。
+        *   課題: テスト実行時における CardRegistry と GenericCardSystem 間のデータ同期（特に card_db の参照渡し周り）を調査し、テスト用のダミーカードが確実に認識される仕組みを整備する必要があります。
     *   **ニンジャ・ストライクのテスト失敗 (Ninja Strike Test Failure)**: `test_ninja_strike.py` が失敗する状態（アクションが生成されない）。型安全化により顕在化したロジックまたはデータ設定の問題である可能性が高く、次回以降の優先調査対象とする。
         *   *原因*: アクション生成またはJSONデータ定義の不整合の可能性。
-    *   **シールド探索のテスト失敗 (Search Shield Test Failure)**: `test_search_shield.py` が失敗する
-    *   今回、Python側のテストコード（register_card_data）で動的に追加したカードデータが、C++側の GenericCardSystem 内で正しく参照できず、一部のユニットテスト（test_search_shield.py）をスキップする必要がありました。
-    *   課題: テスト実行時における CardRegistry と GenericCardSystem 間のデータ同期（特に card_db の参照渡し周り）を調査し、テスト用のダミーカードが確実に認識される仕組みを整備する必要があります。
 
-### 3.1 [Priority: High] Phase 4: アーキテクチャ刷新 (Architecture Update)
-
-1.  **Transformer (Linear Attention) 導入**
-    *   **目的**: 盤面のカード枚数が可変であるTCGの特性に合わせ、固定長入力のResNetから、可変長入力を扱えるAttention機構へ移行する。
-    *   **計画**: `NetworkV2` として、PyTorchでのモデル定義と、C++側のテンソル変換ロジック（`TensorConverter`）の書き換えを行う。
-    *   *ステータス: 未着手*。現在のモデルはResNetベースであり、Attention機構の実装は行われていません。
-
-### 3.2 [Priority: Medium] User Requested Enhancements (ユーザー要望対応)
+### 3.1 [Priority: High] User Requested Enhancements (ユーザー要望対応)
 
 直近のフィードバックに基づき、ユーザビリティ向上とロジックの汎用化を行います。
 
-1.  **Game Info ウィンドウの整理**
-    *   **レイアウト分離**:
-        *   **上部**: ゲーム進行操作、必須情報。
-        *   **下部**: AI設定、シミュレーション設定。
-    *   *ステータス: 未完了*。GUIの再設計が必要です。
-
-2.  **エンジン・ロジック拡張**
+1.  **エンジン・ロジック拡張**
     *   **フレンド・バースト実装**: アクションに追加。内部処理用IDを自動割り振りし、ユーザーに意識させずに処理する。
         *   *ステータス: 未着手*。
     *   **ロック能力の汎用化**: `LOCK_SPELL_BY_COST` を「コスト指定ロック」として汎用化・再定義する。
@@ -101,13 +88,13 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
         **原子アクションが汎用性高く使用できるか検証**
         **GUIの日本語化推進**
 
-1.  **シナリオエディタの機能改善 (Scenario Editor Improvements)**
+2.  **シナリオエディタの機能改善 (Scenario Editor Improvements)**
     *   **ゾーン管理の構造化**: 各ゾーン（Hand, Battle Zone, Mana Zone, Shield Zone, Graveyard）をタブまたはグループで整理し、カードID配列ではなく「カード名のリスト」として管理します。
     *   **カード検索・追加機能**: カード名、文明、コスト、テキストでの検索・フィルタリング機能を実装します。
     *   **ドラッグ＆ドロップ**: 検索結果リストから各ゾーンへ直感的にカードを追加できるようにします。
     *   *ステータス: 未着手*。現状のシナリオエディタは基本的なJSONテキスト編集機能に留まっています。
 
-2.  **カードエディタ GUI 改善 (Card Editor GUI Improvements)**
+3.  **カードエディタ GUI 改善 (Card Editor GUI Improvements)**
     *   **多色表示の改善**: 2色以上選択時、単純な混色（紫など）ではなく、グラデーションとして表示する。
     *   **レイアウト調整**:
         *   Imageスペースの削除。
@@ -122,6 +109,22 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
     *   **日本語化**: GUI上の表示文字を可能な限り日本語で表示する。特に、キーワード能力だけでなく、カードに登録した能力テキストもプレビューおよびGenerated Textで日本語表示されるようにする。
         *   *ステータス: 進行中*。基本的なメニューやEnumの日本語化は `localization.py` で行われていますが、カードテキスト生成やプレビューの完全日本語化は未完了です。
     *   **モード選択機能**: 「3つの中から2回選択する（重複可）」などのモード選択の実装とGUI対応。選択肢のネストを深くし、表記・表示を分かりやすくする。
+    *   **Reaction Ability UI**:
+        *   ニンジャ・ストライクや革命0トリガーなどの「リアクション（手札誘発）」を編集するための専用フォームの実装。
+        *   *ステータス: 未着手*。
+
+4.  **Game Info ウィンドウの整理**
+    *   **レイアウト分離**:
+        *   **上部**: ゲーム進行操作、必須情報。
+        *   **下部**: AI設定、シミュレーション設定。
+    *   *ステータス: 未完了*。GUIの再設計が必要です。
+
+### 3.2 [Priority: Medium] Phase 4: アーキテクチャ刷新 (Architecture Update)
+
+1.  **Transformer (Linear Attention) 導入**
+    *   **目的**: 盤面のカード枚数が可変であるTCGの特性に合わせ、固定長入力のResNetから、可変長入力を扱えるAttention機構へ移行する。
+    *   **計画**: `NetworkV2` として、PyTorchでのモデル定義と、C++側のテンソル変換ロジック（`TensorConverter`）の書き換えを行う。
+    *   *ステータス: 未着手*。現在のモデルはResNetベースであり、Attention機構の実装は行われていません。
 
 ### 3.3 [Priority: Low] Phase 5: エディタ機能の完成形 (Editor Polish)
 
@@ -130,9 +133,6 @@ AI開発と並行して、エディタの残存課題を解消します。
 1.  **Logic Mask (ロジックマスク)**
     *   選択された「トリガー」に対して、意味的に無効な「効果」を選択できないようにGUI側でフィルタリングする機能。
     *   *ステータス: 未着手*。
-2.  **Reaction Ability UI**
-    *   ニンジャ・ストライクや革命0トリガーなどの「リアクション（手札誘発）」を編集するための専用フォームの実装。
-    *   *ステータス: 未着手*。カードデータ構造としては `reaction_abilities` が定義されていますが、GUI編集は未実装です。
-3.  **Visual Effect Builder**
+2.  **Visual Effect Builder**
     *   ロジックツリーをノードグラフ形式で表示・編集できる高度なUI（長期目標）。
     *   *ステータス: 未着手*。
