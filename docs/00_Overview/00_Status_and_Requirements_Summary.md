@@ -51,13 +51,15 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 2.  **重要バグ修正 (Critical Bug Fixes)**
     *   **静的ライブラリ重複問題の解消**: [完了] (アーカイブ済み)
     *   **プロセス終了時のクラッシュ**: [完了] (アーカイブ済み)
+    *   **EffectResolverの勝利判定修正**: `resolve_attack` において、シールド0枚のプレイヤーへの攻撃宣言時に即座に勝利判定を行っていた問題を修正。攻撃宣言 -> リアクション（ニンジャ・ストライク等） -> ブロック -> バトル解決 -> シールドブレイク（勝利）という正しいフローを経るように変更。[完了]
 
 3.  **今後の課題 (Future Issues/Known Bugs)**
-    *   **シールド探索のテスト失敗 (Search Shield Test Failure)**: `test_search_shield.py` が失敗する
-        *   今回、Python側のテストコード（register_card_data）で動的に追加したカードデータが、C++側の GenericCardSystem 内で正しく参照できず、一部のユニットテスト（test_search_shield.py）をスキップする必要がありました。
-        *   課題: テスト実行時における CardRegistry と GenericCardSystem 間のデータ同期（特に card_db の参照渡し周り）を調査し、テスト用のダミーカードが確実に認識される仕組みを整備する必要があります。
-    *   **ニンジャ・ストライクのテスト失敗 (Ninja Strike Test Failure)**: `test_ninja_strike.py` が失敗する状態（アクションが生成されない）。型安全化により顕在化したロジックまたはデータ設定の問題である可能性が高く、次回以降の優先調査対象とする。
-        *   *原因*: アクション生成またはJSONデータ定義の不整合の可能性。
+    *   **シールド探索のテスト失敗 (Search Shield Test Failure)**: [解決済み]
+        *   `test_search_shield.py` における `GenericCardSystem` のカードデータ参照問題を、`JsonLoader` を介した明示的な `card_db` 構築と `resolve_action_with_db` の利用により解決しました。
+    *   **ニンジャ・ストライクのテスト失敗 (Ninja Strike Test Failure)**: [解決済み]
+        *   攻撃解決フェーズのロジック修正により、リアクションウィンドウが正しく開くことを確認しました。
+    *   **カード統計テストの失敗 (Card Stats Win Contribution)**: `test_card_stats.py` の `test_card_stats_win_contribution` が失敗する。
+        *   勝利判定 (`state.winner`) が `NONE` のままテストが終了しているため、統計更新のロジック以前に、テスト内のゲーム進行ロジック（ダイレクトアタックによる勝利確定）が正しく動作していない可能性があります。要調査。
 
 ### 3.1 [Priority: High] User Requested Enhancements (ユーザー要望対応)
 
