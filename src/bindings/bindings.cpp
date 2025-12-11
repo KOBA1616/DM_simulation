@@ -10,6 +10,7 @@
 #include "engine/systems/card/json_loader.hpp"
 #include "core/scenario_config.hpp"
 #include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/condition_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
@@ -156,6 +157,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SEND_TO_DECK_BOTTOM", EffectActionType::SEND_TO_DECK_BOTTOM)
         .value("MOVE_TO_UNDER_CARD", EffectActionType::MOVE_TO_UNDER_CARD)
         .value("GRANT_KEYWORD", EffectActionType::GRANT_KEYWORD)
+        .value("MOVE_CARD", EffectActionType::MOVE_CARD)
         .value("NONE", EffectActionType::NONE)
         .export_values();
 
@@ -306,6 +308,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("str_val", &ActionDef::str_val)
         .def_readwrite("target_choice", &ActionDef::target_choice)
         .def_readwrite("optional", &ActionDef::optional)
+        .def_readwrite("source_zone", &ActionDef::source_zone)
+        .def_readwrite("destination_zone", &ActionDef::destination_zone)
         .def_readwrite("input_value_key", &ActionDef::input_value_key)
         .def_readwrite("output_value_key", &ActionDef::output_value_key);
 
@@ -313,7 +317,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init<>())
         .def_readwrite("type", &ConditionDef::type)
         .def_readwrite("value", &ConditionDef::value)
-        .def_readwrite("str_val", &ConditionDef::str_val);
+        .def_readwrite("str_val", &ConditionDef::str_val)
+        .def_readwrite("stat_key", &ConditionDef::stat_key)
+        .def_readwrite("op", &ConditionDef::op);
 
     py::class_<ReactionCondition>(m, "ReactionCondition")
         .def(py::init<>())
@@ -597,6 +603,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("auto_tap_mana",
              static_cast<bool (*)(Player&, const CardDefinition&, const std::map<CardID, CardDefinition>&)>(&ManaSystem::auto_tap_mana))
         .def_static("get_adjusted_cost", &ManaSystem::get_adjusted_cost);
+
+    // Expose ConditionSystem for testing
+    py::class_<ConditionSystem>(m, "ConditionSystem")
+        .def_static("instance", &ConditionSystem::instance, py::return_value_policy::reference)
+        .def("evaluate_def", &ConditionSystem::evaluate_def);
 
     py::class_<GenericCardSystem>(m, "GenericCardSystem")
         .def_static("resolve_trigger", [](GameState& state, TriggerType trigger, int source_id, const std::map<CardID, CardDefinition>& db) {
