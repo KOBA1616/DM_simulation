@@ -3,6 +3,7 @@ from PyQt6.QtCore import Qt
 from dm_toolkit.gui.editor.forms.card_form import CardEditForm
 from dm_toolkit.gui.editor.forms.effect_form import EffectEditForm
 from dm_toolkit.gui.editor.forms.action_form import ActionEditForm
+from dm_toolkit.gui.editor.forms.reaction_form import ReactionEditForm
 from dm_toolkit.gui.localization import tr
 
 class PropertyInspector(QWidget):
@@ -29,6 +30,9 @@ class PropertyInspector(QWidget):
         self.action_form = ActionEditForm()
         self.stack.addWidget(self.action_form)
 
+        self.reaction_form = ReactionEditForm()
+        self.stack.addWidget(self.reaction_form)
+
         layout.addWidget(self.stack)
 
     def set_selection(self, index):
@@ -48,5 +52,8 @@ class PropertyInspector(QWidget):
         elif item_type == "ACTION":
             self.action_form.set_data(item)
             self.stack.setCurrentWidget(self.action_form)
+        elif item_type == "REACTION":
+            self.reaction_form.set_data(item)
+            self.stack.setCurrentWidget(self.reaction_form)
         else:
             self.stack.setCurrentWidget(self.empty_page)

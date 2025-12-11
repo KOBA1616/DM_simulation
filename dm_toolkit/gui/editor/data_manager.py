@@ -27,6 +27,10 @@ class CardDataManager:
 
                 card_item.appendRow(eff_item)
 
+            for react_idx, reaction in enumerate(card.get('reaction_abilities', [])):
+                react_item = self._create_reaction_item(reaction)
+                card_item.appendRow(react_item)
+
             self.model.appendRow(card_item)
 
     def get_full_data(self):
@@ -38,23 +42,31 @@ class CardDataManager:
             card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
             if not card_data: continue
 
-            # Rebuild effects list from children
+            # Rebuild effects and reactions list from children
             new_effects = []
+            new_reactions = []
             for j in range(card_item.rowCount()):
-                eff_item = card_item.child(j)
-                eff_data = eff_item.data(Qt.ItemDataRole.UserRole + 2)
+                child_item = card_item.child(j)
+                item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
 
-                # Rebuild actions list from children
-                new_actions = []
-                for k in range(eff_item.rowCount()):
-                    act_item = eff_item.child(k)
-                    act_data = act_item.data(Qt.ItemDataRole.UserRole + 2)
-                    new_actions.append(act_data)
+                if item_type == "EFFECT":
+                    eff_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
+                    # Rebuild actions list from children
+                    new_actions = []
+                    for k in range(child_item.rowCount()):
+                        act_item = child_item.child(k)
+                        act_data = act_item.data(Qt.ItemDataRole.UserRole + 2)
+                        new_actions.append(act_data)
 
-                eff_data['actions'] = new_actions
-                new_effects.append(eff_data)
+                    eff_data['actions'] = new_actions
+                    new_effects.append(eff_data)
+
+                elif item_type == "REACTION":
+                    react_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
+                    new_reactions.append(react_data)
 
             card_data['effects'] = new_effects
+            card_data['reaction_abilities'] = new_reactions
             cards.append(card_data)
 
         return cards
@@ -120,6 +132,14 @@ class CardDataManager:
         item = QStandardItem(f"{tr('Action')}: {display_type}")
         item.setData("ACTION", Qt.ItemDataRole.UserRole + 1)
         item.setData(action, Qt.ItemDataRole.UserRole + 2)
+        return item
+
+    def _create_reaction_item(self, reaction):
+        rtype = reaction.get('type', 'NONE')
+        cost = reaction.get('cost', 0)
+        item = QStandardItem(f"{tr('Reaction')}: {tr(rtype)} ({cost})")
+        item.setData("REACTION", Qt.ItemDataRole.UserRole + 1)
+        item.setData(reaction, Qt.ItemDataRole.UserRole + 2)
         return item
 
     def _generate_new_id(self):
