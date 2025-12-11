@@ -389,6 +389,8 @@ namespace dm::engine {
              } else {
                  defender.hand.push_back(shield);
              }
+             // Reaction Window: ON_SHIELD_ADD (Strike Back)
+             ReactionSystem::check_and_open_window(game_state, card_db, "ON_SHIELD_ADD", defender.id);
          }
     }
 
