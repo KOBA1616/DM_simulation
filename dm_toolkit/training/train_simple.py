@@ -11,12 +11,9 @@ from typing import List, Optional
 # Ensure bin is in path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 bin_path = os.path.join(project_root, 'bin')
-python_path = os.path.join(project_root, 'python')
 
 if bin_path not in sys.path:
     sys.path.append(bin_path)
-if python_path not in sys.path:
-    sys.path.append(python_path)
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 
