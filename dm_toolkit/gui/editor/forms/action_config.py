@@ -164,5 +164,14 @@ ACTION_UI_CONFIG = {
         "visible": ["str_val", "filter"],
         "label_str_val": "Race (e.g. Fire Bird)",
         "can_be_optional": True
+    },
+    "GRANT_KEYWORD": {
+        "visible": ["scope", "filter", "str_val", "value2"],
+        "label_str_val": "Keyword",
+        "label_value2": "Duration (Turns)"
+    },
+    "MOVE_CARD": {
+        "visible": ["scope", "filter", "destination_zone", "target_choice"],
+        "can_be_optional": True
     }
 }
