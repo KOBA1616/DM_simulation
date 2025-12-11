@@ -158,6 +158,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("MOVE_TO_UNDER_CARD", EffectActionType::MOVE_TO_UNDER_CARD)
         .value("GRANT_KEYWORD", EffectActionType::GRANT_KEYWORD)
         .value("MOVE_CARD", EffectActionType::MOVE_CARD)
+        .value("CAST_SPELL", EffectActionType::CAST_SPELL)
+        .value("PUT_CREATURE", EffectActionType::PUT_CREATURE)
         .value("NONE", EffectActionType::NONE)
         .export_values();
 
