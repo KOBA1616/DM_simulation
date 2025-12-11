@@ -32,6 +32,7 @@ class ActionEditForm(BaseEditForm):
             "val2_visible": vis("value2"),
             "str_visible": vis("str_val"),
             "filter_visible": vis("filter"),
+            "dest_zone_visible": vis("destination_zone"),
             "can_be_optional": raw.get("can_be_optional", False),
             "produces_output": raw.get("produces_output", False),
             "tooltip": raw.get("tooltip", ""),
@@ -46,7 +47,8 @@ class ActionEditForm(BaseEditForm):
             "DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DRAW_CARD", "SEARCH_DECK_BOTTOM", "MEKRAID", "TAP", "UNTAP",
             "COST_REFERENCE", "COST_REDUCTION", "NONE", "BREAK_SHIELD", "LOOK_AND_ADD", "SUMMON_TOKEN", "DISCARD", "PLAY_FROM_ZONE",
             "REVOLUTION_CHANGE", "MEASURE_COUNT", "APPLY_MODIFIER", "REVEAL_CARDS",
-            "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE", "SEND_TO_DECK_BOTTOM"
+            "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE", "SEND_TO_DECK_BOTTOM",
+            "FRIEND_BURST", "GRANT_KEYWORD", "MOVE_CARD"
         ]
         self.populate_combo(self.type_combo, types, data_func=lambda x: x)
         layout.addRow(tr("Action Type"), self.type_combo)
@@ -76,6 +78,13 @@ class ActionEditForm(BaseEditForm):
 
         self.ref_mode_label = QLabel(tr("Ref Mode"))
         layout.addRow(self.ref_mode_label, self.ref_mode_combo)
+
+        # Destination Zone Combo (For MOVE_CARD)
+        self.dest_zone_combo = QComboBox()
+        zones = ["HAND", "BATTLE_ZONE", "GRAVEYARD", "MANA_ZONE", "SHIELD_ZONE", "DECK_BOTTOM", "DECK_TOP"]
+        self.populate_combo(self.dest_zone_combo, zones, data_func=lambda x: x)
+        self.dest_zone_label = QLabel(tr("Destination Zone"))
+        layout.addRow(self.dest_zone_label, self.dest_zone_combo)
 
         # Filter Widget
         self.filter_group = QGroupBox(tr("Filter"))
@@ -113,6 +122,7 @@ class ActionEditForm(BaseEditForm):
         self.str_val_edit.textChanged.connect(self.update_data)
         self.measure_mode_combo.currentIndexChanged.connect(self.on_measure_mode_changed)
         self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
+        self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
         self.arbitrary_check.stateChanged.connect(self.update_data)
 
         self.update_ui_state(self.type_combo.currentData())
@@ -180,6 +190,9 @@ class ActionEditForm(BaseEditForm):
         self.ref_mode_label.setVisible(is_ref)
         self.ref_mode_combo.setVisible(is_ref)
 
+        self.dest_zone_label.setVisible(config.get("dest_zone_visible", False))
+        self.dest_zone_combo.setVisible(config.get("dest_zone_visible", False))
+
         # Filter Visibility
         show_filter = config["filter_visible"]
         if is_measure:
@@ -215,6 +228,8 @@ class ActionEditForm(BaseEditForm):
              self.set_combo_by_data(self.measure_mode_combo, val)
         elif ui_type == "COST_REFERENCE":
              self.set_combo_by_data(self.ref_mode_combo, str_val)
+
+        self.set_combo_by_data(self.dest_zone_combo, data.get('destination_zone', 'HAND'))
 
         self.update_ui_state(ui_type)
 
@@ -258,6 +273,7 @@ class ActionEditForm(BaseEditForm):
             data['type'] = action_type
             data['str_val'] = self.str_val_edit.text()
 
+        data['destination_zone'] = self.dest_zone_combo.currentData()
         data['scope'] = self.scope_combo.currentData()
         data['filter'] = self.filter_widget.get_data()
         data['value1'] = self.val1_spin.value()
@@ -298,3 +314,4 @@ class ActionEditForm(BaseEditForm):
         self.link_widget.blockSignals(block)
         self.arbitrary_check.blockSignals(block)
         self.ref_mode_combo.blockSignals(block)
+        self.dest_zone_combo.blockSignals(block)
