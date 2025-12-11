@@ -72,8 +72,21 @@ namespace dm::engine {
             const dm::core::CardInstance& card_instance,
             dm::core::PlayerID player_id,
             const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
-            const std::string& /*event_type*/ = ""
+            const std::string& event_type = ""
         ) {
+            // Event Type Match (if provided)
+            if (!event_type.empty()) {
+                bool event_match = (reaction.condition.trigger_event == event_type);
+                if (!event_match) {
+                    if (reaction.condition.trigger_event == "ON_BLOCK_OR_ATTACK") {
+                        if (event_type == "ON_ATTACK" || event_type == "ON_BLOCK") {
+                            event_match = true;
+                        }
+                    }
+                }
+                if (!event_match) return false;
+            }
+
             // Civilization Match
             if (reaction.condition.civilization_match) {
                 const auto& player = game_state.players[player_id];
