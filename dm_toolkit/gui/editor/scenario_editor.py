@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QListWidget,
-                             QPushButton, QLabel, QLineEdit, QTextEdit, QMessageBox, QSplitter, QWidget)
+                             QPushButton, QLabel, QLineEdit, QTextEdit, QMessageBox, QSplitter, QWidget,
+                             QTabWidget, QFormLayout, QSpinBox, QCheckBox)
 from PyQt6.QtCore import Qt
 import json
 import os
@@ -9,9 +10,10 @@ class ScenarioEditor(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(tr("Scenario Editor"))
-        self.resize(800, 600)
+        self.resize(1000, 700)
         self.scenarios = []
         self.current_index = -1
+        self.is_updating_ui = False
         self.setup_ui()
         self.load_data()
 
@@ -37,23 +39,55 @@ class ScenarioEditor(QDialog):
         # Right: Editor
         right_layout = QVBoxLayout()
 
+        # Header Info
+        header_layout = QFormLayout()
         self.name_edit = QLineEdit()
-        self.name_edit.editingFinished.connect(lambda: self.update_memory_from_ui(self.current_index))
-        right_layout.addWidget(QLabel(tr("Name (ID)")))
-        right_layout.addWidget(self.name_edit)
+        self.name_edit.editingFinished.connect(self.save_header_to_memory)
+        header_layout.addRow(tr("Name (ID):"), self.name_edit)
 
         self.desc_edit = QLineEdit()
-        self.desc_edit.editingFinished.connect(lambda: self.update_memory_from_ui(self.current_index))
-        right_layout.addWidget(QLabel(tr("Description")))
-        right_layout.addWidget(self.desc_edit)
+        self.desc_edit.editingFinished.connect(self.save_header_to_memory)
+        header_layout.addRow(tr("Description:"), self.desc_edit)
+        right_layout.addLayout(header_layout)
 
-        self.config_edit = QTextEdit()
-        self.config_edit.setPlaceholderText('{\n  "my_mana": 0,\n  "my_hand_cards": []\n}')
-        # Trigger update on focus lost? Or text changed?
-        # Text changed is too frequent. Let's use focusOutEvent subclassing or just button save.
-        # But we want to sync when switching rows. on_selection_changed handles that.
-        right_layout.addWidget(QLabel(tr("Configuration (JSON)")))
-        right_layout.addWidget(self.config_edit)
+        # Tabs for Config
+        self.tabs = QTabWidget()
+        right_layout.addWidget(self.tabs)
+
+        # Tab 1: General Settings
+        self.tab_general = QWidget()
+        self.form_general = QFormLayout()
+        self.spin_my_mana = QSpinBox()
+        self.spin_my_mana.setRange(0, 99)
+        self.form_general.addRow(tr("My Mana (Available):"), self.spin_my_mana)
+
+        self.spin_enemy_shields = QSpinBox()
+        self.spin_enemy_shields.setRange(0, 99)
+        self.form_general.addRow(tr("Enemy Shields (Count):"), self.spin_enemy_shields)
+
+        self.check_enemy_trigger = QCheckBox(tr("Enemy Can Use Trigger"))
+        self.form_general.addRow("", self.check_enemy_trigger)
+
+        self.check_loop_proof = QCheckBox(tr("Loop Proof Mode"))
+        self.form_general.addRow("", self.check_loop_proof)
+
+        self.tab_general.setLayout(self.form_general)
+        self.tabs.addTab(self.tab_general, tr("General"))
+
+        # Zone Tabs helper
+        self.zone_edits = {}
+        self.create_zone_tab("my_hand_cards", tr("My Hand"))
+        self.create_zone_tab("my_battle_zone", tr("My Battle Zone"))
+        self.create_zone_tab("my_mana_zone", tr("My Mana Zone"))
+        self.create_zone_tab("my_grave_yard", tr("My Graveyard"))
+        self.create_zone_tab("my_shields", tr("My Shields")) # Distinct from count
+        self.create_zone_tab("enemy_battle_zone", tr("Enemy Battle Zone"))
+
+        # Connect signals for auto-save to memory
+        self.spin_my_mana.valueChanged.connect(self.save_config_to_memory)
+        self.spin_enemy_shields.valueChanged.connect(self.save_config_to_memory)
+        self.check_enemy_trigger.stateChanged.connect(self.save_config_to_memory)
+        self.check_loop_proof.stateChanged.connect(self.save_config_to_memory)
 
         self.btn_save = QPushButton(tr("Save All to File"))
         self.btn_save.clicked.connect(self.save_to_file)
@@ -67,14 +101,28 @@ class ScenarioEditor(QDialog):
         right_widget.setLayout(right_layout)
         splitter.addWidget(left_widget)
         splitter.addWidget(right_widget)
-        splitter.setStretchFactor(1, 2)
+        splitter.setStretchFactor(1, 3)
 
         layout.addWidget(splitter)
 
         self.enable_inputs(False)
 
+    def create_zone_tab(self, key, title):
+        tab = QWidget()
+        vbox = QVBoxLayout()
+        lbl = QLabel(tr("Enter Card IDs or Names (one per line):"))
+        vbox.addWidget(lbl)
+        edit = QTextEdit()
+        edit.setPlaceholderText("e.g.\nBronze-Arm Tribe\n1005\n...")
+        # Connect textChanged to save? Might be too heavy. Use focus out or explicit save.
+        # Let's use focusOut via event filter or just rely on 'Save to Memory' when switching or saving file.
+        # Ideally, we update memory when switching list items.
+        vbox.addWidget(edit)
+        tab.setLayout(vbox)
+        self.tabs.addTab(tab, title)
+        self.zone_edits[key] = edit
+
     def load_data(self):
-        # Load from data/scenarios.json
         path = "data/scenarios.json"
         if not os.path.exists(path) and os.path.exists("../data/scenarios.json"):
             path = "../data/scenarios.json"
@@ -95,39 +143,77 @@ class ScenarioEditor(QDialog):
             self.list_widget.addItem(item.get("name", "Unnamed"))
 
     def on_selection_changed(self, row):
-        # Save previous selection to memory before switching?
-        # self.current_index is the OLD index.
+        # Save previous selection to memory
         if self.current_index >= 0 and self.current_index < len(self.scenarios):
-             self.update_memory_from_ui(self.current_index)
+             self.save_all_to_memory(self.current_index)
 
         self.current_index = row
         if row >= 0:
             item = self.scenarios[row]
+            self.is_updating_ui = True
+
             self.name_edit.setText(item.get("name", ""))
             self.desc_edit.setText(item.get("description", ""))
+
             config = item.get("config", {})
-            self.config_edit.setText(json.dumps(config, indent=2))
+            self.spin_my_mana.setValue(config.get("my_mana", 0))
+            self.spin_enemy_shields.setValue(config.get("enemy_shield_count", 5))
+            self.check_enemy_trigger.setChecked(config.get("enemy_can_use_trigger", False))
+            self.check_loop_proof.setChecked(config.get("loop_proof_mode", False))
+
+            for key, edit in self.zone_edits.items():
+                val = config.get(key, [])
+                if isinstance(val, list):
+                    # Convert list to string lines
+                    text = "\n".join(str(x) for x in val)
+                    edit.setText(text)
+                else:
+                    edit.clear()
+
+            self.is_updating_ui = False
             self.enable_inputs(True)
         else:
             self.clear_inputs()
             self.enable_inputs(False)
 
-    def update_memory_from_ui(self, index):
+    def save_header_to_memory(self):
+        if self.current_index < 0 or self.is_updating_ui: return
+        item = self.scenarios[self.current_index]
+        item["name"] = self.name_edit.text()
+        item["description"] = self.desc_edit.text()
+        self.list_widget.item(self.current_index).setText(item["name"])
+
+    def save_config_to_memory(self):
+        if self.current_index < 0 or self.is_updating_ui: return
+        self.save_all_to_memory(self.current_index)
+
+    def save_all_to_memory(self, index):
         if index < 0 or index >= len(self.scenarios): return
 
         item = self.scenarios[index]
         item["name"] = self.name_edit.text()
         item["description"] = self.desc_edit.text()
-        try:
-            config = json.loads(self.config_edit.toPlainText())
-            item["config"] = config
-        except json.JSONDecodeError:
-            # Maybe show a small indicator or status bar?
-            print(f"Invalid JSON for scenario {item['name']}")
-            pass
 
-        # Update list item text
-        self.list_widget.item(index).setText(item["name"])
+        config = item.get("config", {})
+        config["my_mana"] = self.spin_my_mana.value()
+        config["enemy_shield_count"] = self.spin_enemy_shields.value()
+        config["enemy_can_use_trigger"] = self.check_enemy_trigger.isChecked()
+        config["loop_proof_mode"] = self.check_loop_proof.isChecked()
+
+        # Parse Zone Texts
+        for key, edit in self.zone_edits.items():
+            text = edit.toPlainText()
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            parsed_list = []
+            for line in lines:
+                # Try to parse as int (ID), else keep as string (Name)
+                try:
+                    parsed_list.append(int(line))
+                except ValueError:
+                    parsed_list.append(line)
+            config[key] = parsed_list
+
+        item["config"] = config
 
     def on_new(self):
         new_item = {
@@ -156,7 +242,7 @@ class ScenarioEditor(QDialog):
 
     def save_to_file(self):
         if self.current_index >= 0:
-            self.update_memory_from_ui(self.current_index)
+            self.save_all_to_memory(self.current_index)
 
         path = "data/scenarios.json"
         if not os.path.exists("data") and os.path.exists("../data"):
@@ -170,11 +256,18 @@ class ScenarioEditor(QDialog):
             QMessageBox.critical(self, tr("Error"), f"Failed to save: {e}")
 
     def clear_inputs(self):
+        self.is_updating_ui = True
         self.name_edit.clear()
         self.desc_edit.clear()
-        self.config_edit.clear()
+        self.spin_my_mana.setValue(0)
+        self.spin_enemy_shields.setValue(5)
+        self.check_enemy_trigger.setChecked(False)
+        self.check_loop_proof.setChecked(False)
+        for edit in self.zone_edits.values():
+            edit.clear()
+        self.is_updating_ui = False
 
     def enable_inputs(self, enable):
         self.name_edit.setEnabled(enable)
         self.desc_edit.setEnabled(enable)
-        self.config_edit.setEnabled(enable)
+        self.tabs.setEnabled(enable)
