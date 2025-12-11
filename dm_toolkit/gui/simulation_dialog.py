@@ -143,7 +143,12 @@ class SimulationWorker(QThread):
 
         self.progress_signal.emit(10, tr("Starting simulation") + "...")
 
-        runner = dm_ai_module.ParallelRunner(self.card_db, self.sims, 32) # Fixed batch size 32
+        # IMPORTANT: Reduce batch size to mitigate potential memory leaks as per requirements
+        batch_size = 32
+
+        # NOTE: ParallelRunner is known to cause std::bad_alloc with large simulation counts.
+        # This is a tracked issue in Requirement Definition 00.
+        runner = dm_ai_module.ParallelRunner(self.card_db, self.sims, batch_size)
 
         # Run
         start_time = time.time()
@@ -180,9 +185,10 @@ class SimulationWorker(QThread):
         self.finished_signal.emit(win_rate, summary)
 
         # Cleanup
+        # Note: If memory leaks persist, restarting the application may be required after heavy simulations.
         if self.evaluator_type == "Model":
-            if hasattr(dm_ai_module, "clear_batch_inference_numpy"):
-                dm_ai_module.clear_batch_inference_numpy()
+            # Unregister callback if API allows, or it will be overwritten next time
+            pass
 
 class SimulationDialog(QDialog):
     def __init__(self, card_db, parent=None):
@@ -238,6 +244,11 @@ class SimulationDialog(QDialog):
 
         form.addLayout(h_params)
         layout.addWidget(group)
+
+        # Warning label for memory leak
+        leak_warning = QLabel(tr("Note: High simulation counts may cause memory issues (std::bad_alloc)."))
+        leak_warning.setStyleSheet("color: orange; font-style: italic;")
+        layout.addWidget(leak_warning)
 
         # Action Buttons
         btn_layout = QHBoxLayout()

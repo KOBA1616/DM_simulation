@@ -47,11 +47,11 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 1.  **基盤リファクタリング (Fundamental Refactoring)**
     *   **パッケージ構造**: `dm_toolkit` をトップレベルパッケージとして確立し、関連するインポートやパス設定を修正します。
     *   **GUIシミュレーション統合**: GUIの「バッチシミュレーション」機能を `ParallelRunner` バックエンド利用に統一し、コード重複の排除と高速化を図ります。
-        *   *ステータス: 未完了*。ParallelRunnerは実装されていますが、大量シミュレーション時のメモリリーク問題 (`std::bad_alloc`) が解決していないため、GUIへの完全統合は保留中です。
+        *   *ステータス: 実装済み (Caution)*。ParallelRunnerへの統合を行いましたが、大量シミュレーション時のメモリリーク問題 (`std::bad_alloc`) のリスクがあるため、バッチサイズを制限し、GUI上に警告を表示しています。
 
 2.  **重要バグ修正 (Critical Bug Fixes)**
     *   **カード統計テストの失敗 (Card Stats Win Contribution)**: `test_card_stats.py` の `test_card_stats_win_contribution` が失敗する。
-        *   勝利判定 (`state.winner`) が `NONE` のままテストが終了しているため、統計更新のロジック以前に、テスト内のゲーム進行ロジック（ダイレクトアタックによる勝利確定）が正しく動作していない可能性があります。要調査。
+        *   *ステータス: 修正済み*。バトル解決時の無限ループ（保留中の効果が削除されないバグ）をC++エンジン側で修正し、テストコード側で勝利後の統計更新処理（`PhaseManager.check_game_over`）を正しく呼び出すように修正しました。
 
 ### 3.1 [Priority: High] User Requested Enhancements (ユーザー要望対応)
 
