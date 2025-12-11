@@ -210,13 +210,6 @@ namespace dm::engine {
         game_state.turn_stats.attacks_declared_this_turn++;
         GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_ATTACK, card.instance_id, card_db);
 
-        // If attacking the player and they have no shields, declare immediate victory.
-        if (action.type == ActionType::ATTACK_PLAYER && defender.shield_zone.empty()) {
-            game_state.winner = (game_state.active_player_id == 0) ? GameResult::P1_WIN : GameResult::P2_WIN;
-            game_state.on_game_finished(game_state.winner);
-            return;
-        }
-
         if (game_state.current_phase == Phase::ATTACK) {
             game_state.current_phase = Phase::BLOCK;
         }
