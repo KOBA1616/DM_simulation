@@ -134,9 +134,15 @@ namespace dm::engine {
              }
              case ActionType::RESOLVE_BATTLE:
                  execute_battle(game_state, card_db);
+                 if (!game_state.pending_effects.empty() && action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
+                     game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
+                 }
                  break;
              case ActionType::BREAK_SHIELD:
                  resolve_break_shield(game_state, action, card_db);
+                 if (!game_state.pending_effects.empty() && action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
+                     game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
+                 }
                  break;
              case ActionType::DECLARE_REACTION:
                  resolve_reaction(game_state, action, card_db);
