@@ -119,6 +119,15 @@ namespace dm::core {
         std::vector<FilterDef> and_conditions;
     };
 
+    struct ConditionDef {
+        std::string type; // "NONE", "MANA_ARMED", "SHIELD_COUNT", "COMPARE_STAT"
+        int value = 0;
+        std::string str_val;
+        // Condition Generalization
+        std::string stat_key; // e.g. "OPPONENT_HAND_COUNT"
+        std::string op; // ">", "=", "<"
+    };
+
     struct ActionDef {
         EffectActionType type = EffectActionType::NONE;
         TargetScope scope = TargetScope::NONE;
@@ -137,15 +146,8 @@ namespace dm::core {
         std::string output_value_key;
         // Step 3-3: Negative Selection
         bool inverse_target = false;
-    };
-
-    struct ConditionDef {
-        std::string type; // "NONE", "MANA_ARMED", "SHIELD_COUNT", "COMPARE_STAT"
-        int value = 0;
-        std::string str_val;
-        // Condition Generalization
-        std::string stat_key; // e.g. "OPPONENT_HAND_COUNT"
-        std::string op; // ">", "=", "<"
+        // Step 3-1: Conditional Actions
+        std::optional<ConditionDef> condition;
     };
 
     struct EffectDef {
@@ -188,6 +190,10 @@ namespace dm::core {
         int ai_importance_score = 0;
     };
 
+    // Forward declarations
+    void to_json(nlohmann::json& j, const CardData& c);
+    void from_json(const nlohmann::json& j, CardData& c);
+
 } // namespace dm::core
 
 // JSON Serialization Macros & Helpers
@@ -207,26 +213,6 @@ namespace nlohmann {
                 opt = std::nullopt;
             } else {
                 opt = j.get<T>();
-            }
-        }
-    };
-
-    // Custom serializer for shared_ptr
-    template <typename T>
-    struct adl_serializer<std::shared_ptr<T>> {
-        static void to_json(json& j, const std::shared_ptr<T>& opt) {
-            if (!opt) {
-                j = nullptr;
-            } else {
-                j = *opt;
-            }
-        }
-
-        static void from_json(const json& j, std::shared_ptr<T>& opt) {
-            if (j.is_null()) {
-                opt = nullptr;
-            } else {
-                opt = std::make_shared<T>(j.get<T>());
             }
         }
     };
@@ -310,10 +296,104 @@ namespace dm::core {
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count, selection_mode, selection_sort_key, and_conditions)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CardData, id, name, cost, civilizations, power, type, races, effects, metamorph_abilities, revolution_change_condition, keywords, reaction_abilities, spell_side, is_key_card, ai_importance_score)
+
+    inline void to_json(nlohmann::json& j, const CardData& c) {
+        j = nlohmann::json{
+            {"id", c.id},
+            {"name", c.name},
+            {"cost", c.cost},
+            {"civilizations", c.civilizations},
+            {"power", c.power},
+            {"type", c.type},
+            {"races", c.races},
+            {"effects", c.effects},
+            {"metamorph_abilities", c.metamorph_abilities},
+            {"revolution_change_condition", c.revolution_change_condition},
+            {"keywords", c.keywords},
+            {"reaction_abilities", c.reaction_abilities},
+            {"is_key_card", c.is_key_card},
+            {"ai_importance_score", c.ai_importance_score}
+        };
+        if (c.spell_side) {
+            j["spell_side"] = *c.spell_side;
+        } else {
+            j["spell_side"] = nullptr;
+        }
+    }
+
+    inline void from_json(const nlohmann::json& j, CardData& c) {
+        c.id = j.value("id", 0);
+        c.name = j.value("name", std::string(""));
+        c.cost = j.value("cost", 0);
+        if (j.contains("civilizations")) j.at("civilizations").get_to(c.civilizations); else c.civilizations = {};
+        c.power = j.value("power", 0);
+        c.type = j.value("type", std::string("CREATURE"));
+        if (j.contains("races")) j.at("races").get_to(c.races); else c.races = {};
+
+        if (j.contains("effects")) {
+            const auto& arr = j.at("effects");
+            c.effects.clear();
+            if (arr.is_array()) {
+                c.effects.reserve(arr.size());
+                for (const auto& elem : arr) {
+                    EffectDef e;
+                    from_json(elem, e); // Using ADL or found via lookup
+                    c.effects.push_back(e);
+                }
+            }
+        } else {
+            c.effects = {};
+        }
+
+        if (j.contains("metamorph_abilities")) {
+            const auto& arr = j.at("metamorph_abilities");
+            c.metamorph_abilities.clear();
+            if (arr.is_array()) {
+                c.metamorph_abilities.reserve(arr.size());
+                for (const auto& elem : arr) {
+                    EffectDef e;
+                    from_json(elem, e);
+                    c.metamorph_abilities.push_back(e);
+                }
+            }
+        } else {
+            c.metamorph_abilities = {};
+        }
+
+        if (j.contains("revolution_change_condition")) {
+             j.at("revolution_change_condition").get_to(c.revolution_change_condition);
+        }
+
+        if (j.contains("keywords")) j.at("keywords").get_to(c.keywords);
+
+        if (j.contains("reaction_abilities")) {
+            const auto& arr = j.at("reaction_abilities");
+            c.reaction_abilities.clear();
+            if (arr.is_array()) {
+                c.reaction_abilities.reserve(arr.size());
+                for (const auto& elem : arr) {
+                    ReactionAbility ra;
+                    from_json(elem, ra);
+                    c.reaction_abilities.push_back(ra);
+                }
+            }
+        } else {
+            c.reaction_abilities = {};
+        }
+
+        c.is_key_card = j.value("is_key_card", false);
+        c.ai_importance_score = j.value("ai_importance_score", 0);
+
+        if (j.contains("spell_side") && !j["spell_side"].is_null()) {
+            c.spell_side = std::make_shared<CardData>();
+            from_json(j.at("spell_side"), *c.spell_side); // Recursive call using ADL
+        } else {
+            c.spell_side = nullptr;
+        }
+    }
 }
