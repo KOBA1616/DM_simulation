@@ -64,8 +64,8 @@ namespace dm::engine {
                 std::vector<CardInstance> looked;
                 for (int i = 0; i < look; ++i) {
                     if (controller.deck.empty()) break;
-                    looked.push_back(controller.deck.back());
-                    controller.deck.pop_back();
+                    looked.push_back(controller.deck.front());
+                    controller.deck.erase(controller.deck.begin());
                 }
 
                 int chosen_idx = -1;
