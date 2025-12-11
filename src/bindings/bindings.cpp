@@ -252,6 +252,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property("untap_in", [](CardKeywords& k){ return k.untap_in; }, [](CardKeywords& k, bool v){ k.untap_in = v; })
         .def_property("meta_counter_play", [](CardKeywords& k){ return k.meta_counter_play; }, [](CardKeywords& k, bool v){ k.meta_counter_play = v; })
         .def_property("unblockable", [](CardKeywords& k){ return k.unblockable; }, [](CardKeywords& k, bool v){ k.unblockable = v; })
+        .def_property("friend_burst", [](CardKeywords& k){ return k.friend_burst; }, [](CardKeywords& k, bool v){ k.friend_burst = v; })
         .def_property("power_attacker", [](CardKeywords& k){ return k.power_attacker; }, [](CardKeywords& k, bool v){ k.power_attacker = v; });
 
     py::class_<FilterDef>(m, "FilterDef")
