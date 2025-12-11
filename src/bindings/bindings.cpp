@@ -314,7 +314,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("source_zone", &ActionDef::source_zone)
         .def_readwrite("destination_zone", &ActionDef::destination_zone)
         .def_readwrite("input_value_key", &ActionDef::input_value_key)
-        .def_readwrite("output_value_key", &ActionDef::output_value_key);
+        .def_readwrite("output_value_key", &ActionDef::output_value_key)
+        .def_readwrite("condition", &ActionDef::condition);
 
     py::class_<ConditionDef>(m, "ConditionDef")
         .def(py::init<>())
