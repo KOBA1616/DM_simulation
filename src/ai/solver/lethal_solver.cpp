@@ -55,9 +55,9 @@ namespace dm::ai {
 
             // Breaker Capability
             info.breaker_count = 1;
-            if (def.keywords.triple_breaker) info.breaker_count = 3;
+            if (def.keywords.world_breaker) info.breaker_count = 999;
+            else if (def.keywords.triple_breaker) info.breaker_count = 3;
             else if (def.keywords.double_breaker) info.breaker_count = 2;
-            // TODO: World Breaker, etc.
 
             // Unblockable Capability
             info.is_unblockable = def.keywords.unblockable;
