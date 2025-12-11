@@ -65,6 +65,7 @@ namespace dm::engine {
             if (k.count("neo")) def.keywords.neo = k.at("neo");
             if (k.count("just_diver")) def.keywords.just_diver = k.at("just_diver");
             if (k.count("hyper_energy")) def.keywords.hyper_energy = k.at("hyper_energy");
+            if (k.count("friend_burst")) def.keywords.friend_burst = k.at("friend_burst");
             if (k.count("shield_burn")) def.keywords.shield_burn = k.at("shield_burn");
             if (k.count("untap_in")) def.keywords.untap_in = k.at("untap_in");
             if (k.count("meta_counter_play")) def.keywords.meta_counter_play = k.at("meta_counter_play");
