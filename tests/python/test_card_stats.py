@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../bin'))
 
 try:
     import dm_ai_module
-    from dm_ai_module import GameState, CardDefinition, CardType, Civilization, GameResult, ActionType, ActionGenerator, CardData
+    from dm_ai_module import GameState, CardDefinition, CardType, Civilization, GameResult, ActionType, ActionGenerator, CardData, PhaseManager
 except ImportError:
     pytest.skip("dm_ai_module not found", allow_module_level=True)
 
@@ -160,30 +160,32 @@ def test_card_stats_win_contribution():
 
     dm_ai_module.EffectResolver.resolve_action(state, attack_action, card_db)
 
-    # Check pending effects (BREAK_SHIELD or similar)
-    # Since enemy has 0 shields, it might be direct attack logic handled in execute_battle or similar.
-    # But usually it queues BREAK_SHIELD which handles game over if no shields.
-
-    # Or maybe RESOLVE_BATTLE.
-
-    pending = dm_ai_module.get_pending_effects_info(state)
+    print("--- Starting Resolution Loop ---")
 
     # Resolve pending effects loop
     limit = 10
     while limit > 0 and state.winner == dm_ai_module.GameResult.NONE:
          actions = ActionGenerator.generate_legal_actions(state, card_db)
-         if not actions: break
+         if not actions:
+             print("No actions generated!")
+             break
 
          # Prioritize resolution actions
          res_act = next((a for a in actions if a.type in [ActionType.RESOLVE_BATTLE, ActionType.BREAK_SHIELD, ActionType.RESOLVE_EFFECT]), None)
          if res_act:
              dm_ai_module.EffectResolver.resolve_action(state, res_act, card_db)
          else:
-             # Just take any action (PASS?)
              dm_ai_module.EffectResolver.resolve_action(state, actions[0], card_db)
          limit -= 1
 
+    print(f"Final Winner: {state.winner}")
     assert state.winner == dm_ai_module.GameResult.P1_WIN
+
+    # Trigger stats update via PhaseManager
+    # check_game_over(state, result) -> returns bool
+    # We pass a dummy result, it will be ignored/overwritten because state.winner is already set.
+    dummy_result = dm_ai_module.GameResult.NONE
+    PhaseManager.check_game_over(state, dummy_result)
 
     # Check stats for Card 2
     stats = dm_ai_module.get_card_stats(state)
