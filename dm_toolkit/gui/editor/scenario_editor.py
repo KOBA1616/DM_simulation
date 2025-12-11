@@ -85,7 +85,9 @@ class ScenarioEditor(QDialog):
         self.create_zone_tab("my_mana_zone", tr("My Mana Zone"))
         self.create_zone_tab("my_grave_yard", tr("My Graveyard"))
         self.create_zone_tab("my_shields", tr("My Shields"))
+        self.create_zone_tab("my_deck", tr("My Deck"))
         self.create_zone_tab("enemy_battle_zone", tr("Enemy Battle Zone"))
+        self.create_zone_tab("enemy_deck", tr("Enemy Deck"))
 
         # Connect signals
         self.spin_my_mana.valueChanged.connect(self.save_config_to_memory)
@@ -130,8 +132,24 @@ class ScenarioEditor(QDialog):
     def create_zone_tab(self, key, title):
         tab = QWidget()
         vbox = QVBoxLayout()
+
+        # Tools Layout (Load Deck, etc.)
+        tools_layout = QHBoxLayout()
         lbl = QLabel(tr("Drag cards here or press Delete to remove:"))
-        vbox.addWidget(lbl)
+        tools_layout.addWidget(lbl)
+
+        # Add 'Load Deck' button only for deck tabs
+        if "deck" in key:
+            btn_load_deck = QPushButton(tr("Load Deck JSON"))
+            btn_load_deck.clicked.connect(lambda: self.load_deck_into_zone(key))
+            tools_layout.addWidget(btn_load_deck)
+
+            # Add 'Move to Zone' button
+            btn_move = QPushButton(tr("Search & Move to Zone..."))
+            btn_move.clicked.connect(lambda: self.search_and_move_from_deck(key))
+            tools_layout.addWidget(btn_move)
+
+        vbox.addLayout(tools_layout)
 
         # Use DraggableListWidget instead of QTextEdit
         list_widget = DraggableListWidget()
@@ -147,6 +165,96 @@ class ScenarioEditor(QDialog):
         tab.setLayout(vbox)
         self.tabs.addTab(tab, title)
         self.zone_lists[key] = list_widget
+
+    def load_deck_into_zone(self, key):
+        list_widget = self.zone_lists.get(key)
+        if not list_widget: return
+
+        fname, _ = QFileDialog.getOpenFileName(
+            self, tr("Load Deck"), "data/decks", "JSON Files (*.json)"
+        )
+        if fname:
+            try:
+                with open(fname, 'r') as f:
+                    deck_ids = json.load(f)
+
+                list_widget.clear()
+                for cid in deck_ids:
+                    list_widget.addItem(str(cid))
+
+                QMessageBox.information(self, tr("Success"), tr(f"Loaded {len(deck_ids)} cards."))
+                self.save_config_to_memory()
+            except Exception as e:
+                QMessageBox.critical(self, tr("Error"), f"Failed to load deck: {e}")
+
+    def search_and_move_from_deck(self, deck_key):
+        deck_list = self.zone_lists.get(deck_key)
+        if not deck_list or deck_list.count() == 0:
+            QMessageBox.warning(self, tr("Warning"), tr("Deck is empty."))
+            return
+
+        # Create a dialog to select a card from the deck
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("Select Card to Move"))
+        layout = QVBoxLayout(dlg)
+
+        card_list = QListWidget()
+        # Populate with cards currently in deck list
+        temp_deck_items = []
+        for i in range(deck_list.count()):
+            txt = deck_list.item(i).text()
+            temp_deck_items.append(txt) # Keep as string ID
+            card_list.addItem(txt)
+
+        layout.addWidget(QLabel(tr("Select a card to move from Deck:")))
+        layout.addWidget(card_list)
+
+        # Target Zone Selection
+        layout.addWidget(QLabel(tr("To Zone:")))
+        zone_combo = QTabWidget() # Use tab-like selection or combo? simpler: Combo
+        from PyQt6.QtWidgets import QComboBox
+        combo = QComboBox()
+
+        # Determine target zones based on player (my/enemy)
+        prefix = "my_" if "my_" in deck_key else "enemy_"
+        possible_zones = [k for k in self.zone_lists.keys() if k.startswith(prefix) and "deck" not in k]
+
+        zone_map = {}
+        for k in possible_zones:
+            name = k.replace(prefix, "").replace("_", " ").title()
+            combo.addItem(name, k)
+
+        layout.addWidget(combo)
+
+        btn_box = QHBoxLayout()
+        ok_btn = QPushButton(tr("Move"))
+        ok_btn.clicked.connect(dlg.accept)
+        cancel_btn = QPushButton(tr("Cancel"))
+        cancel_btn.clicked.connect(dlg.reject)
+        btn_box.addWidget(ok_btn)
+        btn_box.addWidget(cancel_btn)
+        layout.addLayout(btn_box)
+
+        if dlg.exec():
+            # Perform Move
+            selected_items = card_list.selectedItems()
+            if not selected_items: return
+
+            selected_text = selected_items[0].text()
+            target_zone_key = combo.currentData()
+
+            # Remove from deck list (find first occurrence)
+            for i in range(deck_list.count()):
+                if deck_list.item(i).text() == selected_text:
+                    deck_list.takeItem(i)
+                    break
+
+            # Add to target zone
+            target_list = self.zone_lists.get(target_zone_key)
+            if target_list:
+                target_list.addItem(selected_text)
+
+            self.save_config_to_memory()
 
     def handle_list_key_press(self, event, list_widget):
         if event.key() == Qt.Key.Key_Delete or event.key() == Qt.Key.Key_Backspace:
