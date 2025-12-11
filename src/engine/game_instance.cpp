@@ -27,10 +27,28 @@ namespace dm::engine {
         // Instance ID counter
         int instance_id_counter = 0;
 
-        // Fill decks to prevent immediate deckout
-        for (auto& p : state.players) {
+        // Fill decks
+        // Player 0 (Me)
+        if (!config.my_deck.empty()) {
+             for (int cid : config.my_deck) {
+                  state.players[0].deck.emplace_back((CardID)cid, instance_id_counter++);
+             }
+        } else {
+             // Fallback to dummy deck
              for(int i=0; i<30; ++i) {
-                  p.deck.emplace_back((CardID)1, instance_id_counter++);
+                  state.players[0].deck.emplace_back((CardID)1, instance_id_counter++);
+             }
+        }
+
+        // Player 1 (Enemy)
+        if (!config.enemy_deck.empty()) {
+             for (int cid : config.enemy_deck) {
+                  state.players[1].deck.emplace_back((CardID)cid, instance_id_counter++);
+             }
+        } else {
+             // Fallback to dummy deck
+             for(int i=0; i<30; ++i) {
+                  state.players[1].deck.emplace_back((CardID)1, instance_id_counter++);
              }
         }
 
