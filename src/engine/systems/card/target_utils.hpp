@@ -176,6 +176,7 @@ namespace dm::engine {
             if (k == "SLAYER") return c.keywords.slayer;
             if (k == "POWER_ATTACKER") return c.keywords.power_attacker;
             if (k == "MACH_FIGHTER") return c.keywords.mach_fighter;
+            if (k == "SHIELD_TRIGGER") return c.keywords.shield_trigger; // Added
             return false;
         }
     };
