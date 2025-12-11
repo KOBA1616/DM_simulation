@@ -11,6 +11,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Enable OpenMP
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP found. Enabling parallel execution.")
+    add_compile_options(${OpenMP_CXX_FLAGS})
+    # Link OpenMP later to targets
+else()
+    message(WARNING "OpenMP not found. Parallel execution will be sequential.")
+endif()
+
 # Enable warnings
 if(MSVC)
     add_compile_options(/W4)
@@ -158,6 +168,9 @@ add_executable(dm_sim_test
     tests/cpp/main_test.cpp
 )
 target_link_libraries(dm_sim_test PRIVATE dm_core)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(dm_sim_test PRIVATE OpenMP::OpenMP_CXX)
+endif()
 if(USE_LIBTORCH)
     target_link_libraries(dm_sim_test PRIVATE ${TORCH_LIBRARIES})
 endif()
@@ -167,6 +180,9 @@ pybind11_add_module(dm_ai_module
     src/bindings/bindings.cpp
 )
 target_link_libraries(dm_ai_module PRIVATE dm_core)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(dm_ai_module PRIVATE OpenMP::OpenMP_CXX)
+endif()
 
 if(USE_LIBTORCH)
     target_link_libraries(dm_core PRIVATE ${TORCH_LIBRARIES})

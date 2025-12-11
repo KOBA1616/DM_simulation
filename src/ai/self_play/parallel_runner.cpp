@@ -254,7 +254,9 @@ namespace dm::ai {
 
         #pragma omp parallel for num_threads(num_threads)
         for (int i = 0; i < num_games; ++i) {
-            std::random_device rd;
+            // Avoid repeatedly creating std::random_device if possible, or assume it's cheap.
+            // But to be safe against FD exhaustion on some platforms:
+            static thread_local std::random_device rd;
             uint32_t seed = rd() + i;
 
             dm::engine::GameInstance instance(seed, card_db_);
@@ -313,7 +315,7 @@ namespace dm::ai {
 
         #pragma omp parallel for num_threads(num_threads)
         for (int i = 0; i < num_games; ++i) {
-            std::random_device rd;
+            static thread_local std::random_device rd;
             uint32_t seed = rd() + i;
 
             dm::engine::GameInstance instance(seed, card_db_);
