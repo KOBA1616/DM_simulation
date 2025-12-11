@@ -25,7 +25,7 @@
 #include "ai/pomdp/parametric_belief.hpp"
 #include "ai/evaluator/neural_evaluator.hpp"
 #include "core/card_stats.hpp"
-#include "core/game_state_tracking.cpp"
+
 #include "engine/utils/dev_tools.hpp"
 #include "utils/csv_loader.hpp"
 #include "python_batch_inference.hpp"
