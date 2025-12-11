@@ -129,6 +129,7 @@ namespace dm::engine {
             if (kws.count("unblockable") && kws.at("unblockable")) def.keywords.unblockable = true;
             if (kws.count("meta_counter_play") && kws.at("meta_counter_play")) def.keywords.meta_counter_play = true;
             if (kws.count("hyper_energy") && kws.at("hyper_energy")) def.keywords.hyper_energy = true;
+            if (kws.count("friend_burst") && kws.at("friend_burst")) def.keywords.friend_burst = true;
         }
 
         // Keywords mapping from effects
