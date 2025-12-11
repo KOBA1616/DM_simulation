@@ -385,7 +385,8 @@ namespace dm::engine {
              bool is_trigger = false;
              if (card_db.count(shield.card_id)) {
                  const auto& def = card_db.at(shield.card_id);
-                 if (def.keywords.shield_trigger) {
+                 // Updated for Conditional S-Trigger support
+                 if (TargetUtils::has_keyword_simple(game_state, shield, def, "SHIELD_TRIGGER")) {
                      is_trigger = true;
                  }
              }
