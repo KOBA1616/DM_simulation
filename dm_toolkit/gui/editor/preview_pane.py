@@ -81,7 +81,8 @@ class CardPreviewWidget(QWidget):
 
         # Cost (Top Left)
         self.cost_label = QLabel("5")
-        self.cost_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white; background-color: black; border-radius: 15px; padding: 2px;")
+        # Update: White background, black number, black border (Requirement)
+        self.cost_label.setStyleSheet("font-weight: bold; font-size: 18px; color: black; background-color: white; border: 2px solid black; border-radius: 15px; padding: 0px;")
         self.cost_label.setFixedSize(30, 30)
         self.cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.cost_label, 0, 0)
@@ -109,7 +110,8 @@ class CardPreviewWidget(QWidget):
         self.text_body = QLabel("")
         self.text_body.setWordWrap(True)
         self.text_body.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        self.text_body.setStyleSheet("font-size: 11px; background-color: rgba(255, 255, 255, 0.5); border-radius: 5px; padding: 5px;")
+        # Update: Thin black border (Requirement)
+        self.text_body.setStyleSheet("font-size: 11px; background-color: rgba(255, 255, 255, 0.5); border: 1px solid black; border-radius: 5px; padding: 5px;")
         layout.addWidget(self.text_body, 2, 0, 1, 3)
 
         # Power (Bottom Left)
@@ -154,6 +156,7 @@ class CardPreviewWidget(QWidget):
         self.tp_power_label = QLabel("5000")
         self.tp_power_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.tp_power_label.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft)
+        # Requirement: Left Bottom (Already there, but ensure alignment)
         upper_layout.addWidget(self.tp_power_label, 3, 0)
 
         layout.addWidget(self.tp_upper_frame)

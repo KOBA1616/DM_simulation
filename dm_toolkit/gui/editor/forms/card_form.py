@@ -52,10 +52,11 @@ class CardEditForm(BaseEditForm):
         self.scroll_area.setWidget(self.scroll_content)
         main_layout.addWidget(self.scroll_area)
 
-        # ID
+        # ID (Hidden from UI as per requirement)
         self.id_spin = QSpinBox()
         self.id_spin.setRange(0, 9999)
-        self.form_layout.addRow(tr("ID"), self.id_spin)
+        self.id_spin.setVisible(False)
+        # self.form_layout.addRow(tr("ID"), self.id_spin) # Disabled row
 
         # Name
         self.name_edit = QLineEdit()
