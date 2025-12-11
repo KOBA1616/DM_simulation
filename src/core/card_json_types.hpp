@@ -20,6 +20,7 @@ namespace dm::core {
         ON_ATTACK_FROM_HAND,
         ON_BLOCK,
         AT_BREAK_SHIELD,
+        ON_SHIELD_ADD, // Added: ON_SHIELD_ADD
         NONE
     };
 
@@ -86,8 +87,9 @@ namespace dm::core {
         SEND_TO_DECK_BOTTOM,
         MOVE_TO_UNDER_CARD,
         SELECT_NUMBER,
-        FRIEND_BURST, // Added: Friend Burst
-        GRANT_KEYWORD, // Added: Grant Keyword
+        FRIEND_BURST,
+        GRANT_KEYWORD,
+        MOVE_CARD, // Added: MOVE_CARD
         NONE
     };
 
@@ -136,9 +138,12 @@ namespace dm::core {
     };
 
     struct ConditionDef {
-        std::string type; // "NONE", "MANA_ARMED", "SHIELD_COUNT"
+        std::string type; // "NONE", "MANA_ARMED", "SHIELD_COUNT", "COMPARE_STAT"
         int value = 0;
         std::string str_val;
+        // Condition Generalization
+        std::string stat_key; // e.g. "OPPONENT_HAND_COUNT"
+        std::string op; // ">", "=", "<"
     };
 
     struct EffectDef {
@@ -237,7 +242,8 @@ namespace dm::core {
         {TriggerType::ON_OTHER_ENTER, "ON_OTHER_ENTER"},
         {TriggerType::ON_ATTACK_FROM_HAND, "ON_ATTACK_FROM_HAND"},
         {TriggerType::ON_BLOCK, "ON_BLOCK"},
-        {TriggerType::AT_BREAK_SHIELD, "AT_BREAK_SHIELD"}
+        {TriggerType::AT_BREAK_SHIELD, "AT_BREAK_SHIELD"},
+        {TriggerType::ON_SHIELD_ADD, "ON_SHIELD_ADD"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(ReactionType, {
@@ -295,12 +301,13 @@ namespace dm::core {
         {EffectActionType::MOVE_TO_UNDER_CARD, "MOVE_TO_UNDER_CARD"},
         {EffectActionType::SELECT_NUMBER, "SELECT_NUMBER"},
         {EffectActionType::FRIEND_BURST, "FRIEND_BURST"},
-        {EffectActionType::GRANT_KEYWORD, "GRANT_KEYWORD"}
+        {EffectActionType::GRANT_KEYWORD, "GRANT_KEYWORD"},
+        {EffectActionType::MOVE_CARD, "MOVE_CARD"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count, selection_mode, selection_sort_key, and_conditions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
