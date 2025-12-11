@@ -59,6 +59,7 @@ namespace dm::engine {
             if (k.count("slayer")) def.keywords.slayer = k.at("slayer");
             if (k.count("double_breaker")) def.keywords.double_breaker = k.at("double_breaker");
             if (k.count("triple_breaker")) def.keywords.triple_breaker = k.at("triple_breaker");
+            if (k.count("world_breaker")) def.keywords.world_breaker = k.at("world_breaker");
             if (k.count("shield_trigger")) def.keywords.shield_trigger = k.at("shield_trigger");
             if (k.count("evolution")) def.keywords.evolution = k.at("evolution");
             if (k.count("neo")) def.keywords.neo = k.at("neo");
@@ -84,6 +85,7 @@ namespace dm::engine {
                       if (act.str_val == "SLAYER") def.keywords.slayer = true;
                       if (act.str_val == "DOUBLE_BREAKER") def.keywords.double_breaker = true;
                       if (act.str_val == "TRIPLE_BREAKER") def.keywords.triple_breaker = true;
+                      if (act.str_val == "WORLD_BREAKER") def.keywords.world_breaker = true;
                       if (act.str_val == "MACH_FIGHTER") def.keywords.mach_fighter = true;
                       if (act.str_val == "POWER_ATTACKER") {
                            def.keywords.power_attacker = true;

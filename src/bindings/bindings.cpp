@@ -236,6 +236,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property("slayer", [](CardKeywords& k){ return k.slayer; }, [](CardKeywords& k, bool v){ k.slayer = v; })
         .def_property("double_breaker", [](CardKeywords& k){ return k.double_breaker; }, [](CardKeywords& k, bool v){ k.double_breaker = v; })
         .def_property("triple_breaker", [](CardKeywords& k){ return k.triple_breaker; }, [](CardKeywords& k, bool v){ k.triple_breaker = v; })
+        .def_property("world_breaker", [](CardKeywords& k){ return k.world_breaker; }, [](CardKeywords& k, bool v){ k.world_breaker = v; })
         .def_property("shield_trigger", [](CardKeywords& k){ return k.shield_trigger; }, [](CardKeywords& k, bool v){ k.shield_trigger = v; })
         .def_property("evolution", [](CardKeywords& k){ return k.evolution; }, [](CardKeywords& k, bool v){ k.evolution = v; })
         .def_property("cip", [](CardKeywords& k){ return k.cip; }, [](CardKeywords& k, bool v){ k.cip = v; })
