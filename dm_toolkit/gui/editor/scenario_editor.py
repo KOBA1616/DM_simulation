@@ -5,22 +5,26 @@ from PyQt6.QtCore import Qt
 import json
 import os
 from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.editor.forms.parts.card_search import CardSearchWidget
+from dm_toolkit.gui.editor.forms.parts.draggable_list import DraggableListWidget
 
 class ScenarioEditor(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(tr("Scenario Editor"))
-        self.resize(1000, 700)
+        self.resize(1200, 700)
         self.scenarios = []
         self.current_index = -1
         self.is_updating_ui = False
+        self.all_cards = []
         self.setup_ui()
         self.load_data()
+        self.load_card_db()
 
     def setup_ui(self):
         layout = QHBoxLayout(self)
 
-        # Left: List
+        # Left: Scenario List
         left_layout = QVBoxLayout()
         self.list_widget = QListWidget()
         self.list_widget.currentRowChanged.connect(self.on_selection_changed)
@@ -36,8 +40,8 @@ class ScenarioEditor(QDialog):
         btn_layout.addWidget(self.btn_delete)
         left_layout.addLayout(btn_layout)
 
-        # Right: Editor
-        right_layout = QVBoxLayout()
+        # Center: Editor
+        center_layout = QVBoxLayout()
 
         # Header Info
         header_layout = QFormLayout()
@@ -48,11 +52,11 @@ class ScenarioEditor(QDialog):
         self.desc_edit = QLineEdit()
         self.desc_edit.editingFinished.connect(self.save_header_to_memory)
         header_layout.addRow(tr("Description:"), self.desc_edit)
-        right_layout.addLayout(header_layout)
+        center_layout.addLayout(header_layout)
 
         # Tabs for Config
         self.tabs = QTabWidget()
-        right_layout.addWidget(self.tabs)
+        center_layout.addWidget(self.tabs)
 
         # Tab 1: General Settings
         self.tab_general = QWidget()
@@ -74,16 +78,16 @@ class ScenarioEditor(QDialog):
         self.tab_general.setLayout(self.form_general)
         self.tabs.addTab(self.tab_general, tr("General"))
 
-        # Zone Tabs helper
-        self.zone_edits = {}
+        # Zone Tabs
+        self.zone_lists = {}
         self.create_zone_tab("my_hand_cards", tr("My Hand"))
         self.create_zone_tab("my_battle_zone", tr("My Battle Zone"))
         self.create_zone_tab("my_mana_zone", tr("My Mana Zone"))
         self.create_zone_tab("my_grave_yard", tr("My Graveyard"))
-        self.create_zone_tab("my_shields", tr("My Shields")) # Distinct from count
+        self.create_zone_tab("my_shields", tr("My Shields"))
         self.create_zone_tab("enemy_battle_zone", tr("Enemy Battle Zone"))
 
-        # Connect signals for auto-save to memory
+        # Connect signals
         self.spin_my_mana.valueChanged.connect(self.save_config_to_memory)
         self.spin_enemy_shields.valueChanged.connect(self.save_config_to_memory)
         self.check_enemy_trigger.stateChanged.connect(self.save_config_to_memory)
@@ -91,17 +95,33 @@ class ScenarioEditor(QDialog):
 
         self.btn_save = QPushButton(tr("Save All to File"))
         self.btn_save.clicked.connect(self.save_to_file)
-        right_layout.addWidget(self.btn_save)
+        center_layout.addWidget(self.btn_save)
 
-        # Splitter
+        # Right: Card Search
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(QLabel(tr("Card Search")))
+        self.card_search = CardSearchWidget()
+        right_layout.addWidget(self.card_search)
+
+        # Splitter Layout
         splitter = QSplitter(Qt.Orientation.Horizontal)
+
         left_widget = QWidget()
         left_widget.setLayout(left_layout)
+
+        center_widget = QWidget()
+        center_widget.setLayout(center_layout)
+
         right_widget = QWidget()
         right_widget.setLayout(right_layout)
+
         splitter.addWidget(left_widget)
+        splitter.addWidget(center_widget)
         splitter.addWidget(right_widget)
+
+        splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
+        splitter.setStretchFactor(2, 2)
 
         layout.addWidget(splitter)
 
@@ -110,17 +130,43 @@ class ScenarioEditor(QDialog):
     def create_zone_tab(self, key, title):
         tab = QWidget()
         vbox = QVBoxLayout()
-        lbl = QLabel(tr("Enter Card IDs or Names (one per line):"))
+        lbl = QLabel(tr("Drag cards here or press Delete to remove:"))
         vbox.addWidget(lbl)
-        edit = QTextEdit()
-        edit.setPlaceholderText("e.g.\nBronze-Arm Tribe\n1005\n...")
-        # Connect textChanged to save? Might be too heavy. Use focus out or explicit save.
-        # Let's use focusOut via event filter or just rely on 'Save to Memory' when switching or saving file.
-        # Ideally, we update memory when switching list items.
-        vbox.addWidget(edit)
+
+        # Use DraggableListWidget instead of QTextEdit
+        list_widget = DraggableListWidget()
+        # Connect internal model change isn't trivial for 'items changed',
+        # so we rely on save/load flow or could connect model signal.
+        # simpler: update memory when switching tabs or saving.
+
+        # Shortcut for delete
+        # Note: QShortcut requires window context, simplified via keyPressEvent override in widget or manual check
+        list_widget.keyPressEvent = lambda event: self.handle_list_key_press(event, list_widget)
+
+        vbox.addWidget(list_widget)
         tab.setLayout(vbox)
         self.tabs.addTab(tab, title)
-        self.zone_edits[key] = edit
+        self.zone_lists[key] = list_widget
+
+    def handle_list_key_press(self, event, list_widget):
+        if event.key() == Qt.Key.Key_Delete or event.key() == Qt.Key.Key_Backspace:
+            for item in list_widget.selectedItems():
+                list_widget.takeItem(list_widget.row(item))
+        else:
+            QListWidget.keyPressEvent(list_widget, event)
+
+    def load_card_db(self):
+        path = "data/cards.json"
+        if not os.path.exists(path) and os.path.exists("../data/cards.json"):
+            path = "../data/cards.json"
+
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    self.all_cards = json.load(f)
+                self.card_search.load_cards(self.all_cards)
+            except Exception as e:
+                print(f"Failed to load cards: {e}")
 
     def load_data(self):
         path = "data/scenarios.json"
@@ -143,7 +189,6 @@ class ScenarioEditor(QDialog):
             self.list_widget.addItem(item.get("name", "Unnamed"))
 
     def on_selection_changed(self, row):
-        # Save previous selection to memory
         if self.current_index >= 0 and self.current_index < len(self.scenarios):
              self.save_all_to_memory(self.current_index)
 
@@ -161,14 +206,12 @@ class ScenarioEditor(QDialog):
             self.check_enemy_trigger.setChecked(config.get("enemy_can_use_trigger", False))
             self.check_loop_proof.setChecked(config.get("loop_proof_mode", False))
 
-            for key, edit in self.zone_edits.items():
+            for key, lst in self.zone_lists.items():
+                lst.clear()
                 val = config.get(key, [])
                 if isinstance(val, list):
-                    # Convert list to string lines
-                    text = "\n".join(str(x) for x in val)
-                    edit.setText(text)
-                else:
-                    edit.clear()
+                    for x in val:
+                        lst.addItem(str(x))
 
             self.is_updating_ui = False
             self.enable_inputs(True)
@@ -200,17 +243,16 @@ class ScenarioEditor(QDialog):
         config["enemy_can_use_trigger"] = self.check_enemy_trigger.isChecked()
         config["loop_proof_mode"] = self.check_loop_proof.isChecked()
 
-        # Parse Zone Texts
-        for key, edit in self.zone_edits.items():
-            text = edit.toPlainText()
-            lines = [line.strip() for line in text.split('\n') if line.strip()]
+        # Parse Zone Lists
+        for key, lst in self.zone_lists.items():
             parsed_list = []
-            for line in lines:
+            for i in range(lst.count()):
+                text = lst.item(i).text()
                 # Try to parse as int (ID), else keep as string (Name)
                 try:
-                    parsed_list.append(int(line))
+                    parsed_list.append(int(text))
                 except ValueError:
-                    parsed_list.append(line)
+                    parsed_list.append(text)
             config[key] = parsed_list
 
         item["config"] = config
@@ -263,8 +305,8 @@ class ScenarioEditor(QDialog):
         self.spin_enemy_shields.setValue(5)
         self.check_enemy_trigger.setChecked(False)
         self.check_loop_proof.setChecked(False)
-        for edit in self.zone_edits.values():
-            edit.clear()
+        for lst in self.zone_lists.values():
+            lst.clear()
         self.is_updating_ui = False
 
     def enable_inputs(self, enable):
