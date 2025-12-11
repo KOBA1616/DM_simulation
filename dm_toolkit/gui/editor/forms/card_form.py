@@ -26,6 +26,10 @@ class SpellSideWidget(QWidget):
         self.name_edit.setPlaceholderText(tr("Spell Side Name"))
         layout.addRow(tr("Name"), self.name_edit)
 
+        # Add Civilization Selector for Spell Side
+        self.civ_selector = CivilizationSelector()
+        layout.addRow(tr("Civilization"), self.civ_selector)
+
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
         layout.addRow(tr("Cost"), self.cost_spin)
@@ -100,6 +104,7 @@ class CardEditForm(BaseEditForm):
         self.spell_widget.setVisible(False)
         self.spell_widget.name_edit.textChanged.connect(self.update_data)
         self.spell_widget.cost_spin.valueChanged.connect(self.update_data)
+        self.spell_widget.civ_selector.changed.connect(self.update_data) # Connect signal
         self.form_layout.addRow(self.spell_widget)
 
         # Keywords Section
@@ -213,10 +218,24 @@ class CardEditForm(BaseEditForm):
             self.twinpact_check.setChecked(True)
             self.spell_widget.name_edit.setText(self.spell_side_data.get('name', ''))
             self.spell_widget.cost_spin.setValue(self.spell_side_data.get('cost', 0))
+
+            # Populate Spell Side Civs
+            spell_civs = self.spell_side_data.get('civilizations')
+            if spell_civs is None:
+                spell_civ_single = self.spell_side_data.get('civilization')
+                if spell_civ_single:
+                    spell_civs = [spell_civ_single]
+                else:
+                    # Fallback to parent civs if not set (legacy behavior compatibility)
+                    # Only fallback if 'civilizations' key is genuinely missing
+                    spell_civs = civs
+            self.spell_widget.civ_selector.set_selected_civs(spell_civs)
+
         else:
             self.twinpact_check.setChecked(False)
             self.spell_widget.name_edit.clear()
             self.spell_widget.cost_spin.setValue(0)
+            self.spell_widget.civ_selector.set_selected_civs([])
 
         kw_data = data.get('keywords', {})
         for k, cb in self.keyword_checks.items():
@@ -258,7 +277,18 @@ class CardEditForm(BaseEditForm):
                  self.spell_side_data['name'] = spell_name
                  self.spell_side_data['cost'] = self.spell_widget.cost_spin.value()
                  self.spell_side_data['type'] = 'SPELL'
-                 self.spell_side_data['civilizations'] = data['civilizations']
+
+                 # Save distinct civilizations for spell side
+                 spell_civs = self.spell_widget.civ_selector.get_selected_civs()
+                 if not spell_civs:
+                     # If none selected, default to parent's to avoid empty civ errors?
+                     # Or allow empty if colorless/zero?
+                     # Let's trust user input. If they select nothing, it's nothing (or Zero).
+                     # Actually, if user wants "Same as creature", they should select it.
+                     pass
+
+                 self.spell_side_data['civilizations'] = spell_civs
+
                  data['spell_side'] = self.spell_side_data
             else:
                  pass
@@ -292,6 +322,7 @@ class CardEditForm(BaseEditForm):
         self.twinpact_check.blockSignals(block)
         self.spell_widget.name_edit.blockSignals(block)
         self.spell_widget.cost_spin.blockSignals(block)
+        self.spell_widget.civ_selector.blockSignals(block) # Block new widget
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
         self.is_key_card_check.blockSignals(block)
