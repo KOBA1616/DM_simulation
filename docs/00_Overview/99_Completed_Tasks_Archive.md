@@ -122,3 +122,26 @@ AI知能の進化、不完全情報対応、およびシステム基盤の安定
     *   `MCTS` クラスに `get_last_root` メソッドを追加・公開し、GUIでのツリー可視化を可能にしました。
 *   **テストカバレッジの拡充 (Test Coverage)**
     *   エンジン実装済みの「呪文ロック効果」について、エンドツーエンドのテストケースを作成し動作検証を行いました。
+
+---
+
+## Phase 4.0: Refactoring & Stabilization Updates (Archived from Doc 00)
+
+### 1.1 Core Engine Enhancements
+*   **Civilization Logic Refactoring**: `Civilization` logic was refactored to support multi-civilization cards using `std::vector` in C++.
+*   **Cost Reduction System**: Implemented a robust cost reduction system (Base -> Passive -> Active -> G-Zero) and verified via `tests/test_cost_modifier.py`.
+*   **Loop Detection**: Implemented `GameState::calculate_hash` and history tracking to detect infinite loops.
+*   **Zone Refactoring**: Refactored `Hand`, `Mana`, `Grave` actions into a unified `MOVE_CARD` action type.
+*   **Atomic Actions**: Consolidated atomic actions (Draw, Tap, Break Shield) and verified them via `tests/test_atomic_actions.py`.
+
+### 1.2 Card Editor Ver 2.1 Enhancements (GUI)
+*   **Modular Architecture**: Re-implemented the editor using a modular design (`CardEditForm`, `LogicTreeWidget`, `DataManager`).
+*   **Filter Editor**: Implemented a comprehensive UI for editing `FilterDef` (Zones, Civs, Races, Power/Cost ranges).
+*   **Variable Linking**: Implemented "Smart Link" and `VariableLinkWidget` to connect action outputs to subsequent inputs (e.g., "Count Creatures" -> "Draw X").
+*   **Localized UI**: Extensive Japanese localization for menus, labels, and enums (`python/gui/localization.py`).
+*   **Visual Enhancements**: Added color coding for civilizations and improved layout for lists.
+
+### 1.3 Critical Fixes
+*   **Static Library Duplication**: Resolved singleton duplication by building `dm_core` as an OBJECT library in CMake.
+*   **Process Crash**: Fixed `gilstate_tss_set` error during thread termination in `ParallelRunner`.
+*   **Shift-JIS Support**: Verified source encoding compliance.
