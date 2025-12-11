@@ -145,3 +145,29 @@ AI知能の進化、不完全情報対応、およびシステム基盤の安定
 *   **Static Library Duplication**: Resolved singleton duplication by building `dm_core` as an OBJECT library in CMake.
 *   **Process Crash**: Fixed `gilstate_tss_set` error during thread termination in `ParallelRunner`.
 *   **Shift-JIS Support**: Verified source encoding compliance.
+
+---
+
+## Phase 4.1: Recent Enhancements & Fixes (Archived)
+
+`00_Status_and_Requirements_Summary.md` より移動された、直近の実装済み機能および修正事項。
+
+### 1. Engine & Logic Expansions
+*   **呪文を唱えるアクション (CAST_SPELL)**: `CAST_SPELL` アクションを追加し、手札等からコスト踏み倒しで唱える処理を実装済み。
+*   **クリーチャーを出すアクション (PUT_CREATURE)**: `PUT_CREATURE` アクションを追加し、バトルゾーンへの直接配置（召喚酔いあり、CIP誘発）を実装済み。
+*   **キーワード能力付与 (GRANT_KEYWORD)**: `GRANT_KEYWORD` アクションを追加し、キーワードと持続ターン数を設定可能にしました。
+*   **汎用カード移動 (MOVE_CARD)**: `MOVE_CARD` アクションをGUIおよびエンジンに追加し、移動先ゾーン（Destination Zone）を選択可能にしました。
+
+### 2. Scenario Editor Improvements
+*   **ゾーン管理の構造化**: タブ管理（`QTabWidget`）を導入し、General設定と各ゾーンを分離しました。
+*   **カード検索・追加機能**: カード検索ウィジェット (`CardSearchWidget`) を実装し、フィルタリングを可能にしました。
+*   **ドラッグ＆ドロップ**: 検索結果からのドラッグ＆ドロップによるカード追加に対応しました。
+
+### 3. Card Editor GUI Improvements
+*   **多色表示の改善**: プレビュー表示にて、多色カードの背景をグラデーション（または混合色）で表示するように対応しました。
+*   **レイアウト調整**: `CardPreviewWidget` のレイアウト（マナコスト位置、パワー位置、種族表示など）を要求通りに再構築しました。
+*   **ツインパクト対応**: ツインパクト用のスプリットビュー（上下分割レイアウト）を追加し、各パートの表示を実装しました。
+
+### 4. Other Improvements & Fixes
+*   **Game Info ウィンドウの整理**: `GameWindow` のレイアウトを再設計し、操作系とAI設定系を分離しました。
+*   **重要バグ修正 (Card Stats)**: `test_card_stats_win_contribution` の無限ループ問題をC++エンジン側で修正しました。
