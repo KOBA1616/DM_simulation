@@ -39,6 +39,8 @@ namespace dm::engine {
 
     private:
         ConditionSystem() = default;
+        ConditionSystem(const ConditionSystem&) = delete;
+        ConditionSystem& operator=(const ConditionSystem&) = delete;
         std::map<std::string, std::unique_ptr<IConditionEvaluator>> evaluators;
     };
 
@@ -130,15 +132,40 @@ namespace dm::engine {
     class FirstAttackEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
-            // First attack of turn means attacks_declared_this_turn is 1?
-            // When trigger evaluates:
-            // "When this creature attacks, if it's the first attack..."
-            // In resolve_attack, we incremented the counter.
-            // So if it's the first attack, counter == 1.
-            // If condition checks BEFORE attack declaration (which is impossible for ON_ATTACK?), then 0.
-            // But triggers run inside resolve_attack AFTER increment.
-            // So `state.turn_stats.attacks_declared_this_turn == 1`.
             return state.turn_stats.attacks_declared_this_turn == 1;
+        }
+    };
+
+    class CompareStatEvaluator : public IConditionEvaluator {
+    public:
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
+            using namespace dm::core;
+            PlayerID self_id = GenericCardSystem::get_controller(state, source_instance_id);
+            PlayerID opp_id = (self_id == 0) ? 1 : 0;
+            const Player& self = state.players[self_id];
+            const Player& opp = state.players[opp_id];
+
+            int left_value = 0;
+            std::string key = condition.stat_key;
+
+            if (key == "MY_MANA_COUNT") left_value = (int)self.mana_zone.size();
+            else if (key == "OPPONENT_MANA_COUNT") left_value = (int)opp.mana_zone.size();
+            else if (key == "MY_HAND_COUNT") left_value = (int)self.hand.size();
+            else if (key == "OPPONENT_HAND_COUNT") left_value = (int)opp.hand.size();
+            else if (key == "MY_SHIELD_COUNT") left_value = (int)self.shield_zone.size();
+            else if (key == "OPPONENT_SHIELD_COUNT") left_value = (int)opp.shield_zone.size();
+            else if (key == "MY_BATTLE_ZONE_COUNT") left_value = (int)self.battle_zone.size();
+            else if (key == "OPPONENT_BATTLE_ZONE_COUNT") left_value = (int)opp.battle_zone.size();
+
+            // Operator
+            if (condition.op == ">") return left_value > condition.value;
+            if (condition.op == "<") return left_value < condition.value;
+            if (condition.op == "=" || condition.op == "==") return left_value == condition.value;
+            if (condition.op == ">=") return left_value >= condition.value;
+            if (condition.op == "<=") return left_value <= condition.value;
+            if (condition.op == "!=") return left_value != condition.value;
+
+            return false;
         }
     };
 }
