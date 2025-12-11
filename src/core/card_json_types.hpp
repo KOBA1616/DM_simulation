@@ -89,7 +89,9 @@ namespace dm::core {
         SELECT_NUMBER,
         FRIEND_BURST,
         GRANT_KEYWORD,
-        MOVE_CARD, // Added: MOVE_CARD
+        MOVE_CARD,
+        CAST_SPELL,     // Added: CAST_SPELL
+        PUT_CREATURE,   // Added: PUT_CREATURE
         NONE
     };
 
@@ -302,7 +304,9 @@ namespace dm::core {
         {EffectActionType::SELECT_NUMBER, "SELECT_NUMBER"},
         {EffectActionType::FRIEND_BURST, "FRIEND_BURST"},
         {EffectActionType::GRANT_KEYWORD, "GRANT_KEYWORD"},
-        {EffectActionType::MOVE_CARD, "MOVE_CARD"}
+        {EffectActionType::MOVE_CARD, "MOVE_CARD"},
+        {EffectActionType::CAST_SPELL, "CAST_SPELL"},
+        {EffectActionType::PUT_CREATURE, "PUT_CREATURE"}
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count, selection_mode, selection_sort_key, and_conditions)

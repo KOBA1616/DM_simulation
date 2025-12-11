@@ -7,6 +7,17 @@
 namespace dm::engine {
     class ZoneUtils {
     public:
+        // Helper to remove card from a specific zone by instance_id.
+        // Returns true if found and removed.
+        static bool remove_card(std::vector<dm::core::CardInstance>& zone, int instance_id) {
+            auto it = std::find_if(zone.begin(), zone.end(), [&](const dm::core::CardInstance& c){ return c.instance_id == instance_id; });
+            if (it != zone.end()) {
+                zone.erase(it);
+                return true;
+            }
+            return false;
+        }
+
         // Handle cleanup when a card leaves the battle zone.
         static void on_leave_battle_zone(dm::core::GameState& game_state, dm::core::CardInstance& card) {
             using namespace dm::core;
@@ -53,19 +64,7 @@ namespace dm::engine {
                 auto it_bz = std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
                 if (it_bz != p.battle_zone.end()) {
                     CardInstance c = *it_bz;
-                    on_leave_battle_zone(game_state, *it_bz); // Cleanup hierarchy BEFORE erasing (Wait, on_leave takes ref)
-                    // Actually on_leave modifies the card in-place (clears underlying).
-                    // We want to return the card WITH underlying? Or WITHOUT?
-                    // Rules: When a card moves, underlying cards go to grave. The card itself moves alone.
-                    // So we strip underlying cards (send to grave) and return the stripped card.
-                    // Yes, `on_leave_battle_zone` clears `underlying_cards` on the instance passed to it.
-                    // But we need to call it on the iterator BEFORE copying? Or copy then call?
-                    // If we call on *it_bz, it modifies the vector element.
-                    // Then we copy it.
-                    // Then we erase it.
-                    // Safe.
-
-                    on_leave_battle_zone(game_state, *it_bz);
+                    on_leave_battle_zone(game_state, *it_bz); // Cleanup hierarchy BEFORE erasing
                     c = *it_bz; // Copy modified state (empty underlying)
                     p.battle_zone.erase(it_bz);
                     return c;
@@ -102,9 +101,6 @@ namespace dm::engine {
                     p.graveyard.erase(it_grave);
                     return c;
                 }
-
-                // Deck? Usually not targeted by instance ID, but possible if revealed.
-                // Leaving out Deck scan for performance/logic reasons unless needed.
             }
 
             return std::nullopt;
