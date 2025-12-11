@@ -1,6 +1,7 @@
 import pytest
-from dm_ai_module import GameState, Phase, Zone, ActionType, EffectActionType, CardData, CardDefinition, TriggerType, EffectDef, ActionDef, FilterDef, TargetScope, register_card_data, JsonLoader, PhaseManager, GenericCardSystem, ConditionDef
+from dm_ai_module import GameState, Phase, Zone, ActionType, EffectActionType, CardData, CardDefinition, TriggerType, EffectDef, ActionDef, FilterDef, TargetScope, register_card_data, JsonLoader, PhaseManager, GenericCardSystem, ConditionDef, CardRegistry
 import json
+import os
 
 # Define card IDs
 SEARCH_SPELL_ID = 200
@@ -10,9 +11,6 @@ SHIELD_BURN_ID = 202
 def setup_cards():
     # Register Search Spell: "Look at top 3 cards, add 1 Creature to hand, rest to bottom"
     # Note: Using SEARCH_DECK_BOTTOM which is implemented.
-    # But for Phase 6 we need full SEARCH_DECK logic if possible, but let's test what we have.
-    # The requirement says "Action: SEARCH_DECK (or LOOK_AT_DECK + SELECT_FROM_DECK)".
-    # Current SEARCH_DECK_BOTTOM is "Look N, select 1 matching filter, rest bottom".
     search_action = ActionDef(
         EffectActionType.SEARCH_DECK_BOTTOM,
         TargetScope.NONE,
@@ -29,21 +27,7 @@ def setup_cards():
     ]
     register_card_data(CardData(SEARCH_SPELL_ID, "SearchSpell", 2, "WATER", 0, "SPELL", [], search_effects))
 
-    # Register Shield Add Creature: "When enters, add top deck to shield"
-    shield_add_effects = [
-        EffectDef(
-            TriggerType.ON_PLAY,
-            ConditionDef(),
-            [
-                ActionDef(
-                    EffectActionType.NONE, # Placeholder until implemented
-                    TargetScope.NONE,
-                    FilterDef()
-                )
-            ]
-        )
-    ]
-    # We will manually trigger the action via GenericCardSystem.resolve_action to test the logic even if JSON mapping isn't perfect yet
+    # Register Shield Add Creature
     register_card_data(CardData(SHIELD_ADD_ID, "ShieldAdder", 3, "LIGHT", 3000, "CREATURE", [], []))
 
     # Register Shield Burner
@@ -55,9 +39,7 @@ def test_shuffle_deck_logic():
     state.set_deck(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     original_order = [c.card_id for c in state.players[0].deck]
 
-    # We need to invoke SHUFFLE_DECK. It's not in bindings yet as ActionType or EffectActionType in logic,
-    # but I plan to implement it.
-    # I will add EffectActionType.SHUFFLE_DECK to the implementation and bindings.
+    # We need to invoke SHUFFLE_DECK.
     action = ActionDef(
         EffectActionType.SHUFFLE_DECK,
         TargetScope.NONE,
@@ -67,13 +49,66 @@ def test_shuffle_deck_logic():
     GenericCardSystem.resolve_action(state, action, -1)
 
     new_order = [c.card_id for c in state.players[0].deck]
-    # Verify order changed (probabilistic, but highly likely for 10 cards)
-    # If it fails, it might be random chance, but very low.
     assert new_order != original_order
 
-@pytest.mark.skip(reason="Fails to load CardRegistry updates in test environment")
 def test_search_deck_bottom():
     setup_cards()
+
+    # Create a card_db map by dumping to JSON and reloading via JsonLoader
+    # This ensures GenericCardSystem has access to the full definitions including types/civs
+    all_cards = CardRegistry.get_all_cards()
+
+    # Serialize manually because CardData binding doesn't have automatic JSON dump binding exposed directly
+    # Wait, we can use the `register_card_data` logic which dumps to json internally?
+    # No, we need to create a JSON file to use JsonLoader.load_cards.
+
+    # We can reconstruct dictionary manually from CardData objects
+    # But CardData bindings expose fields.
+
+    # Actually, let's just create the JSON structure directly since we know what we added in setup_cards
+    # Or iterate CardRegistry items.
+
+    card_list_json = []
+    # Since we cannot easily iterate CardData properties to dict without helpers,
+    # and we know exactly what we registered in setup_cards, let's just use the known data.
+    # This is safer.
+
+    # Re-define the data structure for JSON dump
+    # Matches setup_cards
+    search_effects_json = [
+        {
+            "trigger": "ON_PLAY",
+            "condition": {},
+            "actions": [
+                {
+                    "type": "SEARCH_DECK_BOTTOM",
+                    "scope": "NONE",
+                    "filter": {"types": ["CREATURE"]},
+                    "value1": 3
+                }
+            ]
+        }
+    ]
+
+    card_data_list = [
+        {
+            "id": SEARCH_SPELL_ID, "name": "SearchSpell", "cost": 2, "civilization": "WATER", "type": "SPELL",
+            "effects": search_effects_json
+        },
+        {
+             "id": SHIELD_ADD_ID, "name": "ShieldAdder", "cost": 3, "civilization": "LIGHT", "type": "CREATURE", "power": 3000
+        },
+        {
+             "id": SHIELD_BURN_ID, "name": "ShieldBurner", "cost": 4, "civilization": "FIRE", "type": "CREATURE", "power": 4000
+        }
+    ]
+
+    temp_json_path = "temp_search_test.json"
+    with open(temp_json_path, 'w') as f:
+        json.dump(card_data_list, f)
+
+    card_db = JsonLoader.load_cards(temp_json_path)
+
     state = GameState(0)
     # Setup deck: Top is Spell (ID 200), then Creature (ID 201), then Creature (ID 202)
     # SEARCH_DECK_BOTTOM looks at BOTTOM 3 cards.
@@ -92,7 +127,12 @@ def test_search_deck_bottom():
     )
     action.value1 = 3
 
-    GenericCardSystem.resolve_action(state, action, -1)
+    # Use resolve_action_with_db to ensure visibility
+    GenericCardSystem.resolve_action_with_db(state, action, -1, card_db, {})
+
+    # Cleanup
+    if os.path.exists(temp_json_path):
+        os.remove(temp_json_path)
 
     # Check Hand: Should have ID 202 (First creature found from bottom)
     # 1st Looked: 202 (Creature) -> Match!
