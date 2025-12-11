@@ -23,6 +23,7 @@ namespace dm::core {
         bool slayer : 1;
         bool double_breaker : 1;
         bool triple_breaker : 1;
+        bool world_breaker : 1;
         bool power_attacker : 1;
         bool shield_trigger : 1;
         bool evolution : 1;
