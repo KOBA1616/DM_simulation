@@ -185,6 +185,7 @@ class GameWindow(QMainWindow):
         self.p1_graveyard = ZoneWidget("P1 墓地")
         self.p1_battle = ZoneWidget("P1 バトルゾーン")
         self.p1_shield = ZoneWidget("P1 シールド")
+        self.p1_deck_zone = ZoneWidget("P1 デッキ")
         
         self.p1_layout.addWidget(self.p1_hand)
         p1_row2 = QHBoxLayout()
@@ -192,12 +193,18 @@ class GameWindow(QMainWindow):
         p1_row2.addWidget(self.p1_shield, stretch=2)
         p1_row2.addWidget(self.p1_graveyard, stretch=1)
         self.p1_layout.addLayout(p1_row2)
-        self.p1_layout.addWidget(self.p1_battle)
+
+        # Battle Zone Row with Deck
+        p1_battle_row = QHBoxLayout()
+        p1_battle_row.addWidget(self.p1_battle, stretch=5)
+        p1_battle_row.addWidget(self.p1_deck_zone, stretch=1)
+        self.p1_layout.addLayout(p1_battle_row)
         
         # P0 (Player) Zones
         self.p0_zones = QWidget()
         self.p0_layout = QVBoxLayout(self.p0_zones)
         self.p0_battle = ZoneWidget("P0 バトルゾーン")
+        self.p0_deck_zone = ZoneWidget("P0 デッキ")
         self.p0_shield = ZoneWidget("P0 シールド")
         self.p0_mana = ZoneWidget("P0 マナ")
         self.p0_graveyard = ZoneWidget("P0 墓地")
@@ -220,7 +227,12 @@ class GameWindow(QMainWindow):
         self.p1_shield.card_hovered.connect(self.on_card_hovered)
         self.p1_graveyard.card_hovered.connect(self.on_card_hovered)
         
-        self.p0_layout.addWidget(self.p0_battle)
+        # Battle Zone Row with Deck
+        p0_battle_row = QHBoxLayout()
+        p0_battle_row.addWidget(self.p0_battle, stretch=5)
+        p0_battle_row.addWidget(self.p0_deck_zone, stretch=1)
+        self.p0_layout.addLayout(p0_battle_row)
+
         p0_row2 = QHBoxLayout()
         p0_row2.addWidget(self.p0_mana, stretch=3)
         p0_row2.addWidget(self.p0_shield, stretch=2)
@@ -550,12 +562,14 @@ class GameWindow(QMainWindow):
         self.p0_battle.update_cards(convert_zone(p0.battle_zone), self.card_db, self.civ_map)
         self.p0_shield.update_cards(convert_zone(p0.shield_zone), self.card_db, self.civ_map)
         self.p0_graveyard.update_cards(convert_zone(p0.graveyard), self.card_db, self.civ_map)
+        self.p0_deck_zone.update_cards(convert_zone(p0.deck, hide=True), self.card_db, self.civ_map)
         
         self.p1_hand.update_cards(convert_zone(p1.hand, hide=not god_view), self.card_db, self.civ_map)
         self.p1_mana.update_cards(convert_zone(p1.mana_zone), self.card_db, self.civ_map)
         self.p1_battle.update_cards(convert_zone(p1.battle_zone), self.card_db, self.civ_map)
         self.p1_shield.update_cards(convert_zone(p1.shield_zone, hide=not god_view), self.card_db, self.civ_map)
         self.p1_graveyard.update_cards(convert_zone(p1.graveyard), self.card_db, self.civ_map)
+        self.p1_deck_zone.update_cards(convert_zone(p1.deck, hide=True), self.card_db, self.civ_map)
 
 if __name__ == "__main__":
     import signal
