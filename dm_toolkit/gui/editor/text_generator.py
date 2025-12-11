@@ -79,7 +79,7 @@ class CardTextGenerator:
         "DISCARD": "手札を{value1}枚捨てる。",
         "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下のカードをプレイしてもよい。",
         "COUNT_CARDS": "（{filter}の数を数える）", # Internal logic
-        "GET_GAME_STAT": "（ゲーム統計を取得）", # Internal logic
+        "GET_GAME_STAT": "（{str_val}を参照）", # Updated to show stat key
         "REVEAL_CARDS": "山札の上から{value1}枚を表向きにする。",
         "SHUFFLE_DECK": "山札をシャッフルする。",
         "ADD_SHIELD": "山札の上から{value1}枚をシールド化する。",
@@ -89,7 +89,7 @@ class CardTextGenerator:
         "PUT_CREATURE": "{target}をバトルゾーンに出す。",
         "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
         "MOVE_CARD": "{target}を{zone}に置く。",
-        "COST_REFERENCE": "（コスト参照処理）"
+        "COST_REFERENCE": "コストを軽減する" # Updated
     }
 
     ZONE_MAP = {
@@ -264,6 +264,20 @@ class CardTextGenerator:
 
         # Optional handling
         if action.get("optional", False):
+            # Check for "Up to N" pattern (value2 is limit, and optional is true)
+            # Usually handled by specific actions, but generic "optional" usually means "You may do this".
+            # Requirement: "Perform operation up to N times" -> "N回まで[処理]する".
+            # If value2 > 1 and optional, it's likely "Up to value2".
+            # However, text template usually handles "value2".
+            # If the template says "Select value2", and it's optional, it means "Select up to value2".
+
+            # Simple heuristic replacement for Japanese naturalness
+            if "枚選び" in text and str(val1) in text:
+                 # "X枚選び" + optional -> "X枚まで選び" ?
+                 # Requirement: "Perform operation up to N times" -> "N回まで[処理]する".
+                 # "X枚選び" -> "X枚まで選び"
+                 text = text.replace(f"{val1}枚選び", f"{val1}枚まで選び")
+
             text += " (そうしてもよい)"
 
         return text

@@ -119,6 +119,31 @@ namespace dm::engine {
             const auto& data = card_db.at(instance->card_id);
             active_effects.insert(active_effects.end(), data.effects.begin(), data.effects.end());
             active_effects.insert(active_effects.end(), data.metamorph_abilities.begin(), data.metamorph_abilities.end());
+
+            // Friend Burst Logic
+            if (data.keywords.friend_burst && trigger == TriggerType::ON_PLAY) {
+                EffectDef fb_effect;
+                fb_effect.trigger = TriggerType::ON_PLAY;
+
+                ActionDef fb_action;
+                fb_action.type = EffectActionType::FRIEND_BURST;
+                fb_action.scope = TargetScope::TARGET_SELECT;
+                fb_action.optional = true; // "You may tap..."
+
+                fb_action.filter.owner = "SELF";
+                fb_action.filter.zones = {"BATTLE_ZONE"};
+                fb_action.filter.types = {"CREATURE"};
+                fb_action.filter.is_tapped = false; // Must tap an untapped creature
+                fb_action.filter.count = 1;
+
+                // Note: Friend Burst requires tapping *another* creature.
+                // Target filtering for "exclude self" is not fully implicit in FilterDef yet,
+                // but standard play logic handles this via UI or validation.
+
+                fb_effect.actions.push_back(fb_action);
+                active_effects.push_back(fb_effect);
+            }
+
             found = true;
         }
 
