@@ -12,7 +12,12 @@ namespace dm::engine {
     class FriendBurstHandler : public IActionHandler {
     public:
         void resolve(const ResolutionContext& ctx) override {
-            (void)ctx;
+            // Trigger selection if no targets provided
+            // Create a continuation effect that calls back to resolve_with_targets (implied by framework logic for pending effects)
+             dm::core::EffectDef continuation;
+             continuation.actions.push_back(ctx.action); // The same action, but next time it will have targets
+
+             GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, continuation, ctx.execution_vars);
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
