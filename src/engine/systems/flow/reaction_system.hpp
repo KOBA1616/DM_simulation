@@ -37,6 +37,16 @@ namespace dm::engine {
                     }
                     if (!event_match) continue;
 
+                    // Check zone if specified
+                    if (!reaction.zone.empty()) {
+                         if (reaction.zone == "HAND") {
+                             // implicit logic matches
+                         } else {
+                             // If reaction zone is NOT HAND, skip
+                             continue;
+                         }
+                    }
+
                     // Check other conditions (Mana Count, Civ Match)
                     if (!check_condition(game_state, reaction, card, reaction_player_id, card_db)) continue;
 
@@ -95,22 +105,14 @@ namespace dm::engine {
                 bool match_found = false;
 
                 // Simple Civ Check - Iterate all civilizations
-                // Assuming civilizations is a vector<string>, we need to convert to enum or check string match?
-                // The current codebase uses vector<string> for serialization but Civilization enum for internal logic.
-                // However, card_def.hpp might define 'civilizations' as vector<Civilization> or vector<string>.
-                // Checking card_json_types: civilizations is vector<string>.
-                // We need to verify what card_def.hpp uses.
-                // Assuming for now we skip strict bitmask check or fix it later.
-                // Using a simplified check based on previous error context: 'civilizations' exists.
-
                 for (const auto& mana_card : player.mana_zone) {
                     if (!card_db.count(mana_card.card_id)) continue;
                     const auto& m_def = card_db.at(mana_card.card_id);
 
-                    // Cross check string lists
-                    for (const auto& req_civ_str : def.civilizations) {
-                         for (const auto& man_civ_str : m_def.civilizations) {
-                             if (req_civ_str == man_civ_str) {
+                    // Cross check enum lists
+                    for (const auto& req_civ : def.civilizations) {
+                         for (const auto& man_civ : m_def.civilizations) {
+                             if (req_civ == man_civ) {
                                  match_found = true;
                                  break;
                              }
