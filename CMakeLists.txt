@@ -60,14 +60,45 @@ else()
     message(STATUS "LibTorch disabled (USE_LIBTORCH=OFF)")
 endif()
 
-# nlohmann_json for Generic Card System (Phase 3)
-# Using local vendor copy to avoid FetchContent policy issues
-# include(FetchContent)
-# FetchContent_Declare(
-#     json
-#     URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
-# )
-# FetchContent_MakeAvailable(json)
+# Optional: ONNX Runtime for C++ inference (Phase 4.2)
+option(USE_ONNXRUNTIME "Enable ONNX Runtime for C++ inference" ON) # Default ON for this task
+if(USE_ONNXRUNTIME)
+    message(STATUS "ONNX Runtime enabled")
+    include(FetchContent)
+
+    if(WIN32)
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-win-x64-1.18.0.zip")
+    elseif(APPLE)
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-osx-universal2-1.18.0.tgz")
+    else()
+        # Linux x64
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-linux-x64-1.18.0.tgz")
+    endif()
+
+    FetchContent_Declare(
+        onnxruntime_pkg
+        URL ${ORT_URL}
+    )
+    FetchContent_MakeAvailable(onnxruntime_pkg)
+
+    # Set include and link directories
+    # fetchcontent_populate populates onnxruntime_pkg_SOURCE_DIR
+    set(ORT_INCLUDE_DIR ${onnxruntime_pkg_SOURCE_DIR}/include)
+    set(ORT_LIB_DIR ${onnxruntime_pkg_SOURCE_DIR}/lib)
+
+    include_directories(${ORT_INCLUDE_DIR})
+    link_directories(${ORT_LIB_DIR})
+
+    if(WIN32)
+        set(ORT_LIBS onnxruntime)
+    else()
+        set(ORT_LIBS onnxruntime)
+    endif()
+
+    add_compile_definitions(USE_ONNXRUNTIME)
+else()
+    message(STATUS "ONNX Runtime disabled (USE_ONNXRUNTIME=OFF)")
+endif()
 
 # --- Include Directories ---
 include_directories(src)
@@ -118,7 +149,7 @@ set(SRC_UTILS
     # src/utils/rng.cpp
 )
 
-# AI Bridge (Phase 3)
+# AI Bridge (Phase 3 & 4)
 set(SRC_AI
     src/ai/encoders/tensor_converter.cpp
     src/ai/encoders/action_encoder.cpp
@@ -135,8 +166,9 @@ set(SRC_AI
     src/ai/evolution/deck_evolution.cpp
     src/bindings/python_batch_inference.cpp
     src/ai/inference/pimc_generator.cpp
-    # Optional neural evaluator / inference (guarded by USE_LIBTORCH)
+    # Optional neural evaluator / inference (guarded by USE_LIBTORCH / USE_ONNXRUNTIME)
     $<$<BOOL:${USE_LIBTORCH}>:src/ai/inference/torch_model.cpp>
+    $<$<BOOL:${USE_ONNXRUNTIME}>:src/ai/inference/onnx_model.cpp>
 )
 
 # --- Targets ---
@@ -161,6 +193,9 @@ target_link_libraries(dm_sim_test PRIVATE dm_core)
 if(USE_LIBTORCH)
     target_link_libraries(dm_sim_test PRIVATE ${TORCH_LIBRARIES})
 endif()
+if(USE_ONNXRUNTIME)
+    target_link_libraries(dm_sim_test PRIVATE ${ORT_LIBS})
+endif()
 
 # Python Module (Phase 3)
 pybind11_add_module(dm_ai_module
@@ -172,4 +207,10 @@ if(USE_LIBTORCH)
     target_link_libraries(dm_core PRIVATE ${TORCH_LIBRARIES})
     target_compile_definitions(dm_core PUBLIC USE_LIBTORCH)
     target_link_libraries(dm_ai_module PRIVATE ${TORCH_LIBRARIES})
+endif()
+
+if(USE_ONNXRUNTIME)
+    target_link_libraries(dm_core PRIVATE ${ORT_LIBS})
+    target_compile_definitions(dm_core PUBLIC USE_ONNXRUNTIME)
+    target_link_libraries(dm_ai_module PRIVATE ${ORT_LIBS})
 endif()
