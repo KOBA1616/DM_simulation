@@ -44,7 +44,8 @@ class CardTextGenerator:
         "untap_in": "タップして出る",
         "meta_counter_play": "メタカウンター",
         "power_attacker": "パワーアタッカー",
-        "g_zero": "G・ゼロ"
+        "g_zero": "G・ゼロ",
+        "ex_life": "EXライフ"
     }
 
     TRIGGER_MAP = {

@@ -167,6 +167,8 @@ class CardEditor(QMainWindow):
         elif command == "ADD_REV_CHANGE":
             self.tree_widget.add_rev_change(card_item.index())
             self.tree_widget.expand(card_item.index())
+        elif command == "REMOVE_REV_CHANGE":
+            self.tree_widget.remove_rev_change(card_item.index())
 
     def new_card(self):
         self.tree_widget.add_new_card()
