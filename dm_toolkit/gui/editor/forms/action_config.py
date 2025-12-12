@@ -175,5 +175,9 @@ ACTION_UI_CONFIG = {
     "MOVE_CARD": {
         "visible": ["scope", "filter", "destination_zone", "target_choice"],
         "can_be_optional": True
+    },
+    "SELECT_OPTION": {
+        "visible": [], # No additional fields needed, options managed via tree context menu
+        "label_str_val": "Mode Name (Optional)"
     }
 }

@@ -103,10 +103,32 @@ class CardDataManager:
         new_actions = []
         for k in range(eff_item.rowCount()):
             act_item = eff_item.child(k)
-            act_data = act_item.data(Qt.ItemDataRole.UserRole + 2)
+            act_data = self._reconstruct_action(act_item)
             new_actions.append(act_data)
         eff_data['actions'] = new_actions
         return eff_data
+
+    def _reconstruct_action(self, act_item):
+        act_data = act_item.data(Qt.ItemDataRole.UserRole + 2)
+        # Check for child options (Nested Actions)
+        if act_item.rowCount() > 0:
+            options = []
+            for m in range(act_item.rowCount()):
+                option_item = act_item.child(m)
+                if option_item.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+                    # Reconstruct option actions
+                    option_actions = []
+                    for n in range(option_item.rowCount()):
+                        sub_act_item = option_item.child(n)
+                        if sub_act_item.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
+                            option_actions.append(self._reconstruct_action(sub_act_item))
+                    options.append(option_actions)
+            act_data['options'] = options
+        elif 'options' in act_data:
+            # Clear options if no children exist in the view (removed by user)
+            del act_data['options']
+
+        return act_data
 
     def add_new_card(self):
         new_id = self._generate_new_id()
@@ -222,10 +244,24 @@ class CardDataManager:
                  display_type += f" (Count: {count})"
         elif act_type == "REVOLUTION_CHANGE":
              display_type = tr("Revolution Change")
+        elif act_type == "SELECT_OPTION":
+             display_type = tr("Mode Selection")
 
         item = QStandardItem(f"{tr('Action')}: {display_type}")
         item.setData("ACTION", Qt.ItemDataRole.UserRole + 1)
         item.setData(action, Qt.ItemDataRole.UserRole + 2)
+
+        # Recursively add options if present
+        if 'options' in action:
+            for i, opt_actions in enumerate(action['options']):
+                opt_item = QStandardItem(f"{tr('Option')} {i+1}")
+                opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
+                opt_item.setData({}, Qt.ItemDataRole.UserRole + 2) # Empty data for option container
+                item.appendRow(opt_item)
+                for sub_action in opt_actions:
+                    sub_item = self._create_action_item(sub_action)
+                    opt_item.appendRow(sub_item)
+
         return item
 
     def _generate_new_id(self):
