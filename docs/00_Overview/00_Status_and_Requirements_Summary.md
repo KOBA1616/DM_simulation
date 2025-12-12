@@ -70,6 +70,30 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
+5.  **実行エラー**
+    Traceback (most recent call last):
+  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation/dm_toolkit/gui/app.py", line 288, in open_card_editor
+    self.card_editor = CardEditor("data/cards.json")
+                       ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\card_editor.py", line 21, in __init__
+    self.init_ui()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\card_editor.py", line 56, in init_ui
+    self.inspector = PropertyInspector()
+                     ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\editor\property_inspector.py", line 15, in __init__
+    self.setup_ui()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\editor\property_inspector.py", line 31, in setup_ui
+    self.effect_form = EffectEditForm()
+                       ~~~~~~~~~~~~~~^^
+  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\editor\forms\effect_form.py", line 67, in __init__
+    self.setup_ui()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\editor\forms\effect_form.py", line 78, in setup_ui
+    self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: BaseEditForm.populate_combo() got an unexpected keyword argument 'display_func'
 ---
 
 ## 3. 詳細な開発ロードマップ (Detailed Roadmap)
