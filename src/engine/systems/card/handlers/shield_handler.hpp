@@ -21,11 +21,24 @@ namespace dm::engine {
                 if (ctx.action.source_zone == "HAND") source = &controller.hand;
                 else if (ctx.action.source_zone == "GRAVEYARD") source = &controller.graveyard;
 
-                if (!source->empty()) {
-                    CardInstance c = source->back();
-                    source->pop_back();
-                    c.is_face_down = true;
-                    controller.shield_zone.push_back(c);
+                int count = ctx.action.value1;
+                if (!ctx.action.input_value_key.empty() && ctx.execution_vars.count(ctx.action.input_value_key)) {
+                    count = ctx.execution_vars[ctx.action.input_value_key];
+                }
+                if (count == 0) count = 1;
+
+                int added_count = 0;
+                for (int i = 0; i < count; ++i) {
+                    if (!source->empty()) {
+                        CardInstance c = source->back();
+                        source->pop_back();
+                        c.is_face_down = true;
+                        controller.shield_zone.push_back(c);
+                        added_count++;
+                    }
+                }
+                if (!ctx.action.output_value_key.empty()) {
+                    ctx.execution_vars[ctx.action.output_value_key] = added_count;
                 }
             } else if (ctx.action.type == EffectActionType::SEND_SHIELD_TO_GRAVE) {
                 if (ctx.action.scope != TargetScope::TARGET_SELECT && ctx.action.target_choice != "SELECT") {
