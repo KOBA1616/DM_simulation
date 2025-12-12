@@ -32,6 +32,7 @@
 #include "python_batch_inference.hpp"
 #include "ai/solver/lethal_solver.hpp"
 #include "ai/evolution/deck_evolution.hpp"
+#include "engine/cost_payment_system.hpp" // Added include
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -217,6 +218,21 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SELECT_OPTION", ActionType::SELECT_OPTION)
         .export_values();
 
+    // Phase 4: Cost System Enums
+    py::enum_<CostType>(m, "CostType")
+        .value("MANA", CostType::MANA)
+        .value("TAP_CARD", CostType::TAP_CARD)
+        .value("SACRIFICE_CARD", CostType::SACRIFICE_CARD)
+        .value("RETURN_CARD", CostType::RETURN_CARD)
+        .value("SHIELD_BURN", CostType::SHIELD_BURN)
+        .value("DISCARD", CostType::DISCARD)
+        .export_values();
+
+    py::enum_<ReductionType>(m, "ReductionType")
+        .value("PASSIVE", ReductionType::PASSIVE)
+        .value("ACTIVE_PAYMENT", ReductionType::ACTIVE_PAYMENT)
+        .export_values();
+
     // Structs
     py::class_<GameResultInfo>(m, "GameResultInfo")
         .def(py::init<>())
@@ -298,6 +314,25 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("is_evolution", &FilterDef::is_evolution)
         .def_readwrite("owner", &FilterDef::owner)
         .def_readwrite("count", &FilterDef::count);
+
+    // Phase 4: CostDef Binding
+    py::class_<CostDef>(m, "CostDef")
+        .def(py::init<>())
+        .def_readwrite("type", &CostDef::type)
+        .def_readwrite("amount", &CostDef::amount)
+        .def_readwrite("filter", &CostDef::filter)
+        .def_readwrite("is_optional", &CostDef::is_optional)
+        .def_readwrite("cost_id", &CostDef::cost_id);
+
+    // Phase 4: CostReductionDef Binding
+    py::class_<CostReductionDef>(m, "CostReductionDef")
+        .def(py::init<>())
+        .def_readwrite("type", &CostReductionDef::type)
+        .def_readwrite("unit_cost", &CostReductionDef::unit_cost)
+        .def_readwrite("reduction_amount", &CostReductionDef::reduction_amount)
+        .def_readwrite("max_units", &CostReductionDef::max_units)
+        .def_readwrite("min_mana_cost", &CostReductionDef::min_mana_cost)
+        .def_readwrite("name", &CostReductionDef::name);
 
     py::class_<ActionDef>(m, "ActionDef")
         .def(py::init<>())
@@ -393,6 +428,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
         .def_readwrite("civilizations", &CardDefinition::civilizations)
         .def_readwrite("reaction_abilities", &CardDefinition::reaction_abilities)
+        .def_readwrite("cost_reductions", &CardDefinition::cost_reductions) // Added Phase 4
         .def_readwrite("spell_side", &CardDefinition::spell_side)
         .def_property("civilization",
              [](const CardDefinition& c) {
@@ -436,6 +472,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("is_key_card", &CardData::is_key_card)
         .def_readwrite("ai_importance_score", &CardData::ai_importance_score)
         .def_readwrite("reaction_abilities", &CardData::reaction_abilities)
+        .def_readwrite("cost_reductions", &CardData::cost_reductions) // Added Phase 4
         .def_readwrite("spell_side", &CardData::spell_side);
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<>())
@@ -621,6 +658,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
              static_cast<bool (*)(Player&, const CardDefinition&, const std::map<CardID, CardDefinition>&)>(&ManaSystem::auto_tap_mana))
         .def_static("get_adjusted_cost", &ManaSystem::get_adjusted_cost);
 
+    // Phase 4: CostPaymentSystem Binding
+    py::class_<CostPaymentSystem>(m, "CostPaymentSystem")
+        .def_static("calculate_max_units", &CostPaymentSystem::calculate_max_units)
+        .def_static("calculate_potential_reduction", &CostPaymentSystem::calculate_potential_reduction)
+        .def_static("can_pay_cost", &CostPaymentSystem::can_pay_cost);
+
     // Expose ConditionSystem for testing
     py::class_<ConditionSystem>(m, "ConditionSystem")
         .def_static("instance", &ConditionSystem::instance, py::return_value_policy::reference)
@@ -670,7 +713,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
          // CardRegistry only has load_from_json.
          // Let's use nlohmann json to serialize.
          nlohmann::json j = data;
-         // Wrap in a list as load_from_json likely expects a list or single object?
+         // Wrap in a list as load_from_json likely expects a list of objects.
          // JsonLoader::load_cards expects a list of objects.
          // CardRegistry::load_from_json expects what?
          // Let's check CardRegistry::load_from_json implementation.
