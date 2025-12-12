@@ -103,6 +103,7 @@ namespace dm::engine {
         }
 
         def.reaction_abilities = data.reaction_abilities;
+        def.cost_reductions = data.cost_reductions; // Copy cost reductions
 
         // Populate Effect Definitions for Engine
         def.effects = data.effects;
