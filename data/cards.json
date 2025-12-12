@@ -20,7 +20,8 @@
     "races": [
       "Beast Folk"
     ],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "keywords": {}
   },
   {
     "ai_importance_score": 0,
@@ -56,7 +57,8 @@
     "name": "Fire Mana",
     "power": 0,
     "races": [],
-    "type": "SPELL"
+    "type": "SPELL",
+    "keywords": {}
   },
   {
     "ai_importance_score": 0,
@@ -290,5 +292,31 @@
       "マジック"
     ],
     "type": "CREATURE"
+  },
+  {
+    "ai_importance_score": 0,
+    "civilizations": [
+      "WATER",
+      "FIRE"
+    ],
+    "cost": 1,
+    "effects": [],
+    "id": 10,
+    "is_key_card": false,
+    "keywords": {},
+    "name": "New Card",
+    "power": 1000,
+    "races": [],
+    "reaction_abilities": [],
+    "type": "CREATURE",
+    "spell_side": {
+      "civilizations": [
+        "WATER"
+      ],
+      "cost": 1,
+      "effects": [],
+      "name": "New Spell Side",
+      "type": "SPELL"
+    }
   }
 ]
