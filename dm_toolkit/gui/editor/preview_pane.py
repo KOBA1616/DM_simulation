@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QGroupBox, QTextEdit, QFrame, QGridLayout,
-    QHBoxLayout
+    QHBoxLayout, QGraphicsDropShadowEffect
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor
@@ -36,7 +36,8 @@ class CardPreviewWidget(QWidget):
         self.card_frame.setFrameShadow(QFrame.Shadow.Raised)
         self.card_frame.setLineWidth(2)
         self.card_frame.setFixedSize(300, 420) # Approx card ratio
-        self.card_frame.setStyleSheet("background-color: white; border-radius: 10px;")
+        # Default style, will be overridden by apply_civ_style
+        self.card_frame.setStyleSheet("background-color: white; border-radius: 10px; border: 1px solid black;")
 
         # Center the card frame
         h_layout = QHBoxLayout()
@@ -81,10 +82,6 @@ class CardPreviewWidget(QWidget):
 
         # Cost (Top Left)
         self.cost_label = QLabel("5")
-        # Requirement: "Circle background composed of civilization colors (divided if multi), white text with black outline (simulated by bold black text here for simplicity or using graphics effect later)"
-        # For simple QLabel, we can't do complex rendering easily without paintEvent override.
-        # We will approximate with CSS gradients on background.
-        self.cost_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white; border: 2px solid black; border-radius: 15px; padding: 0px;")
         self.cost_label.setFixedSize(30, 30)
         self.cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.cost_label, 0, 0)
@@ -112,7 +109,7 @@ class CardPreviewWidget(QWidget):
         self.text_body = QLabel("")
         self.text_body.setWordWrap(True)
         self.text_body.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        # Requirement: Thin black border
+        # Requirement: Thin black border for text box
         self.text_body.setStyleSheet("font-size: 11px; background-color: rgba(255, 255, 255, 0.5); border: 1px solid black; border-radius: 5px; padding: 5px;")
         layout.addWidget(self.text_body, 2, 0, 1, 3)
 
@@ -135,8 +132,6 @@ class CardPreviewWidget(QWidget):
         upper_layout.setContentsMargins(5,5,5,5)
 
         self.tp_cost_label = QLabel("5")
-        # Same cost logic as standard
-        self.tp_cost_label.setStyleSheet("font-weight: bold; font-size: 16px; color: white; border: 2px solid black; border-radius: 12px;")
         self.tp_cost_label.setFixedSize(24, 24)
         self.tp_cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         upper_layout.addWidget(self.tp_cost_label, 0, 0)
@@ -156,11 +151,8 @@ class CardPreviewWidget(QWidget):
         upper_layout.addWidget(self.tp_body_label, 2, 0, 1, 2)
         upper_layout.setRowStretch(2, 1)
 
-        self.tp_power_label = QLabel("5000")
-        self.tp_power_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        self.tp_power_label.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft)
-        # Requirement: Twinpact power display location -> Bottom Left of Creature frame
-        upper_layout.addWidget(self.tp_power_label, 3, 0)
+        # REMOVED Power from Upper Frame to move to Card Bottom Left
+        # upper_layout.addWidget(self.tp_power_label, 3, 0)
 
         layout.addWidget(self.tp_upper_frame)
 
@@ -172,7 +164,6 @@ class CardPreviewWidget(QWidget):
 
         # Spell Cost at Top Right (Requirement)
         self.tp_spell_cost_label = QLabel("3")
-        self.tp_spell_cost_label.setStyleSheet("font-weight: bold; font-size: 16px; color: white; border: 2px solid black; border-radius: 12px;")
         self.tp_spell_cost_label.setFixedSize(24, 24)
         self.tp_spell_cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lower_layout.addWidget(self.tp_spell_cost_label, 0, 2, Qt.AlignmentFlag.AlignRight) # Column 2
@@ -187,6 +178,13 @@ class CardPreviewWidget(QWidget):
         self.tp_spell_body_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         lower_layout.addWidget(self.tp_spell_body_label, 1, 0, 1, 3)
         lower_layout.setRowStretch(1, 1)
+
+        # Power moved to Lower Frame (Card Bottom Left)
+        self.tp_power_label = QLabel("5000")
+        self.tp_power_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.tp_power_label.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft)
+        # Adding at row 2, col 0 (below text, left side)
+        lower_layout.addWidget(self.tp_power_label, 2, 0)
 
         layout.addWidget(self.tp_lower_frame)
         layout.setStretch(0, 5) # Creature roughly 50-60%?
@@ -218,6 +216,11 @@ class CardPreviewWidget(QWidget):
 
         self.current_data = data
         self.render_card(data)
+
+    def clear_preview(self):
+        self.standard_widget.hide()
+        self.twinpact_widget.hide()
+        self.raw_text_preview.clear()
 
     def render_card(self, data):
         full_text = CardTextGenerator.generate_text(data)
@@ -332,11 +335,13 @@ class CardPreviewWidget(QWidget):
 
     def apply_cost_circle_style(self, label, civs):
         # Requirement: "Mana cost circle is composed of civilization colors (divided if multi)."
-        # White text, black thin outline (simulated by text-shadow or just black background for text is hard)
-        # We used bold white text. To make it readable on light colors (like Light), we might need text shadow.
-        # But QSS doesn't support text-shadow well.
+        # "White text with black border" (Simulating black border via text shadow if possible, else just bold white)
 
-        style = "font-weight: bold; font-size: 16px; color: white; border: 1px solid black; border-radius: 12px; padding: 0px;" # border-radius depends on size
+        # NOTE: Qt QLabel doesn't support -webkit-text-stroke.
+        # Using a simplistic approach: Bold White Text on colored background.
+        # Adding a border to the circle itself.
+
+        style = "font-weight: bold; font-size: 16px; color: white; border: 2px solid black; border-radius: 12px; padding: 0px;"
 
         if not civs:
             bg_style = "background-color: #A9A9A9;"
@@ -344,7 +349,7 @@ class CardPreviewWidget(QWidget):
             c = self.get_civ_color(civs[0])
             bg_style = f"background-color: {c};"
         else:
-            # Linear gradient for split circle
+            # Linear gradient for split circle (Equal Division)
             stops = []
             segment_size = 1.0 / len(civs)
             for i, civ in enumerate(civs):
@@ -355,7 +360,7 @@ class CardPreviewWidget(QWidget):
                 stops.append(f"stop:{start} {c}")
                 stops.append(f"stop:{end} {c}")
 
-            # Diagonal or vertical split? Usually diagonal for costs.
+            # Diagonal gradient for visual flair
             grad_str = ", ".join(stops)
             bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, {grad_str});"
 
@@ -372,16 +377,6 @@ class CardPreviewWidget(QWidget):
             "ZERO": "#F5F5F5"       # WhiteSmoke
         }
 
-        colors_dark = {
-            "LIGHT": "#F0E68C",     # Khaki
-            "WATER": "#AFEEEE",     # PaleTurquoise
-            "DARKNESS": "#A9A9A9",  # DarkGray
-            "FIRE": "#FA8072",      # Salmon
-            "NATURE": "#98FB98",    # PaleGreen
-            "ZERO": "#DCDCDC"       # Gainsboro
-        }
-
-        bg_style = ""
         # Requirement: "All borders should be thin black lines"
         border_color = "#000000"
 
@@ -390,8 +385,8 @@ class CardPreviewWidget(QWidget):
         elif len(civs) == 1:
             c = civs[0]
             c1 = colors_base.get(c, "#FFFFFF")
-            c2 = colors_dark.get(c, "#DDDDDD")
-            bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 {c1}, stop:1 {c2});"
+            # Gradient to slightly darker
+            bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 {c1}, stop:1 #DDDDDD);"
         else:
             if len(civs) >= 2:
                 c1 = colors_base.get(civs[0], "#FFFFFF")
