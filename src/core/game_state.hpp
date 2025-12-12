@@ -133,6 +133,9 @@ namespace dm::core {
         std::vector<CardInstance> deck;
         std::vector<CardInstance> hyper_spatial_zone;
         std::vector<CardInstance> gr_deck;
+
+        // Step 3-1: Per-Player Effect Buffer [Stability Fix]
+        std::vector<CardInstance> effect_buffer;
     };
 
     struct GameState {
@@ -163,8 +166,7 @@ namespace dm::core {
         // Stack Zone for declared cards (waiting for cost payment) [PLAN-002]
         std::vector<CardInstance> stack_zone;
 
-        // Effect Buffer for complex actions (Search, Gachinko Judge, Mekraid) [PLAN-002]
-        std::vector<CardInstance> effect_buffer;
+        // Effect Buffer moved to Player struct [Step 3-1]
 
         // Turn Stats [Phase 5]
         TurnStats turn_stats;
@@ -251,8 +253,10 @@ namespace dm::core {
              for (auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
              for (auto& c : p.deck) if (c.instance_id == instance_id) return &c;
 
-             // Check Effect Buffer (not owned by player usually, but tracked)
-             for (auto& c : effect_buffer) if (c.instance_id == instance_id) return &c;
+             // Check effect buffers of BOTH players (card might be in either buffer)
+             // Prioritize the owner's buffer, then opponent's buffer
+             for (auto& c : players[0].effect_buffer) if (c.instance_id == instance_id) return &c;
+             for (auto& c : players[1].effect_buffer) if (c.instance_id == instance_id) return &c;
 
              return nullptr;
         }
@@ -271,7 +275,8 @@ namespace dm::core {
              for (const auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
              for (const auto& c : p.deck) if (c.instance_id == instance_id) return &c;
 
-             for (const auto& c : effect_buffer) if (c.instance_id == instance_id) return &c;
+             for (const auto& c : players[0].effect_buffer) if (c.instance_id == instance_id) return &c;
+             for (const auto& c : players[1].effect_buffer) if (c.instance_id == instance_id) return &c;
 
              return nullptr;
         }
