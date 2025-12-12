@@ -416,12 +416,25 @@ namespace dm::engine {
             stack.erase(it);
             found = true;
         } else {
-            auto& buf = game_state.effect_buffer;
+            // Check controller's buffer first
+            auto& buf = game_state.players[controller].effect_buffer;
             auto bit = std::find_if(buf.begin(), buf.end(), [&](const CardInstance& c){ return c.instance_id == stack_instance_id; });
             if (bit != buf.end()) {
                 card = *bit;
                 buf.erase(bit);
                 found = true;
+            } else {
+                // Check other player buffer just in case (though shouldn't happen for PLAY_FROM_STACK usually)
+                for (auto& p : game_state.players) {
+                    if (p.id == controller) continue;
+                     auto bit2 = std::find_if(p.effect_buffer.begin(), p.effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == stack_instance_id; });
+                     if (bit2 != p.effect_buffer.end()) {
+                         card = *bit2;
+                         p.effect_buffer.erase(bit2);
+                         found = true;
+                         break;
+                     }
+                }
             }
         }
         if (!found) return;

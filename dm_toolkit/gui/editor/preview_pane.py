@@ -81,8 +81,7 @@ class CardPreviewWidget(QWidget):
 
         # Cost (Top Left)
         self.cost_label = QLabel("5")
-        # Update: White background, black number, black border (Requirement)
-        self.cost_label.setStyleSheet("font-weight: bold; font-size: 18px; color: black; background-color: white; border: 2px solid black; border-radius: 15px; padding: 0px;")
+        self.cost_label.setStyleSheet("font-weight: bold; font-size: 18px; color: black; background-color: transparent; border: 2px solid black; border-radius: 15px; padding: 0px;")
         self.cost_label.setFixedSize(30, 30)
         self.cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.cost_label, 0, 0)
@@ -110,7 +109,6 @@ class CardPreviewWidget(QWidget):
         self.text_body = QLabel("")
         self.text_body.setWordWrap(True)
         self.text_body.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        # Update: Thin black border (Requirement)
         self.text_body.setStyleSheet("font-size: 11px; background-color: rgba(255, 255, 255, 0.5); border: 1px solid black; border-radius: 5px; padding: 5px;")
         layout.addWidget(self.text_body, 2, 0, 1, 3)
 
@@ -315,14 +313,14 @@ class CardPreviewWidget(QWidget):
         return "\n".join(body_lines)
 
     def apply_civ_style(self, civs):
-        # Basic mapping
+        # Slightly darker colors for gradient/background as requested
         colors = {
-            "LIGHT": "#FFFACD",     # LemonChiffon
-            "WATER": "#E0FFFF",     # LightCyan
-            "DARKNESS": "#D3D3D3",  # LightGray
-            "FIRE": "#FFE4E1",      # MistyRose
-            "NATURE": "#90EE90",    # LightGreen
-            "ZERO": "#F5F5F5"       # WhiteSmoke
+            "LIGHT": "#FFF8B0",     # Darker LemonChiffon
+            "WATER": "#B0E0E6",     # PowderBlue (Darker LightCyan)
+            "DARKNESS": "#A9A9A9",  # DarkGray
+            "FIRE": "#F08080",      # LightCoral (Darker MistyRose)
+            "NATURE": "#98FB98",    # PaleGreen (Darker LightGreen)
+            "ZERO": "#DCDCDC"       # Gainsboro
         }
 
         border_colors = {
@@ -356,7 +354,7 @@ class CardPreviewWidget(QWidget):
             QFrame {{
                 background-color: {bg_color if 'gradient' not in bg_color else 'transparent'};
                 background: {bg_color};
-                border: 4px solid {border_color};
+                border: 1px solid {border_color};
                 border-radius: 10px;
             }}
         """)

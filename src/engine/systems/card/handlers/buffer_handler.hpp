@@ -45,7 +45,7 @@ namespace dm::engine {
 
                 if (chosen_idx != -1) {
                     CardInstance card = looked[chosen_idx];
-                    ctx.game_state.effect_buffer.push_back(card);
+                    controller.effect_buffer.push_back(card);
                     ctx.game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, card.instance_id, controller.id);
                 }
 
@@ -68,27 +68,27 @@ namespace dm::engine {
                         CardInstance c = source->back();
                         source->pop_back();
                         c.is_face_down = false;
-                        ctx.game_state.effect_buffer.push_back(c);
+                        controller.effect_buffer.push_back(c);
                     }
                 }
             } else if (ctx.action.type == EffectActionType::MOVE_BUFFER_TO_ZONE) {
                 if (ctx.action.destination_zone == "DECK_BOTTOM") {
-                    for (auto& c : ctx.game_state.effect_buffer) {
+                    for (auto& c : controller.effect_buffer) {
                         controller.deck.insert(controller.deck.begin(), c);
                     }
-                    ctx.game_state.effect_buffer.clear();
+                    controller.effect_buffer.clear();
                 }
                 else if (ctx.action.destination_zone == "GRAVEYARD") {
-                    for (auto& c : ctx.game_state.effect_buffer) {
+                    for (auto& c : controller.effect_buffer) {
                         controller.graveyard.push_back(c);
                     }
-                    ctx.game_state.effect_buffer.clear();
+                    controller.effect_buffer.clear();
                 }
                 else if (ctx.action.destination_zone == "HAND") {
-                     for (auto& c : ctx.game_state.effect_buffer) {
+                     for (auto& c : controller.effect_buffer) {
                         controller.hand.push_back(c);
                     }
-                    ctx.game_state.effect_buffer.clear();
+                    controller.effect_buffer.clear();
                 }
             }
         }
@@ -99,11 +99,20 @@ namespace dm::engine {
 
              if (ctx.action.type == EffectActionType::PLAY_FROM_BUFFER) {
                  Player& active = ctx.game_state.get_active_player();
+                 // Use controller of effect source or active player?
+                 // Usually active player's buffer.
+                 // But PLAY_FROM_BUFFER implies we are playing from OUR buffer.
+
+                 // If the effect source is opponent (e.g. they force us to play?), buffer would be ours.
+                 // Let's check 'controller' derived from source_instance_id
+                 PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                 Player& controller = ctx.game_state.players[controller_id];
+
                  for (int tid : *ctx.targets) {
-                      auto it = std::find_if(ctx.game_state.effect_buffer.begin(), ctx.game_state.effect_buffer.end(),
+                      auto it = std::find_if(controller.effect_buffer.begin(), controller.effect_buffer.end(),
                           [tid](const CardInstance& c){ return c.instance_id == tid; });
 
-                      if (it != ctx.game_state.effect_buffer.end()) {
+                      if (it != controller.effect_buffer.end()) {
                           ctx.game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, tid, active.id);
                       }
                  }

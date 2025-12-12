@@ -120,7 +120,10 @@ namespace dm::engine {
                         else if (zone_str == "SHIELD_ZONE") zone_ptr = &target_player.shield_zone;
                         else if (zone_str == "DECK") zone_ptr = &target_player.deck;
                         else if (zone_str == "EFFECT_BUFFER" || zone_str == "BUFFER") {
-                            zone_ptr = &game_state.effect_buffer;
+                            // zone_ptr = &game_state.effect_buffer;
+                            // Need to know which player's buffer.
+                            // The pending effect has a controller. Use that.
+                            zone_ptr = &game_state.players[eff.controller].effect_buffer;
                         }
 
                         if (zone_ptr) {
