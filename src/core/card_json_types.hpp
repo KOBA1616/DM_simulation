@@ -97,6 +97,21 @@ namespace dm::core {
         NONE
     };
 
+    // Phase 4: Cost System Enums
+    enum class CostType {
+        MANA,               // Standard Mana Payment
+        TAP_CARD,           // Tap cards in specified zone
+        SACRIFICE_CARD,     // Send cards to graveyard
+        RETURN_CARD,        // Return cards to hand
+        SHIELD_BURN,        // Send shields to graveyard
+        DISCARD             // Discard cards from hand
+    };
+
+    enum class ReductionType {
+        PASSIVE,        // Passive reduction (e.g. -1 for each Dragon)
+        ACTIVE_PAYMENT  // Active payment reduction (e.g. Tap creature to reduce by 2)
+    };
+
     // JSON Structures
     struct FilterDef {
         std::optional<std::string> owner; // "SELF", "OPPONENT", "BOTH"
@@ -119,6 +134,27 @@ namespace dm::core {
 
         // Step 3-2: Composite Filters
         std::vector<FilterDef> and_conditions;
+    };
+
+    // Phase 4: Cost System Structs
+    struct CostDef {
+        CostType type;
+        int amount;
+        FilterDef filter;
+        bool is_optional = false;
+        std::string cost_id;
+    };
+
+    struct CostReductionDef {
+        ReductionType type;
+
+        // ACTIVE_PAYMENT specific
+        CostDef unit_cost;
+        int reduction_amount;
+        int max_units = -1; // -1 for unlimited
+        int min_mana_cost = 0;
+
+        std::string name;
     };
 
     struct ConditionDef {
@@ -189,6 +225,7 @@ namespace dm::core {
         std::optional<FilterDef> revolution_change_condition;
         std::optional<std::map<std::string, bool>> keywords;
         std::vector<ReactionAbility> reaction_abilities;
+        std::vector<CostReductionDef> cost_reductions; // Phase 4
         std::shared_ptr<CardData> spell_side;
 
         // AI Metadata
@@ -303,12 +340,30 @@ namespace dm::core {
         {EffectActionType::SELECT_OPTION, "SELECT_OPTION"}
     })
 
+    NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {
+        {CostType::MANA, "MANA"},
+        {CostType::TAP_CARD, "TAP_CARD"},
+        {CostType::SACRIFICE_CARD, "SACRIFICE_CARD"},
+        {CostType::RETURN_CARD, "RETURN_CARD"},
+        {CostType::SHIELD_BURN, "SHIELD_BURN"},
+        {CostType::DISCARD, "DISCARD"}
+    })
+
+    NLOHMANN_JSON_SERIALIZE_ENUM(ReductionType, {
+        {ReductionType::PASSIVE, "PASSIVE"},
+        {ReductionType::ACTIVE_PAYMENT, "ACTIVE_PAYMENT"}
+    })
+
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count, selection_mode, selection_sort_key, and_conditions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition, options)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
+
+    // Phase 4: Cost System Serialization
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostDef, type, amount, filter, is_optional, cost_id)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostReductionDef, type, unit_cost, reduction_amount, max_units, min_mana_cost, name)
 
     inline void to_json(nlohmann::json& j, const CardData& c) {
         j = nlohmann::json{
@@ -324,6 +379,7 @@ namespace dm::core {
             {"revolution_change_condition", c.revolution_change_condition},
             {"keywords", c.keywords},
             {"reaction_abilities", c.reaction_abilities},
+            {"cost_reductions", c.cost_reductions},
             {"is_key_card", c.is_key_card},
             {"ai_importance_score", c.ai_importance_score}
         };
@@ -392,6 +448,21 @@ namespace dm::core {
             }
         } else {
             c.reaction_abilities = {};
+        }
+
+        if (j.contains("cost_reductions")) {
+            const auto& arr = j.at("cost_reductions");
+            c.cost_reductions.clear();
+            if (arr.is_array()) {
+                c.cost_reductions.reserve(arr.size());
+                for (const auto& elem : arr) {
+                    CostReductionDef cr;
+                    from_json(elem, cr);
+                    c.cost_reductions.push_back(cr);
+                }
+            }
+        } else {
+            c.cost_reductions = {};
         }
 
         c.is_key_card = j.value("is_key_card", false);
