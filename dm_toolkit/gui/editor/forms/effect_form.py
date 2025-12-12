@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLay
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 
 # Configuration for Condition UI logic
 CONDITION_UI_CONFIG = {
@@ -52,6 +53,11 @@ CONDITION_UI_CONFIG = {
         "show_str": False,
         "label_val": "Value",
         "label_str": "String"
+    },
+    "EVENT_FILTER_MATCH": {
+        "show_val": False,
+        "show_str": False,
+        "show_filter": True
     }
 }
 
@@ -78,7 +84,7 @@ class EffectEditForm(BaseEditForm):
         cond_types = [
             "NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH",
             "OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN",
-            "FIRST_ATTACK"
+            "FIRST_ATTACK", "EVENT_FILTER_MATCH"
         ]
         self.populate_combo(self.cond_type_combo, cond_types, data_func=lambda x: x)
 
@@ -96,6 +102,15 @@ class EffectEditForm(BaseEditForm):
         self.cond_str_edit = QLineEdit()
         c_layout.addWidget(self.lbl_str, 2, 0)
         c_layout.addWidget(self.cond_str_edit, 2, 1)
+
+        # Filter Widget (New)
+        self.cond_filter = FilterEditorWidget()
+        self.cond_filter.filterChanged.connect(self.update_data)
+        # Configure mask for event filter (Zones are usually irrelevant for event context, but maybe needed for 'from Hand'?)
+        # Let's show basic fields
+        self.cond_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
+        self.cond_filter.setVisible(False)
+        c_layout.addWidget(self.cond_filter, 3, 0, 1, 2)
 
         layout.addRow(self.condition_group)
 
@@ -122,6 +137,8 @@ class EffectEditForm(BaseEditForm):
         show_str = config.get("show_str", True)
         label_str = config.get("label_str", "String Value")
 
+        show_filter = config.get("show_filter", False)
+
         self.lbl_val.setText(tr(label_val))
         self.lbl_val.setVisible(show_val)
         self.cond_val_spin.setVisible(show_val)
@@ -129,6 +146,8 @@ class EffectEditForm(BaseEditForm):
         self.lbl_str.setText(tr(label_str))
         self.lbl_str.setVisible(show_str)
         self.cond_str_edit.setVisible(show_str)
+
+        self.cond_filter.setVisible(show_filter)
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
@@ -142,6 +161,8 @@ class EffectEditForm(BaseEditForm):
         self.cond_val_spin.setValue(cond.get('value', 0))
         self.cond_str_edit.setText(cond.get('str_val', ''))
 
+        self.cond_filter.set_data(cond.get('filter', {}))
+
         self.update_ui_visibility(ctype)
 
     def _save_data(self, data):
@@ -152,6 +173,10 @@ class EffectEditForm(BaseEditForm):
         cond['value'] = self.cond_val_spin.value()
         str_val = self.cond_str_edit.text()
         if str_val: cond['str_val'] = str_val
+
+        if self.cond_filter.isVisible():
+             cond['filter'] = self.cond_filter.get_data()
+
         data['condition'] = cond
 
     def _get_display_text(self, data):
@@ -162,3 +187,4 @@ class EffectEditForm(BaseEditForm):
         self.cond_type_combo.blockSignals(block)
         self.cond_val_spin.blockSignals(block)
         self.cond_str_edit.blockSignals(block)
+        self.cond_filter.blockSignals(block)

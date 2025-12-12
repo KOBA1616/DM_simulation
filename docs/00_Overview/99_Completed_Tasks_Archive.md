@@ -207,3 +207,14 @@ AI知能の進化、不完全情報対応、およびシステム基盤の安定
 
 ### 3. System Improvements
 *   **効果バッファの分離**: `effect_buffer` を `GameState` から `Player` 構造体へ移動し、プレイヤーごとの独立管理を実現（バグ防止）。
+
+### 5. GUI Enhancements & User Requests (Phase 4.3)
+
+`00_Status_and_Requirements_Summary.md` の Section 3.1 より移動された、GUI機能拡張タスク。
+
+*   **ロジックマスク (Logic Mask)**
+    *   **アクション編集**: 選択したアクションタイプに応じて、不要なフィルタ設定項目（ゾーン、文明など）を自動的に非表示にする機能を `FilterEditorWidget` と `ActionEditForm` に実装しました。
+    *   **条件編集**: 選択した条件タイプに応じて、不要な値設定フィールドをマスクする機能を `EffectEditForm` に実装しました。
+*   **トリガータイミング包含 (Trigger Timing Inclusion)**
+    *   `ConditionDef` に `filter` フィールドを追加し、エンジンのデータ構造を拡張しました。
+    *   `EffectEditForm` の条件設定に `FilterEditorWidget` を組み込み、`EVENT_FILTER_MATCH` 条件タイプを選択することで、トリガーイベントに対する詳細なフィルタリング（例：「相手クリーチャーが出た時」）をGUI上で設定可能にしました。
