@@ -137,13 +137,22 @@ namespace dm::engine {
             }
 
             if (!found) {
-                // Check buffer
-                 auto buf_it = std::find_if(game_state.effect_buffer.begin(), game_state.effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (buf_it != game_state.effect_buffer.end()) {
-                    card = *buf_it;
-                    game_state.effect_buffer.erase(buf_it);
+                // Check buffers (Player 0)
+                auto buf_it_p0 = std::find_if(game_state.players[0].effect_buffer.begin(), game_state.players[0].effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
+                if (buf_it_p0 != game_state.players[0].effect_buffer.end()) {
+                    card = *buf_it_p0;
+                    game_state.players[0].effect_buffer.erase(buf_it_p0);
                     found = true;
-                    owner_id = game_state.active_player_id; // Buffer usually owned by active?
+                    owner_id = 0; // Found in P0's buffer
+                } else {
+                    // Check buffers (Player 1)
+                    auto buf_it_p1 = std::find_if(game_state.players[1].effect_buffer.begin(), game_state.players[1].effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
+                    if (buf_it_p1 != game_state.players[1].effect_buffer.end()) {
+                        card = *buf_it_p1;
+                        game_state.players[1].effect_buffer.erase(buf_it_p1);
+                        found = true;
+                        owner_id = 1; // Found in P1's buffer
+                    }
                 }
             }
 

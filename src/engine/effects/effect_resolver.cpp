@@ -416,12 +416,22 @@ namespace dm::engine {
             stack.erase(it);
             found = true;
         } else {
-            auto& buf = game_state.effect_buffer;
-            auto bit = std::find_if(buf.begin(), buf.end(), [&](const CardInstance& c){ return c.instance_id == stack_instance_id; });
-            if (bit != buf.end()) {
-                card = *bit;
-                buf.erase(bit);
+            // Check buffers (P0)
+            auto& buf0 = game_state.players[0].effect_buffer;
+            auto bit0 = std::find_if(buf0.begin(), buf0.end(), [&](const CardInstance& c){ return c.instance_id == stack_instance_id; });
+            if (bit0 != buf0.end()) {
+                card = *bit0;
+                buf0.erase(bit0);
                 found = true;
+            } else {
+                 // Check buffers (P1)
+                auto& buf1 = game_state.players[1].effect_buffer;
+                auto bit1 = std::find_if(buf1.begin(), buf1.end(), [&](const CardInstance& c){ return c.instance_id == stack_instance_id; });
+                if (bit1 != buf1.end()) {
+                    card = *bit1;
+                    buf1.erase(bit1);
+                    found = true;
+                }
             }
         }
         if (!found) return;
