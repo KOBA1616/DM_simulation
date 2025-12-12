@@ -52,6 +52,9 @@ class CardDataManager:
 
             new_effects = []
             spell_side_dict = None
+
+            # Revolution Change extraction
+            rev_change_filter = None
             has_rev_change_action = False
 
             # Iterate children of CARD node
@@ -64,10 +67,11 @@ class CardDataManager:
                     eff_data = self._reconstruct_effect(child_item)
                     new_effects.append(eff_data)
 
-                    # Check for Revolution Change Action
+                    # Check for Revolution Change Action to extract condition
                     for act in eff_data.get('actions', []):
                         if act.get('type') == "REVOLUTION_CHANGE":
                             has_rev_change_action = True
+                            rev_change_filter = act.get('filter')
 
                 elif item_type == "SPELL_SIDE":
                     # Reconstruct Spell Side
@@ -88,11 +92,19 @@ class CardDataManager:
                 if 'spell_side' in card_data:
                     del card_data['spell_side']
 
-            # Auto-set Revolution Change Keyword if action is present
+            # Auto-set Revolution Change Keyword and Condition
             if 'keywords' not in card_data:
                 card_data['keywords'] = {}
-            if has_rev_change_action:
+
+            if has_rev_change_action and rev_change_filter:
                 card_data['keywords']['revolution_change'] = True
+                card_data['revolution_change_condition'] = rev_change_filter
+            else:
+                # If removed from tree, clear from root data
+                if 'revolution_change' in card_data['keywords']:
+                    del card_data['keywords']['revolution_change']
+                if 'revolution_change_condition' in card_data:
+                    del card_data['revolution_change_condition']
 
             cards.append(card_data)
 
@@ -132,10 +144,15 @@ class CardDataManager:
 
     def add_new_card(self):
         new_id = self._generate_new_id()
+        # Updated: Use 'civilizations' list by default
         new_card = {
-            "id": new_id, "name": "New Card", "civilization": "FIRE", "type": "CREATURE",
+            "id": new_id, "name": "New Card",
+            "civilizations": ["FIRE"], "type": "CREATURE",
             "cost": 1, "power": 1000, "races": [], "effects": []
         }
+        # Legacy cleanup just in case
+        if "civilization" in new_card: del new_card["civilization"]
+
         item = self._create_card_item(new_card)
         self.model.appendRow(item)
         return item
@@ -196,6 +213,15 @@ class CardDataManager:
 
     def add_revolution_change_logic(self, card_item):
         """Adds generic Revolution Change logic (Effect + Action) to the card."""
+        # Check if already exists to avoid duplicates
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                for act in eff_data.get('actions', []):
+                    if act.get('type') == 'REVOLUTION_CHANGE':
+                        return child # Already exists
+
         # 1. Create Effect (Trigger: ON_ATTACK_FROM_HAND)
         eff_data = {
             "trigger": "ON_ATTACK_FROM_HAND",
@@ -208,16 +234,44 @@ class CardDataManager:
         act_data = {
             "type": "REVOLUTION_CHANGE",
             "filter": {
-                "civilizations": [],
-                "races": [],
+                "civilizations": ["FIRE"], # Default
+                "races": ["Dragon"], # Default
                 "min_cost": 5
             }
         }
         act_item = self._create_action_item(act_data)
         eff_item.appendRow(act_item)
 
-        card_item.appendRow(eff_item)
+        # Add to card (before spell side if any)
+        spell_side_row = -1
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
+                spell_side_row = i
+                break
+
+        if spell_side_row != -1:
+            card_item.insertRow(spell_side_row, eff_item)
+        else:
+            card_item.appendRow(eff_item)
+
         return eff_item
+
+    def remove_revolution_change_logic(self, card_item):
+        """Removes the Revolution Change effect from the card."""
+        rows_to_remove = []
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                for act in eff_data.get('actions', []):
+                    if act.get('type') == 'REVOLUTION_CHANGE':
+                        rows_to_remove.append(i)
+                        break
+
+        for i in reversed(rows_to_remove):
+            card_item.removeRow(i)
+
 
     def _create_card_item(self, card):
         item = QStandardItem(f"{card.get('id')} - {card.get('name', 'No Name')}")
