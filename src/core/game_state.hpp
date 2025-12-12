@@ -51,6 +51,9 @@ namespace dm::core {
         // Optional: carry the EffectDef (from JSON) for later resolution after target selection
         std::optional<EffectDef> effect_def;
 
+        // For SELECT_OPTION: Store the choices
+        std::vector<std::vector<ActionDef>> options;
+
         // Phase 5: Execution Context (Variable Linking)
         std::map<std::string, int> execution_context;
 

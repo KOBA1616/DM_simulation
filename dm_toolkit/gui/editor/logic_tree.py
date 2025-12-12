@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QTreeView, QAbstractItemView
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
+from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu
+from PyQt6.QtGui import QStandardItemModel, QStandardItem, QAction
 from PyQt6.QtCore import Qt, QModelIndex
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
@@ -16,6 +16,8 @@ class LogicTreeWidget(QTreeView):
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(True)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
 
         # Initialize Data Manager
         self.data_manager = CardDataManager(self.model)
@@ -31,7 +33,7 @@ class LogicTreeWidget(QTreeView):
 
     def mousePressEvent(self, event):
         index = self.indexAt(event.pos())
-        if index.isValid():
+        if index.isValid() and event.button() == Qt.MouseButton.LeftButton:
              item_type = index.data(Qt.ItemDataRole.UserRole + 1)
              if item_type in ["CARD", "SPELL_SIDE"]:
                  if self.isExpanded(index):
@@ -39,6 +41,54 @@ class LogicTreeWidget(QTreeView):
                  else:
                      self.expandRecursively(index)
         super().mousePressEvent(event)
+
+    def show_context_menu(self, pos):
+        index = self.indexAt(pos)
+        if not index.isValid():
+            return
+
+        item_type = index.data(Qt.ItemDataRole.UserRole + 1)
+        menu = QMenu(self)
+
+        if item_type == "ACTION":
+            act_data = index.data(Qt.ItemDataRole.UserRole + 2)
+            if act_data.get('type') == "SELECT_OPTION":
+                add_opt_action = QAction(tr("Add Option"), self)
+                add_opt_action.triggered.connect(lambda: self.add_option(index))
+                menu.addAction(add_opt_action)
+
+        elif item_type == "OPTION":
+            add_act_action = QAction(tr("Add Action"), self)
+            add_act_action.triggered.connect(lambda: self.add_action_to_option(index))
+            menu.addAction(add_act_action)
+
+            remove_opt_action = QAction(tr("Remove Option"), self)
+            remove_opt_action.triggered.connect(lambda: self.remove_current_item())
+            menu.addAction(remove_opt_action)
+
+        if not menu.isEmpty():
+            menu.exec(self.viewport().mapToGlobal(pos))
+
+    def add_option(self, parent_index):
+        if not parent_index.isValid(): return
+        parent_item = self.model.itemFromIndex(parent_index)
+        count = parent_item.rowCount() + 1
+
+        new_item = QStandardItem(f"{tr('Option')} {count}")
+        new_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
+        new_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+
+        parent_item.appendRow(new_item)
+        self.expand(parent_index)
+        self.setCurrentIndex(new_item.index())
+
+    def add_action_to_option(self, option_index):
+        if not option_index.isValid(): return
+
+        # Default Action
+        act_data = {"type": "NONE"}
+
+        self.add_child_item(option_index, "ACTION", act_data, f"{tr('Action')}: NONE")
 
     def load_data(self, cards_data):
         self.data_manager.load_data(cards_data)
