@@ -73,13 +73,13 @@ class CardEditor(QMainWindow):
         self.tree_widget.selectionModel().selectionChanged.connect(self.on_selection_changed)
 
         # Connect Data Changes from Inspector to Preview
-        # We need a way to bubble up data changes.
-        # PropertyInspector should probably emit a signal when its active form changes data.
-        # But PropertyInspector holds forms, forms emit dataChanged.
-        # Let's inspect inspector.
         self.inspector.card_form.dataChanged.connect(self.on_data_changed)
         self.inspector.effect_form.dataChanged.connect(self.on_data_changed)
         self.inspector.action_form.dataChanged.connect(self.on_data_changed)
+        self.inspector.spell_side_form.dataChanged.connect(self.on_data_changed)
+
+        # Connect Structural Changes
+        self.inspector.structure_update_requested.connect(self.on_structure_update)
 
     def load_data(self):
         if os.path.exists(self.json_path):
@@ -129,6 +129,33 @@ class CardEditor(QMainWindow):
             item = self.tree_widget.model.itemFromIndex(idx)
             self.preview_widget.update_preview(item)
 
+    def on_structure_update(self, command, payload):
+        idx = self.tree_widget.currentIndex()
+        if not idx.isValid(): return
+
+        # Ensure we are operating on the Card Item
+        item = self.tree_widget.model.itemFromIndex(idx)
+        card_item = None
+
+        item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+        if item_type == "CARD":
+            card_item = item
+        elif item_type in ["EFFECT", "SPELL_SIDE"]:
+            card_item = item.parent()
+        elif item_type == "ACTION":
+            card_item = item.parent().parent()
+
+        if not card_item: return
+
+        if command == "ADD_SPELL_SIDE":
+            self.tree_widget.add_spell_side(card_item.index())
+            self.tree_widget.expand(card_item.index())
+        elif command == "REMOVE_SPELL_SIDE":
+            self.tree_widget.remove_spell_side(card_item.index())
+        elif command == "ADD_REV_CHANGE":
+            self.tree_widget.add_rev_change(card_item.index())
+            self.tree_widget.expand(card_item.index())
+
     def new_card(self):
         self.tree_widget.add_new_card()
 
@@ -141,6 +168,8 @@ class CardEditor(QMainWindow):
         
         target_item = None
         if type_ == "CARD":
+            target_item = item
+        elif type_ == "SPELL_SIDE":
             target_item = item
         elif type_ == "EFFECT":
             target_item = item.parent()
