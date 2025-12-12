@@ -5,7 +5,7 @@
 #include <bitset>
 #include <optional>
 #include <memory>
-#include "card_json_types.hpp" // Include for FilterDef
+#include "card_json_types.hpp" // Include for FilterDef, CostReductionDef
 #include <algorithm> // For std::find
 
 namespace dm::core {
@@ -95,6 +95,9 @@ namespace dm::core {
 
         // Reaction Abilities
         std::vector<ReactionAbility> reaction_abilities;
+
+        // Phase 4: Cost Reductions
+        std::vector<CostReductionDef> cost_reductions;
 
         // Twinpact Spell Side (Recursive definition via shared_ptr)
         // Note: Using shared_ptr to avoid incomplete type issues
