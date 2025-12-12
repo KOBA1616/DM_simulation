@@ -250,9 +250,10 @@ namespace dm::ai {
         int num_games,
         int num_threads
     ) {
+        (void)num_threads;
         std::vector<int> results(num_games);
 
-        #pragma omp parallel for num_threads(num_threads)
+        #pragma omp parallel for
         for (int i = 0; i < num_games; ++i) {
             std::random_device rd;
             uint32_t seed = rd() + i;
@@ -309,9 +310,10 @@ namespace dm::ai {
         int num_games,
         int num_threads
     ) {
+        (void)num_threads;
         std::vector<int> results(num_games);
 
-        #pragma omp parallel for num_threads(num_threads)
+        #pragma omp parallel for
         for (int i = 0; i < num_games; ++i) {
             std::random_device rd;
             uint32_t seed = rd() + i;

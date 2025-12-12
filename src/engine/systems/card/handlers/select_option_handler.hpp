@@ -33,7 +33,7 @@ namespace dm::engine {
             game_state.pending_effects.push_back(pending);
         }
 
-        void resolve_with_targets(const ResolutionContext& ctx) override {
+        void resolve_with_targets(const ResolutionContext& /*ctx*/) override {
             // Not used directly, as SELECT_OPTION resolution happens in EffectResolver via ActionType::SELECT_OPTION
         }
     };

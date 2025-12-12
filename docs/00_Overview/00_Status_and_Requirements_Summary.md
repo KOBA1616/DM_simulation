@@ -56,17 +56,10 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
     *   右側のカードプレビュー画面のレイアウトを調整し、generated textとカードプレビューが適切な配置になるように調節してください。
     *   トリガーとコンディションも日本語化の推進。（一部完了）
 
-2.  **C++ コンパイル警告 (ConditionDef)**
-    *   `CostHandler`, `ShieldHandler`, `SearchHandler` 等において、`ConditionDef` のブレース初期化リストが構造体のフィールド更新（`stat_key`等の追加）に追従しておらず、多くの `missing initializer` 警告が発生しています。
-
-3.  **Atomic Action テストの失敗**
-    *   `tests/python/test_new_actions.py` 内の `test_cast_spell_action` が失敗します。
-    *   **原因**: テストコードが `CAST_SPELL` アクションを単体で解決しようとしていますが、エンジン側のハンドラが期待するコンテキスト（スタック経由の処理など）と一致していない可能性があります。
-
-4.  **文明指定のキー不整合 (Legacy Support)**
+2.  **文明指定のキー不整合 (Legacy Support)**
     *   **Editor**: 新規カード作成時に単数形のキー `"civilization"` を使用しています。
     *   **Engine**: 内部構造および推奨フォーマットは複数形の `"civilizations"` です（`JsonLoader` に互換処理が存在するため現状は動作します）。
-    *木構造をユーザーが破壊しないようにしたい。
+    *   木構造をユーザーが破壊しないようにしたい。
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 

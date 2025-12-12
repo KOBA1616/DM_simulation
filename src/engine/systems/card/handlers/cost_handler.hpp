@@ -16,7 +16,7 @@ namespace dm::engine {
                      if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                          EffectDef ed;
                          ed.trigger = TriggerType::NONE;
-                         ed.condition = ConditionDef{"NONE", 0, ""};
+                         ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                          ed.actions = { ctx.action };
                          GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                      }
