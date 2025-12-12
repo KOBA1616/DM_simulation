@@ -86,7 +86,7 @@ class CardEditForm(BaseEditForm):
             "speed_attacker", "blocker", "slayer",
             "double_breaker", "triple_breaker", "shield_trigger",
             "just_diver", "mach_fighter", "g_strike",
-            "hyper_energy", "shield_burn", "power_attacker"
+            "hyper_energy", "shield_burn", "power_attacker", "ex_life"
         ]
 
         kw_map = {
@@ -101,7 +101,8 @@ class CardEditForm(BaseEditForm):
             "g_strike": "G Strike",
             "hyper_energy": "Hyper Energy",
             "shield_burn": "Shield Burn",
-            "power_attacker": "Power Attacker"
+            "power_attacker": "Power Attacker",
+            "ex_life": "Ex-Life"
         }
 
         row = 0
