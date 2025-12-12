@@ -120,7 +120,9 @@ namespace dm::engine {
                         else if (zone_str == "SHIELD_ZONE") zone_ptr = &target_player.shield_zone;
                         else if (zone_str == "DECK") zone_ptr = &target_player.deck;
                         else if (zone_str == "EFFECT_BUFFER" || zone_str == "BUFFER") {
-                            zone_ptr = &game_state.effect_buffer;
+                            // Target the buffer of the player being checked in the loop (pid)
+                            // Usually we filter by Owner="SELF" so we check decision_maker's buffer.
+                            zone_ptr = &game_state.players[pid].effect_buffer;
                         }
 
                         if (zone_ptr) {
