@@ -46,7 +46,7 @@ namespace dm::ai {
             // But we can try to be smarter: replace with same color if possible.
 
             // Get card to be removed
-            CardID old_id = static_cast<CardID>(new_deck[deck_idx]);
+            // CardID old_id = static_cast<CardID>(new_deck[deck_idx]);
             // CardID new_id = static_cast<CardID>(candidate_pool[pool_idx]);
 
             // Simple replacement
