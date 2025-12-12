@@ -34,6 +34,25 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 *   **推論エンジン**: 相手デッキタイプ推定 (`DeckClassifier`) と手札確率推定 (`HandEstimator`) を実装済み。
 *   **自己進化**: 遺伝的アルゴリズムによるデッキ改良ロジック (`DeckEvolution`) がC++コアに統合され、高速に動作します。
 
+### 2.4 現在確認されている実装上の不整合 (Identified Implementation Inconsistencies)
+現在、以下の不整合が確認されており、将来的な修正対象として記録されています。
+
+1.  **革命チェンジのデータ構造不整合**
+    *   **Card Editor**: 革命チェンジのロジックを「Effect内のAction (`REVOLUTION_CHANGE`)」として保存します。
+    *   **Engine (`JsonLoader`)**: 革命チェンジの宣言条件として、Card定義のルートレベルにある `revolution_change_condition` (FilterDef) を参照します。
+    *   **影響**: エディタで作成した革命チェンジ持ちカードが、エンジン側で正しく「革命チェンジ持ち」として認識されるものの、宣言時の条件フィルタ（種族・コスト指定など）が反映されない可能性があります。
+
+2.  **C++ コンパイル警告 (ConditionDef)**
+    *   `CostHandler`, `ShieldHandler`, `SearchHandler` 等において、`ConditionDef` のブレース初期化リストが構造体のフィールド更新（`stat_key`等の追加）に追従しておらず、多くの `missing initializer` 警告が発生しています。
+
+3.  **Atomic Action テストの失敗**
+    *   `tests/python/test_new_actions.py` 内の `test_cast_spell_action` が失敗します。
+    *   **原因**: テストコードが `CAST_SPELL` アクションを単体で解決しようとしていますが、エンジン側のハンドラが期待するコンテキスト（スタック経由の処理など）と一致していない可能性があります。
+
+4.  **文明指定のキー不整合 (Legacy Support)**
+    *   **Editor**: 新規カード作成時に単数形のキー `"civilization"` を使用しています。
+    *   **Engine**: 内部構造および推奨フォーマットは複数形の `"civilizations"` です（`JsonLoader` に互換処理が存在するため現状は動作します）。
+
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
 ---
