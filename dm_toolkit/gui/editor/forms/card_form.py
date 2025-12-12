@@ -13,7 +13,7 @@ from dm_toolkit.gui.editor.forms.parts.reaction_widget import ReactionWidget
 
 class CardEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree
-    # command: "ADD_SPELL_SIDE", "REMOVE_SPELL_SIDE", "ADD_REV_CHANGE"
+    # command: "ADD_SPELL_SIDE", "REMOVE_SPELL_SIDE", "ADD_REV_CHANGE", "REMOVE_REV_CHANGE"
     # payload: dict (optional)
     structure_update_requested = pyqtSignal(str, dict)
 
@@ -81,7 +81,8 @@ class CardEditForm(BaseEditForm):
         kw_group = QGroupBox(tr("Keywords"))
         kw_layout = QGridLayout(kw_group)
 
-        # Removed legacy keywords: evolution, untap_in, meta_counter_play, revolution_change
+        # Removed legacy keywords: evolution, untap_in, meta_counter_play
+        # Revolution Change is handled separately now
         keywords_list = [
             "speed_attacker", "blocker", "slayer",
             "double_breaker", "triple_breaker", "shield_trigger",
@@ -124,9 +125,11 @@ class CardEditForm(BaseEditForm):
         special_group = QGroupBox(tr("Special Abilities"))
         special_layout = QVBoxLayout(special_group)
 
-        self.btn_add_rev_change = QPushButton(tr("Add Revolution Change"))
-        self.btn_add_rev_change.clicked.connect(self.on_add_rev_change_clicked)
-        special_layout.addWidget(self.btn_add_rev_change)
+        # Revolution Change Checkbox
+        self.rev_change_check = QCheckBox(tr("Revolution Change"))
+        self.rev_change_check.setToolTip(tr("Enable Revolution Change to generate the necessary logic tree structure."))
+        self.rev_change_check.stateChanged.connect(self.toggle_rev_change)
+        special_layout.addWidget(self.rev_change_check)
 
         self.form_layout.addRow(special_group)
 
@@ -169,8 +172,12 @@ class CardEditForm(BaseEditForm):
             self.structure_update_requested.emit("REMOVE_SPELL_SIDE", {})
         # Note: We do NOT call update_data here as this is a structural change handled by the Tree/DataManager
 
-    def on_add_rev_change_clicked(self):
-        self.structure_update_requested.emit("ADD_REV_CHANGE", {})
+    def toggle_rev_change(self, state):
+        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        if is_checked:
+            self.structure_update_requested.emit("ADD_REV_CHANGE", {})
+        else:
+            self.structure_update_requested.emit("REMOVE_REV_CHANGE", {})
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
@@ -209,6 +216,11 @@ class CardEditForm(BaseEditForm):
             is_checked = kw_data.get(k, False)
             cb.setChecked(is_checked)
 
+        # Check Rev Change
+        self.rev_change_check.blockSignals(True)
+        self.rev_change_check.setChecked(kw_data.get('revolution_change', False))
+        self.rev_change_check.blockSignals(False)
+
         self.reaction_widget.set_data(data.get('reaction_abilities', []))
         self.is_key_card_check.setChecked(data.get('is_key_card', False))
         self.ai_importance_spin.setValue(data.get('ai_importance_score', 0))
@@ -237,16 +249,26 @@ class CardEditForm(BaseEditForm):
         data['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
 
         # Keyword handling
-        kw_data = {}
+        # IMPORTANT: Preserve keywords not managed by this loop (like revolution_change)
+        # We start with existing keywords to keep 'revolution_change' if it's there
+        # but we must ensure we don't keep stale ones from the list.
+        current_keywords = data.get('keywords', {}).copy()
+
+        # Reset managed keywords
+        for k in self.keyword_checks.keys():
+            if k in current_keywords:
+                del current_keywords[k]
+
+        # Add checked ones
         for k, cb in self.keyword_checks.items():
             if cb.isChecked():
-                kw_data[k] = True
+                current_keywords[k] = True
 
         # Auto-set evolution keyword based on type
         if type_str == "EVOLUTION_CREATURE":
-            kw_data['evolution'] = True
+            current_keywords['evolution'] = True
 
-        data['keywords'] = kw_data
+        data['keywords'] = current_keywords
 
         data['reaction_abilities'] = self.reaction_widget.get_data()
         data['is_key_card'] = self.is_key_card_check.isChecked()
@@ -264,6 +286,7 @@ class CardEditForm(BaseEditForm):
         self.power_spin.blockSignals(block)
         self.races_edit.blockSignals(block)
         self.twinpact_check.blockSignals(block)
+        self.rev_change_check.blockSignals(block)
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
         self.reaction_widget.block_signals_all(block)
