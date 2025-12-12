@@ -120,12 +120,14 @@ namespace dm::core {
     };
 
     struct ConditionDef {
-        std::string type; // "NONE", "MANA_ARMED", "SHIELD_COUNT", "COMPARE_STAT"
+        std::string type; // "NONE", "MANA_ARMED", "SHIELD_COUNT", "COMPARE_STAT", "EVENT_FILTER_MATCH"
         int value = 0;
         std::string str_val;
         // Condition Generalization
         std::string stat_key; // e.g. "OPPONENT_HAND_COUNT"
         std::string op; // ">", "=", "<"
+        // Step 3-1: Trigger Inclusion
+        std::optional<FilterDef> filter;
     };
 
     struct ActionDef {
@@ -296,7 +298,7 @@ namespace dm::core {
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count, selection_mode, selection_sort_key, and_conditions)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
