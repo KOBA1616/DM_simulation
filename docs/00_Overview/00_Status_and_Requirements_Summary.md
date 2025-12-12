@@ -52,6 +52,15 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 4.  **文明指定のキー不整合 (Legacy Support)**
     *   **Editor**: 新規カード作成時に単数形のキー `"civilization"` を使用しています。
     *   **Engine**: 内部構造および推奨フォーマットは複数形の `"civilizations"` です（`JsonLoader` に互換処理が存在するため現状は動作します）。
+    *木構造をユーザーが破壊しないようにしたい。
+    Traceback (most recent call last):
+    File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\card_editor.py", line 122, in on_selection_changed
+    self.inspector.set_selection(None)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+     File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\editor\property_inspector.py", line 43, in set_selection
+    if not index.isValid():
+           ^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'isValid'
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
