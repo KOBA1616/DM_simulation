@@ -111,6 +111,7 @@ class CardPreviewWidget(QWidget):
         self.text_body.setWordWrap(True)
         self.text_body.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         # Update: Thin black border (Requirement)
+        # Also set width to match border logic
         self.text_body.setStyleSheet("font-size: 11px; background-color: rgba(255, 255, 255, 0.5); border: 1px solid black; border-radius: 5px; padding: 5px;")
         layout.addWidget(self.text_body, 2, 0, 1, 3)
 
@@ -315,14 +316,25 @@ class CardPreviewWidget(QWidget):
         return "\n".join(body_lines)
 
     def apply_civ_style(self, civs):
-        # Basic mapping
-        colors = {
+        # Updated mapping (Darker Gradients requested)
+        # Using two stops for gradient: Main color and a slightly darker shade
+        colors_base = {
             "LIGHT": "#FFFACD",     # LemonChiffon
             "WATER": "#E0FFFF",     # LightCyan
             "DARKNESS": "#D3D3D3",  # LightGray
             "FIRE": "#FFE4E1",      # MistyRose
             "NATURE": "#90EE90",    # LightGreen
             "ZERO": "#F5F5F5"       # WhiteSmoke
+        }
+
+        # Darker shades for gradient
+        colors_dark = {
+            "LIGHT": "#F0E68C",     # Khaki
+            "WATER": "#AFEEEE",     # PaleTurquoise
+            "DARKNESS": "#A9A9A9",  # DarkGray
+            "FIRE": "#FA8072",      # Salmon
+            "NATURE": "#98FB98",    # PaleGreen
+            "ZERO": "#DCDCDC"       # Gainsboro
         }
 
         border_colors = {
@@ -334,32 +346,46 @@ class CardPreviewWidget(QWidget):
             "ZERO": "#808080"
         }
 
+        bg_style = ""
+        border_color = "#000000"
+
         if not civs:
-            bg_color = "#FFFFFF"
-            border_color = "#000000"
+            bg_style = "background-color: #FFFFFF;"
         elif len(civs) == 1:
             c = civs[0]
-            bg_color = colors.get(c, "#FFFFFF")
+            c1 = colors_base.get(c, "#FFFFFF")
+            c2 = colors_dark.get(c, "#DDDDDD")
+            # Vertical gradient for single civ
+            bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 {c1}, stop:1 {c2});"
             border_color = border_colors.get(c, "#000000")
         else:
             # Gradient for multicolor (2 colors)
             if len(civs) >= 2:
-                c1 = colors.get(civs[0], "#FFFFFF")
-                c2 = colors.get(civs[1], "#FFFFFF")
-                bg_color = f"qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2})"
+                c1 = colors_base.get(civs[0], "#FFFFFF")
+                c2 = colors_base.get(civs[1], "#FFFFFF")
+                # Diagonal gradient
+                bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2});"
                 border_color = "#4B0082" # Indigo
             else:
-                bg_color = "#E6E6FA"
+                bg_style = "background-color: #E6E6FA;"
                 border_color = "#4B0082"
 
         self.card_frame.setStyleSheet(f"""
             QFrame {{
-                background-color: {bg_color if 'gradient' not in bg_color else 'transparent'};
-                background: {bg_color};
+                {bg_style}
                 border: 4px solid {border_color};
                 border-radius: 10px;
             }}
         """)
+
+        # Update cost circle background to match card background (approx) or transparent
+        # Requirement: "Circle background same as background color"
+        # Since the card has a gradient, making the label transparent is easiest
+        # But Cost needs a border.
+        # If we make it transparent, the gradient shows through.
+
+        common_label_style = f"font-weight: bold; font-size: 18px; color: black; background-color: transparent; border: 2px solid black; border-radius: 15px; padding: 0px;"
+        self.cost_label.setStyleSheet(common_label_style)
 
     def clear_preview(self):
         self.standard_widget.show()
