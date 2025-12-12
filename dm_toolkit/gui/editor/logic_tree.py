@@ -135,3 +135,8 @@ class LogicTreeWidget(QTreeView):
             self.setCurrentIndex(eff_item.index())
             self.expand(card_index)
         return eff_item
+
+    def remove_rev_change(self, card_index):
+        if not card_index.isValid(): return
+        card_item = self.model.itemFromIndex(card_index)
+        self.data_manager.remove_revolution_change_logic(card_item)
