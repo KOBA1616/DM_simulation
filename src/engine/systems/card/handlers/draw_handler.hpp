@@ -24,6 +24,7 @@ namespace dm::engine {
              if (count == 0) count = 1;
 
              // Execute Draw
+             int actual_drawn = 0;
              for (int i = 0; i < count; ++i) {
                 if (controller.deck.empty()) {
                     ctx.game_state.winner = (controller.id == 0) ? GameResult::P2_WIN : GameResult::P1_WIN;
@@ -32,10 +33,15 @@ namespace dm::engine {
                 CardInstance c = controller.deck.back();
                 controller.deck.pop_back();
                 controller.hand.push_back(c);
+                actual_drawn++;
 
                 if (controller.id == ctx.game_state.active_player_id) {
                     ctx.game_state.turn_stats.cards_drawn_this_turn++;
                 }
+             }
+
+             if (!ctx.action.output_value_key.empty()) {
+                 ctx.execution_vars[ctx.action.output_value_key] = actual_drawn;
              }
         }
     };
