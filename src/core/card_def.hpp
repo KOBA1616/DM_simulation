@@ -43,6 +43,7 @@ namespace dm::core {
         bool untap_in : 1;        // Step 1-2 (Multi-color Tap-in Exception)
         bool unblockable : 1;     // Unblockable
         bool friend_burst : 1;    // Friend Burst (New Requirement)
+        bool ex_life : 1;         // Ex-Life
     };
 
     // Mode Selection: ModalEffectGroup stores selectable modes [Q71]

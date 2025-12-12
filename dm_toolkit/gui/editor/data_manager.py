@@ -148,6 +148,20 @@ class CardDataManager:
         new_item.setData(item_type, Qt.ItemDataRole.UserRole + 1)
         new_item.setData(data, Qt.ItemDataRole.UserRole + 2)
 
+        # For Twinpact structure:
+        # If adding EFFECT to CARD, insert BEFORE 'SPELL_SIDE' if it exists.
+        if item_type == "EFFECT" and parent_item.data(Qt.ItemDataRole.UserRole + 1) == "CARD":
+            spell_side_row = -1
+            for i in range(parent_item.rowCount()):
+                child = parent_item.child(i)
+                if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
+                    spell_side_row = i
+                    break
+
+            if spell_side_row != -1:
+                parent_item.insertRow(spell_side_row, new_item)
+                return new_item
+
         parent_item.appendRow(new_item)
         return new_item
 
