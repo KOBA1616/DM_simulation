@@ -36,6 +36,7 @@ class ActionEditForm(BaseEditForm):
             "can_be_optional": raw.get("can_be_optional", False),
             "produces_output": raw.get("produces_output", False),
             "tooltip": raw.get("tooltip", ""),
+            "allowed_filter_fields": raw.get("allowed_filter_fields", None)
         }
 
     def setup_ui(self):
@@ -202,6 +203,9 @@ class ActionEditForm(BaseEditForm):
                   show_filter = False
 
         self.filter_group.setVisible(show_filter)
+        if show_filter:
+             self.filter_widget.set_allowed_fields(config.get("allowed_filter_fields", None))
+
         self.type_combo.setToolTip(tr(config.get("tooltip", "")))
 
     def _populate_ui(self, item):
