@@ -40,7 +40,7 @@ class PropertyInspector(QWidget):
         layout.addWidget(self.stack)
 
     def set_selection(self, index):
-        if not index.isValid():
+        if index is None or not index.isValid():
             self.stack.setCurrentWidget(self.empty_page)
             return
 
