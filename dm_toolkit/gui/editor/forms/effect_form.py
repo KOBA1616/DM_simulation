@@ -74,7 +74,8 @@ class EffectEditForm(BaseEditForm):
             "ON_PLAY", "ON_ATTACK", "ON_DESTROY", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
             "ON_ATTACK_FROM_HAND", "AT_BREAK_SHIELD"
         ]
-        self.populate_combo(self.trigger_combo, triggers, data_func=lambda x: x)
+        # Use localized strings for display
+        self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
         layout.addRow(tr("Trigger"), self.trigger_combo)
 
         # Condition (Simplified)
@@ -86,7 +87,8 @@ class EffectEditForm(BaseEditForm):
             "OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN",
             "FIRST_ATTACK", "EVENT_FILTER_MATCH"
         ]
-        self.populate_combo(self.cond_type_combo, cond_types, data_func=lambda x: x)
+        # Use localized strings for display
+        self.populate_combo(self.cond_type_combo, cond_types, display_func=tr, data_func=lambda x: x)
 
         c_layout.addWidget(QLabel(tr("Type")), 0, 0)
         c_layout.addWidget(self.cond_type_combo, 0, 1)

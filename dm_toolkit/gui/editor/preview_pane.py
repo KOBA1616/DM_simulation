@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QColor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
@@ -11,7 +11,7 @@ class CardPreviewWidget(QWidget):
     """
     A widget that displays a visual preview of the card and its generated text.
     Acts as the third pane in the Card Editor.
-    Updated to support Twinpact (Split View).
+    Updated to support Twinpact (Split View) with requested UI refinements.
     """
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -81,8 +81,10 @@ class CardPreviewWidget(QWidget):
 
         # Cost (Top Left)
         self.cost_label = QLabel("5")
-        # Update: White background, black number, black border (Requirement)
-        self.cost_label.setStyleSheet("font-weight: bold; font-size: 18px; color: black; background-color: white; border: 2px solid black; border-radius: 15px; padding: 0px;")
+        # Requirement: "Circle background composed of civilization colors (divided if multi), white text with black outline (simulated by bold black text here for simplicity or using graphics effect later)"
+        # For simple QLabel, we can't do complex rendering easily without paintEvent override.
+        # We will approximate with CSS gradients on background.
+        self.cost_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white; border: 2px solid black; border-radius: 15px; padding: 0px;")
         self.cost_label.setFixedSize(30, 30)
         self.cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.cost_label, 0, 0)
@@ -110,8 +112,7 @@ class CardPreviewWidget(QWidget):
         self.text_body = QLabel("")
         self.text_body.setWordWrap(True)
         self.text_body.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        # Update: Thin black border (Requirement)
-        # Also set width to match border logic
+        # Requirement: Thin black border
         self.text_body.setStyleSheet("font-size: 11px; background-color: rgba(255, 255, 255, 0.5); border: 1px solid black; border-radius: 5px; padding: 5px;")
         layout.addWidget(self.text_body, 2, 0, 1, 3)
 
@@ -134,7 +135,8 @@ class CardPreviewWidget(QWidget):
         upper_layout.setContentsMargins(5,5,5,5)
 
         self.tp_cost_label = QLabel("5")
-        self.tp_cost_label.setStyleSheet("font-weight: bold; font-size: 16px; color: white; background-color: black; border-radius: 12px;")
+        # Same cost logic as standard
+        self.tp_cost_label.setStyleSheet("font-weight: bold; font-size: 16px; color: white; border: 2px solid black; border-radius: 12px;")
         self.tp_cost_label.setFixedSize(24, 24)
         self.tp_cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         upper_layout.addWidget(self.tp_cost_label, 0, 0)
@@ -157,7 +159,7 @@ class CardPreviewWidget(QWidget):
         self.tp_power_label = QLabel("5000")
         self.tp_power_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.tp_power_label.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft)
-        # Requirement: Left Bottom (Already there, but ensure alignment)
+        # Requirement: Twinpact power display location -> Bottom Left of Creature frame
         upper_layout.addWidget(self.tp_power_label, 3, 0)
 
         layout.addWidget(self.tp_upper_frame)
@@ -170,7 +172,7 @@ class CardPreviewWidget(QWidget):
 
         # Spell Cost at Top Right (Requirement)
         self.tp_spell_cost_label = QLabel("3")
-        self.tp_spell_cost_label.setStyleSheet("font-weight: bold; font-size: 16px; color: white; background-color: black; border-radius: 12px;")
+        self.tp_spell_cost_label.setStyleSheet("font-weight: bold; font-size: 16px; color: white; border: 2px solid black; border-radius: 12px;")
         self.tp_spell_cost_label.setFixedSize(24, 24)
         self.tp_spell_cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lower_layout.addWidget(self.tp_spell_cost_label, 0, 2, Qt.AlignmentFlag.AlignRight) # Column 2
@@ -243,6 +245,9 @@ class CardPreviewWidget(QWidget):
         self.name_label.setText(data.get('name', '???'))
         self.cost_label.setText(str(data.get('cost', 0)))
 
+        # Apply cost circle color
+        self.apply_cost_circle_style(self.cost_label, civs)
+
         races = " / ".join(data.get('races', []))
         self.race_label.setText(races if races else "")
 
@@ -263,18 +268,15 @@ class CardPreviewWidget(QWidget):
         # Creature Side (Main)
         self.tp_name_label.setText(data.get('name', '???'))
         self.tp_cost_label.setText(str(data.get('cost', 0)))
+
+        # Apply cost circle color for creature side
+        self.apply_cost_circle_style(self.tp_cost_label, civs)
+
         races = " / ".join(data.get('races', []))
         self.tp_race_label.setText(races if races else "")
         self.tp_power_label.setText(str(data.get('power', 0)))
 
         # Hack: Generate text for ONLY the creature part
-        # We need to temporarily remove spell_side to generate text for creature only?
-        # Or parse the full text.
-        # CardTextGenerator.generate_text recursively handles spell side if present.
-        # We need to manually separate them or invoke generator on sub-parts.
-
-        # Generator doesn't expose easy static method for parts.
-        # Let's try to pass a modified dict to generator.
         creature_data = data.copy()
         if 'spell_side' in creature_data:
             del creature_data['spell_side']
@@ -286,8 +288,10 @@ class CardPreviewWidget(QWidget):
         self.tp_spell_name_label.setText(spell_data.get('name', 'Spell'))
         self.tp_spell_cost_label.setText(str(spell_data.get('cost', 0)))
 
+        # Apply cost circle color for spell side (Spell usually matches card civs)
+        self.apply_cost_circle_style(self.tp_spell_cost_label, civs)
+
         # For spell text, we can use the generator on the spell data object
-        # But we need to make sure it has 'type': 'SPELL'
         if 'type' not in spell_data:
             spell_data['type'] = 'SPELL'
         spell_text = CardTextGenerator.generate_text(spell_data)
@@ -315,9 +319,50 @@ class CardPreviewWidget(QWidget):
 
         return "\n".join(body_lines)
 
+    def get_civ_color(self, civ):
+        colors_base = {
+            "LIGHT": "#DAA520",     # GoldenRod
+            "WATER": "#1E90FF",     # DodgerBlue
+            "DARKNESS": "#696969",  # DimGray
+            "FIRE": "#FF4500",      # OrangeRed
+            "NATURE": "#228B22",    # ForestGreen
+            "ZERO": "#A9A9A9"       # DarkGray
+        }
+        return colors_base.get(civ, "#A9A9A9")
+
+    def apply_cost_circle_style(self, label, civs):
+        # Requirement: "Mana cost circle is composed of civilization colors (divided if multi)."
+        # White text, black thin outline (simulated by text-shadow or just black background for text is hard)
+        # We used bold white text. To make it readable on light colors (like Light), we might need text shadow.
+        # But QSS doesn't support text-shadow well.
+
+        style = "font-weight: bold; font-size: 16px; color: white; border: 1px solid black; border-radius: 12px; padding: 0px;" # border-radius depends on size
+
+        if not civs:
+            bg_style = "background-color: #A9A9A9;"
+        elif len(civs) == 1:
+            c = self.get_civ_color(civs[0])
+            bg_style = f"background-color: {c};"
+        else:
+            # Linear gradient for split circle
+            stops = []
+            segment_size = 1.0 / len(civs)
+            for i, civ in enumerate(civs):
+                c = self.get_civ_color(civ)
+                # Hard stops for segments
+                start = i * segment_size
+                end = (i + 1) * segment_size
+                stops.append(f"stop:{start} {c}")
+                stops.append(f"stop:{end} {c}")
+
+            # Diagonal or vertical split? Usually diagonal for costs.
+            grad_str = ", ".join(stops)
+            bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, {grad_str});"
+
+        label.setStyleSheet(style + bg_style)
+
     def apply_civ_style(self, civs):
         # Updated mapping (Darker Gradients requested)
-        # Using two stops for gradient: Main color and a slightly darker shade
         colors_base = {
             "LIGHT": "#FFFACD",     # LemonChiffon
             "WATER": "#E0FFFF",     # LightCyan
@@ -327,7 +372,6 @@ class CardPreviewWidget(QWidget):
             "ZERO": "#F5F5F5"       # WhiteSmoke
         }
 
-        # Darker shades for gradient
         colors_dark = {
             "LIGHT": "#F0E68C",     # Khaki
             "WATER": "#AFEEEE",     # PaleTurquoise
@@ -337,16 +381,8 @@ class CardPreviewWidget(QWidget):
             "ZERO": "#DCDCDC"       # Gainsboro
         }
 
-        border_colors = {
-            "LIGHT": "#DAA520",
-            "WATER": "#0000FF",
-            "DARKNESS": "#505050",
-            "FIRE": "#FF0000",
-            "NATURE": "#008000",
-            "ZERO": "#808080"
-        }
-
         bg_style = ""
+        # Requirement: "All borders should be thin black lines"
         border_color = "#000000"
 
         if not civs:
@@ -355,46 +391,19 @@ class CardPreviewWidget(QWidget):
             c = civs[0]
             c1 = colors_base.get(c, "#FFFFFF")
             c2 = colors_dark.get(c, "#DDDDDD")
-            # Vertical gradient for single civ
             bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 {c1}, stop:1 {c2});"
-            border_color = border_colors.get(c, "#000000")
         else:
-            # Gradient for multicolor (2 colors)
             if len(civs) >= 2:
                 c1 = colors_base.get(civs[0], "#FFFFFF")
                 c2 = colors_base.get(civs[1], "#FFFFFF")
-                # Diagonal gradient
                 bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2});"
-                border_color = "#4B0082" # Indigo
             else:
                 bg_style = "background-color: #E6E6FA;"
-                border_color = "#4B0082"
 
         self.card_frame.setStyleSheet(f"""
             QFrame {{
                 {bg_style}
-                border: 4px solid {border_color};
+                border: 1px solid {border_color};
                 border-radius: 10px;
             }}
         """)
-
-        # Update cost circle background to match card background (approx) or transparent
-        # Requirement: "Circle background same as background color"
-        # Since the card has a gradient, making the label transparent is easiest
-        # But Cost needs a border.
-        # If we make it transparent, the gradient shows through.
-
-        common_label_style = f"font-weight: bold; font-size: 18px; color: black; background-color: transparent; border: 2px solid black; border-radius: 15px; padding: 0px;"
-        self.cost_label.setStyleSheet(common_label_style)
-
-    def clear_preview(self):
-        self.standard_widget.show()
-        self.twinpact_widget.hide()
-        self.name_label.setText("")
-        self.cost_label.setText("")
-        self.race_label.setText("")
-        self.type_label.setText("")
-        self.text_body.setText("")
-        self.power_label.setText("")
-        self.raw_text_preview.clear()
-        self.card_frame.setStyleSheet("background-color: white; border: 1px solid gray; border-radius: 10px;")
