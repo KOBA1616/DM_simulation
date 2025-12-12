@@ -18,10 +18,74 @@ namespace dm::engine {
                  GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
+
+            // Auto-destruction logic for non-selection scopes (e.g. ALL, SELF)
+            // Iterate all potential targets, validate with TargetUtils, and destroy.
+            using namespace dm::core;
+            PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            int destroyed_count = 0;
+
+            // Determine zones to check
+            std::vector<std::pair<PlayerID, Zone>> zones_to_check;
+            for (const auto& z : ctx.action.filter.zones) {
+                if (z == "BATTLE_ZONE") {
+                    zones_to_check.push_back({0, Zone::BATTLE});
+                    zones_to_check.push_back({1, Zone::BATTLE});
+                }
+            }
+            if (zones_to_check.empty()) {
+                 // Default to battle zone if not specified for Destroy
+                 zones_to_check.push_back({0, Zone::BATTLE});
+                 zones_to_check.push_back({1, Zone::BATTLE});
+            }
+
+            std::vector<int> targets_to_destroy;
+
+            for (const auto& [pid, zone] : zones_to_check) {
+                Player& p = ctx.game_state.players[pid];
+                const std::vector<CardInstance>* card_list = nullptr;
+                if (zone == Zone::BATTLE) card_list = &p.battle_zone;
+
+                if (!card_list) continue;
+
+                for (const auto& card : *card_list) {
+                    if (!ctx.card_db.count(card.card_id)) continue;
+                    const auto& def = ctx.card_db.at(card.card_id);
+
+                    if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
+                         // Additional check for protection (e.g., Just Diver)
+                         if (pid != controller_id) {
+                              if (TargetUtils::is_protected_by_just_diver(card, def, ctx.game_state, controller_id)) continue;
+                         }
+
+                         targets_to_destroy.push_back(card.instance_id);
+                    }
+                }
+            }
+
+            // Apply destruction
+            for (int tid : targets_to_destroy) {
+                for (auto &p : ctx.game_state.players) {
+                    auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
+                        [tid](const dm::core::CardInstance& c){ return c.instance_id == tid; });
+                    if (it != p.battle_zone.end()) {
+                        ZoneUtils::on_leave_battle_zone(ctx.game_state, *it);
+                        p.graveyard.push_back(*it);
+                        p.battle_zone.erase(it);
+                        destroyed_count++;
+                        break;
+                    }
+                }
+            }
+
+            if (!ctx.action.output_value_key.empty()) {
+                ctx.execution_vars[ctx.action.output_value_key] = destroyed_count;
+            }
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
             if (!ctx.targets) return;
+            int destroyed_count = 0;
             for (int tid : *ctx.targets) {
                 for (auto &p : ctx.game_state.players) {
                     auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
@@ -32,9 +96,13 @@ namespace dm::engine {
 
                         p.graveyard.push_back(*it);
                         p.battle_zone.erase(it);
+                        destroyed_count++;
                         break;
                     }
                 }
+            }
+            if (!ctx.action.output_value_key.empty()) {
+                ctx.execution_vars[ctx.action.output_value_key] = destroyed_count;
             }
         }
     };
