@@ -35,6 +35,7 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 *   **AlphaZero Pipeline**: データ収集 -> 学習 -> 評価 の完全自動ループが稼働中。
 *   **推論エンジン**: 相手デッキタイプ推定 (`DeckClassifier`) と手札確率推定 (`HandEstimator`) を実装済み。
 *   **自己進化**: 遺伝的アルゴリズムによるデッキ改良ロジック (`DeckEvolution`) がC++コアに統合され、高速に動作します。
+*   **ONNX Runtime (C++) 統合**: 学習済みPyTorchモデルをONNX形式でエクスポートし、C++エンジン内で直接高速推論を行う `NeuralEvaluator` の拡張を完了しました。
 
 ### 2.4 現在確認されている実装上の不整合 (Identified Implementation Inconsistencies)
 現在、以下の不整合が確認されており、将来的な修正対象として記録されています。
@@ -68,30 +69,6 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
-5.  **実行エラー**
-    Traceback (most recent call last):
-  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation/dm_toolkit/gui/app.py", line 288, in open_card_editor
-    self.card_editor = CardEditor("data/cards.json")
-                       ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\card_editor.py", line 21, in __init__
-    self.init_ui()
-    ~~~~~~~~~~~~^^
-  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\card_editor.py", line 56, in init_ui
-    self.inspector = PropertyInspector()
-                     ~~~~~~~~~~~~~~~~~^^
-  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\editor\property_inspector.py", line 15, in __init__
-    self.setup_ui()
-    ~~~~~~~~~~~~~^^
-  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\editor\property_inspector.py", line 31, in setup_ui
-    self.effect_form = EffectEditForm()
-                       ~~~~~~~~~~~~~~^^
-  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\editor\forms\effect_form.py", line 67, in __init__
-    self.setup_ui()
-    ~~~~~~~~~~~~~^^
-  File "C:\Users\mediastation36\Documents\DM_simulater\DM_simulation\dm_toolkit\gui\editor\forms\effect_form.py", line 78, in setup_ui
-    self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: BaseEditForm.populate_combo() got an unexpected keyword argument 'display_func'
 ---
 
 ## 3. 詳細な開発ロードマップ (Detailed Roadmap)
@@ -105,6 +82,7 @@ TypeError: BaseEditForm.populate_combo() got an unexpected keyword argument 'dis
 1.  **基盤リファクタリング (Fundamental Refactoring)**
     *   **パッケージ構造**: `dm_toolkit` をトップレベルパッケージとして確立し、関連するインポートやパス設定を修正済み。
     *   **GUIシミュレーション統合**: GUIの「バッチシミュレーション」機能を `ParallelRunner` バックエンド利用に統一済み (Caution: Large batches may leak memory).
+    *   **GUI不具合修正**: `CardEditor` 起動時の `TypeError` (display_func) を修正済み。
 
 ### 3.1 [Priority: High] User Requested Enhancements (ユーザー要望対応 - 残件)
 
@@ -132,6 +110,7 @@ TypeError: BaseEditForm.populate_combo() got an unexpected keyword argument 'dis
             1.  学習完了時にPyTorchモデルを `.onnx` 形式でエクスポートする。
             2.  `NeuralEvaluator` (C++) を拡張し、ONNX Runtime C++ API を使用して直接推論を行う実装を追加する。
             3.  Pythonコールバックを廃止し、純粋なC++マルチスレッド（OpenMP）でMCTSを実行可能にする。
+        *   *ステータス: 完了*。`ONNX Runtime` のC++統合、モデルエクスポートスクリプト、および `NeuralEvaluator` による直接推論の実装と検証を完了しました。
 
 ### 3.3 [Priority: Low] Phase 5: エディタ機能の完成形 (Editor Polish)
 
