@@ -121,6 +121,18 @@ TypeError: BaseEditForm.populate_combo() got an unexpected keyword argument 'dis
     *   **計画**: `NetworkV2` として、PyTorchでのモデル定義と、C++側のテンソル変換ロジック（`TensorConverter`）の書き換えを行う。
     *   *ステータス: 着手*。`dm_toolkit/training/network_v2.py` を作成し、O(N)計算量の `LinearAttention` およびTransformerベースの `NetworkV2` クラスの初期実装を行いました。
 
+2.  **Kaggle環境最適化とC++移行 (Kaggle Optimization & C++ Migration)**
+    *   **目的**: Kaggle環境（強力なGPU、貧弱なCPU、メモリ制限）において学習効率を最大化し、GIL（Global Interpreter Lock）によるボトルネックを解消する。
+    *   **アプローチ**: 推論と進化ロジックをPythonから切り離し、C++エンジン内で完結させる。
+    *   **Step 1: デッキ進化ロジックのC++化**
+        *   `dm_toolkit/training/verify_deck_evolution.py` のPythonスタブ実装を廃止し、既に実装済みのC++モジュール `dm_ai_module.DeckEvolution` を使用するように修正する。
+    *   **Step 2: ONNX Runtime (C++) の導入**
+        *   **理由**: Kaggle環境ではCPUがボトルネックとなるため、Python経由の推論（GIL発生）が致命的。LibTorchは重いため、軽量かつ高速なONNX Runtimeを採用する。
+        *   **計画**:
+            1.  学習完了時にPyTorchモデルを `.onnx` 形式でエクスポートする。
+            2.  `NeuralEvaluator` (C++) を拡張し、ONNX Runtime C++ API を使用して直接推論を行う実装を追加する。
+            3.  Pythonコールバックを廃止し、純粋なC++マルチスレッド（OpenMP）でMCTSを実行可能にする。
+
 ### 3.3 [Priority: Low] Phase 5: エディタ機能の完成形 (Editor Polish)
 
 AI開発と並行して、エディタの残存課題を解消します。
