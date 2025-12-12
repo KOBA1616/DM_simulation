@@ -34,6 +34,9 @@ namespace dm::engine {
         // Currently aliases get_adjusted_cost, but reserved for future "Active Reduction" logic (Hyper Energy, etc.)
         static int get_projected_cost(const dm::core::GameState& game_state, const dm::core::Player& player, const dm::core::CardDefinition& card_def);
 
+        // Helper to get total usable mana (for cost payment checks outside standard flow)
+        static int get_usable_mana_count(const dm::core::GameState& game_state, dm::core::PlayerID player_id, const std::vector<dm::core::Civilization>& required_civs);
+
     private:
         // Helper for strict multicolor payment (Rule 817.1a-ish but for payment)
         // Returns indices of mana cards to tap if successful, empty if failed.
