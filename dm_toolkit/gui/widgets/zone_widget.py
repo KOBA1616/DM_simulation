@@ -53,12 +53,14 @@ class ZoneWidget(QWidget):
 
         # Check for Deck Bundle Visualization
         is_deck = "Deck" in self.title or "デッキ" in self.title
+        is_shield = "Shield" in self.title or "シールド" in self.title
 
-        if is_deck and card_data_list:
+        if (is_deck or is_shield) and card_data_list:
             # Single Bundle Representation
             count = len(card_data_list)
             # Use ID 0 (Back of Card)
-            widget = CardWidget(0, f"Deck ({count})", 0, 0, "COLORLESS", False, -1)
+            display_name = f"Deck ({count})" if is_deck else f"Shield ({count})"
+            widget = CardWidget(0, display_name, 0, 0, "COLORLESS", False, -1)
             # Clicking emits signal with ID 0
             widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
             widget.hovered.connect(self.card_hovered.emit)
