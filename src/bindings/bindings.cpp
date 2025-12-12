@@ -323,7 +323,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("value", &ConditionDef::value)
         .def_readwrite("str_val", &ConditionDef::str_val)
         .def_readwrite("stat_key", &ConditionDef::stat_key)
-        .def_readwrite("op", &ConditionDef::op);
+        .def_readwrite("op", &ConditionDef::op)
+        .def_readwrite("filter", &ConditionDef::filter);
 
     py::class_<ReactionCondition>(m, "ReactionCondition")
         .def(py::init<>())
