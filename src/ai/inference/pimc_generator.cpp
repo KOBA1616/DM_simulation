@@ -6,7 +6,7 @@ namespace dm::ai::inference {
 
     dm::core::GameState PIMCGenerator::generate_determinized_state(
         const dm::core::GameState& observation,
-        const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
+        const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/,
         dm::core::PlayerID observer_id,
         const std::vector<dm::core::CardID>& opponent_deck_candidates,
         uint32_t seed
