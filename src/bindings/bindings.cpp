@@ -448,7 +448,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("battle_zone", &Player::battle_zone)
         .def_readwrite("shield_zone", &Player::shield_zone)
         .def_readwrite("graveyard", &Player::graveyard)
-        .def_readwrite("deck", &Player::deck);
+        .def_readwrite("deck", &Player::deck)
+        .def_readwrite("effect_buffer", &Player::effect_buffer); // Exposed per-player buffer
 
     py::class_<Action>(m, "Action")
         .def(py::init<>())
@@ -469,7 +470,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("stack_zone", &GameState::stack_zone)
         .def_readwrite("pending_effects", &GameState::pending_effects)
-        .def_readwrite("effect_buffer", &GameState::effect_buffer)
+        // .def_readwrite("effect_buffer", &GameState::effect_buffer) // Moved to Player
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("winner", &GameState::winner)
         .def_readwrite("loop_proven", &GameState::loop_proven)
