@@ -323,6 +323,16 @@ namespace dm::engine {
                  pass.slot_index = static_cast<int>(i);
                  actions.push_back(pass);
              }
+             else if (eff.type == EffectType::SELECT_OPTION) {
+                 // Generate SELECT_OPTION actions for each option
+                 for (size_t opt_idx = 0; opt_idx < eff.options.size(); ++opt_idx) {
+                     Action choice;
+                     choice.type = ActionType::SELECT_OPTION;
+                     choice.slot_index = static_cast<int>(i); // The pending effect index
+                     choice.target_slot_index = static_cast<int>(opt_idx); // The chosen option index
+                     actions.push_back(choice);
+                 }
+             }
             else if (eff.num_targets_needed > (int)eff.target_instance_ids.size()) {
                  if (actions.empty()) {
                      Action resolve;
