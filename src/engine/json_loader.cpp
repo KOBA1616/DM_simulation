@@ -70,6 +70,7 @@ namespace dm::engine {
             if (k.count("untap_in")) def.keywords.untap_in = k.at("untap_in");
             if (k.count("meta_counter_play")) def.keywords.meta_counter_play = k.at("meta_counter_play");
             if (k.count("power_attacker")) def.keywords.power_attacker = k.at("power_attacker");
+            if (k.count("ex_life")) def.keywords.ex_life = k.at("ex_life");
         }
 
         // Auto-infer keywords from effects

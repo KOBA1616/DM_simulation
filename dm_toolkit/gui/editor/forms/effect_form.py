@@ -72,7 +72,7 @@ class EffectEditForm(BaseEditForm):
         self.trigger_combo = QComboBox()
         triggers = [
             "ON_PLAY", "ON_ATTACK", "ON_DESTROY", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
-            "ON_ATTACK_FROM_HAND", "AT_BREAK_SHIELD"
+            "ON_ATTACK_FROM_HAND", "AT_BREAK_SHIELD", "ON_CAST_SPELL"
         ]
         # Use localized strings for display
         self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
