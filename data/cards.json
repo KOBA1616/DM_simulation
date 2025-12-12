@@ -15,13 +15,13 @@
       }
     ],
     "id": 1,
+    "keywords": {},
     "name": "Bronze-Arm Tribe",
     "power": 1000,
     "races": [
       "Beast Folk"
     ],
-    "type": "CREATURE",
-    "keywords": {}
+    "type": "CREATURE"
   },
   {
     "ai_importance_score": 0,
@@ -54,11 +54,11 @@
     "cost": 1,
     "effects": [],
     "id": 3,
+    "keywords": {},
     "name": "Fire Mana",
     "power": 0,
     "races": [],
-    "type": "SPELL",
-    "keywords": {}
+    "type": "SPELL"
   },
   {
     "ai_importance_score": 0,
@@ -296,27 +296,56 @@
   {
     "ai_importance_score": 0,
     "civilizations": [
-      "WATER",
-      "FIRE"
+      "WATER"
     ],
     "cost": 1,
-    "effects": [],
+    "effects": [
+      {
+        "actions": [
+          {
+            "destination_zone": "HAND",
+            "filter": {
+              "count": 1,
+              "is_tapped": false,
+              "types": [
+                "CREATURE"
+              ],
+              "zones": [
+                "BATTLE_ZONE"
+              ]
+            },
+            "input_value_key": "",
+            "optional": true,
+            "output_value_key": "",
+            "scope": "PLAYER_SELF",
+            "str_val": "マジック",
+            "type": "FRIEND_BURST",
+            "value1": 0,
+            "value2": 0
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_PLAY"
+      }
+    ],
     "id": 10,
     "is_key_card": false,
     "keywords": {},
-    "name": "New Card",
+    "name": "歌舞音愛ヒメカット",
     "power": 1000,
     "races": [],
     "reaction_abilities": [],
-    "type": "CREATURE",
     "spell_side": {
       "civilizations": [
         "WATER"
       ],
-      "cost": 1,
+      "cost": 4,
       "effects": [],
-      "name": "New Spell Side",
+      "name": "♪蛙の子遭えるの何処?好きと謂ひて",
       "type": "SPELL"
-    }
+    },
+    "type": "CREATURE"
   }
 ]
