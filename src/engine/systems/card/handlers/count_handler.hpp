@@ -29,10 +29,6 @@ namespace dm::engine {
                          // Check types (CardDefinition uses CardType enum, Filter uses string)
                          if (!f.types.empty()) {
                              bool match = false;
-                             // This part requires converting cd.type (enum) to string to match f.types
-                             // or f.types to enum.
-                             // Assuming for now simple "CREATURE"/"SPELL" match via helper or if removed.
-                             // Implementing basic check:
                              std::string type_str = "CREATURE";
                              if (cd.type == CardType::SPELL) type_str = "SPELL";
                              for(auto& t : f.types) if(t == type_str) match = true;
@@ -41,7 +37,6 @@ namespace dm::engine {
                          if (!f.civilizations.empty()) {
                              bool match = false;
                              for(auto& fc : f.civilizations) {
-                                 // cd.civilizations is vector<Civilization>
                                  for(auto& cc : cd.civilizations) {
                                      if (fc == cc) match = true;
                                      if(match) break;
@@ -112,6 +107,12 @@ namespace dm::engine {
                     result = (int)controller.hand.size();
                 } else if (ctx.action.str_val == "CARDS_DRAWN_THIS_TURN") {
                     result = ctx.game_state.turn_stats.cards_drawn_this_turn;
+                } else if (ctx.action.str_val == "MANA_COUNT") {
+                    result = (int)controller.mana_zone.size();
+                } else if (ctx.action.str_val == "BATTLE_ZONE_COUNT") {
+                    result = (int)controller.battle_zone.size();
+                } else if (ctx.action.str_val == "GRAVEYARD_COUNT") {
+                    result = (int)controller.graveyard.size();
                 }
 
                 if (!ctx.action.output_value_key.empty()) {
