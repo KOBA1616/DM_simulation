@@ -13,7 +13,7 @@ from dm_toolkit.gui.editor.forms.parts.reaction_widget import ReactionWidget
 
 class CardEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree
-    # command: "ADD_SPELL_SIDE", "REMOVE_SPELL_SIDE", "ADD_REV_CHANGE"
+    # command: "ADD_SPELL_SIDE", "REMOVE_SPELL_SIDE", "ADD_REV_CHANGE", "REMOVE_REV_CHANGE"
     # payload: dict (optional)
     structure_update_requested = pyqtSignal(str, dict)
 
@@ -124,9 +124,25 @@ class CardEditForm(BaseEditForm):
         special_group = QGroupBox(tr("Special Abilities"))
         special_layout = QVBoxLayout(special_group)
 
-        self.btn_add_rev_change = QPushButton(tr("Add Revolution Change"))
-        self.btn_add_rev_change.clicked.connect(self.on_add_rev_change_clicked)
-        special_layout.addWidget(self.btn_add_rev_change)
+        # Revolution Change Checkbox and Logic
+        self.rev_change_check = QCheckBox(tr("Revolution Change"))
+        self.rev_change_check.setToolTip(tr("Enable Revolution Change and configure condition"))
+        self.rev_change_check.stateChanged.connect(self.on_rev_change_toggled)
+        special_layout.addWidget(self.rev_change_check)
+
+        self.rev_change_filter_group = QGroupBox(tr("Revolution Change Condition"))
+        self.rev_change_filter_group.setVisible(False)
+        rev_filter_layout = QVBoxLayout(self.rev_change_filter_group)
+
+        self.rev_change_filter_widget = FilterEditorWidget()
+        # Restrict sections for revolution change condition (Race, Civ, Cost are relevant)
+        self.rev_change_filter_widget.set_visible_sections({'basic': True, 'stats': True, 'flags': False, 'selection': False})
+        # Inside basic, we only need Civs and Races usually. But Cost is also used (Cost 5 or more).
+        self.rev_change_filter_widget.set_allowed_fields(['civilizations', 'races', 'types']) # Types usually creature
+        self.rev_change_filter_widget.filterChanged.connect(self.update_data)
+
+        rev_filter_layout.addWidget(self.rev_change_filter_widget)
+        special_layout.addWidget(self.rev_change_filter_group)
 
         self.form_layout.addRow(special_group)
 
@@ -169,8 +185,16 @@ class CardEditForm(BaseEditForm):
             self.structure_update_requested.emit("REMOVE_SPELL_SIDE", {})
         # Note: We do NOT call update_data here as this is a structural change handled by the Tree/DataManager
 
-    def on_add_rev_change_clicked(self):
-        self.structure_update_requested.emit("ADD_REV_CHANGE", {})
+    def on_rev_change_toggled(self, state):
+        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        self.rev_change_filter_group.setVisible(is_checked)
+
+        if is_checked:
+            self.structure_update_requested.emit("ADD_REV_CHANGE", {})
+        else:
+            self.structure_update_requested.emit("REMOVE_REV_CHANGE", {})
+
+        self.update_data()
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
@@ -209,6 +233,21 @@ class CardEditForm(BaseEditForm):
             is_checked = kw_data.get(k, False)
             cb.setChecked(is_checked)
 
+        # Revolution Change logic
+        rev_change_cond = data.get('revolution_change_condition')
+        has_rev_change = (rev_change_cond is not None) or kw_data.get('revolution_change', False)
+
+        self.rev_change_check.blockSignals(True)
+        self.rev_change_check.setChecked(has_rev_change)
+        self.rev_change_filter_group.setVisible(has_rev_change)
+        self.rev_change_check.blockSignals(False)
+
+        if rev_change_cond:
+            self.rev_change_filter_widget.set_data(rev_change_cond)
+        else:
+            # If keyword is set but no condition, maybe initialize empty?
+            self.rev_change_filter_widget.set_data({})
+
         self.reaction_widget.set_data(data.get('reaction_abilities', []))
         self.is_key_card_check.setChecked(data.get('is_key_card', False))
         self.ai_importance_spin.setValue(data.get('ai_importance_score', 0))
@@ -246,6 +285,15 @@ class CardEditForm(BaseEditForm):
         if type_str == "EVOLUTION_CREATURE":
             kw_data['evolution'] = True
 
+        # Revolution Change
+        if self.rev_change_check.isChecked():
+            kw_data['revolution_change'] = True
+            # Save condition to root
+            data['revolution_change_condition'] = self.rev_change_filter_widget.get_data()
+        else:
+            if 'revolution_change_condition' in data:
+                del data['revolution_change_condition']
+
         data['keywords'] = kw_data
 
         data['reaction_abilities'] = self.reaction_widget.get_data()
@@ -266,6 +314,8 @@ class CardEditForm(BaseEditForm):
         self.twinpact_check.blockSignals(block)
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
+        self.rev_change_check.blockSignals(block)
+        self.rev_change_filter_widget.blockSignals(block)
         self.reaction_widget.block_signals_all(block)
         self.is_key_card_check.blockSignals(block)
         self.ai_importance_spin.blockSignals(block)
