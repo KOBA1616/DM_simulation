@@ -1,15 +1,35 @@
-# 完成したタスクのアーカイブ (Completed Tasks Archive)
+# Archive of Completed Implementation Tasks
 
-このドキュメントは `00_Status_and_Requirements_Summary.md` から完了したタスクを移動して記録するためのアーカイブです。
+このファイルは `docs/00_Overview/00_Status_and_Requirements_Summary.md` から移動された、完了済みまたは廃止されたタスクの記録です。
 
-## 完了済み (Completed)
+## Phase 1 - 3: 完了タスク (Completed Tasks)
 
-### 2.4 実装上の不整合の修正 (Inconsistencies Resolved)
+### GUI/Editor 実装
+*   **革命チェンジのデータ構造不整合の解消**:
+    *   Editor UIをボタンからチェックボックスに変更し、条件（Condition）の設定画面を追加しました。
+    *   Engineが要求するルートレベルの `revolution_change_condition` と、ロジックツリー上の `revolution_change` キーワードの同期を実装しました。
+*   **文明指定のキー不整合の解消**:
+    *   Editorでの保存形式をEngine推奨の複数形 `"civilizations"` に統一しました。
+*   **UI改善 (Visual Improvements)**:
+    *   カードの縁（多色選択時の紫色など）を黒の細線に変更。
+    *   マナコストの丸表示を文明色で構成し、多色は等分割表示に対応。文字色は細い黒縁のある白文字に変更。
+    *   ツインパクトカードのパワー表記位置を左下に調整。
+    *   プレビュー更新ボタンの追加。
+    *   シールド枚数のデッキ風ブロック表示。
+    *   エクストライフキーワードの追加。
+    *   トリガー：「呪文を唱えた時」の追加。
+    *   ツインパクトのエフェクト追加時の自動スライド処理。
+    *   アクション選択時の入力欄マスキング（不要なフィールドの非表示化）。
+    *   アクションプルダウンの日本語化。
+    *   グラデーション色の調整（濃くする）。
 
-1.  **C++ コンパイル警告 (ConditionDef) の修正**
-    *   `CostHandler`, `ShieldHandler`, `SearchHandler`, `DestroyHandler`, `UntapHandler` 等において、`ConditionDef` のブレース初期化リストを修正し、`missing initializer` 警告を解消しました。
-    *   未使用のパラメータ (`unused parameter`) についても修正を行い、ビルドログをクリーンにしました。
+### Engine 実装
+*   **ONNX Runtime (C++) 統合**:
+    *   PyTorchモデルのエクスポート、C++ `NeuralEvaluator` への統合、推論の完全C++化を完了。
+*   **デッキ進化ロジックのC++化**:
+    *   PythonスクリプトからC++モジュールへの移行を完了。
+*   **アクションシステム**:
+    *   `MOVE_CARD`, `COMPARE_STAT`, `SELECT_OPTION` などの汎用アクションの実装完了。
+    *   変数リンクシステムの主要ハンドラへの適用完了。
 
-2.  **Atomic Action テストの修正**
-    *   `tests/python/test_new_actions.py` 内の `test_cast_spell_action` および `test_put_creature_action` を修正しました。
-    *   `GenericCardSystem.resolve_effect_with_targets` を呼び出す際、明示的に `CardType` (SPELL/CREATURE) を設定した `card_db` を渡すことで、エンジンが正しい解決パス（呪文は墓地へ、クリーチャーはバトルゾーンへ）を選択するようにしました。
+---
