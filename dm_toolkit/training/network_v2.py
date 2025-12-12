@@ -24,30 +24,45 @@ class LinearAttention(nn.Module):
         q, k, v = self.to_qkv(x).chunk(3, dim=-1)
 
         # Split heads
+        # q, k, v shape: (b, n, h*d) -> (b, n, h, d) -> (b, h, n, d)
         q, k, v = map(lambda t: t.view(t.shape[0], -1, h, t.shape[-1] // h).transpose(1, 2), (q, k, v))
 
         # Linear Attention Logic (elu + 1)
         q = F.elu(q) + 1
         k = F.elu(k) + 1
 
-        # Apply mask if provided (not fully implemented for variable length yet)
+        # Apply mask if provided
         if mask is not None:
-            mask = mask[:, None, None, :]
+            # mask shape: (b, n)
+            # k shape: (b, h, n, d)
+            # We want to mask along dimension n (dim 2 in k).
+            # Expand mask to (b, 1, n, 1) to broadcast against (b, h, n, d)
+            mask = mask[:, None, :, None]
             k = k.masked_fill(~mask, 0.)
             v = v.masked_fill(~mask, 0.)
 
         # KV calculation
+        # k: (b, h, n, d)
+        # v: (b, h, n, e) -> here e=d
+        # kv: (b, h, d, e)
         kv = torch.einsum('b h n d, b h n e -> b h d e', k, v)
 
         # Output calculation
+        # q: (b, h, n, d)
+        # out: (b, h, n, e)
         out = torch.einsum('b h n d, b h d e -> b h n e', q, kv)
 
         # Denominator for normalization
+        # k.sum(dim=2): (b, h, d) -> sum over sequence length
+        # q: (b, h, n, d)
+        # z: (b, h, n)
         z = 1 / (torch.einsum('b h n d, b h d -> b h n', q, k.sum(dim=2)) + 1e-6)
         out = out * z.unsqueeze(-1)
 
         # Merge heads
-        out = out.transpose(1, 2).reshape(out.shape[0], -1, out.shape[-1])
+        # out: (b, h, n, d) -> (b, n, h, d) -> (b, n, h*d)
+        # out.shape[-1] is d. We need h*d.
+        out = out.transpose(1, 2).reshape(out.shape[0], -1, h * out.shape[-1])
         return self.to_out(out)
 
 class NetworkV2(nn.Module):
@@ -91,7 +106,6 @@ class NetworkV2(nn.Module):
         x = self.norm(x)
 
         # Global pooling (e.g., CLS token or mean)
-        # For now, simple mean pooling over the sequence
         if mask is not None:
              # Valid length averaging
              x_sum = (x * mask.unsqueeze(-1)).sum(dim=1)
