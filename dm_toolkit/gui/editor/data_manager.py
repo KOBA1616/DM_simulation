@@ -18,14 +18,26 @@ class CardDataManager:
         for card_idx, card in enumerate(cards_data):
             card_item = self._create_card_item(card)
 
+            # 1. Add Creature Effects
             for eff_idx, effect in enumerate(card.get('effects', [])):
                 eff_item = self._create_effect_item(effect)
-
                 for act_idx, action in enumerate(effect.get('actions', [])):
                     act_item = self._create_action_item(action)
                     eff_item.appendRow(act_item)
-
                 card_item.appendRow(eff_item)
+
+            # 2. Add Spell Side if exists
+            spell_side_data = card.get('spell_side')
+            if spell_side_data:
+                spell_item = self._create_spell_side_item(spell_side_data)
+                # Add Spell Effects
+                for eff_idx, effect in enumerate(spell_side_data.get('effects', [])):
+                    eff_item = self._create_effect_item(effect)
+                    for act_idx, action in enumerate(effect.get('actions', [])):
+                        act_item = self._create_action_item(action)
+                        eff_item.appendRow(act_item)
+                    spell_item.appendRow(eff_item)
+                card_item.appendRow(spell_item)
 
             self.model.appendRow(card_item)
 
@@ -38,26 +50,63 @@ class CardDataManager:
             card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
             if not card_data: continue
 
-            # Rebuild effects list from children
             new_effects = []
+            spell_side_dict = None
+            has_rev_change_action = False
+
+            # Iterate children of CARD node
             for j in range(card_item.rowCount()):
-                eff_item = card_item.child(j)
-                eff_data = eff_item.data(Qt.ItemDataRole.UserRole + 2)
+                child_item = card_item.child(j)
+                item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
 
-                # Rebuild actions list from children
-                new_actions = []
-                for k in range(eff_item.rowCount()):
-                    act_item = eff_item.child(k)
-                    act_data = act_item.data(Qt.ItemDataRole.UserRole + 2)
-                    new_actions.append(act_data)
+                if item_type == "EFFECT":
+                    # Reconstruct Effect (Creature)
+                    eff_data = self._reconstruct_effect(child_item)
+                    new_effects.append(eff_data)
 
-                eff_data['actions'] = new_actions
-                new_effects.append(eff_data)
+                    # Check for Revolution Change Action
+                    for act in eff_data.get('actions', []):
+                        if act.get('type') == "REVOLUTION_CHANGE":
+                            has_rev_change_action = True
+
+                elif item_type == "SPELL_SIDE":
+                    # Reconstruct Spell Side
+                    spell_side_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
+                    spell_side_effects = []
+                    for k in range(child_item.rowCount()):
+                        eff_item = child_item.child(k)
+                        if eff_item.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                            spell_side_effects.append(self._reconstruct_effect(eff_item))
+
+                    spell_side_data['effects'] = spell_side_effects
+                    spell_side_dict = spell_side_data
 
             card_data['effects'] = new_effects
+            if spell_side_dict:
+                card_data['spell_side'] = spell_side_dict
+            else:
+                if 'spell_side' in card_data:
+                    del card_data['spell_side']
+
+            # Auto-set Revolution Change Keyword if action is present
+            if 'keywords' not in card_data:
+                card_data['keywords'] = {}
+            if has_rev_change_action:
+                card_data['keywords']['revolution_change'] = True
+
             cards.append(card_data)
 
         return cards
+
+    def _reconstruct_effect(self, eff_item):
+        eff_data = eff_item.data(Qt.ItemDataRole.UserRole + 2)
+        new_actions = []
+        for k in range(eff_item.rowCount()):
+            act_item = eff_item.child(k)
+            act_data = act_item.data(Qt.ItemDataRole.UserRole + 2)
+            new_actions.append(act_data)
+        eff_data['actions'] = new_actions
+        return eff_data
 
     def add_new_card(self):
         new_id = self._generate_new_id()
@@ -80,10 +129,70 @@ class CardDataManager:
         parent_item.appendRow(new_item)
         return new_item
 
+    def add_spell_side_item(self, card_item):
+        """Adds a Spell Side node to the given card item if not present."""
+        # Check if exists
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
+                return child # Already exists
+
+        # Default Spell Data
+        spell_data = {
+            "name": "New Spell Side",
+            "type": "SPELL",
+            "cost": 1,
+            "civilizations": [],
+            "effects": []
+        }
+        item = self._create_spell_side_item(spell_data)
+        card_item.appendRow(item)
+        return item
+
+    def remove_spell_side_item(self, card_item):
+        """Removes the Spell Side node from the given card item."""
+        for i in reversed(range(card_item.rowCount())):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
+                card_item.removeRow(i)
+                return True
+        return False
+
+    def add_revolution_change_logic(self, card_item):
+        """Adds generic Revolution Change logic (Effect + Action) to the card."""
+        # 1. Create Effect (Trigger: ON_ATTACK_FROM_HAND)
+        eff_data = {
+            "trigger": "ON_ATTACK_FROM_HAND",
+            "condition": {"type": "NONE"},
+            "actions": []
+        }
+        eff_item = self._create_effect_item(eff_data)
+
+        # 2. Create Action (Type: REVOLUTION_CHANGE)
+        act_data = {
+            "type": "REVOLUTION_CHANGE",
+            "filter": {
+                "civilizations": [],
+                "races": [],
+                "min_cost": 5
+            }
+        }
+        act_item = self._create_action_item(act_data)
+        eff_item.appendRow(act_item)
+
+        card_item.appendRow(eff_item)
+        return eff_item
+
     def _create_card_item(self, card):
         item = QStandardItem(f"{card.get('id')} - {card.get('name', 'No Name')}")
         item.setData("CARD", Qt.ItemDataRole.UserRole + 1)
         item.setData(card, Qt.ItemDataRole.UserRole + 2)
+        return item
+
+    def _create_spell_side_item(self, spell_data):
+        item = QStandardItem(f"{tr('Spell Side')}: {spell_data.get('name', 'No Name')}")
+        item.setData("SPELL_SIDE", Qt.ItemDataRole.UserRole + 1)
+        item.setData(spell_data, Qt.ItemDataRole.UserRole + 2)
         return item
 
     def _create_effect_item(self, effect):
@@ -94,11 +203,7 @@ class CardDataManager:
         return item
 
     def _create_action_item(self, action):
-        # We could reproduce the sophisticated display text logic here or keep it simple
-        # For consistency, let's replicate basic display logic or rely on update_data to fix it later?
-        # Ideally, initial load should show correct text.
         act_type = action.get('type', 'NONE')
-        # Simplified for initial load, Form updates will fix details if needed
         display_type = tr(act_type)
 
         if act_type == "GET_GAME_STAT":
@@ -112,10 +217,11 @@ class CardDataManager:
         elif act_type == "COST_REFERENCE":
              display_type = f"{tr('COST_REFERENCE')} ({tr(action.get('str_val',''))})"
         elif act_type in ["SELECT_TARGET", "DESTROY", "RETURN_TO_HAND", "SEND_TO_MANA", "TAP"]:
-             # Try to format "[count] [filter]"
              count = action.get('filter', {}).get('count')
              if count:
                  display_type += f" (Count: {count})"
+        elif act_type == "REVOLUTION_CHANGE":
+             display_type = tr("Revolution Change")
 
         item = QStandardItem(f"{tr('Action')}: {display_type}")
         item.setData("ACTION", Qt.ItemDataRole.UserRole + 1)
