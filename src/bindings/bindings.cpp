@@ -127,6 +127,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("BREAK_SHIELD", EffectType::BREAK_SHIELD)
         .value("REACTION_WINDOW", EffectType::REACTION_WINDOW)
         .value("TRIGGER_ABILITY", EffectType::TRIGGER_ABILITY)
+        .value("SELECT_OPTION", EffectType::SELECT_OPTION)
         .export_values();
 
     py::enum_<EffectActionType>(m, "EffectActionType")
@@ -160,6 +161,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("MOVE_CARD", EffectActionType::MOVE_CARD)
         .value("CAST_SPELL", EffectActionType::CAST_SPELL)
         .value("PUT_CREATURE", EffectActionType::PUT_CREATURE)
+        .value("SELECT_OPTION", EffectActionType::SELECT_OPTION)
         .value("NONE", EffectActionType::NONE)
         .export_values();
 
@@ -212,6 +214,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("PAY_COST", ActionType::PAY_COST)
         .value("RESOLVE_PLAY", ActionType::RESOLVE_PLAY)
         .value("MOVE_CARD", ActionType::MOVE_CARD)
+        .value("SELECT_OPTION", ActionType::SELECT_OPTION)
         .export_values();
 
     // Structs
@@ -227,7 +230,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init<EffectType, int, int>())
         .def_readwrite("type", &PendingEffect::type)
         .def_readwrite("source_instance_id", &PendingEffect::source_instance_id)
-        .def_readwrite("controller", &PendingEffect::controller);
+        .def_readwrite("controller", &PendingEffect::controller)
+        .def_readwrite("options", &PendingEffect::options);
 
     py::class_<CardKeywords>(m, "CardKeywords")
         .def(py::init<>())
@@ -312,10 +316,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("target_choice", &ActionDef::target_choice)
         .def_readwrite("optional", &ActionDef::optional)
         .def_readwrite("source_zone", &ActionDef::source_zone)
+        .def_readwrite("target_player", &ActionDef::target_player)
         .def_readwrite("destination_zone", &ActionDef::destination_zone)
         .def_readwrite("input_value_key", &ActionDef::input_value_key)
         .def_readwrite("output_value_key", &ActionDef::output_value_key)
-        .def_readwrite("condition", &ActionDef::condition);
+        .def_readwrite("condition", &ActionDef::condition)
+        .def_readwrite("options", &ActionDef::options);
 
     py::class_<ConditionDef>(m, "ConditionDef")
         .def(py::init<>())
@@ -356,19 +362,21 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
         .def(py::init<>())
         // Add constructor matching test expectations: (id, name, civ, races, cost, power, keywords, effects)
-           .def(py::init([](int id, std::string name, std::string civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, [[maybe_unused]] std::vector<EffectDef> effects) {
+           .def(py::init([](int id, std::string name, std::string civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
              CardDefinition d;
              d.id = id; d.name = name; d.civilizations = {string_to_civilization(civ)};
              d.races = races; d.cost = cost; d.power = power; d.keywords = keywords;
              d.type = CardType::CREATURE;
+             d.effects = effects;
              return d;
         }))
         // Overload for Civilization enum
-           .def(py::init([](int id, std::string name, Civilization civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, [[maybe_unused]] std::vector<EffectDef> effects) {
+           .def(py::init([](int id, std::string name, Civilization civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
              CardDefinition d;
              d.id = id; d.name = name; d.civilizations = {civ};
              d.races = races; d.cost = cost; d.power = power; d.keywords = keywords;
              d.type = CardType::CREATURE;
+             d.effects = effects;
              return d;
         }))
         .def_readwrite("id", &CardDefinition::id)
