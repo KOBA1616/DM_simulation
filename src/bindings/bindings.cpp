@@ -4,6 +4,8 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/mana/mana_system.hpp"
+#include "engine/systems/mana/cost_calculator.hpp"
+#include "engine/systems/mana/payment_types.hpp"
 #include "engine/actions/action_generator.hpp"
 #include "engine/effects/effect_resolver.hpp"
 #include "engine/game_instance.hpp"
@@ -214,7 +216,36 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("MOVE_CARD", ActionType::MOVE_CARD)
         .export_values();
 
+    py::enum_<PaymentType>(m, "PaymentType")
+        .value("MANA", PaymentType::MANA)
+        .value("G_ZERO", PaymentType::G_ZERO)
+        .value("HYPER_ENERGY", PaymentType::HYPER_ENERGY)
+        .value("SYMPATHY", PaymentType::SYMPATHY)
+        .export_values();
+
     // Structs
+    py::class_<CostModifier>(m, "CostModifier")
+        .def(py::init<>())
+        .def_readwrite("reduction_amount", &CostModifier::reduction_amount)
+        .def_readwrite("condition_filter", &CostModifier::condition_filter)
+        .def_readwrite("turns_remaining", &CostModifier::turns_remaining)
+        .def_readwrite("source_instance_id", &CostModifier::source_instance_id)
+        .def_readwrite("controller", &CostModifier::controller);
+
+    py::class_<PaymentRequirement>(m, "PaymentRequirement")
+        .def(py::init<>())
+        .def_readwrite("base_mana_cost", &PaymentRequirement::base_mana_cost)
+        .def_readwrite("final_mana_cost", &PaymentRequirement::final_mana_cost)
+        .def_readwrite("uses_hyper_energy", &PaymentRequirement::uses_hyper_energy)
+        .def_readwrite("hyper_energy_count", &PaymentRequirement::hyper_energy_count)
+        .def_readwrite("is_g_zero", &PaymentRequirement::is_g_zero);
+
+    py::class_<CostCalculator>(m, "CostCalculator")
+        .def_static("calculate_requirement", &CostCalculator::calculate_requirement,
+            py::arg("game_state"), py::arg("player"), py::arg("card_def"),
+            py::arg("use_hyper_energy") = false, py::arg("hyper_energy_creature_count") = 0)
+        .def_static("get_base_adjusted_cost", &CostCalculator::get_base_adjusted_cost);
+
     py::class_<GameResultInfo>(m, "GameResultInfo")
         .def(py::init<>())
         .def_readwrite("result", &GameResultInfo::result)
@@ -471,6 +502,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("stack_zone", &GameState::stack_zone)
         .def_readwrite("pending_effects", &GameState::pending_effects)
+        .def_readwrite("active_modifiers", &GameState::active_modifiers)
         // .def_readwrite("effect_buffer", &GameState::effect_buffer) // Moved to Player
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("winner", &GameState::winner)
