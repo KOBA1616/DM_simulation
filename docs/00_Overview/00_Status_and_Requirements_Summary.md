@@ -154,3 +154,67 @@ AI開発と並行して、エディタの残存課題を解消します。
 
 6.  **テストカバレッジの拡充 (Test Coverage Expansion)**
     *   **呪文ロック効果**: エンジン実装済みの「呪文ロック効果」について、JSONデータ定義を含めたエンドツーエンドのテストケースを作成し、動作を保証します。
+
+## 4. Kaggle クラウドデータ収集システム (Kaggle Cloud Ecosystem)
+
+本プロジェクトでは、無料かつ高性能な計算リソースである **Kaggle Notebooks (GPU T4 x2)** を活用し、PCをシャットダウンしている間もクラウド上で「自己対戦・学習・進化」のサイクルを回し続けるシステムを構築します。
+
+### 4.1 システム概要
+*   **計算リソース**: Kaggle Notebooks (Google Cloud Platform 上のコンテナ環境)。
+*   **永続化ストレージ**: Kaggle Datasets API を利用し、学習済みモデル (`.pth`) を Dataset としてバケツリレー形式で継承・更新します。
+*   **連携インターフェース**: ローカルPC上の Python GUI アプリケーション (`KaggleDialog`) から、ワンクリックでモデルのダウンロード・アップロードが可能です。
+
+### 4.2 システム構成図
+
+```mermaid
+[ Local PC (GUI App) ]
+      |
+      +---(Kaggle API: Upload/Download)---> [ Kaggle Datasets (Model Bucket) ]
+                                                    ^      |
+                                        (Save Model)|      |(Load Model)
+                                                    |      v
+                                          [ Kaggle Notebook (GPU Worker) ]
+                                          1. Clone Repo & Build C++
+                                          2. Download Latest Model
+                                          3. Self-Play (Data Collection)
+                                          4. Train (PyTorch)
+                                          5. Upload New Model Version
+```
+
+### 4.3 構築・導入手順
+
+#### Step 1: Kaggle API のセットアップ
+1.  **アカウント作成**: Kaggle アカウントを作成します。
+2.  **APIキー取得**: Settings > API > Create New Token から `kaggle.json` をダウンロードします。
+3.  **配置**:
+    *   **Windows**: `C:\Users\<User>\.kaggle\kaggle.json`
+    *   **Mac/Linux**: `~/.kaggle/kaggle.json`
+
+#### Step 2: モデル用 Dataset の作成
+1.  Kaggle Web上で `New Dataset` を作成します。
+2.  初期ファイルとして空の `model_latest.pth` などをアップロードします。
+3.  **Dataset Slug**（例: `your_username/dm-ai-models`）を控えます。
+
+#### Step 3: Kaggle Notebook の作成 (Cloud Worker)
+1.  Kaggle で `New Notebook` を作成し、Accelerator を `GPU T4 x2` に設定します。
+2.  `Add Input` から Step 2 で作成した Dataset を追加します。
+3.  `Add-ons` > `Secrets` に `KAGGLE_USERNAME` と `KAGGLE_KEY` を登録し、Notebook から API 操作ができるように権限を付与します。
+4.  自動実行スクリプト (`scripts/kaggle_runner_template.py`) を Notebook に貼り付け、`Save Version` (Run Always) で実行を開始します。
+
+### 4.4 運用フロー
+
+#### フェーズ A: クラウド自動進化 (PC OFF)
+*   Kaggle Notebook が最大実行時間（9〜12時間）まで自己対戦と学習を繰り返します。
+*   学習が完了するたびに、Dataset API を通じて新しいモデルバージョンがクラウドに保存されます。
+*   Notebook の定期実行 (Scheduled Run) を設定することで、永続的な進化ループを実現します。
+
+#### フェーズ B: ローカル同期と検証 (PC ON)
+1.  ローカルアプリ (`app.py`) を起動し、「クラウド連携」ダイアログを開きます。
+2.  **Download (Pull)**: クラウドで育った最新モデルを取得します。
+3.  **検証**: バッチシミュレーション機能で強さを確認します。
+4.  **Upload (Push)**: ローカルでパラメータ調整や追加学習を行った場合、手動でクラウドへ反映させることも可能です。
+
+### 4.5 実装コンポーネント
+*   **`dm_toolkit/utils/kaggle_manager.py`**: Kaggle API 操作をラップするバックエンドクラス。
+*   **`dm_toolkit/gui/widgets/kaggle_dialog.py`**: モデル同期を行うための GUI フロントエンド。
+*   **`scripts/kaggle_runner_template.py`**: Kaggle Notebook 上で動作する自動化スクリプト。ビルド、データ収集、学習、アップロードの全工程を制御します。
