@@ -171,3 +171,39 @@ AI知能の進化、不完全情報対応、およびシステム基盤の安定
 ### 4. Other Improvements & Fixes
 *   **Game Info ウィンドウの整理**: `GameWindow` のレイアウトを再設計し、操作系とAI設定系を分離しました。
 *   **重要バグ修正 (Card Stats)**: `test_card_stats_win_contribution` の無限ループ問題をC++エンジン側で修正しました。
+
+---
+
+## Phase 4.2: User Requested Enhancements (Completed)
+
+`00_Status_and_Requirements_Summary.md` の Section 3.1 より移動された、ユーザー要望およびGUI/ロジック改善タスク。
+
+### 1. Engine & Logic Extensions
+*   **フレンド・バースト (Friend Burst)**: `CardKeywords` へのフラグ追加と `FriendBurstHandler` によるタップ・呪文詠唱ロジックを実装済み。
+*   **呪文ロック (Lock Spell)**: `LOCK_SPELL_BY_COST` を汎用化し、`ModifierHandler` に統合。
+*   **革命チェンジ簡易実装 (Revolution Change)**: 編集フォームでの条件設定（種族・コスト）を実装し、ロジックツリーへの自動生成機能（`ON_ATTACK_FROM_HAND` + `REVOLUTION_CHANGE` アクション）を追加しました。
+*   **条件付きS・トリガー (Conditional S-Trigger)**: エンジン側での条件判定ロジックを汎用化しました。
+*   **トリガー・リアクション拡張**: ストライク・バックの実装、攻撃時リアクションの条件再確認、攻撃中断時の制約追加。
+*   **原子アクションの汎用化**: `ActionDef` への `condition` 追加、および `Draw/Destroy/Shield` ハンドラの変数リンクバグ修正。
+*   **コスト軽減の汎用化**: `APPLY_MODIFIER` (Mode: COST) アクションと変数リンクによるコスト軽減ロジックを実装。
+
+### 2. GUI & Visualization Improvements
+*   **日本語化の推進**:
+    *   `CardTextGenerator` によるアクションテキストの自然な日本語生成。
+    *   `localization.py` の大幅拡充（アクションタイプ、トリガー、ゾーン名、UIラベル等）。
+*   **カードプレビュー改善**:
+    *   ツインパクトカードのパワー表示位置（左下）、黒枠線、マナコスト黒字化等のスタイル調整。
+    *   多色カードのグラデーション背景対応。
+*   **カードエディタ改善 (Card Editor)**:
+    *   **ID管理隠蔽**: 編集フォームからIDフィールドを非表示化。
+    *   **ツインパクトロジック統合**: ツインパクト選択時にロジックツリーに「呪文側 (Spell Side)」ノードを自動生成し、呪文効果をツリー構造で管理可能にしました。
+    *   **キーワード整理**: 進化 (Evolution)、メタカウンター、アンタップイン等のキーワードをチェックボックスから削除し、カードタイプ連動やアクション自動生成へ移行しました。
+    *   **革命チェンジ自動生成**: ボタン一つで革命チェンジ用のトリガーとアクションノードを生成する機能を追加しました。
+    *   **Reaction Ability UI**: 手札誘発（ニンジャ・ストライク等）専用の編集ウィジェットを実装。
+*   **デッキ表示 (ZoneWidget)**:
+    *   ゲームボード上のデッキ表示を、全カードを展開するのではなく「デッキ (N枚)」という単一の束として表示するように変更しました。
+*   **シナリオエディタ改善**:
+    *   使用デッキ指定機能（JSONロード）と、デッキ内検索・配置機能の実装。
+
+### 3. System Improvements
+*   **効果バッファの分離**: `effect_buffer` を `GameState` から `Player` 構造体へ移動し、プレイヤーごとの独立管理を実現（バグ防止）。
