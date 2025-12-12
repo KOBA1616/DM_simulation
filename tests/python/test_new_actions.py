@@ -1,6 +1,6 @@
 import unittest
 import dm_ai_module
-from dm_ai_module import GameState, ActionDef, EffectActionType, EffectDef, CardDefinition, TriggerType, CardData, CardKeywords, ConditionDef, GenericCardSystem
+from dm_ai_module import GameState, ActionDef, EffectActionType, EffectDef, CardDefinition, TriggerType, CardData, CardKeywords, ConditionDef, GenericCardSystem, CardType
 
 class TestNewActions(unittest.TestCase):
     def setUp(self):
@@ -70,13 +70,21 @@ class TestNewActions(unittest.TestCase):
 
         targets = [1] # The instance ID
 
+        # Create CardDefinition map for the spell
+        card_db = {}
+        spell_def = CardDefinition()
+        spell_def.id = 1000
+        spell_def.name = "Test Spell"
+        spell_def.type = CardType.SPELL
+        card_db[1000] = spell_def
+
         # Resolve
         GenericCardSystem.resolve_effect_with_targets(
             self.state,
             effect,
             targets,
             -1, # Source ID (n/a)
-            {}, # CardDB (empty, uses registry fallback or we need to pass a map)
+            card_db,
             {}  # Context
         )
 
@@ -107,12 +115,20 @@ class TestNewActions(unittest.TestCase):
 
         targets = [2]
 
+        # Create CardDefinition map for the creature
+        card_db = {}
+        creature_def = CardDefinition()
+        creature_def.id = 1001
+        creature_def.name = "Test Creature"
+        creature_def.type = CardType.CREATURE
+        card_db[1001] = creature_def
+
         GenericCardSystem.resolve_effect_with_targets(
             self.state,
             effect,
             targets,
             -1,
-            {},
+            card_db,
             {}
         )
 
