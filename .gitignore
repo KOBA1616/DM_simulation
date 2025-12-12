@@ -39,3 +39,5 @@ build/
 model_v1.pth
 *.pth
 *.npz
+data/*.onnx
+data/*.onnx.data

@@ -722,6 +722,23 @@ PYBIND11_MODULE(dm_ai_module, m) {
               py::arg("alpha") = 0.0f,
               py::arg("collect_data") = true,
               py::call_guard<py::gil_scoped_release>())
+         .def("play_games", [](ParallelRunner& self,
+                               const std::vector<dm::core::GameState>& initial_states,
+                               NeuralEvaluator& evaluator,
+                               float temperature, bool add_noise, int num_threads, float alpha, bool collect_data) {
+             BatchEvaluatorCallback cb = [&](const std::vector<dm::core::GameState>& states) {
+                 return evaluator.evaluate(states);
+             };
+             py::gil_scoped_release release;
+             return self.play_games(initial_states, cb, temperature, add_noise, num_threads, alpha, collect_data);
+         },
+         py::arg("initial_states"),
+         py::arg("evaluator"),
+         py::arg("temperature") = 1.0f,
+         py::arg("add_noise") = true,
+         py::arg("num_threads") = 4,
+         py::arg("alpha") = 0.0f,
+         py::arg("collect_data") = true)
          .def("run_pimc_search", &ParallelRunner::run_pimc_search,
               py::arg("observation"),
               py::arg("observer_id"),
@@ -729,6 +746,25 @@ PYBIND11_MODULE(dm_ai_module, m) {
               py::arg("evaluator"),
               py::arg("num_threads") = 4,
               py::arg("temperature") = 0.0f)
+         .def("run_pimc_search", [](ParallelRunner& self,
+                const dm::core::GameState& observation,
+                dm::core::PlayerID observer_id,
+                const std::vector<dm::core::CardID>& opponent_deck_candidates,
+                NeuralEvaluator& evaluator,
+                int num_threads,
+                float temperature) {
+             BatchEvaluatorCallback cb = [&](const std::vector<dm::core::GameState>& states) {
+                 return evaluator.evaluate(states);
+             };
+             py::gil_scoped_release release;
+             return self.run_pimc_search(observation, observer_id, opponent_deck_candidates, cb, num_threads, temperature);
+         },
+         py::arg("observation"),
+         py::arg("observer_id"),
+         py::arg("opponent_deck_candidates"),
+         py::arg("evaluator"),
+         py::arg("num_threads") = 4,
+         py::arg("temperature") = 0.0f)
          .def("play_scenario_match", &ParallelRunner::play_scenario_match)
          .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
 
@@ -799,7 +835,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
-        .def("evaluate", &NeuralEvaluator::evaluate);
+        .def("evaluate", &NeuralEvaluator::evaluate)
+        .def("load_model", &NeuralEvaluator::load_model);
 
     /*
     // MCTS Node Exposure for visualization
