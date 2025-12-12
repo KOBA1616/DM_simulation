@@ -141,6 +141,7 @@ set(SRC_ENGINE
     src/engine/systems/card/generic_card_system.cpp
     src/engine/systems/card/json_loader.cpp
     src/engine/game_instance.cpp
+    src/engine/cost_payment_system.cpp
 )
 
 # Utils (Phase 1)
