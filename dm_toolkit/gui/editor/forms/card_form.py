@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QCheckBox, QLabel, QGridLayout, QGroupBox, QPushButton,
     QVBoxLayout, QScrollArea
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
@@ -11,42 +11,15 @@ from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSe
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.reaction_widget import ReactionWidget
 
-class SpellSideWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setup_ui()
-
-    def setup_ui(self):
-        layout = QFormLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        self.header = QLabel(tr("--- Twinpact Spell Side ---"))
-        self.header.setStyleSheet("font-weight: bold; color: blue;")
-        layout.addRow(self.header)
-
-        self.name_edit = QLineEdit()
-        self.name_edit.setPlaceholderText(tr("Spell Side Name"))
-        layout.addRow(tr("Name"), self.name_edit)
-
-        # Add Civilization Selector for Spell Side
-        self.civ_selector = CivilizationSelector()
-        layout.addRow(tr("Civilization"), self.civ_selector)
-
-        self.cost_spin = QSpinBox()
-        self.cost_spin.setRange(0, 99)
-        layout.addRow(tr("Cost"), self.cost_spin)
-
-        self.info_label = QLabel(tr("Effects for Spell side are managed in the tree."))
-        layout.addRow(self.info_label)
-
 class CardEditForm(BaseEditForm):
+    # Signal to request structural changes in the Logic Tree
+    # command: "ADD_SPELL_SIDE", "REMOVE_SPELL_SIDE", "ADD_REV_CHANGE"
+    # payload: dict (optional)
+    structure_update_requested = pyqtSignal(str, dict)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.keyword_checks = {} # Map key -> QCheckBox
-        self.keyword_params = {} # Map key -> Widget (e.g. FilterEditorWidget)
-        self.is_twinpact = False
-        self.spell_side_data = {} # Keep spell side data
-        self.revolution_filter_data = {} # Keep rev change data in memory
         self.setup_ui()
 
     def setup_ui(self):
@@ -64,7 +37,7 @@ class CardEditForm(BaseEditForm):
         self.id_spin = QSpinBox()
         self.id_spin.setRange(0, 9999)
         self.id_spin.setVisible(False)
-        # self.form_layout.addRow(tr("ID"), self.id_spin) # Disabled row
+        # self.form_layout.addRow(tr("ID"), self.id_spin)
 
         # Name
         self.name_edit = QLineEdit()
@@ -72,6 +45,7 @@ class CardEditForm(BaseEditForm):
 
         # Twinpact Checkbox
         self.twinpact_check = QCheckBox(tr("Is Twinpact?"))
+        self.twinpact_check.setToolTip(tr("Enable to generate a Spell Side node in the logic tree."))
         self.twinpact_check.stateChanged.connect(self.toggle_twinpact)
         self.form_layout.addRow(tr("Twinpact"), self.twinpact_check)
 
@@ -91,36 +65,28 @@ class CardEditForm(BaseEditForm):
         self.cost_spin.setRange(0, 99)
         self.form_layout.addRow(tr("Cost"), self.cost_spin)
 
-        # Power (with explicit label for visibility toggling)
+        # Power
         self.power_spin = QSpinBox()
         self.power_spin.setRange(0, 99999)
         self.power_spin.setSingleStep(500)
         self.lbl_power = QLabel(tr("Power"))
         self.form_layout.addRow(self.lbl_power, self.power_spin)
 
-        # Races (with explicit label for potential future toggling)
+        # Races
         self.races_edit = QLineEdit()
         self.lbl_races = QLabel(tr("Races"))
         self.form_layout.addRow(self.lbl_races, self.races_edit)
-
-        # Spell Side Widget (Hidden by default)
-        self.spell_widget = SpellSideWidget()
-        self.spell_widget.setVisible(False)
-        self.spell_widget.name_edit.textChanged.connect(self.update_data)
-        self.spell_widget.cost_spin.valueChanged.connect(self.update_data)
-        self.spell_widget.civ_selector.changed.connect(self.update_data) # Connect signal
-        self.form_layout.addRow(self.spell_widget)
 
         # Keywords Section
         kw_group = QGroupBox(tr("Keywords"))
         kw_layout = QGridLayout(kw_group)
 
+        # Removed legacy keywords: evolution, untap_in, meta_counter_play, revolution_change
         keywords_list = [
             "speed_attacker", "blocker", "slayer",
             "double_breaker", "triple_breaker", "shield_trigger",
-            "evolution", "just_diver", "mach_fighter", "g_strike",
-            "hyper_energy", "shield_burn", "revolution_change", "untap_in",
-            "meta_counter_play", "power_attacker"
+            "just_diver", "mach_fighter", "g_strike",
+            "hyper_energy", "shield_burn", "power_attacker"
         ]
 
         kw_map = {
@@ -130,15 +96,11 @@ class CardEditForm(BaseEditForm):
             "double_breaker": "Double Breaker",
             "triple_breaker": "Triple Breaker",
             "shield_trigger": "Shield Trigger",
-            "evolution": "Evolution",
             "just_diver": "Just Diver",
             "mach_fighter": "Mach Fighter",
             "g_strike": "G Strike",
             "hyper_energy": "Hyper Energy",
             "shield_burn": "Shield Burn",
-            "revolution_change": "Revolution Change",
-            "untap_in": "Untap In",
-            "meta_counter_play": "Meta Counter",
             "power_attacker": "Power Attacker"
         }
 
@@ -148,7 +110,6 @@ class CardEditForm(BaseEditForm):
             cb = QCheckBox(tr(kw_map.get(k, k)))
             kw_layout.addWidget(cb, row, col)
             self.keyword_checks[k] = cb
-            cb.stateChanged.connect(self.on_keyword_changed)
             cb.stateChanged.connect(self.update_data)
 
             col += 1
@@ -158,14 +119,15 @@ class CardEditForm(BaseEditForm):
 
         self.form_layout.addRow(kw_group)
 
-        # Revolution Change Configuration (Hidden until keyword checked)
-        self.rev_change_group = QGroupBox(tr("Revolution Change Condition"))
-        self.rev_change_group.setVisible(False)
-        self.rev_filter = FilterEditorWidget()
-        self.rev_filter.filterChanged.connect(self.update_data)
-        rc_layout = QVBoxLayout(self.rev_change_group)
-        rc_layout.addWidget(self.rev_filter)
-        self.form_layout.addRow(self.rev_change_group)
+        # Special Abilities Generator
+        special_group = QGroupBox(tr("Special Abilities"))
+        special_layout = QVBoxLayout(special_group)
+
+        self.btn_add_rev_change = QPushButton(tr("Add Revolution Change"))
+        self.btn_add_rev_change.clicked.connect(self.on_add_rev_change_clicked)
+        special_layout.addWidget(self.btn_add_rev_change)
+
+        self.form_layout.addRow(special_group)
 
         # Reaction Abilities Section
         react_group = QGroupBox(tr("Reaction Abilities"))
@@ -180,13 +142,11 @@ class CardEditForm(BaseEditForm):
         ai_layout = QFormLayout(ai_group)
 
         self.is_key_card_check = QCheckBox(tr("Is Key Card / Combo Piece"))
-        self.is_key_card_check.setToolTip(tr("Mark this card as a high-value target for AI analysis."))
         self.is_key_card_check.stateChanged.connect(self.update_data)
         ai_layout.addRow(self.is_key_card_check)
 
         self.ai_importance_spin = QSpinBox()
         self.ai_importance_spin.setRange(0, 1000)
-        self.ai_importance_spin.setToolTip(tr("Manual importance score for AI (0 = default)."))
         self.ai_importance_spin.valueChanged.connect(self.update_data)
         ai_layout.addRow(tr("AI Importance Score"), self.ai_importance_spin)
 
@@ -200,36 +160,27 @@ class CardEditForm(BaseEditForm):
         self.power_spin.valueChanged.connect(self.update_data)
         self.races_edit.textChanged.connect(self.update_data)
 
-    def on_keyword_changed(self):
-        # Toggle visibility of parameter widgets
-        is_rev = self.keyword_checks["revolution_change"].isChecked()
-        self.rev_change_group.setVisible(is_rev)
-
     def toggle_twinpact(self, state):
-        self.is_twinpact = (state == Qt.CheckState.Checked.value or state == True)
-        self.spell_widget.setVisible(self.is_twinpact)
-        if self.is_twinpact and not self.spell_side_data:
-            self.spell_side_data = {
-                'name': '',
-                'cost': 0,
-                'type': 'SPELL',
-                'effects': []
-            }
-        self.update_data()
+        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        if is_checked:
+            self.structure_update_requested.emit("ADD_SPELL_SIDE", {})
+        else:
+            self.structure_update_requested.emit("REMOVE_SPELL_SIDE", {})
+        # Note: We do NOT call update_data here as this is a structural change handled by the Tree/DataManager
+
+    def on_add_rev_change_clicked(self):
+        self.structure_update_requested.emit("ADD_REV_CHANGE", {})
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
         self.id_spin.setValue(data.get('id', 0))
-
-        name = data.get('name', '')
-        self.name_edit.setText(name)
+        self.name_edit.setText(data.get('name', ''))
 
         civs = data.get('civilizations')
         if not civs:
             civ_single = data.get('civilization')
-            if civ_single:
-                civs = [civ_single]
+            if civ_single: civs = [civ_single]
         self.civ_selector.set_selected_civs(civs)
 
         current_type = data.get('type', 'CREATURE')
@@ -240,42 +191,24 @@ class CardEditForm(BaseEditForm):
         self.power_spin.setValue(data.get('power', 0))
         self.races_edit.setText(", ".join(data.get('races', [])))
 
-        self.spell_side_data = data.get('spell_side')
-        if self.spell_side_data:
-            self.twinpact_check.setChecked(True)
-            self.spell_widget.name_edit.setText(self.spell_side_data.get('name', ''))
-            self.spell_widget.cost_spin.setValue(self.spell_side_data.get('cost', 0))
+        # Check for Spell Side child node to toggle Twinpact checkbox
+        has_spell_side = False
+        for i in range(item.rowCount()):
+            child = item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
+                has_spell_side = True
+                break
 
-            # Populate Spell Side Civs
-            spell_civs = self.spell_side_data.get('civilizations')
-            if spell_civs is None:
-                spell_civ_single = self.spell_side_data.get('civilization')
-                if spell_civ_single:
-                    spell_civs = [spell_civ_single]
-                else:
-                    # Fallback to parent civs if not set (legacy behavior compatibility)
-                    spell_civs = civs
-            self.spell_widget.civ_selector.set_selected_civs(spell_civs)
-
-        else:
-            self.twinpact_check.setChecked(False)
-            self.spell_widget.name_edit.clear()
-            self.spell_widget.cost_spin.setValue(0)
-            self.spell_widget.civ_selector.set_selected_civs([])
+        self.twinpact_check.blockSignals(True)
+        self.twinpact_check.setChecked(has_spell_side)
+        self.twinpact_check.blockSignals(False)
 
         kw_data = data.get('keywords', {})
         for k, cb in self.keyword_checks.items():
             is_checked = kw_data.get(k, False)
             cb.setChecked(is_checked)
 
-        # Revolution Change Condition
-        rev_cond = data.get('revolution_change_condition', {})
-        self.rev_filter.set_data(rev_cond)
-        self.on_keyword_changed() # Update visibility
-
-        # Reaction Abilities
         self.reaction_widget.set_data(data.get('reaction_abilities', []))
-
         self.is_key_card_check.setChecked(data.get('is_key_card', False))
         self.ai_importance_spin.setValue(data.get('ai_importance_score', 0))
 
@@ -287,8 +220,7 @@ class CardEditForm(BaseEditForm):
 
     def _save_data(self, data):
         data['id'] = self.id_spin.value()
-        creature_name = self.name_edit.text()
-        data['name'] = creature_name
+        data['name'] = self.name_edit.text()
 
         data['civilizations'] = self.civ_selector.get_selected_civs()
         if 'civilization' in data:
@@ -303,42 +235,19 @@ class CardEditForm(BaseEditForm):
         races_str = self.races_edit.text()
         data['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
 
-        if self.twinpact_check.isChecked():
-            spell_name = self.spell_widget.name_edit.text()
-            if spell_name:
-                 if not self.spell_side_data:
-                     self.spell_side_data = {'type': 'SPELL', 'effects': []}
-                 self.spell_side_data['name'] = spell_name
-                 self.spell_side_data['cost'] = self.spell_widget.cost_spin.value()
-                 self.spell_side_data['type'] = 'SPELL'
-
-                 spell_civs = self.spell_widget.civ_selector.get_selected_civs()
-                 self.spell_side_data['civilizations'] = spell_civs
-
-                 data['spell_side'] = self.spell_side_data
-            else:
-                 pass
-        else:
-            if 'spell_side' in data:
-                del data['spell_side']
-            self.spell_side_data = None
-            if "/" in creature_name:
-                data['name'] = creature_name.split("/")[0].strip()
-
+        # Keyword handling
         kw_data = {}
         for k, cb in self.keyword_checks.items():
             if cb.isChecked():
                 kw_data[k] = True
+
+        # Auto-set evolution keyword based on type
+        if type_str == "EVOLUTION_CREATURE":
+            kw_data['evolution'] = True
+
         data['keywords'] = kw_data
 
-        # Save Rev Change Condition if keyword is checked
-        if kw_data.get('revolution_change', False):
-             data['revolution_change_condition'] = self.rev_filter.get_data()
-        elif 'revolution_change_condition' in data:
-             del data['revolution_change_condition']
-
         data['reaction_abilities'] = self.reaction_widget.get_data()
-
         data['is_key_card'] = self.is_key_card_check.isChecked()
         data['ai_importance_score'] = self.ai_importance_spin.value()
 
@@ -354,12 +263,8 @@ class CardEditForm(BaseEditForm):
         self.power_spin.blockSignals(block)
         self.races_edit.blockSignals(block)
         self.twinpact_check.blockSignals(block)
-        self.spell_widget.name_edit.blockSignals(block)
-        self.spell_widget.cost_spin.blockSignals(block)
-        self.spell_widget.civ_selector.blockSignals(block) # Block new widget
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
-        self.rev_filter.blockSignals(block)
         self.reaction_widget.block_signals_all(block)
         self.is_key_card_check.blockSignals(block)
         self.ai_importance_spin.blockSignals(block)

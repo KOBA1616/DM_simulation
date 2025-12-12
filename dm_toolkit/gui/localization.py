@@ -144,7 +144,16 @@ TRANSLATIONS = {
     "Untap In": "アンタップイン",
     "Meta Counter": "メタカウンター",
     "Power Attacker": "パワーアタッカー",
-    "Revolution Change Condition": "革命チェンジ条件設定"
+    "Revolution Change Condition": "革命チェンジ条件設定",
+
+    # Added for Ver 2.1
+    "Spell Side": "呪文側",
+    "Edit Spell Side Properties": "呪文側のプロパティ編集",
+    "Add Revolution Change": "革命チェンジを追加",
+    "Special Abilities": "特殊能力",
+    "Enable to generate a Spell Side node in the logic tree.": "ロジックツリーに呪文側のノードを生成します。",
+    "REVOLUTION_CHANGE": "革命チェンジ",
+    "SPELL_SIDE": "呪文側"
 }
 
 
