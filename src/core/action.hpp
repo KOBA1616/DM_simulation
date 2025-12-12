@@ -22,7 +22,8 @@ namespace dm::core {
         PLAY_CARD_INTERNAL, // For stacked play actions
         RESOLVE_BATTLE, // Battle resolution (Power comparison)
         BREAK_SHIELD,   // Shield break
-        DECLARE_REACTION // For Ninja Strike / Strike Back
+        DECLARE_REACTION, // For Ninja Strike / Strike Back
+        SELECT_OPTION // For choosing from options
     };
 
     struct Action {
