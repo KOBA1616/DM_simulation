@@ -8,7 +8,7 @@ namespace dm::engine {
 
     class MoveCardHandler : public IActionHandler {
     public:
-        void resolve(const ResolutionContext& ctx) override {
+        void resolve(const ResolutionContext& /*ctx*/) override {
             using namespace dm::core;
 
             // If filter specifies zones, use generic selection
@@ -60,7 +60,7 @@ namespace dm::engine {
         }
 
     private:
-        void move_card_to_dest(dm::core::GameState& game_state, int instance_id, const std::string& dest, int source_instance_id) {
+        void move_card_to_dest(dm::core::GameState& game_state, int instance_id, const std::string& dest, int /*source_instance_id*/) {
             using namespace dm::core;
 
             // 1. Find and Remove

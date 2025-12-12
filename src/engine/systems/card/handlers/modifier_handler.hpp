@@ -18,7 +18,7 @@ namespace dm::engine {
         }
 
     private:
-        void apply_modifier(const ResolutionContext& ctx, const std::vector<int>* targets) {
+        void apply_modifier(const ResolutionContext& ctx, const std::vector<int>* /*targets*/) {
             using namespace dm::core;
 
             // Determine value
