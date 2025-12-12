@@ -50,7 +50,7 @@ namespace dm::engine {
                 } else {
                      EffectDef ed;
                      ed.trigger = TriggerType::NONE;
-                     ed.condition = ConditionDef{"NONE", 0, ""};
+                     ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                      ed.actions = { ctx.action };
                      GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                 }
