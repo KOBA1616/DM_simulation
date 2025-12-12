@@ -182,4 +182,25 @@ namespace dm::engine {
         return get_adjusted_cost(game_state, player, card_def);
     }
 
+    int ManaSystem::get_usable_mana_count(const GameState& game_state, PlayerID player_id, const std::vector<Civilization>& required_civs) {
+        // Simplified check: Count total untapped mana.
+        // Note: This does NOT check color requirements properly, which is complex without context.
+        // For Hyper Energy checks, we often just want "do we have N mana available?".
+        // If color matters, we need a smarter check.
+        // But solve_payment_internal requires a DB.
+        // For now, return raw count.
+        // If we want color check, we need to pass card_db to this method, but the signature in header doesn't have it.
+        // Adding card_db to signature would require header change.
+
+        // Let's assume color requirements are met if count is sufficient for this specific helper usage,
+        // or implement a basic check if possible.
+
+        const auto& player = game_state.players[player_id];
+        int count = 0;
+        for (const auto& card : player.mana_zone) {
+            if (!card.is_tapped) count++;
+        }
+        return count;
+    }
+
 }

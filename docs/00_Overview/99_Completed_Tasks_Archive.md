@@ -29,3 +29,9 @@
         *   マナコストの文字色を「黒縁の白文字」（実装上は太字の白文字＋黒い円形枠線）に統一しました。
         *   カードの外枠（選択時の強調部分）を「すべての文明で黒の細線」に統一しました。
     *   **テキスト生成**: `CardTextGenerator` に `EX Life` (EXライフ) のキーワード対応を追加しました。
+
+6.  **汎用コストおよび支払いシステム (General Cost and Payment System) - Step 1: Infrastructure**
+    *   **C++ Core Types**: `CostType`, `ReductionType`, `CostDef`, `CostReductionDef` を `src/core/card_json_types.hpp` に定義しました。
+    *   **Card Definition Update**: `CardDefinition` に `cost_reductions` フィールドを追加しました。
+    *   **Logic Implementation**: `src/engine/cost_payment_system.cpp` を実装し、能動的コスト軽減（Active Cost Reduction）の計算ロジック (`calculate_max_units`) と支払い判定ロジック (`can_pay_cost`) を実装しました。
+    *   **Python Binding**: 新しい型とシステムクラスを `dm_ai_module` に公開し、`test_cost_payment_structs.py` による検証を完了しました。
