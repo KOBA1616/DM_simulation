@@ -46,6 +46,15 @@ class CardEditor(QMainWindow):
         del_act.triggered.connect(self.delete_item)
         toolbar.addAction(del_act)
 
+        # Update Preview Button (Right side)
+        empty = QWidget()
+        empty.setSizePolicy(QWidget.QSizePolicy.Policy.Expanding, QWidget.QSizePolicy.Policy.Preferred)
+        toolbar.addWidget(empty)
+
+        update_preview_act = QAction(tr("Update Preview"), self)
+        update_preview_act.triggered.connect(self.update_preview_manual)
+        toolbar.addAction(update_preview_act)
+
         # Splitter Layout (3 Panes)
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
 
@@ -128,6 +137,9 @@ class CardEditor(QMainWindow):
         if idx.isValid():
             item = self.tree_widget.model.itemFromIndex(idx)
             self.preview_widget.update_preview(item)
+
+    def update_preview_manual(self):
+        self.on_data_changed()
 
     def on_structure_update(self, command, payload):
         idx = self.tree_widget.currentIndex()
