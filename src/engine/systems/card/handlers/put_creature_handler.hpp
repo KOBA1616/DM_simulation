@@ -11,7 +11,7 @@ namespace dm::engine {
 
     class PutCreatureHandler : public IActionHandler {
     public:
-        void resolve(const ResolutionContext& ctx) override {
+        void resolve(const ResolutionContext& /*ctx*/) override {
              // See CastSpellHandler logic; mainly relies on targets.
         }
 

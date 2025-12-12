@@ -13,7 +13,7 @@ namespace dm::engine {
             if (ctx.action.scope == dm::core::TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                  dm::core::EffectDef ed;
                  ed.trigger = dm::core::TriggerType::NONE;
-                 ed.condition = dm::core::ConditionDef{"NONE", 0, ""};
+                 ed.condition = dm::core::ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                  ed.actions = { ctx.action };
                  GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
