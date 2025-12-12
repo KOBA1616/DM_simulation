@@ -50,6 +50,23 @@ class ZoneWidget(QWidget):
                     widget.setParent(None)
         
         self.cards = []
+
+        # Check for Deck Bundle Visualization
+        is_deck = "Deck" in self.title or "デッキ" in self.title
+
+        if is_deck and card_data_list:
+            # Single Bundle Representation
+            count = len(card_data_list)
+            # Use ID 0 (Back of Card)
+            widget = CardWidget(0, f"Deck ({count})", 0, 0, "COLORLESS", False, -1)
+            # Clicking emits signal with ID 0
+            widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
+            widget.hovered.connect(self.card_hovered.emit)
+            self.card_layout.addWidget(widget)
+            self.cards.append(widget)
+            return
+
+        # Normal Visualization
         for c_data in card_data_list:
             # c_data: (card_id, is_tapped) or just card_id
             cid = c_data['id']
