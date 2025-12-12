@@ -25,12 +25,13 @@ class FilterEditorWidget(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
 
         # 1. Basic Properties (Zones, Types, Civs)
-        basic_group = QGroupBox(tr("Basic Filter"))
-        basic_layout = QGridLayout(basic_group)
-        main_layout.addWidget(basic_group)
+        self.basic_group = QGroupBox(tr("Basic Filter"))
+        basic_layout = QGridLayout(self.basic_group)
+        main_layout.addWidget(self.basic_group)
 
         # Zones
-        basic_layout.addWidget(QLabel(tr("Zones:")), 0, 0)
+        self.zone_label = QLabel(tr("Zones:"))
+        basic_layout.addWidget(self.zone_label, 0, 0)
         self.zone_checks = {}
         zones = ["BATTLE_ZONE", "MANA_ZONE", "HAND", "GRAVEYARD", "SHIELD_ZONE", "DECK"]
         zone_grid = QGridLayout()
@@ -43,7 +44,8 @@ class FilterEditorWidget(QWidget):
         basic_layout.addLayout(zone_grid, 0, 1)
 
         # Types
-        basic_layout.addWidget(QLabel(tr("Types:")), 1, 0)
+        self.type_label = QLabel(tr("Types:"))
+        basic_layout.addWidget(self.type_label, 1, 0)
         self.type_checks = {}
         types = ["CREATURE", "SPELL"] # Add others if needed
         type_grid = QGridLayout()
@@ -55,22 +57,24 @@ class FilterEditorWidget(QWidget):
         basic_layout.addLayout(type_grid, 1, 1)
 
         # Civilizations
-        basic_layout.addWidget(QLabel(tr("Civilizations:")), 2, 0)
+        self.civ_label = QLabel(tr("Civilizations:"))
+        basic_layout.addWidget(self.civ_label, 2, 0)
         self.civ_selector = CivilizationSelector()
         self.civ_selector.changed.connect(self.filterChanged.emit)
         basic_layout.addWidget(self.civ_selector, 2, 1)
 
         # Races
-        basic_layout.addWidget(QLabel(tr("Races:")), 3, 0)
+        self.race_label = QLabel(tr("Races:"))
+        basic_layout.addWidget(self.race_label, 3, 0)
         self.races_edit = QLineEdit()
         self.races_edit.setPlaceholderText(tr("Comma separated races (e.g. Dragon, Cyber Lord)"))
         self.races_edit.textChanged.connect(self.filterChanged.emit)
         basic_layout.addWidget(self.races_edit, 3, 1)
 
         # 2. Stats (Cost, Power)
-        stats_group = QGroupBox(tr("Stats Filter"))
-        stats_layout = QGridLayout(stats_group)
-        main_layout.addWidget(stats_group)
+        self.stats_group = QGroupBox(tr("Stats Filter"))
+        stats_layout = QGridLayout(self.stats_group)
+        main_layout.addWidget(self.stats_group)
 
         stats_layout.addWidget(QLabel(tr("Cost:")), 0, 0)
         self.min_cost_spin = QSpinBox()
@@ -117,9 +121,9 @@ class FilterEditorWidget(QWidget):
         self.max_power_spin.valueChanged.connect(self.filterChanged.emit)
 
         # 3. Flags (Tapped, Blocker, Evolution)
-        flags_group = QGroupBox(tr("Flags Filter"))
-        flags_layout = QGridLayout(flags_group)
-        main_layout.addWidget(flags_group)
+        self.flags_group = QGroupBox(tr("Flags Filter"))
+        flags_layout = QGridLayout(self.flags_group)
+        main_layout.addWidget(self.flags_group)
 
         # Helper to create tri-state combos
         def create_tristate(label):
@@ -144,9 +148,9 @@ class FilterEditorWidget(QWidget):
         flags_layout.addWidget(self.evolution_combo, 2, 1)
 
         # 4. Count / Selection Mode (Keep at bottom)
-        sel_group = QGroupBox(tr("Selection"))
-        sel_layout = QGridLayout(sel_group)
-        main_layout.addWidget(sel_group)
+        self.sel_group = QGroupBox(tr("Selection"))
+        sel_layout = QGridLayout(self.sel_group)
+        main_layout.addWidget(self.sel_group)
 
         self.mode_label = QLabel(tr("Selection Mode"))
         self.mode_combo = QComboBox()
@@ -289,3 +293,47 @@ class FilterEditorWidget(QWidget):
         self.evolution_combo.blockSignals(block)
         self.mode_combo.blockSignals(block)
         self.count_spin.blockSignals(block)
+
+    def set_visible_sections(self, sections: dict):
+        """
+        Toggle visibility of filter groups.
+        sections: dict mapping section name ('basic', 'stats', 'flags', 'selection') to bool.
+        """
+        if 'basic' in sections: self.basic_group.setVisible(sections['basic'])
+        if 'stats' in sections: self.stats_group.setVisible(sections['stats'])
+        if 'flags' in sections: self.flags_group.setVisible(sections['flags'])
+        if 'selection' in sections: self.sel_group.setVisible(sections['selection'])
+
+    def set_allowed_fields(self, allowed_fields: list):
+        """
+        Toggle visibility of specific fields inside Basic group.
+        allowed_fields: list of field keys ('zones', 'types', 'civilizations', 'races').
+        If list is None, all are shown.
+        """
+        if allowed_fields is None:
+            # Show all
+            self.zone_label.setVisible(True)
+            for cb in self.zone_checks.values(): cb.setVisible(True)
+            self.type_label.setVisible(True)
+            for cb in self.type_checks.values(): cb.setVisible(True)
+            self.civ_label.setVisible(True)
+            self.civ_selector.setVisible(True)
+            self.race_label.setVisible(True)
+            self.races_edit.setVisible(True)
+            return
+
+        is_allowed = lambda f: f in allowed_fields
+
+        self.zone_label.setVisible(is_allowed('zones'))
+        for cb in self.zone_checks.values():
+            cb.setVisible(is_allowed('zones'))
+
+        self.type_label.setVisible(is_allowed('types'))
+        for cb in self.type_checks.values():
+            cb.setVisible(is_allowed('types'))
+
+        self.civ_label.setVisible(is_allowed('civilizations'))
+        self.civ_selector.setVisible(is_allowed('civilizations'))
+
+        self.race_label.setVisible(is_allowed('races'))
+        self.races_edit.setVisible(is_allowed('races'))

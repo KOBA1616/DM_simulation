@@ -61,7 +61,8 @@ ACTION_UI_CONFIG = {
     },
     "SEARCH_DECK": {
         "visible": ["filter", "output_value_key"],
-        "produces_output": True
+        "produces_output": True,
+        "allowed_filter_fields": ["civilizations", "races", "types", "cost", "power"] # Mask zones
     },
     "MEKRAID": {
         "visible": ["value1", "filter"],
@@ -101,6 +102,7 @@ ACTION_UI_CONFIG = {
     },
     "REVOLUTION_CHANGE": {
         "visible": ["filter"], # Filter for valid attackers
+        "allowed_filter_fields": ["civilizations", "races", "cost"] # Mask zones (implied Battle Zone)
     },
     "COUNT_CARDS": {
         "visible": ["scope", "filter", "output_value_key", "str_val"], # str_val for Mode
