@@ -218,3 +218,7 @@ AI知能の進化、不完全情報対応、およびシステム基盤の安定
 *   **トリガータイミング包含 (Trigger Timing Inclusion)**
     *   `ConditionDef` に `filter` フィールドを追加し、エンジンのデータ構造を拡張しました。
     *   `EffectEditForm` の条件設定に `FilterEditorWidget` を組み込み、`EVENT_FILTER_MATCH` 条件タイプを選択することで、トリガーイベントに対する詳細なフィルタリング（例：「相手クリーチャーが出た時」）をGUI上で設定可能にしました。
+*   **モード選択機能 (Mode Selection)**
+    *   `SELECT_OPTION` アクションをエンジンおよびGUIに実装しました。
+    *   Card Editor にて、アクションに対する「Option」の追加と、各Optionへの「Action」の追加を可能にするネスト構造の編集UIを実現しました。
+    *   「3つの中から1つ選ぶ」といった効果をJSON定義のみで完結できるようになりました。
