@@ -38,6 +38,7 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 *   **推論エンジン**: 相手デッキタイプ推定 (`DeckClassifier`) と手札確率推定 (`HandEstimator`) を実装済み。
 *   **自己進化**: 遺伝的アルゴリズムによるデッキ改良ロジック (`DeckEvolution`) がC++コアに統合され、高速に動作します。
 *   **ONNX Runtime (C++) 統合**: 学習済みPyTorchモデルをONNX形式でエクスポートし、C++エンジン内で直接高速推論を行う `NeuralEvaluator` の拡張を完了しました。
+*   **Phase 4 アーキテクチャ**: `NetworkV2` (Transformer/Linear Attention) の実装と単体テストによる動作検証を完了しました。
 
 ### 2.4 現在確認されている実装上の不整合 (Identified Implementation Inconsistencies)
 現在、以下の不整合が確認されており、将来的な修正対象として記録されています。
@@ -73,7 +74,9 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 1.  **Transformer (Linear Attention) 導入**
     *   **目的**: 盤面のカード枚数が可変であるTCGの特性に合わせ、固定長入力のResNetから、可変長入力を扱えるAttention機構へ移行する。
     *   **計画**: `NetworkV2` として、PyTorchでのモデル定義と、C++側のテンソル変換ロジック（`TensorConverter`）の書き換えを行う。
-    *   *ステータス: 着手*。`dm_toolkit/training/network_v2.py` を作成し、O(N)計算量の `LinearAttention` およびTransformerベースの `NetworkV2` クラスの初期実装を行いました。
+    *   *ステータス: 実装完了・検証済み*。
+        *   `dm_toolkit/training/network_v2.py` に `LinearAttention` およびTransformerベースの `NetworkV2` を実装。
+        *   単体テスト (`tests/python/training/test_network_v2.py`) により、可変長シーケンス処理とマスキングロジックの動作を確認済み。
 
 ### 3.3 [Priority: Low] Phase 5: エディタ機能の完成形 (Editor Polish)
 
