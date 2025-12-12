@@ -27,14 +27,13 @@ class LogicTreeWidget(QTreeView):
         if not indexes:
             return
         index = indexes[0]
-        # Just ensure generic handling if needed
         pass
 
     def mousePressEvent(self, event):
         index = self.indexAt(event.pos())
         if index.isValid():
              item_type = index.data(Qt.ItemDataRole.UserRole + 1)
-             if item_type == "CARD":
+             if item_type in ["CARD", "SPELL_SIDE"]:
                  if self.isExpanded(index):
                      self.collapse(index)
                  else:
@@ -64,3 +63,25 @@ class LogicTreeWidget(QTreeView):
         idx = self.currentIndex()
         if not idx.isValid(): return
         self.model.removeRow(idx.row(), idx.parent())
+
+    def add_spell_side(self, card_index):
+        if not card_index.isValid(): return
+        card_item = self.model.itemFromIndex(card_index)
+        item = self.data_manager.add_spell_side_item(card_item)
+        if item:
+            self.setCurrentIndex(item.index())
+        return item
+
+    def remove_spell_side(self, card_index):
+        if not card_index.isValid(): return
+        card_item = self.model.itemFromIndex(card_index)
+        self.data_manager.remove_spell_side_item(card_item)
+
+    def add_rev_change(self, card_index):
+        if not card_index.isValid(): return
+        card_item = self.model.itemFromIndex(card_index)
+        eff_item = self.data_manager.add_revolution_change_logic(card_item)
+        if eff_item:
+            self.setCurrentIndex(eff_item.index())
+            self.expand(card_index)
+        return eff_item
