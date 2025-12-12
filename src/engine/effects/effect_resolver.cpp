@@ -147,6 +147,30 @@ namespace dm::engine {
              case ActionType::DECLARE_REACTION:
                  resolve_reaction(game_state, action, card_db);
                  break;
+             case ActionType::SELECT_OPTION:
+                 // Resolve the option selection by queuing the actions of the selected option
+                 if (!game_state.pending_effects.empty() && action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
+                     auto& pe = game_state.pending_effects[action.slot_index];
+                     if (pe.type == EffectType::SELECT_OPTION) {
+                         int option_index = action.target_slot_index;
+                         if (option_index >= 0 && option_index < (int)pe.options.size()) {
+                             const auto& selected_actions = pe.options[option_index];
+
+                             // Create a temporary effect def to hold these actions
+                             EffectDef temp_effect;
+                             temp_effect.actions = selected_actions;
+                             temp_effect.trigger = TriggerType::NONE;
+
+                             // Queue resolution of these actions
+                             GenericCardSystem::resolve_effect_with_context(game_state, temp_effect, pe.source_instance_id, pe.execution_context, card_db);
+                         }
+                     }
+                     // Remove the pending effect after selection
+                     if (action.slot_index < (int)game_state.pending_effects.size()) {
+                         game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
+                     }
+                 }
+                 break;
              default:
                  break;
         }
