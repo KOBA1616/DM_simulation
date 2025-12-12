@@ -49,17 +49,16 @@ namespace dm::engine {
         static std::optional<dm::core::CardInstance> find_and_remove(dm::core::GameState& game_state, int instance_id) {
             using namespace dm::core;
 
-            // 1. Check Effect Buffer
-            auto& buffer = game_state.effect_buffer;
-            auto it_buf = std::find_if(buffer.begin(), buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-            if (it_buf != buffer.end()) {
-                CardInstance c = *it_buf;
-                buffer.erase(it_buf);
-                return c;
-            }
-
-            // 2. Check Players
+            // 2. Check Players (and their Buffers)
             for (auto& p : game_state.players) {
+                // Effect Buffer
+                auto it_buf = std::find_if(p.effect_buffer.begin(), p.effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
+                if (it_buf != p.effect_buffer.end()) {
+                    CardInstance c = *it_buf;
+                    p.effect_buffer.erase(it_buf);
+                    return c;
+                }
+
                 // Battle Zone
                 auto it_bz = std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
                 if (it_bz != p.battle_zone.end()) {

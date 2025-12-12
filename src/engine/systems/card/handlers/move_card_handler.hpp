@@ -137,13 +137,16 @@ namespace dm::engine {
             }
 
             if (!found) {
-                // Check buffer
-                 auto buf_it = std::find_if(game_state.effect_buffer.begin(), game_state.effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (buf_it != game_state.effect_buffer.end()) {
-                    card = *buf_it;
-                    game_state.effect_buffer.erase(buf_it);
-                    found = true;
-                    owner_id = game_state.active_player_id; // Buffer usually owned by active?
+                // Check buffer (for both players)
+                for (auto& p : game_state.players) {
+                    auto buf_it = std::find_if(p.effect_buffer.begin(), p.effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
+                    if (buf_it != p.effect_buffer.end()) {
+                        card = *buf_it;
+                        p.effect_buffer.erase(buf_it);
+                        found = true;
+                        owner_id = p.id;
+                        break;
+                    }
                 }
             }
 

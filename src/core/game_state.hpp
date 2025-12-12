@@ -133,6 +133,7 @@ namespace dm::core {
         std::vector<CardInstance> deck;
         std::vector<CardInstance> hyper_spatial_zone;
         std::vector<CardInstance> gr_deck;
+        std::vector<CardInstance> effect_buffer;
     };
 
     struct GameState {
@@ -162,9 +163,6 @@ namespace dm::core {
 
         // Stack Zone for declared cards (waiting for cost payment) [PLAN-002]
         std::vector<CardInstance> stack_zone;
-
-        // Effect Buffer for complex actions (Search, Gachinko Judge, Mekraid) [PLAN-002]
-        std::vector<CardInstance> effect_buffer;
 
         // Turn Stats [Phase 5]
         TurnStats turn_stats;
@@ -251,8 +249,8 @@ namespace dm::core {
              for (auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
              for (auto& c : p.deck) if (c.instance_id == instance_id) return &c;
 
-             // Check Effect Buffer (not owned by player usually, but tracked)
-             for (auto& c : effect_buffer) if (c.instance_id == instance_id) return &c;
+             // Check Effect Buffer
+             for (auto& c : p.effect_buffer) if (c.instance_id == instance_id) return &c;
 
              return nullptr;
         }
@@ -271,7 +269,7 @@ namespace dm::core {
              for (const auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
              for (const auto& c : p.deck) if (c.instance_id == instance_id) return &c;
 
-             for (const auto& c : effect_buffer) if (c.instance_id == instance_id) return &c;
+             for (const auto& c : p.effect_buffer) if (c.instance_id == instance_id) return &c;
 
              return nullptr;
         }

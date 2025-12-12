@@ -118,9 +118,9 @@ class CardEditForm(BaseEditForm):
         keywords_list = [
             "speed_attacker", "blocker", "slayer",
             "double_breaker", "triple_breaker", "shield_trigger",
-            "evolution", "just_diver", "mach_fighter", "g_strike",
+            "just_diver", "mach_fighter", "g_strike",
             "hyper_energy", "shield_burn", "revolution_change", "untap_in",
-            "meta_counter_play", "power_attacker"
+            "power_attacker"
         ]
 
         kw_map = {
@@ -130,15 +130,13 @@ class CardEditForm(BaseEditForm):
             "double_breaker": "Double Breaker",
             "triple_breaker": "Triple Breaker",
             "shield_trigger": "Shield Trigger",
-            "evolution": "Evolution",
             "just_diver": "Just Diver",
             "mach_fighter": "Mach Fighter",
             "g_strike": "G Strike",
             "hyper_energy": "Hyper Energy",
             "shield_burn": "Shield Burn",
             "revolution_change": "Revolution Change",
-            "untap_in": "Untap In",
-            "meta_counter_play": "Meta Counter",
+            "untap_in": "Untap In", # Requirement: "Untaps when put from hand to mana"
             "power_attacker": "Power Attacker"
         }
 

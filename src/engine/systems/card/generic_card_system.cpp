@@ -42,7 +42,8 @@ namespace dm::engine {
             for (auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
         }
         // Also check effect buffer
-        for (auto& c : game_state.effect_buffer) if (c.instance_id == instance_id) return &c;
+        for (auto& c : game_state.players[0].effect_buffer) if (c.instance_id == instance_id) return &c;
+        for (auto& c : game_state.players[1].effect_buffer) if (c.instance_id == instance_id) return &c;
 
         return nullptr;
     }
