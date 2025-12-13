@@ -55,12 +55,12 @@ namespace dm::engine {
             // Since we have targets list, we iterate.
 
             for (int target_id : *ctx.targets) {
-                 move_card_to_dest(game_state, target_id, dest, ctx.source_instance_id);
+                 move_card_to_dest(game_state, target_id, dest, ctx.source_instance_id, ctx.card_db);
             }
         }
 
     private:
-        void move_card_to_dest(dm::core::GameState& game_state, int instance_id, const std::string& dest, int /*source_instance_id*/) {
+        void move_card_to_dest(dm::core::GameState& game_state, int instance_id, const std::string& dest, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             using namespace dm::core;
 
             // 1. Find and Remove
@@ -193,9 +193,7 @@ namespace dm::engine {
             } else if (dest == "SHIELD_ZONE") {
                 card.is_tapped = false;
                 owner.shield_zone.push_back(card);
-                // ON_SHIELD_ADD trigger?
-                // Use GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD?? No such trigger yet, wait, we are adding it as Reaction);
-                // But trigger vs reaction.
+                GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD, card.instance_id, card_db);
             } else if (dest == "BATTLE_ZONE") {
                 card.is_tapped = false;
                 card.summoning_sickness = true;
