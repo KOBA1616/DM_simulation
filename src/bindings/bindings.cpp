@@ -174,6 +174,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("TURN_START", TriggerType::TURN_START)
         .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
         .value("ON_BLOCK", TriggerType::ON_BLOCK)
+        .value("ON_SHIELD_ADD", TriggerType::ON_SHIELD_ADD)
+        .value("ON_CAST_SPELL", TriggerType::ON_CAST_SPELL)
         .value("NONE", TriggerType::NONE)
         .export_values();
 
