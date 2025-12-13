@@ -132,6 +132,8 @@ class VariableLinkWidget(QWidget):
         for i in range(row):
             sibling = parent.child(i)
             sib_data = sibling.data(Qt.ItemDataRole.UserRole + 2)
+            if not sib_data:
+                continue
             out_key = sib_data.get('output_value_key')
             if out_key:
                 type_disp = tr(sib_data.get('type'))
