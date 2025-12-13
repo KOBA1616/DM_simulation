@@ -8,7 +8,7 @@ namespace dm::engine {
     class IConditionEvaluator {
     public:
         virtual ~IConditionEvaluator() = default;
-        virtual bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) = 0;
+        virtual bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& execution_context) = 0;
     };
 
     class ConditionSystem {
@@ -29,10 +29,10 @@ namespace dm::engine {
             return nullptr;
         }
 
-        bool evaluate_def(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+        bool evaluate_def(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& execution_context) {
             if (condition.type == "NONE" || condition.type.empty()) return true;
             if (IConditionEvaluator* eval = get_evaluator(condition.type)) {
-                return eval->evaluate(state, condition, source_instance_id, card_db);
+                return eval->evaluate(state, condition, source_instance_id, card_db, execution_context);
             }
             return false;
         }
@@ -46,7 +46,7 @@ namespace dm::engine {
 
     class TurnEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/, const std::map<std::string, int>& /*execution_context*/) override {
             using namespace dm::core;
             PlayerID controller = GenericCardSystem::get_controller(state, source_instance_id);
 
@@ -62,7 +62,7 @@ namespace dm::engine {
 
     class ManaArmedEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& /*execution_context*/) override {
             using namespace dm::core;
             PlayerID controller_id = GenericCardSystem::get_controller(state, source_instance_id);
             Player& controller = state.players[controller_id];
@@ -90,7 +90,7 @@ namespace dm::engine {
 
     class ShieldCountEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/, const std::map<std::string, int>& /*execution_context*/) override {
             using namespace dm::core;
             PlayerID controller_id = GenericCardSystem::get_controller(state, source_instance_id);
             Player& controller = state.players[controller_id];
@@ -100,14 +100,14 @@ namespace dm::engine {
 
     class OpponentPlayedWithoutManaEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/, const std::map<std::string, int>& /*execution_context*/) override {
             return state.turn_stats.played_without_mana;
         }
     };
 
     class CivilizationMatchEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& /*execution_context*/) override {
              using namespace dm::core;
              PlayerID controller_id = GenericCardSystem::get_controller(state, source_instance_id);
              Player& controller = state.players[controller_id];
@@ -131,14 +131,14 @@ namespace dm::engine {
 
     class FirstAttackEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& /*condition*/, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/, const std::map<std::string, int>& /*execution_context*/) override {
             return state.turn_stats.attacks_declared_this_turn == 1;
         }
     };
 
     class CompareStatEvaluator : public IConditionEvaluator {
     public:
-        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/) override {
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/, const std::map<std::string, int>& execution_context) override {
             using namespace dm::core;
             PlayerID self_id = GenericCardSystem::get_controller(state, source_instance_id);
             PlayerID opp_id = (self_id == 0) ? 1 : 0;
@@ -148,7 +148,10 @@ namespace dm::engine {
             int left_value = 0;
             std::string key = condition.stat_key;
 
-            if (key == "MY_MANA_COUNT") left_value = (int)self.mana_zone.size();
+            if (execution_context.count(key)) {
+                left_value = execution_context.at(key);
+            }
+            else if (key == "MY_MANA_COUNT") left_value = (int)self.mana_zone.size();
             else if (key == "OPPONENT_MANA_COUNT") left_value = (int)opp.mana_zone.size();
             else if (key == "MY_HAND_COUNT") left_value = (int)self.hand.size();
             else if (key == "OPPONENT_HAND_COUNT") left_value = (int)opp.hand.size();
