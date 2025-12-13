@@ -5,11 +5,11 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
-from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 
 class ReactionWidget(QWidget):
     """
     Widget to manage a list of ReactionAbility items.
+    Optimized for Phase 3.1 Requirements with dynamic visibility and better context.
     """
     dataChanged = pyqtSignal()
 
@@ -42,40 +42,48 @@ class ReactionWidget(QWidget):
         self.editor_group = QGroupBox(tr("Reaction Details"))
         self.editor_layout = QFormLayout(self.editor_group)
 
+        # Type
         self.type_combo = QComboBox()
         self.type_combo.addItems(["NONE", "NINJA_STRIKE", "STRIKE_BACK", "REVOLUTION_0_TRIGGER"])
         self.type_combo.currentIndexChanged.connect(self.update_current_item)
+        self.type_combo.currentIndexChanged.connect(self.update_visibility)
         self.editor_layout.addRow(tr("Type"), self.type_combo)
 
+        # Cost
+        self.label_cost = QLabel(tr("Cost / Requirement"))
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
         self.cost_spin.valueChanged.connect(self.update_current_item)
-        self.editor_layout.addRow(tr("Cost / Requirement"), self.cost_spin)
+        self.editor_layout.addRow(self.label_cost, self.cost_spin)
 
+        # Zone
+        self.label_zone = QLabel(tr("Zone"))
         self.zone_edit = QComboBox()
         self.zone_edit.addItems(["HAND", "GRAVEYARD", "MANA_ZONE"]) # Usual reaction zones
         self.zone_edit.currentTextChanged.connect(self.update_current_item)
-        self.editor_layout.addRow(tr("Zone"), self.zone_edit)
+        self.editor_layout.addRow(self.label_zone, self.zone_edit)
 
         # Condition Details
-        cond_group = QGroupBox(tr("Condition"))
-        cond_layout = QFormLayout(cond_group)
+        self.cond_group = QGroupBox(tr("Condition"))
+        cond_layout = QFormLayout(self.cond_group)
 
+        self.label_trigger = QLabel(tr("Trigger Event"))
         self.trigger_event_combo = QComboBox()
         self.trigger_event_combo.addItems(["NONE", "ON_BLOCK_OR_ATTACK", "ON_SHIELD_ADD", "ON_ATTACK_PLAYER"])
         self.trigger_event_combo.currentTextChanged.connect(self.update_current_item)
-        cond_layout.addRow(tr("Trigger Event"), self.trigger_event_combo)
+        cond_layout.addRow(self.label_trigger, self.trigger_event_combo)
 
         self.civ_match_check = QCheckBox(tr("Civilization Match Required"))
         self.civ_match_check.stateChanged.connect(self.update_current_item)
         cond_layout.addRow(self.civ_match_check)
 
+        self.label_mana = QLabel(tr("Min Mana Required"))
         self.mana_min_spin = QSpinBox()
         self.mana_min_spin.setRange(0, 99)
         self.mana_min_spin.valueChanged.connect(self.update_current_item)
-        cond_layout.addRow(tr("Min Mana Required"), self.mana_min_spin)
+        cond_layout.addRow(self.label_mana, self.mana_min_spin)
 
-        self.editor_layout.addRow(cond_group)
+        self.editor_layout.addRow(self.cond_group)
 
         main_layout.addWidget(self.editor_group, 2) # Stretch factor 2
 
@@ -86,6 +94,8 @@ class ReactionWidget(QWidget):
         self.reactions = data_list if data_list else []
         self.refresh_list()
         self.block_signals_all(False)
+        self.reaction_list.setCurrentRow(-1)
+        self.editor_group.setEnabled(False)
 
     def get_data(self):
         return self.reactions
@@ -104,7 +114,7 @@ class ReactionWidget(QWidget):
             "condition": {
                 "trigger_event": "ON_BLOCK_OR_ATTACK",
                 "civilization_match": True,
-                "mana_count_min": 4
+                "mana_count_min": 0
             }
         }
         self.reactions.append(new_reaction)
@@ -138,7 +148,40 @@ class ReactionWidget(QWidget):
         self.civ_match_check.setChecked(cond.get('civilization_match', False))
         self.mana_min_spin.setValue(cond.get('mana_count_min', 0))
 
+        self.update_visibility()
         self.block_signals_all(False)
+
+    def update_visibility(self):
+        rtype = self.type_combo.currentText()
+
+        # Default visibility
+        self.label_cost.setVisible(True)
+        self.cost_spin.setVisible(True)
+        self.label_mana.setVisible(True)
+        self.mana_min_spin.setVisible(True)
+        self.civ_match_check.setVisible(True)
+
+        if rtype == "STRIKE_BACK":
+            # Strike Back: No cost (0), needs Civ match.
+            # Usually doesn't need Mana Min.
+            self.label_cost.setVisible(False)
+            self.cost_spin.setVisible(False)
+            self.label_mana.setVisible(False)
+            self.mana_min_spin.setVisible(False)
+
+            # Auto-set trigger event if not set?
+            # self.set_combo_text(self.trigger_event_combo, "ON_SHIELD_ADD") # Might be annoying if user wants custom
+
+        elif rtype == "NINJA_STRIKE":
+            # Ninja Strike: Needs Cost (Mana Cost), Zone (Hand).
+            # Usually Civ Match is True.
+            pass
+
+        elif rtype == "REVOLUTION_0_TRIGGER":
+            # Revolution 0: Needs Cost? Usually 0.
+            # Trigger: ON_ATTACK_PLAYER.
+            self.label_cost.setVisible(False)
+            self.cost_spin.setVisible(False)
 
     def update_current_item(self):
         row = self.reaction_list.currentRow()
