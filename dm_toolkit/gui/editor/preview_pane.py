@@ -349,7 +349,7 @@ class CardPreviewWidget(QWidget):
             c = self.get_civ_color(civs[0])
             bg_style = f"background-color: {c};"
         else:
-            # Linear gradient for split circle (Equal Division)
+            # Conical gradient for split circle (Cake-like)
             stops = []
             segment_size = 1.0 / len(civs)
             for i, civ in enumerate(civs):
@@ -360,9 +360,9 @@ class CardPreviewWidget(QWidget):
                 stops.append(f"stop:{start} {c}")
                 stops.append(f"stop:{end} {c}")
 
-            # Diagonal gradient for visual flair
+            # Conical gradient starting at 90 degrees (12 o'clock)
             grad_str = ", ".join(stops)
-            bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, {grad_str});"
+            bg_style = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:90, {grad_str});"
 
         label.setStyleSheet(style + bg_style)
 
