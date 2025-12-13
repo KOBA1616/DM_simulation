@@ -26,7 +26,12 @@ class CardDataManager:
                     eff_item.appendRow(act_item)
                 card_item.appendRow(eff_item)
 
-            # 2. Add Spell Side if exists
+            # 2. Add Reaction Abilities
+            for ra_idx, ra in enumerate(card.get('reaction_abilities', [])):
+                ra_item = self._create_reaction_item(ra)
+                card_item.appendRow(ra_item)
+
+            # 3. Add Spell Side if exists
             spell_side_data = card.get('spell_side')
             if spell_side_data:
                 spell_item = self._create_spell_side_item(spell_side_data)
@@ -51,6 +56,7 @@ class CardDataManager:
             if not card_data: continue
 
             new_effects = []
+            new_reactions = []
             spell_side_dict = None
 
             # Revolution Change extraction
@@ -73,6 +79,11 @@ class CardDataManager:
                             has_rev_change_action = True
                             rev_change_filter = act.get('filter')
 
+                elif item_type == "REACTION_ABILITY":
+                    # Reconstruct Reaction Ability
+                    ra_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
+                    new_reactions.append(ra_data)
+
                 elif item_type == "SPELL_SIDE":
                     # Reconstruct Spell Side
                     spell_side_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
@@ -86,6 +97,7 @@ class CardDataManager:
                     spell_side_dict = spell_side_data
 
             card_data['effects'] = new_effects
+            card_data['reaction_abilities'] = new_reactions
             if spell_side_dict:
                 card_data['spell_side'] = spell_side_dict
             else:
@@ -166,8 +178,8 @@ class CardDataManager:
         new_item.setData(data, Qt.ItemDataRole.UserRole + 2)
 
         # For Twinpact structure:
-        # If adding EFFECT to CARD, insert BEFORE 'SPELL_SIDE' if it exists.
-        if item_type == "EFFECT" and parent_item.data(Qt.ItemDataRole.UserRole + 1) == "CARD":
+        # If adding EFFECT or REACTION_ABILITY to CARD, insert BEFORE 'SPELL_SIDE' if it exists.
+        if (item_type == "EFFECT" or item_type == "REACTION_ABILITY") and parent_item.data(Qt.ItemDataRole.UserRole + 1) == "CARD":
             spell_side_row = -1
             for i in range(parent_item.rowCount()):
                 child = parent_item.child(i)
@@ -290,6 +302,13 @@ class CardDataManager:
         item = QStandardItem(f"{tr('Effect')}: {tr(trig)}")
         item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
         item.setData(effect, Qt.ItemDataRole.UserRole + 2)
+        return item
+
+    def _create_reaction_item(self, reaction):
+        rtype = reaction.get('type', 'NONE')
+        item = QStandardItem(f"{tr('Reaction Ability')}: {rtype}")
+        item.setData("REACTION_ABILITY", Qt.ItemDataRole.UserRole + 1)
+        item.setData(reaction, Qt.ItemDataRole.UserRole + 2)
         return item
 
     def _create_action_item(self, action):
