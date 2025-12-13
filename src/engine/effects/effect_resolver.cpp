@@ -410,16 +410,42 @@ namespace dm::engine {
     }
 
     void EffectResolver::resolve_break_shield(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
-         Player& defender = game_state.get_non_active_player();
+         PlayerID target_pid = action.target_player;
+         if (target_pid == 255 || target_pid < 0) {
+             target_pid = game_state.get_non_active_player().id;
+         }
+         Player& defender = game_state.players[target_pid];
+
          if (defender.shield_zone.empty()) {
-             game_state.winner = (game_state.active_player_id == 0) ? GameResult::P1_WIN : GameResult::P2_WIN;
+             // If this break was intended for the opponent and they have no shields, it's a win.
+             // But if it was self-break or friendly fire, it shouldn't trigger win?
+             // Standard BREAK_SHIELD logic usually implies winning if empty.
+             // For safety, only trigger win if target is opponent of active player.
+             if (target_pid != game_state.active_player_id) {
+                 game_state.winner = (game_state.active_player_id == 0) ? GameResult::P1_WIN : GameResult::P2_WIN;
+             }
              return;
          }
 
          GenericCardSystem::resolve_trigger(game_state, TriggerType::AT_BREAK_SHIELD, action.source_instance_id, card_db);
 
-         CardInstance shield = defender.shield_zone.back();
-         defender.shield_zone.pop_back();
+         int shield_index = -1;
+         if (action.target_instance_id != -1) {
+             for (size_t i = 0; i < defender.shield_zone.size(); ++i) {
+                 if (defender.shield_zone[i].instance_id == action.target_instance_id) {
+                     shield_index = i;
+                     break;
+                 }
+             }
+         }
+
+         if (shield_index == -1) {
+             shield_index = defender.shield_zone.size() - 1;
+         }
+
+         CardInstance shield = defender.shield_zone[shield_index];
+         defender.shield_zone.erase(defender.shield_zone.begin() + shield_index);
+
          bool shield_burn = false;
          Player& attacker_player = game_state.get_active_player();
          auto it = std::find_if(attacker_player.battle_zone.begin(), attacker_player.battle_zone.end(),

@@ -78,14 +78,15 @@ class TestAtomicActionVersatility:
         state.players[0].battle_zone = []
         state.players[0].graveyard = []
 
+        # FIX: Add cards to deck so we can draw
+        for i in range(5):
+            state.add_card_to_deck(0, 9999, 1000+i)
+
         state.add_test_card_to_battle(0, card_id, 0, False, False)
 
         GenericCardSystem.resolve_effect(state, effect, 0)
         process_pending(state, self.card_db)
 
-        # Even if it fails, we document the state
-        # Expectation: destroyed
-        # If not destroyed, it means engine didn't process destroy correctly in this context
         assert len(state.players[0].battle_zone) == 0, "Card should be destroyed"
         assert len(state.players[0].graveyard) == 1, "Card should be in graveyard"
         assert len(state.players[0].hand) == 2, "Should draw 2 cards"
@@ -103,7 +104,6 @@ class TestAtomicActionVersatility:
         act2 = ActionDef()
         act2.type = EffectActionType.BREAK_SHIELD
         act2.value1 = 1
-        # Explicitly set filter for BREAK_SHIELD to ensure it finds targets
         act2.filter.zones = ["SHIELD_ZONE"]
         act2.filter.owner = "OPPONENT"
 
@@ -153,6 +153,10 @@ class TestAtomicActionVersatility:
         assert len(state.players[1].shield_zone) == 2, "Should break 1 shield"
 
     def test_case_3_variable_linking_draw(self):
+        # FIX: Ensure dummy card 9999 is registered
+        dummy_card = 9999
+        register_test_card(dummy_card, "Dummy", [], 1, "FIRE")
+
         act1 = ActionDef()
         act1.type = EffectActionType.COUNT_CARDS
         act1.output_value_key = "shield_count"
@@ -178,7 +182,7 @@ class TestAtomicActionVersatility:
         state.players[0].hand = []
 
         for i in range(4):
-            state.add_card_to_deck(0, 9999, 200+i)
+            state.add_card_to_deck(0, dummy_card, 200+i)
             setup_act = ActionDef()
             setup_act.type = EffectActionType.ADD_SHIELD
             setup_act.value1 = 1
@@ -188,6 +192,10 @@ class TestAtomicActionVersatility:
         assert len(state.players[0].shield_zone) == 4
 
         state.add_test_card_to_battle(0, card_id, 0, False, False)
+
+        # Add cards to deck for drawing
+        for i in range(10):
+            state.add_card_to_deck(0, dummy_card, 500+i)
 
         GenericCardSystem.resolve_effect(state, effect, 0)
         process_pending(state, self.card_db)

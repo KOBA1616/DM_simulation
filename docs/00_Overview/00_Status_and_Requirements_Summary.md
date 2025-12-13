@@ -73,10 +73,7 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 
 以下の不具合および制限事項が確認されており、次期開発フェーズでの修正が必要です。
 
-1.  **変数リンク機能 (Variable Linking) の不具合**
-    *   **概要**: `GenericCardSystem` におけるアクション間のコンテキスト（変数値）の伝播、および条件判定 (`ConditionDef`) に不具合があります。
-    *   **詳細**: `verify_atomic_versatility.py` テストにおいて、前のアクションで生成した値（例：破壊した数、シールド数）を後続のアクションや条件で参照する際に失敗しています。個別のハードコードされたロジック（革命チェンジ等）には影響しませんが、エディタで作成する汎用的な連鎖効果に影響します。
-2.  **多色マナ支払いの厳密性**
+1.  **多色マナ支払いの厳密性**
     *   **概要**: 多色カード使用時、各文明のカードを最低1枚タップするというルールが厳密に強制されていません。
     *   **詳細**: 現在の `ManaSystem` は合計コストと文明の有無のみをチェックしており、タップされたカードの組み合わせまでは検証していません。
 3.  **モジュール終了時のエラー**
@@ -98,6 +95,10 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 1.  **汎用コストシステムのエンジン統合 (Cost System Integration) [完了]**
     *   **現状**: `CostPaymentSystem` を `ActionGenerator` (MainPhaseStrategy) および `EffectResolver` に統合しました。これにより、ハイパーエナジーなどの能動的コスト軽減が汎用ロジックとして動作し、マナ支払いも正しく計算されます。
     *   **検証**: `tests/test_cost_payment_integration.py` にて、アクション生成および解決時のリソース消費（クリーチャータップとマナ支払い）の正常動作を確認済み。
+
+2.  **変数リンク機能の不具合修正 (Variable Linking Fix) [完了]**
+    *   **現状**: `GenericCardSystem` におけるアクション間のコンテキスト伝播の修正、および `EffectActionType::BREAK_SHIELD` を処理する `BreakShieldHandler` の実装を完了しました。また、テストコード (`tests/verify_atomic_versatility.py`) のセットアップ不備を修正しました。
+    *   **検証**: `tests/verify_atomic_versatility.py` が全テストケースで通過することを確認済み。
 
 ### 3.1 [Priority: High] User Requested Enhancements (ユーザー要望対応 - 残件)
 
@@ -166,7 +167,7 @@ AI開発と並行して、エディタの残存課題を解消します。
 `DestroyHandler` 等のテストにおいて、特定条件下（例：テスト環境でのSource IDのオーナー解決不整合）で意図した挙動にならないケースが観測されています。実環境では正常動作する可能性が高いですが、テスト基盤とエンジン側の疎結合性を高め、より堅牢なユニットテスト体制を構築する必要があります。
 
 ### 2. 変数リンクの適用範囲拡大
-現在、主要なハンドラ（Draw, Destroy, Shield, Count）での変数リンク対応が完了しましたが、他のすべてのアクションハンドラ（例：ManaCharge, Tap/Untap）にも同様の仕組みを波及させ、あらゆる数値を動的に制御可能にすることが推奨されます。
+現在、主要なハンドラ（Draw, Destroy, Shield, Count, BreakShield）での変数リンク対応が完了しましたが、他のすべてのアクションハンドラ（例：ManaCharge, Tap/Untap）にも同様の仕組みを波及させ、あらゆる数値を動的に制御可能にすることが推奨されます。
 
 ### 3.4 [Priority: Future] Phase 6: 将来的な拡張性・汎用性向上 (Future Scalability)
 
