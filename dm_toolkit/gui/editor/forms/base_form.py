@@ -77,20 +77,29 @@ class BaseEditForm(QWidget):
         pass
 
     # Helper methods
-    def populate_combo(self, combo: QComboBox, items: list, data_func=None):
+    def populate_combo(self, combo: QComboBox, items: list, data_func=None, display_func=None, clear=True):
         """
         Populates a QComboBox with items.
         items: List of strings or tuples (label, data).
         data_func: Optional function to extract data from an item if needed.
+        display_func: Optional function to format the display label.
+        clear: Whether to clear existing items (default True).
         """
-        combo.clear()
+        if clear:
+            combo.clear()
+
         for item in items:
             if isinstance(item, tuple):
                 label, user_data = item
+                if display_func:
+                    label = display_func(label)
                 combo.addItem(str(label), user_data)
             else:
                 # If just string, use it as both label and data
                 label = str(item)
+                if display_func:
+                    label = display_func(item)
+
                 user_data = item if data_func is None else data_func(item)
                 combo.addItem(label, user_data)
 

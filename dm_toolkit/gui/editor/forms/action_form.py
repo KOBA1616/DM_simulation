@@ -66,7 +66,7 @@ class ActionEditForm(BaseEditForm):
         self.measure_mode_combo = QComboBox()
         self.measure_mode_combo.addItem(tr("Cards matching filter"), "CARDS_MATCHING_FILTER")
         stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT", "CARDS_DRAWN_THIS_TURN"]
-        self.populate_combo(self.measure_mode_combo, stats, data_func=lambda x: x if x != "Cards matching filter" else "CARDS_MATCHING_FILTER")
+        self.populate_combo(self.measure_mode_combo, stats, data_func=lambda x: x, clear=False)
 
         self.ref_mode_combo = QComboBox()
         ref_modes = ["SYM_CREATURE", "SYM_SPELL", "G_ZERO", "HYPER_ENERGY", "NONE"]
