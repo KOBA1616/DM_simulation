@@ -423,7 +423,7 @@ namespace dm::engine {
 
     void EffectResolver::resolve_break_shield(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
          PlayerID target_pid = action.target_player;
-         if (target_pid == 255 || target_pid < 0) {
+         if (target_pid == 255) {
              target_pid = game_state.get_non_active_player().id;
          }
          Player& defender = game_state.players[target_pid];
