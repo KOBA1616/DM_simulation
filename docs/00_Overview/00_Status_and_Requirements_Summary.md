@@ -36,14 +36,38 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
 *   **AlphaZero Pipeline**: データ収集 -> 学習 -> 評価 の完全自動ループが稼働中。
 *   **推論エンジン**: 相手デッキタイプ推定 (`DeckClassifier`) と手札確率推定 (`HandEstimator`) を実装済み。
+*   **探索アルゴリズム**:
+    *   **MCTS (Monte Carlo Tree Search)**: 標準的なUCTベースの探索。
+    *   **Beam Search (ビームサーチ)**: `BeamSearchEvaluator` クラスを実装済み。幅(Beam Width)と深さ(Depth)を指定して、トリガーリスクや相手の脅威度（Opponent Danger）をヒューリスティックに評価しながら決定的な探索を行うことが可能です。
 *   **自己進化**: 遺伝的アルゴリズムによるデッキ改良ロジック (`DeckEvolution`) がC++コアに統合され、高速に動作します。
 *   **ONNX Runtime (C++) 統合**: 学習済みPyTorchモデルをONNX形式でエクスポートし、C++エンジン内で直接高速推論を行う `NeuralEvaluator` の拡張を完了しました。
 *   **Phase 4 アーキテクチャ**: `NetworkV2` (Transformer/Linear Attention) の実装と単体テストによる動作検証を完了しました。
 
-### 2.4 現在確認されている実装上の不整合 (Identified Implementation Inconsistencies)
+### 2.4 サポート済みアクション・トリガー一覧 (Supported Actions & Triggers)
+
+現在のコードベースで実装・登録されている主要な列挙子は以下の通りです。
+
+**実装済みアクション (EffectActionType)**
+以下のタイプは `IActionHandler` が登録されており、動作します。
+*   **基本操作**: `DRAW_CARD`, `ADD_MANA` (Charge), `DESTROY`, `RETURN_TO_HAND`, `TAP`, `UNTAP`, `MOVE_CARD` (汎用移動), `CAST_SPELL`, `PUT_CREATURE`
+*   **シールド操作**: `ADD_SHIELD`, `SEND_SHIELD_TO_GRAVE`, `BREAK_SHIELD` (Engine Loop / Action)
+*   **山札操作**: `SEARCH_DECK`, `SEARCH_DECK_BOTTOM`, `SEND_TO_DECK_BOTTOM`, `SHUFFLE_DECK`, `REVEAL_CARDS`, `LOOK_AND_ADD` (Partial/Alias)
+*   **バッファ・特殊領域**: `MEKRAID`, `LOOK_TO_BUFFER`, `MOVE_BUFFER_TO_ZONE`, `PLAY_FROM_BUFFER`
+*   **数値・変数**: `COUNT_CARDS`, `GET_GAME_STAT` (マナ文明数、手札枚数等), `SELECT_NUMBER`, `COST_REFERENCE`, `APPLY_MODIFIER` (Power/Cost修正)
+*   **その他**: `SELECT_OPTION` (モード選択), `FRIEND_BURST`, `GRANT_KEYWORD`, `MOVE_TO_UNDER_CARD`
+
+**実装済みトリガー (TriggerType)**
+*   **標準**: `ON_PLAY` (cip), `ON_ATTACK`, `ON_DESTROY`, `S_TRIGGER`, `TURN_START`, `PASSIVE_CONST`
+*   **拡張**: `ON_BLOCK` (Blocker), `AT_BREAK_SHIELD`, `ON_ATTACK_FROM_HAND` (Revolution Change), `ON_OTHER_ENTER`
+
+### 2.5 実装上の不整合・未完了項目 (Identified Implementation Inconsistencies)
 現在、以下の不整合が確認されており、将来的な修正対象として記録されています。
 
-（現在、主要な不整合は解消されました。残存課題は「今後の課題」セクションを参照してください。）
+1.  **一部トリガーのロジック未実装**
+    *   `ON_SHIELD_ADD`: Enum定義済みですが、`MoveCardHandler` 等でのフック処理がコメントアウト状態または不完全です（リアクションシステムでは一部参照あり）。
+    *   `ON_CAST_SPELL`: Enum定義済みですが、`CastSpellHandler` 等での発火ロジックが明示的に見当たりません。
+
+（現在、主要な不整合は解消されました。上記はマイナーな残存課題です。）
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
