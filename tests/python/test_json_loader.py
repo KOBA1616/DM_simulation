@@ -67,10 +67,10 @@ class TestJsonLoader(unittest.TestCase):
         # However, `bat.civilization` returned <Civilization.NATURE: 16> and we compared it to int(Civilization.NATURE) which is 16.
         # The error "assert <Civilization.NATURE: 16> == 16" suggests they are NOT equal.
         # It's better to compare against the Enum member itself.
-        assert bat.civilization == Civilization.NATURE
+        assert bat.civilizations[0] == Civilization.NATURE
 
         # Verify second card content (Aqua Hulcus)
         assert 1002 in cards
         ah = cards[1002]
         assert ah.name == "Aqua Hulcus"
-        assert ah.civilization == Civilization.WATER
+        assert ah.civilizations[0] == Civilization.WATER

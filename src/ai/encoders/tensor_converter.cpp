@@ -120,6 +120,7 @@ namespace dm::ai {
         const std::map<CardID, CardDefinition>& card_db,
         bool mask_opponent_hand
     ) {
+        (void)card_db;
         std::vector<long> seq;
         seq.reserve(MAX_SEQ_LEN);
 
