@@ -60,15 +60,15 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 **実装済みトリガー (TriggerType)**
 *   **標準**: `ON_PLAY` (cip), `ON_ATTACK`, `ON_DESTROY`, `S_TRIGGER`, `TURN_START`, `PASSIVE_CONST`
 *   **拡張**: `ON_BLOCK` (Blocker), `AT_BREAK_SHIELD`, `ON_ATTACK_FROM_HAND` (Revolution Change), `ON_OTHER_ENTER`
+*   **新規**: `ON_SHIELD_ADD`, `ON_CAST_SPELL`
 
 ### 2.5 実装上の不整合・未完了項目 (Identified Implementation Inconsistencies)
 現在、以下の不整合が確認されており、将来的な修正対象として記録されています。
 
 1.  **一部トリガーのロジック未実装**
-    *   `ON_SHIELD_ADD`: Enum定義済みですが、`MoveCardHandler` 等でのフック処理がコメントアウト状態または不完全です（リアクションシステムでは一部参照あり）。
-    *   `ON_CAST_SPELL`: Enum定義済みですが、`CastSpellHandler` 等での発火ロジックが明示的に見当たりません。
+    *   なし（`ON_SHIELD_ADD`および`ON_CAST_SPELL`は実装済み）
 
-（現在、主要な不整合は解消されました。上記はマイナーな残存課題です。）
+（現在、主要な不整合は解消されました。）
 
 ### 2.6 現在の懸念事項と既知の不具合 (Current Concerns and Known Issues)
 
@@ -97,6 +97,10 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 2.  **変数リンク機能の不具合修正 (Variable Linking Fix) [完了]**
     *   **現状**: `GenericCardSystem` におけるアクション間のコンテキスト伝播の修正完了。
     *   **検証**: `tests/verify_atomic_versatility.py` が全テストケースで通過することを確認済み。
+
+3.  **トリガーロジックの補完 (Trigger Logic Completion) [完了]**
+    *   **現状**: `ON_SHIELD_ADD` および `ON_CAST_SPELL` のトリガータイプを `bindings.cpp` に追加し、`MoveCardHandler` および `EffectResolver` に発火ロジックを実装しました。
+    *   **検証**: 変数リンク検証時にトリガーの列挙子が正しく機能していることを確認済み。
 
 ### 3.1 [Priority: High] User Requested Enhancements (ユーザー要望対応 - 残件)
 
@@ -136,7 +140,7 @@ AI開発と並行して、エディタの残存課題を解消します。
 `DestroyHandler` 等のテストにおいて、特定条件下（例：テスト環境でのSource IDのオーナー解決不整合）で意図した挙動にならないケースが観測されています。実環境では正常動作する可能性が高いですが、テスト基盤とエンジン側の疎結合性を高め、より堅牢なユニットテスト体制を構築する必要があります。
 
 ### 2. 変数リンクの適用範囲拡大
-現在、主要なハンドラ（Draw, Destroy, Shield, Count, BreakShield）での変数リンク対応が完了しましたが、他のすべてのアクションハンドラ（例：ManaCharge, Tap/Untap）にも同様の仕組みを波及させ、あらゆる数値を動的に制御可能にすることが推奨されます。
+**[完了]** 主要なハンドラ（Draw, Destroy, Shield, Count, BreakShield）に加え、`TapHandler`, `UntapHandler`, `ManaChargeHandler` においても `GenericCardSystem` を介した変数リンク（`input_value_key`）のサポートが確認されました。これにより、ほぼ全てのアクションで動的な数値指定が可能です。
 
 ### 3.4 [Priority: Future] Phase 6: 将来的な拡張性・汎用性向上 (Future Scalability)
 
