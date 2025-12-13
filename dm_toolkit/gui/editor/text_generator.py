@@ -90,7 +90,21 @@ class CardTextGenerator:
         "PUT_CREATURE": "{target}をバトルゾーンに出す。",
         "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
         "MOVE_CARD": "{target}を{zone}に置く。",
-        "COST_REFERENCE": "コストを軽減する" # Updated
+        "COST_REFERENCE": "コストを軽減する",
+
+        # New Additions
+        "SUMMON_TOKEN": "「{str_val}」を{value1}体出す。",
+        "RESET_INSTANCE": "{target}の状態をリセットする（アンタップ等）。",
+        "REGISTER_DELAYED_EFFECT": "「{str_val}」の効果を{value1}ターン登録する。",
+        "FRIEND_BURST": "{str_val}のフレンド・バースト",
+        "MOVE_TO_UNDER_CARD": "{target}を{value1}枚選び、カードの下に置く。",
+        "SELECT_NUMBER": "数字を1つ選ぶ。",
+        "DECLARE_NUMBER": "{value1}〜{value2}の数字を1つ宣言する。",
+        "COST_REDUCTION": "コストを{value1}軽減する。",
+        "LOOK_TO_BUFFER": "{source_zone}から{value1}枚を見る（バッファへ）。",
+        "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
+        "PLAY_FROM_BUFFER": "バッファからプレイする。",
+        "MOVE_BUFFER_TO_ZONE": "バッファから{zone}に置く。"
     }
 
     ZONE_MAP = {
@@ -100,7 +114,8 @@ class CardTextGenerator:
         "DECK": "山札",
         "BATTLE_ZONE": "バトルゾーン",
         "SHIELD_ZONE": "シールドゾーン",
-        "DECK_BOTTOM": "山札の下"
+        "DECK_BOTTOM": "山札の下",
+        "DECK_TOP": "山札の上"
     }
 
     @classmethod
@@ -291,14 +306,23 @@ class CardTextGenerator:
         """
         scope = action.get("scope", "NONE")
         filter_def = action.get("filter", {})
+        atype = action.get("type", "")
 
         target_desc = ""
         unit = "枚" # Default unit
+
+        # Implicit handling for certain actions that don't always specify scope but imply it (e.g., DISCARD imply SELF)
+        if atype == "DISCARD" and scope == "NONE":
+             scope = "PLAYER_SELF"
 
         if scope == "PLAYER_OPPONENT":
             target_desc += "相手の"
         elif scope == "PLAYER_SELF" or scope == "SELF":
             target_desc += "自分の"
+        elif scope == "ALL_PLAYERS":
+            target_desc += "すべてのプレイヤーの"
+        elif scope == "RANDOM":
+            target_desc += "ランダムな"
 
         # Parse filter
         if filter_def:
@@ -314,6 +338,12 @@ class CardTextGenerator:
 
             if races:
                 target_desc += "/".join(races) + "の"
+
+            if filter_def.get("min_cost", 0) > 0:
+                 target_desc += f"コスト{filter_def['min_cost']}以上の"
+
+            if filter_def.get("max_cost", 999) < 999:
+                 target_desc += f"コスト{filter_def['max_cost']}以下の"
 
             # Nouns
             if "BATTLE_ZONE" in zones:
@@ -350,7 +380,6 @@ class CardTextGenerator:
 
         else:
             # Implicit targets based on action type
-            atype = action.get("type", "")
             if atype == "DESTROY":
                  if scope == "PLAYER_OPPONENT" or scope == "OPPONENT": # Legacy compat
                      target_desc += "クリーチャー" # Default assumption
@@ -361,6 +390,8 @@ class CardTextGenerator:
                  if "クリーチャー" not in target_desc:
                       target_desc += "クリーチャー"
                       unit = "体"
+            elif atype == "DISCARD":
+                 target_desc = "手札" # Typically "Discard N cards" -> "Select N cards from Hand"
 
         if not target_desc:
             target_desc = "カード" # Fallback

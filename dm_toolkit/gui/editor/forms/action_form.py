@@ -51,12 +51,12 @@ class ActionEditForm(BaseEditForm):
             "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE", "SEND_TO_DECK_BOTTOM",
             "FRIEND_BURST", "GRANT_KEYWORD", "MOVE_CARD"
         ]
-        self.populate_combo(self.type_combo, types, data_func=lambda x: x)
+        self.populate_combo(self.type_combo, types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Action Type"), self.type_combo)
 
         self.scope_combo = QComboBox()
         scopes = ["PLAYER_SELF", "PLAYER_OPPONENT", "TARGET_SELECT", "ALL_PLAYERS", "RANDOM", "ALL_FILTERED", "NONE"]
-        self.populate_combo(self.scope_combo, scopes, data_func=lambda x: x)
+        self.populate_combo(self.scope_combo, scopes, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Scope"), self.scope_combo)
 
         self.str_val_label = QLabel(tr("String Value"))
@@ -64,13 +64,13 @@ class ActionEditForm(BaseEditForm):
 
         # Measure Mode Combo (Unified)
         self.measure_mode_combo = QComboBox()
-        self.measure_mode_combo.addItem(tr("Cards matching filter"), "CARDS_MATCHING_FILTER")
+        self.measure_mode_combo.addItem(tr("CARDS_MATCHING_FILTER"), "CARDS_MATCHING_FILTER")
         stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT", "CARDS_DRAWN_THIS_TURN"]
-        self.populate_combo(self.measure_mode_combo, stats, data_func=lambda x: x, clear=False)
+        self.populate_combo(self.measure_mode_combo, stats, data_func=lambda x: x, display_func=tr, clear=False)
 
         self.ref_mode_combo = QComboBox()
         ref_modes = ["SYM_CREATURE", "SYM_SPELL", "G_ZERO", "HYPER_ENERGY", "NONE"]
-        self.populate_combo(self.ref_mode_combo, ref_modes, data_func=lambda x: x)
+        self.populate_combo(self.ref_mode_combo, ref_modes, data_func=lambda x: x, display_func=tr)
 
         layout.addRow(self.str_val_label, self.str_val_edit)
 
@@ -83,7 +83,7 @@ class ActionEditForm(BaseEditForm):
         # Destination Zone Combo (For MOVE_CARD)
         self.dest_zone_combo = QComboBox()
         zones = ["HAND", "BATTLE_ZONE", "GRAVEYARD", "MANA_ZONE", "SHIELD_ZONE", "DECK_BOTTOM", "DECK_TOP"]
-        self.populate_combo(self.dest_zone_combo, zones, data_func=lambda x: x)
+        self.populate_combo(self.dest_zone_combo, zones, data_func=lambda x: x, display_func=tr)
         self.dest_zone_label = QLabel(tr("Destination Zone"))
         layout.addRow(self.dest_zone_label, self.dest_zone_combo)
 
