@@ -19,7 +19,7 @@ def create_mock_card_db():
     c1.id = 1
     c1.name = "Bronze Arm Tribe"
     c1.type = CardType.CREATURE
-    c1.civilization = Civilization.NATURE
+    c1.civilizations = [Civilization.NATURE]
     c1.cost = 3
     c1.power = 1000
     card_db[1] = c1
@@ -29,7 +29,7 @@ def create_mock_card_db():
     c2.id = 2
     c2.name = "Aqua Hulcus"
     c2.type = CardType.CREATURE
-    c2.civilization = Civilization.WATER
+    c2.civilizations = [Civilization.WATER]
     c2.cost = 3
     c2.power = 2000
     card_db[2] = c2
@@ -44,7 +44,7 @@ def test_card_stats_tracking():
 
     # Register cards
     for cid, cdef in card_db.items():
-        cdata = CardData(cid, cdef.name, cdef.cost, cdef.civilization.name, cdef.power,
+        cdata = CardData(cid, cdef.name, cdef.cost, cdef.civilizations[0].name, cdef.power,
                          "CREATURE" if cdef.type == CardType.CREATURE else "SPELL", [], [])
         dm_ai_module.register_card_data(cdata)
 
@@ -111,7 +111,7 @@ def test_card_stats_win_contribution():
 
     # Register cards
     for cid, cdef in card_db.items():
-        cdata = CardData(cid, cdef.name, cdef.cost, cdef.civilization.name, cdef.power,
+        cdata = CardData(cid, cdef.name, cdef.cost, cdef.civilizations[0].name, cdef.power,
                          "CREATURE" if cdef.type == CardType.CREATURE else "SPELL", [], [])
         dm_ai_module.register_card_data(cdata)
 
