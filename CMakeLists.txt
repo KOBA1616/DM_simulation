@@ -56,6 +56,33 @@ option(USE_LIBTORCH "Enable LibTorch-based C++ inference (optional)" OFF)
 if(USE_LIBTORCH)
     find_package(Torch REQUIRED)
     message(STATUS "LibTorch enabled")
+
+    # Fix for MinGW/Clang on Windows when using PyTorch (which adds MSVC flags)
+    if(WIN32 AND NOT MSVC)
+        message(STATUS "Removing MSVC flags from CMAKE_CXX_FLAGS for MinGW/Clang compatibility")
+        foreach(flag_var
+            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+            if(${flag_var})
+                string(REPLACE "/permissive-" "" ${flag_var} "${${flag_var}}")
+                string(REPLACE "/EHsc" "" ${flag_var} "${${flag_var}}")
+                string(REPLACE "/bigobj" "" ${flag_var} "${${flag_var}}")
+                string(REPLACE "/MD" "" ${flag_var} "${${flag_var}}")
+                string(REPLACE "/MDd" "" ${flag_var} "${${flag_var}}")
+            endif()
+        endforeach()
+
+        # Remove flags from torch targets
+        foreach(tgt torch torch_cpu torch_cuda c10)
+            if(TARGET ${tgt})
+                # MSVC flags are often wrapped in generator expressions, making them hard to remove with list(REMOVE_ITEM)
+                # Since we are on MinGW, we likely don't need any of the MSVC specific options provided by Torch.
+                # Clearing them is the safest bet to avoid "unknown argument" errors.
+                set_target_properties(${tgt} PROPERTIES INTERFACE_COMPILE_OPTIONS "")
+                message(STATUS "Cleared INTERFACE_COMPILE_OPTIONS for target ${tgt} to remove MSVC flags")
+            endif()
+        endforeach()
+    endif()
 else()
     message(STATUS "LibTorch disabled (USE_LIBTORCH=OFF)")
 endif()

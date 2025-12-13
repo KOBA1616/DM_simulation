@@ -1,7 +1,8 @@
 param(
     [string]$Config = "Release",
     [string]$Generator = "MinGW Makefiles",
-    [switch]$Clean
+    [switch]$Clean,
+    [switch]$UseLibTorch = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,8 +25,39 @@ if (-not (Test-Path $buildDir)) {
     New-Item -ItemType Directory -Path $buildDir | Out-Null
 }
 
+$cmakeArgs = @("-S", $projectRoot, "-B", $buildDir, "-G", $Generator, "-DCMAKE_BUILD_TYPE=$Config")
+
+if ($UseLibTorch) {
+    Write-Host "Detecting LibTorch path from Python..."
+    
+    # Try to find python in .venv first
+    $venvPython = Join-Path $projectRoot ".venv\Scripts\python.exe"
+    if (Test-Path $venvPython) {
+        $pythonCmd = $venvPython
+    } else {
+        $pythonCmd = "python"
+    }
+
+    try {
+        $torchPath = & $pythonCmd -c "import torch; print(torch.utils.cmake_prefix_path)"
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($torchPath)) {
+            Write-Host "Found LibTorch at: $torchPath"
+            $cmakeArgs += "-DUSE_LIBTORCH=ON"
+            $cmakeArgs += "-DCMAKE_PREFIX_PATH=$torchPath"
+        } else {
+            Write-Warning "Could not detect LibTorch path via '$pythonCmd'. Ensure 'torch' is installed in the active Python environment."
+            $cmakeArgs += "-DUSE_LIBTORCH=ON"
+        }
+    } catch {
+        Write-Warning "Error detecting LibTorch: $_"
+        $cmakeArgs += "-DUSE_LIBTORCH=ON"
+    }
+} else {
+    $cmakeArgs += "-DUSE_LIBTORCH=OFF"
+}
+
 Write-Host "Configuring (Generator=$Generator, Config=$Config)..."
-cmake -S $projectRoot -B $buildDir -G $Generator -DCMAKE_BUILD_TYPE=$Config
+cmake @cmakeArgs
 
 Write-Host "Building..."
 cmake --build $buildDir --config $Config

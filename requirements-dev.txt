@@ -3,4 +3,6 @@ numpy
 pybind11
 PyQt6
 torch
+onnx
+onnxruntime
 
