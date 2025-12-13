@@ -61,7 +61,7 @@ def test_ninja_strike_flow():
         # We need to register for Generic functions.
         # Use helper:
         cdata = dm_ai_module.CardData(cid, cdef.name, cdef.cost,
-                                      [cdef.civilization], # Use list of Enums
+                                          cdef.civilizations, # Use list of Enums
                                       cdef.power, "CREATURE", cdef.races, [],
                                       cdef.reaction_abilities) # Pass reaction abilities!
         dm_ai_module.register_card_data(cdata)
@@ -118,7 +118,7 @@ def test_ninja_strike_flow():
             ninja_action = a
 
     # If Ninja Strike fails, check civ
-    print(f"Card Civ: {cards[9999].civilization}")
+        print(f"Card Civ: {cards[9999].civilizations[0]}")
 
     assert ninja_action is not None, "Should have Ninja Strike action"
 
