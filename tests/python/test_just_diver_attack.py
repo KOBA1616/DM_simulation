@@ -38,7 +38,7 @@ def test_just_diver_attack():
     # Register CardData for Registry lookups (GenericCardSystem)
     for cid, cdef in card_db.items():
         cdata = dm_ai_module.CardData(cid, cdef.name, cdef.cost,
-                                      cdef.civilization.name, # Use string name
+                                      cdef.civilizations[0].name, # Use string name
                                       cdef.power if cdef.power > 0 else 0,
                                       "CREATURE" if cdef.type == dm_ai_module.CardType.CREATURE else "SPELL", cdef.races, [])
         dm_ai_module.register_card_data(cdata)

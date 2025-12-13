@@ -432,14 +432,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("reaction_abilities", &CardDefinition::reaction_abilities)
         .def_readwrite("cost_reductions", &CardDefinition::cost_reductions) // Added Phase 4
         .def_readwrite("spell_side", &CardDefinition::spell_side)
-        .def_property("civilization",
-             [](const CardDefinition& c) {
-                 return c.civilizations.empty() ? Civilization::NONE : c.civilizations[0];
-             },
-             [](CardDefinition& c, Civilization civ) {
-                 c.civilizations = {civ};
-             }
-        )
+        // Removed inconsistent 'civilization' property to enforce vector usage
         .def_readwrite("power_attacker_bonus", &CardDefinition::power_attacker_bonus);
 
     py::class_<CardData, std::shared_ptr<CardData>>(m, "CardData")
@@ -535,7 +528,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
              }
         })
         .def("clear_zone", [](GameState& s, PlayerID pid, Zone zone) {
-            if (pid < 0 || pid >= 2) return;
+            if (pid >= 2) return;
             if (zone == Zone::SHIELD) s.players[pid].shield_zone.clear();
             else if (zone == Zone::BATTLE) s.players[pid].battle_zone.clear();
             else if (zone == Zone::HAND) s.players[pid].hand.clear();
@@ -977,4 +970,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
     m.def("register_batch_inference_numpy", &dm::python::set_flat_batch_callback);
     m.def("has_batch_inference_registered", &dm::python::has_batch_callback);
     m.def("has_flat_batch_inference_registered", &dm::python::has_flat_batch_callback);
+    m.def("clear_batch_inference", &dm::python::clear_batch_callback);
+    m.def("clear_batch_inference_numpy", &dm::python::clear_flat_batch_callback);
 }
