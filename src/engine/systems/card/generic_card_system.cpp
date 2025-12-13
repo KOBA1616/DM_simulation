@@ -241,13 +241,13 @@ namespace dm::engine {
         }
     }
 
-    bool GenericCardSystem::check_condition(GameState& game_state, const ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+    bool GenericCardSystem::check_condition(GameState& game_state, const ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& execution_context) {
         if (condition.type == "NONE") return true;
 
         ensure_evaluators_registered();
         ConditionSystem& sys = ConditionSystem::instance();
         if (IConditionEvaluator* evaluator = sys.get_evaluator(condition.type)) {
-            return evaluator->evaluate(game_state, condition, source_instance_id, card_db);
+            return evaluator->evaluate(game_state, condition, source_instance_id, card_db, execution_context);
         }
 
         PlayerID controller = get_controller(game_state, source_instance_id);
