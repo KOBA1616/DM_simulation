@@ -4,6 +4,7 @@ from dm_toolkit.gui.editor.forms.card_form import CardEditForm
 from dm_toolkit.gui.editor.forms.effect_form import EffectEditForm
 from dm_toolkit.gui.editor.forms.action_form import ActionEditForm
 from dm_toolkit.gui.editor.forms.spell_side_form import SpellSideForm
+from dm_toolkit.gui.editor.forms.reaction_form import ReactionEditForm
 from dm_toolkit.gui.localization import tr
 
 class PropertyInspector(QWidget):
@@ -37,6 +38,9 @@ class PropertyInspector(QWidget):
         self.spell_side_form = SpellSideForm()
         self.stack.addWidget(self.spell_side_form)
 
+        self.reaction_form = ReactionEditForm()
+        self.stack.addWidget(self.reaction_form)
+
         layout.addWidget(self.stack)
 
     def set_selection(self, index):
@@ -59,5 +63,8 @@ class PropertyInspector(QWidget):
         elif item_type == "SPELL_SIDE":
             self.spell_side_form.set_data(item)
             self.stack.setCurrentWidget(self.spell_side_form)
+        elif item_type == "REACTION_ABILITY":
+            self.reaction_form.set_data(item)
+            self.stack.setCurrentWidget(self.reaction_form)
         else:
             self.stack.setCurrentWidget(self.empty_page)
