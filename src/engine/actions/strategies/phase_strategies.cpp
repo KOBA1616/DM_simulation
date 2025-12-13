@@ -103,7 +103,7 @@ namespace dm::engine {
                             int adjusted_cost = ManaSystem::get_adjusted_cost(game_state, active_player, def);
                             int effective_cost = std::max(reduction.min_mana_cost, adjusted_cost - reduction_val);
 
-                            int available_mana = ManaSystem::get_usable_mana_count(game_state, active_player.id, def.civilizations);
+                            int available_mana = ManaSystem::get_usable_mana_count(game_state, active_player.id, def.civilizations, card_db);
 
                             if (available_mana >= effective_cost) {
                                 Action action;

@@ -60,9 +60,21 @@ namespace dm::engine {
                      }
                      if (card && card_db.count(card->card_id)) {
                          const auto& def = card_db.at(card->card_id);
-                         ManaSystem::auto_tap_mana(game_state, player, def, card_db);
-                        // Mark cost paid so StackStrategy can emit RESOLVE_PLAY
-                        card->is_tapped = true;
+                         bool paid = ManaSystem::auto_tap_mana(game_state, player, def, card_db);
+                         if (paid) {
+                             // Mark cost paid so StackStrategy can emit RESOLVE_PLAY
+                             card->is_tapped = true;
+                         } else {
+                             // Payment failed. Revert to hand to prevent stuck state or illegal play.
+                             // Remove from stack
+                             if (!game_state.stack_zone.empty() && game_state.stack_zone.back().instance_id == action.source_instance_id) {
+                                 CardInstance c = game_state.stack_zone.back();
+                                 game_state.stack_zone.pop_back();
+                                 // Reset card state
+                                 c.is_tapped = false; // Reset just in case
+                                 player.hand.push_back(c);
+                             }
+                         }
                      }
                  }
                  break;
