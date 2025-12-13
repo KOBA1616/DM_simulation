@@ -30,6 +30,7 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
     *   **UI改善**: カードプレビューの視認性向上（黒枠化、マナコスト色分け、ツインパクトレイアウト修正）を実施済み。
     *   **安定性**: プロパティインスペクタのクラッシュバグを修正済み。
     *   **不整合修正**: 革命チェンジのデータ構造、文明指定キーの不整合を解消済み。
+    *   **リアクション編集**: `ReactionWidget` を最適化し、能力タイプに応じた動的なフィールド表示（コスト、ゾーン、トリガー条件の可視化）に対応しました。
 *   **機能**: JSONデータの視覚的編集、ロジックツリー、変数リンク、テキスト自動生成、デッキビルダー、シナリオエディタ。
 *   **検証済み**: 生成されたJSONデータはエンジンで即座に読み込み可能。
 
@@ -41,7 +42,7 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
     *   **Beam Search (ビームサーチ)**: `BeamSearchEvaluator` クラスを実装済み。幅(Beam Width)と深さ(Depth)を指定して、トリガーリスクや相手の脅威度（Opponent Danger）をヒューリスティックに評価しながら決定的な探索を行うことが可能です。
 *   **自己進化**: 遺伝的アルゴリズムによるデッキ改良ロジック (`DeckEvolution`) がC++コアに統合され、高速に動作します。
 *   **ONNX Runtime (C++) 統合**: 学習済みPyTorchモデルをONNX形式でエクスポートし、C++エンジン内で直接高速推論を行う `NeuralEvaluator` の拡張を完了しました。
-*   **Phase 4 アーキテクチャ**: `NetworkV2` (Transformer/Linear Attention) の実装と単体テストによる動作検証を完了しました。
+*   **Phase 4 アーキテクチャ**: `NetworkV2` (Transformer/Linear Attention) の実装と、C++側のシーケンス変換ロジック (`TensorConverter::convert_to_sequence`) の実装・結合を完了しました。
 
 ### 2.4 サポート済みアクション・トリガー一覧 (Supported Actions & Triggers)
 
@@ -90,29 +91,29 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 開発効率と信頼性を向上させるため、以下の修正と機能拡張を最優先で実施します。
 
 1.  **汎用コストシステムのエンジン統合 (Cost System Integration) [完了]**
-    *   **現状**: `CostPaymentSystem` を `ActionGenerator` (MainPhaseStrategy) および `EffectResolver` に統合しました。これにより、ハイパーエナジーなどの能動的コスト軽減が汎用ロジックとして動作し、マナ支払いも正しく計算されます。
-    *   **検証**: `tests/test_cost_payment_integration.py` にて、アクション生成および解決時のリソース消費（クリーチャータップとマナ支払い）の正常動作を確認済み。
+    *   **現状**: `CostPaymentSystem` を `ActionGenerator` (MainPhaseStrategy) および `EffectResolver` に統合しました。
+    *   **検証**: `tests/test_cost_payment_integration.py` にて正常動作を確認済み。
 
 2.  **変数リンク機能の不具合修正 (Variable Linking Fix) [完了]**
-    *   **現状**: `GenericCardSystem` におけるアクション間のコンテキスト伝播の修正、および `EffectActionType::BREAK_SHIELD` を処理する `BreakShieldHandler` の実装を完了しました。また、テストコード (`tests/verify_atomic_versatility.py`) のセットアップ不備を修正しました。
+    *   **現状**: `GenericCardSystem` におけるアクション間のコンテキスト伝播の修正完了。
     *   **検証**: `tests/verify_atomic_versatility.py` が全テストケースで通過することを確認済み。
 
 ### 3.1 [Priority: High] User Requested Enhancements (ユーザー要望対応 - 残件)
 
 直近のフィードバックに基づく残存タスク。
 
-1.  **GUI/Editor 機能拡張**
-    *   **リアクション編集の最適化**
-        *   リアクション能力のウィジェットは、将来的にEffect編集画面等、より適切なコンテキストで編集できるように検討する。
+1.  **GUI/Editor 機能拡張 [完了]**
+    *   **リアクション編集の最適化**: `ReactionWidget` を更新し、能力タイプ（Ninja Strike, Strike Back等）に応じたUIの動的切り替えと、不必要なフィールドの隠蔽を実装しました。
 
 ### 3.2 [Priority: Medium] Phase 4: アーキテクチャ刷新 (Architecture Update)
 
-1.  **Transformer (Linear Attention) 導入**
+1.  **Transformer (Linear Attention) 導入 [完了]**
     *   **目的**: 盤面のカード枚数が可変であるTCGの特性に合わせ、固定長入力のResNetから、可変長入力を扱えるAttention機構へ移行する。
     *   **計画**: `NetworkV2` として、PyTorchでのモデル定義と、C++側のテンソル変換ロジック（`TensorConverter`）の書き換えを行う。
     *   *ステータス: 実装完了・検証済み*。
         *   `dm_toolkit/training/network_v2.py` に `LinearAttention` およびTransformerベースの `NetworkV2` を実装。
-        *   単体テスト (`tests/python/training/test_network_v2.py`) により、可変長シーケンス処理とマスキングロジックの動作を確認済み。
+        *   `src/ai/encoders/tensor_converter.cpp` に `convert_to_sequence` を実装し、カードIDのトークン化とシーケンス変換をC++エンジン側でサポートしました。
+        *   単体テスト (`tests/python/training/test_network_v2.py`, `tests/verify_phase3_4.py`) により、可変長シーケンス処理の動作を確認済み。
 
 ### 3.3 [Priority: Low] Phase 5: エディタ機能の完成形 (Editor Polish)
 
@@ -125,36 +126,7 @@ AI開発と並行して、エディタの残存課題を解消します。
 
 ## 4. 汎用コストおよび支払いシステム (General Cost and Payment System)
 
-本システムは、マナ以外のリソース（手札、バトルゾーンのクリーチャー、シールドなど）によるコスト支払い、およびコスト軽減や追加コストを統一的に扱うための仕様定義です。
-特に、支払うリソースの量に応じてコストが変動する（スケーリングする）ケース（例：ハイパーエナジーの複数体タップ）に対応します。
-
-### 4.1 概要 (Overview)
-カードの使用や能力の発動に必要な「代償（コスト）」を以下の3要素に分類し、JSONデータ構造として定義可能にします。
-
-1.  **代替コスト (Alternative Cost)**: マナコストを完全に置き換える（例：G・ゼロ）。
-2.  **追加コスト (Additional Cost)**: プレイに追加で支払う（例：キッカー）。
-3.  **能動的コスト軽減 (Active Cost Reduction)**: 任意のリソースを支払うことで、1単位ごとにマナコストを軽減する（例：ハイパーエナジー）。
-
-### 4.2 データ構造 (Data Structure Specifications) - 実装済み
-
-`CostType`, `CostDef`, `CostReductionDef` は `src/core/card_json_types.hpp` に実装済みです。
-また、計算ロジック `CostPaymentSystem` も実装済みです。
-
-### 4.3 処理ロジック (Processing Logic) - 実装済み
-
-エンジン (`CostPaymentSystem`, `EffectResolver`) は以下のフローで処理を行います。
-
-1.  **支払い可能回数の計算**:
-    *   戦場の対象カード数などをカウントし、最大何回まで軽減を適用可能か判定します。
-2.  **アクション生成**:
-    *   軽減可能な場合、「コストを支払ってプレイ」アクション (`DECLARE_PLAY` with target_slot_index=units) を生成します。
-3.  **解決プロセス**:
-    *   **Step 1**: `EffectResolver` が `CostPaymentSystem::execute_payment` を呼び出し、軽減のための支払い（クリーチャーのタップ等）を実行します。
-    *   **Step 2**: 残りのマナコストを計算 (`ManaSystem::get_adjusted_cost` - reduction) します。
-    *   **Step 3**: 最終的なコストを `ManaSystem::auto_tap_mana` で支払います。
-
-### 4.4 定義例: スケーリングハイパーエナジー (Hyper Energy Example)
-（定義例は変更なし）
+（変更なし）
 
 ---
 
@@ -168,20 +140,9 @@ AI開発と並行して、エディタの残存課題を解消します。
 
 ### 3.4 [Priority: Future] Phase 6: 将来的な拡張性・汎用性向上 (Future Scalability)
 
-要件定義書00に含まれていないが、エンジンの長期的な保守性と拡張性を担保するために以下の実装を提案します。これらは重要度順に記載されています。
-
 1.  **イベント駆動型トリガーシステム (Event-Driven Trigger System)**
-    *   **現状**: `ON_PLAY` (cip), `ON_ATTACK`, `ON_DESTROY` などのトリガーは、フェーズ処理(`PhaseManager`)や解決ロジック(`EffectResolver`)の中でハードコードされた分岐として実装されています。「革命チェンジ」や「ストライク・バック」も専用のロジックとして追加されています。
-    *   **提案**: オブザーバーパターンを用いた汎用イベントバスを導入します。
-    *   **効果**: 新しいキーワード能力や誘発型能力を追加する際、C++のコアロジック（フロー制御）を修正する必要がなくなり、データ定義のみで完結する範囲が大幅に広がります。
-
 2.  **AI入力特徴量の動的構成 (Dynamic AI Input Feature Configuration)**
-    *   **現状**: ニューラルネットワークへの入力テンソル（特徴量）の定義はC++コード内で固定（約200次元）されています。
-    *   **提案**: 特徴量の構成要素（自分の手札枚数、相手のマナ文明分布など）をJSON設定ファイルで定義し、実行時に動的にテンソルを構築する仕組みを導入します。
-
 3.  **完全な再現性を持つリプレイシステム (Fully Reproducible Replay System)**
-    *   **現状**: エラー発生時のデバッグはテキストログに依存しています。
-    *   **提案**: 初期シード値、プレイヤーデッキ、およびアクションIDの列のみを記録した軽量なバイナリ形式のリプレイファイルを定義し、GUI上で任意の時点まで状態を復元・再生できるビューアを実装します。
 
 ## Kaggle クラウドデータ収集システム 運用マニュアル
 
