@@ -298,7 +298,7 @@
     "civilizations": [
       "WATER"
     ],
-    "cost": 1,
+    "cost": 2,
     "effects": [
       {
         "actions": [
@@ -328,6 +328,14 @@
           "type": "NONE"
         },
         "trigger": "ON_PLAY"
+      },
+      {
+        "actions": [],
+        "condition": {
+          "type": "NONE",
+          "value": 0
+        },
+        "trigger": "PASSIVE_CONST"
       }
     ],
     "id": 10,
@@ -342,7 +350,33 @@
         "WATER"
       ],
       "cost": 4,
-      "effects": [],
+      "effects": [
+        {
+          "actions": [
+            {
+              "destination_zone": "HAND",
+              "filter": {
+                "zones": [
+                  "BATTLE_ZONE"
+                ]
+              },
+              "input_value_key": "",
+              "optional": false,
+              "output_value_key": "",
+              "scope": "PLAYER_OPPONENT",
+              "str_val": "",
+              "type": "MOVE_CARD",
+              "value1": 0,
+              "value2": 0
+            }
+          ],
+          "condition": {
+            "type": "NONE",
+            "value": 0
+          },
+          "trigger": "ON_CAST_SPELL"
+        }
+      ],
       "name": "♪蛙の子遭えるの何処?好きと謂ひて",
       "type": "SPELL"
     },
