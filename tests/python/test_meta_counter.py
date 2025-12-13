@@ -23,7 +23,7 @@ class TestMetaCounter(unittest.TestCase):
         self.meta_card_def = CardDefinition()
         self.meta_card_def.name = "Meta Counter Unit"
         self.meta_card_def.cost = 8
-        self.meta_card_def.civilization = Civilization.FIRE
+        self.meta_card_def.civilizations = [Civilization.FIRE]
         self.meta_card_def.type = CardType.CREATURE
         self.meta_card_def.power = 6000
         self.meta_card_def.keywords.meta_counter_play = True
@@ -34,7 +34,7 @@ class TestMetaCounter(unittest.TestCase):
         self.zero_card_def = CardDefinition()
         self.zero_card_def.name = "Zero Cost Unit"
         self.zero_card_def.cost = 0
-        self.zero_card_def.civilization = Civilization.LIGHT
+        self.zero_card_def.civilizations = [Civilization.LIGHT]
         self.zero_card_def.type = CardType.CREATURE
         self.zero_card_def.power = 1000
         self.card_db[self.zero_card_id] = self.zero_card_def
