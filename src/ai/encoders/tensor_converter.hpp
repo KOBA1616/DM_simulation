@@ -8,32 +8,37 @@ namespace dm::ai {
 
     class TensorConverter {
     public:
-        // Returns the size of the input tensor
-        // Updated to support Unified Masked/Full Representation
-        // Structure:
-        // [Global Features (10)]
-        // [Self Player Features]
-        //   - Hand Count (1)
-        //   - Hand Cards (20)  <- Explicit slots
-        //   - Mana (6)
-        //   - Battle Zone (20 * 3)
-        //   - Shield Count (1)
-        //   - Graveyard (20)
-        // [Opp Player Features]
-        //   - Hand Count (1)
-        //   - Hand Cards (20)  <- Explicit slots (Masked=0, Full=Values)
-        //   - Mana (6)
-        //   - Battle Zone (20 * 3)
-        //   - Shield Count (1)
-        //   - Graveyard (20)
-
+        // Returns the size of the input tensor (Legacy ResNet)
         static constexpr int INPUT_SIZE = 
             10 + // Global (Turn, Phase, etc)
-            (1 + 20 + 6 + 20 * 3 + 1 + 20) + // Self: HandCnt(1), Hand(20), ...
-            (1 + 20 + 6 + 20 * 3 + 1 + 20);  // Opp: HandCnt(1), Hand(20), ...
+            (1 + 20 + 6 + 20 * 3 + 1 + 20) + // Self
+            (1 + 20 + 6 + 20 * 3 + 1 + 20);  // Opp
 
-        // Convert single state.
-        // mask_opponent_hand: If true, opp hand slots are 0.0f. If false, filled with card info.
+        // Transformer V2 Constants
+        static constexpr int MAX_SEQ_LEN = 200;
+        static constexpr int VOCAB_SIZE = 1000;
+
+        // Special Tokens
+        enum SpecialToken {
+            TOKEN_PAD = 0,
+            TOKEN_SEP = 1,
+            TOKEN_SELF_HAND_START = 2,
+            TOKEN_SELF_MANA_START = 3,
+            TOKEN_SELF_BATTLE_START = 4,
+            TOKEN_SELF_GRAVE_START = 5,
+            TOKEN_SELF_SHIELD_START = 6,
+            TOKEN_OPP_HAND_START = 7,
+            TOKEN_OPP_MANA_START = 8,
+            TOKEN_OPP_BATTLE_START = 9,
+            TOKEN_OPP_GRAVE_START = 10,
+            TOKEN_OPP_SHIELD_START = 11,
+            TOKEN_GLOBAL_START = 12,
+            // Card IDs start from 100? or just map IDs?
+            // Let's reserve 0-99 for special tokens.
+            TOKEN_CARD_OFFSET = 100
+        };
+
+        // --- Legacy V1 (ResNet) ---
         static std::vector<float> convert_to_tensor(
             const dm::core::GameState& game_state,
             int player_view,
@@ -41,9 +46,22 @@ namespace dm::ai {
             bool mask_opponent_hand = true
         );
         
-        // Batch conversion (Defaults to masked for standard training/inference usually,
-        // but can be overridden. For now, we assume simple batch uses mask=true or exposes arg)
         static std::vector<float> convert_batch_flat(
+            const std::vector<dm::core::GameState>& states,
+            const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
+            bool mask_opponent_hand = true
+        );
+
+        // --- Phase 4 V2 (Transformer) ---
+        // Returns sequence of tokens [Batch, SeqLen]
+        static std::vector<long> convert_to_sequence(
+            const dm::core::GameState& game_state,
+            int player_view,
+            const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
+            bool mask_opponent_hand = true
+        );
+
+        static std::vector<long> convert_batch_sequence(
             const std::vector<dm::core::GameState>& states,
             const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
             bool mask_opponent_hand = true
