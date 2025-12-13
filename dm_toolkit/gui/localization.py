@@ -49,6 +49,7 @@ TRANSLATIONS = {
     "AT_ATTACK": "攻撃時",
     "AT_BLOCK": "ブロック時",
     "G_STRIKE": "G・ストライク",
+    "ON_OPPONENT_DRAW": "相手ドロー時",
 
     # Zones
     "HAND": "手札",
@@ -145,6 +146,9 @@ TRANSLATIONS = {
     "Meta Counter": "メタカウンター",
     "Power Attacker": "パワーアタッカー",
     "Revolution Change Condition": "革命チェンジ条件設定",
+    "OPPONENT_DRAW_COUNT": "相手ドロー枚数",
+    "Add Reaction Ability": "リアクション能力を追加",
+    "Reaction Ability": "リアクション能力",
 
     # Added for Ver 2.1
     "Spell Side": "呪文側",
