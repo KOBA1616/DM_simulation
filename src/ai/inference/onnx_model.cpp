@@ -2,6 +2,10 @@
 #include <iostream>
 #include <numeric>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 namespace dm::ai::inference {
 
 #ifdef USE_ONNXRUNTIME
@@ -13,7 +17,14 @@ namespace dm::ai::inference {
         session_options.SetIntraOpNumThreads(1);
         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
+#ifdef _WIN32
+        int size_needed = MultiByteToWideChar(CP_UTF8, 0, &model_path[0], (int)model_path.size(), NULL, 0);
+        std::wstring wstrTo(size_needed, 0);
+        MultiByteToWideChar(CP_UTF8, 0, &model_path[0], (int)model_path.size(), &wstrTo[0], size_needed);
+        session_ = std::make_unique<Ort::Session>(env_, wstrTo.c_str(), session_options);
+#else
         session_ = std::make_unique<Ort::Session>(env_, model_path.c_str(), session_options);
+#endif
         allocator_ = std::make_unique<Ort::AllocatorWithDefaultOptions>();
 
         // Get Input Names
