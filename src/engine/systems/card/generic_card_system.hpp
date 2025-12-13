@@ -23,8 +23,8 @@ namespace dm::engine {
 
         static std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation, std::map<std::string, int>& execution_context);
 
-        // Updated check_condition to accept card_db
-        static bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db = {});
+        // Updated check_condition to accept execution_context
+        static bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db = {}, const std::map<std::string, int>& execution_context = {});
 
         static dm::core::PlayerID get_controller(const dm::core::GameState& game_state, int instance_id);
     };
