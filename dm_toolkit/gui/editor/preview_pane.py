@@ -385,8 +385,8 @@ class CardPreviewWidget(QWidget):
         elif len(civs) == 1:
             c = civs[0]
             c1 = colors_base.get(c, "#FFFFFF")
-            # Gradient to slightly darker
-            bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 {c1}, stop:1 #DDDDDD);"
+            # Solid color as requested
+            bg_style = f"background-color: {c1};"
         else:
             if len(civs) >= 2:
                 c1 = colors_base.get(civs[0], "#FFFFFF")

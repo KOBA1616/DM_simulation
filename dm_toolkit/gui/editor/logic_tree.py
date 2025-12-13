@@ -50,7 +50,12 @@ class LogicTreeWidget(QTreeView):
         item_type = index.data(Qt.ItemDataRole.UserRole + 1)
         menu = QMenu(self)
 
-        if item_type == "ACTION":
+        if item_type == "CARD":
+            add_reaction_action = QAction(tr("Add Reaction Ability"), self)
+            add_reaction_action.triggered.connect(lambda: self.add_reaction(index))
+            menu.addAction(add_reaction_action)
+
+        elif item_type == "ACTION":
             act_data = index.data(Qt.ItemDataRole.UserRole + 2)
             if act_data.get('type') == "SELECT_OPTION":
                 add_opt_action = QAction(tr("Add Option"), self)
@@ -68,6 +73,21 @@ class LogicTreeWidget(QTreeView):
 
         if not menu.isEmpty():
             menu.exec(self.viewport().mapToGlobal(pos))
+
+    def add_reaction(self, card_index):
+        if not card_index.isValid(): return
+        # Default Reaction Data
+        ra_data = {
+            "type": "NINJA_STRIKE",
+            "cost": 4,
+            "zone": "HAND",
+            "condition": {
+                "trigger_event": "ON_BLOCK_OR_ATTACK",
+                "civilization_match": True,
+                "mana_count_min": 0
+            }
+        }
+        self.add_child_item(card_index, "REACTION_ABILITY", ra_data, f"{tr('Reaction Ability')}: NINJA_STRIKE")
 
     def add_option(self, parent_index):
         if not parent_index.isValid(): return
