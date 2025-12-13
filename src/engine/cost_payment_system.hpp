@@ -23,6 +23,14 @@ namespace dm::engine {
                                  dm::core::PlayerID player_id,
                                  const dm::core::CardDefinition& card,
                                  const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+
+        // Executes the payment (e.g. taps creatures) for the specified number of units.
+        // Returns the total reduction amount applied.
+        static int execute_payment(dm::core::GameState& state,
+                                   dm::core::PlayerID player_id,
+                                   const dm::core::CostReductionDef& reduction,
+                                   int units,
+                                   const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
     };
 
 }

@@ -16,7 +16,7 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
 *   **フルスペック実装**: 基本ルールに加え、革命チェンジ、侵略、ハイパーエナジー、ジャストダイバー、ツインパクト、封印（基礎）、呪文ロックなどの高度なメカニクスをサポート済み。
-*   **汎用コストシステム（導入済）**: `CostPaymentSystem` を実装し、能動的コスト軽減（ハイパーエナジー等）の計算基盤を確立しました（アクション統合は進行中）。
+*   **汎用コストシステム（統合完了）**: `CostPaymentSystem` を実装し、能動的コスト軽減（ハイパーエナジー等）の計算基盤およびアクション生成・実行ロジックをエンジンに統合しました。
 *   **アクションシステム**: `IActionHandler` による完全なモジュラー構造。
     *   **カード移動の統一**: `MOVE_CARD` アクションを導入し、DRAW, ADD_MANA, DESTROYなどの専用アクションを汎用移動ロジックで表現可能にしました。
     *   **条件判定の汎用化**: `COMPARE_STAT` 条件を導入し、「手札枚数がX以上」などの数値比較条件を自由に記述可能にしました。
@@ -95,9 +95,9 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 
 開発効率と信頼性を向上させるため、以下の修正と機能拡張を最優先で実施します。
 
-1.  **汎用コストシステムのエンジン統合 (Cost System Integration)**
-    *   **現状**: `CostPaymentSystem` クラスとデータ構造の実装は完了 (`test_cost_payment_structs.py` で検証済)。
-    *   **タスク**: `ActionGenerator` および `ManaSystem` (または `EffectResolver`) を修正し、実際のゲームループ内で能動的コスト軽減（クリーチャーのタップ等）を伴うプレイを行えるようにする。
+1.  **汎用コストシステムのエンジン統合 (Cost System Integration) [完了]**
+    *   **現状**: `CostPaymentSystem` を `ActionGenerator` (MainPhaseStrategy) および `EffectResolver` に統合しました。これにより、ハイパーエナジーなどの能動的コスト軽減が汎用ロジックとして動作し、マナ支払いも正しく計算されます。
+    *   **検証**: `tests/test_cost_payment_integration.py` にて、アクション生成および解決時のリソース消費（クリーチャータップとマナ支払い）の正常動作を確認済み。
 
 ### 3.1 [Priority: High] User Requested Enhancements (ユーザー要望対応 - 残件)
 
@@ -142,18 +142,18 @@ AI開発と並行して、エディタの残存課題を解消します。
 `CostType`, `CostDef`, `CostReductionDef` は `src/core/card_json_types.hpp` に実装済みです。
 また、計算ロジック `CostPaymentSystem` も実装済みです。
 
-### 4.3 処理ロジック (Processing Logic)
+### 4.3 処理ロジック (Processing Logic) - 実装済み
 
-エンジン (`CostPaymentSystem`) は以下のフローで処理を行います。
+エンジン (`CostPaymentSystem`, `EffectResolver`) は以下のフローで処理を行います。
 
 1.  **支払い可能回数の計算**:
-    *   戦場の対象カード数などをカウントし、最大何回まで軽減を適用可能か判定します。(実装済)
-2.  **アクション生成** (未実装 - Next Step):
-    *   軽減可能な場合、「コストを支払ってプレイ (Variable Payment)」アクションを生成します。
-3.  **解決プロセス** (未実装 - Next Step):
-    *   **Step 1**: ユーザーが軽減のための支払いを実行（例：クリーチャーをタップ）。
-    *   **Step 2**: 残りのマナコストを計算し、マナ支払い判定を行います。
-    *   **Step 3**: 最終的なコスト（リソース＋マナ）を支払い、カードをプレイします。
+    *   戦場の対象カード数などをカウントし、最大何回まで軽減を適用可能か判定します。
+2.  **アクション生成**:
+    *   軽減可能な場合、「コストを支払ってプレイ」アクション (`DECLARE_PLAY` with target_slot_index=units) を生成します。
+3.  **解決プロセス**:
+    *   **Step 1**: `EffectResolver` が `CostPaymentSystem::execute_payment` を呼び出し、軽減のための支払い（クリーチャーのタップ等）を実行します。
+    *   **Step 2**: 残りのマナコストを計算 (`ManaSystem::get_adjusted_cost` - reduction) します。
+    *   **Step 3**: 最終的なコストを `ManaSystem::auto_tap_mana` で支払います。
 
 ### 4.4 定義例: スケーリングハイパーエナジー (Hyper Energy Example)
 （定義例は変更なし）

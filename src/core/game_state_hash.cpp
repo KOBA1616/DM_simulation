@@ -32,6 +32,7 @@ namespace dm::core {
                     hash_combine(seed, card.summoning_sickness);
                     hash_combine(seed, card.is_face_down);
                     hash_combine(seed, card.power_mod);
+                    hash_combine(seed, card.cost_payment_meta);
                 }
             };
 
