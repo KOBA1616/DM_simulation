@@ -71,7 +71,6 @@ class TestEngineBasics:
         # Find a low cost creature
         creature_id = -1
         for cid, card in self.card_db.items():
-            # Fix: use .type instead of .card_type
             if card.type == dm_ai_module.CardType.CREATURE and card.cost <= 2:
                 creature_id = cid
                 break
@@ -141,7 +140,6 @@ class TestEngineBasics:
         # Find a creature
         creature_id = -1
         for cid, card in self.card_db.items():
-            # Fix: use .type instead of .card_type
             if card.type == dm_ai_module.CardType.CREATURE:
                 creature_id = cid
                 break

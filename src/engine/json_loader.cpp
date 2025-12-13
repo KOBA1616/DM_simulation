@@ -143,26 +143,7 @@ namespace dm::engine {
 
         for (const auto& item : j) {
             try {
-                CardData data;
-
-                // Compatibility Hack: Allow 'civilization' (string) key if 'civilizations' is missing
-                if (item.contains("civilization") && !item.contains("civilizations")) {
-                    json item_copy = item;
-                    std::string civ_str = item_copy["civilization"].get<std::string>();
-                    // Manually map legacy string to Enum because JSON parser expects Enum string in array
-                    // Actually, since we defined SERIALIZE_ENUM, passing the string "FIRE" in a vector ["FIRE"] works.
-                    item_copy["civilizations"] = std::vector<std::string>{civ_str};
-                    item_copy.erase("civilization");
-                    data = item_copy.get<CardData>();
-                } else if (item.contains("civilizations") && item["civilizations"].is_string()) {
-                    json item_copy = item;
-                    std::string civ_str = item_copy["civilizations"].get<std::string>();
-                    item_copy["civilizations"] = std::vector<std::string>{civ_str};
-                    data = item_copy.get<CardData>();
-                } else {
-                    data = item.get<CardData>();
-                }
-
+                CardData data = item.get<CardData>();
                 card_db[data.id] = convert_to_def(data);
 
             } catch (json::exception& e) {
