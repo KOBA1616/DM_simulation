@@ -16,7 +16,7 @@ class TestEngineBasics:
     def setup_class(cls):
         # Load real cards if available, otherwise mock
         try:
-            cls.card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
+            cls.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
             print(f"Loaded {len(cls.card_db)} cards.")
         except Exception as e:
             print(f"Failed to load cards: {e}")
