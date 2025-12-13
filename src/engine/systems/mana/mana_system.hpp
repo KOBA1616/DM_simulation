@@ -24,6 +24,9 @@ namespace dm::engine {
         // Legacy overload
         static bool auto_tap_mana(dm::core::Player& player, const dm::core::CardDefinition& card_def, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
 
+        // Overload with explicit cost (skips get_adjusted_cost calculation)
+        static bool auto_tap_mana(dm::core::GameState& game_state, dm::core::Player& player, const dm::core::CardDefinition& card_def, int cost_override, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+
         // Untap all cards in mana zone at start of turn
         static void untap_all(dm::core::Player& player);
 
