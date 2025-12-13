@@ -544,6 +544,8 @@ namespace dm::engine {
             }
 
             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, card.instance_id, card_db);
+            // Added: ON_CAST_SPELL trigger
+            GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_CAST_SPELL, card.instance_id, card_db);
             game_state.turn_stats.spells_cast_this_turn++;
         } else {
             // Creatures always go to Battle Zone (unless other override logic exists?)
