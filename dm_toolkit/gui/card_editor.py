@@ -1,7 +1,8 @@
 import json
 import os
 from PyQt6.QtWidgets import (
-    QMainWindow, QSplitter, QVBoxLayout, QWidget, QMessageBox, QToolBar, QFileDialog
+    QMainWindow, QSplitter, QVBoxLayout, QWidget, QMessageBox, QToolBar, QFileDialog,
+    QSizePolicy
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
@@ -48,7 +49,7 @@ class CardEditor(QMainWindow):
 
         # Update Preview Button (Right side)
         empty = QWidget()
-        empty.setSizePolicy(QWidget.QSizePolicy.Policy.Expanding, QWidget.QSizePolicy.Policy.Preferred)
+        empty.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         toolbar.addWidget(empty)
 
         update_preview_act = QAction(tr("Update Preview"), self)
