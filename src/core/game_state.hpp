@@ -30,6 +30,9 @@ namespace dm::core {
         // Step 4-3: Twinpact State (Set when placed in stack)
         bool is_spell_side_mode = false;
 
+        // Phase 4: Cost Payment Metadata (e.g. number of creatures tapped for reduction)
+        int cost_payment_meta = 0;
+
         // Constructors
         CardInstance() : card_id(0), instance_id(-1), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
         CardInstance(CardID cid, int iid) : card_id(cid), instance_id(iid), is_tapped(false), summoning_sickness(true), is_face_down(false) {}

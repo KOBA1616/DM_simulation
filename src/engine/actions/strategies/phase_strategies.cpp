@@ -2,6 +2,7 @@
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
+#include "engine/cost_payment_system.hpp"
 
 namespace dm::engine {
 
@@ -86,28 +87,38 @@ namespace dm::engine {
                     }
                 }
 
-                if (def.keywords.hyper_energy) {
-                    int untapped_creatures = 0;
-                    for (const auto& c : active_player.battle_zone) {
-                        if (!c.is_tapped && !c.summoning_sickness) untapped_creatures++;
-                    }
+                // 3. Active Cost Reductions (Phase 4)
+                for (const auto& reduction : def.cost_reductions) {
+                    if (reduction.type == ReductionType::ACTIVE_PAYMENT) {
+                        int max_units = CostPaymentSystem::calculate_max_units(game_state, active_player.id, reduction, card_db);
 
-                    for (int taps = 1; taps <= untapped_creatures; ++taps) {
-                        int reduction = taps * 2;
-                        int effective_cost = std::max(0, def.cost - reduction);
+                        // We assume "min_units" is usually 1 if we are invoking this cost.
+                        // However, we should iterate all possible payments (1..max_units)
+                        // For now, strict Hyper Energy loop: taps 1..max
+                        for (int units = 1; units <= max_units; ++units) {
+                            if (reduction.max_units != -1 && units > reduction.max_units) break;
 
-                        int available_mana = 0;
-                        for(const auto& m : active_player.mana_zone) if(!m.is_tapped) available_mana++;
+                            int reduction_val = units * reduction.reduction_amount;
+                            // Calculate adjusted cost including passive modifiers first
+                            int adjusted_cost = ManaSystem::get_adjusted_cost(game_state, active_player, def);
+                            int effective_cost = std::max(reduction.min_mana_cost, adjusted_cost - reduction_val);
 
-                        if (available_mana >= effective_cost) {
-                            Action action;
-                            action.type = ActionType::DECLARE_PLAY;
-                            action.card_id = card.card_id;
-                            action.source_instance_id = card.instance_id;
-                            action.slot_index = static_cast<int>(i);
-                            action.target_slot_index = taps;
-                            action.target_player = 254;
-                            actions.push_back(action);
+                            int available_mana = ManaSystem::get_usable_mana_count(game_state, active_player.id, def.civilizations);
+
+                            if (available_mana >= effective_cost) {
+                                Action action;
+                                action.type = ActionType::DECLARE_PLAY;
+                                action.card_id = card.card_id;
+                                action.source_instance_id = card.instance_id;
+                                action.slot_index = static_cast<int>(i);
+                                action.target_slot_index = units; // Use target_slot_index for payment amount
+                                action.target_player = 254; // Legacy flag for "Special/Active Payment Play"
+                                // We might want to pass WHICH reduction is used if multiple exist.
+                                // For now, assume 1 active reduction per card or take first valid.
+                                // If needed, we can use value1 = reduction_index.
+                                // But CostPaymentSystem::calculate_max_units handles the logic per reduction.
+                                actions.push_back(action);
+                            }
                         }
                     }
                 }
