@@ -140,11 +140,6 @@ namespace dm::ai {
         // Now we have a list of attackers that hit.
         // We need to see if they can clear shields and land a direct attack.
 
-        // Critical Fix: Sort ALL successful attackers by Breaker Count (Desc)
-        // This ensures we use big breakers to smash shields before using small ones for direct attack.
-        // Example: 2 Shields. Unblockable (1), DB (2).
-        // If Unblockable hits first -> 1 Shield left. DB hits -> 0 Shields left. No Direct Attack.
-        // If DB hits first -> 0 Shields left. Unblockable hits -> Direct Attack!
         std::sort(successful_attackers.begin(), successful_attackers.end(), [](const AttackerDetail& a, const AttackerDetail& b) {
             return a.breaker_count > b.breaker_count;
         });
