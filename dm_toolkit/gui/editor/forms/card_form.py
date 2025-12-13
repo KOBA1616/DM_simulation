@@ -9,7 +9,6 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
-from dm_toolkit.gui.editor.forms.parts.reaction_widget import ReactionWidget
 
 class CardEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree
@@ -133,14 +132,6 @@ class CardEditForm(BaseEditForm):
 
         self.form_layout.addRow(special_group)
 
-        # Reaction Abilities Section
-        react_group = QGroupBox(tr("Reaction Abilities"))
-        react_layout = QVBoxLayout(react_group)
-        self.reaction_widget = ReactionWidget()
-        self.reaction_widget.dataChanged.connect(self.update_data)
-        react_layout.addWidget(self.reaction_widget)
-        self.form_layout.addRow(react_group)
-
         # AI Configuration Section
         ai_group = QGroupBox(tr("AI Configuration"))
         ai_layout = QFormLayout(ai_group)
@@ -221,7 +212,6 @@ class CardEditForm(BaseEditForm):
         self.rev_change_check.setChecked(kw_data.get('revolution_change', False))
         self.rev_change_check.blockSignals(False)
 
-        self.reaction_widget.set_data(data.get('reaction_abilities', []))
         self.is_key_card_check.setChecked(data.get('is_key_card', False))
         self.ai_importance_spin.setValue(data.get('ai_importance_score', 0))
 
@@ -270,7 +260,7 @@ class CardEditForm(BaseEditForm):
 
         data['keywords'] = current_keywords
 
-        data['reaction_abilities'] = self.reaction_widget.get_data()
+        # data['reaction_abilities'] managed by Logic Tree now
         data['is_key_card'] = self.is_key_card_check.isChecked()
         data['ai_importance_score'] = self.ai_importance_spin.value()
 
@@ -289,6 +279,5 @@ class CardEditForm(BaseEditForm):
         self.rev_change_check.blockSignals(block)
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
-        self.reaction_widget.block_signals_all(block)
         self.is_key_card_check.blockSignals(block)
         self.ai_importance_spin.blockSignals(block)
