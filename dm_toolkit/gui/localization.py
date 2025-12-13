@@ -35,6 +35,30 @@ TRANSLATIONS = {
     "PUT_CREATURE": "クリーチャーを出す",
     "COST_REFERENCE": "コスト参照/軽減",
     "SELECT_NUMBER": "数字を選択",
+    "SUMMON_TOKEN": "トークン生成",
+    "DISCARD": "手札を捨てる",
+    "PLAY_FROM_ZONE": "ゾーンからプレイ",
+    "MEASURE_COUNT": "カウント/計測",
+    "COST_REDUCTION": "コスト軽減",
+    "LOOK_TO_BUFFER": "バッファへ移動(Look)",
+    "SELECT_FROM_BUFFER": "バッファから選択",
+    "PLAY_FROM_BUFFER": "バッファからプレイ",
+    "MOVE_BUFFER_TO_ZONE": "バッファから移動",
+    "SELECT_OPTION": "選択肢",
+    "DECLARE_NUMBER": "数字宣言",
+
+    # Measure Modes
+    "CARDS_MATCHING_FILTER": "条件に合うカード数",
+    "MANA_CIVILIZATION_COUNT": "マナ文明数",
+    "SHIELD_COUNT": "シールド枚数",
+    "HAND_COUNT": "手札枚数",
+    "CARDS_DRAWN_THIS_TURN": "ターン内ドロー枚数",
+
+    # Ref Modes
+    "SYM_CREATURE": "シンパシー: クリーチャー",
+    "SYM_SPELL": "シンパシー: 呪文",
+    "HYPER_ENERGY": "ハイパーエナジー",
+    "G_ZERO": "G・ゼロ",
 
     # Triggers
     "ON_PLAY": "出た時 (CIP)",
@@ -60,6 +84,15 @@ TRANSLATIONS = {
     "DECK_TOP": "デッキ上",
     "DECK": "デッキ",
 
+    # Scopes
+    "PLAYER_SELF": "自分",
+    "PLAYER_OPPONENT": "相手",
+    "TARGET_SELECT": "対象選択",
+    "ALL_PLAYERS": "両プレイヤー",
+    "RANDOM": "ランダム",
+    "ALL_FILTERED": "全体(フィルタ)",
+    "NONE": "なし",
+
     # Civilizations
     "LIGHT": "光",
     "WATER": "水",
@@ -73,6 +106,15 @@ TRANSLATIONS = {
     "Keyword": "キーワード",
     "Duration (Turns)": "持続ターン数",
     "Race (e.g. Fire Bird)": "種族 (例: ファイアー・バード)",
+    "Action Type": "アクションタイプ",
+    "Scope": "対象スコープ",
+    "String Value": "文字列値 (String Value)",
+    "Mode": "モード",
+    "Ref Mode": "参照モード",
+    "Value 1": "値 1",
+    "Value 2": "値 2",
+    "Arbitrary Amount (Up to N)": "任意数 (N枚まで)",
+    "Filter": "フィルタ",
 
     # Common
     "Name": "カード名",
@@ -90,6 +132,7 @@ TRANSLATIONS = {
     "AI Configuration": "AI設定",
     "Is Key Card / Combo Piece": "キーカード / コンボパーツ",
     "AI Importance Score": "AI優先度スコア",
+    "Action": "アクション",
 
     # Filter
     "Basic Filter": "基本条件",
