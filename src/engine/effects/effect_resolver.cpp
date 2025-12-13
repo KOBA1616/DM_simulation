@@ -7,6 +7,7 @@
 #include "engine/systems/flow/reaction_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
+#include "engine/cost_payment_system.hpp"
 
 #include <iostream>
 #include <algorithm>
@@ -196,16 +197,44 @@ namespace dm::engine {
                  CardInstance card = *it;
                  player.hand.erase(it);
                  game_state.stack_zone.push_back(card);
-                 int taps_needed = action.target_slot_index;
-                 int taps_done = 0;
-                 for (auto& c : player.battle_zone) {
-                     if (!c.is_tapped && !c.summoning_sickness) {
-                         c.is_tapped = true;
-                         taps_done++;
-                         if (taps_done >= taps_needed) break;
+                 int units = action.target_slot_index;
+                 int reduction_amount = 0;
+
+                 if (card_db.count(card.card_id)) {
+                     const auto& def = card_db.at(card.card_id);
+                     for (const auto& reduction : def.cost_reductions) {
+                         if (reduction.type == ReductionType::ACTIVE_PAYMENT) {
+                             reduction_amount = CostPaymentSystem::execute_payment(game_state, player.id, reduction, units, card_db);
+                             break; // Assume single active reduction type per card for now
+                         }
                      }
+                     // If no active reduction found but target_player=254, something is wrong or it's legacy hyper_energy?
+                     // Legacy fallback:
+                     if (reduction_amount == 0 && def.keywords.hyper_energy) {
+                         // Fallback to hardcoded tapping if new system yields 0 (e.g. data mismatch)
+                         int taps_done = 0;
+                         for (auto& c : player.battle_zone) {
+                             if (!c.is_tapped && !c.summoning_sickness) {
+                                 c.is_tapped = true;
+                                 taps_done++;
+                                 if (taps_done >= units) break;
+                             }
+                         }
+                         reduction_amount = taps_done * 2;
+                     }
+
+                     // Now pay remaining mana
+                     // Apply passive reductions first (Standard Cost Logic)
+                     int base_adjusted = ManaSystem::get_adjusted_cost(game_state, player, def);
+                     // Apply active reduction
+                     int final_cost = std::max(0, base_adjusted - reduction_amount);
+                     // Enforce min cost from active reductions if any (Phase 4 requirement)
+                     // CostPaymentSystem logic respects min_mana_cost during calculation, so final_cost should be safe to pay.
+
+                     ManaSystem::auto_tap_mana(game_state, player, def, final_cost, card_db);
                  }
-                 resolve_play_from_stack(game_state, card.instance_id, taps_done * 2, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db);
+
+                 resolve_play_from_stack(game_state, card.instance_id, reduction_amount, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db);
              }
              return;
         }
