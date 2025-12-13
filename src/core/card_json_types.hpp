@@ -22,6 +22,7 @@ namespace dm::core {
         AT_BREAK_SHIELD,
         ON_SHIELD_ADD, // Added: ON_SHIELD_ADD
         ON_CAST_SPELL, // Added: ON_CAST_SPELL
+        ON_OPPONENT_DRAW, // Added: ON_OPPONENT_DRAW
         NONE
     };
 
@@ -275,7 +276,8 @@ namespace dm::core {
         {TriggerType::ON_BLOCK, "ON_BLOCK"},
         {TriggerType::AT_BREAK_SHIELD, "AT_BREAK_SHIELD"},
         {TriggerType::ON_SHIELD_ADD, "ON_SHIELD_ADD"},
-        {TriggerType::ON_CAST_SPELL, "ON_CAST_SPELL"}
+        {TriggerType::ON_CAST_SPELL, "ON_CAST_SPELL"},
+        {TriggerType::ON_OPPONENT_DRAW, "ON_OPPONENT_DRAW"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(ReactionType, {
