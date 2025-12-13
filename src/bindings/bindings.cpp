@@ -731,9 +731,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<TensorConverter>(m, "TensorConverter")
         .def_readonly_static("INPUT_SIZE", &TensorConverter::INPUT_SIZE)
+        .def_readonly_static("MAX_SEQ_LEN", &TensorConverter::MAX_SEQ_LEN)
+        .def_readonly_static("VOCAB_SIZE", &TensorConverter::VOCAB_SIZE)
         .def_static("convert_to_tensor", &TensorConverter::convert_to_tensor,
                     py::arg("game_state"), py::arg("player_view"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
-        .def_static("convert_batch_flat", &TensorConverter::convert_batch_flat);
+        .def_static("convert_batch_flat", &TensorConverter::convert_batch_flat)
+        .def_static("convert_to_sequence", &TensorConverter::convert_to_sequence,
+                    py::arg("game_state"), py::arg("player_view"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
+        .def_static("convert_batch_sequence", &TensorConverter::convert_batch_sequence);
 
     py::class_<ScenarioConfig>(m, "ScenarioConfig")
         .def(py::init<>())
