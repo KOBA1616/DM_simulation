@@ -200,24 +200,45 @@ namespace dm::engine {
         return get_adjusted_cost(game_state, player, card_def);
     }
 
-    int ManaSystem::get_usable_mana_count(const GameState& game_state, PlayerID player_id, const std::vector<Civilization>& required_civs) {
-        // Simplified check: Count total untapped mana.
-        // Note: This does NOT check color requirements properly, which is complex without context.
-        // For Hyper Energy checks, we often just want "do we have N mana available?".
-        // If color matters, we need a smarter check.
-        // But solve_payment_internal requires a DB.
-        // For now, return raw count.
-        // If we want color check, we need to pass card_db to this method, but the signature in header doesn't have it.
-        // Adding card_db to signature would require header change.
-
-        // Let's assume color requirements are met if count is sufficient for this specific helper usage,
-        // or implement a basic check if possible.
-
+    int ManaSystem::get_usable_mana_count(const GameState& game_state, PlayerID player_id, const std::vector<Civilization>& required_civs, const std::map<CardID, CardDefinition>& card_db) {
         const auto& player = game_state.players[player_id];
         int count = 0;
         for (const auto& card : player.mana_zone) {
             if (!card.is_tapped) count++;
         }
+
+        // Perform strict check if there are required civilizations
+        // If we have N untapped cards, can they satisfy required_civs?
+        // Note: this function returns 'count' (max mana), but implies valid mana.
+        // If requirements cannot be met even using ALL untapped cards, then usable mana is effectively 0 for this card.
+        // (Or more accurately, we return 0 to indicate "cannot play").
+        // We reuse solve_payment_internal logic: can we pay 'count' (using all untapped) given requirements?
+        // Wait, solve_payment_internal checks if we can pay EXACTLY cost.
+        // Here we just want to know if we meet requirements.
+        // Actually, if we use solve_payment_internal with cost=0? No.
+        // We want to check if the SET of untapped cards covers 'required_civs'.
+
+        std::vector<Civilization> colored_reqs;
+        for (auto c : required_civs) {
+            if (c != Civilization::NONE && c != Civilization::ZERO) {
+                colored_reqs.push_back(c);
+            }
+        }
+
+        if (colored_reqs.empty()) return count;
+
+        // Check if we can satisfy colored_reqs using untapped cards
+        // We can reuse solve_payment_internal logic but with cost = colored_reqs.size() (minimal payment)
+        // If we can pay the minimal cost satisfying colors, then we definitely have valid mana.
+        // But wait, get_usable_mana_count returns the TOTAL amount available.
+        // So: return count IF minimal requirements are met. Else 0.
+
+        int min_cost = (int)colored_reqs.size();
+        if (min_cost > count) return 0; // Not enough cards to cover colors
+
+        auto indices = solve_payment_internal(player.mana_zone, required_civs, min_cost, card_db);
+        if (indices.empty()) return 0;
+
         return count;
     }
 
