@@ -154,7 +154,7 @@ namespace dm::engine {
 
         // 5. Check if we have enough mana to pay this minimum
         // ManaSystem::get_usable_mana_count
-        int available_mana = ManaSystem::get_usable_mana_count(state, player_id, card.civilizations);
+        int available_mana = ManaSystem::get_usable_mana_count(state, player_id, card.civilizations, card_db);
 
         return available_mana >= min_achievable_cost;
     }

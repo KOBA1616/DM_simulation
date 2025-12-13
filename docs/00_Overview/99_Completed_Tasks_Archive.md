@@ -35,3 +35,8 @@
     *   **Card Definition Update**: `CardDefinition` に `cost_reductions` フィールドを追加しました。
     *   **Logic Implementation**: `src/engine/cost_payment_system.cpp` を実装し、能動的コスト軽減（Active Cost Reduction）の計算ロジック (`calculate_max_units`) と支払い判定ロジック (`can_pay_cost`) を実装しました。
     *   **Python Binding**: 新しい型とシステムクラスを `dm_ai_module` に公開し、`test_cost_payment_structs.py` による検証を完了しました。
+
+7.  **多色マナ支払いの厳密化 (Strict Multicolor Mana Payment)**
+    *   **ManaSystem**: `get_usable_mana_count` に `card_db` 引数を追加し、`solve_payment_internal` を用いた厳密な文明チェック（必要文明を持つタップされていないカードの組み合わせが存在するか）を実装しました。
+    *   **EffectResolver**: `PAY_COST` アクション処理時に `auto_tap_mana` の返り値を検証し、支払いに失敗した場合（例：マナ不足や文明不一致）はカードを手札に戻すフォールバック処理を追加しました。
+    *   **PhaseStrategies**: 能動的コスト軽減（ハイパーエナジー等）の適用判定においても、厳密なマナチェックが行われるように `get_usable_mana_count` の呼び出しを更新しました。
