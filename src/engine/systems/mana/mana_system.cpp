@@ -156,6 +156,24 @@ namespace dm::engine {
         return true;
     }
 
+    bool ManaSystem::auto_tap_mana(GameState& game_state, Player& player, const CardDefinition& card_def, int cost_override, const std::map<CardID, CardDefinition>& card_db) {
+        int cost = cost_override;
+
+        if (cost <= 0) {
+            game_state.turn_stats.played_without_mana = true;
+            return true;
+        }
+
+        auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
+        if (indices.empty()) return false;
+
+        for (int idx : indices) {
+            player.mana_zone[idx].is_tapped = true;
+        }
+
+        return true;
+    }
+
     bool ManaSystem::auto_tap_mana(Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
         int cost = card_def.cost;
 

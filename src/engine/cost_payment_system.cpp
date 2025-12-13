@@ -159,4 +159,61 @@ namespace dm::engine {
         return available_mana >= min_achievable_cost;
     }
 
+    int CostPaymentSystem::execute_payment(GameState& state,
+                                           PlayerID player_id,
+                                           const CostReductionDef& reduction,
+                                           int units,
+                                           const std::map<CardID, CardDefinition>& card_db) {
+        if (reduction.type != ReductionType::ACTIVE_PAYMENT || units <= 0) {
+            return 0;
+        }
+
+        const auto& unit_cost = reduction.unit_cost;
+        int units_paid = 0;
+
+        if (unit_cost.type == CostType::TAP_CARD) {
+            Player& player = state.players[player_id];
+
+            // Collect valid candidates using the same logic as calculate_max_units
+            std::vector<int> candidates;
+            bool check_bz = false;
+            for (const auto& z : unit_cost.filter.zones) {
+                if (z == "BATTLE_ZONE") check_bz = true;
+            }
+
+            if (check_bz) {
+                // We use indices to safely modify later, but battle_zone might change if events trigger?
+                // Tapping usually doesn't trigger "On Tap" immediate destroy/move effects that invalidate iterators in standard loop,
+                // but safe practice is to collect IDs/indices first.
+                for (size_t i = 0; i < player.battle_zone.size(); ++i) {
+                    const auto& instance = player.battle_zone[i];
+                    if (instance.is_tapped) continue;
+
+                    if (card_db.find(instance.card_id) == card_db.end()) continue;
+                    const auto& def = card_db.at(instance.card_id);
+
+                    PlayerID card_owner = player_id;
+                    if (instance.instance_id >= 0 && (size_t)instance.instance_id < state.card_owner_map.size()) {
+                        card_owner = state.card_owner_map[instance.instance_id];
+                    }
+
+                    if (TargetUtils::is_valid_target(instance, def, unit_cost.filter, state, player_id, card_owner, false)) {
+                        candidates.push_back((int)i);
+                    }
+                }
+            }
+
+            // Greedy execution: Tap the first 'units' candidates.
+            // A more complex system would allow user selection if needed.
+            // For Hyper Energy, it's usually "Any N creatures".
+            for (int idx : candidates) {
+                if (units_paid >= units) break;
+                player.battle_zone[idx].is_tapped = true;
+                units_paid++;
+            }
+        }
+
+        return units_paid * reduction.reduction_amount;
+    }
+
 }
