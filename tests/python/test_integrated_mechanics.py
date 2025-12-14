@@ -267,7 +267,6 @@ def test_deck_search_logic(game_state):
     # 2. Deck should be shuffled (hard to test shuffle, but count should be N-1)
     assert len(game_state.players[player_id].deck) == 4
 
-@pytest.mark.xfail(reason="Engine allows paying for Multi-Civ cards with insufficient colors (e.g. Fire/Nature paid with only Fire)")
 def test_multi_civilization_mana(game_state):
     """
     Test that a Multi-Civ card (Fire/Nature) can be paid with Fire/Nature mana.
@@ -316,8 +315,11 @@ def test_multi_civilization_mana(game_state):
     game_state.players[0].mana_zone[1].is_tapped = False
 
     # Case 2: Player has only Fire Mana (2 cards)
-    game_state.players[0].mana_zone.pop() # Remove Nature
-    game_state.add_card_to_mana(0, 1, 103) # Another Fire
+    # Note: accessing mana_zone returns a copy, so pop() doesn't affect C++ state.
+    # We must clear and rebuild.
+    game_state.clear_zone(0, Zone.MANA)
+    game_state.add_card_to_mana(0, 1, 103) # Fire
+    game_state.add_card_to_mana(0, 1, 104) # Fire
 
     # Should FAIL because Nature is required?
     # Multi-civ rule: "When you play a multi-colored card, you must tap at least 1 card of each civilization."
