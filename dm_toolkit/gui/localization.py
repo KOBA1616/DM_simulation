@@ -161,6 +161,7 @@ TRANSLATIONS = {
     "Fixed Number": "固定数",
     "Filter Help": "対象を選択するための条件を指定します。",
     "Include BATTLE_ZONE in target selection": "バトルゾーンを対象に含める",
+    "Play without paying cost": "コストを支払わずにプレイする",
 
     # Reaction
     "Reaction Abilities": "リアクション能力 (手札誘発)",
