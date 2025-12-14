@@ -51,7 +51,7 @@ class ActionEditForm(BaseEditForm):
             "COST_REFERENCE", "COST_REDUCTION", "NONE", "BREAK_SHIELD", "LOOK_AND_ADD", "SUMMON_TOKEN", "DISCARD", "PLAY_FROM_ZONE",
             "REVOLUTION_CHANGE", "MEASURE_COUNT", "APPLY_MODIFIER", "REVEAL_CARDS",
             "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE", "SEND_TO_DECK_BOTTOM",
-            "FRIEND_BURST", "GRANT_KEYWORD", "MOVE_CARD"
+            "FRIEND_BURST", "GRANT_KEYWORD", "MOVE_CARD", "SELECT_OPTION"
         ]
         self.populate_combo(self.type_combo, types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Action Type"), self.type_combo)
@@ -111,6 +111,9 @@ class ActionEditForm(BaseEditForm):
         self.no_cost_check = QCheckBox(tr("Play without paying cost"))
         layout.addRow(self.no_cost_check)
 
+        self.allow_duplicates_check = QCheckBox(tr("Allow Duplicates"))
+        layout.addRow(self.allow_duplicates_check)
+
         self.arbitrary_check = QCheckBox(tr("Arbitrary Amount (Up to N)"))
         layout.addRow(self.arbitrary_check)
 
@@ -129,6 +132,7 @@ class ActionEditForm(BaseEditForm):
         self.measure_mode_combo.currentIndexChanged.connect(self.on_measure_mode_changed)
         self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
         self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
+        self.allow_duplicates_check.stateChanged.connect(self.update_data)
         self.arbitrary_check.stateChanged.connect(self.update_data)
         self.no_cost_check.stateChanged.connect(self.update_data)
         self.no_cost_check.stateChanged.connect(self.on_no_cost_changed)
@@ -188,8 +192,12 @@ class ActionEditForm(BaseEditForm):
 
         self.val1_label.setVisible(config["val1_visible"] and not is_smart_linked and not is_no_cost)
         self.val1_spin.setVisible(config["val1_visible"] and not is_smart_linked and not is_no_cost)
-        self.val2_label.setVisible(config["val2_visible"])
-        self.val2_spin.setVisible(config["val2_visible"])
+
+        is_select_option = (action_type == "SELECT_OPTION")
+        self.allow_duplicates_check.setVisible(is_select_option)
+
+        self.val2_label.setVisible(config["val2_visible"] and not is_select_option)
+        self.val2_spin.setVisible(config["val2_visible"] and not is_select_option)
 
         # Specific Widget Visibility
         is_measure = (action_type == "MEASURE_COUNT")
