@@ -184,6 +184,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("ON_BLOCK", TriggerType::ON_BLOCK)
         .value("ON_SHIELD_ADD", TriggerType::ON_SHIELD_ADD)
         .value("ON_CAST_SPELL", TriggerType::ON_CAST_SPELL)
+        .value("ON_OPPONENT_DRAW", TriggerType::ON_OPPONENT_DRAW)
         .value("NONE", TriggerType::NONE)
         .export_values();
 
@@ -706,7 +707,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<CardRegistry>(m, "CardRegistry")
         .def_static("get_card_data", &CardRegistry::get_card_data, py::return_value_policy::reference)
         .def_static("load_from_json", &CardRegistry::load_from_json)
-        .def_static("get_all_cards", &CardRegistry::get_all_cards);
+        .def_static("get_all_cards", &CardRegistry::get_all_cards)
+        .def_static("get_all_definitions", &CardRegistry::get_all_definitions);
 
     // Helper for Python tests to register card data easily without raw JSON string construction if desired,
     // though load_from_json is the primary way.
