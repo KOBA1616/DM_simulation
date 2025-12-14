@@ -66,6 +66,7 @@ namespace dm::engine {
             // 1. Find and Remove
             CardInstance card;
             bool found = false;
+            bool from_battle_zone = false;
             PlayerID owner_id = 0; // Temporary default
 
             // We need to find the card in ANY zone of ANY player (or specific player if filtered)
@@ -76,8 +77,12 @@ namespace dm::engine {
                 auto b_it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
                 if (b_it != p.battle_zone.end()) {
                     card = *b_it;
+                    // Hierarchy Cleanup
+                    ZoneUtils::on_leave_battle_zone(game_state, *b_it);
+
                     p.battle_zone.erase(b_it);
                     found = true;
+                    from_battle_zone = true;
                     owner_id = p.id;
                     break;
                 }
@@ -168,22 +173,23 @@ namespace dm::engine {
                 card.is_tapped = false;
                 card.summoning_sickness = true;
                 owner.hand.push_back(card);
+                if (from_battle_zone) {
+                    GenericCardSystem::check_mega_last_burst(game_state, card, card_db);
+                }
             } else if (dest == "MANA_ZONE") {
                 card.is_tapped = false; // Usually untapped unless specified?
                 // "Put into mana zone" -> usually untapped. "Charge" -> untapped.
                 // Some effects put tapped. But default to untapped.
                 owner.mana_zone.push_back(card);
+                if (from_battle_zone) {
+                    GenericCardSystem::check_mega_last_burst(game_state, card, card_db);
+                }
             } else if (dest == "GRAVEYARD") {
                 card.is_tapped = false;
                 owner.graveyard.push_back(card);
-                // Trigger ON_DESTROY? Only if coming from Battle Zone?
-                // DestroyHandler handles ON_DESTROY. MOVE_CARD is generic.
-                // If the user uses MOVE_CARD(Battle -> Grave), they should expect it acts like Destroy?
-                // But Destroy implies "Rule of destruction".
-                // If it is "Send to Graveyard", it might not trigger "When destroyed".
-                // In DM, "Destroy" = Battle Zone -> Grave.
-                // "Put into graveyard" from Hand/Deck is NOT Destroy.
-                // So MOVE_CARD should just move.
+                if (from_battle_zone) {
+                    GenericCardSystem::check_mega_last_burst(game_state, card, card_db);
+                }
             } else if (dest == "DECK_BOTTOM") {
                 card.is_tapped = false;
                 owner.deck.insert(owner.deck.begin(), card);

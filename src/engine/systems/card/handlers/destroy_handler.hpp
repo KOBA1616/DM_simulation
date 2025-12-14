@@ -70,9 +70,12 @@ namespace dm::engine {
                         [tid](const dm::core::CardInstance& c){ return c.instance_id == tid; });
                     if (it != p.battle_zone.end()) {
                         ZoneUtils::on_leave_battle_zone(ctx.game_state, *it);
-                        p.graveyard.push_back(*it);
+                        CardInstance moved_card = *it;
+                        p.graveyard.push_back(moved_card);
                         p.battle_zone.erase(it);
                         destroyed_count++;
+
+                        GenericCardSystem::check_mega_last_burst(ctx.game_state, moved_card, ctx.card_db);
                         break;
                     }
                 }
@@ -84,6 +87,7 @@ namespace dm::engine {
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
+            using namespace dm::core;
             if (!ctx.targets) return;
             int destroyed_count = 0;
             for (int tid : *ctx.targets) {
@@ -94,9 +98,12 @@ namespace dm::engine {
                         // Cleanup hierarchy before moving
                         ZoneUtils::on_leave_battle_zone(ctx.game_state, *it);
 
-                        p.graveyard.push_back(*it);
+                        CardInstance moved_card = *it;
+                        p.graveyard.push_back(moved_card);
                         p.battle_zone.erase(it);
                         destroyed_count++;
+
+                        GenericCardSystem::check_mega_last_burst(ctx.game_state, moved_card, ctx.card_db);
                         break;
                     }
                 }

@@ -44,6 +44,7 @@ namespace dm::core {
         bool unblockable : 1;     // Unblockable
         bool friend_burst : 1;    // Friend Burst (New Requirement)
         bool ex_life : 1;         // Ex-Life
+        bool mega_last_burst : 1; // Mega Last Burst
     };
 
     // Mode Selection: ModalEffectGroup stores selectable modes [Q71]
