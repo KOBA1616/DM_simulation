@@ -141,6 +141,7 @@ TRANSLATIONS = {
     "Civilization": "文明",
     "Type": "タイプ",
     "ELEMENT": "エレメント",
+    "CARD": "カード",
     "Cost": "コスト",
     "Power": "パワー",
     "Races": "種族",

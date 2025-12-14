@@ -202,6 +202,7 @@ namespace dm::engine {
         }
         static bool match_type(const dm::core::CardDefinition& c, const std::string& type_str) {
             using namespace dm::core;
+            if (type_str == "CARD") return true;
             if (type_str == "ELEMENT") {
                 return c.type == CardType::CREATURE ||
                        c.type == CardType::EVOLUTION_CREATURE ||
@@ -244,6 +245,7 @@ namespace dm::engine {
              return std::find(c.civilizations.begin(), c.civilizations.end(), target_civ) != c.civilizations.end();
         }
         static bool match_type(const dm::core::CardData& c, const std::string& type_str) {
+            if (type_str == "CARD") return true;
             if (type_str == "ELEMENT") {
                 return c.type == "CREATURE" ||
                        c.type == "EVOLUTION_CREATURE" ||
