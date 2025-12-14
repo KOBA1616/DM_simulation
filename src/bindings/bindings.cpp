@@ -469,6 +469,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
              return d;
         }), py::arg("id"), py::arg("name"), py::arg("cost"), py::arg("civs"), py::arg("power"), py::arg("type"), py::arg("races"), py::arg("effects"), py::arg("reaction_abilities") = std::vector<ReactionAbility>{})
         .def_readwrite("id", &CardData::id)
+        .def_readwrite("name", &CardData::name)
+        .def_readwrite("civilizations", &CardData::civilizations)
+        .def_readwrite("type", &CardData::type)
+        .def_readwrite("races", &CardData::races)
+        .def_readwrite("cost", &CardData::cost)
+        .def_readwrite("power", &CardData::power)
         .def_readwrite("effects", &CardData::effects)
         .def_readwrite("metamorph_abilities", &CardData::metamorph_abilities)
         .def_readwrite("revolution_change_condition", &CardData::revolution_change_condition)
@@ -692,7 +698,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
             GenericCardSystem::resolve_action(state, action, source_id);
         })
         .def_static("resolve_action_with_context", [](GameState& state, const ActionDef& action, int source_id, std::map<std::string, int> ctx) {
-             GenericCardSystem::resolve_action(state, action, source_id, ctx);
+             GenericCardSystem::resolve_action(state, action, source_id, ctx, CardRegistry::get_all_definitions());
              return ctx;
         })
         .def_static("resolve_action_with_db", [](GameState& state, const ActionDef& action, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
