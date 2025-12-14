@@ -33,15 +33,17 @@ class CardDetailPanel(QWidget):
             return
 
         civ = "COLORLESS"
-        # Use civ from card_data if available (it is exposed now)
-        if hasattr(card_data, 'civilization'):
-             civ = str(card_data.civilization).split('.')[-1]
+        # Prioritize civilizations vector (multi-civ)
+        if hasattr(card_data, 'civilizations') and card_data.civilizations:
+             civs = [tr(str(c).split('.')[-1]) for c in card_data.civilizations]
+             civ = "/".join(civs)
+        # Fallback to single civilization property
+        elif hasattr(card_data, 'civilization'):
+             civ = tr(str(card_data.civilization).split('.')[-1])
+        # Legacy fallback (should be removed eventually, kept for safety)
         elif civ_map and card_data.id in civ_map:
-            civ = civ_map[card_data.id]
+            civ = tr(civ_map[card_data.id])
 
-        # Translate civ
-        civ = tr(civ)
-            
         self.name_label.setText(card_data.name)
         self.info_label.setText(f"{tr('Cost')}: {card_data.cost} | {tr('Power')}: {card_data.power} | {tr('Civ')}: {civ}")
         
@@ -66,6 +68,8 @@ class CardDetailPanel(QWidget):
             if k.revolution_change: kws.append(tr("Revolution Change"))
             if k.g_zero: kws.append(tr("G-Zero"))
             if k.evolution: kws.append(tr("Evolution"))
+            if k.hyper_energy: kws.append(tr("Hyper Energy"))
+            if k.just_diver: kws.append(tr("Just Diver"))
             if k.cip: kws.append(tr("CIP"))
             if k.at_attack: kws.append(tr("At Attack"))
             if k.at_block: kws.append(tr("At Block"))
