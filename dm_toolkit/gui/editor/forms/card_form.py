@@ -86,7 +86,8 @@ class CardEditForm(BaseEditForm):
             "speed_attacker", "blocker", "slayer",
             "double_breaker", "triple_breaker", "shield_trigger",
             "just_diver", "mach_fighter", "g_strike",
-            "hyper_energy", "shield_burn", "power_attacker", "ex_life"
+            "hyper_energy", "shield_burn", "power_attacker", "ex_life",
+            "mega_last_burst"
         ]
 
         kw_map = {
@@ -102,7 +103,8 @@ class CardEditForm(BaseEditForm):
             "hyper_energy": "Hyper Energy",
             "shield_burn": "Shield Burn",
             "power_attacker": "Power Attacker",
-            "ex_life": "Ex-Life"
+            "ex_life": "Ex-Life",
+            "mega_last_burst": "Mega Last Burst"
         }
 
         row = 0
@@ -161,6 +163,10 @@ class CardEditForm(BaseEditForm):
             self.structure_update_requested.emit("ADD_SPELL_SIDE", {})
         else:
             self.structure_update_requested.emit("REMOVE_SPELL_SIDE", {})
+
+        # Toggle Mega Last Burst visibility
+        if "mega_last_burst" in self.keyword_checks:
+            self.keyword_checks["mega_last_burst"].setVisible(is_checked)
         # Note: We do NOT call update_data here as this is a structural change handled by the Tree/DataManager
 
     def toggle_rev_change(self, state):
@@ -201,6 +207,10 @@ class CardEditForm(BaseEditForm):
         self.twinpact_check.blockSignals(True)
         self.twinpact_check.setChecked(has_spell_side)
         self.twinpact_check.blockSignals(False)
+
+        # Update Mega Last Burst visibility
+        if "mega_last_burst" in self.keyword_checks:
+            self.keyword_checks["mega_last_burst"].setVisible(has_spell_side)
 
         kw_data = data.get('keywords', {})
         for k, cb in self.keyword_checks.items():
