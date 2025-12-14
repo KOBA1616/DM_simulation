@@ -26,6 +26,7 @@
 #include "handlers/modifier_handler.hpp"
 #include "handlers/select_option_handler.hpp"
 #include "handlers/break_shield_handler.hpp"
+#include "handlers/discard_handler.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -91,6 +92,7 @@ namespace dm::engine {
         sys.register_handler(EffectActionType::APPLY_MODIFIER, std::make_unique<ModifierHandler>());
         sys.register_handler(EffectActionType::SELECT_OPTION, std::make_unique<SelectOptionHandler>());
         sys.register_handler(EffectActionType::BREAK_SHIELD, std::make_unique<BreakShieldHandler>());
+        sys.register_handler(EffectActionType::DISCARD, std::make_unique<DiscardHandler>());
         _handlers_registered = true;
     }
 
