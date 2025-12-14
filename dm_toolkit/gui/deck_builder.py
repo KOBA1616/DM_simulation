@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 import dm_ai_module
+from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.card_editor import CardEditor
 from dm_toolkit.gui.widgets.card_widget import CardWidget
 from dm_toolkit.gui.widgets.card_detail_panel import CardDetailPanel
@@ -20,14 +21,14 @@ class DeckBuilder(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("Deck Builder")
+        self.setWindowTitle(tr("Deck Builder"))
         self.resize(1000, 700)
         layout = QHBoxLayout(self)
 
         # Left: Card Database
         left_panel = QVBoxLayout()
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search...")
+        self.search_bar.setPlaceholderText(tr("Search..."))
         self.search_bar.textChanged.connect(self.filter_cards)
         left_panel.addWidget(self.search_bar)
 
@@ -37,7 +38,7 @@ class DeckBuilder(QWidget):
         left_panel.addWidget(self.card_list)
         
         # Add New Card Button
-        new_card_btn = QPushButton("New Card")
+        new_card_btn = QPushButton(tr("New Card"))
         new_card_btn.clicked.connect(self.open_card_editor)
         left_panel.addWidget(new_card_btn)
 
@@ -45,7 +46,7 @@ class DeckBuilder(QWidget):
         
         # Center: Preview
         center_panel = QVBoxLayout()
-        center_panel.addWidget(QLabel("Preview"))
+        center_panel.addWidget(QLabel(tr("Preview")))
         
         # Visual Preview
         self.preview_container = QWidget()
@@ -62,7 +63,7 @@ class DeckBuilder(QWidget):
 
         # Right: Current Deck
         right_panel = QVBoxLayout()
-        self.deck_count_label = QLabel("Deck: 0/40")
+        self.deck_count_label = QLabel(f"{tr('Deck')}: 0/40")
         right_panel.addWidget(self.deck_count_label)
 
         self.deck_list = QListWidget()
@@ -71,9 +72,9 @@ class DeckBuilder(QWidget):
         right_panel.addWidget(self.deck_list)
 
         btn_layout = QHBoxLayout()
-        save_btn = QPushButton("Save Deck")
+        save_btn = QPushButton(tr("Save Deck"))
         save_btn.clicked.connect(self.save_deck)
-        load_btn = QPushButton("Load Deck")
+        load_btn = QPushButton(tr("Load Deck"))
         load_btn.clicked.connect(self.load_deck)
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(load_btn)
@@ -164,29 +165,29 @@ class DeckBuilder(QWidget):
                 card = self.card_db[cid]
                 self.deck_list.addItem(f"[{cid}] {card.name}")
             else:
-                self.deck_list.addItem(f"[{cid}] Unknown")
-        self.deck_count_label.setText(f"Deck: {len(self.current_deck)}/40")
+                self.deck_list.addItem(f"[{cid}] {tr('Unknown')}")
+        self.deck_count_label.setText(f"{tr('Deck')}: {len(self.current_deck)}/40")
 
     def save_deck(self):
         if len(self.current_deck) != 40:
             QMessageBox.warning(
-                self, "Invalid Deck", "Deck must have exactly 40 cards."
+                self, tr("Invalid Deck"), tr("Deck must have exactly 40 cards.")
             )
             return
 
         os.makedirs("data/decks", exist_ok=True)
         fname, _ = QFileDialog.getSaveFileName(
-            self, "Save Deck", "data/decks", "JSON Files (*.json)"
+            self, tr("Save Deck"), "data/decks", "JSON Files (*.json)"
         )
         if fname:
             with open(fname, 'w') as f:
                 json.dump(self.current_deck, f)
-            QMessageBox.information(self, "Success", "Deck saved!")
+            QMessageBox.information(self, tr("Success"), tr("Deck saved!"))
 
     def load_deck(self):
         os.makedirs("data/decks", exist_ok=True)
         fname, _ = QFileDialog.getOpenFileName(
-            self, "Load Deck", "data/decks", "JSON Files (*.json)"
+            self, tr("Load Deck"), "data/decks", "JSON Files (*.json)"
         )
         if fname:
             try:
@@ -195,5 +196,5 @@ class DeckBuilder(QWidget):
                 self.update_deck_list()
             except Exception as e:
                 QMessageBox.critical(
-                    self, "Error", f"Failed to load deck: {e}"
+                    self, tr("Error"), f"{tr('Failed to load deck')}: {e}"
                 )

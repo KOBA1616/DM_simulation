@@ -182,10 +182,9 @@ def test_card_stats_win_contribution():
     assert state.winner == dm_ai_module.GameResult.P1_WIN
 
     # Trigger stats update via PhaseManager
-    # check_game_over(state, result) -> returns bool
+    # check_game_over(state) -> returns (bool, result)
     # We pass a dummy result, it will be ignored/overwritten because state.winner is already set.
-    dummy_result = dm_ai_module.GameResult.NONE
-    PhaseManager.check_game_over(state, dummy_result)
+    PhaseManager.check_game_over(state)
 
     # Check stats for Card 2
     stats = dm_ai_module.get_card_stats(state)
