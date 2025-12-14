@@ -27,6 +27,7 @@
 #include "handlers/select_option_handler.hpp"
 #include "handlers/break_shield_handler.hpp"
 #include "handlers/discard_handler.hpp"
+#include "handlers/play_handler.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -93,6 +94,7 @@ namespace dm::engine {
         sys.register_handler(EffectActionType::SELECT_OPTION, std::make_unique<SelectOptionHandler>());
         sys.register_handler(EffectActionType::BREAK_SHIELD, std::make_unique<BreakShieldHandler>());
         sys.register_handler(EffectActionType::DISCARD, std::make_unique<DiscardHandler>());
+        sys.register_handler(EffectActionType::PLAY_FROM_ZONE, std::make_unique<PlayHandler>());
         _handlers_registered = true;
     }
 
@@ -108,6 +110,7 @@ namespace dm::engine {
         sys.register_evaluator("CIVILIZATION_MATCH", std::make_unique<CivilizationMatchEvaluator>());
         sys.register_evaluator("FIRST_ATTACK", std::make_unique<FirstAttackEvaluator>());
         sys.register_evaluator("COMPARE_STAT", std::make_unique<CompareStatEvaluator>());
+        sys.register_evaluator("OPPONENT_DRAWN_CARDS_COUNT", std::make_unique<OpponentCardsDrawnEvaluator>());
         _evaluators_registered = true;
     }
 
