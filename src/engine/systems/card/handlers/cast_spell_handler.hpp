@@ -56,13 +56,34 @@ namespace dm::engine {
                 // If it's "Cast spell from graveyard" effect, it's usually free.
                 // We'll use 999 for now as atomic "Cast" usually implies effect-driven cast.
 
+                const std::map<CardID, CardDefinition>* db_ptr = &ctx.card_db;
+                std::map<CardID, CardDefinition> temp_db; // Keep alive during call
+
+                if (ctx.action.cast_spell_side) {
+                     if (ctx.card_db.count(removed_card->card_id)) {
+                          const auto& def = ctx.card_db.at(removed_card->card_id);
+                          if (def.spell_side) {
+                               // Construct temporary DB mapping the original ID to the spell side definition
+                               temp_db = ctx.card_db; // Copy existing (expensive but safe)
+                               // Override the definition for this card ID to be its spell side
+                               temp_db[removed_card->card_id] = *def.spell_side;
+                               // Ensure the spell side ID matches if not set?
+                               // Spell side definition usually has ID 0 or same ID.
+                               // We need it to match `removed_card->card_id` so resolve_play_from_stack finds it.
+                               temp_db[removed_card->card_id].id = removed_card->card_id;
+
+                               db_ptr = &temp_db;
+                          }
+                     }
+                }
+
                 EffectResolver::resolve_play_from_stack(
                     ctx.game_state,
                     target_id,
                     999, // cost_reduction (Free)
                     SpawnSource::EFFECT_SUMMON,
                     controller,
-                    ctx.card_db,
+                    *db_ptr,
                     -1, // evo_source_id
                     0   // dest_override
                 );
