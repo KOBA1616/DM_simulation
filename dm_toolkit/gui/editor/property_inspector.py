@@ -34,6 +34,7 @@ class PropertyInspector(QWidget):
 
         self.action_form = ActionEditForm()
         self.stack.addWidget(self.action_form)
+        self.action_form.structure_update_requested.connect(self.structure_update_requested.emit)
 
         self.spell_side_form = SpellSideForm()
         self.stack.addWidget(self.spell_side_form)
