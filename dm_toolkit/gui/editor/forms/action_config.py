@@ -26,11 +26,11 @@ ACTION_UI_CONFIG = {
         "can_be_optional": True
     },
     "RETURN_TO_HAND": {
-        "visible": ["scope", "filter", "target_choice"],
+        "visible": [],
         "can_be_optional": True
     },
     "SEND_TO_MANA": {
-        "visible": ["scope", "filter", "target_choice"],
+        "visible": [],
         "can_be_optional": True
     },
     "MODIFY_POWER": {
@@ -69,7 +69,7 @@ ACTION_UI_CONFIG = {
         "label_value1": "Level"
     },
     "DISCARD": {
-        "visible": ["scope", "filter", "value1", "target_choice", "output_value_key"],
+        "visible": [],
         "label_value1": "Count",
         "can_be_optional": True,
         "produces_output": True
@@ -141,11 +141,11 @@ ACTION_UI_CONFIG = {
         "label_value1": "Count"
     },
     "SEND_SHIELD_TO_GRAVE": {
-        "visible": ["scope", "filter", "value1"],
+        "visible": [],
         "label_value1": "Count"
     },
     "SEND_TO_DECK_BOTTOM": {
-        "visible": ["scope", "filter", "value1"],
+        "visible": [],
         "label_value1": "Count"
     },
     "MOVE_TO_UNDER_CARD": {
@@ -174,8 +174,10 @@ ACTION_UI_CONFIG = {
         "label_value2": "Duration (Turns)"
     },
     "MOVE_CARD": {
-        "visible": ["scope", "filter", "destination_zone", "target_choice"],
-        "can_be_optional": True
+        "visible": ["scope", "filter", "value1", "destination_zone", "target_choice", "output_value_key"],
+        "label_value1": "Select Count",
+        "can_be_optional": True,
+        "produces_output": True
     },
     "SELECT_OPTION": {
         "visible": ["value1", "value2", "str_val"],
