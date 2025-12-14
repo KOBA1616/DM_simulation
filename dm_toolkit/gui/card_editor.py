@@ -241,6 +241,8 @@ class CardEditor(QMainWindow):
             target_item = item
         elif type_ == "ACTION":
             target_item = item.parent()
+        elif type_ == "OPTION":
+            target_item = item
 
         if target_item:
             new_act = {"type": "DESTROY", "scope": "TARGET_SELECT", "value1": 0, "filter": {}}
