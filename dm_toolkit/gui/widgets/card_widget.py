@@ -116,15 +116,28 @@ class CardWidget(QFrame):
         else:
             # Conical gradient for split circle
             stops = []
-            segment_size = 1.0 / len(self.civs)
-            for i, civ in enumerate(self.civs):
+            # Ensure unique civs to prevent weird single-color multi-segments
+            unique_civs = []
+            seen = set()
+            for c in self.civs:
+                if c not in seen:
+                    unique_civs.append(c)
+                    seen.add(c)
+
+            n = len(unique_civs)
+            for i, civ in enumerate(unique_civs):
                 c = self.get_civ_color(civ)
-                start = i * segment_size
-                end = (i + 1) * segment_size
-                stops.append(f"stop:{start} {c}")
-                stops.append(f"stop:{end} {c}")
+                # Hard stops for segments
+                start = i / n
+                end = (i + 1) / n
+
+                # Format to 3 decimal places to avoid scientific notation and ensure hard stops
+                # stop:0.500 #Red, stop:0.500 #Blue creates a hard edge in Qt
+                stops.append(f"stop:{start:.3f} {c}")
+                stops.append(f"stop:{end:.3f} {c}")
 
             grad_str = ", ".join(stops)
+            # angle:90 starts at 12 o'clock. For 2 colors: 0-0.5 (Left), 0.5-1.0 (Right).
             circle_bg = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:90, {grad_str});"
 
         self.cost_label.setStyleSheet(circle_style + circle_bg)

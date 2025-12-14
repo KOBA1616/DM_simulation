@@ -351,14 +351,22 @@ class CardPreviewWidget(QWidget):
         else:
             # Conical gradient for split circle (Cake-like)
             stops = []
-            segment_size = 1.0 / len(civs)
-            for i, civ in enumerate(civs):
+            # Ensure unique civs
+            unique_civs = []
+            seen = set()
+            for c in civs:
+                if c not in seen:
+                    unique_civs.append(c)
+                    seen.add(c)
+
+            n = len(unique_civs)
+            for i, civ in enumerate(unique_civs):
                 c = self.get_civ_color(civ)
                 # Hard stops for segments
-                start = i * segment_size
-                end = (i + 1) * segment_size
-                stops.append(f"stop:{start} {c}")
-                stops.append(f"stop:{end} {c}")
+                start = i / n
+                end = (i + 1) / n
+                stops.append(f"stop:{start:.3f} {c}")
+                stops.append(f"stop:{end:.3f} {c}")
 
             # Conical gradient starting at 90 degrees (12 o'clock)
             grad_str = ", ".join(stops)
