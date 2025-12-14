@@ -154,7 +154,8 @@ class FilterEditorWidget(QWidget):
 
         self.mode_label = QLabel(tr("Selection Mode"))
         self.mode_combo = QComboBox()
-        self.mode_combo.addItem(tr("All/Any"), 0)
+        self.mode_combo.addItem(tr("Selection_All"), 0)
+        self.mode_combo.addItem(tr("Selection_Any"), 2)
         self.mode_combo.addItem(tr("Fixed Number"), 1)
 
         self.count_spin = QSpinBox()
@@ -221,12 +222,16 @@ class FilterEditorWidget(QWidget):
 
         # Count
         count_val = filt_data.get('count', 0)
-        if count_val > 0:
-            self.mode_combo.setCurrentIndex(1) # Fixed
+        if count_val == 1:
+            self.mode_combo.setCurrentIndex(1) # Any
+            self.count_spin.setValue(1)
+            self.count_spin.setVisible(False)
+        elif count_val > 1:
+            self.mode_combo.setCurrentIndex(2) # Fixed
             self.count_spin.setValue(count_val)
             self.count_spin.setVisible(True)
         else:
-            self.mode_combo.setCurrentIndex(0) # All/Any
+            self.mode_combo.setCurrentIndex(0) # All
             self.count_spin.setValue(1)
             self.count_spin.setVisible(False)
 
@@ -275,6 +280,8 @@ class FilterEditorWidget(QWidget):
         if mode == 1:
             count = self.count_spin.value()
             if count > 0: filt['count'] = count
+        elif mode == 2:
+            filt['count'] = 1
 
         return filt
 

@@ -78,7 +78,7 @@ class CardTextGenerator:
         "SEARCH_DECK": "自分の山札を見る。その中から{filter}を1枚選び、{zone}に置く。その後、山札をシャッフルする。",
         "MEKRAID": "メクレイド {value1}",
         "DISCARD": "手札を{value1}枚捨てる。",
-        "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下のカードをプレイしてもよい。",
+        "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下の{target}をプレイしてもよい。",
         "COUNT_CARDS": "（{filter}の数を数える）", # Internal logic
         "GET_GAME_STAT": "（{str_val}を参照）", # Updated to show stat key
         "REVEAL_CARDS": "山札の上から{value1}枚を表向きにする。",
@@ -174,6 +174,12 @@ class CardTextGenerator:
                         bonus = data.get("power_attacker_bonus", 0)
                         if bonus > 0:
                             kw_str += f" +{bonus}"
+                    elif k == "revolution_change":
+                        cond = data.get("revolution_change_condition", {})
+                        if cond:
+                            cond_text = cls._describe_simple_filter(cond)
+                            kw_str += f"：{cond_text}"
+                            kw_str += f"（自分の{cond_text}が攻撃する時、そのクリーチャーと手札のこのクリーチャーと入れ替えてもよい）"
                     kw_lines.append(f"■ {kw_str}")
 
         if kw_lines:
@@ -198,6 +204,32 @@ class CardTextGenerator:
         if not civs:
             return "無色"
         return "/".join([cls.CIVILIZATION_MAP.get(c, c) for c in civs])
+
+    @classmethod
+    def _describe_simple_filter(cls, filter_def: Dict[str, Any]) -> str:
+        civs = filter_def.get("civilizations", [])
+        races = filter_def.get("races", [])
+        min_cost = filter_def.get("min_cost", 0)
+        max_cost = filter_def.get("max_cost", 999)
+
+        adjectives = []
+        if civs:
+            adjectives.append("/".join([cls.CIVILIZATION_MAP.get(c, c) for c in civs]))
+
+        if min_cost > 0:
+            adjectives.append(f"コスト{min_cost}以上")
+        if max_cost < 999:
+            adjectives.append(f"コスト{max_cost}以下")
+
+        adj_str = "の".join(adjectives)
+        if adj_str:
+            adj_str += "の"
+
+        noun_str = "クリーチャー"
+        if races:
+            noun_str = "/".join(races)
+
+        return adj_str + noun_str
 
     @classmethod
     def _format_effect(cls, effect: Dict[str, Any]) -> str:
@@ -333,6 +365,16 @@ class CardTextGenerator:
 
         # Scope/Filter resolution for {target}
         target_str, unit = cls._resolve_target(action)
+
+        # Special handling for PLAY_FROM_ZONE to avoid redundant zone description in target
+        if atype == "PLAY_FROM_ZONE":
+            # Strip zones from filter for target resolution to get pure card description
+            temp_action = action.copy()
+            temp_filter = temp_action.get("filter", {}).copy()
+            if "zones" in temp_filter:
+                temp_filter["zones"] = []
+            temp_action["filter"] = temp_filter
+            target_str, unit = cls._resolve_target(temp_action)
 
         # Destination resolution for {zone}
         dest_zone = action.get("destination_zone", "")
