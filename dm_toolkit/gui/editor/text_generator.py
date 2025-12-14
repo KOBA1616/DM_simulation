@@ -367,17 +367,32 @@ class CardTextGenerator:
 
         # Check for input_value_key to use placeholder for val1
         input_key = action.get("input_value_key", "")
+
+        # Scope/Filter resolution for {target}
+        target_str, unit = cls._resolve_target(action)
+
+        # Handling "All" (count=0) logic for generic selection actions
+        is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA"]
+
         # If val1 is 0 and we have an input key, assume it's dynamic
-        # Even if val1 is not 0, input_key usually overrides it in logic, so we should display the placeholder.
         if input_key:
              val1 = "（その数）"
+        elif val1 == 0 and is_generic_selection:
+             # Handle "Destroy All", "Tap All", etc.
+             if atype == "DESTROY":
+                 template = "{target}をすべて破壊する。"
+             elif atype == "TAP":
+                 template = "{target}をすべてタップする。"
+             elif atype == "UNTAP":
+                 template = "{target}をすべてアンタップする。"
+             elif atype == "RETURN_TO_HAND":
+                 template = "{target}をすべて手札に戻す。"
+             elif atype == "SEND_TO_MANA":
+                 template = "{target}をすべてマナゾーンに置く。"
 
         # Handling for GRANT_KEYWORD str_val localization
         if atype == "GRANT_KEYWORD":
             str_val = cls.KEYWORD_MAP.get(str_val, str_val)
-
-        # Scope/Filter resolution for {target}
-        target_str, unit = cls._resolve_target(action)
 
         # Special handling for PLAY_FROM_ZONE to avoid redundant zone description in target
         if atype == "PLAY_FROM_ZONE":
