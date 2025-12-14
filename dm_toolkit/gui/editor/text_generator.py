@@ -78,7 +78,7 @@ class CardTextGenerator:
         "SEARCH_DECK": "自分の山札を見る。その中から{filter}を1枚選び、{zone}に置く。その後、山札をシャッフルする。",
         "MEKRAID": "メクレイド {value1}",
         "DISCARD": "手札を{value1}枚捨てる。",
-        "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下のカードをプレイしてもよい。",
+        "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下の{target}をプレイしてもよい。",
         "COUNT_CARDS": "（{filter}の数を数える）", # Internal logic
         "GET_GAME_STAT": "（{str_val}を参照）", # Updated to show stat key
         "REVEAL_CARDS": "山札の上から{value1}枚を表向きにする。",
@@ -365,6 +365,16 @@ class CardTextGenerator:
 
         # Scope/Filter resolution for {target}
         target_str, unit = cls._resolve_target(action)
+
+        # Special handling for PLAY_FROM_ZONE to avoid redundant zone description in target
+        if atype == "PLAY_FROM_ZONE":
+            # Strip zones from filter for target resolution to get pure card description
+            temp_action = action.copy()
+            temp_filter = temp_action.get("filter", {}).copy()
+            if "zones" in temp_filter:
+                temp_filter["zones"] = []
+            temp_action["filter"] = temp_filter
+            target_str, unit = cls._resolve_target(temp_action)
 
         # Destination resolution for {zone}
         dest_zone = action.get("destination_zone", "")
