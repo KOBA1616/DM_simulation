@@ -3,6 +3,7 @@
 #include "core/game_state.hpp"
 #include "engine/systems/card/generic_card_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
+#include "engine/systems/card/target_utils.hpp"
 #include <set>
 #include <string>
 #include <algorithm>
@@ -21,43 +22,15 @@ namespace dm::engine {
                 int count = 0;
                 const auto& f = ctx.action.filter;
 
+                // Use TargetUtils::is_valid_target for consistent filtering
                 auto check_zone = [&](const std::vector<CardInstance>& zone, int owner_id) {
                      for (const auto& card : zone) {
                          if (!ctx.card_db.count(card.card_id)) continue;
                          const auto& cd = ctx.card_db.at(card.card_id);
 
-                         // Check types (CardDefinition uses CardType enum, Filter uses string)
-                         if (!f.types.empty()) {
-                             bool match = false;
-                             std::string type_str = "CREATURE";
-                             if (cd.type == CardType::SPELL) type_str = "SPELL";
-                             for(auto& t : f.types) if(t == type_str) match = true;
-                             if(!match) continue;
+                         if (TargetUtils::is_valid_target(card, cd, f, ctx.game_state, controller_id, owner_id)) {
+                             count++;
                          }
-                         if (!f.civilizations.empty()) {
-                             bool match = false;
-                             for(auto& fc : f.civilizations) {
-                                 for(auto& cc : cd.civilizations) {
-                                     if (fc == cc) match = true;
-                                     if(match) break;
-                                 }
-                                 if(match) break;
-                             }
-                             if(!match) continue;
-                         }
-                         if (!f.races.empty()) {
-                             bool match = false;
-                             for(auto& r : f.races) {
-                                 for(auto& cr : cd.races) if(r == cr) match = true;
-                             }
-                             if(!match) continue;
-                         }
-                         if (f.owner.has_value()) {
-                             if (f.owner == "SELF" && owner_id != controller_id) continue;
-                             if (f.owner == "OPPONENT" && owner_id == controller_id) continue;
-                         }
-
-                         count++;
                      }
                 };
 
