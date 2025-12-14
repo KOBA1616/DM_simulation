@@ -156,6 +156,8 @@ TRANSLATIONS = {
     "No (False)": "いいえ",
     "Selection Mode": "選択モード",
     "All/Any": "すべて/任意",
+    "Selection_All": "すべて",
+    "Selection_Any": "任意",
     "Fixed Number": "固定数",
     "Filter Help": "対象を選択するための条件を指定します。",
     "Include BATTLE_ZONE in target selection": "バトルゾーンを対象に含める",
