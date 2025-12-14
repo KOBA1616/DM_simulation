@@ -61,6 +61,8 @@ namespace dm::engine {
                          }
 
                          p.mana_zone.push_back(moved);
+
+                         GenericCardSystem::check_mega_last_burst(ctx.game_state, moved, ctx.card_db);
                          break;
                      }
                      // Hand -> Mana
