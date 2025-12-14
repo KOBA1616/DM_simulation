@@ -442,6 +442,66 @@ class CardTextGenerator:
         elif atype == "REVOLUTION_CHANGE":
              return "" # Covered by keyword
 
+        # -----------------------------------------------------
+        # MOVE_CARD Consolidation
+        # -----------------------------------------------------
+        if atype == "MOVE_CARD":
+            dest_zone = action.get("destination_zone", "NONE")
+            filter_def = action.get("filter", {})
+            zones = filter_def.get("zones", [])
+            target_desc, unit = cls._resolve_target(action)
+            val1 = action.get("value1", 0)
+
+            # Heuristics for Verb Selection
+            verb = "置く"
+            selection_text = ""
+
+            # Selection Count Text
+            if val1 > 0:
+                selection_text = f"{val1}{unit}選び、"
+            elif action.get("input_value_key"):
+                selection_text = f"（その数）{unit}選び、"
+
+            # Case: Bounce (Battle -> Hand)
+            if dest_zone == "HAND":
+                if "BATTLE_ZONE" in zones or "MANA_ZONE" in zones:
+                    verb = "戻す"
+                else:
+                    verb = "手札に加える" # Usually adding to hand if not returning
+
+            # Case: Discard (Hand -> Graveyard)
+            elif dest_zone == "GRAVEYARD":
+                if "HAND" in zones or target_desc == "手札":
+                    verb = "捨てる"
+                    # "手札を1枚選び、捨てる" is standard.
+                    # Or "手札を1枚捨てる"
+                    if target_desc == "手札":
+                        # If target_desc is just "Hand", "Choose Hand" is odd.
+                        # "Discard 1 card from hand" -> "手札を1枚捨てる"
+                        if val1 > 0:
+                             return f"手札を{val1}枚捨てる。"
+                        else:
+                             return f"{target_desc}を捨てる。"
+                elif "SHIELD_ZONE" in zones or "シールド" in target_desc:
+                    # Shield Burn
+                    # "相手のシールドを1つ選び、墓地に置く"
+                     pass # Verb "置く" is fine, context is "To Graveyard"
+
+            # Case: Mana Charge (Battle -> Mana)
+            elif dest_zone == "MANA_ZONE":
+                 pass # "マナゾーンに置く"
+
+            # Case: Deck Bottom
+            elif dest_zone == "DECK_BOTTOM":
+                 # "山札の下に置く"
+                 pass
+
+            # Construct final string
+            dest_str = cls.ZONE_MAP.get(dest_zone, dest_zone)
+            if dest_zone == "DECK_BOTTOM": dest_str = "山札の下"
+
+            return f"{target_desc}を{selection_text}{dest_str}に{verb}。"
+
         if not template:
             return f"({atype})"
 
