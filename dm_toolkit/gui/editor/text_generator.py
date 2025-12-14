@@ -75,7 +75,7 @@ class CardTextGenerator:
         "UNTAP": "{target}を{value1}{unit}選び、アンタップする。",
         "RETURN_TO_HAND": "{target}を{value1}{unit}選び、手札に戻す。",
         "SEND_TO_MANA": "{target}を{value1}{unit}選び、マナゾーンに置く。",
-        "MODIFY_POWER": "{target}のパワーを{value1}する。", # Duration usually implied as until end of turn
+        "MODIFY_POWER": "{target}のパワーを{value1}する。", # Dynamic update needed for signs
         "BREAK_SHIELD": "相手のシールドを{value1}つブレイクする。",
         "LOOK_AND_ADD": "自分の山札の上から{value1}枚を見る。その中から{value2}枚を手札に加え、残りを{zone}に置く。",
         "SEARCH_DECK_BOTTOM": "自分の山札の下から{value1}枚を見る。",
@@ -182,6 +182,7 @@ class CardTextGenerator:
                         cond = data.get("revolution_change_condition", {})
                         if cond:
                             cond_text = cls._describe_simple_filter(cond)
+                            # Remove redundancy if text generator duplicated race/civ
                             kw_str += f"：{cond_text}"
                             kw_str += f"（自分の{cond_text}が攻撃する時、そのクリーチャーと手札のこのクリーチャーと入れ替えてもよい）"
                     kw_lines.append(f"■ {kw_str}")
@@ -323,12 +324,15 @@ class CardTextGenerator:
             val = condition.get("value", 0)
             civ_raw = condition.get("str_val", "")
             civ = cls.CIVILIZATION_MAP.get(civ_raw, civ_raw)
+            # Improved formatting: "マナ武装 5：(火のカードが5枚以上あれば)" implied by context often, but kept simple
             return f"マナ武装 {val} ({civ}): "
 
         elif cond_type == "SHIELD_COUNT":
             val = condition.get("value", 0)
             op = condition.get("op", ">=")
-            return f"シールドが{val}枚{op}なら: "
+            op_text = "以上" if op == ">=" else "以下" if op == "<=" else ""
+            if op == "=": op_text = ""
+            return f"自分のシールドが{val}つ{op_text}なら: "
 
         elif cond_type == "CIVILIZATION_MATCH":
              return "マナゾーンに同じ文明があれば: "
@@ -338,18 +342,19 @@ class CardTextGenerator:
              op = condition.get("op", "=")
              val = condition.get("value", 0)
              stat_name, unit = cls.STAT_KEY_MAP.get(key, (key, ""))
-             op_text = f"{op} {val}"
+
+             op_text = ""
              if op == ">=":
-                 op_text = f"が{val}{unit}以上"
+                 op_text = f"{val}{unit}以上"
              elif op == "<=":
-                 op_text = f"が{val}{unit}以下"
+                 op_text = f"{val}{unit}以下"
              elif op == "=" or op == "==":
-                 op_text = f"が{val}{unit}"
+                 op_text = f"{val}{unit}"
              elif op == ">":
-                 op_text = f"が{val}{unit}より多い"
+                 op_text = f"{val}{unit}より多い"
              elif op == "<":
-                 op_text = f"が{val}{unit}より少ない"
-             return f"{stat_name}{op_text}なら: "
+                 op_text = f"{val}{unit}より少ない"
+             return f"自分の{stat_name}が{op_text}なら: "
 
         elif cond_type == "OPPONENT_PLAYED_WITHOUT_MANA":
             return "相手がマナゾーンのカードをタップせずにクリーチャーを出すか呪文を唱えた時: "
@@ -359,7 +364,6 @@ class CardTextGenerator:
         elif cond_type == "DURING_OPPONENT_TURN":
             return "相手のターン中: "
         elif cond_type == "EVENT_FILTER_MATCH":
-            # Just return empty, context is usually implied by trigger
             return ""
 
         return ""
@@ -373,7 +377,13 @@ class CardTextGenerator:
         template = cls.ACTION_MAP.get(atype, "")
 
         # Complex Action Logic
-        if atype == "SELECT_NUMBER":
+        if atype == "MODIFY_POWER":
+            val = action.get("value1", 0)
+            target_str, _ = cls._resolve_target(action)
+            sign = "+" if val >= 0 else ""
+            return f"{target_str}のパワーを{sign}{val}する。"
+
+        elif atype == "SELECT_NUMBER":
             val1 = action.get("value1", 0)
             val2 = action.get("value2", 0)
             if val1 > 0 and val2 > 0:
