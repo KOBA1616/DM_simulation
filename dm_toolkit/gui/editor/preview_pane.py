@@ -368,9 +368,9 @@ class CardPreviewWidget(QWidget):
                 stops.append(f"stop:{start:.3f} {c}")
                 stops.append(f"stop:{end:.3f} {c}")
 
-            # Conical gradient starting at 90 degrees (12 o'clock)
+            # Conical gradient starting at 135 degrees (Top-Left diagonal)
             grad_str = ", ".join(stops)
-            bg_style = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:90, {grad_str});"
+            bg_style = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:135, {grad_str});"
 
         label.setStyleSheet(style + bg_style)
 
