@@ -16,8 +16,8 @@ class DeckBuilder(QWidget):
     def __init__(self, card_db, civ_map=None):
         super().__init__()
         self.card_db = card_db
-        self.civ_map = civ_map or {}
         self.current_deck = []
+        # civ_map argument is retained for backward compatibility but is unused.
         self.init_ui()
 
     def init_ui(self):
@@ -41,6 +41,11 @@ class DeckBuilder(QWidget):
         new_card_btn = QPushButton(tr("New Card"))
         new_card_btn.clicked.connect(self.open_card_editor)
         left_panel.addWidget(new_card_btn)
+
+        # Reload DB Button
+        reload_btn = QPushButton(tr("Reload DB"))
+        reload_btn.clicked.connect(self.reload_database)
+        left_panel.addWidget(reload_btn)
 
         layout.addLayout(left_panel)
         
@@ -111,37 +116,46 @@ class DeckBuilder(QWidget):
             card = self.card_db[card_id]
             
             # Determine civilizations for widget
-            civ_input = None
+            civ_input = "COLORLESS"
             if hasattr(card, 'civilizations') and card.civilizations:
                 civ_input = [str(c).split('.')[-1] for c in card.civilizations]
             elif hasattr(card, 'civilization'):
                 civ_input = str(card.civilization).split('.')[-1]
-            else:
-                 civ_input = self.civ_map.get(card_id, "COLORLESS")
 
             widget = CardWidget(card.id, card.name, card.cost, card.power, civ_input)
             self.preview_layout.addWidget(widget)
             
-            self.card_detail_panel.update_card(card, self.civ_map)
+            self.card_detail_panel.update_card(card)
         else:
             self.card_detail_panel.update_card(None)
 
     def open_card_editor(self):
-        editor = CardEditor("data/cards.csv", self)
-        if editor.exec():
-            # Reload DB
-            self.card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
+        # Keep a reference to prevent garbage collection
+        self.editor = CardEditor("data/cards.json")
+        self.editor.show()
+
+    def reload_database(self):
+        try:
+            self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
             self.populate_card_list()
+            QMessageBox.information(self, tr("Info"), tr("Database reloaded!"))
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), f"Failed to reload database: {e}")
 
     def populate_card_list(self):
         self.card_list.clear()
-        for cid, card in self.card_db.items():
+        # Sort by ID
+        sorted_ids = sorted(self.card_db.keys())
+        for cid in sorted_ids:
+            card = self.card_db[cid]
             self.card_list.addItem(f"[{cid}] {card.name} (Cost: {card.cost})")
 
     def filter_cards(self, text):
         # Simple filter
         self.card_list.clear()
-        for cid, card in self.card_db.items():
+        sorted_ids = sorted(self.card_db.keys())
+        for cid in sorted_ids:
+            card = self.card_db[cid]
             if text.lower() in card.name.lower():
                 self.card_list.addItem(
                     f"[{cid}] {card.name} (Cost: {card.cost})"

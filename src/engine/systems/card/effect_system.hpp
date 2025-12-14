@@ -16,6 +16,8 @@ namespace dm::engine {
         std::map<std::string, int>& execution_vars;
         const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db;
         const std::vector<int>* targets = nullptr;
+        bool* interrupted = nullptr;
+        const std::vector<dm::core::ActionDef>* remaining_actions = nullptr;
 
         ResolutionContext(
             dm::core::GameState& state,
@@ -23,9 +25,11 @@ namespace dm::engine {
             int src,
             std::map<std::string, int>& vars,
             const std::map<dm::core::CardID, dm::core::CardDefinition>& db,
-            const std::vector<int>* tgs = nullptr)
+            const std::vector<int>* tgs = nullptr,
+            bool* intr = nullptr,
+            const std::vector<dm::core::ActionDef>* rem = nullptr)
             : game_state(state), action(act), source_instance_id(src),
-              execution_vars(vars), card_db(db), targets(tgs) {}
+              execution_vars(vars), card_db(db), targets(tgs), interrupted(intr), remaining_actions(rem) {}
     };
 
     class IActionHandler {
