@@ -71,6 +71,7 @@ namespace dm::engine {
             if (k.count("meta_counter_play")) def.keywords.meta_counter_play = k.at("meta_counter_play");
             if (k.count("power_attacker")) def.keywords.power_attacker = k.at("power_attacker");
             if (k.count("ex_life")) def.keywords.ex_life = k.at("ex_life");
+            if (k.count("mega_last_burst")) def.keywords.mega_last_burst = k.at("mega_last_burst");
         }
 
         // Auto-infer keywords from effects
