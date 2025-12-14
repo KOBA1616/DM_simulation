@@ -252,7 +252,10 @@ namespace dm::core {
 
              Player& p = players[owner];
              // Check zones in order of likelihood
-             for (auto& c : p.battle_zone) if (c.instance_id == instance_id) return &c;
+             for (auto& c : p.battle_zone) {
+                 if (c.instance_id == instance_id) return &c;
+                 for (auto& u : c.underlying_cards) if (u.instance_id == instance_id) return &u;
+             }
              for (auto& c : p.hand) if (c.instance_id == instance_id) return &c;
              for (auto& c : p.mana_zone) if (c.instance_id == instance_id) return &c;
              for (auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
@@ -274,7 +277,10 @@ namespace dm::core {
              if (owner > 1) return nullptr;
 
              const Player& p = players[owner];
-             for (const auto& c : p.battle_zone) if (c.instance_id == instance_id) return &c;
+             for (const auto& c : p.battle_zone) {
+                 if (c.instance_id == instance_id) return &c;
+                 for (const auto& u : c.underlying_cards) if (u.instance_id == instance_id) return &u;
+             }
              for (const auto& c : p.hand) if (c.instance_id == instance_id) return &c;
              for (const auto& c : p.mana_zone) if (c.instance_id == instance_id) return &c;
              for (const auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
