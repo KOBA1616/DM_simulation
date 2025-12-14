@@ -27,6 +27,8 @@
 #include "handlers/select_option_handler.hpp"
 #include "handlers/break_shield_handler.hpp"
 #include "handlers/discard_handler.hpp"
+#include "handlers/look_and_add_handler.hpp"
+#include "handlers/token_handler.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -52,7 +54,8 @@ namespace dm::engine {
     // Helper to determine controller of an instance
     PlayerID GenericCardSystem::get_controller(const GameState& game_state, int instance_id) {
         if (instance_id >= 0 && instance_id < (int)game_state.card_owner_map.size()) {
-            return game_state.card_owner_map[instance_id];
+            PlayerID pid = game_state.card_owner_map[instance_id];
+            if (pid < 2) return pid;
         }
         return game_state.active_player_id;
     }
@@ -64,6 +67,9 @@ namespace dm::engine {
         EffectSystem& sys = EffectSystem::instance();
         sys.register_handler(EffectActionType::DRAW_CARD, std::make_unique<DrawHandler>());
         sys.register_handler(EffectActionType::ADD_MANA, std::make_unique<ManaChargeHandler>());
+    sys.register_handler(EffectActionType::SEND_TO_MANA, std::make_unique<ManaChargeHandler>());
+    sys.register_handler(EffectActionType::LOOK_AND_ADD, std::make_unique<LookAndAddHandler>());
+    sys.register_handler(EffectActionType::SUMMON_TOKEN, std::make_unique<TokenHandler>());
         sys.register_handler(EffectActionType::DESTROY, std::make_unique<DestroyHandler>());
         sys.register_handler(EffectActionType::RETURN_TO_HAND, std::make_unique<ReturnToHandHandler>());
         sys.register_handler(EffectActionType::TAP, std::make_unique<TapHandler>());
@@ -90,6 +96,7 @@ namespace dm::engine {
         sys.register_handler(EffectActionType::CAST_SPELL, std::make_unique<CastSpellHandler>());
         sys.register_handler(EffectActionType::PUT_CREATURE, std::make_unique<PutCreatureHandler>());
         sys.register_handler(EffectActionType::APPLY_MODIFIER, std::make_unique<ModifierHandler>());
+        sys.register_handler(EffectActionType::MODIFY_POWER, std::make_unique<ModifierHandler>());
         sys.register_handler(EffectActionType::SELECT_OPTION, std::make_unique<SelectOptionHandler>());
         sys.register_handler(EffectActionType::BREAK_SHIELD, std::make_unique<BreakShieldHandler>());
         sys.register_handler(EffectActionType::DISCARD, std::make_unique<DiscardHandler>());

@@ -72,8 +72,18 @@ namespace dm::engine {
 
                 ctx.game_state.passive_effects.push_back(eff);
 
-            } else if (ctx.action.str_val == "POWER") {
-                // Power Modifier logic (future)
+            } else if (ctx.action.str_val == "POWER" || ctx.action.type == EffectActionType::MODIFY_POWER) {
+                 // Power Modifier
+                 PassiveEffect eff;
+                 eff.type = PassiveType::POWER_MODIFIER;
+                 eff.value = value;
+
+                 eff.target_filter = ctx.action.filter;
+                 eff.source_instance_id = ctx.source_instance_id;
+                 eff.controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                 eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
+
+                 ctx.game_state.passive_effects.push_back(eff);
             }
         }
     };
