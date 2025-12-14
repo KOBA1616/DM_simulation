@@ -27,5 +27,8 @@ namespace dm::engine {
         static bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db = {}, const std::map<std::string, int>& execution_context = {});
 
         static dm::core::PlayerID get_controller(const dm::core::GameState& game_state, int instance_id);
+
+        // Check and queue Mega Last Burst if applicable
+        static void check_mega_last_burst(dm::core::GameState& game_state, const dm::core::CardInstance& card, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
     };
 }
