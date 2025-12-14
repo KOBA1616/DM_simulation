@@ -374,13 +374,51 @@ class CardTextGenerator:
 
         # Special handling for PLAY_FROM_ZONE to avoid redundant zone description in target
         if atype == "PLAY_FROM_ZONE":
-            # Strip zones from filter for target resolution to get pure card description
-            temp_action = action.copy()
-            temp_filter = temp_action.get("filter", {}).copy()
+            # Work on a local copy to allow modification
+            action = action.copy()
+            temp_filter = action.get("filter", {}).copy()
+            action["filter"] = temp_filter
+
+            # 1. Infer Source Zone from filter if not explicitly set
+            if not action.get("source_zone") and "zones" in temp_filter:
+                zones = temp_filter["zones"]
+                if len(zones) == 1:
+                    action["source_zone"] = zones[0]
+
+            # 2. Handle Cost (Infer value1 from filter.max_cost if value1 is 0)
+            if action.get("value1", 0) == 0:
+                max_cost = temp_filter.get("max_cost", 999)
+                if max_cost < 999:
+                    action["value1"] = max_cost
+                    val1 = max_cost  # Update local variable used for substitution
+                    # Remove from filter to avoid redundancy in target description
+                    if "max_cost" in temp_filter:
+                        del temp_filter["max_cost"]
+
+            # 3. Strip zones from filter for target resolution to get pure card description
             if "zones" in temp_filter:
                 temp_filter["zones"] = []
-            temp_action["filter"] = temp_filter
-            target_str, unit = cls._resolve_target(temp_action)
+
+            # Remove "Your" (自分の) prefix from target if implicit in source zone context
+            # (Usually "Play from Hand" implies your hand/cards)
+            scope = action.get("scope", "NONE")
+            if scope in ["PLAYER_SELF", "SELF"]:
+                action["scope"] = "NONE"
+
+            # Re-resolve target with updated filter
+            target_str, unit = cls._resolve_target(action)
+
+            # 4. Determine Verb (Play vs Cast)
+            verb = "プレイしてもよい"
+            types = temp_filter.get("types", [])
+            if "SPELL" in types and "CREATURE" not in types:
+                verb = "唱えてもよい"
+
+            # 5. Construct Template
+            if action.get("source_zone"):
+                template = "{source_zone}からコスト{value1}以下の{target}を" + verb + "。"
+            else:
+                template = "コスト{value1}以下の{target}を" + verb + "。"
 
         # Destination resolution for {zone}
         dest_zone = action.get("destination_zone", "")
