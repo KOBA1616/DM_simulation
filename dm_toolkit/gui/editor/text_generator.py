@@ -174,6 +174,12 @@ class CardTextGenerator:
                         bonus = data.get("power_attacker_bonus", 0)
                         if bonus > 0:
                             kw_str += f" +{bonus}"
+                    elif k == "revolution_change":
+                        cond = data.get("revolution_change_condition", {})
+                        if cond:
+                            cond_text = cls._describe_simple_filter(cond)
+                            kw_str += f"：{cond_text}"
+                            kw_str += f"（自分の{cond_text}が攻撃する時、そのクリーチャーと手札のこのクリーチャーと入れ替えてもよい）"
                     kw_lines.append(f"■ {kw_str}")
 
         if kw_lines:
@@ -198,6 +204,32 @@ class CardTextGenerator:
         if not civs:
             return "無色"
         return "/".join([cls.CIVILIZATION_MAP.get(c, c) for c in civs])
+
+    @classmethod
+    def _describe_simple_filter(cls, filter_def: Dict[str, Any]) -> str:
+        civs = filter_def.get("civilizations", [])
+        races = filter_def.get("races", [])
+        min_cost = filter_def.get("min_cost", 0)
+        max_cost = filter_def.get("max_cost", 999)
+
+        adjectives = []
+        if civs:
+            adjectives.append("/".join([cls.CIVILIZATION_MAP.get(c, c) for c in civs]))
+
+        if min_cost > 0:
+            adjectives.append(f"コスト{min_cost}以上")
+        if max_cost < 999:
+            adjectives.append(f"コスト{max_cost}以下")
+
+        adj_str = "の".join(adjectives)
+        if adj_str:
+            adj_str += "の"
+
+        noun_str = "クリーチャー"
+        if races:
+            noun_str = "/".join(races)
+
+        return adj_str + noun_str
 
     @classmethod
     def _format_effect(cls, effect: Dict[str, Any]) -> str:
