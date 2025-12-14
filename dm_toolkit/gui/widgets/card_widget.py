@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel, QHBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QPalette, QMouseEvent
 
@@ -7,19 +7,30 @@ class CardWidget(QFrame):
     hovered = pyqtSignal(int) # Emits card_id
 
     def __init__(self, card_id, card_name, cost, power, civ, tapped=False, instance_id=-1, parent=None):
+        """
+        civ: Can be a single string (e.g. "FIRE") or a list of strings (e.g. ["FIRE", "NATURE"]).
+        """
         super().__init__(parent)
         self.card_id = card_id
         self.card_name = card_name
         self.cost = cost
         self.power = power
-        self.civ = civ
+
+        # Normalize civ to list
+        if isinstance(civ, list):
+            self.civs = civ
+        else:
+            self.civs = [civ] if civ else []
+
         self.tapped = tapped
         self.instance_id = instance_id
         
         self.setFixedSize(100, 140)
         self.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
         self.setLineWidth(2)
-        self.setToolTip(f"Name: {self.card_name}\nCost: {self.cost}\nPower: {self.power}\nCiv: {self.civ}")
+
+        civ_str = "/".join(self.civs)
+        self.setToolTip(f"Name: {self.card_name}\nCost: {self.cost}\nPower: {self.power}\nCiv: {civ_str}")
         
         self.init_ui()
         self.update_style()
@@ -31,57 +42,118 @@ class CardWidget(QFrame):
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
-        layout.setSpacing(1)
+        layout.setSpacing(2)
+
+        # Header (Cost Circle + Name)
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(2)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Cost Circle
+        self.cost_label = QLabel(str(self.cost))
+        self.cost_label.setFixedSize(24, 24)
+        self.cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Style will be set in update_style
         
-        # Header (Cost - Name)
-        self.header_label = QLabel(f"{self.cost} {self.card_name}")
-        self.header_label.setWordWrap(True)
-        self.header_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        font = self.header_label.font()
+        header_layout.addWidget(self.cost_label)
+
+        # Name
+        self.name_label = QLabel(self.card_name)
+        self.name_label.setWordWrap(True)
+        self.name_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        font = self.name_label.font()
         font.setBold(True)
         font.setPointSize(8)
-        self.header_label.setFont(font)
-        layout.addWidget(self.header_label)
+        self.name_label.setFont(font)
+
+        header_layout.addWidget(self.name_label)
+
+        layout.addLayout(header_layout)
         
         layout.addStretch()
         
         # Footer (Power)
         if self.power > 0:
-            self.power_label = QLabel(f"BP: {self.power}")
+            self.power_label = QLabel(f"BP:{self.power}")
             self.power_label.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
+            font = self.power_label.font()
+            font.setPointSize(7)
+            self.power_label.setFont(font)
             layout.addWidget(self.power_label)
 
-    def update_style(self):
-        # Color based on Civilization
-        color_map = {
-            "FIRE": "#FFCCCC",
-            "WATER": "#CCFFFF",
-            "NATURE": "#CCFFCC",
-            "LIGHT": "#FFFFCC",
-            "DARKNESS": "#E0E0E0"
+    def get_civ_color(self, civ):
+        colors_base = {
+            "LIGHT": "#DAA520",     # GoldenRod
+            "WATER": "#1E90FF",     # DodgerBlue
+            "DARKNESS": "#696969",  # DimGray
+            "FIRE": "#FF4500",      # OrangeRed
+            "NATURE": "#228B22",    # ForestGreen
+            "ZERO": "#A9A9A9"       # DarkGray
         }
-        bg_color = color_map.get(self.civ, "#FFFFFF")
+        return colors_base.get(civ, "#A9A9A9")
         
+    def get_bg_civ_color(self, civ):
+        # Lighter colors for card background
+        colors_base = {
+            "LIGHT": "#FFFACD",     # LemonChiffon
+            "WATER": "#E0FFFF",     # LightCyan
+            "DARKNESS": "#D3D3D3",  # LightGray
+            "FIRE": "#FFE4E1",      # MistyRose
+            "NATURE": "#90EE90",    # LightGreen
+            "ZERO": "#F5F5F5"       # WhiteSmoke
+        }
+        return colors_base.get(civ, "#FFFFFF")
+
+    def update_style(self):
+        # 1. Update Cost Circle Style (Multicolor Split)
+        circle_style = "font-weight: bold; font-size: 10px; color: white; border: 1px solid black; border-radius: 12px; padding: 0px;"
+
+        if not self.civs:
+             circle_bg = "background-color: #A9A9A9;"
+        elif len(self.civs) == 1:
+            c = self.get_civ_color(self.civs[0])
+            circle_bg = f"background-color: {c};"
+        else:
+            # Conical gradient for split circle
+            stops = []
+            segment_size = 1.0 / len(self.civs)
+            for i, civ in enumerate(self.civs):
+                c = self.get_civ_color(civ)
+                start = i * segment_size
+                end = (i + 1) * segment_size
+                stops.append(f"stop:{start} {c}")
+                stops.append(f"stop:{end} {c}")
+
+            grad_str = ", ".join(stops)
+            circle_bg = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:90, {grad_str});"
+
+        self.cost_label.setStyleSheet(circle_style + circle_bg)
+
+        # 2. Update Card Background Style
+        border_color = '#555' if not self.tapped else 'red'
+        border_width = '2px' if not self.tapped else '3px'
+
+        if not self.civs:
+            bg_style = "background-color: #FFFFFF;"
+        elif len(self.civs) == 1:
+            c = self.get_bg_civ_color(self.civs[0])
+            bg_style = f"background-color: {c};"
+        else:
+            # Gradient for card background if multi (Linear gradient)
+            if len(self.civs) >= 2:
+                c1 = self.get_bg_civ_color(self.civs[0])
+                c2 = self.get_bg_civ_color(self.civs[1])
+                bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2});"
+            else:
+                 bg_style = "background-color: #E6E6FA;"
+
         self.setStyleSheet(f"""
             CardWidget {{
-                background-color: {bg_color};
-                border: 2px solid {'#555' if not self.tapped else '#000'};
+                {bg_style}
+                border: {border_width} solid {border_color};
                 border-radius: 5px;
             }}
         """)
-        
-        if self.tapped:
-            # Rotate visual representation? 
-            # PyQt widgets are hard to rotate in layout.
-            # Instead, we change border/color or add "TAPPED" text.
-            # For now, let's darken it.
-            self.setStyleSheet(f"""
-                CardWidget {{
-                    background-color: {bg_color};
-                    border: 3px solid red;
-                    border-radius: 5px;
-                }}
-            """)
 
     def set_tapped(self, tapped):
         self.tapped = tapped
