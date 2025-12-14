@@ -365,6 +365,13 @@ class CardTextGenerator:
         val2 = action.get("value2", 0)
         str_val = action.get("str_val", "")
 
+        # Check for input_value_key to use placeholder for val1
+        input_key = action.get("input_value_key", "")
+        # If val1 is 0 and we have an input key, assume it's dynamic
+        # Even if val1 is not 0, input_key usually overrides it in logic, so we should display the placeholder.
+        if input_key:
+             val1 = "（その数）"
+
         # Handling for GRANT_KEYWORD str_val localization
         if atype == "GRANT_KEYWORD":
             str_val = cls.KEYWORD_MAP.get(str_val, str_val)
@@ -390,7 +397,10 @@ class CardTextGenerator:
                 max_cost = temp_filter.get("max_cost", 999)
                 if max_cost < 999:
                     action["value1"] = max_cost
-                    val1 = max_cost  # Update local variable used for substitution
+                    # Only update val1 if it wasn't already replaced by placeholder
+                    if not input_key:
+                        val1 = max_cost
+
                     # Remove from filter to avoid redundancy in target description
                     if "max_cost" in temp_filter:
                         del temp_filter["max_cost"]
