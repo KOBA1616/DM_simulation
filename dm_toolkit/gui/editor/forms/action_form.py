@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton
+from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
@@ -7,6 +7,8 @@ from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 
 class ActionEditForm(BaseEditForm):
+    structure_update_requested = pyqtSignal(str, dict)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
@@ -106,6 +108,14 @@ class ActionEditForm(BaseEditForm):
         self.val2_spin.setRange(-9999, 9999)
         layout.addRow(self.val2_label, self.val2_spin)
 
+        self.allow_duplicates_check = QCheckBox(tr("Allow Duplicates"))
+        layout.addRow(self.allow_duplicates_check)
+        self.allow_duplicates_check.stateChanged.connect(self.update_data)
+
+        self.generate_options_btn = QPushButton(tr("Generate Option Slots"))
+        self.generate_options_btn.clicked.connect(self.request_generate_options)
+        layout.addRow(self.generate_options_btn)
+
         self.arbitrary_check = QCheckBox(tr("Arbitrary Amount (Up to N)"))
         layout.addRow(self.arbitrary_check)
 
@@ -175,8 +185,14 @@ class ActionEditForm(BaseEditForm):
 
         self.val1_label.setVisible(config["val1_visible"] and not is_smart_linked)
         self.val1_spin.setVisible(config["val1_visible"] and not is_smart_linked)
-        self.val2_label.setVisible(config["val2_visible"])
-        self.val2_spin.setVisible(config["val2_visible"])
+
+        is_select_option = (action_type == "SELECT_OPTION")
+        # Hide standard value2 spin if we are using the checkbox for duplicates
+        self.val2_label.setVisible(config["val2_visible"] and not is_select_option)
+        self.val2_spin.setVisible(config["val2_visible"] and not is_select_option)
+
+        self.allow_duplicates_check.setVisible(is_select_option)
+        self.generate_options_btn.setVisible(is_select_option)
 
         # Specific Widget Visibility
         is_measure = (action_type == "MEASURE_COUNT")
@@ -245,12 +261,20 @@ class ActionEditForm(BaseEditForm):
         self.val1_spin.setValue(data.get('value1', 0))
         self.val2_spin.setValue(data.get('value2', 0))
 
+        if ui_type == "SELECT_OPTION":
+             self.allow_duplicates_check.setChecked(data.get('value2', 0) == 1)
+
         if ui_type != "MEASURE_COUNT" and ui_type != "COST_REFERENCE":
              self.str_val_edit.setText(str_val)
 
         self.arbitrary_check.setChecked(data.get('optional', False))
 
         self.link_widget.set_data(data)
+
+    def request_generate_options(self):
+        count = self.val1_spin.value()
+        if count <= 0: count = 1 # Fallback
+        self.structure_update_requested.emit("GENERATE_OPTIONS", {"count": count})
 
     def _save_data(self, data):
         action_type = self.type_combo.currentData()
@@ -273,6 +297,10 @@ class ActionEditForm(BaseEditForm):
             data['type'] = "COST_REFERENCE"
             data['str_val'] = self.ref_mode_combo.currentData()
 
+        elif action_type == "SELECT_OPTION":
+            data['type'] = action_type
+            data['value2'] = 1 if self.allow_duplicates_check.isChecked() else 0
+
         else:
             data['type'] = action_type
             data['str_val'] = self.str_val_edit.text()
@@ -281,7 +309,11 @@ class ActionEditForm(BaseEditForm):
         data['scope'] = self.scope_combo.currentData()
         data['filter'] = self.filter_widget.get_data()
         data['value1'] = self.val1_spin.value()
-        data['value2'] = self.val2_spin.value()
+
+        # Prevent overwriting value2 for SELECT_OPTION
+        if action_type != "SELECT_OPTION":
+             data['value2'] = self.val2_spin.value()
+
         data['optional'] = self.arbitrary_check.isChecked()
 
         self.link_widget.get_data(data)
@@ -317,5 +349,6 @@ class ActionEditForm(BaseEditForm):
         self.filter_widget.blockSignals(block)
         self.link_widget.blockSignals(block)
         self.arbitrary_check.blockSignals(block)
+        self.allow_duplicates_check.blockSignals(block)
         self.ref_mode_combo.blockSignals(block)
         self.dest_zone_combo.blockSignals(block)

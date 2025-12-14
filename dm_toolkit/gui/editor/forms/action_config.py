@@ -177,7 +177,10 @@ ACTION_UI_CONFIG = {
         "can_be_optional": True
     },
     "SELECT_OPTION": {
-        "visible": [], # No additional fields needed, options managed via tree context menu
-        "label_str_val": "Mode Name (Optional)"
+        "visible": ["value1", "value2", "str_val"],
+        "label_value1": "Select Count",
+        "label_value2": "Allow Duplicates",
+        "label_str_val": "Mode Name (Optional)",
+        "can_be_optional": True
     }
 }
