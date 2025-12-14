@@ -103,6 +103,7 @@ TRANSLATIONS = {
     "DECK_BOTTOM": "デッキ下",
     "DECK_TOP": "デッキ上",
     "DECK": "デッキ",
+    "EFFECT_BUFFER": "効果バッファ",
 
     # Scopes
     "PLAYER_SELF": "自分",
@@ -202,6 +203,7 @@ TRANSLATIONS = {
     "Slayer": "スレイヤー",
     "Double Breaker": "W・ブレイカー",
     "Triple Breaker": "T・ブレイカー",
+    "World Breaker": "ワールド・ブレイカー",
     "Shield Trigger": "S・トリガー",
     "Evolution": "進化",
     "Just Diver": "ジャストダイバー",
@@ -235,6 +237,15 @@ TRANSLATIONS = {
     "Enable to generate a Spell Side node in the logic tree.": "ロジックツリーに呪文側のノードを生成します。",
     "REVOLUTION_CHANGE": "革命チェンジ",
     "SPELL_SIDE": "呪文側",
+
+    # Logic Tree & Display
+    "Reduce Cost by": "コスト軽減:",
+    "Revolution Change": "革命チェンジ",
+    "Mode Selection": "モード選択",
+    "Reference": "参照:",
+    "Option": "選択肢",
+    "Effect": "効果",
+    "Reaction": "リアクション",
 
     # App / Game Window
     "Game Info & Controls": "ゲーム情報 & 操作",
