@@ -290,14 +290,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<FilterDef>(m, "FilterDef")
         .def(py::init<>())
         // Constructor that takes keyword arguments
-        .def(py::init([](std::optional<std::string> owner, std::vector<std::string> zones, std::vector<std::string> types, std::vector<std::string> civilizations, std::vector<std::string> races, std::optional<int> min_cost, std::optional<int> max_cost, std::optional<int> min_power, std::optional<int> max_power, std::optional<bool> is_tapped, std::optional<bool> is_blocker, std::optional<bool> is_evolution, std::optional<int> count) {
+        .def(py::init([](std::optional<std::string> owner, std::vector<std::string> zones, std::vector<std::string> types, std::vector<std::string> civilizations, std::vector<std::string> races, std::optional<int> min_cost, std::optional<int> max_cost, std::optional<int> min_power, std::optional<int> max_power, std::optional<bool> is_tapped, std::optional<bool> is_blocker, std::optional<bool> is_evolution, std::optional<bool> is_card_designation, std::optional<int> count) {
             FilterDef f;
             f.owner = owner; f.zones = zones; f.types = types;
             f.civilizations.clear();
             for(const auto& c : civilizations) f.civilizations.push_back(string_to_civilization(c));
             f.races = races;
             f.min_cost = min_cost; f.max_cost = max_cost; f.min_power = min_power; f.max_power = max_power;
-            f.is_tapped = is_tapped; f.is_blocker = is_blocker; f.is_evolution = is_evolution; f.count = count;
+            f.is_tapped = is_tapped; f.is_blocker = is_blocker; f.is_evolution = is_evolution; f.is_card_designation = is_card_designation; f.count = count;
             return f;
         }),
         py::arg("owner") = std::nullopt,
@@ -312,6 +312,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         py::arg("is_tapped") = std::nullopt,
         py::arg("is_blocker") = std::nullopt,
         py::arg("is_evolution") = std::nullopt,
+        py::arg("is_card_designation") = std::nullopt,
         py::arg("count") = std::nullopt
         )
         .def_readwrite("zones", &FilterDef::zones)
@@ -323,6 +324,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("is_tapped", &FilterDef::is_tapped)
         .def_readwrite("is_blocker", &FilterDef::is_blocker)
         .def_readwrite("is_evolution", &FilterDef::is_evolution)
+        .def_readwrite("is_card_designation", &FilterDef::is_card_designation)
         .def_readwrite("owner", &FilterDef::owner)
         .def_readwrite("count", &FilterDef::count);
 
