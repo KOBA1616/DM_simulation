@@ -90,7 +90,7 @@ class CardTextGenerator:
         "PUT_CREATURE": "{target}をバトルゾーンに出す。",
         "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
         "MOVE_CARD": "{target}を{zone}に置く。",
-        "COST_REFERENCE": "コストを軽減する",
+        "COST_REFERENCE": "", # Handled specifically in _format_action
 
         # New Additions
         "SUMMON_TOKEN": "「{str_val}」を{value1}体出す。",
@@ -100,7 +100,7 @@ class CardTextGenerator:
         "MOVE_TO_UNDER_CARD": "{target}を{value1}{unit}選び、カードの下に置く。",
         "SELECT_NUMBER": "数字を1つ選ぶ。", # Placeholder, logic handled in method
         "DECLARE_NUMBER": "{value1}〜{value2}の数字を1つ宣言する。",
-        "COST_REDUCTION": "コストを{value1}軽減する。",
+        "COST_REDUCTION": "{target}のコストを{value1}少なくする。ただし、コストは0以下にはならない。",
         "LOOK_TO_BUFFER": "{source_zone}から{value1}枚を見る（バッファへ）。",
         "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
         "PLAY_FROM_BUFFER": "バッファからプレイする。",
@@ -296,6 +296,29 @@ class CardTextGenerator:
             if val1 > 0 and val2 > 0:
                  template = f"{val1}〜{val2}の数字を1つ選ぶ。"
 
+        # COST_REFERENCE handling
+        if atype == "COST_REFERENCE":
+            str_val = action.get("str_val", "")
+            if str_val == "G_ZERO":
+                # G-Zero: condition inside action
+                cond = action.get("condition", {})
+                cond_text = cls._format_condition(cond).strip().rstrip(':') # remove trailing colon
+                return f"G・ゼロ：{cond_text}（このクリーチャーをコストを支払わずに召喚してもよい）"
+            elif str_val == "HYPER_ENERGY":
+                return "ハイパーエナジー"
+            elif str_val in ["SYM_CREATURE", "SYM_SPELL", "SYM_SHIELD"]:
+                # Sympathy: Target is counted
+                target_desc, unit = cls._resolve_target(action)
+                val1 = action.get("value1", 0)
+                # "Target" 1 count reduces cost by value1
+                # If target_desc implies "My ...", it works.
+                # Use "召喚コスト" if it's counting creatures/context implies summon, but safest is "コスト".
+                # However, Sympathy is usually for summoning.
+                cost_term = "召喚コスト" if "CREATURE" in str_val else "コスト"
+                return f"{target_desc}1{unit}につき、このクリーチャーの{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
+            else:
+                return "コストを軽減する"
+
         if not template:
             return f"({atype})"
 
@@ -332,6 +355,16 @@ class CardTextGenerator:
              # Basic filter description
              text = text.replace("{filter}", target_str)
 
+        # Post-processing for specific actions to improve natural language
+        if atype == "COST_REDUCTION":
+            # If target is "Card", replace with "This creature" contextually?
+            # Or if it is "My Card", replace with "This creature".
+            # For simplicity, if target_str is exactly "カード" or "自分のカード" and filter is empty-ish?
+            # _resolve_target returns "カード" if no filter.
+            if target_str == "カード" or target_str == "自分のカード":
+                text = text.replace("カード", "このクリーチャー")
+                text = text.replace("自分のカード", "このクリーチャー") # Just in case
+
         # Optional handling ("Up to" / "You may")
         if action.get("optional", False):
             # Generalized replacement for "N[unit]Select" -> "N[unit]Up to Select"
@@ -364,23 +397,29 @@ class CardTextGenerator:
         filter_def = action.get("filter", {})
         atype = action.get("type", "")
 
-        target_desc = ""
+        prefix = "" # Owner scope (My, Opponent's)
+        adjectives = "" # Civs, Races, Costs
+        noun = "" # Zone or Type (Card, Creature)
         unit = "枚" # Default unit
 
         # Implicit handling for certain actions that don't always specify scope but imply it (e.g., DISCARD imply SELF)
         if atype == "DISCARD" and scope == "NONE":
              scope = "PLAYER_SELF"
+        # COST_REDUCTION on self (empty filter often implies self or all own cards?)
+        if atype == "COST_REDUCTION" and not filter_def and scope == "NONE":
+             return ("このクリーチャー", "枚")
 
+        # 1. Scope Prefix
         if scope == "PLAYER_OPPONENT":
-            target_desc += "相手の"
+            prefix = "相手の"
         elif scope == "PLAYER_SELF" or scope == "SELF":
-            target_desc += "自分の"
+            prefix = "自分の"
         elif scope == "ALL_PLAYERS":
-            target_desc += "すべてのプレイヤーの"
+            prefix = "すべてのプレイヤーの"
         elif scope == "RANDOM":
-            target_desc += "ランダムな"
+            prefix = "ランダムな"
 
-        # Parse filter
+        # 2. Parse Filter (Adjectives & Noun)
         if filter_def:
             zones = filter_def.get("zones", [])
             types = filter_def.get("types", [])
@@ -388,66 +427,103 @@ class CardTextGenerator:
             civs = filter_def.get("civilizations", [])
 
             # Adjectives
+            temp_adjs = []
             if civs:
-                civ_names = [cls.CIVILIZATION_MAP.get(c, c) for c in civs]
-                target_desc += "/".join(civ_names) + "の"
-
+                temp_adjs.append("/".join([cls.CIVILIZATION_MAP.get(c, c) for c in civs]))
             if races:
-                target_desc += "/".join(races) + "の"
+                temp_adjs.append("/".join(races))
 
+            # Combine Civ/Race with "の"
+            if temp_adjs:
+                adjectives += "/".join(temp_adjs) + "の"
+
+            # Add cost constraints
             if filter_def.get("min_cost", 0) > 0:
-                 target_desc += f"コスト{filter_def['min_cost']}以上の"
-
+                 adjectives += f"コスト{filter_def['min_cost']}以上の"
             if filter_def.get("max_cost", 999) < 999:
-                 target_desc += f"コスト{filter_def['max_cost']}以下の"
+                 adjectives += f"コスト{filter_def['max_cost']}以下の"
 
-            # Nouns
-            if "BATTLE_ZONE" in zones:
-                if "CREATURE" in types or (not types):
-                    target_desc += "クリーチャー"
-                    unit = "体"
-                elif "CROSS_GEAR" in types:
-                    target_desc += "クロスギア"
-            elif "MANA_ZONE" in zones:
-                target_desc += "マナ"
-            elif "HAND" in zones:
-                target_desc += "手札"
-            elif "SHIELD_ZONE" in zones:
-                target_desc += "シールド"
-                unit = "つ"
-            elif "GRAVEYARD" in zones:
-                if "CREATURE" in types:
-                     target_desc += "クリーチャー"
-                     unit = "体"
-                elif "SPELL" in types:
-                     target_desc += "呪文"
-                else:
-                     target_desc += "カード"
-            elif "DECK" in zones:
-                 target_desc += "カード"
-
+            # Tapped state is also an adjective
             if filter_def.get("is_tapped", None) is True:
-                 target_desc = "タップされている" + target_desc
+                 adjectives = "タップされている" + adjectives
             elif filter_def.get("is_tapped", None) is False:
-                 target_desc = "アンタップされている" + target_desc
+                 adjectives = "アンタップされている" + adjectives
 
             if filter_def.get("is_blocker", None) is True:
-                 target_desc = "ブロッカーを持つ" + target_desc
+                 adjectives = "ブロッカーを持つ" + adjectives
+
+            # Noun (Type or Zone context)
+            zone_noun = ""
+            type_noun = "カード"
+
+            if "BATTLE_ZONE" in zones:
+                zone_noun = "バトルゾーン"
+                if "CREATURE" in types or (not types):
+                    type_noun = "クリーチャー"
+                    unit = "体"
+                elif "CROSS_GEAR" in types:
+                    type_noun = "クロスギア"
+            elif "MANA_ZONE" in zones:
+                zone_noun = "マナゾーン"
+                type_noun = "カード"
+            elif "HAND" in zones:
+                zone_noun = "手札"
+                type_noun = "カード"
+            elif "SHIELD_ZONE" in zones:
+                zone_noun = "シールドゾーン"
+                type_noun = "カード"
+                unit = "つ"
+            elif "GRAVEYARD" in zones:
+                zone_noun = "墓地"
+                if "CREATURE" in types:
+                     type_noun = "クリーチャー"
+                     unit = "体"
+                elif "SPELL" in types:
+                     type_noun = "呪文"
+            elif "DECK" in zones:
+                 zone_noun = "山札"
+                 type_noun = "カード"
+
+            # If types are specified but no zone, use type noun
+            if not zone_noun:
+                if "CREATURE" in types:
+                    type_noun = "クリーチャー"
+                    unit = "体"
+                elif "SPELL" in types:
+                    type_noun = "呪文"
+
+            # Construct description
+            # Pattern: [Prefix] [Zone]の [Adj] [Type]
+            parts = []
+            if prefix: parts.append(prefix)
+            if zone_noun: parts.append(zone_noun + "の")
+            if adjectives: parts.append(adjectives)
+            parts.append(type_noun)
+
+            target_desc = "".join(parts)
+
+            # Refinement
+            if "SHIELD_ZONE" in zones and (not types or "CARD" in types):
+                target_desc = target_desc.replace("シールドゾーンのカード", "シールド")
+                unit = "つ"
+
+            if "BATTLE_ZONE" in zones:
+                 target_desc = target_desc.replace("バトルゾーンの", "")
 
         else:
             # Implicit targets based on action type
             if atype == "DESTROY":
                  if scope == "PLAYER_OPPONENT" or scope == "OPPONENT": # Legacy compat
-                     target_desc += "クリーチャー" # Default assumption
+                     target_desc = "相手のクリーチャー"
                      unit = "体"
             elif atype == "BREAK_SHIELD":
-                 pass # 'shield' is in the template
+                 pass
             elif atype == "TAP" or atype == "UNTAP":
                  if "クリーチャー" not in target_desc:
-                      target_desc += "クリーチャー"
+                      target_desc = prefix + "クリーチャー"
                       unit = "体"
             elif atype == "DISCARD":
-                 target_desc = "手札" # Typically "Discard N cards" -> "Select N cards from Hand"
+                 target_desc = "手札"
 
         if not target_desc:
             target_desc = "カード" # Fallback
