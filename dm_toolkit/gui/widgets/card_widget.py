@@ -110,36 +110,9 @@ class CardWidget(QFrame):
 
         if not self.civs:
              circle_bg = "background-color: #A9A9A9;"
-        elif len(self.civs) == 1:
+        elif len(self.civs) >= 1:
             c = self.get_civ_color(self.civs[0])
             circle_bg = f"background-color: {c};"
-        else:
-            # Conical gradient for split circle
-            stops = []
-            # Ensure unique civs to prevent weird single-color multi-segments
-            unique_civs = []
-            seen = set()
-            for c in self.civs:
-                if c not in seen:
-                    unique_civs.append(c)
-                    seen.add(c)
-
-            n = len(unique_civs)
-            for i, civ in enumerate(unique_civs):
-                c = self.get_civ_color(civ)
-                # Hard stops for segments
-                start = i / n
-                end = (i + 1) / n
-
-                # Format to 3 decimal places to avoid scientific notation and ensure hard stops
-                # stop:0.500 #Red, stop:0.500 #Blue creates a hard edge in Qt
-                stops.append(f"stop:{start:.3f} {c}")
-                stops.append(f"stop:{end:.3f} {c}")
-
-            grad_str = ", ".join(stops)
-            # angle:135 starts at Top-Left. For 2 colors: 0-0.5 (Bottom-Left), 0.5-1.0 (Top-Right).
-            # This matches the diagonal split seen in official cards (e.g. Fire/Nature).
-            circle_bg = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:135, {grad_str});"
 
         self.cost_label.setStyleSheet(circle_style + circle_bg)
 
