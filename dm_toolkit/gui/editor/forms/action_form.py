@@ -106,6 +106,9 @@ class ActionEditForm(BaseEditForm):
         self.val2_spin.setRange(-9999, 9999)
         layout.addRow(self.val2_label, self.val2_spin)
 
+        self.no_cost_check = QCheckBox(tr("Play without paying cost"))
+        layout.addRow(self.no_cost_check)
+
         self.arbitrary_check = QCheckBox(tr("Arbitrary Amount (Up to N)"))
         layout.addRow(self.arbitrary_check)
 
@@ -125,6 +128,8 @@ class ActionEditForm(BaseEditForm):
         self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
         self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
         self.arbitrary_check.stateChanged.connect(self.update_data)
+        self.no_cost_check.stateChanged.connect(self.update_data)
+        self.no_cost_check.stateChanged.connect(self.on_no_cost_changed)
 
         self.update_ui_state(self.type_combo.currentData())
 
@@ -152,10 +157,14 @@ class ActionEditForm(BaseEditForm):
         action_type = self.type_combo.currentData()
         config = self._get_ui_config(action_type)
 
-        self.val1_label.setVisible(config["val1_visible"] and not is_checked)
-        self.val1_spin.setVisible(config["val1_visible"] and not is_checked)
+        is_no_cost = self.no_cost_check.isChecked()
+        self.val1_label.setVisible(config["val1_visible"] and not is_checked and not is_no_cost)
+        self.val1_spin.setVisible(config["val1_visible"] and not is_checked and not is_no_cost)
 
         self.update_data()
+
+    def on_no_cost_changed(self, state):
+        self.on_smart_link_changed(self.link_widget.is_smart_link_active())
 
     def update_ui_state(self, action_type):
         if not action_type: return
@@ -170,11 +179,13 @@ class ActionEditForm(BaseEditForm):
         self.link_widget.set_smart_link_enabled(can_link_input)
 
         self.arbitrary_check.setVisible(config.get("can_be_optional", False))
+        self.no_cost_check.setVisible(action_type == "PLAY_FROM_ZONE")
 
         is_smart_linked = self.link_widget.is_smart_link_active() and can_link_input
+        is_no_cost = self.no_cost_check.isChecked() and (action_type == "PLAY_FROM_ZONE")
 
-        self.val1_label.setVisible(config["val1_visible"] and not is_smart_linked)
-        self.val1_spin.setVisible(config["val1_visible"] and not is_smart_linked)
+        self.val1_label.setVisible(config["val1_visible"] and not is_smart_linked and not is_no_cost)
+        self.val1_spin.setVisible(config["val1_visible"] and not is_smart_linked and not is_no_cost)
         self.val2_label.setVisible(config["val2_visible"])
         self.val2_spin.setVisible(config["val2_visible"])
 
@@ -242,8 +253,10 @@ class ActionEditForm(BaseEditForm):
         filt = data.get('filter', {})
         self.filter_widget.set_data(filt)
 
-        self.val1_spin.setValue(data.get('value1', 0))
+        val1 = data.get('value1', 0)
+        self.val1_spin.setValue(val1)
         self.val2_spin.setValue(data.get('value2', 0))
+        self.no_cost_check.setChecked(ui_type == "PLAY_FROM_ZONE" and val1 >= 999)
 
         if ui_type != "MEASURE_COUNT" and ui_type != "COST_REFERENCE":
              self.str_val_edit.setText(str_val)
@@ -280,7 +293,10 @@ class ActionEditForm(BaseEditForm):
         data['destination_zone'] = self.dest_zone_combo.currentData()
         data['scope'] = self.scope_combo.currentData()
         data['filter'] = self.filter_widget.get_data()
-        data['value1'] = self.val1_spin.value()
+        if action_type == "PLAY_FROM_ZONE" and self.no_cost_check.isChecked():
+            data['value1'] = 999
+        else:
+            data['value1'] = self.val1_spin.value()
         data['value2'] = self.val2_spin.value()
         data['optional'] = self.arbitrary_check.isChecked()
 
