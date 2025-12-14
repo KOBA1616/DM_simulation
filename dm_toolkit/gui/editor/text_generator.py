@@ -248,9 +248,11 @@ class CardTextGenerator:
         for action in actions:
             action_texts.append(cls._format_action(action))
 
-        full_action_text = " ".join(action_texts)
+        full_action_text = " ".join(action_texts).strip()
 
         if trigger_text and trigger != "NONE" and trigger != "PASSIVE_CONST":
+             if not full_action_text:
+                 return ""
              return f"{trigger_text}: {cond_text}{full_action_text}"
         elif trigger == "PASSIVE_CONST":
              return f"{cond_text}{full_action_text}"
@@ -350,6 +352,10 @@ class CardTextGenerator:
                 return f"{target_desc}1{unit}につき、このクリーチャーの{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
             else:
                 return "コストを軽減する"
+
+        # Suppress REVOLUTION_CHANGE action text as it is covered by the keyword description
+        if atype == "REVOLUTION_CHANGE":
+            return ""
 
         if not template:
             return f"({atype})"
