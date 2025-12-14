@@ -618,15 +618,14 @@
     "is_key_card": false,
     "keywords": {
       "g_strike": true,
-      "speed_attacker": true,
-      "revolution_change": true
+      "revolution_change": true,
+      "speed_attacker": true
     },
     "name": "カラクリバーシ",
     "power": 4000,
     "races": [
       "マジック"
     ],
-    "type": "CREATURE",
     "reaction_abilities": [],
     "revolution_change_condition": {
       "civilizations": [
@@ -636,6 +635,7 @@
       "races": [
         "マジック"
       ]
-    }
+    },
+    "type": "CREATURE"
   }
 ]
