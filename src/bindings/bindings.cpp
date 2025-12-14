@@ -151,6 +151,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("LOOK_AND_ADD", EffectActionType::LOOK_AND_ADD)
         .value("SEARCH_DECK_BOTTOM", EffectActionType::SEARCH_DECK_BOTTOM)
         .value("MEKRAID", EffectActionType::MEKRAID)
+        .value("DISCARD", EffectActionType::DISCARD)
         .value("REVOLUTION_CHANGE", EffectActionType::REVOLUTION_CHANGE)
         .value("COUNT_CARDS", EffectActionType::COUNT_CARDS)
         .value("GET_GAME_STAT", EffectActionType::GET_GAME_STAT)
