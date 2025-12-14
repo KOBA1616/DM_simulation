@@ -25,6 +25,10 @@ class PropertyInspector(QWidget):
         self.empty_page = QLabel(tr("Select an item to edit"))
         self.stack.addWidget(self.empty_page)
 
+        self.option_page = QLabel(tr("Option selected. Use 'Add Action' to define behavior."))
+        self.option_page.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.stack.addWidget(self.option_page)
+
         self.card_form = CardEditForm()
         self.stack.addWidget(self.card_form)
         self.card_form.structure_update_requested.connect(self.structure_update_requested.emit)
@@ -67,5 +71,7 @@ class PropertyInspector(QWidget):
         elif item_type == "REACTION_ABILITY":
             self.reaction_form.set_data(item)
             self.stack.setCurrentWidget(self.reaction_form)
+        elif item_type == "OPTION":
+            self.stack.setCurrentWidget(self.option_page)
         else:
             self.stack.setCurrentWidget(self.empty_page)
