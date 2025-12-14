@@ -405,6 +405,7 @@ class CardTextGenerator:
         adjectives = "" # Civs, Races, Costs
         noun = "" # Zone or Type (Card, Creature)
         unit = "枚" # Default unit
+        target_desc = ""
 
         # Implicit handling for certain actions that don't always specify scope but imply it (e.g., DISCARD imply SELF)
         if atype == "DISCARD" and scope == "NONE":
