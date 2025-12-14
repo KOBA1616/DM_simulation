@@ -345,9 +345,23 @@ class CardPreviewWidget(QWidget):
 
         if not civs:
             bg_style = "background-color: #A9A9A9;"
-        elif len(civs) >= 1:
+        elif len(civs) == 1:
             c = self.get_civ_color(civs[0])
             bg_style = f"background-color: {c};"
+        else:
+            # Multi-color: Conical Gradient
+            # 2 colors: 180 deg, 3 colors: 120 deg, 4 colors: 90 deg, 5 colors: 72 deg
+            stops = []
+            n = len(civs)
+            for i, civ in enumerate(civs):
+                c = self.get_civ_color(civ)
+                # Hard edge transitions
+                stops.append(f"stop:{i/n:.4f} {c}")
+                stops.append(f"stop:{(i+1)/n:.4f} {c}")
+
+            stops_str = ", ".join(stops)
+            # angle: 90 sets the start (0.0) at 12 o'clock
+            bg_style = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:90, {stops_str});"
 
         label.setStyleSheet(style + bg_style)
 
