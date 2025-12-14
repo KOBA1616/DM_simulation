@@ -47,7 +47,7 @@ class FilterEditorWidget(QWidget):
         self.type_label = QLabel(tr("Types:"))
         basic_layout.addWidget(self.type_label, 1, 0)
         self.type_checks = {}
-        types = ["CREATURE", "SPELL"] # Add others if needed
+        types = ["CREATURE", "SPELL", "ELEMENT"] # Add others if needed
         type_grid = QGridLayout()
         for i, t in enumerate(types):
             cb = QCheckBox(tr(t))
