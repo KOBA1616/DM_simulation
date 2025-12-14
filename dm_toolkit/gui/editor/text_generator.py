@@ -344,13 +344,16 @@ class CardTextGenerator:
                 # Sympathy: Target is counted
                 target_desc, unit = cls._resolve_target(action)
                 val1 = action.get("value1", 0)
-                # "Target" 1 count reduces cost by value1
-                # If target_desc implies "My ...", it works.
-                # Use "召喚コスト" if it's counting creatures/context implies summon, but safest is "コスト".
-                # However, Sympathy is usually for summoning.
                 cost_term = "召喚コスト" if "CREATURE" in str_val else "コスト"
                 return f"{target_desc}1{unit}につき、このクリーチャーの{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
             else:
+                # Fallback for generic per-count reduction
+                filter_def = action.get("filter")
+                if filter_def:
+                     target_desc, unit = cls._resolve_target(action)
+                     val1 = action.get("value1", 0)
+                     # Generalize "Summon Cost" vs "Cost" - Default to Cost
+                     return f"{target_desc}1{unit}につき、このクリーチャーのコストを{val1}少なくする。ただし、コストは0以下にはならない。"
                 return "コストを軽減する"
 
         # Suppress REVOLUTION_CHANGE action text as it is covered by the keyword description
@@ -460,6 +463,12 @@ class CardTextGenerator:
             if target_str == "カード" or target_str == "自分のカード":
                 text = text.replace("カード", "このクリーチャー")
                 text = text.replace("自分のカード", "このクリーチャー") # Just in case
+
+            # Check for inline condition
+            cond = action.get("condition", {})
+            if cond:
+                cond_text = cls._format_condition(cond)
+                text = f"{cond_text}{text}"
 
         # Optional handling ("Up to" / "You may")
         if action.get("optional", False):
