@@ -65,6 +65,7 @@ namespace dm::engine {
         EffectSystem& sys = EffectSystem::instance();
         sys.register_handler(EffectActionType::DRAW_CARD, std::make_unique<DrawHandler>());
         sys.register_handler(EffectActionType::ADD_MANA, std::make_unique<ManaChargeHandler>());
+        sys.register_handler(EffectActionType::SEND_TO_MANA, std::make_unique<ManaChargeHandler>());
         sys.register_handler(EffectActionType::DESTROY, std::make_unique<DestroyHandler>());
         sys.register_handler(EffectActionType::RETURN_TO_HAND, std::make_unique<ReturnToHandHandler>());
         sys.register_handler(EffectActionType::TAP, std::make_unique<TapHandler>());
