@@ -137,8 +137,9 @@ class CardWidget(QFrame):
                 stops.append(f"stop:{end:.3f} {c}")
 
             grad_str = ", ".join(stops)
-            # angle:90 starts at 12 o'clock. For 2 colors: 0-0.5 (Left), 0.5-1.0 (Right).
-            circle_bg = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:90, {grad_str});"
+            # angle:135 starts at Top-Left. For 2 colors: 0-0.5 (Bottom-Left), 0.5-1.0 (Top-Right).
+            # This matches the diagonal split seen in official cards (e.g. Fire/Nature).
+            circle_bg = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:135, {grad_str});"
 
         self.cost_label.setStyleSheet(circle_style + circle_bg)
 
