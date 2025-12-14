@@ -120,27 +120,50 @@ class CardEditor(QMainWindow):
             self.inspector.set_selection(index)
 
             # Update Preview
-            item = self.tree_widget.model.itemFromIndex(index)
-            self.preview_widget.update_preview(item)
+            self.update_current_preview()
 
             # Auto-expand if it's a card and not already expanded
+            item = self.tree_widget.model.itemFromIndex(index)
             if item:
                 type_ = item.data(Qt.ItemDataRole.UserRole + 1)
                 if type_ == "CARD":
                     self.tree_widget.expand(index)
         else:
             self.inspector.set_selection(None)
-            self.preview_widget.update_preview(None)
+            self.preview_widget.clear_preview()
 
     def on_data_changed(self):
         # Refresh preview based on current selection
-        idx = self.tree_widget.currentIndex()
-        if idx.isValid():
-            item = self.tree_widget.model.itemFromIndex(idx)
-            self.preview_widget.update_preview(item)
+        self.update_current_preview()
 
     def update_preview_manual(self):
         self.on_data_changed()
+
+    def update_current_preview(self):
+        idx = self.tree_widget.currentIndex()
+        if not idx.isValid():
+            self.preview_widget.clear_preview()
+            return
+
+        item = self.tree_widget.model.itemFromIndex(idx)
+
+        # Find card item
+        card_item = item
+        while card_item:
+            type_ = card_item.data(Qt.ItemDataRole.UserRole + 1)
+            if type_ == "CARD":
+                break
+            card_item = card_item.parent()
+
+        if card_item:
+            # Reconstruct data to ensure structure (effects/actions) is up to date
+            fresh_data = self.tree_widget.data_manager.reconstruct_card_data(card_item)
+            if fresh_data:
+                self.preview_widget.render_card(fresh_data)
+            else:
+                self.preview_widget.clear_preview()
+        else:
+            self.preview_widget.clear_preview()
 
     def on_structure_update(self, command, payload):
         idx = self.tree_widget.currentIndex()
