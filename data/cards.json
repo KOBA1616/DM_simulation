@@ -550,10 +550,6 @@
           {
             "destination_zone": "HAND",
             "filter": {
-              "civilizations": [
-                "WATER",
-                "FIRE"
-              ],
               "races": [
                 "マジック"
               ]
@@ -601,7 +597,7 @@
             "input_value_key": "",
             "optional": false,
             "output_value_key": "",
-            "scope": "TARGET_SELECT",
+            "scope": "PLAYER_SELF",
             "str_val": "",
             "type": "PLAY_FROM_ZONE",
             "value1": 0,
@@ -621,17 +617,13 @@
       "revolution_change": true,
       "speed_attacker": true
     },
-    "name": "カラクリバーシ",
+    "name": "芸魔陰弧カラクリバーシ",
     "power": 4000,
     "races": [
       "マジック"
     ],
     "reaction_abilities": [],
     "revolution_change_condition": {
-      "civilizations": [
-        "WATER",
-        "FIRE"
-      ],
       "races": [
         "マジック"
       ]
