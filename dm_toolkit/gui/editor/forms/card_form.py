@@ -234,7 +234,11 @@ class CardEditForm(BaseEditForm):
         self.update_type_visibility(type_str)
 
         data['cost'] = self.cost_spin.value()
-        data['power'] = self.power_spin.value()
+        # Force power to 0 if Spell, regardless of hidden spinner value
+        if type_str == "SPELL":
+            data['power'] = 0
+        else:
+            data['power'] = self.power_spin.value()
         races_str = self.races_edit.text()
         data['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
 
