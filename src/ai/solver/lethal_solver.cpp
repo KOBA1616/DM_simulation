@@ -3,6 +3,8 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include "engine/systems/card/target_utils.hpp"
+#include "engine/systems/card/passive_effect_system.hpp"
 
 namespace dm::ai {
 
@@ -33,21 +35,21 @@ namespace dm::ai {
         std::vector<AttackerDetail> attackers;
 
         for (const auto& card : active_player.battle_zone) {
-            // Basic Check: Tapped creatures cannot attack
-            if (card.is_tapped) continue;
-
             // Definition Check
             if (!card_db.count(card.card_id)) continue;
             const auto& def = card_db.at(card.card_id);
 
-            // Summoning Sickness Check
-            if (card.summoning_sickness) {
-                bool has_sa = def.keywords.speed_attacker || def.type == CardType::EVOLUTION_CREATURE;
-                if (!has_sa) continue;
+            // Use Unified Logic - Strict Player Attack Check
+            bool can_attack = TargetUtils::can_attack_player(card, def, game_state, card_db);
+
+            // Manual Passive Check (since TargetUtils cannot depend on PassiveEffectSystem)
+            if (can_attack) {
+                if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_ATTACK, card_db)) {
+                    can_attack = false;
+                }
             }
 
-            // Can Attack Check (General)
-            // TODO: Check for effects that prevent attacking players (e.g., "Cannot attack players")
+            if (!can_attack) continue;
 
             AttackerDetail info;
             info.instance_id = card.instance_id;
