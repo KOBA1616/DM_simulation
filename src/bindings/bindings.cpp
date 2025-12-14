@@ -149,6 +149,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("MODIFY_POWER", EffectActionType::MODIFY_POWER)
         .value("BREAK_SHIELD", EffectActionType::BREAK_SHIELD)
         .value("LOOK_AND_ADD", EffectActionType::LOOK_AND_ADD)
+        .value("SUMMON_TOKEN", EffectActionType::SUMMON_TOKEN)
         .value("SEARCH_DECK_BOTTOM", EffectActionType::SEARCH_DECK_BOTTOM)
         .value("MEKRAID", EffectActionType::MEKRAID)
         .value("DISCARD", EffectActionType::DISCARD)
@@ -242,6 +243,19 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("ACTIVE_PAYMENT", ReductionType::ACTIVE_PAYMENT)
         .export_values();
 
+    py::enum_<PassiveType>(m, "PassiveType")
+        .value("POWER_MODIFIER", PassiveType::POWER_MODIFIER)
+        .value("KEYWORD_GRANT", PassiveType::KEYWORD_GRANT)
+        .value("COST_REDUCTION", PassiveType::COST_REDUCTION)
+        .value("BLOCKER_GRANT", PassiveType::BLOCKER_GRANT)
+        .value("SPEED_ATTACKER_GRANT", PassiveType::SPEED_ATTACKER_GRANT)
+        .value("SLAYER_GRANT", PassiveType::SLAYER_GRANT)
+        .value("CANNOT_ATTACK", PassiveType::CANNOT_ATTACK)
+        .value("CANNOT_BLOCK", PassiveType::CANNOT_BLOCK)
+        .value("CANNOT_USE_SPELLS", PassiveType::CANNOT_USE_SPELLS)
+        .value("LOCK_SPELL_BY_COST", PassiveType::LOCK_SPELL_BY_COST)
+        .export_values();
+
     // Structs
     py::class_<GameResultInfo>(m, "GameResultInfo")
         .def(py::init<>())
@@ -257,6 +271,17 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("source_instance_id", &PendingEffect::source_instance_id)
         .def_readwrite("controller", &PendingEffect::controller)
         .def_readwrite("options", &PendingEffect::options);
+
+    py::class_<PassiveEffect>(m, "PassiveEffect")
+        .def(py::init<>())
+        .def_readwrite("type", &PassiveEffect::type)
+        .def_readwrite("value", &PassiveEffect::value)
+        .def_readwrite("str_value", &PassiveEffect::str_value)
+        .def_readwrite("target_filter", &PassiveEffect::target_filter)
+        .def_readwrite("condition", &PassiveEffect::condition)
+        .def_readwrite("source_instance_id", &PassiveEffect::source_instance_id)
+        .def_readwrite("controller", &PassiveEffect::controller)
+        .def_readwrite("turns_remaining", &PassiveEffect::turns_remaining);
 
     py::class_<CardKeywords>(m, "CardKeywords")
         .def(py::init<>())
@@ -519,6 +544,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("stack_zone", &GameState::stack_zone)
         .def_readwrite("pending_effects", &GameState::pending_effects)
+        .def_readwrite("passive_effects", &GameState::passive_effects)
         // .def_readwrite("effect_buffer", &GameState::effect_buffer) // Moved to Player
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("winner", &GameState::winner)
