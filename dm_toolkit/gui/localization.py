@@ -73,7 +73,8 @@ TRANSLATIONS = {
     "AT_ATTACK": "攻撃時",
     "AT_BLOCK": "ブロック時",
     "G_STRIKE": "G・ストライク",
-    "ON_OPPONENT_DRAW": "相手ドロー時",
+    "ON_OPPONENT_DRAW": "相手がカードを引いたとき",
+    "ON_CAST_SPELL": "この呪文を唱えた時",
 
     # Zones
     "HAND": "手札",
