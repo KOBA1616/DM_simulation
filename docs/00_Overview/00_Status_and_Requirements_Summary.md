@@ -153,6 +153,47 @@ AI開発と並行して、エディタの残存課題を解消します。
 2.  **AI入力特徴量の動的構成 (Dynamic AI Input Feature Configuration)**
 3.  **完全な再現性を持つリプレイシステム (Fully Reproducible Replay System)**
 
+### 3.5 [Priority: Future] Action & Filter Generalization (アクションとフィルタの汎用化)
+
+現在のハードコードされた多くのアクションタイプやフィルタリングロジックを統合し、データ駆動で柔軟なカード定義を可能にするためのリファクタリング計画です。
+
+1.  **カード移動アクションの完全統合 (`MOVE_CARD` の汎用化)**
+    *   **目的**: `DESTROY_CARD`, `RETURN_TO_HAND`, `SEND_TO_MANA`, `SEND_TO_SHIELD` などの個別の移動アクションを、単一の `MOVE_CARD` アクションに統合します。
+    *   **仕様**:
+        *   必須引数 `destination`: `GRAVEYARD`, `HAND`, `MANA`, `SHIELD`, `DECK`
+        *   オプション `position`: `TOP`, `BOTTOM`, `SHUFFLE`, `RANDOM`
+        *   オプション `face_down`: `true` / `false`
+    *   **効果**: エディタのUI簡素化と、将来的な新しいゾーン移動への対応コスト削減。
+
+2.  **修正適用アクションの統合 (`APPLY_MODIFIER`)**
+    *   **目的**: `GIVE_BLOCKER`, `BUFF_POWER` などのバフ・デバフ系アクションを `APPLY_MODIFIER` に統合します。
+    *   **仕様**:
+        *   `duration`: `UNTIL_END_OF_TURN`, `PERMANENT`, `WHILE_ON_BATTLEZONE`
+        *   `modifier` (Object): `power_add` (int), `add_keywords` (List), `remove_keywords` (List)
+    *   **効果**: 複数の効果（例：パワー+3000してW・ブレイカーを与える）を単一のアクション定義で記述可能にする。
+
+3.  **イベント監視型トリガー (`OBSERVER_TRIGGER`)**
+    *   **目的**: 「相手が呪文を唱えた時」「他のクリーチャーが破壊された時」などの受動的トリガーを汎用化します。
+    *   **仕様**:
+        *   `event_type`: `ZONE_CHANGE`, `ATTACK`, `BLOCK`, `PLAY_CARD`
+        *   `source_filter`: イベント発生源のフィルタリング（例: `target_player: OPPONENT`, `card_type: SPELL`）
+        *   `destination_zone`: 移動イベントの監視用
+    *   **効果**: 既存の `ON_PLAY` 等では表現しきれない複雑な誘発型能力の実装を容易にする。
+
+4.  **動的参照フィルタ (`Source Reference`)**
+    *   **目的**: 固定値（パワー5000以下）だけでなく、動的な値（自身のパワー以下、攻撃対象と同じ種族）によるフィルタリングを可能にします。
+    *   **仕様**:
+        *   `FilterDef` 内に `*_ref` フィールドを追加（例: `max_power_ref: SELF_POWER`, `race_match_ref: TARGET_RACE`）。
+    *   **効果**: 状況依存の除去やサーチ効果の実装。
+
+5.  **汎用計算アクション (`CALCULATE` / `MATH_OP`)**
+    *   **目的**: 変数間の計算処理（加算、乗算など）をアクションとして定義可能にします。
+    *   **仕様**:
+        *   `operation`: `ADD`, `MULTIPLY`, `DIVIDE`, `MIN`, `MAX`
+        *   `operand`: 固定値または変数キー
+        *   `scale`: 係数
+    *   **効果**: 「シールド1枚につき+1000」のような動的な数値補正ロジックをコード変更なしで実装可能にする。
+
 ## Kaggle クラウドデータ収集システム 運用マニュアル
 
 （内容は変更なし）
