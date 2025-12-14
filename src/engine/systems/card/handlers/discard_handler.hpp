@@ -17,12 +17,7 @@ namespace dm::engine {
 
             // Check scope/target_choice
             if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
-                 // Delegate to selection
-                 dm::core::EffectDef ed;
-                 ed.trigger = dm::core::TriggerType::NONE;
-                 ed.condition = dm::core::ConditionDef{"NONE", 0, "", "", "", std::nullopt};
-                 ed.actions = { ctx.action };
-                 GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 GenericCardSystem::delegate_selection(ctx);
                  return;
             }
 
