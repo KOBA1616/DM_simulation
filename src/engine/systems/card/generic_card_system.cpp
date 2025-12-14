@@ -353,4 +353,122 @@ namespace dm::engine {
         }
     }
 
+    void GenericCardSystem::check_mega_last_burst(dm::core::GameState& game_state, const dm::core::CardInstance& card, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+         const CardDefinition* def_ptr = nullptr;
+         if (card_db.count(card.card_id)) {
+             def_ptr = &card_db.at(card.card_id);
+         } else {
+             const auto& registry = CardRegistry::get_all_definitions();
+             if (registry.count(card.card_id)) {
+                 def_ptr = &registry.at(card.card_id);
+             } else {
+                 std::cerr << "check_mega_last_burst: Card ID " << card.card_id << " not found in DB or Registry." << std::endl;
+             }
+         }
+
+         if (!def_ptr) return;
+         const auto& def = *def_ptr;
+
+         // Debug output
+         // std::cout << "Checking Mega Last Burst for ID " << card.card_id << ". Keyword: " << def.keywords.mega_last_burst << ", SpellSide: " << (def.spell_side ? "Yes" : "No") << std::endl;
+
+         if (def.keywords.mega_last_burst && def.spell_side) {
+             PlayerID controller = get_controller(game_state, card.instance_id); // This might need card_owner_map lookup as card is already moved
+             // Since card was moved, get_controller might return active_player if not in map, but card instance usually preserves ID?
+             // Actually, get_controller uses card_owner_map which persists across moves.
+
+             // Queue the effect: You may cast spell side.
+             EffectDef eff;
+             eff.trigger = TriggerType::NONE;
+
+             ActionDef act;
+             act.type = EffectActionType::CAST_SPELL;
+             act.scope = TargetScope::TARGET_SELECT; // Or SELF?
+             // CAST_SPELL handler logic: if we pass explicit targets (the card itself), it moves it to stack and casts.
+             // We want to target THIS card in its current zone.
+             // But we need to select it?
+             // Or we can just set targets manually in PendingEffect.
+             act.optional = true; // "You may"
+             act.cast_spell_side = true;
+
+             eff.actions.push_back(act);
+
+             PendingEffect pending(EffectType::TRIGGER_ABILITY, card.instance_id, controller);
+             pending.resolve_type = ResolveType::EFFECT_RESOLUTION; // We construct effect manually
+             pending.effect_def = eff;
+             pending.optional = true;
+
+             // IMPORTANT: We must target the card in its NEW zone.
+             // But CAST_SPELL handler takes targets via ctx.targets if coming from TARGET_SELECT,
+             // OR if we skip selection, we need to provide the target.
+
+             // If we use TARGET_SELECT, the user has to click.
+             // "Mega Last Burst" allows user to CHOOSE to cast.
+             // So showing a "Use Mega Last Burst?" dialog is appropriate.
+             // PendingEffect with optional=true handles the "Yes/No" dialog for the effect itself.
+
+             // Now, for the action. We want to execute CAST_SPELL on THIS card.
+             // We can pre-fill the target in the pending effect so no selection is needed?
+             // If we set resolve_type = TARGET_SELECT, it asks for target.
+             // We want resolve_type = EFFECT_RESOLUTION, executing the action.
+             // But CAST_SPELL needs a target.
+             // If ActionDef has no filter/scope, it might default to source?
+             // Let's modify CAST_SPELL to handle "Self" if no targets?
+             // Or better: Create a wrapper effect that has the action.
+             // And we inject a wrapper "SELECT_TARGET" action? No.
+
+             // If we use GenericCardSystem::resolve_effect_with_targets, we can pass the target.
+             // But that's for immediate resolution.
+             // Here we want to queue it.
+
+             // If we queue TriggerType::TRIGGER_ABILITY, GenericCardSystem::resolve_effect is called.
+             // Then resolve_action is called.
+             // Then CastSpellHandler::resolve is called.
+             // CastSpellHandler::resolve DOES NOTHING currently (only resolve_with_targets implemented).
+
+             // So we need to use TARGET_SELECT to feed resolve_with_targets.
+             // ActionDef: scope = TARGET_SELECT, filter = { owner: SELF, zones: [CURRENT_ZONE], count: 1 }?
+             // And we restrict it to THIS card.
+             // That requires a specific filter for ID? FilterDef doesn't support ID.
+
+             // Alternatively, we use `resolve_effect_with_targets` directly if we confirm "Yes".
+             // But PendingEffect structure assumes `effect_def` is just run.
+
+             // Workaround:
+             // We queue a PendingEffect that, when resolved (user says Yes),
+             // executes `resolve_effect_with_targets` with the card ID pre-filled.
+             // But `ActionType::RESOLVE_EFFECT` in `EffectResolver` calls `GenericCardSystem::resolve_effect` which doesn't take targets.
+
+             // However, `ActionType::RESOLVE_EFFECT` also handles `ResolveType::TARGET_SELECT`.
+             // If we set `pe.resolve_type = ResolveType::TARGET_SELECT` and `pe.target_instance_ids = { card.instance_id }`,
+             // then `EffectResolver` calls `resolve_effect_with_targets`.
+             // But `TARGET_SELECT` usually implies "Waiting for selection".
+             // If we pre-fill `target_instance_ids`, does it auto-resolve?
+             // No, `ActionType::RESOLVE_EFFECT` is generated when the stack processes.
+             // If `num_targets_needed` is met, `StackStrategy` generates `RESOLVE_EFFECT`.
+
+             // So:
+             pending.resolve_type = ResolveType::TARGET_SELECT;
+             pending.target_instance_ids.push_back(card.instance_id);
+             pending.num_targets_needed = 1;
+             pending.effect_def = eff; // Contains CAST_SPELL action
+
+             // But we need to make sure the user sees "Use Mega Last Burst?"
+             // `optional = true` on PendingEffect usually prompts the user before generating `SELECT_TARGET`.
+             // But here we skip `SELECT_TARGET` generation because targets are full?
+             // `StackStrategy` or `PendingEffectStrategy` checks this.
+             // If targets are full, it generates RESOLVE_EFFECT immediately.
+
+             // So the flow:
+             // 1. Queue PendingEffect (Optional).
+             // 2. User gets prompt "Use Mega Last Burst?".
+             // 3. If Yes, `RESOLVE_EFFECT` is generated.
+             // 4. `RESOLVE_EFFECT` executes `resolve_effect_with_targets` using the pre-filled target.
+             // 5. `resolve_effect_with_targets` calls `CastSpellHandler::resolve_with_targets`.
+             // 6. Handler uses `cast_spell_side` flag and casts the spell.
+
+             game_state.pending_effects.push_back(pending);
+         }
+    }
+
 }

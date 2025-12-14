@@ -19,6 +19,7 @@ namespace dm::engine {
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
+             using namespace dm::core;
              if (!ctx.targets) return;
              for (int tid : *ctx.targets) {
                 for (auto &p : ctx.game_state.players) {
@@ -28,8 +29,11 @@ namespace dm::engine {
                         // Cleanup hierarchy
                         ZoneUtils::on_leave_battle_zone(ctx.game_state, *it);
 
-                        p.hand.push_back(*it);
+                        CardInstance moved_card = *it;
+                        p.hand.push_back(moved_card);
                         p.battle_zone.erase(it);
+
+                        GenericCardSystem::check_mega_last_burst(ctx.game_state, moved_card, ctx.card_db);
                         break;
                     }
                     auto it_mana = std::find_if(p.mana_zone.begin(), p.mana_zone.end(),
