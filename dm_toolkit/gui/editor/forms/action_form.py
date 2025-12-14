@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton
+from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
@@ -108,6 +108,19 @@ class ActionEditForm(BaseEditForm):
         self.val2_spin.setRange(-9999, 9999)
         layout.addRow(self.val2_label, self.val2_spin)
 
+        # Option Generation Controls (For SELECT_OPTION)
+        self.option_count_label = QLabel(tr("Options to Add"))
+        self.option_gen_layout = QHBoxLayout()
+        self.option_count_spin = QSpinBox()
+        self.option_count_spin.setRange(1, 10)
+        self.option_count_spin.setValue(1)
+        self.generate_options_btn = QPushButton(tr("Generate Options"))
+        self.generate_options_btn.clicked.connect(self.request_generate_options)
+        self.option_gen_layout.addWidget(self.option_count_spin)
+        self.option_gen_layout.addWidget(self.generate_options_btn)
+        layout.addRow(self.option_count_label, self.option_gen_layout)
+
+
         self.no_cost_check = QCheckBox(tr("Play without paying cost"))
         layout.addRow(self.no_cost_check)
 
@@ -153,6 +166,21 @@ class ActionEditForm(BaseEditForm):
             # Delegate to link widget
             self.link_widget.ensure_output_key(action_type, produces)
 
+            # Auto-generate options if switching to SELECT_OPTION
+            if action_type == "SELECT_OPTION":
+                 has_options = False
+                 # Check existing options in the model via current_item (QStandardItem)
+                 if self.current_item.hasChildren():
+                     for i in range(self.current_item.rowCount()):
+                         child = self.current_item.child(i)
+                         if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+                              has_options = True
+                              break
+
+                 if not has_options:
+                      self.option_count_spin.setValue(2) # Default 2 options
+                      self.request_generate_options()
+
         self.update_data()
 
     def on_measure_mode_changed(self):
@@ -195,6 +223,11 @@ class ActionEditForm(BaseEditForm):
 
         is_select_option = (action_type == "SELECT_OPTION")
         self.allow_duplicates_check.setVisible(is_select_option)
+
+        # Show Option Generator for SELECT_OPTION
+        self.option_count_label.setVisible(is_select_option)
+        self.option_count_spin.setVisible(is_select_option)
+        self.generate_options_btn.setVisible(is_select_option)
 
         self.val2_label.setVisible(config["val2_visible"] and not is_select_option)
         self.val2_spin.setVisible(config["val2_visible"] and not is_select_option)
@@ -279,7 +312,7 @@ class ActionEditForm(BaseEditForm):
         self.link_widget.set_data(data)
 
     def request_generate_options(self):
-        count = self.val1_spin.value()
+        count = self.option_count_spin.value()
         if count <= 0: count = 1 # Fallback
         self.structure_update_requested.emit("GENERATE_OPTIONS", {"count": count})
 
