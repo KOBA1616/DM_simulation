@@ -3,9 +3,89 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, QGraphicsDropShadowEffect
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+
+class ManaCostLabel(QLabel):
+    def __init__(self, text="", parent=None):
+        super().__init__(text, parent)
+        self.civs = []
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Base text style. Background is handled by paintEvent.
+        self.setStyleSheet("font-weight: bold; font-size: 16px; color: white; background-color: transparent; padding: 0px;")
+
+    def set_civs(self, civs):
+        self.civs = civs
+        self.update() # Trigger repaint
+
+    def get_civ_color(self, civ):
+        colors_base = {
+            "LIGHT": "#DAA520",     # GoldenRod
+            "WATER": "#1E90FF",     # DodgerBlue
+            "DARKNESS": "#696969",  # DimGray
+            "FIRE": "#FF4500",      # OrangeRed
+            "NATURE": "#228B22",    # ForestGreen
+            "ZERO": "#A9A9A9"       # DarkGray
+        }
+        return QColor(colors_base.get(civ, "#A9A9A9"))
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        rect = self.rect()
+        # Ensure it's a circle - take min dimension
+        d = min(rect.width(), rect.height())
+        # Center the circle
+        x = (rect.width() - d) // 2
+        y = (rect.height() - d) // 2
+
+        # Adjust for border (2px width -> 1px inset from each side to fit)
+        margin = 1
+        draw_rect = rect.adjusted(x + margin, y + margin, -(x + margin), -(y + margin))
+
+        # If rect is too small, fallback
+        if draw_rect.width() <= 0:
+            super().paintEvent(event)
+            return
+
+        if not self.civs:
+             painter.setBrush(QColor("#A9A9A9"))
+             painter.setPen(Qt.PenStyle.NoPen)
+             painter.drawEllipse(draw_rect)
+        elif len(self.civs) == 1:
+             painter.setBrush(self.get_civ_color(self.civs[0]))
+             painter.setPen(Qt.PenStyle.NoPen)
+             painter.drawEllipse(draw_rect)
+        else:
+            # Draw distinct sectors (Pies)
+            n = len(self.civs)
+            total_span = 360 * 16
+            start_angle_base = 90 * 16 # 12 o'clock
+
+            for i, civ in enumerate(self.civs):
+                painter.setBrush(self.get_civ_color(civ))
+                painter.setPen(Qt.PenStyle.NoPen)
+
+                # Calculate angles precisely to avoid gaps
+                angle_start = start_angle_base + (total_span * i) // n
+                angle_next = start_angle_base + (total_span * (i + 1)) // n
+                span = angle_next - angle_start
+
+                painter.drawPie(draw_rect, angle_start, span)
+
+        # Draw Border
+        pen = QPen(Qt.GlobalColor.black)
+        pen.setWidth(2)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(pen)
+        painter.drawEllipse(draw_rect)
+
+        painter.end()
+
+        # Draw Text (Number)
+        super().paintEvent(event)
 
 class CardPreviewWidget(QWidget):
     """
@@ -81,9 +161,8 @@ class CardPreviewWidget(QWidget):
         layout.setSpacing(5)
 
         # Cost (Top Left)
-        self.cost_label = QLabel("5")
+        self.cost_label = ManaCostLabel("5")
         self.cost_label.setFixedSize(30, 30)
-        self.cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.cost_label, 0, 0)
 
         # Name
@@ -131,9 +210,8 @@ class CardPreviewWidget(QWidget):
         upper_layout = QGridLayout(self.tp_upper_frame)
         upper_layout.setContentsMargins(5,5,5,5)
 
-        self.tp_cost_label = QLabel("5")
+        self.tp_cost_label = ManaCostLabel("5")
         self.tp_cost_label.setFixedSize(24, 24)
-        self.tp_cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         upper_layout.addWidget(self.tp_cost_label, 0, 0)
 
         self.tp_name_label = QLabel("Creature Name")
@@ -163,9 +241,8 @@ class CardPreviewWidget(QWidget):
         lower_layout.setContentsMargins(5,5,5,5)
 
         # Spell Cost at Top Right (Requirement)
-        self.tp_spell_cost_label = QLabel("3")
+        self.tp_spell_cost_label = ManaCostLabel("3")
         self.tp_spell_cost_label.setFixedSize(24, 24)
-        self.tp_spell_cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lower_layout.addWidget(self.tp_spell_cost_label, 0, 2, Qt.AlignmentFlag.AlignRight) # Column 2
 
         self.tp_spell_name_label = QLabel("Spell Name")
@@ -322,46 +399,23 @@ class CardPreviewWidget(QWidget):
 
         return "\n".join(body_lines)
 
-    def get_civ_color(self, civ):
-        colors_base = {
-            "LIGHT": "#DAA520",     # GoldenRod
-            "WATER": "#1E90FF",     # DodgerBlue
-            "DARKNESS": "#696969",  # DimGray
-            "FIRE": "#FF4500",      # OrangeRed
-            "NATURE": "#228B22",    # ForestGreen
-            "ZERO": "#A9A9A9"       # DarkGray
-        }
-        return colors_base.get(civ, "#A9A9A9")
-
     def apply_cost_circle_style(self, label, civs):
-        # Requirement: "Mana cost circle is composed of civilization colors (divided if multi)."
-        # "White text with black border" (Simulating black border via text shadow if possible, else just bold white)
+        # Delegate to ManaCostLabel if applicable
+        if isinstance(label, ManaCostLabel):
+            label.set_civs(civs)
+            return
 
-        # NOTE: Qt QLabel doesn't support -webkit-text-stroke.
-        # Using a simplistic approach: Bold White Text on colored background.
-        # Adding a border to the circle itself.
-
+        # Fallback for standard QLabel (if any)
+        # Note: We replaced all instances with ManaCostLabel, so this might not be hit.
         style = "font-weight: bold; font-size: 16px; color: white; border: 2px solid black; border-radius: 12px; padding: 0px;"
-
         if not civs:
             bg_style = "background-color: #A9A9A9;"
         elif len(civs) == 1:
-            c = self.get_civ_color(civs[0])
-            bg_style = f"background-color: {c};"
+            # We don't have get_civ_color here anymore, need a local map or use a default
+            # Just fallback to gray if this path is ever hit (it shouldn't be)
+            bg_style = "background-color: #A9A9A9;"
         else:
-            # Multi-color: Conical Gradient
-            # 2 colors: 180 deg, 3 colors: 120 deg, 4 colors: 90 deg, 5 colors: 72 deg
-            stops = []
-            n = len(civs)
-            for i, civ in enumerate(civs):
-                c = self.get_civ_color(civ)
-                # Hard edge transitions
-                stops.append(f"stop:{i/n:.4f} {c}")
-                stops.append(f"stop:{(i+1)/n:.4f} {c}")
-
-            stops_str = ", ".join(stops)
-            # angle: 90 sets the start (0.0) at 12 o'clock
-            bg_style = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:90, {stops_str});"
+            bg_style = "background-color: #A9A9A9;"
 
         label.setStyleSheet(style + bg_style)
 
