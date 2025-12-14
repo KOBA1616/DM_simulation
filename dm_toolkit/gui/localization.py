@@ -75,6 +75,24 @@ TRANSLATIONS = {
     "G_STRIKE": "G・ストライク",
     "ON_OPPONENT_DRAW": "相手がカードを引いたとき",
     "ON_CAST_SPELL": "この呪文を唱えた時",
+    "ON_SHIELD_ADD": "シールドが加わった時",
+    "AT_BREAK_SHIELD": "シールドブレイク時",
+    "ON_OTHER_ENTER": "他のクリーチャーが出た時",
+    "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
+
+    # Reactions
+    "NINJA_STRIKE": "ニンジャ・ストライク",
+    "STRIKE_BACK": "ストライク・バック",
+    "REVOLUTION_0_TRIGGER": "革命0トリガー",
+
+    # Cost / Reduction
+    "MANA": "マナ",
+    "TAP_CARD": "カードをタップ",
+    "SACRIFICE_CARD": "カードを破壊",
+    "RETURN_CARD": "手札に戻す",
+    "SHIELD_BURN": "シールド焼却",
+    "ACTIVE_PAYMENT": "アクション型軽減",
+    "PASSIVE": "パッシブ型軽減",
 
     # Zones
     "HAND": "手札",
@@ -176,6 +194,7 @@ TRANSLATIONS = {
     "Min Mana Required": "必要マナ枚数",
     "Zone": "発動ゾーン",
     "Cost / Requirement": "コスト/条件値",
+    "ON_BLOCK_OR_ATTACK": "ブロック時または攻撃時",
 
     # Keywords
     "Speed Attacker": "スピードアタッカー",
