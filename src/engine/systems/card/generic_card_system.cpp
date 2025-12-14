@@ -108,6 +108,7 @@ namespace dm::engine {
         sys.register_evaluator("CIVILIZATION_MATCH", std::make_unique<CivilizationMatchEvaluator>());
         sys.register_evaluator("FIRST_ATTACK", std::make_unique<FirstAttackEvaluator>());
         sys.register_evaluator("COMPARE_STAT", std::make_unique<CompareStatEvaluator>());
+        sys.register_evaluator("OPPONENT_DRAWN_CARDS_COUNT", std::make_unique<OpponentCardsDrawnEvaluator>());
         _evaluators_registered = true;
     }
 
