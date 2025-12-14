@@ -511,6 +511,9 @@
               "destination_zone": "HAND",
               "filter": {
                 "max_cost": 3,
+                "types": [
+                  "ELEMENT"
+                ],
                 "zones": [
                   "BATTLE_ZONE"
                 ]
