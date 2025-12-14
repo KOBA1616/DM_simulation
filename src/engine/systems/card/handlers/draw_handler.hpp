@@ -38,6 +38,16 @@ namespace dm::engine {
                 if (controller.id == ctx.game_state.active_player_id) {
                     ctx.game_state.turn_stats.cards_drawn_this_turn++;
                 }
+
+                // Trigger Logic: Check for ON_OPPONENT_DRAW effects for the non-drawing player
+                PlayerID opponent_id = 1 - controller_id;
+                const Player& opponent = ctx.game_state.players[opponent_id];
+
+                // We must iterate over opponent's Battle Zone to trigger effects like "Whenever your opponent draws a card..."
+                // Since this is inside the loop, it triggers per card drawn.
+                for (const auto& card : opponent.battle_zone) {
+                    GenericCardSystem::resolve_trigger(ctx.game_state, TriggerType::ON_OPPONENT_DRAW, card.instance_id, ctx.card_db);
+                }
              }
 
              if (!ctx.action.output_value_key.empty()) {

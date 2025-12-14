@@ -193,6 +193,16 @@ class CardEditor(QMainWindow):
             self.tree_widget.expand(card_item.index())
         elif command == "REMOVE_REV_CHANGE":
             self.tree_widget.remove_rev_change(card_item.index())
+        elif command == "GENERATE_OPTIONS":
+            count = payload.get('count', 1)
+            # Find the actual Action Item from the current selection
+            action_item = None
+            if item_type == "ACTION":
+                 action_item = item
+
+            if action_item:
+                 self.tree_widget.data_manager.add_option_slots(action_item, count)
+                 self.tree_widget.expand(action_item.index())
 
     def new_card(self):
         self.tree_widget.add_new_card()
