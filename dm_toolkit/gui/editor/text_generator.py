@@ -297,6 +297,16 @@ class CardTextGenerator:
 
         trigger_text = cls.TRIGGER_MAP.get(trigger, trigger)
         cond_text = cls._format_condition(condition)
+        cond_type = condition.get("type", "NONE")
+
+        # Special handling for timing conditions combined with Triggers
+        if trigger != "NONE" and trigger != "PASSIVE_CONST":
+            if cond_type == "DURING_YOUR_TURN" or cond_type == "DURING_OPPONENT_TURN":
+                # Extract raw text "自分のターン中" or "相手のターン中"
+                base_cond = cond_text.replace(": ", "")
+                # Reformat to "Xのターン中に、Trigger"
+                trigger_text = f"{base_cond}に、{trigger_text}"
+                cond_text = ""
 
         action_texts = []
         for action in actions:
