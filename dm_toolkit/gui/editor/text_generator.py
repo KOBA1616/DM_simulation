@@ -377,13 +377,17 @@ class CardTextGenerator:
             # We construct the phrase that was likely generated:
             phrase_select = f"{val1}{unit}選び"
             phrase_destroy = f"{val1}{unit}破壊する"
+            phrase_discard = f"{val1}{unit}捨てる"
+            phrase_break = f"{val1}{unit}ブレイクする"
 
             if phrase_select in text:
                 text = text.replace(phrase_select, f"{val1}{unit}まで選び")
             elif phrase_destroy in text:
                 text = text.replace(phrase_destroy, f"{val1}{unit}まで破壊する")
-
-            text += " (そうしてもよい)"
+            elif phrase_discard in text:
+                text = text.replace(phrase_discard, f"{val1}{unit}まで捨てる")
+            elif phrase_break in text:
+                text = text.replace(phrase_break, f"{val1}{unit}までブレイクする")
 
         return text
 
