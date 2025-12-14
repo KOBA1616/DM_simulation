@@ -144,6 +144,48 @@ namespace dm::engine {
              }
              return false;
         }
+
+        // NEW: Unified Can Attack Checks
+        // Split into separate checks for precision
+
+        static bool can_attack_creature(const dm::core::CardInstance& card,
+                               const dm::core::CardDefinition& def,
+                               const dm::core::GameState& game_state,
+                               const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+            (void)card_db;
+            if (card.is_tapped) return false;
+
+            if (card.summoning_sickness) {
+                bool has_sa = has_keyword_simple(game_state, card, def, "SPEED_ATTACKER");
+                bool is_evo = (def.type == dm::core::CardType::EVOLUTION_CREATURE) || def.keywords.evolution;
+                bool has_mach = has_keyword_simple(game_state, card, def, "MACH_FIGHTER");
+
+                // Can attack creatures if SA, Evo, or Mach Fighter
+                if (!has_sa && !is_evo && !has_mach) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        static bool can_attack_player(const dm::core::CardInstance& card,
+                               const dm::core::CardDefinition& def,
+                               const dm::core::GameState& game_state,
+                               const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+            (void)card_db;
+            if (card.is_tapped) return false;
+
+            if (card.summoning_sickness) {
+                bool has_sa = has_keyword_simple(game_state, card, def, "SPEED_ATTACKER");
+                bool is_evo = (def.type == dm::core::CardType::EVOLUTION_CREATURE) || def.keywords.evolution;
+
+                // Mach Fighter does NOT allow attacking players
+                if (!has_sa && !is_evo) {
+                    return false;
+                }
+            }
+            return true;
+        }
     };
 
     // Specializations
