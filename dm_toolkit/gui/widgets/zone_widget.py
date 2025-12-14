@@ -60,7 +60,8 @@ class ZoneWidget(QWidget):
             count = len(card_data_list)
             # Use ID 0 (Back of Card)
             display_name = f"Deck ({count})" if is_deck else f"Shield ({count})"
-            widget = CardWidget(0, display_name, 0, 0, "COLORLESS", False, -1)
+            # Pass is_face_down=True
+            widget = CardWidget(0, display_name, 0, 0, "COLORLESS", False, -1, None, True)
             # Clicking emits signal with ID 0
             widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
             widget.hovered.connect(self.card_hovered.emit)
@@ -91,7 +92,8 @@ class ZoneWidget(QWidget):
                 self.cards.append(widget)
             else:
                 # Unknown/Masked
-                widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id)
+                # Pass is_face_down=True
+                widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id, None, True)
                 widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
                 self.card_layout.addWidget(widget)
