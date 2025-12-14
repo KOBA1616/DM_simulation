@@ -345,32 +345,9 @@ class CardPreviewWidget(QWidget):
 
         if not civs:
             bg_style = "background-color: #A9A9A9;"
-        elif len(civs) == 1:
+        elif len(civs) >= 1:
             c = self.get_civ_color(civs[0])
             bg_style = f"background-color: {c};"
-        else:
-            # Conical gradient for split circle (Cake-like)
-            stops = []
-            # Ensure unique civs
-            unique_civs = []
-            seen = set()
-            for c in civs:
-                if c not in seen:
-                    unique_civs.append(c)
-                    seen.add(c)
-
-            n = len(unique_civs)
-            for i, civ in enumerate(unique_civs):
-                c = self.get_civ_color(civ)
-                # Hard stops for segments
-                start = i / n
-                end = (i + 1) / n
-                stops.append(f"stop:{start:.3f} {c}")
-                stops.append(f"stop:{end:.3f} {c}")
-
-            # Conical gradient starting at 135 degrees (Top-Left diagonal)
-            grad_str = ", ".join(stops)
-            bg_style = f"background: qconicalgradient(cx:0.5, cy:0.5, angle:135, {grad_str});"
 
         label.setStyleSheet(style + bg_style)
 
