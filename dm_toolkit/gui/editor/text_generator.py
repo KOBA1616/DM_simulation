@@ -598,7 +598,13 @@ class CardTextGenerator:
 
             if "BATTLE_ZONE" in zones:
                 zone_noun = "バトルゾーン"
-                if "CREATURE" in types or (not types):
+                if "CARD" in types:
+                    type_noun = "カード"
+                    unit = "枚"
+                elif "ELEMENT" in types:
+                    type_noun = "エレメント"
+                    unit = "つ"
+                elif "CREATURE" in types or (not types):
                     type_noun = "クリーチャー"
                     unit = "体"
                 elif "CROSS_GEAR" in types:
@@ -622,7 +628,13 @@ class CardTextGenerator:
                  zone_noun = "山札"
 
             if not zone_noun:
-                if "CREATURE" in types:
+                if "CARD" in types:
+                    type_noun = "カード"
+                    unit = "枚"
+                elif "ELEMENT" in types:
+                    type_noun = "エレメント"
+                    unit = "つ"
+                elif "CREATURE" in types:
                     type_noun = "クリーチャー"
                     unit = "体"
                 elif "SPELL" in types:
