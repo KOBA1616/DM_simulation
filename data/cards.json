@@ -436,6 +436,18 @@
             "type": "DRAW_CARD",
             "value1": 0,
             "value2": 0
+          },
+          {
+            "destination_zone": "HAND",
+            "filter": {},
+            "input_value_key": "",
+            "optional": false,
+            "output_value_key": "var_DRAW_CARD_2",
+            "scope": "TARGET_SELECT",
+            "str_val": "",
+            "type": "DRAW_CARD",
+            "value1": 1,
+            "value2": 0
           }
         ],
         "condition": {
@@ -483,7 +495,9 @@
     },
     "name": "ナポレオンバイブス",
     "power": 1000,
-    "races": [],
+    "races": [
+      "マジック"
+    ],
     "reaction_abilities": [],
     "spell_side": {
       "civilizations": [
@@ -522,5 +536,106 @@
       "type": "SPELL"
     },
     "type": "CREATURE"
+  },
+  {
+    "ai_importance_score": 0,
+    "civilizations": [
+      "WATER",
+      "FIRE"
+    ],
+    "cost": 5,
+    "effects": [
+      {
+        "actions": [
+          {
+            "destination_zone": "HAND",
+            "filter": {
+              "civilizations": [
+                "WATER",
+                "FIRE"
+              ],
+              "races": [
+                "マジック"
+              ]
+            },
+            "input_value_key": "",
+            "optional": false,
+            "output_value_key": "",
+            "scope": "NONE",
+            "str_val": "",
+            "type": "REVOLUTION_CHANGE",
+            "value1": 0,
+            "value2": 0
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_ATTACK_FROM_HAND"
+      },
+      {
+        "actions": [
+          {
+            "destination_zone": "HAND",
+            "filter": {},
+            "input_value_key": "",
+            "optional": false,
+            "output_value_key": "var_DRAW_CARD_0",
+            "scope": "PLAYER_SELF",
+            "str_val": "",
+            "type": "DRAW_CARD",
+            "value1": 1,
+            "value2": 0
+          },
+          {
+            "destination_zone": "HAND",
+            "filter": {
+              "max_cost": 3,
+              "types": [
+                "SPELL"
+              ],
+              "zones": [
+                "HAND"
+              ]
+            },
+            "input_value_key": "",
+            "optional": false,
+            "output_value_key": "",
+            "scope": "TARGET_SELECT",
+            "str_val": "",
+            "type": "PLAY_FROM_ZONE",
+            "value1": 0,
+            "value2": 0
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_PLAY"
+      }
+    ],
+    "id": 12,
+    "is_key_card": false,
+    "keywords": {
+      "g_strike": true,
+      "speed_attacker": true,
+      "revolution_change": true
+    },
+    "name": "カラクリバーシ",
+    "power": 4000,
+    "races": [
+      "マジック"
+    ],
+    "type": "CREATURE",
+    "reaction_abilities": [],
+    "revolution_change_condition": {
+      "civilizations": [
+        "WATER",
+        "FIRE"
+      ],
+      "races": [
+        "マジック"
+      ]
+    }
   }
 ]
