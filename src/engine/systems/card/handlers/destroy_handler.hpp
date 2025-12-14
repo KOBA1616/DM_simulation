@@ -91,7 +91,9 @@ namespace dm::engine {
             if (!ctx.targets) return;
             int destroyed_count = 0;
             for (int tid : *ctx.targets) {
+                bool found = false;
                 for (auto &p : ctx.game_state.players) {
+                    // 1. Check Top Cards (Elements)
                     auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
                         [tid](const dm::core::CardInstance& c){ return c.instance_id == tid; });
                     if (it != p.battle_zone.end()) {
@@ -104,8 +106,30 @@ namespace dm::engine {
                         destroyed_count++;
 
                         GenericCardSystem::check_mega_last_burst(ctx.game_state, moved_card, ctx.card_db);
+                        found = true;
                         break;
                     }
+
+                    // 2. Check Underlying Cards
+                    if (!found) {
+                        for (auto& top_card : p.battle_zone) {
+                            auto u_it = std::find_if(top_card.underlying_cards.begin(), top_card.underlying_cards.end(),
+                                [tid](const dm::core::CardInstance& c){ return c.instance_id == tid; });
+
+                            if (u_it != top_card.underlying_cards.end()) {
+                                // Found underlying card
+                                CardInstance moved_card = *u_it;
+                                p.graveyard.push_back(moved_card);
+                                top_card.underlying_cards.erase(u_it);
+                                destroyed_count++;
+
+                                GenericCardSystem::check_mega_last_burst(ctx.game_state, moved_card, ctx.card_db);
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (found) break;
                 }
             }
             if (!ctx.action.output_value_key.empty()) {
