@@ -121,6 +121,7 @@ TRANSLATIONS = {
     "Name": "カード名",
     "Civilization": "文明",
     "Type": "タイプ",
+    "ELEMENT": "エレメント",
     "Cost": "コスト",
     "Power": "パワー",
     "Races": "種族",
