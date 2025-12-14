@@ -142,59 +142,51 @@ namespace dm::engine {
         for (size_t i = 0; i < active_player.battle_zone.size(); ++i) {
             const auto& card = active_player.battle_zone[i];
 
-            bool can_attack = !card.is_tapped;
-            if (can_attack) {
-                if (card.summoning_sickness) {
-                    if (card_db.count(card.card_id)) {
-                        const auto& def = card_db.at(card.card_id);
-                        bool has_sa = TargetUtils::has_keyword_simple(game_state, card, def, "SPEED_ATTACKER");
-                        bool is_evo = TargetUtils::has_keyword_simple(game_state, card, def, "EVOLUTION"); // EVOLUTION is a keyword? Or Type? Or Prop?
-                        // EVOLUTION as keyword flag in CardKeywords is true.
+            if (card_db.count(card.card_id)) {
+                const auto& def = card_db.at(card.card_id);
 
-                        if (!has_sa && !is_evo) {
-                            can_attack = false;
-                        }
-                    } else {
-                        can_attack = false;
-                    }
-                }
-            }
+                bool can_attack_player = TargetUtils::can_attack_player(card, def, game_state, card_db);
+                bool can_attack_creature = TargetUtils::can_attack_creature(card, def, game_state, card_db);
 
-            // Step 3-4: CANNOT_ATTACK check
-            if (can_attack) {
+                // Passive check for general attacking restriction
+                bool passive_restricted = false;
                 if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_ATTACK, card_db)) {
-                    can_attack = false;
+                    passive_restricted = true;
                 }
-            }
 
-            if (can_attack) {
-                Action attack_player;
-                attack_player.type = ActionType::ATTACK_PLAYER;
-                attack_player.source_instance_id = card.instance_id;
-                attack_player.slot_index = static_cast<int>(i);
-                attack_player.target_player = opponent.id;
-                actions.push_back(attack_player);
+                // Attack Player
+                if (can_attack_player && !passive_restricted) {
+                    Action attack_player;
+                    attack_player.type = ActionType::ATTACK_PLAYER;
+                    attack_player.source_instance_id = card.instance_id;
+                    attack_player.slot_index = static_cast<int>(i);
+                    attack_player.target_player = opponent.id;
+                    actions.push_back(attack_player);
+                }
 
-                for (size_t j = 0; j < opponent.battle_zone.size(); ++j) {
-                    const auto& opp_card = opponent.battle_zone[j];
-                    if (opp_card.is_tapped) {
-                        if (card_db.count(opp_card.card_id)) {
-                            const auto& opp_def = card_db.at(opp_card.card_id);
-                            bool protected_by_jd = TargetUtils::is_protected_by_just_diver(opp_card, opp_def, game_state, active_player.id);
-                            // Just Diver protection only lasts the turn it entered
-                            if (game_state.turn_number > opp_card.turn_played) protected_by_jd = false;
-                            if (protected_by_jd) {
-                                continue;
+                // Attack Creature
+                if (can_attack_creature && !passive_restricted) {
+                    for (size_t j = 0; j < opponent.battle_zone.size(); ++j) {
+                        const auto& opp_card = opponent.battle_zone[j];
+                        if (opp_card.is_tapped) {
+                            if (card_db.count(opp_card.card_id)) {
+                                const auto& opp_def = card_db.at(opp_card.card_id);
+                                bool protected_by_jd = TargetUtils::is_protected_by_just_diver(opp_card, opp_def, game_state, active_player.id);
+                                // Just Diver protection only lasts the turn it entered
+                                if (game_state.turn_number > opp_card.turn_played) protected_by_jd = false;
+                                if (protected_by_jd) {
+                                    continue;
+                                }
                             }
-                        }
 
-                        Action attack_creature;
-                        attack_creature.type = ActionType::ATTACK_CREATURE;
-                        attack_creature.source_instance_id = card.instance_id;
-                        attack_creature.slot_index = static_cast<int>(i);
-                        attack_creature.target_instance_id = opp_card.instance_id;
-                        attack_creature.target_slot_index = static_cast<int>(j);
-                        actions.push_back(attack_creature);
+                            Action attack_creature;
+                            attack_creature.type = ActionType::ATTACK_CREATURE;
+                            attack_creature.source_instance_id = card.instance_id;
+                            attack_creature.slot_index = static_cast<int>(i);
+                            attack_creature.target_instance_id = opp_card.instance_id;
+                            attack_creature.target_slot_index = static_cast<int>(j);
+                            actions.push_back(attack_creature);
+                        }
                     }
                 }
             }
