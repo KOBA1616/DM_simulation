@@ -313,6 +313,38 @@ class CardTextGenerator:
         elif cond_type == "DURING_OPPONENT_TURN":
             return "相手のターン中: "
 
+        elif cond_type == "COUNT_MATCH":
+            filter_def = condition.get("filter", {})
+            if filter_def:
+                # Wrap in a fake action to use _resolve_target logic
+                fake_action = {
+                    "type": "NONE",
+                    "filter": filter_def,
+                    "scope": "PLAYER_SELF" # Default to self if not specified, but resolve_target handles prefixes
+                }
+                # However, COUNT_MATCH usually defaults to self unless specified in filter or we add a scope field to condition
+                # If filter has no "zones", resolve_target might default to card.
+                # Assuming filter is well-formed (e.g. zones=["BATTLE_ZONE"]).
+                target_desc, unit = cls._resolve_target(fake_action)
+
+                val = condition.get("value", 0)
+                op = condition.get("op", ">=")
+
+                # Construct text: "Target is >= Value"
+                op_text = f"{op} {val}"
+                if op == ">=":
+                    op_text = f"が{val}{unit}以上あれば"
+                elif op == ">":
+                    op_text = f"が{val}{unit}より多ければ"
+                elif op == "=" or op == "==":
+                    op_text = f"が{val}{unit}あれば"
+                elif op == "<=":
+                    op_text = f"が{val}{unit}以下なら"
+                elif op == "<":
+                    op_text = f"が{val}{unit}より少なければ"
+
+                return f"{target_desc}{op_text}: "
+
         return ""
 
     @classmethod
