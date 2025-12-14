@@ -171,4 +171,19 @@ namespace dm::engine {
             return false;
         }
     };
+
+    class OpponentCardsDrawnEvaluator : public IConditionEvaluator {
+    public:
+        bool evaluate(dm::core::GameState& state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& /*card_db*/, const std::map<std::string, int>& /*execution_context*/) override {
+             using namespace dm::core;
+             PlayerID controller = GenericCardSystem::get_controller(state, source_instance_id);
+
+             // Check if active player is the opponent.
+             // TurnStats tracks the active player's draw count.
+             if (state.active_player_id != controller) {
+                 return state.turn_stats.cards_drawn_this_turn >= condition.value;
+             }
+             return false;
+        }
+    };
 }
