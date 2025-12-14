@@ -254,6 +254,14 @@ class CardEditForm(BaseEditForm):
             if cb.isChecked():
                 current_keywords[k] = True
 
+        # Ensure revolution_change keyword is set correctly if checkbox is checked
+        if self.rev_change_check.isChecked():
+            current_keywords['revolution_change'] = True
+        elif 'revolution_change' in current_keywords:
+            # If unchecked, we might need to remove it, but usually the structure removal handles it.
+            # However, if we are in save_data, the UI state should be the source of truth.
+            del current_keywords['revolution_change']
+
         # Auto-set evolution keyword based on type
         if type_str == "EVOLUTION_CREATURE":
             current_keywords['evolution'] = True
