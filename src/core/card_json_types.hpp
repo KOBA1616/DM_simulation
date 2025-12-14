@@ -127,6 +127,7 @@ namespace dm::core {
         std::optional<bool> is_tapped;
         std::optional<bool> is_blocker;
         std::optional<bool> is_evolution;
+        std::optional<bool> is_card_designation; // New field for card vs element distinction
         std::optional<int> count; // For selection
 
         // Step 3-1: Advanced Selection
@@ -358,7 +359,7 @@ namespace dm::core {
         {ReductionType::ACTIVE_PAYMENT, "ACTIVE_PAYMENT"}
     })
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, count, selection_mode, selection_sort_key, and_conditions)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, and_conditions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition, options, cast_spell_side)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)

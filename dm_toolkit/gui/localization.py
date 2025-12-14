@@ -152,6 +152,7 @@ TRANSLATIONS = {
     "Is Tapped?": "タップ状態?",
     "Is Blocker?": "ブロッカー?",
     "Is Evolution?": "進化?",
+    "Card Designation": "カード指定(非エレメント)",
     "Ignore": "無視",
     "Yes (True)": "はい",
     "No (False)": "いいえ",
