@@ -588,11 +588,17 @@ class CardTextGenerator:
 
             if "BATTLE_ZONE" in zones:
                 zone_noun = "バトルゾーン"
-                if "CREATURE" in types or (not types):
+                if "CARD" in types:
+                    type_noun = "カード"
+                    unit = "枚"
+                elif "CREATURE" in types:
                     type_noun = "クリーチャー"
                     unit = "体"
                 elif "CROSS_GEAR" in types:
                     type_noun = "クロスギア"
+                elif not types:
+                    type_noun = "クリーチャー"
+                    unit = "体"
             elif "MANA_ZONE" in zones:
                 zone_noun = "マナゾーン"
             elif "HAND" in zones:
@@ -612,7 +618,9 @@ class CardTextGenerator:
                  zone_noun = "山札"
 
             if not zone_noun:
-                if "CREATURE" in types:
+                if "CARD" in types:
+                    type_noun = "カード"
+                elif "CREATURE" in types:
                     type_noun = "クリーチャー"
                     unit = "体"
                 elif "SPELL" in types:
@@ -633,7 +641,7 @@ class CardTextGenerator:
             if "SHIELD_ZONE" in zones and (not types or "CARD" in types):
                 target_desc = target_desc.replace("シールドゾーンのカード", "シールド")
                 unit = "つ"
-            if "BATTLE_ZONE" in zones:
+            if "BATTLE_ZONE" in zones and "CARD" not in types:
                  target_desc = target_desc.replace("バトルゾーンの", "")
 
         else:

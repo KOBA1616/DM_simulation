@@ -210,6 +210,7 @@ namespace dm::engine {
                        c.type == CardType::PSYCHIC_CREATURE ||
                        c.type == CardType::GR_CREATURE;
             }
+            if (type_str == "CARD") return true;
             if (type_str == "TAMASEED") return c.type == CardType::TAMASEED;
             if (type_str == "CREATURE") return c.type == CardType::CREATURE || c.type == CardType::EVOLUTION_CREATURE;
             if (type_str == "SPELL") return c.type == CardType::SPELL;
@@ -252,6 +253,7 @@ namespace dm::engine {
                        c.type == "PSYCHIC_CREATURE" ||
                        c.type == "GR_CREATURE";
             }
+            if (type_str == "CARD") return true;
             if (type_str == "TAMASEED") return c.type == "TAMASEED";
             if (type_str == "CREATURE") return c.type == "CREATURE" || c.type == "EVOLUTION_CREATURE";
             return c.type == type_str;
