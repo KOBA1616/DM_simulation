@@ -289,6 +289,19 @@ class CardDataManager:
         for i in reversed(rows_to_remove):
             card_item.removeRow(i)
 
+    def add_option_slots(self, action_item, count):
+        """Adds option slots to an action item."""
+        current_options = 0
+        for i in range(action_item.rowCount()):
+             if action_item.child(i).data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+                  current_options += 1
+
+        for i in range(count):
+             opt_num = current_options + i + 1
+             opt_item = QStandardItem(f"{tr('Option')} {opt_num}")
+             opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
+             opt_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+             action_item.appendRow(opt_item)
 
     def _create_card_item(self, card):
         item = QStandardItem(f"{card.get('id')} - {card.get('name', 'No Name')}")
