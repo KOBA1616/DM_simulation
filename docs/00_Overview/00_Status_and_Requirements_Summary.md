@@ -139,6 +139,111 @@ AI開発と並行して、エディタの残存課題を解消します。
 
 ---
 
+## 5. イベント駆動型トリガーシステム実装詳細 (Event-Driven Trigger System Implementation Specification)
+
+現状の `EffectResolver` 等に散在するハードコードされたトリガー判定ロジック（ポーリング型/Hook型）を、汎用的かつ拡張可能なイベント駆動型アーキテクチャに刷新するための技術詳細です。
+
+### 5.1 目的 (Objective)
+*   **ハードコードの排除**: 新しいトリガー条件を追加するたびにC++エンジン（`EffectResolver` 等）を修正する必要をなくす。
+*   **複雑な条件のサポート**: 「相手が呪文を唱えた時」「他のクリーチャーが破壊された時」などの他者・他領域のイベントに対するトリガーを統一的に扱う。
+*   **データ駆動**: JSON定義のみで新しい誘発型能力を実装可能にする。
+
+### 5.2 データ構造 (Data Structures)
+
+#### 5.2.1 ゲームイベント定義 (Game Event Definition)
+すべてのゲーム内アクション（状態変化）はイベントとして発行されます。
+
+```cpp
+// src/core/game_event.hpp (New)
+
+namespace dm::core {
+
+    enum class GameEventType {
+        ZONE_CHANGE,        // カードの移動 (Play, Destroy, ManaCharge, Draw)
+        ATTACK_INITIATE,    // 攻撃開始
+        BLOCK_DECLARED,     // ブロック成立
+        CARD_TAPPED,        // カードがタップされた
+        PHASE_CHANGED,      // フェーズ遷移
+        TURN_START,         // ターン開始
+        TURN_END,           // ターン終了
+        MANA_PAID,          // マナ支払い
+        SPELL_CAST,         // 呪文詠唱完了
+        SHIELD_BROKEN,      // シールドブレイク
+        POWER_MODIFIED      // パワー変更（継続的効果の再計算トリガー用）
+    };
+
+    struct GameEvent {
+        GameEventType type;
+        int source_id;          // イベント発生源のCardInstance ID
+        int target_id;          // 対象のID（攻撃対象、ブロック対象など）
+        PlayerID player_id;     // 行動主
+        std::map<std::string, int> context; // 追加データ（支払ったコスト、移動元ゾーンIDなど）
+
+        // Context Helper
+        void set_context(const std::string& key, int value) { context[key] = value; }
+        int get_context(const std::string& key, int default_val = 0) const {
+            auto it = context.find(key);
+            return (it != context.end()) ? it->second : default_val;
+        }
+    };
+}
+```
+
+#### 5.2.2 トリガー定義 (Trigger Definition)
+JSON定義上の `TriggerType` を拡張し、より詳細なイベントフィルタリングを可能にします。
+
+```cpp
+// src/core/card_json_types.hpp (Extension)
+
+struct EventFilterDef {
+    std::vector<std::string> event_types; // "ZONE_CHANGE", "ATTACK_INITIATE" etc.
+    FilterDef source_filter;    // イベント発生源が条件を満たすか（例: ドラゴンが破壊された時）
+    FilterDef context_filter;   // 文脈条件（例: 手札から捨てられた時）
+    bool run_once_per_turn = false;
+};
+
+// Existing TriggerType will be mapped to presets of EventFilterDef
+// e.g., ON_PLAY -> { event_types: ["ZONE_CHANGE"], source_filter: { zones: ["BATTLE_ZONE"], prev_zone: ["HAND", "MANA_ZONE", ...] } }
+```
+
+### 5.3 アーキテクチャ (Architecture)
+
+#### 5.3.1 TriggerManager (Observer Pattern)
+`GameState` またはシングルトンとして `TriggerManager` を実装し、イベントの監視と発火を管理します。
+
+```cpp
+// src/engine/systems/trigger_system.hpp
+
+class TriggerManager {
+public:
+    // イベント発行（各ActionHandlerから呼ばれる）
+    void dispatch(GameState& state, const GameEvent& event, const CardDB& card_db);
+
+    // 監視対象の登録（不要？ -> 毎回全カード走査は重いため、ZoneごとのObserverリストを持つか、
+    // あるいは「現在バトルゾーン/マナゾーンにあるカード」のみを走査対象とする）
+    // 現状の規模なら、Event発生時に全Active Zone（Battle, Mana, Grave, Handの一部）を走査しても十分高速。
+};
+```
+
+### 5.4 実装ステップ (Implementation Steps)
+
+1.  **インフラ整備**:
+    *   `src/core/game_event.hpp` の作成。
+    *   `src/engine/systems/trigger_system.hpp` の作成。
+
+2.  **イベント発行の実装 (Event Emission)**:
+    *   `MoveCardHandler`, `TapHandler`, `AttackHandler` 等の主要ハンドラおよび `EffectResolver` 内のハードコード部分に `TriggerManager::dispatch(event)` を埋め込む。
+    *   例: `GenericCardSystem` でカードが移動する直前/直後に `ZONE_CHANGE` イベントを発行。
+
+3.  **互換性レイヤーの実装**:
+    *   既存の `TriggerType` (ON_PLAY, ON_DESTROY等) を `EventFilterDef` に変換するロジック、または `TriggerManager` 内で従来の `TriggerType` をイベントとして解釈するロジックを実装。
+
+4.  **移行と検証**:
+    *   `ON_DESTROY` ロジックを `TriggerManager` 経由に切り替え、既存の破壊時効果（Piggyback）が動作するか検証。
+    *   `ON_OPPONENT_DRAW` などの新規トリガーをイベント駆動で実装し、動作確認。
+
+---
+
 ## 今後の課題 (Future Issues)
 
 ### 1. Handlerの更なる堅牢化
@@ -150,6 +255,7 @@ AI開発と並行して、エディタの残存課題を解消します。
 ### 3.4 [Priority: Future] Phase 6: 将来的な拡張性・汎用性向上 (Future Scalability)
 
 1.  **イベント駆動型トリガーシステム (Event-Driven Trigger System)**
+    *   （詳細仕様は Section 5 を参照）
 2.  **AI入力特徴量の動的構成 (Dynamic AI Input Feature Configuration)**
 3.  **完全な再現性を持つリプレイシステム (Fully Reproducible Replay System)**
 
@@ -173,12 +279,7 @@ AI開発と並行して、エディタの残存課題を解消します。
     *   **効果**: 複数の効果（例：パワー+3000してW・ブレイカーを与える）を単一のアクション定義で記述可能にする。
 
 3.  **イベント監視型トリガー (`OBSERVER_TRIGGER`)**
-    *   **目的**: 「相手が呪文を唱えた時」「他のクリーチャーが破壊された時」などの受動的トリガーを汎用化します。
-    *   **仕様**:
-        *   `event_type`: `ZONE_CHANGE`, `ATTACK`, `BLOCK`, `PLAY_CARD`
-        *   `source_filter`: イベント発生源のフィルタリング（例: `target_player: OPPONENT`, `card_type: SPELL`）
-        *   `destination_zone`: 移動イベントの監視用
-    *   **効果**: 既存の `ON_PLAY` 等では表現しきれない複雑な誘発型能力の実装を容易にする。
+    *   （実装詳細については **Section 5: イベント駆動型トリガーシステム実装詳細** に統合されました）
 
 4.  **動的参照フィルタ (`Source Reference`)**
     *   **目的**: 固定値（パワー5000以下）だけでなく、動的な値（自身のパワー以下、攻撃対象と同じ種族）によるフィルタリングを可能にします。
