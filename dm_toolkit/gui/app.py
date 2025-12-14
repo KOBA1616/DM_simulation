@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
+from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.deck_builder import DeckBuilder
 from dm_toolkit.gui.card_editor import CardEditor
 from dm_toolkit.gui.editor.scenario_editor import ScenarioEditor
@@ -43,7 +44,7 @@ class GameWindow(QMainWindow):
 
         # UI Setup
         # Dock: Info Panel
-        self.info_dock = QDockWidget("Game Info & Controls", self)
+        self.info_dock = QDockWidget(tr("Game Info & Controls"), self)
         self.info_dock.setObjectName("InfoDock")
         self.info_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
 
@@ -57,15 +58,15 @@ class GameWindow(QMainWindow):
         # -- Layout Separation (Top: Game Ops/Info, Bottom: AI/Sim Settings) --
         
         # 1. Top Section: Game Info & Operations
-        self.top_section_group = QGroupBox("Game Status & Operations")
+        self.top_section_group = QGroupBox(tr("Game Status & Operations"))
         top_layout = QVBoxLayout()
         
         # Status Labels
         status_layout = QHBoxLayout()
-        self.turn_label = QLabel("Turn: 1")
+        self.turn_label = QLabel(f"{tr('Turn')}: 1")
         self.turn_label.setStyleSheet("font-weight: bold;")
-        self.phase_label = QLabel("Phase: START")
-        self.active_label = QLabel("Active: P0")
+        self.phase_label = QLabel(f"{tr('Phase')}: START")
+        self.active_label = QLabel(f"{tr('Active')}: P0")
         status_layout.addWidget(self.turn_label)
         status_layout.addWidget(self.phase_label)
         status_layout.addWidget(self.active_label)
@@ -77,15 +78,15 @@ class GameWindow(QMainWindow):
         
         # Game Controls
         game_ctrl_layout = QHBoxLayout()
-        self.start_btn = QPushButton("Start Sim")
+        self.start_btn = QPushButton(tr("Start Sim"))
         self.start_btn.clicked.connect(self.toggle_simulation)
         game_ctrl_layout.addWidget(self.start_btn)
 
-        self.step_button = QPushButton("Step")
+        self.step_button = QPushButton(tr("Step"))
         self.step_button.clicked.connect(self.step_phase)
         game_ctrl_layout.addWidget(self.step_button)
 
-        self.reset_btn = QPushButton("Reset")
+        self.reset_btn = QPushButton(tr("Reset"))
         self.reset_btn.clicked.connect(self.reset_game)
         game_ctrl_layout.addWidget(self.reset_btn)
         top_layout.addLayout(game_ctrl_layout)
@@ -97,15 +98,15 @@ class GameWindow(QMainWindow):
         # self.info_layout.addStretch()
 
         # 2. Bottom Section: AI, Simulation, Tools
-        self.bottom_section_group = QGroupBox("AI & Tools")
+        self.bottom_section_group = QGroupBox(tr("AI & Tools"))
         bottom_layout = QVBoxLayout()
 
         # Player Mode Group
-        mode_group = QGroupBox("Player Mode")
+        mode_group = QGroupBox(tr("Player Mode"))
         mode_layout = QVBoxLayout()
 
-        self.p0_human_radio = QRadioButton("P0 (Self): Human")
-        self.p0_ai_radio = QRadioButton("P0 (Self): AI")
+        self.p0_human_radio = QRadioButton(tr("P0 (Self): Human"))
+        self.p0_ai_radio = QRadioButton(tr("P0 (Self): AI"))
         self.p0_ai_radio.setChecked(True)
         self.p0_group = QButtonGroup()
         self.p0_group.addButton(self.p0_human_radio)
@@ -114,8 +115,8 @@ class GameWindow(QMainWindow):
         mode_layout.addWidget(self.p0_human_radio)
         mode_layout.addWidget(self.p0_ai_radio)
         
-        self.p1_human_radio = QRadioButton("P1 (Opp): Human")
-        self.p1_ai_radio = QRadioButton("P1 (Opp): AI")
+        self.p1_human_radio = QRadioButton(tr("P1 (Opp): Human"))
+        self.p1_ai_radio = QRadioButton(tr("P1 (Opp): AI"))
         self.p1_ai_radio.setChecked(True)
         self.p1_group = QButtonGroup()
         self.p1_group.addButton(self.p1_human_radio)
@@ -128,42 +129,42 @@ class GameWindow(QMainWindow):
         
         # Tools / Editors
         tools_layout = QVBoxLayout()
-        self.deck_builder_button = QPushButton("Deck Builder")
+        self.deck_builder_button = QPushButton(tr("Deck Builder"))
         self.deck_builder_button.clicked.connect(self.open_deck_builder)
         tools_layout.addWidget(self.deck_builder_button)
 
-        self.card_editor_button = QPushButton("Card Editor")
+        self.card_editor_button = QPushButton(tr("Card Editor"))
         self.card_editor_button.clicked.connect(self.open_card_editor)
         tools_layout.addWidget(self.card_editor_button)
 
-        self.scenario_editor_button = QPushButton("Scenario Editor")
+        self.scenario_editor_button = QPushButton(tr("Scenario Editor"))
         self.scenario_editor_button.clicked.connect(self.open_scenario_editor)
         tools_layout.addWidget(self.scenario_editor_button)
 
-        self.sim_dialog_button = QPushButton("Batch Simulation")
+        self.sim_dialog_button = QPushButton(tr("Batch Simulation"))
         self.sim_dialog_button.clicked.connect(self.open_simulation_dialog)
         tools_layout.addWidget(self.sim_dialog_button)
         bottom_layout.addLayout(tools_layout)
 
         # Deck Loading Controls
-        deck_group = QGroupBox("Deck Management")
+        deck_group = QGroupBox(tr("Deck Management"))
         deck_layout = QVBoxLayout()
-        self.load_deck_btn = QPushButton("Load Deck P0")
+        self.load_deck_btn = QPushButton(tr("Load Deck P0"))
         self.load_deck_btn.clicked.connect(self.load_deck_p0)
         deck_layout.addWidget(self.load_deck_btn)
 
-        self.load_deck_p1_btn = QPushButton("Load Deck P1")
+        self.load_deck_p1_btn = QPushButton(tr("Load Deck P1"))
         self.load_deck_p1_btn.clicked.connect(self.load_deck_p1)
         deck_layout.addWidget(self.load_deck_p1_btn)
         deck_group.setLayout(deck_layout)
         bottom_layout.addWidget(deck_group)
         
-        self.god_view_check = QCheckBox("God View")
+        self.god_view_check = QCheckBox(tr("God View"))
         self.god_view_check.setChecked(False)
         self.god_view_check.stateChanged.connect(self.update_ui)
         bottom_layout.addWidget(self.god_view_check)
 
-        self.help_btn = QPushButton("Help / Manual")
+        self.help_btn = QPushButton(tr("Help / Manual"))
         self.help_btn.clicked.connect(self.show_help)
         bottom_layout.addWidget(self.help_btn)
 
@@ -248,7 +249,7 @@ class GameWindow(QMainWindow):
         self.setCentralWidget(self.board_panel)
         
         # MCTS View (Dock)
-        self.mcts_dock = QDockWidget("MCTS Analysis", self)
+        self.mcts_dock = QDockWidget(tr("MCTS Analysis"), self)
         self.mcts_dock.setObjectName("MCTSDock")
         self.mcts_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         self.mcts_view = MCTSView()
@@ -256,7 +257,7 @@ class GameWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mcts_dock)
         
         # Logs (Dock)
-        self.log_dock = QDockWidget("Logs", self)
+        self.log_dock = QDockWidget(tr("Logs"), self)
         self.log_dock.setObjectName("LogDock")
         self.log_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         self.log_list = QListWidget()
@@ -299,7 +300,7 @@ class GameWindow(QMainWindow):
     def load_deck_p0(self):
         os.makedirs("data/decks", exist_ok=True)
         fname, _ = QFileDialog.getOpenFileName(
-            self, "Load Deck P0", "data/decks", "JSON Files (*.json)"
+            self, tr("Load Deck P0"), "data/decks", "JSON Files (*.json)"
         )
         if fname:
             try:
@@ -307,19 +308,19 @@ class GameWindow(QMainWindow):
                     deck_ids = json.load(f)
                 
                 if len(deck_ids) != 40:
-                    QMessageBox.warning(self, "Invalid Deck", "Deck must have 40 cards.")
+                    QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return
 
                 self.p0_deck_ids = deck_ids
                 self.reset_game()
-                self.log_list.addItem(f"Loaded Deck for P0: {os.path.basename(fname)}")
+                self.log_list.addItem(f"{tr('Loaded Deck for P0')}: {os.path.basename(fname)}")
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to load deck: {e}")
+                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
     def load_deck_p1(self):
         os.makedirs("data/decks", exist_ok=True)
         fname, _ = QFileDialog.getOpenFileName(
-            self, "Load Deck P1", "data/decks", "JSON Files (*.json)"
+            self, tr("Load Deck P1"), "data/decks", "JSON Files (*.json)"
         )
         if fname:
             try:
@@ -327,14 +328,14 @@ class GameWindow(QMainWindow):
                     deck_ids = json.load(f)
                 
                 if len(deck_ids) != 40:
-                    QMessageBox.warning(self, "Invalid Deck", "Deck must have 40 cards.")
+                    QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return
 
                 self.p1_deck_ids = deck_ids
                 self.reset_game()
-                self.log_list.addItem(f"Loaded Deck for P1: {os.path.basename(fname)}")
+                self.log_list.addItem(f"{tr('Loaded Deck for P1')}: {os.path.basename(fname)}")
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to load deck: {e}")
+                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
     def show_help(self):
         help_text = """
@@ -361,22 +362,22 @@ class GameWindow(QMainWindow):
             <li><b>MCTS View:</b> Inspect AI search tree.</li>
         </ul>
         """
-        QMessageBox.information(self, "Help / Manual", help_text)
+        QMessageBox.information(self, tr("Help / Manual"), help_text)
         
     def toggle_simulation(self):
         if self.is_running:
             self.timer.stop()
-            self.start_btn.setText("Start Sim")
+            self.start_btn.setText(tr("Start Sim"))
             self.is_running = False
         else:
             self.timer.start(500)
-            self.start_btn.setText("Stop Sim")
+            self.start_btn.setText(tr("Stop Sim"))
             self.is_running = True
 
     def reset_game(self):
         self.timer.stop()
         self.is_running = False
-        self.start_btn.setText("Start Sim")
+        self.start_btn.setText(tr("Start Sim"))
         
         self.gs = dm_ai_module.GameState(random.randint(0, 10000))
         self.gs.setup_test_duel()
@@ -389,7 +390,7 @@ class GameWindow(QMainWindow):
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
         
         self.log_list.clear()
-        self.log_list.addItem("Game Reset")
+        self.log_list.addItem(tr("Game Reset"))
         self.update_ui()
 
     def on_card_clicked(self, card_id, instance_id):
@@ -402,14 +403,14 @@ class GameWindow(QMainWindow):
         relevant_actions = [a for a in actions if a.source_instance_id == instance_id]
 
         if not relevant_actions:
-            self.log_list.addItem(f"No actions for card {card_id} (Inst: {instance_id})")
+            self.log_list.addItem(f"{tr('No actions for card')} {card_id} (Inst: {instance_id})")
             return
 
         if len(relevant_actions) == 1:
             action = relevant_actions[0]
             self.execute_action(action)
         else:
-            self.log_list.addItem(f"Multiple actions found. Executing first.")
+            self.log_list.addItem(tr("Multiple actions found. Executing first."))
             self.execute_action(relevant_actions[0])
 
     def on_card_hovered(self, card_id):
@@ -424,7 +425,7 @@ class GameWindow(QMainWindow):
         dm_ai_module.EffectResolver.resolve_action(
             self.gs, action, self.card_db
         )
-        self.log_list.addItem(f"P0 Action: {action.to_string()}")
+        self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
         
         if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
             dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
@@ -441,8 +442,8 @@ class GameWindow(QMainWindow):
             if is_over:
                 self.timer.stop()
                 self.is_running = False
-                self.start_btn.setText("Start Sim")
-                self.log_list.addItem(f"Game Over! Result: {result}")
+                self.start_btn.setText(tr("Start Sim"))
+                self.log_list.addItem(f"{tr('Game Over! Result')}: {result}")
                 return
 
             active_pid = self.gs.active_player_id
@@ -455,7 +456,7 @@ class GameWindow(QMainWindow):
                 )
                 if not actions:
                     dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
-                    self.log_list.addItem(f"P{active_pid} Auto-Pass")
+                    self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
                     self.update_ui()
                 return
 
@@ -465,7 +466,7 @@ class GameWindow(QMainWindow):
 
             if not actions:
                 dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
-                self.log_list.addItem(f"P{active_pid} Auto-Pass")
+                self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
             else:
                 search_state = self.gs.clone()
                 dm_ai_module.Determinizer.determinize(search_state, active_pid)
@@ -524,28 +525,28 @@ class GameWindow(QMainWindow):
                     self.mcts_view.update_from_data(tree_data)
                 
                 if was_running_at_start and not self.is_running:
-                    self.log_list.addItem("Simulation stopped.")
+                    self.log_list.addItem(tr("Simulation stopped."))
                     return
 
                 if best_action:
                     dm_ai_module.EffectResolver.resolve_action(
                         self.gs, best_action, self.card_db
                     )
-                    self.log_list.addItem(f"P{active_pid} AI Action: {best_action.to_string()}")
+                    self.log_list.addItem(f"P{active_pid} {tr('AI Action')}: {best_action.to_string()}")
 
                     if best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE:
                         dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
                 else:
-                    self.log_list.addItem("Error: MCTS returned None")
+                    self.log_list.addItem(tr("Error: MCTS returned None"))
 
             self.update_ui()
         finally:
             self.is_processing = False
         
     def update_ui(self):
-        self.turn_label.setText(f"Turn: {self.gs.turn_number}")
-        self.phase_label.setText(f"Phase: {self.gs.current_phase}")
-        self.active_label.setText(f"Active: P{self.gs.active_player_id}")
+        self.turn_label.setText(f"{tr('Turn')}: {self.gs.turn_number}")
+        self.phase_label.setText(f"{tr('Phase')}: {self.gs.current_phase}")
+        self.active_label.setText(f"{tr('Active')}: P{self.gs.active_player_id}")
         
         p0 = self.gs.players[0]
         p1 = self.gs.players[1]
