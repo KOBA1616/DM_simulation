@@ -211,8 +211,22 @@ namespace dm::engine {
             return;
         }
 
-        for (const auto& action : effect.actions) {
-            resolve_action(game_state, action, source_instance_id, execution_context, card_db);
+        for (size_t i = 0; i < effect.actions.size(); ++i) {
+            const auto& action = effect.actions[i];
+
+            // Construct remaining actions for continuation
+            std::vector<ActionDef> remaining_actions;
+            if (i + 1 < effect.actions.size()) {
+                remaining_actions.insert(remaining_actions.end(), effect.actions.begin() + i + 1, effect.actions.end());
+            }
+
+            bool interrupted = false;
+            resolve_action(game_state, action, source_instance_id, execution_context, card_db, &interrupted, &remaining_actions);
+
+            if (interrupted) {
+                // std::cout << "resolve_effect: Interrupted loop." << std::endl;
+                break;
+            }
         }
     }
 
@@ -227,7 +241,8 @@ namespace dm::engine {
 
         if (!check_condition(game_state, effect.condition, source_instance_id, card_db)) return;
 
-        for (const auto& action : effect.actions) {
+        for (size_t i = 0; i < effect.actions.size(); ++i) {
+            const auto& action = effect.actions[i];
 
             // Delegate to Handlers for "with targets" execution
             EffectSystem& sys = EffectSystem::instance();
@@ -235,6 +250,12 @@ namespace dm::engine {
                 // Create Context
                 ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, &targets);
                 handler->resolve_with_targets(ctx);
+
+                // Note: resolve_with_targets is typically synchronous resolution after selection.
+                // However, if an action *again* causes interruption (e.g. nested selection), it needs handling.
+                // But generally resolve_with_targets finishes the action.
+                // If it DOES interrupt, we need similar logic.
+                // But handlers usually don't interrupt inside resolve_with_targets.
                 continue;
             }
 
@@ -242,6 +263,7 @@ namespace dm::engine {
             if (action.scope == TargetScope::TARGET_SELECT || action.target_choice == "SELECT") {
                  // Handled by handlers mostly
             } else {
+                 // We don't support interruption here for legacy fallback in resolve_effect_with_targets
                 resolve_action(game_state, action, source_instance_id, execution_context, card_db);
             }
         }
@@ -303,29 +325,43 @@ namespace dm::engine {
         return {};
     }
 
+    void GenericCardSystem::delegate_selection(const ResolutionContext& ctx) {
+        if (!ctx.interrupted) {
+             std::cerr << "delegate_selection: ctx.interrupted is null!" << std::endl;
+             return;
+        }
+
+        dm::core::EffectDef ed;
+        ed.trigger = dm::core::TriggerType::NONE;
+        ed.condition = dm::core::ConditionDef{"NONE", 0, "", "", "", std::nullopt};
+        ed.actions = { ctx.action };
+        if (ctx.remaining_actions) {
+            ed.actions.insert(ed.actions.end(), ctx.remaining_actions->begin(), ctx.remaining_actions->end());
+        }
+
+        GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+        if (ctx.interrupted) {
+            *ctx.interrupted = true;
+            // std::cout << "delegate_selection: Interrupted set to true." << std::endl;
+        }
+    }
+
     void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id) {
         std::map<std::string, int> empty;
         std::map<dm::core::CardID, dm::core::CardDefinition> empty_db;
         resolve_action(game_state, action, source_instance_id, empty, empty_db);
     }
 
-    void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+    // Binding Helper
+    void GenericCardSystem::resolve_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+         resolve_action(game_state, action, source_instance_id, execution_context, card_db, nullptr, nullptr);
+    }
+
+    void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, bool* interrupted, const std::vector<ActionDef>* remaining_actions) {
         ensure_handlers_registered();
 
         // Check Action-level condition (if any)
         if (action.condition.has_value()) {
-            // Pass context to condition checker?
-            // Currently check_condition uses GenericCardSystem::check_condition which doesn't take context directly
-            // BUT, for COMPARE_STAT, it might need to look up variables.
-            // check_condition signature: (GameState, ConditionDef, source_id, card_db)
-            // It does NOT currently support context variables.
-            // We need to support it if we want to check "destroyed_count" from context.
-
-            // HACK: If the condition is COMPARE_STAT and the stat_key is in execution_context,
-            // we manually evaluate it here or extend check_condition.
-            // For proper modularity, check_condition should accept context.
-            // Let's implement a local check for context variables for now.
-
             bool condition_met = false;
             if (action.condition->type == "COMPARE_STAT" && execution_context.count(action.condition->stat_key)) {
                 int val = execution_context[action.condition->stat_key];
@@ -348,7 +384,7 @@ namespace dm::engine {
 
         EffectSystem& sys = EffectSystem::instance();
         if (IActionHandler* handler = sys.get_handler(action.type)) {
-            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db);
+            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, interrupted, remaining_actions);
             handler->resolve(ctx);
             return;
         }
@@ -370,103 +406,26 @@ namespace dm::engine {
          if (!def_ptr) return;
          const auto& def = *def_ptr;
 
-         // Debug output
-         // std::cout << "Checking Mega Last Burst for ID " << card.card_id << ". Keyword: " << def.keywords.mega_last_burst << ", SpellSide: " << (def.spell_side ? "Yes" : "No") << std::endl;
-
          if (def.keywords.mega_last_burst && def.spell_side) {
-             PlayerID controller = get_controller(game_state, card.instance_id); // This might need card_owner_map lookup as card is already moved
-             // Since card was moved, get_controller might return active_player if not in map, but card instance usually preserves ID?
-             // Actually, get_controller uses card_owner_map which persists across moves.
+             PlayerID controller = get_controller(game_state, card.instance_id);
 
-             // Queue the effect: You may cast spell side.
              EffectDef eff;
              eff.trigger = TriggerType::NONE;
 
              ActionDef act;
              act.type = EffectActionType::CAST_SPELL;
-             act.scope = TargetScope::TARGET_SELECT; // Or SELF?
-             // CAST_SPELL handler logic: if we pass explicit targets (the card itself), it moves it to stack and casts.
-             // We want to target THIS card in its current zone.
-             // But we need to select it?
-             // Or we can just set targets manually in PendingEffect.
-             act.optional = true; // "You may"
+             act.scope = TargetScope::TARGET_SELECT;
+             act.optional = true;
              act.cast_spell_side = true;
 
              eff.actions.push_back(act);
 
              PendingEffect pending(EffectType::TRIGGER_ABILITY, card.instance_id, controller);
-             pending.resolve_type = ResolveType::EFFECT_RESOLUTION; // We construct effect manually
-             pending.effect_def = eff;
-             pending.optional = true;
-
-             // IMPORTANT: We must target the card in its NEW zone.
-             // But CAST_SPELL handler takes targets via ctx.targets if coming from TARGET_SELECT,
-             // OR if we skip selection, we need to provide the target.
-
-             // If we use TARGET_SELECT, the user has to click.
-             // "Mega Last Burst" allows user to CHOOSE to cast.
-             // So showing a "Use Mega Last Burst?" dialog is appropriate.
-             // PendingEffect with optional=true handles the "Yes/No" dialog for the effect itself.
-
-             // Now, for the action. We want to execute CAST_SPELL on THIS card.
-             // We can pre-fill the target in the pending effect so no selection is needed?
-             // If we set resolve_type = TARGET_SELECT, it asks for target.
-             // We want resolve_type = EFFECT_RESOLUTION, executing the action.
-             // But CAST_SPELL needs a target.
-             // If ActionDef has no filter/scope, it might default to source?
-             // Let's modify CAST_SPELL to handle "Self" if no targets?
-             // Or better: Create a wrapper effect that has the action.
-             // And we inject a wrapper "SELECT_TARGET" action? No.
-
-             // If we use GenericCardSystem::resolve_effect_with_targets, we can pass the target.
-             // But that's for immediate resolution.
-             // Here we want to queue it.
-
-             // If we queue TriggerType::TRIGGER_ABILITY, GenericCardSystem::resolve_effect is called.
-             // Then resolve_action is called.
-             // Then CastSpellHandler::resolve is called.
-             // CastSpellHandler::resolve DOES NOTHING currently (only resolve_with_targets implemented).
-
-             // So we need to use TARGET_SELECT to feed resolve_with_targets.
-             // ActionDef: scope = TARGET_SELECT, filter = { owner: SELF, zones: [CURRENT_ZONE], count: 1 }?
-             // And we restrict it to THIS card.
-             // That requires a specific filter for ID? FilterDef doesn't support ID.
-
-             // Alternatively, we use `resolve_effect_with_targets` directly if we confirm "Yes".
-             // But PendingEffect structure assumes `effect_def` is just run.
-
-             // Workaround:
-             // We queue a PendingEffect that, when resolved (user says Yes),
-             // executes `resolve_effect_with_targets` with the card ID pre-filled.
-             // But `ActionType::RESOLVE_EFFECT` in `EffectResolver` calls `GenericCardSystem::resolve_effect` which doesn't take targets.
-
-             // However, `ActionType::RESOLVE_EFFECT` also handles `ResolveType::TARGET_SELECT`.
-             // If we set `pe.resolve_type = ResolveType::TARGET_SELECT` and `pe.target_instance_ids = { card.instance_id }`,
-             // then `EffectResolver` calls `resolve_effect_with_targets`.
-             // But `TARGET_SELECT` usually implies "Waiting for selection".
-             // If we pre-fill `target_instance_ids`, does it auto-resolve?
-             // No, `ActionType::RESOLVE_EFFECT` is generated when the stack processes.
-             // If `num_targets_needed` is met, `StackStrategy` generates `RESOLVE_EFFECT`.
-
-             // So:
              pending.resolve_type = ResolveType::TARGET_SELECT;
              pending.target_instance_ids.push_back(card.instance_id);
              pending.num_targets_needed = 1;
-             pending.effect_def = eff; // Contains CAST_SPELL action
-
-             // But we need to make sure the user sees "Use Mega Last Burst?"
-             // `optional = true` on PendingEffect usually prompts the user before generating `SELECT_TARGET`.
-             // But here we skip `SELECT_TARGET` generation because targets are full?
-             // `StackStrategy` or `PendingEffectStrategy` checks this.
-             // If targets are full, it generates RESOLVE_EFFECT immediately.
-
-             // So the flow:
-             // 1. Queue PendingEffect (Optional).
-             // 2. User gets prompt "Use Mega Last Burst?".
-             // 3. If Yes, `RESOLVE_EFFECT` is generated.
-             // 4. `RESOLVE_EFFECT` executes `resolve_effect_with_targets` using the pre-filled target.
-             // 5. `resolve_effect_with_targets` calls `CastSpellHandler::resolve_with_targets`.
-             // 6. Handler uses `cast_spell_side` flag and casts the spell.
+             pending.effect_def = eff;
+             pending.optional = true;
 
              game_state.pending_effects.push_back(pending);
          }
