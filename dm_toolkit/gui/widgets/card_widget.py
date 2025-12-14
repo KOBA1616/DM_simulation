@@ -6,7 +6,7 @@ class CardWidget(QFrame):
     clicked = pyqtSignal(int) # Emits instance_id
     hovered = pyqtSignal(int) # Emits card_id
 
-    def __init__(self, card_id, card_name, cost, power, civ, tapped=False, instance_id=-1, parent=None):
+    def __init__(self, card_id, card_name, cost, power, civ, tapped=False, instance_id=-1, parent=None, is_face_down=False):
         """
         civ: Can be a single string (e.g. "FIRE") or a list of strings (e.g. ["FIRE", "NATURE"]).
         """
@@ -24,6 +24,7 @@ class CardWidget(QFrame):
 
         self.tapped = tapped
         self.instance_id = instance_id
+        self.is_face_down = is_face_down
         
         self.setFixedSize(100, 140)
         self.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
@@ -53,6 +54,11 @@ class CardWidget(QFrame):
         self.cost_label = QLabel(str(self.cost))
         self.cost_label.setFixedSize(24, 24)
         self.cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Hide cost label if face down
+        if self.is_face_down:
+            self.cost_label.setVisible(False)
+
         # Style will be set in update_style
         
         header_layout.addWidget(self.cost_label)
