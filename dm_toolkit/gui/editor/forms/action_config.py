@@ -69,9 +69,10 @@ ACTION_UI_CONFIG = {
         "label_value1": "Level"
     },
     "DISCARD": {
-        "visible": ["scope", "filter", "value1", "target_choice"],
+        "visible": ["scope", "filter", "value1", "target_choice", "output_value_key"],
         "label_value1": "Count",
-        "can_be_optional": True
+        "can_be_optional": True,
+        "produces_output": True
     },
     "PLAY_FROM_ZONE": {
         "visible": ["source_zone", "filter", "value1"],
