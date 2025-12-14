@@ -77,6 +77,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::enum_<CardType>(m, "CardType")
         .value("CREATURE", CardType::CREATURE)
         .value("SPELL", CardType::SPELL)
+        .value("EVOLUTION_CREATURE", CardType::EVOLUTION_CREATURE)
+        .value("CROSS_GEAR", CardType::CROSS_GEAR)
+        .value("CASTLE", CardType::CASTLE)
+        .value("PSYCHIC_CREATURE", CardType::PSYCHIC_CREATURE)
+        .value("GR_CREATURE", CardType::GR_CREATURE)
+        .value("TAMASEED", CardType::TAMASEED)
         .export_values();
 
     py::enum_<GameResult>(m, "GameResult")
