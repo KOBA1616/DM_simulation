@@ -52,75 +52,80 @@ class CardDataManager:
         root = self.model.invisibleRootItem()
         for i in range(root.rowCount()):
             card_item = root.child(i)
-            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
-            if not card_data: continue
-
-            new_effects = []
-            new_reactions = []
-            spell_side_dict = None
-
-            # Revolution Change extraction
-            rev_change_filter = None
-            has_rev_change_action = False
-
-            # Iterate children of CARD node
-            for j in range(card_item.rowCount()):
-                child_item = card_item.child(j)
-                item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
-
-                if item_type == "EFFECT":
-                    # Reconstruct Effect (Creature)
-                    eff_data = self._reconstruct_effect(child_item)
-                    new_effects.append(eff_data)
-
-                    # Check for Revolution Change Action to extract condition
-                    for act in eff_data.get('actions', []):
-                        if act.get('type') == "REVOLUTION_CHANGE":
-                            has_rev_change_action = True
-                            rev_change_filter = act.get('filter')
-
-                elif item_type == "REACTION_ABILITY":
-                    # Reconstruct Reaction Ability
-                    ra_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
-                    new_reactions.append(ra_data)
-
-                elif item_type == "SPELL_SIDE":
-                    # Reconstruct Spell Side
-                    spell_side_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
-                    spell_side_effects = []
-                    for k in range(child_item.rowCount()):
-                        eff_item = child_item.child(k)
-                        if eff_item.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
-                            spell_side_effects.append(self._reconstruct_effect(eff_item))
-
-                    spell_side_data['effects'] = spell_side_effects
-                    spell_side_dict = spell_side_data
-
-            card_data['effects'] = new_effects
-            card_data['reaction_abilities'] = new_reactions
-            if spell_side_dict:
-                card_data['spell_side'] = spell_side_dict
-            else:
-                if 'spell_side' in card_data:
-                    del card_data['spell_side']
-
-            # Auto-set Revolution Change Keyword and Condition
-            if 'keywords' not in card_data:
-                card_data['keywords'] = {}
-
-            if has_rev_change_action and rev_change_filter:
-                card_data['keywords']['revolution_change'] = True
-                card_data['revolution_change_condition'] = rev_change_filter
-            else:
-                # If removed from tree, clear from root data
-                if 'revolution_change' in card_data['keywords']:
-                    del card_data['keywords']['revolution_change']
-                if 'revolution_change_condition' in card_data:
-                    del card_data['revolution_change_condition']
-
-            cards.append(card_data)
-
+            card_data = self.reconstruct_card_data(card_item)
+            if card_data:
+                cards.append(card_data)
         return cards
+
+    def reconstruct_card_data(self, card_item):
+        """Reconstructs a single card's data from its tree item."""
+        card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
+        if not card_data: return None
+
+        new_effects = []
+        new_reactions = []
+        spell_side_dict = None
+
+        # Revolution Change extraction
+        rev_change_filter = None
+        has_rev_change_action = False
+
+        # Iterate children of CARD node
+        for j in range(card_item.rowCount()):
+            child_item = card_item.child(j)
+            item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
+
+            if item_type == "EFFECT":
+                # Reconstruct Effect (Creature)
+                eff_data = self._reconstruct_effect(child_item)
+                new_effects.append(eff_data)
+
+                # Check for Revolution Change Action to extract condition
+                for act in eff_data.get('actions', []):
+                    if act.get('type') == "REVOLUTION_CHANGE":
+                        has_rev_change_action = True
+                        rev_change_filter = act.get('filter')
+
+            elif item_type == "REACTION_ABILITY":
+                # Reconstruct Reaction Ability
+                ra_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
+                new_reactions.append(ra_data)
+
+            elif item_type == "SPELL_SIDE":
+                # Reconstruct Spell Side
+                spell_side_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
+                spell_side_effects = []
+                for k in range(child_item.rowCount()):
+                    eff_item = child_item.child(k)
+                    if eff_item.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                        spell_side_effects.append(self._reconstruct_effect(eff_item))
+
+                spell_side_data['effects'] = spell_side_effects
+                spell_side_dict = spell_side_data
+
+        card_data['effects'] = new_effects
+        card_data['reaction_abilities'] = new_reactions
+        if spell_side_dict:
+            card_data['spell_side'] = spell_side_dict
+        else:
+            if 'spell_side' in card_data:
+                del card_data['spell_side']
+
+        # Auto-set Revolution Change Keyword and Condition
+        if 'keywords' not in card_data:
+            card_data['keywords'] = {}
+
+        if has_rev_change_action and rev_change_filter:
+            card_data['keywords']['revolution_change'] = True
+            card_data['revolution_change_condition'] = rev_change_filter
+        else:
+            # If removed from tree, clear from root data
+            if 'revolution_change' in card_data['keywords']:
+                del card_data['keywords']['revolution_change']
+            if 'revolution_change_condition' in card_data:
+                del card_data['revolution_change_condition']
+
+        return card_data
 
     def _reconstruct_effect(self, eff_item):
         eff_data = eff_item.data(Qt.ItemDataRole.UserRole + 2)
