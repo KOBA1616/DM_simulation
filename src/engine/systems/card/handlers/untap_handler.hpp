@@ -2,6 +2,7 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/target_utils.hpp"
 
 namespace dm::engine {
 
@@ -18,11 +19,57 @@ namespace dm::engine {
                  return;
             }
 
+            // Legacy Support
             if (ctx.action.target_choice == "ALL_SELF") {
                  int controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  for (auto& c : ctx.game_state.players[controller_id].battle_zone) {
                      c.is_tapped = false;
                  }
+                 return;
+            }
+
+            // Auto-Untap Logic
+            PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+
+            // Determine zones (Default Battle Zone)
+            std::vector<std::pair<PlayerID, Zone>> zones_to_check;
+            if (ctx.action.filter.zones.empty()) {
+                zones_to_check.push_back({0, Zone::BATTLE});
+                zones_to_check.push_back({1, Zone::BATTLE});
+                // Untap usually also affects Mana Zone sometimes?
+                // But default filter usage typically implies Battle Zone unless specified.
+            } else {
+                 for (const auto& z : ctx.action.filter.zones) {
+                    if (z == "BATTLE_ZONE") {
+                        zones_to_check.push_back({0, Zone::BATTLE});
+                        zones_to_check.push_back({1, Zone::BATTLE});
+                    }
+                    if (z == "MANA_ZONE") {
+                        zones_to_check.push_back({0, Zone::MANA});
+                        zones_to_check.push_back({1, Zone::MANA});
+                    }
+                }
+            }
+
+            for (const auto& [pid, zone] : zones_to_check) {
+                Player& p = ctx.game_state.players[pid];
+                if (zone == Zone::BATTLE) {
+                     for (auto& card : p.battle_zone) {
+                         if (!ctx.card_db.count(card.card_id)) continue;
+                         const auto& def = ctx.card_db.at(card.card_id);
+                         if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
+                              card.is_tapped = false;
+                         }
+                     }
+                } else if (zone == Zone::MANA) {
+                     for (auto& card : p.mana_zone) {
+                         if (!ctx.card_db.count(card.card_id)) continue;
+                         const auto& def = ctx.card_db.at(card.card_id);
+                         if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
+                              card.is_tapped = false;
+                         }
+                     }
+                }
             }
         }
 
