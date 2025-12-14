@@ -170,6 +170,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("CAST_SPELL", EffectActionType::CAST_SPELL)
         .value("PUT_CREATURE", EffectActionType::PUT_CREATURE)
         .value("SELECT_OPTION", EffectActionType::SELECT_OPTION)
+        .value("PLAY_FROM_ZONE", EffectActionType::PLAY_FROM_ZONE)
         .value("NONE", EffectActionType::NONE)
         .export_values();
 
@@ -366,6 +367,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("destination_zone", &ActionDef::destination_zone)
         .def_readwrite("input_value_key", &ActionDef::input_value_key)
         .def_readwrite("output_value_key", &ActionDef::output_value_key)
+        .def_readwrite("inverse_target", &ActionDef::inverse_target)
+        .def_readwrite("pay_cost", &ActionDef::pay_cost)
+        .def_readwrite("as_summon", &ActionDef::as_summon)
         .def_readwrite("condition", &ActionDef::condition)
         .def_readwrite("options", &ActionDef::options);
 
@@ -547,6 +551,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("add_card_to_mana", [](GameState& s, PlayerID pid, CardID cid, int iid) {
              CardInstance c; c.card_id = cid; c.instance_id = iid;
              s.players[pid].mana_zone.push_back(c);
+             if (iid >= 0) {
+                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
+                 s.card_owner_map[iid] = pid;
+             }
+        })
+        .def("add_card_to_graveyard", [](GameState& s, PlayerID pid, CardID cid, int iid) {
+             CardInstance c; c.card_id = cid; c.instance_id = iid;
+             s.players[pid].graveyard.push_back(c);
              if (iid >= 0) {
                  if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
                  s.card_owner_map[iid] = pid;

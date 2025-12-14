@@ -109,6 +109,12 @@ class ActionEditForm(BaseEditForm):
         self.arbitrary_check = QCheckBox(tr("Arbitrary Amount (Up to N)"))
         layout.addRow(self.arbitrary_check)
 
+        # Play From Zone Flags
+        self.pay_cost_check = QCheckBox(tr("Pay Cost"))
+        self.as_summon_check = QCheckBox(tr("Treat as Summon"))
+        layout.addRow(self.pay_cost_check)
+        layout.addRow(self.as_summon_check)
+
         # Variable Link Widget
         self.link_widget = VariableLinkWidget()
         self.link_widget.linkChanged.connect(self.update_data)
@@ -125,6 +131,8 @@ class ActionEditForm(BaseEditForm):
         self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
         self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
         self.arbitrary_check.stateChanged.connect(self.update_data)
+        self.pay_cost_check.stateChanged.connect(self.update_data)
+        self.as_summon_check.stateChanged.connect(self.update_data)
 
         self.update_ui_state(self.type_combo.currentData())
 
@@ -170,6 +178,11 @@ class ActionEditForm(BaseEditForm):
         self.link_widget.set_smart_link_enabled(can_link_input)
 
         self.arbitrary_check.setVisible(config.get("can_be_optional", False))
+
+        # Play From Zone Checkboxes
+        is_play_zone = (action_type == "PLAY_FROM_ZONE")
+        self.pay_cost_check.setVisible(is_play_zone)
+        self.as_summon_check.setVisible(is_play_zone)
 
         is_smart_linked = self.link_widget.is_smart_link_active() and can_link_input
 
@@ -249,6 +262,8 @@ class ActionEditForm(BaseEditForm):
              self.str_val_edit.setText(str_val)
 
         self.arbitrary_check.setChecked(data.get('optional', False))
+        self.pay_cost_check.setChecked(data.get('pay_cost', False))
+        self.as_summon_check.setChecked(data.get('as_summon', False))
 
         self.link_widget.set_data(data)
 
@@ -283,6 +298,8 @@ class ActionEditForm(BaseEditForm):
         data['value1'] = self.val1_spin.value()
         data['value2'] = self.val2_spin.value()
         data['optional'] = self.arbitrary_check.isChecked()
+        data['pay_cost'] = self.pay_cost_check.isChecked()
+        data['as_summon'] = self.as_summon_check.isChecked()
 
         self.link_widget.get_data(data)
 
@@ -319,3 +336,5 @@ class ActionEditForm(BaseEditForm):
         self.arbitrary_check.blockSignals(block)
         self.ref_mode_combo.blockSignals(block)
         self.dest_zone_combo.blockSignals(block)
+        self.pay_cost_check.blockSignals(block)
+        self.as_summon_check.blockSignals(block)

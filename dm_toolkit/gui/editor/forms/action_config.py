@@ -74,8 +74,8 @@ ACTION_UI_CONFIG = {
         "can_be_optional": True
     },
     "PLAY_FROM_ZONE": {
-        "visible": ["source_zone", "filter", "value1"],
-        "label_value1": "Cost Reduction"
+        "visible": ["source_zone", "filter"],
+        "can_be_optional": True
     },
     "COST_REFERENCE": {
         "visible": ["value1", "str_val"], # str_val as ComboBox for Ref Mode
