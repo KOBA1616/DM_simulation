@@ -77,6 +77,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::enum_<CardType>(m, "CardType")
         .value("CREATURE", CardType::CREATURE)
         .value("SPELL", CardType::SPELL)
+        .value("EVOLUTION_CREATURE", CardType::EVOLUTION_CREATURE)
+        .value("CROSS_GEAR", CardType::CROSS_GEAR)
+        .value("CASTLE", CardType::CASTLE)
+        .value("PSYCHIC_CREATURE", CardType::PSYCHIC_CREATURE)
+        .value("GR_CREATURE", CardType::GR_CREATURE)
+        .value("TAMASEED", CardType::TAMASEED)
         .export_values();
 
     py::enum_<GameResult>(m, "GameResult")
@@ -632,7 +638,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("start_game", &PhaseManager::start_game)
         .def_static("start_turn", &PhaseManager::start_turn)
         .def_static("next_phase", &PhaseManager::next_phase)
-        .def_static("check_game_over", &PhaseManager::check_game_over);
+        .def_static("check_game_over", [](GameState& state) -> std::pair<bool, GameResult> {
+            GameResult res = GameResult::NONE;
+            bool over = PhaseManager::check_game_over(state, res);
+            return {over, res};
+        });
 
     py::class_<ActionGenerator>(m, "ActionGenerator")
         .def_static("generate_legal_actions", &ActionGenerator::generate_legal_actions);
@@ -928,7 +938,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
     });
 
     m.def("get_card_stats", [](const GameState& state) {
-        return state.global_card_stats;
+        try {
+            return state.global_card_stats;
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Error in get_card_stats: " + std::string(e.what()));
+        } catch (...) {
+            throw std::runtime_error("Unknown error in get_card_stats");
+        }
     });
 
     m.def("vectorize_card_stats", [](const GameState& state, CardID cid) {
