@@ -147,6 +147,10 @@ class FilterEditorWidget(QWidget):
         flags_layout.addWidget(lbl_evo, 2, 0)
         flags_layout.addWidget(self.evolution_combo, 2, 1)
 
+        lbl_card, self.card_designation_combo = create_tristate("Card Designation")
+        flags_layout.addWidget(lbl_card, 3, 0)
+        flags_layout.addWidget(self.card_designation_combo, 3, 1)
+
         # 4. Count / Selection Mode (Keep at bottom)
         self.sel_group = QGroupBox(tr("Selection"))
         sel_layout = QGridLayout(self.sel_group)
@@ -219,6 +223,7 @@ class FilterEditorWidget(QWidget):
         set_tristate(self.tapped_combo, filt_data.get('is_tapped'))
         set_tristate(self.blocker_combo, filt_data.get('is_blocker'))
         set_tristate(self.evolution_combo, filt_data.get('is_evolution'))
+        set_tristate(self.card_designation_combo, filt_data.get('is_card_designation'))
 
         # Count
         count_val = filt_data.get('count', 0)
@@ -276,6 +281,9 @@ class FilterEditorWidget(QWidget):
         val_evo = get_tristate(self.evolution_combo)
         if val_evo is not None: filt['is_evolution'] = val_evo
 
+        val_card = get_tristate(self.card_designation_combo)
+        if val_card is not None: filt['is_card_designation'] = val_card
+
         mode = self.mode_combo.currentData()
         if mode == 1:
             count = self.count_spin.value()
@@ -298,6 +306,7 @@ class FilterEditorWidget(QWidget):
         self.tapped_combo.blockSignals(block)
         self.blocker_combo.blockSignals(block)
         self.evolution_combo.blockSignals(block)
+        self.card_designation_combo.blockSignals(block)
         self.mode_combo.blockSignals(block)
         self.count_spin.blockSignals(block)
 
