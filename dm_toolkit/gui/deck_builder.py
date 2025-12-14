@@ -109,9 +109,17 @@ class DeckBuilder(QWidget):
         
         if card_id in self.card_db:
             card = self.card_db[card_id]
-            civ = self.civ_map.get(card_id, "COLORLESS")
             
-            widget = CardWidget(card.id, card.name, card.cost, card.power, civ)
+            # Determine civilizations for widget
+            civ_input = None
+            if hasattr(card, 'civilizations') and card.civilizations:
+                civ_input = [str(c).split('.')[-1] for c in card.civilizations]
+            elif hasattr(card, 'civilization'):
+                civ_input = str(card.civilization).split('.')[-1]
+            else:
+                 civ_input = self.civ_map.get(card_id, "COLORLESS")
+
+            widget = CardWidget(card.id, card.name, card.cost, card.power, civ_input)
             self.preview_layout.addWidget(widget)
             
             self.card_detail_panel.update_card(card, self.civ_map)
