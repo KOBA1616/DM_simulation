@@ -23,7 +23,8 @@ namespace dm::core {
         RESOLVE_BATTLE, // Battle resolution (Power comparison)
         BREAK_SHIELD,   // Shield break
         DECLARE_REACTION, // For Ninja Strike / Strike Back
-        SELECT_OPTION // For choosing from options
+        SELECT_OPTION, // For choosing from options
+        SELECT_NUMBER // For choosing a number
     };
 
     struct Action {

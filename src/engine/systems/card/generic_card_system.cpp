@@ -250,12 +250,6 @@ namespace dm::engine {
                 // Create Context
                 ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, &targets);
                 handler->resolve_with_targets(ctx);
-
-                // Note: resolve_with_targets is typically synchronous resolution after selection.
-                // However, if an action *again* causes interruption (e.g. nested selection), it needs handling.
-                // But generally resolve_with_targets finishes the action.
-                // If it DOES interrupt, we need similar logic.
-                // But handlers usually don't interrupt inside resolve_with_targets.
                 continue;
             }
 

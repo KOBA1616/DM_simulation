@@ -135,6 +135,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("REACTION_WINDOW", EffectType::REACTION_WINDOW)
         .value("TRIGGER_ABILITY", EffectType::TRIGGER_ABILITY)
         .value("SELECT_OPTION", EffectType::SELECT_OPTION)
+        .value("SELECT_NUMBER", EffectType::SELECT_NUMBER)
         .export_values();
 
     py::enum_<EffectActionType>(m, "EffectActionType")
@@ -171,6 +172,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("CAST_SPELL", EffectActionType::CAST_SPELL)
         .value("PUT_CREATURE", EffectActionType::PUT_CREATURE)
         .value("SELECT_OPTION", EffectActionType::SELECT_OPTION)
+        .value("SELECT_NUMBER", EffectActionType::SELECT_NUMBER)
         .value("NONE", EffectActionType::NONE)
         .export_values();
 
@@ -227,6 +229,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("RESOLVE_PLAY", ActionType::RESOLVE_PLAY)
         .value("MOVE_CARD", ActionType::MOVE_CARD)
         .value("SELECT_OPTION", ActionType::SELECT_OPTION)
+        .value("SELECT_NUMBER", ActionType::SELECT_NUMBER)
         .export_values();
 
     // Phase 4: Cost System Enums
