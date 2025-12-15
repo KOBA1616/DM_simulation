@@ -184,6 +184,32 @@ namespace dm::engine {
                      }
                  }
                  break;
+             case ActionType::SELECT_NUMBER:
+                if (!game_state.pending_effects.empty() && action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
+                    auto& pe = game_state.pending_effects[action.slot_index];
+                    if (pe.type == EffectType::SELECT_NUMBER) {
+                        int chosen_val = action.target_instance_id;
+
+                        // Retrieve the output key from the hacky storage (effect_def->condition.str_val)
+                        std::string output_key;
+                        if (pe.effect_def && !pe.effect_def->condition.str_val.empty()) {
+                            output_key = pe.effect_def->condition.str_val;
+                        }
+
+                        if (!output_key.empty()) {
+                            pe.execution_context[output_key] = chosen_val;
+                        }
+
+                        // Continue with the remaining actions if any
+                        if (pe.effect_def && !pe.effect_def->actions.empty()) {
+                             GenericCardSystem::resolve_effect_with_context(game_state, *pe.effect_def, pe.source_instance_id, pe.execution_context, card_db);
+                        }
+                    }
+                    if (action.slot_index < (int)game_state.pending_effects.size()) {
+                         game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
+                    }
+                }
+                break;
              default:
                  break;
         }
