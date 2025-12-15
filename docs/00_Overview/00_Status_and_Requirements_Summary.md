@@ -8,79 +8,42 @@
 ## 1. 概要 (Overview)
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
-現在、Phase 0（基盤構築）、Phase 1（エディタ・エンジン拡張）および Phase 2（不完全情報対応）の主要機能、Phase 3（自己学習エコシステム）のコア実装を完了し、**Phase 4（アーキテクチャ刷新）およびシステム全体の安定化・リファクタリング**へフェーズを移行しています。
+現在、Phase 0（基盤構築）、Phase 1（エディタ・エンジン拡張）、Phase 2（不完全情報対応）、および **Phase 4（アーキテクチャ刷新）の実装** を完了しました。
 
-Python側のコードベースは `dm_toolkit` パッケージとして再構築され、モジュール性が向上しました。
+今後は **Phase 6（GameCommandアーキテクチャ・エンジン刷新）** を最優先事項とし、イベント駆動型システムへの移行とエンジンの汎用化を進めます。エディタの機能改善（バリデーション等）は、エンジン刷新後の構造に合わせて実施します。
 
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
 *   **フルスペック実装**: 基本ルールに加え、革命チェンジ、侵略、ハイパーエナジー、ジャストダイバー、ツインパクト、封印（基礎）、呪文ロックなどの高度なメカニクスをサポート済み。
-*   **整合性と安定性の向上 (New)**:
-    *   **データ構造の統一**: `CardDefinition` バインディングにおける非推奨プロパティ（`civilization`）を削除し、C++コアと同様に `civilizations`（リスト形式）の使用を強制することで、多色カードの扱いに関する潜在的なバグを排除しました。
-    *   **型安全性の向上**: `EffectResolver` や `bindings.cpp` 内での不要な型チェック（符号なし整数に対する負値チェックなど）を削除し、コードの健全性を向上させました。
-    *   **終了処理の安定化**: Python終了時のセグメンテーション違反（`gilstate_tss_set` エラー）の原因となっていたバッチ推論コールバックの解放漏れを修正し、明示的なクリーンアップ API (`clear_batch_inference`) を導入・適用しました。
-*   **汎用コストシステム（統合完了）**: `CostPaymentSystem` を実装し、能動的コスト軽減（ハイパーエナジー等）の計算基盤およびアクション生成・実行ロジックをエンジンに統合しました。
+*   **整合性と安定性の向上**: データ構造の統一、終了処理の安定化、クリーンアップAPIの導入完了。
+*   **汎用コストシステム（統合完了）**: `CostPaymentSystem` を実装し、エンジンに統合済み。
 *   **アクションシステム**: `IActionHandler` による完全なモジュラー構造。
-    *   **カード移動の統一**: `MOVE_CARD` アクションを導入し、DRAW, ADD_MANA, DESTROYなどの専用アクションを汎用移動ロジックで表現可能にしました。
-    *   **条件判定の汎用化**: `COMPARE_STAT` 条件を導入し、「手札枚数がX以上」などの数値比較条件を自由に記述可能にしました。
-    *   **変数リンクの完全サポート**: 各アクションハンドラ（Draw, Destroy, Shield等）において、`input_value_key` による入力値の参照と `output_value_key` による実行結果の書き込み（例：破壊した数の出力）をサポートしました。
-    *   **モード選択機能**: `SELECT_OPTION` アクションを導入し、「選択肢から選ぶ」効果の実装と、ネストされたアクションのGUI編集に対応しました。
-*   **高速シミュレーション**: OpenMPによる並列化と最適化されたメモリ管理により、秒間数千〜数万試合の自己対戦が可能。
-*   **不完全情報探索 (PIMC)**: 推定された世界でのモンテカルロ探索（Determinization）を並列実行可能。
+*   **高速シミュレーション**: OpenMPによる並列化により、秒間数千〜数万試合の自己対戦が可能。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   **Card Editor Ver 2.3**: 3ペイン構成（ツリー/プロパティ/プレビュー）。
-    *   **UI改善**: カードプレビューの視認性向上（黒枠化、マナコスト色分け、ツインパクトレイアウト修正）を実施済み。
-    *   **テキスト生成の拡充 (New)**: `CardTextGenerator` を更新し、数値範囲（「1〜5の数字を選ぶ」）や任意選択（「〜まで選ぶ」「そうしてもよい」）の日本語生成ロジックを強化しました。また、ステータス参照条件の日本語化も拡充しました。
-    *   **安定性**: プロパティインスペクタのクラッシュバグを修正済み。
-    *   **不整合修正**: 革命チェンジのデータ構造、文明指定キーの不整合を解消済み。
-    *   **リアクション編集**: `ReactionWidget` を最適化し、能力タイプに応じた動的なフィールド表示（コスト、ゾーン、トリガー条件の可視化）に対応しました。
+    *   **テキスト生成**: 数値範囲や任意選択の日本語生成ロジック強化済み。
+    *   **リアクション編集**: `ReactionWidget` による動的UI切り替えをサポート。
 *   **機能**: JSONデータの視覚的編集、ロジックツリー、変数リンク、テキスト自動生成、デッキビルダー、シナリオエディタ。
-*   **検証済み**: 生成されたJSONデータはエンジンで即座に読み込み可能。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
 *   **AlphaZero Pipeline**: データ収集 -> 学習 -> 評価 の完全自動ループが稼働中。
 *   **推論エンジン**: 相手デッキタイプ推定 (`DeckClassifier`) と手札確率推定 (`HandEstimator`) を実装済み。
-*   **探索アルゴリズム**:
-    *   **MCTS (Monte Carlo Tree Search)**: 標準的なUCTベースの探索。
-    *   **Beam Search (ビームサーチ)**: `BeamSearchEvaluator` クラスを実装済み。幅(Beam Width)と深さ(Depth)を指定して、トリガーリスクや相手の脅威度（Opponent Danger）をヒューリスティックに評価しながら決定的な探索を行うことが可能です。
-*   **自己進化**: 遺伝的アルゴリズムによるデッキ改良ロジック (`DeckEvolution`) がC++コアに統合され、高速に動作します。
-*   **ONNX Runtime (C++) 統合**: 学習済みPyTorchモデルをONNX形式でエクスポートし、C++エンジン内で直接高速推論を行う `NeuralEvaluator` の拡張を完了しました。
-*   **Phase 4 アーキテクチャ**: `NetworkV2` (Transformer/Linear Attention) の実装と、C++側のシーケンス変換ロジック (`TensorConverter::convert_to_sequence`) の実装・結合を完了しました。
+*   **探索アルゴリズム**: MCTSおよびBeam Search（決定論的探索）を実装済み。
+*   **ONNX Runtime (C++) 統合**: `NeuralEvaluator` によるC++内での高速推論をサポート。
+*   **Phase 4 アーキテクチャ (実装完了)**:
+    *   **NetworkV2**: Transformer (Linear Attention) ベースの可変長入力モデルを実装。
+    *   **TensorConverter**: C++側でのシーケンス変換ロジックを実装済み。
 
 ### 2.4 サポート済みアクション・トリガー一覧 (Supported Actions & Triggers)
-
-現在のコードベースで実装・登録されている主要な列挙子は以下の通りです。
-
-**実装済みアクション (EffectActionType)**
-以下のタイプは `IActionHandler` が登録されており、動作します。
-*   **基本操作**: `DRAW_CARD`, `ADD_MANA` (Charge), `DESTROY`, `RETURN_TO_HAND`, `TAP`, `UNTAP`, `MOVE_CARD` (汎用移動), `CAST_SPELL`, `PUT_CREATURE`
-*   **シールド操作**: `ADD_SHIELD`, `SEND_SHIELD_TO_GRAVE`, `BREAK_SHIELD` (Engine Loop / Action)
-*   **山札操作**: `SEARCH_DECK`, `SEARCH_DECK_BOTTOM`, `SEND_TO_DECK_BOTTOM`, `SHUFFLE_DECK`, `REVEAL_CARDS`, `LOOK_AND_ADD` (Partial/Alias)
-*   **バッファ・特殊領域**: `MEKRAID`, `LOOK_TO_BUFFER`, `MOVE_BUFFER_TO_ZONE`, `PLAY_FROM_BUFFER`
-*   **数値・変数**: `COUNT_CARDS`, `GET_GAME_STAT` (マナ文明数、手札枚数等), `SELECT_NUMBER`, `COST_REFERENCE`, `APPLY_MODIFIER` (Power/Cost修正)
-*   **その他**: `SELECT_OPTION` (モード選択), `FRIEND_BURST`, `GRANT_KEYWORD`, `MOVE_TO_UNDER_CARD`
-
-**実装済みトリガー (TriggerType)**
-*   **標準**: `ON_PLAY` (cip), `ON_ATTACK`, `ON_DESTROY`, `S_TRIGGER`, `TURN_START`, `PASSIVE_CONST`
-*   **拡張**: `ON_BLOCK` (Blocker), `AT_BREAK_SHIELD`, `ON_ATTACK_FROM_HAND` (Revolution Change), `ON_OTHER_ENTER`
-*   **新規**: `ON_SHIELD_ADD`, `ON_CAST_SPELL`
+（変更なし：`EffectActionType` および `TriggerType` は現行コードベースに準拠）
 
 ### 2.5 実装上の不整合・未完了項目 (Identified Implementation Inconsistencies)
-現在、以下の不整合が確認されており、将来的な修正対象として記録されています。
-
-1.  **一部トリガーのロジック未実装**
-    *   なし（`ON_SHIELD_ADD`および`ON_CAST_SPELL`は実装済み）
-
-（現在、主要な不整合は解消されました。）
+*   現在、主要な不整合は解消されました。
 
 ### 2.6 現在の懸念事項と既知の不具合 (Current Concerns and Known Issues)
-
-以下の不具合および制限事項が確認されており、次期開発フェーズでの修正が必要です。
-
-1.  **モジュール終了時のエラー**
-    *   **修正済み**: バッチ推論コールバックのクリーンアップ処理を追加したことにより、Pythonプロセス終了時の `Fatal Python error` は解消されました。
+*   特になし。
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
@@ -88,48 +51,38 @@ Python側のコードベースは `dm_toolkit` パッケージとして再構築
 
 ## 3. 詳細な開発ロードマップ (Detailed Roadmap)
 
-今後は、システムの堅牢性を高めるリファクタリング、ユーザビリティの向上、およびAIモデルのアーキテクチャ刷新（Transformer）を目指します。
+エンジンの根本的な刷新（GameCommand化）を優先し、その後にエディタやAI本番運用を進める方針でロードマップを再編しました。
 
-### 3.0 [Priority: Immediate] Refactoring and Stabilization (基盤安定化とリファクタリング)
+### 3.0 [Priority: High] Phase 6: GameCommand アーキテクチャとエンジン刷新 (Engine Overhaul)
 
-開発効率と信頼性を向上させるため、以下の修正と機能拡張を最優先で実施します。
+AI学習効率と拡張性を最大化するため、エンジンのコアロジックを「イベント駆動型」かつ「5つの基本命令 (GameCommand)」に基づくアーキテクチャへ刷新します。
+メテオバーン、超次元、その他未実装の特殊メカニクスは、このフェーズにおける「アクションの汎用化」によって自然に解決・実装されます。
 
-1.  **汎用コストシステムのエンジン統合 (Cost System Integration) [完了]**
-    *   **現状**: `CostPaymentSystem` を `ActionGenerator` (MainPhaseStrategy) および `EffectResolver` に統合しました。
-    *   **検証**: `tests/test_cost_payment_integration.py` にて正常動作を確認済み。
+1.  **イベント駆動型トリガーシステムの実装**
+    *   ハードコードされたフックポイントを廃止し、`TriggerManager` による一元管理へ移行。
+2.  **GameCommand (Primitives) の実装**
+    *   全てのアクションを `TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE` に分解・再実装。
+3.  **アクション汎用化**
+    *   `MOVE_CARD` の完全統合、`APPLY_MODIFIER` の汎用化により、個別実装を排除。
 
-2.  **変数リンク機能の不具合修正 (Variable Linking Fix) [完了]**
-    *   **現状**: `GenericCardSystem` におけるアクション間のコンテキスト伝播の修正完了。
-    *   **検証**: `tests/verify_atomic_versatility.py` が全テストケースで通過することを確認済み。
+### 3.1 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 
-3.  **トリガーロジックの補完 (Trigger Logic Completion) [完了]**
-    *   **現状**: `ON_SHIELD_ADD` および `ON_CAST_SPELL` のトリガータイプを `bindings.cpp` に追加し、`MoveCardHandler` および `EffectResolver` に発火ロジックを実装しました。
-    *   **検証**: 変数リンク検証時にトリガーの列挙子が正しく機能していることを確認済み。
+エンジン刷新後、新しいデータ構造に合わせてエディタのバリデーションを強化します。
 
-### 3.1 [Priority: High] User Requested Enhancements (ユーザー要望対応 - 残件)
+1.  **Logic Mask (バリデーション) の実装**
+    *   公式ルールに基づく最小限のマスク処理を実装。過度な制限は設けず、明らかな矛盾のみを防ぐ。
+    *   **ルール**:
+        *   **呪文 (Spell)**: 「パワー」フィールドを無効化（0固定）。
+        *   **進化クリーチャー**: 「進化条件」の設定を有効化。
+        *   **その他**: 基本的に制限なし（ユーザーの自由度を確保）。
 
-直近のフィードバックに基づく残存タスク。
+### 3.2 [Priority: Post-Phase 6] AI 本番運用 (Production Run)
 
-1.  **GUI/Editor 機能拡張 [完了]**
-    *   **リアクション編集の最適化**: `ReactionWidget` を更新し、能力タイプ（Ninja Strike, Strike Back等）に応じたUIの動的切り替えと、不必要なフィールドの隠蔽を実装しました。
-    *   **テキスト生成の拡充 (New)**: `CardTextGenerator` を更新し、数値範囲（「1〜5の数字を選ぶ」）や任意選択（「〜まで選ぶ」「そうしてもよい」）の日本語生成ロジックを強化しました。
+「最強のAI」を目指す大規模学習は、GameCommandアーキテクチャの完成後に行います。
 
-### 3.2 [Priority: Medium] Phase 4: アーキテクチャ刷新 (Architecture Update)
-
-1.  **Transformer (Linear Attention) 導入 [完了]**
-    *   **目的**: 盤面のカード枚数が可変であるTCGの特性に合わせ、固定長入力のResNetから、可変長入力を扱えるAttention機構へ移行する。
-    *   **計画**: `NetworkV2` として、PyTorchでのモデル定義と、C++側のテンソル変換ロジック（`TensorConverter`）の書き換えを行う。
-    *   *ステータス: 実装完了・検証済み*。
-        *   `dm_toolkit/training/network_v2.py` に `LinearAttention` およびTransformerベースの `NetworkV2` を実装。
-        *   `src/ai/encoders/tensor_converter.cpp` に `convert_to_sequence` を実装し、カードIDのトークン化とシーケンス変換をC++エンジン側でサポートしました。
-        *   単体テスト (`tests/python/training/test_network_v2.py`, `tests/verify_phase3_4.py`) により、可変長シーケンス処理の動作を確認済み。
-
-### 3.3 [Priority: Low] Phase 5: エディタ機能の完成形 (Editor Polish)
-
-AI開発と並行して、エディタの残存課題を解消します。
-
-1.  **詳細なバリデーション**
-    *   互換性のないアクションやトリガーの組み合わせに対する警告表示。
+*   **タイミング**: Phase 6 完了後。
+*   **理由**: GameCommandによるアクション空間の圧縮（意味ベースの学習）が完了した状態で学習させることで、未知のカードへの汎化性能と学習効率が劇的に向上するため。
+*   **現在**: Phase 4完了時点のモデルを用いた小規模なパイロット運用（技術検証）に留める。
 
 ---
 
@@ -139,277 +92,75 @@ AI開発と並行して、エディタの残存課題を解消します。
 
 ---
 
-## 5. イベント駆動型トリガーシステム実装詳細 (Event-Driven Trigger System Implementation Specification)
+## 5. イベント駆動型トリガーシステム詳細要件 (Event-Driven Trigger System Specs)
 
-現状の `EffectResolver` 等に散在するハードコードされたトリガー判定ロジック（ポーリング型/Hook型）を、汎用的かつ拡張可能なイベント駆動型アーキテクチャに刷新するための技術詳細です。
+既存の `EffectResolver` を刷新するための技術要件。以下の不足項目を補完して実装すること。
 
-### 5.1 目的 (Objective)
-*   **ハードコードの排除**: 新しいトリガー条件を追加するたびにC++エンジン（`EffectResolver` 等）を修正する必要をなくす。
-*   **複雑な条件のサポート**: 「相手が呪文を唱えた時」「他のクリーチャーが破壊された時」などの他者・他領域のイベントに対するトリガーを統一的に扱う。
-*   **データ駆動**: JSON定義のみで新しい誘発型能力を実装可能にする。
+### 5.1 基本アーキテクチャ (Architecture)
+*   **TriggerManager**: 全イベントの発行 (`dispatch`) と購読 (`subscribe`) を管理するシングルトン/コンポーネント。
+*   **Event Object**: `type`, `source`, `target`, `context` (Map) を持つ不変オブジェクト。
 
-### 5.2 データ構造 (Data Structures)
+### 5.2 詳細要件と不足事項 (Detailed Requirements & Missing Gaps)
 
-#### 5.2.1 ゲームイベント定義 (Game Event Definition)
-すべてのゲーム内アクション（状態変化）はイベントとして発行されます。
+1.  **State Triggers vs Event Triggers (状態トリガーとイベントトリガーの区別)**
+    *   **イベントトリガー**: 「〜した時」 (When/Whenever)。イベント発生の一瞬だけ誘発する。
+    *   **状態トリガー**: 「〜である限り」や条件達成時 (When state meets condition)。
+    *   **要件**: `TriggerManager` はイベントだけでなく、状態チェック（State Check）のポーリングもサポートするか、あるいは「状態変化イベント」として抽象化する必要がある（例: シールドが0枚になった瞬間に `SHIELD_ZERO` イベントを発行する）。
 
-```cpp
-// src/core/game_event.hpp (New)
+2.  **Intervening 'If' Clause (割り込み条件判定)**
+    *   **仕様**: 「〜した時、もし〜なら、XXする」という構文において、トリガー時点だけでなく **解決時点** にも条件を満たしているかチェックする機能。
+    *   **実装**: `TriggerDef` に `condition` (トリガー時) と `resolution_condition` (解決時) の2つのフィルタを持たせる。
 
-namespace dm::core {
-
-    enum class GameEventType {
-        ZONE_CHANGE,        // カードの移動 (Play, Destroy, ManaCharge, Draw)
-        ATTACK_INITIATE,    // 攻撃開始
-        BLOCK_DECLARED,     // ブロック成立
-        CARD_TAPPED,        // カードがタップされた
-        PHASE_CHANGED,      // フェーズ遷移
-        TURN_START,         // ターン開始
-        TURN_END,           // ターン終了
-        MANA_PAID,          // マナ支払い
-        SPELL_CAST,         // 呪文詠唱完了
-        SHIELD_BROKEN,      // シールドブレイク
-        POWER_MODIFIED      // パワー変更（継続的効果の再計算トリガー用）
-    };
-
-    struct GameEvent {
-        GameEventType type;
-        int source_id;          // イベント発生源のCardInstance ID
-        int target_id;          // 対象のID（攻撃対象、ブロック対象など）
-        PlayerID player_id;     // 行動主
-        std::map<std::string, int> context; // 追加データ（支払ったコスト、移動元ゾーンIDなど）
-
-        // Context Helper
-        void set_context(const std::string& key, int value) { context[key] = value; }
-        int get_context(const std::string& key, int default_val = 0) const {
-            auto it = context.find(key);
-            return (it != context.end()) ? it->second : default_val;
-        }
-    };
-}
-```
-
-#### 5.2.2 トリガー定義 (Trigger Definition)
-JSON定義上の `TriggerType` を拡張し、より詳細なイベントフィルタリングを可能にします。
-
-```cpp
-// src/core/card_json_types.hpp (Extension)
-
-struct EventFilterDef {
-    std::vector<std::string> event_types; // "ZONE_CHANGE", "ATTACK_INITIATE" etc.
-    FilterDef source_filter;    // イベント発生源が条件を満たすか（例: ドラゴンが破壊された時）
-    FilterDef context_filter;   // 文脈条件（例: 手札から捨てられた時）
-    bool run_once_per_turn = false;
-};
-
-// Existing TriggerType will be mapped to presets of EventFilterDef
-// e.g., ON_PLAY -> { event_types: ["ZONE_CHANGE"], source_filter: { zones: ["BATTLE_ZONE"], prev_zone: ["HAND", "MANA_ZONE", ...] } }
-```
-
-### 5.3 アーキテクチャ (Architecture)
-
-#### 5.3.1 TriggerManager (Observer Pattern)
-`GameState` またはシングルトンとして `TriggerManager` を実装し、イベントの監視と発火を管理します。
-
-```cpp
-// src/engine/systems/trigger_system.hpp
-
-class TriggerManager {
-public:
-    // イベント発行（各ActionHandlerから呼ばれる）
-    void dispatch(GameState& state, const GameEvent& event, const CardDB& card_db);
-
-    // 監視対象の登録（不要？ -> 毎回全カード走査は重いため、ZoneごとのObserverリストを持つか、
-    // あるいは「現在バトルゾーン/マナゾーンにあるカード」のみを走査対象とする）
-    // 現状の規模なら、Event発生時に全Active Zone（Battle, Mana, Grave, Handの一部）を走査しても十分高速。
-};
-```
-
-### 5.4 実装ステップ (Implementation Steps)
-
-1.  **インフラ整備**:
-    *   `src/core/game_event.hpp` の作成。
-    *   `src/engine/systems/trigger_system.hpp` の作成。
-
-2.  **イベント発行の実装 (Event Emission)**:
-    *   `MoveCardHandler`, `TapHandler`, `AttackHandler` 等の主要ハンドラおよび `EffectResolver` 内のハードコード部分に `TriggerManager::dispatch(event)` を埋め込む。
-    *   例: `GenericCardSystem` でカードが移動する直前/直後に `ZONE_CHANGE` イベントを発行。
-
-3.  **互換性レイヤーの実装**:
-    *   既存の `TriggerType` (ON_PLAY, ON_DESTROY等) を `EventFilterDef` に変換するロジック、または `TriggerManager` 内で従来の `TriggerType` をイベントとして解釈するロジックを実装。
-
-4.  **移行と検証**:
-    *   `ON_DESTROY` ロジックを `TriggerManager` 経由に切り替え、既存の破壊時効果（Piggyback）が動作するか検証。
-    *   `ON_OPPONENT_DRAW` などの新規トリガーをイベント駆動で実装し、動作確認。
+3.  **Context Reference (コンテキスト参照)**
+    *   **仕様**: 「破壊されたクリーチャーのパワー以下のクリーチャーを破壊する」のように、イベントの文脈データ（破壊されたカードの情報）を動的に参照する機能。
+    *   **実装**: `FilterDef` に `power_max_ref: "EVENT_CONTEXT_POWER"` のような動的参照キーを定義可能にする。
 
 ---
 
-## 今後の課題 (Future Issues)
+## 6. イベント駆動型アクション・リアクション詳細要件 (Event-Driven Action/Reaction Specs)
 
-### 1. Handlerの更なる堅牢化
-`DestroyHandler` 等のテストにおいて、特定条件下（例：テスト環境でのSource IDのオーナー解決不整合）で意図した挙動にならないケースが観測されています。実環境では正常動作する可能性が高いですが、テスト基盤とエンジン側の疎結合性を高め、より堅牢なユニットテスト体制を構築する必要があります。
+ターンプレイヤーの権限外で発生するアクション（S・トリガー、革命チェンジ、ニンジャ・ストライク等）の制御仕様。
 
-### 2. 変数リンクの適用範囲拡大
-**[完了]** 主要なハンドラ（Draw, Destroy, Shield, Count, BreakShield）に加え、`TapHandler`, `UntapHandler`, `ManaChargeHandler` においても `GenericCardSystem` を介した変数リンク（`input_value_key`）のサポートが確認されました。これにより、ほぼ全てのアクションで動的な数値指定が可能です。
+### 6.1 基本フロー (Basic Flow)
+イベント発生 -> トリガー検知 -> 保留効果(PendingEffect)生成 -> 優先権に基づく解決。
 
-### 3.4 [Priority: Future] Phase 6: 将来的な拡張性・汎用性向上 (Future Scalability)
+### 6.2 詳細要件と不足事項 (Detailed Requirements & Missing Gaps)
 
-1.  **イベント駆動型トリガーシステム (Event-Driven Trigger System)**
-    *   （詳細仕様は Section 5 を参照）
-2.  **AI入力特徴量の動的構成 (Dynamic AI Input Feature Configuration)**
-3.  **完全な再現性を持つリプレイシステム (Fully Reproducible Replay System)**
+1.  **APNAP (Active Player, Non-Active Player) 解決順序**
+    *   **仕様**: ターンプレイヤー(AP)と非ターンプレイヤー(NAP)のトリガーが同時に誘発した場合、**APの処理が全て終わってからNAPの処理を行う**（あるいはスタックへの積み順を制御する）。
+    *   **実装**: `TriggerManager` はトリガーを即時実行せず、プレイヤーごとの「待機リスト」に入れ、AP -> NAP の順でスタックにプッシュするロジックを実装する。
 
-### 3.5 [Priority: Future] Action & Filter Generalization (アクションとフィルタの汎用化)
+2.  **Batch Processing (バッチ処理)**
+    *   **仕様**: 「クリーチャーが3体同時に破壊された時」のようなイベントに対し、トリガーを1回だけ発火させるか、3回発火させるかの制御。
+    *   **実装**: `Event` に `batch_id` または `is_simultaneous` フラグを持たせ、トリガー定義側で `batch_mode: "ONCE_PER_BATCH" | "PER_INSTANCE"` を指定可能にする。
 
-現在のハードコードされた多くのアクションタイプやフィルタリングロジックを統合し、データ駆動で柔軟なカード定義を可能にするためのリファクタリング計画です。
-
-1.  **カード移動アクションの完全統合 (`MOVE_CARD` の汎用化)**
-    *   **目的**: `DESTROY_CARD`, `RETURN_TO_HAND`, `SEND_TO_MANA`, `SEND_TO_SHIELD` などの個別の移動アクションを、単一の `MOVE_CARD` アクションに統合します。
-    *   **仕様**:
-        *   必須引数 `destination`: `GRAVEYARD`, `HAND`, `MANA`, `SHIELD`, `DECK`
-        *   オプション `position`: `TOP`, `BOTTOM`, `SHUFFLE`, `RANDOM`
-        *   オプション `face_down`: `true` / `false`
-    *   **効果**: エディタのUI簡素化と、将来的な新しいゾーン移動への対応コスト削減。
-
-2.  **修正適用アクションの統合 (`APPLY_MODIFIER`)**
-    *   **目的**: `GIVE_BLOCKER`, `BUFF_POWER` などのバフ・デバフ系アクションを `APPLY_MODIFIER` に統合します。
-    *   **仕様**:
-        *   `duration`: `UNTIL_END_OF_TURN`, `PERMANENT`, `WHILE_ON_BATTLEZONE`
-        *   `modifier` (Object): `power_add` (int), `add_keywords` (List), `remove_keywords` (List)
-    *   **効果**: 複数の効果（例：パワー+3000してW・ブレイカーを与える）を単一のアクション定義で記述可能にする。
-
-3.  **イベント監視型トリガー (`OBSERVER_TRIGGER`)**
-    *   （実装詳細については **Section 5: イベント駆動型トリガーシステム実装詳細** に統合されました）
-
-4.  **動的参照フィルタ (`Source Reference`)**
-    *   **目的**: 固定値（パワー5000以下）だけでなく、動的な値（自身のパワー以下、攻撃対象と同じ種族）によるフィルタリングを可能にします。
-    *   **仕様**:
-        *   `FilterDef` 内に `*_ref` フィールドを追加（例: `max_power_ref: SELF_POWER`, `race_match_ref: TARGET_RACE`）。
-    *   **効果**: 状況依存の除去やサーチ効果の実装。
-
-5.  **汎用計算アクション (`CALCULATE` / `MATH_OP`)**
-    *   **目的**: 変数間の計算処理（加算、乗算など）をアクションとして定義可能にします。
-    *   **仕様**:
-        *   `operation`: `ADD`, `MULTIPLY`, `DIVIDE`, `MIN`, `MAX`
-        *   `operand`: 固定値または変数キー
-        *   `scale`: 係数
-    *   **効果**: 「シールド1枚につき+1000」のような動的な数値補正ロジックをコード変更なしで実装可能にする。
-
-## 6. イベント駆動型アクション要件 (Event-Driven Action Requirements)
-
-ターンプレイヤーのメインステップ以外で、ゲームの特定イベントに反応して発生するアクション（能力）の要件定義です。これらは通常のプレイとは異なるタイミング・優先度で処理されます。
-
-### 6.1 リアクション処理 (Reaction Processing)
-*   **定義**: 攻撃、ブロック、クリーチャー着地などのイベント発生直後、解決前に割り込んで実行されるアクション。
-*   **要件**:
-    1.  **ウィンドウ生成**: トリガー条件（例：ニンジャ・ストライクの「攻撃またはブロック時」）を満たすカードが非公開領域（手札）にある場合、システムは自動的に「使用宣言ウィンドウ」を生成しなければならない。
-    2.  **優先権の処理**: リアクションはターンプレイヤー→非ターンプレイヤーの順、あるいは能力固有の優先度に基づいて解決されなければならない。
-    3.  **状態整合性**: リアクション解決中にゲーム状態（攻撃クリーチャーの除去など）が変化した場合、元のアクション（攻撃処理など）は最新の状態に基づいて続行または中断されなければならない。
-
-### 6.2 分類と仕様 (Classification & Specifications)
-
-| 分類 | トリガーイベント | 具体例 | 処理フロー |
-| :--- | :--- | :--- | :--- |
-| **S・トリガー** | シールドブレイク | 全S・トリガー | シールドゾーン → 手札移動時（使用宣言） → 解決待ちキュー → 実行 |
-| **革命チェンジ** | 攻撃開始時 | ドギラゴン剣など | 攻撃時誘発（手札） → 宣言 → 入れ替え処理 → 攻撃継続 |
-| **ニンジャ・ストライク** | 攻撃/ブロック時 | シノビ | 攻撃/ブロック宣言 → リアクションウィンドウ → 召喚 → 処理続行 |
-| **メタ・カウンター** | 特定行動後/ターン末 | オリジャ等 | 行動検知（コスト踏み倒し等） → ターン末/即時ウィンドウ → 使用宣言 → 実行 |
-
-### 6.3 実装要件 (Implementation Requirements)
-*   **PendingEffectの活用**: これらすべてのアクションは、即時解決ではなく `PendingEffect` として一度スタック（または待機キュー）に積まれ、適切なタイミングで解決されること。
-*   **SourceIDの追跡**: 手札からの誘発（革命チェンジ等）は、誘発時点でのカードID（`CardInstance`）と、解決時点でのカード状態を正しくリンクさせる必要がある（移動によるID変化の追跡など）。
-
-## Kaggle クラウドデータ収集システム 運用マニュアル
-
-（内容は変更なし）
+3.  **Optional vs Mandatory (任意と強制)**
+    *   **仕様**: リアクションウィンドウ（ニンジャ・ストライク宣言画面など）において、キャンセル可能か強制発動かを定義。
+    *   **実装**: JSON定義に `optional: true/false` を持たせ、強制の場合はUIでキャンセルボタンを無効化、あるいは自動解決する。
 
 ---
 
-## 7. GameCommand アーキテクチャ詳細設計 (GameCommand Architecture Specification)
+## 7. GameCommand アーキテクチャ詳細設計 (GameCommand Architecture Specs)
 
-すべてのアクション（行動）とエフェクト（効果）を、人間にとっての利便性とAIにとっての学習効率を両立させる形で統合するための新しいアーキテクチャ設計です。
+AIとエンジンの共通言語となる「5つの基本命令」の仕様詳細。
 
-### 7.1 3層アーキテクチャ概要 (3-Layer Architecture Overview)
+### 7.1 5つの基本命令 (Primitives)
+`TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE`。
 
-システムの責務を以下の3層に分離し、人間（エディタ）と機械（AI・エンジン）の間に翻訳層を設けます。
+### 7.2 詳細要件と不足事項 (Detailed Requirements & Missing Gaps)
 
-1.  **Data Layer (カードエディタ・人間)**
-    *   **概念**: Macro (意味のあるマクロ)
-    *   **役割**: ユーザーは「ドロー」「破壊」「タップ」といったTCGの文脈（マクロ）で定義を行います。
-    *   **データ構造**: 既存のJSON形式 (`EffectActionType`) を維持し、裏側で汎用構造への変換定義を持ちます。
+1.  **Undo/Rollback Support (巻き戻し機能)**
+    *   **重要**: MCTS等の探索アルゴリズムにおいて、状態のコピー（Clone）は重いため、アクションの逆操作（Undo）による高速な状態復帰が求められる。
+    *   **要件**: 各GameCommandは `invert()` メソッド、または逆操作コマンド（例: `TRANSITION` の逆は移動元へ戻す）を生成・実行可能でなければならない。
+    *   **実装**: `GameCommand` 実行時に「変更前の値（Snapshot）」を記録し、Undo時にそれを復元する仕組みを組み込む。
 
-2.  **Core Layer (ゲームエンジン)**
-    *   **概念**: Primitives (5つの物理法則)
-    *   **役割**: マクロを不可分な基本命令（Atom）に分解・コンパイルして実行します。
-    *   **データ構造**: `GameCommand` クラス（5つのプリミティブコマンド）。
+2.  **Source & Log Metadata (ソース情報とログ)**
+    *   **重要**: 「5つの命令」だけでは「なぜその移動が起きたか（ボルメテウスの効果か、ブロックの結果か）」が分からなくなる。
+    *   **要件**: `GameCommand` 構造体に `source_id` (発生源のカード/効果ID) と `reason` (理由コード)、および人間可読な `log_message` を含める。
 
-3.  **AI Layer (認識・学習)**
-    *   **概念**: Semantic Vector (意味ベクトル)
-    *   **役割**: 個別のカードIDではなく、分解されたプリミティブの特性（移動、変化、観測）を学習します。
-    *   **メリット**: 「除去」や「アドバンテージ」といった概念を物理挙動として理解するため、未知のカードへの対応力が向上します。
+3.  **Serialization (シリアライズ)**
+    *   **重要**: リプレイ保存や通信対戦のため、一連のコマンド列を軽量なバイナリまたはテキスト形式で保存・復元できること。
+    *   **実装**: Protobuf または独自の軽量バイナリフォーマットを策定し、`GameCommand` 列の完全な再現性を保証する。
 
-### 7.2 5つの基本命令 (The 5 Primitives)
-
-すべてのTCGアクションは、以下の5つの基本命令に分解されます。
-
-#### ① TRANSITION (移動・生成)
-オブジェクトの領域間移動を担当します。
-*   **構造**: `TRANSITION(target_ids, from_zone, to_zone)`
-*   **統合されるアクション**:
-    *   `PLAY_CARD` → `TRANSITION(Hand, BattleZone)`
-    *   `DRAW` → `TRANSITION(Deck, Hand)`
-    *   `DESTROY` → `TRANSITION(BattleZone, Graveyard)`
-    *   `MANA_CHARGE` → `TRANSITION(Hand, ManaZone)`
-    *   `SHIELD_BREAK` → `TRANSITION(ShieldZone, Hand)`
-
-#### ② MUTATE (状態更新)
-オブジェクト内部パラメータの変更を担当します。
-*   **構造**: `MUTATE(target_ids, property, value, duration)`
-*   **統合されるアクション**:
-    *   `TAP/UNTAP` → `MUTATE(tapped, bool)`
-    *   `POWER` → `MUTATE(power, +int)`
-    *   `GRANT_ABILITY` → `MUTATE(keywords, +SpeedAttacker)`
-
-#### ③ FLOW (フロー制御)
-ルール処理、スタック、フェーズ遷移などのゲーム進行を担当します。
-*   **構造**: `FLOW(type, context)`
-*   **統合されるアクション**:
-    *   `RESOLVE_BATTLE` (バトル解決)
-    *   `NEXT_PHASE` (ターン進行)
-    *   `GAME_WIN` (勝利確定)
-
-#### ④ QUERY (観測・条件)
-盤面情報の取得、カウント、条件判定を担当します。
-*   **構造**: `QUERY(scope, filter) -> result`
-*   **統合されるアクション**:
-    *   `COUNT_CARDS` (枚数確認)
-    *   `GET_GAME_STAT` (マナ数、シールド数など)
-    *   コスト軽減計算
-
-#### ⑤ DECIDE (意思決定)
-エージェント（プレイヤー/AI）への入力要求を担当します。
-*   **構造**: `DECIDE(agent_id, candidates, min, max)`
-*   **統合されるアクション**:
-    *   `SELECT_TARGET` (対象選択)
-    *   `CHOOSE_OPTION` (モード選択)
-
-### 7.3 処理フロー例 (Processing Example)
-
-**アクション例：「相手のタップされているクリーチャーを1体破壊する」**
-
-1.  **Card Editor (JSON / Macro)**:
-    ```json
-    { "type": "DESTROY", "filter": { "is_tapped": true, "owner": "OPPONENT" } }
-    ```
-2.  **Engine Compilation (Primitives)**:
-    *   `candidates = QUERY(BattleZone, {tapped: true, owner: opponent})`
-    *   `targets = DECIDE(Player, candidates, 1, 1)`
-    *   `TRANSITION(targets, BattleZone, Graveyard)`
-3.  **AI Observation (Semantic Vector)**:
-    *   `TRANSITION` イベントを観測し、「相手の場の脅威が減少した（BattleZone -> Graveyard）」として評価。
-
-### 7.4 期待される効果 (Expected Benefits)
-
-1.  **AIモデルの汎用化**: アクション空間を数百のIDから「5つの動詞 × 対象」に圧縮でき、学習効率が向上。
-2.  **拡張性**: 新しい能力（例：超次元ゾーン）を追加する際、C++コードを変更せずともJSONデータ上で `TRANSITION` 先を定義するだけで実装可能。
-3.  **エディタの進化**: 上級者向けに、マクロではなく直接コマンドシーケンスを記述できる「スクリプトモード」の提供が可能になる。
+4.  **Action Generalization (アクション汎用化のゴール)**
+    *   `DESTROY`, `MANA_CHARGE` などの既存アクションは、最終的にすべて `TRANSITION` コマンドを発行する「ラッパー（マクロ）」として再定義される。これにより、将来的に「超次元ゾーンへの移動」などが増えても、`TRANSITION` のパラメータを変えるだけで対応完了とする。
