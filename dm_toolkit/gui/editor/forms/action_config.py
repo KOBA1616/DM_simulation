@@ -13,26 +13,6 @@ ACTION_UI_CONFIG = {
         "label_value1": "Cards to Charge",
         "can_be_optional": True
     },
-    "DESTROY": {
-        "visible": ["scope", "filter", "target_choice"],
-        "can_be_optional": True
-    },
-    "TAP": {
-        "visible": ["scope", "filter", "target_choice"],
-        "can_be_optional": True
-    },
-    "UNTAP": {
-        "visible": ["scope", "filter", "target_choice"],
-        "can_be_optional": True
-    },
-    "RETURN_TO_HAND": {
-        "visible": ["scope", "filter", "target_choice"],
-        "can_be_optional": True
-    },
-    "SEND_TO_MANA": {
-        "visible": ["scope", "filter", "target_choice"],
-        "can_be_optional": True
-    },
     "MODIFY_POWER": {
         "visible": ["scope", "filter", "value1", "value2"],
         "label_value1": "Power Mod",
@@ -54,11 +34,6 @@ ACTION_UI_CONFIG = {
         "label_value1": "Count",
         "label_str_val": "Token ID/Name"
     },
-    "SEARCH_DECK_BOTTOM": {
-        "visible": ["value1", "filter", "output_value_key"],
-        "label_value1": "Reveal N (from Bottom)",
-        "produces_output": True
-    },
     "SEARCH_DECK": {
         "visible": ["filter", "output_value_key"],
         "produces_output": True,
@@ -67,12 +42,6 @@ ACTION_UI_CONFIG = {
     "MEKRAID": {
         "visible": ["value1", "filter"],
         "label_value1": "Level"
-    },
-    "DISCARD": {
-        "visible": ["scope", "filter", "value1", "target_choice", "output_value_key"],
-        "label_value1": "Count",
-        "can_be_optional": True,
-        "produces_output": True
     },
     "PLAY_FROM_ZONE": {
         "visible": ["source_zone", "filter", "value1"],
@@ -140,14 +109,6 @@ ACTION_UI_CONFIG = {
         "visible": ["scope", "value1"],
         "label_value1": "Count"
     },
-    "SEND_SHIELD_TO_GRAVE": {
-        "visible": ["scope", "filter", "value1"],
-        "label_value1": "Count"
-    },
-    "SEND_TO_DECK_BOTTOM": {
-        "visible": ["scope", "filter", "value1"],
-        "label_value1": "Count"
-    },
     "MOVE_TO_UNDER_CARD": {
         "visible": ["scope", "filter", "value1"],
         "label_value1": "Count"
@@ -183,5 +144,45 @@ ACTION_UI_CONFIG = {
         "label_value2": "Allow Duplicates",
         "label_str_val": "Mode Name (Optional)",
         "can_be_optional": True
+    },
+    # Legacy / Consolidated Actions (Hidden from list but kept for compatibility config)
+    "DESTROY": {
+        "visible": ["scope", "filter", "target_choice"],
+        "can_be_optional": True
+    },
+    "TAP": {
+        "visible": ["scope", "filter", "target_choice"],
+        "can_be_optional": True
+    },
+    "UNTAP": {
+        "visible": ["scope", "filter", "target_choice"],
+        "can_be_optional": True
+    },
+    "RETURN_TO_HAND": {
+        "visible": ["scope", "filter", "target_choice"],
+        "can_be_optional": True
+    },
+    "SEND_TO_MANA": {
+        "visible": ["scope", "filter", "target_choice"],
+        "can_be_optional": True
+    },
+    "SEARCH_DECK_BOTTOM": {
+        "visible": ["value1", "filter", "output_value_key"],
+        "label_value1": "Reveal N (from Bottom)",
+        "produces_output": True
+    },
+    "DISCARD": {
+        "visible": ["scope", "filter", "value1", "target_choice", "output_value_key"],
+        "label_value1": "Count",
+        "can_be_optional": True,
+        "produces_output": True
+    },
+    "SEND_SHIELD_TO_GRAVE": {
+        "visible": ["scope", "filter", "value1"],
+        "label_value1": "Count"
+    },
+    "SEND_TO_DECK_BOTTOM": {
+        "visible": ["scope", "filter", "value1"],
+        "label_value1": "Count"
     }
 }
