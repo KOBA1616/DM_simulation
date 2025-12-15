@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 from typing import Dict, Any, List, Tuple
+from dm_toolkit.gui.localization import tr
 
 class CardTextGenerator:
     """
     Generates Japanese rule text for Duel Masters cards based on JSON data.
     """
 
+    # Maps kept for reverse lookups or specific logic, but tr() should be preferred for output
     CIVILIZATION_MAP = {
         "LIGHT": "光",
         "WATER": "水",
@@ -152,7 +154,7 @@ class CardTextGenerator:
         name = data.get("name", "Unknown")
         cost = data.get("cost", 0)
         civs = cls._format_civs(data.get("civilizations", []))
-        type_str = cls.TYPE_MAP.get(data.get("type", "CREATURE"), data.get("type", ""))
+        type_str = tr(data.get("type", "CREATURE"))
         races = " / ".join(data.get("races", []))
 
         header = f"【{name}】 {civs} コスト{cost}"
@@ -173,7 +175,7 @@ class CardTextGenerator:
         if keywords:
             for k, v in keywords.items():
                 if v:
-                    kw_str = cls.KEYWORD_MAP.get(k, k)
+                    kw_str = tr(k) # Use tr for keyword names if mapped
                     if k == "power_attacker":
                         bonus = data.get("power_attacker_bonus", 0)
                         if bonus > 0:
@@ -182,7 +184,6 @@ class CardTextGenerator:
                         cond = data.get("revolution_change_condition", {})
                         if cond:
                             cond_text = cls._describe_simple_filter(cond)
-                            # Remove redundancy if text generator duplicated race/civ
                             kw_str += f"：{cond_text}"
                             kw_str += f"（自分の{cond_text}が攻撃する時、そのクリーチャーと手札のこのクリーチャーと入れ替えてもよい）"
                     kw_lines.append(f"■ {kw_str}")
@@ -231,7 +232,7 @@ class CardTextGenerator:
     def _format_civs(cls, civs: List[str]) -> str:
         if not civs:
             return "無色"
-        return "/".join([cls.CIVILIZATION_MAP.get(c, c) for c in civs])
+        return "/".join([tr(c) for c in civs])
 
     @classmethod
     def _describe_simple_filter(cls, filter_def: Dict[str, Any]) -> str:
@@ -242,7 +243,7 @@ class CardTextGenerator:
 
         adjectives = []
         if civs:
-            adjectives.append("/".join([cls.CIVILIZATION_MAP.get(c, c) for c in civs]))
+            adjectives.append("/".join([tr(c) for c in civs]))
 
         if min_cost > 0:
             adjectives.append(f"コスト{min_cost}以上")
@@ -268,11 +269,10 @@ class CardTextGenerator:
              cost = reaction.get("cost", 0)
              return f"ニンジャ・ストライク {cost}"
         elif rtype == "STRIKE_BACK":
-             # Should describe civ/race from condition if generic, but usually strict
              return "ストライク・バック"
         elif rtype == "REVOLUTION_0_TRIGGER":
              return "革命0トリガー"
-        return rtype
+        return tr(rtype)
 
     @classmethod
     def _format_cost_reduction(cls, cr: Dict[str, Any]) -> str:
@@ -281,9 +281,8 @@ class CardTextGenerator:
         ctype = cr.get("type", "PASSIVE")
         name = cr.get("name", "")
         if name:
-            return f"{name}" # e.g. "Sympathy: ... "
+            return f"{name}"
 
-        # If name is empty, try to construct
         unit_cost = cr.get("unit_cost", {})
         filter_def = unit_cost.get("filter", {})
         desc = cls._describe_simple_filter(filter_def)
@@ -295,16 +294,13 @@ class CardTextGenerator:
         condition = effect.get("condition", {})
         actions = effect.get("actions", [])
 
-        trigger_text = cls.TRIGGER_MAP.get(trigger, trigger)
+        trigger_text = tr(trigger)
         cond_text = cls._format_condition(condition)
         cond_type = condition.get("type", "NONE")
 
-        # Special handling for timing conditions combined with Triggers
         if trigger != "NONE" and trigger != "PASSIVE_CONST":
             if cond_type == "DURING_YOUR_TURN" or cond_type == "DURING_OPPONENT_TURN":
-                # Extract raw text "自分のターン中" or "相手のターン中"
                 base_cond = cond_text.replace(": ", "")
-                # Reformat to "Xのターン中に、Trigger"
                 trigger_text = f"{base_cond}に、{trigger_text}"
                 cond_text = ""
             elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
@@ -337,8 +333,7 @@ class CardTextGenerator:
         if cond_type == "MANA_ARMED":
             val = condition.get("value", 0)
             civ_raw = condition.get("str_val", "")
-            civ = cls.CIVILIZATION_MAP.get(civ_raw, civ_raw)
-            # Improved formatting: "マナ武装 5：(火のカードが5枚以上あれば)" implied by context often, but kept simple
+            civ = tr(civ_raw)
             return f"マナ武装 {val} ({civ}): "
 
         elif cond_type == "SHIELD_COUNT":
@@ -451,7 +446,7 @@ class CardTextGenerator:
              return "" # Covered by keyword
 
         if not template:
-            return f"({atype})"
+            return f"({tr(atype)})"
 
         # Parameter Substitution
         val1 = action.get("value1", 0)
@@ -472,9 +467,21 @@ class CardTextGenerator:
              elif atype == "SEND_TO_MANA": template = "{target}をすべてマナゾーンに置く。"
 
         if atype == "GRANT_KEYWORD":
-            str_val = cls.KEYWORD_MAP.get(str_val, str_val)
+            str_val = tr(str_val)
 
-        if atype == "PLAY_FROM_ZONE":
+        elif atype == "GET_GAME_STAT":
+            # Translate the stat name (e.g., MANA_CIVILIZATION_COUNT -> マナ文明数)
+            return f"（{tr(str_val)}を参照）"
+
+        elif atype == "COUNT_CARDS":
+            # Support COUNT_CARDS modes
+            mode = str_val
+            if not mode or mode == "CARDS_MATCHING_FILTER":
+                 return f"（{target_str}の数を数える）"
+            else:
+                 return f"（{tr(mode)}を数える）"
+
+        elif atype == "PLAY_FROM_ZONE":
             action = action.copy()
             temp_filter = action.get("filter", {}).copy()
             action["filter"] = temp_filter
@@ -508,9 +515,9 @@ class CardTextGenerator:
 
         # Destination/Source Resolution
         dest_zone = action.get("destination_zone", "")
-        zone_str = cls.ZONE_MAP.get(dest_zone, dest_zone) if dest_zone else "どこか"
+        zone_str = tr(dest_zone) if dest_zone else "どこか"
         src_zone = action.get("source_zone", "")
-        src_str = cls.ZONE_MAP.get(src_zone, src_zone) if src_zone else ""
+        src_str = tr(src_zone) if src_zone else ""
 
         text = template.replace("{value1}", str(val1))
         text = text.replace("{value2}", str(val2))
@@ -602,9 +609,14 @@ class CardTextGenerator:
             types = filter_def.get("types", [])
             races = filter_def.get("races", [])
             civs = filter_def.get("civilizations", [])
+            owner = filter_def.get("owner", "NONE")
+
+            # Handle explicit owner filter if scope is generic
+            if owner == "PLAYER_OPPONENT" and not prefix: prefix = "相手の"
+            elif owner == "PLAYER_SELF" and not prefix: prefix = "自分の"
 
             temp_adjs = []
-            if civs: temp_adjs.append("/".join([cls.CIVILIZATION_MAP.get(c, c) for c in civs]))
+            if civs: temp_adjs.append("/".join([tr(c) for c in civs]))
             if races: temp_adjs.append("/".join(races))
 
             if temp_adjs: adjectives += "/".join(temp_adjs) + "の"
@@ -660,6 +672,9 @@ class CardTextGenerator:
                     unit = "体"
                 elif "SPELL" in types:
                     type_noun = "呪文"
+                elif len(types) > 1:
+                     # Join multiple types (e.g., Creature/Spell)
+                     type_noun = "または".join([tr(t) for t in types])
 
             # Special case for SEARCH_DECK
             if atype == "SEARCH_DECK":
