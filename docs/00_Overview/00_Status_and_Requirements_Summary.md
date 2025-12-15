@@ -60,6 +60,7 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 
 1.  **イベント駆動型トリガーシステムの実装**
     *   ハードコードされたフックポイントを廃止し、`TriggerManager` による一元管理へ移行。
+    *   **Status**: `TriggerManager`, `GameEvent` クラスの実装とPythonバインディングが完了 (Phase 6.1 Started)。
 2.  **GameCommand (Primitives) の実装**
     *   全てのアクションを `TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE` に分解・再実装。
 3.  **アクション汎用化**
