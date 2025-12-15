@@ -307,6 +307,10 @@ class CardTextGenerator:
                 # Reformat to "Xのターン中に、Trigger"
                 trigger_text = f"{base_cond}に、{trigger_text}"
                 cond_text = ""
+            elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
+                val = condition.get("value", 0)
+                trigger_text = f"相手がカードを引いた時、{val}枚目以降なら"
+                cond_text = ""
 
         action_texts = []
         for action in actions:
@@ -368,6 +372,10 @@ class CardTextGenerator:
 
         elif cond_type == "OPPONENT_PLAYED_WITHOUT_MANA":
             return "相手がマナゾーンのカードをタップせずにクリーチャーを出すか呪文を唱えた時: "
+
+        elif cond_type == "OPPONENT_DRAW_COUNT":
+            val = condition.get("value", 0)
+            return f"{val}枚目以降なら: "
 
         elif cond_type == "DURING_YOUR_TURN":
             return "自分のターン中: "
@@ -530,6 +538,10 @@ class CardTextGenerator:
             phrase_destroy = f"{val1}{unit}破壊する"
             phrase_discard = f"{val1}{unit}捨てる"
             phrase_break = f"{val1}{unit}ブレイクする"
+            phrase_put_mana = f"{val1}{unit}をマナゾーンに置く"
+            phrase_add_hand = f"{val2}{unit}を手札に加え"
+            phrase_shield_ify = f"{val1}{unit}をシールド化する"
+            phrase_deck_bottom = f"{val1}{unit}、山札の下に置く"
 
             if phrase_select in text:
                 text = text.replace(phrase_select, f"{val1}{unit}まで選び")
@@ -539,6 +551,14 @@ class CardTextGenerator:
                 text = text.replace(phrase_discard, f"{val1}{unit}まで捨てる")
             elif phrase_break in text:
                 text = text.replace(phrase_break, f"{val1}{unit}までブレイクする")
+            elif phrase_put_mana in text:
+                text = text.replace(phrase_put_mana, f"{val1}{unit}までをマナゾーンに置く")
+            elif phrase_add_hand in text:
+                text = text.replace(phrase_add_hand, f"{val2}{unit}までを手札に加え")
+            elif phrase_shield_ify in text:
+                text = text.replace(phrase_shield_ify, f"{val1}{unit}までシールド化する")
+            elif phrase_deck_bottom in text:
+                text = text.replace(phrase_deck_bottom, f"{val1}{unit}まで、山札の下に置く")
             elif "をプレイしてもよい" in text:
                  pass # Already optional
             elif "を唱えてもよい" in text:
@@ -560,6 +580,7 @@ class CardTextGenerator:
         filter_def = action.get("filter", {})
         atype = action.get("type", "")
 
+        target_desc = ""
         prefix = ""
         adjectives = ""
         zone_noun = ""
