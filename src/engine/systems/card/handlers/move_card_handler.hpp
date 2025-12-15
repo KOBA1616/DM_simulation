@@ -3,83 +3,141 @@
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "core/game_state.hpp"
+#include <algorithm>
 
 namespace dm::engine {
 
     class MoveCardHandler : public IActionHandler {
     public:
-        void resolve(const ResolutionContext& /*ctx*/) override {
+        void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
-            // If filter specifies zones, use generic selection
-            // Otherwise, we might need to rely on source_zone string
+            // Delegate if it requires explicit target selection
+            if (ctx.action.scope == dm::core::TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
+                 dm::core::EffectDef ed;
+                 ed.trigger = dm::core::TriggerType::NONE;
+                 ed.condition = dm::core::ConditionDef{"NONE", 0, "", "", "", std::nullopt};
+                 ed.actions = { ctx.action };
+                 GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 return;
+            }
 
-            std::vector<int> targets;
+            // Implicit targets logic (similar to DestroyHandler)
+            // Iterate all potential targets matching filter and move them.
 
-            // If we have targets from previous selection (e.g. SELECT_TARGET)
-            // But MOVE_CARD usually is the action itself that might select or operate on implicit target
-            // If it has filter and no targets, it might need to select (which GenericSystem handles before calling resolve if needed?)
-            // Wait, GenericSystem calls resolve directly if target scope is not TARGET_SELECT.
-            // If it IS TARGET_SELECT, GenericSystem does select_targets first, then calls resolve_with_targets.
+            PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
 
-            // If scope is NONE or something else, maybe we target implicitly?
+            // Determine zones to check
+            std::vector<std::pair<PlayerID, Zone>> zones_to_check;
 
-            // Let's assume we are in resolve_with_targets if targets are needed.
-            // If we are here, either targets are implicit (e.g. "ALL") or already selected?
-            // Actually, GenericSystem::resolve_action calls handler->resolve.
+            // If filter.zones is specified, use it
+            if (!ctx.action.filter.zones.empty()) {
+                for (const auto& z_str : ctx.action.filter.zones) {
+                    Zone z = Zone::BATTLE; // Default
+                    if (z_str == "BATTLE_ZONE") z = Zone::BATTLE;
+                    else if (z_str == "HAND") z = Zone::HAND;
+                    else if (z_str == "MANA_ZONE") z = Zone::MANA;
+                    else if (z_str == "SHIELD_ZONE") z = Zone::SHIELD;
+                    else if (z_str == "GRAVEYARD") z = Zone::GRAVEYARD;
+                    else if (z_str == "DECK") z = Zone::DECK; // Less common for implicit move but possible
 
-            // If the action requires selection but hasn't done it, we might be in trouble.
-            // But typically ActionType::MOVE_CARD might use Scope::TARGET_SELECT.
-            // In that case, GenericSystem loop sees SELECT scope and delegates to Handler?
-            // No, GenericSystem::resolve_effect_with_targets calls resolve_with_targets.
+                    std::vector<PlayerID> pids;
+                    if (ctx.action.scope == TargetScope::ALL_PLAYERS) {
+                         pids = {0, 1};
+                    } else if (ctx.action.scope == TargetScope::PLAYER_OPPONENT) {
+                         pids = { (PlayerID)(1 - controller_id) };
+                    } else {
+                         // Default to self for NONE/SELF
+                         pids = { controller_id };
+                    }
 
-            // So, resolve() is for non-targeted or self-targeted stuff.
+                    // Filter owner check overrides scope
+                    if (ctx.action.filter.owner == "OPPONENT") {
+                         pids = { (PlayerID)(1 - controller_id) };
+                    } else if (ctx.action.filter.owner == "SELF") {
+                         pids = { controller_id };
+                    }
 
-            // Let's implement logic based on source/dest strings.
+                    for (PlayerID pid : pids) {
+                        zones_to_check.push_back({pid, z});
+                    }
+                }
+            } else {
+                // Default zones if not specified
+                zones_to_check.push_back({controller_id, Zone::BATTLE});
+                if (ctx.action.scope == TargetScope::ALL_PLAYERS) {
+                    zones_to_check.push_back({(PlayerID)(1 - controller_id), Zone::BATTLE});
+                }
+            }
 
-            // For now, let's look at `resolve_with_targets` mainly, and `resolve` for things like "Top of Deck".
+            std::vector<int> targets_to_move;
+
+            for (const auto& [pid, zone] : zones_to_check) {
+                Player& p = ctx.game_state.players[pid];
+                const std::vector<CardInstance>* card_list = nullptr;
+
+                // Map Zone enum to vector
+                if (zone == Zone::BATTLE) card_list = &p.battle_zone;
+                else if (zone == Zone::HAND) card_list = &p.hand;
+                else if (zone == Zone::MANA) card_list = &p.mana_zone;
+                else if (zone == Zone::SHIELD) card_list = &p.shield_zone;
+                else if (zone == Zone::GRAVEYARD) card_list = &p.graveyard;
+                // Deck check? Iterating deck is expensive and rare for implicit moves.
+
+                if (!card_list) continue;
+
+                for (const auto& card : *card_list) {
+                    if (!ctx.card_db.count(card.card_id)) continue;
+                    const auto& def = ctx.card_db.at(card.card_id);
+
+                    if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
+                         // Check protections
+                         if (pid != controller_id) {
+                              if (TargetUtils::is_protected_by_just_diver(card, def, ctx.game_state, controller_id)) continue;
+                         }
+                         targets_to_move.push_back(card.instance_id);
+                    }
+                }
+            }
+
+            // Apply movement
+            std::string dest = ctx.action.destination_zone;
+            if (dest.empty()) dest = "GRAVEYARD"; // Default
+
+            for (int tid : targets_to_move) {
+                move_card_to_dest(ctx.game_state, tid, dest, ctx.source_instance_id, ctx.card_db);
+            }
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
             using namespace dm::core;
-            const auto& action = ctx.action;
-            GameState& game_state = ctx.game_state;
 
             if (!ctx.targets) return;
 
-            std::string dest = action.destination_zone; // HAND, MANA_ZONE, GRAVEYARD, DECK_BOTTOM, SHIELD_ZONE
-
-            // Helper to get zone vector
-            // But instances are identified by ID. We need to find them.
-            // We use GenericCardSystem::find_instance or similiar, but we need to know where they are to remove them.
-            // Since we have targets list, we iterate.
+            std::string dest = ctx.action.destination_zone;
+            if (dest.empty()) dest = "GRAVEYARD"; // Default
 
             for (int target_id : *ctx.targets) {
-                 move_card_to_dest(game_state, target_id, dest, ctx.source_instance_id, ctx.card_db);
+                 move_card_to_dest(ctx.game_state, target_id, dest, ctx.source_instance_id, ctx.card_db);
             }
         }
 
     private:
-        void move_card_to_dest(dm::core::GameState& game_state, int instance_id, const std::string& dest, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+        void move_card_to_dest(dm::core::GameState& game_state, int instance_id, const std::string& dest, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             using namespace dm::core;
 
-            // 1. Find and Remove
             CardInstance card;
             bool found = false;
             bool from_battle_zone = false;
-            PlayerID owner_id = 0; // Temporary default
+            PlayerID owner_id = 0;
 
-            // We need to find the card in ANY zone of ANY player (or specific player if filtered)
-            // And remove it.
-
+            // Search all zones
             for (auto& p : game_state.players) {
                 // Battle Zone
                 auto b_it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
                 if (b_it != p.battle_zone.end()) {
                     card = *b_it;
-                    // Hierarchy Cleanup
                     ZoneUtils::on_leave_battle_zone(game_state, *b_it);
-
                     p.battle_zone.erase(b_it);
                     found = true;
                     from_battle_zone = true;
@@ -127,10 +185,7 @@ namespace dm::engine {
                     break;
                 }
 
-                // Deck?
-                // Iterating deck might be slow but necessary for SEARCH.
-                // Usually SEARCH handler removes it. But if MOVE_CARD targets DECK...
-                // Let's check deck.
+                // Deck
                  auto d_it = std::find_if(p.deck.begin(), p.deck.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
                 if (d_it != p.deck.end()) {
                     card = *d_it;
@@ -142,70 +197,56 @@ namespace dm::engine {
             }
 
             if (!found) {
-                // Check buffers (Player 0)
-                auto buf_it_p0 = std::find_if(game_state.players[0].effect_buffer.begin(), game_state.players[0].effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (buf_it_p0 != game_state.players[0].effect_buffer.end()) {
-                    card = *buf_it_p0;
-                    game_state.players[0].effect_buffer.erase(buf_it_p0);
-                    found = true;
-                    owner_id = 0; // Found in P0's buffer
-                } else {
-                    // Check buffers (Player 1)
-                    auto buf_it_p1 = std::find_if(game_state.players[1].effect_buffer.begin(), game_state.players[1].effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                    if (buf_it_p1 != game_state.players[1].effect_buffer.end()) {
-                        card = *buf_it_p1;
-                        game_state.players[1].effect_buffer.erase(buf_it_p1);
+                // Check buffers
+                for (auto& p : game_state.players) {
+                    auto buf_it = std::find_if(p.effect_buffer.begin(), p.effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
+                    if (buf_it != p.effect_buffer.end()) {
+                        card = *buf_it;
+                        p.effect_buffer.erase(buf_it);
                         found = true;
-                        owner_id = 1; // Found in P1's buffer
+                        owner_id = p.id;
+                        break;
                     }
                 }
             }
 
             if (!found) return;
 
-            // 2. Add to Destination
-            // Use owner_id? Or target_player of action?
-            // Usually cards return to OWNER's zone.
+            // Destination
             Player& owner = game_state.players[owner_id];
 
-            if (dest == "HAND") {
-                // Reset state
+            // Special handling for SHIELD_ZONE (Shield Trigger / Shield Addition)
+            if (dest == "SHIELD_ZONE") {
+                 card.is_tapped = false;
+                 owner.shield_zone.push_back(card);
+                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD, card.instance_id, card_db);
+            }
+            // General handling
+            else if (dest == "HAND") {
                 card.is_tapped = false;
                 card.summoning_sickness = true;
                 owner.hand.push_back(card);
-                if (from_battle_zone) {
-                    GenericCardSystem::check_mega_last_burst(game_state, card, card_db);
-                }
             } else if (dest == "MANA_ZONE") {
-                card.is_tapped = false; // Usually untapped unless specified?
-                // "Put into mana zone" -> usually untapped. "Charge" -> untapped.
-                // Some effects put tapped. But default to untapped.
+                card.is_tapped = false;
                 owner.mana_zone.push_back(card);
-                if (from_battle_zone) {
-                    GenericCardSystem::check_mega_last_burst(game_state, card, card_db);
-                }
             } else if (dest == "GRAVEYARD") {
                 card.is_tapped = false;
                 owner.graveyard.push_back(card);
-                if (from_battle_zone) {
-                    GenericCardSystem::check_mega_last_burst(game_state, card, card_db);
-                }
             } else if (dest == "DECK_BOTTOM") {
                 card.is_tapped = false;
                 owner.deck.insert(owner.deck.begin(), card);
             } else if (dest == "DECK_TOP") {
                 card.is_tapped = false;
                 owner.deck.push_back(card);
-            } else if (dest == "SHIELD_ZONE") {
-                card.is_tapped = false;
-                owner.shield_zone.push_back(card);
-                GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD, card.instance_id, card_db);
             } else if (dest == "BATTLE_ZONE") {
                 card.is_tapped = false;
                 card.summoning_sickness = true;
                 card.turn_played = game_state.turn_number;
                 owner.battle_zone.push_back(card);
-                // ON_PLAY?
+            }
+
+            if (from_battle_zone) {
+                 GenericCardSystem::check_mega_last_burst(game_state, card, card_db);
             }
         }
     };
