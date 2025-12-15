@@ -85,7 +85,8 @@ namespace dm::core {
         BREAK_SHIELD,      // For pending shield break
         REACTION_WINDOW,   // For Ninja Strike / Strike Back reaction windows
         TRIGGER_ABILITY,   // Generic queued trigger (new Stack System)
-        SELECT_OPTION      // For mode selection
+        SELECT_OPTION,     // For mode selection
+        SELECT_NUMBER      // For selecting a number
     };
     
     // Result of a game
