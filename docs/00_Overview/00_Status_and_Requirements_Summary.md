@@ -100,16 +100,16 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 *   **TriggerManager**: 全イベントの発行 (`dispatch`) と購読 (`subscribe`) を管理するシングルトン/コンポーネント。
 *   **Event Object**: `type`, `source`, `target`, `context` (Map) を持つ不変オブジェクト。
 
-### 5.2 詳細要件と不足事項 (Detailed Requirements & Missing Gaps)
+### 5.2 詳細要件 (Detailed Requirements)
 
-1.  **State Triggers vs Event Triggers (状態トリガーとイベントトリガーの区別)**
-    *   **イベントトリガー**: 「〜した時」 (When/Whenever)。イベント発生の一瞬だけ誘発する。
-    *   **状態トリガー**: 「〜である限り」や条件達成時 (When state meets condition)。
-    *   **要件**: `TriggerManager` はイベントだけでなく、状態チェック（State Check）のポーリングもサポートするか、あるいは「状態変化イベント」として抽象化する必要がある（例: シールドが0枚になった瞬間に `SHIELD_ZERO` イベントを発行する）。
+1.  **Event Monitor (B案: イベント監視型)**
+    *   **状態トリガーの扱い**: ポーリング（常時監視）ではなく、状態変化イベント（例: `CREATURE_ZONE_ENTER`, `MANA_ZONE_LEAVE`）を監視する方式を採用する。
+    *   **理由**: MCTS等のシミュレーション速度を最大化するため、無駄なチェック処理を排除する。
+    *   **実装**: エンジンは `COUNT_CHANGED` や `STATE_CONDITION_MET` などの抽象化されたイベントを発行する責務を持つ。
 
-2.  **Intervening 'If' Clause (割り込み条件判定)**
-    *   **仕様**: 「〜した時、もし〜なら、XXする」という構文において、トリガー時点だけでなく **解決時点** にも条件を満たしているかチェックする機能。
-    *   **実装**: `TriggerDef` に `condition` (トリガー時) と `resolution_condition` (解決時) の2つのフィルタを持たせる。
+2.  **Loop Prevention (ループ防止)**
+    *   **仕様**: トリガーが無限連鎖する場合（A→B→A...）、スタック深度または同一ターン内の発動回数制限により強制停止する。
+    *   **実装**: `PendingEffect` に `chain_depth` カウンタを持たせ、閾値（例: 20）を超えたら解決を失敗（Fizzle）させる。
 
 3.  **Context Reference (コンテキスト参照)**
     *   **仕様**: 「破壊されたクリーチャーのパワー以下のクリーチャーを破壊する」のように、イベントの文脈データ（破壊されたカードの情報）を動的に参照する機能。
@@ -124,18 +124,19 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 ### 6.1 基本フロー (Basic Flow)
 イベント発生 -> トリガー検知 -> 保留効果(PendingEffect)生成 -> 優先権に基づく解決。
 
-### 6.2 詳細要件と不足事項 (Detailed Requirements & Missing Gaps)
+### 6.2 詳細要件 (Detailed Requirements)
 
-1.  **APNAP (Active Player, Non-Active Player) 解決順序**
-    *   **仕様**: ターンプレイヤー(AP)と非ターンプレイヤー(NAP)のトリガーが同時に誘発した場合、**APの処理が全て終わってからNAPの処理を行う**（あるいはスタックへの積み順を制御する）。
-    *   **実装**: `TriggerManager` はトリガーを即時実行せず、プレイヤーごとの「待機リスト」に入れ、AP -> NAP の順でスタックにプッシュするロジックを実装する。
+1.  **Reaction Window (A案: 非同期・ステートマシン型)**
+    *   **仕様**: リアクション待機（ニンジャ・ストライク宣言等）が発生した際、エンジンは一時停止（Block）するのではなく、「入力待ち状態（Awaiting Input）」へ遷移し、制御を呼び出し元へ返す。
+    *   **理由**: AI（Gym/PettingZoo）との親和性確保のため。AIは観測（Observation）として「入力要求」を受け取り、次のステップで回答（Action）を返す標準的なループで処理できる。
+    *   **実装**: `GameState` に `waiting_for_reaction` フラグと `reaction_context` を持たせる。
 
-2.  **Batch Processing (バッチ処理)**
-    *   **仕様**: 「クリーチャーが3体同時に破壊された時」のようなイベントに対し、トリガーを1回だけ発火させるか、3回発火させるかの制御。
-    *   **実装**: `Event` に `batch_id` または `is_simultaneous` フラグを持たせ、トリガー定義側で `batch_mode: "ONCE_PER_BATCH" | "PER_INSTANCE"` を指定可能にする。
+2.  **Interceptor Layer (置換効果レイヤー)**
+    *   **仕様**: 「破壊される代わりに〜する」といった置換効果は、通常のトリガー（事後処理）とは区別し、アクション実行直前に介入する **Interceptor** として実装する。
+    *   **フロー**: `ActionGenerator` -> `Interceptor Check` (Modify/Cancel Action) -> `Execute Action` -> `Trigger Event`.
 
 3.  **Optional vs Mandatory (任意と強制)**
-    *   **仕様**: リアクションウィンドウ（ニンジャ・ストライク宣言画面など）において、キャンセル可能か強制発動かを定義。
+    *   **仕様**: リアクションウィンドウにおいて、キャンセル可能か強制発動かを定義。
     *   **実装**: JSON定義に `optional: true/false` を持たせ、強制の場合はUIでキャンセルボタンを無効化、あるいは自動解決する。
 
 ---
@@ -145,22 +146,116 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 AIとエンジンの共通言語となる「5つの基本命令」の仕様詳細。
 
 ### 7.1 5つの基本命令 (Primitives)
-`TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE`。
 
-### 7.2 詳細要件と不足事項 (Detailed Requirements & Missing Gaps)
+1.  **TRANSITION**: カードの移動（ゾーン間、状態変更）。
+2.  **MUTATE**: カード/プレイヤーのプロパティ変更（パワー修正、フラグ付与）。
+3.  **FLOW**: ゲーム進行の制御（フェーズ遷移、ステップ移行）。
+4.  **QUERY**: エンジンから外部（AI/UI）への選択要求。
+5.  **DECIDE**: 外部からの選択結果の適用。
 
-1.  **Undo/Rollback Support (巻き戻し機能)**
-    *   **重要**: MCTS等の探索アルゴリズムにおいて、状態のコピー（Clone）は重いため、アクションの逆操作（Undo）による高速な状態復帰が求められる。
-    *   **要件**: 各GameCommandは `invert()` メソッド、または逆操作コマンド（例: `TRANSITION` の逆は移動元へ戻す）を生成・実行可能でなければならない。
-    *   **実装**: `GameCommand` 実行時に「変更前の値（Snapshot）」を記録し、Undo時にそれを復元する仕組みを組み込む。
+### 7.2 詳細要件 (Detailed Requirements)
 
-2.  **Source & Log Metadata (ソース情報とログ)**
-    *   **重要**: 「5つの命令」だけでは「なぜその移動が起きたか（ボルメテウスの効果か、ブロックの結果か）」が分からなくなる。
-    *   **要件**: `GameCommand` 構造体に `source_id` (発生源のカード/効果ID) と `reason` (理由コード)、および人間可読な `log_message` を含める。
+1.  **DECIDE Command (A案: 回答/適用型)**
+    *   **定義**: `DECIDE` は「AI/プレイヤーによる意思決定の結果（回答）」として定義する。エンジンが発行するものではなく、外部からエンジンへ投入される確定情報である。
+    *   **データ**: `target_index`, `card_id`, `option_id` 等の具体的な選択内容のみを保持する。
+    *   **リプレイ性**: ログには `DECIDE` のみが記録され、再生時はエンジンが内部生成した `QUERY` に対してログの `DECIDE` を適用することで再現を行う。
 
-3.  **Serialization (シリアライズ)**
-    *   **重要**: リプレイ保存や通信対戦のため、一連のコマンド列を軽量なバイナリまたはテキスト形式で保存・復元できること。
-    *   **実装**: Protobuf または独自の軽量バイナリフォーマットを策定し、`GameCommand` 列の完全な再現性を保証する。
+2.  **FLOW Granularity (A案: 詳細粒度)**
+    *   **仕様**: `FLOW` コマンドはフェーズだけでなく、効果解決のステップ（Step）や処理の区切り（Micro-step）単位で発行する。
+    *   **理由**: イベント駆動システムのフックポイントを明確にし、複雑な処理の途中状態を透明化するため。
 
-4.  **Action Generalization (アクション汎用化のゴール)**
-    *   `DESTROY`, `MANA_CHARGE` などの既存アクションは、最終的にすべて `TRANSITION` コマンドを発行する「ラッパー（マクロ）」として再定義される。これにより、将来的に「超次元ゾーンへの移動」などが増えても、`TRANSITION` のパラメータを変えるだけで対応完了とする。
+3.  **Rollback Support (Must Have: 内蔵型)**
+    *   **要件**: MCTS探索の高速化（コピー負荷削減）のため、GameCommand層に **Undo（逆操作）** 機能を内蔵することを必須とする。
+    *   **実装**: 各コマンドクラスは `execute()` と対になる `invert()` メソッド、または逆操作コマンド生成機能を持ち、O(1)〜O(Δ)コストで状態を復元可能にする。
+
+---
+
+## 8. 命令パイプラインと汎用アクション構造 (Instruction Pipeline & Generalized Action Structure)
+
+ハードコード（複合効果の個別C++実装）を撤廃し、あらゆるカード効果をデータ定義（JSON）のみで実現するための新アーキテクチャ。
+
+### 8.1 概念 (Concept)
+カードの効果を、単一のタイプではなく **「入出力を持つ命令 (Instruction) の連鎖」** として定義する。
+各命令は **コンテキスト (Context)** と呼ばれる共有メモリを通じてデータの受け渡しを行う。
+
+### 8.2 アーキテクチャ構成 (Architecture Components)
+
+1.  **Instruction (命令)**
+    *   最小単位の操作（SELECT, MOVE, CALCULATE, MODIFY）。
+    *   **Args (引数)**: 定数、または変数参照（`$var_name`）を受け取る。
+    *   **Out (出力)**: 実行結果を保存する変数名（`out: "$targets"`）。
+
+2.  **Context (実行コンテキスト)**
+    *   一時変数を保持する Key-Value ストア。
+    *   **システム変数**: `$source` (発動カード), `$player` (発動者), `$prev` (直前の結果)。
+    *   **ユーザー変数**: `$targets`, `$count` 等、任意の名前で定義可能。
+
+3.  **Pipeline Executor (実行エンジン)**
+    *   命令リストを順次実行し、条件分岐（`IF`）やループ（`FOREACH`）を制御するVM。
+
+### 8.3 データ定義例 (JSON Example)
+
+「自分のシールドを1枚墓地に置き、その枚数（1枚）だけ相手クリーチャーを破壊する」効果の例。
+
+```json
+"effects": [
+  {
+    // Step 1: 自分のシールドを1枚選択し、$my_shield に保存
+    "op": "SELECT",
+    "args": { "zone": "SHIELD_ZONE", "owner": "SELF", "count": 1 },
+    "out": "$my_shield"
+  },
+  {
+    // Step 2: $my_shield を墓地へ移動し、成功したカードを $moved に保存
+    "op": "MOVE",
+    "args": { "cards": "$my_shield", "to": "GRAVEYARD" },
+    "out": "$moved"
+  },
+  {
+    // Step 3: 移動できた枚数を $count に保存
+    "op": "COUNT",
+    "args": { "target": "$moved" },
+    "out": "$count"
+  },
+  {
+    // Step 4: $count > 0 なら相手獣を選んで破壊
+    "op": "IF",
+    "args": {
+      "condition": { "op": "GT", "left": "$count", "right": 0 },
+      "then": [
+        { "op": "SELECT", "args": { "zone": "BATTLE", "owner": "OPPONENT", "count": "$count" }, "out": "$enemy" },
+        { "op": "MOVE", "args": { "cards": "$enemy", "to": "GRAVEYARD" } }
+      ]
+    }
+  }
+]
+```
+
+### 8.4 メリット
+*   **汎用性**: C++の修正なしに、新しいロジック（変数を介した複雑な連動）をJSONのみで記述可能。
+*   **ステートフル**: 「さっき破壊したカードのコスト」等の文脈情報を変数として保持・参照できる。
+*   **割り込み耐性**: パイプラインの実行位置（Program Counter）とContextを保存すれば、S・トリガー等の割り込み後も正確に復帰できる。
+
+---
+
+## 9. 移行と互換性戦略 (Migration & Comparison Strategy)
+
+Phase 6への移行において、どの部分を変更し、どの部分を維持するかを明確にする。
+
+### 9.1 変更・廃止する部分 (To Change / Deprecate)
+
+| 項目 | 現在の実装 (Phase 0-4) | 今後の実装 (Phase 6) | 変更理由 |
+| :--- | :--- | :--- | :--- |
+| **トリガー検知** | ハードコードされたフックポイント | `TriggerManager` によるイベント監視 | 拡張性とスパゲッティコード解消 |
+| **処理実体** | `EffectResolver` の巨大な `switch` 文 | `Instruction Executor` (VM) | 組み合わせ爆発への対応 |
+| **データ受け渡し** | 限定的な `execution_context` | 完全な変数システム (`Context`) | 柔軟なロジック記述のため |
+| **中断・再開** | 関数コールスタック依存 | PC (Program Counter) 保存 | ロールバック機能実現のため |
+
+### 9.2 流用・継続する部分 (To Keep / Reuse)
+
+| 項目 | 理由 (Why keep it?) |
+| :--- | :--- |
+| **JSONデータ構造** | `CardData`, `FilterDef` 等の定義は、エディタ資産および学習済みAIとの互換性維持のため、可能な限り維持する。新しいエンジンはこれらのデータを読み込み、内部的にGameCommandへ変換する。 |
+| **TriggerType** | `ON_PLAY`, `ON_ATTACK` などの概念自体は不変であり、イベント名としてマッピングして利用する。 |
+| **ConditionDef** | フィルタ条件の定義構造 (`type`, `value`, `op`) は、イベントフィルタとしてそのまま有用。 |
+| **CostPaymentSystem** | 独立性が高く、GameCommand化の影響を受けにくいため、コンポーネントとして再利用する。 |
