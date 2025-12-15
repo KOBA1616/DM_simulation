@@ -1,6 +1,7 @@
 #pragma once
 #include "game_command.hpp"
 #include "core/types.hpp"
+#include "core/modifiers.hpp"
 
 namespace dm::engine::game_command {
 
@@ -30,13 +31,19 @@ namespace dm::engine::game_command {
             UNTAP,
             POWER_MOD,
             ADD_KEYWORD,
-            REMOVE_KEYWORD
+            REMOVE_KEYWORD,
+            ADD_PASSIVE_EFFECT,
+            ADD_COST_MODIFIER
         };
 
         int target_instance_id;
         MutationType mutation_type;
         int int_value; // Power value or simple int param
         std::string str_value; // Keyword string etc.
+
+        // Extended payloads for modifiers
+        std::optional<core::PassiveEffect> passive_effect;
+        std::optional<core::CostModifier> cost_modifier;
 
         // Undo context
         int previous_int_value;
