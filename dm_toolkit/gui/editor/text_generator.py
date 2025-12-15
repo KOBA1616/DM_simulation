@@ -17,6 +17,23 @@ class CardTextGenerator:
         "ZERO": "ゼロ"
     }
 
+    TYPE_MAP = {
+        "CREATURE": "クリーチャー",
+        "SPELL": "呪文",
+        "CROSS_GEAR": "クロスギア",
+        "CASTLE": "城",
+        "EVOLUTION_CREATURE": "進化クリーチャー",
+        "NEO_CREATURE": "NEOクリーチャー",
+        "PSYCHIC_CREATURE": "サイキック・クリーチャー",
+        "PSYCHIC_SUPER_CREATURE": "サイキック・スーパー・クリーチャー",
+        "DRAGHEART_CREATURE": "ドラグハート・クリーチャー",
+        "DRAGHEART_WEAPON": "ドラグハート・ウエポン",
+        "DRAGHEART_FORTRESS": "ドラグハート・フォートレス",
+        "AURA": "オーラ",
+        "FIELD": "フィールド",
+        "D2_FIELD": "D2フィールド",
+    }
+
     # Backup map if tr() returns the key itself
     KEYWORD_TRANSLATION = {
         "speed_attacker": "スピードアタッカー",
