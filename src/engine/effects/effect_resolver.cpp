@@ -8,6 +8,7 @@
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
 #include "engine/cost_payment_system.hpp"
+#include "engine/systems/card/handlers/attack_handler.hpp"
 
 #include <iostream>
 #include <algorithm>
@@ -92,7 +93,7 @@ namespace dm::engine {
                  break;
              case ActionType::ATTACK_PLAYER:
              case ActionType::ATTACK_CREATURE:
-                 resolve_attack(game_state, action, card_db);
+                 AttackHandler::handle_attack(game_state, action, card_db);
                  break;
              case ActionType::BLOCK:
                  resolve_block(game_state, action, card_db);
@@ -292,26 +293,8 @@ namespace dm::engine {
     }
 
     void EffectResolver::resolve_attack(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
-        Player& attacker = game_state.get_active_player();
-        Player& defender = game_state.get_non_active_player();
-        auto it = std::find_if(attacker.battle_zone.begin(), attacker.battle_zone.end(),
-            [&](const CardInstance& c){ return c.instance_id == action.source_instance_id; });
-        if (it == attacker.battle_zone.end()) return;
-        CardInstance& card = *it;
-        card.is_tapped = true;
-        game_state.current_attack.source_instance_id = action.source_instance_id;
-        game_state.current_attack.target_instance_id = (action.type == ActionType::ATTACK_CREATURE) ? action.target_instance_id : -1;
-        game_state.current_attack.target_player = (action.type == ActionType::ATTACK_PLAYER) ? action.target_player : -1;
-        game_state.current_attack.is_blocked = false;
-        game_state.current_attack.blocker_instance_id = -1;
-        game_state.turn_stats.attacks_declared_this_turn++;
-        GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_ATTACK, card.instance_id, card_db);
-
-        if (game_state.current_phase == Phase::ATTACK) {
-            game_state.current_phase = Phase::BLOCK;
-        }
-        ReactionSystem::check_and_open_window(game_state, card_db, "ON_ATTACK", defender.id);
-
+         // Delegated to AttackHandler
+         AttackHandler::handle_attack(game_state, action, card_db);
     }
 
     void EffectResolver::resolve_block(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {

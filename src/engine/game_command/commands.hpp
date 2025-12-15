@@ -62,7 +62,10 @@ namespace dm::engine::game_command {
         enum class FlowType {
             PHASE_CHANGE,
             TURN_CHANGE,
-            STEP_CHANGE // Future use
+            STEP_CHANGE, // Future use
+            SET_ATTACK_SOURCE,
+            SET_ATTACK_TARGET,
+            SET_ATTACK_PLAYER
         };
 
         FlowType flow_type;
