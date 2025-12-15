@@ -35,6 +35,7 @@ class ActionEditForm(BaseEditForm):
             "str_visible": vis("str_val"),
             "filter_visible": vis("filter"),
             "dest_zone_visible": vis("destination_zone"),
+            "input_link_visible": vis("input_value_key"), # Explicit visibility check
             "can_be_optional": raw.get("can_be_optional", False),
             "produces_output": raw.get("produces_output", False),
             "tooltip": raw.get("tooltip", ""),
@@ -197,8 +198,14 @@ class ActionEditForm(BaseEditForm):
         config = self._get_ui_config(action_type)
 
         is_no_cost = self.no_cost_check.isChecked()
+        # Hide Val1 if Smart Link is active OR Val1 is hidden by config
         self.val1_label.setVisible(config["val1_visible"] and not is_checked and not is_no_cost)
         self.val1_spin.setVisible(config["val1_visible"] and not is_checked and not is_no_cost)
+
+        # Notify FilterWidget if input link is overriding count
+        # This applies if we are linking input AND filter is visible
+        if config["filter_visible"]:
+             self.filter_widget.set_external_count_control(is_checked)
 
         self.update_data()
 
@@ -214,7 +221,8 @@ class ActionEditForm(BaseEditForm):
         self.val2_label.setText(tr(config["val2_label"]))
         self.str_val_label.setText(tr(config["str_label"]))
 
-        can_link_input = config["val1_visible"]
+        # Enable input linking if Val1 is visible OR explicitly allowed (e.g. for count override)
+        can_link_input = config["val1_visible"] or config.get("input_link_visible", False)
         self.link_widget.set_smart_link_enabled(can_link_input)
 
         self.arbitrary_check.setVisible(config.get("can_be_optional", False))
@@ -225,6 +233,10 @@ class ActionEditForm(BaseEditForm):
 
         self.val1_label.setVisible(config["val1_visible"] and not is_smart_linked and not is_no_cost)
         self.val1_spin.setVisible(config["val1_visible"] and not is_smart_linked and not is_no_cost)
+
+        # Sync filter widget state with link state
+        if config["filter_visible"]:
+             self.filter_widget.set_external_count_control(is_smart_linked)
 
         is_select_option = (action_type == "SELECT_OPTION")
         self.allow_duplicates_check.setVisible(is_select_option)

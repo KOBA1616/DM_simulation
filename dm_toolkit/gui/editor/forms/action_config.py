@@ -20,7 +20,7 @@ ACTION_UI_CONFIG = {
         "can_be_optional": True
     },
     "BREAK_SHIELD": {
-        "visible": ["value1"],
+        "visible": ["value1", "input_value_key"],
         "label_value1": "Shields to Break"
     },
     "LOOK_AND_ADD": {
@@ -35,7 +35,7 @@ ACTION_UI_CONFIG = {
         "label_str_val": "Token ID/Name"
     },
     "SEARCH_DECK": {
-        "visible": ["filter", "output_value_key"],
+        "visible": ["filter", "output_value_key", "input_value_key"],
         "produces_output": True,
         "allowed_filter_fields": ["civilizations", "races", "types", "cost", "power"] # Mask zones
     },
@@ -56,11 +56,11 @@ ACTION_UI_CONFIG = {
         "label_value1": "Reduction Amount"
     },
     "LOOK_TO_BUFFER": {
-        "visible": ["value1", "source_zone"],
+        "visible": ["value1", "source_zone", "input_value_key"],
         "label_value1": "Count"
     },
     "SELECT_FROM_BUFFER": {
-        "visible": ["filter", "value1", "output_value_key"],
+        "visible": ["filter", "value1", "output_value_key", "input_value_key"],
         "label_value1": "Count",
         "produces_output": True
     },
@@ -91,7 +91,7 @@ ACTION_UI_CONFIG = {
         "label_value2": "Duration (Turns)"
     },
     "REVEAL_CARDS": {
-        "visible": ["scope", "filter", "value1"],
+        "visible": ["scope", "filter", "value1", "input_value_key"],
         "label_value1": "Count (from Top)"
     },
     "REGISTER_DELAYED_EFFECT": {
@@ -106,11 +106,11 @@ ACTION_UI_CONFIG = {
         "visible": ["scope"] # Usually Self or Target Player
     },
     "ADD_SHIELD": {
-        "visible": ["scope", "value1"],
+        "visible": ["scope", "value1", "input_value_key"],
         "label_value1": "Count"
     },
     "MOVE_TO_UNDER_CARD": {
-        "visible": ["scope", "filter", "value1"],
+        "visible": ["scope", "filter", "value1", "input_value_key"],
         "label_value1": "Count"
     },
     "SELECT_NUMBER": {
@@ -147,42 +147,42 @@ ACTION_UI_CONFIG = {
     },
     # Legacy / Consolidated Actions (Hidden from list but kept for compatibility config)
     "DESTROY": {
-        "visible": ["scope", "filter", "target_choice"],
+        "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True
     },
     "TAP": {
-        "visible": ["scope", "filter", "target_choice"],
+        "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True
     },
     "UNTAP": {
-        "visible": ["scope", "filter", "target_choice"],
+        "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True
     },
     "RETURN_TO_HAND": {
-        "visible": ["scope", "filter", "target_choice"],
+        "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True
     },
     "SEND_TO_MANA": {
-        "visible": ["scope", "filter", "target_choice"],
+        "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True
     },
     "SEARCH_DECK_BOTTOM": {
-        "visible": ["value1", "filter", "output_value_key"],
+        "visible": ["value1", "filter", "output_value_key", "input_value_key"],
         "label_value1": "Reveal N (from Bottom)",
         "produces_output": True
     },
     "DISCARD": {
-        "visible": ["scope", "filter", "value1", "target_choice", "output_value_key"],
+        "visible": ["scope", "filter", "value1", "target_choice", "output_value_key", "input_value_key"],
         "label_value1": "Count",
         "can_be_optional": True,
         "produces_output": True
     },
     "SEND_SHIELD_TO_GRAVE": {
-        "visible": ["scope", "filter", "value1"],
+        "visible": ["scope", "filter", "value1", "input_value_key"],
         "label_value1": "Count"
     },
     "SEND_TO_DECK_BOTTOM": {
-        "visible": ["scope", "filter", "value1"],
+        "visible": ["scope", "filter", "value1", "input_value_key"],
         "label_value1": "Count"
     }
 }

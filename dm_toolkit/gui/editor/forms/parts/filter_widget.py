@@ -173,13 +173,32 @@ class FilterEditorWidget(QWidget):
 
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         self.count_spin.valueChanged.connect(self.filterChanged.emit)
+
+        # External control label (initially hidden)
+        self.external_count_label = QLabel(tr("Defined by Input Variable"))
+        self.external_count_label.setStyleSheet("color: gray; font-style: italic;")
+        self.external_count_label.setVisible(False)
+        sel_layout.addWidget(self.external_count_label, 0, 1)
+
         self.on_mode_changed() # Init visibility
 
     def on_mode_changed(self):
         mode = self.mode_combo.currentData()
         is_fixed = (mode == 1)
-        self.count_spin.setVisible(is_fixed)
+        self.count_spin.setVisible(is_fixed and self.mode_combo.isVisible())
         self.filterChanged.emit()
+
+    def set_external_count_control(self, active: bool):
+        """
+        If active, hides manual count controls and shows a label indicating
+        that the count is determined by an external variable (input_value_key).
+        """
+        self.mode_combo.setVisible(not active)
+        self.count_spin.setVisible(False) # Always hide first, then re-eval
+        self.external_count_label.setVisible(active)
+
+        if not active:
+             self.on_mode_changed() # Restore state
 
     def set_data(self, filt_data):
         """
