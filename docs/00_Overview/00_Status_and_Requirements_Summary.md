@@ -69,7 +69,16 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
     *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP`、`APPLY_MODIFIER`、`MODIFY_POWER`、`BREAK_SHIELD`、`DESTROY_CARD`、`PLAY_CARD`、および `ATTACK` (AttackHandler) のハンドラを `GameCommand` を使用するように移行完了。`GameCommand` の `Zone` に `STACK`, `BUFFER` を追加し、拡張完了 (Phase 6.3 Completed)。
     *   **Next**: 完了したGameCommandアーキテクチャを用いたAI学習の再開（Phase 3.2へ移行）。
 
-### 3.1 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
+### 3.1 [Priority: High] Phase 3.2: AI 本番運用 (Production Run)
+
+GameCommandアーキテクチャによるエンジン刷新が完了したため、AI学習パイプラインの検証と本番運用を開始します。
+
+*   **現在の状況**:
+    *   学習パイプライン (`collect_training_data.py`, `train_simple.py`) の動作確認完了。
+    *   評価スクリプト (`verify_performance.py`) の `ActionEncoder` サイズ不整合を修正し、正常動作を確認済み。
+    *   これにより、GameCommandベースのエンジンを用いた継続的なAI強化サイクルを回す準備が整いました。
+
+### 3.2 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 
 エンジン刷新後、新しいデータ構造に合わせてエディタのバリデーションを強化します。
 
@@ -81,13 +90,6 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
         *   **その他**: 基本的に制限なし（ユーザーの自由度を確保）。
     *   **Status**: 実装完了。`CardEditForm` にてタイプ別のUI表示切替とデータ保存ロジック（呪文のパワー0固定、進化条件の保存）を実装 (Phase 5.1 Completed)。
 
-### 3.2 [Priority: Post-Phase 6] AI 本番運用 (Production Run)
-
-「最強のAI」を目指す大規模学習は、GameCommandアーキテクチャの完成後に行います。
-
-*   **タイミング**: Phase 6 完了後。
-*   **理由**: GameCommandによるアクション空間の圧縮（意味ベースの学習）が完了した状態で学習させることで、未知のカードへの汎化性能と学習効率が劇的に向上するため。
-*   **現在**: Phase 4完了時点のモデルを用いた小規模なパイロット運用（技術検証）に留める。
 
 ---
 
