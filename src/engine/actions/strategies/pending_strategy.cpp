@@ -349,6 +349,30 @@ namespace dm::engine {
                      actions.push_back(choice);
                  }
              }
+            else if (eff.type == EffectType::SELECT_NUMBER) {
+                // Generate SELECT_NUMBER actions for range [0, num_targets_needed]
+                // Note: num_targets_needed is used as the MAX value here.
+                // If we need a MIN value, we should store it in PendingEffect (e.g., optional<int> min_val).
+                // For now assuming min is 0.
+
+                // If user specifies min count in filter, use it.
+                int min_val = 0;
+                if (eff.filter.count.has_value()) {
+                     // Wait, filter.count is usually fixed count.
+                     // If we use filter.min_cost/max_cost for min/max number?
+                     // Or just define semantics: num_targets_needed is MAX.
+                     // Let's check how SelectNumberHandler sets it up.
+                     // It sets num_targets_needed = max.
+                }
+
+                for (int val = min_val; val <= eff.num_targets_needed; ++val) {
+                    Action select;
+                    select.type = ActionType::SELECT_NUMBER;
+                    select.slot_index = static_cast<int>(i); // The pending effect index
+                    select.target_instance_id = val; // The chosen number (stored in target_instance_id)
+                    actions.push_back(select);
+                }
+            }
             else if (eff.num_targets_needed > (int)eff.target_instance_ids.size()) {
                  if (actions.empty()) {
                      Action resolve;
