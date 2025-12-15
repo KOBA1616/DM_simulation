@@ -135,7 +135,7 @@ ACTION_UI_CONFIG = {
         "label_value2": "Duration (Turns)"
     },
     "MOVE_CARD": {
-        "visible": ["scope", "filter", "destination_zone", "target_choice"],
+        "visible": ["scope", "filter", "destination_zone", "target_choice", "input_value_key"],
         "can_be_optional": True
     },
     "SELECT_OPTION": {
