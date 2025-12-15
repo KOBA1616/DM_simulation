@@ -66,7 +66,8 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
     *   **Status**: 基本5命令のクラス実装、Pythonバインディング、および `GameState` への統合が完了。Unit Test (`tests/test_game_command.py`) により動作確認済み (Phase 6.2 Completed)。
     *   **Next**: 既存のアクション処理をこれらのPrimitivesを用いた実装へ順次移行する。
 3.  **アクション汎用化**
-    *   `MOVE_CARD` の完全統合、`APPLY_MODIFIER` の汎用化により、個別実装を排除。
+    *   **Status**: `MOVE_CARD` の実装を `TransitionCommand` を使用するように移行完了。
+    *   **Next**: `APPLY_MODIFIER` の汎用化、個別実装の排除を継続。
 
 ### 3.1 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 

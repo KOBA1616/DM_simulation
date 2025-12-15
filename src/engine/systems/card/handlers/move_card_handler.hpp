@@ -3,22 +3,35 @@
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "core/game_state.hpp"
+#include "engine/game_command/commands.hpp"
+#include "engine/systems/card/card_registry.hpp" // Added include for registry
 #include <algorithm>
 
 namespace dm::engine {
+
+    // Move helper function to be a standalone static or member helper since GenericCardSystem::find_instance is not public/static
+    static dm::core::CardInstance* find_instance_local(dm::core::GameState& game_state, int instance_id) {
+        using namespace dm::core;
+        for (auto& p : game_state.players) {
+            for (auto& c : p.battle_zone) if (c.instance_id == instance_id) return &c;
+            for (auto& c : p.hand) if (c.instance_id == instance_id) return &c;
+            for (auto& c : p.mana_zone) if (c.instance_id == instance_id) return &c;
+            for (auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
+            for (auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
+            for (auto& c : p.effect_buffer) if (c.instance_id == instance_id) return &c;
+        }
+        return nullptr;
+    }
 
     class MoveCardHandler : public IActionHandler {
     public:
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
+            using namespace dm::engine::game_command;
 
             // Delegate if it requires explicit target selection
             if (ctx.action.scope == dm::core::TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
-                 dm::core::EffectDef ed;
-                 ed.trigger = dm::core::TriggerType::NONE;
-                 ed.condition = dm::core::ConditionDef{"NONE", 0, "", "", "", std::nullopt};
-                 ed.actions = { ctx.action };
-                 GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 GenericCardSystem::delegate_selection(ctx);
                  return;
             }
 
@@ -87,8 +100,17 @@ namespace dm::engine {
                 if (!card_list) continue;
 
                 for (const auto& card : *card_list) {
-                    if (!ctx.card_db.count(card.card_id)) continue;
-                    const auto& def = ctx.card_db.at(card.card_id);
+                    const CardDefinition* def_ptr = nullptr;
+                    if (ctx.card_db.count(card.card_id)) {
+                        def_ptr = &ctx.card_db.at(card.card_id);
+                    } else {
+                        const auto& registry = CardRegistry::get_all_definitions();
+                        if (registry.count(card.card_id)) {
+                            def_ptr = &registry.at(card.card_id);
+                        }
+                    }
+                    if (!def_ptr) continue;
+                    const auto& def = *def_ptr;
 
                     if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
                          // Check protections
@@ -104,149 +126,90 @@ namespace dm::engine {
             std::string dest = ctx.action.destination_zone;
             if (dest.empty()) dest = "GRAVEYARD"; // Default
 
+            // Migrate to TransitionCommand
+            Zone dest_zone = Zone::GRAVEYARD;
+            if (dest == "HAND") dest_zone = Zone::HAND;
+            else if (dest == "MANA_ZONE") dest_zone = Zone::MANA;
+            else if (dest == "SHIELD_ZONE") dest_zone = Zone::SHIELD;
+            else if (dest == "BATTLE_ZONE") dest_zone = Zone::BATTLE;
+            else if (dest == "DECK" || dest == "DECK_TOP") dest_zone = Zone::DECK;
+            else if (dest == "DECK_BOTTOM") dest_zone = Zone::DECK;
+
+            int dest_idx = -1;
+            if (dest == "DECK_BOTTOM") dest_idx = 0;
+
             for (int tid : targets_to_move) {
-                move_card_to_dest(ctx.game_state, tid, dest, ctx.source_instance_id, ctx.card_db);
+                auto* card = find_instance_local(ctx.game_state, tid);
+                if (!card) continue;
+
+                PlayerID owner = GenericCardSystem::get_controller(ctx.game_state, tid);
+                Zone src_zone = Zone::GRAVEYARD; // Dummy default
+                bool found = false;
+
+                auto& p = ctx.game_state.players[owner];
+                if (std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const auto& c){ return c.instance_id == tid; }) != p.battle_zone.end()) { src_zone = Zone::BATTLE; found = true; }
+                else if (std::find_if(p.hand.begin(), p.hand.end(), [&](const auto& c){ return c.instance_id == tid; }) != p.hand.end()) { src_zone = Zone::HAND; found = true; }
+                else if (std::find_if(p.mana_zone.begin(), p.mana_zone.end(), [&](const auto& c){ return c.instance_id == tid; }) != p.mana_zone.end()) { src_zone = Zone::MANA; found = true; }
+                else if (std::find_if(p.shield_zone.begin(), p.shield_zone.end(), [&](const auto& c){ return c.instance_id == tid; }) != p.shield_zone.end()) { src_zone = Zone::SHIELD; found = true; }
+                else if (std::find_if(p.graveyard.begin(), p.graveyard.end(), [&](const auto& c){ return c.instance_id == tid; }) != p.graveyard.end()) { src_zone = Zone::GRAVEYARD; found = true; }
+
+                if (found) {
+                     TransitionCommand cmd(tid, src_zone, dest_zone, owner, dest_idx);
+                     cmd.execute(ctx.game_state);
+
+                     if (src_zone == Zone::BATTLE) {
+                         GenericCardSystem::check_mega_last_burst(ctx.game_state, *card, ctx.card_db);
+                     }
+                }
             }
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
             using namespace dm::core;
+            using namespace dm::engine::game_command;
 
             if (!ctx.targets) return;
 
             std::string dest = ctx.action.destination_zone;
             if (dest.empty()) dest = "GRAVEYARD"; // Default
 
+            Zone dest_zone = Zone::GRAVEYARD;
+            if (dest == "HAND") dest_zone = Zone::HAND;
+            else if (dest == "MANA_ZONE") dest_zone = Zone::MANA;
+            else if (dest == "SHIELD_ZONE") dest_zone = Zone::SHIELD;
+            else if (dest == "BATTLE_ZONE") dest_zone = Zone::BATTLE;
+            else if (dest == "DECK" || dest == "DECK_TOP") dest_zone = Zone::DECK;
+            else if (dest == "DECK_BOTTOM") dest_zone = Zone::DECK;
+
+            int dest_idx = -1;
+            if (dest == "DECK_BOTTOM") dest_idx = 0;
+
             for (int target_id : *ctx.targets) {
-                 move_card_to_dest(ctx.game_state, target_id, dest, ctx.source_instance_id, ctx.card_db);
-            }
-        }
+                auto* card = find_instance_local(ctx.game_state, target_id);
+                if (!card) continue;
 
-    private:
-        void move_card_to_dest(dm::core::GameState& game_state, int instance_id, const std::string& dest, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
-            using namespace dm::core;
+                PlayerID owner = GenericCardSystem::get_controller(ctx.game_state, target_id);
+                Zone src_zone = Zone::GRAVEYARD;
+                bool found = false;
 
-            CardInstance card;
-            bool found = false;
-            bool from_battle_zone = false;
-            PlayerID owner_id = 0;
-
-            // Search all zones
-            for (auto& p : game_state.players) {
-                // Battle Zone
-                auto b_it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (b_it != p.battle_zone.end()) {
-                    card = *b_it;
-                    ZoneUtils::on_leave_battle_zone(game_state, *b_it);
-                    p.battle_zone.erase(b_it);
-                    found = true;
-                    from_battle_zone = true;
-                    owner_id = p.id;
-                    break;
+                auto& p = ctx.game_state.players[owner];
+                if (std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const auto& c){ return c.instance_id == target_id; }) != p.battle_zone.end()) { src_zone = Zone::BATTLE; found = true; }
+                else if (std::find_if(p.hand.begin(), p.hand.end(), [&](const auto& c){ return c.instance_id == target_id; }) != p.hand.end()) { src_zone = Zone::HAND; found = true; }
+                else if (std::find_if(p.mana_zone.begin(), p.mana_zone.end(), [&](const auto& c){ return c.instance_id == target_id; }) != p.mana_zone.end()) { src_zone = Zone::MANA; found = true; }
+                else if (std::find_if(p.shield_zone.begin(), p.shield_zone.end(), [&](const auto& c){ return c.instance_id == target_id; }) != p.shield_zone.end()) { src_zone = Zone::SHIELD; found = true; }
+                else if (std::find_if(p.graveyard.begin(), p.graveyard.end(), [&](const auto& c){ return c.instance_id == target_id; }) != p.graveyard.end()) { src_zone = Zone::GRAVEYARD; found = true; }
+                else if (std::find_if(p.effect_buffer.begin(), p.effect_buffer.end(), [&](const auto& c){ return c.instance_id == target_id; }) != p.effect_buffer.end()) {
+                    continue;
                 }
 
-                // Hand
-                auto h_it = std::find_if(p.hand.begin(), p.hand.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (h_it != p.hand.end()) {
-                    card = *h_it;
-                    p.hand.erase(h_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
+                if (found) {
+                     TransitionCommand cmd(target_id, src_zone, dest_zone, owner, dest_idx);
+                     cmd.execute(ctx.game_state);
+
+                     if (src_zone == Zone::BATTLE) {
+                         GenericCardSystem::check_mega_last_burst(ctx.game_state, *card, ctx.card_db);
+                     }
                 }
-
-                // Mana
-                auto m_it = std::find_if(p.mana_zone.begin(), p.mana_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (m_it != p.mana_zone.end()) {
-                    card = *m_it;
-                    p.mana_zone.erase(m_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
-                }
-
-                // Shield
-                auto s_it = std::find_if(p.shield_zone.begin(), p.shield_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (s_it != p.shield_zone.end()) {
-                    card = *s_it;
-                    p.shield_zone.erase(s_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
-                }
-
-                // Graveyard
-                auto g_it = std::find_if(p.graveyard.begin(), p.graveyard.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (g_it != p.graveyard.end()) {
-                    card = *g_it;
-                    p.graveyard.erase(g_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
-                }
-
-                // Deck
-                 auto d_it = std::find_if(p.deck.begin(), p.deck.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (d_it != p.deck.end()) {
-                    card = *d_it;
-                    p.deck.erase(d_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
-                }
-            }
-
-            if (!found) {
-                // Check buffers
-                for (auto& p : game_state.players) {
-                    auto buf_it = std::find_if(p.effect_buffer.begin(), p.effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                    if (buf_it != p.effect_buffer.end()) {
-                        card = *buf_it;
-                        p.effect_buffer.erase(buf_it);
-                        found = true;
-                        owner_id = p.id;
-                        break;
-                    }
-                }
-            }
-
-            if (!found) return;
-
-            // Destination
-            Player& owner = game_state.players[owner_id];
-
-            // Special handling for SHIELD_ZONE (Shield Trigger / Shield Addition)
-            if (dest == "SHIELD_ZONE") {
-                 card.is_tapped = false;
-                 owner.shield_zone.push_back(card);
-                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD, card.instance_id, card_db);
-            }
-            // General handling
-            else if (dest == "HAND") {
-                card.is_tapped = false;
-                card.summoning_sickness = true;
-                owner.hand.push_back(card);
-            } else if (dest == "MANA_ZONE") {
-                card.is_tapped = false;
-                owner.mana_zone.push_back(card);
-            } else if (dest == "GRAVEYARD") {
-                card.is_tapped = false;
-                owner.graveyard.push_back(card);
-            } else if (dest == "DECK_BOTTOM") {
-                card.is_tapped = false;
-                owner.deck.insert(owner.deck.begin(), card);
-            } else if (dest == "DECK_TOP") {
-                card.is_tapped = false;
-                owner.deck.push_back(card);
-            } else if (dest == "BATTLE_ZONE") {
-                card.is_tapped = false;
-                card.summoning_sickness = true;
-                card.turn_played = game_state.turn_number;
-                owner.battle_zone.push_back(card);
-            }
-
-            if (from_battle_zone) {
-                 GenericCardSystem::check_mega_last_burst(game_state, card, card_db);
             }
         }
     };
