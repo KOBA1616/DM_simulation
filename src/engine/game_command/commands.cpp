@@ -106,6 +106,19 @@ namespace dm::engine::game_command {
     // --- MutateCommand ---
 
     void MutateCommand::execute(core::GameState& state) {
+        // Special case for global modifiers (instance_id might be ignored or -1)
+        if (mutation_type == MutationType::ADD_PASSIVE_EFFECT) {
+            if (passive_effect) {
+                state.passive_effects.push_back(*passive_effect);
+            }
+            return;
+        } else if (mutation_type == MutationType::ADD_COST_MODIFIER) {
+            if (cost_modifier) {
+                state.active_modifiers.push_back(*cost_modifier);
+            }
+            return;
+        }
+
         core::CardInstance* card = state.get_card_instance(target_instance_id);
         if (!card) return;
 
@@ -128,6 +141,19 @@ namespace dm::engine::game_command {
     }
 
     void MutateCommand::invert(core::GameState& state) {
+        // Special case for global modifiers
+        if (mutation_type == MutationType::ADD_PASSIVE_EFFECT) {
+            if (!state.passive_effects.empty()) {
+                state.passive_effects.pop_back();
+            }
+            return;
+        } else if (mutation_type == MutationType::ADD_COST_MODIFIER) {
+            if (!state.active_modifiers.empty()) {
+                state.active_modifiers.pop_back();
+            }
+            return;
+        }
+
         core::CardInstance* card = state.get_card_instance(target_instance_id);
         if (!card) return;
 
