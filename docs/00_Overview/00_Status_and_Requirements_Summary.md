@@ -63,10 +63,10 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
     *   **Status**: `TriggerManager`, `GameEvent` クラスの実装とPythonバインディングが完了 (Phase 6.1 Completed)。
 2.  **GameCommand (Primitives) の実装**
     *   全てのアクションを `TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE` に分解・再実装。
-    *   **Status**: 基本5命令のクラス実装、Pythonバインディング、および `GameState` への統合が完了。Unit Test (`tests/test_game_command.py`) により動作確認済み (Phase 6.2 Completed)。
-    *   **Next**: 既存のアクション処理をこれらのPrimitivesを用いた実装へ順次移行する。
+    *   **Status**: 基本5命令のクラス実装、Pythonバインディング、および `GameState` への統合が完了。Unit Test (`tests/test_game_command.py`) を復元・実装し動作確認済み (Phase 6.2 Completed)。
 3.  **アクション汎用化**
-    *   `MOVE_CARD` の完全統合、`APPLY_MODIFIER` の汎用化により、個別実装を排除。
+    *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP` のハンドラを `GameCommand` を使用するように移行完了 (Phase 6.3 Started)。
+    *   **Next**: 残りのアクション (`MODIFY_POWER` 等) の移行、および `APPLY_MODIFIER` の完全な汎用化（GameCommandラッパー化）。
 
 ### 3.1 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 
