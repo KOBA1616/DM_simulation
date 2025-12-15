@@ -47,7 +47,9 @@ namespace dm::core {
         GRAVEYARD,
         SHIELD,
         HYPER_SPATIAL,
-        GR_DECK
+        GR_DECK,
+        STACK,   // Added for Stack Zone support
+        BUFFER   // Added for Effect Buffer support
     };
 
     enum class Phase : uint8_t {

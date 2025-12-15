@@ -25,17 +25,26 @@ namespace dm::engine::game_command {
                 case core::Zone::GRAVEYARD: return &owner.graveyard;
                 case core::Zone::SHIELD: return &owner.shield_zone;
                 case core::Zone::DECK: return &owner.deck;
-                // Add support for BUFFER if needed, mapped to Zone::HYPER_SPATIAL or similar hack if not in enum
-                // But Phase 00 defines 5 primitives.
-                // Currently Zone enum does not have BUFFER.
-                // Assuming BUFFER is handled via separate command or Zone enum extension.
-                // For now, standard zones.
+                case core::Zone::BUFFER: return &owner.effect_buffer;
+                // Stack is global in current GameState, not per player.
+                // However, TransitionCommand expects owner_id.
+                // If Stack is global, we need to handle it separately or assume owner_id logic applies to stack items?
+                // Currently stack_zone is std::vector<CardInstance> in GameState.
                 default: return nullptr;
             }
         };
 
-        source_vec = get_vec(from_zone);
-        dest_vec = get_vec(to_zone);
+        if (from_zone == core::Zone::STACK) {
+             source_vec = &state.stack_zone;
+        } else {
+             source_vec = get_vec(from_zone);
+        }
+
+        if (to_zone == core::Zone::STACK) {
+             dest_vec = &state.stack_zone;
+        } else {
+             dest_vec = get_vec(to_zone);
+        }
 
         if (!source_vec || !dest_vec) return; // Error
 
@@ -80,9 +89,18 @@ namespace dm::engine::game_command {
         };
 
         // Current location (where it was moved TO) is now the source
-        source_vec = get_vec(to_zone);
+        if (to_zone == core::Zone::STACK) {
+             source_vec = &state.stack_zone;
+        } else {
+             source_vec = get_vec(to_zone);
+        }
+
         // Original location (where it came FROM) is now the dest
-        dest_vec = get_vec(from_zone);
+        if (from_zone == core::Zone::STACK) {
+             dest_vec = &state.stack_zone;
+        } else {
+             dest_vec = get_vec(from_zone);
+        }
 
         if (!source_vec || !dest_vec) return;
 
@@ -190,6 +208,18 @@ namespace dm::engine::game_command {
                 previous_value = state.turn_number;
                 state.turn_number = new_value;
                 break;
+            case FlowType::SET_ATTACK_SOURCE:
+                previous_value = state.current_attack.source_instance_id;
+                state.current_attack.source_instance_id = new_value;
+                break;
+            case FlowType::SET_ATTACK_TARGET:
+                previous_value = state.current_attack.target_instance_id;
+                state.current_attack.target_instance_id = new_value;
+                break;
+            case FlowType::SET_ATTACK_PLAYER:
+                previous_value = state.current_attack.target_player;
+                state.current_attack.target_player = new_value;
+                break;
             default: break;
         }
     }
@@ -201,6 +231,15 @@ namespace dm::engine::game_command {
                 break;
             case FlowType::TURN_CHANGE:
                 state.turn_number = previous_value;
+                break;
+            case FlowType::SET_ATTACK_SOURCE:
+                state.current_attack.source_instance_id = previous_value;
+                break;
+            case FlowType::SET_ATTACK_TARGET:
+                state.current_attack.target_instance_id = previous_value;
+                break;
+            case FlowType::SET_ATTACK_PLAYER:
+                state.current_attack.target_player = previous_value;
                 break;
             default: break;
         }
