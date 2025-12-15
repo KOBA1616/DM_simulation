@@ -1,4 +1,5 @@
 # Simple localization placeholder. Keep ASCII to avoid encoding issues.
+# Updated for better Japanese support.
 TRANSLATIONS = {
     # Action Types
     "GRANT_KEYWORD": "キーワード付与",
