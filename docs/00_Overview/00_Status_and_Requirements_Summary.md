@@ -322,3 +322,94 @@ public:
 ## Kaggle クラウドデータ収集システム 運用マニュアル
 
 （内容は変更なし）
+
+---
+
+## 7. GameCommand アーキテクチャ詳細設計 (GameCommand Architecture Specification)
+
+すべてのアクション（行動）とエフェクト（効果）を、人間にとっての利便性とAIにとっての学習効率を両立させる形で統合するための新しいアーキテクチャ設計です。
+
+### 7.1 3層アーキテクチャ概要 (3-Layer Architecture Overview)
+
+システムの責務を以下の3層に分離し、人間（エディタ）と機械（AI・エンジン）の間に翻訳層を設けます。
+
+1.  **Data Layer (カードエディタ・人間)**
+    *   **概念**: Macro (意味のあるマクロ)
+    *   **役割**: ユーザーは「ドロー」「破壊」「タップ」といったTCGの文脈（マクロ）で定義を行います。
+    *   **データ構造**: 既存のJSON形式 (`EffectActionType`) を維持し、裏側で汎用構造への変換定義を持ちます。
+
+2.  **Core Layer (ゲームエンジン)**
+    *   **概念**: Primitives (5つの物理法則)
+    *   **役割**: マクロを不可分な基本命令（Atom）に分解・コンパイルして実行します。
+    *   **データ構造**: `GameCommand` クラス（5つのプリミティブコマンド）。
+
+3.  **AI Layer (認識・学習)**
+    *   **概念**: Semantic Vector (意味ベクトル)
+    *   **役割**: 個別のカードIDではなく、分解されたプリミティブの特性（移動、変化、観測）を学習します。
+    *   **メリット**: 「除去」や「アドバンテージ」といった概念を物理挙動として理解するため、未知のカードへの対応力が向上します。
+
+### 7.2 5つの基本命令 (The 5 Primitives)
+
+すべてのTCGアクションは、以下の5つの基本命令に分解されます。
+
+#### ① TRANSITION (移動・生成)
+オブジェクトの領域間移動を担当します。
+*   **構造**: `TRANSITION(target_ids, from_zone, to_zone)`
+*   **統合されるアクション**:
+    *   `PLAY_CARD` → `TRANSITION(Hand, BattleZone)`
+    *   `DRAW` → `TRANSITION(Deck, Hand)`
+    *   `DESTROY` → `TRANSITION(BattleZone, Graveyard)`
+    *   `MANA_CHARGE` → `TRANSITION(Hand, ManaZone)`
+    *   `SHIELD_BREAK` → `TRANSITION(ShieldZone, Hand)`
+
+#### ② MUTATE (状態更新)
+オブジェクト内部パラメータの変更を担当します。
+*   **構造**: `MUTATE(target_ids, property, value, duration)`
+*   **統合されるアクション**:
+    *   `TAP/UNTAP` → `MUTATE(tapped, bool)`
+    *   `POWER` → `MUTATE(power, +int)`
+    *   `GRANT_ABILITY` → `MUTATE(keywords, +SpeedAttacker)`
+
+#### ③ FLOW (フロー制御)
+ルール処理、スタック、フェーズ遷移などのゲーム進行を担当します。
+*   **構造**: `FLOW(type, context)`
+*   **統合されるアクション**:
+    *   `RESOLVE_BATTLE` (バトル解決)
+    *   `NEXT_PHASE` (ターン進行)
+    *   `GAME_WIN` (勝利確定)
+
+#### ④ QUERY (観測・条件)
+盤面情報の取得、カウント、条件判定を担当します。
+*   **構造**: `QUERY(scope, filter) -> result`
+*   **統合されるアクション**:
+    *   `COUNT_CARDS` (枚数確認)
+    *   `GET_GAME_STAT` (マナ数、シールド数など)
+    *   コスト軽減計算
+
+#### ⑤ DECIDE (意思決定)
+エージェント（プレイヤー/AI）への入力要求を担当します。
+*   **構造**: `DECIDE(agent_id, candidates, min, max)`
+*   **統合されるアクション**:
+    *   `SELECT_TARGET` (対象選択)
+    *   `CHOOSE_OPTION` (モード選択)
+
+### 7.3 処理フロー例 (Processing Example)
+
+**アクション例：「相手のタップされているクリーチャーを1体破壊する」**
+
+1.  **Card Editor (JSON / Macro)**:
+    ```json
+    { "type": "DESTROY", "filter": { "is_tapped": true, "owner": "OPPONENT" } }
+    ```
+2.  **Engine Compilation (Primitives)**:
+    *   `candidates = QUERY(BattleZone, {tapped: true, owner: opponent})`
+    *   `targets = DECIDE(Player, candidates, 1, 1)`
+    *   `TRANSITION(targets, BattleZone, Graveyard)`
+3.  **AI Observation (Semantic Vector)**:
+    *   `TRANSITION` イベントを観測し、「相手の場の脅威が減少した（BattleZone -> Graveyard）」として評価。
+
+### 7.4 期待される効果 (Expected Benefits)
+
+1.  **AIモデルの汎用化**: アクション空間を数百のIDから「5つの動詞 × 対象」に圧縮でき、学習効率が向上。
+2.  **拡張性**: 新しい能力（例：超次元ゾーン）を追加する際、C++コードを変更せずともJSONデータ上で `TRANSITION` 先を定義するだけで実装可能。
+3.  **エディタの進化**: 上級者向けに、マクロではなく直接コマンドシーケンスを記述できる「スクリプトモード」の提供が可能になる。
