@@ -307,6 +307,10 @@ class CardTextGenerator:
                 # Reformat to "Xのターン中に、Trigger"
                 trigger_text = f"{base_cond}に、{trigger_text}"
                 cond_text = ""
+            elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
+                val = condition.get("value", 0)
+                trigger_text = f"相手がカードを引いた時、{val}枚目以降なら"
+                cond_text = ""
 
         action_texts = []
         for action in actions:
@@ -368,6 +372,10 @@ class CardTextGenerator:
 
         elif cond_type == "OPPONENT_PLAYED_WITHOUT_MANA":
             return "相手がマナゾーンのカードをタップせずにクリーチャーを出すか呪文を唱えた時: "
+
+        elif cond_type == "OPPONENT_DRAW_COUNT":
+            val = condition.get("value", 0)
+            return f"{val}枚目以降なら: "
 
         elif cond_type == "DURING_YOUR_TURN":
             return "自分のターン中: "
