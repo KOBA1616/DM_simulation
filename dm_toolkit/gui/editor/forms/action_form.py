@@ -46,14 +46,19 @@ class ActionEditForm(BaseEditForm):
 
         self.type_combo = QComboBox()
         # "MEASURE_COUNT" is a UI-only type that maps to COUNT_CARDS or GET_GAME_STAT
-        types = [
-            "DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DRAW_CARD", "SEARCH_DECK_BOTTOM", "MEKRAID", "TAP", "UNTAP",
-            "COST_REFERENCE", "COST_REDUCTION", "NONE", "BREAK_SHIELD", "LOOK_AND_ADD", "SUMMON_TOKEN", "DISCARD", "PLAY_FROM_ZONE",
+        # Removed legacy actions: DESTROY, RETURN_TO_HAND, ADD_MANA, SEARCH_DECK_BOTTOM, DISCARD, SEND_TO_DECK_BOTTOM
+        # Kept generic MOVE_CARD
+        self.known_types = [
+            "MOVE_CARD", # Consolidated Action
+            "DRAW_CARD", # Excluded from consolidation
+            "TAP", "UNTAP",
+            "SEARCH_DECK", "MEKRAID",
+            "COST_REFERENCE", "COST_REDUCTION", "NONE", "BREAK_SHIELD", "LOOK_AND_ADD", "SUMMON_TOKEN", "PLAY_FROM_ZONE",
             "REVOLUTION_CHANGE", "MEASURE_COUNT", "APPLY_MODIFIER", "REVEAL_CARDS",
-            "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE", "SEND_TO_DECK_BOTTOM",
-            "FRIEND_BURST", "GRANT_KEYWORD", "MOVE_CARD", "SELECT_OPTION"
+            "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE",
+            "FRIEND_BURST", "GRANT_KEYWORD", "SELECT_OPTION"
         ]
-        self.populate_combo(self.type_combo, types, data_func=lambda x: x, display_func=tr)
+        self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Action Type"), self.type_combo)
 
         self.scope_combo = QComboBox()
@@ -275,6 +280,15 @@ class ActionEditForm(BaseEditForm):
              ui_type = "MEASURE_COUNT"
         elif raw_type == "APPLY_MODIFIER" and str_val == "COST":
              ui_type = "COST_REDUCTION"
+        elif raw_type in ["DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DISCARD", "SEND_TO_DECK_BOTTOM", "SEND_SHIELD_TO_GRAVE", "SEND_TO_MANA"]:
+             # If legacy type is not in known_types, temporarily add it to combo
+             # so it can be viewed and edited without data loss.
+             if raw_type not in self.known_types:
+                 # Check if we already added it (avoid duplicates if populated multiple times)
+                 idx = self.type_combo.findData(raw_type)
+                 if idx == -1:
+                     # Insert nicely? Just append.
+                     self.type_combo.addItem(f"{tr(raw_type)} (Legacy)", raw_type)
 
         self.set_combo_by_data(self.type_combo, ui_type)
 
@@ -368,15 +382,9 @@ class ActionEditForm(BaseEditForm):
                   data['output_value_key'] = out_key
 
     def _get_display_text(self, data):
-        display_type = tr(data['type'])
-        if data['type'] == "GET_GAME_STAT":
-             display_type = f"{tr('GET_GAME_STAT')} ({tr(data['str_val'])})"
-        elif data['type'] == "APPLY_MODIFIER" and data['str_val'] == "COST":
-             display_type = tr("COST_REDUCTION")
-        elif data['type'] == "COST_REFERENCE":
-             display_type = f"{tr('COST_REFERENCE')} ({tr(data['str_val'])})"
-
-        return f"{tr('Action')}: {display_type}"
+        # NOTE: This method seems unused? LogicTreeWidget uses data_manager.py
+        # But kept for safety if BaseEditForm uses it for window title or something.
+        return f"{tr('Action')}: {tr(data['type'])}"
 
     def block_signals_all(self, block):
         self.type_combo.blockSignals(block)
