@@ -67,6 +67,8 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
     *   **Next**: 既存のアクション処理をこれらのPrimitivesを用いた実装へ順次移行する。
 3.  **アクション汎用化**
     *   `MOVE_CARD` の完全統合、`APPLY_MODIFIER` の汎用化により、個別実装を排除。
+    *   **Status**: `MOVE_CARD` の `MoveCardHandler` を `TransitionCommand` を使用するようにリファクタリング完了 (Phase 6.3 Partial: MOVE_CARD Integration Completed)。
+    *   **Next**: `APPLY_MODIFIER` の `MutateCommand` への移行。
 
 ### 3.1 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 

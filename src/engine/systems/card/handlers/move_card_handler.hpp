@@ -3,7 +3,9 @@
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "core/game_state.hpp"
+#include "engine/game_command/commands.hpp"
 #include <algorithm>
+#include <vector>
 
 namespace dm::engine {
 
@@ -123,131 +125,122 @@ namespace dm::engine {
         }
 
     private:
-        void move_card_to_dest(dm::core::GameState& game_state, int instance_id, const std::string& dest, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+        void move_card_to_dest(dm::core::GameState& game_state, int instance_id, const std::string& dest, int /*source_instance_id*/, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             using namespace dm::core;
+            using namespace dm::engine::game_command;
 
-            CardInstance card;
+            // 1. Identify Source
+            Zone from_zone = Zone::GRAVEYARD; // Default, will update
+            PlayerID owner_id = 0;
             bool found = false;
             bool from_battle_zone = false;
-            PlayerID owner_id = 0;
 
-            // Search all zones
+            // Search to find 'from_zone' and 'owner_id'
             for (auto& p : game_state.players) {
-                // Battle Zone
-                auto b_it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (b_it != p.battle_zone.end()) {
-                    card = *b_it;
-                    ZoneUtils::on_leave_battle_zone(game_state, *b_it);
-                    p.battle_zone.erase(b_it);
-                    found = true;
-                    from_battle_zone = true;
-                    owner_id = p.id;
-                    break;
-                }
-
-                // Hand
-                auto h_it = std::find_if(p.hand.begin(), p.hand.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (h_it != p.hand.end()) {
-                    card = *h_it;
-                    p.hand.erase(h_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
-                }
-
-                // Mana
-                auto m_it = std::find_if(p.mana_zone.begin(), p.mana_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (m_it != p.mana_zone.end()) {
-                    card = *m_it;
-                    p.mana_zone.erase(m_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
-                }
-
-                // Shield
-                auto s_it = std::find_if(p.shield_zone.begin(), p.shield_zone.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (s_it != p.shield_zone.end()) {
-                    card = *s_it;
-                    p.shield_zone.erase(s_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
-                }
-
-                // Graveyard
-                auto g_it = std::find_if(p.graveyard.begin(), p.graveyard.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (g_it != p.graveyard.end()) {
-                    card = *g_it;
-                    p.graveyard.erase(g_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
-                }
-
-                // Deck
-                 auto d_it = std::find_if(p.deck.begin(), p.deck.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                if (d_it != p.deck.end()) {
-                    card = *d_it;
-                    p.deck.erase(d_it);
-                    found = true;
-                    owner_id = p.id;
-                    break;
-                }
+                if (find_in_zone(p.battle_zone, instance_id)) { from_zone = Zone::BATTLE; owner_id = p.id; found = true; from_battle_zone = true; break; }
+                if (find_in_zone(p.hand, instance_id)) { from_zone = Zone::HAND; owner_id = p.id; found = true; break; }
+                if (find_in_zone(p.mana_zone, instance_id)) { from_zone = Zone::MANA; owner_id = p.id; found = true; break; }
+                if (find_in_zone(p.shield_zone, instance_id)) { from_zone = Zone::SHIELD; owner_id = p.id; found = true; break; }
+                if (find_in_zone(p.graveyard, instance_id)) { from_zone = Zone::GRAVEYARD; owner_id = p.id; found = true; break; }
+                if (find_in_zone(p.deck, instance_id)) { from_zone = Zone::DECK; owner_id = p.id; found = true; break; }
             }
 
             if (!found) {
-                // Check buffers
+                // Buffer check
                 for (auto& p : game_state.players) {
-                    auto buf_it = std::find_if(p.effect_buffer.begin(), p.effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
-                    if (buf_it != p.effect_buffer.end()) {
-                        card = *buf_it;
-                        p.effect_buffer.erase(buf_it);
-                        found = true;
-                        owner_id = p.id;
-                        break;
-                    }
+                     if (find_in_zone(p.effect_buffer, instance_id)) {
+                         // Fallback for buffer (not supported by TransitionCommand)
+                         auto it = std::find_if(p.effect_buffer.begin(), p.effect_buffer.end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
+                         if (it != p.effect_buffer.end()) {
+                             CardInstance card = *it;
+                             p.effect_buffer.erase(it);
+
+                             // Replicate legacy destination logic manually
+                             Player& owner = game_state.players[p.id];
+
+                             if (dest == "SHIELD_ZONE") {
+                                 card.is_tapped = false;
+                                 owner.shield_zone.push_back(card);
+                                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD, card.instance_id, card_db);
+                             } else if (dest == "HAND") {
+                                 card.is_tapped = false;
+                                 card.summoning_sickness = true;
+                                 owner.hand.push_back(card);
+                             } else if (dest == "MANA_ZONE") {
+                                 card.is_tapped = false;
+                                 owner.mana_zone.push_back(card);
+                             } else if (dest == "GRAVEYARD") {
+                                 card.is_tapped = false;
+                                 owner.graveyard.push_back(card);
+                             } else if (dest == "DECK_BOTTOM") {
+                                 card.is_tapped = false;
+                                 owner.deck.insert(owner.deck.begin(), card);
+                             } else if (dest == "DECK_TOP") {
+                                 card.is_tapped = false;
+                                 owner.deck.push_back(card);
+                             } else if (dest == "BATTLE_ZONE") {
+                                 card.is_tapped = false;
+                                 card.summoning_sickness = true;
+                                 card.turn_played = game_state.turn_number;
+                                 owner.battle_zone.push_back(card);
+                             }
+                         }
+                         return;
+                     }
                 }
+                return; // Not found anywhere
             }
 
-            if (!found) return;
+            // 2. Identify Destination Zone and Index
+            Zone to_zone = Zone::GRAVEYARD;
+            int dest_index = -1; // Default append
 
-            // Destination
-            Player& owner = game_state.players[owner_id];
+            if (dest == "SHIELD_ZONE") to_zone = Zone::SHIELD;
+            else if (dest == "HAND") to_zone = Zone::HAND;
+            else if (dest == "MANA_ZONE") to_zone = Zone::MANA;
+            else if (dest == "GRAVEYARD") to_zone = Zone::GRAVEYARD;
+            else if (dest == "DECK_BOTTOM") { to_zone = Zone::DECK; dest_index = 0; }
+            else if (dest == "DECK_TOP") { to_zone = Zone::DECK; dest_index = -1; }
+            else if (dest == "BATTLE_ZONE") to_zone = Zone::BATTLE;
 
-            // Special handling for SHIELD_ZONE (Shield Trigger / Shield Addition)
-            if (dest == "SHIELD_ZONE") {
-                 card.is_tapped = false;
-                 owner.shield_zone.push_back(card);
-                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD, card.instance_id, card_db);
+            // 3. Pre-move Side Effects
+            if (from_battle_zone) {
+                 CardInstance* c = game_state.get_card_instance(instance_id);
+                 if (c) ZoneUtils::on_leave_battle_zone(game_state, *c);
             }
-            // General handling
-            else if (dest == "HAND") {
-                card.is_tapped = false;
-                card.summoning_sickness = true;
-                owner.hand.push_back(card);
-            } else if (dest == "MANA_ZONE") {
-                card.is_tapped = false;
-                owner.mana_zone.push_back(card);
-            } else if (dest == "GRAVEYARD") {
-                card.is_tapped = false;
-                owner.graveyard.push_back(card);
-            } else if (dest == "DECK_BOTTOM") {
-                card.is_tapped = false;
-                owner.deck.insert(owner.deck.begin(), card);
-            } else if (dest == "DECK_TOP") {
-                card.is_tapped = false;
-                owner.deck.push_back(card);
+
+            // 4. Execute Command
+            TransitionCommand cmd(instance_id, from_zone, to_zone, owner_id, dest_index);
+            cmd.execute(game_state);
+
+            // 5. Post-move Side Effects and Property Resets
+            // Retrieve card from new location
+            CardInstance* moved_card = game_state.get_card_instance(instance_id);
+            if (!moved_card) return; // Should not happen
+
+            // Reset properties
+            moved_card->is_tapped = false; // Default reset for all moves
+
+            if (dest == "HAND") {
+                moved_card->summoning_sickness = true;
             } else if (dest == "BATTLE_ZONE") {
-                card.is_tapped = false;
-                card.summoning_sickness = true;
-                card.turn_played = game_state.turn_number;
-                owner.battle_zone.push_back(card);
+                moved_card->summoning_sickness = true;
+                moved_card->turn_played = game_state.turn_number;
+            } else if (dest == "SHIELD_ZONE") {
+                 // Trigger ON_SHIELD_ADD
+                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD, instance_id, card_db);
             }
 
             if (from_battle_zone) {
-                 GenericCardSystem::check_mega_last_burst(game_state, card, card_db);
+                 GenericCardSystem::check_mega_last_burst(game_state, *moved_card, card_db);
             }
+        }
+
+        bool find_in_zone(const std::vector<dm::core::CardInstance>& zone, int instance_id) {
+            for (const auto& c : zone) {
+                if (c.instance_id == instance_id) return true;
+            }
+            return false;
         }
     };
 }

@@ -607,6 +607,16 @@ PYBIND11_MODULE(dm_ai_module, m) {
                  s.card_owner_map[iid] = pid;
              }
         })
+        .def("add_test_card_to_buffer", [](GameState& s, PlayerID pid, CardID cid, int iid) {
+             CardInstance c;
+             c.card_id = cid;
+             c.instance_id = iid;
+             s.players[pid].effect_buffer.push_back(c);
+             if (iid >= 0) {
+                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
+                 s.card_owner_map[iid] = pid;
+             }
+        })
         .def("clear_zone", [](GameState& s, PlayerID pid, Zone zone) {
             if (pid >= 2) return;
             if (zone == Zone::SHIELD) s.players[pid].shield_zone.clear();
