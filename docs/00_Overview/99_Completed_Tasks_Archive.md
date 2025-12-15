@@ -4,6 +4,17 @@
 
 ## 完了済み (Completed)
 
+### 3.0 [Priority: High] Phase 6: GameCommand アーキテクチャとエンジン刷新 (Engine Overhaul)
+
+1.  **イベント駆動型トリガーシステムの実装**
+    *   ハードコードされたフックポイントを廃止し、`TriggerManager` による一元管理へ移行。
+    *   **Status**: `TriggerManager`, `GameEvent` クラスの実装とPythonバインディングが完了 (Phase 6.1 Completed)。
+2.  **GameCommand (Primitives) の実装**
+    *   全てのアクションを `TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE` に分解・再実装。
+    *   **Status**: 基本5命令のクラス実装、Pythonバインディング、および `GameState` への統合が完了。Unit Test (`tests/test_game_command.py`) を復元・実装し動作確認済み (Phase 6.2 Completed)。
+3.  **アクション汎用化**
+    *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP`、`APPLY_MODIFIER`、`MODIFY_POWER`、`BREAK_SHIELD`、`DESTROY_CARD`、`PLAY_CARD`、および `ATTACK` (AttackHandler) のハンドラを `GameCommand` を使用するように移行完了。`GameCommand` の `Zone` に `STACK`, `BUFFER` を追加し、拡張完了 (Phase 6.3 Completed)。
+
 ### 2.4 実装上の不整合の修正 (Inconsistencies Resolved)
 
 1.  **C++ コンパイル警告 (ConditionDef) の修正**
