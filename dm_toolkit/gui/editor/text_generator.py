@@ -17,18 +17,8 @@ class CardTextGenerator:
         "ZERO": "ゼロ"
     }
 
-    TYPE_MAP = {
-        "CREATURE": "クリーチャー",
-        "SPELL": "呪文",
-        "EVOLUTION_CREATURE": "進化クリーチャー",
-        "TAMASEED": "タマシード",
-        "CROSS_GEAR": "クロスギア",
-        "CASTLE": "城",
-        "PSYCHIC_CREATURE": "サイキック・クリーチャー",
-        "GR_CREATURE": "GRクリーチャー"
-    }
-
-    KEYWORD_MAP = {
+    # Backup map if tr() returns the key itself
+    KEYWORD_TRANSLATION = {
         "speed_attacker": "スピードアタッカー",
         "blocker": "ブロッカー",
         "slayer": "スレイヤー",
@@ -47,26 +37,8 @@ class CardTextGenerator:
         "meta_counter_play": "メタカウンター",
         "power_attacker": "パワーアタッカー",
         "g_zero": "G・ゼロ",
-        "ex_life": "EXライフ"
-    }
-
-    TRIGGER_MAP = {
-        "ON_PLAY": "このクリーチャーが出た時",
-        "ON_OTHER_ENTER": "他のクリーチャーが出た時",
-        "AT_ATTACK": "このクリーチャーが攻撃する時",
-        "ON_DESTROY": "このクリーチャーが破壊された時",
-        "AT_END_OF_TURN": "自分のターンの終わりに",
-        "AT_END_OF_OPPONENT_TURN": "相手のターンの終わりに",
-        "ON_BLOCK": "このクリーチャーがブロックした時",
-        "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
-        "TURN_START": "自分のターンのはじめに",
-        "S_TRIGGER": "S・トリガー",
-        "PASSIVE_CONST": "（常在効果）",
-        "ON_SHIELD_ADD": "カードがシールドゾーンに置かれた時",
-        "AT_BREAK_SHIELD": "シールドをブレイクする時",
-        "ON_CAST_SPELL": "呪文を唱えた時",
-        "ON_OPPONENT_DRAW": "相手がカードを引いた時",
-        "NONE": ""
+        "ex_life": "EXライフ",
+        "unblockable": "ブロックされない"
     }
 
     ACTION_MAP = {
@@ -77,7 +49,7 @@ class CardTextGenerator:
         "UNTAP": "{target}を{value1}{unit}選び、アンタップする。",
         "RETURN_TO_HAND": "{target}を{value1}{unit}選び、手札に戻す。",
         "SEND_TO_MANA": "{target}を{value1}{unit}選び、マナゾーンに置く。",
-        "MODIFY_POWER": "{target}のパワーを{value1}する。", # Dynamic update needed for signs
+        "MODIFY_POWER": "{target}のパワーを{value1}する。",
         "BREAK_SHIELD": "相手のシールドを{value1}つブレイクする。",
         "LOOK_AND_ADD": "自分の山札の上から{value1}枚を見る。その中から{value2}枚を手札に加え、残りを{zone}に置く。",
         "SEARCH_DECK_BOTTOM": "自分の山札の下から{value1}枚を見る。",
@@ -114,17 +86,6 @@ class CardTextGenerator:
         "APPLY_MODIFIER": "効果を付与する。",
     }
 
-    ZONE_MAP = {
-        "HAND": "手札",
-        "MANA_ZONE": "マナゾーン",
-        "GRAVEYARD": "墓地",
-        "DECK": "山札",
-        "BATTLE_ZONE": "バトルゾーン",
-        "SHIELD_ZONE": "シールドゾーン",
-        "DECK_BOTTOM": "山札の下",
-        "DECK_TOP": "山札の上"
-    }
-
     STAT_KEY_MAP = {
         "MANA_COUNT": ("マナゾーンのカード", "枚"),
         "CREATURE_COUNT": ("クリーチャー", "体"),
@@ -138,6 +99,8 @@ class CardTextGenerator:
         "OPPONENT_HAND_COUNT": ("相手の手札", "枚"),
         "OPPONENT_GRAVEYARD_COUNT": ("相手の墓地のカード", "枚"),
         "OPPONENT_BATTLE_ZONE_COUNT": ("相手のバトルゾーンのカード", "枚"),
+        "CARDS_DRAWN_THIS_TURN": ("このターンに引いたカード", "枚"),
+        "MANA_CIVILIZATION_COUNT": ("マナゾーンの文明数", ""),
     }
 
     @classmethod
@@ -153,7 +116,15 @@ class CardTextGenerator:
         # 1. Header (Name / Cost / Civ / Race)
         name = data.get("name", "Unknown")
         cost = data.get("cost", 0)
-        civs = cls._format_civs(data.get("civilizations", []))
+
+        # Handle both list and string formats for civilization
+        civs_data = data.get("civilizations", [])
+        if not civs_data and "civilization" in data:
+            civ_single = data.get("civilization")
+            if civ_single:
+                civs_data = [civ_single]
+        civs = cls._format_civs(civs_data)
+
         type_str = tr(data.get("type", "CREATURE"))
         races = " / ".join(data.get("races", []))
 
@@ -175,7 +146,9 @@ class CardTextGenerator:
         if keywords:
             for k, v in keywords.items():
                 if v:
-                    kw_str = tr(k) # Use tr for keyword names if mapped
+                    # Try explicit map first, then tr()
+                    kw_str = cls.KEYWORD_TRANSLATION.get(k, tr(k))
+
                     if k == "power_attacker":
                         bonus = data.get("power_attacker_bonus", 0)
                         if bonus > 0:
@@ -186,6 +159,11 @@ class CardTextGenerator:
                             cond_text = cls._describe_simple_filter(cond)
                             kw_str += f"：{cond_text}"
                             kw_str += f"（自分の{cond_text}が攻撃する時、そのクリーチャーと手札のこのクリーチャーと入れ替えてもよい）"
+                    elif k == "hyper_energy":
+                        kw_str += "（このクリーチャーを召喚する時、コストの代わりに自分のクリーチャーを2体タップしてもよい）"
+                    elif k == "just_diver":
+                        kw_str += "（このクリーチャーが出た時、次の自分のターンのはじめまで、このクリーチャーは相手に選ばれず、攻撃されない）"
+
                     kw_lines.append(f"■ {kw_str}")
         if kw_lines:
             lines.extend(kw_lines)
@@ -206,8 +184,10 @@ class CardTextGenerator:
 
         # 3. Effects
         effects = data.get("effects", [])
+        is_spell = data.get("type", "CREATURE") == "SPELL"
+
         for effect in effects:
-            text = cls._format_effect(effect)
+            text = cls._format_effect(effect, is_spell)
             if text:
                 lines.append(f"■ {text}")
 
@@ -216,7 +196,7 @@ class CardTextGenerator:
         if metamorphs:
             lines.append("【追加能力】")
             for effect in metamorphs:
-                 text = cls._format_effect(effect)
+                 text = cls._format_effect(effect, is_spell)
                  if text:
                      lines.append(f"■ {text}")
 
@@ -289,19 +269,20 @@ class CardTextGenerator:
         return f"コスト軽減: {desc}"
 
     @classmethod
-    def _format_effect(cls, effect: Dict[str, Any]) -> str:
+    def _format_effect(cls, effect: Dict[str, Any], is_spell: bool = False) -> str:
         trigger = effect.get("trigger", "NONE")
         condition = effect.get("condition", {})
         actions = effect.get("actions", [])
 
-        trigger_text = tr(trigger)
+        trigger_text = cls.trigger_to_japanese(trigger, is_spell)
         cond_text = cls._format_condition(condition)
         cond_type = condition.get("type", "NONE")
 
+        # Refined natural language logic
         if trigger != "NONE" and trigger != "PASSIVE_CONST":
             if cond_type == "DURING_YOUR_TURN" or cond_type == "DURING_OPPONENT_TURN":
                 base_cond = cond_text.replace(": ", "")
-                trigger_text = f"{base_cond}に、{trigger_text}"
+                trigger_text = f"{base_cond}、{trigger_text}" # 自分のターン中、このクリーチャーが出た時
                 cond_text = ""
             elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
                 val = condition.get("value", 0)
@@ -314,6 +295,17 @@ class CardTextGenerator:
 
         full_action_text = " ".join(action_texts).strip()
 
+        # If it's a Spell's main effect (ON_PLAY), we can often omit the trigger text "Played/Cast"
+        # unless there's a condition or it's a specific sub-trigger.
+        # But usually spells just list the effect. S-Trigger is handled as a Keyword (mostly),
+        # but in legacy JSON it might be in effects? No, keywords.
+        # However, "S-Trigger" is displayed via keywords.
+        # If trigger is ON_PLAY and is_spell is True, we might suppress "このクリーチャーが出た時"
+        # but if it was mapped to "呪文を唱えた時", we might keep it?
+        # Standard duel masters text: Spells don't say "When you cast this spell" for the main effect.
+        if is_spell and trigger == "ON_PLAY":
+            trigger_text = ""
+
         if trigger_text and trigger != "NONE" and trigger != "PASSIVE_CONST":
              if not full_action_text:
                  return ""
@@ -322,6 +314,28 @@ class CardTextGenerator:
              return f"{cond_text}{full_action_text}"
         else:
              return f"{cond_text}{full_action_text}"
+
+    @classmethod
+    def trigger_to_japanese(cls, trigger: str, is_spell: bool = False) -> str:
+        mapping = {
+            "ON_PLAY": "このクリーチャーが出た時" if not is_spell else "この呪文を唱えた時", # Suppressed later for main spell effect
+            "ON_OTHER_ENTER": "他のクリーチャーが出た時",
+            "AT_ATTACK": "このクリーチャーが攻撃する時",
+            "ON_DESTROY": "このクリーチャーが破壊された時",
+            "AT_END_OF_TURN": "自分のターンの終わりに",
+            "AT_END_OF_OPPONENT_TURN": "相手のターンの終わりに",
+            "ON_BLOCK": "このクリーチャーがブロックした時",
+            "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
+            "TURN_START": "自分のターンのはじめに",
+            "S_TRIGGER": "S・トリガー",
+            "PASSIVE_CONST": "（常在効果）",
+            "ON_SHIELD_ADD": "カードがシールドゾーンに置かれた時",
+            "AT_BREAK_SHIELD": "シールドをブレイクする時",
+            "ON_CAST_SPELL": "呪文を唱えた時",
+            "ON_OPPONENT_DRAW": "相手がカードを引いた時",
+            "NONE": ""
+        }
+        return mapping.get(trigger, trigger)
 
     @classmethod
     def _format_condition(cls, condition: Dict[str, Any]) -> str:
@@ -366,7 +380,7 @@ class CardTextGenerator:
              return f"自分の{stat_name}が{op_text}なら: "
 
         elif cond_type == "OPPONENT_PLAYED_WITHOUT_MANA":
-            return "相手がマナゾーンのカードをタップせずにクリーチャーを出すか呪文を唱えた時: "
+            return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時: "
 
         elif cond_type == "OPPONENT_DRAW_COUNT":
             val = condition.get("value", 0)
@@ -389,10 +403,15 @@ class CardTextGenerator:
         atype = action.get("type", "NONE")
         template = cls.ACTION_MAP.get(atype, "")
 
+        # Determine verb form (standard or optional)
+        optional = action.get("optional", False)
+
+        # Resolve dynamic target strings
+        target_str, unit = cls._resolve_target(action)
+
         # Complex Action Logic
         if atype == "MODIFY_POWER":
             val = action.get("value1", 0)
-            target_str, _ = cls._resolve_target(action)
             sign = "+" if val >= 0 else ""
             return f"{target_str}のパワーを{sign}{val}する。"
 
@@ -411,17 +430,18 @@ class CardTextGenerator:
             elif str_val == "HYPER_ENERGY":
                 return "ハイパーエナジー"
             elif str_val in ["SYM_CREATURE", "SYM_SPELL", "SYM_SHIELD"]:
-                target_desc, unit = cls._resolve_target(action)
                 val1 = action.get("value1", 0)
                 cost_term = "召喚コスト" if "CREATURE" in str_val else "コスト"
-                return f"{target_desc}1{unit}につき、このクリーチャーの{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
+                return f"{target_str}1{unit}につき、このクリーチャーの{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
+            elif str_val == "CARDS_DRAWN_THIS_TURN":
+                val1 = action.get("value1", 0)
+                return f"このターンに引いたカード1枚につき、このクリーチャーの召喚コストを{val1}少なくする。ただし、コストは0以下にはならない。"
             else:
                 filter_def = action.get("filter")
                 if filter_def:
-                     target_desc, unit = cls._resolve_target(action)
                      val1 = action.get("value1", 0)
-                     return f"{target_desc}1{unit}につき、このクリーチャーのコストを{val1}少なくする。ただし、コストは0以下にはならない。"
-                return "コストを軽減する"
+                     return f"{target_str}1{unit}につき、このクリーチャーのコストを{val1}少なくする。ただし、コストは0以下にはならない。"
+                return "コストを軽減する。"
 
         elif atype == "SELECT_OPTION":
             options = action.get("options", [])
@@ -429,13 +449,13 @@ class CardTextGenerator:
             val1 = action.get("value1", 1)
             lines.append(f"次の中から{val1}回選ぶ。（同じものを選んでもよい）")
             for i, opt_chain in enumerate(options):
-                # Flatten single action or handle chain
                 chain_text = " ".join([cls._format_action(a) for a in opt_chain])
                 lines.append(f"▶ {chain_text}")
             return "\n".join(lines)
 
         elif atype == "MEKRAID":
             val1 = action.get("value1", 0)
+            # Add simple civ detection if possible, otherwise generic
             return f"メクレイド{val1}（自分の山札の上から3枚を見る。その中からコスト{val1}以下のクリーチャーを1体、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
 
         elif atype == "FRIEND_BURST":
@@ -445,6 +465,22 @@ class CardTextGenerator:
         elif atype == "REVOLUTION_CHANGE":
              return "" # Covered by keyword
 
+        elif atype == "APPLY_MODIFIER":
+             # Need to know WHAT modifier
+             str_val = action.get("str_val", "")
+             val1 = action.get("value1", 0)
+             if str_val == "SPEED_ATTACKER":
+                 return f"{target_str}に「スピードアタッカー」を与える。"
+             elif str_val == "BLOCKER":
+                 return f"{target_str}に「ブロッカー」を与える。"
+             elif str_val == "SLAYER":
+                 return f"{target_str}に「スレイヤー」を与える。"
+             elif str_val == "COST":
+                 sign = "少なくする" if val1 > 0 else "増やす"
+                 return f"{target_str}のコストを{abs(val1)}{sign}。"
+             else:
+                 return f"{target_str}に効果（{str_val}）を与える。"
+
         if not template:
             return f"({tr(atype)})"
 
@@ -453,33 +489,54 @@ class CardTextGenerator:
         val2 = action.get("value2", 0)
         str_val = action.get("str_val", "")
         input_key = action.get("input_value_key", "")
-        target_str, unit = cls._resolve_target(action)
 
-        is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA"]
+        is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA", "MOVE_CARD"]
 
         if input_key:
              val1 = "（その数）"
         elif val1 == 0 and is_generic_selection:
+             # Logic for "All" if 0 and generic
              if atype == "DESTROY": template = "{target}をすべて破壊する。"
              elif atype == "TAP": template = "{target}をすべてタップする。"
              elif atype == "UNTAP": template = "{target}をすべてアンタップする。"
              elif atype == "RETURN_TO_HAND": template = "{target}をすべて手札に戻す。"
              elif atype == "SEND_TO_MANA": template = "{target}をすべてマナゾーンに置く。"
+             elif atype == "MOVE_CARD":
+                 # Fallback handled in specific logic below, this is just template swap
+                 pass
 
         if atype == "GRANT_KEYWORD":
             str_val = tr(str_val)
 
         elif atype == "GET_GAME_STAT":
-            # Translate the stat name (e.g., MANA_CIVILIZATION_COUNT -> マナ文明数)
-            return f"（{tr(str_val)}を参照）"
+            stat_name = cls.STAT_KEY_MAP.get(str_val, (str_val, ""))[0]
+            return f"（{stat_name}を参照）"
 
         elif atype == "COUNT_CARDS":
-            # Support COUNT_CARDS modes
             mode = str_val
             if not mode or mode == "CARDS_MATCHING_FILTER":
                  return f"（{target_str}の数を数える）"
             else:
-                 return f"（{tr(mode)}を数える）"
+                 stat_name = cls.STAT_KEY_MAP.get(mode, (mode, ""))[0]
+                 return f"（{stat_name}を数える）"
+
+        elif atype == "MOVE_CARD":
+            dest_zone = action.get("destination_zone", "")
+            # Check for "All" condition
+            is_all = (val1 == 0 and not input_key)
+
+            if dest_zone == "HAND":
+                template = "{target}を{value1}{unit}選び、手札に戻す。"
+                if is_all: template = "{target}をすべて手札に戻す。"
+            elif dest_zone == "MANA_ZONE":
+                template = "{target}を{value1}{unit}選び、マナゾーンに置く。"
+                if is_all: template = "{target}をすべてマナゾーンに置く。"
+            elif dest_zone == "GRAVEYARD":
+                template = "{target}を{value1}{unit}選び、墓地に置く。"
+                if is_all: template = "{target}をすべて墓地に置く。"
+            elif dest_zone == "DECK_BOTTOM":
+                template = "{target}を{value1}{unit}選び、山札の下に置く。"
+                if is_all: template = "{target}をすべて山札の下に置く。"
 
         elif atype == "PLAY_FROM_ZONE":
             action = action.copy()
@@ -502,11 +559,14 @@ class CardTextGenerator:
             scope = action.get("scope", "NONE")
             if scope in ["PLAYER_SELF", "SELF"]: action["scope"] = "NONE"
 
+            # Re-resolve target with cleaned filter
             target_str, unit = cls._resolve_target(action)
-            verb = "プレイしてもよい"
+            verb = "プレイする"
             types = temp_filter.get("types", [])
             if "SPELL" in types and "CREATURE" not in types:
-                verb = "唱えてもよい"
+                verb = "唱える"
+            elif "CREATURE" in types:
+                verb = "召喚する"
 
             if action.get("source_zone"):
                 template = "{source_zone}からコスト{value1}以下の{target}を" + verb + "。"
@@ -539,41 +599,21 @@ class CardTextGenerator:
                 cond_text = cls._format_condition(cond)
                 text = f"{cond_text}{text}"
 
-        # Optional handling
-        if action.get("optional", False):
-            phrase_select = f"{val1}{unit}選び"
-            phrase_destroy = f"{val1}{unit}破壊する"
-            phrase_discard = f"{val1}{unit}捨てる"
-            phrase_break = f"{val1}{unit}ブレイクする"
-            phrase_put_mana = f"{val1}{unit}をマナゾーンに置く"
-            phrase_add_hand = f"{val2}{unit}を手札に加え"
-            phrase_shield_ify = f"{val1}{unit}をシールド化する"
-            phrase_deck_bottom = f"{val1}{unit}、山札の下に置く"
-
-            if phrase_select in text:
-                text = text.replace(phrase_select, f"{val1}{unit}まで選び")
-            elif phrase_destroy in text:
-                text = text.replace(phrase_destroy, f"{val1}{unit}まで破壊する")
-            elif phrase_discard in text:
-                text = text.replace(phrase_discard, f"{val1}{unit}まで捨てる")
-            elif phrase_break in text:
-                text = text.replace(phrase_break, f"{val1}{unit}までブレイクする")
-            elif phrase_put_mana in text:
-                text = text.replace(phrase_put_mana, f"{val1}{unit}までをマナゾーンに置く")
-            elif phrase_add_hand in text:
-                text = text.replace(phrase_add_hand, f"{val2}{unit}までを手札に加え")
-            elif phrase_shield_ify in text:
-                text = text.replace(phrase_shield_ify, f"{val1}{unit}までシールド化する")
-            elif phrase_deck_bottom in text:
-                text = text.replace(phrase_deck_bottom, f"{val1}{unit}まで、山札の下に置く")
-            elif "をプレイしてもよい" in text:
-                 pass # Already optional
-            elif "を唱えてもよい" in text:
-                 pass # Already optional
+        # Verb Conjugation for Optional Actions
+        if optional:
+            if text.endswith("する。"):
+                text = text[:-3] + "してもよい。"
+            elif text.endswith("く。"): # 引く、置く
+                text = text[:-2] + "いてもよい。" # 引いてもよい
+            elif text.endswith("す。"): # 戻す、出す
+                text = text[:-2] + "してもよい。" # 戻してもよい
+            elif text.endswith("る。"): # 見る、捨てる、唱える
+                text = text[:-2] + "てもよい。"
+            elif text.endswith("う。"): # 支払う
+                text = text[:-2] + "ってもよい。"
             else:
-                 # Generic append if no pattern match
-                 if not text.endswith("てもよい。"):
-                     text = text[:-1] + "てもよい。"
+                if not text.endswith("てもよい。"):
+                    text = text[:-1] + "てもよい。"
 
         return text
 
