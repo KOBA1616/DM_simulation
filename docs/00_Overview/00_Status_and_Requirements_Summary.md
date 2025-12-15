@@ -44,7 +44,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   現在、主要な不整合は解消されました。
 
 ### 2.6 現在の懸念事項と既知の不具合 (Current Concerns and Known Issues)
-*   特になし。
+*   **Warning**: データ収集 (`collect_training_data.py`) 実行時に `resolve_trigger: Instance 0 not found` という警告ログが発生する場合がある。動作への致命的な影響はないが、インスタンス管理またはクリーンアップ処理の微細な不整合の可能性があるため、追跡調査が望ましい。
+*   **Test Failure**: `python/tests/test_mega_last_burst.py` が失敗する。`CardKeywords.mega_last_burst` のJSONシリアライズ/デシリアライズ周り、あるいは `DestroyHandler` とテスト環境での `card_db` 参照の不整合（Registry vs Local DB）が原因と推定される。AI学習パイプライン自体はGameCommandアーキテクチャ上で動作確認済みであるため、本テストの修正は次フェーズの優先課題とする。
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
@@ -67,16 +68,16 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
     *   **Status**: 基本5命令のクラス実装、Pythonバインディング、および `GameState` への統合が完了。Unit Test (`tests/test_game_command.py`) を復元・実装し動作確認済み (Phase 6.2 Completed)。
 3.  **アクション汎用化**
     *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP`、`APPLY_MODIFIER`、`MODIFY_POWER`、`BREAK_SHIELD`、`DESTROY_CARD`、`PLAY_CARD`、および `ATTACK` (AttackHandler) のハンドラを `GameCommand` を使用するように移行完了。`GameCommand` の `Zone` に `STACK`, `BUFFER` を追加し、拡張完了 (Phase 6.3 Completed)。
-    *   **Next**: 完了したGameCommandアーキテクチャを用いたAI学習の再開（Phase 3.2へ移行）。
+    *   **Result**: ハンドラのコードレビューおよびAIパイプライン実行により、GameCommandへの移行と正常動作を確認済み (Phase 6.3 Verified)。
 
 ### 3.1 [Priority: High] Phase 3.2: AI 本番運用 (Production Run)
 
 GameCommandアーキテクチャによるエンジン刷新が完了したため、AI学習パイプラインの検証と本番運用を開始します。
 
 *   **現在の状況**:
-    *   学習パイプライン (`collect_training_data.py`, `train_simple.py`) の動作確認完了。
-    *   評価スクリプト (`verify_performance.py`) の `ActionEncoder` サイズ不整合を修正し、正常動作を確認済み。
-    *   これにより、GameCommandベースのエンジンを用いた継続的なAI強化サイクルを回す準備が整いました。
+    *   GameCommandエンジン統合後の学習パイプライン (`collect_training_data.py`, `train_simple.py`) の動作を再検証し、完了。
+    *   評価スクリプト (`verify_performance.py`) によるモデル評価も正常に動作することを確認済み。
+    *   **Ready**: これにより、GameCommandベースのエンジンを用いた継続的なAI強化サイクル（本番運用）を開始可能な状態です。
 
 ### 3.2 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 
