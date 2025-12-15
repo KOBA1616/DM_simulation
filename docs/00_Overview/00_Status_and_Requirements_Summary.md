@@ -8,43 +8,44 @@
 ## 1. 概要 (Overview)
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
-現在、Phase 0（基盤構築）、Phase 1（エディタ・エンジン拡張）、Phase 2（不完全情報対応）、および **Phase 4（アーキテクチャ刷新）の実装** を完了しました。
+現在、Phase 0（基盤構築）、Phase 1（エディタ・エンジン拡張）、Phase 2（不完全情報対応）、Phase 4（アーキテクチャ刷新）、および **Phase 6（GameCommandアーキテクチャ・エンジン刷新）** の実装を完了しました。
 
-今後は **Phase 6（GameCommandアーキテクチャ・エンジン刷新）** を最優先事項とし、イベント駆動型システムへの移行とエンジンの汎用化を進めます。エディタの機能改善（バリデーション等）は、エンジン刷新後の構造に合わせて実施します。
+今後は **Phase 3.2（AI本番運用）** を最優先事項とし、GameCommandベースの新エンジンを用いたAIの学習サイクル確立を目指します。
 
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
 *   **フルスペック実装**: 基本ルールに加え、革命チェンジ、侵略、ハイパーエナジー、ジャストダイバー、ツインパクト、封印（基礎）、呪文ロックなどの高度なメカニクスをサポート済み。
-*   **整合性と安定性の向上**: データ構造の統一、終了処理の安定化、クリーンアップAPIの導入完了。
-*   **汎用コストシステム（統合完了）**: `CostPaymentSystem` を実装し、エンジンに統合済み。
+*   **GameCommand アーキテクチャ (Phase 6 Completed)**:
+    *   **イベント駆動**: `TriggerManager` によるイベント監視・発行システムの導入。
+    *   **基本5命令**: `TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE` による状態遷移の完全抽象化。
+    *   **アクション汎用化**: 全アトミックアクションのGameCommandへの移行完了。
+*   **汎用コストシステム**: `CostPaymentSystem` による複雑なコスト支払いロジックの統合。
 *   **アクションシステム**: `IActionHandler` による完全なモジュラー構造。
-*   **高速シミュレーション**: OpenMPによる並列化により、秒間数千〜数万試合の自己対戦が可能。
+*   **高速シミュレーション**: OpenMPによる並列化。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   **Card Editor Ver 2.3**: 3ペイン構成（ツリー/プロパティ/プレビュー）。
-    *   **テキスト生成**: 数値範囲や任意選択の日本語生成ロジック強化済み。
-    *   **リアクション編集**: `ReactionWidget` による動的UI切り替えをサポート。
-    *   **ロジックマスク (Phase 5)**: カードタイプに応じた入力制限（呪文のパワー無効化、進化条件の有効化）を実装済み。
-*   **機能**: JSONデータの視覚的編集、ロジックツリー、変数リンク、テキスト自動生成、デッキビルダー、シナリオエディタ。
+    *   **Logic Mask**: カードタイプに応じたバリデーション（呪文のパワー0固定等）を実装済み。
+    *   **機能**: JSON編集、ロジックツリー、変数リンク、テキスト自動生成、デッキビルダー、シナリオエディタ。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
-*   **AlphaZero Pipeline**: データ収集 -> 学習 -> 評価 の完全自動ループが稼働中。
-*   **推論エンジン**: 相手デッキタイプ推定 (`DeckClassifier`) と手札確率推定 (`HandEstimator`) を実装済み。
-*   **探索アルゴリズム**: MCTSおよびBeam Search（決定論的探索）を実装済み。
-*   **ONNX Runtime (C++) 統合**: `NeuralEvaluator` によるC++内での高速推論をサポート。
-*   **Phase 4 アーキテクチャ (実装完了)**:
-    *   **NetworkV2**: Transformer (Linear Attention) ベースの可変長入力モデルを実装。
-    *   **TensorConverter**: C++側でのシーケンス変換ロジックを実装済み。
+*   **AlphaZero Pipeline**: データ収集 -> 学習 -> 評価 のループ構造。
+*   **推論エンジン**: 相手デッキタイプ推定 (`DeckClassifier`) と手札確率推定 (`HandEstimator`)。
+*   **ONNX Runtime (C++) 統合**: `NeuralEvaluator` によるC++内推論。
+*   **NetworkV2**: Transformer (Linear Attention) ベースのモデル。
 
 ### 2.4 サポート済みアクション・トリガー一覧 (Supported Actions & Triggers)
 （変更なし：`EffectActionType` および `TriggerType` は現行コードベースに準拠）
 
 ### 2.5 実装上の不整合・未完了項目 (Identified Implementation Inconsistencies)
-*   現在、主要な不整合は解消されました。
+*   **GameCommand化に伴う学習パイプラインの不整合**: Phase 6完了後の統合テストにおいて、`collect_training_data.py` が実行時エラー（Segmentation Fault）を起こす問題が確認されています（後述）。
 
 ### 2.6 現在の懸念事項と既知の不具合 (Current Concerns and Known Issues)
-*   特になし。
+*   **[Critical] `collect_training_data.py` Segmentation Fault**:
+    *   **現象**: AI学習データ収集スクリプト実行時に `resolve_trigger: Instance 0 not found` エラーと共にクラッシュする。
+    *   **原因**: エンジン内部で `Instance ID 0` （無効ID、あるいはデッキ内のカード）に対するトリガー解決が試みられており、`find_instance` が失敗している可能性がある。GameCommand化に伴うオブジェクトライフサイクル管理の変更が影響していると推測される。
+    *   **ステータス**: 未解決。Phase 3.2（AI本番運用）のブロッキング要因となっている。
 
 ※ 完了した詳細な実装タスクは `docs/00_Overview/99_Completed_Tasks_Archive.md` にアーカイブされています。
 
@@ -52,44 +53,24 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ## 3. 詳細な開発ロードマップ (Detailed Roadmap)
 
-エンジンの根本的な刷新（GameCommand化）を優先し、その後にエディタやAI本番運用を進める方針でロードマップを再編しました。
+GameCommandアーキテクチャへの移行（Phase 6）が完了したため、AI学習環境の安定化と運用を最優先とします。
 
-### 3.0 [Priority: High] Phase 6: GameCommand アーキテクチャとエンジン刷新 (Engine Overhaul)
+### 3.1 [Priority: Critical] Phase 3.2: AI 本番運用とデバッグ (Production Run & Debugging)
 
-AI学習効率と拡張性を最大化するため、エンジンのコアロジックを「イベント駆動型」かつ「5つの基本命令 (GameCommand)」に基づくアーキテクチャへ刷新します。
-メテオバーン、超次元、その他未実装の特殊メカニクスは、このフェーズにおける「アクションの汎用化」によって自然に解決・実装されます。
+GameCommandベースのエンジンを用いたAI学習パイプラインを稼働させます。現在はクリティカルなバグによりブロックされています。
 
-1.  **イベント駆動型トリガーシステムの実装**
-    *   ハードコードされたフックポイントを廃止し、`TriggerManager` による一元管理へ移行。
-    *   **Status**: `TriggerManager`, `GameEvent` クラスの実装とPythonバインディングが完了 (Phase 6.1 Completed)。
-2.  **GameCommand (Primitives) の実装**
-    *   全てのアクションを `TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE` に分解・再実装。
-    *   **Status**: 基本5命令のクラス実装、Pythonバインディング、および `GameState` への統合が完了。Unit Test (`tests/test_game_command.py`) を復元・実装し動作確認済み (Phase 6.2 Completed)。
-3.  **アクション汎用化**
-    *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP`、`APPLY_MODIFIER`、`MODIFY_POWER`、`BREAK_SHIELD`、`DESTROY_CARD`、`PLAY_CARD`、および `ATTACK` (AttackHandler) のハンドラを `GameCommand` を使用するように移行完了。`GameCommand` の `Zone` に `STACK`, `BUFFER` を追加し、拡張完了 (Phase 6.3 Completed)。
-    *   **Next**: 完了したGameCommandアーキテクチャを用いたAI学習の再開（Phase 3.2へ移行）。
-
-### 3.1 [Priority: High] Phase 3.2: AI 本番運用 (Production Run)
-
-GameCommandアーキテクチャによるエンジン刷新が完了したため、AI学習パイプラインの検証と本番運用を開始します。
-
-*   **現在の状況**:
-    *   学習パイプライン (`collect_training_data.py`, `train_simple.py`) の動作確認完了。
-    *   評価スクリプト (`verify_performance.py`) の `ActionEncoder` サイズ不整合を修正し、正常動作を確認済み。
-    *   これにより、GameCommandベースのエンジンを用いた継続的なAI強化サイクルを回す準備が整いました。
+1.  **データ収集スクリプトの修正**
+    *   `collect_training_data.py` のSegmentation Faultを修正する。
+    *   `Instance 0` への不正アクセス箇所を特定し、トリガーシステムのID検証ロジックを強化する。
+2.  **学習サイクルの検証**
+    *   データ収集 -> 学習 (`train_simple.py`) -> 評価 (`verify_performance.py`) の完全なサイクルがエラーなく完了することを確認する。
+3.  **大規模学習の実施**
+    *   バグ修正後、数千エピソード規模のデータ収集と学習を実施し、ベースライン（Random/Heuristic）に対する勝率向上を確認する。
 
 ### 3.2 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 
 エンジン刷新後、新しいデータ構造に合わせてエディタのバリデーションを強化します。
-
-1.  **Logic Mask (バリデーション) の実装**
-    *   公式ルールに基づく最小限のマスク処理を実装。過度な制限は設けず、明らかな矛盾のみを防ぐ。
-    *   **ルール**:
-        *   **呪文 (Spell)**: 「パワー」フィールドを無効化（0固定）。
-        *   **進化クリーチャー**: 「進化条件」の設定を有効化。
-        *   **その他**: 基本的に制限なし（ユーザーの自由度を確保）。
-    *   **Status**: 実装完了。`CardEditForm` にてタイプ別のUI表示切替とデータ保存ロジック（呪文のパワー0固定、進化条件の保存）を実装 (Phase 5.1 Completed)。
-
+（Logic Maskの実装はPhase 6と並行して完了済み）
 
 ---
 
@@ -101,85 +82,26 @@ GameCommandアーキテクチャによるエンジン刷新が完了したため
 
 ## 5. イベント駆動型トリガーシステム詳細要件 (Event-Driven Trigger System Specs)
 
-既存の `EffectResolver` を刷新するための技術要件。以下の不足項目を補完して実装すること。
-
-### 5.1 基本アーキテクチャ (Architecture)
-*   **TriggerManager**: 全イベントの発行 (`dispatch`) と購読 (`subscribe`) を管理するシングルトン/コンポーネント。
-*   **Event Object**: `type`, `source`, `target`, `context` (Map) を持つ不変オブジェクト。
-
-### 5.2 詳細要件 (Detailed Requirements)
-
-1.  **Event Monitor (B案: イベント監視型)**
-    *   **状態トリガーの扱い**: ポーリング（常時監視）ではなく、状態変化イベント（例: `CREATURE_ZONE_ENTER`, `MANA_ZONE_LEAVE`）を監視する方式を採用する。
-    *   **理由**: MCTS等のシミュレーション速度を最大化するため、無駄なチェック処理を排除する。
-    *   **実装**: エンジンは `COUNT_CHANGED` や `STATE_CONDITION_MET` などの抽象化されたイベントを発行する責務を持つ。
-
-2.  **Loop Prevention (ループ防止)**
-    *   **仕様**: トリガーが無限連鎖する場合（A→B→A...）、スタック深度または同一ターン内の発動回数制限により強制停止する。
-    *   **実装**: `PendingEffect` に `chain_depth` カウンタを持たせ、閾値（例: 50）を超えたら解決を失敗（Fizzle）させる。
-
-3.  **Context Reference (コンテキスト参照)**
-    *   **仕様**: 「破壊されたクリーチャーのパワー以下のクリーチャーを破壊する」のように、イベントの文脈データ（破壊されたカードの情報）を動的に参照する機能。
-    *   **実装**: `FilterDef` に `power_max_ref: "EVENT_CONTEXT_POWER"` のような動的参照キーを定義可能にする。
+（実装完了済みのため、詳細はアーカイブまたはコードベース参照）
 
 ---
 
 ## 6. イベント駆動型アクション・リアクション詳細要件 (Event-Driven Action/Reaction Specs)
 
-ターンプレイヤーの権限外で発生するアクション（S・トリガー、革命チェンジ、ニンジャ・ストライク等）の制御仕様。
-
-### 6.1 基本フロー (Basic Flow)
-イベント発生 -> トリガー検知 -> 保留効果(PendingEffect)生成 -> 優先権に基づく解決。
-
-### 6.2 詳細要件 (Detailed Requirements)
-
-1.  **Reaction Window (A案: 非同期・ステートマシン型)**
-    *   **仕様**: リアクション待機（ニンジャ・ストライク宣言等）が発生した際、エンジンは一時停止（Block）するのではなく、「入力待ち状態（Awaiting Input）」へ遷移し、制御を呼び出し元へ返す。
-    *   **理由**: AI（Gym/PettingZoo）との親和性確保のため。AIは観測（Observation）として「入力要求」を受け取り、次のステップで回答（Action）を返す標準的なループで処理できる。
-    *   **実装**: `GameState` に `waiting_for_reaction` フラグと `reaction_context` を持たせる。
-
-2.  **Interceptor Layer (置換効果レイヤー)**
-    *   **仕様**: 「破壊される代わりに〜する」といった置換効果は、通常のトリガー（事後処理）とは区別し、アクション実行直前に介入する **Interceptor** として実装する。
-    *   **フロー**: `ActionGenerator` -> `Interceptor Check` (Modify/Cancel Action) -> `Execute Action` -> `Trigger Event`.
-
-3.  **Optional vs Mandatory (任意と強制)**
-    *   **仕様**: リアクションウィンドウにおいて、キャンセル可能か強制発動かを定義。
-    *   **実装**: JSON定義に `optional: true/false` を持たせ、強制の場合はUIでキャンセルボタンを無効化、あるいは自動解決する。
+（実装完了済みのため、詳細はアーカイブまたはコードベース参照）
 
 ---
 
 ## 7. GameCommand アーキテクチャ詳細設計 (GameCommand Architecture Specs)
 
-AIとエンジンの共通言語となる「5つの基本命令」の仕様詳細。
-
-### 7.1 5つの基本命令 (Primitives)
-
-1.  **TRANSITION**: カードの移動（ゾーン間、状態変更）。
-2.  **MUTATE**: カード/プレイヤーのプロパティ変更（パワー修正、フラグ付与）。
-3.  **FLOW**: ゲーム進行の制御（フェーズ遷移、ステップ移行）。
-4.  **QUERY**: エンジンから外部（AI/UI）への選択要求。
-5.  **DECIDE**: 外部からの選択結果の適用。
-
-### 7.2 詳細要件 (Detailed Requirements)
-
-1.  **DECIDE Command (A案: 回答/適用型)**
-    *   **定義**: `DECIDE` は「AI/プレイヤーによる意思決定の結果（回答）」として定義する。エンジンが発行するものではなく、外部からエンジンへ投入される確定情報である。
-    *   **データ**: `target_index`, `card_id`, `option_id` 等の具体的な選択内容のみを保持する。
-    *   **リプレイ性**: ログには `DECIDE` のみが記録され、再生時はエンジンが内部生成した `QUERY` に対してログの `DECIDE` を適用することで再現を行う。
-
-2.  **FLOW Granularity (A案: 詳細粒度)**
-    *   **仕様**: `FLOW` コマンドはフェーズだけでなく、効果解決のステップ（Step）や処理の区切り（Micro-step）単位で発行する。
-    *   **理由**: イベント駆動システムのフックポイントを明確にし、複雑な処理の途中状態を透明化するため。
-
-3.  **Rollback Support (Must Have: 内蔵型)**
-    *   **要件**: MCTS探索の高速化（コピー負荷削減）のため、GameCommand層に **Undo（逆操作）** 機能を内蔵することを必須とする。
-    *   **実装**: 各コマンドクラスは `execute()` と対になる `invert()` メソッド、または逆操作コマンド生成機能を持ち、O(1)〜O(Δ)コストで状態を復元可能にする。
+（実装完了済みのため、詳細はアーカイブまたはコードベース参照）
 
 ---
 
 ## 8. 命令パイプラインと汎用アクション構造 (Instruction Pipeline & Generalized Action Structure)
 
 ハードコード（複合効果の個別C++実装）を撤廃し、あらゆるカード効果をデータ定義（JSON）のみで実現するための新アーキテクチャ。
+※ Phase 6にて基盤は完成したが、完全移行は今後の課題。
 
 ### 8.1 概念 (Concept)
 カードの効果を、単一のタイプではなく **「入出力を持つ命令 (Instruction) の連鎖」** として定義する。
@@ -238,95 +160,25 @@ AIとエンジンの共通言語となる「5つの基本命令」の仕様詳�
 ]
 ```
 
-### 8.4 メリット
-*   **汎用性**: C++の修正なしに、新しいロジック（変数を介した複雑な連動）をJSONのみで記述可能。
-*   **ステートフル**: 「さっき破壊したカードのコスト」等の文脈情報を変数として保持・参照できる。
-*   **割り込み耐性**: パイプラインの実行位置（Program Counter）とContextを保存すれば、S・トリガー等の割り込み後も正確に復帰できる。
-
 ---
 
 ## 9. 移行と互換性戦略 (Migration & Comparison Strategy)
 
-Phase 6への移行において、どの部分を変更し、どの部分を維持するかを明確にする。
+Phase 6への移行において、以下の部分を変更しました。
 
-### 9.1 変更・廃止する部分 (To Change / Deprecate)
-
-| 項目 | 現在の実装 (Phase 0-4) | 今後の実装 (Phase 6) | 変更理由 |
-| :--- | :--- | :--- | :--- |
-| **トリガー検知** | ハードコードされたフックポイント | `TriggerManager` によるイベント監視 | 拡張性とスパゲッティコード解消 |
-| **処理実体** | `EffectResolver` の巨大な `switch` 文 | `Instruction Executor` (VM) | 組み合わせ爆発への対応 |
-| **データ受け渡し** | 限定的な `execution_context` | 完全な変数システム (`Context`) | 柔軟なロジック記述のため |
-| **中断・再開** | 関数コールスタック依存 | PC (Program Counter) 保存 | ロールバック機能実現のため |
-
-### 9.2 流用・継続する部分 (To Keep / Reuse)
-
-| 項目 | 理由 (Why keep it?) |
+| 項目 | 現在の実装 (Phase 6 Completed) |
 | :--- | :--- |
-| **JSONデータ構造** | `CardData`, `FilterDef` 等の定義は、エディタ資産および学習済みAIとの互換性維持のため、可能な限り維持する。新しいエンジンはこれらのデータを読み込み、内部的にGameCommandへ変換する。 |
-| **TriggerType** | `ON_PLAY`, `ON_ATTACK` などの概念自体は不変であり、イベント名としてマッピングして利用する。 |
-| **ConditionDef** | フィルタ条件の定義構造 (`type`, `value`, `op`) は、イベントフィルタとしてそのまま有用。 |
-| **CostPaymentSystem** | 独立性が高く、GameCommand化の影響を受けにくいため、コンポーネントとして再利用する。 |
+| **トリガー検知** | `TriggerManager` によるイベント監視 |
+| **処理実体** | `GameCommand` (Primitives) |
+| **アクション** | `MoveCardHandler` 等が内部で `TransitionCommand` を発行 |
 
 ---
 
 ## 10. 将来的な理想アーキテクチャ案 (Ideal Architecture Proposal)
 
-「既存の資産（エディタ・AI・JSON形式）との互換性維持」という制約を撤廃し、エンジンの表現力と拡張性を最大化する場合に採用すべき「完全データ駆動型」の設計案。
-将来的に本アーキテクチャへ移行する場合は、既存のJSONデータを新形式へ変換する **トランスパイラ (Converter)** を開発することで、資産の互換性を担保する。
+（変更なし：Phase 7以降の検討課題として維持）
 
 ### 10.1 データ構造の刷新：多態性を持つ命令ツリー (Polymorphic Instruction Tree)
-
-「巨大な構造体（Fat Struct）」を廃止し、命令の種類ごとに最適化されたスキーマを持つ構造へ移行する。
-
-*   **現状**: `ActionDef` に全てのパラメータ（数値、文字列、フィルタ、サブアクション等）が含まれており、メモリ効率が悪く拡張性が低い。
-*   **提案**: 基底クラス `Instruction` を継承した、目的別の型定義を採用する。JSON上では `op` コードによるタグ付きユニオンとして扱う。
-
-```json
-// 例: 「マナゾーンから1枚手札に戻す」
-{
-  "op": "MOVE_CARD",
-  "source": { "zone": "MANA", "owner": "SELF" },
-  "destination": { "zone": "HAND" },
-  "count": 1,
-  "select_strategy": "MANUAL"
-}
-```
-
 ### 10.2 引数管理の刷新：式評価システム (Expression System)
-
-単純なKey-Value参照を廃止し、ネスト可能な **式 (Expression)** オブジェクトへ汎用化する。
-
-*   **現状**: `value: 5000` (定数) または `value_key: "power_val"` (単純変数参照) のみ。
-*   **提案**: 全ての数値・文字列引数を `Expression` 型とし、エンジン内での動的な計算を可能にする。
-
-```json
-// 例: 「自分のシールド枚数 × 1000」のパワーを追加
-{
-  "op": "MODIFY_POWER",
-  "value": {
-    "op": "MULTIPLY",
-    "args": [
-      { "op": "COUNT", "target": { "zone": "SHIELD", "owner": "SELF" } },
-      1000
-    ]
-  }
-}
-```
-
 ### 10.3 イベント駆動モデルへの完全移行 (Unified Event Listener Model)
-
-`CardKeywords` (`cip`, `slayer` 等) や `TriggerType` 列挙型によるハードコードされた分岐を全廃し、全てを **イベントリスナー** として統一する。
-
-*   **現状**: `if (card.keywords.slayer) ...` のような条件分岐がエンジン内に散在している。
-*   **提案**: カードは「属性」ではなく、「反応するイベント」と「実行する命令」のリストを持つ。
-    *   **CIP**: `event: "ZONE_ENTER", destination: "BATTLE_ZONE"` に対するリスナー。
-    *   **スレイヤー**: `event: "BATTLE_LOSE"` に対するリスナー。
-    *   **独自トリガー**: 「相手が呪文を唱えた時」なども、エンジンの改造なしにJSON定義のみで追加可能になる。
-
 ### 10.4 エンジンコアの刷新：スタックマシン型VM (Stack Machine VM)
-
-再帰的な関数呼び出し (`resolve_effect` -> `resolve_action`) を廃止し、**命令キューを持つスタックマシン** としてエンジンを実装する。
-
-*   **メリット**:
-    *   **中断・再開**: ユーザー入力待ちや非同期処理において、プログラムカウンタ (PC) とスタック状態を保持したまま停止 (`YIELD`) できる。
-    *   **複雑な割り込み**: S・トリガーや割り込み効果を、命令キューへの動的な挿入として統一的に処理できる。
