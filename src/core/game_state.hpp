@@ -41,6 +41,13 @@ namespace dm::core {
         CardInstance(CardID cid, int iid) : card_id(cid), instance_id(iid), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
     };
 
+    // Moved out of PendingEffect for GameState usage (Spec 6.2.1)
+    struct ReactionContext {
+        std::string trigger_event; // The event being reacted to (e.g., "ON_BLOCK_OR_ATTACK")
+        int attacking_creature_id = -1; // Instance ID of attacker
+        int blocked_creature_id = -1;
+    };
+
     struct PendingEffect {
         EffectType type;
         int source_instance_id;
@@ -63,13 +70,10 @@ namespace dm::core {
         // Phase 5: Execution Context (Variable Linking)
         std::map<std::string, int> execution_context;
 
-        // Optional context for REACTION_WINDOW
-        struct ReactionContext {
-            std::string trigger_event; // The event being reacted to (e.g., "ON_BLOCK_OR_ATTACK")
-            int attacking_creature_id = -1; // Instance ID of attacker
-            int blocked_creature_id = -1;
-        };
         std::optional<ReactionContext> reaction_context;
+
+        // Spec 5.2.2: Loop Prevention
+        int chain_depth = 0;
 
         PendingEffect(EffectType t, int src, PlayerID p) 
             : type(t), source_instance_id(src), controller(p) {}
@@ -123,6 +127,13 @@ namespace dm::core {
         
         // Pending Effects Pool [Spec 4.1, 4.2]
         std::vector<PendingEffect> pending_effects;
+
+        // Spec 5.2.2 Loop Prevention tracking
+        int current_chain_depth = 0;
+
+        // Spec 6.2.1 Reaction Window
+        bool waiting_for_reaction = false;
+        ReactionContext reaction_context;
 
         // Current Attack Context
         AttackRequest current_attack;

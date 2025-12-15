@@ -83,11 +83,6 @@ namespace dm::engine {
                  {
                      int stack_id = action.source_instance_id;
                      int evo_source_id = action.target_instance_id;
-                     // Check destination override if passed via Action struct?
-                     // RESOLVE_PLAY comes from StackStrategy, usually standard play.
-                     // But if we want to override, we should pass it.
-                     // Currently resolve_play_from_stack does not take override.
-                     // But PLAY_CARD_INTERNAL calls resolve_play_from_stack.
                      resolve_play_from_stack(game_state, stack_id, 0, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db, evo_source_id);
                  }
                  break;
@@ -108,14 +103,26 @@ namespace dm::engine {
                  {
                      if (!game_state.pending_effects.empty() && action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
                          auto& pe = game_state.pending_effects[action.slot_index];
+
+                         // Spec 5.2.2 Loop Prevention: Propagate Chain Depth
+                         game_state.current_chain_depth = pe.chain_depth;
+
                          if (pe.resolve_type == ResolveType::TARGET_SELECT && pe.effect_def) {
                              GenericCardSystem::resolve_effect_with_targets(game_state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
                          } else if (pe.type == EffectType::TRIGGER_ABILITY && pe.effect_def) {
                              GenericCardSystem::resolve_effect(game_state, *pe.effect_def, pe.source_instance_id);
                          }
+
+                         // Reset chain depth after execution (or not? No, if resolution triggers more things, they got pe.chain_depth + 1).
+                         // We don't strictly need to reset game_state.current_chain_depth because it's only read inside resolve_trigger which is called from within the above calls.
+                         // But for safety, maybe reset? No, recursive calls will set it.
+
                          if (action.slot_index < (int)game_state.pending_effects.size()) {
                              game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
                          }
+
+                         // Reset to avoid leaking state?
+                         game_state.current_chain_depth = 0;
                      }
                  }
                  break;
@@ -136,8 +143,7 @@ namespace dm::engine {
                      }
                  }
 
-                 // Step 3-3: Destination Override logic
-                 int dest_override = action.destination_override; // 0=Default, 1=Deck Bottom
+                 int dest_override = action.destination_override;
 
                  resolve_play_from_stack(game_state, stack_id, 999, action.spawn_source, controller, card_db, -1, dest_override);
 
@@ -175,8 +181,13 @@ namespace dm::engine {
                              temp_effect.actions = selected_actions;
                              temp_effect.trigger = TriggerType::NONE;
 
+                             // Inherit depth for option resolution
+                             game_state.current_chain_depth = pe.chain_depth;
+
                              // Queue resolution of these actions
                              GenericCardSystem::resolve_effect_with_context(game_state, temp_effect, pe.source_instance_id, pe.execution_context, card_db);
+
+                             game_state.current_chain_depth = 0;
                          }
                      }
                      // Remove the pending effect after selection
@@ -201,10 +212,13 @@ namespace dm::engine {
                             pe.execution_context[output_key] = chosen_val;
                         }
 
+                        game_state.current_chain_depth = pe.chain_depth;
+
                         // Continue with the remaining actions if any
                         if (pe.effect_def && !pe.effect_def->actions.empty()) {
                              GenericCardSystem::resolve_effect_with_context(game_state, *pe.effect_def, pe.source_instance_id, pe.execution_context, card_db);
                         }
+                        game_state.current_chain_depth = 0;
                     }
                     if (action.slot_index < (int)game_state.pending_effects.size()) {
                          game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
@@ -438,10 +452,6 @@ namespace dm::engine {
          Player& defender = game_state.players[target_pid];
 
          if (defender.shield_zone.empty()) {
-             // If this break was intended for the opponent and they have no shields, it's a win.
-             // But if it was self-break or friendly fire, it shouldn't trigger win?
-             // Standard BREAK_SHIELD logic usually implies winning if empty.
-             // For safety, only trigger win if target is opponent of active player.
              if (target_pid != game_state.active_player_id) {
                  game_state.winner = (game_state.active_player_id == 0) ? GameResult::P1_WIN : GameResult::P2_WIN;
              }

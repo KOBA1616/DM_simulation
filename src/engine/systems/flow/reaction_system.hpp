@@ -32,8 +32,6 @@ namespace dm::engine {
                      attacker_exists = true;
                  }
             }
-            // For ON_SHIELD_ADD, attacker logic might not apply (e.g. Strike Back).
-            // But if trigger is related to attack (Ninja Strike), attacker constraint applies.
 
             // 1. Scan Hand for Ninja Strike / Strike Back
             for (const auto& card : player.hand) {
@@ -55,16 +53,6 @@ namespace dm::engine {
                     // Check zone if specified
                     if (!reaction.zone.empty()) {
                          if (reaction.zone == "HAND") {
-                             // Hand Constraint: If attack trigger (Ninja Strike), attacker must exist.
-                             // Strike Back (ON_SHIELD_ADD) doesn't need attacker check necessarily?
-                             // Prompt says: "Hand triggers... cannot be declared... if attacking creature is gone."
-                             // This specifically targets Ninja Strike (ON_BLOCK_OR_ATTACK).
-                             // Strike Back is "When shield added". Attack might not be happening or irrelevant?
-                             // If Strike Back is used during shield break (during attack), but attacker is gone?
-                             // Usually Strike Back triggers when shield breaks. If attacker is gone, shield still broke.
-                             // So Strike Back should be fine?
-                             // Prompt: "Hand triggers... if attacking creature is gone... cannot be declared."
-                             // I will apply this to ON_ATTACK/ON_BLOCK triggers.
                              if (trigger_event == "ON_ATTACK" || trigger_event == "ON_BLOCK") {
                                  if (!attacker_exists) continue;
                              }
@@ -83,19 +71,23 @@ namespace dm::engine {
                 if (has_reaction) break;
             }
 
-            // Future: Scan other zones if needed (e.g. Revolution 0 Trigger from Graveyard?)
-
             if (has_reaction) {
                 dm::core::PendingEffect effect(dm::core::EffectType::REACTION_WINDOW, -1, reaction_player_id);
                 effect.resolve_type = dm::core::ResolveType::EFFECT_RESOLUTION; // Handled by ActionGenerator
                 effect.optional = true; // Player can choose PASS
 
-                dm::core::PendingEffect::ReactionContext context;
+                // Fix: ReactionContext is now in dm::core namespace, not nested in PendingEffect
+                dm::core::ReactionContext context;
                 context.trigger_event = trigger_event;
                 // Add more context if needed (attacker ID etc)
                 effect.reaction_context = context;
 
                 game_state.pending_effects.push_back(effect);
+
+                // Spec 6.2.1: Update GameState flag
+                game_state.waiting_for_reaction = true;
+                game_state.reaction_context = context;
+
                 return true;
             }
 

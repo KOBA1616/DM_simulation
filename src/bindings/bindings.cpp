@@ -314,7 +314,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("type", &PendingEffect::type)
         .def_readwrite("source_instance_id", &PendingEffect::source_instance_id)
         .def_readwrite("controller", &PendingEffect::controller)
-        .def_readwrite("options", &PendingEffect::options);
+        .def_readwrite("options", &PendingEffect::options)
+        .def_readwrite("chain_depth", &PendingEffect::chain_depth); // Added chain_depth exposure
 
     py::class_<CardKeywords>(m, "CardKeywords")
         .def(py::init<>())
@@ -382,7 +383,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("is_evolution", &FilterDef::is_evolution)
         .def_readwrite("is_card_designation", &FilterDef::is_card_designation)
         .def_readwrite("owner", &FilterDef::owner)
-        .def_readwrite("count", &FilterDef::count);
+        .def_readwrite("count", &FilterDef::count)
+        .def_readwrite("context_val_key", &FilterDef::context_val_key); // Exposed context_val_key
 
     // Phase 4: CostDef Binding
     py::class_<CostDef>(m, "CostDef")
@@ -591,6 +593,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("winner", &GameState::winner)
         .def_readwrite("loop_proven", &GameState::loop_proven)
         .def_readwrite("waiting_for_user_input", &GameState::waiting_for_user_input)
+        .def_readwrite("waiting_for_reaction", &GameState::waiting_for_reaction) // Exposed flag
         .def_readwrite("pending_query", &GameState::pending_query)
         // .def_readwrite("command_history", &GameState::command_history) // Disable for now to fix build
         .def("get_card_def", [](GameState& /*s*/, CardID id, const std::map<CardID, CardDefinition>& db) {
