@@ -10,6 +10,8 @@
 #include <optional>
 #include <map>
 #include "card_json_types.hpp"
+#include "game_command_fwd.hpp"
+#include <memory>
 
 namespace dm::core {
 
@@ -193,6 +195,20 @@ namespace dm::core {
         CardStats visible_stats_sum;
         int initial_deck_count = 40;
         int visible_card_count = 0;
+
+        // Phase 6: GameCommand History
+        std::vector<std::shared_ptr<dm::engine::game_command::GameCommand>> command_history;
+
+        // Phase 6: Query/Decide
+        bool waiting_for_user_input = false;
+        struct QueryContext {
+             int query_id = 0; // Incrementing ID
+             std::string query_type; // e.g., "SELECT_TARGET", "SELECT_OPTION"
+             std::map<std::string, int> params; // e.g., "min_count": 1, "max_count": 1
+             std::vector<int> valid_target_ids;
+             std::vector<std::string> options;
+        };
+        std::optional<QueryContext> pending_query;
 
         GameState() : rng(0) {
             players[0].id = 0;

@@ -170,6 +170,7 @@ set(SRC_ENGINE
     src/engine/game_instance.cpp
     src/engine/cost_payment_system.cpp
     src/engine/systems/trigger_system/trigger_manager.cpp
+    src/engine/game_command/commands.cpp
 )
 
 # Utils (Phase 1)
