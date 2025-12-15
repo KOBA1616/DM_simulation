@@ -196,6 +196,16 @@ namespace dm::engine {
                 pending.effect_def = effect;
                 pending.optional = true;
 
+                // Spec 5.2.2: Loop Prevention - Inherit chain depth
+                pending.chain_depth = game_state.current_chain_depth + 1;
+
+                if (pending.chain_depth > 50) {
+                     // Threshold exceeded - prevent loop
+                     // Ideally log this
+                     std::cerr << "Loop Prevention: Fizzling trigger from instance " << source_instance_id << " due to depth " << pending.chain_depth << std::endl;
+                     continue;
+                }
+
                 game_state.pending_effects.push_back(pending);
             }
         }
@@ -316,6 +326,9 @@ namespace dm::engine {
         pending.effect_def = continuation;
         pending.execution_context = execution_context;
 
+        // Loop Prevention: Inherit depth
+        pending.chain_depth = game_state.current_chain_depth + 1;
+
         game_state.pending_effects.push_back(pending);
 
         return {};
@@ -422,6 +435,7 @@ namespace dm::engine {
              pending.num_targets_needed = 1;
              pending.effect_def = eff;
              pending.optional = true;
+             pending.chain_depth = game_state.current_chain_depth + 1; // Loop prevention
 
              game_state.pending_effects.push_back(pending);
          }
