@@ -3,6 +3,7 @@
 #include "core/game_state.hpp"
 #include "engine/systems/card/generic_card_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "engine/game_command/commands.hpp"
 
 namespace dm::engine {
 
@@ -23,7 +24,8 @@ namespace dm::engine {
             if (ctx.action.target_choice == "ALL_SELF") {
                  int controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  for (auto& c : ctx.game_state.players[controller_id].battle_zone) {
-                     c.is_tapped = false;
+                     game_command::MutateCommand cmd(c.instance_id, game_command::MutateCommand::MutationType::UNTAP);
+                     cmd.execute(ctx.game_state);
                  }
                  return;
             }
@@ -36,8 +38,6 @@ namespace dm::engine {
             if (ctx.action.filter.zones.empty()) {
                 zones_to_check.push_back({0, Zone::BATTLE});
                 zones_to_check.push_back({1, Zone::BATTLE});
-                // Untap usually also affects Mana Zone sometimes?
-                // But default filter usage typically implies Battle Zone unless specified.
             } else {
                  for (const auto& z : ctx.action.filter.zones) {
                     if (z == "BATTLE_ZONE") {
@@ -53,43 +53,29 @@ namespace dm::engine {
 
             for (const auto& [pid, zone] : zones_to_check) {
                 Player& p = ctx.game_state.players[pid];
-                if (zone == Zone::BATTLE) {
-                     for (auto& card : p.battle_zone) {
-                         if (!ctx.card_db.count(card.card_id)) continue;
-                         const auto& def = ctx.card_db.at(card.card_id);
-                         if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
-                              card.is_tapped = false;
-                         }
+                const std::vector<CardInstance>* card_list = nullptr;
+                if (zone == Zone::BATTLE) card_list = &p.battle_zone;
+                else if (zone == Zone::MANA) card_list = &p.mana_zone;
+
+                if (!card_list) continue;
+
+                 for (auto& card : *card_list) {
+                     if (!ctx.card_db.count(card.card_id)) continue;
+                     const auto& def = ctx.card_db.at(card.card_id);
+                     if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
+                          game_command::MutateCommand cmd(card.instance_id, game_command::MutateCommand::MutationType::UNTAP);
+                          cmd.execute(ctx.game_state);
                      }
-                } else if (zone == Zone::MANA) {
-                     for (auto& card : p.mana_zone) {
-                         if (!ctx.card_db.count(card.card_id)) continue;
-                         const auto& def = ctx.card_db.at(card.card_id);
-                         if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
-                              card.is_tapped = false;
-                         }
-                     }
-                }
+                 }
             }
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
              if (!ctx.targets) return;
 
-             auto find_inst = [&](int instance_id) -> dm::core::CardInstance* {
-                for (auto& p : ctx.game_state.players) {
-                    for (auto& c : p.battle_zone) if (c.instance_id == instance_id) return &c;
-                    for (auto& c : p.hand) if (c.instance_id == instance_id) return &c;
-                    for (auto& c : p.mana_zone) if (c.instance_id == instance_id) return &c;
-                    for (auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
-                    for (auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
-                }
-                return nullptr;
-            };
-
             for (int tid : *ctx.targets) {
-                dm::core::CardInstance* inst = find_inst(tid);
-                if (inst) inst->is_tapped = false;
+                 game_command::MutateCommand cmd(tid, game_command::MutateCommand::MutationType::UNTAP);
+                 cmd.execute(ctx.game_state);
             }
         }
     };
