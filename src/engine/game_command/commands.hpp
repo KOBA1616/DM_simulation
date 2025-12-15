@@ -1,6 +1,7 @@
 #pragma once
 #include "game_command.hpp"
 #include "core/types.hpp"
+#include "core/modifiers.hpp"
 
 namespace dm::engine::game_command {
 
@@ -30,7 +31,9 @@ namespace dm::engine::game_command {
             UNTAP,
             POWER_MOD,
             ADD_KEYWORD,
-            REMOVE_KEYWORD
+            REMOVE_KEYWORD,
+            ADD_MODIFIER,
+            ADD_PASSIVE
         };
 
         int target_instance_id;
@@ -38,9 +41,17 @@ namespace dm::engine::game_command {
         int int_value; // Power value or simple int param
         std::string str_value; // Keyword string etc.
 
+        // Extended payload for Global Mutations
+        std::optional<core::CostModifier> modifier_payload;
+        std::optional<core::PassiveEffect> passive_payload;
+
         // Undo context
         int previous_int_value;
         bool previous_bool_value;
+        // For vector push undo, we need the index where it was pushed, or just assume it was the last one (pop_back)
+        // Since execution is strictly sequential and undo is LIFO, pop_back is safe if we trust the stack.
+        // However, to be robust, we can store the size before execution.
+        int added_index = -1;
 
         MutateCommand(int instance_id, MutationType type, int val = 0, std::string str = "")
             : target_instance_id(instance_id), mutation_type(type), int_value(val), str_value(str), previous_int_value(0), previous_bool_value(false) {}

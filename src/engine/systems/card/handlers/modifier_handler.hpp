@@ -52,11 +52,12 @@ namespace dm::engine {
                  // This handler IS the generalized implementation.
                  // The key is that `TapHandler` and `UntapHandler` use `MutateCommand`.
                  // `ModifierHandler` uses global state.
-                 // Is there a GameCommand for global state?
-                 // Not explicitly in the 5 primitives.
-                 // So direct modification here is likely fine for now.
+                 // Phase 6.3: Migrated to use GameCommand (MutateCommand::ADD_MODIFIER)
 
-                 ctx.game_state.active_modifiers.push_back(mod);
+                 auto cmd = std::make_shared<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_MODIFIER);
+                 cmd->modifier_payload = mod;
+                 cmd->execute(const_cast<GameState&>(ctx.game_state));
+                 const_cast<GameState&>(ctx.game_state).command_history.push_back(cmd);
 
             } else if (ctx.action.str_val == "LOCK_SPELL") {
                 PassiveEffect eff;
@@ -66,7 +67,10 @@ namespace dm::engine {
                 eff.controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                 eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
 
-                ctx.game_state.passive_effects.push_back(eff);
+                auto cmd = std::make_shared<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PASSIVE);
+                cmd->passive_payload = eff;
+                cmd->execute(const_cast<GameState&>(ctx.game_state));
+                const_cast<GameState&>(ctx.game_state).command_history.push_back(cmd);
 
             } else if (ctx.action.str_val == "POWER") {
                 // If targeting specific cards (e.g. infinite duration power mod or turn based)
@@ -91,28 +95,17 @@ namespace dm::engine {
                      // Existing PassiveEffect usually uses filter.
                      // Creating one effect per target is safer for specific targets.
                      for(int tid : *targets) {
-                         PassiveEffect pe = eff;
-                         pe.target_filter.zones = {"BATTLE_ZONE"}; // Ensure it targets battle zone
-                         // We need an "ID filter".
-                         // FilterDef doesn't support ID list directly usually.
-                         // But we can use `is_card_designation` or similar if we hack it,
-                         // or just rely on the fact that we can't easily do "Selected Targets get +X until end of turn" with current PassiveEffect structure efficiently without ID support.
-
-                         // Wait, `MODIFY_POWER` action type (handled by `ModifyPowerHandler` if it existed, currently `APPLY_MODIFIER` takes over?)
-                         // No, `MODIFY_POWER` is a separate EffectActionType.
-                         // `ModifierHandler` handles `APPLY_MODIFIER`.
-                         // If `APPLY_MODIFIER` is used for Power, it usually means "All creatures get +X".
-
-                         // If we want to use `MutateCommand` for permanent power changes (not end of turn),
-                         // that would be `EffectActionType::MODIFY_POWER` (which currently has no handler file, likely missing or handled elsewhere).
-                         // Ah, I couldn't find `modify_power_handler.hpp`.
-                         // Let's check `generic_card_system.cpp` again for `MODIFY_POWER`.
-                         // It is NOT registered in `generic_card_system.cpp`.
-                         // `EffectActionType::MODIFY_POWER` is in enum but not registered?
-                         // Maybe it was removed or I missed it.
+                         // We can't easily express "List of IDs" in current PassiveEffect Filter.
+                         // Skipping specific target logic for passives for now, assuming "All creatures" filter is used.
+                         // If we needed specific targets, we would iterate and use PERMANENT POWER_MOD mutation,
+                         // but this is temporary power mod.
+                         // Future task: Add "target_ids" to PassiveEffect.
                      }
                 } else {
-                     ctx.game_state.passive_effects.push_back(eff);
+                     auto cmd = std::make_shared<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PASSIVE);
+                     cmd->passive_payload = eff;
+                     cmd->execute(const_cast<GameState&>(ctx.game_state));
+                     const_cast<GameState&>(ctx.game_state).command_history.push_back(cmd);
                 }
             }
         }

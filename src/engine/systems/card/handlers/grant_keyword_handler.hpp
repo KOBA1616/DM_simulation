@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
+#include "engine/game_command/commands.hpp"
 #include <iostream>
 
 namespace dm::engine {
@@ -44,11 +45,11 @@ namespace dm::engine {
                 passive.turns_remaining = 1; // Default to 1 turn if not specified
             }
 
-            // Add to state
-            ctx.game_state.passive_effects.push_back(passive);
-
-            // Log?
-            // std::cout << "Granted " << passive.str_value << " to " << ... << std::endl;
+            // Phase 6.3: Use GameCommand
+            auto cmd = std::make_shared<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PASSIVE);
+            cmd->passive_payload = passive;
+            cmd->execute(const_cast<core::GameState&>(ctx.game_state));
+            const_cast<core::GameState&>(ctx.game_state).command_history.push_back(cmd);
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {

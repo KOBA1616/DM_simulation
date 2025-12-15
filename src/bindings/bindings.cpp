@@ -316,6 +316,38 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("controller", &PendingEffect::controller)
         .def_readwrite("options", &PendingEffect::options);
 
+    py::class_<CostModifier>(m, "CostModifier")
+        .def(py::init<>())
+        .def_readwrite("reduction_amount", &CostModifier::reduction_amount)
+        .def_readwrite("condition_filter", &CostModifier::condition_filter)
+        .def_readwrite("turns_remaining", &CostModifier::turns_remaining)
+        .def_readwrite("source_instance_id", &CostModifier::source_instance_id)
+        .def_readwrite("controller", &CostModifier::controller);
+
+    py::enum_<PassiveType>(m, "PassiveType")
+        .value("POWER_MODIFIER", PassiveType::POWER_MODIFIER)
+        .value("KEYWORD_GRANT", PassiveType::KEYWORD_GRANT)
+        .value("COST_REDUCTION", PassiveType::COST_REDUCTION)
+        .value("BLOCKER_GRANT", PassiveType::BLOCKER_GRANT)
+        .value("SPEED_ATTACKER_GRANT", PassiveType::SPEED_ATTACKER_GRANT)
+        .value("SLAYER_GRANT", PassiveType::SLAYER_GRANT)
+        .value("CANNOT_ATTACK", PassiveType::CANNOT_ATTACK)
+        .value("CANNOT_BLOCK", PassiveType::CANNOT_BLOCK)
+        .value("CANNOT_USE_SPELLS", PassiveType::CANNOT_USE_SPELLS)
+        .value("LOCK_SPELL_BY_COST", PassiveType::LOCK_SPELL_BY_COST)
+        .export_values();
+
+    py::class_<PassiveEffect>(m, "PassiveEffect")
+        .def(py::init<>())
+        .def_readwrite("type", &PassiveEffect::type)
+        .def_readwrite("value", &PassiveEffect::value)
+        .def_readwrite("str_value", &PassiveEffect::str_value)
+        .def_readwrite("target_filter", &PassiveEffect::target_filter)
+        .def_readwrite("condition", &PassiveEffect::condition)
+        .def_readwrite("source_instance_id", &PassiveEffect::source_instance_id)
+        .def_readwrite("controller", &PassiveEffect::controller)
+        .def_readwrite("turns_remaining", &PassiveEffect::turns_remaining);
+
     py::class_<CardKeywords>(m, "CardKeywords")
         .def(py::init<>())
         .def_property("g_zero", [](CardKeywords& k){ return k.g_zero; }, [](CardKeywords& k, bool v){ k.g_zero = v; })
@@ -586,13 +618,15 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("stack_zone", &GameState::stack_zone)
         .def_readwrite("pending_effects", &GameState::pending_effects)
+        .def_readwrite("active_modifiers", &GameState::active_modifiers)
+        .def_readwrite("passive_effects", &GameState::passive_effects)
         // .def_readwrite("effect_buffer", &GameState::effect_buffer) // Moved to Player
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("winner", &GameState::winner)
         .def_readwrite("loop_proven", &GameState::loop_proven)
         .def_readwrite("waiting_for_user_input", &GameState::waiting_for_user_input)
         .def_readwrite("pending_query", &GameState::pending_query)
-        // .def_readwrite("command_history", &GameState::command_history) // Disable for now to fix build
+        .def_readwrite("command_history", &GameState::command_history)
         .def("get_card_def", [](GameState& /*s*/, CardID id, const std::map<CardID, CardDefinition>& db) {
             return db.at(id);
         })
@@ -1103,6 +1137,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("POWER_MOD", dm::engine::game_command::MutateCommand::MutationType::POWER_MOD)
         .value("ADD_KEYWORD", dm::engine::game_command::MutateCommand::MutationType::ADD_KEYWORD)
         .value("REMOVE_KEYWORD", dm::engine::game_command::MutateCommand::MutationType::REMOVE_KEYWORD)
+        .value("ADD_MODIFIER", dm::engine::game_command::MutateCommand::MutationType::ADD_MODIFIER)
+        .value("ADD_PASSIVE", dm::engine::game_command::MutateCommand::MutationType::ADD_PASSIVE)
         .export_values();
 
     py::class_<dm::engine::game_command::FlowCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::FlowCommand>>(m, "FlowCommand")

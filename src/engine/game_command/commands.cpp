@@ -106,6 +106,22 @@ namespace dm::engine::game_command {
     // --- MutateCommand ---
 
     void MutateCommand::execute(core::GameState& state) {
+        // Special case for Global Mutations (target_instance_id usually ignored or -1)
+        if (mutation_type == MutationType::ADD_MODIFIER) {
+            if (modifier_payload.has_value()) {
+                added_index = state.active_modifiers.size();
+                state.active_modifiers.push_back(modifier_payload.value());
+            }
+            return;
+        }
+        if (mutation_type == MutationType::ADD_PASSIVE) {
+            if (passive_payload.has_value()) {
+                added_index = state.passive_effects.size();
+                state.passive_effects.push_back(passive_payload.value());
+            }
+            return;
+        }
+
         core::CardInstance* card = state.get_card_instance(target_instance_id);
         if (!card) return;
 
@@ -128,6 +144,25 @@ namespace dm::engine::game_command {
     }
 
     void MutateCommand::invert(core::GameState& state) {
+        // Special case for Global Mutations
+        if (mutation_type == MutationType::ADD_MODIFIER) {
+            if (added_index != -1 && added_index < (int)state.active_modifiers.size()) {
+                // If we undo in strict LIFO order, it should be the last one.
+                // But to be safe if added_index is valid, we check.
+                // Since this vector is append-only usually (except expiration),
+                // and undo happens within the turn before expiration...
+                // Using pop_back() is the standard "Undo Push".
+                state.active_modifiers.pop_back();
+            }
+            return;
+        }
+        if (mutation_type == MutationType::ADD_PASSIVE) {
+            if (added_index != -1 && added_index < (int)state.passive_effects.size()) {
+                state.passive_effects.pop_back();
+            }
+            return;
+        }
+
         core::CardInstance* card = state.get_card_instance(target_instance_id);
         if (!card) return;
 
@@ -138,15 +173,6 @@ namespace dm::engine::game_command {
                 break;
             case MutationType::POWER_MOD:
                 card->power_mod = previous_int_value;
-                // Note: simple assignment works if only one command modified it.
-                // But power_mod is additive. If multiple commands modified it,
-                // we should subtract int_value instead of restoring previous absolute value?
-                // `execute` did += int_value. `invert` should do -= int_value?
-                // But `previous_int_value` stores the snapshot.
-                // If we assume a linear history stack, restoring snapshot is fine.
-                // But usually invert means "undo this delta".
-                // Let's stick to snapshot restoration for now as it's safer against drift,
-                // provided we undo in strict LIFO order.
                 break;
             default: break;
         }

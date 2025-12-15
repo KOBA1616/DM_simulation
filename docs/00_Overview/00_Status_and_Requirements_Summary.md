@@ -65,8 +65,9 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
     *   全てのアクションを `TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE` に分解・再実装。
     *   **Status**: 基本5命令のクラス実装、Pythonバインディング、および `GameState` への統合が完了。Unit Test (`tests/test_game_command.py`) を復元・実装し動作確認済み (Phase 6.2 Completed)。
 3.  **アクション汎用化**
-    *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP` のハンドラを `GameCommand` を使用するように移行完了 (Phase 6.3 Started)。
-    *   **Next**: 残りのアクション (`MODIFY_POWER` 等) の移行、および `APPLY_MODIFIER` の完全な汎用化（GameCommandラッパー化）。
+    *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP`、`APPLY_MODIFIER`、`GRANT_KEYWORD` のハンドラを `GameCommand` を使用するように移行完了 (Phase 6.3 Ongoing)。
+    *   **Note**: `APPLY_MODIFIER` および `GRANT_KEYWORD` は `MutateCommand` に `ADD_MODIFIER` / `ADD_PASSIVE` を追加して対応。
+    *   **Next**: 残りのアクション (`MODIFY_POWER` 等) の移行。
 
 ### 3.1 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 
