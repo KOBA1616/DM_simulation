@@ -1095,7 +1095,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<dm::engine::game_command::MutateCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::MutateCommand>>(m, "MutateCommand")
         .def(py::init<int, dm::engine::game_command::MutateCommand::MutationType, int, std::string>(),
-            py::arg("instance_id"), py::arg("type"), py::arg("val") = 0, py::arg("str") = "");
+            py::arg("instance_id"), py::arg("type"), py::arg("val") = 0, py::arg("str") = "")
+        .def("set_modifier_data", &dm::engine::game_command::MutateCommand::set_modifier_data,
+             py::arg("f"), py::arg("dur"), py::arg("ctrl"), py::arg("src"), py::arg("cond") = ConditionDef());
 
     py::enum_<dm::engine::game_command::MutateCommand::MutationType>(m, "MutationType")
         .value("TAP", dm::engine::game_command::MutateCommand::MutationType::TAP)
@@ -1103,6 +1105,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("POWER_MOD", dm::engine::game_command::MutateCommand::MutationType::POWER_MOD)
         .value("ADD_KEYWORD", dm::engine::game_command::MutateCommand::MutationType::ADD_KEYWORD)
         .value("REMOVE_KEYWORD", dm::engine::game_command::MutateCommand::MutationType::REMOVE_KEYWORD)
+        .value("ADD_GLOBAL_MODIFIER", dm::engine::game_command::MutateCommand::MutationType::ADD_GLOBAL_MODIFIER)
+        .value("REMOVE_GLOBAL_MODIFIER", dm::engine::game_command::MutateCommand::MutationType::REMOVE_GLOBAL_MODIFIER)
+        .value("ADD_PASSIVE_EFFECT", dm::engine::game_command::MutateCommand::MutationType::ADD_PASSIVE_EFFECT)
+        .value("REMOVE_PASSIVE_EFFECT", dm::engine::game_command::MutateCommand::MutationType::REMOVE_PASSIVE_EFFECT)
         .export_values();
 
     py::class_<dm::engine::game_command::FlowCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::FlowCommand>>(m, "FlowCommand")
