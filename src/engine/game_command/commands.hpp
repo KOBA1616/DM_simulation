@@ -1,0 +1,107 @@
+#pragma once
+#include "game_command.hpp"
+#include "core/types.hpp"
+
+namespace dm::engine::game_command {
+
+    class TransitionCommand : public GameCommand {
+    public:
+        int card_instance_id;
+        core::Zone from_zone;
+        core::Zone to_zone;
+        core::PlayerID owner_id;
+        int destination_index; // -1 for append
+
+        // Context to restore exact position in from_zone for undo
+        int original_index;
+
+        TransitionCommand(int instance_id, core::Zone from, core::Zone to, core::PlayerID owner, int dest_idx = -1)
+            : card_instance_id(instance_id), from_zone(from), to_zone(to), owner_id(owner), destination_index(dest_idx), original_index(-1) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::TRANSITION; }
+    };
+
+    class MutateCommand : public GameCommand {
+    public:
+        enum class MutationType {
+            TAP,
+            UNTAP,
+            POWER_MOD,
+            ADD_KEYWORD,
+            REMOVE_KEYWORD
+        };
+
+        int target_instance_id;
+        MutationType mutation_type;
+        int int_value; // Power value or simple int param
+        std::string str_value; // Keyword string etc.
+
+        // Undo context
+        int previous_int_value;
+        bool previous_bool_value;
+
+        MutateCommand(int instance_id, MutationType type, int val = 0, std::string str = "")
+            : target_instance_id(instance_id), mutation_type(type), int_value(val), str_value(str), previous_int_value(0), previous_bool_value(false) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::MUTATE; }
+    };
+
+    class FlowCommand : public GameCommand {
+    public:
+        enum class FlowType {
+            PHASE_CHANGE,
+            TURN_CHANGE,
+            STEP_CHANGE // Future use
+        };
+
+        FlowType flow_type;
+        int new_value; // Phase enum or Turn number
+
+        // Undo context
+        int previous_value;
+
+        FlowCommand(FlowType type, int val)
+            : flow_type(type), new_value(val), previous_value(0) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::FLOW; }
+    };
+
+    class QueryCommand : public GameCommand {
+    public:
+        std::string query_type;
+        std::vector<int> valid_targets;
+        std::map<std::string, int> params;
+
+        QueryCommand(std::string type, std::vector<int> targets = {}, std::map<std::string, int> p = {})
+            : query_type(type), valid_targets(targets), params(p) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override; // Clears the query
+        CommandType get_type() const override { return CommandType::QUERY; }
+    };
+
+    class DecideCommand : public GameCommand {
+    public:
+        int query_id; // To match the query
+        std::vector<int> selected_indices; // or instance_ids
+        int selected_option_index;
+
+        // Undo context
+        bool was_waiting;
+        std::optional<core::GameState::QueryContext> previous_query;
+
+        DecideCommand(int q_id, std::vector<int> selection = {}, int option = -1)
+            : query_id(q_id), selected_indices(selection), selected_option_index(option), was_waiting(false) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::DECIDE; }
+    };
+
+}
