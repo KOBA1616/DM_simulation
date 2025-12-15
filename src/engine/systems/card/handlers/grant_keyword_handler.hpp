@@ -1,6 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
+#include "engine/game_command/commands.hpp"
 #include <iostream>
 
 namespace dm::engine {
@@ -8,70 +9,43 @@ namespace dm::engine {
     class GrantKeywordHandler : public IActionHandler {
     public:
         void resolve(const ResolutionContext& ctx) override {
-            // GRANT_KEYWORD usually has a filter to determine WHO gets the keyword.
-            // But it adds a PassiveEffect to the GameState, which then applies continuously.
-            // It does NOT iterate targets and apply a flag to them individually (unless it's a permanent flag, but requirement says "Continuous effect").
-            // "Give target creature Blocker" -> Effect lasts until end of turn usually.
-            // "All your creatures have Blocker" -> Permanent passive if source is valid.
+            using namespace dm::engine::game_command;
 
-            // If the action is from a "continuous" source (like a creature in Battle Zone),
-            // the passive effect should have been registered when the creature entered play (or statically checked).
-            // BUT here we are resolving an ACTION (e.g. from a Spell or CIP ability).
-            // So this creates a TEMPORARY passive effect (duration based).
+            // GRANT_KEYWORD uses ADD_PASSIVE_EFFECT in MutateCommand.
+            // str_value will be the keyword string.
+            // We pass it directly. MutateCommand logic for ADD_PASSIVE_EFFECT defaults to KEYWORD_GRANT if str_value is not POWER/LOCK_SPELL.
 
-            // ActionDef:
-            // filter: who gets it
-            // str_val: keyword (e.g. "BLOCKER")
-            // value2: duration (1 = until end of turn)
+            int duration = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
+            int source = ctx.source_instance_id;
+            dm::core::PlayerID controller = ctx.game_state.card_owner_map[source];
 
-            dm::core::PassiveEffect passive;
-            passive.type = dm::core::PassiveType::KEYWORD_GRANT;
-            passive.str_value = ctx.action.str_val;
-            passive.target_filter = ctx.action.filter;
-            passive.source_instance_id = ctx.source_instance_id;
-            passive.controller = ctx.game_state.card_owner_map[ctx.source_instance_id];
+            auto cmd = std::make_shared<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT, 0, ctx.action.str_val);
+            cmd->set_modifier_data(ctx.action.filter, duration, controller, source);
 
-            // Duration logic
-            // value2 = 1 -> This turn
-            // value2 = 0 -> Indefinite? Or default to 1?
-            // Usually Spells give it "until the start of your next turn" or "until end of turn".
-            // Let's assume value2 is turns. If 0, maybe default to 1 for safety, or check spec.
-            // If it's a permanent grant (e.g. "This creature gains..."), it might be permanent.
-
-            if (ctx.action.value2 > 0) {
-                passive.turns_remaining = ctx.action.value2;
-            } else {
-                passive.turns_remaining = 1; // Default to 1 turn if not specified
-            }
-
-            // Add to state
-            ctx.game_state.passive_effects.push_back(passive);
-
-            // Log?
-            // std::cout << "Granted " << passive.str_value << " to " << ... << std::endl;
+            cmd->execute(ctx.game_state);
+            ctx.game_state.command_history.push_back(cmd);
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
-            // If targets were selected (Scope::TARGET_SELECT), the filter in the passive
-            // should probably be restricted to those IDs?
-            // But PassiveEffect uses a FilterDef, not a list of IDs.
-            // If we select specific targets, we might need a way to create a filter "ID is X or Y".
-            // OR, we attach a specific ID list to the passive?
-            // Existing PassiveEffect structure only has `target_filter`.
-
-            // Workaround: If targets are specific, we can't easily express it as a simple filter unless we add `target_instance_ids` to PassiveEffect.
-            // Given the requirement "Give 'Blocker' to allied creatures" (usually all), the filter approach works.
-            // If it is "Give target creature Blocker", we need to support ID filtering in Passives.
-
-            // Let's check `TargetUtils`. It doesn't check IDs against a list in `FilterDef` typically.
-            // But we can add `std::vector<int> specific_ids` to `FilterDef`? No, FilterDef is from JSON.
-
-            // We should modify `PassiveEffect` to optionally hold specific instance IDs.
-            // But for now, let's implement the generic case.
-
-            // If `ctx.targets` is present, it means specific cards were chosen.
-            // We can't implement "Give TARGET creature blocker" correctly without ID support in Passive.
-            // Let's assume for this task (GRANT_KEYWORD to allied creatures) it is a broad filter.
+            // As noted in previous analysis, target-specific grant keyword usually implies a filter derived from selection,
+            // OR we need specific ID support in PassiveEffect.
+            // For now, we assume the filter in `ctx.action` is sufficient or we rely on the `resolve` implementation.
+            // If targets were selected, we might want to restrict the filter.
+            // But `ModifierHandler` also just passed `ctx.action.filter`.
+            // If `RESOLVE_EFFECT` (which calls this) set up the filter based on targets, we are good.
+            // If `RESOLVE_EFFECT` passed explicit targets but the action filter is generic...
+            // `GenericCardSystem::select_targets` creates a PendingEffect.
+            // When resolved, `resolve_effect_with_targets` is called.
+            // But `GrantKeywordHandler` adds a PASSIVE EFFECT.
+            // A PassiveEffect needs a FilterDef.
+            // It does not accept a list of IDs.
+            // So we strictly rely on `ctx.action.filter`.
+            // If the user selected targets, that selection is effectively ignored unless we dynamically construct a filter "ID in [targets]".
+            // This is a known limitation of current PassiveEffect system vs Target Selection.
+            // However, most "Grant Keyword" effects are "All your creatures get X" (Filter based).
+            // "Target creature gets X" is usually implemented as a `MUTATE` (Power/Flags) if it's permanent?
+            // If it is "until end of turn", it requires a PassiveEffect targeting that specific ID.
+            // TODO: Future task -> Support ID-based PassiveEffects.
 
             resolve(ctx);
         }
