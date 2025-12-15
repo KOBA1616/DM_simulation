@@ -151,6 +151,7 @@
             "value2": 0
           },
           {
+            "destination_zone": "HAND",
             "filter": {},
             "input_value_key": "var_COUNT_CARDS_0",
             "optional": true,
@@ -162,7 +163,9 @@
             "value2": 0
           },
           {
+            "destination_zone": "DECK_BOTTOM",
             "filter": {
+              "count": 1,
               "zones": [
                 "HAND"
               ]
@@ -172,7 +175,7 @@
             "output_value_key": "var_SEND_TO_DECK_BOTTOM_2",
             "scope": "PLAYER_SELF",
             "str_val": "",
-            "type": "SEND_TO_DECK_BOTTOM",
+            "type": "MOVE_CARD",
             "value1": 0,
             "value2": 0
           }
@@ -508,9 +511,9 @@
         {
           "actions": [
             {
-              "destination_zone": "HAND",
+              "destination_zone": "GRAVEYARD",
               "filter": {
-                "max_cost": 3,
+                "max_cost": 2,
                 "types": [
                   "ELEMENT"
                 ],
@@ -523,7 +526,7 @@
               "output_value_key": "",
               "scope": "PLAYER_OPPONENT",
               "str_val": "",
-              "type": "DESTROY",
+              "type": "MOVE_CARD",
               "value1": 0,
               "value2": 0
             }
