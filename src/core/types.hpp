@@ -47,7 +47,8 @@ namespace dm::core {
         GRAVEYARD,
         SHIELD,
         HYPER_SPATIAL,
-        GR_DECK
+        GR_DECK,
+        STACK
     };
 
     enum class Phase : uint8_t {

@@ -25,11 +25,7 @@ namespace dm::engine::game_command {
                 case core::Zone::GRAVEYARD: return &owner.graveyard;
                 case core::Zone::SHIELD: return &owner.shield_zone;
                 case core::Zone::DECK: return &owner.deck;
-                // Add support for BUFFER if needed, mapped to Zone::HYPER_SPATIAL or similar hack if not in enum
-                // But Phase 00 defines 5 primitives.
-                // Currently Zone enum does not have BUFFER.
-                // Assuming BUFFER is handled via separate command or Zone enum extension.
-                // For now, standard zones.
+                case core::Zone::STACK: return &state.stack_zone;
                 default: return nullptr;
             }
         };
@@ -75,6 +71,7 @@ namespace dm::engine::game_command {
                 case core::Zone::GRAVEYARD: return &owner.graveyard;
                 case core::Zone::SHIELD: return &owner.shield_zone;
                 case core::Zone::DECK: return &owner.deck;
+                case core::Zone::STACK: return &state.stack_zone;
                 default: return nullptr;
             }
         };
@@ -117,6 +114,24 @@ namespace dm::engine::game_command {
                 state.active_modifiers.push_back(*cost_modifier);
             }
             return;
+        } else if (mutation_type == MutationType::SET_ATTACK_SOURCE) {
+            previous_int_value = state.current_attack.source_instance_id;
+            state.current_attack.source_instance_id = int_value;
+            return;
+        } else if (mutation_type == MutationType::SET_ATTACK_TARGET) {
+            previous_int_value = state.current_attack.target_instance_id;
+            state.current_attack.target_instance_id = int_value;
+            return;
+        } else if (mutation_type == MutationType::SET_ATTACK_PLAYER) {
+            previous_int_value = state.current_attack.target_player;
+            state.current_attack.target_player = (core::PlayerID)int_value;
+            return;
+        } else if (mutation_type == MutationType::SET_BLOCKER) {
+            previous_int_value = state.current_attack.blocker_instance_id;
+            previous_bool_value = state.current_attack.is_blocked;
+            state.current_attack.blocker_instance_id = int_value;
+            state.current_attack.is_blocked = (int_value != -1);
+            return;
         }
 
         core::CardInstance* card = state.get_card_instance(target_instance_id);
@@ -151,6 +166,19 @@ namespace dm::engine::game_command {
             if (!state.active_modifiers.empty()) {
                 state.active_modifiers.pop_back();
             }
+            return;
+        } else if (mutation_type == MutationType::SET_ATTACK_SOURCE) {
+            state.current_attack.source_instance_id = previous_int_value;
+            return;
+        } else if (mutation_type == MutationType::SET_ATTACK_TARGET) {
+            state.current_attack.target_instance_id = previous_int_value;
+            return;
+        } else if (mutation_type == MutationType::SET_ATTACK_PLAYER) {
+            state.current_attack.target_player = (core::PlayerID)previous_int_value;
+            return;
+        } else if (mutation_type == MutationType::SET_BLOCKER) {
+            state.current_attack.blocker_instance_id = previous_int_value;
+            state.current_attack.is_blocked = previous_bool_value;
             return;
         }
 

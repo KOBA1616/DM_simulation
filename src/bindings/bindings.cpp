@@ -168,6 +168,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("BATTLE", Zone::BATTLE)
         .value("GRAVEYARD", Zone::GRAVEYARD)
         .value("SHIELD", Zone::SHIELD)
+        .value("STACK", Zone::STACK)
         .export_values();
 
     py::enum_<EffectType>(m, "EffectType")
@@ -577,6 +578,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("slot_index", &Action::slot_index)
         .def_readwrite("target_slot_index", &Action::target_slot_index);
 
+    py::class_<AttackRequest>(m, "AttackRequest")
+        .def(py::init<>())
+        .def_readwrite("source_instance_id", &AttackRequest::source_instance_id)
+        .def_readwrite("target_instance_id", &AttackRequest::target_instance_id)
+        .def_readwrite("target_player", &AttackRequest::target_player)
+        .def_readwrite("is_blocked", &AttackRequest::is_blocked)
+        .def_readwrite("blocker_instance_id", &AttackRequest::blocker_instance_id);
+
     py::class_<GameState>(m, "GameState")
         .def(py::init<int>())
         .def("initialize_card_stats", &GameState::initialize_card_stats) // Bind as member
@@ -586,6 +595,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("stack_zone", &GameState::stack_zone)
         .def_readwrite("pending_effects", &GameState::pending_effects)
+        .def_readwrite("current_attack", &GameState::current_attack) // Exposed
         // .def_readwrite("effect_buffer", &GameState::effect_buffer) // Moved to Player
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("winner", &GameState::winner)
@@ -1103,6 +1113,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("POWER_MOD", dm::engine::game_command::MutateCommand::MutationType::POWER_MOD)
         .value("ADD_KEYWORD", dm::engine::game_command::MutateCommand::MutationType::ADD_KEYWORD)
         .value("REMOVE_KEYWORD", dm::engine::game_command::MutateCommand::MutationType::REMOVE_KEYWORD)
+        .value("SET_ATTACK_SOURCE", dm::engine::game_command::MutateCommand::MutationType::SET_ATTACK_SOURCE)
+        .value("SET_ATTACK_TARGET", dm::engine::game_command::MutateCommand::MutationType::SET_ATTACK_TARGET)
+        .value("SET_ATTACK_PLAYER", dm::engine::game_command::MutateCommand::MutationType::SET_ATTACK_PLAYER)
+        .value("SET_BLOCKER", dm::engine::game_command::MutateCommand::MutationType::SET_BLOCKER)
         .export_values();
 
     py::class_<dm::engine::game_command::FlowCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::FlowCommand>>(m, "FlowCommand")

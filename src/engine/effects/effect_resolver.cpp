@@ -8,6 +8,8 @@
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
 #include "engine/cost_payment_system.hpp"
+#include "engine/systems/card/handlers/attack_handler.hpp"
+#include "engine/systems/card/handlers/block_handler.hpp"
 
 #include <iostream>
 #include <algorithm>
@@ -232,9 +234,17 @@ namespace dm::engine {
         if (action.target_player == 254) {
              auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
              if (it != player.hand.end()) {
-                 CardInstance card = *it;
-                 player.hand.erase(it);
-                 game_state.stack_zone.push_back(card);
+                 dm::engine::game_command::TransitionCommand cmd(action.source_instance_id, Zone::HAND, Zone::STACK, player.id);
+                 cmd.execute(game_state);
+
+                 // Retrieve from stack for further processing
+                 CardInstance card;
+                 if (!game_state.stack_zone.empty() && game_state.stack_zone.back().instance_id == action.source_instance_id) {
+                     card = game_state.stack_zone.back();
+                 } else {
+                     return; // Should not happen
+                 }
+
                  int units = action.target_slot_index;
                  int reduction_amount = 0;
 
@@ -278,53 +288,32 @@ namespace dm::engine {
         }
         auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
         if (it != player.hand.end()) {
-            CardInstance card = *it;
-            player.hand.erase(it);
-            card.is_tapped = false;
-            card.summoning_sickness = true;
-            if (action.target_instance_id != -1) {
-                card.power_mod = action.target_instance_id;
-            } else {
-                card.power_mod = -1;
+            // Use GameCommand for transition
+            dm::engine::game_command::TransitionCommand cmd(action.source_instance_id, Zone::HAND, Zone::STACK, player.id);
+            cmd.execute(game_state);
+
+            // Post-transition setup (since TransitionCommand doesn't modify card properties except location)
+            // We need to set power_mod (hack for evo source)
+            // Note: card reference is now invalidated after execute, get it from stack_zone
+            if (!game_state.stack_zone.empty() && game_state.stack_zone.back().instance_id == action.source_instance_id) {
+                CardInstance& stacked_card = game_state.stack_zone.back();
+                stacked_card.is_tapped = false;
+                stacked_card.summoning_sickness = true;
+                if (action.target_instance_id != -1) {
+                    stacked_card.power_mod = action.target_instance_id;
+                } else {
+                    stacked_card.power_mod = -1;
+                }
             }
-            game_state.stack_zone.push_back(card);
         }
     }
 
     void EffectResolver::resolve_attack(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
-        Player& attacker = game_state.get_active_player();
-        Player& defender = game_state.get_non_active_player();
-        auto it = std::find_if(attacker.battle_zone.begin(), attacker.battle_zone.end(),
-            [&](const CardInstance& c){ return c.instance_id == action.source_instance_id; });
-        if (it == attacker.battle_zone.end()) return;
-        CardInstance& card = *it;
-        card.is_tapped = true;
-        game_state.current_attack.source_instance_id = action.source_instance_id;
-        game_state.current_attack.target_instance_id = (action.type == ActionType::ATTACK_CREATURE) ? action.target_instance_id : -1;
-        game_state.current_attack.target_player = (action.type == ActionType::ATTACK_PLAYER) ? action.target_player : -1;
-        game_state.current_attack.is_blocked = false;
-        game_state.current_attack.blocker_instance_id = -1;
-        game_state.turn_stats.attacks_declared_this_turn++;
-        GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_ATTACK, card.instance_id, card_db);
-
-        if (game_state.current_phase == Phase::ATTACK) {
-            game_state.current_phase = Phase::BLOCK;
-        }
-        ReactionSystem::check_and_open_window(game_state, card_db, "ON_ATTACK", defender.id);
-
+        AttackHandler::resolve(game_state, action, card_db);
     }
 
     void EffectResolver::resolve_block(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
-         game_state.current_attack.is_blocked = true;
-         game_state.current_attack.blocker_instance_id = action.source_instance_id;
-         Player& defender = game_state.get_non_active_player();
-         auto it = std::find_if(defender.battle_zone.begin(), defender.battle_zone.end(),
-             [&](const CardInstance& c){ return c.instance_id == action.source_instance_id; });
-         if (it != defender.battle_zone.end()) {
-             it->is_tapped = true;
-             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_BLOCK, it->instance_id, card_db);
-         }
-         game_state.pending_effects.emplace_back(EffectType::RESOLVE_BATTLE, action.source_instance_id, game_state.active_player_id);
+        BlockHandler::resolve(game_state, action, card_db);
     }
 
     void EffectResolver::resolve_use_shield_trigger(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
@@ -342,33 +331,63 @@ namespace dm::engine {
 
     void EffectResolver::resolve_use_ability(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
          Player& player = game_state.players[game_state.active_player_id];
+
+         // 1. Identify Hand Card
          auto hand_it = std::find_if(player.hand.begin(), player.hand.end(),
              [&](const CardInstance& c){ return c.instance_id == action.source_instance_id; });
-         if (hand_it != player.hand.end()) {
-             CardInstance hand_card = *hand_it;
 
-             // Check if target is explicitly set (e.g., from ActionGenerator)
-             int attacker_id = action.target_instance_id;
-             if (attacker_id == -1) {
-                 // Fallback to current attack source if not set
-                 attacker_id = game_state.current_attack.source_instance_id;
-             }
+         if (hand_it == player.hand.end()) return;
+         int hand_card_id = action.source_instance_id;
 
-             auto battle_it = std::find_if(player.battle_zone.begin(), player.battle_zone.end(),
-                 [&](const CardInstance& c){ return c.instance_id == attacker_id; });
-             if (battle_it != player.battle_zone.end()) {
-                 CardInstance battle_card = *battle_it;
-                 player.hand.erase(hand_it);
-                 player.battle_zone.erase(battle_it);
-                 hand_card.is_tapped = true;
-                 hand_card.summoning_sickness = true;
-                 player.battle_zone.push_back(hand_card);
-                 game_state.current_attack.source_instance_id = hand_card.instance_id;
-                 battle_card.is_tapped = false;
-                 battle_card.summoning_sickness = true;
-                 player.hand.push_back(battle_card);
-                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, hand_card.instance_id, card_db);
-             }
+         // 2. Identify Attacker (Target to swap)
+         int attacker_id = action.target_instance_id;
+         if (attacker_id == -1) {
+             attacker_id = game_state.current_attack.source_instance_id;
+         }
+
+         auto battle_it = std::find_if(player.battle_zone.begin(), player.battle_zone.end(),
+             [&](const CardInstance& c){ return c.instance_id == attacker_id; });
+
+         if (battle_it != player.battle_zone.end()) {
+             // 3. Execute Swaps via GameCommand
+
+             // Move Hand Card to Battle Zone
+             dm::engine::game_command::TransitionCommand cmd_in(hand_card_id, Zone::HAND, Zone::BATTLE, player.id);
+             cmd_in.execute(game_state);
+
+             // Move Battle Card to Hand
+             dm::engine::game_command::TransitionCommand cmd_out(attacker_id, Zone::BATTLE, Zone::HAND, player.id);
+             cmd_out.execute(game_state);
+
+             // 4. Update States via MutateCommand
+
+             // Tap the new creature (Revolution Change enters tapped/attacking)
+             dm::engine::game_command::MutateCommand tap_cmd(hand_card_id, dm::engine::game_command::MutateCommand::MutationType::TAP);
+             tap_cmd.execute(game_state);
+
+             // Set it as the new Attack Source
+             dm::engine::game_command::MutateCommand src_cmd(-1, dm::engine::game_command::MutateCommand::MutationType::SET_ATTACK_SOURCE, hand_card_id);
+             src_cmd.execute(game_state);
+
+             // Reset the returned card state (untap, etc)
+             // Note: Returning to hand usually resets state implicitly, but let's be explicit if needed.
+             // TransitionCommand moves it. ZoneUtils/Hand logic usually resets.
+             // But TransitionCommand is primitive.
+             // We should ensure `is_tapped` is false in Hand.
+             // Current `TransitionCommand` implementation doesn't reset flags automatically (except it uses `CardInstance card = *it`).
+             // So it copies the tapped state to hand?
+             // Yes, `TransitionCommand` copies the object.
+             // We should untap it in hand.
+             dm::engine::game_command::MutateCommand untap_cmd(attacker_id, dm::engine::game_command::MutateCommand::MutationType::UNTAP);
+             untap_cmd.execute(game_state);
+
+             // Trigger ON_PLAY for the new creature
+             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, hand_card_id, card_db);
+
+             // We also need to transition phase to BLOCK if not already?
+             // Usually this happens during Attack declaration or block step.
+             // Revolution change happens at `ON_ATTACK`.
+             // We are still in ATTACK/BLOCK flow.
          }
     }
 

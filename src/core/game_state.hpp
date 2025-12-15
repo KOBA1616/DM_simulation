@@ -76,9 +76,9 @@ namespace dm::core {
     };
 
     struct AttackRequest {
-        int source_instance_id;
-        int target_instance_id; // -1 if attacking player
-        PlayerID target_player; // Valid if target_instance_id == -1
+        int source_instance_id = -1;
+        int target_instance_id = -1; // -1 if attacking player
+        PlayerID target_player = 255; // Valid if target_instance_id == -1
         bool is_blocked = false;
         int blocker_instance_id = -1;
     };
@@ -245,6 +245,9 @@ namespace dm::core {
              for (auto& c : players[0].effect_buffer) if (c.instance_id == instance_id) return &c;
              for (auto& c : players[1].effect_buffer) if (c.instance_id == instance_id) return &c;
 
+             // Check stack zone
+             for (auto& c : stack_zone) if (c.instance_id == instance_id) return &c;
+
              return nullptr;
         }
 
@@ -267,6 +270,9 @@ namespace dm::core {
 
              for (const auto& c : players[0].effect_buffer) if (c.instance_id == instance_id) return &c;
              for (const auto& c : players[1].effect_buffer) if (c.instance_id == instance_id) return &c;
+
+             // Check stack zone
+             for (const auto& c : stack_zone) if (c.instance_id == instance_id) return &c;
 
              return nullptr;
         }

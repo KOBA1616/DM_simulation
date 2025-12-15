@@ -66,7 +66,8 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
     *   **Status**: 基本5命令のクラス実装、Pythonバインディング、および `GameState` への統合が完了。Unit Test (`tests/test_game_command.py`) を復元・実装し動作確認済み (Phase 6.2 Completed)。
 3.  **アクション汎用化**
     *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP`、`APPLY_MODIFIER`、`MODIFY_POWER`、`BREAK_SHIELD`、`DESTROY_CARD`、`PLAY_CARD` のハンドラを `GameCommand` を使用するように移行完了 (Phase 6.3 Completed)。
-    *   **Next**: 残りのアクション（`ATTACK` 等）の移行と、`GameCommand` システムの `Zone` 列挙型の拡張（Stack等のサポート）。
+    *   **Action Generalization**: `ATTACK_PLAYER`, `ATTACK_CREATURE`, `BLOCK`, `PLAY_CARD` (Player Action) を `TransitionCommand` および `MutateCommand` (拡張: `SET_ATTACK_*`, `SET_BLOCKER`) を使用するように移行完了。
+    *   **System Update**: `Zone` 列挙型に `STACK` を追加し、`TransitionCommand` でのサポートを実装完了。
 
 ### 3.1 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 

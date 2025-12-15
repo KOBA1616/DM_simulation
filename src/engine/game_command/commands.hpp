@@ -33,7 +33,12 @@ namespace dm::engine::game_command {
             ADD_KEYWORD,
             REMOVE_KEYWORD,
             ADD_PASSIVE_EFFECT,
-            ADD_COST_MODIFIER
+            ADD_COST_MODIFIER,
+            // Attack Phase Mutations
+            SET_ATTACK_SOURCE,
+            SET_ATTACK_TARGET, // Target Creature
+            SET_ATTACK_PLAYER, // Target Player
+            SET_BLOCKER
         };
 
         int target_instance_id;
