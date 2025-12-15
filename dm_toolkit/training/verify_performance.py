@@ -36,7 +36,7 @@ class PerformanceVerifier:
         dummy_instance = dm_ai_module.GameInstance(42, self.card_db)
         dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_instance.state, 0, self.card_db)
         self.input_size = len(dummy_vec)
-        self.action_size = 600
+        self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")

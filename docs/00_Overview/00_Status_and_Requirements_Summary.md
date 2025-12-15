@@ -36,6 +36,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **Phase 4 アーキテクチャ (実装完了)**:
     *   **NetworkV2**: Transformer (Linear Attention) ベースの可変長入力モデルを実装。
     *   **TensorConverter**: C++側でのシーケンス変換ロジックを実装済み。
+*   **GameCommand対応状況**: 新しいGameCommandアーキテクチャ上で `collect_training_data.py`, `train_simple.py`, `verify_performance.py` が正常に動作することを検証済み。
 
 ### 2.4 サポート済みアクション・トリガー一覧 (Supported Actions & Triggers)
 （変更なし：`EffectActionType` および `TriggerType` は現行コードベースに準拠）
@@ -68,6 +69,7 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 3.  **アクション汎用化**
     *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP`、`APPLY_MODIFIER`、`MODIFY_POWER`、`BREAK_SHIELD`、`DESTROY_CARD`、`PLAY_CARD`、および `ATTACK` (AttackHandler) のハンドラを `GameCommand` を使用するように移行完了。`GameCommand` の `Zone` に `STACK`, `BUFFER` を追加し、拡張完了 (Phase 6.3 Completed)。
     *   **Next**: 完了したGameCommandアーキテクチャを用いたAI学習の再開（Phase 3.2へ移行）。
+        *   **Status**: AI学習パイプライン（データ収集、学習、検証）がGameCommandアーキテクチャ上で正常に動作することを確認済み。`verify_performance.py` におけるアクションサイズの不整合を修正し、エンドツーエンドの動作検証を完了しました。
 
 ### 3.1 [Priority: Medium] Phase 5: エディタ機能の完成 (Editor Polish & Validation)
 
