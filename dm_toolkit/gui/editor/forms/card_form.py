@@ -55,7 +55,7 @@ class CardEditForm(BaseEditForm):
 
         # Type
         self.type_combo = QComboBox()
-        types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE", "TAMASEED", "CROSS_GEAR", "CASTLE", "PSYCHIC_CREATURE", "GR_CREATURE"]
+        types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE", "TAMASEED", "CROSS_GEAR", "CASTLE", "PSYCHIC_CREATURE", "GR_CREATURE", "NEO_CREATURE"]
         self.populate_combo(self.type_combo, types, data_func=lambda x: x)
         self.form_layout.addRow(tr("Type"), self.type_combo)
 
@@ -75,6 +75,12 @@ class CardEditForm(BaseEditForm):
         self.races_edit = QLineEdit()
         self.lbl_races = QLabel(tr("Races"))
         self.form_layout.addRow(self.lbl_races, self.races_edit)
+
+        # Evolution Condition (Hidden by default, shown for Evolution types)
+        self.evolution_condition_edit = QLineEdit()
+        self.evolution_condition_edit.setPlaceholderText(tr("e.g. Fire Bird"))
+        self.lbl_evolution_condition = QLabel(tr("Evolution Condition"))
+        self.form_layout.addRow(self.lbl_evolution_condition, self.evolution_condition_edit)
 
         # Keywords Section
         kw_group = QGroupBox(tr("Keywords"))
@@ -156,6 +162,10 @@ class CardEditForm(BaseEditForm):
         self.cost_spin.valueChanged.connect(self.update_data)
         self.power_spin.valueChanged.connect(self.update_data)
         self.races_edit.textChanged.connect(self.update_data)
+        self.evolution_condition_edit.textChanged.connect(self.update_data)
+
+        # Initialize visibility
+        self.update_type_visibility(self.type_combo.currentData())
 
     def toggle_twinpact(self, state):
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
@@ -195,6 +205,7 @@ class CardEditForm(BaseEditForm):
         self.cost_spin.setValue(data.get('cost', 0))
         self.power_spin.setValue(data.get('power', 0))
         self.races_edit.setText(", ".join(data.get('races', [])))
+        self.evolution_condition_edit.setText(data.get('evolution_condition', ''))
 
         # Check for Spell Side child node to toggle Twinpact checkbox
         has_spell_side = False
@@ -231,6 +242,12 @@ class CardEditForm(BaseEditForm):
         self.power_spin.setVisible(not is_spell)
         self.lbl_power.setVisible(not is_spell)
 
+        # Evolution Condition
+        is_evolution = (type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE")
+        self.evolution_condition_edit.setVisible(is_evolution)
+        self.evolution_condition_edit.setEnabled(is_evolution)
+        self.lbl_evolution_condition.setVisible(is_evolution)
+
     def _save_data(self, data):
         data['id'] = self.id_spin.value()
         data['name'] = self.name_edit.text()
@@ -251,6 +268,12 @@ class CardEditForm(BaseEditForm):
             data['power'] = self.power_spin.value()
         races_str = self.races_edit.text()
         data['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
+
+        # Save evolution condition if applicable
+        if type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE":
+             data['evolution_condition'] = self.evolution_condition_edit.text()
+        elif 'evolution_condition' in data:
+             del data['evolution_condition']
 
         # Keyword handling
         # IMPORTANT: Preserve keywords not managed by this loop (like revolution_change)
@@ -277,7 +300,7 @@ class CardEditForm(BaseEditForm):
             del current_keywords['revolution_change']
 
         # Auto-set evolution keyword based on type
-        if type_str == "EVOLUTION_CREATURE":
+        if type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE":
             current_keywords['evolution'] = True
 
         data['keywords'] = current_keywords
@@ -297,6 +320,7 @@ class CardEditForm(BaseEditForm):
         self.cost_spin.blockSignals(block)
         self.power_spin.blockSignals(block)
         self.races_edit.blockSignals(block)
+        self.evolution_condition_edit.blockSignals(block)
         self.twinpact_check.blockSignals(block)
         self.rev_change_check.blockSignals(block)
         for cb in self.keyword_checks.values():
