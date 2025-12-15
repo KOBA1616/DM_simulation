@@ -63,6 +63,7 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
     *   **Status**: `TriggerManager`, `GameEvent` クラスの実装とPythonバインディングが完了 (Phase 6.1 Started)。
 2.  **GameCommand (Primitives) の実装**
     *   全てのアクションを `TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE` に分解・再実装。
+    *   **Status**: `GameCommand` 基底クラスおよび5つのPrimitiveクラスの実装とPythonバインディングが完了 (Phase 6.2 Completed).
 3.  **アクション汎用化**
     *   `MOVE_CARD` の完全統合、`APPLY_MODIFIER` の汎用化により、個別実装を排除。
 

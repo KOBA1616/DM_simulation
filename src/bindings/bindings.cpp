@@ -35,9 +35,16 @@
 #include "ai/solver/lethal_solver.hpp"
 #include "ai/evolution/deck_evolution.hpp"
 #include "engine/cost_payment_system.hpp" // Added include
+#include "engine/game_command/game_command.hpp"
+#include "engine/game_command/commands/transition_command.hpp"
+#include "engine/game_command/commands/mutate_command.hpp"
+#include "engine/game_command/commands/flow_command.hpp"
+#include "engine/game_command/commands/query_command.hpp"
+#include "engine/game_command/commands/decide_command.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
+using namespace dm::engine::game_command;
 using namespace dm::engine;
 using namespace dm::ai;
 
@@ -296,6 +303,37 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("PASSIVE", ReductionType::PASSIVE)
         .value("ACTIVE_PAYMENT", ReductionType::ACTIVE_PAYMENT)
         .export_values();
+
+    // GameCommand Bindings (Phase 6.2)
+    py::enum_<CommandType>(m, "CommandType")
+        .value("TRANSITION", CommandType::TRANSITION)
+        .value("MUTATE", CommandType::MUTATE)
+        .value("FLOW", CommandType::FLOW)
+        .value("QUERY", CommandType::QUERY)
+        .value("DECIDE", CommandType::DECIDE)
+        .export_values();
+
+    py::class_<GameCommand, std::shared_ptr<GameCommand>>(m, "GameCommand")
+        .def("execute", &GameCommand::execute)
+        .def("undo", &GameCommand::undo)
+        .def("get_type", &GameCommand::get_type)
+        .def("to_string", &GameCommand::to_string);
+
+    py::class_<TransitionCommand, GameCommand, std::shared_ptr<TransitionCommand>>(m, "TransitionCommand")
+        .def(py::init<dm::core::CardID, int, dm::core::Zone, dm::core::Zone, dm::core::PlayerID, int, int>(),
+             py::arg("card_id"), py::arg("instance_id"), py::arg("from_zone"), py::arg("to_zone"), py::arg("player_id"), py::arg("from_index") = -1, py::arg("to_index") = -1);
+
+    py::class_<MutateCommand, GameCommand, std::shared_ptr<MutateCommand>>(m, "MutateCommand")
+        .def(py::init<int, MutationType, int, int>());
+
+    py::class_<FlowCommand, GameCommand, std::shared_ptr<FlowCommand>>(m, "FlowCommand")
+        .def(py::init<FlowType, int, int>());
+
+    py::class_<QueryCommand, GameCommand, std::shared_ptr<QueryCommand>>(m, "QueryCommand")
+        .def(py::init<QueryType, dm::core::PlayerID, const std::vector<int>&>());
+
+    py::class_<DecideCommand, GameCommand, std::shared_ptr<DecideCommand>>(m, "DecideCommand")
+        .def(py::init<dm::core::PlayerID, int, const std::vector<int>&>());
 
     // Structs
     py::class_<GameResultInfo>(m, "GameResultInfo")
