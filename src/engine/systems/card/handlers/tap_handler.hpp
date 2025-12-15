@@ -3,6 +3,7 @@
 #include "core/game_state.hpp"
 #include "engine/systems/card/generic_card_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "engine/game_command/commands.hpp"
 
 namespace dm::engine {
 
@@ -24,7 +25,8 @@ namespace dm::engine {
                  int controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  int enemy = 1 - controller_id;
                  for (auto& c : ctx.game_state.players[enemy].battle_zone) {
-                     c.is_tapped = true;
+                     game_command::MutateCommand cmd(c.instance_id, game_command::MutateCommand::MutationType::TAP);
+                     cmd.execute(ctx.game_state);
                  }
                  return;
             }
@@ -53,10 +55,8 @@ namespace dm::engine {
                          if (!ctx.card_db.count(card.card_id)) continue;
                          const auto& def = ctx.card_db.at(card.card_id);
                          if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
-                              // Optional: Check Just Diver? Tapping "All" usually ignores hexproof-like effects in DM.
-                              // DestroyHandler checks it, but that might be specific to Destroy.
-                              // We'll proceed with tap.
-                              card.is_tapped = true;
+                              game_command::MutateCommand cmd(card.instance_id, game_command::MutateCommand::MutationType::TAP);
+                              cmd.execute(ctx.game_state);
                          }
                      }
                 }
@@ -66,20 +66,9 @@ namespace dm::engine {
         void resolve_with_targets(const ResolutionContext& ctx) override {
              if (!ctx.targets) return;
 
-             auto find_inst = [&](int instance_id) -> dm::core::CardInstance* {
-                for (auto& p : ctx.game_state.players) {
-                    for (auto& c : p.battle_zone) if (c.instance_id == instance_id) return &c;
-                    for (auto& c : p.hand) if (c.instance_id == instance_id) return &c;
-                    for (auto& c : p.mana_zone) if (c.instance_id == instance_id) return &c;
-                    for (auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
-                    for (auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
-                }
-                return nullptr;
-            };
-
             for (int tid : *ctx.targets) {
-                dm::core::CardInstance* inst = find_inst(tid);
-                if (inst) inst->is_tapped = true;
+                 game_command::MutateCommand cmd(tid, game_command::MutateCommand::MutationType::TAP);
+                 cmd.execute(ctx.game_state);
             }
         }
     };
