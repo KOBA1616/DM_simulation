@@ -347,6 +347,39 @@ class CardDataManager:
              count = action.get('filter', {}).get('count')
              if count:
                  display_type += f" (Count: {count})"
+        elif act_type == "MOVE_CARD":
+             dest = action.get('destination_zone', 'HAND')
+             source = action.get('source_zone', 'NONE') # Optional source tracking
+
+             # Contextual Naming based on Source -> Destination
+             # Hand -> Graveyard = Discard
+             # Battle/Target -> Graveyard = Destroy
+             # Shield -> Graveyard = Burn
+             # Hand -> Mana = Charge
+             # Battle -> Hand = Bounce
+
+             display_type = tr(dest)
+
+             if dest == "MANA_ZONE":
+                 display_type = tr("SEND_TO_MANA")
+             elif dest == "GRAVEYARD":
+                 if source == "HAND":
+                     display_type = tr("DISCARD")
+                 elif source == "SHIELD_ZONE":
+                     display_type = tr("SHIELD_BURN")
+                 else:
+                     display_type = tr("DESTROY")
+             elif dest == "HAND":
+                 display_type = tr("RETURN_TO_HAND")
+             elif dest == "DECK_BOTTOM":
+                 display_type = tr("SEND_TO_DECK_BOTTOM")
+             elif dest == "SHIELD_ZONE":
+                 display_type = tr("ADD_SHIELD")
+
+             count = action.get('filter', {}).get('count')
+             if count:
+                 display_type += f" (Count: {count})"
+
         elif act_type == "REVOLUTION_CHANGE":
              display_type = tr("Revolution Change")
         elif act_type == "SELECT_OPTION":
