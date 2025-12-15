@@ -3,6 +3,8 @@
 #include <pybind11/functional.h>
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
+#include "core/game_event.hpp"
+#include "engine/systems/trigger_system/trigger_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/actions/action_generator.hpp"
 #include "engine/effects/effect_resolver.hpp"
@@ -64,6 +66,54 @@ PYBIND11_MODULE(dm_ai_module, m) {
     m.doc() = "Duel Masters AI Engine Module";
 
     // Enums
+    py::enum_<EventType>(m, "EventType")
+        .value("NONE", EventType::NONE)
+        .value("ZONE_ENTER", EventType::ZONE_ENTER)
+        .value("ZONE_LEAVE", EventType::ZONE_LEAVE)
+        .value("TURN_START", EventType::TURN_START)
+        .value("TURN_END", EventType::TURN_END)
+        .value("PHASE_START", EventType::PHASE_START)
+        .value("PHASE_END", EventType::PHASE_END)
+        .value("PLAY_CARD", EventType::PLAY_CARD)
+        .value("ATTACK_INITIATE", EventType::ATTACK_INITIATE)
+        .value("BLOCK_INITIATE", EventType::BLOCK_INITIATE)
+        .value("BATTLE_START", EventType::BATTLE_START)
+        .value("BATTLE_WIN", EventType::BATTLE_WIN)
+        .value("BATTLE_LOSE", EventType::BATTLE_LOSE)
+        .value("SHIELD_BREAK", EventType::SHIELD_BREAK)
+        .value("DIRECT_ATTACK", EventType::DIRECT_ATTACK)
+        .value("TAP_CARD", EventType::TAP_CARD)
+        .value("UNTAP_CARD", EventType::UNTAP_CARD)
+        .value("CUSTOM", EventType::CUSTOM)
+        .export_values();
+
+    py::class_<GameEvent>(m, "GameEvent")
+        .def(py::init<EventType, int, int, PlayerID>())
+        .def_readwrite("type", &GameEvent::type)
+        .def_readwrite("source_id", &GameEvent::source_id)
+        .def_readwrite("target_id", &GameEvent::target_id)
+        .def_readwrite("player_id", &GameEvent::player_id)
+        .def_readwrite("context", &GameEvent::context);
+
+    py::class_<systems::TriggerManager, std::shared_ptr<systems::TriggerManager>>(m, "TriggerManager")
+        .def(py::init<>())
+        .def("dispatch", &systems::TriggerManager::dispatch)
+        .def("clear", &systems::TriggerManager::clear)
+        .def("subscribe", [](systems::TriggerManager& self, EventType type, py::function callback) {
+            // Capture python function. Note: This creates a dependency on the GIL.
+            // In a real threaded environment, we need to be careful.
+            // For now, we wrap it.
+            self.subscribe(type, [callback](const GameEvent& event, GameState& state) {
+                py::gil_scoped_acquire acquire;
+                try {
+                    callback(event, state);
+                } catch (py::error_already_set& e) {
+                     // Log or ignore
+                     // e.what() returns the error message
+                }
+            });
+        });
+
     py::enum_<Civilization>(m, "Civilization")
         .value("NONE", Civilization::NONE)
         .value("LIGHT", Civilization::LIGHT)
@@ -639,7 +689,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<GameInstance>(m, "GameInstance")
         .def(py::init<uint32_t, const std::map<CardID, CardDefinition>&>())
         .def("reset_with_scenario", &GameInstance::reset_with_scenario)
-        .def_readonly("state", &GameInstance::state);
+        .def_readonly("state", &GameInstance::state)
+        .def_readwrite("trigger_manager", &GameInstance::trigger_manager);
         // .def_readonly("card_db", &GameInstance::card_db); // Cannot bind reference member directly easily
 
     py::class_<JsonLoader>(m, "JsonLoader")
