@@ -1,9 +1,25 @@
 #include "game_instance.hpp"
 #include "systems/flow/phase_manager.hpp"
+#include "engine/game_command/game_command.hpp"
 
 namespace dm::engine {
 
     using namespace dm::core;
+
+    void GameInstance::undo() {
+        if (state.command_history.empty()) return;
+
+        // Get the last command (ref to shared_ptr)
+        // Using auto& to avoid copying shared_ptr, though copy is cheap.
+        // It points to shared_ptr<GameCommand>.
+        auto& cmd = state.command_history.back();
+
+        // Execute invert logic
+        cmd->invert(state);
+
+        // Remove from history
+        state.command_history.pop_back();
+    }
 
     void GameInstance::reset_with_scenario(const ScenarioConfig& config) {
         // 1. Reset Game State
