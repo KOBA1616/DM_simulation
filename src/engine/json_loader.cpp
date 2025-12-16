@@ -31,6 +31,69 @@ namespace dm::engine {
         return CardType::CREATURE;
     }
 
+    // Helper to convert Legacy ActionDef to New CommandDef
+    static CommandDef convert_legacy_action(const ActionDef& act) {
+        CommandDef cmd;
+        cmd.optional = act.optional;
+        cmd.amount = act.value1;
+        cmd.str_param = act.str_val;
+        cmd.target_filter = act.filter;
+        cmd.target_group = act.scope;
+
+        // Map Legacy Scope to Zone/Target if necessary
+        if (act.source_zone.empty() == false) cmd.from_zone = act.source_zone;
+        if (act.destination_zone.empty() == false) cmd.to_zone = act.destination_zone;
+
+        switch (act.type) {
+            case EffectActionType::DRAW_CARD:
+                cmd.type = CommandType::DRAW_CARD;
+                break;
+            case EffectActionType::ADD_MANA:
+                cmd.type = CommandType::MANA_CHARGE;
+                break;
+            case EffectActionType::DESTROY:
+                cmd.type = CommandType::DESTROY;
+                break;
+            case EffectActionType::RETURN_TO_HAND:
+                cmd.type = CommandType::RETURN_TO_HAND;
+                break;
+            case EffectActionType::TAP:
+                cmd.type = CommandType::TAP;
+                break;
+            case EffectActionType::UNTAP:
+                cmd.type = CommandType::UNTAP;
+                break;
+            case EffectActionType::MODIFY_POWER:
+                cmd.type = CommandType::POWER_MOD;
+                break;
+            case EffectActionType::BREAK_SHIELD:
+                cmd.type = CommandType::BREAK_SHIELD;
+                break;
+            case EffectActionType::DISCARD:
+                cmd.type = CommandType::DISCARD;
+                break;
+            case EffectActionType::SEARCH_DECK:
+                cmd.type = CommandType::SEARCH_DECK;
+                break;
+            case EffectActionType::GRANT_KEYWORD:
+                cmd.type = CommandType::ADD_KEYWORD;
+                break;
+            case EffectActionType::SEND_TO_MANA:
+                cmd.type = CommandType::MANA_CHARGE; // Usually Send to Mana
+                break;
+            case EffectActionType::MOVE_CARD:
+                cmd.type = CommandType::TRANSITION;
+                break;
+            // Map other types as needed or log warning
+            default:
+                // Fallback: If no mapping, we might lose functionality for now.
+                // This is expected during migration.
+                cmd.type = CommandType::NONE;
+                break;
+        }
+        return cmd;
+    }
+
     // Helper to convert CardData (JSON) to CardDefinition (Engine)
     // Forward declare to allow recursive calls
     static CardDefinition convert_to_def(const CardData& data);
@@ -104,11 +167,45 @@ namespace dm::engine {
         }
 
         def.reaction_abilities = data.reaction_abilities;
-        def.cost_reductions = data.cost_reductions; // Copy cost reductions
+        def.cost_reductions = data.cost_reductions;
 
-        // Populate Effect Definitions for Engine
-        def.effects = data.effects;
-        def.metamorph_abilities = data.metamorph_abilities;
+        // Populate Effect Definitions for Engine with Conversion
+        def.effects.clear();
+        def.effects.reserve(data.effects.size());
+        for (const auto& eff : data.effects) {
+            EffectDef engine_eff = eff;
+
+            // Legacy Conversion: If commands are empty but actions exist
+            if (engine_eff.commands.empty() && !engine_eff.actions.empty()) {
+                std::cout << "Converting Legacy Actions. Count: " << engine_eff.actions.size() << std::endl;
+                engine_eff.commands.reserve(engine_eff.actions.size());
+                for (const auto& act : engine_eff.actions) {
+                    CommandDef cmd = convert_legacy_action(act);
+                    std::cout << "Converted ActionType " << (int)act.type << " to CommandType " << (int)cmd.type << std::endl;
+                    if (cmd.type != CommandType::NONE) {
+                        engine_eff.commands.push_back(cmd);
+                    }
+                }
+            }
+            def.effects.push_back(engine_eff);
+        }
+
+        // Populate Metamorph Abilities with Conversion
+        def.metamorph_abilities.clear();
+        def.metamorph_abilities.reserve(data.metamorph_abilities.size());
+        for (const auto& eff : data.metamorph_abilities) {
+             EffectDef engine_eff = eff;
+             if (engine_eff.commands.empty() && !engine_eff.actions.empty()) {
+                engine_eff.commands.reserve(engine_eff.actions.size());
+                for (const auto& act : engine_eff.actions) {
+                    CommandDef cmd = convert_legacy_action(act);
+                    if (cmd.type != CommandType::NONE) {
+                        engine_eff.commands.push_back(cmd);
+                    }
+                }
+            }
+            def.metamorph_abilities.push_back(engine_eff);
+        }
 
         // Recursive Spell Side
         if (data.spell_side) {
