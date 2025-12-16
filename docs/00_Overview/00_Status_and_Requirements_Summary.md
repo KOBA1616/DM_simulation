@@ -19,7 +19,7 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 ### 2.1 コアエンジン (C++ / `src/engine`)
 *   **EffectResolver (Legacy)**: 現在の主力ロジック。巨大なswitch文により効果処理を行っているが、複雑化により限界に達している。Phase 6で廃止予定。
 *   **GameCommand (Partial)**: 基本クラスと一部のコマンドは実装済みだが、エンジンの中核ロジックとしては未統合。
-*   **汎用コストシステム**: 実装済み。新エンジンでもそのまま利用する。
+*   **TriggerManager (New)**: イベント駆動基盤が実装され、基本的なトリガー検知 (`check_triggers`) が動作確認済み。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   **Status**: 稼働中 (Ver 2.3)。
@@ -40,9 +40,10 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 `EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行します。
 
 *   **Step 1: イベント駆動基盤の実装**
-    *   `TriggerManager`: シングルトン/コンポーネントによるイベント監視・発行システムの実装。
-    *   従来のハードコードされたトリガーフックを、イベント発行 (`dispatch`) に置き換える。
+    *   **Status: Done**
+    *   `TriggerManager`: イベント監視・発行システムの実装完了。`check_triggers` により `PendingEffect` の生成を確認済み。
 *   **Step 2: 命令パイプライン (Instruction Pipeline) の実装**
+    *   **Status: Next Up**
     *   JSON定義された命令列を実行する `PipelineExecutor` (VM) の実装。
     *   `EffectResolver` の各ロジックを `Instruction` (Move, Modify, Check等) の組み合わせに分解・再実装。
 *   **Step 3: GameCommand への統合**
@@ -83,19 +84,19 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 
 2.  **TriggerManager (イベント管理)**
     *   **責務**: 全イベントの集約とリスナーへの配信。
+    *   **Status**: 実装済み。`dispatch` および `check_triggers` によりトリガー検知が可能。
     *   **Method `dispatch(EventObject)`**:
         1.  常時監視効果 (Passive Effects) のチェック。
         2.  誘発型能力 (Triggered Abilities) の検索 (`PendingEffect` 生成)。
-        3.  置換効果 (Interceptor) の適用確認。
+        3.  置換効果 (Interceptor) の適用確認 (Pending)。
 
 3.  **Listener Registration (登録)**
     *   カード実体 (`CardInstance`) ではなく、カード定義 (`CardDefinition`) または現在のゲーム状態がリスナーを持つ。
-    *   最適化のため、各ゾーンのカードがどのイベントを購読しているかをキャッシュする仕組みを検討する。
 
 ### 5.2 実装要件
 
 *   **廃止**: `resolve_trigger` 関数内の switch 分岐。
-*   **導入**: `TriggerManager::check_triggers(event)` メソッド。
+*   **導入**: `TriggerManager::check_triggers(event)` メソッド (実装済み)。
 *   **データバインディング**: JSONの `TriggerType` 文字列を `EventType` enum にマッピングする変換層を設ける。
 
 ---
@@ -219,4 +220,3 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 
 **Note: 本セクションは Phase 6 のスコープ外です。**
 スタックマシン型VMや完全なバイトコード化などの高度な最適化は、Phase 6 の機能が安定し、AI学習が軌道に乗った後の「Phase 7以降」の課題とします。現在は考慮しません。
-
