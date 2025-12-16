@@ -30,6 +30,7 @@
 #include "handlers/play_handler.hpp"
 #include "handlers/modify_power_handler.hpp"
 #include "engine/systems/pipeline_executor.hpp"
+#include "engine/systems/command_system.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -218,6 +219,14 @@ namespace dm::engine {
 
         if (!check_condition(game_state, effect.condition, source_instance_id, card_db)) {
             return;
+        }
+
+        // New Engine: Execute Commands (Hybrid Schema)
+        if (!effect.commands.empty()) {
+            PlayerID controller = get_controller(game_state, source_instance_id);
+            for (const auto& cmd : effect.commands) {
+                systems::CommandSystem::execute_command(game_state, cmd, source_instance_id, controller);
+            }
         }
 
         for (size_t i = 0; i < effect.actions.size(); ++i) {
