@@ -39,12 +39,12 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 **Status: In Progress**
 `EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行します。
 
-*   **Step 1: イベント駆動基盤の実装**
+*   **Step 1: イベント駆動基盤の実装 (完了)**
     *   `TriggerManager`: シングルトン/コンポーネントによるイベント監視・発行システムの実装。（実装完了）
-    *   従来のハードコードされたトリガーフックを、イベント発行 (`dispatch`) に置き換える。
-*   **Step 2: 命令パイプライン (Instruction Pipeline) の実装**
-    *   JSON定義された命令列を実行する `PipelineExecutor` (VM) の実装。（基盤実装完了。命令ハンドラの拡張が必要）
-    *   `EffectResolver` の各ロジックを `Instruction` (Move, Modify, Check等) の組み合わせに分解・再実装。
+    *   `PipelineExecutor`: 基本実装および命令ハンドラ (`MOVE`, `MODIFY`, `SELECT`) の実装完了。
+*   **Step 2: レガシー連携とアダプター作成**
+    *   `LegacyJsonAdapter`: 既存のJSONデータを読み込み、ランタイムで新しい `Instruction` 形式に変換するアダプターを作成する。
+    *   これにより、エディタやJSONファイルの即時書き換えを回避する。
 *   **Step 3: GameCommand への統合**
     *   全てのアクションを `GameCommand` (Transition, Mutate, Flow等) 発行として統一し、Undo/Redo基盤を確立する。
 *   **Step 4: 移行と検証**
