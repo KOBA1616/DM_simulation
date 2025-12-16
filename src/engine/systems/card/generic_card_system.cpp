@@ -30,6 +30,7 @@
 #include "handlers/play_handler.hpp"
 #include "handlers/modify_power_handler.hpp"
 #include "engine/systems/pipeline_executor.hpp"
+#include "engine/systems/command_system.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -236,6 +237,12 @@ namespace dm::engine {
                 // std::cout << "resolve_effect: Interrupted loop." << std::endl;
                 break;
             }
+        }
+
+        // Phase 7: Hybrid Engine - Execute Commands
+        for (const auto& cmd : effect.commands) {
+            PlayerID controller = get_controller(game_state, source_instance_id);
+            dm::engine::systems::CommandSystem::execute_command(game_state, cmd, source_instance_id, controller);
         }
     }
 
