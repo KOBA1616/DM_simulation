@@ -13,10 +13,8 @@ namespace dm::engine {
         const std::map<core::CardID, core::CardDefinition>& card_db;
         std::shared_ptr<systems::TriggerManager> trigger_manager;
 
-        GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db)
-            : state(seed), card_db(db) {
-            trigger_manager = std::make_shared<systems::TriggerManager>();
-        }
+        // Constructor moved to CPP to avoid circular dependency / allow lambda
+        GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db);
 
         void reset_with_scenario(const core::ScenarioConfig& config);
 
