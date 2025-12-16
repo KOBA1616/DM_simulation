@@ -42,9 +42,11 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 *   **Step 1: イベント駆動基盤の実装**
     *   `TriggerManager`: シングルトン/コンポーネントによるイベント監視・発行システムの実装。（実装完了）
     *   従来のハードコードされたトリガーフックを、イベント発行 (`dispatch`) に置き換える。
+    *   **New**: `check_triggers` メソッドによる「Passive -> Triggered -> Interceptor」の順次チェック機構を実装済み。
 *   **Step 2: 命令パイプライン (Instruction Pipeline) の実装**
     *   JSON定義された命令列を実行する `PipelineExecutor` (VM) の実装。（基盤実装完了。命令ハンドラの拡張が必要）
     *   `EffectResolver` の各ロジックを `Instruction` (Move, Modify, Check等) の組み合わせに分解・再実装。
+    *   **New**: `PipelineExecutor` の命令ハンドラ (`SELECT` with `TargetUtils`, `MODIFY`, `LOOP`) を実装済み。
 *   **Step 3: GameCommand への統合**
     *   全てのアクションを `GameCommand` (Transition, Mutate, Flow等) 発行として統一し、Undo/Redo基盤を確立する。
 *   **Step 4: 移行と検証**
