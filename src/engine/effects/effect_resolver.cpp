@@ -9,6 +9,7 @@
 #include "engine/systems/card/passive_effect_system.hpp"
 #include "engine/cost_payment_system.hpp"
 #include "engine/systems/card/handlers/attack_handler.hpp"
+#include "engine/game_command/commands.hpp"
 
 #include <iostream>
 #include <algorithm>
@@ -234,28 +235,65 @@ namespace dm::engine {
     // ... resolve functions (keep) ...
     void EffectResolver::resolve_mana_charge(GameState& game_state, const Action& action) {
         Player& player = game_state.players[game_state.active_player_id];
-        auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
-        if (it != player.hand.end()) {
-            CardInstance card = *it;
-            player.hand.erase(it);
-            card.is_tapped = false;
-            player.mana_zone.push_back(card);
+        int card_id = action.source_instance_id;
+
+        // Verify card is in hand (Logic check)
+        bool in_hand = false;
+        for (const auto& c : player.hand) {
+            if (c.instance_id == card_id) {
+                in_hand = true;
+                break;
+            }
+        }
+
+        if (in_hand) {
+            // 1. Move Hand -> Mana
+            auto cmd_move = std::make_unique<game_command::TransitionCommand>(
+                card_id, Zone::HAND, Zone::MANA, player.id
+            );
+            game_state.execute_command(std::move(cmd_move));
+
+            // 2. Untap in Mana Zone (Game Rule: Cards put into mana are untapped unless specified)
+            // Transition keeps state, so if it was tapped in hand, it stays tapped.
+            auto cmd_untap = std::make_unique<game_command::MutateCommand>(
+                card_id, game_command::MutateCommand::MutationType::UNTAP
+            );
+            game_state.execute_command(std::move(cmd_untap));
         }
     }
 
     void EffectResolver::resolve_play_card(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
         Player& player = game_state.players[game_state.active_player_id];
-        if (action.target_player == 254) {
-             auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
-             if (it != player.hand.end()) {
-                 CardInstance card = *it;
-                 player.hand.erase(it);
-                 game_state.stack_zone.push_back(card);
+        int card_id = action.source_instance_id;
+
+        if (action.target_player == 254) { // Hyper Energy / Special Cost Logic
+             bool in_hand = false;
+             for (const auto& c : player.hand) {
+                 if (c.instance_id == card_id) { in_hand = true; break; }
+             }
+
+             if (in_hand) {
+                 // 1. Move Hand -> Stack
+                 auto cmd_move = std::make_unique<game_command::TransitionCommand>(
+                     card_id, Zone::HAND, Zone::STACK, player.id
+                 );
+                 game_state.execute_command(std::move(cmd_move));
+
+                 // Stack card is usually valid to reference via get_card_instance or similar if needed.
+                 // Need to fetch it again or assume ID is valid?
+                 // For now, ID is persistent.
+                 // We need to calculate costs.
+
+                 // Retrieve from stack for property checks (cost)
+                 // Or we can use get_card_instance(card_id).
+                 CardInstance* stack_card = game_state.get_card_instance(card_id);
+                 if (!stack_card) return; // Should be there
+
                  int units = action.target_slot_index;
                  int reduction_amount = 0;
 
-                 if (card_db.count(card.card_id)) {
-                     const auto& def = card_db.at(card.card_id);
+                 if (card_db.count(stack_card->card_id)) {
+                     const auto& def = card_db.at(stack_card->card_id);
                      for (const auto& reduction : def.cost_reductions) {
                          if (reduction.type == ReductionType::ACTIVE_PAYMENT) {
                              reduction_amount = CostPaymentSystem::execute_payment(game_state, player.id, reduction, units, card_db);
@@ -288,22 +326,52 @@ namespace dm::engine {
                      ManaSystem::auto_tap_mana(game_state, player, def, final_cost, card_db);
                  }
 
-                 resolve_play_from_stack(game_state, card.instance_id, reduction_amount, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db);
+                 resolve_play_from_stack(game_state, stack_card->instance_id, reduction_amount, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db);
              }
              return;
         }
-        auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
-        if (it != player.hand.end()) {
-            CardInstance card = *it;
-            player.hand.erase(it);
-            card.is_tapped = false;
-            card.summoning_sickness = true;
-            if (action.target_instance_id != -1) {
-                card.power_mod = action.target_instance_id;
-            } else {
-                card.power_mod = -1;
-            }
-            game_state.stack_zone.push_back(card);
+
+        bool in_hand = false;
+        for (const auto& c : player.hand) {
+            if (c.instance_id == card_id) { in_hand = true; break; }
+        }
+
+        if (in_hand) {
+             // 1. Move Hand -> Stack
+             auto cmd_move = std::make_unique<game_command::TransitionCommand>(
+                 card_id, Zone::HAND, Zone::STACK, player.id
+             );
+             game_state.execute_command(std::move(cmd_move));
+
+             // 2. Set State (Untap, Summoning Sickness, Power Mod)
+             auto cmd_untap = std::make_unique<game_command::MutateCommand>(
+                 card_id, game_command::MutateCommand::MutationType::UNTAP
+             );
+             game_state.execute_command(std::move(cmd_untap));
+
+             // Note: MutateCommand currently doesn't support setting specific boolean flags like summoning_sickness directly via Enum?
+             // Need to check MutateCommand definition.
+             // Currently: TAP, UNTAP, POWER_MOD, ADD_KEYWORD...
+             // It does NOT have SET_SUMMONING_SICKNESS.
+             // We need to implement it or use direct mutation for now for properties not covered by MutateCommand,
+             // OR extend MutateCommand.
+             // Extending MutateCommand is the "Correct" way for Phase 6.
+             // But for now, let's look if we can use existing or if we must extend.
+             // Since I can't edit `commands.hpp` in this step (Plan says Refactor EffectResolver), I will use direct mutation for sickness, but via get_card_instance.
+
+             CardInstance* stack_card = game_state.get_card_instance(card_id);
+             if (stack_card) {
+                 stack_card->summoning_sickness = true;
+                 if (action.target_instance_id != -1) {
+                     stack_card->power_mod = action.target_instance_id;
+                 } else {
+                     stack_card->power_mod = -1;
+                 }
+                 // Use MutateCommand for POWER_MOD?
+                 // It's `+=` in MutateCommand. Here we are setting absolute value (or init).
+                 // Logic: power_mod = target_instance_id.
+                 // So direct set is better for initialization.
+             }
         }
     }
 
@@ -454,9 +522,6 @@ namespace dm::engine {
 
          if (defender.shield_zone.empty()) {
              // If this break was intended for the opponent and they have no shields, it's a win.
-             // But if it was self-break or friendly fire, it shouldn't trigger win?
-             // Standard BREAK_SHIELD logic usually implies winning if empty.
-             // For safety, only trigger win if target is opponent of active player.
              if (target_pid != game_state.active_player_id) {
                  game_state.winner = (game_state.active_player_id == 0) ? GameResult::P1_WIN : GameResult::P2_WIN;
              }
@@ -479,8 +544,9 @@ namespace dm::engine {
              shield_index = defender.shield_zone.size() - 1;
          }
 
+         // Capture shield instance before move
          CardInstance shield = defender.shield_zone[shield_index];
-         defender.shield_zone.erase(defender.shield_zone.begin() + shield_index);
+         int shield_id = shield.instance_id;
 
          bool shield_burn = false;
          Player& attacker_player = game_state.get_active_player();
@@ -493,24 +559,36 @@ namespace dm::engine {
                  }
              }
          }
+
          if (shield_burn) {
-             defender.graveyard.push_back(shield);
-             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, shield.instance_id, card_db);
+             // Shield Burn: Move directly to Graveyard
+             auto cmd = std::make_unique<game_command::TransitionCommand>(
+                 shield_id, Zone::SHIELD, Zone::GRAVEYARD, defender.id
+             );
+             game_state.execute_command(std::move(cmd));
+
+             GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, shield_id, card_db);
          } else {
+             // Normal Break: Move to Hand
+             auto cmd = std::make_unique<game_command::TransitionCommand>(
+                 shield_id, Zone::SHIELD, Zone::HAND, defender.id
+             );
+             game_state.execute_command(std::move(cmd));
+
              bool is_trigger = false;
              if (card_db.count(shield.card_id)) {
                  const auto& def = card_db.at(shield.card_id);
-                 // Updated for Conditional S-Trigger support
                  if (TargetUtils::has_keyword_simple(game_state, shield, def, "SHIELD_TRIGGER")) {
                      is_trigger = true;
                  }
              }
              if (is_trigger) {
-                 defender.hand.push_back(shield);
-                 game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield.instance_id, defender.id);
-             } else {
-                 defender.hand.push_back(shield);
+                 // S-Trigger pending effect
+                 // Note: S-Trigger is processed from hand. The Move happened above.
+                 // We just queue the pending effect.
+                 game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield_id, defender.id);
              }
+
              // Reaction Window: ON_SHIELD_ADD (Strike Back)
              ReactionSystem::check_and_open_window(game_state, card_db, "ON_SHIELD_ADD", defender.id);
          }
