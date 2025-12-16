@@ -1,93 +1,119 @@
-import sys
-import os
 import pytest
+import dm_ai_module
 import json
 
-# Add bin directory to path to import dm_ai_module
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
+def test_pipeline_basics():
+    state = dm_ai_module.GameState(100)
+    executor = dm_ai_module.PipelineExecutor()
+    executor.execute([], state, {})
 
-try:
-    import dm_ai_module as dm
-except ImportError:
-    pytest.fail("Could not import dm_ai_module. Ensure the module is built and in the bin directory.")
+    inst = dm_ai_module.Instruction(dm_ai_module.InstructionOp.MATH)
+    inst.set_args({"op": "+", "lhs": 5, "rhs": 3, "out": "res"})
+    executor.execute([inst], state, {})
 
-class TestPipelineExecutor:
-    def test_pipeline_basic_math(self):
-        state = dm.GameState(100)
-        executor = dm.PipelineExecutor()
+    res = executor.get_context_var("res")
+    assert res == 8
 
-        # Create a dummy card_db
-        card_db = {}
+def test_legacy_adapter_conversion():
+    f = dm_ai_module.FilterDef()
+    a = dm_ai_module.ActionDef(dm_ai_module.EffectActionType.DRAW_CARD, dm_ai_module.TargetScope.NONE, f)
+    a.value1 = 2
 
-        # Instructions:
-        # 1. MATH: 5 + 3 -> $result
-        # 2. PRINT: "Result is "
+    c = dm_ai_module.ConditionDef()
+    c.type = "NONE"
 
-        inst1 = dm.Instruction(dm.InstructionOp.MATH)
-        inst1.set_args({"lhs": 5, "rhs": 3, "op": "+", "out": "$result"})
+    e = dm_ai_module.EffectDef(dm_ai_module.TriggerType.NONE, c, [a])
 
-        inst2 = dm.Instruction(dm.InstructionOp.IF)
-        # IF $result == 8 THEN PRINT "Correct"
-        inst2.set_args({"cond": {"lhs": "$result", "op": "==", "rhs": 8}})
+    instructions = dm_ai_module.LegacyJsonAdapter.convert(e)
 
-        then_inst = dm.Instruction(dm.InstructionOp.PRINT)
-        then_inst.set_args({"msg": "Correct Calculation"})
-        inst2.then_block = [then_inst]
+    assert len(instructions) == 1
+    assert instructions[0].op == dm_ai_module.InstructionOp.MOVE
 
-        executor.execute([inst1, inst2], state, card_db)
+    state = dm_ai_module.GameState(100)
+    state.add_card_to_deck(0, 1, 100)
+    state.add_card_to_deck(0, 1, 101)
+    state.add_card_to_deck(0, 1, 102)
 
-        # Verify context (Need to expose context getter in bindings)
-        res = executor.get_context_var("$result")
-        assert res == 8
+    executor = dm_ai_module.PipelineExecutor()
+    executor.execute(instructions, state, {})
 
-    def test_pipeline_selection_flow(self):
-        state = dm.GameState(100)
-        state.setup_test_duel()
-        executor = dm.PipelineExecutor()
+    assert len(state.players[0].hand) == 2
+    assert len(state.players[0].deck) == 1
 
-        # Create a dummy card_db
-        card_db = {}
-        # We need to populate card_db if we want SELECT to actually work with filters
-        # The mock in C++ (PipelineExecutor::handle_select) uses target_utils which checks card_db
+def test_pipeline_select_and_destroy():
+    # Scenario: Select 1 creature in Battle Zone and Destroy it
+    f = dm_ai_module.FilterDef()
+    f.zones = ["BATTLE_ZONE"]
 
-        # Add card 1, 2, 3 to db (since setup_test_duel creates IDs)
-        # Assuming IDs are 0...N
-        for i in range(100):
-            c = dm.CardDefinition()
-            c.id = i
-            c.name = f"Card {i}"
-            c.cost = 3
-            c.civilizations = [dm.Civilization.FIRE]
-            c.type = dm.CardType.CREATURE
-            c.races = ["Human"]
-            card_db[i] = c
+    a = dm_ai_module.ActionDef(dm_ai_module.EffectActionType.DESTROY, dm_ai_module.TargetScope.TARGET_SELECT, f)
+    a.value1 = 1
 
-        # Mock selection
-        # 1. SELECT targets -> $selection
-        # 2. IF exists $selection THEN MOVE $selection to MANA
+    c = dm_ai_module.ConditionDef()
+    c.type = "NONE"
 
-        inst1 = dm.Instruction(dm.InstructionOp.SELECT)
-        # Filter for FIRE Civilization (using int value 4 for FIRE)
-        inst1.set_args({"out": "$selection", "filter": {"zones": ["BATTLE_ZONE"], "civilizations": [4]}, "count": 2})
+    e = dm_ai_module.EffectDef(dm_ai_module.TriggerType.NONE, c, [a])
 
-        inst2 = dm.Instruction(dm.InstructionOp.IF)
-        inst2.set_args({"cond": {"exists": "$selection"}})
+    instructions = dm_ai_module.LegacyJsonAdapter.convert(e)
 
-        move_inst = dm.Instruction(dm.InstructionOp.MOVE)
-        move_inst.set_args({"target": "$selection", "to": "MANA"})
-        inst2.then_block = [move_inst]
+    assert len(instructions) == 2
+    assert instructions[0].op == dm_ai_module.InstructionOp.SELECT
+    assert instructions[1].op == dm_ai_module.InstructionOp.MOVE
 
-        executor.execute([inst1, inst2], state, card_db)
+    # Execution
+    state = dm_ai_module.GameState(100)
+    # Add a creature to Battle Zone
+    state.add_test_card_to_battle(0, 1, 200, False, False)
+    state.active_player_id = 0
 
-        # Check context
-        sel = executor.get_context_var("$selection")
-        assert isinstance(sel, list)
-        # Setup test duel puts cards in battle zone?
-        # setup_test_duel() puts cards in hand/mana/shield.
-        # We need to put something in battle zone manually or check hand.
+    # Mock DB
+    card_data = dm_ai_module.CardData(1, "TestCreature", 1, "FIRE", 1000, "CREATURE", [], [])
+    dm_ai_module.register_card_data(card_data)
 
-        # Let's verify what actually happened. The test might fail if selection is empty.
-        # But for now, we just want to ensure the API call is correct (which was the previous error).
+    k = dm_ai_module.CardKeywords()
+    d = dm_ai_module.CardDefinition(1, "TestCreature", "FIRE", [], 1, 1000, k, [])
+    card_db = {1: d}
 
-if __name__ == "__main__":
-    pytest.main([__file__])
+    executor = dm_ai_module.PipelineExecutor()
+    executor.execute(instructions, state, card_db)
+
+    # Verify: Card moved to Graveyard
+    assert len(state.players[0].battle_zone) == 0
+    assert len(state.players[0].graveyard) == 1
+    assert state.players[0].graveyard[0].instance_id == 200
+
+def test_pipeline_search_deck():
+    f = dm_ai_module.FilterDef()
+    f.zones = ["DECK"]
+
+    a = dm_ai_module.ActionDef(dm_ai_module.EffectActionType.SEARCH_DECK, dm_ai_module.TargetScope.NONE, f)
+    a.value1 = 1
+
+    # Ensure explicit NONE condition to avoid auto-IF
+    c = dm_ai_module.ConditionDef()
+    c.type = "NONE"
+
+    e = dm_ai_module.EffectDef(dm_ai_module.TriggerType.NONE, c, [a])
+
+    instructions = dm_ai_module.LegacyJsonAdapter.convert(e)
+
+    assert len(instructions) == 2
+    assert instructions[0].op == dm_ai_module.InstructionOp.SELECT
+    assert instructions[1].op == dm_ai_module.InstructionOp.MOVE
+
+    state = dm_ai_module.GameState(100)
+    state.add_card_to_deck(0, 1, 100)
+    state.active_player_id = 0
+
+    card_data = dm_ai_module.CardData(1, "TestCard", 1, "FIRE", 1000, "CREATURE", [], [])
+    dm_ai_module.register_card_data(card_data)
+
+    k = dm_ai_module.CardKeywords()
+    d = dm_ai_module.CardDefinition(1, "TestCard", "FIRE", [], 1, 1000, k, [])
+
+    card_db = {1: d}
+
+    executor = dm_ai_module.PipelineExecutor()
+    executor.execute(instructions, state, card_db)
+
+    assert len(state.players[0].hand) == 1
+    assert len(state.players[0].deck) == 0
