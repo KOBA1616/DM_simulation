@@ -41,6 +41,8 @@
 #include "core/instruction.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "engine/systems/card/legacy_json_adapter.hpp"
+#include "engine/systems/command_system.hpp" // Include new system
+#include <iostream>
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -200,6 +202,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<systems::LegacyJsonAdapter>(m, "LegacyJsonAdapter")
         .def_static("convert", &systems::LegacyJsonAdapter::convert);
 
+    py::class_<systems::CommandSystem>(m, "CommandSystem")
+        .def_static("execute_command", &systems::CommandSystem::execute_command);
+
     py::enum_<Civilization>(m, "Civilization")
         .value("NONE", Civilization::NONE)
         .value("LIGHT", Civilization::LIGHT)
@@ -272,6 +277,26 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("TRIGGER_ABILITY", EffectType::TRIGGER_ABILITY)
         .value("SELECT_OPTION", EffectType::SELECT_OPTION)
         .value("SELECT_NUMBER", EffectType::SELECT_NUMBER)
+        .export_values();
+
+    py::enum_<dm::core::CommandType>(m, "JsonCommandType")
+        .value("TRANSITION", dm::core::CommandType::TRANSITION)
+        .value("MUTATE", dm::core::CommandType::MUTATE)
+        .value("FLOW", dm::core::CommandType::FLOW)
+        .value("QUERY", dm::core::CommandType::QUERY)
+        .value("DRAW_CARD", dm::core::CommandType::DRAW_CARD)
+        .value("DISCARD", dm::core::CommandType::DISCARD)
+        .value("DESTROY", dm::core::CommandType::DESTROY)
+        .value("MANA_CHARGE", dm::core::CommandType::MANA_CHARGE)
+        .value("TAP", dm::core::CommandType::TAP)
+        .value("UNTAP", dm::core::CommandType::UNTAP)
+        .value("POWER_MOD", dm::core::CommandType::POWER_MOD)
+        .value("ADD_KEYWORD", dm::core::CommandType::ADD_KEYWORD)
+        .value("RETURN_TO_HAND", dm::core::CommandType::RETURN_TO_HAND)
+        .value("BREAK_SHIELD", dm::core::CommandType::BREAK_SHIELD)
+        .value("SEARCH_DECK", dm::core::CommandType::SEARCH_DECK)
+        .value("SHIELD_TRIGGER", dm::core::CommandType::SHIELD_TRIGGER)
+        .value("NONE", dm::core::CommandType::NONE)
         .export_values();
 
     py::enum_<EffectActionType>(m, "EffectActionType")
@@ -512,6 +537,18 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("condition", &ActionDef::condition)
         .def_readwrite("options", &ActionDef::options);
 
+    py::class_<CommandDef>(m, "CommandDef")
+        .def(py::init<>())
+        .def_readwrite("type", &CommandDef::type)
+        .def_readwrite("target_group", &CommandDef::target_group)
+        .def_readwrite("target_filter", &CommandDef::target_filter)
+        .def_readwrite("amount", &CommandDef::amount)
+        .def_readwrite("str_param", &CommandDef::str_param)
+        .def_readwrite("optional", &CommandDef::optional)
+        .def_readwrite("from_zone", &CommandDef::from_zone)
+        .def_readwrite("to_zone", &CommandDef::to_zone)
+        .def_readwrite("mutation_kind", &CommandDef::mutation_kind);
+
     py::class_<ConditionDef>(m, "ConditionDef")
         .def(py::init<>())
         .def_readwrite("type", &ConditionDef::type)
@@ -539,7 +576,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         }), py::arg("trigger"), py::arg("condition") = ConditionDef(), py::arg("actions") = std::vector<ActionDef>{})
         .def_readwrite("trigger", &EffectDef::trigger)
         .def_readwrite("condition", &EffectDef::condition)
-        .def_readwrite("actions", &EffectDef::actions);
+        .def_readwrite("actions", &EffectDef::actions)
+        .def_readwrite("commands", &EffectDef::commands); // Exposed
 
     py::class_<ReactionAbility>(m, "ReactionAbility")
         .def(py::init<>())
@@ -793,6 +831,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
                 c.card_id = cid;
                 c.instance_id = instance_id_counter++;
                 s.players[pid].deck.push_back(c);
+                if (s.card_owner_map.size() <= (size_t)c.instance_id) s.card_owner_map.resize(c.instance_id + 1, 255);
+                s.card_owner_map[c.instance_id] = pid;
             }
         })
         .def("calculate_hash", &GameState::calculate_hash)
@@ -906,6 +946,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
          // Assuming it handles what JsonLoader handles.
          // For safety, let's just make it a list of one.
          nlohmann::json list_j = nlohmann::json::array({j});
+         std::cout << "DEBUG JSON: " << list_j.dump() << std::endl;
          CardRegistry::load_from_json(list_j.dump());
     });
 
