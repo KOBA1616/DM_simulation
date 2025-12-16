@@ -174,6 +174,7 @@ set(SRC_ENGINE
     src/engine/game_command/commands.cpp
     src/engine/systems/pipeline_executor.cpp
     src/engine/systems/card/legacy_json_adapter.cpp
+    src/engine/systems/command_system.cpp
 )
 
 # Utils (Phase 1)

@@ -99,6 +99,31 @@ namespace dm::core {
         NONE
     };
 
+    // New Engine: Hybrid Command Types
+    enum class CommandType {
+        // Primitives
+        TRANSITION,
+        MUTATE,
+        FLOW,
+        QUERY,
+
+        // Macros
+        DRAW_CARD,
+        DISCARD,
+        DESTROY,
+        MANA_CHARGE,
+        TAP,
+        UNTAP,
+        POWER_MOD,
+        ADD_KEYWORD,
+        RETURN_TO_HAND,
+        BREAK_SHIELD,
+        SEARCH_DECK,
+        SHIELD_TRIGGER,
+
+        NONE
+    };
+
     // Phase 4: Cost System Enums
     enum class CostType {
         MANA,               // Standard Mana Payment
@@ -200,10 +225,29 @@ namespace dm::core {
         bool cast_spell_side = false;
     };
 
+    struct CommandDef {
+        CommandType type = CommandType::NONE;
+
+        // Target selection
+        TargetScope target_group = TargetScope::NONE;
+        FilterDef target_filter;
+
+        // Parameters
+        int amount = 0;
+        std::string str_param;
+        bool optional = false;
+
+        // Primitive Specifics
+        std::string from_zone;
+        std::string to_zone;
+        std::string mutation_kind; // e.g. "TAP", "POWER"
+    };
+
     struct EffectDef {
         TriggerType trigger = TriggerType::NONE;
         ConditionDef condition;
-        std::vector<ActionDef> actions;
+        std::vector<ActionDef> actions; // Legacy
+        std::vector<CommandDef> commands; // New Engine
     };
 
     struct ReactionCondition {
@@ -350,6 +394,26 @@ namespace dm::core {
         {EffectActionType::RESOLVE_BATTLE, "RESOLVE_BATTLE"}
     })
 
+    NLOHMANN_JSON_SERIALIZE_ENUM(CommandType, {
+        {CommandType::NONE, "NONE"},
+        {CommandType::TRANSITION, "TRANSITION"},
+        {CommandType::MUTATE, "MUTATE"},
+        {CommandType::FLOW, "FLOW"},
+        {CommandType::QUERY, "QUERY"},
+        {CommandType::DRAW_CARD, "DRAW_CARD"},
+        {CommandType::DISCARD, "DISCARD"},
+        {CommandType::DESTROY, "DESTROY"},
+        {CommandType::MANA_CHARGE, "MANA_CHARGE"},
+        {CommandType::TAP, "TAP"},
+        {CommandType::UNTAP, "UNTAP"},
+        {CommandType::POWER_MOD, "POWER_MOD"},
+        {CommandType::ADD_KEYWORD, "ADD_KEYWORD"},
+        {CommandType::RETURN_TO_HAND, "RETURN_TO_HAND"},
+        {CommandType::BREAK_SHIELD, "BREAK_SHIELD"},
+        {CommandType::SEARCH_DECK, "SEARCH_DECK"},
+        {CommandType::SHIELD_TRIGGER, "SHIELD_TRIGGER"}
+    })
+
     NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {
         {CostType::MANA, "MANA"},
         {CostType::TAP_CARD, "TAP_CARD"},
@@ -367,7 +431,8 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, and_conditions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition, options, cast_spell_side)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions, commands)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
 
