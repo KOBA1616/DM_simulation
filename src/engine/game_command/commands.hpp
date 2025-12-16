@@ -3,6 +3,7 @@
 #include "core/types.hpp"
 #include "core/modifiers.hpp"
 #include "core/pending_effect.hpp"
+#include "engine/systems/trigger_system/reaction_window.hpp"
 
 namespace dm::engine::game_command {
 
@@ -116,6 +117,25 @@ namespace dm::engine::game_command {
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
         CommandType get_type() const override { return CommandType::DECIDE; }
+    };
+
+    class DeclareReactionCommand : public GameCommand {
+    public:
+        bool pass; // True if player passes (uses nothing)
+        int reaction_index; // Index in ReactionWindow::candidates, -1 if pass
+        core::PlayerID player_id;
+
+        // Undo context
+        bool was_waiting;
+        core::GameState::Status previous_status;
+        std::vector<dm::engine::systems::ReactionWindow> previous_stack;
+
+        DeclareReactionCommand(core::PlayerID pid, bool is_pass, int idx = -1)
+            : pass(is_pass), reaction_index(idx), player_id(pid), was_waiting(false), previous_status(core::GameState::Status::PLAYING) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::DECLARE_REACTION; }
     };
 
 }

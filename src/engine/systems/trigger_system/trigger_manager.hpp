@@ -27,6 +27,11 @@ namespace dm::engine::systems {
         void check_triggers(const core::GameEvent& event, core::GameState& state,
                             const std::map<core::CardID, core::CardDefinition>& card_db);
 
+        // Phase 6 Step 2: Reaction Check Logic
+        // Returns true if a reaction window was opened
+        bool check_reactions(const core::GameEvent& event, core::GameState& state,
+                             const std::map<core::CardID, core::CardDefinition>& card_db);
+
         // Clear all listeners (useful for reset)
         void clear();
 
