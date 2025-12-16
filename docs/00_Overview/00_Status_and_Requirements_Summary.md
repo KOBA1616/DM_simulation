@@ -70,6 +70,37 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   `tests/verify_hybrid_engine.py` にて、旧JSONデータ（`DRAW_CARD`）が新エンジンの `CommandSystem` を通じて正しくカード移動処理（Deck->Hand）を行うことを確認済み。
     *   **Issue**: プリミティブコマンド (`TRANSITION`) の直接実行テストにおいて、ターゲット解決後の状態更新（Deck->Mana）が正しく反映されない事象を確認中。`TransitionCommand` または `TargetScope` の解決ロジックに修正が必要。
 
+### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
+**Status: Planned**
+Transformer方式を高速化し、かつZero-shot（未知のカードへの対応）を可能にするため、「ハイブリッド埋め込み (Hybrid Embedding)」を導入します。また、文脈として墓地のカードも対象に含めます。
+
+*   **コンセプト (Concept)**
+    *   **Hybrid Embedding**: `Embedding = Embed(CardID) + Linear(ManualFeatures)`
+    *   **Zero-shot対応**: 未知のカード（ID埋め込み未学習）でも、スペック情報（コスト、文明、パワー等）から挙動を推論可能にする。
+    *   **学習の高速化**: スペック情報から即座に役割（アタッカー、防御札）を判断し、初期学習の収束を早める。ID埋め込みは長期的なコンボ相性の補完に使用する。
+    *   **スコープ拡張**: Transformerの入力文脈に「墓地」のカードも含め、墓地利用や探索に対応させる。
+
+*   **実装要件 (Requirements)**
+    *   **A. C++側 (TensorConverter)**
+        *   `convert_to_sequence` を修正し、`Output: (TokenSequence, FeatureSequence)` を返すように変更する。
+        *   `FeatureSequence`: 各トークンに対応するカードの特徴量ベクトル `vector<vector<float>>`。
+    *   **B. Python側 (NetworkV2)**
+        *   モデル入力層を修正: `x_id` (Card IDs) と `x_feat` (Manual Features) を受け取る。
+        *   `x_feat` を `nn.Linear` で埋め込み次元に変換し、ID埋め込みと加算する。
+    *   **C. 特徴量ベクトルの定義 (Feature Vector Definition)**
+        *   コスト (Cost)
+        *   パワー (Power)
+        *   文明 (Civilization)
+        *   カードタイプ (Card Type)
+        *   キーワード能力: ブロッカー, シールドトリガー, ガードストライク, スピードアタッカー, マッハファイター, n枚ブレイカー
+        *   リソース操作 (Move Card): 移動元・移動先（マナ、手札、墓地、シールド）
+        *   除去 (Removal): 破壊、バウンス、マナ送り、シールド送り、封印
+        *   コスト踏み倒し (Cost Cheating)
+        *   コスト軽減 (Cost Reduction)
+        *   能力の発動タイミング: cip, atk, pig, 離れた時, ターン開始時, 終了時, 常在効果, 相手のターン中, 自分のターン中
+        *   対策 (Meta): クリーチャー対策, 呪文対策, 墓地対策, シールドトリガー対策, コスト踏み倒し対策
+        *   殿堂 (Hall of Fame Status)
+
 ## 4. 今後の課題 (Future Tasks)
 
 1.  **Primitive Command Execution Fix**:
