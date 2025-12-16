@@ -40,7 +40,6 @@
 
 #include "core/instruction.hpp"
 #include "engine/systems/pipeline_executor.hpp"
-#include "engine/systems/card/legacy_json_adapter.hpp"
 #include "engine/systems/command_system.hpp" // Include new system
 #include <iostream>
 
@@ -198,9 +197,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
              if (std::holds_alternative<std::vector<int>>(v)) return py::cast(std::get<std::vector<int>>(v));
              return py::none();
         });
-
-    py::class_<systems::LegacyJsonAdapter>(m, "LegacyJsonAdapter")
-        .def_static("convert", &systems::LegacyJsonAdapter::convert);
 
     py::class_<systems::CommandSystem>(m, "CommandSystem")
         .def_static("execute_command", &systems::CommandSystem::execute_command);

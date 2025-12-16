@@ -30,7 +30,6 @@
 #include "handlers/play_handler.hpp"
 #include "handlers/modify_power_handler.hpp"
 #include "engine/systems/pipeline_executor.hpp"
-#include "engine/systems/card/legacy_json_adapter.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -216,33 +215,6 @@ namespace dm::engine {
     }
 
         void GenericCardSystem::resolve_effect_with_context(GameState& game_state, const EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
-
-        // Phase 6 Migration: Try Pipeline for specific complex conditions or if enabled
-        // For verification (Step 3), we target effects with conditions to test logic instructions.
-        bool use_pipeline = false;
-        if (effect.condition.type != "NONE" && !effect.condition.type.empty()) {
-             // For safety, only enable for tested conditions or strictly for verification
-             // use_pipeline = true;
-        }
-        // Explicit opt-in for testing via special condition type or debug flag?
-        // Let's use a magic stat key in condition to trigger it for testing: "ENABLE_PIPELINE"
-        if (effect.condition.stat_key == "ENABLE_PIPELINE") {
-            use_pipeline = true;
-        }
-
-        if (use_pipeline) {
-             auto instructions = LegacyJsonAdapter::convert(effect);
-             PipelineExecutor exec;
-
-             // Hydrate context
-             for (const auto& kv : execution_context) {
-                 exec.set_context_var(kv.first, kv.second);
-             }
-             exec.set_context_var("$source", source_instance_id);
-
-             exec.execute(instructions, game_state, card_db);
-             return;
-        }
 
         if (!check_condition(game_state, effect.condition, source_instance_id, card_db)) {
             return;
