@@ -51,7 +51,11 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
         *   基本アクション (`DRAW`, `MOVE`, `DESTROY`, `SEARCH_DECK`) の検証完了。
         *   `PipelineExecutor` のゾーン参照をO(1)に最適化済み。
 *   **Step 3: GameCommand への統合**
+    *   **Status: Completed**
     *   全てのアクションを `GameCommand` (Transition, Mutate, Flow等) 発行として統一し、Undo/Redo基盤を確立する。
+    *   **Implemented**: `GameState` に `execute_command` と `command_history` を実装。
+    *   **Implemented**: `PhaseManager` (フェーズ遷移、ターン開始、ドロー)、`ManaSystem` (マナタップ/アンタップ)、`PipelineExecutor` (カード移動、変異) を GameCommand 化。
+    *   **New**: `PendingEffect` を独立ヘッダに分離し、`ADD_PENDING_EFFECT`, `SET_ACTIVE_PLAYER` コマンドを追加することで、複雑なターン遷移（フェーズ変更→トリガー追加→プレイヤー交代）の完全な Undo/Redo を実現。
 *   **Step 4: 移行と検証**
     *   既存テストケースの新エンジン上でのパス確認。
 

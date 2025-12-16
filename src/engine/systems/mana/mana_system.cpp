@@ -2,6 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "engine/game_command/commands.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -146,9 +147,12 @@ namespace dm::engine {
         auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
         if (indices.empty()) return false;
 
-        // Apply tap
+        // Apply tap via Command
         for (int idx : indices) {
-            player.mana_zone[idx].is_tapped = true;
+            // Must find instance_id
+            int iid = player.mana_zone[idx].instance_id;
+            auto cmd = std::make_unique<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);
+            game_state.execute_command(std::move(cmd));
         }
 
         // Paid mana exists, so not "played without mana" for this path
@@ -168,7 +172,10 @@ namespace dm::engine {
         if (indices.empty()) return false;
 
         for (int idx : indices) {
-            player.mana_zone[idx].is_tapped = true;
+            // Must find instance_id
+            int iid = player.mana_zone[idx].instance_id;
+            auto cmd = std::make_unique<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);
+            game_state.execute_command(std::move(cmd));
         }
 
         return true;
@@ -185,6 +192,23 @@ namespace dm::engine {
         }
 
         return true;
+    }
+
+    void ManaSystem::untap_all(GameState& game_state, Player& player) {
+        // Collect instances to untap to avoid iterator invalidation issues if any
+        std::vector<int> to_untap;
+
+        for (const auto& card : player.mana_zone) {
+            if (card.is_tapped) to_untap.push_back(card.instance_id);
+        }
+        for (const auto& card : player.battle_zone) {
+            if (card.is_tapped) to_untap.push_back(card.instance_id);
+        }
+
+        for (int iid : to_untap) {
+             auto cmd = std::make_unique<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::UNTAP);
+             game_state.execute_command(std::move(cmd));
+        }
     }
 
     void ManaSystem::untap_all(Player& player) {
