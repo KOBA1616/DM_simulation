@@ -49,8 +49,31 @@ namespace dm::engine::systems {
                 }
             }
         } else if (cmd.type == core::CommandType::MUTATE) {
-             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id);
-             // MUTATE Logic
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id);
+
+            // Design Intent: Map string-based JSON commands to internal efficient Enums.
+            // Invalid strings are ignored to prevent undefined behavior or unintended effects.
+            bool valid_mutation = true;
+            MutateCommand::MutationType m_type = MutateCommand::MutationType::TAP; // Default init, but checked via flag
+
+            if (cmd.mutation_kind == "TAP") m_type = MutateCommand::MutationType::TAP;
+            else if (cmd.mutation_kind == "UNTAP") m_type = MutateCommand::MutationType::UNTAP;
+            else if (cmd.mutation_kind == "POWER_MOD") m_type = MutateCommand::MutationType::POWER_MOD;
+            else if (cmd.mutation_kind == "ADD_KEYWORD") m_type = MutateCommand::MutationType::ADD_KEYWORD;
+            else if (cmd.mutation_kind == "REMOVE_KEYWORD") m_type = MutateCommand::MutationType::REMOVE_KEYWORD;
+            else if (cmd.mutation_kind == "ADD_PASSIVE_EFFECT") m_type = MutateCommand::MutationType::ADD_PASSIVE_EFFECT;
+            else if (cmd.mutation_kind == "ADD_COST_MODIFIER") m_type = MutateCommand::MutationType::ADD_COST_MODIFIER;
+            else if (cmd.mutation_kind == "ADD_PENDING_EFFECT") m_type = MutateCommand::MutationType::ADD_PENDING_EFFECT;
+            else valid_mutation = false;
+
+            if (valid_mutation) {
+                for (int target_id : targets) {
+                    MutateCommand mutate(target_id, m_type, cmd.amount, cmd.str_param);
+                    mutate.execute(state);
+                }
+            } else {
+                std::cerr << "Warning: Unknown mutation kind: " << cmd.mutation_kind << std::endl;
+            }
         }
     }
 
