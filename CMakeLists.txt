@@ -171,6 +171,7 @@ set(SRC_ENGINE
     src/engine/cost_payment_system.cpp
     src/engine/systems/trigger_system/trigger_manager.cpp
     src/engine/game_command/commands.cpp
+    src/engine/systems/pipeline_executor.cpp
 )
 
 # Utils (Phase 1)
