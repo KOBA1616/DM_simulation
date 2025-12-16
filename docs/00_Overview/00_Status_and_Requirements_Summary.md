@@ -1,3 +1,35 @@
+# Status and Requirements Summary (要件定義書 00)
+
+このドキュメントはプロジェクトの現在のステータス、実装済み機能、および次のステップの要件をまとめたマスタードキュメントです。
+
+本要件定義書はUTF-8で記述することを前提とします。
+また、GUI上で表示する文字は基本的に日本語で表記できるようにしてください。
+
+## 1. 概要 (Overview)
+
+Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
+
+現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** を最優先事項として進行中です。
+既存のハードコードされた効果処理 (`EffectResolver`) を廃止し、イベント駆動型アーキテクチャと命令パイプライン (`Instruction Pipeline`) へ刷新することで、柔軟性と拡張性を確保します。
+
+AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジン刷新が完了するまで一時凍結します。
+
+## 2. 現行システムステータス (Current Status)
+
+### 2.1 コアエンジン (C++ / `src/engine`)
+*   **EffectResolver (Legacy)**: 現在の主力ロジック。巨大なswitch文により効果処理を行っているが、複雑化により限界に達している。そのため、game command方式に移行中。
+*   **GameCommand (Partial)**: 基本クラスと一部のコマンドは実装済みだが、エンジンの中核ロジックとしては未統合。
+*   **汎用コストシステム**: 実装済み。新エンジンでもそのまま利用する。
+
+### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
+*   **Status**: 稼働中 (Ver 2.3)。
+*   **Freeze**: エンジン刷新に伴うデータ構造の変更が確定するまで、機能追加および改修を凍結する。
+
+### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
+*   **Status**: パイプライン構築済み。
+*   **Pending**: エンジン刷新による破壊的変更を避けるため、新エンジン稼働まで学習プロセス（Phase 3.2）は待機とする。
+
+---
 
 ### 3.1 [Priority: Critical] Phase 6: エンジン刷新 (Engine Overhaul)
 **Status: In Progress**
