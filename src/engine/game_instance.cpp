@@ -1,10 +1,23 @@
 #include "game_instance.hpp"
 #include "systems/flow/phase_manager.hpp"
 #include "engine/game_command/game_command.hpp"
+#include <functional>
 
 namespace dm::engine {
 
     using namespace dm::core;
+
+    GameInstance::GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db)
+        : state(seed), card_db(db) {
+        trigger_manager = std::make_shared<systems::TriggerManager>();
+
+        // Wire up GameState's event dispatcher to TriggerManager
+        state.event_dispatcher = [this](const core::GameEvent& event) {
+            trigger_manager->dispatch(event, state);
+            trigger_manager->check_triggers(event, state, card_db);
+            trigger_manager->check_reactions(event, state, card_db);
+        };
+    }
 
     void GameInstance::undo() {
         if (state.command_history.empty()) return;

@@ -95,6 +95,7 @@ namespace dm::core {
         CAST_SPELL,     // Added: CAST_SPELL
         PUT_CREATURE,   // Added: PUT_CREATURE
         SELECT_OPTION,  // Added: SELECT_OPTION
+        RESOLVE_BATTLE, // Added: RESOLVE_BATTLE for engine compatibility
         NONE
     };
 
@@ -345,7 +346,8 @@ namespace dm::core {
         {EffectActionType::MOVE_CARD, "MOVE_CARD"},
         {EffectActionType::CAST_SPELL, "CAST_SPELL"},
         {EffectActionType::PUT_CREATURE, "PUT_CREATURE"},
-        {EffectActionType::SELECT_OPTION, "SELECT_OPTION"}
+        {EffectActionType::SELECT_OPTION, "SELECT_OPTION"},
+        {EffectActionType::RESOLVE_BATTLE, "RESOLVE_BATTLE"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {
