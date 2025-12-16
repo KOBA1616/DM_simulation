@@ -382,7 +382,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("is_evolution", &FilterDef::is_evolution)
         .def_readwrite("is_card_designation", &FilterDef::is_card_designation)
         .def_readwrite("owner", &FilterDef::owner)
-        .def_readwrite("count", &FilterDef::count);
+        .def_readwrite("count", &FilterDef::count)
+        .def_readwrite("power_max_ref", &FilterDef::power_max_ref);
 
     // Phase 4: CostDef Binding
     py::class_<CostDef>(m, "CostDef")
