@@ -738,6 +738,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         }, py::return_value_policy::reference)
         .def("add_card_to_hand", [](GameState& s, PlayerID pid, CardID cid, int iid) {
              CardInstance c; c.card_id = cid; c.instance_id = iid;
+             c.owner = pid; // Fixed: Set owner explicitly
              s.players[pid].hand.push_back(c);
              if (iid >= 0) {
                  if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
@@ -755,6 +756,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def("add_card_to_mana", [](GameState& s, PlayerID pid, CardID cid, int iid) {
              CardInstance c; c.card_id = cid; c.instance_id = iid;
+             c.owner = pid; // Fixed: Set owner explicitly
              s.players[pid].mana_zone.push_back(c);
              if (iid >= 0) {
                  if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
@@ -763,6 +765,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def("add_card_to_deck", [](GameState& s, PlayerID pid, CardID cid, int iid) {
              CardInstance c; c.card_id = cid; c.instance_id = iid;
+             c.owner = pid; // Fixed: Set owner explicitly
              s.players[pid].deck.push_back(c);
              if (iid >= 0) {
                  if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
@@ -776,6 +779,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
              c.is_tapped = tapped;
              c.summoning_sickness = sick;
              c.turn_played = s.turn_number;
+             c.owner = pid; // Fixed: Set owner explicitly
              s.players[pid].battle_zone.push_back(c);
              if (iid >= 0) {
                  if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
@@ -786,6 +790,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
              CardInstance c;
              c.card_id = cid;
              c.instance_id = iid;
+             c.owner = pid; // Fixed: Set owner explicitly
              s.players[pid].shield_zone.push_back(c);
              if (iid >= 0) {
                  if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 1, 255);
@@ -813,6 +818,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
                     CardInstance c;
                     c.card_id = 0;
                     c.instance_id = 50000 + pid * 100 + i;
+                    c.owner = pid; // Fixed
                     s.players[pid].shield_zone.push_back(c);
                     if (s.card_owner_map.size() <= (size_t)c.instance_id) s.card_owner_map.resize(c.instance_id + 1, 255);
                     s.card_owner_map[c.instance_id] = pid;
@@ -826,6 +832,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
                 CardInstance c;
                 c.card_id = cid;
                 c.instance_id = instance_id_counter++;
+                c.owner = pid; // Fixed
                 s.players[pid].deck.push_back(c);
                 if (s.card_owner_map.size() <= (size_t)c.instance_id) s.card_owner_map.resize(c.instance_id + 1, 255);
                 s.card_owner_map[c.instance_id] = pid;
