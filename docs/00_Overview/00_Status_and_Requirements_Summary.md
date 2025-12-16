@@ -60,9 +60,10 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 旧エンジン（マクロ的アクション）と新エンジン（プリミティブコマンド）を共存・統合させるためのアーキテクチャ実装。
 
 *   **Step 1: データ構造の刷新 (Hybrid Schema)**
-    *   **Status: In Progress**
-    *   JSONスキーマに `CommandDef` を導入。
-    *   **Policy Change**: `EffectDef` に `commands` フィールドを追加するが、旧来の `actions` からの自動変換は行わない。新形式での記述を必須とする。
+    *   **Status: Implemented**
+    *   JSONスキーマに `CommandDef` を導入済み。
+    *   `GenericCardSystem::resolve_effect` を更新し、旧来の `actions` と共に新しい `commands` を反復処理・実行するロジックを実装しました。
+    *   `commands` の実行は `CommandSystem::execute_command` へ委譲され、レガシーロジックと共存します。
 *   **Step 2: CommandSystem の実装**
     *   **Status: Implemented (Updated)**
     *   `dm::engine::systems::CommandSystem` を実装。
