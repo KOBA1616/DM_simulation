@@ -38,6 +38,9 @@
 #include "engine/game_command/game_command.hpp"
 #include "engine/game_command/commands.hpp"
 
+#include "core/instruction.hpp"
+#include "engine/systems/pipeline_executor.hpp"
+
 namespace py = pybind11;
 using namespace dm::core;
 using namespace dm::engine;
@@ -63,6 +66,30 @@ Civilization string_to_civilization(const std::string& s) {
     if (s == "NATURE") return Civilization::NATURE;
     if (s == "ZERO") return Civilization::ZERO;
     return Civilization::NONE;
+}
+
+// Helpers for Instruction
+Instruction instruction_from_dict(py::dict d) {
+    // Basic conversion to allow Python dict -> JSON -> Instruction
+    // Note: This relies on nlohmann::json implicit conversion from strings/ints,
+    // but pybind11 casts python types to C++ standard types.
+    // We need to implement a full converter or use a workaround.
+    // Workaround: Serialize dict to JSON string in Python, pass to C++?
+    // Or iterate manually.
+    // For now, let's assume we pass OpCode enum and args dict.
+
+    // Easier approach: Just bind Instruction constructor that takes op and args.
+    // However, handling recursive structures in pybind is tricky.
+
+    // Minimal binding for now.
+    Instruction inst;
+    if (d.contains("op")) {
+        std::string op_str = py::cast<std::string>(d["op"]);
+        // Need to map string to Enum? Or use the Enum directly if passed.
+        // We'll trust the caller to pass correct structure or rely on json serialization if we were using it fully.
+        // But here we are inside C++.
+    }
+    return inst;
 }
 
 PYBIND11_MODULE(dm_ai_module, m) {
@@ -116,6 +143,58 @@ PYBIND11_MODULE(dm_ai_module, m) {
                 }
             });
         });
+
+    // --- Pipeline Executor Bindings ---
+
+    py::enum_<InstructionOp>(m, "InstructionOp")
+        .value("NOOP", InstructionOp::NOOP)
+        .value("IF", InstructionOp::IF)
+        .value("LOOP", InstructionOp::LOOP)
+        .value("SELECT", InstructionOp::SELECT)
+        .value("MOVE", InstructionOp::MOVE)
+        .value("MODIFY", InstructionOp::MODIFY)
+        .value("COUNT", InstructionOp::COUNT)
+        .value("MATH", InstructionOp::MATH)
+        .value("CALL", InstructionOp::CALL)
+        .value("RETURN", InstructionOp::RETURN)
+        .value("PRINT", InstructionOp::PRINT)
+        .export_values();
+
+    py::class_<Instruction>(m, "Instruction")
+        .def(py::init<>())
+        .def(py::init<InstructionOp>())
+        .def_readwrite("op", &Instruction::op)
+        // Binding arbitrary JSON args is complex.
+        // We will expose a helper to set args from a python dict.
+        .def("set_args", [](Instruction& self, py::dict args) {
+             // Basic serialization: iterate dict and populate self.args (nlohmann::json)
+             // Limitation: Only handling string/int/bool for now.
+             for (auto item : args) {
+                 std::string key = py::cast<std::string>(item.first);
+                 if (py::isinstance<py::str>(item.second)) {
+                     self.args[key] = py::cast<std::string>(item.second);
+                 } else if (py::isinstance<py::int_>(item.second)) {
+                     self.args[key] = py::cast<int>(item.second);
+                 } else if (py::isinstance<py::bool_>(item.second)) {
+                     self.args[key] = py::cast<bool>(item.second);
+                 }
+             }
+        })
+        .def_readwrite("then_block", &Instruction::then_block)
+        .def_readwrite("else_block", &Instruction::else_block);
+
+    py::class_<systems::PipelineExecutor>(m, "PipelineExecutor")
+        .def(py::init<>())
+        .def("execute", &systems::PipelineExecutor::execute)
+        .def("get_context_var", [](const systems::PipelineExecutor& self, std::string key) -> py::object {
+             auto v = self.get_context_var(key);
+             if (std::holds_alternative<int>(v)) return py::cast(std::get<int>(v));
+             if (std::holds_alternative<std::string>(v)) return py::cast(std::get<std::string>(v));
+             if (std::holds_alternative<bool>(v)) return py::cast(std::get<bool>(v));
+             if (std::holds_alternative<std::vector<int>>(v)) return py::cast(std::get<std::vector<int>>(v));
+             return py::none();
+        });
+
 
     py::enum_<Civilization>(m, "Civilization")
         .value("NONE", Civilization::NONE)
