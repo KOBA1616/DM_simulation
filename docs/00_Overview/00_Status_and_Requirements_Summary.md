@@ -102,10 +102,15 @@ GameCommandアーキテクチャによるエンジン刷新が完了したため
 2.  **Loop Prevention (ループ防止)**
     *   **仕様**: トリガーが無限連鎖する場合（A→B→A...）、スタック深度または同一ターン内の発動回数制限により強制停止する。
     *   **実装**: `PendingEffect` に `chain_depth` カウンタを持たせ、閾値（例: 50）を超えたら解決を失敗（Fizzle）させる。
+    *   **Status: Implemented**
+        *   `PendingEffect` 構造体 (`src/core/game_state.hpp`) に `chain_depth` メンバを追加済み。
 
 3.  **Context Reference (コンテキスト参照)**
     *   **仕様**: 「破壊されたクリーチャーのパワー以下のクリーチャーを破壊する」のように、イベントの文脈データ（破壊されたカードの情報）を動的に参照する機能。
     *   **実装**: `FilterDef` に `power_max_ref: "EVENT_CONTEXT_POWER"` のような動的参照キーを定義可能にする。
+    *   **Status: Implemented**
+        *   `FilterDef` (`src/core/card_json_types.hpp`) に `power_max_ref` を追加し、Pythonバインディングを更新済み。
+        *   `TargetUtils::is_valid_target` に `execution_context` を渡すように拡張し、動的なパワー比較を実装済み。
 
 ---
 

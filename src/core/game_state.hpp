@@ -63,6 +63,9 @@ namespace dm::core {
         // Phase 5: Execution Context (Variable Linking)
         std::map<std::string, int> execution_context;
 
+        // Step 5.2.2: Loop Prevention
+        int chain_depth = 0;
+
         // Optional context for REACTION_WINDOW
         struct ReactionContext {
             std::string trigger_event; // The event being reacted to (e.g., "ON_BLOCK_OR_ATTACK")
@@ -85,6 +88,7 @@ namespace dm::core {
 
     // Phase 5: Turn Stats for Meta Counter logic
     struct TurnStats {
+            int current_chain_depth = 0; // Tracks the depth of the current resolving effect chain
         bool played_without_mana = false; // True if a card was played with 0 actual mana paid (except cost reduction down to >= 1)
         int cards_drawn_this_turn = 0;
         int cards_discarded_this_turn = 0;
