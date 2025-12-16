@@ -1,9 +1,10 @@
 #include "pipeline_executor.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/condition_system.hpp" // Integrate ConditionSystem
+#include "engine/systems/card/condition_system.hpp"
 #include <iostream>
 #include <algorithm>
+#include <random>
 
 namespace dm::engine::systems {
 
@@ -34,8 +35,6 @@ namespace dm::engine::systems {
 
     void PipelineExecutor::execute_instruction(const Instruction& inst, GameState& state,
                                                const std::map<core::CardID, core::CardDefinition>& card_db) {
-        // Safety check: ensure args is not null if we expect params
-        // But nlohmann::json defaults to null. We handle it in handlers.
         switch (inst.op) {
             case InstructionOp::SELECT: handle_select(inst, state, card_db); break;
             case InstructionOp::MOVE:   handle_move(inst, state); break;
@@ -55,7 +54,7 @@ namespace dm::engine::systems {
         if (val.is_number()) return val.get<int>();
         if (val.is_string()) {
             std::string s = val.get<std::string>();
-            if (s.rfind("$", 0) == 0) { // Starts with $
+            if (s.rfind("$", 0) == 0) {
                 auto v = get_context_var(s);
                 if (std::holds_alternative<int>(v)) return std::get<int>(v);
             }
@@ -66,7 +65,7 @@ namespace dm::engine::systems {
     std::string PipelineExecutor::resolve_string(const nlohmann::json& val) const {
         if (val.is_string()) {
             std::string s = val.get<std::string>();
-            if (s.rfind("$", 0) == 0) { // Starts with $
+            if (s.rfind("$", 0) == 0) {
                 auto v = get_context_var(s);
                 if (std::holds_alternative<std::string>(v)) return std::get<std::string>(v);
             }
@@ -86,20 +85,13 @@ namespace dm::engine::systems {
         if (inst.args.is_null()) return;
         std::string out_key = inst.args.value("out", "$selection");
 
-        // Use TargetUtils logic to identify valid targets based on filter
         FilterDef filter = inst.args.value("filter", FilterDef{});
         std::vector<int> valid_targets;
 
-        // Iterate over specified zones to find candidates
         std::vector<Zone> zones;
         if (filter.zones.empty()) {
-            // Default zones if not specified - BUT filter.zones is vector<string> in JSON but we need vector<Zone> or strings to check.
-            // Wait, FilterDef::zones is vector<string>. TargetUtils handles string matching inside logic?
-            // No, TargetUtils iterates what is PASSED to it usually, but here we need to fetch candidates first.
-            // We need to parse string zones to Enum zones.
             zones = {Zone::BATTLE, Zone::HAND, Zone::MANA, Zone::SHIELD};
         } else {
-            // Convert string zones to Zone enum
             for (const auto& z_str : filter.zones) {
                  if (z_str == "BATTLE_ZONE") zones.push_back(Zone::BATTLE);
                  else if (z_str == "HAND") zones.push_back(Zone::HAND);
@@ -110,8 +102,6 @@ namespace dm::engine::systems {
             }
         }
 
-        // Need source controller context (assumed Active Player for now, or from context)
-        // In real impl, context should store $player
         PlayerID player_id = state.active_player_id;
 
         for (PlayerID pid : {player_id, static_cast<PlayerID>(1 - player_id)}) {
@@ -133,21 +123,6 @@ namespace dm::engine::systems {
             }
         }
 
-        // Issue QueryCommand to ask the agent/player
-        // But since PipelineExecutor runs synchronously for now, checking 'resume' logic
-        // For Phase 6 Step 1, we just Issue the command.
-        // Wait, QueryCommand just sends a signal. The loop needs to pause.
-        // For now, let's implement the "Auto Select" logic if count is ALL, or Mock logic for single.
-        // Or better: If valid_targets is empty, return empty.
-
-        // Real Implementation:
-        // auto cmd = std::make_unique<QueryCommand>("SELECT_TARGET", valid_targets);
-        // cmd->execute(state);
-        // execution_paused = true;
-        // return;
-
-        // Stub Implementation for Verification (since we don't have the AI loop integrated with this VM yet):
-        // Just pick the first N valid targets.
         int count = inst.args.value("count", 1);
         std::vector<int> selection;
         for (int i = 0; i < count && i < (int)valid_targets.size(); ++i) {
@@ -197,49 +172,32 @@ namespace dm::engine::systems {
         else if (to_zone_str == "SHIELD") to_zone = Zone::SHIELD;
         else if (to_zone_str == "DECK") to_zone = Zone::DECK;
 
-        // Resolve virtual targets to actual IDs
         if (is_virtual_target) {
-            // Assume active player if not specified - or implied owner?
-            // Usually DECK_TOP implies active player's deck.
             PlayerID pid = state.active_player_id;
             const auto& deck = state.players[pid].deck;
 
             if (virtual_target_type == "DECK_TOP") {
-                // Deck is usually ordered such that back() is top?
-                // Standard convention in this engine: push_back to add to top?
-                // Verify with GameState::draw_card logic usually.
-                // Assuming back is top.
                 int available = (int)deck.size();
                 int count = std::min(virtual_count, available);
                 for (int i = 0; i < count; ++i) {
-                     // Get ID from the end (top) backwards
-                     // But we must capture them before moving, because moving alters the deque.
-                     // Actually TransitionCommand handles it.
-                     // We just need the ID.
                      targets.push_back(deck[available - 1 - i].instance_id);
                 }
             }
         }
 
         for (int id : targets) {
-             // O(1) Owner Lookup
              const CardInstance* card_ptr = state.get_card_instance(id);
              if (!card_ptr) continue;
 
              PlayerID owner = card_ptr->owner;
-             if (owner > 1) { // Should be valid if get_card_instance returned non-null
+             if (owner > 1) {
                  if (state.card_owner_map.size() > (size_t)id) owner = state.card_owner_map[id];
              }
 
-             // Find source zone
              Zone from_zone = Zone::GRAVEYARD;
              bool found = false;
-
-             // Optimized search: Check zones in order of likelihood based on game phase/action?
-             // Or just check all for the specific owner.
              const Player& p = state.players[owner];
 
-             // Check if it's in Hand
              for(const auto& c : p.hand) if(c.instance_id == id) { from_zone = Zone::HAND; found = true; break; }
              if(!found) for(const auto& c : p.battle_zone) if(c.instance_id == id) { from_zone = Zone::BATTLE; found = true; break; }
              if(!found) for(const auto& c : p.mana_zone) if(c.instance_id == id) { from_zone = Zone::MANA; found = true; break; }
@@ -255,11 +213,23 @@ namespace dm::engine::systems {
     }
 
     void PipelineExecutor::handle_modify(const Instruction& inst, GameState& state) {
-        // Implementation for Modify (Power, Tap, etc.)
         if (inst.args.is_null()) return;
 
+        std::string mod_type_str = resolve_string(inst.args.value("type", ""));
+
+        // Handle Shuffle specifically (not MutateCommand)
+        if (mod_type_str == "SHUFFLE") {
+             std::string target_zone = resolve_string(inst.args.value("target", ""));
+             if (target_zone == "DECK") {
+                 // Shuffle active player's deck
+                 PlayerID pid = state.active_player_id;
+                 auto& deck = state.players[pid].deck;
+                 std::shuffle(deck.begin(), deck.end(), state.rng);
+             }
+             return;
+        }
+
         std::vector<int> targets;
-        // Resolve target (similar code to handle_move, should extract)
         if (inst.args.contains("target")) {
             auto target_val = inst.args["target"];
             if (target_val.is_string() && target_val.get<std::string>().rfind("$", 0) == 0) {
@@ -271,7 +241,6 @@ namespace dm::engine::systems {
             }
         }
 
-        std::string mod_type_str = resolve_string(inst.args.value("type", ""));
         MutateCommand::MutationType type;
         int val = resolve_int(inst.args.value("value", 0));
         std::string str_val = resolve_string(inst.args.value("str_value", ""));
@@ -281,7 +250,7 @@ namespace dm::engine::systems {
         else if (mod_type_str == "POWER_ADD") type = MutateCommand::MutationType::POWER_MOD;
         else if (mod_type_str == "ADD_KEYWORD") type = MutateCommand::MutationType::ADD_KEYWORD;
         else if (mod_type_str == "REMOVE_KEYWORD") type = MutateCommand::MutationType::REMOVE_KEYWORD;
-        else return; // Unknown type
+        else return;
 
         for (int id : targets) {
             auto cmd = std::make_unique<MutateCommand>(id, type, val, str_val);
@@ -307,7 +276,6 @@ namespace dm::engine::systems {
         std::string var_name = inst.args.value("as", "$it");
         std::vector<int> collection;
 
-        // Resolve collection
         if (inst.args.contains("in")) {
             auto val = inst.args["in"];
             if (val.is_string() && val.get<std::string>().rfind("$", 0) == 0) {
@@ -340,7 +308,6 @@ namespace dm::engine::systems {
             set_context_var(out_key, res);
         }
         else if (inst.op == InstructionOp::COUNT) {
-             // Count items in a list variable
              if (inst.args.contains("in")) {
                 auto val = inst.args["in"];
                 if (val.is_string() && val.get<std::string>().rfind("$", 0) == 0) {
@@ -363,7 +330,6 @@ namespace dm::engine::systems {
     bool PipelineExecutor::check_condition(const nlohmann::json& cond, GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db) {
         if (cond.is_null()) return false;
 
-        // Integration with ConditionSystem (legacy migration support)
         if (cond.contains("type")) {
              std::string type = cond.value("type", "NONE");
              if (type != "NONE") {
@@ -374,9 +340,6 @@ namespace dm::engine::systems {
                  if (cond.contains("op")) def.op = cond.value("op", "==");
                  if (cond.contains("stat_key")) def.stat_key = cond.value("stat_key", "");
 
-                 // For legacy ConditionSystem, we need source_instance_id and card_db.
-                 // PipelineExecutor should ideally have access to source.
-                 // We can get it from context "$source" or "$source_id" if present.
                  int source_id = -1;
                  auto v = get_context_var("$source");
                  if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
@@ -386,19 +349,16 @@ namespace dm::engine::systems {
                  }
 
                  std::map<std::string, int> exec_ctx;
-                 // Map pipeline context to execution context for condition system
                  for (const auto& kv : context) {
                      if (std::holds_alternative<int>(kv.second)) {
                          exec_ctx[kv.first] = std::get<int>(kv.second);
                      }
                  }
 
-                 // Use the passed card_db!
                  return dm::engine::ConditionSystem::instance().evaluate_def(state, def, source_id, card_db, exec_ctx);
              }
         }
 
-        // Simple "exists": "$var" check
         if (cond.contains("exists")) {
             std::string key = cond["exists"];
             auto v = get_context_var(key);
@@ -407,7 +367,7 @@ namespace dm::engine::systems {
             }
             if (std::holds_alternative<int>(v)) return true;
         }
-        // Simple comparison "lhs", "op", "rhs"
+
         if (cond.contains("op")) {
             int lhs = resolve_int(cond.value("lhs", 0));
             int rhs = resolve_int(cond.value("rhs", 0));
