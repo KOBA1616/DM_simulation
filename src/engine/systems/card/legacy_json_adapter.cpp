@@ -28,21 +28,12 @@ namespace dm::engine::systems {
 
             // Map ConditionDef to instruction args["cond"]
             nlohmann::json cond_json;
-            if (effect.condition.type == "MANA_ARMED") {
-                cond_json["op"] = ">=";
-                cond_json["lhs"] = "$mana_civ_count"; // Requires pre-calculation or support in 'check_condition'
-                cond_json["rhs"] = effect.condition.value;
-                // Wait, PipelineExecutor::check_condition only supports simple vars.
-                // We might need a CALC instruction before IF to compute checks.
-                // For simplicity in Phase 6 Step 1, we assume the ConditionSystem
-                // handles the gate *before* dispatching, or we stub it here.
-                // Let's stub basic condition structure for future.
-                cond_json["type"] = effect.condition.type; // Pass through for extended handler
-            } else {
-                 // Generic fallback
-                 cond_json["type"] = effect.condition.type;
-                 cond_json["value"] = effect.condition.value;
-            }
+            cond_json["type"] = effect.condition.type;
+            cond_json["value"] = effect.condition.value;
+            cond_json["str_val"] = effect.condition.str_val;
+            cond_json["op"] = effect.condition.op;
+            cond_json["stat_key"] = effect.condition.stat_key;
+
             if_inst.args["cond"] = cond_json;
             if_inst.then_block = inner_instructions;
 

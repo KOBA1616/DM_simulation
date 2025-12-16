@@ -57,7 +57,7 @@ namespace dm::engine::systems {
         // Utils
         int resolve_int(const nlohmann::json& val) const;
         std::string resolve_string(const nlohmann::json& val) const;
-        bool check_condition(const nlohmann::json& cond, core::GameState& state);
+        bool check_condition(const nlohmann::json& cond, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
     };
 
 }
