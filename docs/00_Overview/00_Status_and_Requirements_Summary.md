@@ -59,6 +59,7 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   **New**: `PendingEffect` を独立ヘッダに分離し、`ADD_PENDING_EFFECT`, `SET_ACTIVE_PLAYER` コマンドを追加することで、複雑なターン遷移（フェーズ変更→トリガー追加→プレイヤー交代）の完全な Undo/Redo を実現。
 *   **Step 4: 移行と検証**
     *   既存テストケースの新エンジン上でのパス確認。
+    *   **New**: S・トリガーおよび革命チェンジのイベント駆動フロー（リアクションウィンドウ生成）の検証完了。
 
 ### 3.2 [Pending] Phase 3.2: AI 本番運用 (Production Run)
 **Status: On Hold (Waiting for Phase 6)**
@@ -115,6 +116,10 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 **目的**: ターンプレイヤー以外の行動（S・トリガー、ニンジャ・ストライク）を、エンジンのメインループ外の特例処理ではなく、ステートマシンの一部として正規化する。
 
 ### 6.1 リアクションウィンドウ (Reaction Window)
+
+*   **Status: Implemented**
+    *   `ReactionWindow` クラス、`GameState::Status::WAITING_FOR_REACTION` ステータス、`DECLARE_REACTION` コマンドを実装済み。
+    *   `TransitionCommand` および `FlowCommand` がイベントをディスパッチし、`TriggerManager` がそれを検知してウィンドウを開くフローを確立済み。
 
 *   **Awaiting Input State**:
     *   リアクション可能なタイミング（攻撃時、ブロック時、シールドブレイク時）で、エンジンは一時停止状態 (`GameState::Status::WAITING_FOR_REACTION`) に遷移する。
@@ -223,6 +228,7 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   次に `CIP` (出た時) 効果のパイプライン処理化。
         *   **Verify**: 条件付きCIP効果 (e.g. マナ武装) のパイプライン経由での実行検証完了。
     *   最後に複雑な効果（S・トリガー、革命チェンジ）を移行。
+        *   **Verify**: リアクションウィンドウ基盤の実装とイベント駆動フロー (`TransitionCommand` -> `TriggerManager` -> `ReactionWindow`) の統合テストが完了。
 4.  **EffectResolverの廃止**: 全ロジックの移行完了後、`EffectResolver.cpp` を削除する。
 
 ---
