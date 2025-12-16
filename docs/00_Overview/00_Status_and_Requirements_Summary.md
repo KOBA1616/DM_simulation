@@ -18,5 +18,6 @@
     *   全てのアクションを `GameCommand` (Transition, Mutate, Flow等) 発行として統一し、Undo/Redo基盤を確立する。
     *   **New**: `GameInstance` にて `TriggerManager` を `GameState::event_dispatcher` と連携させ、コマンド実行時のイベント発行をトリガー検知につなげる統合を完了。
 *   **Step 4: 移行と検証**
-    *   **Known Issue**: `python/tests/test_mega_last_burst.py` が `DestroyHandler` の依存関係（CardRegistry vs CardDB）により失敗している。次フェーズで `GenericCardSystem::resolve_action` とハンドラの連携を詳細調査・修正する。
+    *   既存テストケースの新エンジン上でのパス確認。
+    *   **New**: `CardRegistry` のJSONロードロジックを修正し、`Mega Last Burst` 等のキーワード解析漏れを解消。`DestroyHandler` の動作検証完了 (`test_mega_last_burst.py` Passed)。
     *   **New**: S・トリガーおよび革命チェンジのイベント駆動フロー（リアクションウィンドウ生成）の検証完了。

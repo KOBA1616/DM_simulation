@@ -130,6 +130,7 @@ namespace dm::engine {
             if (kws.count("meta_counter_play") && kws.at("meta_counter_play")) def.keywords.meta_counter_play = true;
             if (kws.count("hyper_energy") && kws.at("hyper_energy")) def.keywords.hyper_energy = true;
             if (kws.count("friend_burst") && kws.at("friend_burst")) def.keywords.friend_burst = true;
+            if (kws.count("mega_last_burst") && kws.at("mega_last_burst")) def.keywords.mega_last_burst = true;
         }
 
         // Keywords mapping from effects
