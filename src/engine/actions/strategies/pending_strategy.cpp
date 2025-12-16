@@ -131,7 +131,7 @@ namespace dm::engine {
                                 const auto& def = card_db.at(card.card_id);
 
                                 // Check Top Card (Element)
-                                if (TargetUtils::is_valid_target(card, def, filter, game_state, decision_maker, (PlayerID)pid)) {
+                                if (TargetUtils::is_valid_target(card, def, filter, game_state, decision_maker, (PlayerID)pid, false, &eff.execution_context)) {
                                     bool protected_by_jd = false;
                                     if (decision_maker != pid) {
                                         if (TargetUtils::is_protected_by_just_diver(card, def, game_state, decision_maker)) {
@@ -149,7 +149,7 @@ namespace dm::engine {
                                         if (card_db.count(under.card_id) == 0) continue;
                                         const auto& under_def = card_db.at(under.card_id);
                                         // Note: Underlying cards are checked independently
-                                        if (TargetUtils::is_valid_target(under, under_def, filter, game_state, decision_maker, (PlayerID)pid)) {
+                                        if (TargetUtils::is_valid_target(under, under_def, filter, game_state, decision_maker, (PlayerID)pid, false, &eff.execution_context)) {
                                             candidates.push_back({under, &under_def});
                                         }
                                     }
