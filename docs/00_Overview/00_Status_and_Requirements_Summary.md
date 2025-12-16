@@ -56,21 +56,21 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   **New**: `GameInstance` にて `TriggerManager` を `GameState::event_dispatcher` と連携させ、コマンド実行時のイベント発行をトリガー検知につなげる統合を完了。
 
 ### 3.2 [Priority: High] Phase 7: ハイブリッド・エンジン基盤 (New Requirement)
-**Status: In Progress (Latest)**
+**Status: Completed**
 旧エンジン（マクロ的アクション）と新エンジン（プリミティブコマンド）を共存・統合させるためのアーキテクチャ実装。
 
 *   **Step 1: データ構造の刷新 (Hybrid Schema)**
-    *   **Status: In Progress**
+    *   **Status: Completed**
     *   JSONスキーマに `CommandDef` を導入。
-    *   **Policy Change**: `EffectDef` に `commands` フィールドを追加するが、旧来の `actions` からの自動変換は行わない。新形式での記述を必須とする。
+    *   **Policy Change**: `EffectDef` に `commands` フィールドを追加。`GenericCardSystem` において `resolve_effect` 実行時に `commands` をチェックし、存在するコマンドを優先的かつ `actions` と共存して実行するディスパッチ処理を実装しました。
 *   **Step 2: CommandSystem の実装**
-    *   **Status: Implemented (Updated)**
+    *   **Status: Completed**
     *   `dm::engine::systems::CommandSystem` を実装。
     *   `CommandSystem::execute_primitive` における `TRANSITION` 処理（ゾーン文字列解析、ターゲット解決）の不具合を修正し、`TargetUtils` を利用した正しいフィルタリングを実装しました。
     *   Pythonバインディングを整備し、外部からのコマンド実行テストが可能になった。
 
 ### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
-**Status: Planned**
+**Status: [Status:todo]**
 Transformer方式を高速化し、かつZero-shot（未知のカードへの対応）を可能にするため、「ハイブリッド埋め込み (Hybrid Embedding)」を導入します。また、文脈として墓地のカードも対象に含めます。
 
 *   **コンセプト (Concept)**
@@ -102,9 +102,9 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  **Full Trigger System Migration**:
+1.  **Full Trigger System Migration** [Status:todo]:
     *   `EffectResolver` が現在行っている処理を全て `CommandSystem` 経由に切り替える。
-2.  **New JSON Standard Adoption**:
+2.  **New JSON Standard Adoption** [Status:todo]:
     *   カードデータの新JSON形式への移行推進。Legacyサポートの完全撤廃に伴い、データセットの再構築を行う。
-3.  **GUI Update**:
+3.  **GUI Update** [Status:todo]:
     *   `CardEditor` を更新し、新スキーマ (`CommandDef`) の編集に対応させる。
