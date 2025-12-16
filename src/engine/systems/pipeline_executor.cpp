@@ -1,6 +1,7 @@
 #include "pipeline_executor.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "engine/systems/card/condition_system.hpp" // Integrate ConditionSystem
 #include <iostream>
 #include <algorithm>
 
@@ -292,7 +293,7 @@ namespace dm::engine::systems {
                                      const std::map<core::CardID, core::CardDefinition>& card_db) {
         if (inst.args.is_null() || !inst.args.contains("cond")) return;
 
-        if (check_condition(inst.args["cond"], state)) {
+        if (check_condition(inst.args["cond"], state, card_db)) {
             execute(inst.then_block, state, card_db);
         } else {
             execute(inst.else_block, state, card_db);
@@ -359,8 +360,43 @@ namespace dm::engine::systems {
         std::cout << "[Pipeline] " << resolve_string(inst.args.value("msg", "")) << std::endl;
     }
 
-    bool PipelineExecutor::check_condition(const nlohmann::json& cond, GameState& /*state*/) {
+    bool PipelineExecutor::check_condition(const nlohmann::json& cond, GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db) {
         if (cond.is_null()) return false;
+
+        // Integration with ConditionSystem (legacy migration support)
+        if (cond.contains("type")) {
+             std::string type = cond.value("type", "NONE");
+             if (type != "NONE") {
+                 core::ConditionDef def;
+                 def.type = type;
+                 if (cond.contains("value")) def.value = cond.value("value", 0);
+                 if (cond.contains("str_val")) def.str_val = cond.value("str_val", "");
+                 if (cond.contains("op")) def.op = cond.value("op", "==");
+                 if (cond.contains("stat_key")) def.stat_key = cond.value("stat_key", "");
+
+                 // For legacy ConditionSystem, we need source_instance_id and card_db.
+                 // PipelineExecutor should ideally have access to source.
+                 // We can get it from context "$source" or "$source_id" if present.
+                 int source_id = -1;
+                 auto v = get_context_var("$source");
+                 if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
+                 else if (std::holds_alternative<std::vector<int>>(v)) {
+                     const auto& vec = std::get<std::vector<int>>(v);
+                     if (!vec.empty()) source_id = vec[0];
+                 }
+
+                 std::map<std::string, int> exec_ctx;
+                 // Map pipeline context to execution context for condition system
+                 for (const auto& kv : context) {
+                     if (std::holds_alternative<int>(kv.second)) {
+                         exec_ctx[kv.first] = std::get<int>(kv.second);
+                     }
+                 }
+
+                 // Use the passed card_db!
+                 return dm::engine::ConditionSystem::instance().evaluate_def(state, def, source_id, card_db, exec_ctx);
+             }
+        }
 
         // Simple "exists": "$var" check
         if (cond.contains("exists")) {
@@ -379,6 +415,9 @@ namespace dm::engine::systems {
             if (op == "==") return lhs == rhs;
             if (op == ">") return lhs > rhs;
             if (op == "<") return lhs < rhs;
+            if (op == ">=") return lhs >= rhs;
+            if (op == "<=") return lhs <= rhs;
+            if (op == "!=") return lhs != rhs;
         }
         return false;
     }
