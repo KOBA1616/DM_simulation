@@ -20,6 +20,9 @@ namespace dm::engine {
 
         void reset_with_scenario(const core::ScenarioConfig& config);
 
+        // Phase 6 Step 3: GameCommand Integration
+        void undo();
+
         // Helper to allow python to access state easily
         core::GameState& get_state() { return state; }
     };
