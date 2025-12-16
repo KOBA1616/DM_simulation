@@ -675,7 +675,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("loop_proven", &GameState::loop_proven)
         .def_readwrite("waiting_for_user_input", &GameState::waiting_for_user_input)
         .def_readwrite("pending_query", &GameState::pending_query)
-        // .def_readwrite("command_history", &GameState::command_history) // Disable for now to fix build
+        .def_readwrite("command_history", &GameState::command_history) // Re-enabled for Phase 6 Step 3
         .def("get_card_def", [](GameState& /*s*/, CardID id, const std::map<CardID, CardDefinition>& db) {
             return db.at(id);
         })
@@ -782,6 +782,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<GameInstance>(m, "GameInstance")
         .def(py::init<uint32_t, const std::map<CardID, CardDefinition>&>())
         .def("reset_with_scenario", &GameInstance::reset_with_scenario)
+        .def("get_state", &GameInstance::get_state, py::return_value_policy::reference) // Exposed as reference
+        .def("undo", &GameInstance::undo) // Phase 6 Step 3
         .def_readonly("state", &GameInstance::state)
         .def_readwrite("trigger_manager", &GameInstance::trigger_manager);
         // .def_readonly("card_db", &GameInstance::card_db); // Cannot bind reference member directly easily
