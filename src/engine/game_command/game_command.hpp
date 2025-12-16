@@ -9,7 +9,8 @@ namespace dm::engine::game_command {
         MUTATE,
         FLOW,
         QUERY,
-        DECIDE
+        DECIDE,
+        DECLARE_REACTION
     };
 
     class GameCommand {

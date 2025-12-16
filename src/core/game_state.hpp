@@ -13,9 +13,13 @@
 #include "modifiers.hpp"
 #include "game_command_fwd.hpp"
 #include "pending_effect.hpp"
+#include "engine/systems/trigger_system/reaction_window.hpp"
 #include <memory>
+#include <functional>
 
 namespace dm::core {
+
+    struct GameEvent; // Forward Declaration for event_dispatcher
 
     struct CardInstance {
         CardID card_id; // The definition ID
@@ -79,8 +83,18 @@ namespace dm::core {
     struct GameState {
         int turn_number = 1;
         PlayerID active_player_id = 0;
+        enum class Status {
+            PLAYING,
+            WAITING_FOR_REACTION,
+            GAME_OVER
+        };
+
         Phase current_phase = Phase::START_OF_TURN;
+        Status status = Status::PLAYING;
         GameResult winner = GameResult::NONE;
+
+        // Phase 6: Reaction Window Stack
+        std::vector<dm::engine::systems::ReactionWindow> reaction_stack;
 
         // Loop Detection
         std::vector<uint64_t> hash_history;
@@ -131,6 +145,12 @@ namespace dm::core {
 
         // Phase 6: Command Execution Wrapper
         void execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd);
+
+        // Phase 6: Event Dispatcher Reference
+        // To allow commands to dispatch events, we need access to TriggerManager.
+        // GameState does not own TriggerManager (GameInstance does), but we can store a callback or pointer.
+        // For MVP, we use a simple functional callback or void* to avoid circular dependency.
+        std::function<void(const GameEvent&)> event_dispatcher;
 
         // Phase 6: Query/Decide
         bool waiting_for_user_input = false;

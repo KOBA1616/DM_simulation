@@ -129,6 +129,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<systems::TriggerManager, std::shared_ptr<systems::TriggerManager>>(m, "TriggerManager")
         .def(py::init<>())
         .def("dispatch", &systems::TriggerManager::dispatch)
+        .def("check_reactions", &systems::TriggerManager::check_reactions) // Phase 6 Step 2
         .def("clear", &systems::TriggerManager::clear)
         .def("subscribe", [](systems::TriggerManager& self, EventType type, py::function callback) {
             // Capture python function. Note: This creates a dependency on the GIL.
@@ -660,12 +661,19 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("slot_index", &Action::slot_index)
         .def_readwrite("target_slot_index", &Action::target_slot_index);
 
+    py::enum_<GameState::Status>(m, "Status") // Binding to module scope for simplicity in tests
+        .value("PLAYING", GameState::Status::PLAYING)
+        .value("WAITING_FOR_REACTION", GameState::Status::WAITING_FOR_REACTION)
+        .value("GAME_OVER", GameState::Status::GAME_OVER)
+        .export_values();
+
     py::class_<GameState>(m, "GameState")
         .def(py::init<int>())
         .def("initialize_card_stats", &GameState::initialize_card_stats) // Bind as member
         .def_readwrite("players", &GameState::players)
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("current_phase", &GameState::current_phase)
+        .def_readwrite("status", &GameState::status) // Added for Phase 6 Reaction
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("stack_zone", &GameState::stack_zone)
         .def_readwrite("pending_effects", &GameState::pending_effects)
@@ -676,6 +684,17 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("waiting_for_user_input", &GameState::waiting_for_user_input)
         .def_readwrite("pending_query", &GameState::pending_query)
         .def_readwrite("command_history", &GameState::command_history) // Re-enabled for Phase 6 Step 3
+        .def("set_event_dispatcher", [](GameState& s, py::function cb) {
+             // Store the python callback wrapped in std::function
+             s.event_dispatcher = [cb](const GameEvent& evt) {
+                 py::gil_scoped_acquire acquire;
+                 try {
+                     cb(evt);
+                 } catch (py::error_already_set& e) {
+                     // std::cerr << "Python error in dispatcher: " << e.what() << std::endl;
+                 }
+             };
+        })
         .def("get_card_def", [](GameState& /*s*/, CardID id, const std::map<CardID, CardDefinition>& db) {
             return db.at(id);
         })
@@ -1205,4 +1224,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<dm::engine::game_command::DecideCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::DecideCommand>>(m, "DecideCommand")
         .def(py::init<int, std::vector<int>, int>(),
              py::arg("query_id"), py::arg("selection") = std::vector<int>{}, py::arg("option") = -1);
+
+    py::class_<dm::engine::game_command::DeclareReactionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::DeclareReactionCommand>>(m, "DeclareReactionCommand")
+        .def(py::init<PlayerID, bool, int>(),
+             py::arg("player_id"), py::arg("is_pass"), py::arg("index") = -1);
 }
