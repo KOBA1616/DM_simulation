@@ -5,6 +5,21 @@
 本要件定義書はUTF-8で記述することを前提とします。
 また、GUI上で表示する文字は基本的に日本語で表記できるようにしてください。
 
+## ステータス定義 (Status Definitions)
+開発状況を追跡するため、各項目の先頭に以下のタグを付与してください。
+
+*   `[Status: Todo]` : 未着手。AIが着手可能。
+*   `[Status: WIP]` : (Work In Progress) 現在作業中。
+*   `[Status: Review]` : 実装完了、人間のレビューまたはテスト待ち。
+*   `[Status: Done]` : 完了・マージ済み。
+*   `[Status: Blocked]` : 技術的課題や依存関係により停止中。
+*   `[Status: Deferred]` : 次期フェーズへ延期
+*   `[Test: Pending]` : テスト未作成。
+*   `[Test: Pass]` : 検証済み。
+*   `[Test: Fail]` : テスト失敗。修正が必要。
+*   `[Test: Skip]` : 特定の理由でテストを除外中。
+*   `[Known Issue]` : バグを認識した上でマージした項目。
+
 ## 1. 概要 (Overview)
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
@@ -21,57 +36,57 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
-*   **EffectResolver (Legacy)**: 現在の主力ロジックだが、段階的に廃止予定。
-*   **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` などのプリミティブを実装済み。
-*   **LegacyJsonAdapter**: **削除済み**。旧データサポートは終了。
+*   [Status: Done] **EffectResolver (Legacy)**: 現在の主力ロジックだが、段階的に廃止予定。
+*   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` などのプリミティブを実装済み。
+*   [Status: Done] **LegacyJsonAdapter**: **削除済み**。旧データサポートは終了。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
-*   **Status**: 稼働中 (Ver 2.3)。
-*   **Freeze**: 新JSONスキーマが確定次第、新フォーマット専用エディタとして改修を行う。
+*   [Status: Done] **Status**: 稼働中 (Ver 2.3)。
+*   [Status: Deferred] **Freeze**: 新JSONスキーマが確定次第、新フォーマット専用エディタとして改修を行う。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
-*   **Status**: パイプライン構築済み。
-*   **Pending**: エンジン刷新に伴うデータ構造の変更が確定するまで凍結。
+*   [Status: Done] **Status**: パイプライン構築済み。
+*   [Status: Blocked] **Pending**: エンジン刷新に伴うデータ構造の変更が確定するまで凍結。
 
 ---
 
 ## 3. ロードマップ (Roadmap)
 
 ### 3.1 [Priority: Critical] Phase 6: エンジン刷新 (Engine Overhaul)
-**Status: In Progress**
+[Status: WIP]
 `EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行します。
 
 *   **Step 1: イベント駆動基盤の実装**
-    *   **Status: Implemented**
+    *   [Status: Done] [Test: Pass]
     *   `TriggerManager`: シングルトン/コンポーネントによるイベント監視・発行システムの実装。（実装完了）
     *   `check_triggers` メソッドにより、`GameEvent` をトリガーとして `PendingEffect` を生成するフローを確立。
 *   **Step 2: 命令パイプライン (Instruction Pipeline) の実装**
-    *   **Status: Implemented & CIP Integrated**
+    *   [Status: Done] [Test: Pass]
     *   `PipelineExecutor` (VM) を実装済み。
     *   `GenericCardSystem` を更新し、一部のトリガー処理をパイプラインへルーティング可能に。
-    *   **Deleted**: `LegacyJsonAdapter` は廃止されました。
+    *   [Status: Done] **Deleted**: `LegacyJsonAdapter` は廃止されました。
 *   **Step 3: GameCommand への統合**
-    *   **Status: Completed**
+    *   [Status: Done] [Test: Pass]
     *   全てのアクションを `GameCommand` (Transition, Mutate, Flow等) 発行として統一し、Undo/Redo基盤を確立する。
-    *   **New**: `GameInstance` にて `TriggerManager` を `GameState::event_dispatcher` と連携させ、コマンド実行時のイベント発行をトリガー検知につなげる統合を完了。
+    *   [Status: Done] **New**: `GameInstance` にて `TriggerManager` を `GameState::event_dispatcher` と連携させ、コマンド実行時のイベント発行をトリガー検知につなげる統合を完了。
 
 ### 3.2 [Priority: High] Phase 7: ハイブリッド・エンジン基盤 (New Requirement)
-**Status: In Progress (Latest)**
+[Status: WIP]
 旧エンジン（マクロ的アクション）と新エンジン（プリミティブコマンド）を共存・統合させるためのアーキテクチャ実装。
 
 *   **Step 1: データ構造の刷新 (Hybrid Schema)**
-    *   **Status: Implemented**
+    *   [Status: Done] [Test: Pass]
     *   JSONスキーマに `CommandDef` を導入済み。
     *   `GenericCardSystem::resolve_effect` を更新し、旧来の `actions` と共に新しい `commands` を反復処理・実行するロジックを実装しました。
     *   `commands` の実行は `CommandSystem::execute_command` へ委譲され、レガシーロジックと共存します。
 *   **Step 2: CommandSystem の実装**
-    *   **Status: Implemented (Updated)**
+    *   [Status: Done] [Test: Pass]
     *   `dm::engine::systems::CommandSystem` を実装。
     *   `CommandSystem::execute_primitive` における `TRANSITION` 処理（ゾーン文字列解析、ターゲット解決）の不具合を修正し、`TargetUtils` を利用した正しいフィルタリングを実装しました。
     *   Pythonバインディングを整備し、外部からのコマンド実行テストが可能になった。
 
 ### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
-**Status: Planned**
+[Status: Deferred]
 Transformer方式を高速化し、かつZero-shot（未知のカードへの対応）を可能にするため、「ハイブリッド埋め込み (Hybrid Embedding)」を導入します。また、文脈として墓地のカードも対象に含めます。
 
 *   **コンセプト (Concept)**
@@ -81,13 +96,13 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
     *   **スコープ拡張**: Transformerの入力文脈に「墓地」のカードも含め、墓地利用や探索に対応させる。
 
 *   **実装要件 (Requirements)**
-    *   **A. C++側 (TensorConverter)**
+    *   [Status: Todo] **A. C++側 (TensorConverter)**
         *   `convert_to_sequence` を修正し、`Output: (TokenSequence, FeatureSequence)` を返すように変更する。
         *   `FeatureSequence`: 各トークンに対応するカードの特徴量ベクトル `vector<vector<float>>`。
-    *   **B. Python側 (NetworkV2)**
+    *   [Status: Todo] **B. Python側 (NetworkV2)**
         *   モデル入力層を修正: `x_id` (Card IDs) と `x_feat` (Manual Features) を受け取る。
         *   `x_feat` を `nn.Linear` で埋め込み次元に変換し、ID埋め込みと加算する。
-    *   **C. 特徴量ベクトルの定義 (Feature Vector Definition)**
+    *   [Status: Todo] **C. 特徴量ベクトルの定義 (Feature Vector Definition)**
         *   コスト (Cost)
         *   パワー (Power)
         *   文明 (Civilization)
@@ -103,9 +118,9 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  **Full Trigger System Migration**:
+1.  [Status: Todo] **Full Trigger System Migration**:
     *   `EffectResolver` が現在行っている処理を全て `CommandSystem` 経由に切り替える。
-2.  **New JSON Standard Adoption**:
+2.  [Status: Todo] **New JSON Standard Adoption**:
     *   カードデータの新JSON形式への移行推進。Legacyサポートの完全撤廃に伴い、データセットの再構築を行う。
-3.  **GUI Update**:
+3.  [Status: Todo] **GUI Update**:
     *   `CardEditor` を更新し、新スキーマ (`CommandDef`) の編集に対応させる。
