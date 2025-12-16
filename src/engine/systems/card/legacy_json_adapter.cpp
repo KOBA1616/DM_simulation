@@ -15,7 +15,7 @@ namespace dm::engine::systems {
         // Legacy 'condition' is typically checked BEFORE resolution in the old resolver.
         // In the new pipeline, checking it inside the pipeline is robust.
         // However, we need to map ConditionDef to JSON condition structure.
-        bool has_condition = (effect.condition.type != "NONE");
+        bool has_condition = (effect.condition.type != "NONE" && !effect.condition.type.empty());
 
         std::vector<Instruction> inner_instructions;
         for (const auto& action : effect.actions) {
@@ -60,7 +60,10 @@ namespace dm::engine::systems {
         // 1. Check if selection is required
         bool needs_selection = false;
         if (!action.filter.zones.empty() || !action.filter.races.empty() ||
-            !action.filter.civilizations.empty() || action.scope == TargetScope::TARGET_SELECT) {
+            !action.filter.civilizations.empty() ||
+            action.scope == TargetScope::TARGET_SELECT ||
+            action.scope == TargetScope::RANDOM ||
+            action.scope == TargetScope::ALL_FILTERED) {
             needs_selection = true;
         }
 
@@ -87,8 +90,8 @@ namespace dm::engine::systems {
              // Let's assume int is fine for internal pipeline.
              f["civilizations"] = action.filter.civilizations;
              f["races"] = action.filter.races;
-             f["min_cost"] = action.filter.min_cost.value_or(-1);
-             f["max_cost"] = action.filter.max_cost.value_or(-1);
+             if (action.filter.min_cost.has_value()) f["min_cost"] = action.filter.min_cost.value();
+             if (action.filter.max_cost.has_value()) f["max_cost"] = action.filter.max_cost.value();
              f["owner"] = action.filter.owner.value_or("SELF");
 
              sel.args["filter"] = f;
@@ -168,12 +171,44 @@ namespace dm::engine::systems {
                  // Generic Move
                 inst.op = InstructionOp::MOVE;
                 inst.args["target"] = needs_selection ? target_var : "$source";
-                // Legacy ActionDef::destination_zone is a string in new schema (ActionDef struct),
-                // but previously it might have been int.
-                // In src/core/card_json_types.hpp: std::string destination_zone;
-                // So we can use it directly or map string to zone string if needed.
-                // Since PipelineExecutor::handle_move expects string arg "to", we just pass it.
                 inst.args["to"] = action.destination_zone;
+                break;
+
+            case EffectActionType::DISCARD:
+                inst.op = InstructionOp::MOVE;
+                // Discard usually targets self hand or random.
+                // If selection was required (RANDOM scope or TARGET_SELECT), use target_var.
+                // If scope is NONE or SELF, it implies manual selection or random depending on context.
+                // Legacy logic is complex, but mapping to MOVE(HAND -> GRAVEYARD) is the core.
+                inst.args["target"] = needs_selection ? target_var : "$source"; // Or selection
+                inst.args["to"] = "GRAVEYARD";
+                break;
+
+            case EffectActionType::SEARCH_DECK:
+                // Search Deck involves: SELECT (implicit filter=DECK) -> MOVE(HAND) -> SHUFFLE
+                // Since we handled selection above based on zones, if zones included DECK, 'target_var' holds the cards.
+                // But SEARCH_DECK implies we look at the deck.
+                // If 'needs_selection' didn't trigger (e.g. legacy filter was implied), we might need to force it.
+                // Typically SEARCH_DECK has FilterDef with zone=DECK.
+                if (needs_selection) {
+                    inst.op = InstructionOp::MOVE;
+                    inst.args["target"] = target_var;
+                    inst.args["to"] = "HAND";
+                    // Shuffle is implied. Add shuffle op?
+                    // For now, assume engine handles shuffle on deck access or add separate op.
+                    // We'll leave shuffle for now as it requires Deck Shuffle Command.
+                } else {
+                    // Fallback if no selection defined (e.g. Search any creature)
+                    // We should have generated a SELECT above.
+                    inst.op = InstructionOp::PRINT;
+                    inst.args["msg"] = "LegacyJsonAdapter: SEARCH_DECK without explicit selection/filter logic handling.";
+                }
+                break;
+
+            case EffectActionType::SHUFFLE_DECK:
+                // TODO: Implement Shuffle Op
+                inst.op = InstructionOp::PRINT;
+                inst.args["msg"] = "LegacyJsonAdapter: SHUFFLE_DECK not yet supported in Pipeline.";
                 break;
 
             default:
