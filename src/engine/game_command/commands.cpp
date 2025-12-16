@@ -1,296 +1,259 @@
 #include "commands.hpp"
-#include "engine/utils/zone_utils.hpp"
-#include <iostream>
 #include <algorithm>
+#include <stdexcept>
+#include <iostream>
 
 namespace dm::engine::game_command {
 
+    // Helper to get mutable zone vector
+    static std::vector<core::CardInstance>* get_zone_vector(core::GameState& state, int player_id, int zone_idx) {
+        if (player_id < 0 || player_id > 1) return nullptr;
+        core::Zone z = static_cast<core::Zone>(zone_idx);
+
+        switch (z) {
+            case core::Zone::HAND: return &state.players[player_id].hand;
+            case core::Zone::MANA: return &state.players[player_id].mana_zone;
+            case core::Zone::BATTLE: return &state.players[player_id].battle_zone;
+            case core::Zone::GRAVEYARD: return &state.players[player_id].graveyard;
+            case core::Zone::SHIELD: return &state.players[player_id].shield_zone;
+            case core::Zone::DECK: return &state.players[player_id].deck;
+            case core::Zone::HYPER_SPATIAL: return &state.players[player_id].hyper_spatial_zone;
+            case core::Zone::GR_DECK: return &state.players[player_id].gr_deck;
+            case core::Zone::STACK: return &state.stack_zone;
+            case core::Zone::BUFFER: return &state.players[player_id].effect_buffer;
+            default: return nullptr;
+        }
+    }
+
     // --- TransitionCommand ---
 
+    TransitionCommand::TransitionCommand(int instance_id, int source_player, int source_zone,
+                  int dest_player, int dest_zone, int dest_index)
+        : instance_id_(instance_id), source_player_(source_player), source_zone_(source_zone),
+          dest_player_(dest_player), dest_zone_(dest_zone), dest_index_(dest_index),
+          previous_index_(-1), previous_owner_(-1) {}
+
+    TransitionCommand::TransitionCommand(int instance_id, int source_zone, int dest_zone, int player_id, int dest_index)
+        : instance_id_(instance_id), source_player_(player_id), source_zone_(source_zone),
+          dest_player_(player_id), dest_zone_(dest_zone), dest_index_(dest_index),
+          previous_index_(-1), previous_owner_(-1) {}
+
     void TransitionCommand::execute(core::GameState& state) {
-        // Logic similar to ZoneUtils::move_card
-        // But simplified for primitive operation
+        auto* src_vec = get_zone_vector(state, source_player_, source_zone_);
+        auto* dest_vec = get_zone_vector(state, dest_player_, dest_zone_);
 
-        // 1. Find card and remove from source zone
-        core::Player& owner = state.players[owner_id];
-        std::vector<core::CardInstance>* source_vec = nullptr;
-        std::vector<core::CardInstance>* dest_vec = nullptr;
+        if (!src_vec || !dest_vec) return;
 
-        // Helper to get vector
-        auto get_vec = [&](core::Zone z) -> std::vector<core::CardInstance>* {
-            switch(z) {
-                case core::Zone::HAND: return &owner.hand;
-                case core::Zone::MANA: return &owner.mana_zone;
-                case core::Zone::BATTLE: return &owner.battle_zone;
-                case core::Zone::GRAVEYARD: return &owner.graveyard;
-                case core::Zone::SHIELD: return &owner.shield_zone;
-                case core::Zone::DECK: return &owner.deck;
-                case core::Zone::BUFFER: return &owner.effect_buffer;
-                // Stack is global in current GameState, not per player.
-                // However, TransitionCommand expects owner_id.
-                // If Stack is global, we need to handle it separately or assume owner_id logic applies to stack items?
-                // Currently stack_zone is std::vector<CardInstance> in GameState.
-                default: return nullptr;
-            }
-        };
+        auto it = std::find_if(src_vec->begin(), src_vec->end(),
+            [this](const core::CardInstance& c) { return c.instance_id == instance_id_; });
 
-        if (from_zone == core::Zone::STACK) {
-             source_vec = &state.stack_zone;
-        } else {
-             source_vec = get_vec(from_zone);
-        }
+        if (it == src_vec->end()) return;
 
-        if (to_zone == core::Zone::STACK) {
-             dest_vec = &state.stack_zone;
-        } else {
-             dest_vec = get_vec(to_zone);
-        }
-
-        if (!source_vec || !dest_vec) return; // Error
-
-        // Find
-        auto it = std::find_if(source_vec->begin(), source_vec->end(),
-            [&](const core::CardInstance& c){ return c.instance_id == card_instance_id; });
-
-        if (it == source_vec->end()) return; // Not found
-
-        // Store original index for undo
-        original_index = std::distance(source_vec->begin(), it);
-
+        previous_index_ = std::distance(src_vec->begin(), it);
         core::CardInstance card = *it;
-        source_vec->erase(it);
 
-        // Add to dest
-        if (destination_index == -1 || destination_index >= (int)dest_vec->size()) {
+        was_tapped_ = card.is_tapped;
+        was_face_down_ = card.is_face_down;
+        previous_owner_ = card.owner;
+
+        src_vec->erase(it);
+
+        if (dest_player_ != source_player_) {
+            if (instance_id_ >= 0 && instance_id_ < (int)state.card_owner_map.size()) {
+                state.card_owner_map[instance_id_] = dest_player_;
+            }
+            card.owner = dest_player_;
+        } else {
+             if (instance_id_ >= 0 && instance_id_ < (int)state.card_owner_map.size()) {
+                 if (state.card_owner_map[instance_id_] != dest_player_) {
+                     previous_owner_ = state.card_owner_map[instance_id_];
+                     state.card_owner_map[instance_id_] = dest_player_;
+                 }
+            }
+        }
+
+        if (dest_index_ < 0 || dest_index_ >= (int)dest_vec->size()) {
             dest_vec->push_back(card);
         } else {
-            dest_vec->insert(dest_vec->begin() + destination_index, card);
+            dest_vec->insert(dest_vec->begin() + dest_index_, card);
         }
     }
 
     void TransitionCommand::invert(core::GameState& state) {
-        // Reverse operation
-        // Move FROM to_zone BACK TO from_zone at original_index
+        auto* src_vec_reverse = get_zone_vector(state, dest_player_, dest_zone_);
+        auto* dest_vec_reverse = get_zone_vector(state, source_player_, source_zone_);
 
-        core::Player& owner = state.players[owner_id];
-        std::vector<core::CardInstance>* source_vec = nullptr; // Note: Invert swaps source/dest
-        std::vector<core::CardInstance>* dest_vec = nullptr;
+        if (!src_vec_reverse || !dest_vec_reverse) return;
 
-        auto get_vec = [&](core::Zone z) -> std::vector<core::CardInstance>* {
-            switch(z) {
-                case core::Zone::HAND: return &owner.hand;
-                case core::Zone::MANA: return &owner.mana_zone;
-                case core::Zone::BATTLE: return &owner.battle_zone;
-                case core::Zone::GRAVEYARD: return &owner.graveyard;
-                case core::Zone::SHIELD: return &owner.shield_zone;
-                case core::Zone::DECK: return &owner.deck;
-                default: return nullptr;
-            }
-        };
+         auto it = std::find_if(src_vec_reverse->begin(), src_vec_reverse->end(),
+            [this](const core::CardInstance& c) { return c.instance_id == instance_id_; });
 
-        // Current location (where it was moved TO) is now the source
-        if (to_zone == core::Zone::STACK) {
-             source_vec = &state.stack_zone;
-        } else {
-             source_vec = get_vec(to_zone);
-        }
-
-        // Original location (where it came FROM) is now the dest
-        if (from_zone == core::Zone::STACK) {
-             dest_vec = &state.stack_zone;
-        } else {
-             dest_vec = get_vec(from_zone);
-        }
-
-        if (!source_vec || !dest_vec) return;
-
-        // Find card in current location
-        auto it = std::find_if(source_vec->begin(), source_vec->end(),
-            [&](const core::CardInstance& c){ return c.instance_id == card_instance_id; });
-
-        if (it == source_vec->end()) return;
+        if (it == src_vec_reverse->end()) return;
 
         core::CardInstance card = *it;
-        source_vec->erase(it);
+        src_vec_reverse->erase(it);
 
-        // Restore to original index
-        if (original_index >= 0 && original_index <= (int)dest_vec->size()) {
-            dest_vec->insert(dest_vec->begin() + original_index, card);
+        card.is_tapped = was_tapped_;
+        card.is_face_down = was_face_down_;
+
+        if (previous_owner_ != -1 && instance_id_ >= 0 && instance_id_ < (int)state.card_owner_map.size()) {
+            state.card_owner_map[instance_id_] = previous_owner_;
+            card.owner = previous_owner_;
+        }
+
+        if (previous_index_ < 0 || previous_index_ >= (int)dest_vec_reverse->size()) {
+            dest_vec_reverse->push_back(card);
         } else {
-            dest_vec->push_back(card);
+            dest_vec_reverse->insert(dest_vec_reverse->begin() + previous_index_, card);
         }
     }
 
     // --- MutateCommand ---
 
+    MutateCommand::MutateCommand(int target_id, MutationType type, int value, int duration)
+        : target_id_(target_id), type_(type), value_(value), duration_(duration) {}
+
+    MutateCommand::MutateCommand(int target_id, MutationType type, int value, const std::string& str_value)
+        : target_id_(target_id), type_(type), value_(value), duration_(0), str_value_(str_value) {}
+
     void MutateCommand::execute(core::GameState& state) {
-        // Special case for global modifiers (instance_id might be ignored or -1)
-        if (mutation_type == MutationType::ADD_PASSIVE_EFFECT) {
-            if (passive_effect) {
-                state.passive_effects.push_back(*passive_effect);
-            }
-            return;
-        } else if (mutation_type == MutationType::ADD_COST_MODIFIER) {
-            if (cost_modifier) {
-                state.active_modifiers.push_back(*cost_modifier);
-            }
-            return;
-        }
+        core::CardInstance* card = state.get_card_instance(target_id_);
 
-        core::CardInstance* card = state.get_card_instance(target_instance_id);
-        if (!card) return;
-
-        switch(mutation_type) {
-            case MutationType::TAP:
-                previous_bool_value = card->is_tapped;
-                card->is_tapped = true;
-                break;
-            case MutationType::UNTAP:
-                previous_bool_value = card->is_tapped;
-                card->is_tapped = false;
-                break;
-            case MutationType::POWER_MOD:
-                previous_int_value = card->power_mod;
-                card->power_mod += int_value;
-                break;
-            // TODO: Keywords
-            default: break;
+        if (card) {
+             switch (type_) {
+                case MutationType::TAP:
+                    previous_bool_ = card->is_tapped;
+                    card->is_tapped = true;
+                    break;
+                case MutationType::UNTAP:
+                    previous_bool_ = card->is_tapped;
+                    card->is_tapped = false;
+                    break;
+                case MutationType::POWER_MOD:
+                    previous_value_ = card->power_mod;
+                    card->power_mod += value_;
+                    break;
+                case MutationType::ADD_KEYWORD:
+                    // TODO: Implement dynamic keyword addition (requires CardInstance keyword override or Modifier system)
+                    // Currently CardInstance doesn't store Keywords, CardDefinition does.
+                    // This requires a "Modifier" that grants keywords.
+                    break;
+                case MutationType::REMOVE_KEYWORD:
+                    break;
+                default: break;
+            }
         }
     }
 
     void MutateCommand::invert(core::GameState& state) {
-        // Special case for global modifiers
-        if (mutation_type == MutationType::ADD_PASSIVE_EFFECT) {
-            if (!state.passive_effects.empty()) {
-                state.passive_effects.pop_back();
+        core::CardInstance* card = state.get_card_instance(target_id_);
+        if (card) {
+            switch (type_) {
+                case MutationType::TAP:
+                case MutationType::UNTAP:
+                    card->is_tapped = previous_bool_;
+                    break;
+                case MutationType::POWER_MOD:
+                    card->power_mod = previous_value_;
+                    break;
+                default: break;
             }
-            return;
-        } else if (mutation_type == MutationType::ADD_COST_MODIFIER) {
-            if (!state.active_modifiers.empty()) {
-                state.active_modifiers.pop_back();
-            }
-            return;
-        }
-
-        core::CardInstance* card = state.get_card_instance(target_instance_id);
-        if (!card) return;
-
-        switch(mutation_type) {
-            case MutationType::TAP:
-            case MutationType::UNTAP:
-                card->is_tapped = previous_bool_value;
-                break;
-            case MutationType::POWER_MOD:
-                card->power_mod = previous_int_value;
-                // Note: simple assignment works if only one command modified it.
-                // But power_mod is additive. If multiple commands modified it,
-                // we should subtract int_value instead of restoring previous absolute value?
-                // `execute` did += int_value. `invert` should do -= int_value?
-                // But `previous_int_value` stores the snapshot.
-                // If we assume a linear history stack, restoring snapshot is fine.
-                // But usually invert means "undo this delta".
-                // Let's stick to snapshot restoration for now as it's safer against drift,
-                // provided we undo in strict LIFO order.
-                break;
-            default: break;
         }
     }
 
     // --- FlowCommand ---
 
+    FlowCommand::FlowCommand(FlowType type, int next_value)
+        : type_(type), next_value_(next_value) {}
+
     void FlowCommand::execute(core::GameState& state) {
-        switch(flow_type) {
+        switch (type_) {
             case FlowType::PHASE_CHANGE:
-                previous_value = static_cast<int>(state.current_phase);
-                state.current_phase = static_cast<core::Phase>(new_value);
+                prev_phase_ = static_cast<int>(state.current_phase);
+                state.current_phase = static_cast<core::Phase>(next_value_);
                 break;
-            case FlowType::TURN_CHANGE:
-                previous_value = state.turn_number;
-                state.turn_number = new_value;
+            case FlowType::NEXT_TURN:
+                prev_turn_ = state.turn_number;
+                prev_active_player_ = state.active_player_id;
+                prev_phase_ = static_cast<int>(state.current_phase);
+                state.turn_number++;
+                state.active_player_id = 1 - state.active_player_id;
+                state.current_phase = core::Phase::START_OF_TURN;
+                break;
+            case FlowType::GAME_OVER:
+                prev_winner_ = static_cast<int>(state.winner);
+                state.winner = static_cast<core::GameResult>(next_value_);
                 break;
             case FlowType::SET_ATTACK_SOURCE:
-                previous_value = state.current_attack.source_instance_id;
-                state.current_attack.source_instance_id = new_value;
+                prev_value_ = state.current_attack.source_instance_id;
+                state.current_attack.source_instance_id = next_value_;
                 break;
             case FlowType::SET_ATTACK_TARGET:
-                previous_value = state.current_attack.target_instance_id;
-                state.current_attack.target_instance_id = new_value;
+                prev_value_ = state.current_attack.target_instance_id;
+                state.current_attack.target_instance_id = next_value_;
                 break;
-            case FlowType::SET_ATTACK_PLAYER:
-                previous_value = state.current_attack.target_player;
-                state.current_attack.target_player = new_value;
+             case FlowType::SET_ATTACK_PLAYER:
+                prev_value_ = state.current_attack.target_player;
+                state.current_attack.target_player = static_cast<core::PlayerID>(next_value_);
                 break;
-            default: break;
         }
     }
 
     void FlowCommand::invert(core::GameState& state) {
-        switch(flow_type) {
+        switch (type_) {
             case FlowType::PHASE_CHANGE:
-                state.current_phase = static_cast<core::Phase>(previous_value);
+                state.current_phase = static_cast<core::Phase>(prev_phase_);
                 break;
-            case FlowType::TURN_CHANGE:
-                state.turn_number = previous_value;
+            case FlowType::NEXT_TURN:
+                state.turn_number = prev_turn_;
+                state.active_player_id = prev_active_player_;
+                state.current_phase = static_cast<core::Phase>(prev_phase_);
+                break;
+            case FlowType::GAME_OVER:
+                state.winner = static_cast<core::GameResult>(prev_winner_);
                 break;
             case FlowType::SET_ATTACK_SOURCE:
-                state.current_attack.source_instance_id = previous_value;
+                state.current_attack.source_instance_id = prev_value_;
                 break;
             case FlowType::SET_ATTACK_TARGET:
-                state.current_attack.target_instance_id = previous_value;
+                state.current_attack.target_instance_id = prev_value_;
                 break;
-            case FlowType::SET_ATTACK_PLAYER:
-                state.current_attack.target_player = previous_value;
+             case FlowType::SET_ATTACK_PLAYER:
+                state.current_attack.target_player = static_cast<core::PlayerID>(prev_value_);
                 break;
-            default: break;
         }
     }
 
     // --- QueryCommand ---
 
+    QueryCommand::QueryCommand(const std::string& query_type, const std::map<std::string, int>& params, const std::vector<int>& valid_targets)
+        : query_type_(query_type), params_(params), valid_targets_(valid_targets) {}
+
     void QueryCommand::execute(core::GameState& state) {
         state.waiting_for_user_input = true;
-
-        core::GameState::QueryContext ctx;
-        ctx.query_id = state.pending_query ? state.pending_query->query_id + 1 : 1;
-        ctx.query_type = query_type;
-        ctx.valid_target_ids = valid_targets;
-        ctx.params = params;
-
-        state.pending_query = ctx;
+        state.pending_query = core::GameState::QueryContext();
+        state.pending_query->query_type = query_type_;
+        state.pending_query->params = params_;
+        state.pending_query->valid_target_ids = valid_targets_;
     }
 
     void QueryCommand::invert(core::GameState& state) {
         state.waiting_for_user_input = false;
-        state.pending_query = std::nullopt;
-        // Ideally we should restore the previous query if we are undoing a nested query,
-        // but for now assume only one active query.
+        state.pending_query.reset();
     }
 
     // --- DecideCommand ---
 
+    DecideCommand::DecideCommand(int query_id, const std::vector<int>& selected_indices)
+        : query_id_(query_id), selected_indices_(selected_indices) {}
+
     void DecideCommand::execute(core::GameState& state) {
-        // DECIDE resolves the query.
-        // In a real flow, this would likely trigger a callback or resume the engine.
-        // For the primitive, it just clears the waiting state and records the decision.
-        // The engine loop is responsible for reading the decision and proceeding.
-
-        was_waiting = state.waiting_for_user_input;
-        previous_query = state.pending_query;
-
-        // Verify ID?
-        if (state.pending_query && state.pending_query->query_id == query_id) {
-            state.waiting_for_user_input = false;
-            state.pending_query = std::nullopt;
-
-            // In a full event system, this would dispatch a "DECISION_MADE" event
-            // or return control to the yielder.
-            // For now, it just updates state to "Ready".
-        }
+        state.waiting_for_user_input = false;
+        state.pending_query.reset();
     }
 
     void DecideCommand::invert(core::GameState& state) {
-        state.waiting_for_user_input = was_waiting;
-        state.pending_query = previous_query;
+        state.waiting_for_user_input = true;
     }
 
 }

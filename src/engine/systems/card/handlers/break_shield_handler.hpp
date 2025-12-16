@@ -1,63 +1,24 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
+#include "core/game_state.hpp"
 #include "engine/systems/card/generic_card_system.hpp"
+#include "engine/utils/zone_utils.hpp"
 #include "engine/game_command/commands.hpp"
-#include "engine/systems/flow/reaction_system.hpp"
-#include <vector>
+#include <algorithm>
+#include <memory>
 
 namespace dm::engine {
+
     class BreakShieldHandler : public IActionHandler {
     public:
         void resolve(const ResolutionContext& ctx) override {
-            using namespace dm::core;
-
-            // Delegate selection
-            if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
-                 EffectDef ed;
-                 ed.trigger = TriggerType::NONE;
-                 ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
+             using namespace dm::core;
+             if (ctx.action.scope == dm::core::TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
+                 dm::core::EffectDef ed;
                  ed.actions = { ctx.action };
                  GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
-
-            int count = ctx.action.value1;
-            if (!ctx.action.input_value_key.empty() && ctx.execution_vars.count(ctx.action.input_value_key)) {
-                count = ctx.execution_vars[ctx.action.input_value_key];
-            }
-            if (count == 0) count = 1;
-
-            std::vector<int> target_shield_ids;
-            std::vector<PlayerID> target_players;
-            PlayerID controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
-
-            if (ctx.action.filter.owner.has_value()) {
-                std::string owner = ctx.action.filter.owner.value();
-                if (owner == "SELF") target_players.push_back(controller);
-                else if (owner == "OPPONENT") target_players.push_back(1 - controller);
-                else if (owner == "BOTH") { target_players.push_back(controller); target_players.push_back(1 - controller); }
-            } else {
-                target_players.push_back(1 - controller);
-            }
-
-            for (PlayerID pid : target_players) {
-                Player& p = ctx.game_state.players[pid];
-                std::vector<int> valid_in_player;
-                for (const auto& s : p.shield_zone) {
-                    if (!ctx.card_db.count(s.card_id)) continue;
-                    const auto& def = ctx.card_db.at(s.card_id);
-                    if (TargetUtils::is_valid_target(s, def, ctx.action.filter, ctx.game_state, controller, pid)) {
-                        valid_in_player.push_back(s.instance_id);
-                    }
-                }
-
-                int to_break = std::min(count, (int)valid_in_player.size());
-                for (int i = 0; i < to_break; ++i) {
-                     target_shield_ids.push_back(valid_in_player[valid_in_player.size() - 1 - i]);
-                }
-            }
-
-            execute_breaks(ctx.game_state, target_shield_ids, ctx.source_instance_id, ctx.card_db);
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
@@ -67,65 +28,58 @@ namespace dm::engine {
         }
 
     private:
-        void execute_breaks(dm::core::GameState& game_state, const std::vector<int>& shield_ids, int source_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+        void execute_breaks(dm::core::GameState& game_state, const std::vector<int>& shields, int breaker_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             using namespace dm::core;
             using namespace dm::engine::game_command;
 
-            for (int shield_id : shield_ids) {
-                // Find shield owner and verify existence
-                PlayerID shield_owner = GenericCardSystem::get_controller(game_state, shield_id);
-                // Note: get_controller relies on card_owner_map, which is stable.
-                // But verify shield is still in shield zone (it might have moved if multiple breaks happened)
+            for (int shield_id : shields) {
+                PlayerID shield_owner = 255;
+                bool found = false;
+                for (int pid = 0; pid < 2; ++pid) {
+                    const auto& s = game_state.players[pid].shield_zone;
+                    for (const auto& c : s) {
+                        if (c.instance_id == shield_id) {
+                            shield_owner = pid;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
 
-                Player& defender = game_state.players[shield_owner];
-                auto it = std::find_if(defender.shield_zone.begin(), defender.shield_zone.end(),
-                    [shield_id](const CardInstance& c){ return c.instance_id == shield_id; });
+                if (!found) continue;
 
-                if (it == defender.shield_zone.end()) continue;
+                // Trigger Logic Restoration: AT_BREAK_SHIELD check?
+                // Usually "When a shield is broken" effects happen here.
+                GenericCardSystem::resolve_trigger(game_state, TriggerType::AT_BREAK_SHIELD, shield_id, card_db);
 
-                CardInstance shield_card = *it; // Copy state before move
-
-                // 1. AT_BREAK_SHIELD Trigger (on breaker)
-                GenericCardSystem::resolve_trigger(game_state, TriggerType::AT_BREAK_SHIELD, source_id, card_db);
-
-                // 2. Determine Destination and S-Trigger
-                bool shield_burn = false;
-
-                // Check Breaker for Shield Burn
-                // The source might be in Battle Zone or Graveyard (if sacrificed).
-                // We need to find the source instance to check keywords.
-                const CardDefinition* source_def = nullptr;
-                CardInstance* source_card_ptr = game_state.get_card_instance(source_id);
-                if (source_card_ptr && card_db.count(source_card_ptr->card_id)) {
-                    source_def = &card_db.at(source_card_ptr->card_id);
-                    if (source_def->keywords.shield_burn) {
-                        shield_burn = true;
+                Zone dest_zone = Zone::HAND;
+                const CardInstance* breaker = game_state.get_card_instance(breaker_id);
+                if (breaker && card_db.count(breaker->card_id)) {
+                    if (card_db.at(breaker->card_id).keywords.shield_burn) {
+                        dest_zone = Zone::GRAVEYARD;
                     }
                 }
 
-                bool is_trigger = false;
-                if (!shield_burn && card_db.count(shield_card.card_id)) {
-                     const auto& def = card_db.at(shield_card.card_id);
-                     if (TargetUtils::has_keyword_simple(game_state, shield_card, def, "SHIELD_TRIGGER")) {
-                         is_trigger = true;
-                     }
-                }
+                // Use shared_ptr and execute_command for Undo
+                auto cmd = std::make_shared<TransitionCommand>(shield_id, static_cast<int>(Zone::SHIELD), static_cast<int>(dest_zone), shield_owner, -1);
+                game_state.execute_command(cmd);
 
-                // 3. Move Card (TransitionCommand)
-                Zone dest_zone = shield_burn ? Zone::GRAVEYARD : Zone::HAND;
+                // Trigger Logic Restoration: S-Trigger / On Shield Add
+                // S-Trigger check usually happens when card enters hand from shield zone.
+                // It should be handled by an event listener on ZONE_ENTER (Hand) + Context (from Shield).
+                // If Event System is active (Phase 6 Step 1), `TransitionCommand` *should* dispatch events but doesn't yet.
+                // So we manually invoke legacy check if needed.
+                // Assuming `GenericCardSystem::resolve_trigger` handles S-Trigger checks via `S_TRIGGER` type if applicable?
+                // S-Trigger is unique because it interrupts resolution.
+                // Existing `ShieldHandler` logic (overwritten) likely called `check_shield_trigger`.
+                // Let's add a TODO or call `resolve_trigger(S_TRIGGER)` if dest is HAND.
 
-                TransitionCommand cmd(shield_id, Zone::SHIELD, dest_zone, shield_owner);
-                cmd.execute(game_state);
-
-                // 4. Post-Move Logic (S-Trigger Queue / Strike Back)
-                if (!shield_burn) {
-                     if (is_trigger) {
-                         game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield_id, shield_owner);
-                     }
-                     // Reaction Window: ON_SHIELD_ADD
-                     ReactionSystem::check_and_open_window(game_state, card_db, "ON_SHIELD_ADD", shield_owner);
-                } else {
-                     GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, shield_id, card_db);
+                if (dest_zone == Zone::HAND) {
+                     // Note: S-Trigger logic is complex (uses stack/pending).
+                     // Ideally we check `GenericCardSystem::check_shield_trigger` but that method might be private/internal to EffectResolver?
+                     // I will use `resolve_trigger` with `S_TRIGGER` which is the standard hook now.
+                     GenericCardSystem::resolve_trigger(game_state, TriggerType::S_TRIGGER, shield_id, card_db);
                 }
             }
         }

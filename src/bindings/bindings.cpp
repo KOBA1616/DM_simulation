@@ -34,7 +34,7 @@
 #include "python_batch_inference.hpp"
 #include "ai/solver/lethal_solver.hpp"
 #include "ai/evolution/deck_evolution.hpp"
-#include "engine/cost_payment_system.hpp" // Added include
+#include "engine/cost_payment_system.hpp"
 #include "engine/game_command/game_command.hpp"
 #include "engine/game_command/commands.hpp"
 
@@ -67,30 +67,6 @@ Civilization string_to_civilization(const std::string& s) {
     if (s == "NATURE") return Civilization::NATURE;
     if (s == "ZERO") return Civilization::ZERO;
     return Civilization::NONE;
-}
-
-// Helpers for Instruction
-Instruction instruction_from_dict(py::dict d) {
-    // Basic conversion to allow Python dict -> JSON -> Instruction
-    // Note: This relies on nlohmann::json implicit conversion from strings/ints,
-    // but pybind11 casts python types to C++ standard types.
-    // We need to implement a full converter or use a workaround.
-    // Workaround: Serialize dict to JSON string in Python, pass to C++?
-    // Or iterate manually.
-    // For now, let's assume we pass OpCode enum and args dict.
-
-    // Easier approach: Just bind Instruction constructor that takes op and args.
-    // However, handling recursive structures in pybind is tricky.
-
-    // Minimal binding for now.
-    Instruction inst;
-    if (d.contains("op")) {
-        std::string op_str = py::cast<std::string>(d["op"]);
-        // Need to map string to Enum? Or use the Enum directly if passed.
-        // We'll trust the caller to pass correct structure or rely on json serialization if we were using it fully.
-        // But here we are inside C++.
-    }
-    return inst;
 }
 
 PYBIND11_MODULE(dm_ai_module, m) {
@@ -131,16 +107,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("dispatch", &systems::TriggerManager::dispatch)
         .def("clear", &systems::TriggerManager::clear)
         .def("subscribe", [](systems::TriggerManager& self, EventType type, py::function callback) {
-            // Capture python function. Note: This creates a dependency on the GIL.
-            // In a real threaded environment, we need to be careful.
-            // For now, we wrap it.
             self.subscribe(type, [callback](const GameEvent& event, GameState& state) {
                 py::gil_scoped_acquire acquire;
                 try {
                     callback(event, state);
                 } catch (py::error_already_set& e) {
-                     // Log or ignore
-                     // e.what() returns the error message
                 }
             });
         });
@@ -165,11 +136,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init<>())
         .def(py::init<InstructionOp>())
         .def_readwrite("op", &Instruction::op)
-        // Binding arbitrary JSON args is complex.
-        // We will expose a helper to set args from a python dict.
         .def("set_args", [](Instruction& self, py::dict args) {
-             // Basic serialization: iterate dict and populate self.args (nlohmann::json)
-             // Limitation: Only handling string/int/bool for now.
              for (auto item : args) {
                  std::string key = py::cast<std::string>(item.first);
                  if (py::isinstance<py::str>(item.second)) {
@@ -347,14 +314,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("PASS", ActionType::PASS)
         .value("PLAY_CARD", ActionType::PLAY_CARD)
         .value("USE_SHIELD_TRIGGER", ActionType::USE_SHIELD_TRIGGER)
-        .value("ACTIVATE_SHIELD_TRIGGER", ActionType::USE_SHIELD_TRIGGER) // Alias
+        .value("ACTIVATE_SHIELD_TRIGGER", ActionType::USE_SHIELD_TRIGGER)
         .value("ATTACK_CREATURE", ActionType::ATTACK_CREATURE)
         .value("ATTACK_PLAYER", ActionType::ATTACK_PLAYER)
         .value("BLOCK", ActionType::BLOCK)
         .value("MANA_CHARGE", ActionType::MANA_CHARGE)
         .value("SELECT_TARGET", ActionType::SELECT_TARGET)
         .value("RESOLVE_EFFECT", ActionType::RESOLVE_EFFECT)
-        .value("USE_ABILITY", ActionType::USE_ABILITY) // Revolution Change etc
+        .value("USE_ABILITY", ActionType::USE_ABILITY)
         .value("PLAY_CARD_INTERNAL", ActionType::PLAY_CARD_INTERNAL)
         .value("RESOLVE_BATTLE", ActionType::RESOLVE_BATTLE)
         .value("BREAK_SHIELD", ActionType::BREAK_SHIELD)
@@ -367,7 +334,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SELECT_NUMBER", ActionType::SELECT_NUMBER)
         .export_values();
 
-    // Phase 4: Cost System Enums
     py::enum_<CostType>(m, "CostType")
         .value("MANA", CostType::MANA)
         .value("TAP_CARD", CostType::TAP_CARD)
@@ -427,7 +393,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<FilterDef>(m, "FilterDef")
         .def(py::init<>())
-        // Constructor that takes keyword arguments
         .def(py::init([](std::optional<std::string> owner, std::vector<std::string> zones, std::vector<std::string> types, std::vector<std::string> civilizations, std::vector<std::string> races, std::optional<int> min_cost, std::optional<int> max_cost, std::optional<int> min_power, std::optional<int> max_power, std::optional<bool> is_tapped, std::optional<bool> is_blocker, std::optional<bool> is_evolution, std::optional<bool> is_card_designation, std::optional<int> count) {
             FilterDef f;
             f.owner = owner; f.zones = zones; f.types = types;
@@ -467,7 +432,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("count", &FilterDef::count)
         .def_readwrite("power_max_ref", &FilterDef::power_max_ref);
 
-    // Phase 4: CostDef Binding
     py::class_<CostDef>(m, "CostDef")
         .def(py::init<>())
         .def_readwrite("type", &CostDef::type)
@@ -476,7 +440,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("is_optional", &CostDef::is_optional)
         .def_readwrite("cost_id", &CostDef::cost_id);
 
-    // Phase 4: CostReductionDef Binding
     py::class_<CostReductionDef>(m, "CostReductionDef")
         .def(py::init<>())
         .def_readwrite("type", &CostReductionDef::type)
@@ -549,7 +512,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
         .def(py::init<>())
-        // Add constructor matching test expectations: (id, name, civ, races, cost, power, keywords, effects)
            .def(py::init([](int id, std::string name, std::string civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
              CardDefinition d;
              d.id = id; d.name = name; d.civilizations = {string_to_civilization(civ)};
@@ -558,7 +520,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
              d.effects = effects;
              return d;
         }))
-        // Overload for Civilization enum
            .def(py::init([](int id, std::string name, Civilization civ, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
              CardDefinition d;
              d.id = id; d.name = name; d.civilizations = {civ};
@@ -580,9 +541,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
         .def_readwrite("civilizations", &CardDefinition::civilizations)
         .def_readwrite("reaction_abilities", &CardDefinition::reaction_abilities)
-        .def_readwrite("cost_reductions", &CardDefinition::cost_reductions) // Added Phase 4
+        .def_readwrite("cost_reductions", &CardDefinition::cost_reductions)
         .def_readwrite("spell_side", &CardDefinition::spell_side)
-        // Removed inconsistent 'civilization' property to enforce vector usage
         .def_readwrite("power_attacker_bonus", &CardDefinition::power_attacker_bonus);
 
     py::class_<CardData, std::shared_ptr<CardData>>(m, "CardData")
@@ -601,7 +561,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
              d.power = power; d.type = type; d.races = races; d.effects = effects;
              return d;
         }))
-        // Overload for proper Enum usage with optional args
         .def(py::init([](int id, std::string name, int cost, std::vector<Civilization> civs, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects, std::vector<ReactionAbility> reaction_abilities) {
              CardData d;
              d.id = id; d.name = name; d.cost = cost; d.civilizations = civs;
@@ -623,11 +582,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("is_key_card", &CardData::is_key_card)
         .def_readwrite("ai_importance_score", &CardData::ai_importance_score)
         .def_readwrite("reaction_abilities", &CardData::reaction_abilities)
-        .def_readwrite("cost_reductions", &CardData::cost_reductions) // Added Phase 4
+        .def_readwrite("cost_reductions", &CardData::cost_reductions)
         .def_readwrite("spell_side", &CardData::spell_side);
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<>())
-        .def(py::init<CardID, int>()) // Added constructor
+        .def(py::init<CardID, int>())
         .def_readwrite("id", &CardInstance::instance_id)
         .def_readwrite("instance_id", &CardInstance::instance_id)
         .def_readwrite("card_id", &CardInstance::card_id)
@@ -640,7 +599,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("underlying_cards", &CardInstance::underlying_cards);
 
     py::class_<Player>(m, "Player")
-        .def(py::init<>()) // Added default constructor
+        .def(py::init<>())
         .def_readwrite("id", &Player::id)
         .def_readwrite("hand", &Player::hand)
         .def_readwrite("mana_zone", &Player::mana_zone)
@@ -648,7 +607,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("shield_zone", &Player::shield_zone)
         .def_readwrite("graveyard", &Player::graveyard)
         .def_readwrite("deck", &Player::deck)
-        .def_readwrite("effect_buffer", &Player::effect_buffer); // Exposed per-player buffer
+        .def_readwrite("effect_buffer", &Player::effect_buffer);
 
     py::class_<Action>(m, "Action")
         .def(py::init<>())
@@ -662,20 +621,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<GameState>(m, "GameState")
         .def(py::init<int>())
-        .def("initialize_card_stats", &GameState::initialize_card_stats) // Bind as member
+        .def("initialize_card_stats", &GameState::initialize_card_stats)
+        .def("execute_command", &GameState::execute_command)
+        .def("undo_last_command", &GameState::undo_last_command)
         .def_readwrite("players", &GameState::players)
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("current_phase", &GameState::current_phase)
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("stack_zone", &GameState::stack_zone)
         .def_readwrite("pending_effects", &GameState::pending_effects)
-        // .def_readwrite("effect_buffer", &GameState::effect_buffer) // Moved to Player
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("winner", &GameState::winner)
         .def_readwrite("loop_proven", &GameState::loop_proven)
         .def_readwrite("waiting_for_user_input", &GameState::waiting_for_user_input)
         .def_readwrite("pending_query", &GameState::pending_query)
-        // .def_readwrite("command_history", &GameState::command_history) // Disable for now to fix build
         .def("get_card_def", [](GameState& /*s*/, CardID id, const std::map<CardID, CardDefinition>& db) {
             return db.at(id);
         })
@@ -739,7 +698,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
              }
         })
         .def("setup_test_duel", [](GameState& s) {
-            // Minimal test setup: clear zones, reset turn, give basic shields.
             for (auto& p : s.players) {
                 p.hand.clear();
                 p.mana_zone.clear();
@@ -753,7 +711,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
             s.active_player_id = 0;
             s.current_phase = Phase::MAIN;
             s.winner = GameResult::NONE;
-            // Add five placeholder shields per player
             for (PlayerID pid = 0; pid < 2; ++pid) {
                 for (int i = 0; i < 5; ++i) {
                     CardInstance c;
@@ -784,7 +741,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("reset_with_scenario", &GameInstance::reset_with_scenario)
         .def_readonly("state", &GameInstance::state)
         .def_readwrite("trigger_manager", &GameInstance::trigger_manager);
-        // .def_readonly("card_db", &GameInstance::card_db); // Cannot bind reference member directly easily
 
     py::class_<JsonLoader>(m, "JsonLoader")
         .def_static("load_cards", &JsonLoader::load_cards);
@@ -811,8 +767,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<ManaSystem>(m, "ManaSystem")
         .def_static("can_pay_cost",
              static_cast<bool (*)(const GameState&, const Player&, const CardDefinition&, const std::map<CardID, CardDefinition>&)>(&ManaSystem::can_pay_cost))
-        // Bind legacy overload if needed, or remove tests using it.
-        // Or bind as overload.
         .def_static("can_pay_cost",
              static_cast<bool (*)(const Player&, const CardDefinition&, const std::map<CardID, CardDefinition>&)>(&ManaSystem::can_pay_cost))
         .def_static("auto_tap_mana",
@@ -821,13 +775,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
              static_cast<bool (*)(Player&, const CardDefinition&, const std::map<CardID, CardDefinition>&)>(&ManaSystem::auto_tap_mana))
         .def_static("get_adjusted_cost", &ManaSystem::get_adjusted_cost);
 
-    // Phase 4: CostPaymentSystem Binding
     py::class_<CostPaymentSystem>(m, "CostPaymentSystem")
         .def_static("calculate_max_units", &CostPaymentSystem::calculate_max_units)
         .def_static("calculate_potential_reduction", &CostPaymentSystem::calculate_potential_reduction)
         .def_static("can_pay_cost", &CostPaymentSystem::can_pay_cost);
 
-    // Expose ConditionSystem for testing
     py::class_<ConditionSystem>(m, "ConditionSystem")
         .def_static("instance", &ConditionSystem::instance, py::return_value_policy::reference)
         .def("evaluate_def", &ConditionSystem::evaluate_def);
@@ -842,7 +794,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& effect, int source_id, const std::map<CardID, CardDefinition>& db) {
             GenericCardSystem::resolve_effect(state, effect, source_id, db);
         })
-        // Overload resolve_action for backward compatibility (no context)
         .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id) {
             GenericCardSystem::resolve_action(state, action, source_id);
         })
@@ -865,24 +816,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("get_all_cards", &CardRegistry::get_all_cards)
         .def_static("get_all_definitions", &CardRegistry::get_all_definitions);
 
-    // Helper for Python tests to register card data easily without raw JSON string construction if desired,
-    // though load_from_json is the primary way.
-    // Wait, the error said `cannot import name 'register_card_data'`.
-    // It seems tests expect a function `register_card_data` in the module scope or CardRegistry?
-    // Looking at the error: `ImportError: cannot import name 'register_card_data' from 'dm_ai_module'`
-    // This implies it should be a module-level function.
-
     m.def("register_card_data", [](const CardData& data) {
-         // Serialize back to JSON and load? Or expose a direct add method?
-         // CardRegistry only has load_from_json.
-         // Let's use nlohmann json to serialize.
          nlohmann::json j = data;
-         // Wrap in a list as load_from_json likely expects a list of objects.
-         // JsonLoader::load_cards expects a list of objects.
-         // CardRegistry::load_from_json expects what?
-         // Let's check CardRegistry::load_from_json implementation.
-         // Assuming it handles what JsonLoader handles.
-         // For safety, let's just make it a list of one.
          nlohmann::json list_j = nlohmann::json::array({j});
          CardRegistry::load_from_json(list_j.dump());
     });
@@ -1041,7 +976,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("spells_cast_this_turn", &TurnStats::spells_cast_this_turn)
         .def_readwrite("attacks_declared_this_turn", &TurnStats::attacks_declared_this_turn);
 
-    // Bind QueryContext
     py::class_<GameState::QueryContext>(m, "QueryContext")
         .def(py::init<>())
         .def_readwrite("query_id", &GameState::QueryContext::query_id)
@@ -1059,15 +993,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("evaluate", &NeuralEvaluator::evaluate)
         .def("load_model", &NeuralEvaluator::load_model);
 
-    /*
-    // MCTS Node Exposure for visualization
-    // Specify no copyable and holding via unique_ptr is default but we want to avoid copy construction attempts
-    py::class_<MCTSNode>(m, "MCTSNode")
-        .def_readonly("visit_count", &MCTSNode::visit_count)
-        .def_readonly("action", &MCTSNode::action_from_parent) // Exposed as 'action'
-        .def_property_readonly("value", &MCTSNode::value);
-    */
-
     py::class_<MCTS>(m, "MCTS")
         .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int, float>(),
              py::arg("card_db"), py::arg("c_puct")=1.0f, py::arg("dirichlet_alpha")=0.3f,
@@ -1076,14 +1001,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
              py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"),
              py::arg("add_noise")=true, py::arg("temperature")=1.0f,
              py::call_guard<py::gil_scoped_release>());
-        /*
-        .def("get_last_root", [](MCTS& m) -> MCTSNode* {
-             // Accessing private member requiring modification of MCTS class or friend
-             // Since we can't easily modify private access without file edit,
-             // let's assume we will add get_last_root() to MCTS class.
-             return m.get_last_root();
-        }, py::return_value_policy::reference);
-        */
 
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
@@ -1173,8 +1090,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("get_type", &dm::engine::game_command::GameCommand::get_type);
 
     py::class_<dm::engine::game_command::TransitionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::TransitionCommand>>(m, "TransitionCommand")
-        .def(py::init<int, Zone, Zone, PlayerID, int>(),
-            py::arg("instance_id"), py::arg("from"), py::arg("to"), py::arg("owner"), py::arg("dest_idx") = -1);
+        .def(py::init([](int instance_id, Zone from, Zone to, PlayerID owner, int dest_idx) {
+            return std::make_shared<dm::engine::game_command::TransitionCommand>(
+                instance_id, static_cast<int>(from), static_cast<int>(to), owner, dest_idx);
+        }), py::arg("instance_id"), py::arg("from"), py::arg("to"), py::arg("owner"), py::arg("dest_idx") = -1);
 
     py::class_<dm::engine::game_command::MutateCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::MutateCommand>>(m, "MutateCommand")
         .def(py::init<int, dm::engine::game_command::MutateCommand::MutationType, int, std::string>(),
@@ -1193,14 +1112,18 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::enum_<dm::engine::game_command::FlowCommand::FlowType>(m, "FlowType")
         .value("PHASE_CHANGE", dm::engine::game_command::FlowCommand::FlowType::PHASE_CHANGE)
-        .value("TURN_CHANGE", dm::engine::game_command::FlowCommand::FlowType::TURN_CHANGE)
+        .value("NEXT_TURN", dm::engine::game_command::FlowCommand::FlowType::NEXT_TURN)
+        .value("GAME_OVER", dm::engine::game_command::FlowCommand::FlowType::GAME_OVER)
+        .value("SET_ATTACK_SOURCE", dm::engine::game_command::FlowCommand::FlowType::SET_ATTACK_SOURCE)
+        .value("SET_ATTACK_TARGET", dm::engine::game_command::FlowCommand::FlowType::SET_ATTACK_TARGET)
+        .value("SET_ATTACK_PLAYER", dm::engine::game_command::FlowCommand::FlowType::SET_ATTACK_PLAYER)
         .export_values();
 
     py::class_<dm::engine::game_command::QueryCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::QueryCommand>>(m, "QueryCommand")
-        .def(py::init<std::string, std::vector<int>, std::map<std::string, int>>(),
-             py::arg("type"), py::arg("targets") = std::vector<int>{}, py::arg("params") = std::map<std::string, int>{});
+        .def(py::init<std::string, std::map<std::string, int>, std::vector<int>>(),
+             py::arg("type"), py::arg("params") = std::map<std::string, int>{}, py::arg("targets") = std::vector<int>{});
 
     py::class_<dm::engine::game_command::DecideCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::DecideCommand>>(m, "DecideCommand")
-        .def(py::init<int, std::vector<int>, int>(),
-             py::arg("query_id"), py::arg("selection") = std::vector<int>{}, py::arg("option") = -1);
+        .def(py::init<int, std::vector<int>>(),
+             py::arg("query_id"), py::arg("selection") = std::vector<int>{});
 }
