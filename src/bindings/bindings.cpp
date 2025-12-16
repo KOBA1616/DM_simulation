@@ -575,6 +575,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("type", &CardDefinition::type)
         .def_readwrite("races", &CardDefinition::races)
         .def_readwrite("keywords", &CardDefinition::keywords)
+        .def_readwrite("effects", &CardDefinition::effects) // Exposed
         .def_readwrite("metamorph_abilities", &CardDefinition::metamorph_abilities)
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
         .def_readwrite("is_key_card", &CardDefinition::is_key_card)
