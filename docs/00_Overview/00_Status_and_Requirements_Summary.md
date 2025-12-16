@@ -25,7 +25,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **Card Editor Ver 2.3**: 3ペイン構成（ツリー/プロパティ/プレビュー）。
     *   **テキスト生成**: 数値範囲や任意選択の日本語生成ロジック強化済み。
     *   **リアクション編集**: `ReactionWidget` による動的UI切り替えをサポート。
-    *   **ロジックマスク (Phase 5)**: カードタイプに応じた入力制限（呪文のパワー無効化、進化条件の有効化）を実装済み。
+    *   **ロジックマスク (Phase 5)**: 実装済み（詳細はアーカイブ参照）。
 *   **機能**: JSONデータの視覚的編集、ロジックツリー、変数リンク、テキスト自動生成、デッキビルダー、シナリオエディタ。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
@@ -33,9 +33,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **推論エンジン**: 相手デッキタイプ推定 (`DeckClassifier`) と手札確率推定 (`HandEstimator`) を実装済み。
 *   **探索アルゴリズム**: MCTSおよびBeam Search（決定論的探索）を実装済み。
 *   **ONNX Runtime (C++) 統合**: `NeuralEvaluator` によるC++内での高速推論をサポート。
-*   **Phase 4 アーキテクチャ (実装完了)**:
-    *   **NetworkV2**: Transformer (Linear Attention) ベースの可変長入力モデルを実装。
-    *   **TensorConverter**: C++側でのシーケンス変換ロジックを実装済み。
+*   **Phase 4 アーキテクチャ**: 実装完了（詳細はアーカイブ参照）。
 
 ### 2.4 サポート済みアクション・トリガー一覧 (Supported Actions & Triggers)
 （変更なし：`EffectActionType` および `TriggerType` は現行コードベースに準拠）
@@ -56,18 +54,10 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 3.0 [Priority: High] Phase 6: GameCommand アーキテクチャとエンジン刷新 (Engine Overhaul)
 
-AI学習効率と拡張性を最大化するため、エンジンのコアロジックを「イベント駆動型」かつ「5つの基本命令 (GameCommand)」に基づくアーキテクチャへ刷新します。
-メテオバーン、超次元、その他未実装の特殊メカニクスは、このフェーズにおける「アクションの汎用化」によって自然に解決・実装されます。
+**Status: Completed** (詳細は `docs/00_Overview/99_Completed_Tasks_Archive.md` を参照)
+イベント駆動型トリガーシステム、GameCommand基本命令、および主要アクションのGameCommand化移行を完了しました。
 
-1.  **イベント駆動型トリガーシステムの実装**
-    *   ハードコードされたフックポイントを廃止し、`TriggerManager` による一元管理へ移行。
-    *   **Status**: `TriggerManager`, `GameEvent` クラスの実装とPythonバインディングが完了 (Phase 6.1 Completed)。
-2.  **GameCommand (Primitives) の実装**
-    *   全てのアクションを `TRANSITION`, `MUTATE`, `FLOW`, `QUERY`, `DECIDE` に分解・再実装。
-    *   **Status**: 基本5命令のクラス実装、Pythonバインディング、および `GameState` への統合が完了。Unit Test (`tests/test_game_command.py`) を復元・実装し動作確認済み (Phase 6.2 Completed)。
-3.  **アクション汎用化**
-    *   **Status**: `MOVE_CARD`、`TAP`、`UNTAP`、`APPLY_MODIFIER`、`MODIFY_POWER`、`BREAK_SHIELD`、`DESTROY_CARD`、`PLAY_CARD`、および `ATTACK` (AttackHandler) のハンドラを `GameCommand` を使用するように移行完了。`GameCommand` の `Zone` に `STACK`, `BUFFER` を追加し、拡張完了 (Phase 6.3 Completed)。
-    *   **Next**: 完了したGameCommandアーキテクチャを用いたAI学習の再開（Phase 3.2へ移行）。
+*   **Next**: 完了したGameCommandアーキテクチャを用いたAI学習の再開（Phase 3.2へ移行）。
 
 ### 3.1 [Priority: High] Phase 3.2: AI 本番運用 (Production Run)
 
@@ -83,13 +73,8 @@ GameCommandアーキテクチャによるエンジン刷新が完了したため
 エンジン刷新後、新しいデータ構造に合わせてエディタのバリデーションを強化します。
 
 1.  **Logic Mask (バリデーション) の実装**
-    *   公式ルールに基づく最小限のマスク処理を実装。過度な制限は設けず、明らかな矛盾のみを防ぐ。
-    *   **ルール**:
-        *   **呪文 (Spell)**: 「パワー」フィールドを無効化（0固定）。
-        *   **進化クリーチャー**: 「進化条件」の設定を有効化。
-        *   **その他**: 基本的に制限なし（ユーザーの自由度を確保）。
-    *   **Status**: 実装完了。`CardEditForm` にてタイプ別のUI表示切替とデータ保存ロジック（呪文のパワー0固定、進化条件の保存）を実装 (Phase 5.1 Completed)。
-
+    *   **Status: Completed** (詳細はアーカイブ参照)。
+    *   `CardEditForm` にてタイプ別のUI表示切替とデータ保存ロジック（呪文のパワー0固定、進化条件の保存）を実装済み。
 
 ---
 
