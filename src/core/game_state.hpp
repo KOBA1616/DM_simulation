@@ -252,6 +252,35 @@ namespace dm::core {
              return nullptr;
         }
 
+        // Helper to access zone by enum
+        const std::vector<int> get_zone(PlayerID pid, Zone zone) const {
+            if (pid > 1) return {};
+            const auto& p = players[pid];
+            std::vector<int> ids;
+            const std::vector<CardInstance>* vec_ptr = nullptr;
+
+            switch (zone) {
+                case Zone::HAND: vec_ptr = &p.hand; break;
+                case Zone::MANA: vec_ptr = &p.mana_zone; break;
+                case Zone::BATTLE: vec_ptr = &p.battle_zone; break;
+                case Zone::GRAVEYARD: vec_ptr = &p.graveyard; break;
+                case Zone::SHIELD: vec_ptr = &p.shield_zone; break;
+                case Zone::DECK: vec_ptr = &p.deck; break;
+                case Zone::HYPER_SPATIAL: vec_ptr = &p.hyper_spatial_zone; break;
+                case Zone::STACK:
+                    // Special case: Stack is global
+                    vec_ptr = &stack_zone;
+                    break;
+                default: break;
+            }
+
+            if (vec_ptr) {
+                ids.reserve(vec_ptr->size());
+                for (const auto& c : *vec_ptr) ids.push_back(c.instance_id);
+            }
+            return ids;
+        }
+
         const CardInstance* get_card_instance(int instance_id) const {
              if (instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
 
