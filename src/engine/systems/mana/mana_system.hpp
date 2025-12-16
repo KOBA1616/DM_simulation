@@ -28,6 +28,9 @@ namespace dm::engine {
         static bool auto_tap_mana(dm::core::GameState& game_state, dm::core::Player& player, const dm::core::CardDefinition& card_def, int cost_override, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
 
         // Untap all cards in mana zone at start of turn
+        // Phase 6: Updated to use GameState for Undo support (MutateCommand)
+        static void untap_all(dm::core::GameState& game_state, dm::core::Player& player);
+        // Legacy support (imperative)
         static void untap_all(dm::core::Player& player);
 
         // Calculate cost with modifiers

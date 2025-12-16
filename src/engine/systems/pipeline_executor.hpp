@@ -39,6 +39,9 @@ namespace dm::engine::systems {
         void execute_instruction(const core::Instruction& inst, core::GameState& state,
                                  const std::map<core::CardID, core::CardDefinition>& card_db);
 
+        // Command execution wrapper (tracks history)
+        void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd, core::GameState& state);
+
         // Op handlers
         void handle_select(const core::Instruction& inst, core::GameState& state,
                            const std::map<core::CardID, core::CardDefinition>& card_db);
