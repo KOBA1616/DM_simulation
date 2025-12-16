@@ -64,8 +64,9 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   JSONスキーマに `CommandDef` を導入。
     *   **Policy Change**: `EffectDef` に `commands` フィールドを追加するが、旧来の `actions` からの自動変換は行わない。新形式での記述を必須とする。
 *   **Step 2: CommandSystem の実装**
-    *   **Status: Implemented**
-    *   `dm::engine::systems::CommandSystem` を新設。
+    *   **Status: Implemented (Updated)**
+    *   `dm::engine::systems::CommandSystem` を実装。
+    *   `CommandSystem::execute_primitive` における `TRANSITION` 処理（ゾーン文字列解析、ターゲット解決）の不具合を修正し、`TargetUtils` を利用した正しいフィルタリングを実装しました。
     *   Pythonバインディングを整備し、外部からのコマンド実行テストが可能になった。
 
 ### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
@@ -101,11 +102,9 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  **Primitive Command Execution Fix**:
-    *   `CommandSystem` におけるプリミティブ実行 (`TRANSITION`) の不具合修正。
-2.  **Full Trigger System Migration**:
+1.  **Full Trigger System Migration**:
     *   `EffectResolver` が現在行っている処理を全て `CommandSystem` 経由に切り替える。
-3.  **New JSON Standard Adoption**:
+2.  **New JSON Standard Adoption**:
     *   カードデータの新JSON形式への移行推進。Legacyサポートの完全撤廃に伴い、データセットの再構築を行う。
-4.  **GUI Update**:
+3.  **GUI Update**:
     *   `CardEditor` を更新し、新スキーマ (`CommandDef`) の編集に対応させる。
