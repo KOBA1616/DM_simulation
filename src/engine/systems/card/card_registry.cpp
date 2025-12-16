@@ -10,6 +10,37 @@ namespace dm::engine {
     std::map<int, dm::core::CardData> CardRegistry::cards;
     std::map<dm::core::CardID, dm::core::CardDefinition> CardRegistry::definitions;
 
+    // Helper for legacy conversion (duplicated from JsonLoader due to architectural split)
+    static CommandDef convert_legacy_action_internal(const ActionDef& act) {
+        CommandDef cmd;
+        cmd.optional = act.optional;
+        cmd.amount = act.value1;
+        cmd.str_param = act.str_val;
+        cmd.target_filter = act.filter;
+        cmd.target_group = act.scope;
+
+        if (act.source_zone.empty() == false) cmd.from_zone = act.source_zone;
+        if (act.destination_zone.empty() == false) cmd.to_zone = act.destination_zone;
+
+        switch (act.type) {
+            case EffectActionType::DRAW_CARD: cmd.type = CommandType::DRAW_CARD; break;
+            case EffectActionType::ADD_MANA: cmd.type = CommandType::MANA_CHARGE; break;
+            case EffectActionType::DESTROY: cmd.type = CommandType::DESTROY; break;
+            case EffectActionType::RETURN_TO_HAND: cmd.type = CommandType::RETURN_TO_HAND; break;
+            case EffectActionType::TAP: cmd.type = CommandType::TAP; break;
+            case EffectActionType::UNTAP: cmd.type = CommandType::UNTAP; break;
+            case EffectActionType::MODIFY_POWER: cmd.type = CommandType::POWER_MOD; break;
+            case EffectActionType::BREAK_SHIELD: cmd.type = CommandType::BREAK_SHIELD; break;
+            case EffectActionType::DISCARD: cmd.type = CommandType::DISCARD; break;
+            case EffectActionType::SEARCH_DECK: cmd.type = CommandType::SEARCH_DECK; break;
+            case EffectActionType::GRANT_KEYWORD: cmd.type = CommandType::ADD_KEYWORD; break;
+            case EffectActionType::SEND_TO_MANA: cmd.type = CommandType::MANA_CHARGE; break;
+            case EffectActionType::MOVE_CARD: cmd.type = CommandType::TRANSITION; break;
+            default: cmd.type = CommandType::NONE; break;
+        }
+        return cmd;
+    }
+
     void CardRegistry::load_from_json(const std::string& json_str) {
         try {
             auto j = nlohmann::json::parse(json_str);
@@ -93,9 +124,40 @@ namespace dm::engine {
         def.power = data.power;
         def.races = data.races;
 
-        // Effects
-        def.effects = data.effects;
-        def.metamorph_abilities = data.metamorph_abilities;
+        // Effects with Hybrid Conversion
+        def.effects.clear();
+        def.effects.reserve(data.effects.size());
+        for (const auto& eff : data.effects) {
+            EffectDef engine_eff = eff;
+            // Legacy Conversion
+            if (engine_eff.commands.empty() && !engine_eff.actions.empty()) {
+                engine_eff.commands.reserve(engine_eff.actions.size());
+                for (const auto& act : engine_eff.actions) {
+                    CommandDef cmd = convert_legacy_action_internal(act);
+                    if (cmd.type != CommandType::NONE) {
+                        engine_eff.commands.push_back(cmd);
+                    }
+                }
+            }
+            def.effects.push_back(engine_eff);
+        }
+
+        // Metamorph Abilities
+        def.metamorph_abilities.clear();
+        def.metamorph_abilities.reserve(data.metamorph_abilities.size());
+        for (const auto& eff : data.metamorph_abilities) {
+            EffectDef engine_eff = eff;
+            if (engine_eff.commands.empty() && !engine_eff.actions.empty()) {
+                engine_eff.commands.reserve(engine_eff.actions.size());
+                for (const auto& act : engine_eff.actions) {
+                    CommandDef cmd = convert_legacy_action_internal(act);
+                    if (cmd.type != CommandType::NONE) {
+                        engine_eff.commands.push_back(cmd);
+                    }
+                }
+            }
+            def.metamorph_abilities.push_back(engine_eff);
+        }
 
         // Revolution Change
         if (data.revolution_change_condition.has_value()) {
@@ -105,6 +167,7 @@ namespace dm::engine {
 
         // Reaction Abilities
         def.reaction_abilities = data.reaction_abilities;
+        def.cost_reductions = data.cost_reductions;
 
         // Twinpact Spell Side (Recursive)
         if (data.spell_side) {
