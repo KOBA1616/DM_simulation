@@ -64,9 +64,10 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   JSONスキーマに `CommandDef` を導入。
     *   **Policy Change**: `EffectDef` に `commands` フィールドを追加するが、旧来の `actions` からの自動変換は行わない。新形式での記述を必須とする。
 *   **Step 2: CommandSystem の実装**
-    *   **Status: Implemented**
-    *   `dm::engine::systems::CommandSystem` を新設。
-    *   Pythonバインディングを整備し、外部からのコマンド実行テストが可能になった。
+    *   **Status: Implemented (Verification in progress)**
+    *   `dm::engine::systems::CommandSystem` を実装。`execute_primitive` による `TRANSITION`, `MUTATE` コマンドのディスパッチと、`resolve_targets` によるターゲット解決ロジックを追加。
+    *   `TargetUtils::is_valid_target` を統合し、JSON定義のフィルタに基づいたターゲット検索を実装。
+    *   **Issue**: `tests/test_command_system_primitives.py` にて `TRANSITION` コマンドの動作検証テストを追加したが、現在アサーションエラーが発生しており、デバッグ中。ターゲット選択またはコマンド実行後の状態更新に不整合がある可能性がある。
 
 ### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
 **Status: Planned**
@@ -101,8 +102,8 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  **Primitive Command Execution Fix**:
-    *   `CommandSystem` におけるプリミティブ実行 (`TRANSITION`) の不具合修正。
+1.  **CommandSystem Verification Fix**:
+    *   `CommandSystem` の `TRANSITION` コマンド実行テスト (`test_command_system_transition_primitive`) の失敗原因を特定し修正する。
 2.  **Full Trigger System Migration**:
     *   `EffectResolver` が現在行っている処理を全て `CommandSystem` 経由に切り替える。
 3.  **New JSON Standard Adoption**:
