@@ -76,6 +76,10 @@ namespace dm::engine::systems {
 
     // --- Handlers ---
 
+    void PipelineExecutor::execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd, core::GameState& state) {
+        state.execute_command(std::move(cmd));
+    }
+
     void PipelineExecutor::handle_select(const Instruction& inst, GameState& state,
                                          const std::map<core::CardID, core::CardDefinition>& card_db) {
         if (inst.args.is_null()) return;
@@ -245,7 +249,7 @@ namespace dm::engine::systems {
              if (!found) continue;
 
              auto cmd = std::make_unique<TransitionCommand>(id, from_zone, to_zone, owner, -1);
-             cmd->execute(state);
+             execute_command(std::move(cmd), state);
         }
     }
 
@@ -280,7 +284,7 @@ namespace dm::engine::systems {
 
         for (int id : targets) {
             auto cmd = std::make_unique<MutateCommand>(id, type, val, str_val);
-            cmd->execute(state);
+            execute_command(std::move(cmd), state);
         }
     }
 
