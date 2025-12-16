@@ -543,7 +543,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("optional", &CommandDef::optional)
         .def_readwrite("from_zone", &CommandDef::from_zone)
         .def_readwrite("to_zone", &CommandDef::to_zone)
-        .def_readwrite("mutation_kind", &CommandDef::mutation_kind);
+        .def_readwrite("mutation_kind", &CommandDef::mutation_kind)
+        .def_readwrite("condition", &CommandDef::condition)
+        .def_readwrite("if_true", &CommandDef::if_true)
+        .def_readwrite("if_false", &CommandDef::if_false);
 
     py::class_<ConditionDef>(m, "ConditionDef")
         .def(py::init<>())

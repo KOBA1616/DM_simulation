@@ -1,6 +1,7 @@
 #include "command_system.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "engine/systems/card/condition_system.hpp" // Added
 #include "engine/utils/zone_utils.hpp"
 #include <iostream>
 #include <algorithm>
@@ -33,6 +34,40 @@ namespace dm::engine::systems {
                 break;
         }
     }
+
+    // Helper to ensure evaluators are registered (similar to GenericCardSystem)
+    // Note: In a real system, registration should be done at startup in a centralized place.
+    // However, ConditionSystem is a singleton, so we need to ensure it's populated.
+    // Since generic_card_system.cpp handles registration for now, we might need to rely on it
+    // or duplicate registration here if GenericCardSystem hasn't run.
+    // A better approach is to expose the registration function or do it in GameInstance.
+    // For now, we'll try to trigger registration if needed, but since generic_card_system.cpp
+    // uses static local flags, we can't easily trigger it from here without linking or exposing.
+    // Hack: We will register them here too if empty. This assumes Evaluators are stateless.
+
+    // Logic for Flow requires evaluators to be registered.
+    // For unit tests invoking CommandSystem directly, we need to ensure the registry is populated.
+    // We use a static initializer helper to do this safely once.
+
+    // We need definitions of Evaluators. They are currently in condition_system.hpp.
+    #include "engine/systems/card/condition_system.hpp"
+
+    static bool _evaluators_ensured = [](){
+        ConditionSystem& sys = ConditionSystem::instance();
+        // Register core evaluators if not present
+        if (!sys.get_evaluator("DURING_YOUR_TURN")) {
+            sys.register_evaluator("DURING_YOUR_TURN", std::make_unique<TurnEvaluator>());
+            sys.register_evaluator("DURING_OPPONENT_TURN", std::make_unique<TurnEvaluator>());
+            sys.register_evaluator("MANA_ARMED", std::make_unique<ManaArmedEvaluator>());
+            sys.register_evaluator("SHIELD_COUNT", std::make_unique<ShieldCountEvaluator>());
+            sys.register_evaluator("OPPONENT_PLAYED_WITHOUT_MANA", std::make_unique<OpponentPlayedWithoutManaEvaluator>());
+            sys.register_evaluator("CIVILIZATION_MATCH", std::make_unique<CivilizationMatchEvaluator>());
+            sys.register_evaluator("FIRST_ATTACK", std::make_unique<FirstAttackEvaluator>());
+            sys.register_evaluator("COMPARE_STAT", std::make_unique<CompareStatEvaluator>());
+            sys.register_evaluator("OPPONENT_DRAW_COUNT", std::make_unique<OpponentCardsDrawnEvaluator>());
+        }
+        return true;
+    }();
 
     void CommandSystem::execute_primitive(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id) {
         if (cmd.type == core::CommandType::TRANSITION) {
@@ -73,6 +108,28 @@ namespace dm::engine::systems {
                 }
             } else {
                 std::cerr << "Warning: Unknown mutation kind: " << cmd.mutation_kind << std::endl;
+            }
+        } else if (cmd.type == core::CommandType::FLOW) {
+            bool condition_met = true;
+
+            // Design Intent: Evaluate the condition using the centralized ConditionSystem.
+            // If condition is absent, default to true.
+            if (cmd.condition.has_value()) {
+                 // Note: We need card_db for some conditions.
+                 // Performance: Getting all definitions every check might be heavy if not optimized,
+                 // but CardRegistry is a static lookup map.
+                 const auto& card_db = CardRegistry::get_all_definitions();
+                 // Empty context for now, or we could pass local variables if we implement local scope.
+                 std::map<std::string, int> empty_context;
+
+                 condition_met = ConditionSystem::instance().evaluate_def(
+                     state, cmd.condition.value(), source_instance_id, card_db, empty_context
+                 );
+            }
+
+            const auto& commands_to_run = condition_met ? cmd.if_true : cmd.if_false;
+            for (const auto& sub_cmd : commands_to_run) {
+                execute_command(state, sub_cmd, source_instance_id, player_id);
             }
         }
     }
