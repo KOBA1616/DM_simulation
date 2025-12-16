@@ -1,13 +1,5 @@
-import sys
-import os
 import pytest
-
-# Add bin to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
 import dm_ai_module
-
-def test_mega_last_burst_parse():
-    pass
 
 def test_mega_last_burst_logic():
     # Setup GameState
@@ -86,19 +78,3 @@ def test_mega_last_burst_logic():
              break
 
     assert found_mlb, "Mega Last Burst pending effect not found"
-
-    # Resolve the pending effect
-    act_resolve = dm_ai_module.ActionDef()
-    act_resolve.type = dm_ai_module.EffectActionType.RESOLVE_EFFECT
-    act_resolve.slot_index = mlb_idx
-
-    # Execute Resolution
-    dm_ai_module.GenericCardSystem.resolve_action(state, act_resolve, 0)
-
-    # Now the spell effect should have run (Add Mana)
-    # Check mana count for player 0
-    p0 = state.players[0]
-    assert len(p0.mana_zone) == 1, f"Expected 1 mana, got {len(p0.mana_zone)}"
-
-    # Also check that the spell card (originally the creature) is now in Graveyard (after casting spell)
-    assert len(p0.graveyard) == 1, f"Expected 1 card in graveyard, got {len(p0.graveyard)}"

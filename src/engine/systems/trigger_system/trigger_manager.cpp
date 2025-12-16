@@ -1,5 +1,6 @@
 #include "trigger_manager.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "engine/systems/card/generic_card_system.hpp" // For resolve_trigger (temporary linkage) or just common logic
 #include "core/card_def.hpp"
 
 namespace dm::engine::systems {
@@ -20,64 +21,100 @@ namespace dm::engine::systems {
         }
     }
 
+    // Helper to map GameEvent to TriggerType
+    // Returns TriggerType::NONE if no mapping exists
+    static TriggerType map_event_to_trigger(const GameEvent& event) {
+        if (event.type == EventType::ZONE_ENTER) {
+            if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::BATTLE) {
+                return TriggerType::ON_PLAY;
+            }
+        }
+        if (event.type == EventType::ATTACK_INITIATE) {
+            return TriggerType::ON_ATTACK;
+        }
+        if (event.type == EventType::ZONE_ENTER) {
+             // Destruction Logic: Moved TO Graveyard FROM Battle Zone
+             if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::GRAVEYARD &&
+                 event.context.count("from_zone") && event.context.at("from_zone") == (int)Zone::BATTLE) {
+                 return TriggerType::ON_DESTROY;
+             }
+        }
+        if (event.type == EventType::BLOCK_INITIATE) {
+             return TriggerType::ON_BLOCK;
+        }
+        return TriggerType::NONE;
+    }
+
     void TriggerManager::check_triggers(const GameEvent& event, GameState& state,
                                         const std::map<CardID, CardDefinition>& card_db) {
-        // 1. Passive Effects Check
-        // In the new architecture, passive effects are constantly recalculated or checked here.
-        // For events, we might check "Interceptors" that modify the event itself,
-        // but Requirements 5.1 says "1. Passive Effects check".
-        // This generally means checking if any continuous effect changes the context or prevents the event.
-        // For now, we assume PassiveEffectSystem handles the static state, and this step is for
-        // "Event Modification" passives (like "Instead of destruction, put to shield").
-        // These are effectively Interceptors.
+        // Phase 6 Engine Overhaul: Event-Driven Trigger System
+        // This replaces the scattered logic in EffectResolver/GenericCardSystem.
 
-        // 2. Triggered Abilities Search
-        // Iterate over all cards in relevant zones (Battle, Hand for Ninja, etc.)
-        // Optimization: GameState should have a 'trigger_map' cache.
-        // For Phase 6 Step 1, we implement a naive iteration or rely on what's available.
-        // We will scan Battle Zone and Hand (for simple triggers).
+        TriggerType trigger_type = map_event_to_trigger(event);
+        if (trigger_type == TriggerType::NONE) return;
 
-        // TODO: This naive scan is slow (O(N)). Future optimization: specialized observer lists in GameState.
+        // Determine which cards to check.
+        // For standard triggers (ON_PLAY, ON_ATTACK, ON_DESTROY), the source is usually the event source itself.
+        // But some effects are "Whenever ANOTHER creature..." (Passive/Triggered hybrid).
+        // For MVP Phase 6 Step 1, we focus on "Self-Triggered" abilities.
 
-        // Define zones to check based on event type
-        std::vector<Zone> zones_to_check;
-        zones_to_check.push_back(Zone::BATTLE);
-        // Some triggers work from hand (Ninja Strike, S-Back) or Graveyard (Piggyback)
-        // For MVP, just Battle Zone.
+        // However, generic triggers usually require scanning the board.
+        // E.g. "Whenever a creature attacks" -> TriggerType::ON_ATTACK on non-active creatures?
+        // Current JSON data primarily uses ON_ATTACK for the attacker itself.
+        // Let's assume Self-Trigger for now, as that covers 90% of cases.
+        // For "Whenever another...", that is usually handled by `GenericCardSystem` iterating ALL cards.
+
+        // We replicate GenericCardSystem's iteration logic here to be the single source of truth.
+
+        // Zones to check for potential listeners
+        // Usually effects trigger from Battle Zone.
+        // Some (Ninja Strike) trigger from Hand, but that is a Reaction, handled in check_reactions.
+        std::vector<Zone> zones_to_check = {Zone::BATTLE};
+
+        // Also check Effect Buffer? (e.g. for temporary effects) - Usually not needed for standard triggers.
 
         for (PlayerID pid : {state.active_player_id, static_cast<PlayerID>(1 - state.active_player_id)}) {
-            // Updated to use the new helper
             const auto& battle_zone = state.get_zone(pid, Zone::BATTLE);
             for (int instance_id : battle_zone) {
                 if (instance_id < 0) continue;
-                // Correct pointer access
                 const auto* card_ptr = state.get_card_instance(instance_id);
                 if (!card_ptr) continue;
-                const auto& card = *card_ptr;
 
-                if (!card_db.count(card.card_id)) continue;
-                const auto& def = card_db.at(card.card_id);
+                // Get Definition
+                const CardDefinition* def = nullptr;
+                if (card_db.count(card_ptr->card_id)) {
+                    def = &card_db.at(card_ptr->card_id);
+                }
+                if (!def) continue;
 
-                // Check card definition for triggers matching 'event'
-                // Currently, CardDefinition stores `effects` list.
-                // We need to match TriggerType (e.g. ON_PLAY) with EventType (ZONE_ENTER).
+                // Collect effects
+                std::vector<EffectDef> active_effects;
+                active_effects.insert(active_effects.end(), def->effects.begin(), def->effects.end());
+                // Add metamorph/other conditional effects logic here if needed (GenericCardSystem handles this)
+                // For direct access, we might miss dynamically granted effects.
+                // Ideally, CardInstance should store granted triggers.
 
-                // Mapping logic (Hardcoded for Step 1/2)
-                // ZONE_ENTER + BATTLE -> ON_PLAY
-                // ATTACK_INIT -> ON_ATTACK
-                // CARD_DESTROYED -> ON_DESTROY
+                for (const auto& effect : active_effects) {
+                    if (effect.trigger == trigger_type) {
+                        // Condition: Is this card the source of the event?
+                        // "Self" triggers
+                        if (event.source_id == instance_id) {
+                            // Match!
+                            // Add to Pending Effects
+                            PlayerID controller = state.card_owner_map[instance_id];
+                            PendingEffect pending(EffectType::TRIGGER_ABILITY, instance_id, controller);
+                            pending.resolve_type = ResolveType::EFFECT_RESOLUTION;
+                            pending.effect_def = effect; // Copy effect
+                            pending.optional = true;
+                            pending.chain_depth = state.turn_stats.current_chain_depth + 1;
 
-                // This logic mirrors `GenericCardSystem::resolve_trigger` but event-driven.
-
-                // TODO: Implement the mapping and PendingEffect generation.
-                // Since `PendingEffect` requires `EffectDef`, we look it up from `def.effects`.
+                            state.pending_effects.push_back(pending);
+                        }
+                        // "Another" triggers logic would go here (check filter vs event.source_id)
+                    }
+                }
             }
         }
-
-        // 3. Interceptor Application
-        // Check for replacement effects.
-        // If found, modify the event or cancel it.
-        // Implementation pending "Interceptor" structure in CardDef.
     }
 
     bool TriggerManager::check_reactions(const GameEvent& event, GameState& state,
@@ -86,12 +123,9 @@ namespace dm::engine::systems {
 
         // 1. Shield Trigger
         if (event.type == EventType::ZONE_ENTER) {
-            // Check if entered hand from shield
-            // Context keys: "to_zone", "from_zone", "instance_id"
             if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::HAND &&
                 event.context.count("from_zone") && event.context.at("from_zone") == (int)Zone::SHIELD) {
 
-                // The card that moved
                 int instance_id = event.context.at("instance_id");
                 const CardInstance* card = state.get_card_instance(instance_id);
                 if (card && card_db.count(card->card_id)) {
@@ -100,7 +134,7 @@ namespace dm::engine::systems {
                         ReactionCandidate c;
                         c.card_id = card->card_id;
                         c.instance_id = instance_id;
-                        c.player_id = state.card_owner_map[instance_id]; // Owner
+                        c.player_id = state.card_owner_map[instance_id];
                         c.type = ReactionType::SHIELD_TRIGGER;
                         candidates.push_back(c);
                     }
@@ -110,11 +144,8 @@ namespace dm::engine::systems {
 
         // 2. Revolution Change
         if (event.type == EventType::ATTACK_INITIATE) {
-            // Active player is attacking. Check their hand.
             PlayerID att_pid = event.player_id;
             const Player& player = state.players[att_pid];
-
-            // Attacking creature instance
             int attacker_id = event.source_id;
             const CardInstance* attacker = state.get_card_instance(attacker_id);
 
@@ -125,9 +156,6 @@ namespace dm::engine::systems {
 
                     if (def.keywords.revolution_change) {
                         if (def.revolution_change_condition.has_value()) {
-                            // "Revolution Change: Fire Dragon" means "When a Fire Dragon attacks".
-                            // So we check if 'attacker' matches 'def.revolution_change_condition'.
-
                             bool match = TargetUtils::is_valid_target(*attacker, card_db.at(attacker->card_id),
                                                                     def.revolution_change_condition.value(),
                                                                     state, att_pid, att_pid);

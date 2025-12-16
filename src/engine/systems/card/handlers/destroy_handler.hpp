@@ -129,49 +129,30 @@ namespace dm::engine {
 
             if (!found) return false;
 
-            // Pre-move logic: Battle Zone leave hooks
-            // Note: If underlying, we don't trigger leave_battle_zone for the top card logic
-            // But we might need to handle hierarchy logic.
-            // Current `DestroyHandler` implementation for underlying just erases and moves.
-            // Current `DestroyHandler` implementation for top card calls `on_leave_battle_zone`.
+            // Check Eternal Omega before destroy
+            // TODO: Move this to an Interceptor?
+            // For now, keep as inline check or passive effect check
 
             if (!is_underlying) {
                 ZoneUtils::on_leave_battle_zone(game_state, card_copy);
             }
 
-            // Execute Transition
-            // Underlying cards are tricky with TransitionCommand because TransitionCommand assumes standard zones.
-            // If `is_underlying` is true, the card is NOT in `BATTLE_ZONE` directly, but in `CardInstance::underlying_cards`.
-            // The `TransitionCommand` as written currently relies on `Zone::BATTLE` resolving to `p.battle_zone`.
-            // It will fail to find the underlying card in `p.battle_zone` vector.
-
-            // To properly support underlying cards with GameCommand, we would need a Sub-Zone or specific address logic.
-            // For now, to match migration requirement, if it's underlying, we might have to use manual manipulation OR
-            // modify TransitionCommand to support looking into underlying cards.
-            // Given the scope, let's stick to `GameCommand` for the TOP level card, and handle underlying manually
-            // OR ignore underlying handling via Command for now if it's edge case,
-            // BUT `DestroyHandler` explicitly handled it.
-
             if (is_underlying && parent_card) {
-                // Manual move for underlying (TransitionCommand doesn't support nested vectors yet)
-                // This preserves existing behavior but misses Command benefits for underlying.
-                // TODO: Extend TransitionCommand for nested targets.
-
-                // Remove from parent
                  auto u_it = std::find_if(parent_card->underlying_cards.begin(), parent_card->underlying_cards.end(),
                         [instance_id](const CardInstance& c){ return c.instance_id == instance_id; });
                  if (u_it != parent_card->underlying_cards.end()) {
                      parent_card->underlying_cards.erase(u_it);
                  }
-                 // Add to graveyard
                  game_state.players[owner_id].graveyard.push_back(card_copy);
+                 if (game_state.card_owner_map.size() > (size_t)instance_id) game_state.card_owner_map[instance_id] = owner_id;
 
                  GenericCardSystem::check_mega_last_burst(game_state, card_copy, card_db);
                  return true;
             } else {
                 // Standard Top-Level Destroy
-                TransitionCommand cmd(instance_id, Zone::BATTLE, Zone::GRAVEYARD, owner_id);
-                cmd.execute(game_state);
+                // TransitionCommand handles updating card_owner_map and moving vectors.
+                auto cmd = std::make_unique<TransitionCommand>(instance_id, Zone::BATTLE, Zone::GRAVEYARD, owner_id);
+                game_state.execute_command(std::move(cmd));
 
                 // Post-move logic
                 GenericCardSystem::check_mega_last_burst(game_state, card_copy, card_db);
