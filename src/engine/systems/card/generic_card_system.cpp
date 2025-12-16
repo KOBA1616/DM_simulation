@@ -196,6 +196,9 @@ namespace dm::engine {
                 pending.effect_def = effect;
                 pending.optional = true;
 
+                // Step 5.2.2: Loop Prevention
+                pending.chain_depth = game_state.turn_stats.current_chain_depth + 1;
+
                 game_state.pending_effects.push_back(pending);
             }
         }
