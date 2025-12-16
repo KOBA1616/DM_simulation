@@ -108,11 +108,26 @@ namespace dm::engine {
                  {
                      if (!game_state.pending_effects.empty() && action.slot_index >= 0 && action.slot_index < (int)game_state.pending_effects.size()) {
                          auto& pe = game_state.pending_effects[action.slot_index];
-                         if (pe.resolve_type == ResolveType::TARGET_SELECT && pe.effect_def) {
-                             GenericCardSystem::resolve_effect_with_targets(game_state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
-                         } else if (pe.type == EffectType::TRIGGER_ABILITY && pe.effect_def) {
-                             GenericCardSystem::resolve_effect(game_state, *pe.effect_def, pe.source_instance_id);
+
+                         // Step 5.2.2: Loop Prevention Check
+                         if (pe.chain_depth > 50) {
+                             // Fizzle
+                             std::cerr << "Loop Prevention: Fizzling effect chain depth " << pe.chain_depth << std::endl;
+                         } else {
+                             // Set current depth context for subsequent triggers
+                             int prev_depth = game_state.turn_stats.current_chain_depth;
+                             game_state.turn_stats.current_chain_depth = pe.chain_depth;
+
+                             if (pe.resolve_type == ResolveType::TARGET_SELECT && pe.effect_def) {
+                                 GenericCardSystem::resolve_effect_with_targets(game_state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
+                             } else if (pe.type == EffectType::TRIGGER_ABILITY && pe.effect_def) {
+                                 GenericCardSystem::resolve_effect(game_state, *pe.effect_def, pe.source_instance_id);
+                             }
+
+                             // Restore depth
+                             game_state.turn_stats.current_chain_depth = prev_depth;
                          }
+
                          if (action.slot_index < (int)game_state.pending_effects.size()) {
                              game_state.pending_effects.erase(game_state.pending_effects.begin() + action.slot_index);
                          }
