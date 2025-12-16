@@ -21,7 +21,8 @@ namespace dm::engine {
                                     const dm::core::GameState& game_state,
                                     dm::core::PlayerID source_controller,
                                     dm::core::PlayerID card_controller,
-                                    bool ignore_passives = false) {
+                                    bool ignore_passives = false,
+                                    const std::map<std::string, int>* execution_context = nullptr) {
 
             using Props = CardProperties<CardType>;
 
@@ -63,7 +64,18 @@ namespace dm::engine {
             if (filter.min_cost.has_value() && Props::get_cost(card_def) < filter.min_cost.value()) return false;
             if (filter.max_cost.has_value() && Props::get_cost(card_def) > filter.max_cost.value()) return false;
             if (filter.min_power.has_value() && Props::get_power(card_def) < filter.min_power.value()) return false;
-            if (filter.max_power.has_value() && Props::get_power(card_def) > filter.max_power.value()) return false;
+
+            if (filter.max_power.has_value()) {
+                 if (Props::get_power(card_def) > filter.max_power.value()) return false;
+            }
+            // Step 5.2.3: Context Reference for Max Power
+            if (filter.power_max_ref.has_value() && execution_context) {
+                const auto& key = filter.power_max_ref.value();
+                if (execution_context->count(key)) {
+                    int max_val = execution_context->at(key);
+                    if (Props::get_power(card_def) > max_val) return false;
+                }
+            }
 
             // 7. State Checks
             if (filter.is_tapped.has_value() && card.is_tapped != filter.is_tapped.value()) return false;
@@ -85,7 +97,7 @@ namespace dm::engine {
             // 8. Composite AND Conditions (Step 3-2)
             if (!filter.and_conditions.empty()) {
                 for (const auto& sub_filter : filter.and_conditions) {
-                    if (!is_valid_target(card, card_def, sub_filter, game_state, source_controller, card_controller, ignore_passives)) {
+                    if (!is_valid_target(card, card_def, sub_filter, game_state, source_controller, card_controller, ignore_passives, execution_context)) {
                         return false;
                     }
                 }
@@ -137,7 +149,7 @@ namespace dm::engine {
                          card_owner = state.card_owner_map[instance.instance_id];
 
                      // Avoid recursion: ignore_passives = true
-                     if (is_valid_target(instance, def, passive.target_filter, state, passive.controller, card_owner, true)) {
+                     if (is_valid_target(instance, def, passive.target_filter, state, passive.controller, card_owner, true, nullptr)) {
                          return true;
                      }
                  }
