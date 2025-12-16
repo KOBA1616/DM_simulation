@@ -49,6 +49,7 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   **New**: `PipelineExecutor` の命令ハンドラ (`SELECT` with `TargetUtils`, `MODIFY`, `LOOP`) を実装済み。
     *   **New**: `LegacyJsonAdapter` を実装済み。従来のJSONデータを `Instruction` 列に変換可能になった。
         *   基本アクション (`DRAW`, `MOVE`, `DESTROY`, `SEARCH_DECK`) の検証完了。
+        *   条件分岐 (`IF`) および `ConditionDef` からの変換と `ConditionSystem` との連携ロジックを実装済み。
         *   `PipelineExecutor` のゾーン参照をO(1)に最適化済み。
 *   **Step 3: GameCommand への統合**
     *   **Status: Completed**
@@ -217,8 +218,10 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 1.  **基盤実装**: `TriggerManager`, `PipelineExecutor` クラスのC++実装。
 2.  **ラッパー作成**: 既存のJSONデータを読み込み、ランタイムで新しい `Instruction` 形式に変換するアダプター (`LegacyJsonAdapter`) を作成する。これにより、エディタやJSONファイルの即時書き換えを回避する。（実装完了）
 3.  **段階的置換**:
+    *   **Status: Started**
     *   まず単純な効果（W・ブレイカー、ブロッカー等）から新システムへ移行。
     *   次に `CIP` (出た時) 効果のパイプライン処理化。
+        *   **Verify**: 条件付きCIP効果 (e.g. マナ武装) のパイプライン経由での実行検証完了。
     *   最後に複雑な効果（S・トリガー、革命チェンジ）を移行。
 4.  **EffectResolverの廃止**: 全ロジックの移行完了後、`EffectResolver.cpp` を削除する。
 
