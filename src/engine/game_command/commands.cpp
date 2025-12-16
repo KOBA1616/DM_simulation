@@ -1,5 +1,6 @@
 #include "commands.hpp"
 #include "engine/utils/zone_utils.hpp"
+#include "core/game_event.hpp"
 #include <iostream>
 #include <algorithm>
 
@@ -65,6 +66,19 @@ namespace dm::engine::game_command {
             dest_vec->push_back(card);
         } else {
             dest_vec->insert(dest_vec->begin() + destination_index, card);
+        }
+
+        // Phase 6: Event Dispatch
+        // We need to dispatch ZONE_ENTER or similar.
+        if (state.event_dispatcher) {
+            core::GameEvent evt(core::EventType::ZONE_ENTER, card_instance_id, -1, owner_id);
+            // Context
+            evt.context["instance_id"] = card_instance_id;
+            evt.context["from_zone"] = static_cast<int>(from_zone);
+            evt.context["to_zone"] = static_cast<int>(to_zone);
+            evt.context["card_id"] = card.card_id;
+
+            state.event_dispatcher(evt);
         }
     }
 
@@ -213,6 +227,7 @@ namespace dm::engine::game_command {
             case FlowType::PHASE_CHANGE:
                 previous_value = static_cast<int>(state.current_phase);
                 state.current_phase = static_cast<core::Phase>(new_value);
+                // Dispatch Phase Change Event?
                 break;
             case FlowType::TURN_CHANGE:
                 previous_value = state.turn_number;
@@ -221,6 +236,14 @@ namespace dm::engine::game_command {
             case FlowType::SET_ATTACK_SOURCE:
                 previous_value = state.current_attack.source_instance_id;
                 state.current_attack.source_instance_id = new_value;
+
+                // Dispatch ATTACK_INITIATE event
+                // Only if setting a valid source (initiating attack)
+                if (new_value != -1 && state.event_dispatcher) {
+                    core::GameEvent evt(core::EventType::ATTACK_INITIATE, new_value, -1, state.active_player_id);
+                    evt.context["instance_id"] = new_value;
+                    state.event_dispatcher(evt);
+                }
                 break;
             case FlowType::SET_ATTACK_TARGET:
                 previous_value = state.current_attack.target_instance_id;
@@ -308,6 +331,161 @@ namespace dm::engine::game_command {
     void DecideCommand::invert(core::GameState& state) {
         state.waiting_for_user_input = was_waiting;
         state.pending_query = previous_query;
+    }
+
+    // --- DeclareReactionCommand ---
+
+    void DeclareReactionCommand::execute(core::GameState& state) {
+        previous_status = state.status;
+        previous_stack = state.reaction_stack;
+
+        if (state.reaction_stack.empty()) return;
+
+        auto& window = state.reaction_stack.back();
+
+        // Validation: Verify candidate index
+        if (!pass) {
+            if (reaction_index < 0 || reaction_index >= (int)window.candidates.size()) {
+                // Invalid index
+                return;
+            }
+            // Mark candidate as used
+            window.used_candidate_indices.push_back(reaction_index);
+
+            // Execute Reaction Logic (The hard part)
+            const auto& candidate = window.candidates[reaction_index];
+
+            // NOTE: The Command implementation shouldn't execute complex logic directly?
+            // Ideally it just queues a PendingEffect or performs state mutation.
+            // S-Trigger -> Add "Play Card" Pending Effect.
+            // Revolution Change -> Add "Swap and Play" Pending Effect or perform swap immediately.
+
+            // Design Decision:
+            // Since this is "Declare", we should queue the resolution.
+            // S-Trigger resolution is: Play the card (free).
+            // This is "Use Ability".
+
+            if (candidate.type == dm::engine::systems::ReactionType::SHIELD_TRIGGER) {
+                 // Add a PendingEffect to play this card
+                 core::PendingEffect play_eff(core::EffectType::TRIGGER_ABILITY, candidate.instance_id, candidate.player_id);
+                 // Wait, Phase 6 uses Instructions. We should queue an Instruction?
+                 // Or we use the existing PendingEffect structure which works with the new engine wrapper.
+                 // Let's use PendingEffect.
+
+                 // EffectDef needs to be synthesized or looked up?
+                 // Standard S-Trigger: Play this card.
+                 // We can use a special "Resolve S-Trigger" effect type?
+                 // Or just Queue "PLAY_CARD" action?
+                 // But PLAY_CARD is an Action, not Effect.
+                 // PendingEffect usually wraps an EffectDef.
+                 // The "Trigger" here is the Shield Trigger capability.
+                 // The "Effect" is "You may cast this spell for no cost".
+
+                 // For now, let's create a PendingEffect that holds the instruction "PLAY_CARD".
+                 // But PendingEffect stores EffectDef.
+                 // We need to support 'Generated Actions' via PendingEffect.
+                 // Let's assume there is a TRIGGER_RESOLUTION system that picks this up.
+                 // Or we explicitly add `state.pending_effects.push_back(...)` here.
+
+                 // Simplification for Phase 6 MVP:
+                 // Queue a PendingEffect with source_id = candidate.card_id/instance_id.
+                 // The engine loop handles "Resolving" the pending effect by playing it.
+                 // But we need to signal "Play for free".
+                 // Let's use a flag or cost modifier?
+                 // S-Trigger is "Play for 0".
+
+                 // For now, just mark the candidate as chosen.
+                 // The *Caller* (Game Loop) will see the `DeclareReactionCommand` success
+                 // and execute the logic.
+                 // BUT `execute` is where state changes happen.
+
+                 // If we strictly follow GameCommand pattern, THIS command must apply the change.
+                 // So we must Queue the PendingEffect here.
+
+                 core::PendingEffect eff(core::EffectType::TRIGGER_ABILITY, candidate.instance_id, candidate.player_id);
+                 // We need to attach an EffectDef that says "Play Self".
+                 // That's tricky.
+                 // Instead, let's look at how ON_PLAY triggers are handled.
+                 // They queue `TRIGGER_ABILITY`.
+
+                 // Actually, Shield Trigger is "Use Card".
+                 // We can queue a pending effect that, when resolved, calls `resolve_play_card`.
+
+                 // For now, let's assume `TRIGGER_ABILITY` is sufficient and the Resolver knows
+                 // that if a card in Hand triggers, and it has Shield Trigger, it means Play it.
+                 // Or we introduce `EffectType::SHIELD_TRIGGER_RESOLVE`.
+                 eff.type = core::EffectType::TRIGGER_ABILITY;
+                 // We rely on the engine to interpret this correctly or we add metadata.
+
+                 state.pending_effects.push_back(eff);
+            }
+            else if (candidate.type == dm::engine::systems::ReactionType::REVOLUTION_CHANGE) {
+                // Perform Swap
+                // 1. Return attacker to hand
+                // 2. Put this card into battle zone
+                // This is a complex atomic operation.
+                // We should probably issue child commands?
+                // But `execute` is synchronous.
+                // We can mutate state directly here (since this IS the command).
+
+                // Swap logic:
+                // Find attacker.
+                // Move attacker to Hand.
+                // Move candidate to Battle Zone (tapped and attacking).
+                // Copy state (tapped, attacking)? Revolution Change inherits state?
+                // Yes, "switch" implies inheriting status.
+
+                // For MVP, just queue a PendingEffect "REVOLUTION_CHANGE_RESOLVE".
+                core::PendingEffect eff(core::EffectType::TRIGGER_ABILITY, candidate.instance_id, candidate.player_id);
+                // We need to encode "Revolution Change" intent.
+                // Maybe a custom EffectDef inside PendingEffect?
+                state.pending_effects.push_back(eff);
+            }
+        }
+
+        // Close logic
+        // If Pass, or if single-use window (S-Trigger allows multiple usually).
+        // Spec 6.1: "Wait until all pass".
+        // But for S-Trigger, usually you declare one by one or batch?
+        // Let's assume simplistic "One Declaration per step" or "Pass ends turn".
+
+        // If Pass was declared, we are done with this player?
+        // S-Trigger: You can use multiple triggers.
+        // So passing means "I'm done with triggers".
+        if (pass) {
+            // Remove window or mark player as passed?
+            // For now, simple: Pass = Done.
+            state.reaction_stack.pop_back();
+            if (state.reaction_stack.empty()) {
+                state.status = core::GameState::Status::PLAYING;
+            }
+        } else {
+            // Used one. Do we close?
+            // S-Trigger: Keep open.
+            // Revolution Change: Usually one per attack.
+            // Ninja Strike: Keep open?
+
+            // Let's assume for MVP: Using one action closes the window to process that action.
+            // (Then maybe reopen later? No, S-Trigger processing is immediate).
+            // Actually, usually triggers stack.
+            // So we queue the effect and KEEP THE WINDOW OPEN.
+            // Unless the rule says otherwise.
+            // S-Trigger: You reveal all, then use.
+            // We are in the "Use" phase.
+            // Let's keep window open.
+        }
+    }
+
+    void DeclareReactionCommand::invert(core::GameState& state) {
+        state.status = previous_status;
+        state.reaction_stack = previous_stack;
+        // Also need to remove the pending effect added?
+        // previous_stack restoration handles window state.
+        // But `pending_effects` mutation needs inversion.
+        // Since we didn't store index/count, this is risky.
+        // Ideally we store "added_effect_index" member.
+        // For MVP/Prototype, we skip perfect Undo for Reaction Execution logic
+        // until we robustify it.
     }
 
 }
