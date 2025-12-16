@@ -83,6 +83,7 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   [Status: Done] [Test: Pass]
     *   `dm::engine::systems::CommandSystem` を実装。
     *   `CommandSystem::execute_primitive` における `TRANSITION` 処理（ゾーン文字列解析、ターゲット解決）の不具合を修正し、`TargetUtils` を利用した正しいフィルタリングを実装しました。
+    *   `CommandSystem::execute_primitive` における `MUTATE` 処理（TAP, POWER_MOD, ADD_KEYWORD等）の実装を完了し、Pythonテスト `test_command_system.py` にて動作検証済み。
     *   Pythonバインディングを整備し、外部からのコマンド実行テストが可能になった。
 
 ### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
