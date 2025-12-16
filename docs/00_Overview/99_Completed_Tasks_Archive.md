@@ -1,6 +1,6 @@
 # 完成したタスクのアーカイブ (Completed Tasks Archive)
 
-このドキュメントは `00_Status_and_Requirements_Summary.md` から完了したタスクを移動して記録するためのアーカイブです。
+このドキュメントは `00_Status_and_Requirements_Summary.md` から完了したタスク、または廃止された要件を移動して記録するためのアーカイブです。
 
 ## 完了済み (Completed)
 
@@ -71,3 +71,47 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 
 *   **NetworkV2**: Transformer (Linear Attention) ベースの可変長入力モデルを実装完了。
 *   **TensorConverter**: C++側でのシーケンス変換ロジックを実装済み。
+
+---
+
+## 完了仕様 (Completed Specifications) - Phase 6
+
+以下は Phase 6 実装時に策定された技術要件書です。現在は実装済みの仕様として参照されます。
+
+### イベント駆動型トリガーシステム (Trigger System)
+
+*   **アーキテクチャ**: `TriggerManager` が全イベントの発行 (`dispatch`) と購読 (`subscribe`) を管理。
+*   **イベント監視**: 状態変化イベント（例: `CREATURE_ZONE_ENTER`）を監視するイベントドリブン方式を採用。
+*   **ループ防止**: `PendingEffect` に `chain_depth` カウンタを実装し、無限ループを防止。
+*   **コンテキスト参照**: `FilterDef` の `power_max_ref` 等により、イベントコンテキスト（破壊されたカードのパワー等）を動的に参照可能。
+
+### GameCommand アーキテクチャ
+
+*   **5つの基本命令 (Primitives)**:
+    1.  **TRANSITION**: カード移動。
+    2.  **MUTATE**: プロパティ変更。
+    3.  **FLOW**: 進行制御。
+    4.  **QUERY**: 選択要求。
+    5.  **DECIDE**: 意思決定結果（入力）。
+*   **ロールバック**: GameCommand層に `invert()` 機能を内蔵し、MCTS等のためのUndo機能を提供。
+
+### 命令パイプライン (Instruction Pipeline)
+
+*   **Instruction**: 最小単位の操作（SELECT, MOVE, COUNT, IF）。
+*   **Context**: 一時変数 (`$source`, `$targets`, `$count` 等) を保持するKey-Valueストア。
+*   **JSON定義**: カード効果を命令の連鎖として記述し、C++の修正なしにロジックを構築可能。
+
+---
+
+## 廃止・凍結された要件 (Discarded / Frozen Requirements)
+
+以下の要件は、開発方針の変更（エンジン安定化・ツール機能重視）に伴い、スコープ外として廃止または無期限凍結されました。
+
+### AI 自己進化・成長システム (AI Self-Evolution / Growth)
+*   **Phase 3.2: AI 本番運用 (Production Run)**: 継続的な強化学習サイクルの運用。
+*   **Phase 3: 自己進化エコシステム**: PBT (Population Based Training) を用いたメタゲーム適応。
+*   **自動デッキ構築**: 学習結果に基づくAIによるデッキ生成。
+
+### カード資産の大量実装 (Mass Card Asset Implementation)
+*   **DM-01 全カード実装**: 特定のセットを網羅するための大量データ作成作業。
+*   今後は、必要なシナリオやテストケースに応じたカードのみをエディタで作成する方針とする。
