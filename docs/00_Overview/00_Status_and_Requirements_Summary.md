@@ -27,7 +27,7 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
 *   **Status**: パイプライン構築済み。
-*   **Pending**: エンジン刷新による破壊的変更を避けるため、新エンジン稼働まで学習プロセス（Phase 3.2）は待機とする。
+*   **Pending**: エンジン刷新に伴うデータ構造の変更が確定するまで、機能追加および改修を凍結する。
 
 ---
 
@@ -52,3 +52,32 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 *   **Step 4: 移行と検証**
     *   **Known Issue**: `python/tests/test_mega_last_burst.py` が `DestroyHandler` の依存関係（CardRegistry vs CardDB）により失敗している。次フェーズで `GenericCardSystem::resolve_action` とハンドラの連携を詳細調査・修正する。
     *   **New**: S・トリガーおよび革命チェンジのイベント駆動フロー（リアクションウィンドウ生成）の検証完了。
+
+### 3.2 [Priority: High] Phase 7: ハイブリッド・エンジン基盤 (New Requirement)
+**Status: In Progress (Latest)**
+旧エンジン（マクロ的アクション）と新エンジン（プリミティブコマンド）を共存・統合させるためのアーキテクチャ実装。
+
+*   **Step 1: データ構造の刷新 (Hybrid Schema)**
+    *   **Status: Completed**
+    *   JSONスキーマに `CommandDef` を導入し、マクロ（`DRAW_CARD`）とプリミティブ（`TRANSITION`, `MUTATE`）を混在可能にした。
+    *   `EffectDef` に `commands` フィールドを追加し、旧来の `actions` フィールドからの自動変換ロジックを `CardRegistry` に実装済み。既存のJSON資産をそのまま新エンジンで読み込み可能。
+*   **Step 2: CommandSystem の実装**
+    *   **Status: Implemented**
+    *   `dm::engine::systems::CommandSystem` を新設。マクロコマンドを `GameCommand` 列（プリミティブ）に展開して実行するロジックを集約。
+    *   Pythonバインディングを整備し、外部からのコマンド実行テストが可能になった。
+*   **Step 3: 検証 (Verification)**
+    *   **Status: Partially Verified**
+    *   `tests/verify_hybrid_engine.py` にて、旧JSONデータ（`DRAW_CARD`）が新エンジンの `CommandSystem` を通じて正しくカード移動処理（Deck->Hand）を行うことを確認済み。
+    *   **Issue**: プリミティブコマンド (`TRANSITION`) の直接実行テストにおいて、ターゲット解決後の状態更新（Deck->Mana）が正しく反映されない事象を確認中。`TransitionCommand` または `TargetScope` の解決ロジックに修正が必要。
+
+## 4. 今後の課題 (Future Tasks)
+
+1.  **Primitive Command Execution Fix**:
+    *   `CommandSystem` におけるプリミティブ実行 (`TRANSITION`) の不具合修正。ターゲット解決 (`resolve_targets`) とコマンド発行の連携を見直す。
+2.  **Full Trigger System Migration**:
+    *   `EffectResolver` が現在行っている処理を全て `CommandSystem` 経由に切り替える。
+    *   `TriggerSystem` が `PendingEffect` を処理する際、`EffectDef.commands` を参照して `CommandSystem` を呼び出すように変更する。
+3.  **AI Input Update**:
+    *   `TensorConverter` を更新し、`EffectActionType` ではなく、発生した `GameCommand` や盤面変化を観測するようにAI入力を刷新する。
+4.  **GUI Update**:
+    *   `CardEditor` を更新し、新スキーマ (`CommandDef`) の編集に対応させる（マクロ編集と詳細編集のハイブリッドUI）。
