@@ -57,7 +57,10 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   **Implemented**: `PhaseManager` (フェーズ遷移、ターン開始、ドロー)、`ManaSystem` (マナタップ/アンタップ)、`PipelineExecutor` (カード移動、変異) を GameCommand 化。
     *   **New**: `PendingEffect` を独立ヘッダに分離し、`ADD_PENDING_EFFECT`, `SET_ACTIVE_PLAYER` コマンドを追加することで、複雑なターン遷移（フェーズ変更→トリガー追加→プレイヤー交代）の完全な Undo/Redo を実現。
 *   **Step 4: 移行と検証**
-    *   既存テストケースの新エンジン上でのパス確認。
+    *   **Status: In Progress**
+    *   `EffectResolver` の主要ロジック (`MANA_CHARGE`, `PLAY_CARD`, `BREAK_SHIELD`) を `GameCommand` (`TransitionCommand`, `MutateCommand`) を使用するようにリファクタリング完了。
+    *   既存テストケース (`test_atomic_actions.py`) のパス確認完了。
+    *   残りの `EffectResolver` ロジックおよび `PipelineExecutor` への効果移行を継続する。
 
 ### 3.2 [Pending] Phase 3.2: AI 本番運用 (Production Run)
 **Status: On Hold (Waiting for Phase 6)**
