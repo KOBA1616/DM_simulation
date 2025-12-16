@@ -18,7 +18,8 @@ namespace dm::engine::systems {
         PipelineExecutor() = default;
 
         // Execute a list of instructions
-        void execute(const std::vector<core::Instruction>& instructions, core::GameState& state);
+        void execute(const std::vector<core::Instruction>& instructions, core::GameState& state,
+                     const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Resume execution (Phase 7 feature stub, currently just executes synchronously)
         // void resume(core::GameState& state, int query_id, int selection_index);
@@ -35,14 +36,18 @@ namespace dm::engine::systems {
         bool execution_paused = false;
 
         // Execution primitives
-        void execute_instruction(const core::Instruction& inst, core::GameState& state);
+        void execute_instruction(const core::Instruction& inst, core::GameState& state,
+                                 const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Op handlers
-        void handle_select(const core::Instruction& inst, core::GameState& state);
+        void handle_select(const core::Instruction& inst, core::GameState& state,
+                           const std::map<core::CardID, core::CardDefinition>& card_db);
         void handle_move(const core::Instruction& inst, core::GameState& state);
         void handle_modify(const core::Instruction& inst, core::GameState& state);
-        void handle_if(const core::Instruction& inst, core::GameState& state);
-        void handle_loop(const core::Instruction& inst, core::GameState& state);
+        void handle_if(const core::Instruction& inst, core::GameState& state,
+                       const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_loop(const core::Instruction& inst, core::GameState& state,
+                         const std::map<core::CardID, core::CardDefinition>& card_db);
         void handle_calc(const core::Instruction& inst, core::GameState& state); // COUNT, MATH
         void handle_print(const core::Instruction& inst, core::GameState& state);
 
