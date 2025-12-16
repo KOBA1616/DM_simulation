@@ -155,14 +155,29 @@ namespace dm::engine::systems {
         if (inst.args.is_null()) return;
 
         std::vector<int> targets;
+        bool is_virtual_target = false;
+        std::string virtual_target_type = "";
+        int virtual_count = 0;
+
         if (inst.args.contains("target")) {
             auto target_val = inst.args["target"];
-            if (target_val.is_string() && target_val.get<std::string>().rfind("$", 0) == 0) {
-                auto v = get_context_var(target_val.get<std::string>());
-                if (std::holds_alternative<std::vector<int>>(v)) {
-                    targets = std::get<std::vector<int>>(v);
-                } else if (std::holds_alternative<int>(v)) {
-                    targets.push_back(std::get<int>(v));
+            if (target_val.is_string()) {
+                std::string s = target_val.get<std::string>();
+                if (s.rfind("$", 0) == 0) {
+                    auto v = get_context_var(s);
+                    if (std::holds_alternative<std::vector<int>>(v)) {
+                        targets = std::get<std::vector<int>>(v);
+                    } else if (std::holds_alternative<int>(v)) {
+                        targets.push_back(std::get<int>(v));
+                    }
+                } else if (s == "DECK_TOP") {
+                    is_virtual_target = true;
+                    virtual_target_type = "DECK_TOP";
+                    virtual_count = resolve_int(inst.args.value("count", 1));
+                } else if (s == "DECK_BOTTOM") {
+                     is_virtual_target = true;
+                     virtual_target_type = "DECK_BOTTOM";
+                     virtual_count = resolve_int(inst.args.value("count", 1));
                 }
             } else if (target_val.is_number()) {
                 targets.push_back(target_val.get<int>());
@@ -177,36 +192,57 @@ namespace dm::engine::systems {
         else if (to_zone_str == "SHIELD") to_zone = Zone::SHIELD;
         else if (to_zone_str == "DECK") to_zone = Zone::DECK;
 
-        // Handle index (e.g., DECK_TOP, DECK_BOTTOM)
-        // int index = inst.args.value("index", -1);
-        // Special strings for index? "TOP" -> 0, "BOTTOM" -> -1
+        // Resolve virtual targets to actual IDs
+        if (is_virtual_target) {
+            // Assume active player if not specified - or implied owner?
+            // Usually DECK_TOP implies active player's deck.
+            PlayerID pid = state.active_player_id;
+            const auto& deck = state.players[pid].deck;
+
+            if (virtual_target_type == "DECK_TOP") {
+                // Deck is usually ordered such that back() is top?
+                // Standard convention in this engine: push_back to add to top?
+                // Verify with GameState::draw_card logic usually.
+                // Assuming back is top.
+                int available = (int)deck.size();
+                int count = std::min(virtual_count, available);
+                for (int i = 0; i < count; ++i) {
+                     // Get ID from the end (top) backwards
+                     // But we must capture them before moving, because moving alters the deque.
+                     // Actually TransitionCommand handles it.
+                     // We just need the ID.
+                     targets.push_back(deck[available - 1 - i].instance_id);
+                }
+            }
+        }
 
         for (int id : targets) {
-             // Need owner, can look up from state
-             PlayerID owner = 0; // Fallback
-             if (id < (int)state.card_owner_map.size()) owner = state.card_owner_map[id];
+             // O(1) Owner Lookup
+             const CardInstance* card_ptr = state.get_card_instance(id);
+             if (!card_ptr) continue;
 
-             // Current zone lookup (inefficient, should use map if possible or GameState helper)
-             Zone from_zone = Zone::GRAVEYARD; // TODO: Implement zone lookup helper in GameState
-             // For now, TransitionCommand handles finding the card if we trust it,
-             // BUT TransitionCommand requires from_zone.
-             // Let's assume the caller knows, or iterate.
-             // GameState::get_card_zone(id) is needed.
-             // Since it's not exposed, we iterate.
-             bool found = false;
-             for (PlayerID p : {0, 1}) {
-                 for (Zone z : {Zone::HAND, Zone::MANA, Zone::BATTLE, Zone::SHIELD, Zone::GRAVEYARD, Zone::DECK, Zone::STACK, Zone::HYPER_SPATIAL}) {
-                     const auto& vec = state.get_zone(p, z);
-                     if (std::find(vec.begin(), vec.end(), id) != vec.end()) {
-                         from_zone = z;
-                         owner = p;
-                         found = true;
-                         break;
-                     }
-                 }
-                 if (found) break;
+             PlayerID owner = card_ptr->owner;
+             if (owner > 1) { // Should be valid if get_card_instance returned non-null
+                 if (state.card_owner_map.size() > (size_t)id) owner = state.card_owner_map[id];
              }
-             if (!found) continue; // Card not found
+
+             // Find source zone
+             Zone from_zone = Zone::GRAVEYARD;
+             bool found = false;
+
+             // Optimized search: Check zones in order of likelihood based on game phase/action?
+             // Or just check all for the specific owner.
+             const Player& p = state.players[owner];
+
+             // Check if it's in Hand
+             for(const auto& c : p.hand) if(c.instance_id == id) { from_zone = Zone::HAND; found = true; break; }
+             if(!found) for(const auto& c : p.battle_zone) if(c.instance_id == id) { from_zone = Zone::BATTLE; found = true; break; }
+             if(!found) for(const auto& c : p.mana_zone) if(c.instance_id == id) { from_zone = Zone::MANA; found = true; break; }
+             if(!found) for(const auto& c : p.shield_zone) if(c.instance_id == id) { from_zone = Zone::SHIELD; found = true; break; }
+             if(!found) for(const auto& c : p.deck) if(c.instance_id == id) { from_zone = Zone::DECK; found = true; break; }
+             if(!found) for(const auto& c : p.graveyard) if(c.instance_id == id) { from_zone = Zone::GRAVEYARD; found = true; break; }
+
+             if (!found) continue;
 
              auto cmd = std::make_unique<TransitionCommand>(id, from_zone, to_zone, owner, -1);
              cmd->execute(state);
