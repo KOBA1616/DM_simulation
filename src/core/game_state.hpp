@@ -186,6 +186,11 @@ namespace dm::core {
             players[1].id = 1;
         }
 
+        // Phase 6: Command Execution Interface
+        // Implemented in game_state_commands.cpp
+        void execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd);
+        void undo_last_command();
+
         // POMDP helpers
         void on_card_reveal(CardID cid);
         std::vector<float> vectorize_card_stats(CardID cid) const;

@@ -1,117 +1,130 @@
 #pragma once
 #include "game_command.hpp"
-#include "core/types.hpp"
-#include "core/modifiers.hpp"
+#include <string>
+#include <vector>
+#include <map>
 
 namespace dm::engine::game_command {
 
+    // TransitionCommand: Moves a card from one zone to another
     class TransitionCommand : public GameCommand {
     public:
-        int card_instance_id;
-        core::Zone from_zone;
-        core::Zone to_zone;
-        core::PlayerID owner_id;
-        int destination_index; // -1 for append
+        // Full Constructor
+        TransitionCommand(int instance_id, int source_player, int source_zone,
+                      int dest_player, int dest_zone, int dest_index);
 
-        // Context to restore exact position in from_zone for undo
-        int original_index;
-
-        TransitionCommand(int instance_id, core::Zone from, core::Zone to, core::PlayerID owner, int dest_idx = -1)
-            : card_instance_id(instance_id), from_zone(from), to_zone(to), owner_id(owner), destination_index(dest_idx), original_index(-1) {}
+        // Legacy/Simplified Constructor
+        TransitionCommand(int instance_id, int source_zone, int dest_zone, int player_id, int dest_index);
 
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
         CommandType get_type() const override { return CommandType::TRANSITION; }
+
+        int get_instance_id() const { return instance_id_; }
+        int get_dest_zone() const { return dest_zone_; }
+
+    private:
+        int instance_id_;
+        int source_player_;
+        int source_zone_;
+        int dest_player_;
+        int dest_zone_;
+        int dest_index_;
+
+        int previous_index_;
+        bool was_tapped_ = false;
+        bool was_face_down_ = false;
+        int previous_owner_ = -1;
     };
 
+    // MutateCommand: Changes a property of a game object
     class MutateCommand : public GameCommand {
     public:
         enum class MutationType {
             TAP,
             UNTAP,
             POWER_MOD,
+            BREAK_SHIELD,
+            ADD_MODIFIER,
+            ADD_PASSIVE,
             ADD_KEYWORD,
-            REMOVE_KEYWORD,
-            ADD_PASSIVE_EFFECT,
-            ADD_COST_MODIFIER
+            REMOVE_KEYWORD
         };
 
-        int target_instance_id;
-        MutationType mutation_type;
-        int int_value; // Power value or simple int param
-        std::string str_value; // Keyword string etc.
+        // Standard Constructor (Value + Duration). Default value=0 allows (id, type) calls.
+        MutateCommand(int target_id, MutationType type, int value = 0, int duration = 0);
 
-        // Extended payloads for modifiers
-        std::optional<core::PassiveEffect> passive_effect;
-        std::optional<core::CostModifier> cost_modifier;
-
-        // Undo context
-        int previous_int_value;
-        bool previous_bool_value;
-
-        MutateCommand(int instance_id, MutationType type, int val = 0, std::string str = "")
-            : target_instance_id(instance_id), mutation_type(type), int_value(val), str_value(str), previous_int_value(0), previous_bool_value(false) {}
+        // String Payload Constructor
+        MutateCommand(int target_id, MutationType type, int value, const std::string& str_value);
 
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
         CommandType get_type() const override { return CommandType::MUTATE; }
+
+    private:
+        int target_id_;
+        MutationType type_;
+        int value_;
+        int duration_;
+        std::string str_value_;
+
+        int previous_value_ = 0;
+        bool previous_bool_ = false;
     };
 
+    // FlowCommand: Controls game flow
     class FlowCommand : public GameCommand {
     public:
         enum class FlowType {
             PHASE_CHANGE,
-            TURN_CHANGE,
-            STEP_CHANGE, // Future use
+            NEXT_TURN,
+            GAME_OVER,
             SET_ATTACK_SOURCE,
             SET_ATTACK_TARGET,
             SET_ATTACK_PLAYER
         };
 
-        FlowType flow_type;
-        int new_value; // Phase enum or Turn number
-
-        // Undo context
-        int previous_value;
-
-        FlowCommand(FlowType type, int val)
-            : flow_type(type), new_value(val), previous_value(0) {}
-
+        FlowCommand(FlowType type, int next_value);
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
         CommandType get_type() const override { return CommandType::FLOW; }
+
+    private:
+        FlowType type_;
+        int next_value_;
+
+        int prev_value_ = 0;
+        int prev_phase_ = 0;
+        int prev_turn_ = 0;
+        int prev_active_player_ = 0;
+        int prev_winner_ = 0;
     };
 
+    // QueryCommand: Requests input
     class QueryCommand : public GameCommand {
     public:
-        std::string query_type;
-        std::vector<int> valid_targets;
-        std::map<std::string, int> params;
-
-        QueryCommand(std::string type, std::vector<int> targets = {}, std::map<std::string, int> p = {})
-            : query_type(type), valid_targets(targets), params(p) {}
-
+        QueryCommand(const std::string& query_type, const std::map<std::string, int>& params, const std::vector<int>& valid_targets);
         void execute(core::GameState& state) override;
-        void invert(core::GameState& state) override; // Clears the query
+        void invert(core::GameState& state) override;
         CommandType get_type() const override { return CommandType::QUERY; }
+
+    private:
+        std::string query_type_;
+        std::map<std::string, int> params_;
+        std::vector<int> valid_targets_;
     };
 
+    // DecideCommand: Records input
     class DecideCommand : public GameCommand {
     public:
-        int query_id; // To match the query
-        std::vector<int> selected_indices; // or instance_ids
-        int selected_option_index;
-
-        // Undo context
-        bool was_waiting;
-        std::optional<core::GameState::QueryContext> previous_query;
-
-        DecideCommand(int q_id, std::vector<int> selection = {}, int option = -1)
-            : query_id(q_id), selected_indices(selection), selected_option_index(option), was_waiting(false) {}
-
+        DecideCommand(int query_id, const std::vector<int>& selected_indices);
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
         CommandType get_type() const override { return CommandType::DECIDE; }
+
+    private:
+        int query_id_;
+        std::vector<int> selected_indices_;
     };
 
 }
