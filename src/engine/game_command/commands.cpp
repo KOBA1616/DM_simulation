@@ -135,6 +135,11 @@ namespace dm::engine::game_command {
                 state.active_modifiers.push_back(*cost_modifier);
             }
             return;
+        } else if (mutation_type == MutationType::ADD_PENDING_EFFECT) {
+            if (pending_effect) {
+                state.pending_effects.push_back(*pending_effect);
+            }
+            return;
         }
 
         core::CardInstance* card = state.get_card_instance(target_instance_id);
@@ -168,6 +173,11 @@ namespace dm::engine::game_command {
         } else if (mutation_type == MutationType::ADD_COST_MODIFIER) {
             if (!state.active_modifiers.empty()) {
                 state.active_modifiers.pop_back();
+            }
+            return;
+        } else if (mutation_type == MutationType::ADD_PENDING_EFFECT) {
+            if (!state.pending_effects.empty()) {
+                state.pending_effects.pop_back();
             }
             return;
         }
@@ -220,6 +230,10 @@ namespace dm::engine::game_command {
                 previous_value = state.current_attack.target_player;
                 state.current_attack.target_player = new_value;
                 break;
+            case FlowType::SET_ACTIVE_PLAYER:
+                previous_value = state.active_player_id;
+                state.active_player_id = new_value;
+                break;
             default: break;
         }
     }
@@ -240,6 +254,9 @@ namespace dm::engine::game_command {
                 break;
             case FlowType::SET_ATTACK_PLAYER:
                 state.current_attack.target_player = previous_value;
+                break;
+            case FlowType::SET_ACTIVE_PLAYER:
+                state.active_player_id = previous_value;
                 break;
             default: break;
         }

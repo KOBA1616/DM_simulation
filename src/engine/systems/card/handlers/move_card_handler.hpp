@@ -201,8 +201,8 @@ namespace dm::engine {
                  to_zone = Zone::BATTLE;
             }
 
-            TransitionCommand cmd(instance_id, from_zone, to_zone, owner_id, dest_idx);
-            cmd.execute(game_state);
+            auto cmd = std::make_unique<TransitionCommand>(instance_id, from_zone, to_zone, owner_id, dest_idx);
+            game_state.execute_command(std::move(cmd));
 
             // Post-move triggers
             if (dest == "SHIELD_ZONE") {

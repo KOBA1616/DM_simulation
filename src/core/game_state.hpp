@@ -12,6 +12,7 @@
 #include "card_json_types.hpp"
 #include "modifiers.hpp"
 #include "game_command_fwd.hpp"
+#include "pending_effect.hpp"
 #include <memory>
 
 namespace dm::core {
@@ -39,43 +40,6 @@ namespace dm::core {
         // Constructors
         CardInstance() : card_id(0), instance_id(-1), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
         CardInstance(CardID cid, int iid) : card_id(cid), instance_id(iid), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
-    };
-
-    struct PendingEffect {
-        EffectType type;
-        int source_instance_id;
-        PlayerID controller;
-
-        // Targeting
-        std::vector<int> target_instance_ids;
-        int num_targets_needed = 0;
-        ResolveType resolve_type = ResolveType::NONE;
-
-        FilterDef filter; // The filter used for selection
-        bool optional = false; // If true, can choose to select nothing (PASS)
-
-        // Optional: carry the EffectDef (from JSON) for later resolution after target selection
-        std::optional<EffectDef> effect_def;
-
-        // For SELECT_OPTION: Store the choices
-        std::vector<std::vector<ActionDef>> options;
-
-        // Phase 5: Execution Context (Variable Linking)
-        std::map<std::string, int> execution_context;
-
-        // Step 5.2.2: Loop Prevention
-        int chain_depth = 0;
-
-        // Optional context for REACTION_WINDOW
-        struct ReactionContext {
-            std::string trigger_event; // The event being reacted to (e.g., "ON_BLOCK_OR_ATTACK")
-            int attacking_creature_id = -1; // Instance ID of attacker
-            int blocked_creature_id = -1;
-        };
-        std::optional<ReactionContext> reaction_context;
-
-        PendingEffect(EffectType t, int src, PlayerID p) 
-            : type(t), source_instance_id(src), controller(p) {}
     };
 
     struct AttackRequest {
@@ -164,6 +128,9 @@ namespace dm::core {
 
         // Phase 6: GameCommand History
         std::vector<std::shared_ptr<dm::engine::game_command::GameCommand>> command_history;
+
+        // Phase 6: Command Execution Wrapper
+        void execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd);
 
         // Phase 6: Query/Decide
         bool waiting_for_user_input = false;

@@ -2,6 +2,7 @@
 #include "game_command.hpp"
 #include "core/types.hpp"
 #include "core/modifiers.hpp"
+#include "core/pending_effect.hpp"
 
 namespace dm::engine::game_command {
 
@@ -33,7 +34,8 @@ namespace dm::engine::game_command {
             ADD_KEYWORD,
             REMOVE_KEYWORD,
             ADD_PASSIVE_EFFECT,
-            ADD_COST_MODIFIER
+            ADD_COST_MODIFIER,
+            ADD_PENDING_EFFECT
         };
 
         int target_instance_id;
@@ -44,6 +46,7 @@ namespace dm::engine::game_command {
         // Extended payloads for modifiers
         std::optional<core::PassiveEffect> passive_effect;
         std::optional<core::CostModifier> cost_modifier;
+        std::optional<core::PendingEffect> pending_effect;
 
         // Undo context
         int previous_int_value;
@@ -65,7 +68,8 @@ namespace dm::engine::game_command {
             STEP_CHANGE, // Future use
             SET_ATTACK_SOURCE,
             SET_ATTACK_TARGET,
-            SET_ATTACK_PLAYER
+            SET_ATTACK_PLAYER,
+            SET_ACTIVE_PLAYER
         };
 
         FlowType flow_type;
