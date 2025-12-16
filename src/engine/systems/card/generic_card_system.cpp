@@ -379,8 +379,8 @@ namespace dm::engine {
 
     void GenericCardSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id) {
         std::map<std::string, int> empty;
-        std::map<dm::core::CardID, dm::core::CardDefinition> empty_db;
-        resolve_action(game_state, action, source_instance_id, empty, empty_db);
+        // Use Registry as fallback if no DB provided
+        resolve_action(game_state, action, source_instance_id, empty, CardRegistry::get_all_definitions());
     }
 
     // Binding Helper
