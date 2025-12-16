@@ -1,6 +1,8 @@
 #include "command_system.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "engine/systems/card/condition_system.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include <iostream>
 #include <algorithm>
@@ -21,6 +23,9 @@ namespace dm::engine::systems {
     }
 
     void CommandSystem::execute_command(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id) {
+        // Ensure defaults are loaded (singleton lazy init might need explicit call if not done elsewhere)
+        ConditionSystem::instance().initialize_defaults();
+
         switch (cmd.type) {
             case core::CommandType::TRANSITION:
             case core::CommandType::MUTATE:
@@ -35,7 +40,23 @@ namespace dm::engine::systems {
     }
 
     void CommandSystem::execute_primitive(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id) {
-        if (cmd.type == core::CommandType::TRANSITION) {
+        if (cmd.type == core::CommandType::FLOW) {
+            // FLOW Primitive: Evaluate condition and execute branch
+            bool cond_result = true;
+            if (cmd.condition.has_value()) {
+                 const auto& card_db = CardRegistry::get_all_definitions();
+                 std::map<std::string, int> empty_ctx;
+                 cond_result = ConditionSystem::instance().evaluate_def(
+                     state, cmd.condition.value(), source_instance_id, card_db, empty_ctx
+                 );
+            }
+
+            const auto& branch = cond_result ? cmd.if_true : cmd.if_false;
+            for (const auto& child_cmd : branch) {
+                execute_command(state, child_cmd, source_instance_id, player_id);
+            }
+
+        } else if (cmd.type == core::CommandType::TRANSITION) {
             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id);
 
             Zone from_z = parse_zone_string(cmd.from_zone);
