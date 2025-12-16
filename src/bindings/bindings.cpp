@@ -40,6 +40,7 @@
 
 #include "core/instruction.hpp"
 #include "engine/systems/pipeline_executor.hpp"
+#include "engine/systems/card/legacy_json_adapter.hpp"
 
 namespace py = pybind11;
 using namespace dm::core;
@@ -195,6 +196,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
              return py::none();
         });
 
+    py::class_<systems::LegacyJsonAdapter>(m, "LegacyJsonAdapter")
+        .def_static("convert", &systems::LegacyJsonAdapter::convert);
 
     py::enum_<Civilization>(m, "Civilization")
         .value("NONE", Civilization::NONE)
