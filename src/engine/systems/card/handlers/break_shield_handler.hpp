@@ -1,6 +1,6 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/flow/reaction_system.hpp"
 #include <vector>
@@ -17,7 +17,7 @@ namespace dm::engine {
                  ed.trigger = TriggerType::NONE;
                  ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                  ed.actions = { ctx.action };
-                 GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
 
@@ -29,7 +29,7 @@ namespace dm::engine {
 
             std::vector<int> target_shield_ids;
             std::vector<PlayerID> target_players;
-            PlayerID controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            PlayerID controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
 
             if (ctx.action.filter.owner.has_value()) {
                 std::string owner = ctx.action.filter.owner.value();
@@ -73,7 +73,7 @@ namespace dm::engine {
 
             for (int shield_id : shield_ids) {
                 // Find shield owner and verify existence
-                PlayerID shield_owner = GenericCardSystem::get_controller(game_state, shield_id);
+                PlayerID shield_owner = EffectSystem::get_controller(game_state, shield_id);
                 // Note: get_controller relies on card_owner_map, which is stable.
                 // But verify shield is still in shield zone (it might have moved if multiple breaks happened)
 
@@ -86,7 +86,7 @@ namespace dm::engine {
                 CardInstance shield_card = *it; // Copy state before move
 
                 // 1. AT_BREAK_SHIELD Trigger (on breaker)
-                GenericCardSystem::resolve_trigger(game_state, TriggerType::AT_BREAK_SHIELD, source_id, card_db);
+                EffectSystem::instance().resolve_trigger(game_state, TriggerType::AT_BREAK_SHIELD, source_id, card_db);
 
                 // 2. Determine Destination and S-Trigger
                 bool shield_burn = false;
@@ -125,7 +125,7 @@ namespace dm::engine {
                      // Reaction Window: ON_SHIELD_ADD
                      ReactionSystem::check_and_open_window(game_state, card_db, "ON_SHIELD_ADD", shield_owner);
                 } else {
-                     GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, shield_id, card_db);
+                     EffectSystem::instance().resolve_trigger(game_state, TriggerType::ON_DESTROY, shield_id, card_db);
                 }
             }
         }

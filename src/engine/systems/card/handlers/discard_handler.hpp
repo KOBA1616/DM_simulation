@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include <algorithm>
 #include <random>
@@ -17,7 +17,7 @@ namespace dm::engine {
 
             // Check scope/target_choice
             if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
-                 GenericCardSystem::delegate_selection(ctx);
+                 EffectSystem::instance().delegate_selection(ctx);
                  return;
             }
 

@@ -10,7 +10,7 @@ namespace dm::engine {
         void resolve(const ResolutionContext& ctx) override {
              using namespace dm::core;
 
-             PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+             PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
              Player& controller = ctx.game_state.players[controller_id];
 
              // Handle Variable Linking
@@ -46,7 +46,7 @@ namespace dm::engine {
                 // We must iterate over opponent's Battle Zone to trigger effects like "Whenever your opponent draws a card..."
                 // Since this is inside the loop, it triggers per card drawn.
                 for (const auto& card : opponent.battle_zone) {
-                    GenericCardSystem::resolve_trigger(ctx.game_state, TriggerType::ON_OPPONENT_DRAW, card.instance_id, ctx.card_db);
+                    EffectSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_OPPONENT_DRAW, card.instance_id, ctx.card_db);
                 }
              }
 

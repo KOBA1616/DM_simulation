@@ -1,6 +1,6 @@
 
 import unittest
-from dm_ai_module import GameState, CardType, GenericCardSystem, FilterDef, CardDefinition, CardData, Civilization, CardKeywords, EffectDef, ActionDef, EffectActionType, TargetScope
+from dm_ai_module import GameState, CardType, EffectSystem, FilterDef, CardDefinition, CardData, Civilization, CardKeywords, EffectDef, ActionDef, EffectActionType, TargetScope
 
 class TestTamaseed(unittest.TestCase):
     def test_tamaseed_logic(self):
@@ -20,12 +20,12 @@ class TestTamaseed(unittest.TestCase):
         tamaseed_def.civilizations = [Civilization.LIGHT]
 
         # Manually register the card if possible or just use a local map for testing
-        # GenericCardSystem::resolve_effect uses CardRegistry::get_all_definitions() usually.
-        # But we can test TargetUtils logic by manually invoking GenericCardSystem helpers if they exposed TargetUtils.
+        # EffectSystem::resolve_effect uses CardRegistry::get_all_definitions() usually.
+        # But we can test TargetUtils logic by manually invoking EffectSystem helpers if they exposed TargetUtils.
         # TargetUtils is not exposed, but FilterDef is.
         # We can't directly call TargetUtils.is_valid_target from Python.
 
-        # However, we can use GenericCardSystem.resolve_action with COUNT_CARDS to verify counting.
+        # However, we can use EffectSystem.resolve_action with COUNT_CARDS to verify counting.
 
         # Add Tamaseed to Battle Zone
         state.add_test_card_to_battle(0, 1000, 1, False, False)
@@ -41,7 +41,7 @@ class TestTamaseed(unittest.TestCase):
         action_count_elem.filter = filter_elem
         action_count_elem.output_value_key = "elem_count"
 
-        ctx_elem = GenericCardSystem.resolve_action_with_db(state, action_count_elem, 0, {1000: tamaseed_def}, {})
+        ctx_elem = EffectSystem.resolve_action_with_db(state, action_count_elem, 0, {1000: tamaseed_def}, {})
         self.assertEqual(ctx_elem["elem_count"], 1)
 
         # 2. Verify "CREATURE" does NOT count it
@@ -54,7 +54,7 @@ class TestTamaseed(unittest.TestCase):
         action_count_creature.filter = filter_creature
         action_count_creature.output_value_key = "creature_count"
 
-        ctx_creature = GenericCardSystem.resolve_action_with_db(state, action_count_creature, 0, {1000: tamaseed_def}, {})
+        ctx_creature = EffectSystem.resolve_action_with_db(state, action_count_creature, 0, {1000: tamaseed_def}, {})
         self.assertEqual(ctx_creature["creature_count"], 0)
 
         # 3. Verify "TAMASEED" counts it
@@ -67,7 +67,7 @@ class TestTamaseed(unittest.TestCase):
         action_count_tamaseed.filter = filter_tamaseed
         action_count_tamaseed.output_value_key = "tamaseed_count"
 
-        ctx_tamaseed = GenericCardSystem.resolve_action_with_db(state, action_count_tamaseed, 0, {1000: tamaseed_def}, {})
+        ctx_tamaseed = EffectSystem.resolve_action_with_db(state, action_count_tamaseed, 0, {1000: tamaseed_def}, {})
         self.assertEqual(ctx_tamaseed["tamaseed_count"], 1)
 
     def test_element_count_evolution(self):
@@ -99,7 +99,7 @@ class TestTamaseed(unittest.TestCase):
         action.filter = filter_elem
         action.output_value_key = "count"
 
-        ctx = GenericCardSystem.resolve_action_with_db(state, action, 0, {2000: evo_def, 2001: base_def}, {})
+        ctx = EffectSystem.resolve_action_with_db(state, action, 0, {2000: evo_def, 2001: base_def}, {})
         self.assertEqual(ctx["count"], 1)
 
 if __name__ == '__main__':
