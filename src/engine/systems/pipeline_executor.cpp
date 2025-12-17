@@ -277,6 +277,20 @@ namespace dm::engine::systems {
         else if (mod_type_str == "POWER_ADD") type = MutateCommand::MutationType::POWER_MOD;
         else if (mod_type_str == "ADD_KEYWORD") type = MutateCommand::MutationType::ADD_KEYWORD;
         else if (mod_type_str == "REMOVE_KEYWORD") type = MutateCommand::MutationType::REMOVE_KEYWORD;
+        else if (mod_type_str == "STAT") {
+            // Handle STAT update
+            StatCommand::StatType s_type;
+            std::string stat_name = resolve_string(inst.args.value("stat", ""));
+            if (stat_name == "CARDS_DRAWN") s_type = StatCommand::StatType::CARDS_DRAWN;
+            else if (stat_name == "CARDS_DISCARDED") s_type = StatCommand::StatType::CARDS_DISCARDED;
+            else if (stat_name == "CREATURES_PLAYED") s_type = StatCommand::StatType::CREATURES_PLAYED;
+            else if (stat_name == "SPELLS_CAST") s_type = StatCommand::StatType::SPELLS_CAST;
+            else return;
+
+            auto cmd = std::make_unique<StatCommand>(s_type, val);
+            execute_command(std::move(cmd), state);
+            return;
+        }
         else return;
 
         for (int id : targets) {
