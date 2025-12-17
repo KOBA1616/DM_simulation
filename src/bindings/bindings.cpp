@@ -198,12 +198,27 @@ PYBIND11_MODULE(dm_ai_module, m) {
              }
              return std::string("");
         })
-        .def_readwrite("then_block", &Instruction::then_block)
-        .def_readwrite("else_block", &Instruction::else_block);
+        // Opaque wrappers for recursive blocks to avoid pybind11 copy overhead/crash
+        .def("get_then_block_size", [](const Instruction& self) { return self.then_block.size(); })
+        .def("get_else_block_size", [](const Instruction& self) { return self.else_block.size(); })
+        .def("get_then_instruction", [](const Instruction& self, size_t index) {
+            if (index < self.then_block.size()) return self.then_block[index];
+            throw py::index_error();
+        })
+        .def("get_else_instruction", [](const Instruction& self, size_t index) {
+            if (index < self.else_block.size()) return self.else_block[index];
+            throw py::index_error();
+        });
 
     py::class_<systems::PipelineExecutor>(m, "PipelineExecutor")
         .def(py::init<>())
         .def("execute", &systems::PipelineExecutor::execute)
+        .def("set_context_var", [](systems::PipelineExecutor& self, std::string key, py::object val) {
+             if (py::isinstance<py::int_>(val)) self.set_context_var(key, py::cast<int>(val));
+             else if (py::isinstance<py::str>(val)) self.set_context_var(key, py::cast<std::string>(val));
+             else if (py::isinstance<py::bool_>(val)) self.set_context_var(key, py::cast<bool>(val));
+             // Handle list for vector<int>
+        })
         .def("get_context_var", [](const systems::PipelineExecutor& self, std::string key) -> py::object {
              auto v = self.get_context_var(key);
              if (std::holds_alternative<int>(v)) return py::cast(std::get<int>(v));
@@ -854,7 +869,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def("calculate_hash", &GameState::calculate_hash)
         .def("initialize_card_stats", &GameState::initialize_card_stats)
-        .def("vectorize_card_stats", &GameState::vectorize_card_stats);
+        .def("vectorize_card_stats", &GameState::vectorize_card_stats)
+        .def("get_hand_size", [](const GameState& s, PlayerID pid) {
+            return s.players[pid].hand.size();
+        });
 
     py::class_<GameInstance>(m, "GameInstance")
         // .def(py::init<uint32_t, const std::map<CardID, CardDefinition>&>()) // UNSAFE: Creates dangling reference from temporary map

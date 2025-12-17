@@ -224,5 +224,82 @@ namespace dm::engine {
                 }
              }
         }
+
+        void compile(const ResolutionContext& ctx) override {
+            using namespace dm::core;
+            if (!ctx.instruction_buffer) return;
+
+            if (ctx.action.type == EffectActionType::SEARCH_DECK) {
+                 Instruction select(InstructionOp::SELECT);
+                 select.args["filter"] = ctx.action.filter;
+                 select.args["out"] = "$search_selection";
+                 if (ctx.action.filter.zones.empty()) {
+                     select.args["filter"]["zones"] = std::vector<std::string>{"DECK"};
+                 }
+                 ctx.instruction_buffer->push_back(select);
+
+                 Instruction move(InstructionOp::MOVE);
+                 move.args["to"] = (ctx.action.destination_zone == "MANA_ZONE") ? "MANA" : "HAND";
+                 move.args["target"] = "$search_selection";
+                 ctx.instruction_buffer->push_back(move);
+
+                 Instruction shuffle(InstructionOp::MODIFY);
+                 shuffle.args["type"] = "SHUFFLE";
+                 shuffle.args["target"] = "DECK";
+                 ctx.instruction_buffer->push_back(shuffle);
+            }
+            else if (ctx.action.type == EffectActionType::SEARCH_DECK_BOTTOM) {
+                int look_count = ctx.action.value1;
+                if (look_count == 0) look_count = 1;
+
+                Instruction move_to_buf(InstructionOp::MOVE);
+                move_to_buf.args["to"] = "BUFFER";
+                move_to_buf.args["target"] = "DECK_BOTTOM";
+                move_to_buf.args["count"] = look_count;
+                ctx.instruction_buffer->push_back(move_to_buf);
+
+                Instruction select(InstructionOp::SELECT);
+                select.args["filter"] = ctx.action.filter;
+                select.args["filter"]["zones"] = std::vector<std::string>{"EFFECT_BUFFER"};
+                select.args["out"] = "$search_selection";
+                ctx.instruction_buffer->push_back(select);
+
+                Instruction move_sel(InstructionOp::MOVE);
+                move_sel.args["to"] = "HAND";
+                move_sel.args["target"] = "$search_selection";
+                ctx.instruction_buffer->push_back(move_sel);
+
+                Instruction move_rest(InstructionOp::MOVE);
+                move_rest.args["to"] = "DECK";
+                move_rest.args["to_bottom"] = true;
+                Instruction select_rest(InstructionOp::SELECT);
+                select_rest.args["filter"]["zones"] = std::vector<std::string>{"EFFECT_BUFFER"};
+                select_rest.args["out"] = "$buffer_rest";
+                select_rest.args["count"] = 999;
+                ctx.instruction_buffer->push_back(select_rest);
+
+                move_rest.args["target"] = "$buffer_rest";
+                ctx.instruction_buffer->push_back(move_rest);
+            }
+            else if (ctx.action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
+                 Instruction move(InstructionOp::MOVE);
+                 move.args["to"] = "DECK";
+                 move.args["to_bottom"] = true;
+
+                 if (ctx.action.scope == TargetScope::TARGET_SELECT) {
+                     move.args["target"] = "$selection";
+                 } else if (!ctx.action.input_value_key.empty()) {
+                     move.args["target"] = "$" + ctx.action.input_value_key;
+                 } else {
+                     Instruction select(InstructionOp::SELECT);
+                     select.args["filter"] = ctx.action.filter;
+                     select.args["out"] = "$auto_sdb_selection";
+                     select.args["count"] = 999;
+                     ctx.instruction_buffer->push_back(select);
+                     move.args["target"] = "$auto_sdb_selection";
+                 }
+                 ctx.instruction_buffer->push_back(move);
+            }
+        }
     };
 }
