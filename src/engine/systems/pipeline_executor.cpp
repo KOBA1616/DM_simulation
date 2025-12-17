@@ -68,6 +68,7 @@ namespace dm::engine::systems {
             case InstructionOp::MODIFY: handle_modify(inst, state); break;
             case InstructionOp::IF:     handle_if(inst, state, card_db); break;
             case InstructionOp::LOOP:   handle_loop(inst, state, card_db); break;
+            case InstructionOp::REPEAT: handle_repeat(inst, state, card_db); break;
             case InstructionOp::COUNT:
             case InstructionOp::MATH:   handle_calc(inst, state); break;
             case InstructionOp::PRINT:  handle_print(inst, state); break;
@@ -333,6 +334,17 @@ namespace dm::engine::systems {
         }
     }
 
+    void PipelineExecutor::handle_repeat(const Instruction& inst, GameState& state,
+                                       const std::map<core::CardID, core::CardDefinition>& card_db) {
+        if (inst.args.is_null()) return;
+        int count = resolve_int(inst.args.value("count", 1));
+
+        for (int i = 0; i < count; ++i) {
+            set_context_var("$i", i);
+            execute(inst.then_block, state, card_db);
+        }
+    }
+
     void PipelineExecutor::handle_calc(const Instruction& inst, GameState& /*state*/) {
         if (inst.args.is_null()) return;
         std::string out_key = inst.args.value("out", "$result");
@@ -345,6 +357,7 @@ namespace dm::engine::systems {
             else if (op == "-") res = lhs - rhs;
             else if (op == "*") res = lhs * rhs;
             else if (op == "/") res = (rhs != 0) ? lhs / rhs : 0;
+            else if (op == "%") res = (rhs != 0) ? lhs % rhs : 0;
 
             set_context_var(out_key, res);
         }

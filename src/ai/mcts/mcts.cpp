@@ -1,6 +1,6 @@
 #include "mcts.hpp"
 #include "engine/actions/action_generator.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include <cmath>
@@ -13,6 +13,7 @@ namespace dm::ai {
 
     using namespace dm::core;
     using namespace dm::engine;
+    using namespace dm::engine::systems;
 
     MCTS::MCTS(const std::map<CardID, CardDefinition>& card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size, float alpha)
         : card_db_(card_db), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size), alpha_(alpha) {}
@@ -162,7 +163,10 @@ namespace dm::ai {
             float p = priors[i] / sum_exp;
             
             GameState next_state = node->state;
-            EffectResolver::resolve_action(next_state, action, card_db_);
+
+            // Use GameLogicSystem instead of EffectResolver
+            GameLogicSystem::resolve_action_oneshot(next_state, action, card_db_);
+
             if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
                 PhaseManager::next_phase(next_state, card_db_);
             }

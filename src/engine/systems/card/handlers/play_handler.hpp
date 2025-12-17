@@ -1,11 +1,10 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include "engine/game_command/commands.hpp"
 
 namespace dm::engine {
@@ -14,13 +13,6 @@ namespace dm::engine {
     public:
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
-
-            // Delegate if needed
-            if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
-                 // Usually PLAY_CARD doesn't use generic select logic directly but relies on "From Zone" implicit iteration
-                 // unless explicitly set.
-                 // However, existing logic supports it.
-            }
 
             // Gather targets (implicit from filter)
             std::vector<int> targets;
@@ -67,97 +59,39 @@ namespace dm::engine {
         void resolve_with_targets(const ResolutionContext& ctx) override {
             using namespace dm::core;
             using namespace dm::engine::game_command;
+            using namespace dm::engine::systems;
 
             if (!ctx.targets || ctx.targets->empty()) return;
 
             for (int target_id : *ctx.targets) {
-                CardInstance* card = ctx.game_state.get_card_instance(target_id);
-                if (!card) continue;
-
-                PlayerID controller = ctx.game_state.active_player_id;
-                // Determine controller for the PLAY action
-                if (ctx.source_instance_id >= 0 && ctx.source_instance_id < (int)ctx.game_state.card_owner_map.size()) {
-                     controller = ctx.game_state.card_owner_map[ctx.source_instance_id];
-                }
-
-                // Identify source zone for TransitionCommand
-                // We need to know where it is coming from.
-                Zone from_zone = Zone::HAND;
-                PlayerID owner_id = 0;
-                bool found = false;
-
-                for (auto& p : ctx.game_state.players) {
-                    if (std::any_of(p.hand.begin(), p.hand.end(), [&](const auto& c){ return c.instance_id == target_id; })) { from_zone = Zone::HAND; owner_id = p.id; found = true; break; }
-                    if (std::any_of(p.graveyard.begin(), p.graveyard.end(), [&](const auto& c){ return c.instance_id == target_id; })) { from_zone = Zone::GRAVEYARD; owner_id = p.id; found = true; break; }
-                    if (std::any_of(p.mana_zone.begin(), p.mana_zone.end(), [&](const auto& c){ return c.instance_id == target_id; })) { from_zone = Zone::MANA; owner_id = p.id; found = true; break; }
-                    if (std::any_of(p.battle_zone.begin(), p.battle_zone.end(), [&](const auto& c){ return c.instance_id == target_id; })) { from_zone = Zone::BATTLE; owner_id = p.id; found = true; break; }
-                    if (std::any_of(p.shield_zone.begin(), p.shield_zone.end(), [&](const auto& c){ return c.instance_id == target_id; })) { from_zone = Zone::SHIELD; owner_id = p.id; found = true; break; }
-                    if (std::any_of(p.deck.begin(), p.deck.end(), [&](const auto& c){ return c.instance_id == target_id; })) { from_zone = Zone::DECK; owner_id = p.id; found = true; break; }
-                }
-
-                if (!found) continue;
-
-                // 1. Move to Stack (TransitionCommand)
-                // Note: TransitionCommand to STACK is technically not supported by Zone enum directly in "to_zone" usually?
-                // Wait, Zone::STACK is not in standard enum, but `EffectResolver` uses `stack_zone`.
-                // `TransitionCommand` implementation uses `Zone` enum.
-                // If Zone enum doesn't have STACK, TransitionCommand will fail.
-                // Checking `commands.cpp` logic: `get_vec` switch covers HAND, MANA, BATTLE, GRAVEYARD, SHIELD, DECK.
-                // It does NOT cover STACK.
-                // **CRITICAL**: TransitionCommand needs update to support STACK or I cannot use it for PlayHandler.
-
-                // Since I cannot modify `Zone` enum easily (core type), I might have to use a "Special" command or extend TransitionCommand.
-                // Or I revert to manual manipulation for STACK move, but wrapping the REST of the logic.
-                // But the requirement is "Migrate Handlers".
-
-                // Assuming I cannot easily change Zone enum in this step without touching core,
-                // I will use ZoneUtils::find_and_remove and manual push to stack for now,
-                // BUT `PlayHandler` logic *after* stack is `EffectResolver::resolve_play_from_stack`.
-                // `resolve_play_from_stack` handles the resolution.
-
-                // If I can't use TransitionCommand for Stack, then "Migrating PlayHandler" means mostly ensuring
-                // it calls `resolve_play_from_stack`.
-                // However, `PlayHandler` was already doing that.
-
-                // Let's defer modifying `PlayHandler` heavily if TransitionCommand is limited.
-                // Instead, I will implement `MoveCardHandler` fully (which I did) and `BreakShieldHandler` (done).
-                // `DestroyHandler` was also done.
-
-                // Since I already wrote the file, I should make sure it works.
-                // I will use `ZoneUtils` for the move to stack (keeping legacy behavior for that part)
-                // because `TransitionCommand` doesn't support Stack.
-                // OR I can add STACK support to `TransitionCommand` if `Zone` has it?
-                // Checking `src/core/types.hpp` would be good.
-
-                // Assuming Zone enum is standard: HAND, BATTLE, MANA, SHIELD, GRAVEYARD, DECK.
-                // So no STACK.
-
-                // So I will stick to `ZoneUtils` for the Stack move, effectively meaning `PlayHandler`
-                // is mostly wrapper around `EffectResolver`.
-
-                // Reverting to similar logic as original but cleaned up.
-
-                // 1. Remove from current zone
+                // 1. Remove from current zone (Manual, as TransitionCommand lacks Stack)
                 std::optional<CardInstance> removed_card = ZoneUtils::find_and_remove(ctx.game_state, target_id);
                 if (!removed_card) continue;
 
                 // 2. Add to Stack
                 ctx.game_state.stack_zone.push_back(*removed_card);
 
-                // 3. Play
-                int cost_reduction = ctx.action.value1;
-                // If free play?
+                // 3. Play via Pipeline/GameLogicSystem
+                // We construct an Instruction to call handle_resolve_play
+                nlohmann::json args;
+                args["type"] = "RESOLVE_PLAY";
+                args["source_id"] = target_id;
+                // Inherit cost reduction if any (value1)
+                // Actually RESOLVE_PLAY in GameLogicSystem doesn't take reduction, it assumes paid or free.
+                // This is effect summon, so it's free.
+                args["spawn_source"] = (int)SpawnSource::EFFECT_SUMMON;
+                // dest_override?
 
-                EffectResolver::resolve_play_from_stack(
-                    ctx.game_state,
-                    target_id,
-                    cost_reduction,
-                    SpawnSource::EFFECT_SUMMON,
-                    controller,
-                    ctx.card_db,
-                    -1,
-                    0
-                );
+                // Since IActionHandler is synchronous, we can just call GameLogicSystem::resolve_action_oneshot
+                // Or better, use a temporary Pipeline.
+
+                // Construct Action to pass to GameLogicSystem
+                Action resolve_act;
+                resolve_act.type = ActionType::RESOLVE_PLAY;
+                resolve_act.source_instance_id = target_id;
+                resolve_act.spawn_source = SpawnSource::EFFECT_SUMMON;
+
+                GameLogicSystem::resolve_action_oneshot(ctx.game_state, resolve_act, ctx.card_db);
             }
         }
     };

@@ -3,12 +3,14 @@
 #include "engine/game_instance.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/actions/action_generator.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include <iostream>
 #include <chrono>
 
 namespace dm::ai {
+
+    using namespace dm::engine::systems;
 
     DataCollector::DataCollector(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db)
         : card_db_(card_db) {}
@@ -112,7 +114,7 @@ namespace dm::ai {
                 game_players.push_back(active_player);
 
                 // Apply action
-                dm::engine::EffectResolver::resolve_action(game.state, chosen_action, card_db_);
+                GameLogicSystem::resolve_action_oneshot(game.state, chosen_action, card_db_);
 
                 if (chosen_action.type == dm::core::ActionType::PASS) {
                      dm::engine::PhaseManager::next_phase(game.state, card_db_);

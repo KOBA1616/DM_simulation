@@ -1,6 +1,6 @@
 #include "beam_search_evaluator.hpp"
 #include "engine/actions/action_generator.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include <cmath>
@@ -11,6 +11,7 @@ namespace dm::ai {
 
     using namespace dm::core;
     using namespace dm::engine;
+    using namespace dm::engine::systems;
 
     BeamSearchEvaluator::BeamSearchEvaluator(const std::map<CardID, CardDefinition>& card_db, int beam_width, int max_depth)
         : card_db_(card_db), beam_width_(beam_width), max_depth_(max_depth) {}
@@ -50,7 +51,10 @@ namespace dm::ai {
         // Initialize beam with root children
         for (const auto& action : root_actions) {
             GameState next_state = root_state;
-            EffectResolver::resolve_action(next_state, action, card_db_);
+
+            // Use GameLogicSystem instead of EffectResolver
+            GameLogicSystem::resolve_action_oneshot(next_state, action, card_db_);
+
             if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
                 PhaseManager::next_phase(next_state, card_db_);
             }
@@ -107,7 +111,10 @@ namespace dm::ai {
                 auto actions = ActionGenerator::generate_legal_actions(node.state, card_db_);
                 for (const auto& action : actions) {
                     GameState next_state = node.state;
-                    EffectResolver::resolve_action(next_state, action, card_db_);
+
+                    // Use GameLogicSystem
+                    GameLogicSystem::resolve_action_oneshot(next_state, action, card_db_);
+
                     if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
                         PhaseManager::next_phase(next_state, card_db_);
                     }
@@ -161,30 +168,6 @@ namespace dm::ai {
         score -= calculate_opponent_danger(state, perspective);
 
         // 4. Trigger Risk (Negative score)
-        // Only relevant if we are attacking (active player is perspective and phase is ATTACK?)
-        // Or generally, the state reflects the risk taken.
-        // If we just broke a shield, the state might have new cards in hand or creature destroyed.
-        // But Trigger Risk is usually "Future Risk".
-        // Here we evaluate "Current State".
-        // If we are about to attack (Active Player = Perspective), we assess risk of attacking?
-        // But Beam Search simulates the attack. The RESULTING state shows the aftermath (trigger resolved).
-        // So explicit Trigger Risk calculation in static evaluation might be for "Potential future attacks"?
-        // The prompt says: "God View... Probabilistic Trigger Risk... as a penalty".
-        // If I am in a state where I *can* attack, the risk applies?
-        // Or does it apply to the *action* selection?
-        // Since we are evaluating the *result* state, if a trigger happened, it's already in the state (e.g. creature destroyed).
-        // However, if the beam search depth is shallow, we might stop *before* the attack resolves?
-        // No, we resolve actions.
-        // Ah, "Probabilistic Trigger Risk" usually means we don't *know* the trigger.
-        // But "God View" means we DO know.
-        // "Using God View... calculate probabilistic penalty".
-        // This implies: "I see 2 triggers in 5 shields. Risk is 40%."
-        // If I attack, there is a 40% chance of bad thing.
-        // If the simulation *actually* flips the shield (deterministically using the seed), then the Beam Search sees the *actual* outcome.
-        // But the prompt says "as a penalty... in calculation formula".
-        // This suggests we might NOT be resolving the hidden info deterministically, or we want to discourage risky plays even if they work out in one seed.
-        // Let's implement it as a penalty based on shield content of the opponent.
-
         score -= calculate_trigger_risk(state, perspective);
 
         return score;
@@ -207,9 +190,6 @@ namespace dm::ai {
 
         // Shields (More is better)
         score += (me.shield_zone.size() - opp.shield_zone.size()) * 5.0f;
-
-        // Shield Trigger check? (If we have triggers in shield, that's good?)
-        // Maybe later.
 
         return score;
     }
@@ -263,22 +243,7 @@ namespace dm::ai {
         float probability = (float)trigger_count / (float)total_shields;
 
         // Penalty is proportional to probability * impact
-        // Impact is hard to guess, let's assume a constant "Bad Thing" value.
         float impact = 20.0f;
-
-        // But risk is only relevant if we are *attacking*.
-        // If the state is "After Attack", the shield is gone.
-        // If the state is "Before Attack", we have risk.
-        // But evaluation happens on states *after* actions.
-        // If we *did* attack and broke a shield, the risk was realized (or not).
-        // If we are in a state where we *can* attack (e.g. Main Phase with SA),
-        // the state score should reflect the *potential* risk?
-        // Actually, if we use this for the *result* of a search, we want to value states where we are safe.
-        // If we are in a state where opponent has high trigger density, maybe we should be cautious?
-        // But the prompt says "This risk is incorporated into the calculation formula".
-        // Let's just return a penalty based on shield content of the opponent.
-        // It discourages attacking if many triggers are left?
-        // Or simply "Opponent has 3 triggers hidden" is a bad state for us? Yes.
 
         return probability * impact * trigger_count;
     }

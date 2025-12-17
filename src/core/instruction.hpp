@@ -10,6 +10,7 @@ namespace dm::core {
         // Logic
         IF,
         LOOP,       // FOREACH
+        REPEAT,     // Simple repeat N times
         // Query
         SELECT,
         // Action
@@ -30,6 +31,7 @@ namespace dm::core {
         {InstructionOp::NOOP, "NOOP"},
         {InstructionOp::IF, "IF"},
         {InstructionOp::LOOP, "LOOP"},
+        {InstructionOp::REPEAT, "REPEAT"},
         {InstructionOp::SELECT, "SELECT"},
         {InstructionOp::MOVE, "MOVE"},
         {InstructionOp::MODIFY, "MODIFY"},
