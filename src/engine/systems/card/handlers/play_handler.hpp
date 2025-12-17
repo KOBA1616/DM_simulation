@@ -5,7 +5,7 @@
 #include "core/card_def.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp" // Changed from EffectResolver
 #include "engine/game_command/commands.hpp"
 
 namespace dm::engine {
@@ -66,7 +66,7 @@ namespace dm::engine {
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
             using namespace dm::core;
-            using namespace dm::engine::game_command;
+            using namespace dm::engine::systems;
 
             if (!ctx.targets || ctx.targets->empty()) return;
 
@@ -97,46 +97,6 @@ namespace dm::engine {
 
                 if (!found) continue;
 
-                // 1. Move to Stack (TransitionCommand)
-                // Note: TransitionCommand to STACK is technically not supported by Zone enum directly in "to_zone" usually?
-                // Wait, Zone::STACK is not in standard enum, but `EffectResolver` uses `stack_zone`.
-                // `TransitionCommand` implementation uses `Zone` enum.
-                // If Zone enum doesn't have STACK, TransitionCommand will fail.
-                // Checking `commands.cpp` logic: `get_vec` switch covers HAND, MANA, BATTLE, GRAVEYARD, SHIELD, DECK.
-                // It does NOT cover STACK.
-                // **CRITICAL**: TransitionCommand needs update to support STACK or I cannot use it for PlayHandler.
-
-                // Since I cannot modify `Zone` enum easily (core type), I might have to use a "Special" command or extend TransitionCommand.
-                // Or I revert to manual manipulation for STACK move, but wrapping the REST of the logic.
-                // But the requirement is "Migrate Handlers".
-
-                // Assuming I cannot easily change Zone enum in this step without touching core,
-                // I will use ZoneUtils::find_and_remove and manual push to stack for now,
-                // BUT `PlayHandler` logic *after* stack is `EffectResolver::resolve_play_from_stack`.
-                // `resolve_play_from_stack` handles the resolution.
-
-                // If I can't use TransitionCommand for Stack, then "Migrating PlayHandler" means mostly ensuring
-                // it calls `resolve_play_from_stack`.
-                // However, `PlayHandler` was already doing that.
-
-                // Let's defer modifying `PlayHandler` heavily if TransitionCommand is limited.
-                // Instead, I will implement `MoveCardHandler` fully (which I did) and `BreakShieldHandler` (done).
-                // `DestroyHandler` was also done.
-
-                // Since I already wrote the file, I should make sure it works.
-                // I will use `ZoneUtils` for the move to stack (keeping legacy behavior for that part)
-                // because `TransitionCommand` doesn't support Stack.
-                // OR I can add STACK support to `TransitionCommand` if `Zone` has it?
-                // Checking `src/core/types.hpp` would be good.
-
-                // Assuming Zone enum is standard: HAND, BATTLE, MANA, SHIELD, GRAVEYARD, DECK.
-                // So no STACK.
-
-                // So I will stick to `ZoneUtils` for the Stack move, effectively meaning `PlayHandler`
-                // is mostly wrapper around `EffectResolver`.
-
-                // Reverting to similar logic as original but cleaned up.
-
                 // 1. Remove from current zone
                 std::optional<CardInstance> removed_card = ZoneUtils::find_and_remove(ctx.game_state, target_id);
                 if (!removed_card) continue;
@@ -148,7 +108,7 @@ namespace dm::engine {
                 int cost_reduction = ctx.action.value1;
                 // If free play?
 
-                EffectResolver::resolve_play_from_stack(
+                GameLogicSystem::resolve_play_from_stack(
                     ctx.game_state,
                     target_id,
                     cost_reduction,
