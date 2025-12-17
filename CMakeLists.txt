@@ -161,7 +161,6 @@ set(SRC_ENGINE
     src/engine/actions/strategies/stack_strategy.cpp
     src/engine/actions/strategies/phase_strategies.cpp
     src/engine/systems/flow/phase_manager.cpp
-    src/engine/effects/effect_resolver.cpp
     src/engine/systems/mana/mana_system.cpp
     src/engine/utils/determinizer.cpp
     src/engine/utils/dev_tools.cpp
