@@ -7,7 +7,6 @@
 #include "engine/systems/trigger_system/trigger_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/actions/action_generator.hpp"
-#include "engine/effects/effect_resolver.hpp"
 #include "engine/game_instance.hpp"
 #include "engine/systems/card/json_loader.hpp"
 #include "core/scenario_config.hpp"
@@ -41,6 +40,9 @@
 #include "core/instruction.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "engine/systems/command_system.hpp" // Include new system
+#include "engine/systems/battle_system.hpp"
+#include "engine/systems/card/play_system.hpp"
+#include "engine/systems/action_dispatcher.hpp"
 #include <iostream>
 
 namespace py = pybind11;
@@ -48,6 +50,7 @@ using namespace dm::core;
 using namespace dm::engine;
 using namespace dm::ai;
 using namespace dm::engine::game_command;
+using namespace dm::engine::systems;
 
 // Helpers for Pybind
 std::string civilization_to_string(Civilization c) {
@@ -68,30 +71,6 @@ Civilization string_to_civilization(const std::string& s) {
     if (s == "NATURE") return Civilization::NATURE;
     if (s == "ZERO") return Civilization::ZERO;
     return Civilization::NONE;
-}
-
-// Helpers for Instruction
-Instruction instruction_from_dict(py::dict d) {
-    // Basic conversion to allow Python dict -> JSON -> Instruction
-    // Note: This relies on nlohmann::json implicit conversion from strings/ints,
-    // but pybind11 casts python types to C++ standard types.
-    // We need to implement a full converter or use a workaround.
-    // Workaround: Serialize dict to JSON string in Python, pass to C++?
-    // Or iterate manually.
-    // For now, let's assume we pass OpCode enum and args dict.
-
-    // Easier approach: Just bind Instruction constructor that takes op and args.
-    // However, handling recursive structures in pybind is tricky.
-
-    // Minimal binding for now.
-    Instruction inst;
-    if (d.contains("op")) {
-        std::string op_str = py::cast<std::string>(d["op"]);
-        // Need to map string to Enum? Or use the Enum directly if passed.
-        // We'll trust the caller to pass correct structure or rely on json serialization if we were using it fully.
-        // But here we are inside C++.
-    }
-    return inst;
 }
 
 PYBIND11_MODULE(dm_ai_module, m) {
@@ -200,6 +179,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<systems::CommandSystem>(m, "CommandSystem")
         .def_static("execute_command", &systems::CommandSystem::execute_command);
+
+    // Bind BattleSystem
+    py::class_<systems::BattleSystem>(m, "BattleSystem")
+        .def_static("handle_attack", &BattleSystem::handle_attack)
+        .def_static("handle_block", &BattleSystem::handle_block)
+        .def_static("resolve_battle", &BattleSystem::resolve_battle)
+        .def_static("resolve_break_shield", &BattleSystem::resolve_break_shield);
+
+    // Bind PlaySystem
+    py::class_<systems::PlaySystem>(m, "PlaySystem")
+        .def_static("handle_play_card", &PlaySystem::handle_play_card)
+        .def_static("handle_pay_cost", &PlaySystem::handle_pay_cost)
+        .def_static("resolve_play_from_stack", &PlaySystem::resolve_play_from_stack)
+        .def_static("handle_mana_charge", &PlaySystem::handle_mana_charge);
 
     py::enum_<Civilization>(m, "Civilization")
         .value("NONE", Civilization::NONE)
@@ -873,8 +866,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<ActionGenerator>(m, "ActionGenerator")
         .def_static("generate_legal_actions", &ActionGenerator::generate_legal_actions);
 
-    py::class_<EffectResolver>(m, "EffectResolver")
-        .def_static("resolve_action", &EffectResolver::resolve_action);
+    // Replaced EffectResolver with ActionDispatcher
+    py::class_<ActionDispatcher>(m, "ActionDispatcher")
+        .def_static("dispatch", &ActionDispatcher::dispatch);
 
     py::class_<ManaSystem>(m, "ManaSystem")
         .def_static("can_pay_cost",
@@ -952,7 +946,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
          // Assuming it handles what JsonLoader handles.
          // For safety, let's just make it a list of one.
          nlohmann::json list_j = nlohmann::json::array({j});
-         std::cout << "DEBUG JSON: " << list_j.dump() << std::endl;
+         // std::cout << "DEBUG JSON: " << list_j.dump() << std::endl;
          CardRegistry::load_from_json(list_j.dump());
     });
 

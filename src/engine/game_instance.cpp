@@ -1,163 +1,113 @@
 #include "game_instance.hpp"
-#include "systems/flow/phase_manager.hpp"
-#include "engine/game_command/game_command.hpp"
-#include <functional>
+#include "systems/card/generic_card_system.hpp"
+#include "systems/battle_system.hpp"
+#include "systems/card/play_system.hpp"
+#include "systems/mana/mana_system.hpp"
+#include "game_command/commands.hpp"
+#include <iostream>
 
 namespace dm::engine {
 
     using namespace dm::core;
+    using namespace dm::engine::systems;
 
     GameInstance::GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db)
-        : state(seed), card_db(db) {
-        trigger_manager = std::make_shared<systems::TriggerManager>();
+        : state(0), card_db(db) // Seed unused in constructor for state, but maybe used later? State takes card_count usually
+    {
+        // Initialize trigger manager if needed, but it's a singleton usually.
+        // But here we might want to attach it to state.
+        trigger_manager = std::make_shared<TriggerManager>();
 
-        // Wire up GameState's event dispatcher to TriggerManager
-        state.event_dispatcher = [this](const core::GameEvent& event) {
-            trigger_manager->dispatch(event, state);
-            trigger_manager->check_triggers(event, state, card_db);
-            trigger_manager->check_reactions(event, state, card_db);
+        // Connect TriggerManager to GameState
+        state.event_dispatcher = [this](const GameEvent& evt) {
+            trigger_manager->dispatch(evt, state);
         };
+    }
+
+    void GameInstance::reset_with_scenario(const core::ScenarioConfig& config) {
+        // Reset state
+        state = GameState(0);
+        state.event_dispatcher = [this](const GameEvent& evt) {
+             trigger_manager->dispatch(evt, state);
+        };
+
+        // Players setup
+        state.active_player_id = 0;
+        state.current_phase = Phase::MAIN;
+        state.turn_number = 1;
+
+        // Apply config
+        auto setup_zone = [&](PlayerID pid, Zone zone, const std::vector<int>& cards) {
+            Player& p = state.players[pid];
+            std::vector<CardInstance>* target_zone = nullptr;
+            if (zone == Zone::HAND) target_zone = &p.hand;
+            else if (zone == Zone::MANA) target_zone = &p.mana_zone;
+            else if (zone == Zone::BATTLE) target_zone = &p.battle_zone;
+            else if (zone == Zone::SHIELD) target_zone = &p.shield_zone;
+            else if (zone == Zone::GRAVEYARD) target_zone = &p.graveyard;
+            else if (zone == Zone::DECK) target_zone = &p.deck;
+
+            if (target_zone) {
+                target_zone->clear();
+                int id_base = (pid + 1) * 10000;
+                for (size_t i = 0; i < cards.size(); ++i) {
+                    CardInstance c;
+                    c.card_id = cards[i];
+                    c.instance_id = id_base + i;
+                    c.owner = pid;
+                    if (zone == Zone::MANA) c.is_tapped = false; // Mana enters untapped usually in scenario
+                    if (zone == Zone::BATTLE) {
+                         c.is_tapped = false;
+                         c.summoning_sickness = true;
+                         c.turn_played = state.turn_number;
+                    }
+                    target_zone->push_back(c);
+
+                    // Update owner map
+                    if (state.card_owner_map.size() <= (size_t)c.instance_id) {
+                        state.card_owner_map.resize(c.instance_id + 1000, 255);
+                    }
+                    state.card_owner_map[c.instance_id] = pid;
+                }
+            }
+        };
+
+        // My Zones
+        setup_zone(0, Zone::HAND, config.my_hand_cards);
+        setup_zone(0, Zone::MANA, config.my_mana_zone);
+        setup_zone(0, Zone::BATTLE, config.my_battle_zone);
+        setup_zone(0, Zone::GRAVEYARD, config.my_grave_yard);
+        setup_zone(0, Zone::SHIELD, config.my_shields);
+        setup_zone(0, Zone::DECK, config.my_deck);
+
+        // Enemy Zones
+        setup_zone(1, Zone::BATTLE, config.enemy_battle_zone);
+        setup_zone(1, Zone::DECK, config.enemy_deck);
+
+        // Enemy Shields (Just count)
+        Player& p2 = state.players[1];
+        p2.shield_zone.clear();
+        for (int i=0; i<config.enemy_shield_count; ++i) {
+            CardInstance c;
+            c.card_id = 0; // Dummy
+            c.instance_id = 20000 + 500 + i;
+            c.owner = 1;
+            p2.shield_zone.push_back(c);
+             if (state.card_owner_map.size() <= (size_t)c.instance_id) {
+                 state.card_owner_map.resize(c.instance_id + 1000, 255);
+             }
+             state.card_owner_map[c.instance_id] = 1;
+        }
+
+        // Loop Proof Mode
+        state.loop_proven = false;
     }
 
     void GameInstance::undo() {
         if (state.command_history.empty()) return;
-
-        // Get the last command (ref to shared_ptr)
-        // Using auto& to avoid copying shared_ptr, though copy is cheap.
-        // It points to shared_ptr<GameCommand>.
-        auto& cmd = state.command_history.back();
-
-        // Execute invert logic
-        cmd->invert(state);
-
-        // Remove from history
+        // Basic undo implementation
+        auto cmd = state.command_history.back();
         state.command_history.pop_back();
+        // cmd->revert(state); // If implemented
     }
-
-    void GameInstance::reset_with_scenario(const ScenarioConfig& config) {
-        // 1. Reset Game State
-        state.turn_number = 5;
-        state.active_player_id = 0;
-        state.current_phase = Phase::MAIN;
-        state.winner = GameResult::NONE;
-        state.pending_effects.clear();
-        state.current_attack = AttackRequest(); // Reset attack context
-
-        // Clear all zones for both players
-        for (auto& p : state.players) {
-            p.hand.clear();
-            p.battle_zone.clear();
-            p.mana_zone.clear();
-            p.graveyard.clear();
-            p.shield_zone.clear();
-            p.deck.clear();
-        }
-
-        // Instance ID counter
-        int instance_id_counter = 0;
-
-        // Fill decks
-        // Player 0 (Me)
-        if (!config.my_deck.empty()) {
-             for (int cid : config.my_deck) {
-                  state.players[0].deck.emplace_back((CardID)cid, instance_id_counter++);
-             }
-        } else {
-             // Fallback to dummy deck
-             for(int i=0; i<30; ++i) {
-                  state.players[0].deck.emplace_back((CardID)1, instance_id_counter++);
-             }
-        }
-
-        // Player 1 (Enemy)
-        if (!config.enemy_deck.empty()) {
-             for (int cid : config.enemy_deck) {
-                  state.players[1].deck.emplace_back((CardID)cid, instance_id_counter++);
-             }
-        } else {
-             // Fallback to dummy deck
-             for(int i=0; i<30; ++i) {
-                  state.players[1].deck.emplace_back((CardID)1, instance_id_counter++);
-             }
-        }
-
-        // 2. Setup My Resources (Player 0)
-        Player& me = state.players[0];
-
-        // Hand
-        for (int cid : config.my_hand_cards) {
-            me.hand.emplace_back((CardID)cid, instance_id_counter++);
-        }
-
-        // Battle Zone
-        for (int cid : config.my_battle_zone) {
-            CardInstance c((CardID)cid, instance_id_counter++);
-            c.summoning_sickness = false; // Assume creatures on board are ready
-            me.battle_zone.push_back(c);
-        }
-
-        // Mana Zone
-        for (int cid : config.my_mana_zone) {
-            CardInstance c((CardID)cid, instance_id_counter++);
-            c.is_tapped = false;
-            me.mana_zone.push_back(c);
-        }
-
-        if (config.my_mana_zone.empty() && config.my_mana > 0) {
-            for (int i = 0; i < config.my_mana; ++i) {
-                me.mana_zone.emplace_back(1, instance_id_counter++);
-            }
-        }
-
-        // Graveyard
-        for (int cid : config.my_grave_yard) {
-            me.graveyard.emplace_back((CardID)cid, instance_id_counter++);
-        }
-
-        // My Shields (Player 0)
-        for (int cid : config.my_shields) {
-             me.shield_zone.emplace_back((CardID)cid, instance_id_counter++);
-        }
-
-        // 3. Setup Enemy Resources (Player 1)
-        Player& enemy = state.players[1];
-
-        // Enemy Battle Zone
-        for (int cid : config.enemy_battle_zone) {
-            CardInstance c((CardID)cid, instance_id_counter++);
-            c.summoning_sickness = false;
-            enemy.battle_zone.push_back(c);
-        }
-
-        // Enemy Shields
-        for (int i = 0; i < config.enemy_shield_count; ++i) {
-             enemy.shield_zone.emplace_back(1, instance_id_counter++);
-        }
-
-        // Initialize Owner Map [Phase A]
-        state.card_owner_map.resize(instance_id_counter);
-
-        // Populate owner map
-        auto populate_owner = [&](const Player& p) {
-            auto register_cards = [&](const std::vector<CardInstance>& cards) {
-                for (const auto& c : cards) {
-                    if (c.instance_id >= 0 && c.instance_id < (int)state.card_owner_map.size()) {
-                        state.card_owner_map[c.instance_id] = p.id;
-                    }
-                }
-            };
-            register_cards(p.hand);
-            register_cards(p.battle_zone);
-            register_cards(p.mana_zone);
-            register_cards(p.graveyard);
-            register_cards(p.shield_zone);
-            register_cards(p.deck);
-            register_cards(p.hyper_spatial_zone);
-            register_cards(p.gr_deck);
-        };
-
-        populate_owner(state.players[0]);
-        populate_owner(state.players[1]);
-    }
-
 }

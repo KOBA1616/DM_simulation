@@ -32,6 +32,14 @@ namespace dm::core {
         TAP_CARD,
         UNTAP_CARD,
 
+        // Missing from original but used in code
+        ATTACK, // Mapped to ATTACK_INITIATE
+        BLOCK,  // Mapped to BLOCK_INITIATE
+        PLAY,   // Mapped to PLAY_CARD
+        CAST_SPELL, // New
+        DESTROY, // New
+        BREAK_SHIELD, // Mapped to SHIELD_BREAK
+
         // Custom/Other
         CUSTOM
     };
