@@ -1,6 +1,7 @@
 #include "game_instance.hpp"
 #include "systems/flow/phase_manager.hpp"
 #include "engine/game_command/game_command.hpp"
+#include "engine/effects/effect_resolver.hpp"
 #include <functional>
 
 namespace dm::engine {
@@ -10,6 +11,7 @@ namespace dm::engine {
     GameInstance::GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db)
         : state(seed), card_db(db) {
         trigger_manager = std::make_shared<systems::TriggerManager>();
+        pipeline = std::make_shared<systems::PipelineExecutor>();
 
         // Wire up GameState's event dispatcher to TriggerManager
         state.event_dispatcher = [this](const core::GameEvent& event) {
@@ -17,6 +19,25 @@ namespace dm::engine {
             trigger_manager->check_triggers(event, state, card_db);
             trigger_manager->check_reactions(event, state, card_db);
         };
+    }
+
+    void GameInstance::resolve_action(const core::Action& action) {
+        // Delegate to EffectResolver for now to reuse switch logic,
+        // BUT ideally we should replicate the switch here to deprecate EffectResolver.
+        // For Phase 7 Migration, we can call EffectResolver::resolve_action here,
+        // OR move the switch case here.
+        // Moving the switch case here is cleaner but duplicates code temporarily.
+        // Let's call EffectResolver::resolve_action but pass our pipeline if we could...
+        // EffectResolver instantiates its own pipeline currently.
+        // Refactoring EffectResolver to use OUR pipeline would be good.
+        // But EffectResolver is static.
+
+        // Strategy: Delegate to EffectResolver for compatibility,
+        // as EffectResolver is now just a wrapper around Pipeline.
+        // Eventually we copy the switch case here.
+
+        // For now:
+        dm::engine::EffectResolver::resolve_action(state, action, card_db);
     }
 
     void GameInstance::undo() {
