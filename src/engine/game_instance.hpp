@@ -37,6 +37,9 @@ namespace dm::engine {
         // Phase 6 Step 3: GameCommand Integration
         void undo();
 
+        // Phase 7: Stats Init
+        void initialize_card_stats(int deck_size = 40);
+
         // Helper to allow python to access state easily
         core::GameState& get_state() { return state; }
     };
