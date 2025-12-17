@@ -43,6 +43,29 @@ namespace dm::engine::systems {
     }
 
     void GameLogicSystem::dispatch_action(PipelineExecutor& pipeline, GameState& state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
+        // Phase 6: Handle Response to Query (Command System Integration)
+        if (state.waiting_for_user_input && state.pending_query) {
+             std::vector<int> selected_indices;
+             int selected_option = -1;
+
+             if (state.pending_query->query_type == "SELECT_TARGET" && action.type == ActionType::SELECT_TARGET) {
+                 selected_indices.push_back(action.target_instance_id);
+             } else if (state.pending_query->query_type == "SELECT_OPTION" && action.type == ActionType::SELECT_OPTION) {
+                 selected_option = action.target_slot_index;
+             } else {
+                 // Invalid response for current query
+                 return;
+             }
+
+             auto cmd = std::make_shared<DecideCommand>(
+                 state.pending_query->query_id,
+                 selected_indices,
+                 selected_option
+             );
+             state.execute_command(cmd);
+             return;
+        }
+
         nlohmann::json args;
 
         switch (action.type) {
