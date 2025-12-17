@@ -4,11 +4,19 @@
     "cost": 3,
     "effects": [
       {
-        "actions": [
+        "commands": [
           {
-            "scope": "PLAYER_SELF",
-            "type": "ADD_MANA",
-            "value1": 1
+            "amount": 1,
+            "from_zone": "DECK",
+            "target_filter": {
+              "count": 1,
+              "zones": [
+                "DECK"
+              ]
+            },
+            "target_group": "PLAYER_SELF",
+            "to_zone": "MANA_ZONE",
+            "type": "TRANSITION"
           }
         ],
         "trigger": "ON_PLAY"
