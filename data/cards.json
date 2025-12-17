@@ -476,10 +476,15 @@
       "cost": 4,
       "effects": [
         {
-          "actions": [
+          "condition": {
+            "type": "NONE",
+            "value": 0
+          },
+          "trigger": "ON_PLAY",
+          "commands": [
             {
-              "destination_zone": "HAND",
-              "filter": {
+              "optional": false,
+              "target_filter": {
                 "count": 2,
                 "zones": [
                   "BATTLE_ZONE"
@@ -489,22 +494,11 @@
                   "ELEMENT"
                 ]
               },
-              "input_value_key": "",
-              "optional": false,
-              "output_value_key": "",
-              "scope": "TARGET_SELECT",
-              "str_val": "",
-              "type": "MOVE_CARD",
-              "value1": 0,
-              "value2": 0
+              "target_group": "TARGET_SELECT",
+              "to_zone": "HAND",
+              "type": "TRANSITION"
             }
-          ],
-          "condition": {
-            "type": "NONE",
-            "value": 0
-          },
-          "trigger": "ON_PLAY",
-          "commands": []
+          ]
         }
       ],
       "name": "♪蛙の子遭えるの何処?好きと謂ひて",
@@ -522,6 +516,10 @@
     "cost": 5,
     "effects": [
       {
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_PLAY",
         "actions": [
           {
             "destination_zone": "HAND",
@@ -559,12 +557,7 @@
             "value1": 1,
             "value2": 0
           }
-        ],
-        "condition": {
-          "type": "NONE"
-        },
-        "trigger": "ON_PLAY",
-        "commands": []
+        ]
       }
     ],
     "cost_reductions": [
@@ -610,10 +603,15 @@
       "cost": 3,
       "effects": [
         {
-          "actions": [
+          "condition": {
+            "type": "NONE",
+            "value": 0
+          },
+          "trigger": "ON_PLAY",
+          "commands": [
             {
-              "destination_zone": "GRAVEYARD",
-              "filter": {
+              "optional": false,
+              "target_filter": {
                 "max_cost": 2,
                 "types": [
                   "ELEMENT"
@@ -623,22 +621,11 @@
                 ],
                 "owner": "OPPONENT"
               },
-              "input_value_key": "",
-              "optional": false,
-              "output_value_key": "",
-              "scope": "TARGET_SELECT",
-              "str_val": "",
-              "type": "MOVE_CARD",
-              "value1": 0,
-              "value2": 0
+              "target_group": "TARGET_SELECT",
+              "to_zone": "GRAVEYARD",
+              "type": "TRANSITION"
             }
-          ],
-          "condition": {
-            "type": "NONE",
-            "value": 0
-          },
-          "trigger": "ON_PLAY",
-          "commands": []
+          ]
         }
       ],
       "name": "聞かなきゃ殴り合い",
