@@ -42,6 +42,23 @@ namespace dm::engine::systems {
         if (event.type == EventType::BLOCK_INITIATE) {
              return TriggerType::ON_BLOCK;
         }
+        if (event.type == EventType::SHIELD_BREAK) {
+            return TriggerType::AT_BREAK_SHIELD;
+        }
+        if (event.type == EventType::PLAY_CARD) {
+             // Context check for spell?
+             // If we dispatch PLAY_CARD for both creatures and spells, we need to distinguish.
+             // Usually ON_PLAY is for Creatures entering Battle Zone.
+             // ON_CAST is for Spells.
+             // We can check the card definition in check_triggers or here if we have context.
+             // For now, let's assume PLAY_CARD maps to ON_CAST_SPELL if it's a spell, but map_event_to_trigger returns one type.
+             // We'll handle dual mapping or context checks in check_triggers logic more robustly.
+             // But for simple mapping:
+             if (event.context.count("is_spell") && event.context.at("is_spell") == 1) {
+                 return TriggerType::ON_CAST_SPELL;
+             }
+             // Creatures use ZONE_ENTER (Stack -> Battle) for ON_PLAY usually.
+        }
         return TriggerType::NONE;
     }
 
