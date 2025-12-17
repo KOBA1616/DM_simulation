@@ -1,5 +1,5 @@
 #pragma once
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "core/game_state.hpp"
@@ -19,12 +19,12 @@ namespace dm::engine {
                  ed.trigger = dm::core::TriggerType::NONE;
                  ed.condition = dm::core::ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                  ed.actions = { ctx.action };
-                 GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
 
             // Implicit targets logic
-            PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
             std::vector<std::pair<PlayerID, Zone>> zones_to_check;
 
             if (!ctx.action.filter.zones.empty()) {
@@ -206,13 +206,13 @@ namespace dm::engine {
 
             // Post-move triggers
             if (dest == "SHIELD_ZONE") {
-                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD, instance_id, card_db);
+                 EffectSystem::instance().resolve_trigger(game_state, TriggerType::ON_SHIELD_ADD, instance_id, card_db);
             }
 
             // Mega Last Burst check
             if (from_battle_zone) {
                  // Pass the copy we captured before the move.
-                 GenericCardSystem::check_mega_last_burst(game_state, card_copy, card_db);
+                 EffectSystem::instance().check_mega_last_burst(game_state, card_copy, card_db);
             }
         }
     };

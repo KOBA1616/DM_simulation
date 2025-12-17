@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/effects/effect_resolver.hpp"
 
 namespace dm::engine {
@@ -18,7 +18,7 @@ namespace dm::engine {
                          ed.trigger = TriggerType::NONE;
                          ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                          ed.actions = { ctx.action };
-                         GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                         EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                      }
                 }
             }
@@ -43,7 +43,7 @@ namespace dm::engine {
 
                  int reduction = taps * 2;
 
-                 PlayerID controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                 PlayerID controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  EffectResolver::resolve_play_from_stack(ctx.game_state, ctx.source_instance_id, reduction, SpawnSource::HAND_SUMMON, controller, ctx.card_db);
              }
         }

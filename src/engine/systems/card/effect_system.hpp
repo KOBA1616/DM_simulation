@@ -46,6 +46,8 @@ namespace dm::engine {
             return instance;
         }
 
+        void initialize();
+
         void register_handler(dm::core::EffectActionType type, std::unique_ptr<IActionHandler> handler) {
             handlers[type] = std::move(handler);
         }
@@ -57,8 +59,24 @@ namespace dm::engine {
             return nullptr;
         }
 
+        // Migration Methods from GenericCardSystem
+        void resolve_trigger(dm::core::GameState& game_state, dm::core::TriggerType trigger, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        void resolve_effect(dm::core::GameState& game_state, const dm::core::EffectDef& effect, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        void resolve_effect_with_context(dm::core::GameState& game_state, const dm::core::EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        void resolve_effect_with_targets(dm::core::GameState& game_state, const dm::core::EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::map<std::string, int>& execution_context);
+        void resolve_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, bool* interrupted = nullptr, const std::vector<dm::core::ActionDef>* remaining_actions = nullptr);
+
+        bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& execution_context = {});
+        std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation, std::map<std::string, int>& execution_context);
+        void delegate_selection(const ResolutionContext& ctx);
+
+        void check_mega_last_burst(dm::core::GameState& game_state, const dm::core::CardInstance& card, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+
+        static dm::core::PlayerID get_controller(const dm::core::GameState& game_state, int instance_id);
+
     private:
         EffectSystem() = default;
         std::map<dm::core::EffectActionType, std::unique_ptr<IActionHandler>> handlers;
+        bool initialized = false;
     };
 }

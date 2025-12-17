@@ -3,7 +3,7 @@ import unittest
 from dm_ai_module import (
     GameState, CardDefinition, EffectActionType, TargetScope,
     ActionDef, EffectDef, TriggerType, FilterDef, Zone, GameInstance,
-    GenericCardSystem, Civilization, CardData
+    EffectSystem, Civilization, CardData
 )
 
 class TestDiscardCount(unittest.TestCase):
@@ -37,11 +37,11 @@ class TestDiscardCount(unittest.TestCase):
         effect = EffectDef()
         effect.actions = [action]
 
-        # Invoke GenericCardSystem
+        # Invoke EffectSystem
         try:
             # Note: resolve_effect_with_targets signature might vary in bindings
             # The memory says it returns updated context.
-            ctx = GenericCardSystem.resolve_effect_with_targets(
+            ctx = EffectSystem.resolve_effect_with_targets(
                 game, effect, targets, 999, card_db, {}
             )
         except Exception as e:

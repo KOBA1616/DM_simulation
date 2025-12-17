@@ -3,7 +3,7 @@
 #include "engine/systems/pipeline_executor.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
 #include "engine/cost_payment_system.hpp"
@@ -162,9 +162,9 @@ namespace dm::engine {
                          // ... (Loop prevention logic omitted for brevity, identical to before)
 
                          if (pe.resolve_type == ResolveType::TARGET_SELECT && pe.effect_def) {
-                             GenericCardSystem::resolve_effect_with_targets(game_state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
+                             EffectSystem::instance().resolve_effect_with_targets(game_state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
                          } else if (pe.type == EffectType::TRIGGER_ABILITY && pe.effect_def) {
-                             GenericCardSystem::resolve_effect(game_state, *pe.effect_def, pe.source_instance_id);
+                             EffectSystem::instance().resolve_effect(game_state, *pe.effect_def, pe.source_instance_id, card_db);
                          }
 
                          if (action.slot_index < (int)game_state.pending_effects.size()) {
@@ -246,7 +246,7 @@ namespace dm::engine {
                                  EffectDef temp_effect;
                                  temp_effect.actions = selected_actions;
                                  temp_effect.trigger = TriggerType::NONE;
-                                 GenericCardSystem::resolve_effect_with_context(game_state, temp_effect, pe.source_instance_id, pe.execution_context, card_db);
+                                 EffectSystem::instance().resolve_effect_with_context(game_state, temp_effect, pe.source_instance_id, pe.execution_context, card_db);
                              }
                          }
                          if (action.slot_index < (int)game_state.pending_effects.size()) {
@@ -266,7 +266,7 @@ namespace dm::engine {
                                 pe.execution_context[output_key] = chosen_val;
                             }
                             if (pe.effect_def && !pe.effect_def->actions.empty()) {
-                                 GenericCardSystem::resolve_effect_with_context(game_state, *pe.effect_def, pe.source_instance_id, pe.execution_context, card_db);
+                                 EffectSystem::instance().resolve_effect_with_context(game_state, *pe.effect_def, pe.source_instance_id, pe.execution_context, card_db);
                             }
                         }
                         if (action.slot_index < (int)game_state.pending_effects.size()) {
@@ -304,7 +304,7 @@ namespace dm::engine {
 
     // Keep helpers that might be used by ActionGenerator or others
     void EffectResolver::resolve_use_shield_trigger(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
-        GenericCardSystem::resolve_trigger(game_state, TriggerType::S_TRIGGER, action.source_instance_id, card_db);
+        EffectSystem::instance().resolve_trigger(game_state, TriggerType::S_TRIGGER, action.source_instance_id, card_db);
     }
 
     void EffectResolver::resolve_select_target(GameState& game_state, const Action& action) {
@@ -347,7 +347,7 @@ namespace dm::engine {
                  battle_card.summoning_sickness = true;
                  player.hand.push_back(battle_card);
 
-                 GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_PLAY, hand_card.instance_id, card_db);
+                 EffectSystem::instance().resolve_trigger(game_state, TriggerType::ON_PLAY, hand_card.instance_id, card_db);
              }
          }
     }
@@ -369,7 +369,8 @@ namespace dm::engine {
     }
 
     void EffectResolver::resolve_effect(GameState& game_state, const EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context) {
-        GenericCardSystem::resolve_effect_with_context(game_state, effect, source_instance_id, execution_context);
+        // Fallback to registry if DB not provided in this specific overload
+        EffectSystem::instance().resolve_effect_with_context(game_state, effect, source_instance_id, execution_context, CardRegistry::get_all_definitions());
     }
 
     void EffectResolver::resolve_reaction(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {

@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include <algorithm>
 #include <random>
@@ -37,13 +37,13 @@ namespace dm::engine {
                  if (!mod_action.filter.owner.has_value()) {
                      mod_action.filter.owner = "SELF";
                  }
-                 GenericCardSystem::select_targets(ctx.game_state, mod_action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 EffectSystem::instance().select_targets(ctx.game_state, mod_action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
 
             // SHUFFLE_DECK
             if (ctx.action.type == EffectActionType::SHUFFLE_DECK) {
-                PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                 Player& controller = ctx.game_state.players[controller_id];
                 std::shuffle(controller.deck.begin(), controller.deck.end(), ctx.game_state.rng);
             }
@@ -53,7 +53,7 @@ namespace dm::engine {
                 // Logic: Look at N cards, select M matching filter, add to hand, rest to bottom.
 
                 // 1. Identify cards.
-                PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                 Player& controller = ctx.game_state.players[controller_id];
 
                 int look = ctx.action.value1;
@@ -97,10 +97,10 @@ namespace dm::engine {
 
                 // IMPORTANT: We force the type to SEARCH_DECK_BOTTOM so we get the callback below
                 // GenericCardSystem checks for generic handlers first? No, it uses the ActionType to dispatch?
-                // GenericCardSystem::select_targets queues a PendingEffect.
+                // EffectSystem::instance().select_targets queues a PendingEffect.
                 // The PendingEffect type will be `SELECT_TARGET` (usually) or the action type?
                 // It sets `type = EffectActionType::SELECT_TARGET` (or similar) internally?
-                // Actually `GenericCardSystem::select_targets` creates a `PendingEffect` with type `SELECT_TARGET`?
+                // Actually `EffectSystem::instance().select_targets` creates a `PendingEffect` with type `SELECT_TARGET`?
                 // Wait, if it creates `SELECT_TARGET`, then `SearchHandler` won't be called for `resolve_with_targets`.
                 // `GenericCardSystem` uses `resolve_effect_with_targets` which checks `ctx.action.type`.
                 // `ctx.action` comes from the PendingEffect's stored action?
@@ -115,7 +115,7 @@ namespace dm::engine {
                 // We must use `SEARCH_DECK_BOTTOM` as the type.
                 selection_action.type = EffectActionType::SEARCH_DECK_BOTTOM;
 
-                // But `GenericCardSystem::select_targets` needs to know how to select.
+                // But `EffectSystem::instance().select_targets` needs to know how to select.
                 // It uses `scope` and `filter`.
                 // If `scope` is TARGET_SELECT, it works.
                 // Does `SEARCH_DECK_BOTTOM` imply TARGET_SELECT scope?
@@ -125,7 +125,7 @@ namespace dm::engine {
                 selection_action.filter.zones = {"EFFECT_BUFFER"};
                 selection_action.filter.owner = "SELF";
 
-                GenericCardSystem::select_targets(ctx.game_state, selection_action, ctx.source_instance_id, ed, ctx.execution_vars);
+                EffectSystem::instance().select_targets(ctx.game_state, selection_action, ctx.source_instance_id, ed, ctx.execution_vars);
             }
 
             // SEND_TO_DECK_BOTTOM
@@ -135,7 +135,7 @@ namespace dm::engine {
                      ed.trigger = TriggerType::NONE;
                      ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                      ed.actions = { ctx.action };
-                     GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                     EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  }
              }
         }
@@ -160,7 +160,7 @@ namespace dm::engine {
 
              // SEARCH_DECK_BOTTOM (Cleanup Phase)
              if (ctx.action.type == EffectActionType::SEARCH_DECK_BOTTOM) {
-                 PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                 PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  Player& controller = ctx.game_state.players[controller_id];
 
                  // 1. Move Targets to Hand

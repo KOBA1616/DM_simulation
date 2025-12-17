@@ -26,12 +26,12 @@ namespace dm::engine {
                  if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                      EffectDef ed;
                      ed.actions = { ctx.action };
-                     GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                     EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                      return;
                  }
 
                  // Auto-Loop
-                 PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                 PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  std::vector<std::pair<PlayerID, Zone>> zones_to_check;
                  if (ctx.action.filter.zones.empty()) {
                      zones_to_check.push_back({0, Zone::BATTLE});
@@ -89,7 +89,7 @@ namespace dm::engine {
                              moved.is_tapped = false;
                              if (ctx.card_db.count(moved.card_id)) TapInUtils::apply_tap_in_rule(moved, ctx.card_db.at(moved.card_id));
                              p.mana_zone.push_back(moved);
-                             GenericCardSystem::check_mega_last_burst(ctx.game_state, moved, ctx.card_db);
+                             EffectSystem::instance().check_mega_last_burst(ctx.game_state, moved, ctx.card_db);
                              break;
                          }
                          auto it_hand = std::find_if(p.hand.begin(), p.hand.end(),
@@ -118,7 +118,7 @@ namespace dm::engine {
              }
 
              // ADD_MANA Logic (Deck -> Mana)
-             PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+             PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
              Player& controller = ctx.game_state.players[controller_id];
 
              int count = ctx.action.value1;
@@ -167,7 +167,7 @@ namespace dm::engine {
 
                          p.mana_zone.push_back(moved);
 
-                         GenericCardSystem::check_mega_last_burst(ctx.game_state, moved, ctx.card_db);
+                         EffectSystem::instance().check_mega_last_burst(ctx.game_state, moved, ctx.card_db);
                          break;
                      }
                      // Hand -> Mana
