@@ -1,6 +1,5 @@
 [
   {
-    "civilization": "NATURE",
     "cost": 3,
     "effects": [
       {
@@ -30,7 +29,10 @@
       "Beast Folk"
     ],
     "reaction_abilities": [],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "civilizations": [
+      "NATURE"
+    ]
   },
   {
     "ai_importance_score": 0,
@@ -60,7 +62,6 @@
     "type": "CREATURE"
   },
   {
-    "civilization": "FIRE",
     "cost": 1,
     "effects": [],
     "id": 3,
@@ -69,7 +70,30 @@
     "power": 0,
     "races": [],
     "reaction_abilities": [],
-    "type": "SPELL"
+    "type": "SPELL",
+    "civilizations": [
+      "FIRE"
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Bolshack Dragon",
+    "civilizations": [
+      "FIRE"
+    ],
+    "type": "CREATURE",
+    "cost": 6,
+    "power": 6000,
+    "races": [
+      "Armored Dragon"
+    ],
+    "keywords": {
+      "speed_attacker": true
+    },
+    "effects": [],
+    "reaction_abilities": [],
+    "ai_importance_score": 0,
+    "is_key_card": false
   },
   {
     "ai_importance_score": 0,
@@ -143,7 +167,6 @@
     "type": "SPELL"
   },
   {
-    "civilization": "WATER",
     "cost": 2,
     "effects": [
       {
@@ -202,7 +225,10 @@
       "グレートメカオー"
     ],
     "reaction_abilities": [],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "civilizations": [
+      "WATER"
+    ]
   },
   {
     "ai_importance_score": 0,
