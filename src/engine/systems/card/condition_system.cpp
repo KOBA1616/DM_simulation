@@ -1,6 +1,7 @@
 #include "condition_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "effect_system.hpp"
+#include "engine/systems/card/evaluators/deck_empty_evaluator.hpp"
 #include <iostream>
 
 namespace dm::engine {
@@ -128,5 +129,6 @@ namespace dm::engine {
         register_evaluator("OPPONENT_PLAYED_WITHOUT_MANA", std::make_unique<OpponentPlayedWithoutManaEvaluator>());
         register_evaluator("CIVILIZATION_MATCH", std::make_unique<CivilizationMatchEvaluator>());
         register_evaluator("COMPARE_STAT", std::make_unique<CompareStatEvaluator>());
+        register_evaluator("DECK_EMPTY", std::make_unique<DeckEmptyEvaluator>());
     }
 }

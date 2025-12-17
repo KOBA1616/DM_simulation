@@ -10,7 +10,9 @@ namespace dm::engine::game_command {
         FLOW,
         QUERY,
         DECIDE,
-        DECLARE_REACTION
+        DECLARE_REACTION,
+        STAT,
+        GAME_RESULT
     };
 
     class GameCommand {
