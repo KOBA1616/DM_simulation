@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include <iostream>
 
 namespace dm::engine {
@@ -14,7 +14,7 @@ namespace dm::engine {
             // This is called when the effect is encountered in the chain.
             // We must interrupt execution and push a PendingEffect to ask for input.
 
-            PlayerID controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            PlayerID controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
 
             PendingEffect pending(EffectType::SELECT_NUMBER, ctx.source_instance_id, controller);
 

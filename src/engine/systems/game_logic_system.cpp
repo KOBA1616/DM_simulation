@@ -1,7 +1,7 @@
 #include "game_logic_system.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/cost_payment_system.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
@@ -151,7 +151,7 @@ namespace dm::engine::systems {
                  break;
 
              case ActionType::USE_SHIELD_TRIGGER:
-                 GenericCardSystem::resolve_trigger(state, TriggerType::S_TRIGGER, action.source_instance_id, card_db);
+                 EffectSystem::instance().resolve_trigger(state, TriggerType::S_TRIGGER, action.source_instance_id, card_db);
                  break;
 
              case ActionType::SELECT_TARGET:
@@ -168,9 +168,9 @@ namespace dm::engine::systems {
                          // ... (Loop prevention logic omitted for brevity, identical to before)
 
                          if (pe.resolve_type == ResolveType::TARGET_SELECT && pe.effect_def) {
-                             GenericCardSystem::resolve_effect_with_targets(state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
+                             EffectSystem::instance().resolve_effect_with_targets(state, *pe.effect_def, pe.target_instance_ids, pe.source_instance_id, card_db, pe.execution_context);
                          } else if (pe.type == EffectType::TRIGGER_ABILITY && pe.effect_def) {
-                             GenericCardSystem::resolve_effect(state, *pe.effect_def, pe.source_instance_id);
+                             EffectSystem::instance().resolve_effect(state, *pe.effect_def, pe.source_instance_id, card_db);
                          }
 
                          if (action.slot_index < (int)state.pending_effects.size()) {
@@ -252,7 +252,7 @@ namespace dm::engine::systems {
                                  EffectDef temp_effect;
                                  temp_effect.actions = selected_actions;
                                  temp_effect.trigger = TriggerType::NONE;
-                                 GenericCardSystem::resolve_effect_with_context(state, temp_effect, pe.source_instance_id, pe.execution_context, card_db);
+                                 EffectSystem::instance().resolve_effect_with_context(state, temp_effect, pe.source_instance_id, pe.execution_context, card_db);
                              }
                          }
                          if (action.slot_index < (int)state.pending_effects.size()) {
@@ -272,7 +272,7 @@ namespace dm::engine::systems {
                                 pe.execution_context[output_key] = chosen_val;
                             }
                             if (pe.effect_def && !pe.effect_def->actions.empty()) {
-                                 GenericCardSystem::resolve_effect_with_context(state, *pe.effect_def, pe.source_instance_id, pe.execution_context, card_db);
+                                 EffectSystem::instance().resolve_effect_with_context(state, *pe.effect_def, pe.source_instance_id, pe.execution_context, card_db);
                             }
                         }
                         if (action.slot_index < (int)state.pending_effects.size()) {
@@ -361,7 +361,7 @@ namespace dm::engine::systems {
              args["spawn_source"] = (int)SpawnSource::HAND_SUMMON;
              pipeline.execute({Instruction(InstructionOp::GAME_ACTION, args)}, state, card_db);
              return;
-        }
+         }
 
         // Standard Play Setup
         if (!state.stack_zone.empty() && state.stack_zone.back().instance_id == source_id) {
@@ -425,7 +425,7 @@ namespace dm::engine::systems {
             }
 
             // Legacy trigger call removed - relying on TriggerManager via Event
-            // GenericCardSystem::resolve_trigger(state, TriggerType::ON_CAST_SPELL, card.instance_id, card_db);
+            // EffectSystem::instance().resolve_trigger(state, TriggerType::ON_CAST_SPELL, card.instance_id, card_db);
             // ON_PLAY for Spells? Historically 'ON_PLAY' might have been used, but 'ON_CAST_SPELL' is correct.
 
             state.turn_stats.spells_cast_this_turn++;
@@ -465,7 +465,7 @@ namespace dm::engine::systems {
 
             // ON_PLAY is handled by TransitionCommand -> ZONE_ENTER (Battle) -> TriggerManager -> ON_PLAY
             // So we can remove explicit call.
-            // GenericCardSystem::resolve_trigger(state, TriggerType::ON_PLAY, card.instance_id, card_db);
+            // EffectSystem::instance().resolve_trigger(state, TriggerType::ON_PLAY, card.instance_id, card_db);
             state.turn_stats.creatures_played_this_turn++;
         }
 
@@ -502,7 +502,7 @@ namespace dm::engine::systems {
          state.execute_command(phase_cmd);
 
          // Explicit trigger call removed.
-         // GenericCardSystem::resolve_trigger(state, TriggerType::ON_ATTACK, source_id, card_db);
+         // EffectSystem::instance().resolve_trigger(state, TriggerType::ON_ATTACK, source_id, card_db);
     }
 
     void GameLogicSystem::handle_block(PipelineExecutor& pipeline, GameState& state, const Instruction& inst, const std::map<CardID, CardDefinition>& card_db) {
@@ -525,7 +525,7 @@ namespace dm::engine::systems {
              state.event_dispatcher(evt);
         }
 
-        // GenericCardSystem::resolve_trigger(state, TriggerType::ON_BLOCK, blocker_id, card_db);
+        // EffectSystem::instance().resolve_trigger(state, TriggerType::ON_BLOCK, blocker_id, card_db);
 
         state.pending_effects.emplace_back(EffectType::RESOLVE_BATTLE, blocker_id, state.active_player_id);
     }
@@ -616,7 +616,7 @@ namespace dm::engine::systems {
              state.execute_command(destroy_cmd);
 
              // Trigger handled by TransitionCommand (ZONE_ENTER Graveyard) -> ON_DESTROY
-             // GenericCardSystem::resolve_trigger(state, TriggerType::ON_DESTROY, defender_id, card_db);
+             // EffectSystem::instance().resolve_trigger(state, TriggerType::ON_DESTROY, defender_id, card_db);
          }
 
          if (def_wins || draw) {
@@ -630,7 +630,7 @@ namespace dm::engine::systems {
              state.execute_command(destroy_cmd);
 
              // Trigger handled by TransitionCommand (ZONE_ENTER Graveyard) -> ON_DESTROY
-             // GenericCardSystem::resolve_trigger(state, TriggerType::ON_DESTROY, attacker_id, card_db);
+             // EffectSystem::instance().resolve_trigger(state, TriggerType::ON_DESTROY, attacker_id, card_db);
          }
     }
 
@@ -657,7 +657,7 @@ namespace dm::engine::systems {
              state.event_dispatcher(evt);
         }
 
-        // GenericCardSystem::resolve_trigger(state, TriggerType::AT_BREAK_SHIELD, source_id, card_db);
+        // EffectSystem::instance().resolve_trigger(state, TriggerType::AT_BREAK_SHIELD, source_id, card_db);
 
         // Select Shield
         int shield_index = -1;
@@ -692,7 +692,7 @@ namespace dm::engine::systems {
              );
              state.execute_command(move_cmd);
              // Handled by TransitionCommand -> ON_DESTROY
-             // GenericCardSystem::resolve_trigger(state, TriggerType::ON_DESTROY, shield.instance_id, card_db);
+             // EffectSystem::instance().resolve_trigger(state, TriggerType::ON_DESTROY, shield.instance_id, card_db);
         } else {
              auto move_cmd = std::make_shared<TransitionCommand>(
                  shield.instance_id, Zone::SHIELD, Zone::HAND, defender.id
@@ -844,4 +844,5 @@ namespace dm::engine::systems {
             }
         }
      }
+
 }
