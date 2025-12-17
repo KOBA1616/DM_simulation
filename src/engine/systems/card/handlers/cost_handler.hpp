@@ -2,7 +2,8 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
+#include "engine/game_command/commands.hpp"
 
 namespace dm::engine {
 
@@ -26,6 +27,8 @@ namespace dm::engine {
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
              using namespace dm::core;
+             using namespace dm::engine::systems;
+
              if (!ctx.targets) return;
 
              if (ctx.action.type == EffectActionType::COST_REFERENCE && ctx.action.str_val == "FINISH_HYPER_ENERGY") {
@@ -35,16 +38,24 @@ namespace dm::engine {
                              [tid](const CardInstance& c){ return c.instance_id == tid; });
                           if (it != p.battle_zone.end()) {
                               it->is_tapped = true;
+                              // Should likely dispatch event or use MutateCommand if strict
                           }
                      }
                  }
-                 int taps = ctx.action.value1;
-                 if (taps == 0) taps = (int)ctx.targets->size();
-
-                 int reduction = taps * 2;
+                 // int taps = ctx.action.value1; // unused logic?
+                 // int reduction = taps * 2; // handled by auto-pay logic usually or here.
+                 // In Hyper Energy, we just tapped creatures.
+                 // Now resolve play.
 
                  PlayerID controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
-                 EffectResolver::resolve_play_from_stack(ctx.game_state, ctx.source_instance_id, reduction, SpawnSource::HAND_SUMMON, controller, ctx.card_db);
+
+                 // Use GameLogicSystem
+                 Action resolve_act;
+                 resolve_act.type = ActionType::RESOLVE_PLAY;
+                 resolve_act.source_instance_id = ctx.source_instance_id;
+                 resolve_act.spawn_source = SpawnSource::HAND_SUMMON; // Hyper Energy is from hand
+
+                 GameLogicSystem::resolve_action_oneshot(ctx.game_state, resolve_act, ctx.card_db);
              }
         }
     };

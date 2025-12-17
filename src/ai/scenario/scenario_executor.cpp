@@ -2,7 +2,7 @@
 #include "engine/game_instance.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/actions/action_generator.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include "ai/agents/heuristic_agent.hpp"
 #include <random>
 
@@ -10,6 +10,7 @@ namespace dm::ai {
 
     using namespace dm::core;
     using namespace dm::engine;
+    using namespace dm::engine::systems;
 
     ScenarioExecutor::ScenarioExecutor(const std::map<CardID, CardDefinition>& db)
         : card_db(db) {}
@@ -49,7 +50,7 @@ namespace dm::ai {
                 action = agent1.get_action(instance.state, legal_actions);
             }
 
-            EffectResolver::resolve_action(instance.state, action, card_db);
+            GameLogicSystem::resolve_action_oneshot(instance.state, action, card_db);
             steps++;
         }
 

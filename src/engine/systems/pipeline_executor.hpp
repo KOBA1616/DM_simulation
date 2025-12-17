@@ -51,6 +51,8 @@ namespace dm::engine::systems {
                        const std::map<core::CardID, core::CardDefinition>& card_db);
         void handle_loop(const core::Instruction& inst, core::GameState& state,
                          const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_repeat(const core::Instruction& inst, core::GameState& state,
+                         const std::map<core::CardID, core::CardDefinition>& card_db);
         void handle_calc(const core::Instruction& inst, core::GameState& state); // COUNT, MATH
         void handle_print(const core::Instruction& inst, core::GameState& state);
 

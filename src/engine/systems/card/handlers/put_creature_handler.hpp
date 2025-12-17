@@ -1,11 +1,10 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 
 namespace dm::engine {
 
@@ -17,6 +16,7 @@ namespace dm::engine {
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
             using namespace dm::core;
+            using namespace dm::engine::systems;
 
             if (!ctx.targets || ctx.targets->empty()) return;
 
@@ -40,9 +40,6 @@ namespace dm::engine {
 
                 // Set Battle Zone State
                 card.summoning_sickness = true;
-                // Check SA/MachFighter later? Triggers handle it?
-                // Actually SA is static ability.
-
                 card.turn_played = ctx.game_state.turn_number;
 
                 // Add to Battle Zone

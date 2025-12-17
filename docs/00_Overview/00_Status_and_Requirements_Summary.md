@@ -24,8 +24,7 @@
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
-現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、**Phase 7: Data Migration (全カードデータの新JSONフォーマット移行)** への移行準備を進めています。
-`Pure Command Generation` の基盤が整備され、`DrawHandler` などの主要ハンドラーが命令パイプライン形式に移行を開始しました。
+現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、`EffectResolver` の解体が完了し、`PipelineExecutor` への移行が完了しました。
 
 ## 2. 現行システムステータス (Current Status)
 
@@ -33,7 +32,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` クラスおよびファイルを物理的に削除しました。すべての呼び出し元 (`GameInstance`, `ActionGenerator`, `ScenarioExecutor`, `Bindings`) は `GameLogicSystem` へ移行されました。
 *   [Status: Done] **GameLogicSystem Refactor**: アクションディスパッチロジックを `GameLogicSystem` に集約し、`PipelineExecutor` を介した処理フローを確立しました。
 *   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` に加え、`Stat` (統計更新), `GameResult` (勝敗判定) を実装済み。
-*   [Status: Done] **Instruction Pipeline**: `PipelineExecutor` が `GAME_ACTION` 命令 (`WIN_GAME`, `LOSE_GAME`, `TRIGGER_CHECK`, `STAT`更新) をサポートするように拡張されました。
+*   [Status: Done] **Instruction Pipeline Enhancement**: `PipelineExecutor` に `REPEAT` (ループ回数動的指定) 命令を追加し、表現力を向上させました。
+*   [Status: Done] **Handler Migration**: 主要ハンドラー (`PlayHandler`, `CostHandler`, `CastSpellHandler`, `PutCreatureHandler`) の `GameLogicSystem` への移行が完了しました。
 *   [Status: WIP] **Pure Command Generation**: `EffectSystem` に `compile_action` メソッドを追加し、アクション定義から `Instruction` リストを生成する仕組みを実装しました。`DrawHandler` の移行が完了（デッキ切れ判定→移動→統計更新→トリガーチェックの命令生成）。
 *   [Known Issue] **Binding SegFault**: `Instruction` 構造体の再帰的定義と `nlohmann::json` 引数の Python バインディングにおいて、複雑なオブジェクト受け渡し時に Segmentation Fault が発生する問題が確認されています (`tests/test_effect_compiler.py`)。
 
@@ -60,6 +60,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   [Status: Done] [Test: Pass]
     *   `PipelineExecutor` (VM) を実装済み。
     *   `GAME_ACTION` 命令を追加し、高レベルなゲーム操作（プレイ、攻撃、ブロック）および勝敗判定をパイプライン経由で実行可能にしました。
+    *   `REPEAT` 命令を追加。
 *   **Step 3: GameCommand への統合**
     *   [Status: Done] [Test: Pass]
     *   `EffectResolver` の主要メソッドを `GameLogicSystem` へ移行。
@@ -126,9 +127,9 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: Todo] **Binding Fix**: `Instruction` 構造体の Python バインディングにおけるメモリ管理・コピーの問題（SegFault）を解決する。
+1.  [Status: Todo] **Verification**: 新規追加された `REPEAT` 命令の動作検証テストを拡充する。
 2.  [Status: Todo] **Handler Migration**: `ManaHandler`, `DestroyHandler` 等の主要ハンドラーを `compile()` パターンへ移行する。
-3.  [Status: Todo] **EffectResolver Cleanup**: 残存する `EffectResolver` のロジックがあれば完全に `PipelineExecutor` へ統合する。
+3.  [Status: Done] **EffectResolver Cleanup**: `EffectResolver` の解体と `GameLogicSystem` への完全移行。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
 
