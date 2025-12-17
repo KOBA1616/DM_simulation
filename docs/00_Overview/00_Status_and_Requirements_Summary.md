@@ -129,3 +129,70 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
     *   Legacyサポート完全撤廃に伴い、全データセットの再構築を行う。
 3.  [Status: Todo] **GUI Update**:
     *   `CardEditor` を更新し、新スキーマ (`CommandDef`) の編集に対応させる。
+
+    #### 新エンジン対応：Card Editor GUI構造の再定義
+
+    新エンジン（イベント駆動・コマンド型）への移行に伴い、Card EditorのGUI（木構造）は、単なる「トリガー→アクション」のリストから、**「イベントリスナー」と「状態修飾子（Modifier）」を明確に区別する構造**へ変化させる必要があります。
+
+    ##### 推奨される新しい木構造
+
+    現在の `Card -> Effect -> Action` という3層構造を維持しつつ、**第2層（Effect層）の役割を拡張・分岐**させます。
+
+    ```text
+    [Root] Card Definition (基本情報: コスト、文明、種族など)
+     │
+     ├── [Node Type 1] Keywords (単純なキーワード能力)
+     │    │  ※ 「ブロッカー」「W・ブレイカー」「SA」などのフラグ管理
+     │    └─ (Checkboxes / List)
+     │
+     ├── [Node Type 2] Abilities (複雑な能力リスト)
+     │    │
+     │    ├── Case A: Triggered Ability (誘発型能力 / イベントリスナー)
+     │    │    │  ※ 特定のイベントに反応してスタックに乗る能力
+     │    │    │
+     │    │    ├── Trigger Definition (いつ？)
+     │    │    │    └─ Event Type: ON_PLAY, ON_ATTACK, ON_DESTROY, ON_BLOCK
+     │    │    │
+     │    │    ├── Condition (条件は？ - 介入型if節)
+     │    │    │    └─ Filter: "If you have a Fire Bird", "If opponent has no shields"
+     │    │    │
+     │    │    └── Action Sequence (何をする？ - コマンド発行)
+     │    │         ├── Action 1: SELECT_TARGET (Targeting)
+     │    │         └── Action 2: DESTROY_CARD (Execution)
+     │    │
+     │    └── Case B: Static / Passive Ability (常在型能力 / 状態修飾)
+     │         │  ※ 戦場にある限り常に適用される効果（Modifer）
+     │         │
+     │         ├── Layer Definition (何を変える？)
+     │         │    └─ Type: COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD
+     │         │
+     │         ├── Condition (適用条件は？)
+     │         │    └─ Filter: "While tapped", "If mana > 5"
+     │         │
+     │         └── Value / Target Scope (誰に・どれくらい？)
+     │              └─ Target: ALL_FRIENDLY_CREATURES, SELF
+     │              └─ Value: +3000, -1 Cost
+     │
+     └── [Node Type 3] Reaction Abilities (リアクション / 忍者ストライク等)
+          │  ※ 手札などから特定のタイミングで宣言できる能力
+          │
+          ├── Trigger Window (どのタイミングで？)
+          │    └─ Type: NINJA_STRIKE, STRIKE_BACK
+          │
+          └── Action Sequence
+               └─ (Summon, Cast, etc.)
+    ```
+
+    ##### 具体的な変更点と理由
+
+    1.  **「Trigger」から「Ability Type」への概念拡張**
+        *   これまでは全ての効果を「何かが起きたら実行する」として扱っていましたが、新エンジンでは**「即時解決されるイベント（誘発）」**と**「継続的に適用されるルール（常在）」**を区別する必要があります。
+        *   **GUIの変更:** Effectを追加する際、最初に **「Triggered (誘発型)」** か **「Static (常在型)」** かを選択させます。
+
+    2.  **条件判定（Condition）の独立ノード化**
+        *   新エンジンでは、イベントが発生しても「条件を満たしていなければ PendingEffect (待機効果) を生成しない」あるいは「解決時に不発になる」という判定が重要です。
+        *   **GUIの変更:** TriggerとActionの間に **「Condition (条件)」** ノードまたはプロパティ欄を設けます。
+
+    3.  **アクション間の「変数のリンク（Context Linking）」**
+        *   コマンド式になったことで、Action 1（選択）の結果を Action 2（破壊）が受け取るフローが厳格になります。
+        *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を指定できるようにします。
