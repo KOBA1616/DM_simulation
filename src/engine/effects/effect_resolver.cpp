@@ -9,13 +9,16 @@
 #include "engine/systems/card/passive_effect_system.hpp"
 #include "engine/cost_payment_system.hpp"
 #include "engine/systems/card/handlers/attack_handler.hpp"
+#include "engine/game_command/commands.hpp"
 
 #include <iostream>
 #include <algorithm>
+#include <memory>
 
 namespace dm::engine {
 
     using namespace dm::core;
+    using namespace dm::engine::game_command;
 
     // Helper to find and remove from hand
     static CardInstance remove_from_hand(Player& player, int instance_id) {
@@ -233,77 +236,118 @@ namespace dm::engine {
 
     // ... resolve functions (keep) ...
     void EffectResolver::resolve_mana_charge(GameState& game_state, const Action& action) {
-        Player& player = game_state.players[game_state.active_player_id];
-        auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
-        if (it != player.hand.end()) {
-            CardInstance card = *it;
-            player.hand.erase(it);
-            card.is_tapped = false;
-            player.mana_zone.push_back(card);
-        }
+        // Migration to GameCommand: Transition Hand -> Mana
+        auto move_cmd = std::make_shared<TransitionCommand>(
+            action.source_instance_id,
+            Zone::HAND,
+            Zone::MANA,
+            game_state.active_player_id
+        );
+        game_state.execute_command(move_cmd);
+
+        // Ensure card is untapped in Mana Zone
+        auto untap_cmd = std::make_shared<MutateCommand>(
+            action.source_instance_id,
+            MutateCommand::MutationType::UNTAP
+        );
+        game_state.execute_command(untap_cmd);
     }
 
     void EffectResolver::resolve_play_card(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
         Player& player = game_state.players[game_state.active_player_id];
+
+        // --- Hyper Energy / Special Payment Path ---
         if (action.target_player == 254) {
-             auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
-             if (it != player.hand.end()) {
-                 CardInstance card = *it;
-                 player.hand.erase(it);
-                 game_state.stack_zone.push_back(card);
-                 int units = action.target_slot_index;
-                 int reduction_amount = 0;
+             // 1. Move to Stack (Using Command)
+             auto move_cmd = std::make_shared<TransitionCommand>(
+                 action.source_instance_id,
+                 Zone::HAND,
+                 Zone::STACK,
+                 game_state.active_player_id
+             );
+             game_state.execute_command(move_cmd);
 
-                 if (card_db.count(card.card_id)) {
-                     const auto& def = card_db.at(card.card_id);
-                     for (const auto& reduction : def.cost_reductions) {
-                         if (reduction.type == ReductionType::ACTIVE_PAYMENT) {
-                             reduction_amount = CostPaymentSystem::execute_payment(game_state, player.id, reduction, units, card_db);
-                             break; // Assume single active reduction type per card for now
+             // Note: After move, the card is in Stack. We need to find it there or use instance_id.
+             // TransitionCommand preserves instance_id.
+
+             int units = action.target_slot_index;
+             int reduction_amount = 0;
+             int card_id = -1;
+
+             // Find card data to calculate cost
+             if (card_db.empty()) {
+                  // Fallback to registry if not provided (shouldn't happen in engine)
+             }
+
+             // We can peek the stack or use get_card_instance
+             CardInstance* card_ptr = nullptr;
+             if (!game_state.stack_zone.empty() && game_state.stack_zone.back().instance_id == action.source_instance_id) {
+                 card_ptr = &game_state.stack_zone.back();
+                 card_id = card_ptr->card_id;
+             }
+
+             if (card_ptr && card_db.count(card_id)) {
+                 const auto& def = card_db.at(card_id);
+                 for (const auto& reduction : def.cost_reductions) {
+                     if (reduction.type == ReductionType::ACTIVE_PAYMENT) {
+                         reduction_amount = CostPaymentSystem::execute_payment(game_state, player.id, reduction, units, card_db);
+                         break;
+                     }
+                 }
+                 // Legacy fallback:
+                 if (reduction_amount == 0 && def.keywords.hyper_energy) {
+                     int taps_done = 0;
+                     for (auto& c : player.battle_zone) {
+                         if (!c.is_tapped && !c.summoning_sickness) {
+                             // Use Mutate Command for tapping
+                             auto tap_cmd = std::make_shared<MutateCommand>(
+                                 c.instance_id,
+                                 MutateCommand::MutationType::TAP
+                             );
+                             game_state.execute_command(tap_cmd);
+
+                             taps_done++;
+                             if (taps_done >= units) break;
                          }
                      }
-                     // If no active reduction found but target_player=254, something is wrong or it's legacy hyper_energy?
-                     // Legacy fallback:
-                     if (reduction_amount == 0 && def.keywords.hyper_energy) {
-                         // Fallback to hardcoded tapping if new system yields 0 (e.g. data mismatch)
-                         int taps_done = 0;
-                         for (auto& c : player.battle_zone) {
-                             if (!c.is_tapped && !c.summoning_sickness) {
-                                 c.is_tapped = true;
-                                 taps_done++;
-                                 if (taps_done >= units) break;
-                             }
-                         }
-                         reduction_amount = taps_done * 2;
-                     }
-
-                     // Now pay remaining mana
-                     // Apply passive reductions first (Standard Cost Logic)
-                     int base_adjusted = ManaSystem::get_adjusted_cost(game_state, player, def);
-                     // Apply active reduction
-                     int final_cost = std::max(0, base_adjusted - reduction_amount);
-                     // Enforce min cost from active reductions if any (Phase 4 requirement)
-                     // CostPaymentSystem logic respects min_mana_cost during calculation, so final_cost should be safe to pay.
-
-                     ManaSystem::auto_tap_mana(game_state, player, def, final_cost, card_db);
+                     reduction_amount = taps_done * 2;
                  }
 
-                 resolve_play_from_stack(game_state, card.instance_id, reduction_amount, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db);
+                 // Now pay remaining mana
+                 int base_adjusted = ManaSystem::get_adjusted_cost(game_state, player, def);
+                 int final_cost = std::max(0, base_adjusted - reduction_amount);
+                 ManaSystem::auto_tap_mana(game_state, player, def, final_cost, card_db);
              }
+
+             resolve_play_from_stack(game_state, action.source_instance_id, reduction_amount, SpawnSource::HAND_SUMMON, game_state.active_player_id, card_db);
              return;
         }
-        auto it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c) { return c.instance_id == action.source_instance_id; });
-        if (it != player.hand.end()) {
-            CardInstance card = *it;
-            player.hand.erase(it);
-            card.is_tapped = false;
-            card.summoning_sickness = true;
+
+        // --- Standard Play Path ---
+        // Move to Stack
+        auto move_cmd = std::make_shared<TransitionCommand>(
+             action.source_instance_id,
+             Zone::HAND,
+             Zone::STACK,
+             game_state.active_player_id
+        );
+        game_state.execute_command(move_cmd);
+
+        // Standard initialization on stack
+        // Although resolve_play_from_stack resets these, we must ensure correct default state
+        // to match legacy behavior (card.is_tapped = false; card.summoning_sickness = true;)
+        // Accessing the card in stack zone (it was just pushed)
+        if (!game_state.stack_zone.empty() && game_state.stack_zone.back().instance_id == action.source_instance_id) {
+            auto& stack_card = game_state.stack_zone.back();
+            stack_card.is_tapped = false;
+            stack_card.summoning_sickness = true;
+
+            // Handle metadata passing via power_mod (Legacy evolution/metadata mechanism)
             if (action.target_instance_id != -1) {
-                card.power_mod = action.target_instance_id;
+                stack_card.power_mod = action.target_instance_id;
             } else {
-                card.power_mod = -1;
+                stack_card.power_mod = -1;
             }
-            game_state.stack_zone.push_back(card);
         }
     }
 
@@ -454,9 +498,6 @@ namespace dm::engine {
 
          if (defender.shield_zone.empty()) {
              // If this break was intended for the opponent and they have no shields, it's a win.
-             // But if it was self-break or friendly fire, it shouldn't trigger win?
-             // Standard BREAK_SHIELD logic usually implies winning if empty.
-             // For safety, only trigger win if target is opponent of active player.
              if (target_pid != game_state.active_player_id) {
                  game_state.winner = (game_state.active_player_id == 0) ? GameResult::P1_WIN : GameResult::P2_WIN;
              }
@@ -479,9 +520,10 @@ namespace dm::engine {
              shield_index = defender.shield_zone.size() - 1;
          }
 
+         // Target identification
          CardInstance shield = defender.shield_zone[shield_index];
-         defender.shield_zone.erase(defender.shield_zone.begin() + shield_index);
 
+         // Check Shield Burn
          bool shield_burn = false;
          Player& attacker_player = game_state.get_active_player();
          auto it = std::find_if(attacker_player.battle_zone.begin(), attacker_player.battle_zone.end(),
@@ -493,24 +535,35 @@ namespace dm::engine {
                  }
              }
          }
+
          if (shield_burn) {
-             defender.graveyard.push_back(shield);
+             // Move to Graveyard using Command
+             auto move_cmd = std::make_shared<TransitionCommand>(
+                 shield.instance_id, Zone::SHIELD, Zone::GRAVEYARD, defender.id
+             );
+             game_state.execute_command(move_cmd);
+
              GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_DESTROY, shield.instance_id, card_db);
          } else {
+             // Move to Hand using Command
+             auto move_cmd = std::make_shared<TransitionCommand>(
+                 shield.instance_id, Zone::SHIELD, Zone::HAND, defender.id
+             );
+             game_state.execute_command(move_cmd);
+
              bool is_trigger = false;
              if (card_db.count(shield.card_id)) {
                  const auto& def = card_db.at(shield.card_id);
-                 // Updated for Conditional S-Trigger support
                  if (TargetUtils::has_keyword_simple(game_state, shield, def, "SHIELD_TRIGGER")) {
                      is_trigger = true;
                  }
              }
+
              if (is_trigger) {
-                 defender.hand.push_back(shield);
+                 // Note: Card is now in Hand.
                  game_state.pending_effects.emplace_back(EffectType::SHIELD_TRIGGER, shield.instance_id, defender.id);
-             } else {
-                 defender.hand.push_back(shield);
              }
+
              // Reaction Window: ON_SHIELD_ADD (Strike Back)
              ReactionSystem::check_and_open_window(game_state, card_db, "ON_SHIELD_ADD", defender.id);
          }
