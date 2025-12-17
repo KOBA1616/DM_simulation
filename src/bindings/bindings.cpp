@@ -828,19 +828,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
                 }
             }
         })
-        .def("set_deck", [](GameState& s, PlayerID pid, const std::vector<int>& card_ids) {
-            s.players[pid].deck.clear();
-            int instance_id_counter = 1000 * (pid + 1);
-            for (int cid : card_ids) {
-                CardInstance c;
-                c.card_id = cid;
-                c.instance_id = instance_id_counter++;
-                c.owner = pid; // Fixed
-                s.players[pid].deck.push_back(c);
-                if (s.card_owner_map.size() <= (size_t)c.instance_id) s.card_owner_map.resize(c.instance_id + 1, 255);
-                s.card_owner_map[c.instance_id] = pid;
-            }
-        })
         .def("calculate_hash", &GameState::calculate_hash)
         .def("initialize_card_stats", &GameState::initialize_card_stats)
         .def("vectorize_card_stats", &GameState::vectorize_card_stats);
@@ -856,6 +843,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("reset_with_scenario", &GameInstance::reset_with_scenario)
         .def("get_state", &GameInstance::get_state, py::return_value_policy::reference) // Exposed as reference
         .def("undo", &GameInstance::undo) // Phase 6 Step 3
+        .def("resolve_action", &GameInstance::resolve_action) // Phase 7: Direct resolution
+        .def("initialize_card_stats", &GameInstance::initialize_card_stats, py::arg("deck_size")=40) // Phase 7: Stats
         .def_readonly("state", &GameInstance::state, py::return_value_policy::reference_internal) // Fix SegFault by preventing copy
         .def_readwrite("trigger_manager", &GameInstance::trigger_manager);
         // .def_readonly("card_db", &GameInstance::card_db); // Cannot bind reference member directly easily

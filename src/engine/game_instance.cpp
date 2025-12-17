@@ -3,6 +3,7 @@
 #include "engine/game_command/game_command.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include <functional>
+#include <iostream>
 
 namespace dm::engine {
 
@@ -35,6 +36,10 @@ namespace dm::engine {
     }
 
     void GameInstance::resolve_action(const core::Action& action) {
+        if (!pipeline) {
+            std::cerr << "FATAL: pipeline is null!" << std::endl;
+            return;
+        }
         systems::GameLogicSystem::dispatch_action(*pipeline, state, action, card_db);
     }
 
@@ -51,6 +56,10 @@ namespace dm::engine {
 
         // Remove from history
         state.command_history.pop_back();
+    }
+
+    void GameInstance::initialize_card_stats(int deck_size) {
+        state.initialize_card_stats(card_db, deck_size);
     }
 
     void GameInstance::reset_with_scenario(const ScenarioConfig& config) {
