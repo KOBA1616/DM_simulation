@@ -169,8 +169,18 @@ namespace dm::engine::systems {
             );
             state.execute_command(move_cmd);
 
-            GenericCardSystem::resolve_trigger(state, TriggerType::ON_PLAY, card.instance_id, card_db);
-            GenericCardSystem::resolve_trigger(state, TriggerType::ON_CAST_SPELL, card.instance_id, card_db);
+            // Dispatch PLAY_CARD event for Spell (mapped to ON_CAST_SPELL)
+            if (state.event_dispatcher) {
+                GameEvent evt(EventType::PLAY_CARD, card.instance_id, -1, state.active_player_id);
+                evt.context["is_spell"] = 1;
+                evt.context["card_id"] = card.card_id;
+                state.event_dispatcher(evt);
+            }
+
+            // Legacy trigger call removed - relying on TriggerManager via Event
+            // GenericCardSystem::resolve_trigger(state, TriggerType::ON_CAST_SPELL, card.instance_id, card_db);
+            // ON_PLAY for Spells? Historically 'ON_PLAY' might have been used, but 'ON_CAST_SPELL' is correct.
+
             state.turn_stats.spells_cast_this_turn++;
 
         } else {
@@ -206,7 +216,9 @@ namespace dm::engine::systems {
                 }
             }
 
-            GenericCardSystem::resolve_trigger(state, TriggerType::ON_PLAY, card.instance_id, card_db);
+            // ON_PLAY is handled by TransitionCommand -> ZONE_ENTER (Battle) -> TriggerManager -> ON_PLAY
+            // So we can remove explicit call.
+            // GenericCardSystem::resolve_trigger(state, TriggerType::ON_PLAY, card.instance_id, card_db);
             state.turn_stats.creatures_played_this_turn++;
         }
 
@@ -230,7 +242,16 @@ namespace dm::engine::systems {
          state.current_attack.is_blocked = false;
          state.current_attack.blocker_instance_id = -1;
 
-         GenericCardSystem::resolve_trigger(state, TriggerType::ON_ATTACK, source_id, card_db);
+         // ATTACK_INITIATE is dispatched by FlowCommand used in ActionGenerator?
+         // ActionGenerator uses GameLogicSystem::handle_attack via Pipeline.
+         // Pipeline executes logic here.
+         // We should use FlowCommand to set attack source to ensure event dispatch.
+
+         auto flow_cmd = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_SOURCE, source_id);
+         state.execute_command(flow_cmd);
+
+         // Explicit trigger call removed.
+         // GenericCardSystem::resolve_trigger(state, TriggerType::ON_ATTACK, source_id, card_db);
     }
 
     void GameLogicSystem::handle_block(PipelineExecutor& pipeline, GameState& state, const Instruction& inst, const std::map<CardID, CardDefinition>& card_db) {
@@ -245,7 +266,15 @@ namespace dm::engine::systems {
         );
         state.execute_command(tap_cmd);
 
-        GenericCardSystem::resolve_trigger(state, TriggerType::ON_BLOCK, blocker_id, card_db);
+        // Dispatch BLOCK_INITIATE
+        if (state.event_dispatcher) {
+             GameEvent evt(EventType::BLOCK_INITIATE, blocker_id, -1, state.active_player_id);
+             evt.context["instance_id"] = blocker_id;
+             evt.context["attacker_id"] = state.current_attack.source_instance_id;
+             state.event_dispatcher(evt);
+        }
+
+        // GenericCardSystem::resolve_trigger(state, TriggerType::ON_BLOCK, blocker_id, card_db);
 
         state.pending_effects.emplace_back(EffectType::RESOLVE_BATTLE, blocker_id, state.active_player_id);
     }
@@ -335,7 +364,8 @@ namespace dm::engine::systems {
              );
              state.execute_command(destroy_cmd);
 
-             GenericCardSystem::resolve_trigger(state, TriggerType::ON_DESTROY, defender_id, card_db);
+             // Trigger handled by TransitionCommand (ZONE_ENTER Graveyard) -> ON_DESTROY
+             // GenericCardSystem::resolve_trigger(state, TriggerType::ON_DESTROY, defender_id, card_db);
          }
 
          if (def_wins || draw) {
@@ -348,7 +378,8 @@ namespace dm::engine::systems {
              );
              state.execute_command(destroy_cmd);
 
-             GenericCardSystem::resolve_trigger(state, TriggerType::ON_DESTROY, attacker_id, card_db);
+             // Trigger handled by TransitionCommand (ZONE_ENTER Graveyard) -> ON_DESTROY
+             // GenericCardSystem::resolve_trigger(state, TriggerType::ON_DESTROY, attacker_id, card_db);
          }
     }
 
@@ -368,7 +399,14 @@ namespace dm::engine::systems {
              return;
         }
 
-        GenericCardSystem::resolve_trigger(state, TriggerType::AT_BREAK_SHIELD, source_id, card_db);
+        // Dispatch SHIELD_BREAK
+        if (state.event_dispatcher) {
+             GameEvent evt(EventType::SHIELD_BREAK, source_id, -1, state.active_player_id);
+             evt.context["target_player"] = target_player_id;
+             state.event_dispatcher(evt);
+        }
+
+        // GenericCardSystem::resolve_trigger(state, TriggerType::AT_BREAK_SHIELD, source_id, card_db);
 
         // Select Shield
         int shield_index = -1;
@@ -402,7 +440,8 @@ namespace dm::engine::systems {
                  shield.instance_id, Zone::SHIELD, Zone::GRAVEYARD, defender.id
              );
              state.execute_command(move_cmd);
-             GenericCardSystem::resolve_trigger(state, TriggerType::ON_DESTROY, shield.instance_id, card_db);
+             // Handled by TransitionCommand -> ON_DESTROY
+             // GenericCardSystem::resolve_trigger(state, TriggerType::ON_DESTROY, shield.instance_id, card_db);
         } else {
              auto move_cmd = std::make_shared<TransitionCommand>(
                  shield.instance_id, Zone::SHIELD, Zone::HAND, defender.id
@@ -424,4 +463,134 @@ namespace dm::engine::systems {
              ReactionSystem::check_and_open_window(state, card_db, "ON_SHIELD_ADD", defender.id);
         }
     }
+
+     void GameLogicSystem::handle_mana_charge(PipelineExecutor&, GameState& state, const Instruction& inst) {
+         int source_id = get_arg_int(inst.args, "source_id");
+         // Optional: get target_player? Typically active player unless specified
+         // But MoveCard action usually specifies source/dest.
+         // This is specific "Mana Charge" logic (untap)
+
+         // Assuming source_id is already in Hand (or where-ever).
+         // Wait, EffectResolver::resolve_mana_charge moves it FROM HAND TO MANA.
+         // And UNTAPS it.
+
+         auto move_cmd = std::make_shared<TransitionCommand>(
+            source_id, Zone::HAND, Zone::MANA, state.active_player_id
+         );
+         state.execute_command(move_cmd);
+
+         auto untap_cmd = std::make_shared<MutateCommand>(
+            source_id, MutateCommand::MutationType::UNTAP
+         );
+         state.execute_command(untap_cmd);
+     }
+
+     void GameLogicSystem::handle_resolve_reaction(PipelineExecutor& pipeline, GameState& state, const Instruction& inst, const std::map<CardID, CardDefinition>& card_db) {
+         int source_id = get_arg_int(inst.args, "source_id");
+         int target_player = get_arg_int(inst.args, "target_player");
+
+         Player& controller = state.players[target_player];
+
+         // Legacy logic from EffectResolver::resolve_reaction
+         // "remove_from_hand" manually.
+         // We should use TransitionCommand.
+
+         // Move Hand -> Stack (Prepare to play)
+         // Note: Logic says "play internal".
+         // EffectResolver removed from hand then pushed to stack, then called resolve_action(PLAY_CARD_INTERNAL).
+
+         // Check if in hand
+         auto it = std::find_if(controller.hand.begin(), controller.hand.end(), [&](const CardInstance& c){ return c.instance_id == source_id; });
+         if (it != controller.hand.end()) {
+             // Move
+             auto move_cmd = std::make_shared<TransitionCommand>(
+                 source_id, Zone::HAND, Zone::STACK, target_player
+             );
+             state.execute_command(move_cmd);
+
+             // Now queue RESOLVE_PLAY via Pipeline
+             nlohmann::json args;
+             args["type"] = "RESOLVE_PLAY";
+             args["source_id"] = source_id;
+             args["spawn_source"] = (int)SpawnSource::EFFECT_SUMMON; // Inferred
+             // dest_override?
+             pipeline.execute({Instruction(InstructionOp::GAME_ACTION, args)}, state, card_db);
+         }
+     }
+
+     void GameLogicSystem::handle_use_ability(PipelineExecutor&, GameState& state, const Instruction& inst, const std::map<CardID, CardDefinition>& card_db) {
+         // Revolution Change Logic
+         int source_id = get_arg_int(inst.args, "source_id");
+         int target_id = get_arg_int(inst.args, "target_id", -1); // Attacker to swap with
+
+         if (target_id == -1) target_id = state.current_attack.source_instance_id;
+
+         Player& player = state.players[state.active_player_id];
+
+         // Verify source in Hand
+         auto hand_it = std::find_if(player.hand.begin(), player.hand.end(), [&](const CardInstance& c){ return c.instance_id == source_id; });
+         // Verify target in Battle Zone
+         auto battle_it = std::find_if(player.battle_zone.begin(), player.battle_zone.end(), [&](const CardInstance& c){ return c.instance_id == target_id; });
+
+         if (hand_it != player.hand.end() && battle_it != player.battle_zone.end()) {
+             // Execute Swap
+             // We can use TransitionCommands.
+
+             // 1. Hand -> Battle (Tapped, Summoning Sickness?)
+             // Revolution Change: "Switch".
+             // Usually retains "Tapped" status?
+             // Official rules: "The new creature enters the battle zone in the same state (tapped/untapped) as the creature that left."
+             // Actually, Revolution Change text: "attack with this creature instead".
+             // Usually it enters TAPPED and ATTACKING.
+
+             // 2. Battle -> Hand
+
+             // Perform moves
+             auto move_to_hand = std::make_shared<TransitionCommand>(
+                 target_id, Zone::BATTLE, Zone::HAND, state.active_player_id
+             );
+
+             // We need to capture state of the leaving creature if we need to apply it?
+             // But TransitionCommand moves it.
+
+             auto move_to_battle = std::make_shared<TransitionCommand>(
+                 source_id, Zone::HAND, Zone::BATTLE, state.active_player_id
+             );
+
+             state.execute_command(move_to_hand);
+             state.execute_command(move_to_battle);
+
+             // Update Attack State
+             state.current_attack.source_instance_id = source_id;
+
+             // Set Tapped/Attacking state
+             auto tap_cmd = std::make_shared<MutateCommand>(source_id, MutateCommand::MutationType::TAP);
+             state.execute_command(tap_cmd);
+
+             // Apply Summoning Sickness?
+             // Revolution Change creatures can attack immediately (part of the effect).
+             // But technically they have SS unless Speed Attacker.
+             // However, they are *already attacking*.
+             // The engine logic for "Can Attack" is past check.
+             // We just need to ensure `summoning_sickness` doesn't prevent resolution or future checks.
+             // We should set `summoning_sickness = true` (standard entry) but they are attacking.
+
+             // Trigger ON_PLAY
+             // Handled by TransitionCommand -> ZONE_ENTER -> ON_PLAY
+             // But we might want to ensure it happens.
+             // TransitionCommand does dispatch.
+         }
+     }
+
+     void GameLogicSystem::handle_select_target(PipelineExecutor&, GameState& state, const Instruction& inst) {
+         int slot_index = get_arg_int(inst.args, "slot_index");
+         int target_id = get_arg_int(inst.args, "target_id");
+
+         if (slot_index >= 0 && slot_index < (int)state.pending_effects.size()) {
+            auto& pe = state.pending_effects[slot_index];
+            if (pe.resolve_type == ResolveType::TARGET_SELECT) {
+                pe.target_instance_ids.push_back(target_id);
+            }
+        }
+     }
 }
