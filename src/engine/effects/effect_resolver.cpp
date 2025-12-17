@@ -32,6 +32,31 @@ namespace dm::engine {
     }
 
     void EffectResolver::resolve_action(GameState& game_state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
+        // Phase 6: Handle Response to Query
+        if (game_state.waiting_for_user_input && game_state.pending_query) {
+            // Map Action to DecideCommand
+            std::vector<int> selected_indices;
+            int selected_option = -1;
+
+            if (game_state.pending_query->query_type == "SELECT_TARGET" && action.type == ActionType::SELECT_TARGET) {
+                selected_indices.push_back(action.target_instance_id);
+            } else if (game_state.pending_query->query_type == "SELECT_OPTION" && action.type == ActionType::SELECT_OPTION) {
+                selected_option = action.target_slot_index;
+            } else {
+                // Invalid response type for query
+                // Or maybe ActionType::PASS / CANCEL if supported?
+                return;
+            }
+
+            auto cmd = std::make_shared<DecideCommand>(
+                game_state.pending_query->query_id,
+                selected_indices,
+                selected_option
+            );
+            game_state.execute_command(cmd);
+            return;
+        }
+
         // Instantiate a PipelineExecutor
         // Ideally this should be persistent in GameInstance/GameState, but for the refactor/strangle, we create one locally.
         PipelineExecutor pipeline;
