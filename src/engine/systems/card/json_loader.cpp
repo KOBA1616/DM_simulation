@@ -35,6 +35,11 @@ namespace dm::engine {
         def.power = data.power;
         def.races = data.races;
 
+        // Copy effects
+        def.effects = data.effects;
+        def.metamorph_abilities = data.metamorph_abilities;
+        def.cost_reductions = data.cost_reductions;
+
         // Revolution Change
         if (data.revolution_change_condition.has_value()) {
             def.revolution_change_condition = data.revolution_change_condition;
