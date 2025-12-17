@@ -1,0 +1,11 @@
+{
+  "name": "query_test",
+  "player_deck": [1001],
+  "enemy_deck": [1],
+  "player_hand": [1001],
+  "player_mana": [],
+  "player_shields": [],
+  "enemy_hand": [],
+  "enemy_mana": [],
+  "enemy_shields": []
+}

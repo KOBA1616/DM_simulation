@@ -69,6 +69,20 @@ namespace dm::engine::systems {
                     trans.execute(state);
                 }
             }
+        } else if (cmd.type == core::CommandType::QUERY) {
+             // QueryCommand(std::string type, std::vector<int> targets = {}, std::map<std::string, int> p = {})
+             // Map cmd parameters to Query params
+             std::string query_type = cmd.str_param.empty() ? "SELECT_TARGET" : cmd.str_param;
+             std::vector<int> targets; // Resolve targets?
+             // Resolve targets for Query usually means "Valid Candidates"
+             targets = resolve_targets(state, cmd, source_instance_id, player_id);
+
+             std::map<std::string, int> params;
+             params["amount"] = cmd.amount;
+
+             QueryCommand query(query_type, targets, params);
+             query.execute(state);
+
         } else if (cmd.type == core::CommandType::MUTATE) {
             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id);
 
