@@ -2,7 +2,7 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 
 namespace dm::engine {
 
@@ -26,6 +26,8 @@ namespace dm::engine {
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
              using namespace dm::core;
+             using namespace dm::engine::systems;
+
              if (!ctx.targets) return;
 
              if (ctx.action.type == EffectActionType::COST_REFERENCE && ctx.action.str_val == "FINISH_HYPER_ENERGY") {
@@ -44,7 +46,7 @@ namespace dm::engine {
                  int reduction = taps * 2;
 
                  PlayerID controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
-                 EffectResolver::resolve_play_from_stack(ctx.game_state, ctx.source_instance_id, reduction, SpawnSource::HAND_SUMMON, controller, ctx.card_db);
+                 GameLogicSystem::resolve_play_from_stack(ctx.game_state, ctx.source_instance_id, reduction, SpawnSource::HAND_SUMMON, controller, ctx.card_db);
              }
         }
     };

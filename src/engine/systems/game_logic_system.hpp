@@ -18,6 +18,13 @@ namespace dm::engine::systems {
 
         // Creates a temporary pipeline to resolve a single action (Legacy/Test support)
         static void resolve_action_oneshot(core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db);
+        // Alias for compatibility with EffectResolver::resolve_action
+        static void resolve_action(core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
+            resolve_action_oneshot(state, action, card_db);
+        }
+
+        // Static helper to replace EffectResolver::resolve_play_from_stack
+        static void resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id = -1, int dest_override = 0);
 
         // Main handlers for High-Level Game Actions
         static void handle_play_card(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
@@ -32,6 +39,10 @@ namespace dm::engine::systems {
         static void handle_resolve_reaction(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_use_ability(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_select_target(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst);
+
+        // Exposed Utils
+        static int get_creature_power(const core::CardInstance& creature, const core::GameState& game_state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        static int get_breaker_count(const core::CardInstance& creature, const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Helper to push instructions
         static void push_trigger_check(PipelineExecutor& pipeline, core::TriggerType type, int source_id);

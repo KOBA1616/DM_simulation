@@ -1,6 +1,6 @@
 #include "self_play.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include "engine/utils/determinizer.hpp"
 #include "engine/actions/action_generator.hpp"
 #include "ai/encoders/action_encoder.hpp"
@@ -11,6 +11,7 @@ namespace dm::ai {
 
     using namespace dm::core;
     using namespace dm::engine;
+    using namespace dm::engine::systems;
 
     SelfPlay::SelfPlay(const std::map<CardID, CardDefinition>& card_db, int mcts_simulations, int batch_size)
         : card_db_(card_db), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
@@ -78,7 +79,7 @@ namespace dm::ai {
                 continue;
             }
 
-            EffectResolver::resolve_action(state, selected_action, card_db_);
+            GameLogicSystem::resolve_action(state, selected_action, card_db_);
             
             if (selected_action.type == ActionType::PASS || selected_action.type == ActionType::MANA_CHARGE) {
                  if (state.current_phase == Phase::MANA && selected_action.type == ActionType::MANA_CHARGE) {

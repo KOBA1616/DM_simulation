@@ -7,7 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../bin'))
 
 try:
     import dm_ai_module
-    from dm_ai_module import GameState, CardData, Civilization, CardType, GenericCardSystem, ConditionDef, EffectDef, ActionDef, EffectActionType, TargetScope, TriggerType
+    from dm_ai_module import GameState, CardData, Civilization, CardType, EffectSystem, ConditionDef, EffectDef, ActionDef, EffectActionType, TargetScope, TriggerType
 except ImportError as e:
     print(f"Failed to import dm_ai_module: {e}")
     print("Ensure dm_ai_module is built and in the python path (e.g. bin/).")
@@ -95,7 +95,7 @@ def verify_pipeline_logic():
     # Resolve Effect Directly to test pipeline
     print("Invoking resolve_effect directly...")
     # Binding signature suggests no card_db needed (auto-fetched or not required for simple effects?)
-    GenericCardSystem.resolve_effect(game, eff, 200)
+    EffectSystem.resolve_effect(game, eff, 200)
 
     curr_hand_size = len(p0.hand)
     print(f"Hand size after: {curr_hand_size}")
@@ -125,7 +125,7 @@ def verify_pipeline_logic():
     print(f"Hand size before: {prev_hand_size}")
 
     print("Invoking resolve_effect directly...")
-    GenericCardSystem.resolve_effect(game, eff, 201)
+    EffectSystem.resolve_effect(game, eff, 201)
 
     curr_hand_size = len(p0.hand)
     print(f"Hand size after: {curr_hand_size}")
