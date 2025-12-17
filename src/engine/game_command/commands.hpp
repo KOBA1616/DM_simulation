@@ -138,4 +138,39 @@ namespace dm::engine::game_command {
         CommandType get_type() const override { return CommandType::DECLARE_REACTION; }
     };
 
+    class StatCommand : public GameCommand {
+    public:
+        enum class StatType {
+            CARDS_DRAWN,
+            CARDS_DISCARDED,
+            CREATURES_PLAYED,
+            SPELLS_CAST
+        };
+        StatType stat;
+        int amount;
+
+        // Undo context
+        int previous_value;
+
+        StatCommand(StatType s, int amt) : stat(s), amount(amt), previous_value(0) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::STAT; }
+    };
+
+    class GameResultCommand : public GameCommand {
+    public:
+        core::GameResult result;
+
+        // Undo context
+        core::GameResult previous_result;
+
+        GameResultCommand(core::GameResult res) : result(res), previous_result(core::GameResult::NONE) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::GAME_RESULT; }
+    };
+
 }

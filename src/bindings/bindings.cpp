@@ -156,6 +156,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SELECT", InstructionOp::SELECT)
         .value("MOVE", InstructionOp::MOVE)
         .value("MODIFY", InstructionOp::MODIFY)
+        .value("GAME_ACTION", InstructionOp::GAME_ACTION)
         .value("COUNT", InstructionOp::COUNT)
         .value("MATH", InstructionOp::MATH)
         .value("CALL", InstructionOp::CALL)
@@ -182,6 +183,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
                      self.args[key] = py::cast<bool>(item.second);
                  }
              }
+        })
+        .def("get_arg_str", [](const Instruction& self, std::string key) {
+            if (self.args.contains(key) && self.args[key].is_string()) return self.args[key].get<std::string>();
+            return std::string("");
+        })
+        .def("get_arg_int", [](const Instruction& self, std::string key) {
+            if (self.args.contains(key) && self.args[key].is_number()) return self.args[key].get<int>();
+            return 0;
+        })
+        .def("get_arg_nested_str", [](const Instruction& self, std::string key, std::string subkey) {
+             if (self.args.contains(key) && self.args[key].contains(subkey) && self.args[key][subkey].is_string()) {
+                 return self.args[key][subkey].get<std::string>();
+             }
+             return std::string("");
         })
         .def_readwrite("then_block", &Instruction::then_block)
         .def_readwrite("else_block", &Instruction::else_block);
@@ -932,6 +947,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("resolve_effect_with_targets", [](GameState& state, const EffectDef& effect, const std::vector<int>& targets, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
              EffectSystem::instance().resolve_effect_with_targets(state, effect, targets, source_id, db, ctx);
              return ctx;
+        })
+        .def_static("compile_action", [](GameState& state, const ActionDef& action, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
+             std::vector<dm::core::Instruction> insts;
+             EffectSystem::instance().compile_action(state, action, source_id, ctx, db, insts);
+             return insts;
         });
 
     py::class_<CardRegistry>(m, "CardRegistry")
@@ -1241,6 +1261,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("FLOW", dm::engine::game_command::CommandType::FLOW)
         .value("QUERY", dm::engine::game_command::CommandType::QUERY)
         .value("DECIDE", dm::engine::game_command::CommandType::DECIDE)
+        .value("STAT", dm::engine::game_command::CommandType::STAT)
+        .value("GAME_RESULT", dm::engine::game_command::CommandType::GAME_RESULT)
         .export_values();
 
     py::class_<dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameCommand>>(m, "GameCommand")

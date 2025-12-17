@@ -238,6 +238,15 @@ namespace dm::engine {
         }
     }
 
+    void EffectSystem::compile_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::vector<dm::core::Instruction>& out_instructions) {
+        initialize();
+
+         if (IActionHandler* handler = get_handler(action.type)) {
+            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, nullptr, nullptr, &out_instructions);
+            handler->compile(ctx);
+        }
+    }
+
     bool EffectSystem::check_condition(GameState& game_state, const ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& execution_context) {
         if (condition.type == "NONE") return true;
 
