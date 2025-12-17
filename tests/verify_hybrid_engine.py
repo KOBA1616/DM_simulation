@@ -31,19 +31,6 @@ def test_hybrid_engine():
         dm_ai_module.ConditionDef(),
         []  # Empty actions (Legacy)
     )
-    # Add command to effect (Python binding must support this)
-    # Note: If binding doesn't expose 'commands' list on EffectDef, this will fail.
-    # Let's assume it does or we need to check binding.
-    # The previous read of bindings.cpp wasn't shown fully, but CardData construction usually implies full struct access.
-    # However, direct list access in Python might require specific binding.
-    # If this fails, I'll need to update bindings.
-
-    # Actually, EffectDef constructor in Python usually takes arguments.
-    # Let's check constructor signature or attributes.
-    # If 'commands' is not in constructor, we might need to set it.
-
-    # Re-reading bindings/card_json_types.hpp: EffectDef has 'commands'.
-    # Checking if Python exposes it.
 
     try:
         # Note: Pybind11 exposes std::vector as a copy (list). Appending to the getter result does nothing.
@@ -70,7 +57,9 @@ def test_hybrid_engine():
     print("Card registered with Command successfully.")
 
     # Execution Test
-    state.set_deck(0, [1, 2, 3, 4, 5])
+    # Manually populate deck
+    for i in range(5):
+        state.add_card_to_deck(0, 1, 100+i)
 
     # We need a dummy instance ID.
     state.add_card_to_hand(0, 1001, 999) # Add card to hand to have an instance
@@ -78,7 +67,11 @@ def test_hybrid_engine():
     initial_hand = len(state.players[0].hand) # Should be 1
 
     print("Executing resolve_effect...")
-    dm_ai_module.GenericCardSystem.resolve_effect(state, card_def.effects[0], 999)
+    # Note: We need to pass the card_db to resolve_effect
+    card_db = dm_ai_module.CardRegistry.get_all_definitions()
+    # Use resolve_effect_with_db if available, or resolve_effect if it defaults
+    # Binding shows: resolve_effect_with_db for explicit db
+    dm_ai_module.GenericCardSystem.resolve_effect_with_db(state, card_def.effects[0], 999, card_db)
 
     new_hand = len(state.players[0].hand)
     print(f"Hand: {initial_hand} -> {new_hand}")
