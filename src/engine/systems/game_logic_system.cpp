@@ -26,7 +26,7 @@ namespace dm::engine::systems {
     }
 
     // Helper to get power (Ported from EffectResolver)
-    static int get_creature_power(const CardInstance& creature, const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    int GameLogicSystem::get_creature_power(const CardInstance& creature, const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         if (!card_db.count(creature.card_id)) return 0;
         int power = card_db.at(creature.card_id).power;
         power += creature.power_mod;
@@ -34,12 +34,26 @@ namespace dm::engine::systems {
         return power;
     }
 
-    static int get_breaker_count(const CardInstance& creature, const std::map<CardID, CardDefinition>& card_db) {
+    int GameLogicSystem::get_breaker_count(const CardInstance& creature, const std::map<CardID, CardDefinition>& card_db) {
          if (!card_db.count(creature.card_id)) return 1;
          const auto& k = card_db.at(creature.card_id).keywords;
          if (k.triple_breaker) return 3;
          if (k.double_breaker) return 2;
          return 1;
+    }
+
+    void GameLogicSystem::resolve_play_from_stack(GameState& game_state, int stack_instance_id, int cost_reduction, SpawnSource spawn_source, PlayerID controller, const std::map<CardID, CardDefinition>& card_db, int evo_source_id, int dest_override) {
+        // Wrapper for handle_resolve_play logic using temporary pipeline
+        PipelineExecutor pipeline;
+        nlohmann::json args;
+        args["type"] = "RESOLVE_PLAY";
+        args["source_id"] = stack_instance_id;
+        args["evo_source_id"] = evo_source_id;
+        args["dest_override"] = dest_override;
+        args["spawn_source"] = (int)spawn_source;
+        args["reduction"] = cost_reduction; // Logic might use it for logging or future cost checks
+
+        pipeline.execute({Instruction(InstructionOp::GAME_ACTION, args)}, game_state, card_db);
     }
 
     void GameLogicSystem::dispatch_action(PipelineExecutor& pipeline, GameState& state, const Action& action, const std::map<CardID, CardDefinition>& card_db) {
