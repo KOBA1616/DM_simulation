@@ -2,6 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/card_json_types.hpp"
 #include "core/card_def.hpp"
+#include "core/instruction.hpp"
 #include <map>
 #include <memory>
 #include <string>
@@ -18,6 +19,7 @@ namespace dm::engine {
         const std::vector<int>* targets = nullptr;
         bool* interrupted = nullptr;
         const std::vector<dm::core::ActionDef>* remaining_actions = nullptr;
+        std::vector<dm::core::Instruction>* instruction_buffer = nullptr;
 
         ResolutionContext(
             dm::core::GameState& state,
@@ -27,9 +29,10 @@ namespace dm::engine {
             const std::map<dm::core::CardID, dm::core::CardDefinition>& db,
             const std::vector<int>* tgs = nullptr,
             bool* intr = nullptr,
-            const std::vector<dm::core::ActionDef>* rem = nullptr)
+            const std::vector<dm::core::ActionDef>* rem = nullptr,
+            std::vector<dm::core::Instruction>* inst_buf = nullptr)
             : game_state(state), action(act), source_instance_id(src),
-              execution_vars(vars), card_db(db), targets(tgs), interrupted(intr), remaining_actions(rem) {}
+              execution_vars(vars), card_db(db), targets(tgs), interrupted(intr), remaining_actions(rem), instruction_buffer(inst_buf) {}
     };
 
     class IActionHandler {
@@ -37,6 +40,9 @@ namespace dm::engine {
         virtual ~IActionHandler() = default;
         virtual void resolve(const ResolutionContext& ctx) = 0;
         virtual void resolve_with_targets([[maybe_unused]] const ResolutionContext& ctx) {}
+
+        // Pure command generation method
+        virtual void compile([[maybe_unused]] const ResolutionContext& ctx) {}
     };
 
     class EffectSystem {
@@ -65,6 +71,9 @@ namespace dm::engine {
         void resolve_effect_with_context(dm::core::GameState& game_state, const dm::core::EffectDef& effect, int source_instance_id, std::map<std::string, int> execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
         void resolve_effect_with_targets(dm::core::GameState& game_state, const dm::core::EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::map<std::string, int>& execution_context);
         void resolve_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, bool* interrupted = nullptr, const std::vector<dm::core::ActionDef>* remaining_actions = nullptr);
+
+        // Generates instructions for an action without executing them immediately
+        void compile_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::vector<dm::core::Instruction>& out_instructions);
 
         bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& execution_context = {});
         std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation, std::map<std::string, int>& execution_context);
