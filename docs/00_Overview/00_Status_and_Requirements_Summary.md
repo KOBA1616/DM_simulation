@@ -85,6 +85,12 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   `CommandSystem::execute_primitive` における `TRANSITION` 処理（ゾーン文字列解析、ターゲット解決）の不具合を修正し、`TargetUtils` を利用した正しいフィルタリングを実装しました。
     *   `CommandSystem::execute_primitive` における `MUTATE` 処理（TAP, POWER_MOD, ADD_KEYWORD等）の実装を完了し、Pythonテスト `test_command_system.py` にて動作検証済み。
     *   Pythonバインディングを整備し、外部からのコマンド実行テストが可能になった。
+*   **Step 3: フロー制御 (Control Flow) の実装**
+    *   [Status: Done] [Test: Pass]
+    *   `CommandDef` に条件分岐用の `condition`, `if_true`, `if_false` フィールドを追加 (Hybrid Schema拡張)。
+    *   `CommandSystem` に `FLOW` コマンドの実装を追加し、`ConditionSystem` を利用して動的な分岐処理を可能にしました。
+    *   `ConditionSystem` のシングルトン化とデフォルトEvaluatorの初期化ロジックを修正・統合し、安定性を向上させました。
+    *   `test_command_system.py` にて `FLOW` コマンド（条件合致時の分岐、不一致時の分岐）の動作検証を完了しました。
 
 ### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
 [Status: Deferred]
