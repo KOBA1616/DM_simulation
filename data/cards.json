@@ -106,9 +106,11 @@
         "actions": [
           {
             "filter": {
-              "card_type": "CREATURE",
+              "types": [
+                "CREATURE"
+              ],
               "count": 1,
-              "target_player": "OPPONENT",
+              "owner": "OPPONENT",
               "zones": [
                 "BATTLE_ZONE"
               ]
@@ -117,7 +119,24 @@
             "type": "DESTROY"
           }
         ],
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "commands": [
+          {
+            "type": "DESTROY",
+            "optional": false,
+            "target_filter": {
+              "types": [
+                "CREATURE"
+              ],
+              "count": 1,
+              "owner": "OPPONENT",
+              "zones": [
+                "BATTLE_ZONE"
+              ]
+            },
+            "target_group": "TARGET_SELECT"
+          }
+        ]
       }
     ],
     "id": 5,
@@ -142,7 +161,9 @@
         "actions": [
           {
             "filter": {
-              "card_type": "CREATURE",
+              "types": [
+                "CREATURE"
+              ],
               "count": 1,
               "zones": [
                 "BATTLE_ZONE"
@@ -152,7 +173,23 @@
             "type": "RETURN_TO_HAND"
           }
         ],
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "commands": [
+          {
+            "type": "RETURN_TO_HAND",
+            "optional": false,
+            "target_filter": {
+              "types": [
+                "CREATURE"
+              ],
+              "count": 1,
+              "zones": [
+                "BATTLE_ZONE"
+              ]
+            },
+            "target_group": "TARGET_SELECT"
+          }
+        ]
       }
     ],
     "id": 6,
@@ -214,7 +251,8 @@
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "commands": []
       }
     ],
     "id": 7,
@@ -254,7 +292,16 @@
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "commands": [
+          {
+            "type": "DRAW_CARD",
+            "optional": true,
+            "amount": 3,
+            "target_filter": {},
+            "target_group": "PLAYER_SELF"
+          }
+        ]
       },
       {
         "actions": [
@@ -324,7 +371,16 @@
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "commands": [
+          {
+            "type": "DRAW_CARD",
+            "optional": false,
+            "amount": 1,
+            "target_filter": {},
+            "target_group": "PLAYER_SELF"
+          }
+        ]
       }
     ],
     "id": 9,
@@ -393,7 +449,17 @@
           "type": "OPPONENT_DRAW_COUNT",
           "value": 2
         },
-        "trigger": "ON_OPPONENT_DRAW"
+        "trigger": "ON_OPPONENT_DRAW",
+        "commands": [
+          {
+            "type": "DRAW_CARD",
+            "optional": false,
+            "amount": 1,
+            "target_filter": {},
+            "target_group": "PLAYER_SELF",
+            "to_zone": "HAND"
+          }
+        ]
       }
     ],
     "id": 10,
@@ -417,12 +483,16 @@
                 "count": 2,
                 "zones": [
                   "BATTLE_ZONE"
+                ],
+                "owner": "OPPONENT",
+                "types": [
+                  "ELEMENT"
                 ]
               },
               "input_value_key": "",
-              "optional": true,
+              "optional": false,
               "output_value_key": "",
-              "scope": "PLAYER_OPPONENT",
+              "scope": "TARGET_SELECT",
               "str_val": "",
               "type": "MOVE_CARD",
               "value1": 0,
@@ -433,11 +503,14 @@
             "type": "NONE",
             "value": 0
           },
-          "trigger": "ON_CAST_SPELL"
+          "trigger": "ON_PLAY",
+          "commands": []
         }
       ],
       "name": "♪蛙の子遭えるの何処?好きと謂ひて",
-      "type": "SPELL"
+      "type": "SPELL",
+      "id": 13,
+      "keywords": {}
     },
     "type": "CREATURE"
   },
@@ -455,7 +528,7 @@
             "filter": {},
             "input_value_key": "",
             "optional": true,
-            "output_value_key": "",
+            "output_value_key": "var_discarded_count",
             "scope": "PLAYER_SELF",
             "str_val": "",
             "type": "DISCARD",
@@ -465,9 +538,9 @@
           {
             "destination_zone": "HAND",
             "filter": {},
-            "input_value_key": "",
+            "input_value_key": "var_discarded_count",
             "optional": false,
-            "output_value_key": "var_DRAW_CARD_1",
+            "output_value_key": "",
             "scope": "PLAYER_SELF",
             "str_val": "",
             "type": "DRAW_CARD",
@@ -479,8 +552,8 @@
             "filter": {},
             "input_value_key": "",
             "optional": false,
-            "output_value_key": "var_DRAW_CARD_2",
-            "scope": "TARGET_SELECT",
+            "output_value_key": "",
+            "scope": "PLAYER_SELF",
             "str_val": "",
             "type": "DRAW_CARD",
             "value1": 1,
@@ -490,38 +563,31 @@
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
-      },
+        "trigger": "ON_PLAY",
+        "commands": []
+      }
+    ],
+    "cost_reductions": [
       {
-        "actions": [
-          {
-            "destination_zone": "HAND",
-            "filter": {
-              "races": [
-                "マジック"
-              ],
-              "types": [
-                "CREATURE"
-              ],
-              "zones": [
-                "BATTLE_ZONE"
-              ]
-            },
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "",
-            "scope": "PLAYER_SELF",
-            "str_val": "COST",
-            "type": "APPLY_MODIFIER",
-            "value1": 1,
-            "value2": 0
-          }
-        ],
-        "condition": {
-          "type": "NONE",
-          "value": 0
+        "type": "PASSIVE",
+        "reduction_amount": 1,
+        "filter": {
+          "races": [
+            "マジック"
+          ],
+          "types": [
+            "CREATURE"
+          ],
+          "zones": [
+            "BATTLE_ZONE"
+          ],
+          "owner": "PLAYER_SELF"
         },
-        "trigger": "PASSIVE_CONST"
+        "unit_cost": {
+          "type": "MANA",
+          "amount": 0,
+          "filter": {}
+        }
       }
     ],
     "id": 11,
@@ -554,12 +620,13 @@
                 ],
                 "zones": [
                   "BATTLE_ZONE"
-                ]
+                ],
+                "owner": "OPPONENT"
               },
               "input_value_key": "",
               "optional": false,
               "output_value_key": "",
-              "scope": "PLAYER_OPPONENT",
+              "scope": "TARGET_SELECT",
               "str_val": "",
               "type": "MOVE_CARD",
               "value1": 0,
@@ -570,11 +637,14 @@
             "type": "NONE",
             "value": 0
           },
-          "trigger": "ON_CAST_SPELL"
+          "trigger": "ON_PLAY",
+          "commands": []
         }
       ],
       "name": "聞かなきゃ殴り合い",
-      "type": "SPELL"
+      "type": "SPELL",
+      "id": 14,
+      "keywords": {}
     },
     "type": "CREATURE"
   },
@@ -648,7 +718,8 @@
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "commands": []
       }
     ],
     "id": 12,
@@ -670,5 +741,90 @@
       ]
     },
     "type": "CREATURE"
+  },
+  {
+    "id": 15,
+    "name": "Aqua Hulcus",
+    "type": "CREATURE",
+    "cost": 3,
+    "power": 2000,
+    "races": [
+      "Liquid People"
+    ],
+    "civilizations": [
+      "WATER"
+    ],
+    "effects": [
+      {
+        "trigger": "ON_PLAY",
+        "actions": [
+          {
+            "type": "DRAW_CARD",
+            "value1": 1,
+            "scope": "PLAYER_SELF"
+          }
+        ],
+        "commands": [
+          {
+            "type": "DRAW_CARD",
+            "amount": 1,
+            "target_group": "PLAYER_SELF"
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        }
+      }
+    ],
+    "keywords": {}
+  },
+  {
+    "id": 16,
+    "name": "Holy Awe",
+    "type": "SPELL",
+    "cost": 6,
+    "power": 0,
+    "races": [],
+    "civilizations": [
+      "LIGHT"
+    ],
+    "effects": [
+      {
+        "trigger": "ON_PLAY",
+        "actions": [
+          {
+            "type": "TAP",
+            "scope": "ALL_FILTERED",
+            "filter": {
+              "zones": [
+                "BATTLE_ZONE"
+              ],
+              "types": [
+                "CREATURE"
+              ],
+              "owner": "OPPONENT"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "type": "TAP",
+            "target_group": "ALL_FILTERED",
+            "target_filter": {
+              "zones": [
+                "BATTLE_ZONE"
+              ],
+              "types": [
+                "CREATURE"
+              ],
+              "owner": "OPPONENT"
+            }
+          }
+        ]
+      }
+    ],
+    "keywords": {
+      "shield_trigger": true
+    }
   }
 ]
