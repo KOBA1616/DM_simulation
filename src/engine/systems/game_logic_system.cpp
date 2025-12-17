@@ -474,6 +474,10 @@ namespace dm::engine::systems {
          auto flow_cmd = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_SOURCE, source_id);
          state.execute_command(flow_cmd);
 
+         // Transition to BLOCK phase
+         auto phase_cmd = std::make_shared<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, (int)Phase::BLOCK);
+         state.execute_command(phase_cmd);
+
          // Explicit trigger call removed.
          // GenericCardSystem::resolve_trigger(state, TriggerType::ON_ATTACK, source_id, card_db);
     }
