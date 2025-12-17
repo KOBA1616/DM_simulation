@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
@@ -53,8 +53,8 @@ namespace dm::engine {
                 ctx.game_state.card_owner_map[target_id] = controller;
 
                 // Trigger ON_PLAY / ON_OTHER_ENTER
-                GenericCardSystem::resolve_trigger(ctx.game_state, TriggerType::ON_PLAY, target_id, ctx.card_db);
-                GenericCardSystem::resolve_trigger(ctx.game_state, TriggerType::ON_OTHER_ENTER, target_id, ctx.card_db);
+                EffectSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_PLAY, target_id, ctx.card_db);
+                EffectSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_OTHER_ENTER, target_id, ctx.card_db);
             }
         }
     };
