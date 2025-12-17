@@ -128,7 +128,9 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
 1.  [Status: WIP] **Full Trigger System Migration**:
     *   `EffectResolver` が現在行っている処理を全て `CommandSystem` 経由に切り替える。
     *   `resolve_mana_charge`, `resolve_play_card`, `resolve_break_shield` の `CommandSystem` (Transition/Mutate) への移行が完了しました。
-2.  [Status: Todo] **New JSON Standard Adoption**:
+2.  [Status: WIP] **New JSON Standard Adoption**:
+    *   [Status: Done] `data/cards.json` の一部（Bronze-Arm Tribe）を新フォーマット（`commands`）へ移行し、`TRANSITION` コマンドの動作を検証しました。
+    *   [Status: Done] `JsonLoader` にて `EffectDef` のコピー漏れ修正を実施。
     *   カードデータの新JSON形式への移行推進。Legacyサポートの完全撤廃に伴い、データセットの再構築を行う。
 3.  [Status: Todo] **GUI Update**:
     *   `CardEditor` を更新し、新スキーマ (`CommandDef`) の編集に対応させる。
