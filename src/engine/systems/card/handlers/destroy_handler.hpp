@@ -87,6 +87,43 @@ namespace dm::engine {
             }
         }
 
+        void compile(const ResolutionContext& ctx) override {
+            using namespace dm::core;
+            if (!ctx.instruction_buffer) return;
+
+            // Generate MOVE instruction (Battle -> Graveyard)
+            Instruction move(InstructionOp::MOVE);
+            move.args["to"] = "GRAVEYARD";
+
+            // If scope is SELECT, assume execution of previously selected targets
+            if (ctx.action.scope == TargetScope::TARGET_SELECT) {
+                 move.args["target"] = "$selection";
+            }
+            else if (!ctx.action.input_value_key.empty()) {
+                 move.args["target"] = "$" + ctx.action.input_value_key;
+            }
+            else {
+                 // Auto-Destroy (e.g. Destroy all creatures)
+                 Instruction select(InstructionOp::SELECT);
+                 select.args["filter"] = ctx.action.filter;
+                 select.args["out"] = "$auto_destroy_selection";
+                 select.args["count"] = 999;
+
+                 ctx.instruction_buffer->push_back(select);
+                 move.args["target"] = "$auto_destroy_selection";
+            }
+
+            ctx.instruction_buffer->push_back(move);
+
+            // Output value
+            if (!ctx.action.output_value_key.empty()) {
+                 Instruction count_inst(InstructionOp::COUNT);
+                 count_inst.args["in"] = move.args["target"];
+                 count_inst.args["out"] = ctx.action.output_value_key;
+                 ctx.instruction_buffer->push_back(count_inst);
+            }
+        }
+
     private:
         bool execute_destroy(dm::core::GameState& game_state, int instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             using namespace dm::core;
