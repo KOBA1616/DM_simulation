@@ -104,6 +104,21 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
     *   **Zero-shot対応**: 未知のカード（ID埋め込み未学習）でも、スペック情報（コスト、文明、パワー等）から挙動を推論可能にする。
     *   **スコープ拡張**: Transformerの入力文脈に「墓地」のカードも含め、墓地利用や探索に対応させる。
 
+*   **実装要件 (Requirements)**
+    *   [Status: Todo] **A. C++側 (TensorConverter)**
+        *   `convert_to_sequence` を修正し、`Output: (TokenSequence, FeatureSequence)` を返すように変更する。
+    *   [Status: Todo] **B. Python側 (NetworkV2)**
+        *   モデル入力層を修正: `x_id` (Card IDs) と `x_feat` (Manual Features) を受け取る。
+    *   [Status: Todo] **C. 特徴量ベクトルの定義 (Feature Vector Definition)**
+        *   **Card Function Embeddings (機能抽象化)**: 除去、ドロー、ブロッカー等の役割をベクトル化し、未知のカードに対応（Zero-shot）。
+        *   **Projected Effective Mana (次ターン有効マナ)**: 次ターンのアンタップマナ数と発生可能文明を予測し、色事故を防ぐ。
+        *   **Synergy/Combo Readiness (コンボ成立度)**: 進化元やコンボパーツの揃い具合を数値化し、戦略的キープを促進。
+        *   **Turns to Lethal (リーサル距離)**: LethalSolverによる「勝利/敗北までのターン数」を入力し、終盤の判断力を強化。
+        *   その他: 基本スペック（コスト、パワー、文明）、キーワード能力、リソース操作等。
+    *   [Status: Todo] **D. Advanced Lethal Search (Mini-Max)**
+        *   現行のGreedy Heuristicに加え、手札（SA、進化速攻）やトリガーリスクを考慮した「超短期探索型 (Mini-Max Search) LethalSolver」を実装する。
+        *   エンジンをコピーしてシミュレーションを行うことで、攻撃時効果やブロッカー除去も正確に判定可能にする。
+
 ## 4. 今後の課題 (Future Tasks)
 
 1.  [Status: Todo] **Fix Python Bindings SegFault**:
