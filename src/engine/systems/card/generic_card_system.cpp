@@ -233,7 +233,7 @@ namespace dm::engine {
         // Phase 7: Hybrid Engine - Execute Commands
         for (const auto& cmd : effect.commands) {
             PlayerID controller = get_controller(game_state, source_instance_id);
-            dm::engine::systems::CommandSystem::execute_command(game_state, cmd, source_instance_id, controller);
+            dm::engine::systems::CommandSystem::execute_command(game_state, cmd, source_instance_id, controller, execution_context);
         }
     }
 
