@@ -1,10 +1,41 @@
 #include "action_generator.hpp"
+#include "core/constants.hpp"
 
 namespace dm::engine {
 
     using namespace dm::core;
 
     std::vector<Action> ActionGenerator::generate_legal_actions(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+        // Phase 6: Handle Waiting for User Input (Query Response)
+        if (game_state.waiting_for_user_input && game_state.pending_query) {
+            std::vector<Action> actions;
+            const auto& query = *game_state.pending_query;
+
+            if (query.query_type == "SELECT_TARGET") {
+                for (int target_id : query.valid_target_ids) {
+                    Action act;
+                    act.type = ActionType::SELECT_TARGET;
+                    act.target_instance_id = target_id;
+                    // We might need to encode query_id to ensure we are answering the right query,
+                    // but Action struct is limited. The engine state implies the context.
+                    actions.push_back(act);
+                }
+            }
+            else if (query.query_type == "SELECT_OPTION") {
+                for (size_t i = 0; i < query.options.size(); ++i) {
+                    Action act;
+                    act.type = ActionType::SELECT_OPTION;
+                    act.target_slot_index = static_cast<int>(i);
+                    // Optionally store string value in a future Action extension
+                    actions.push_back(act);
+                }
+            }
+
+            // If no valid choices (shouldn't happen for well-formed queries), return empty or pass?
+            // Usually queries have at least one option.
+            return actions;
+        }
+
         // Prepare Context
         ActionGenContext ctx = { game_state, card_db, game_state.active_player_id };
 
