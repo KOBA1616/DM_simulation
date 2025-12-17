@@ -1,23 +1,30 @@
-
-                [
-                    {
-                        "id": 1001,
-                        "name": "Bronze-Arm Tribe",
-                        "type": "CREATURE",
-                        "civilization": "NATURE",
-                        "races": ["Beast Folk"],
-                        "cost": 3,
-                        "power": 1000,
-                        "effects": []
-                    },
-                    {
-                        "id": 1002,
-                        "name": "Aqua Hulcus",
-                        "type": "CREATURE",
-                        "civilization": "WATER",
-                        "races": ["Liquid People"],
-                        "cost": 3,
-                        "power": 2000,
-                        "effects": []
-                    }
-                ]
+[
+  {
+    "id": 1001,
+    "name": "Bronze-Arm Tribe",
+    "type": "CREATURE",
+    "races": [
+      "Beast Folk"
+    ],
+    "cost": 3,
+    "power": 1000,
+    "effects": [],
+    "civilizations": [
+      "NATURE"
+    ]
+  },
+  {
+    "id": 1002,
+    "name": "Aqua Hulcus",
+    "type": "CREATURE",
+    "races": [
+      "Liquid People"
+    ],
+    "cost": 3,
+    "power": 2000,
+    "effects": [],
+    "civilizations": [
+      "WATER"
+    ]
+  }
+]
