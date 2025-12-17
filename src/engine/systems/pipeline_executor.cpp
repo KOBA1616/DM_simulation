@@ -2,6 +2,7 @@
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/card/condition_system.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include <iostream>
 #include <algorithm>
 #include <random>
@@ -36,6 +37,24 @@ namespace dm::engine::systems {
     void PipelineExecutor::execute_instruction(const Instruction& inst, GameState& state,
                                                const std::map<core::CardID, core::CardDefinition>& card_db) {
         switch (inst.op) {
+            case InstructionOp::GAME_ACTION: {
+                if (inst.args.is_null()) return;
+                std::string type = resolve_string(inst.args.value("type", ""));
+                if (type == "PLAY_CARD") {
+                    GameLogicSystem::handle_play_card(*this, state, inst, card_db);
+                } else if (type == "RESOLVE_PLAY") {
+                    GameLogicSystem::handle_resolve_play(*this, state, inst, card_db);
+                } else if (type == "ATTACK") {
+                    GameLogicSystem::handle_attack(*this, state, inst, card_db);
+                } else if (type == "BLOCK") {
+                    GameLogicSystem::handle_block(*this, state, inst, card_db);
+                } else if (type == "RESOLVE_BATTLE") {
+                    GameLogicSystem::handle_resolve_battle(*this, state, inst, card_db);
+                } else if (type == "BREAK_SHIELD") {
+                    GameLogicSystem::handle_break_shield(*this, state, inst, card_db);
+                }
+                break;
+            }
             case InstructionOp::SELECT: handle_select(inst, state, card_db); break;
             case InstructionOp::MOVE:   handle_move(inst, state); break;
             case InstructionOp::MODIFY: handle_modify(inst, state); break;
