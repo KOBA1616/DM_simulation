@@ -1,7 +1,9 @@
 #include "game_instance.hpp"
 #include "systems/flow/phase_manager.hpp"
 #include "engine/game_command/game_command.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include <functional>
+#include <iostream>
 
 namespace dm::engine {
 
@@ -10,6 +12,7 @@ namespace dm::engine {
     GameInstance::GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db)
         : state(seed), card_db(db) {
         trigger_manager = std::make_shared<systems::TriggerManager>();
+        pipeline = std::make_shared<systems::PipelineExecutor>();
 
         // Wire up GameState's event dispatcher to TriggerManager
         state.event_dispatcher = [this](const core::GameEvent& event) {
@@ -17,6 +20,27 @@ namespace dm::engine {
             trigger_manager->check_triggers(event, state, card_db);
             trigger_manager->check_reactions(event, state, card_db);
         };
+    }
+
+    GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
+        : state(seed), card_db_ptr(db), card_db(*db) {
+        trigger_manager = std::make_shared<systems::TriggerManager>();
+        pipeline = std::make_shared<systems::PipelineExecutor>();
+
+        // Wire up GameState's event dispatcher to TriggerManager
+        state.event_dispatcher = [this](const core::GameEvent& event) {
+            trigger_manager->dispatch(event, state);
+            trigger_manager->check_triggers(event, state, card_db);
+            trigger_manager->check_reactions(event, state, card_db);
+        };
+    }
+
+    void GameInstance::resolve_action(const core::Action& action) {
+        if (!pipeline) {
+            std::cerr << "FATAL: pipeline is null!" << std::endl;
+            return;
+        }
+        systems::GameLogicSystem::dispatch_action(*pipeline, state, action, card_db);
     }
 
     void GameInstance::undo() {
@@ -32,6 +56,10 @@ namespace dm::engine {
 
         // Remove from history
         state.command_history.pop_back();
+    }
+
+    void GameInstance::initialize_card_stats(int deck_size) {
+        state.initialize_card_stats(card_db, deck_size);
     }
 
     void GameInstance::reset_with_scenario(const ScenarioConfig& config) {
