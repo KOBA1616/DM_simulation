@@ -38,6 +38,7 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 ### 2.1 コアエンジン (C++ / `src/engine`)
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` クラスおよびファイルを物理的に削除しました。すべての呼び出し元 (`GameInstance`, `ActionGenerator`, `ScenarioExecutor`, `Bindings`) は `GameLogicSystem` へ移行されました。
 *   [Status: Done] **GameLogicSystem Refactor**: アクションディスパッチロジックを `GameLogicSystem` に集約し、`PipelineExecutor` を介した処理フローを確立しました。
+*   [Status: Done] **EffectSystem Pure Command Gen**: `EffectSystem` の主要ハンドラー (`Draw`, `ManaCharge`, `Play` 等) を直接の状態操作から `GameCommand` (Transition, Mutate) の発行形式へリファクタリングしました。
 *   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` などのプリミティブを実装済み。
 *   [Status: Done] **Instruction Pipeline**: `PipelineExecutor` が `GAME_ACTION` 命令を介して高レベルなゲームロジックを実行する仕組みが確立しました。
 *   [Status: Fixed] **Binding SegFault**: `GameInstance` の Python バインディングにおいて発生していた Segmentation Fault (特に `initialize_card_stats` や `resolve_action` 呼び出し時) に対処しました。
@@ -72,6 +73,7 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 *   **Step 3: GameCommand への統合**
     *   [Status: Done] [Test: Pass]
     *   `EffectResolver` の主要メソッド（`resolve_play_card`, `resolve_attack` 等）を `GameLogicSystem` へ移行し、内部処理を全て `GameCommand` (Transition, Mutate) で書き換えました。
+    *   [Status: Done] `EffectSystem` ハンドラーの完全コマンド化。
     *   [Status: Done] **New**: `GameInstance` にて `TriggerManager` を `GameState::event_dispatcher` と連携させ、コマンド実行時のイベント発行をトリガー検知につなげる統合を完了。
 *   **Step 4: EffectResolver 完全撤廃 (Final Cleanup)**
     *   [Status: Done] `src/engine/effects/effect_resolver.*` を削除。
@@ -94,7 +96,8 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   [Status: Done] [Test: Pass]
     *   `CommandDef` に条件分岐用の `condition`, `if_true`, `if_false` フィールドを追加 (Hybrid Schema拡張)。
     *   `test_command_system.py` にて `FLOW` コマンド（条件合致時の分岐、不一致時の分岐）の動作検証を完了しました。
-*   **Step 4: Python Binding 修正 (Resolved)**
+*   **Step 4: Python Binding 整理**
+    *   [Status: Done] **Refactor**: `EffectSystem` へのアクセスを `GameInstance` インスタンス経由 (`game.effect_system`) に変更し、シングルトンへの静的アクセス依存を低減しました。
     *   [Status: Done] **Fix SegFault**: `GameInstance` に `resolve_action` と `initialize_card_stats` を実装・バインドし、巨大な `card_db` オブジェクトの受け渡しを廃止することでクラッシュを解消しました。
 
 ### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
@@ -195,4 +198,4 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
 
     3.  **アクション間の「変数のリンク（Context Linking）」**
         *   コマンド式になったことで、Action 1（選択）の結果を Action 2（破壊）が受け取るフローが厳格になります。
-        *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を指定できるようにします。
+        *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を明確に指定できるようにします。
