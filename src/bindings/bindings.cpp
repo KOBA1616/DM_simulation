@@ -7,7 +7,6 @@
 #include "engine/systems/trigger_system/trigger_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/actions/action_generator.hpp"
-#include "engine/effects/effect_resolver.hpp"
 #include "engine/game_instance.hpp"
 #include "engine/systems/card/json_loader.hpp"
 #include "core/scenario_config.hpp"
@@ -41,6 +40,7 @@
 #include "core/instruction.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "engine/systems/command_system.hpp" // Include new system
+#include "engine/systems/game_logic_system.hpp" // Include GameLogicSystem
 #include <iostream>
 
 namespace py = pybind11;
@@ -847,10 +847,16 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<GameInstance>(m, "GameInstance")
         .def(py::init<uint32_t, const std::map<CardID, CardDefinition>&>())
+        // New constructor taking dict but converting to shared_ptr map to ensure lifetime
+        .def(py::init([](uint32_t seed, const std::map<CardID, CardDefinition>& db) {
+             // Create shared ptr copy
+             auto ptr = std::make_shared<std::map<CardID, CardDefinition>>(db);
+             return new GameInstance(seed, ptr);
+        }))
         .def("reset_with_scenario", &GameInstance::reset_with_scenario)
         .def("get_state", &GameInstance::get_state, py::return_value_policy::reference) // Exposed as reference
         .def("undo", &GameInstance::undo) // Phase 6 Step 3
-        .def_readonly("state", &GameInstance::state)
+        .def_readonly("state", &GameInstance::state, py::return_value_policy::reference_internal) // Fix SegFault by preventing copy
         .def_readwrite("trigger_manager", &GameInstance::trigger_manager);
         // .def_readonly("card_db", &GameInstance::card_db); // Cannot bind reference member directly easily
 
@@ -873,8 +879,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<ActionGenerator>(m, "ActionGenerator")
         .def_static("generate_legal_actions", &ActionGenerator::generate_legal_actions);
 
-    py::class_<EffectResolver>(m, "EffectResolver")
-        .def_static("resolve_action", &EffectResolver::resolve_action);
+    py::class_<dm::engine::systems::GameLogicSystem>(m, "GameLogicSystem")
+        .def_static("resolve_action", &dm::engine::systems::GameLogicSystem::resolve_action_oneshot);
+
+    m.attr("EffectResolver") = m.attr("GameLogicSystem");
 
     py::class_<ManaSystem>(m, "ManaSystem")
         .def_static("can_pay_cost",
