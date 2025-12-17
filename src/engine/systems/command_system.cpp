@@ -22,7 +22,17 @@ namespace dm::engine::systems {
         return Zone::GRAVEYARD;
     }
 
-    void CommandSystem::execute_command(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id) {
+    int CommandSystem::resolve_amount(const CommandDef& cmd, const std::map<std::string, int>& execution_context) {
+        if (!cmd.input_value_key.empty()) {
+            auto it = execution_context.find(cmd.input_value_key);
+            if (it != execution_context.end()) {
+                return it->second;
+            }
+        }
+        return cmd.amount;
+    }
+
+    void CommandSystem::execute_command(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
         // Ensure defaults are loaded (singleton lazy init might need explicit call if not done elsewhere)
         ConditionSystem::instance().initialize_defaults();
 
@@ -31,65 +41,69 @@ namespace dm::engine::systems {
             case core::CommandType::MUTATE:
             case core::CommandType::FLOW:
             case core::CommandType::QUERY:
-                execute_primitive(state, cmd, source_instance_id, player_id);
+                execute_primitive(state, cmd, source_instance_id, player_id, execution_context);
                 break;
             default:
-                expand_and_execute_macro(state, cmd, source_instance_id, player_id);
+                expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
                 break;
         }
     }
 
-    void CommandSystem::execute_primitive(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id) {
+    void CommandSystem::execute_primitive(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
         if (cmd.type == core::CommandType::FLOW) {
             // FLOW Primitive: Evaluate condition and execute branch
             bool cond_result = true;
             if (cmd.condition.has_value()) {
                  const auto& card_db = CardRegistry::get_all_definitions();
-                 std::map<std::string, int> empty_ctx;
+                 // ConditionSystem expects map<string, int>
                  cond_result = ConditionSystem::instance().evaluate_def(
-                     state, cmd.condition.value(), source_instance_id, card_db, empty_ctx
+                     state, cmd.condition.value(), source_instance_id, card_db, execution_context
                  );
             }
 
             const auto& branch = cond_result ? cmd.if_true : cmd.if_false;
             for (const auto& child_cmd : branch) {
-                execute_command(state, child_cmd, source_instance_id, player_id);
+                execute_command(state, child_cmd, source_instance_id, player_id, execution_context);
             }
 
         } else if (cmd.type == core::CommandType::TRANSITION) {
-            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id);
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
 
             Zone from_z = parse_zone_string(cmd.from_zone);
             Zone to_z = parse_zone_string(cmd.to_zone);
 
+            int moved_count = 0;
             for (int target_id : targets) {
                 CardInstance* inst = state.get_card_instance(target_id);
                 if (inst) {
                     TransitionCommand trans(target_id, from_z, to_z, inst->owner);
                     trans.execute(state);
+                    moved_count++;
                 }
             }
+            if (!cmd.output_value_key.empty()) {
+                execution_context[cmd.output_value_key] = moved_count;
+            }
+
         } else if (cmd.type == core::CommandType::QUERY) {
-             // QueryCommand(std::string type, std::vector<int> targets = {}, std::map<std::string, int> p = {})
              // Map cmd parameters to Query params
              std::string query_type = cmd.str_param.empty() ? "SELECT_TARGET" : cmd.str_param;
-             std::vector<int> targets; // Resolve targets?
-             // Resolve targets for Query usually means "Valid Candidates"
-             targets = resolve_targets(state, cmd, source_instance_id, player_id);
+             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
 
              std::map<std::string, int> params;
-             params["amount"] = cmd.amount;
+             params["amount"] = resolve_amount(cmd, execution_context);
 
              QueryCommand query(query_type, targets, params);
              query.execute(state);
 
         } else if (cmd.type == core::CommandType::MUTATE) {
-            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id);
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            int val = resolve_amount(cmd, execution_context);
 
             // Design Intent: Map string-based JSON commands to internal efficient Enums.
             // Invalid strings are ignored to prevent undefined behavior or unintended effects.
             bool valid_mutation = true;
-            MutateCommand::MutationType m_type = MutateCommand::MutationType::TAP; // Default init, but checked via flag
+            MutateCommand::MutationType m_type = MutateCommand::MutationType::TAP; // Default init
 
             if (cmd.mutation_kind == "TAP") m_type = MutateCommand::MutationType::TAP;
             else if (cmd.mutation_kind == "UNTAP") m_type = MutateCommand::MutationType::UNTAP;
@@ -103,7 +117,7 @@ namespace dm::engine::systems {
 
             if (valid_mutation) {
                 for (int target_id : targets) {
-                    MutateCommand mutate(target_id, m_type, cmd.amount, cmd.str_param);
+                    MutateCommand mutate(target_id, m_type, val, cmd.str_param);
                     mutate.execute(state);
                 }
             } else {
@@ -112,40 +126,86 @@ namespace dm::engine::systems {
         }
     }
 
-    void CommandSystem::expand_and_execute_macro(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id) {
+    void CommandSystem::expand_and_execute_macro(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
+        int count = resolve_amount(cmd, execution_context);
+
         switch (cmd.type) {
             case core::CommandType::DRAW_CARD: {
-                int count = cmd.amount;
+                int drawn = 0;
                 for (int i = 0; i < count; ++i) {
                      const auto& deck = state.players[player_id].deck;
                      if (!deck.empty()) {
                          int card_inst_id = deck.back().instance_id;
                          TransitionCommand trans(card_inst_id, Zone::DECK, Zone::HAND, player_id);
                          trans.execute(state);
+                         drawn++;
                      }
+                }
+                if (!cmd.output_value_key.empty()) {
+                    execution_context[cmd.output_value_key] = drawn;
                 }
                 break;
             }
             case core::CommandType::MANA_CHARGE: {
-                 int count = cmd.amount;
+                 int charged = 0;
                  for (int i = 0; i < count; ++i) {
                      const auto& deck = state.players[player_id].deck;
                      if (!deck.empty()) {
                          int card_inst_id = deck.back().instance_id;
                          TransitionCommand trans(card_inst_id, Zone::DECK, Zone::MANA, player_id);
                          trans.execute(state);
+                         charged++;
                      }
                 }
-                 break;
+                if (!cmd.output_value_key.empty()) {
+                    execution_context[cmd.output_value_key] = charged;
+                }
+                break;
             }
             case core::CommandType::DESTROY: {
-                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id);
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+                int destroyed = 0;
                 for (int target_id : targets) {
                     CardInstance* inst = state.get_card_instance(target_id);
                     if (inst) {
                          TransitionCommand trans(target_id, Zone::BATTLE, Zone::GRAVEYARD, inst->owner);
                          trans.execute(state);
+                         destroyed++;
                     }
+                }
+                if (!cmd.output_value_key.empty()) {
+                    execution_context[cmd.output_value_key] = destroyed;
+                }
+                break;
+            }
+            case core::CommandType::DISCARD: {
+                // DISCARD Macro
+                // Usually targets Hand.
+                // If specific targets provided by target_filter:
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+
+                // If filter selects from hand, destroy them.
+                // If no specific targets (e.g. random), logic needs to be here.
+                // Currently resolve_targets handles logic.
+                // But DISCARD 'random' logic?
+                // TargetScope::RANDOM is handled by `resolve_targets`?
+                // `resolve_targets` code above does not seem to handle RANDOM.
+
+                // For MVP: We assume resolve_targets returns the correct cards (e.g. from Hand).
+                // If count was set in filter, resolve_targets respects it.
+                // If "All", resolve_targets respects it.
+
+                int discarded = 0;
+                for (int target_id : targets) {
+                    CardInstance* inst = state.get_card_instance(target_id);
+                    if (inst) {
+                        TransitionCommand trans(target_id, Zone::HAND, Zone::GRAVEYARD, inst->owner);
+                        trans.execute(state);
+                        discarded++;
+                    }
+                }
+                if (!cmd.output_value_key.empty()) {
+                    execution_context[cmd.output_value_key] = discarded;
                 }
                 break;
             }
@@ -154,7 +214,7 @@ namespace dm::engine::systems {
         }
     }
 
-    std::vector<int> CommandSystem::resolve_targets(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id) {
+    std::vector<int> CommandSystem::resolve_targets(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
         std::vector<int> targets;
         std::vector<PlayerID> players_to_check;
 
@@ -180,7 +240,7 @@ namespace dm::engine::systems {
                         if (dm::engine::TargetUtils::is_valid_target(
                                 *inst,
                                 card_db.at(inst->card_id),
-                                filter, state, player_id, pid, false, nullptr)) {
+                                filter, state, player_id, pid, false, &execution_context)) {
                             targets.push_back(source_instance_id);
                         }
                      }
@@ -207,7 +267,7 @@ namespace dm::engine::systems {
                          if (card_db.find(card.card_id) != card_db.end()) {
                              const auto& def = card_db.at(card.card_id);
                              if (dm::engine::TargetUtils::is_valid_target(
-                                     card, def, filter, state, player_id, pid, false, nullptr)) {
+                                     card, def, filter, state, player_id, pid, false, &execution_context)) {
                                  targets.push_back(card.instance_id);
                              }
                          }

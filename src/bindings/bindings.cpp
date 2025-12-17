@@ -199,7 +199,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
         });
 
     py::class_<systems::CommandSystem>(m, "CommandSystem")
-        .def_static("execute_command", &systems::CommandSystem::execute_command);
+        .def_static("execute_command", [](GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id) {
+             std::map<std::string, int> empty_ctx;
+             systems::CommandSystem::execute_command(state, cmd, source_instance_id, player_id, empty_ctx);
+        })
+        .def_static("execute_command_with_context", [](GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& ctx) {
+             systems::CommandSystem::execute_command(state, cmd, source_instance_id, player_id, ctx);
+             return ctx;
+        });
 
     py::enum_<Civilization>(m, "Civilization")
         .value("NONE", Civilization::NONE)
@@ -546,7 +553,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("mutation_kind", &CommandDef::mutation_kind)
         .def_readwrite("condition", &CommandDef::condition)
         .def_readwrite("if_true", &CommandDef::if_true)
-        .def_readwrite("if_false", &CommandDef::if_false);
+        .def_readwrite("if_false", &CommandDef::if_false)
+        .def_readwrite("input_value_key", &CommandDef::input_value_key)
+        .def_readwrite("output_value_key", &CommandDef::output_value_key);
 
     py::class_<ConditionDef>(m, "ConditionDef")
         .def(py::init<>())
