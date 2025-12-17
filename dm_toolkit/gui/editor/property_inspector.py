@@ -5,6 +5,7 @@ from dm_toolkit.gui.editor.forms.effect_form import EffectEditForm
 from dm_toolkit.gui.editor.forms.action_form import ActionEditForm
 from dm_toolkit.gui.editor.forms.spell_side_form import SpellSideForm
 from dm_toolkit.gui.editor.forms.reaction_form import ReactionEditForm
+from dm_toolkit.gui.editor.forms.command_form import CommandEditForm
 from dm_toolkit.gui.localization import tr
 
 class PropertyInspector(QWidget):
@@ -29,6 +30,10 @@ class PropertyInspector(QWidget):
         self.option_page.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.stack.addWidget(self.option_page)
 
+        self.cmd_branch_page = QLabel(tr("Branch selected. Add Commands to this branch."))
+        self.cmd_branch_page.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.stack.addWidget(self.cmd_branch_page)
+
         self.card_form = CardEditForm()
         self.stack.addWidget(self.card_form)
         self.card_form.structure_update_requested.connect(self.structure_update_requested.emit)
@@ -45,6 +50,9 @@ class PropertyInspector(QWidget):
 
         self.reaction_form = ReactionEditForm()
         self.stack.addWidget(self.reaction_form)
+
+        self.command_form = CommandEditForm()
+        self.stack.addWidget(self.command_form)
 
         layout.addWidget(self.stack)
 
@@ -65,6 +73,9 @@ class PropertyInspector(QWidget):
         elif item_type == "ACTION":
             self.action_form.set_data(item)
             self.stack.setCurrentWidget(self.action_form)
+        elif item_type == "COMMAND":
+            self.command_form.set_data(item)
+            self.stack.setCurrentWidget(self.command_form)
         elif item_type == "SPELL_SIDE":
             self.spell_side_form.set_data(item)
             self.stack.setCurrentWidget(self.spell_side_form)
@@ -73,5 +84,7 @@ class PropertyInspector(QWidget):
             self.stack.setCurrentWidget(self.reaction_form)
         elif item_type == "OPTION":
             self.stack.setCurrentWidget(self.option_page)
+        elif item_type == "CMD_BRANCH_TRUE" or item_type == "CMD_BRANCH_FALSE":
+            self.stack.setCurrentWidget(self.cmd_branch_page)
         else:
             self.stack.setCurrentWidget(self.empty_page)
