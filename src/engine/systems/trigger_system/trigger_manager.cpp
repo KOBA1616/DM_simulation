@@ -1,6 +1,6 @@
 #include "trigger_manager.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/generic_card_system.hpp" // For resolve_trigger (temporary linkage) or just common logic
+#include "engine/systems/card/effect_system.hpp" // For resolve_trigger (temporary linkage) or just common logic
 #include "core/card_def.hpp"
 #include <iostream>
 

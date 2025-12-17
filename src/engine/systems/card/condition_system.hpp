@@ -1,7 +1,7 @@
 #pragma once
 #include "core/game_state.hpp"
 #include "core/card_json_types.hpp"
-#include "generic_card_system.hpp"
+#include "effect_system.hpp"
 
 namespace dm::engine {
 

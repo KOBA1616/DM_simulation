@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/game_command/commands.hpp"
 #include <algorithm>
@@ -19,12 +19,12 @@ namespace dm::engine {
                  ed.trigger = dm::core::TriggerType::NONE;
                  ed.condition = dm::core::ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                  ed.actions = { ctx.action };
-                 GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
 
             // Auto-destruction logic
-            PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
 
             // Determine zones (Default: Battle Zone)
             std::vector<std::pair<PlayerID, Zone>> zones_to_check;
@@ -146,7 +146,7 @@ namespace dm::engine {
                  game_state.players[owner_id].graveyard.push_back(card_copy);
                  if (game_state.card_owner_map.size() > (size_t)instance_id) game_state.card_owner_map[instance_id] = owner_id;
 
-                 GenericCardSystem::check_mega_last_burst(game_state, card_copy, card_db);
+                 EffectSystem::instance().check_mega_last_burst(game_state, card_copy, card_db);
                  return true;
             } else {
                 // Standard Top-Level Destroy
@@ -155,7 +155,7 @@ namespace dm::engine {
                 game_state.execute_command(std::move(cmd));
 
                 // Post-move logic
-                GenericCardSystem::check_mega_last_burst(game_state, card_copy, card_db);
+                EffectSystem::instance().check_mega_last_burst(game_state, card_copy, card_db);
                 return true;
             }
         }
