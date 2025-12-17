@@ -55,7 +55,9 @@ namespace dm::engine {
 
              case ActionType::MANA_CHARGE:
              case ActionType::MOVE_CARD:
-                 resolve_mana_charge(game_state, action);
+                 args["type"] = "MANA_CHARGE";
+                 args["source_id"] = action.source_instance_id;
+                 pipeline.execute({Instruction(InstructionOp::GAME_ACTION, args)}, game_state, card_db);
                  break;
 
              case ActionType::PLAY_CARD:
@@ -122,7 +124,10 @@ namespace dm::engine {
                  break;
 
              case ActionType::SELECT_TARGET:
-                 resolve_select_target(game_state, action);
+                 args["type"] = "SELECT_TARGET";
+                 args["slot_index"] = action.slot_index;
+                 args["target_id"] = action.target_instance_id;
+                 pipeline.execute({Instruction(InstructionOp::GAME_ACTION, args)}, game_state, card_db);
                  break;
 
              case ActionType::RESOLVE_EFFECT:
@@ -145,7 +150,10 @@ namespace dm::engine {
                  break;
 
              case ActionType::USE_ABILITY:
-                 resolve_use_ability(game_state, action, card_db);
+                 args["type"] = "USE_ABILITY";
+                 args["source_id"] = action.source_instance_id;
+                 args["target_id"] = action.target_instance_id;
+                 pipeline.execute({Instruction(InstructionOp::GAME_ACTION, args)}, game_state, card_db);
                  break;
 
              case ActionType::PLAY_CARD_INTERNAL:
@@ -194,7 +202,10 @@ namespace dm::engine {
                  break;
 
              case ActionType::DECLARE_REACTION:
-                 resolve_reaction(game_state, action, card_db);
+                 args["type"] = "RESOLVE_REACTION";
+                 args["source_id"] = action.source_instance_id;
+                 args["target_player"] = action.target_player;
+                 pipeline.execute({Instruction(InstructionOp::GAME_ACTION, args)}, game_state, card_db);
                  break;
 
              case ActionType::SELECT_OPTION:

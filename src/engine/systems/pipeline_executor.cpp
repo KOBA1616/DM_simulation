@@ -52,6 +52,14 @@ namespace dm::engine::systems {
                     GameLogicSystem::handle_resolve_battle(*this, state, inst, card_db);
                 } else if (type == "BREAK_SHIELD") {
                     GameLogicSystem::handle_break_shield(*this, state, inst, card_db);
+                } else if (type == "MANA_CHARGE") {
+                    GameLogicSystem::handle_mana_charge(*this, state, inst);
+                } else if (type == "RESOLVE_REACTION") {
+                    GameLogicSystem::handle_resolve_reaction(*this, state, inst, card_db);
+                } else if (type == "USE_ABILITY") {
+                    GameLogicSystem::handle_use_ability(*this, state, inst, card_db);
+                } else if (type == "SELECT_TARGET") {
+                    GameLogicSystem::handle_select_target(*this, state, inst);
                 }
                 break;
             }
