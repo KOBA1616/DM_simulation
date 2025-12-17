@@ -24,8 +24,8 @@
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
-現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** を最優先事項として進行中です。
-既存のハードコードされた効果処理 (`EffectResolver`) を廃止し、イベント駆動型アーキテクチャと命令パイプライン (`Instruction Pipeline`) へ刷新することで、柔軟性と拡張性を確保します。
+現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** が進行中です。
+`EffectResolver` の解体と `GameCommand` / `PipelineExecutor` への移行が完了し、イベント駆動型アーキテクチャへの基盤移行が達成されました。
 
 AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジン刷新が完了するまで一時凍結します。
 
@@ -36,8 +36,9 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
-*   [Status: Done] **EffectResolver (Legacy)**: 現在の主力ロジックだが、段階的に廃止予定。
+*   [Status: Done] **EffectResolver Decomposition**: `EffectResolver` は `PipelineExecutor` へのファサードとなり、主要ロジック（Play, Attack, Block, Break）は `GameLogicSystem` へ移行されました。
 *   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` などのプリミティブを実装済み。
+*   [Status: Done] **Instruction Pipeline**: `PipelineExecutor` が `GAME_ACTION` 命令を介して高レベルなゲームロジックを実行する仕組みが確立しました。
 *   [Status: Done] **LegacyJsonAdapter**: **削除済み**。旧データサポートは終了。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
@@ -53,8 +54,8 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 ## 3. ロードマップ (Roadmap)
 
 ### 3.1 [Priority: Critical] Phase 6: エンジン刷新 (Engine Overhaul)
-[Status: WIP]
-`EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行します。
+[Status: Done]
+`EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行しました。
 
 *   **Step 1: イベント駆動基盤の実装**
     *   [Status: Done] [Test: Pass]
@@ -63,11 +64,11 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 *   **Step 2: 命令パイプライン (Instruction Pipeline) の実装**
     *   [Status: Done] [Test: Pass]
     *   `PipelineExecutor` (VM) を実装済み。
-    *   `GenericCardSystem` を更新し、一部のトリガー処理をパイプラインへルーティング可能に。
+    *   `GAME_ACTION` 命令を追加し、高レベルなゲーム操作（プレイ、攻撃、ブロック）をパイプライン経由で実行可能にしました。
     *   [Status: Done] **Deleted**: `LegacyJsonAdapter` は廃止されました。
 *   **Step 3: GameCommand への統合**
     *   [Status: Done] [Test: Pass]
-    *   全てのアクションを `GameCommand` (Transition, Mutate, Flow等) 発行として統一し、Undo/Redo基盤を確立する。
+    *   `EffectResolver` の主要メソッド（`resolve_play_card`, `resolve_attack` 等）を `GameLogicSystem` へ移行し、内部処理を全て `GameCommand` (Transition, Mutate) で書き換えました。
     *   [Status: Done] **New**: `GameInstance` にて `TriggerManager` を `GameState::event_dispatcher` と連携させ、コマンド実行時のイベント発行をトリガー検知につなげる統合を完了。
 
 ### 3.2 [Priority: High] Phase 7: ハイブリッド・エンジン基盤 (New Requirement)
@@ -78,18 +79,13 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   [Status: Done] [Test: Pass]
     *   JSONスキーマに `CommandDef` を導入済み。
     *   `GenericCardSystem::resolve_effect` を更新し、旧来の `actions` と共に新しい `commands` を反復処理・実行するロジックを実装しました。
-    *   `commands` の実行は `CommandSystem::execute_command` へ委譲され、レガシーロジックと共存します。
 *   **Step 2: CommandSystem の実装**
     *   [Status: Done] [Test: Pass]
     *   `dm::engine::systems::CommandSystem` を実装。
-    *   `CommandSystem::execute_primitive` における `TRANSITION` 処理（ゾーン文字列解析、ターゲット解決）の不具合を修正し、`TargetUtils` を利用した正しいフィルタリングを実装しました。
-    *   `CommandSystem::execute_primitive` における `MUTATE` 処理（TAP, POWER_MOD, ADD_KEYWORD等）の実装を完了し、Pythonテスト `test_command_system.py` にて動作検証済み。
-    *   Pythonバインディングを整備し、外部からのコマンド実行テストが可能になった。
+    *   `MUTATE` 処理（TAP, POWER_MOD, ADD_KEYWORD等）の実装を完了し、Pythonテスト `test_command_system.py` にて動作検証済み。
 *   **Step 3: フロー制御 (Control Flow) の実装**
     *   [Status: Done] [Test: Pass]
     *   `CommandDef` に条件分岐用の `condition`, `if_true`, `if_false` フィールドを追加 (Hybrid Schema拡張)。
-    *   `CommandSystem` に `FLOW` コマンドの実装を追加し、`ConditionSystem` を利用して動的な分岐処理を可能にしました。
-    *   `ConditionSystem` のシングルトン化とデフォルトEvaluatorの初期化ロジックを修正・統合し、安定性を向上させました。
     *   `test_command_system.py` にて `FLOW` コマンド（条件合致時の分岐、不一致時の分岐）の動作検証を完了しました。
 
 ### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
@@ -99,38 +95,21 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
 *   **コンセプト (Concept)**
     *   **Hybrid Embedding**: `Embedding = Embed(CardID) + Linear(ManualFeatures)`
     *   **Zero-shot対応**: 未知のカード（ID埋め込み未学習）でも、スペック情報（コスト、文明、パワー等）から挙動を推論可能にする。
-    *   **学習の高速化**: スペック情報から即座に役割（アタッカー、防御札）を判断し、初期学習の収束を早める。ID埋め込みは長期的なコンボ相性の補完に使用する。
     *   **スコープ拡張**: Transformerの入力文脈に「墓地」のカードも含め、墓地利用や探索に対応させる。
 
 *   **実装要件 (Requirements)**
     *   [Status: Todo] **A. C++側 (TensorConverter)**
         *   `convert_to_sequence` を修正し、`Output: (TokenSequence, FeatureSequence)` を返すように変更する。
-        *   `FeatureSequence`: 各トークンに対応するカードの特徴量ベクトル `vector<vector<float>>`。
     *   [Status: Todo] **B. Python側 (NetworkV2)**
         *   モデル入力層を修正: `x_id` (Card IDs) と `x_feat` (Manual Features) を受け取る。
-        *   `x_feat` を `nn.Linear` で埋め込み次元に変換し、ID埋め込みと加算する。
     *   [Status: Todo] **C. 特徴量ベクトルの定義 (Feature Vector Definition)**
-        *   コスト (Cost)
-        *   パワー (Power)
-        *   文明 (Civilization)
-        *   カードタイプ (Card Type)
-        *   キーワード能力: ブロッカー, シールドトリガー, ガードストライク, スピードアタッカー, マッハファイター, n枚ブレイカー
-        *   リソース操作 (Move Card): 移動元・移動先（マナ、手札、墓地、シールド）
-        *   除去 (Removal): 破壊、バウンス、マナ送り、シールド送り、封印
-        *   コスト踏み倒し (Cost Cheating)
-        *   コスト軽減 (Cost Reduction)
-        *   能力の発動タイミング: cip, atk, pig, 離れた時, ターン開始時, 終了時, 常在効果, 相手のターン中, 自分のターン中
-        *   対策 (Meta): クリーチャー対策, 呪文対策, 墓地対策, シールドトリガー対策, コスト踏み倒し対策
-        *   殿堂 (Hall of Fame Status)
+        *   コスト、パワー、文明、カードタイプ、キーワード能力、リソース操作、除去、対策、殿堂ステータス等。
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: WIP] **Full Trigger System Migration**:
-    *   `EffectResolver` が現在行っている処理を全て `CommandSystem` 経由に切り替える。
-    *   `resolve_mana_charge`, `resolve_play_card`, `resolve_break_shield` の `CommandSystem` (Transition/Mutate) への移行が完了しました。
+1.  [Status: Todo] **Legacy Logic Cleanup**:
+    *   `EffectResolver` 内に残存する不要なヘルパーメソッドや、完全に移行済みのコードを削除し、ファイルをクリーンアップする。
 2.  [Status: WIP] **New JSON Standard Adoption**:
-    *   [Status: Done] `data/cards.json` の一部（Bronze-Arm Tribe）を新フォーマット（`commands`）へ移行し、`TRANSITION` コマンドの動作を検証しました。
-    *   [Status: Done] `JsonLoader` にて `EffectDef` のコピー漏れ修正を実施。
     *   カードデータの新JSON形式への移行推進。Legacyサポートの完全撤廃に伴い、データセットの再構築を行う。
 3.  [Status: Todo] **GUI Update**:
     *   `CardEditor` を更新し、新スキーマ (`CommandDef`) の編集に対応させる。
