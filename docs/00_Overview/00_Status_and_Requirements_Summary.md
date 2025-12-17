@@ -103,7 +103,14 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
     *   [Status: Todo] **B. Python側 (NetworkV2)**
         *   モデル入力層を修正: `x_id` (Card IDs) と `x_feat` (Manual Features) を受け取る。
     *   [Status: Todo] **C. 特徴量ベクトルの定義 (Feature Vector Definition)**
-        *   コスト、パワー、文明、カードタイプ、キーワード能力、リソース操作、除去、対策、殿堂ステータス等。
+        *   **Card Function Embeddings (機能抽象化)**: 除去、ドロー、ブロッカー等の役割をベクトル化し、未知のカードに対応（Zero-shot）。
+        *   **Projected Effective Mana (次ターン有効マナ)**: 次ターンのアンタップマナ数と発生可能文明を予測し、色事故を防ぐ。
+        *   **Synergy/Combo Readiness (コンボ成立度)**: 進化元やコンボパーツの揃い具合を数値化し、戦略的キープを促進。
+        *   **Turns to Lethal (リーサル距離)**: LethalSolverによる「勝利/敗北までのターン数」を入力し、終盤の判断力を強化。
+        *   その他: 基本スペック（コスト、パワー、文明）、キーワード能力、リソース操作等。
+    *   [Status: Todo] **D. Advanced Lethal Search (Mini-Max)**
+        *   現行のGreedy Heuristicに加え、手札（SA、進化速攻）やトリガーリスクを考慮した「超短期探索型 (Mini-Max Search) LethalSolver」を実装する。
+        *   エンジンをコピーしてシミュレーションを行うことで、攻撃時効果やブロッカー除去も正確に判定可能にする。
 
 ## 4. 今後の課題 (Future Tasks)
 
