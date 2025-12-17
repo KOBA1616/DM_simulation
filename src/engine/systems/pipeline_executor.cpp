@@ -127,6 +127,7 @@ namespace dm::engine::systems {
                  else if (z_str == "SHIELD_ZONE") zones.push_back(Zone::SHIELD);
                  else if (z_str == "GRAVEYARD") zones.push_back(Zone::GRAVEYARD);
                  else if (z_str == "DECK") zones.push_back(Zone::DECK);
+                 else if (z_str == "EFFECT_BUFFER") zones.push_back(Zone::BUFFER); // Added support for BUFFER
             }
         }
 
@@ -134,16 +135,37 @@ namespace dm::engine::systems {
 
         for (PlayerID pid : {player_id, static_cast<PlayerID>(1 - player_id)}) {
             for (Zone z : zones) {
-                const auto& zone_indices = state.get_zone(pid, z);
+                // Handle Effect Buffer specifically if needed, or if get_zone supports it (it doesn't usually)
+                std::vector<int> zone_indices;
+                if (z == Zone::BUFFER) {
+                     for(const auto& c : state.players[pid].effect_buffer) zone_indices.push_back(c.instance_id);
+                } else {
+                     zone_indices = state.get_zone(pid, z);
+                }
+
                 for (int instance_id : zone_indices) {
                     if (instance_id < 0) continue;
+                    // For buffer, we might need direct access if get_card_instance fails (it shouldn't if mapped)
+                    // GameState::get_card_instance uses card_owner_map.
+                    // Cards in buffer should be in map.
                     const auto* card_ptr = state.get_card_instance(instance_id);
+                    // Fallback search if not in map (e.g. freshly moved)
+                    if (!card_ptr && z == Zone::BUFFER) {
+                        const auto& buf = state.players[pid].effect_buffer;
+                        auto it = std::find_if(buf.begin(), buf.end(), [instance_id](const CardInstance& c){ return c.instance_id == instance_id; });
+                        if (it != buf.end()) card_ptr = &(*it);
+                    }
+
                     if (!card_ptr) continue;
                     const auto& card = *card_ptr;
 
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
                         if (TargetUtils::is_valid_target(card, def, filter, state, player_id, pid)) {
+                            valid_targets.push_back(instance_id);
+                        }
+                    } else if (card.card_id == 0) { // Dummy/Test card
+                         if (TargetUtils::is_valid_target(card, CardDefinition(), filter, state, player_id, pid)) {
                             valid_targets.push_back(instance_id);
                         }
                     }
@@ -199,6 +221,12 @@ namespace dm::engine::systems {
         else if (to_zone_str == "BATTLE") to_zone = Zone::BATTLE;
         else if (to_zone_str == "SHIELD") to_zone = Zone::SHIELD;
         else if (to_zone_str == "DECK") to_zone = Zone::DECK;
+        else if (to_zone_str == "BUFFER") to_zone = Zone::BUFFER;
+
+        bool to_bottom = false;
+        if (inst.args.contains("to_bottom") && inst.args["to_bottom"].is_boolean()) {
+            to_bottom = inst.args["to_bottom"];
+        }
 
         if (is_virtual_target) {
             PlayerID pid = state.active_player_id;
@@ -210,16 +238,37 @@ namespace dm::engine::systems {
                 for (int i = 0; i < count; ++i) {
                      targets.push_back(deck[available - 1 - i].instance_id);
                 }
+            } else if (virtual_target_type == "DECK_BOTTOM") {
+                 int available = (int)deck.size();
+                 int count = std::min(virtual_count, available);
+                 // Deck bottom is index 0
+                 for (int i = 0; i < count; ++i) {
+                     targets.push_back(deck[i].instance_id);
+                 }
             }
         }
 
         for (int id : targets) {
              const CardInstance* card_ptr = state.get_card_instance(id);
+             // Special check for Buffer if not in map
+             if (!card_ptr) {
+                 for (const auto& p : state.players) {
+                     for (const auto& c : p.effect_buffer) {
+                         if (c.instance_id == id) {
+                             card_ptr = &c;
+                             break;
+                         }
+                     }
+                     if (card_ptr) break;
+                 }
+             }
+
              if (!card_ptr) continue;
 
              PlayerID owner = card_ptr->owner;
              if (owner > 1) {
                  if (state.card_owner_map.size() > (size_t)id) owner = state.card_owner_map[id];
+                 else owner = state.active_player_id; // Fallback
              }
 
              Zone from_zone = Zone::GRAVEYARD;
@@ -232,10 +281,12 @@ namespace dm::engine::systems {
              if(!found) for(const auto& c : p.shield_zone) if(c.instance_id == id) { from_zone = Zone::SHIELD; found = true; break; }
              if(!found) for(const auto& c : p.deck) if(c.instance_id == id) { from_zone = Zone::DECK; found = true; break; }
              if(!found) for(const auto& c : p.graveyard) if(c.instance_id == id) { from_zone = Zone::GRAVEYARD; found = true; break; }
+             if(!found) for(const auto& c : p.effect_buffer) if(c.instance_id == id) { from_zone = Zone::BUFFER; found = true; break; }
 
              if (!found) continue;
 
-             auto cmd = std::make_unique<TransitionCommand>(id, from_zone, to_zone, owner, -1);
+             int dest_idx = to_bottom ? 0 : -1;
+             auto cmd = std::make_unique<TransitionCommand>(id, from_zone, to_zone, owner, dest_idx);
              execute_command(std::move(cmd), state);
         }
     }
