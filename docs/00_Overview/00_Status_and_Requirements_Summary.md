@@ -125,8 +125,9 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: Todo] **Full Trigger System Migration**:
+1.  [Status: WIP] **Full Trigger System Migration**:
     *   `EffectResolver` が現在行っている処理を全て `CommandSystem` 経由に切り替える。
+    *   `resolve_mana_charge`, `resolve_play_card`, `resolve_break_shield` の `CommandSystem` (Transition/Mutate) への移行が完了しました。
 2.  [Status: Todo] **New JSON Standard Adoption**:
     *   カードデータの新JSON形式への移行推進。Legacyサポートの完全撤廃に伴い、データセットの再構築を行う。
 3.  [Status: Todo] **GUI Update**:
