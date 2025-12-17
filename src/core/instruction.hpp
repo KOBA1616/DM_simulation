@@ -15,6 +15,7 @@ namespace dm::core {
         // Action
         MOVE,       // Zone change
         MODIFY,     // Power/Tap/Shield
+        GAME_ACTION,// High-level Game Logic (Play, Attack, etc.)
         // Calc
         COUNT,
         MATH,
@@ -32,6 +33,7 @@ namespace dm::core {
         {InstructionOp::SELECT, "SELECT"},
         {InstructionOp::MOVE, "MOVE"},
         {InstructionOp::MODIFY, "MODIFY"},
+        {InstructionOp::GAME_ACTION, "GAME_ACTION"},
         {InstructionOp::COUNT, "COUNT"},
         {InstructionOp::MATH, "MATH"},
         {InstructionOp::CALL, "CALL"},
