@@ -75,7 +75,7 @@ def test_flow_logic():
 
     initial_hand = len(state.players[0].hand)
 
-    dm_ai_module.GenericCardSystem.resolve_effect_with_db(state, card_def.effects[0], 999, card_reg)
+    dm_ai_module.EffectSystem.resolve_effect_with_db(state, card_def.effects[0], 999, card_reg)
 
     new_hand = len(state.players[0].hand)
     print(f"Hand: {initial_hand} -> {new_hand}")
@@ -102,7 +102,7 @@ def test_flow_logic():
     state.add_card_to_deck(0, 1, 102)
     state.add_card_to_deck(0, 1, 103)
 
-    dm_ai_module.GenericCardSystem.resolve_effect_with_db(state, card_def.effects[0], 999, card_reg)
+    dm_ai_module.EffectSystem.resolve_effect_with_db(state, card_def.effects[0], 999, card_reg)
 
     new_hand = len(state.players[0].hand)
     print(f"Hand: {initial_hand} -> {new_hand}")

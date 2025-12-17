@@ -1,6 +1,6 @@
 #include "beam_search_evaluator.hpp"
 #include "engine/actions/action_generator.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include <cmath>
@@ -11,6 +11,7 @@ namespace dm::ai {
 
     using namespace dm::core;
     using namespace dm::engine;
+    using namespace dm::engine::systems;
 
     BeamSearchEvaluator::BeamSearchEvaluator(const std::map<CardID, CardDefinition>& card_db, int beam_width, int max_depth)
         : card_db_(card_db), beam_width_(beam_width), max_depth_(max_depth) {}
@@ -50,7 +51,7 @@ namespace dm::ai {
         // Initialize beam with root children
         for (const auto& action : root_actions) {
             GameState next_state = root_state;
-            EffectResolver::resolve_action(next_state, action, card_db_);
+            GameLogicSystem::resolve_action(next_state, action, card_db_);
             if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
                 PhaseManager::next_phase(next_state, card_db_);
             }
@@ -107,7 +108,7 @@ namespace dm::ai {
                 auto actions = ActionGenerator::generate_legal_actions(node.state, card_db_);
                 for (const auto& action : actions) {
                     GameState next_state = node.state;
-                    EffectResolver::resolve_action(next_state, action, card_db_);
+                    GameLogicSystem::resolve_action(next_state, action, card_db_);
                     if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
                         PhaseManager::next_phase(next_state, card_db_);
                     }

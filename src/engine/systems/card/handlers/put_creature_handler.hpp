@@ -5,7 +5,7 @@
 #include "core/card_def.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
-#include "engine/effects/effect_resolver.hpp"
+// #include "engine/effects/effect_resolver.hpp" // Removed
 
 namespace dm::engine {
 

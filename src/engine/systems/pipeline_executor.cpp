@@ -68,6 +68,7 @@ namespace dm::engine::systems {
             case InstructionOp::MODIFY: handle_modify(inst, state); break;
             case InstructionOp::IF:     handle_if(inst, state, card_db); break;
             case InstructionOp::LOOP:   handle_loop(inst, state, card_db); break;
+            case InstructionOp::REPEAT: handle_loop(inst, state, card_db); break; // Reuse loop handler logic
             case InstructionOp::COUNT:
             case InstructionOp::MATH:   handle_calc(inst, state); break;
             case InstructionOp::PRINT:  handle_print(inst, state); break;
@@ -314,22 +315,33 @@ namespace dm::engine::systems {
                                        const std::map<core::CardID, core::CardDefinition>& card_db) {
         if (inst.args.is_null()) return;
 
-        std::string var_name = inst.args.value("as", "$it");
-        std::vector<int> collection;
+        if (inst.op == InstructionOp::REPEAT || (inst.args.contains("count") && !inst.args.contains("in"))) {
+            // Fixed count loop
+            int count = resolve_int(inst.args.value("count", 1));
+            std::string var_name = inst.args.value("var", "$i");
+            for (int i = 0; i < count; ++i) {
+                set_context_var(var_name, i);
+                execute(inst.then_block, state, card_db);
+            }
+        } else {
+            // For-each loop
+            std::string var_name = inst.args.value("as", "$it");
+            std::vector<int> collection;
 
-        if (inst.args.contains("in")) {
-            auto val = inst.args["in"];
-            if (val.is_string() && val.get<std::string>().rfind("$", 0) == 0) {
-                auto v = get_context_var(val.get<std::string>());
-                if (std::holds_alternative<std::vector<int>>(v)) {
-                    collection = std::get<std::vector<int>>(v);
+            if (inst.args.contains("in")) {
+                auto val = inst.args["in"];
+                if (val.is_string() && val.get<std::string>().rfind("$", 0) == 0) {
+                    auto v = get_context_var(val.get<std::string>());
+                    if (std::holds_alternative<std::vector<int>>(v)) {
+                        collection = std::get<std::vector<int>>(v);
+                    }
                 }
             }
-        }
 
-        for (int id : collection) {
-            set_context_var(var_name, id);
-            execute(inst.then_block, state, card_db);
+            for (int id : collection) {
+                set_context_var(var_name, id);
+                execute(inst.then_block, state, card_db);
+            }
         }
     }
 
@@ -410,8 +422,13 @@ namespace dm::engine::systems {
         }
 
         if (cond.contains("op")) {
-            int lhs = resolve_int(cond.value("lhs", 0));
-            int rhs = resolve_int(cond.value("rhs", 0));
+            // Enhanced resolution for LHS/RHS to support variables
+            int lhs = 0;
+            if (cond.contains("lhs")) lhs = resolve_int(cond["lhs"]);
+
+            int rhs = 0;
+            if (cond.contains("rhs")) rhs = resolve_int(cond["rhs"]);
+
             std::string op = cond.value("op", "==");
             if (op == "==") return lhs == rhs;
             if (op == ">") return lhs > rhs;
