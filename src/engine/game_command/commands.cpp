@@ -53,7 +53,9 @@ namespace dm::engine::game_command {
         auto it = std::find_if(source_vec->begin(), source_vec->end(),
             [&](const core::CardInstance& c){ return c.instance_id == card_instance_id; });
 
-        if (it == source_vec->end()) return; // Not found
+        if (it == source_vec->end()) {
+             return;
+        }
 
         // Store original index for undo
         original_index = std::distance(source_vec->begin(), it);

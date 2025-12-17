@@ -203,5 +203,42 @@ namespace dm::engine {
                 }
             }
         }
+
+        void compile(const ResolutionContext& ctx) override {
+            using namespace dm::core;
+            if (!ctx.instruction_buffer) return;
+
+            if (ctx.action.type == EffectActionType::SEND_TO_MANA) {
+                Instruction move(InstructionOp::MOVE);
+                move.args["to"] = "MANA";
+
+                if (!ctx.action.input_value_key.empty()) {
+                    move.args["target"] = "$" + ctx.action.input_value_key;
+                } else if (ctx.action.scope == TargetScope::TARGET_SELECT) {
+                     move.args["target"] = "$selection";
+                } else {
+                     Instruction select(InstructionOp::SELECT);
+                     select.args["filter"] = ctx.action.filter;
+                     select.args["out"] = "$auto_mana_selection";
+                     select.args["count"] = 999;
+
+                     ctx.instruction_buffer->push_back(select);
+                     move.args["target"] = "$auto_mana_selection";
+                }
+
+                ctx.instruction_buffer->push_back(move);
+            }
+            else { // ADD_MANA
+                int count = ctx.action.value1;
+                if (count == 0) count = 1;
+
+                Instruction move(InstructionOp::MOVE);
+                move.args["to"] = "MANA";
+                move.args["target"] = "DECK_TOP";
+                move.args["count"] = count;
+
+                ctx.instruction_buffer->push_back(move);
+            }
+        }
     };
 }
