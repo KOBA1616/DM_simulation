@@ -81,29 +81,48 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   [Status: Done] [Test: Pass]
     *   `dm::engine::systems::CommandSystem` を実装。
 
-### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
+### 3.3 [Priority: Future] Phase 8: AI思考アーキテクチャの強化 (Advanced Thinking)
 [Status: Deferred]
-Transformer方式を高速化し、かつZero-shot（未知のカードへの対応）を可能にするため、「ハイブリッド埋め込み (Hybrid Embedding)」を導入します。また、文脈として墓地のカードも対象に含めます。
+AIが「人間のような高度な思考（読み、コンボ、大局観）」を獲得するため、NetworkV2（Transformer）に対して以下の機能拡張および特徴量実装を行います。
 
-*   **コンセプト (Concept)**
-    *   **Hybrid Embedding**: `Embedding = Embed(CardID) + Linear(ManualFeatures)`
-    *   **Zero-shot対応**: 未知のカード（ID埋め込み未学習）でも、スペック情報（コスト、文明、パワー等）から挙動を推論可能にする。
-    *   **スコープ拡張**: Transformerの入力文脈に「墓地」のカードも含め、墓地利用や探索に対応させる。
+*   **基本コンセプト (Core Concept)**:
+    *   人間が「このカードは強い」といったヒューリスティックを与えるのではなく、**「構造（Structure）」と「素材（Raw Data）」を与え、AIが自己対戦を通じて意味と重みを学習（End-to-End Learning）できる設計**にします。
+    *   LLMによる言語化や感想戦機能を導入し、ブラックボックス化を防ぎます。
 
-*   **実装要件 (Requirements)**
-    *   [Status: Todo] **A. C++側 (TensorConverter)**
-        *   `convert_to_sequence` を修正し、`Output: (TokenSequence, FeatureSequence)` を返すように変更する。
-    *   [Status: Todo] **B. Python側 (NetworkV2)**
-        *   モデル入力層を修正: `x_id` (Card IDs) と `x_feat` (Manual Features) を受け取る。
-    *   [Status: Todo] **C. 特徴量ベクトルの定義 (Feature Vector Definition)**
-        *   **Card Function Embeddings (機能抽象化)**: 除去、ドロー、ブロッカー等の役割をベクトル化し、未知のカードに対応（Zero-shot）。
-        *   **Projected Effective Mana (次ターン有効マナ)**: 次ターンのアンタップマナ数と発生可能文明を予測し、色事故を防ぐ。
-        *   **Synergy/Combo Readiness (コンボ成立度)**: 進化元やコンボパーツの揃い具合を数値化し、戦略的キープを促進。
-        *   **Turns to Lethal (リーサル距離)**: LethalSolverによる「勝利/敗北までのターン数」を入力し、終盤の判断力を強化。
-        *   その他: 基本スペック（コスト、パワー、文明）、キーワード能力、リソース操作等。
-    *   [Status: Todo] **D. Advanced Lethal Search (Mini-Max)**
-        *   現行のGreedy Heuristicに加え、手札（SA、進化速攻）やトリガーリスクを考慮した「超短期探索型 (Mini-Max Search) LethalSolver」を実装する。
-        *   エンジンをコピーしてシミュレーションを行うことで、攻撃時効果やブロッカー除去も正確に判定可能にする。
+*   **実装要件 (Implementation Requirements)**
+
+    #### A. 入力特徴量と次元圧縮 (Input Features & Compression)
+    入力は固定長ベクトルではなく、複数のトークン系列（Sequence）として構成し、Transformerに入力します。
+
+    1.  **[Feature 1] Action History (アクション履歴)**
+        *   過去 $N$ ターン分の「プレイ」「チャージ」「攻撃」を時系列トークンとして入力。
+        *   アクション数上限: **過去10ターン分**、かつ各ターンの主要アクション（Play, Charge, Attack）に絞り込み、最大 **30トークン程度** に制限してノイズを抑制する。
+        *   目的: 「手札温存（ブラフ）」やデッキタイプ推定などの文脈理解。
+    2.  **[Feature 2] Phase Tokens (フェイズトークン)**
+        *   `[MANA]`, `[MAIN]`, `[ATTACK]` 等の特殊トークンを系列先頭に付与。
+        *   目的: フェイズごとにAttentionの注目先（マナカーブ、盤面処理など）を切り替える。
+    3.  **[Feature 4, 6] Imperfect Info & Key Cards (不完全情報と重要カード)**
+        *   **Key Card Count**: 公開領域にある全カードIDの枚数ヒストグラム（2000次元）をLinear圧縮して1トークン化。
+        *   **Hidden Inference**: 相手の手札/シールドにある確率分布（2000次元）をLinear圧縮して1トークン化。
+        *   目的: 「ボルメテウスが墓地に落ちた」等の重要イベントを、人間が指定せずともAIが勝率との相関から学習する。
+    4.  **[Feature 7] Synergy Bias Mask (学習可能シナジー行列)**
+        *   カードID間の相性（$N \times N$）を表す学習可能な行列 (`SynergyMatrix`) を導入し、Attentionスコアに加算。
+        *   目的: 種族や文明を超えた「実戦的なコンボ相性」を自動獲得させる。
+    5.  **[Feature 8] Entity-Centric Board Token (詳細盤面トークン)**
+        *   バトルゾーンのクリーチャーを「ID + パワー(生数値) + フラグ(ブロッカー等)」の結合ベクトルとしてトークン化。
+        *   目的: 「パワー6000以上」といった閾値を人間が決めず、AIに生の数値から脅威度を判断させる。
+    6.  **[Feature 9] Combo Completion (コンボ達成度)**
+        *   Cross-Attention (手札トークン列 vs 盤面トークン列) を導入。
+        *   目的: Multi-Head Attentionに「進化元と進化先」などのペア関係を専門的に監視させ、コンボ成立を検知させる。
+    7.  **[Feature 12, 15] Meta-Game Context (メタゲーム)**
+        *   自分と相手のデッキタイプ（アーキタイプ）や、環境の流行を表すベクトルをLinear圧縮して入力。
+        *   目的: 対面に応じたプレイスタイルの切り替え（アグロ対面なら防御優先など）。
+
+    #### B. 説明可能性と分析 (Explainability)
+    13. **[Feature 13] LLM Strategic Explanation (戦術言語化)**
+        *   State-to-Text変換器を実装し、盤面状況をテキスト化してLLMに入力。AIの指し手（Value Delta）を根拠に解説を生成させる。
+    15. **[Feature 15] Interactive Post-Mortem (感想戦機能)**
+        *   対戦ログ（シード値＋コマンド列）から任意のターンを復元し、分岐（Ifルート）をシミュレーションする機能をGUIに実装する。
 
 ## 4. 今後の課題 (Future Tasks)
 
