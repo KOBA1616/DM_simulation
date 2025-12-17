@@ -833,7 +833,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("vectorize_card_stats", &GameState::vectorize_card_stats);
 
     py::class_<GameInstance>(m, "GameInstance")
-        .def(py::init<uint32_t, const std::map<CardID, CardDefinition>&>())
+        // .def(py::init<uint32_t, const std::map<CardID, CardDefinition>&>()) // UNSAFE: Creates dangling reference from temporary map
         // New constructor taking dict but converting to shared_ptr map to ensure lifetime
         .def(py::init([](uint32_t seed, const std::map<CardID, CardDefinition>& db) {
              // Create shared ptr copy
