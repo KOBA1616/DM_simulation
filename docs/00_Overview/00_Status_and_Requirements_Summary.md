@@ -40,7 +40,9 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 *   [Status: Done] **GameLogicSystem Refactor**: アクションディスパッチロジックを `GameLogicSystem` に集約し、`PipelineExecutor` を介した処理フローを確立しました。
 *   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` などのプリミティブを実装済み。
 *   [Status: Done] **Instruction Pipeline**: `PipelineExecutor` が `GAME_ACTION` 命令を介して高レベルなゲームロジックを実行する仕組みが確立しました。
-*   [Known Issue] **Binding SegFault**: `GameInstance` の Python バインディングにおいて、`GameState` のコピー動作に関連する Segmentation Fault が発生しています。これは `std::function` (EventDispatcher) のライフタイム管理またはコピー時の挙動に起因する可能性があります。次期フェーズで修正予定です。
+*   [Status: Fixed] **Binding SegFault**: `GameInstance` の Python バインディングにおいて発生していた Segmentation Fault (特に `initialize_card_stats` や `resolve_action` 呼び出し時) に対処しました。
+    *   原因: Python辞書として渡された `card_db` が Pybind11 により巨大な `std::map` へ毎回変換・コピーされ、スタックオーバーフローまたはメモリ破損を引き起こしていた可能性が高い。
+    *   対策: `GameInstance` に `resolve_action` と `initialize_card_stats` メソッドを実装し、Python側からデータを渡さずに C++ 内部で保持している `card_db` (shared_ptr) を利用するようにアーキテクチャを変更しました。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Status**: 稼働中 (Ver 2.3)。
@@ -55,7 +57,7 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 ## 3. ロードマップ (Roadmap)
 
 ### 3.1 [Priority: Critical] Phase 6: エンジン刷新 (Engine Overhaul)
-[Status: Review]
+[Status: Done]
 `EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行しました。
 
 *   **Step 1: イベント駆動基盤の実装**
@@ -92,8 +94,8 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
     *   [Status: Done] [Test: Pass]
     *   `CommandDef` に条件分岐用の `condition`, `if_true`, `if_false` フィールドを追加 (Hybrid Schema拡張)。
     *   `test_command_system.py` にて `FLOW` コマンド（条件合致時の分岐、不一致時の分岐）の動作検証を完了しました。
-*   **Step 4: Python Binding 修正 (Next Task)**
-    *   [Status: Todo] **Fix SegFault**: `GameInstance.state` の Python バインディングにおけるコピー問題を解消し、テストを通過させる。
+*   **Step 4: Python Binding 修正 (Resolved)**
+    *   [Status: Done] **Fix SegFault**: `GameInstance` に `resolve_action` と `initialize_card_stats` を実装・バインドし、巨大な `card_db` オブジェクトの受け渡しを廃止することでクラッシュを解消しました。
 
 ### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
 [Status: Deferred]
@@ -121,9 +123,9 @@ Transformer方式を高速化し、かつZero-shot（未知のカードへの対
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: Todo] **Fix Python Bindings SegFault**:
-    *   `GameInstance` と `GameState` の連携部分におけるメモリ管理、特に `event_dispatcher` のコピー問題を解決する。
-2.  [Status: WIP] **New JSON Standard Adoption**:
-    *   カードデータの新JSON形式への移行推進。Legacyサポートの完全撤廃に伴い、データセットの再構築を行う。
+1.  [Status: Todo] **Phase 7: Data Migration**:
+    *   既存のJSONカードデータ (`actions` ベース) を新しい `commands` ベースのフォーマットへ完全に移行する。
+2.  [Status: Todo] **New JSON Standard Adoption**:
+    *   Legacyサポート完全撤廃に伴い、全データセットの再構築を行う。
 3.  [Status: Todo] **GUI Update**:
     *   `CardEditor` を更新し、新スキーマ (`CommandDef`) の編集に対応させる。
