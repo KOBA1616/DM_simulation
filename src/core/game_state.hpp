@@ -254,6 +254,7 @@ namespace dm::core {
                 case Zone::SHIELD: vec_ptr = &p.shield_zone; break;
                 case Zone::DECK: vec_ptr = &p.deck; break;
                 case Zone::HYPER_SPATIAL: vec_ptr = &p.hyper_spatial_zone; break;
+                case Zone::BUFFER: vec_ptr = &p.effect_buffer; break;
                 case Zone::STACK:
                     // Special case: Stack is global
                     vec_ptr = &stack_zone;
