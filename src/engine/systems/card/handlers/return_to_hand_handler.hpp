@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include <algorithm>
@@ -14,13 +14,13 @@ namespace dm::engine {
              if (ctx.action.scope == dm::core::TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                  dm::core::EffectDef ed;
                  ed.actions = { ctx.action };
-                 GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
 
             // Auto-Return Logic
             using namespace dm::core;
-            PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
 
             // Determine zones (Default Battle Zone)
             std::vector<std::pair<PlayerID, Zone>> zones_to_check;
@@ -79,7 +79,7 @@ namespace dm::engine {
                         CardInstance moved_card = *it;
                         p.hand.push_back(moved_card);
                         p.battle_zone.erase(it);
-                        GenericCardSystem::check_mega_last_burst(ctx.game_state, moved_card, ctx.card_db);
+                        EffectSystem::instance().check_mega_last_burst(ctx.game_state, moved_card, ctx.card_db);
                         break;
                     }
                     auto it_mana = std::find_if(p.mana_zone.begin(), p.mana_zone.end(),
@@ -115,7 +115,7 @@ namespace dm::engine {
                         p.hand.push_back(moved_card);
                         p.battle_zone.erase(it);
 
-                        GenericCardSystem::check_mega_last_burst(ctx.game_state, moved_card, ctx.card_db);
+                        EffectSystem::instance().check_mega_last_burst(ctx.game_state, moved_card, ctx.card_db);
                         break;
                     }
                     auto it_mana = std::find_if(p.mana_zone.begin(), p.mana_zone.end(),

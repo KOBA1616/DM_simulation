@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
 #include "engine/game_command/commands.hpp"
 #include <iostream>
@@ -37,7 +37,7 @@ namespace dm::engine {
                  mod.reduction_amount = value;
                  mod.condition_filter = ctx.action.filter; // Filter determines which cards get reduced
                  mod.source_instance_id = ctx.source_instance_id;
-                 mod.controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                 mod.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
 
                  // Duration from value2
                  // 0 or 1 = this turn
@@ -54,7 +54,7 @@ namespace dm::engine {
                 eff.type = PassiveType::CANNOT_USE_SPELLS;
                 eff.target_filter = ctx.action.filter;
                 eff.source_instance_id = ctx.source_instance_id;
-                eff.controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                 eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
 
                 auto cmd = std::make_shared<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
@@ -68,7 +68,7 @@ namespace dm::engine {
                 eff.value = value;
                 eff.target_filter = ctx.action.filter; // Apply to cards matching filter
                 eff.source_instance_id = ctx.source_instance_id;
-                eff.controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                 eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
 
                 // TODO: Handle explicit targets (ID list) better in PassiveEffect structure.
