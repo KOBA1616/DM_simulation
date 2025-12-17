@@ -24,25 +24,18 @@
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
-現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** が完了し、**Phase 7: Data Migration (全カードデータの新JSONフォーマット移行)** への移行フェーズにあります。
-`EffectResolver` の解体と `GameCommand` / `PipelineExecutor` への移行が完了し、イベント駆動型アーキテクチャへの基盤移行が達成されました。
-
-AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジン刷新が完了するまで一時凍結します。
-
-### 重要変更 (Strategic Shift)
-既存のJSONデータ（Legacy JSON）の再利用や変換アダプタ (`LegacyJsonAdapter`) の開発は**完全に放棄・廃止**します。
-今後は新エンジン (`CommandSystem` / `PipelineExecutor`) に最適化された新しいJSON形式のみをサポートし、過去の資産に縛られず、エンジンの完成度と品質を最優先します。
+現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、**Phase 7: Data Migration (全カードデータの新JSONフォーマット移行)** への移行準備を進めています。
+`Pure Command Generation` の基盤が整備され、`DrawHandler` などの主要ハンドラーが命令パイプライン形式に移行を開始しました。
 
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` クラスおよびファイルを物理的に削除しました。すべての呼び出し元 (`GameInstance`, `ActionGenerator`, `ScenarioExecutor`, `Bindings`) は `GameLogicSystem` へ移行されました。
 *   [Status: Done] **GameLogicSystem Refactor**: アクションディスパッチロジックを `GameLogicSystem` に集約し、`PipelineExecutor` を介した処理フローを確立しました。
-*   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` などのプリミティブを実装済み。
-*   [Status: Done] **Instruction Pipeline**: `PipelineExecutor` が `GAME_ACTION` 命令を介して高レベルなゲームロジックを実行する仕組みが確立しました。
-*   [Status: Fixed] **Binding SegFault**: `GameInstance` の Python バインディングにおいて発生していた Segmentation Fault (特に `initialize_card_stats` や `resolve_action` 呼び出し時) に対処しました。
-    *   原因: Python辞書として渡された `card_db` が Pybind11 により巨大な `std::map` へ毎回変換・コピーされ、スタックオーバーフローまたはメモリ破損を引き起こしていた可能性が高い。
-    *   対策: `GameInstance` に `resolve_action` と `initialize_card_stats` メソッドを実装し、Python側からデータを渡さずに C++ 内部で保持している `card_db` (shared_ptr) を利用するようにアーキテクチャを変更しました。
+*   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` に加え、`Stat` (統計更新), `GameResult` (勝敗判定) を実装済み。
+*   [Status: Done] **Instruction Pipeline**: `PipelineExecutor` が `GAME_ACTION` 命令 (`WIN_GAME`, `LOSE_GAME`, `TRIGGER_CHECK`, `STAT`更新) をサポートするように拡張されました。
+*   [Status: WIP] **Pure Command Generation**: `EffectSystem` に `compile_action` メソッドを追加し、アクション定義から `Instruction` リストを生成する仕組みを実装しました。`DrawHandler` の移行が完了（デッキ切れ判定→移動→統計更新→トリガーチェックの命令生成）。
+*   [Known Issue] **Binding SegFault**: `Instruction` 構造体の再帰的定義と `nlohmann::json` 引数の Python バインディングにおいて、複雑なオブジェクト受け渡し時に Segmentation Fault が発生する問題が確認されています (`tests/test_effect_compiler.py`)。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Status**: 稼働中 (Ver 2.3)。
@@ -57,142 +50,39 @@ AI学習 (Phase 3) およびエディタ開発 (Phase 5) は、このエンジ�
 ## 3. ロードマップ (Roadmap)
 
 ### 3.1 [Priority: Critical] Phase 6: エンジン刷新 (Engine Overhaul)
-[Status: Done]
-`EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行しました。
+[Status: WIP]
+`EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行します。
 
 *   **Step 1: イベント駆動基盤の実装**
     *   [Status: Done] [Test: Pass]
     *   `TriggerManager`: シングルトン/コンポーネントによるイベント監視・発行システムの実装。（実装完了）
-    *   `check_triggers` メソッドにより、`GameEvent` をトリガーとして `PendingEffect` を生成するフローを確立。
 *   **Step 2: 命令パイプライン (Instruction Pipeline) の実装**
     *   [Status: Done] [Test: Pass]
     *   `PipelineExecutor` (VM) を実装済み。
-    *   `GAME_ACTION` 命令を追加し、高レベルなゲーム操作（プレイ、攻撃、ブロック）をパイプライン経由で実行可能にしました。
-    *   [Status: Done] **Deleted**: `LegacyJsonAdapter` は廃止されました。
+    *   `GAME_ACTION` 命令を追加し、高レベルなゲーム操作（プレイ、攻撃、ブロック）および勝敗判定をパイプライン経由で実行可能にしました。
 *   **Step 3: GameCommand への統合**
     *   [Status: Done] [Test: Pass]
-    *   `EffectResolver` の主要メソッド（`resolve_play_card`, `resolve_attack` 等）を `GameLogicSystem` へ移行し、内部処理を全て `GameCommand` (Transition, Mutate) で書き換えました。
-    *   [Status: Done] **New**: `GameInstance` にて `TriggerManager` を `GameState::event_dispatcher` と連携させ、コマンド実行時のイベント発行をトリガー検知につなげる統合を完了。
-*   **Step 4: EffectResolver 完全撤廃 (Final Cleanup)**
-    *   [Status: Done] `src/engine/effects/effect_resolver.*` を削除。
-    *   [Status: Done] Python Bindings から `EffectResolver` を削除し、`GameLogicSystem` へ移行。
-    *   [Status: Done] `GameInstance` を更新し、`card_db` のライフタイム管理を改善 (`shared_ptr` 導入)。
+    *   `EffectResolver` の主要メソッドを `GameLogicSystem` へ移行。
+*   **Step 4: Pure Command Generation (Current Focus)**
+    *   [Status: WIP] 各アクションハンドラー (`IActionHandler`) を `compile()` メソッドに対応させ、状態直接操作から命令生成へ移行する。
+    *   `DrawHandler`: 完了。
+    *   `ManaHandler`: 未着手。
+    *   `DestroyHandler`: 未着手。
+    *   `SearchHandler`: 未着手。
 
 ### 3.2 [Priority: High] Phase 7: ハイブリッド・エンジン基盤 & データ移行
-[Status: WIP]
-旧エンジン（マクロ的アクション）と新エンジン（プリミティブコマンド）を共存・統合させ、全てのデータを新形式へ移行します。
+[Status: Pending]
+全てのデータを新形式へ移行します。
 
 *   **Step 1: データ構造の刷新 (Hybrid Schema)**
     *   [Status: Done] [Test: Pass]
     *   JSONスキーマに `CommandDef` を導入済み。
-    *   `GenericCardSystem::resolve_effect` を更新し、旧来の `actions` と共に新しい `commands` を反復処理・実行するロジックを実装しました。
 *   **Step 2: CommandSystem の実装**
     *   [Status: Done] [Test: Pass]
     *   `dm::engine::systems::CommandSystem` を実装。
-    *   `MUTATE` 処理（TAP, POWER_MOD, ADD_KEYWORD等）の実装を完了し、Pythonテスト `test_command_system.py` にて動作検証済み。
-*   **Step 3: フロー制御 (Control Flow) の実装**
-    *   [Status: Done] [Test: Pass]
-    *   `CommandDef` に条件分岐用の `condition`, `if_true`, `if_false` フィールドを追加 (Hybrid Schema拡張)。
-    *   `test_command_system.py` にて `FLOW` コマンド（条件合致時の分岐、不一致時の分岐）の動作検証を完了しました。
-*   **Step 4: Python Binding 修正 (Resolved)**
-    *   [Status: Done] **Fix SegFault**: `GameInstance` に `resolve_action` と `initialize_card_stats` を実装・バインドし、巨大な `card_db` オブジェクトの受け渡しを廃止することでクラッシュを解消しました。
-
-### 3.3 [Priority: Future] Phase 8: Transformer拡張 (Hybrid Embedding)
-[Status: Deferred]
-Transformer方式を高速化し、かつZero-shot（未知のカードへの対応）を可能にするため、「ハイブリッド埋め込み (Hybrid Embedding)」を導入します。また、文脈として墓地のカードも対象に含めます。
-
-*   **コンセプト (Concept)**
-    *   **Hybrid Embedding**: `Embedding = Embed(CardID) + Linear(ManualFeatures)`
-    *   **Zero-shot対応**: 未知のカード（ID埋め込み未学習）でも、スペック情報（コスト、文明、パワー等）から挙動を推論可能にする。
-    *   **スコープ拡張**: Transformerの入力文脈に「墓地」のカードも含め、墓地利用や探索に対応させる。
-
-*   **実装要件 (Requirements)**
-    *   [Status: Todo] **A. C++側 (TensorConverter)**
-        *   `convert_to_sequence` を修正し、`Output: (TokenSequence, FeatureSequence)` を返すように変更する。
-    *   [Status: Todo] **B. Python側 (NetworkV2)**
-        *   モデル入力層を修正: `x_id` (Card IDs) と `x_feat` (Manual Features) を受け取る。
-    *   [Status: Todo] **C. 特徴量ベクトルの定義 (Feature Vector Definition)**
-        *   **Card Function Embeddings (機能抽象化)**: 除去、ドロー、ブロッカー等の役割をベクトル化し、未知のカードに対応（Zero-shot）。
-        *   **Projected Effective Mana (次ターン有効マナ)**: 次ターンのアンタップマナ数と発生可能文明を予測し、色事故を防ぐ。
-        *   **Synergy/Combo Readiness (コンボ成立度)**: 進化元やコンボパーツの揃い具合を数値化し、戦略的キープを促進。
-        *   **Turns to Lethal (リーサル距離)**: LethalSolverによる「勝利/敗北までのターン数」を入力し、終盤の判断力を強化。
-        *   その他: 基本スペック（コスト、パワー、文明）、キーワード能力、リソース操作等。
-    *   [Status: Todo] **D. Advanced Lethal Search (Mini-Max)**
-        *   現行のGreedy Heuristicに加え、手札（SA、進化速攻）やトリガーリスクを考慮した「超短期探索型 (Mini-Max Search) LethalSolver」を実装する。
-        *   エンジンをコピーしてシミュレーションを行うことで、攻撃時効果やブロッカー除去も正確に判定可能にする。
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: Todo] **Phase 7: Data Migration**:
-    *   既存のJSONカードデータ (`actions` ベース) を新しい `commands` ベースのフォーマットへ完全に移行する。
-2.  [Status: Todo] **New JSON Standard Adoption**:
-    *   Legacyサポート完全撤廃に伴い、全データセットの再構築を行う。
-3.  [Status: Todo] **GUI Update**:
-    *   `CardEditor` を更新し、新スキーマ (`CommandDef`) の編集に対応させる。
-
-    #### 新エンジン対応：Card Editor GUI構造の再定義
-
-    新エンジン（イベント駆動・コマンド型）への移行に伴い、Card EditorのGUI（木構造）は、単なる「トリガー→アクション」のリストから、**「イベントリスナー」と「状態修飾子（Modifier）」を明確に区別する構造**へ変化させる必要があります。
-
-    ##### 推奨される新しい木構造
-
-    現在の `Card -> Effect -> Action` という3層構造を維持しつつ、**第2層（Effect層）の役割を拡張・分岐**させます。
-
-    ```text
-    [Root] Card Definition (基本情報: コスト、文明、種族など)
-     │
-     ├── [Node Type 1] Keywords (単純なキーワード能力)
-     │    │  ※ 「ブロッカー」「W・ブレイカー」「SA」などのフラグ管理
-     │    └─ (Checkboxes / List)
-     │
-     ├── [Node Type 2] Abilities (複雑な能力リスト)
-     │    │
-     │    ├── Case A: Triggered Ability (誘発型能力 / イベントリスナー)
-     │    │    │  ※ 特定のイベントに反応してスタックに乗る能力
-     │    │    │
-     │    │    ├── Trigger Definition (いつ？)
-     │    │    │    └─ Event Type: ON_PLAY, ON_ATTACK, ON_DESTROY, ON_BLOCK
-     │    │    │
-     │    │    ├── Condition (条件は？ - 介入型if節)
-     │    │    │    └─ Filter: "If you have a Fire Bird", "If opponent has no shields"
-     │    │    │
-     │    │    └── Action Sequence (何をする？ - コマンド発行)
-     │    │         ├── Action 1: SELECT_TARGET (Targeting)
-     │    │         └── Action 2: DESTROY_CARD (Execution)
-     │    │
-     │    └── Case B: Static / Passive Ability (常在型能力 / 状態修飾)
-     │         │  ※ 戦場にある限り常に適用される効果（Modifer）
-     │         │
-     │         ├── Layer Definition (何を変える？)
-     │         │    └─ Type: COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD
-     │         │
-     │         ├── Condition (適用条件は？)
-     │         │    └─ Filter: "While tapped", "If mana > 5"
-     │         │
-     │         └── Value / Target Scope (誰に・どれくらい？)
-     │              └─ Target: ALL_FRIENDLY_CREATURES, SELF
-     │              └─ Value: +3000, -1 Cost
-     │
-     └── [Node Type 3] Reaction Abilities (リアクション / 忍者ストライク等)
-          │  ※ 手札などから特定のタイミングで宣言できる能力
-          │
-          ├── Trigger Window (どのタイミングで？)
-          │    └─ Type: NINJA_STRIKE, STRIKE_BACK
-          │
-          └── Action Sequence
-               └─ (Summon, Cast, etc.)
-    ```
-
-    ##### 具体的な変更点と理由
-
-    1.  **「Trigger」から「Ability Type」への概念拡張**
-        *   これまでは全ての効果を「何かが起きたら実行する」として扱っていましたが、新エンジンでは**「即時解決されるイベント（誘発）」**と**「継続的に適用されるルール（常在）」**を区別する必要があります。
-        *   **GUIの変更:** Effectを追加する際、最初に **「Triggered (誘発型)」** か **「Static (常在型)」** かを選択させます。
-
-    2.  **条件判定（Condition）の独立ノード化**
-        *   新エンジンでは、イベントが発生しても「条件を満たしていなければ PendingEffect (待機効果) を生成しない」あるいは「解決時に不発になる」という判定が重要です。
-        *   **GUIの変更:** TriggerとActionの間に **「Condition (条件)」** ノードまたはプロパティ欄を設けます。
-
-    3.  **アクション間の「変数のリンク（Context Linking）」**
-        *   コマンド式になったことで、Action 1（選択）の結果を Action 2（破壊）が受け取るフローが厳格になります。
-        *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を指定できるようにします。
+1.  [Status: Todo] **Binding Fix**: `Instruction` 構造体の Python バインディングにおけるメモリ管理・コピーの問題（SegFault）を解決する。
+2.  [Status: Todo] **Handler Migration**: `ManaHandler`, `DestroyHandler` 等の主要ハンドラーを `compile()` パターンへ移行する。
+3.  [Status: Todo] **EffectResolver Cleanup**: 残存する `EffectResolver` のロジックがあれば完全に `PipelineExecutor` へ統合する。
