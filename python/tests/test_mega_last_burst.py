@@ -54,7 +54,7 @@ def test_mega_last_burst_logic():
     state.add_card_to_deck(0, 2, 1)
     state.add_card_to_deck(0, 2, 2)
 
-    # Trigger Destruction via GenericCardSystem.resolve_action(DESTROY)
+    # Trigger Destruction via EffectSystem.resolve_action(DESTROY)
     act_destroy = dm_ai_module.ActionDef()
     act_destroy.type = dm_ai_module.EffectActionType.DESTROY
     act_destroy.scope = dm_ai_module.TargetScope.NONE
@@ -63,7 +63,7 @@ def test_mega_last_burst_logic():
     act_destroy.filter.count = 1
 
     # Execute Destroy
-    dm_ai_module.GenericCardSystem.resolve_action(state, act_destroy, 0)
+    dm_ai_module.EffectSystem.resolve_action(state, act_destroy, 0)
 
     # Check if pending effect for Mega Last Burst is queued
     pending = dm_ai_module.get_pending_effects_info(state)

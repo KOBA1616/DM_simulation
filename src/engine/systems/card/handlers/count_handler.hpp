@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include <set>
@@ -15,7 +15,7 @@ namespace dm::engine {
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
-            PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
             Player& controller = ctx.game_state.players[controller_id];
 
              if (ctx.action.type == EffectActionType::COUNT_CARDS) {

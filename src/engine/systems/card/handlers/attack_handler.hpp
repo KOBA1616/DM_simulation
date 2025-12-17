@@ -2,7 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/action.hpp"
 #include "engine/game_command/commands.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/flow/reaction_system.hpp"
 
 namespace dm::engine {
@@ -54,7 +54,7 @@ namespace dm::engine {
             game_state.turn_stats.attacks_declared_this_turn++;
 
             // 4. Resolve Triggers (ON_ATTACK)
-            GenericCardSystem::resolve_trigger(game_state, TriggerType::ON_ATTACK, attacker_id, card_db);
+            EffectSystem::instance().resolve_trigger(game_state, TriggerType::ON_ATTACK, attacker_id, card_db);
 
             // 5. Change Phase (FlowCommand)
             if (game_state.current_phase == Phase::ATTACK) {

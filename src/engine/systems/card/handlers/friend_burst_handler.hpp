@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/card/target_utils.hpp"
@@ -17,7 +17,7 @@ namespace dm::engine {
              dm::core::EffectDef continuation;
              continuation.actions.push_back(ctx.action); // The same action, but next time it will have targets
 
-             GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, continuation, ctx.execution_vars);
+             EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, continuation, ctx.execution_vars);
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
@@ -44,7 +44,7 @@ namespace dm::engine {
                     ctx.game_state.turn_stats.spells_cast_this_turn++;
 
                     for (const auto& effect : spell_def.effects) {
-                        GenericCardSystem::resolve_effect_with_context(ctx.game_state, effect, ctx.source_instance_id, ctx.execution_vars, ctx.card_db);
+                        EffectSystem::instance().resolve_effect_with_context(ctx.game_state, effect, ctx.source_instance_id, ctx.execution_vars, ctx.card_db);
                     }
                 }
             }

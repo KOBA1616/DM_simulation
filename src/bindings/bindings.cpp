@@ -10,7 +10,7 @@
 #include "engine/game_instance.hpp"
 #include "engine/systems/card/json_loader.hpp"
 #include "core/scenario_config.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp" // Changed from generic_card_system.hpp
 #include "engine/systems/card/condition_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/card/target_utils.hpp"
@@ -33,14 +33,14 @@
 #include "python_batch_inference.hpp"
 #include "ai/solver/lethal_solver.hpp"
 #include "ai/evolution/deck_evolution.hpp"
-#include "engine/cost_payment_system.hpp" // Added include
+#include "engine/cost_payment_system.hpp"
 #include "engine/game_command/game_command.hpp"
 #include "engine/game_command/commands.hpp"
 
 #include "core/instruction.hpp"
 #include "engine/systems/pipeline_executor.hpp"
-#include "engine/systems/command_system.hpp" // Include new system
-#include "engine/systems/game_logic_system.hpp" // Include GameLogicSystem
+#include "engine/systems/command_system.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include <iostream>
 
 namespace py = pybind11;
@@ -906,30 +906,31 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("instance", &ConditionSystem::instance, py::return_value_policy::reference)
         .def("evaluate_def", &ConditionSystem::evaluate_def);
 
-    py::class_<GenericCardSystem>(m, "GenericCardSystem")
+    py::class_<EffectSystem>(m, "EffectSystem")
         .def_static("resolve_trigger", [](GameState& state, TriggerType trigger, int source_id, const std::map<CardID, CardDefinition>& db) {
-            GenericCardSystem::resolve_trigger(state, trigger, source_id, db);
+            EffectSystem::instance().resolve_trigger(state, trigger, source_id, db);
         })
         .def_static("resolve_effect", [](GameState& state, const EffectDef& effect, int source_id) {
-            GenericCardSystem::resolve_effect(state, effect, source_id, CardRegistry::get_all_definitions());
+            EffectSystem::instance().resolve_effect(state, effect, source_id, CardRegistry::get_all_definitions());
         })
         .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& effect, int source_id, const std::map<CardID, CardDefinition>& db) {
-            GenericCardSystem::resolve_effect(state, effect, source_id, db);
+            EffectSystem::instance().resolve_effect(state, effect, source_id, db);
         })
         // Overload resolve_action for backward compatibility (no context)
         .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id) {
-            GenericCardSystem::resolve_action(state, action, source_id);
+            std::map<std::string, int> ctx;
+            EffectSystem::instance().resolve_action(state, action, source_id, ctx, CardRegistry::get_all_definitions());
         })
         .def_static("resolve_action_with_context", [](GameState& state, const ActionDef& action, int source_id, std::map<std::string, int> ctx) {
-             GenericCardSystem::resolve_action(state, action, source_id, ctx, CardRegistry::get_all_definitions());
+             EffectSystem::instance().resolve_action(state, action, source_id, ctx, CardRegistry::get_all_definitions());
              return ctx;
         })
         .def_static("resolve_action_with_db", [](GameState& state, const ActionDef& action, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
-             GenericCardSystem::resolve_action(state, action, source_id, ctx, db);
+             EffectSystem::instance().resolve_action(state, action, source_id, ctx, db);
              return ctx;
         })
-        .def_static("resolve_effect_with_targets", [](GameState& state, EffectDef& effect, const std::vector<int>& targets, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
-             GenericCardSystem::resolve_effect_with_targets(state, effect, targets, source_id, db, ctx);
+        .def_static("resolve_effect_with_targets", [](GameState& state, const EffectDef& effect, const std::vector<int>& targets, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
+             EffectSystem::instance().resolve_effect_with_targets(state, effect, targets, source_id, db, ctx);
              return ctx;
         });
 

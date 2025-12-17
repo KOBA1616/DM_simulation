@@ -1,7 +1,7 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/generic_card_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include <algorithm>
 #include <vector>
 #include <set>
@@ -13,7 +13,7 @@ namespace dm::engine {
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
-            PlayerID controller_id = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
             Player& controller = ctx.game_state.players[controller_id];
 
             if (ctx.action.type == EffectActionType::ADD_SHIELD) {
@@ -52,7 +52,7 @@ namespace dm::engine {
                      ed.trigger = TriggerType::NONE;
                      ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                      ed.actions = { ctx.action };
-                     GenericCardSystem::select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                     EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                 }
             }
         }
@@ -70,7 +70,7 @@ namespace dm::engine {
                      std::vector<int> players_to_check;
                      if (ctx.action.filter.owner.has_value()) {
                         std::string req = ctx.action.filter.owner.value();
-                        PlayerID controller = GenericCardSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                        PlayerID controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                         if (req == "SELF") players_to_check.push_back(controller);
                         else if (req == "OPPONENT") players_to_check.push_back(1 - controller);
                         else if (req == "BOTH") { players_to_check.push_back(controller); players_to_check.push_back(1 - controller); }
