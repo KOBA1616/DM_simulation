@@ -2,6 +2,7 @@
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/card/generic_card_system.hpp" // For resolve_trigger (temporary linkage) or just common logic
 #include "core/card_def.hpp"
+#include <iostream>
 
 namespace dm::engine::systems {
 
@@ -12,6 +13,7 @@ namespace dm::engine::systems {
     }
 
     void TriggerManager::dispatch(const GameEvent& event, GameState& state) {
+        // std::cout << "DEBUG: TriggerManager::dispatch " << (int)event.type << std::endl;
         auto it = listeners.find(event.type);
         if (it != listeners.end()) {
             std::vector<EventCallback> callbacks = it->second;
