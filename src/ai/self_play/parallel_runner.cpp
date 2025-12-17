@@ -4,7 +4,7 @@
 #include "ai/agents/heuristic_agent.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/actions/action_generator.hpp"
-#include "engine/effects/effect_resolver.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include "engine/game_instance.hpp"
 #include "ai/mcts/mcts.hpp" // Added MCTS include
 #include "ai/inference/pimc_generator.hpp" // Added PIMC include
@@ -13,6 +13,8 @@
 #include <algorithm>
 
 namespace dm::ai {
+
+    using namespace dm::engine::systems;
 
     ParallelRunner::ParallelRunner(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
                                    int mcts_simulations,
@@ -292,7 +294,7 @@ namespace dm::ai {
                      action = agent1.get_action(instance.state, legal_actions);
                  }
 
-                 dm::engine::EffectResolver::resolve_action(instance.state, action, card_db_);
+                 GameLogicSystem::resolve_action(instance.state, action, card_db_);
                  steps++;
             }
 
@@ -367,7 +369,7 @@ namespace dm::ai {
                      action = agent1.get_action(instance.state, legal_actions);
                  }
 
-                 dm::engine::EffectResolver::resolve_action(instance.state, action, card_db_);
+                 GameLogicSystem::resolve_action(instance.state, action, card_db_);
                  steps++;
             }
 

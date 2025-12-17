@@ -71,7 +71,7 @@ def test_hybrid_engine():
     card_db = dm_ai_module.CardRegistry.get_all_definitions()
     # Use resolve_effect_with_db if available, or resolve_effect if it defaults
     # Binding shows: resolve_effect_with_db for explicit db
-    dm_ai_module.GenericCardSystem.resolve_effect_with_db(state, card_def.effects[0], 999, card_db)
+    dm_ai_module.EffectSystem.resolve_effect_with_db(state, card_def.effects[0], 999, card_db)
 
     new_hand = len(state.players[0].hand)
     print(f"Hand: {initial_hand} -> {new_hand}")
