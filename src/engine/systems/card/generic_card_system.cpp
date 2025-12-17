@@ -31,6 +31,7 @@
 #include "handlers/modify_power_handler.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "engine/systems/command_system.hpp"
+#include "legacy_converter.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -381,6 +382,18 @@ namespace dm::engine {
             if (!condition_met) {
                 return;
             }
+        }
+
+        // Phase 6: Full Trigger System Migration
+        // Attempt to convert Legacy Action to CommandDef
+        if (auto cmd_opt = dm::engine::systems::LegacyConverter::convert(action)) {
+            PlayerID controller = get_controller(game_state, source_instance_id);
+            // Execute via CommandSystem
+            // Note: CommandSystem handles basic resolution.
+            // Interactive targeting (SELECT -> TARGET) is not fully supported in CommandSystem yet for all cases,
+            // but LegacyConverter only converts supported types.
+            dm::engine::systems::CommandSystem::execute_command(game_state, *cmd_opt, source_instance_id, controller);
+            return;
         }
 
         EffectSystem& sys = EffectSystem::instance();
