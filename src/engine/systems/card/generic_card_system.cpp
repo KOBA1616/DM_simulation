@@ -108,16 +108,7 @@ namespace dm::engine {
     static bool _evaluators_registered = false;
     static void ensure_evaluators_registered() {
         if (_evaluators_registered) return;
-        ConditionSystem& sys = ConditionSystem::instance();
-        sys.register_evaluator("DURING_YOUR_TURN", std::make_unique<TurnEvaluator>());
-        sys.register_evaluator("DURING_OPPONENT_TURN", std::make_unique<TurnEvaluator>());
-        sys.register_evaluator("MANA_ARMED", std::make_unique<ManaArmedEvaluator>());
-        sys.register_evaluator("SHIELD_COUNT", std::make_unique<ShieldCountEvaluator>());
-        sys.register_evaluator("OPPONENT_PLAYED_WITHOUT_MANA", std::make_unique<OpponentPlayedWithoutManaEvaluator>());
-        sys.register_evaluator("CIVILIZATION_MATCH", std::make_unique<CivilizationMatchEvaluator>());
-        sys.register_evaluator("FIRST_ATTACK", std::make_unique<FirstAttackEvaluator>());
-        sys.register_evaluator("COMPARE_STAT", std::make_unique<CompareStatEvaluator>());
-        sys.register_evaluator("OPPONENT_DRAW_COUNT", std::make_unique<OpponentCardsDrawnEvaluator>());
+        ConditionSystem::instance().initialize_defaults();
         _evaluators_registered = true;
     }
 

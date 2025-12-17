@@ -100,5 +100,74 @@ class TestCommandSystem(unittest.TestCase):
 
         pass
 
+    def test_flow_condition_true(self):
+        """Test FLOW command executing if_true when condition is met."""
+        # Condition: DURING_YOUR_TURN (Should be true in test setup)
+        from dm_ai_module import ConditionDef
+
+        cmd = CommandDef()
+        cmd.type = JsonCommandType.FLOW
+        cmd.condition = ConditionDef()
+        cmd.condition.type = "DURING_YOUR_TURN"
+
+        # If true: Tap the card
+        true_cmd = CommandDef()
+        true_cmd.type = JsonCommandType.MUTATE
+        true_cmd.mutation_kind = "TAP"
+        true_cmd.target_group = TargetScope.SELF
+        cmd.if_true = [true_cmd]
+
+        # If false: Power mod (should not happen)
+        false_cmd = CommandDef()
+        false_cmd.type = JsonCommandType.MUTATE
+        false_cmd.mutation_kind = "POWER_MOD"
+        false_cmd.amount = 9999
+        false_cmd.target_group = TargetScope.SELF
+        cmd.if_false = [false_cmd]
+
+        # Ensure active player is controller (Player 0)
+        self.state.active_player_id = 0
+
+        # Execute
+        CommandSystem.execute_command(self.state, cmd, self.instance_id, 0)
+
+        inst = self.state.get_card_instance(self.instance_id)
+        self.assertTrue(inst.is_tapped)
+        self.assertNotEqual(inst.power_mod, 9999)
+
+    def test_flow_condition_false(self):
+        """Test FLOW command executing if_false when condition is NOT met."""
+        from dm_ai_module import ConditionDef
+
+        cmd = CommandDef()
+        cmd.type = JsonCommandType.FLOW
+        cmd.condition = ConditionDef()
+        cmd.condition.type = "DURING_OPPONENT_TURN" # Should be false
+
+        # If true: Tap
+        true_cmd = CommandDef()
+        true_cmd.type = JsonCommandType.MUTATE
+        true_cmd.mutation_kind = "TAP"
+        true_cmd.target_group = TargetScope.SELF
+        cmd.if_true = [true_cmd]
+
+        # If false: Power mod
+        false_cmd = CommandDef()
+        false_cmd.type = JsonCommandType.MUTATE
+        false_cmd.mutation_kind = "POWER_MOD"
+        false_cmd.amount = 5000
+        false_cmd.target_group = TargetScope.SELF
+        cmd.if_false = [false_cmd]
+
+        # Ensure active player is controller (Player 0)
+        self.state.active_player_id = 0
+
+        # Execute
+        CommandSystem.execute_command(self.state, cmd, self.instance_id, 0)
+
+        inst = self.state.get_card_instance(self.instance_id)
+        self.assertFalse(inst.is_tapped)
+        self.assertEqual(inst.power_mod, 5000)
+
 if __name__ == '__main__':
     unittest.main()
