@@ -21,9 +21,17 @@ class CardDataManager:
             # 1. Add Creature Effects
             for eff_idx, effect in enumerate(card.get('effects', [])):
                 eff_item = self._create_effect_item(effect)
+
+                # Load Legacy Actions
                 for act_idx, action in enumerate(effect.get('actions', [])):
                     act_item = self._create_action_item(action)
                     eff_item.appendRow(act_item)
+
+                # Load Commands
+                for cmd_idx, command in enumerate(effect.get('commands', [])):
+                    cmd_item = self._create_command_item(command)
+                    eff_item.appendRow(cmd_item)
+
                 card_item.appendRow(eff_item)
 
             # 2. Add Reaction Abilities
@@ -38,9 +46,17 @@ class CardDataManager:
                 # Add Spell Effects
                 for eff_idx, effect in enumerate(spell_side_data.get('effects', [])):
                     eff_item = self._create_effect_item(effect)
+
+                    # Load Legacy Actions
                     for act_idx, action in enumerate(effect.get('actions', [])):
                         act_item = self._create_action_item(action)
                         eff_item.appendRow(act_item)
+
+                    # Load Commands
+                    for cmd_idx, command in enumerate(effect.get('commands', [])):
+                        cmd_item = self._create_command_item(command)
+                        eff_item.appendRow(cmd_item)
+
                     spell_item.appendRow(eff_item)
                 card_item.appendRow(spell_item)
 
@@ -130,11 +146,28 @@ class CardDataManager:
     def _reconstruct_effect(self, eff_item):
         eff_data = eff_item.data(Qt.ItemDataRole.UserRole + 2)
         new_actions = []
+        new_commands = []
+
         for k in range(eff_item.rowCount()):
-            act_item = eff_item.child(k)
-            act_data = self._reconstruct_action(act_item)
-            new_actions.append(act_data)
+            item = eff_item.child(k)
+            item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+
+            if item_type == "ACTION":
+                act_data = self._reconstruct_action(item)
+                new_actions.append(act_data)
+            elif item_type == "COMMAND":
+                cmd_data = self._reconstruct_command(item)
+                new_commands.append(cmd_data)
+
         eff_data['actions'] = new_actions
+
+        # Handle commands list
+        if new_commands:
+            eff_data['commands'] = new_commands
+        elif 'commands' in eff_data:
+            # If we had commands but deleted all of them, remove the key
+            del eff_data['commands']
+
         return eff_data
 
     def _reconstruct_action(self, act_item):
@@ -158,6 +191,40 @@ class CardDataManager:
             del act_data['options']
 
         return act_data
+
+    def _reconstruct_command(self, cmd_item):
+        cmd_data = cmd_item.data(Qt.ItemDataRole.UserRole + 2)
+
+        if_true_list = []
+        if_false_list = []
+
+        for i in range(cmd_item.rowCount()):
+            child = cmd_item.child(i)
+            role = child.data(Qt.ItemDataRole.UserRole + 1)
+
+            if role == "CMD_BRANCH_TRUE":
+                for j in range(child.rowCount()):
+                    sub_item = child.child(j)
+                    if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                        if_true_list.append(self._reconstruct_command(sub_item))
+
+            elif role == "CMD_BRANCH_FALSE":
+                for j in range(child.rowCount()):
+                    sub_item = child.child(j)
+                    if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                        if_false_list.append(self._reconstruct_command(sub_item))
+
+        if if_true_list:
+            cmd_data['if_true'] = if_true_list
+        elif 'if_true' in cmd_data:
+            del cmd_data['if_true']
+
+        if if_false_list:
+            cmd_data['if_false'] = if_false_list
+        elif 'if_false' in cmd_data:
+            del cmd_data['if_false']
+
+        return cmd_data
 
     def add_new_card(self):
         new_id = self._generate_new_id()
@@ -303,6 +370,28 @@ class CardDataManager:
              opt_item.setData({}, Qt.ItemDataRole.UserRole + 2)
              action_item.appendRow(opt_item)
 
+    def add_command_branches(self, cmd_item):
+        """Adds True/False branches to a command item."""
+        # Check if already exists
+        has_true = False
+        has_false = False
+        for i in range(cmd_item.rowCount()):
+            role = cmd_item.child(i).data(Qt.ItemDataRole.UserRole + 1)
+            if role == "CMD_BRANCH_TRUE": has_true = True
+            if role == "CMD_BRANCH_FALSE": has_false = True
+
+        if not has_true:
+            true_item = QStandardItem(tr("If True"))
+            true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
+            true_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            cmd_item.appendRow(true_item)
+
+        if not has_false:
+            false_item = QStandardItem(tr("If False"))
+            false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
+            false_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            cmd_item.appendRow(false_item)
+
     def _create_card_item(self, card):
         item = QStandardItem(f"{card.get('id')} - {card.get('name', 'No Name')}")
         item.setData("CARD", Qt.ItemDataRole.UserRole + 1)
@@ -327,6 +416,31 @@ class CardDataManager:
         item = QStandardItem(f"{tr('Reaction Ability')}: {rtype}")
         item.setData("REACTION_ABILITY", Qt.ItemDataRole.UserRole + 1)
         item.setData(reaction, Qt.ItemDataRole.UserRole + 2)
+        return item
+
+    def _create_command_item(self, command):
+        cmd_type = command.get('type', 'NONE')
+        item = QStandardItem(f"{tr('Command')}: {tr(cmd_type)}")
+        item.setData("COMMAND", Qt.ItemDataRole.UserRole + 1)
+        item.setData(command, Qt.ItemDataRole.UserRole + 2)
+
+        # Recursion for if_true/if_false
+        if 'if_true' in command and command['if_true']:
+            true_item = QStandardItem(tr("If True"))
+            true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
+            true_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            item.appendRow(true_item)
+            for child in command['if_true']:
+                true_item.appendRow(self._create_command_item(child))
+
+        if 'if_false' in command and command['if_false']:
+            false_item = QStandardItem(tr("If False"))
+            false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
+            false_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            item.appendRow(false_item)
+            for child in command['if_false']:
+                false_item.appendRow(self._create_command_item(child))
+
         return item
 
     def _create_action_item(self, action):
