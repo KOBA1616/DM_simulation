@@ -7,17 +7,27 @@
 #include "systems/pipeline_executor.hpp"
 #include <map>
 #include <memory>
+#include <optional>
 
 namespace dm::engine {
     class GameInstance {
     public:
         core::GameState state;
+
+        // Storage for Python interop or ownership
+        std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> card_db_ptr;
+
+        // Reference accessor (backward compatibility and convenience)
         const std::map<core::CardID, core::CardDefinition>& card_db;
+
         std::shared_ptr<systems::TriggerManager> trigger_manager;
         std::shared_ptr<systems::PipelineExecutor> pipeline;
 
-        // Constructor moved to CPP to avoid circular dependency / allow lambda
+        // Constructor 1: Reference (Caller owns map)
         GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db);
+
+        // Constructor 2: Shared Ptr (Shared ownership)
+        GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db);
 
         void reset_with_scenario(const core::ScenarioConfig& config);
 
