@@ -50,22 +50,8 @@ namespace dm::engine {
 
                 if (!discard_candidates.empty()) {
                     if (ctx.action.scope == TargetScope::RANDOM || ctx.action.target_choice == "RANDOM" || ctx.action.filter.selection_mode == "RANDOM") {
-                        // We need to shuffle candidates.
-                        // Can we do this in `compile`? Yes, assuming simulation context stability.
-                        // Wait, `compile` generates instructions. Randomness should ideally be in Instruction logic
-                        // if we want deterministic replay from instructions, OR we bake the random choice here.
-                        // Baking here matches current architecture where "Resolution" decides outcomes.
-                        // But PipelineExecutor has RNG too.
-                        // For "Pure Command Generation", we usually generate a "RANDOM SELECT" instruction.
-                        // But we don't have that yet.
-                        // We will bake the choice here for now.
-                        // Note: To support deterministic replay, we should use state.rng here.
-                        // But `ctx` has `game_state` which has `rng`.
-
                         // We need to make a copy to shuffle
                         std::vector<int> shuffled = discard_candidates;
-                        // const casting rng? GameState is non-const in context?
-                        // ResolutionContext has `dm::core::GameState& game_state;` so yes.
                         std::shuffle(shuffled.begin(), shuffled.end(), ctx.game_state.rng);
 
                         int num = std::min((int)shuffled.size(), count);
@@ -79,9 +65,6 @@ namespace dm::engine {
             }
 
             if (targets.empty()) {
-                // If output variable needed, set to 0?
-                // Pipeline supports `COUNT` instruction but that's for counting existing things.
-                // We can set var manually via NOOP or just skip.
                 return;
             }
 
@@ -90,11 +73,6 @@ namespace dm::engine {
                 move_args["target"] = t;
                 move_args["to"] = "GRAVEYARD";
                 ctx.instruction_buffer->emplace_back(InstructionOp::MOVE, move_args);
-
-                // Track stats?
-                // Currently DiscardHandler logic does "is_tapped=false" which MOVE handles.
-                // It does NOT explicitly trigger ON_DISCARD here, relying on TransitionCommand -> ZONE_ENTER Graveyard.
-                // This matches Move logic.
             }
 
             // If output variable needed
@@ -124,8 +102,19 @@ namespace dm::engine {
 
             if (instructions.empty()) return;
 
-            dm::engine::systems::PipelineExecutor pipeline;
-            pipeline.execute(instructions, ctx.game_state, ctx.card_db);
+            EffectSystem::instance().execute_pipeline(ctx, instructions);
+        }
+
+        void resolve_with_targets(const ResolutionContext& ctx) override {
+            std::vector<dm::core::Instruction> instructions;
+            ResolutionContext compile_ctx = ctx;
+            compile_ctx.instruction_buffer = &instructions;
+
+            compile(compile_ctx);
+
+            if (instructions.empty()) return;
+
+            EffectSystem::instance().execute_pipeline(ctx, instructions);
         }
     };
 }
