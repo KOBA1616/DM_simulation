@@ -92,6 +92,7 @@ namespace dm::core {
         Phase current_phase = Phase::START_OF_TURN;
         Status status = Status::PLAYING;
         GameResult winner = GameResult::NONE;
+        bool is_game_over = false;
 
         // Phase 6: Reaction Window Stack
         std::vector<dm::engine::systems::ReactionWindow> reaction_stack;

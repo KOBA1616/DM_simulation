@@ -12,7 +12,8 @@ namespace dm::engine::game_command {
         DECIDE,
         DECLARE_REACTION,
         STAT,
-        GAME_RESULT
+        GAME_RESULT,
+        ATTACH
     };
 
     class GameCommand {

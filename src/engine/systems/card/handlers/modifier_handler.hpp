@@ -88,6 +88,7 @@ namespace dm::engine {
         void apply_modifier(const ResolutionContext& ctx, const std::vector<int>* targets) {
             using namespace dm::core;
             using namespace dm::engine::game_command;
+            (void)targets;
 
             int value = ctx.action.value1;
             if (!ctx.action.input_value_key.empty() && ctx.execution_vars.count(ctx.action.input_value_key)) {

@@ -12,12 +12,17 @@ namespace dm::engine::systems {
     using namespace core;
     using namespace game_command;
 
-    void PipelineExecutor::execute(const std::vector<Instruction>& instructions, GameState& state,
+    void PipelineExecutor::execute(const std::vector<dm::core::Instruction>& instructions, GameState& state,
                                    const std::map<core::CardID, core::CardDefinition>& card_db) {
-        for (const auto& inst : instructions) {
-            if (execution_paused) break;
-            execute_instruction(inst, state, card_db);
-        }
+        if (instructions.empty()) return;
+        call_stack.push_back({&instructions, 0, std::nullopt});
+        run_loop(state, card_db);
+    }
+
+    void PipelineExecutor::inject_instructions(std::vector<dm::core::Instruction>&& instructions) {
+        if (instructions.empty()) return;
+        dynamic_store.push_back(std::move(instructions));
+        call_stack.push_back({&dynamic_store.back(), 0, std::nullopt});
     }
 
     void PipelineExecutor::set_context_var(const std::string& key, ContextValue value) {
@@ -106,6 +111,22 @@ namespace dm::engine::systems {
 
     void PipelineExecutor::execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd, core::GameState& state) {
         state.execute_command(std::move(cmd));
+    }
+
+    void PipelineExecutor::run_loop(core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db) {
+         // Process instructions from call stack until empty or paused
+         while(!call_stack.empty() && !execution_paused) {
+             ExecutionFrame& frame = call_stack.back();
+             if (frame.index >= (int)frame.instructions->size()) {
+                 call_stack.pop_back();
+                 continue;
+             }
+
+             const Instruction& inst = (*frame.instructions)[frame.index];
+             frame.index++;
+
+             execute_instruction(inst, state, card_db);
+         }
     }
 
     void PipelineExecutor::handle_select(const Instruction& inst, GameState& state,

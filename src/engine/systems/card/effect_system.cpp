@@ -96,7 +96,7 @@ namespace dm::engine {
          pipeline.execute(instructions, ctx.game_state, ctx.card_db);
 
          // Merge back execution vars to context
-         const auto& pipe_ctx = pipeline.get_context();
+         const auto& pipe_ctx = pipeline.context;
          for (const auto& kv : pipe_ctx) {
              if (std::holds_alternative<int>(kv.second)) {
                  ctx.execution_vars[kv.first] = std::get<int>(kv.second);
