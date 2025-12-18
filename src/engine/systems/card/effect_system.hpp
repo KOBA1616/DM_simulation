@@ -91,6 +91,8 @@ namespace dm::engine {
 
     private:
         EffectSystem() = default;
+        EffectSystem(const EffectSystem&) = delete;
+        EffectSystem& operator=(const EffectSystem&) = delete;
         std::map<dm::core::EffectActionType, std::unique_ptr<IActionHandler>> handlers;
         bool initialized = false;
     };
