@@ -5,13 +5,13 @@
 #include "engine/utils/zone_utils.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/pipeline_executor.hpp" // Added include
+#include "engine/systems/pipeline_executor.hpp"
 
 namespace dm::engine {
 
     class ManaChargeHandler : public IActionHandler {
     public:
-        // Case 1: ADD_MANA (Top of deck to Mana)
+        // Use compile() -> PipelineExecutor pattern
         void resolve(const ResolutionContext& ctx) override {
              using namespace dm::core;
 
@@ -21,14 +21,14 @@ namespace dm::engine {
 
              compile(temp_ctx);
 
-             // Execute
              dm::engine::systems::PipelineExecutor pipeline;
              pipeline.execute(insts, ctx.game_state, ctx.card_db);
         }
 
-        // Case 2: SEND_TO_MANA (Target to Mana)
         void resolve_with_targets(const ResolutionContext& ctx) override {
             using namespace dm::core;
+            // Legacy support if called directly (though deprecated in favor of pipeline)
+            // Use compile logic or manual pipeline
 
             Instruction move(InstructionOp::MOVE);
             move.args["to"] = "MANA";
@@ -46,26 +46,33 @@ namespace dm::engine {
             if (!ctx.instruction_buffer) return;
 
             if (ctx.action.type == EffectActionType::SEND_TO_MANA) {
-                Instruction move(InstructionOp::GAME_ACTION);
-                move.args["type"] = "MANA_CHARGE"; // Use GameAction for proper Tap-In/Untap logic handling
-
+                // If the input is from a previous step (variable linking)
                 if (!ctx.action.input_value_key.empty()) {
-                    move.args["source_id"] = "$" + ctx.action.input_value_key;
-                } else if (ctx.action.scope == TargetScope::TARGET_SELECT) {
-                     // Let's use LOOP.
-                     Instruction loop(InstructionOp::LOOP);
-                     loop.args["in"] = "$selection";
-                     loop.args["as"] = "$id";
+                     Instruction move(InstructionOp::MOVE);
+                     move.args["to"] = "MANA";
+                     move.args["target"] = "$" + ctx.action.input_value_key;
+                     ctx.instruction_buffer->push_back(move);
+                }
+                // If the action requires target selection (interactive)
+                else if (ctx.action.scope == TargetScope::TARGET_SELECT) {
+                     Instruction select(InstructionOp::SELECT);
+                     select.args["filter"] = ctx.action.filter;
+                     select.args["out"] = "$mana_selection";
+                     select.args["count"] = 1; // Or variable?
+                     // Currently SEND_TO_MANA usually implies 1 target unless specified.
+                     // But action doesn't specify count in scope TARGET_SELECT?
+                     // If value1 > 0, use it.
+                     if (ctx.action.value1 > 0) select.args["count"] = ctx.action.value1;
 
-                     Instruction charge(InstructionOp::GAME_ACTION);
-                     charge.args["type"] = "MANA_CHARGE";
-                     charge.args["source_id"] = "$id";
+                     ctx.instruction_buffer->push_back(select);
 
-                     loop.then_block.push_back(charge);
-                     ctx.instruction_buffer->push_back(loop);
-                     return;
-                } else {
-                     // Auto Select
+                     Instruction move(InstructionOp::MOVE);
+                     move.args["to"] = "MANA";
+                     move.args["target"] = "$mana_selection";
+                     ctx.instruction_buffer->push_back(move);
+                }
+                // Auto Select (e.g. "Put all your creatures into mana")
+                else {
                      Instruction select(InstructionOp::SELECT);
                      select.args["filter"] = ctx.action.filter;
                      select.args["out"] = "$auto_mana_selection";
@@ -73,17 +80,11 @@ namespace dm::engine {
 
                      ctx.instruction_buffer->push_back(select);
 
-                     Instruction loop(InstructionOp::LOOP);
-                     loop.args["in"] = "$auto_mana_selection";
-                     loop.args["as"] = "$id";
+                     Instruction move(InstructionOp::MOVE);
+                     move.args["to"] = "MANA";
+                     move.args["target"] = "$auto_mana_selection";
 
-                     Instruction charge(InstructionOp::GAME_ACTION);
-                     charge.args["type"] = "MANA_CHARGE";
-                     charge.args["source_id"] = "$id";
-
-                     loop.then_block.push_back(charge);
-                     ctx.instruction_buffer->push_back(loop);
-                     return;
+                     ctx.instruction_buffer->push_back(move);
                 }
             }
             else { // ADD_MANA (Deck Top)

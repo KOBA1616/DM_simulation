@@ -70,30 +70,6 @@ Civilization string_to_civilization(const std::string& s) {
     return Civilization::NONE;
 }
 
-// Helpers for Instruction
-Instruction instruction_from_dict(py::dict d) {
-    // Basic conversion to allow Python dict -> JSON -> Instruction
-    // Note: This relies on nlohmann::json implicit conversion from strings/ints,
-    // but pybind11 casts python types to C++ standard types.
-    // We need to implement a full converter or use a workaround.
-    // Workaround: Serialize dict to JSON string in Python, pass to C++?
-    // Or iterate manually.
-    // For now, let's assume we pass OpCode enum and args dict.
-
-    // Easier approach: Just bind Instruction constructor that takes op and args.
-    // However, handling recursive structures in pybind is tricky.
-
-    // Minimal binding for now.
-    Instruction inst;
-    if (d.contains("op")) {
-        std::string op_str = py::cast<std::string>(d["op"]);
-        // Need to map string to Enum? Or use the Enum directly if passed.
-        // We'll trust the caller to pass correct structure or rely on json serialization if we were using it fully.
-        // But here we are inside C++.
-    }
-    return inst;
-}
-
 // Helper to convert py::dict to nlohmann::json
 nlohmann::json to_json(py::handle obj) {
     if (obj.is_none()) {
@@ -167,16 +143,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("check_reactions", &systems::TriggerManager::check_reactions) // Phase 6 Step 2
         .def("clear", &systems::TriggerManager::clear)
         .def("subscribe", [](systems::TriggerManager& self, EventType type, py::function callback) {
-            // Capture python function. Note: This creates a dependency on the GIL.
-            // In a real threaded environment, we need to be careful.
-            // For now, we wrap it.
             self.subscribe(type, [callback](const GameEvent& event, GameState& state) {
                 py::gil_scoped_acquire acquire;
                 try {
                     callback(event, state);
                 } catch (py::error_already_set& e) {
-                     // Log or ignore
-                     // e.what() returns the error message
                 }
             });
         });
@@ -202,10 +173,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init<>())
         .def(py::init<InstructionOp>())
         .def_readwrite("op", &Instruction::op)
-        // Binding arbitrary JSON args is complex.
-        // We will expose a helper to set args from a python dict.
         .def("set_args", [](Instruction& self, py::dict args) {
-             // Use to_json helper for robust serialization
              self.args = to_json(args);
         })
         .def("get_arg_str", [](const Instruction& self, std::string key) {
@@ -222,7 +190,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
              }
              return std::string("");
         })
-        // Opaque wrappers for recursive blocks to avoid pybind11 copy overhead/crash
         .def("get_then_block_size", [](const Instruction& self) { return self.then_block.size(); })
         .def("get_else_block_size", [](const Instruction& self) { return self.else_block.size(); })
         .def("get_then_instruction", [](const Instruction& self, size_t index) {
@@ -241,7 +208,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
              if (py::isinstance<py::int_>(val)) self.set_context_var(key, py::cast<int>(val));
              else if (py::isinstance<py::str>(val)) self.set_context_var(key, py::cast<std::string>(val));
              else if (py::isinstance<py::bool_>(val)) self.set_context_var(key, py::cast<bool>(val));
-             // Handle list for vector<int>
         })
         .def("get_context_var", [](const systems::PipelineExecutor& self, std::string key) -> py::object {
              auto v = self.get_context_var(key);
@@ -937,6 +903,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<dm::engine::systems::GameLogicSystem>(m, "GameLogicSystem")
         .def_static("resolve_action", &dm::engine::systems::GameLogicSystem::resolve_action_oneshot);
 
+    // Fix: Expose GenericCardSystem as EffectSystem alias for compatibility
     m.attr("EffectResolver") = m.attr("GameLogicSystem");
 
     py::class_<ManaSystem>(m, "ManaSystem")
@@ -972,6 +939,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& effect, int source_id, const std::map<CardID, CardDefinition>& db) {
             EffectSystem::instance().resolve_effect(state, effect, source_id, db);
+        })
+        .def_static("resolve_effect_with_context", [](GameState& state, const EffectDef& effect, int source_id, std::map<std::string, int> ctx, const std::map<CardID, CardDefinition>& db) {
+             EffectSystem::instance().resolve_effect_with_context(state, effect, source_id, ctx, db);
+             return ctx;
         })
         // Overload resolve_action for backward compatibility (no context)
         .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id) {
@@ -1021,7 +992,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
          // Assuming it handles what JsonLoader handles.
          // For safety, let's just make it a list of one.
          nlohmann::json list_j = nlohmann::json::array({j});
-         std::cout << "DEBUG JSON: " << list_j.dump() << std::endl;
          CardRegistry::load_from_json(list_j.dump());
     });
 
@@ -1347,4 +1317,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<dm::engine::game_command::DeclareReactionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::DeclareReactionCommand>>(m, "DeclareReactionCommand")
         .def(py::init<PlayerID, bool, int>(),
              py::arg("player_id"), py::arg("is_pass"), py::arg("index") = -1);
+
+    // Aliases defined at the end to ensure classes are registered
+    m.attr("GenericCardSystem") = m.attr("EffectSystem");
 }
