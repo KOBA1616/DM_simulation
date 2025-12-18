@@ -90,12 +90,12 @@ namespace dm::engine {
              pipeline.set_context_var(kv.first, kv.second);
          }
 
-         // FIX: Inject source instance ID as "$source" for context-sensitive operations
+         // Inject source instance ID as "$source" for context-sensitive operations
          pipeline.set_context_var("$source", ctx.source_instance_id);
 
          pipeline.execute(instructions, ctx.game_state, ctx.card_db);
 
-         // Merge back
+         // Merge back execution vars to context
          const auto& pipe_ctx = pipeline.get_context();
          for (const auto& kv : pipe_ctx) {
              if (std::holds_alternative<int>(kv.second)) {
@@ -227,6 +227,7 @@ namespace dm::engine {
 
     void EffectSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, bool* interrupted, const std::vector<ActionDef>* remaining_actions) {
         initialize();
+        // std::cout << "Resolving action type: " << (int)action.type << std::endl;
 
         if (action.condition.has_value()) {
             bool condition_met = false;
@@ -247,9 +248,23 @@ namespace dm::engine {
             if (!condition_met) return;
         }
 
-        if (IActionHandler* handler = get_handler(action.type)) {
-            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, interrupted, remaining_actions);
-            handler->resolve(ctx);
+        // --- NEW ARCHITECTURE: Attempt Compilation First ---
+        std::vector<Instruction> pipeline_instructions;
+        compile_action(game_state, action, source_instance_id, execution_context, card_db, pipeline_instructions);
+
+        if (!pipeline_instructions.empty()) {
+             // std::cout << "Pipeline instructions generated: " << pipeline_instructions.size() << std::endl;
+             // Execute compiled pipeline
+             ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, interrupted, remaining_actions);
+             execute_pipeline(ctx, pipeline_instructions);
+        }
+        else {
+             // std::cout << "No pipeline instructions (legacy fallback)" << std::endl;
+             // Fallback to legacy resolve() if compilation not supported/implemented
+             if (IActionHandler* handler = get_handler(action.type)) {
+                ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, interrupted, remaining_actions);
+                handler->resolve(ctx);
+             }
         }
     }
 
