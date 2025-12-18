@@ -35,8 +35,9 @@ class TestIntegrationPipeline:
 
     def setup_method(self):
         self.state = GameState(100)
-        self.card_db = {} # Local db, but we prefer Registry for tests using register_card
-        # Ensure registry is clean/ready or use ids that don't conflict
+        self.card_db = {}
+        print("PYTHON TEST SETUP")
+        print(f"GenericCardSystem is: {dm_ai_module.GenericCardSystem}")
 
     def test_pipeline_loop_mana(self):
         # Test Case: "Put top 2 cards of deck into Mana"
@@ -60,8 +61,12 @@ class TestIntegrationPipeline:
         self.state.add_card_to_deck(self.state.active_player_id, 2002, 2)
         initial_mana = len(p.mana_zone)
 
+        print(f"Initial Mana: {initial_mana}, Deck: {len(p.deck)}")
+
         # Use resolve_effect via Registry (no db arg)
         dm_ai_module.GenericCardSystem.resolve_effect(self.state, ed, -1)
+
+        print(f"Final Mana: {len(p.mana_zone)}")
 
         assert len(p.mana_zone) == initial_mana + 2
 
