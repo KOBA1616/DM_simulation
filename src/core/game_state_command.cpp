@@ -223,8 +223,8 @@ namespace dm::engine::game_command {
     // --- Stat/Result ---
     void StatCommand::execute(GameState& state) { /*...*/ }
     void StatCommand::invert(GameState& state) { /*...*/ }
-    void GameResultCommand::execute(GameState& state) { state.winner = result; state.game_over = true; }
-    void GameResultCommand::invert(GameState& state) { state.winner = previous_result; state.game_over = false; }
+    void GameResultCommand::execute(GameState& state) { state.winner = result; state.is_game_over = true; }
+    void GameResultCommand::invert(GameState& state) { state.winner = previous_result; state.is_game_over = false; }
 }
 
 namespace dm::core {
