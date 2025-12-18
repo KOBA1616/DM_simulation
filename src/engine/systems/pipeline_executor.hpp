@@ -16,10 +16,18 @@ namespace dm::engine::systems {
 
     using ContextValue = std::variant<int, std::string, std::vector<int>>;
 
+    struct LoopContext {
+         int index = 0;
+         int max = 0;
+         std::vector<int> collection;
+         std::string var_name;
+         bool active = false;
+    };
+
     struct ExecutionFrame {
-        const std::vector<Instruction>* instructions;
-        int index;
-        // Optional: Local variables scope? For now, we use global context.
+        std::shared_ptr<const std::vector<Instruction>> instructions;
+        int pc = 0;
+        LoopContext loop_ctx;
     };
 
     class PipelineExecutor {
@@ -27,7 +35,7 @@ namespace dm::engine::systems {
         // Execution State
         std::map<std::string, ContextValue> context;
         bool execution_paused = false;
-        std::string waiting_for_key; // The context key we are waiting for input to populate
+        std::string waiting_for_key;
 
         // Call Stack for Resume Support
         std::vector<ExecutionFrame> call_stack;
@@ -36,6 +44,10 @@ namespace dm::engine::systems {
 
         // Entry point
         void execute(const std::vector<Instruction>& instructions, core::GameState& state,
+                     const std::map<core::CardID, core::CardDefinition>& card_db);
+
+        // Overload for shared_ptr
+        void execute(std::shared_ptr<const std::vector<Instruction>> instructions, core::GameState& state,
                      const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Resume execution after input
@@ -64,8 +76,17 @@ namespace dm::engine::systems {
 
         void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd, core::GameState& state);
 
-    private:
-        void run_loop(core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        // Clone method for deep copy
+        std::shared_ptr<PipelineExecutor> clone() const {
+            auto copy = std::make_shared<PipelineExecutor>();
+            copy->context = context;
+            copy->execution_paused = execution_paused;
+            copy->waiting_for_key = waiting_for_key;
+            // ExecutionFrame contains shared_ptr to const instructions (safe to shallow copy)
+            // LoopContext is plain struct (safe to copy)
+            copy->call_stack = call_stack;
+            return copy;
+        }
     };
 
 } // namespace dm::engine::systems

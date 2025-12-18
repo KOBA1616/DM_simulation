@@ -32,17 +32,22 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ### 2.1 コアエンジン (C++ / `src/engine`)
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` クラスおよびファイルを物理的に削除しました。すべての呼び出し元 (`GameInstance`, `ActionGenerator`, `ScenarioExecutor`, `Bindings`) は `GameLogicSystem` へ移行されました。
 *   [Status: Done] **GameLogicSystem Refactor**: アクションディスパッチロジックを `GameLogicSystem` に集約し、`PipelineExecutor` を介した処理フローを確立しました。
-*   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` に加え、`Stat` (統計更新), `GameResult` (勝敗判定) を実装済み。
+*   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` に加え、`Stat` (統計更新), `GameResult` (勝敗判定), `Attach` (進化/クロス) を実装済み。
 *   [Status: Done] **Instruction Pipeline**: `PipelineExecutor` が `GAME_ACTION` 命令 (`WIN_GAME`, `LOSE_GAME`, `TRIGGER_CHECK`, `STAT`更新) をサポートするように拡張されました。
+*   [Status: Done] **Stack-Based VM**: `PipelineExecutor` を再帰ベースからスタックベースのVM（Virtual Machine）にリファクタリングし、`Instruction` 実行の一時停止と再開（Resume）を完全にサポートしました。
+*   [Status: Done] **Complete Effect Resolution**: `EffectSystem::compile_effect` を実装し、複雑な効果（S・トリガー等）を `Instruction` パイプラインにコンパイルして実行するフローを確立しました。
+*   [Status: Done] **Evolution Filters**: `AttachCommand` の実装により進化（カードの重ね合わせ、状態継承）をサポートし、`GameLogicSystem` で種族/文明に基づく厳密な進化元フィルタリングを適用しました。
+*   [Status: Done] **Pipeline Persistence**: `GameState` に `active_pipeline` を追加し、C++/Python境界をまたいで実行状態を維持する仕組みを導入しました。
 *   [Status: Done] **REPEAT Instruction**: `InstructionOp::REPEAT` を追加し、固定回数ループ処理をパイプラインでサポートしました。
 *   [Status: Done] **STACK Zone Support**: `PipelineExecutor` の `MOVE` 命令で `STACK` ゾーンへの移動をサポートしました。
 *   [Status: Done] **ADD_PASSIVE Support**: `PipelineExecutor` の `MODIFY` 命令で `ADD_PASSIVE`, `ADD_COST_MODIFIER` をサポートし、`MutateCommand` へのマッピングを実装しました。
-*   [Status: Done] **Context Synchronization**: `EffectSystem::execute_pipeline` を実装し、パイプライン実行前後のコンテキスト変数同期と、`$source` インジェクションによるコントローラー解決を確立しました。これにより `test_discard_count.py` が通過しました。
+*   [Status: Done] **Context Synchronization**: `EffectSystem::execute_pipeline` を実装し、パイプライン実行前後のコンテキスト変数同期と、`$source` インジェクションによるコントローラー解決を確立しました。
 *   [Status: WIP] **Pure Command Generation**: `EffectSystem` に `compile_action` メソッドを追加し、アクション定義から `Instruction` リストを生成する仕組みを実装しました。`DrawHandler`, `DiscardHandler` の移行が完了。
 *   [Known Issue] **Binding SegFault**: `Instruction` 構造体の再帰的定義と `nlohmann::json` 引数の Python バインディングにおいて、複雑なオブジェクト受け渡し時に Segmentation Fault が発生する問題が確認されています (`tests/test_effect_compiler.py`)。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Status**: 稼働中 (Ver 2.3)。
+*   [Status: Done] **Frontend Integration**: GUI (`app.py`) が `waiting_for_user_input` フラグを監視し、対象選択やオプション選択ダイアログを表示してゲームループを再開（Resume）する機能を実装しました。
 *   [Status: Deferred] **Freeze**: 新JSONスキーマが確定次第、新フォーマット専用エディタとして改修を行う。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
@@ -62,7 +67,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   `TriggerManager`: シングルトン/コンポーネントによるイベント監視・発行システムの実装。（実装完了）
 *   **Step 2: 命令パイプライン (Instruction Pipeline) の実装**
     *   [Status: Done] [Test: Pass]
-    *   `PipelineExecutor` (VM) を実装済み。
+    *   `PipelineExecutor` (VM) を実装済み。スタックベース実行によるResume対応完了。
     *   `GAME_ACTION` 命令を追加し、高レベルなゲーム操作（プレイ、攻撃、ブロック）および勝敗判定をパイプライン経由で実行可能にしました。
 *   **Step 3: GameCommand への統合**
     *   [Status: Done] [Test: Pass]
@@ -197,4 +202,4 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
         *   **GUIの変更:** TriggerとActionの間に **「Condition (条件)」** ノードまたはプロパティ欄を設けます。
     3.  **アクション間の「変数のリンク（Context Linking）」**
         *   コマンド式になったことで、Action 1（選択）の結果を Action 2（破壊）が受け取るフローが厳格になります。
-        *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を指定できるようにします。
+        *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を指定するUIを実装します。
