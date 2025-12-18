@@ -36,9 +36,9 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Stack-Based VM**: `PipelineExecutor` を再帰ベースからスタックベースのVM（Virtual Machine）にリファクタリングし、`Instruction` 実行の一時停止と再開（Resume）を完全にサポートしました。
 *   [Status: Done] **Complete Effect Resolution**: `EffectSystem::compile_effect` を実装し、複雑な効果（S・トリガー等）を `Instruction` リストにコンパイルして実行するフローを確立しました。
 *   [Status: Done] **Action Generalization**: すべての `IActionHandler` (合計20クラス以上) に `compile_action` メソッドを追加し、インターフェースを統一しました。
+*   [Status: Done] **Optimization - Shared Pointers**: `GameState` のPythonバインディングにおけるディープコピー問題を解消するため、`ParallelRunner`、`MCTS`、`GameResultInfo`、および `bindings.cpp` を `std::shared_ptr<GameState>` ベースに移行しました。
 *   [Status: Review] **Handler Migration**: `ManaHandler`, `DestroyHandler`, `SearchHandler` の実装を `compile_action` ベースに移行しました。これにより、これらのアクションは直接的な状態変更ではなく、`Instruction` 列の生成として機能します。
-*   [Status: WIP] **Build Fixes**: `GameState` の非コピー可能性（`unique_ptr`の使用による）に起因する、`MCTS`, `SelfPlay`, `ParallelRunner`, `Bindings` 周りの広範なビルドエラーを修正中です。`clone()` メソッドの活用やムーブセマンティクスの導入を進めています。
-*   [Known Issue] **Binding Complexity**: `std::vector<GameState>` を Python バインディング経由で受け渡す際、コピー不可の制約によりディープコピー（Clone）が必要となり、バインディングの実装が複雑化しています。
+*   [Status: Review] **Build Fixes**: `GameState` の非コピー可能性（`unique_ptr`の使用による）に起因するビルドエラーを修正しました。`EffectSystem` のシングルトン参照渡しや `bindings.cpp` のラムダ式活用を行いました。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Status**: 稼働中 (Ver 2.3)。
@@ -129,7 +129,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: Todo] **Fix Bindings**: `std::vector<GameState>` を引数に取る Python バインディングにおいて、`GameState` がコピー不可であることによるコンパイルエラーを解消する。`clone()` を用いたラッパー関数の実装が必要。
+1.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
 2.  [Status: Todo] **Verify Integration**: ビルド修正後、`tests/test_effect_compiler.py` や `tests/test_engine_basics.py` を実行し、新エンジンの動作を統合的に検証する。
 3.  [Status: Todo] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`unique_ptr` vs `shared_ptr`）を一貫させ、メモリリークや二重解放のリスクを排除する。
 4.  [Status: Todo] **Architecture Switch**: `GameLogicSystem` が直接 `compile()` を呼び出し、生成された命令を一括実行するアーキテクチャへの完全切り替え。
@@ -195,4 +195,4 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
         *   **GUIの変更:** TriggerとActionの間に **「Condition (条件)」** ノードまたはプロパティ欄を設けます。
     3.  **アクション間の「変数のリンク（Context Linking）」**
         *   コマンド式になったことで、Action 1（選択）の結果を Action 2（破壊）が受け取るフローが厳格になります。
-        *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を指定するUIを拡張します。
+        *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を指定するUIを改善します。

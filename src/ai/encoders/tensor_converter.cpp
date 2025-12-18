@@ -112,6 +112,21 @@ namespace dm::ai {
         return batch_tensor;
     }
 
+    std::vector<float> TensorConverter::convert_batch_flat(
+        const std::vector<std::shared_ptr<GameState>>& states,
+        const std::map<CardID, CardDefinition>& card_db,
+        bool mask_opponent_hand
+    ) {
+        std::vector<float> batch_tensor;
+        batch_tensor.reserve(states.size() * INPUT_SIZE);
+        for (const auto& state_ptr : states) {
+            const auto& state = *state_ptr;
+            std::vector<float> t = convert_to_tensor(state, state.active_player_id, card_db, mask_opponent_hand);
+            batch_tensor.insert(batch_tensor.end(), t.begin(), t.end());
+        }
+        return batch_tensor;
+    }
+
     // --- Phase 4 V2 (Transformer) Implementation ---
 
     std::vector<long> TensorConverter::convert_to_sequence(
