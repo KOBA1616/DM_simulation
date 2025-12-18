@@ -1,3 +1,6 @@
+#ifndef DM_ENGINE_GAME_COMMAND_COMMANDS_HPP
+#define DM_ENGINE_GAME_COMMAND_COMMANDS_HPP
+
 #include "game_command.hpp"
 #include "core/types.hpp"
 #include "core/modifiers.hpp"
@@ -5,18 +8,6 @@
 #include "engine/systems/trigger_system/reaction_window.hpp"
 
 namespace dm::engine::game_command {
-
-    enum class CommandType {
-        TRANSITION,
-        MUTATE,
-        ATTACH,
-        FLOW,
-        QUERY,
-        DECIDE,
-        DECLARE_REACTION,
-        STAT,
-        GAME_RESULT
-    };
 
     class TransitionCommand : public GameCommand {
     public:
@@ -92,6 +83,7 @@ namespace dm::engine::game_command {
 
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
+        // Requires ATTACH to be in game_command.hpp CommandType
         CommandType get_type() const override { return CommandType::ATTACH; }
     };
 
@@ -161,11 +153,8 @@ namespace dm::engine::game_command {
 
         // Undo context
         bool was_waiting;
-        core::GameState::Status previous_status; // Assuming GameState has Status enum? Or remove/change
-        // GameState definition does not show Status enum in previous reads (Phase/EffectType only).
-        // Let's assume Status is NOT present or remove it.
-        // I will remove Status for now to avoid compilation error if it doesn't exist.
-        // Actually, DeclareReactionCommand usually interacts with TriggerSystem.
+        // Removed previous_status as it is not defined in GameState
+        core::GameState::Status previous_status;
         std::vector<dm::engine::systems::ReactionWindow> previous_stack;
 
         DeclareReactionCommand(core::PlayerID pid, bool is_pass, int idx = -1)
@@ -212,3 +201,5 @@ namespace dm::engine::game_command {
     };
 
 }
+
+#endif // DM_ENGINE_GAME_COMMAND_COMMANDS_HPP

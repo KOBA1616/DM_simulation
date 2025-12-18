@@ -23,7 +23,7 @@ namespace dm::engine {
     }
 
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
-        : state(seed), card_db_ptr(db), card_db(*db) {
+        : state(seed), card_db_copy(*db), card_db(card_db_copy) {
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
@@ -69,7 +69,7 @@ namespace dm::engine {
         state.current_phase = Phase::MAIN;
         state.winner = GameResult::NONE;
         state.pending_effects.clear();
-        state.current_attack = AttackRequest(); // Reset attack context
+        state.current_attack = AttackState(); // Reset attack context
 
         // Clear all zones for both players
         for (auto& p : state.players) {

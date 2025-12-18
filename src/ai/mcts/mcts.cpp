@@ -20,14 +20,18 @@ namespace dm::ai {
 
     std::vector<float> MCTS::search(const GameState& root_state, int simulations, BatchEvaluatorCallback evaluator, bool add_noise, float temperature) {
         // 1. Clone and Fast Forward Root
-        GameState root_gs = root_state; // Copy
+        GameState root_gs = root_state.clone(); // Copy
         PhaseManager::fast_forward(root_gs, card_db_);
         
-        last_root_ = std::make_unique<MCTSNode>(root_gs);
+        last_root_ = std::make_unique<MCTSNode>(std::move(root_gs));
         MCTSNode* root = last_root_.get();
 
         // Initial expansion of root (needs evaluation)
-        std::vector<GameState> root_batch = { root->state };
+        // Avoid initializer list copying GameState
+        std::vector<GameState> root_batch;
+        root_batch.reserve(1);
+        root_batch.push_back(root->state.clone());
+
         auto [root_policies, root_values] = evaluator(root_batch);
         expand_node(root, root_policies[0]);
         backpropagate(root, root_values[0]);
@@ -76,7 +80,7 @@ namespace dm::ai {
                     simulations_finished++;
                 } else {
                     batch_nodes.push_back(leaf);
-                    batch_states.push_back(leaf->state);
+                    batch_states.push_back(leaf->state.clone()); // Explicit clone
                 }
             }
             
@@ -162,7 +166,7 @@ namespace dm::ai {
             const auto& action = actions[i];
             float p = priors[i] / sum_exp;
             
-            GameState next_state = node->state;
+            GameState next_state = node->state.clone();
             // Replaced EffectResolver::resolve_action with GameLogicSystem::resolve_action
             GameLogicSystem::resolve_action(next_state, action, card_db_);
 
@@ -171,7 +175,15 @@ namespace dm::ai {
             }
             PhaseManager::fast_forward(next_state, card_db_);
             
-            auto child = std::make_unique<MCTSNode>(next_state);
+            auto child = std::make_unique<MCTSNode>(std::move(next_state)); // next_state is moved?
+            // MCTSNode ctor takes GameState&& so it moves.
+            // `next_state` is local var, `std::move(next_state)` or implicit?
+            // Implicit move if it's the last use. But constructor signature might be const ref in old code.
+            // I changed MCTSNode ctor to take GameState&& in mcts.hpp (in Plan Step 4 of previous iteration, wait, did I?)
+            // I did `sed -i 's/MCTSNode(const dm::core::GameState& s) : state(s)/MCTSNode(dm::core::GameState&& s) : state(std::move(s))/g' src/ai/mcts/mcts.hpp`
+            // So implicit move should work if next_state is rvalue or using std::move.
+            // Let's use std::move(next_state) to be safe.
+
             child->parent = node;
             child->action_from_parent = action;
             child->prior = p;
