@@ -55,34 +55,35 @@ namespace dm::engine {
                 }
                 // If the action requires target selection (interactive)
                 else if (ctx.action.scope == TargetScope::TARGET_SELECT) {
+                     // We need to generate a unique variable name to avoid collisions
+                     std::string var_name = "$mana_selection_" + std::to_string(ctx.game_state.turn_number);
+
                      Instruction select(InstructionOp::SELECT);
                      select.args["filter"] = ctx.action.filter;
-                     select.args["out"] = "$mana_selection";
-                     select.args["count"] = 1; // Or variable?
-                     // Currently SEND_TO_MANA usually implies 1 target unless specified.
-                     // But action doesn't specify count in scope TARGET_SELECT?
-                     // If value1 > 0, use it.
-                     if (ctx.action.value1 > 0) select.args["count"] = ctx.action.value1;
+                     select.args["out"] = var_name;
+                     select.args["count"] = (ctx.action.value1 > 0) ? ctx.action.value1 : 1;
 
                      ctx.instruction_buffer->push_back(select);
 
                      Instruction move(InstructionOp::MOVE);
                      move.args["to"] = "MANA";
-                     move.args["target"] = "$mana_selection";
+                     move.args["target"] = var_name;
                      ctx.instruction_buffer->push_back(move);
                 }
                 // Auto Select (e.g. "Put all your creatures into mana")
                 else {
+                     std::string var_name = "$auto_mana_selection_" + std::to_string(ctx.game_state.turn_number);
+
                      Instruction select(InstructionOp::SELECT);
                      select.args["filter"] = ctx.action.filter;
-                     select.args["out"] = "$auto_mana_selection";
+                     select.args["out"] = var_name;
                      select.args["count"] = 999;
 
                      ctx.instruction_buffer->push_back(select);
 
                      Instruction move(InstructionOp::MOVE);
                      move.args["to"] = "MANA";
-                     move.args["target"] = "$auto_mana_selection";
+                     move.args["target"] = var_name;
 
                      ctx.instruction_buffer->push_back(move);
                 }
