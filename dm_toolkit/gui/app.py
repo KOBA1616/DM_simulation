@@ -7,7 +7,8 @@ import csv
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox, QSplitter,
-    QCheckBox, QGroupBox, QRadioButton, QButtonGroup, QScrollArea, QDockWidget, QTabWidget
+    QCheckBox, QGroupBox, QRadioButton, QButtonGroup, QScrollArea, QDockWidget, QTabWidget,
+    QInputDialog
 )
 from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
@@ -35,6 +36,7 @@ class GameWindow(QMainWindow):
         
         self.p0_deck_ids = None
         self.p1_deck_ids = None
+        self.last_action = None
 
         # Simulation Timer
         self.timer = QTimer()
@@ -43,25 +45,20 @@ class GameWindow(QMainWindow):
         self.is_processing = False
 
         # UI Setup
-        # Dock: Info Panel
         self.info_dock = QDockWidget(tr("Game Info & Controls"), self)
         self.info_dock.setObjectName("InfoDock")
         self.info_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
 
-        # Main Info Panel Widget
         self.info_panel = QWidget()
         self.info_panel.setMinimumWidth(300)
         self.info_layout = QVBoxLayout(self.info_panel)
         self.info_dock.setWidget(self.info_panel)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.info_dock)
 
-        # -- Layout Separation (Top: Game Ops/Info, Bottom: AI/Sim Settings) --
-        
-        # 1. Top Section: Game Info & Operations
+        # 1. Top Section
         self.top_section_group = QGroupBox(tr("Game Status & Operations"))
         top_layout = QVBoxLayout()
         
-        # Status Labels
         status_layout = QHBoxLayout()
         self.turn_label = QLabel(f"{tr('Turn')}: 1")
         self.turn_label.setStyleSheet("font-weight: bold;")
@@ -72,11 +69,9 @@ class GameWindow(QMainWindow):
         status_layout.addWidget(self.active_label)
         top_layout.addLayout(status_layout)
 
-        # Card Detail Panel (Moved to Top Section as it's immediate info)
         self.card_detail_panel = CardDetailPanel()
         top_layout.addWidget(self.card_detail_panel)
         
-        # Game Controls
         game_ctrl_layout = QHBoxLayout()
         self.start_btn = QPushButton(tr("Start Sim"))
         self.start_btn.clicked.connect(self.toggle_simulation)
@@ -94,14 +89,10 @@ class GameWindow(QMainWindow):
         self.top_section_group.setLayout(top_layout)
         self.info_layout.addWidget(self.top_section_group)
 
-        # Splitter to push bottom section down
-        # self.info_layout.addStretch()
-
-        # 2. Bottom Section: AI, Simulation, Tools
+        # 2. Bottom Section
         self.bottom_section_group = QGroupBox(tr("AI & Tools"))
         bottom_layout = QVBoxLayout()
 
-        # Player Mode Group
         mode_group = QGroupBox(tr("Player Mode"))
         mode_layout = QVBoxLayout()
 
@@ -127,7 +118,6 @@ class GameWindow(QMainWindow):
         mode_group.setLayout(mode_layout)
         bottom_layout.addWidget(mode_group)
         
-        # Tools / Editors
         tools_layout = QVBoxLayout()
         self.deck_builder_button = QPushButton(tr("Deck Builder"))
         self.deck_builder_button.clicked.connect(self.open_deck_builder)
@@ -146,7 +136,6 @@ class GameWindow(QMainWindow):
         tools_layout.addWidget(self.sim_dialog_button)
         bottom_layout.addLayout(tools_layout)
 
-        # Deck Loading Controls
         deck_group = QGroupBox(tr("Deck Management"))
         deck_layout = QVBoxLayout()
         self.load_deck_btn = QPushButton(tr("Load Deck P0"))
@@ -171,14 +160,13 @@ class GameWindow(QMainWindow):
         self.bottom_section_group.setLayout(bottom_layout)
         self.info_layout.addWidget(self.bottom_section_group)
         
-        self.info_layout.addStretch() # Push everything up
+        self.info_layout.addStretch()
         
-        # Board Panel (Central Widget)
+        # Board Panel
         self.board_panel = QWidget()
         self.board_layout = QVBoxLayout(self.board_panel)
         self.board_layout.setContentsMargins(0, 0, 0, 0)
         
-        # P1 (Opponent) Zones
         self.p1_zones = QWidget()
         self.p1_layout = QVBoxLayout(self.p1_zones)
         self.p1_hand = ZoneWidget("P1 手札")
@@ -195,13 +183,11 @@ class GameWindow(QMainWindow):
         p1_row2.addWidget(self.p1_graveyard, stretch=1)
         self.p1_layout.addLayout(p1_row2)
 
-        # Battle Zone Row with Deck
         p1_battle_row = QHBoxLayout()
         p1_battle_row.addWidget(self.p1_battle, stretch=5)
         p1_battle_row.addWidget(self.p1_deck_zone, stretch=1)
         self.p1_layout.addLayout(p1_battle_row)
         
-        # P0 (Player) Zones
         self.p0_zones = QWidget()
         self.p0_layout = QVBoxLayout(self.p0_zones)
         self.p0_battle = ZoneWidget("P0 バトルゾーン")
@@ -228,7 +214,6 @@ class GameWindow(QMainWindow):
         self.p1_shield.card_hovered.connect(self.on_card_hovered)
         self.p1_graveyard.card_hovered.connect(self.on_card_hovered)
         
-        # Battle Zone Row with Deck
         p0_battle_row = QHBoxLayout()
         p0_battle_row.addWidget(self.p0_battle, stretch=5)
         p0_battle_row.addWidget(self.p0_deck_zone, stretch=1)
@@ -248,7 +233,6 @@ class GameWindow(QMainWindow):
         
         self.setCentralWidget(self.board_panel)
         
-        # MCTS View (Dock)
         self.mcts_dock = QDockWidget(tr("MCTS Analysis"), self)
         self.mcts_dock.setObjectName("MCTSDock")
         self.mcts_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
@@ -256,7 +240,6 @@ class GameWindow(QMainWindow):
         self.mcts_dock.setWidget(self.mcts_view)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mcts_dock)
         
-        # Logs (Dock)
         self.log_dock = QDockWidget(tr("Logs"), self)
         self.log_dock.setObjectName("LogDock")
         self.log_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
@@ -306,11 +289,9 @@ class GameWindow(QMainWindow):
             try:
                 with open(fname, 'r') as f:
                     deck_ids = json.load(f)
-                
                 if len(deck_ids) != 40:
                     QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return
-
                 self.p0_deck_ids = deck_ids
                 self.reset_game()
                 self.log_list.addItem(f"{tr('Loaded Deck for P0')}: {os.path.basename(fname)}")
@@ -326,11 +307,9 @@ class GameWindow(QMainWindow):
             try:
                 with open(fname, 'r') as f:
                     deck_ids = json.load(f)
-                
                 if len(deck_ids) != 40:
                     QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return
-
                 self.p1_deck_ids = deck_ids
                 self.reset_game()
                 self.log_list.addItem(f"{tr('Loaded Deck for P1')}: {os.path.basename(fname)}")
@@ -338,32 +317,8 @@ class GameWindow(QMainWindow):
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
     def show_help(self):
-        help_text = """
-        <h2>DM AI Simulator Help</h2>
-        <p><b>Basics</b></p>
-        <ul>
-            <li><b>Start Simulation:</b> Begin the game loop.</li>
-            <li><b>Step Phase:</b> Advance one phase/action manually.</li>
-            <li><b>Reset Game:</b> Restart with the current decks.</li>
-        </ul>
-        <p><b>Player Modes</b></p>
-        <ul>
-            <li><b>Human:</b> You control actions.</li>
-            <li><b>AI:</b> MCTS-controlled opponent/ally.</li>
-        </ul>
-        <p><b>Deck Management</b></p>
-        <ul>
-            <li><b>Deck Builder:</b> Create and save custom decks.</li>
-            <li><b>Load Deck P0/P1:</b> Load saved JSON decks for each player.</li>
-        </ul>
-        <p><b>Display</b></p>
-        <ul>
-            <li><b>God View:</b> Show opponent hand and shields.</li>
-            <li><b>MCTS View:</b> Inspect AI search tree.</li>
-        </ul>
-        """
-        QMessageBox.information(self, tr("Help / Manual"), help_text)
-        
+        QMessageBox.information(self, tr("Help / Manual"), "Help text...")
+
     def toggle_simulation(self):
         if self.is_running:
             self.timer.stop()
@@ -378,17 +333,11 @@ class GameWindow(QMainWindow):
         self.timer.stop()
         self.is_running = False
         self.start_btn.setText(tr("Start Sim"))
-        
         self.gs = dm_ai_module.GameState(random.randint(0, 10000))
         self.gs.setup_test_duel()
-        
-        if self.p0_deck_ids:
-            self.gs.set_deck(0, self.p0_deck_ids)
-        if self.p1_deck_ids:
-            self.gs.set_deck(1, self.p1_deck_ids)
-            
+        if self.p0_deck_ids: self.gs.set_deck(0, self.p0_deck_ids)
+        if self.p1_deck_ids: self.gs.set_deck(1, self.p1_deck_ids)
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
-        
         self.log_list.clear()
         self.log_list.addItem(tr("Game Reset"))
         self.update_ui()
@@ -396,6 +345,18 @@ class GameWindow(QMainWindow):
     def on_card_clicked(self, card_id, instance_id):
         if self.gs.active_player_id != 0 or not self.p0_human_radio.isChecked():
             return
+
+        if self.gs.waiting_for_user_input:
+             if self.gs.pending_query.query_type == "SELECT_TARGET":
+                 valid_targets = self.gs.pending_query.valid_targets
+                 if instance_id in valid_targets:
+                     dm_ai_module.EffectResolver.resume(self.gs, self.card_db, [instance_id])
+                     self.log_list.addItem(f"Resumed with target: {instance_id}")
+                     self.step_phase()
+                     return
+                 else:
+                     self.log_list.addItem("Invalid target selected.")
+             return
 
         actions = dm_ai_module.ActionGenerator.generate_legal_actions(
             self.gs, self.card_db
@@ -407,30 +368,47 @@ class GameWindow(QMainWindow):
             return
 
         if len(relevant_actions) == 1:
-            action = relevant_actions[0]
-            self.execute_action(action)
+            self.execute_action(relevant_actions[0])
         else:
             self.log_list.addItem(tr("Multiple actions found. Executing first."))
             self.execute_action(relevant_actions[0])
 
     def on_card_hovered(self, card_id):
-        if card_id == -1: pass
-        
         if card_id >= 0:
             card_data = self.card_db.get(card_id)
             if card_data:
                 self.card_detail_panel.update_card(card_data, self.civ_map)
 
     def execute_action(self, action):
+        self.last_action = action
         dm_ai_module.EffectResolver.resolve_action(
             self.gs, action, self.card_db
         )
         self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
         
+        if self.gs.waiting_for_user_input:
+            self.handle_user_input_request()
+            return
+
         if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
             dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
             
         self.update_ui()
+
+    def handle_user_input_request(self):
+        query = self.gs.pending_query
+
+        if query.query_type == "SELECT_OPTION":
+             options = query.options
+             item, ok = QInputDialog.getItem(self, "Select Option", "Choose an option:", options, 0, False)
+             if ok and item:
+                 idx = options.index(item)
+                 dm_ai_module.EffectResolver.resume(self.gs, self.card_db, idx)
+                 self.step_phase()
+
+        elif query.query_type == "SELECT_TARGET":
+             self.log_list.addItem(f"Please select {query.params['min']} target(s).")
+             self.update_ui()
 
     def step_phase(self):
         if self.is_processing: return
@@ -438,6 +416,10 @@ class GameWindow(QMainWindow):
         was_running_at_start = self.is_running
         
         try:
+            if self.gs.waiting_for_user_input:
+                self.handle_user_input_request()
+                return
+
             is_over, result = dm_ai_module.PhaseManager.check_game_over(self.gs)
             if is_over:
                 self.timer.stop()
@@ -468,76 +450,24 @@ class GameWindow(QMainWindow):
                 dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
                 self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
             else:
-                search_state = self.gs.clone()
-                dm_ai_module.Determinizer.determinize(search_state, active_pid)
-                mcts = dm_ai_module.MCTS(self.card_db, 1.0, 0.3, 0.25, 1)
-                evaluator = dm_ai_module.HeuristicEvaluator(self.card_db)
-                policy = mcts.search(search_state, 50, evaluator.evaluate, True, 1.0)
+                best_action = actions[0] # Fallback
                 
-                best_idx = -1
-                best_prob = -1.0
-                for i, p in enumerate(policy):
-                    if p > best_prob:
-                        best_prob = p
-                        best_idx = i
-                
-                best_action = None
-                if best_idx >= 0:
-                    root = mcts.get_last_root()
-                    if root:
-                        best_child = None
-                        max_visits = -1
-                        for child in root.children:
-                            if child.visit_count > max_visits:
-                                max_visits = child.visit_count
-                                best_child = child
-                        if best_child:
-                            best_action = best_child.action
-                
-                def convert_tree_data(node):
-                    if not node: return None
-                    name = node.action.to_string()
-                    if node.action.type == dm_ai_module.ActionType.PASS:
-                        name = "PASS"
-                    elif not name: name = "Unknown"
-
-                    data = {
-                        "name": name,
-                        "visits": node.visit_count,
-                        "value": node.value,
-                        "children": []
-                    }
-                    if node.visit_count > 1:
-                         for child in node.children:
-                             data["children"].append(convert_tree_data(child))
-                    return data
-
-                root = mcts.get_last_root()
-                if root:
-                    tree_data = {
-                        "name": "Root",
-                        "visits": root.visit_count,
-                        "value": root.value,
-                        "children": []
-                    }
-                    for child in root.children:
-                        tree_data["children"].append(convert_tree_data(child))
-                    self.mcts_view.update_from_data(tree_data)
-                
-                if was_running_at_start and not self.is_running:
-                    self.log_list.addItem(tr("Simulation stopped."))
-                    return
-
                 if best_action:
+                    self.last_action = best_action
                     dm_ai_module.EffectResolver.resolve_action(
                         self.gs, best_action, self.card_db
                     )
                     self.log_list.addItem(f"P{active_pid} {tr('AI Action')}: {best_action.to_string()}")
 
+                    if self.gs.waiting_for_user_input:
+                         self.log_list.addItem("AI Paused for Input (Not Implemented). Stopping Sim.")
+                         self.timer.stop()
+                         self.is_running = False
+                         self.start_btn.setText(tr("Start Sim"))
+                         return
+
                     if best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE:
                         dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
-                else:
-                    self.log_list.addItem(tr("Error: MCTS returned None"))
 
             self.update_ui()
         finally:
@@ -571,6 +501,9 @@ class GameWindow(QMainWindow):
         self.p1_shield.update_cards(convert_zone(p1.shield_zone, hide=not god_view), self.card_db, self.civ_map)
         self.p1_graveyard.update_cards(convert_zone(p1.graveyard), self.card_db, self.civ_map)
         self.p1_deck_zone.update_cards(convert_zone(p1.deck, hide=True), self.card_db, self.civ_map)
+
+        if self.gs.waiting_for_user_input and self.gs.pending_query.query_type == "SELECT_TARGET":
+            valid_targets = self.gs.pending_query.valid_targets
 
 if __name__ == "__main__":
     import signal
