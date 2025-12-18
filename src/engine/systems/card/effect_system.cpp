@@ -28,7 +28,7 @@
 #include "handlers/play_handler.hpp"
 #include "handlers/modify_power_handler.hpp"
 #include "engine/systems/command_system.hpp"
-#include "engine/systems/pipeline_executor.hpp" // Added include for execute_pipeline
+#include "engine/systems/pipeline_executor.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -79,34 +79,8 @@ namespace dm::engine {
         initialized = true;
     }
 
-    // Helper method implementation
-    void EffectSystem::execute_pipeline(const ResolutionContext& ctx, const std::vector<dm::core::Instruction>& instructions) {
-         if (instructions.empty()) return;
-
-         dm::engine::systems::PipelineExecutor pipeline;
-
-         // Populate pipeline context
-         for (const auto& kv : ctx.execution_vars) {
-             pipeline.set_context_var(kv.first, kv.second);
-         }
-
-         // Inject source instance ID as "$source" for context-sensitive operations
-         pipeline.set_context_var("$source", ctx.source_instance_id);
-
-         pipeline.execute(instructions, ctx.game_state, ctx.card_db);
-
-         // Merge back execution vars to context
-         const auto& pipe_ctx = pipeline.get_context();
-         for (const auto& kv : pipe_ctx) {
-             if (std::holds_alternative<int>(kv.second)) {
-                 ctx.execution_vars[kv.first] = std::get<int>(kv.second);
-             }
-         }
-    }
-
     void EffectSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         initialize();
-
         CardInstance* instance = game_state.get_card_instance(source_instance_id);
         if (!instance) {
             return;
@@ -136,7 +110,6 @@ namespace dm::engine {
                 fb_action.type = EffectActionType::FRIEND_BURST;
                 fb_action.scope = TargetScope::TARGET_SELECT;
                 fb_action.optional = true;
-
                 fb_action.filter.owner = "SELF";
                 fb_action.filter.zones = {"BATTLE_ZONE"};
                 fb_action.filter.types = {"CREATURE"};
@@ -226,10 +199,9 @@ namespace dm::engine {
     }
 
     void EffectSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, bool* interrupted, const std::vector<ActionDef>* remaining_actions) {
-        initialize();
-        // std::cout << "Resolving action type: " << (int)action.type << std::endl;
+         initialize();
 
-        if (action.condition.has_value()) {
+         if (action.condition.has_value()) {
             bool condition_met = false;
             if (action.condition->type == "COMPARE_STAT" && execution_context.count(action.condition->stat_key)) {
                 int val = execution_context[action.condition->stat_key];
@@ -248,19 +220,14 @@ namespace dm::engine {
             if (!condition_met) return;
         }
 
-        // --- NEW ARCHITECTURE: Attempt Compilation First ---
         std::vector<Instruction> pipeline_instructions;
         compile_action(game_state, action, source_instance_id, execution_context, card_db, pipeline_instructions);
 
         if (!pipeline_instructions.empty()) {
-             // std::cout << "Pipeline instructions generated: " << pipeline_instructions.size() << std::endl;
-             // Execute compiled pipeline
              ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, interrupted, remaining_actions);
              execute_pipeline(ctx, pipeline_instructions);
         }
         else {
-             // std::cout << "No pipeline instructions (legacy fallback)" << std::endl;
-             // Fallback to legacy resolve() if compilation not supported/implemented
              if (IActionHandler* handler = get_handler(action.type)) {
                 ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, interrupted, remaining_actions);
                 handler->resolve(ctx);
@@ -268,13 +235,86 @@ namespace dm::engine {
         }
     }
 
+    void EffectSystem::compile_effect(GameState& game_state, const EffectDef& effect, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::vector<dm::core::Instruction>& out_instructions) {
+         initialize();
+
+         if (effect.condition.type != "NONE") {
+             Instruction if_inst;
+             if_inst.op = InstructionOp::IF;
+             nlohmann::json cond_json;
+             cond_json["type"] = effect.condition.type;
+             cond_json["value"] = effect.condition.value;
+             cond_json["str_val"] = effect.condition.str_val;
+             if_inst.args["cond"] = cond_json;
+
+             std::vector<Instruction> then_block;
+             for (const auto& action : effect.actions) {
+                 compile_action(game_state, action, source_instance_id, execution_context, card_db, then_block);
+             }
+             if_inst.then_block = then_block;
+             out_instructions.push_back(if_inst);
+         } else {
+             for (const auto& action : effect.actions) {
+                 compile_action(game_state, action, source_instance_id, execution_context, card_db, out_instructions);
+             }
+         }
+    }
+
     void EffectSystem::compile_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::vector<dm::core::Instruction>& out_instructions) {
         initialize();
 
-         if (IActionHandler* handler = get_handler(action.type)) {
+        // 1. Target Selection Scope
+        if (action.scope == TargetScope::TARGET_SELECT) {
+             Instruction select_inst;
+             select_inst.op = InstructionOp::SELECT;
+
+             select_inst.args["filter"] = action.filter;
+             select_inst.args["count"] = action.filter.count.value_or(1);
+
+             std::string out_key = "$selection_" + std::to_string(out_instructions.size());
+             if (!action.output_value_key.empty()) {
+                 out_key = action.output_value_key;
+             }
+             select_inst.args["out"] = out_key;
+
+             out_instructions.push_back(select_inst);
+        }
+
+        if (IActionHandler* handler = get_handler(action.type)) {
             ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, nullptr, nullptr, &out_instructions);
             handler->compile(ctx);
         }
+    }
+
+    void EffectSystem::execute_pipeline(const ResolutionContext& ctx, const std::vector<dm::core::Instruction>& instructions) {
+         if (instructions.empty()) return;
+
+         // Create and Persist Pipeline Executor
+         auto pipeline = std::make_shared<dm::engine::systems::PipelineExecutor>();
+         ctx.game_state.active_pipeline = pipeline;
+
+         // Populate pipeline context
+         for (const auto& kv : ctx.execution_vars) {
+             pipeline->set_context_var(kv.first, kv.second);
+         }
+
+         // Inject source instance ID as "$source" for context-sensitive operations
+         pipeline->set_context_var("$source", ctx.source_instance_id);
+
+         pipeline->execute(instructions, ctx.game_state, ctx.card_db);
+
+         // Merge back execution vars to context
+         const auto& pipe_ctx = pipeline->context;
+         for (const auto& kv : pipe_ctx) {
+             if (std::holds_alternative<int>(kv.second)) {
+                 ctx.execution_vars[kv.first] = std::get<int>(kv.second);
+             }
+         }
+
+         // If pipeline finished, clear it. If paused, it stays in active_pipeline.
+         if (pipeline->call_stack.empty()) {
+             ctx.game_state.active_pipeline.reset();
+         }
     }
 
     bool EffectSystem::check_condition(GameState& game_state, const ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& execution_context) {

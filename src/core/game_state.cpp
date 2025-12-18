@@ -1,0 +1,129 @@
+#include "game_state.hpp"
+#include "engine/game_command/commands.hpp"
+#include "engine/systems/pipeline_executor.hpp" // Include for cloning
+
+namespace dm::core {
+
+    GameState::GameState(int seed) : players(2) {
+        rng.seed(seed);
+    }
+
+    GameState::~GameState() = default;
+    GameState::GameState(GameState&&) noexcept = default;
+    GameState& operator=(GameState&&) noexcept = default;
+
+    GameState GameState::clone() const {
+        GameState new_state;
+        new_state.turn_number = turn_number;
+        new_state.active_player_id = active_player_id;
+        new_state.current_phase = current_phase;
+        new_state.players = players;
+        new_state.game_over = game_over;
+        new_state.winner = winner;
+        new_state.pending_effects = pending_effects;
+        new_state.active_modifiers = active_modifiers;
+        new_state.passive_effects = passive_effects;
+        new_state.rng = rng;
+        new_state.card_owner_map = card_owner_map;
+        new_state.turn_stats = turn_stats;
+        new_state.stats_recorded = stats_recorded;
+        new_state.played_cards_history_this_game = played_cards_history_this_game;
+        new_state.waiting_for_user_input = waiting_for_user_input;
+        new_state.pending_query = pending_query;
+
+        // Deep copy pipeline if active
+        if (active_pipeline) {
+            auto ptr = std::static_pointer_cast<dm::engine::systems::PipelineExecutor>(active_pipeline);
+            new_state.active_pipeline = ptr->clone();
+        }
+
+        return new_state;
+    }
+
+    void GameState::add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid) {
+        if(pid >= players.size()) return;
+        switch(zone) {
+            case Zone::HAND: players[pid].hand.push_back(card); break;
+            case Zone::MANA: players[pid].mana_zone.push_back(card); break;
+            case Zone::BATTLE: players[pid].battle_zone.push_back(card); break;
+            case Zone::SHIELD: players[pid].shield_zone.push_back(card); break;
+            case Zone::GRAVEYARD: players[pid].graveyard.push_back(card); break;
+            case Zone::DECK: players[pid].deck.push_back(card); break;
+            case Zone::BUFFER: players[pid].effect_buffer.push_back(card); break;
+            default: break;
+        }
+    }
+
+    CardInstance* GameState::get_card_instance(int instance_id) {
+        if(instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
+        PlayerID pid = card_owner_map[instance_id];
+        if(pid >= players.size()) return nullptr;
+
+        auto find_in = [&](std::vector<CardInstance>& v) -> CardInstance* {
+            for(auto& c : v) if(c.instance_id == instance_id) return &c;
+            return nullptr;
+        };
+
+        if(auto* c = find_in(players[pid].battle_zone)) return c;
+        if(auto* c = find_in(players[pid].hand)) return c;
+        if(auto* c = find_in(players[pid].mana_zone)) return c;
+        if(auto* c = find_in(players[pid].shield_zone)) return c;
+        if(auto* c = find_in(players[pid].graveyard)) return c;
+        if(auto* c = find_in(players[pid].deck)) return c;
+        if(auto* c = find_in(players[pid].effect_buffer)) return c;
+        if(auto* c = find_in(players[pid].hyper_spatial_zone)) return c;
+        if(auto* c = find_in(players[pid].gr_deck)) return c;
+        return nullptr;
+    }
+
+    const CardInstance* GameState::get_card_instance(int instance_id) const {
+        if(instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
+        PlayerID pid = card_owner_map[instance_id];
+        if(pid >= players.size()) return nullptr;
+
+        auto find_in = [&](const std::vector<CardInstance>& v) -> const CardInstance* {
+            for(const auto& c : v) if(c.instance_id == instance_id) return &c;
+            return nullptr;
+        };
+
+        if(auto* c = find_in(players[pid].battle_zone)) return c;
+        if(auto* c = find_in(players[pid].hand)) return c;
+        if(auto* c = find_in(players[pid].mana_zone)) return c;
+        if(auto* c = find_in(players[pid].shield_zone)) return c;
+        if(auto* c = find_in(players[pid].graveyard)) return c;
+        if(auto* c = find_in(players[pid].deck)) return c;
+        if(auto* c = find_in(players[pid].effect_buffer)) return c;
+        if(auto* c = find_in(players[pid].hyper_spatial_zone)) return c;
+        if(auto* c = find_in(players[pid].gr_deck)) return c;
+        return nullptr;
+    }
+
+    std::vector<int> GameState::get_zone(PlayerID pid, Zone zone) const {
+        std::vector<int> ids;
+        if(pid >= players.size()) return ids;
+        const auto& p = players[pid];
+        const std::vector<CardInstance>* z = nullptr;
+        switch(zone) {
+            case Zone::HAND: z = &p.hand; break;
+            case Zone::MANA: z = &p.mana_zone; break;
+            case Zone::BATTLE: z = &p.battle_zone; break;
+            case Zone::SHIELD: z = &p.shield_zone; break;
+            case Zone::GRAVEYARD: z = &p.graveyard; break;
+            case Zone::DECK: z = &p.deck; break;
+            case Zone::BUFFER: z = &p.effect_buffer; break;
+            case Zone::HYPER_SPATIAL: z = &p.hyper_spatial_zone; break;
+            case Zone::GR_DECK: z = &p.gr_deck; break;
+            default: break;
+        }
+        if(z) {
+            for(const auto& c : *z) ids.push_back(c.instance_id);
+        }
+        return ids;
+    }
+
+    void GameState::execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd) {
+        cmd->execute(*this);
+        command_history.push_back(std::move(cmd));
+    }
+
+}

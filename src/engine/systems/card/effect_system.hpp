@@ -75,6 +75,9 @@ namespace dm::engine {
         // Generates instructions for an action without executing them immediately
         void compile_action(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::vector<dm::core::Instruction>& out_instructions);
 
+        // Compiles a full effect into instructions
+        void compile_effect(dm::core::GameState& game_state, const dm::core::EffectDef& effect, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::vector<dm::core::Instruction>& out_instructions);
+
         // Executes instructions with context synchronization
         void execute_pipeline(const ResolutionContext& ctx, const std::vector<dm::core::Instruction>& instructions);
 

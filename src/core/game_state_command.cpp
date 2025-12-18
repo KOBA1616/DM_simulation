@@ -1,111 +1,97 @@
-#include "core/game_state.hpp"
 #include "engine/game_command/commands.hpp"
-#include <iostream>
+#include "core/game_state.hpp"
+#include "engine/systems/game_logic_system.hpp"
 #include <algorithm>
+#include <iostream>
 
 namespace dm::engine::game_command {
 
     using namespace core;
 
     // --- TransitionCommand ---
-
     void TransitionCommand::execute(GameState& state) {
-        // Implementation of card movement
-        // We need to access zones via GameState logic or helpers
-        // Since we are inside a Command which is friend/internal, we assume we can manipulate state.
-
+        if (owner_id >= state.players.size()) return;
         Player& p_owner = state.players[owner_id];
 
-        // Find source card and verify zone
-        std::vector<CardInstance>* src_vec = nullptr;
-
-        // Helper to find vector
-        auto get_vec = [&](PlayerID pid, Zone z) -> std::vector<CardInstance>* {
-             if (pid > 1) return nullptr;
-             switch(z) {
-                 case Zone::HAND: return &state.players[pid].hand;
-                 case Zone::MANA: return &state.players[pid].mana_zone;
-                 case Zone::BATTLE: return &state.players[pid].battle_zone;
-                 case Zone::GRAVEYARD: return &state.players[pid].graveyard;
-                 case Zone::SHIELD: return &state.players[pid].shield_zone;
-                 case Zone::DECK: return &state.players[pid].deck;
-                 case Zone::BUFFER: return &state.players[pid].effect_buffer;
-                 case Zone::STACK: return &state.stack_zone;
-                 default: return nullptr;
-             }
+        auto remove_from_zone = [&](std::vector<CardInstance>& zone) -> std::optional<CardInstance> {
+            auto it = std::find_if(zone.begin(), zone.end(),
+                [&](const CardInstance& c){ return c.instance_id == card_instance_id; });
+            if (it != zone.end()) {
+                original_index = std::distance(zone.begin(), it);
+                CardInstance c = *it;
+                zone.erase(it);
+                return c;
+            }
+            return std::nullopt;
         };
 
-        src_vec = get_vec(owner_id, from_zone); // Assuming owner matches location?
-        // Wait, Card ownership is fixed, but location might be in opponent's zone?
-        // For standard DM, cards generally stay in owner's zones except Battle Zone (ownership vs controller).
-        // But get_vec uses pid. If card is in opponent's zone, we need that pid.
-        // We assume command is constructed with correct "owner_id" meaning "current controller/location owner".
+        std::optional<CardInstance> card_opt;
 
-        if (!src_vec && from_zone != Zone::STACK) {
-             // Try looking up controller
-             PlayerID current_controller = state.card_owner_map.size() > (size_t)card_instance_id ? state.card_owner_map[card_instance_id] : owner_id;
-             src_vec = get_vec(current_controller, from_zone);
+        switch (from_zone) {
+            case Zone::HAND: card_opt = remove_from_zone(p_owner.hand); break;
+            case Zone::MANA: card_opt = remove_from_zone(p_owner.mana_zone); break;
+            case Zone::BATTLE: card_opt = remove_from_zone(p_owner.battle_zone); break;
+            case Zone::SHIELD: card_opt = remove_from_zone(p_owner.shield_zone); break;
+            case Zone::GRAVEYARD: card_opt = remove_from_zone(p_owner.graveyard); break;
+            case Zone::DECK: card_opt = remove_from_zone(p_owner.deck); break;
+            case Zone::BUFFER: card_opt = remove_from_zone(p_owner.effect_buffer); break;
+            default: break;
         }
 
-        if (!src_vec && from_zone == Zone::STACK) src_vec = &state.stack_zone;
+        if (card_opt) {
+            CardInstance& card = card_opt.value();
+            if (to_zone == Zone::HAND || to_zone == Zone::DECK) {
+                card.is_tapped = false;
+                card.summoning_sickness = true;
+                card.underlying_cards.clear();
+            }
+            if (to_zone == Zone::BATTLE) {
+                card.turn_played = state.turn_number;
+                card.summoning_sickness = true;
+            }
 
-        if (!src_vec) return;
+            std::vector<CardInstance>* dest_zone_ptr = nullptr;
+            switch (to_zone) {
+                case Zone::HAND: dest_zone_ptr = &p_owner.hand; break;
+                case Zone::MANA: dest_zone_ptr = &p_owner.mana_zone; break;
+                case Zone::BATTLE: dest_zone_ptr = &p_owner.battle_zone; break;
+                case Zone::SHIELD: dest_zone_ptr = &p_owner.shield_zone; break;
+                case Zone::GRAVEYARD: dest_zone_ptr = &p_owner.graveyard; break;
+                case Zone::DECK: dest_zone_ptr = &p_owner.deck; break;
+                case Zone::BUFFER: dest_zone_ptr = &p_owner.effect_buffer; break;
+                default: break;
+            }
 
-        // Remove
-        CardInstance card_obj;
-        bool found = false;
-        for (auto it = src_vec->begin(); it != src_vec->end(); ++it) {
-            if (it->instance_id == card_instance_id) {
-                card_obj = *it;
-                original_index = std::distance(src_vec->begin(), it);
-                src_vec->erase(it);
-                found = true;
-                break;
+            if (dest_zone_ptr) {
+                if (destination_index >= 0 && destination_index <= (int)dest_zone_ptr->size()) {
+                    dest_zone_ptr->insert(dest_zone_ptr->begin() + destination_index, card);
+                } else {
+                    dest_zone_ptr->push_back(card);
+                }
             }
         }
-
-        if (!found) return;
-
-        // Add
-        std::vector<CardInstance>* dst_vec = get_vec(owner_id, to_zone); // Destination is usually owner's zone
-        if (!dst_vec && to_zone == Zone::STACK) dst_vec = &state.stack_zone;
-
-        if (dst_vec) {
-            if (destination_index == -1 || destination_index >= (int)dst_vec->size()) {
-                dst_vec->push_back(card_obj);
-            } else {
-                dst_vec->insert(dst_vec->begin() + destination_index, card_obj);
-            }
-        }
-
-        // Update Owner Map if needed? Usually only if changing controllers.
-        // TransitionCommand assumes owner_id is the DESTINATION owner.
-        if (state.card_owner_map.size() <= (size_t)card_instance_id) {
-             state.card_owner_map.resize(card_instance_id + 1, 255);
-        }
-        state.card_owner_map[card_instance_id] = owner_id;
     }
 
     void TransitionCommand::invert(GameState& state) {
-        // Swap to/from
-        // Use original_index to restore position
-        // This requires careful implementation, skipping for MVP/Stub
+        TransitionCommand reverse_cmd(card_instance_id, to_zone, from_zone, owner_id, original_index);
+        reverse_cmd.execute(state);
     }
 
     // --- MutateCommand ---
-
     void MutateCommand::execute(GameState& state) {
+        CardInstance* card = state.get_card_instance(target_instance_id);
+
         if (target_instance_id == -1) {
-            // Global mutations
             if (mutation_type == MutationType::ADD_PASSIVE_EFFECT && passive_effect.has_value()) {
                 state.passive_effects.push_back(passive_effect.value());
             } else if (mutation_type == MutationType::ADD_COST_MODIFIER && cost_modifier.has_value()) {
                 state.active_modifiers.push_back(cost_modifier.value());
+            } else if (mutation_type == MutationType::ADD_PENDING_EFFECT && pending_effect.has_value()) {
+                state.pending_effects.push_back(pending_effect.value());
             }
             return;
         }
 
-        CardInstance* card = state.get_card_instance(target_instance_id);
         if (!card) return;
 
         switch (mutation_type) {
@@ -118,119 +104,158 @@ namespace dm::engine::game_command {
                 card->is_tapped = false;
                 break;
             case MutationType::POWER_MOD:
-                previous_int_value = card->power_mod;
-                card->power_mod += int_value;
+                previous_int_value = card->power_modifier;
+                card->power_modifier += int_value;
                 break;
-            // Keywords etc...
             default: break;
         }
     }
 
     void MutateCommand::invert(GameState& state) {
-        // ...
+        CardInstance* card = state.get_card_instance(target_instance_id);
+        if (target_instance_id == -1) {
+             if (mutation_type == MutationType::ADD_PASSIVE_EFFECT) state.passive_effects.pop_back();
+             if (mutation_type == MutationType::ADD_COST_MODIFIER) state.active_modifiers.pop_back();
+             if (mutation_type == MutationType::ADD_PENDING_EFFECT) state.pending_effects.pop_back();
+             return;
+        }
+        if (!card) return;
+
+        switch (mutation_type) {
+            case MutationType::TAP:
+            case MutationType::UNTAP:
+                card->is_tapped = previous_bool_value;
+                break;
+             case MutationType::POWER_MOD:
+                card->power_modifier = previous_int_value;
+                break;
+            default: break;
+        }
     }
 
-    // --- AttachCommand (New) ---
-
+    // --- AttachCommand (Evolution/Cross) ---
     void AttachCommand::execute(GameState& state) {
+        CardInstance* source_card_ptr = state.get_card_instance(card_to_attach_id);
+        if (!source_card_ptr) return;
+
+        CardID new_card_id = source_card_ptr->card_id;
+        PlayerID source_owner = source_card_ptr->owner;
+
         CardInstance* base_card = state.get_card_instance(target_base_card_id);
         if (!base_card) return;
 
-        // 1. Remove source card from its zone
-        Player& owner_p = state.players[state.active_player_id]; // Assume active player plays it
+        target_was_tapped = base_card->is_tapped;
+        target_was_sick = base_card->summoning_sickness;
+        original_zone = source_zone;
+
+        Player& owner = state.players[source_owner];
         std::vector<CardInstance>* src_vec = nullptr;
-        if (source_zone == Zone::HAND) src_vec = &owner_p.hand;
-        else if (source_zone == Zone::BATTLE) src_vec = &owner_p.battle_zone; // Unlikely but possible
+        if (source_zone == Zone::HAND) src_vec = &owner.hand;
+        else if (source_zone == Zone::MANA) src_vec = &owner.mana_zone;
+        else if (source_zone == Zone::GRAVEYARD) src_vec = &owner.graveyard;
 
-        if (!src_vec) return;
-
-        auto it = std::find_if(src_vec->begin(), src_vec->end(), [&](const CardInstance& c){ return c.instance_id == card_to_attach_id; });
-        if (it == src_vec->end()) return;
-
-        CardInstance attach_card = *it;
-        original_zone_index = std::distance(src_vec->begin(), it);
-        src_vec->erase(it);
-
-        // 2. Perform Evolution (Stack on Top)
-        // Logic: The 'attach_card' (Evolution Creature) becomes the main card in the Battle Zone.
-        // The 'base_card' is moved INTO 'attach_card.underlying_cards'.
-        // AND 'base_card.underlying_cards' (if any) are also moved to 'attach_card.underlying_cards'.
-        // State (Tapped/Sick) is inherited from Base.
-
-        // Inherit state
-        attach_card.is_tapped = base_card->is_tapped;
-        attach_card.summoning_sickness = base_card->summoning_sickness;
-        attach_card.turn_played = base_card->turn_played;
-
-        // Move base and its underlying to new card
-        attach_card.underlying_cards.push_back(*base_card); // Push base
-        attach_card.underlying_cards.insert(attach_card.underlying_cards.end(),
-                                            base_card->underlying_cards.begin(),
-                                            base_card->underlying_cards.end());
-        base_card->underlying_cards.clear(); // Clear form base (though base is effectively gone)
-
-        // Replace base in Battle Zone with attach_card
-        // We need to find base_card in its zone (Battle Zone)
-        PlayerID base_owner_id = state.card_owner_map[target_base_card_id];
-        Player& base_owner = state.players[base_owner_id];
-
-        auto base_it = std::find_if(base_owner.battle_zone.begin(), base_owner.battle_zone.end(),
-                                    [&](const CardInstance& c){ return c.instance_id == target_base_card_id; });
-
-        if (base_it != base_owner.battle_zone.end()) {
-             *base_it = attach_card; // Overwrite in place
-             state.card_owner_map[attach_card.instance_id] = base_owner_id; // Update map for new card
-             // Note: base_card's ID is now inside, so map should still point to owner?
-             // Yes, owner logic handles "underlying" by searching parent.
-             // But get_card_instance searches underlying.
+        if (src_vec) {
+            auto it = std::find_if(src_vec->begin(), src_vec->end(),
+                [&](const CardInstance& c){ return c.instance_id == card_to_attach_id; });
+            if (it != src_vec->end()) {
+                original_zone_index = std::distance(src_vec->begin(), it);
+                src_vec->erase(it);
+            }
         }
+
+        CardInstance underlying_part;
+        underlying_part.card_id = base_card->card_id;
+        underlying_part.owner = base_card->owner;
+        underlying_part.is_tapped = false;
+
+        base_card->underlying_cards.insert(base_card->underlying_cards.begin(), underlying_part);
+        base_card->card_id = new_card_id;
+        base_card->summoning_sickness = false;
     }
 
     void AttachCommand::invert(GameState& state) {
-        // TODO
+        CardInstance* base_card = state.get_card_instance(target_base_card_id);
+        if (!base_card || base_card->underlying_cards.empty()) return;
+
+        CardInstance old_top = base_card->underlying_cards[0];
+        CardID current_evo_id = base_card->card_id;
+
+        base_card->card_id = old_top.card_id;
+        base_card->underlying_cards.erase(base_card->underlying_cards.begin());
+
+        base_card->is_tapped = target_was_tapped;
+        base_card->summoning_sickness = target_was_sick;
+
+        CardInstance source_card_instance;
+        source_card_instance.instance_id = card_to_attach_id;
+        source_card_instance.card_id = current_evo_id;
+        source_card_instance.owner = base_card->owner;
+
+        Player& p = state.players[source_card_instance.owner];
+        if (original_zone == Zone::HAND) {
+            if (original_zone_index >= 0 && original_zone_index <= (int)p.hand.size())
+                p.hand.insert(p.hand.begin() + original_zone_index, source_card_instance);
+            else p.hand.push_back(source_card_instance);
+        }
+        else if (original_zone == Zone::MANA) {
+             if (original_zone_index >= 0 && original_zone_index <= (int)p.mana_zone.size())
+                p.mana_zone.insert(p.mana_zone.begin() + original_zone_index, source_card_instance);
+            else p.mana_zone.push_back(source_card_instance);
+        }
+        else if (original_zone == Zone::GRAVEYARD) {
+             if (original_zone_index >= 0 && original_zone_index <= (int)p.graveyard.size())
+                p.graveyard.insert(p.graveyard.begin() + original_zone_index, source_card_instance);
+            else p.graveyard.push_back(source_card_instance);
+        }
     }
 
     // --- FlowCommand ---
-    void FlowCommand::execute(GameState& state) { /*...*/ }
-    void FlowCommand::invert(GameState& state) { /*...*/ }
+    void FlowCommand::execute(GameState& state) {
+    }
+    void FlowCommand::invert(GameState& state) {
+    }
 
-    // --- Query/Decide ---
+    // --- QueryCommand ---
     void QueryCommand::execute(GameState& state) {
         state.waiting_for_user_input = true;
-        state.pending_query = GameState::QueryContext{0, query_type, params, valid_targets, {}};
+        state.pending_query.query_type = query_type;
+        state.pending_query.valid_targets = valid_targets;
+        state.pending_query.params = params;
     }
-    void QueryCommand::invert(GameState& state) { /*...*/ }
+    void QueryCommand::invert(GameState& state) {
+        state.waiting_for_user_input = false;
+        state.pending_query = GameState::QueryContext{};
+    }
 
+    // --- DecideCommand ---
     void DecideCommand::execute(GameState& state) {
         state.waiting_for_user_input = false;
-        state.pending_query.reset();
-        // Logic handled by resume mechanism, this command records the decision
     }
-    void DecideCommand::invert(GameState& state) { /*...*/ }
+    void DecideCommand::invert(GameState& state) {
+        state.waiting_for_user_input = true;
+        if (previous_query.has_value()) state.pending_query = previous_query.value();
+    }
 
-    // --- DeclareReaction ---
+    // --- DeclareReactionCommand ---
     void DeclareReactionCommand::execute(GameState& state) {
-        // Logic usually handled by ReactionSystem resolving this command
-        if (state.status == GameState::Status::WAITING_FOR_REACTION) {
-             state.status = GameState::Status::PLAYING;
-             if (!state.reaction_stack.empty()) {
-                 state.reaction_stack.pop_back(); // Close window
-             }
-        }
     }
-    void DeclareReactionCommand::invert(GameState& state) { /*...*/ }
-
-    // --- Stat/Result ---
-    void StatCommand::execute(GameState& state) { /*...*/ }
-    void StatCommand::invert(GameState& state) { /*...*/ }
-    void GameResultCommand::execute(GameState& state) { state.winner = result; state.game_over = true; }
-    void GameResultCommand::invert(GameState& state) { state.winner = previous_result; state.game_over = false; }
-}
-
-namespace dm::core {
-    void GameState::execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd) {
-        if (!cmd) return;
-        cmd->execute(*this);
-        command_history.push_back(cmd);
+    void DeclareReactionCommand::invert(GameState& state) {
     }
+
+    // --- StatCommand ---
+    void StatCommand::execute(GameState& state) {
+    }
+    void StatCommand::invert(GameState& state) {
+    }
+
+    // --- GameResultCommand ---
+    void GameResultCommand::execute(GameState& state) {
+        state.winner = result;
+        state.game_over = true;
+    }
+    void GameResultCommand::invert(GameState& state) {
+        state.winner = previous_result;
+        state.game_over = false;
+    }
+
 }
