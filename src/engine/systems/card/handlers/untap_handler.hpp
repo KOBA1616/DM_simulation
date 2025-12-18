@@ -4,11 +4,67 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/game_command/commands.hpp"
+#include "engine/systems/pipeline_executor.hpp"
 
 namespace dm::engine {
 
     class UntapHandler : public IActionHandler {
     public:
+        void compile(const ResolutionContext& ctx) override {
+            using namespace dm::core;
+
+            std::vector<int> targets;
+            if (ctx.targets && !ctx.targets->empty()) {
+                targets = *ctx.targets;
+            } else if (ctx.action.target_choice != "SELECT") {
+                // Auto-selection
+                PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+
+                std::vector<std::pair<PlayerID, Zone>> zones_to_check;
+                if (ctx.action.filter.zones.empty()) {
+                    zones_to_check.push_back({0, Zone::BATTLE});
+                    zones_to_check.push_back({1, Zone::BATTLE});
+                } else {
+                     for (const auto& z : ctx.action.filter.zones) {
+                        if (z == "BATTLE_ZONE") {
+                            zones_to_check.push_back({0, Zone::BATTLE});
+                            zones_to_check.push_back({1, Zone::BATTLE});
+                        }
+                        if (z == "MANA_ZONE") {
+                            zones_to_check.push_back({0, Zone::MANA});
+                            zones_to_check.push_back({1, Zone::MANA});
+                        }
+                    }
+                }
+
+                for (const auto& [pid, zone] : zones_to_check) {
+                    Player& p = ctx.game_state.players[pid];
+                    const std::vector<CardInstance>* card_list = nullptr;
+                    if (zone == Zone::BATTLE) card_list = &p.battle_zone;
+                    else if (zone == Zone::MANA) card_list = &p.mana_zone;
+
+                    if (!card_list) continue;
+
+                     for (auto& card : *card_list) {
+                         if (!ctx.card_db.count(card.card_id)) continue;
+                         const auto& def = ctx.card_db.at(card.card_id);
+                         if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
+                              targets.push_back(card.instance_id);
+                         }
+                     }
+                }
+            }
+
+            if (targets.empty()) return;
+
+            for (int t : targets) {
+                 nlohmann::json args_i;
+                 args_i["type"] = "UNTAP";
+                 args_i["target"] = t;
+                 ctx.instruction_buffer->emplace_back(InstructionOp::MODIFY, args_i);
+            }
+        }
+
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
             if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
@@ -20,63 +76,16 @@ namespace dm::engine {
                  return;
             }
 
-            // Legacy Support
-            if (ctx.action.target_choice == "ALL_SELF") {
-                 int controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
-                 for (auto& c : ctx.game_state.players[controller_id].battle_zone) {
-                     game_command::MutateCommand cmd(c.instance_id, game_command::MutateCommand::MutationType::UNTAP);
-                     cmd.execute(ctx.game_state);
-                 }
-                 return;
-            }
+            std::vector<dm::core::Instruction> instructions;
+            ResolutionContext compile_ctx = ctx;
+            compile_ctx.instruction_buffer = &instructions;
 
-            // Auto-Untap Logic
-            PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            compile(compile_ctx);
 
-            // Determine zones (Default Battle Zone)
-            std::vector<std::pair<PlayerID, Zone>> zones_to_check;
-            if (ctx.action.filter.zones.empty()) {
-                zones_to_check.push_back({0, Zone::BATTLE});
-                zones_to_check.push_back({1, Zone::BATTLE});
-            } else {
-                 for (const auto& z : ctx.action.filter.zones) {
-                    if (z == "BATTLE_ZONE") {
-                        zones_to_check.push_back({0, Zone::BATTLE});
-                        zones_to_check.push_back({1, Zone::BATTLE});
-                    }
-                    if (z == "MANA_ZONE") {
-                        zones_to_check.push_back({0, Zone::MANA});
-                        zones_to_check.push_back({1, Zone::MANA});
-                    }
-                }
-            }
+            if (instructions.empty()) return;
 
-            for (const auto& [pid, zone] : zones_to_check) {
-                Player& p = ctx.game_state.players[pid];
-                const std::vector<CardInstance>* card_list = nullptr;
-                if (zone == Zone::BATTLE) card_list = &p.battle_zone;
-                else if (zone == Zone::MANA) card_list = &p.mana_zone;
-
-                if (!card_list) continue;
-
-                 for (auto& card : *card_list) {
-                     if (!ctx.card_db.count(card.card_id)) continue;
-                     const auto& def = ctx.card_db.at(card.card_id);
-                     if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
-                          game_command::MutateCommand cmd(card.instance_id, game_command::MutateCommand::MutationType::UNTAP);
-                          cmd.execute(ctx.game_state);
-                     }
-                 }
-            }
-        }
-
-        void resolve_with_targets(const ResolutionContext& ctx) override {
-             if (!ctx.targets) return;
-
-            for (int tid : *ctx.targets) {
-                 game_command::MutateCommand cmd(tid, game_command::MutateCommand::MutationType::UNTAP);
-                 cmd.execute(ctx.game_state);
-            }
+            dm::engine::systems::PipelineExecutor pipeline;
+            pipeline.execute(instructions, ctx.game_state, ctx.card_db);
         }
     };
 }
