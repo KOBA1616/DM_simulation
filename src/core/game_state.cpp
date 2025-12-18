@@ -10,7 +10,7 @@ namespace dm::core {
 
     GameState::~GameState() = default;
     GameState::GameState(GameState&&) noexcept = default;
-    GameState& operator=(GameState&&) noexcept = default;
+    GameState& GameState::operator=(GameState&&) noexcept = default;
 
     GameState GameState::clone() const {
         GameState new_state;
@@ -21,8 +21,10 @@ namespace dm::core {
         new_state.game_over = game_over;
         new_state.winner = winner;
         new_state.pending_effects = pending_effects;
+        new_state.reaction_stack = reaction_stack;
         new_state.active_modifiers = active_modifiers;
         new_state.passive_effects = passive_effects;
+        new_state.current_attack = current_attack;
         new_state.rng = rng;
         new_state.card_owner_map = card_owner_map;
         new_state.turn_stats = turn_stats;
@@ -30,12 +32,23 @@ namespace dm::core {
         new_state.played_cards_history_this_game = played_cards_history_this_game;
         new_state.waiting_for_user_input = waiting_for_user_input;
         new_state.pending_query = pending_query;
+        new_state.status = status;
+        new_state.event_dispatcher = event_dispatcher; // Can we copy std::function? Yes.
 
         // Deep copy pipeline if active
         if (active_pipeline) {
             auto ptr = std::static_pointer_cast<dm::engine::systems::PipelineExecutor>(active_pipeline);
             new_state.active_pipeline = ptr->clone();
         }
+
+        // Stats
+        new_state.global_card_stats = global_card_stats;
+        new_state.initial_deck_stats_sum = initial_deck_stats_sum;
+        new_state.visible_stats_sum = visible_stats_sum;
+        new_state.initial_deck_count = initial_deck_count;
+        new_state.visible_card_count = visible_card_count;
+        new_state.hash_history = hash_history;
+        new_state.loop_proven = loop_proven;
 
         return new_state;
     }

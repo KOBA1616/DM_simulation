@@ -50,7 +50,7 @@ namespace dm::engine {
     }
 
     void PhaseManager::start_turn(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
-        Player& active_player = game_state.get_active_player();
+        Player& active_player = game_state.players[game_state.active_player_id];
         
         // Reset Turn Stats
         game_state.turn_stats = TurnStats{};
@@ -221,7 +221,7 @@ namespace dm::engine {
         if (game_state.current_phase == Phase::END_OF_TURN) {
              // 1. Generic Hand Trigger Check
              {
-                Player& opponent = game_state.get_non_active_player();
+                Player& opponent = game_state.players[1 - game_state.active_player_id];
                 for (const auto& card : opponent.hand) {
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
@@ -248,7 +248,7 @@ namespace dm::engine {
 
              // 2. Trigger Reservation: AT_END_OF_TURN
              {
-                Player& active_player = game_state.get_active_player();
+                Player& active_player = game_state.players[game_state.active_player_id];
                 for (const auto& card : active_player.battle_zone) {
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);

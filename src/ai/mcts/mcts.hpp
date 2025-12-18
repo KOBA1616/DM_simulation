@@ -2,7 +2,6 @@
 
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
-// #include "ai/evaluator/batch_evaluator.hpp" // Removed broken include
 #include <vector>
 #include <memory>
 #include <map>
@@ -28,7 +27,7 @@ namespace dm::ai {
         float prior = 0.0f;
         int virtual_loss = 0;
 
-        MCTSNode(const dm::core::GameState& s) : state(s) {}
+        MCTSNode(dm::core::GameState&& s) : state(std::move(s)) {}
 
         bool is_expanded() const { return !children.empty(); }
         

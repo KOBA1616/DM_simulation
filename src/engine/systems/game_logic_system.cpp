@@ -14,6 +14,63 @@ namespace dm::engine::systems {
     using namespace core;
     using namespace game_command;
 
+    void GameLogicSystem::dispatch_action(PipelineExecutor& pipeline, core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        // Map ActionType to handler
+        // Simplified mapping for now
+
+        switch (action.type) {
+            case ActionType::PLAY_CARD:
+            {
+                // Convert Action to Instruction
+                nlohmann::json args;
+                args["card"] = action.source_instance_id;
+                Instruction inst(InstructionOp::PLAY, args);
+                handle_play_card(pipeline, state, inst, card_db);
+                break;
+            }
+            case ActionType::ATTACK_CREATURE:
+            case ActionType::ATTACK_PLAYER:
+            {
+                nlohmann::json args;
+                args["source"] = action.source_instance_id;
+                args["target"] = action.target_instance_id;
+                Instruction inst(InstructionOp::ATTACK, args);
+                handle_attack(pipeline, state, inst, card_db);
+                break;
+            }
+            case ActionType::BLOCK:
+            {
+                nlohmann::json args;
+                args["blocker"] = action.source_instance_id;
+                Instruction inst(InstructionOp::BLOCK, args);
+                handle_block(pipeline, state, inst, card_db);
+                break;
+            }
+            case ActionType::MANA_CHARGE:
+            {
+                nlohmann::json args;
+                args["card"] = action.source_instance_id;
+                Instruction inst(InstructionOp::MOVE, args); // Or specialized
+                handle_mana_charge(pipeline, state, inst);
+                break;
+            }
+            // ...
+            default: break;
+        }
+    }
+
+    void GameLogicSystem::resolve_action_oneshot(core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        PipelineExecutor pipeline;
+        dispatch_action(pipeline, state, action, card_db);
+        // Execute remaining?
+        // If execution paused, it handles it via state.active_pipeline
+    }
+
+    void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, int dest_override) {
+        // Implementation stub for linker
+        (void)game_state; (void)stack_instance_id; (void)cost_reduction; (void)spawn_source; (void)controller; (void)card_db; (void)evo_source_id; (void)dest_override;
+    }
+
     void GameLogicSystem::handle_play_card(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                            const std::map<core::CardID, core::CardDefinition>& card_db) {
         int card_id = exec.resolve_int(inst.args.value("card", 0));
@@ -97,6 +154,7 @@ namespace dm::engine::systems {
     void GameLogicSystem::handle_resolve_play(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                               const std::map<core::CardID, core::CardDefinition>& card_db) {
          // Process On-Play effects
+         (void)exec; (void)state; (void)inst; (void)card_db;
     }
 
     void GameLogicSystem::handle_attack(PipelineExecutor& exec, GameState& state, const Instruction& inst,
@@ -104,16 +162,19 @@ namespace dm::engine::systems {
          int instance_id = exec.resolve_int(inst.args.value("source", 0));
          auto cmd = std::make_unique<MutateCommand>(instance_id, MutateCommand::MutationType::TAP);
          state.execute_command(std::move(cmd));
+         (void)card_db;
     }
 
     void GameLogicSystem::handle_block(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                        const std::map<core::CardID, core::CardDefinition>& card_db) {
         // ...
+        (void)exec; (void)state; (void)inst; (void)card_db;
     }
 
     void GameLogicSystem::handle_resolve_battle(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                                 const std::map<core::CardID, core::CardDefinition>& card_db) {
         // Compare powers, destroy loser
+        (void)exec; (void)state; (void)inst; (void)card_db;
     }
 
     void GameLogicSystem::handle_break_shield(PipelineExecutor& exec, GameState& state, const Instruction& inst,
@@ -198,21 +259,25 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_mana_charge(PipelineExecutor& exec, GameState& state, const Instruction& inst) {
          // ...
+         (void)exec; (void)state; (void)inst;
     }
 
     void GameLogicSystem::handle_resolve_reaction(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                                   const std::map<core::CardID, core::CardDefinition>& card_db) {
          // ...
+         (void)exec; (void)state; (void)inst; (void)card_db;
     }
 
     void GameLogicSystem::handle_use_ability(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                              const std::map<core::CardID, core::CardDefinition>& card_db) {
          // ...
+         (void)exec; (void)state; (void)inst; (void)card_db;
     }
 
     void GameLogicSystem::handle_select_target(PipelineExecutor& exec, GameState& state, const Instruction& inst) {
         exec.execution_paused = true;
         // ... set query ...
+        (void)state; (void)inst;
     }
 
 }
