@@ -23,6 +23,7 @@ namespace dm::core {
         // Flow
         CALL,
         RETURN,
+        WAIT_INPUT, // Added for interactive pipeline
         // Debug
         PRINT
     };
@@ -40,6 +41,7 @@ namespace dm::core {
         {InstructionOp::MATH, "MATH"},
         {InstructionOp::CALL, "CALL"},
         {InstructionOp::RETURN, "RETURN"},
+        {InstructionOp::WAIT_INPUT, "WAIT_INPUT"},
         {InstructionOp::PRINT, "PRINT"}
     })
 
