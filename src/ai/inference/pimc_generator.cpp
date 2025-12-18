@@ -11,7 +11,7 @@ namespace dm::ai::inference {
         const std::vector<dm::core::CardID>& opponent_deck_candidates,
         uint32_t seed
     ) {
-        dm::core::GameState state = observation;
+        dm::core::GameState state = observation.clone();
 
         // We need to randomize the hidden information for the OTHER player.
         dm::core::PlayerID opponent_id = 1 - observer_id;

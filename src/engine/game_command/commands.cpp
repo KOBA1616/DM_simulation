@@ -30,19 +30,26 @@ namespace dm::engine::game_command {
                 // Stack is global in current GameState, not per player.
                 // However, TransitionCommand expects owner_id.
                 // If Stack is global, we need to handle it separately or assume owner_id logic applies to stack items?
-                // Currently stack_zone is std::vector<CardInstance> in GameState.
+                // Currently pending_effects is std::vector<PendingEffect> in GameState.
+                // But this handles CardInstance. Stack cards are PendingEffects, not CardInstances.
+                // So Zone::STACK usage here is problematic if it refers to pending_effects.
+                // Assuming STACK here refers to a zone of CardInstances which might be legacy or implicit.
+                // If it's legacy, I'll ignore or check if pending_effects is what we want.
+                // But pending_effects stores PendingEffect structs, not CardInstances.
+                // So move to stack isn't a simple vector move.
                 default: return nullptr;
             }
         };
 
         if (from_zone == core::Zone::STACK) {
-             source_vec = &state.stack_zone;
+             // Not supported for PendingEffects vector
+             source_vec = nullptr;
         } else {
              source_vec = get_vec(from_zone);
         }
 
         if (to_zone == core::Zone::STACK) {
-             dest_vec = &state.stack_zone;
+             dest_vec = nullptr;
         } else {
              dest_vec = get_vec(to_zone);
         }
@@ -73,7 +80,12 @@ namespace dm::engine::game_command {
         // Phase 6: Event Dispatch
         // We need to dispatch ZONE_ENTER or similar.
         if (state.event_dispatcher) {
-            core::GameEvent evt(core::EventType::ZONE_ENTER, card_instance_id, -1, owner_id);
+            core::GameEvent evt;
+            evt.type = core::EventType::ZONE_ENTER;
+            evt.card_id = card.card_id;
+            evt.instance_id = card_instance_id;
+            evt.player_id = owner_id;
+
             // Context
             evt.context["instance_id"] = card_instance_id;
             evt.context["from_zone"] = static_cast<int>(from_zone);
@@ -106,14 +118,14 @@ namespace dm::engine::game_command {
 
         // Current location (where it was moved TO) is now the source
         if (to_zone == core::Zone::STACK) {
-             source_vec = &state.stack_zone;
+             source_vec = nullptr;
         } else {
              source_vec = get_vec(to_zone);
         }
 
         // Original location (where it came FROM) is now the dest
         if (from_zone == core::Zone::STACK) {
-             dest_vec = &state.stack_zone;
+             dest_vec = nullptr;
         } else {
              dest_vec = get_vec(from_zone);
         }
@@ -171,8 +183,8 @@ namespace dm::engine::game_command {
                 card->is_tapped = false;
                 break;
             case MutationType::POWER_MOD:
-                previous_int_value = card->power_mod;
-                card->power_mod += int_value;
+                previous_int_value = card->power_modifier;
+                card->power_modifier += int_value;
                 break;
             // TODO: Keywords
             default: break;
@@ -207,10 +219,21 @@ namespace dm::engine::game_command {
                 card->is_tapped = previous_bool_value;
                 break;
             case MutationType::POWER_MOD:
-                card->power_mod = previous_int_value;
+                card->power_modifier = previous_int_value;
                 break;
             default: break;
         }
+    }
+
+    // --- AttachCommand ---
+
+    void AttachCommand::execute(core::GameState& state) {
+        // Stub implementation for compilation
+        (void)state;
+    }
+
+    void AttachCommand::invert(core::GameState& state) {
+        (void)state;
     }
 
     // --- FlowCommand ---
@@ -233,7 +256,12 @@ namespace dm::engine::game_command {
                 // Dispatch ATTACK_INITIATE event
                 // Only if setting a valid source (initiating attack)
                 if (new_value != -1 && state.event_dispatcher) {
-                    core::GameEvent evt(core::EventType::ATTACK_INITIATE, new_value, -1, state.active_player_id);
+                    core::GameEvent evt;
+                    evt.type = core::EventType::ATTACK_INITIATE;
+                    evt.instance_id = new_value;
+                    evt.card_id = 0; // Unknown without lookup
+                    evt.player_id = state.active_player_id;
+
                     evt.context["instance_id"] = new_value;
                     state.event_dispatcher(evt);
                 }
@@ -243,8 +271,8 @@ namespace dm::engine::game_command {
                 state.current_attack.target_instance_id = new_value;
                 break;
             case FlowType::SET_ATTACK_PLAYER:
-                previous_value = state.current_attack.target_player;
-                state.current_attack.target_player = new_value;
+                previous_value = state.current_attack.target_player_id;
+                state.current_attack.target_player_id = new_value;
                 break;
             case FlowType::SET_ACTIVE_PLAYER:
                 previous_value = state.active_player_id;
@@ -269,7 +297,7 @@ namespace dm::engine::game_command {
                 state.current_attack.target_instance_id = previous_value;
                 break;
             case FlowType::SET_ATTACK_PLAYER:
-                state.current_attack.target_player = previous_value;
+                state.current_attack.target_player_id = previous_value;
                 break;
             case FlowType::SET_ACTIVE_PLAYER:
                 state.active_player_id = previous_value;
@@ -284,9 +312,12 @@ namespace dm::engine::game_command {
         state.waiting_for_user_input = true;
 
         core::GameState::QueryContext ctx;
-        ctx.query_id = state.pending_query ? state.pending_query->query_id + 1 : 1;
+        // Check if there was a previous query? No, just increment ID.
+        // Assuming single query at a time for now.
+        int current_id = state.pending_query.query_id;
+        ctx.query_id = current_id + 1;
         ctx.query_type = query_type;
-        ctx.valid_target_ids = valid_targets;
+        ctx.valid_targets = valid_targets;
         ctx.params = params;
 
         state.pending_query = ctx;
@@ -294,24 +325,27 @@ namespace dm::engine::game_command {
 
     void QueryCommand::invert(core::GameState& state) {
         state.waiting_for_user_input = false;
-        state.pending_query = std::nullopt;
+        // No need to clear pending_query struct, just flag false.
     }
 
     // --- DecideCommand ---
 
     void DecideCommand::execute(core::GameState& state) {
         was_waiting = state.waiting_for_user_input;
-        previous_query = state.pending_query;
+        if (was_waiting) {
+            previous_query = state.pending_query;
+        }
 
-        if (state.pending_query && state.pending_query->query_id == query_id) {
+        if (state.waiting_for_user_input && state.pending_query.query_id == query_id) {
             state.waiting_for_user_input = false;
-            state.pending_query = std::nullopt;
         }
     }
 
     void DecideCommand::invert(core::GameState& state) {
         state.waiting_for_user_input = was_waiting;
-        state.pending_query = previous_query;
+        if (previous_query) {
+             state.pending_query = *previous_query;
+        }
     }
 
     // --- DeclareReactionCommand ---

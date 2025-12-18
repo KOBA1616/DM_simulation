@@ -7,12 +7,12 @@ namespace dm::engine {
 
     std::vector<Action> ActionGenerator::generate_legal_actions(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         // Phase 6: Handle Waiting for User Input (Query Response)
-        if (game_state.waiting_for_user_input && game_state.pending_query) {
+        if (game_state.waiting_for_user_input && game_state.waiting_for_user_input) {
             std::vector<Action> actions;
-            const auto& query = *game_state.pending_query;
+            const auto& query = game_state.pending_query;
 
             if (query.query_type == "SELECT_TARGET") {
-                for (int target_id : query.valid_target_ids) {
+                for (int target_id : query.valid_targets) {
                     Action act;
                     act.type = ActionType::SELECT_TARGET;
                     act.target_instance_id = target_id;
@@ -46,7 +46,7 @@ namespace dm::engine {
         }
 
         // 2. Stack (Atomic Action Flow)
-        if (!game_state.stack_zone.empty()) {
+        if (!game_state.pending_effects.empty()) {
             StackStrategy stack_strategy;
             return stack_strategy.generate(ctx);
         }

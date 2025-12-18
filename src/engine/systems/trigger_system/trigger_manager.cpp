@@ -117,7 +117,7 @@ namespace dm::engine::systems {
                     if (effect.trigger == trigger_type) {
                         // Condition: Is this card the source of the event?
                         // "Self" triggers
-                        if (event.source_id == instance_id) {
+                        if (event.instance_id == instance_id) {
                             // Match!
                             // Add to Pending Effects
                             PlayerID controller = state.card_owner_map[instance_id];
@@ -129,7 +129,7 @@ namespace dm::engine::systems {
 
                             state.pending_effects.push_back(pending);
                         }
-                        // "Another" triggers logic would go here (check filter vs event.source_id)
+                        // "Another" triggers logic would go here (check filter vs event.instance_id)
                     }
                 }
             }
@@ -165,7 +165,7 @@ namespace dm::engine::systems {
         if (event.type == EventType::ATTACK_INITIATE) {
             PlayerID att_pid = event.player_id;
             const Player& player = state.players[att_pid];
-            int attacker_id = event.source_id;
+            int attacker_id = event.instance_id;
             const CardInstance* attacker = state.get_card_instance(attacker_id);
 
             if (attacker) {

@@ -28,8 +28,8 @@ namespace dm::ai {
     bool LethalSolver::is_lethal(const GameState& game_state,
                                  const std::map<CardID, CardDefinition>& card_db) {
 
-        const Player& active_player = game_state.get_active_player();
-        const Player& opponent = game_state.get_non_active_player();
+        const Player& active_player = game_state.players[game_state.active_player_id];
+        const Player& opponent = game_state.players[1 - game_state.active_player_id];
 
         // 1. Gather Attackers
         std::vector<AttackerDetail> attackers;

@@ -23,8 +23,9 @@ namespace dm::ai {
                  int batch_size = 1);
 
         // Play a single game from start to finish
+        // Changed to pass by reference to avoid copy constructor issue
         GameResultInfo play_game(
-            dm::core::GameState initial_state,
+            const dm::core::GameState& initial_state,
             BatchEvaluatorCallback evaluator,
             float temperature = 1.0f,
             bool add_noise = true,

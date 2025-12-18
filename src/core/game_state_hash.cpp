@@ -31,8 +31,8 @@ namespace dm::core {
                     hash_combine(seed, card.is_tapped);
                     hash_combine(seed, card.summoning_sickness);
                     hash_combine(seed, card.is_face_down);
-                    hash_combine(seed, card.power_mod);
-                    hash_combine(seed, card.cost_payment_meta);
+                    hash_combine(seed, card.power_modifier);
+                    // hash_combine(seed, card.cost_payment_meta); // Not in CardInstance
                 }
             };
 
@@ -61,9 +61,9 @@ namespace dm::core {
         // Hash current attack
         hash_combine(seed, current_attack.source_instance_id);
         hash_combine(seed, current_attack.target_instance_id);
-        hash_combine(seed, current_attack.target_player);
-        hash_combine(seed, current_attack.is_blocked);
-        hash_combine(seed, current_attack.blocker_instance_id);
+        hash_combine(seed, current_attack.target_player_id);
+        hash_combine(seed, current_attack.blocked);
+        hash_combine(seed, current_attack.blocking_creature_id);
 
         return static_cast<uint64_t>(seed);
     }

@@ -25,7 +25,7 @@ namespace dm::engine::systems {
     };
 
     struct ExecutionFrame {
-        std::shared_ptr<const std::vector<Instruction>> instructions;
+        std::shared_ptr<const std::vector<dm::core::Instruction>> instructions;
         int pc = 0;
         LoopContext loop_ctx;
     };
@@ -43,11 +43,11 @@ namespace dm::engine::systems {
         PipelineExecutor() = default;
 
         // Entry point
-        void execute(const std::vector<Instruction>& instructions, core::GameState& state,
+        void execute(const std::vector<dm::core::Instruction>& instructions, core::GameState& state,
                      const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Overload for shared_ptr
-        void execute(std::shared_ptr<const std::vector<Instruction>> instructions, core::GameState& state,
+        void execute(std::shared_ptr<const std::vector<dm::core::Instruction>> instructions, core::GameState& state,
                      const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Resume execution after input
@@ -64,15 +64,15 @@ namespace dm::engine::systems {
         std::string resolve_string(const nlohmann::json& val) const;
         bool check_condition(const nlohmann::json& cond, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
 
-        // Instruction Handlers
-        void execute_instruction(const Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
-        void handle_select(const Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
-        void handle_move(const Instruction& inst, core::GameState& state);
-        void handle_modify(const Instruction& inst, core::GameState& state);
-        void handle_if(const Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
-        void handle_loop(const Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
-        void handle_calc(const Instruction& inst, core::GameState& state);
-        void handle_print(const Instruction& inst, core::GameState& state);
+        // dm::core::Instruction Handlers
+        void execute_instruction(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_select(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_move(const dm::core::Instruction& inst, core::GameState& state);
+        void handle_modify(const dm::core::Instruction& inst, core::GameState& state);
+        void handle_if(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_loop(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_calc(const dm::core::Instruction& inst, core::GameState& state);
+        void handle_print(const dm::core::Instruction& inst, core::GameState& state);
 
         void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd, core::GameState& state);
 
