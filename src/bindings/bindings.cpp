@@ -166,6 +166,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("MATH", InstructionOp::MATH)
         .value("CALL", InstructionOp::CALL)
         .value("RETURN", InstructionOp::RETURN)
+        .value("WAIT_INPUT", InstructionOp::WAIT_INPUT) // Added
         .value("PRINT", InstructionOp::PRINT)
         .export_values();
 
