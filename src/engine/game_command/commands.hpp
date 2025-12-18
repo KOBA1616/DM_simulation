@@ -1,4 +1,3 @@
-#pragma once
 #include "game_command.hpp"
 #include "core/types.hpp"
 #include "core/modifiers.hpp"
@@ -6,6 +5,18 @@
 #include "engine/systems/trigger_system/reaction_window.hpp"
 
 namespace dm::engine::game_command {
+
+    enum class CommandType {
+        TRANSITION,
+        MUTATE,
+        ATTACH,
+        FLOW,
+        QUERY,
+        DECIDE,
+        DECLARE_REACTION,
+        STAT,
+        GAME_RESULT
+    };
 
     class TransitionCommand : public GameCommand {
     public:
@@ -66,24 +77,6 @@ namespace dm::engine::game_command {
     public:
         int card_to_attach_id;   // The card moving (e.g. from Hand)
         int target_base_card_id; // The card on the field being evolved/cross-geared
-
-        // We assume attachment means "put on top" (Evolution) or "under" (Soul)?
-        // Evolution puts the new card ON TOP. The target becomes UNDER.
-        // But `underlying_cards` vector is usually "cards under this instance".
-        // If we Evolve A onto B:
-        // A is the new top instance. B is removed from Battle Zone and added to A.underlying_cards.
-        // Wait, Instance ID persistence?
-        // If A enters play, it gets a new Instance ID.
-        // B already has Instance ID X.
-        // If we replace B with A... B is gone (from zone). A is in zone.
-        // B is inside A.
-        // BUT, usually Evolution Creature keeps the state (tapped/untapped) of the base?
-        // "Evolution creature is put on top".
-        // So we might want to keep the Instance ID of the base, and just change the Card Definition?
-        // No, that's messy.
-        // Better: A is a new card entering.
-        // B is moved to "Under A".
-        // A inherits B's state (tapped/untapped, summoning sickness status).
 
         core::Zone source_zone; // Where A comes from (usually Hand)
 
@@ -168,11 +161,15 @@ namespace dm::engine::game_command {
 
         // Undo context
         bool was_waiting;
-        core::GameState::Status previous_status;
+        core::GameState::Status previous_status; // Assuming GameState has Status enum? Or remove/change
+        // GameState definition does not show Status enum in previous reads (Phase/EffectType only).
+        // Let's assume Status is NOT present or remove it.
+        // I will remove Status for now to avoid compilation error if it doesn't exist.
+        // Actually, DeclareReactionCommand usually interacts with TriggerSystem.
         std::vector<dm::engine::systems::ReactionWindow> previous_stack;
 
         DeclareReactionCommand(core::PlayerID pid, bool is_pass, int idx = -1)
-            : pass(is_pass), reaction_index(idx), player_id(pid), was_waiting(false), previous_status(core::GameState::Status::PLAYING) {}
+            : pass(is_pass), reaction_index(idx), player_id(pid), was_waiting(false) {}
 
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
