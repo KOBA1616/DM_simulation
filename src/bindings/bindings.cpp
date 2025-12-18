@@ -4,25 +4,26 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "engine/game_instance.hpp"
-#include "engine/action_gen/action_generator.hpp"
-#include "engine/game/effect_resolver.hpp"
+#include "engine/actions/action_generator.hpp"
+// #include "engine/game/effect_resolver.hpp" // Removed
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "ai/mcts/mcts.hpp"
-#include "ai/evaluators/heuristic_evaluator.hpp"
-#include "ai/utils/determinizer.hpp"
+#include "ai/evaluator/heuristic_evaluator.hpp" // Typo fix evaluator/evaluators
+#include "engine/utils/determinizer.hpp" // Typo fix ai/utils -> engine/utils
 #include "core/card_json_types.hpp"
 #include "engine/systems/card/json_loader.hpp"
-#include "ai/mcts/parallel_runner.hpp"
-#include "engine/game/phase_manager.hpp"
+#include "ai/self_play/parallel_runner.hpp" // Typo fix mcts/parallel_runner
+#include "engine/systems/flow/phase_manager.hpp" // Typo fix game/phase_manager
 #include "core/card_stats.hpp"
 #include "ai/solver/lethal_solver.hpp"
 #include "engine/systems/card/condition_system.hpp"
-#include "engine/systems/trigger_system/trigger_manager.hpp" // Added to restore missing bindings
-#include "engine/systems/mana/mana_system.hpp" // Added to restore missing bindings
-#include "engine/systems/cost_payment_system.hpp" // Added to restore missing bindings
+#include "engine/systems/trigger_system/trigger_manager.hpp"
+#include "engine/systems/mana/mana_system.hpp"
+#include "engine/cost_payment_system.hpp" // Typo fix systems/cost... -> engine/cost...
+#include "ai/self_play/self_play.hpp" // Added to include GameResultInfo definition
 
 namespace py = pybind11;
 using namespace dm;
@@ -267,9 +268,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<dm::engine::systems::EffectSystem>(m, "EffectSystem")
         .def_static("instance", &dm::engine::systems::EffectSystem::instance, py::return_value_policy::reference);
 
-    py::class_<EffectResolver>(m, "EffectResolver")
+    // Bind GameLogicSystem instead of EffectResolver
+    py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver") // Keep name for compatibility
         .def_static("resolve_action", [](GameState& state, const Action& action, const std::map<CardID, CardDefinition>& db){
-            EffectResolver::resolve_action(state, action, db);
+            dm::engine::systems::GameLogicSystem::resolve_action(state, action, db);
         })
         .def_static("resume", [](GameState& state, const std::map<CardID, CardDefinition>& db, py::object input_val) {
              if (!state.active_pipeline) return;
@@ -308,16 +310,16 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<MCTSNode, std::shared_ptr<MCTSNode>>(m, "MCTSNode")
         .def_readonly("visit_count", &MCTSNode::visit_count)
         .def_readonly("value", &MCTSNode::value_sum)
-        .def_readonly("action", &MCTSNode::action)
+        .def_readonly("action", &MCTSNode::action_from_parent)
         .def_readonly("children", &MCTSNode::children);
 
     py::class_<MCTS>(m, "MCTS")
-        .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int>())
+        .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int, float>())
         .def("search", &MCTS::search)
         .def("get_last_root", &MCTS::get_last_root);
 
     py::class_<HeuristicEvaluator>(m, "HeuristicEvaluator")
-        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
         .def("evaluate", &HeuristicEvaluator::evaluate);
 
     py::class_<Determinizer>(m, "Determinizer")
@@ -326,9 +328,16 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
 
+    py::class_<GameResultInfo>(m, "GameResultInfo")
+        .def_readwrite("result", &GameResultInfo::result)
+        .def_readwrite("turn_count", &GameResultInfo::turn_count)
+        .def_readwrite("states", &GameResultInfo::states)
+        .def_readwrite("policies", &GameResultInfo::policies)
+        .def_readwrite("active_players", &GameResultInfo::active_players);
+
     py::class_<ParallelRunner>(m, "ParallelRunner")
-        .def(py::init<const std::map<CardID, CardDefinition>&>())
-        .def("play_games", &ParallelRunner::play_games)
+        .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
+        .def("play_games", &ParallelRunner::play_games, py::return_value_policy::move) // Use move policy
         .def("play_scenario_match", &ParallelRunner::play_scenario_match)
         .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
 

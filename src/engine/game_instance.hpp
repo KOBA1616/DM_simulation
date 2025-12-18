@@ -4,6 +4,9 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/pipeline_executor.hpp"
+#include "engine/systems/trigger_system/trigger_manager.hpp" // Added
+#include "core/action.hpp" // Ensure Action is defined
+#include "core/scenario_config.hpp" // Ensure ScenarioConfig is defined
 #include <map>
 #include <vector>
 #include <memory>
@@ -19,29 +22,37 @@ namespace dm::engine {
     public:
         // Core Components
         core::GameState state;
+        // Should store shared_ptr or value to match cpp implementation usage?
+        std::map<core::CardID, core::CardDefinition> card_db_copy;
         const std::map<core::CardID, core::CardDefinition>& card_db;
 
-        // Pipeline Executor
-        systems::PipelineExecutor pipeline;
+        // Pipeline Executor (Pointer)
+        std::shared_ptr<systems::PipelineExecutor> pipeline;
+
+        // Trigger Manager
+        std::shared_ptr<systems::TriggerManager> trigger_manager;
 
         // Constructor
-        GameInstance(const std::map<core::CardID, core::CardDefinition>& db, int initial_seed = 42);
+        GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db);
+        GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db);
 
         // Core API
         void start_game();
-        void process_action(const core::Action& action);
+        void resolve_action(const core::Action& action);
+
+        void undo();
+        void initialize_card_stats(int deck_size);
+        void reset_with_scenario(const core::ScenarioConfig& config);
 
         // A. Interactive Processing (Resume Mechanism)
-        // Accepts user input (selection of targets or option) to resume a paused pipeline
         void resume_processing(const std::vector<int>& inputs);
 
         // Accessors
         bool is_game_over() const { return state.game_over; }
-        int get_winner() const { return state.winner; }
-        bool is_waiting_for_input() const { return pipeline.execution_paused; }
+        int get_winner() const { return static_cast<int>(state.winner); }
+        bool is_waiting_for_input() const { return pipeline && pipeline->execution_paused; }
 
     private:
-        // Phase Handling
         void advance_phase();
     };
 

@@ -282,7 +282,7 @@ namespace dm::engine {
 
         if (IActionHandler* handler = get_handler(action.type)) {
             ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, nullptr, nullptr, &out_instructions);
-            handler->compile(ctx);
+            handler->compile_action(ctx);
         }
     }
 

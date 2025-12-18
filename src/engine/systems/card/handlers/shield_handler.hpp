@@ -11,7 +11,7 @@ namespace dm::engine {
 
     class ShieldHandler : public IActionHandler {
     public:
-        void compile(const ResolutionContext& ctx) override {
+        void compile_action(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
             PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
@@ -142,7 +142,7 @@ namespace dm::engine {
             ResolutionContext compile_ctx = ctx;
             compile_ctx.instruction_buffer = &instructions;
 
-            compile(compile_ctx);
+            compile_action(compile_ctx);
 
             if (instructions.empty()) return;
 

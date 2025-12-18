@@ -26,9 +26,21 @@ namespace dm::ai {
         struct BeamNode {
             dm::core::GameState state;
             float score;
-            std::vector<dm::core::Action> path; // Path taken to reach this node (not strictly needed for eval but useful for debug)
-            dm::core::Action first_action; // The action taken from the root to start this path
+            std::vector<dm::core::Action> path;
+            dm::core::Action first_action;
             bool is_root = false;
+
+            // Explicit Move Constructor
+            BeamNode(BeamNode&& other) noexcept = default;
+            // Explicit Move Assignment
+            BeamNode& operator=(BeamNode&& other) noexcept = default;
+
+            // Helper constructor from GameState
+            BeamNode(dm::core::GameState&& s, float sc) : state(std::move(s)), score(sc) {}
+
+            // Deleted Copy to prevent accidental copying of GameState
+            BeamNode(const BeamNode&) = delete;
+            BeamNode& operator=(const BeamNode&) = delete;
         };
 
         // Core search logic
