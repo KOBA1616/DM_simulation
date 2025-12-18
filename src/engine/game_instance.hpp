@@ -1,46 +1,50 @@
-#pragma once
+#ifndef DM_ENGINE_GAME_INSTANCE_HPP
+#define DM_ENGINE_GAME_INSTANCE_HPP
+
 #include "core/game_state.hpp"
-#include "core/scenario_config.hpp"
 #include "core/card_def.hpp"
-#include "core/action.hpp"
-#include "systems/trigger_system/trigger_manager.hpp"
-#include "systems/pipeline_executor.hpp"
+#include "engine/systems/pipeline_executor.hpp"
 #include <map>
+#include <vector>
 #include <memory>
-#include <optional>
+#include <string>
 
 namespace dm::engine {
+
+    /**
+     * @brief Manages the high-level game loop, state, and pipeline execution.
+     *        It owns the GameState and the ActionGenerator (implied or separate).
+     */
     class GameInstance {
     public:
+        // Core Components
         core::GameState state;
-
-        // Storage for Python interop or ownership
-        std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> card_db_ptr;
-
-        // Reference accessor (backward compatibility and convenience)
         const std::map<core::CardID, core::CardDefinition>& card_db;
 
-        std::shared_ptr<systems::TriggerManager> trigger_manager;
-        std::shared_ptr<systems::PipelineExecutor> pipeline;
+        // Pipeline Executor
+        systems::PipelineExecutor pipeline;
 
-        // Constructor 1: Reference (Caller owns map)
-        GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db);
+        // Constructor
+        GameInstance(const std::map<core::CardID, core::CardDefinition>& db, int initial_seed = 42);
 
-        // Constructor 2: Shared Ptr (Shared ownership)
-        GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db);
+        // Core API
+        void start_game();
+        void process_action(const core::Action& action);
 
-        void reset_with_scenario(const core::ScenarioConfig& config);
+        // A. Interactive Processing (Resume Mechanism)
+        // Accepts user input (selection of targets or option) to resume a paused pipeline
+        void resume_processing(const std::vector<int>& inputs);
 
-        // Phase 7: Direct Action Resolution
-        void resolve_action(const core::Action& action);
+        // Accessors
+        bool is_game_over() const { return state.game_over; }
+        int get_winner() const { return state.winner; }
+        bool is_waiting_for_input() const { return pipeline.execution_paused; }
 
-        // Phase 6 Step 3: GameCommand Integration
-        void undo();
-
-        // Phase 7: Stats Init
-        void initialize_card_stats(int deck_size = 40);
-
-        // Helper to allow python to access state easily
-        core::GameState& get_state() { return state; }
+    private:
+        // Phase Handling
+        void advance_phase();
     };
-}
+
+} // namespace dm::engine
+
+#endif // DM_ENGINE_GAME_INSTANCE_HPP
