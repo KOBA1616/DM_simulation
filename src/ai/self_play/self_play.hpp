@@ -11,7 +11,7 @@ namespace dm::ai {
     struct GameResultInfo {
         dm::core::GameResult result;
         int turn_count;
-        std::vector<dm::core::GameState> states;
+        std::vector<std::shared_ptr<dm::core::GameState>> states;
         std::vector<std::vector<float>> policies;
         std::vector<int> active_players; // Who acted in this state
     };

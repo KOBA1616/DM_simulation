@@ -12,6 +12,22 @@ namespace dm::core {
     GameState::GameState(GameState&&) noexcept = default;
     GameState& GameState::operator=(GameState&&) noexcept = default;
 
+    void GameState::setup_test_duel() {
+        // Simple setup for tests
+        players.resize(2);
+        for(auto& p : players) {
+            p.hand.clear();
+            p.mana_zone.clear();
+            p.battle_zone.clear();
+            p.shield_zone.clear();
+            p.graveyard.clear();
+            p.deck.clear();
+        }
+        turn_number = 1;
+        active_player_id = 0;
+        current_phase = Phase::START_OF_TURN;
+    }
+
     GameState GameState::clone() const {
         GameState new_state;
         new_state.turn_number = turn_number;

@@ -30,7 +30,7 @@ namespace dm::ai {
 #endif
     }
 
-    std::pair<std::vector<std::vector<float>>, std::vector<float>> NeuralEvaluator::evaluate(const std::vector<dm::core::GameState>& states) {
+    std::pair<std::vector<std::vector<float>>, std::vector<float>> NeuralEvaluator::evaluate(const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
         using BatchInput = dm::python::BatchInput;
         using BatchOutput = dm::python::BatchOutput;
 
