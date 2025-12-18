@@ -6,12 +6,13 @@
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include <iostream>
+#include <memory> // std::make_unique
 
 namespace dm::engine {
 
     class ModifierHandler : public IActionHandler {
     public:
-        void compile(const ResolutionContext& ctx) override {
+        void compile_action(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
             // This handler manages Global Modifiers (Cost, Lock, Passive Power).
@@ -85,7 +86,7 @@ namespace dm::engine {
         }
 
     private:
-        void apply_modifier(const ResolutionContext& ctx, const std::vector<int>* targets) {
+        void apply_modifier(const ResolutionContext& ctx, [[maybe_unused]] const std::vector<int>* targets) {
             using namespace dm::core;
             using namespace dm::engine::game_command;
 
@@ -102,10 +103,11 @@ namespace dm::engine {
                  mod.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  mod.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
 
-                 auto cmd = std::make_shared<MutateCommand>(-1, MutateCommand::MutationType::ADD_COST_MODIFIER);
+                 // Use unique_ptr
+                 auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_COST_MODIFIER);
                  cmd->cost_modifier = mod;
                  cmd->execute(ctx.game_state);
-                 ctx.game_state.command_history.push_back(cmd);
+                 ctx.game_state.command_history.push_back(std::move(cmd));
 
             } else if (ctx.action.str_val == "LOCK_SPELL") {
                 PassiveEffect eff;
@@ -115,10 +117,10 @@ namespace dm::engine {
                 eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                 eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
 
-                auto cmd = std::make_shared<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
+                auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
                 cmd->passive_effect = eff;
                 cmd->execute(ctx.game_state);
-                ctx.game_state.command_history.push_back(cmd);
+                ctx.game_state.command_history.push_back(std::move(cmd));
 
             } else if (ctx.action.str_val == "POWER") {
                 PassiveEffect eff;
@@ -129,10 +131,10 @@ namespace dm::engine {
                 eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                 eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
 
-                auto cmd = std::make_shared<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
+                auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
                 cmd->passive_effect = eff;
                 cmd->execute(ctx.game_state);
-                ctx.game_state.command_history.push_back(cmd);
+                ctx.game_state.command_history.push_back(std::move(cmd));
             }
         }
     };

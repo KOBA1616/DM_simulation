@@ -4,78 +4,33 @@
 #include "types.hpp"
 #include "card_def.hpp"
 #include "card_stats.hpp"
+#include "pending_effect.hpp"
+#include "modifiers.hpp"
+#include "game_event.hpp" // Added and removed struct GameEvent def
+#include "engine/systems/trigger_system/reaction_window.hpp"
 #include <vector>
 #include <map>
 #include <string>
 #include <memory>
 #include <random>
 #include <optional>
-
-// Include full command definition to avoid incomplete type errors in unique_ptr
-#include "engine/game_command/commands.hpp"
+#include <functional>
 
 // Forward declarations
 namespace dm::engine::systems {
     class PipelineExecutor;
 }
 
+namespace dm::engine::game_command {
+    class GameCommand;
+}
+
 namespace dm::core {
 
     // Note: Zone, Phase, EffectType defined in types.hpp
 
-    struct PendingEffect {
-        EffectType type;
-        int source_instance_id;
-        PlayerID controller;
-        ResolveType resolve_type = ResolveType::NORMAL;
-
-        FilterDef filter;
-        int num_targets_needed = 0;
-        std::vector<int> target_instance_ids;
-        bool optional = false;
-
-        std::optional<EffectDef> effect_def;
-        std::map<std::string, int> execution_context;
-
-        int chain_depth = 0;
-
-        PendingEffect(EffectType t, int src, PlayerID ctrl)
-            : type(t), source_instance_id(src), controller(ctrl) {}
-    };
-
-    struct CostModifier {
-        int reduction_amount = 0;
-        FilterDef condition_filter;
-        int turns_remaining = 0;
-        int source_instance_id = -1;
-        PlayerID controller = 0;
-    };
-
-    enum class PassiveType {
-        NONE,
-        POWER_MODIFIER,
-        ADD_RACE,
-        ADD_CIVILIZATION,
-        KEYWORD_GRANT,
-        BLOCKER_GRANT,
-        SPEED_ATTACKER_GRANT,
-        SLAYER_GRANT,
-        CANNOT_USE_SPELLS,
-        CANNOT_ATTACK_PLAYER,
-        CANNOT_ATTACK_CREATURE
-    };
-
-    struct PassiveEffect {
-        PassiveType type = PassiveType::NONE;
-        int value = 0;
-        std::string str_value;
-        FilterDef target_filter;
-        int turns_remaining = 0;
-        int source_instance_id = -1;
-        PlayerID controller = 0;
-    };
-
     struct Player {
+        PlayerID id = 0; // Added ID member
         std::vector<CardInstance> hand;
         std::vector<CardInstance> mana_zone;
         std::vector<CardInstance> battle_zone;
@@ -88,8 +43,23 @@ namespace dm::core {
         std::vector<CardInstance> effect_buffer;
     };
 
+    struct AttackState {
+        int source_instance_id = -1;
+        int target_instance_id = -1; // -1 for player
+        int target_player_id = -1;
+        bool blocked = false;
+        int blocking_creature_id = -1;
+    };
+
     class GameState {
     public:
+        enum class Status {
+            PLAYING,
+            WAITING_FOR_REACTION,
+            GAME_OVER
+        };
+        Status status = Status::PLAYING;
+
         int turn_number = 1;
         PlayerID active_player_id = 0;
         Phase current_phase = Phase::START_OF_TURN;
@@ -99,9 +69,13 @@ namespace dm::core {
         GameResult winner = GameResult::NONE;
         
         std::vector<PendingEffect> pending_effects;
+        std::vector<dm::engine::systems::ReactionWindow> reaction_stack;
 
         std::vector<CostModifier> active_modifiers;
         std::vector<PassiveEffect> passive_effects;
+
+        // Current attack state (for hash and logic)
+        AttackState current_attack;
 
         std::mt19937 rng;
 
@@ -109,7 +83,7 @@ namespace dm::core {
 
         TurnStats turn_stats;
         bool stats_recorded = false;
-        std::vector<std::pair<CardID, int>> played_cards_history_this_game;
+        std::map<PlayerID, std::vector<std::pair<CardID, int>>> played_cards_history_this_game;
 
         // Requires full definition of GameCommand in .cpp for deletion
         std::vector<std::unique_ptr<dm::engine::game_command::GameCommand>> command_history;
@@ -125,7 +99,10 @@ namespace dm::core {
         bool waiting_for_user_input = false;
         QueryContext pending_query;
 
-        std::shared_ptr<void> active_pipeline;
+        std::shared_ptr<void> active_pipeline; // Can store PipelineExecutor generic pointer
+
+        // Event Dispatcher callback
+        std::function<void(const GameEvent&)> event_dispatcher;
 
         // Stats members needed for compilation
         std::map<CardID, CardStats> global_card_stats;

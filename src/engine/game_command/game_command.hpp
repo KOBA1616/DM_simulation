@@ -7,6 +7,7 @@ namespace dm::engine::game_command {
     enum class CommandType {
         TRANSITION,
         MUTATE,
+        ATTACH, // Added ATTACH
         FLOW,
         QUERY,
         DECIDE,

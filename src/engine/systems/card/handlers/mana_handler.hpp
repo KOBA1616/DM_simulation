@@ -19,7 +19,7 @@ namespace dm::engine {
              ResolutionContext temp_ctx = ctx;
              temp_ctx.instruction_buffer = &insts;
 
-             compile(temp_ctx);
+             compile_action(temp_ctx);
 
              dm::engine::systems::PipelineExecutor pipeline;
              pipeline.execute(insts, ctx.game_state, ctx.card_db);
@@ -41,7 +41,7 @@ namespace dm::engine {
             }
         }
 
-        void compile(const ResolutionContext& ctx) override {
+        void compile_action(const ResolutionContext& ctx) override {
             using namespace dm::core;
             if (!ctx.instruction_buffer) return;
 

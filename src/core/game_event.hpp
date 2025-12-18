@@ -38,15 +38,18 @@ namespace dm::core {
 
     struct GameEvent {
         EventType type;
-        int source_id;         // instance_id of the source (or -1 if system)
-        int target_id;         // instance_id of the target (or -1 if none)
+        int instance_id;       // Replaces source_id for consistency with usage
+        int card_id;           // Added card_id
         PlayerID player_id;    // Associated player (e.g., active player or owner)
+        int target_id;         // instance_id of the target (or -1 if none)
 
         // Context for dynamic data
         std::map<std::string, int> context;
 
-        GameEvent(EventType t, int src = -1, int tgt = -1, PlayerID pid = 255)
-            : type(t), source_id(src), target_id(tgt), player_id(pid) {}
+        GameEvent() : type(EventType::NONE), instance_id(-1), card_id(0), player_id(255), target_id(-1) {}
+
+        GameEvent(EventType t, int inst = -1, int tgt = -1, PlayerID pid = 255)
+            : type(t), instance_id(inst), card_id(0), player_id(pid), target_id(tgt) {}
     };
 
 }

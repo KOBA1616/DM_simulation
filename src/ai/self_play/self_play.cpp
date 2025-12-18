@@ -16,9 +16,10 @@ namespace dm::ai {
     SelfPlay::SelfPlay(const std::map<CardID, CardDefinition>& card_db, int mcts_simulations, int batch_size)
         : card_db_(card_db), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
 
-    GameResultInfo SelfPlay::play_game(GameState initial_state, BatchEvaluatorCallback evaluator, float temperature, bool add_noise, float alpha, bool collect_data) {
+    GameResultInfo SelfPlay::play_game(const GameState& initial_state, BatchEvaluatorCallback evaluator, float temperature, bool add_noise, float alpha, bool collect_data) {
         GameResultInfo info;
-        GameState state = initial_state;
+        // GameState state = initial_state; // Copy -> Deleted
+        GameState state = initial_state.clone();
         
         // MCTS instance with risk aversion coefficient alpha
         MCTS mcts(card_db_, 1.0f, 0.3f, 0.25f, batch_size_, alpha);
@@ -26,19 +27,24 @@ namespace dm::ai {
         // Game Loop
         while (true) {
             GameResult result;
+            // Check game over on current state.
+            // PhaseManager::check_game_over(state, result) modifies state?
+            // The signature is GameState&. But logic usually check without modification.
             if (PhaseManager::check_game_over(state, result)) {
                 info.result = result;
                 info.turn_count = state.turn_number;
                 break;
             }
 
-            GameState search_state = state;
+            // GameState search_state = state; // Copy -> Deleted
+            GameState search_state = state.clone();
             Determinizer::determinize(search_state, state.active_player_id);
 
             std::vector<float> policy = mcts.search(search_state, mcts_simulations_, evaluator, add_noise, temperature);
 
             if (collect_data) {
-                info.states.push_back(state);
+                // info.states.push_back(state); // Copy -> Deleted
+                info.states.push_back(state.clone());
                 info.policies.push_back(policy);
                 info.active_players.push_back(state.active_player_id);
             }
