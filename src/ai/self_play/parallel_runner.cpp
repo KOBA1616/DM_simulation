@@ -41,7 +41,13 @@ namespace dm::ai {
             
             BatchEvaluatorCallback worker_cb = [&](const std::vector<dm::core::GameState>& states) {
                 InferenceRequest req;
-                req.states = states;
+                // Cannot copy states because GameState copy is deleted.
+                // We need to clone them.
+                req.states.reserve(states.size());
+                for (const auto& s : states) {
+                    req.states.push_back(s.clone());
+                }
+
                 auto fut = req.promise.get_future();
 
                 {
@@ -52,6 +58,8 @@ namespace dm::ai {
                 return fut.get();
             };
 
+            // play_game expects const GameState& initial_state
+            // It will probably clone it internally if needed.
             results[game_idx] = sp.play_game(initial_states[game_idx], worker_cb, temperature, add_noise, alpha, collect_data);
             games_completed++;
             inf_queue.cv.notify_one();
@@ -92,10 +100,22 @@ namespace dm::ai {
             std::vector<dm::core::GameState> all_states;
             std::vector<int> split_indices;
             for (auto* req : batch) {
-                all_states.insert(all_states.end(), req->states.begin(), req->states.end());
+                // Cannot copy req->states (vector<GameState>) because GameState is not copyable.
+                // Move elements from request to all_states?
+                // Request owns the states (cloned).
+                // Or modify evaluator to accept pointers? No, interface is const vector<GameState>&.
+                // We can move them if we don't need them in request anymore.
+                // But request is valid until promise set.
+
+                // We must use move_iterator if possible, or clone again (expensive).
+                // Since req->states are temp clones for inference, we can move them.
+                for (auto& s : req->states) {
+                    all_states.push_back(std::move(s));
+                }
                 split_indices.push_back(req->states.size());
             }
 
+            // Evaluator expects const vector<GameState>&.
             auto result_pair = evaluator(all_states);
             const auto& all_policies = result_pair.first;
             const auto& all_values = result_pair.second;
@@ -129,31 +149,27 @@ namespace dm::ai {
             int num_threads,
             float temperature
     ) {
-        // We run num_threads simulations.
-        // Each thread creates a determinized world, runs MCTS on it, and returns the root policy.
-        // Finally we average the policies.
-
-        int num_worlds = num_threads; // One world per thread
+        int num_worlds = num_threads;
         std::vector<std::vector<float>> policies(num_worlds);
 
         InferenceQueue inf_queue;
         std::atomic<int> completed_worlds = 0;
 
         auto worker_func = [&](int world_idx) {
-            // Generate determinized state
             uint32_t seed = std::random_device{}();
+            // generate_determinized_state returns by value (move constructed)
             dm::core::GameState determinized_state = dm::ai::inference::PIMCGenerator::generate_determinized_state(
                 observation, card_db_, observer_id, opponent_deck_candidates, seed
             );
 
-            // MCTS Instance
-            // Parameters: c_puct=1.0, alpha=0 (dirichlet), epsilon=0.25, batch=16, alpha_risk=0.0
-            // We use default params for now, or could pass them.
             MCTS mcts(card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
 
             BatchEvaluatorCallback worker_cb = [&](const std::vector<dm::core::GameState>& states) {
                 InferenceRequest req;
-                req.states = states;
+                req.states.reserve(states.size());
+                for (const auto& s : states) {
+                    req.states.push_back(s.clone());
+                }
                 auto fut = req.promise.get_future();
 
                 {
@@ -164,9 +180,6 @@ namespace dm::ai {
                 return fut.get();
             };
 
-            // Run search
-            // Note: add_noise=false usually for PIMC unless we want exploration in the determinized world too.
-            // Usually yes for MCTS construction.
             policies[world_idx] = mcts.search(determinized_state, mcts_simulations_, worker_cb, true, temperature);
 
             completed_worlds++;
@@ -178,7 +191,6 @@ namespace dm::ai {
             threads.emplace_back(worker_func, i);
         }
 
-        // Main thread handles inference
         while (completed_worlds < num_worlds) {
             std::vector<InferenceRequest*> batch;
             {
@@ -192,7 +204,7 @@ namespace dm::ai {
                 while (!inf_queue.queue.empty()) {
                     batch.push_back(inf_queue.queue.front());
                     inf_queue.queue.pop();
-                    if (batch.size() >= 32) break; // Use larger batch size? Or batch_size_?
+                    if (batch.size() >= 32) break;
                 }
             }
 
@@ -201,7 +213,9 @@ namespace dm::ai {
             std::vector<dm::core::GameState> all_states;
             std::vector<int> split_indices;
             for (auto* req : batch) {
-                all_states.insert(all_states.end(), req->states.begin(), req->states.end());
+                for (auto& s : req->states) {
+                    all_states.push_back(std::move(s));
+                }
                 split_indices.push_back(req->states.size());
             }
 
@@ -227,7 +241,6 @@ namespace dm::ai {
             if (t.joinable()) t.join();
         }
 
-        // Aggregate policies
         if (policies.empty()) return {};
 
         std::vector<float> aggregated_policy(policies[0].size(), 0.0f);
@@ -237,7 +250,6 @@ namespace dm::ai {
             }
         }
 
-        // Normalize
         float sum = 0.0f;
         for (float v : aggregated_policy) sum += v;
         if (sum > 1e-6f) {

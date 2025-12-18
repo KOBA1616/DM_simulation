@@ -36,7 +36,7 @@ namespace dm::engine {
 
             for (auto& under : card.underlying_cards) {
                 under.is_tapped = false;
-                under.power_mod = 0;
+                under.power_modifier = 0;
                 under.underlying_cards.clear();
                 owner.graveyard.push_back(under);
             }

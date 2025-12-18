@@ -12,7 +12,7 @@ namespace dm::engine {
 
     class CastSpellHandler : public IActionHandler {
     public:
-        void compile(const ResolutionContext& ctx) override {
+        void compile_action(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
             // Gather targets
@@ -52,7 +52,7 @@ namespace dm::engine {
             ResolutionContext compile_ctx = ctx;
             compile_ctx.instruction_buffer = &instructions;
 
-            compile(compile_ctx);
+            compile_action(compile_ctx);
 
             if (instructions.empty()) return;
 

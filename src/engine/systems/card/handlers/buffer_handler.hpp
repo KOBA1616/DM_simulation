@@ -106,7 +106,7 @@ namespace dm::engine {
              // We can search both buffers.
 
              if (ctx.action.type == EffectActionType::PLAY_FROM_BUFFER) {
-                 Player& active = ctx.game_state.get_active_player();
+                 Player& active = ctx.game_state.players[ctx.game_state.active_player_id];
                  for (int tid : *ctx.targets) {
                       // Check P0
                       auto it0 = std::find_if(ctx.game_state.players[0].effect_buffer.begin(), ctx.game_state.players[0].effect_buffer.end(),
