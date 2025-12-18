@@ -127,7 +127,7 @@ namespace dm::engine::systems {
                  else if (z_str == "SHIELD_ZONE") zones.push_back(Zone::SHIELD);
                  else if (z_str == "GRAVEYARD") zones.push_back(Zone::GRAVEYARD);
                  else if (z_str == "DECK") zones.push_back(Zone::DECK);
-                 else if (z_str == "EFFECT_BUFFER") zones.push_back(Zone::BUFFER); // Added support for BUFFER
+                 else if (z_str == "EFFECT_BUFFER") zones.push_back(Zone::BUFFER);
             }
         }
 
@@ -135,7 +135,6 @@ namespace dm::engine::systems {
 
         for (PlayerID pid : {player_id, static_cast<PlayerID>(1 - player_id)}) {
             for (Zone z : zones) {
-                // Handle Effect Buffer specifically if needed, or if get_zone supports it (it doesn't usually)
                 std::vector<int> zone_indices;
                 if (z == Zone::BUFFER) {
                      for(const auto& c : state.players[pid].effect_buffer) zone_indices.push_back(c.instance_id);
@@ -145,11 +144,7 @@ namespace dm::engine::systems {
 
                 for (int instance_id : zone_indices) {
                     if (instance_id < 0) continue;
-                    // For buffer, we might need direct access if get_card_instance fails (it shouldn't if mapped)
-                    // GameState::get_card_instance uses card_owner_map.
-                    // Cards in buffer should be in map.
                     const auto* card_ptr = state.get_card_instance(instance_id);
-                    // Fallback search if not in map (e.g. freshly moved)
                     if (!card_ptr && z == Zone::BUFFER) {
                         const auto& buf = state.players[pid].effect_buffer;
                         auto it = std::find_if(buf.begin(), buf.end(), [instance_id](const CardInstance& c){ return c.instance_id == instance_id; });
@@ -222,6 +217,7 @@ namespace dm::engine::systems {
         else if (to_zone_str == "SHIELD") to_zone = Zone::SHIELD;
         else if (to_zone_str == "DECK") to_zone = Zone::DECK;
         else if (to_zone_str == "BUFFER") to_zone = Zone::BUFFER;
+        else if (to_zone_str == "STACK") to_zone = Zone::STACK; // Added support for STACK
 
         bool to_bottom = false;
         if (inst.args.contains("to_bottom") && inst.args["to_bottom"].is_boolean()) {
@@ -241,7 +237,6 @@ namespace dm::engine::systems {
             } else if (virtual_target_type == "DECK_BOTTOM") {
                  int available = (int)deck.size();
                  int count = std::min(virtual_count, available);
-                 // Deck bottom is index 0
                  for (int i = 0; i < count; ++i) {
                      targets.push_back(deck[i].instance_id);
                  }
@@ -250,7 +245,6 @@ namespace dm::engine::systems {
 
         for (int id : targets) {
              const CardInstance* card_ptr = state.get_card_instance(id);
-             // Special check for Buffer if not in map
              if (!card_ptr) {
                  for (const auto& p : state.players) {
                      for (const auto& c : p.effect_buffer) {
@@ -268,7 +262,7 @@ namespace dm::engine::systems {
              PlayerID owner = card_ptr->owner;
              if (owner > 1) {
                  if (state.card_owner_map.size() > (size_t)id) owner = state.card_owner_map[id];
-                 else owner = state.active_player_id; // Fallback
+                 else owner = state.active_player_id;
              }
 
              Zone from_zone = Zone::GRAVEYARD;
@@ -300,7 +294,6 @@ namespace dm::engine::systems {
         if (mod_type_str == "SHUFFLE") {
              std::string target_zone = resolve_string(inst.args.value("target", ""));
              if (target_zone == "DECK") {
-                 // Shuffle active player's deck
                  PlayerID pid = state.active_player_id;
                  auto& deck = state.players[pid].deck;
                  std::shuffle(deck.begin(), deck.end(), state.rng);
@@ -329,8 +322,9 @@ namespace dm::engine::systems {
         else if (mod_type_str == "POWER_ADD") type = MutateCommand::MutationType::POWER_MOD;
         else if (mod_type_str == "ADD_KEYWORD") type = MutateCommand::MutationType::ADD_KEYWORD;
         else if (mod_type_str == "REMOVE_KEYWORD") type = MutateCommand::MutationType::REMOVE_KEYWORD;
+        else if (mod_type_str == "ADD_PASSIVE") type = MutateCommand::MutationType::ADD_PASSIVE_EFFECT;
+        else if (mod_type_str == "ADD_COST_MODIFIER") type = MutateCommand::MutationType::ADD_COST_MODIFIER;
         else if (mod_type_str == "STAT") {
-            // Handle STAT update
             StatCommand::StatType s_type;
             std::string stat_name = resolve_string(inst.args.value("stat", ""));
             if (stat_name == "CARDS_DRAWN") s_type = StatCommand::StatType::CARDS_DRAWN;
@@ -344,6 +338,66 @@ namespace dm::engine::systems {
             return;
         }
         else return;
+
+        // Special handling for ADD_PASSIVE and ADD_COST_MODIFIER which are global commands (target -1)
+        if (type == MutateCommand::MutationType::ADD_PASSIVE_EFFECT) {
+             PassiveEffect eff;
+             eff.target_filter = inst.args.value("filter", FilterDef{});
+
+             // Check for specific passive types from string or other args
+             if (str_val == "LOCK_SPELL") eff.type = PassiveType::CANNOT_USE_SPELLS;
+             else if (str_val == "POWER") eff.type = PassiveType::POWER_MODIFIER;
+             // Add more types if needed
+
+             eff.value = val;
+             eff.turns_remaining = inst.args.value("duration", 1);
+             // Source/Controller might need to be passed in args or resolved from context if "source_id" is in context?
+             // PipelineExecutor doesn't inherently know "source_id".
+             // We can check context "$source" or pass it in args.
+             // Handler compiles arguments.
+             int source_id = -1;
+             auto v = get_context_var("$source");
+             if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
+
+             eff.source_instance_id = source_id;
+             // We need controller. Can't easily get it without card_db or source instance.
+             // If source_id is valid, we can look up owner.
+             if (source_id != -1) {
+                 if (state.card_owner_map.size() > (size_t)source_id) eff.controller = state.card_owner_map[source_id];
+                 else eff.controller = state.active_player_id;
+             } else {
+                 eff.controller = state.active_player_id;
+             }
+
+             auto cmd = std::make_unique<MutateCommand>(-1, type);
+             cmd->passive_effect = eff;
+             execute_command(std::move(cmd), state);
+             return;
+        }
+
+        if (type == MutateCommand::MutationType::ADD_COST_MODIFIER) {
+             CostModifier mod;
+             mod.reduction_amount = val;
+             mod.condition_filter = inst.args.value("filter", FilterDef{});
+             mod.turns_remaining = inst.args.value("duration", 1);
+
+             int source_id = -1;
+             auto v = get_context_var("$source");
+             if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
+             mod.source_instance_id = source_id;
+
+             if (source_id != -1) {
+                 if (state.card_owner_map.size() > (size_t)source_id) mod.controller = state.card_owner_map[source_id];
+                 else mod.controller = state.active_player_id;
+             } else {
+                 mod.controller = state.active_player_id;
+             }
+
+             auto cmd = std::make_unique<MutateCommand>(-1, type);
+             cmd->cost_modifier = mod;
+             execute_command(std::move(cmd), state);
+             return;
+        }
 
         for (int id : targets) {
             auto cmd = std::make_unique<MutateCommand>(id, type, val, str_val);
@@ -473,7 +527,6 @@ namespace dm::engine::systems {
         }
 
         if (cond.contains("op")) {
-            // Enhanced resolution for LHS/RHS to support variables
             int lhs = 0;
             if (cond.contains("lhs")) lhs = resolve_int(cond["lhs"]);
 

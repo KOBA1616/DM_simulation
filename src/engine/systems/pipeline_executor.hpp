@@ -27,6 +27,7 @@ namespace dm::engine::systems {
         // Context management
         void set_context_var(const std::string& key, ContextValue value);
         ContextValue get_context_var(const std::string& key) const;
+        const std::map<std::string, ContextValue>& get_context() const { return context; }
 
         // Helper to reset context (e.g. between card effects)
         void clear_context();
