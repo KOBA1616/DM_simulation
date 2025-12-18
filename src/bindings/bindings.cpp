@@ -94,6 +94,40 @@ Instruction instruction_from_dict(py::dict d) {
     return inst;
 }
 
+// Helper to convert py::dict to nlohmann::json
+nlohmann::json to_json(py::handle obj) {
+    if (obj.is_none()) {
+        return nullptr;
+    }
+    if (py::isinstance<py::str>(obj)) {
+        return py::cast<std::string>(obj);
+    }
+    if (py::isinstance<py::bool_>(obj)) {
+        return py::cast<bool>(obj);
+    }
+    if (py::isinstance<py::int_>(obj)) {
+        return py::cast<int>(obj);
+    }
+    if (py::isinstance<py::float_>(obj)) {
+        return py::cast<double>(obj);
+    }
+    if (py::isinstance<py::list>(obj)) {
+        nlohmann::json j = nlohmann::json::array();
+        for (auto item : py::cast<py::list>(obj)) {
+            j.push_back(to_json(item));
+        }
+        return j;
+    }
+    if (py::isinstance<py::dict>(obj)) {
+        nlohmann::json j = nlohmann::json::object();
+        for (auto item : py::cast<py::dict>(obj)) {
+            j[py::cast<std::string>(item.first)] = to_json(item.second);
+        }
+        return j;
+    }
+    return nullptr;
+}
+
 PYBIND11_MODULE(dm_ai_module, m) {
     m.doc() = "Duel Masters AI Engine Module";
 
@@ -171,18 +205,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         // Binding arbitrary JSON args is complex.
         // We will expose a helper to set args from a python dict.
         .def("set_args", [](Instruction& self, py::dict args) {
-             // Basic serialization: iterate dict and populate self.args (nlohmann::json)
-             // Limitation: Only handling string/int/bool for now.
-             for (auto item : args) {
-                 std::string key = py::cast<std::string>(item.first);
-                 if (py::isinstance<py::str>(item.second)) {
-                     self.args[key] = py::cast<std::string>(item.second);
-                 } else if (py::isinstance<py::int_>(item.second)) {
-                     self.args[key] = py::cast<int>(item.second);
-                 } else if (py::isinstance<py::bool_>(item.second)) {
-                     self.args[key] = py::cast<bool>(item.second);
-                 }
-             }
+             // Use to_json helper for robust serialization
+             self.args = to_json(args);
         })
         .def("get_arg_str", [](const Instruction& self, std::string key) {
             if (self.args.contains(key) && self.args[key].is_string()) return self.args[key].get<std::string>();
