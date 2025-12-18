@@ -13,7 +13,7 @@ namespace dm::ai {
 
         // Implements IEvaluator
         std::pair<std::vector<std::vector<float>>, std::vector<float>>
-        evaluate(const std::vector<dm::core::GameState>& states) override;
+        evaluate(const std::vector<std::shared_ptr<dm::core::GameState>>& states) override;
 
     private:
         std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
