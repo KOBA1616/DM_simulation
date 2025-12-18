@@ -3,6 +3,7 @@
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/utils/zone_utils.hpp"
+#include "engine/systems/pipeline_executor.hpp"
 #include <algorithm>
 #include <random>
 
@@ -10,125 +11,121 @@ namespace dm::engine {
 
     class DiscardHandler : public IActionHandler {
     public:
-        void resolve(const ResolutionContext& ctx) override {
+        void compile(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
-            // Handle Random Discard or All Discard if selection is implicit
+            // Logic to identify targets or perform random selection
+            std::vector<int> targets;
 
-            // Check scope/target_choice
+            if (ctx.targets && !ctx.targets->empty()) {
+                targets = *ctx.targets;
+            } else if (ctx.action.target_choice != "SELECT") {
+                // Determine implicit targets (Random or All)
+                PlayerID target_pid = ctx.game_state.active_player_id;
+
+                // Target Player logic
+                if (ctx.action.target_player == "OPPONENT") target_pid = 1 - ctx.game_state.active_player_id;
+                else if (ctx.action.target_player == "SELF") target_pid = ctx.game_state.active_player_id;
+                else if (ctx.action.scope == TargetScope::PLAYER_OPPONENT) target_pid = 1 - ctx.game_state.active_player_id;
+                else if (ctx.action.scope == TargetScope::PLAYER_SELF) target_pid = ctx.game_state.active_player_id;
+
+                const Player& p = ctx.game_state.players[target_pid];
+                std::vector<int> discard_candidates;
+
+                // Filter candidates
+                for (const auto& card : p.hand) {
+                    if (!ctx.card_db.count(card.card_id)) continue;
+                     const auto& def = ctx.card_db.at(card.card_id);
+                     if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, ctx.source_instance_id, target_pid)) {
+                         discard_candidates.push_back(card.instance_id);
+                     }
+                }
+
+                int count = ctx.action.filter.count.value_or(1);
+                if (ctx.action.value1 > 0) count = ctx.action.value1;
+
+                if (ctx.action.filter.selection_mode == "ALL" || ctx.action.target_choice == "ALL") {
+                    count = discard_candidates.size();
+                }
+
+                if (!discard_candidates.empty()) {
+                    if (ctx.action.scope == TargetScope::RANDOM || ctx.action.target_choice == "RANDOM" || ctx.action.filter.selection_mode == "RANDOM") {
+                        // We need to shuffle candidates.
+                        // Can we do this in `compile`? Yes, assuming simulation context stability.
+                        // Wait, `compile` generates instructions. Randomness should ideally be in Instruction logic
+                        // if we want deterministic replay from instructions, OR we bake the random choice here.
+                        // Baking here matches current architecture where "Resolution" decides outcomes.
+                        // But PipelineExecutor has RNG too.
+                        // For "Pure Command Generation", we usually generate a "RANDOM SELECT" instruction.
+                        // But we don't have that yet.
+                        // We will bake the choice here for now.
+                        // Note: To support deterministic replay, we should use state.rng here.
+                        // But `ctx` has `game_state` which has `rng`.
+
+                        // We need to make a copy to shuffle
+                        std::vector<int> shuffled = discard_candidates;
+                        // const casting rng? GameState is non-const in context?
+                        // ResolutionContext has `dm::core::GameState& game_state;` so yes.
+                        std::shuffle(shuffled.begin(), shuffled.end(), ctx.game_state.rng);
+
+                        int num = std::min((int)shuffled.size(), count);
+                        for (int i = 0; i < num; ++i) targets.push_back(shuffled[i]);
+                    } else {
+                         // Default logic (e.g. ALL or First N)
+                         int num = std::min((int)discard_candidates.size(), count);
+                         for (int i = 0; i < num; ++i) targets.push_back(discard_candidates[i]);
+                    }
+                }
+            }
+
+            if (targets.empty()) {
+                // If output variable needed, set to 0?
+                // Pipeline supports `COUNT` instruction but that's for counting existing things.
+                // We can set var manually via NOOP or just skip.
+                return;
+            }
+
+            for (int t : targets) {
+                nlohmann::json move_args;
+                move_args["target"] = t;
+                move_args["to"] = "GRAVEYARD";
+                ctx.instruction_buffer->emplace_back(InstructionOp::MOVE, move_args);
+
+                // Track stats?
+                // Currently DiscardHandler logic does "is_tapped=false" which MOVE handles.
+                // It does NOT explicitly trigger ON_DISCARD here, relying on TransitionCommand -> ZONE_ENTER Graveyard.
+                // This matches Move logic.
+            }
+
+            // If output variable needed
+            if (!ctx.action.output_value_key.empty()) {
+                 // We can use MATH instruction to set variable to constant
+                 nlohmann::json math_args;
+                 math_args["op"] = "+";
+                 math_args["lhs"] = (int)targets.size();
+                 math_args["rhs"] = 0;
+                 math_args["out"] = ctx.action.output_value_key;
+                 ctx.instruction_buffer->emplace_back(InstructionOp::MATH, math_args);
+            }
+        }
+
+        void resolve(const ResolutionContext& ctx) override {
+            using namespace dm::core;
             if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                  EffectSystem::instance().delegate_selection(ctx);
                  return;
             }
 
-            // Handle RANDOM discard
-            // Usually specified by filter.selection_mode or just "random" keyword?
-            // ActionDef has `target_choice` which might be "RANDOM".
-            // Or FilterDef has `selection_mode`.
+            std::vector<dm::core::Instruction> instructions;
+            ResolutionContext compile_ctx = ctx;
+            compile_ctx.instruction_buffer = &instructions;
 
-            // Target Player
-            PlayerID target_pid = ctx.game_state.active_player_id;
-            if (ctx.action.target_player == "OPPONENT") {
-                target_pid = 1 - ctx.game_state.active_player_id;
-            } else if (ctx.action.target_player == "SELF") {
-                 target_pid = ctx.game_state.active_player_id;
-            } else if (!ctx.action.target_player.empty()) {
-                // Could be explicit ID if parsing allowed, but strings are usually relative
-            }
-            // "scope" also defines target.
-            if (ctx.action.scope == TargetScope::PLAYER_OPPONENT) {
-                target_pid = 1 - ctx.game_state.active_player_id;
-            } else if (ctx.action.scope == TargetScope::PLAYER_SELF) {
-                target_pid = ctx.game_state.active_player_id;
-            }
+            compile(compile_ctx);
 
-            Player& p = ctx.game_state.players[target_pid];
-            std::vector<int> discard_candidates;
+            if (instructions.empty()) return;
 
-            // Filter validation
-            for (const auto& card : p.hand) {
-                if (!ctx.card_db.count(card.card_id)) continue;
-                 const auto& def = ctx.card_db.at(card.card_id);
-                 // We need a helper to validate filter against a card in a zone
-                 // TargetUtils::is_valid_target needs context?
-                 if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, ctx.source_instance_id, target_pid)) {
-                     discard_candidates.push_back(card.instance_id);
-                 }
-            }
-
-            int count = ctx.action.filter.count.value_or(1);
-            if (ctx.action.value1 > 0) count = ctx.action.value1; // Legacy support
-
-            // If ALL, discard all candidates
-            if (ctx.action.filter.selection_mode == "ALL" || ctx.action.target_choice == "ALL") {
-                count = discard_candidates.size();
-            }
-
-            if (discard_candidates.empty()) {
-                // No cards to discard
-                if (!ctx.action.output_value_key.empty()) {
-                    ctx.execution_vars[ctx.action.output_value_key] = 0;
-                }
-                return;
-            }
-
-            std::vector<int> to_discard;
-
-            if (ctx.action.scope == TargetScope::RANDOM || ctx.action.target_choice == "RANDOM" || ctx.action.filter.selection_mode == "RANDOM") {
-                std::shuffle(discard_candidates.begin(), discard_candidates.end(), ctx.game_state.rng);
-                int num = std::min((int)discard_candidates.size(), count);
-                for (int i = 0; i < num; ++i) to_discard.push_back(discard_candidates[i]);
-            } else {
-                 // Non-random, non-select (e.g. "ALL")
-                 // If not ALL and not RANDOM and not SELECT, what is it?
-                 // Maybe "First X"? Or undefined?
-                 // Default to ALL if count matches size?
-                 int num = std::min((int)discard_candidates.size(), count);
-                 for (int i = 0; i < num; ++i) to_discard.push_back(discard_candidates[i]);
-            }
-
-            int discarded_count = 0;
-            for (int iid : to_discard) {
-                // Move from Hand to Graveyard
-                auto it = std::find_if(p.hand.begin(), p.hand.end(), [iid](const CardInstance& c){ return c.instance_id == iid; });
-                if (it != p.hand.end()) {
-                    CardInstance c = *it;
-                    p.hand.erase(it);
-                    c.is_tapped = false;
-                    p.graveyard.push_back(c);
-                    discarded_count++;
-                }
-            }
-
-            if (!ctx.action.output_value_key.empty()) {
-                ctx.execution_vars[ctx.action.output_value_key] = discarded_count;
-            }
-        }
-
-        void resolve_with_targets(const ResolutionContext& ctx) override {
-            using namespace dm::core;
-            if (!ctx.targets) return;
-
-            int discarded_count = 0;
-            for (int tid : *ctx.targets) {
-                 // Targets could be in any player's hand if filter allowed it.
-                 // We search both players.
-                 for (auto& p : ctx.game_state.players) {
-                     auto it = std::find_if(p.hand.begin(), p.hand.end(), [tid](const CardInstance& c){ return c.instance_id == tid; });
-                     if (it != p.hand.end()) {
-                         CardInstance c = *it;
-                         p.hand.erase(it);
-                         c.is_tapped = false;
-                         p.graveyard.push_back(c);
-                         discarded_count++;
-                         break; // Found and discarded
-                     }
-                 }
-            }
-
-            if (!ctx.action.output_value_key.empty()) {
-                ctx.execution_vars[ctx.action.output_value_key] = discarded_count;
-            }
+            dm::engine::systems::PipelineExecutor pipeline;
+            pipeline.execute(instructions, ctx.game_state, ctx.card_db);
         }
     };
 }
