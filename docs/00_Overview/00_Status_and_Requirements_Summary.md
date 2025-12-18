@@ -25,7 +25,7 @@
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
 現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** が完了し、**Phase 7: Data Migration (全カードデータの新JSONフォーマット移行)** への移行準備を進めています。
-`Pure Command Generation` の基盤が整備され、`DrawHandler` などの主要ハンドラーが命令パイプライン形式に移行しました。
+`Pure Command Generation` の基盤が整備され、`PipelineExecutor` が強化されました。
 
 ## 2. 現行システムステータス (Current Status)
 
@@ -35,7 +35,10 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` に加え、`Stat` (統計更新), `GameResult` (勝敗判定) を実装済み。
 *   [Status: Done] **Instruction Pipeline**: `PipelineExecutor` が `GAME_ACTION` 命令 (`WIN_GAME`, `LOSE_GAME`, `TRIGGER_CHECK`, `STAT`更新) をサポートするように拡張されました。
 *   [Status: Done] **REPEAT Instruction**: `InstructionOp::REPEAT` を追加し、固定回数ループ処理をパイプラインでサポートしました。
-*   [Status: WIP] **Pure Command Generation**: `EffectSystem` に `compile_action` メソッドを追加し、アクション定義から `Instruction` リストを生成する仕組みを実装しました。`DrawHandler` の移行が完了（デッキ切れ判定→移動→統計更新→トリガーチェックの命令生成）。
+*   [Status: Done] **STACK Zone Support**: `PipelineExecutor` の `MOVE` 命令で `STACK` ゾーンへの移動をサポートしました。
+*   [Status: Done] **ADD_PASSIVE Support**: `PipelineExecutor` の `MODIFY` 命令で `ADD_PASSIVE`, `ADD_COST_MODIFIER` をサポートし、`MutateCommand` へのマッピングを実装しました。
+*   [Status: Done] **Context Synchronization**: `EffectSystem::execute_pipeline` を実装し、パイプライン実行前後のコンテキスト変数同期と、`$source` インジェクションによるコントローラー解決を確立しました。これにより `test_discard_count.py` が通過しました。
+*   [Status: WIP] **Pure Command Generation**: `EffectSystem` に `compile_action` メソッドを追加し、アクション定義から `Instruction` リストを生成する仕組みを実装しました。`DrawHandler`, `DiscardHandler` の移行が完了。
 *   [Known Issue] **Binding SegFault**: `Instruction` 構造体の再帰的定義と `nlohmann::json` 引数の Python バインディングにおいて、複雑なオブジェクト受け渡し時に Segmentation Fault が発生する問題が確認されています (`tests/test_effect_compiler.py`)。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
@@ -67,9 +70,10 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **Step 4: Pure Command Generation (Current Focus)**
     *   [Status: WIP] 各アクションハンドラー (`IActionHandler`) を `compile()` メソッドに対応させ、状態直接操作から命令生成へ移行する。
     *   `DrawHandler`: 完了。
-    *   `ManaHandler`: 未着手。
-    *   `DestroyHandler`: 未着手。
-    *   `SearchHandler`: 未着手。
+    *   `DiscardHandler`: 完了。
+    *   `ModifierHandler`: 完了 (ADD_PASSIVE対応)。
+    *   `ManaHandler`, `DestroyHandler`, `SearchHandler`: 未着手。
+    *   **Complex Handlers Migration**: `RevealHandler`, `SelectOptionHandler`, `HierarchyHandler` などのUIインタラクションや複雑な状態管理を伴うハンドラーの移行。
 
 ### 3.2 [Priority: High] Phase 7: ハイブリッド・エンジン基盤 & データ移行
 [Status: Pending]
@@ -127,9 +131,10 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: Todo] **Binding Fix**: `Instruction` 構造体の Python バインディングにおけるメモリ管理・コピーの問題（SegFault）を解決する。
-2.  [Status: Todo] **Handler Migration**: `ManaHandler`, `DestroyHandler` 等の主要ハンドラーを `compile()` パターンへ移行する。
-3.  [Status: Todo] **Integration Test**: 複雑なカード効果（ループ、条件分岐、外部コスト参照など）を含む統合テストケースを作成し、新エンジンの堅牢性を検証する。
+1.  [Status: Todo] **Handler Migration**: `ManaHandler`, `DestroyHandler`, `SearchHandler` 等の主要ハンドラーを `compile()` パターンへ移行する。
+2.  [Status: Todo] **Complex Logic Migration**: `RevealHandler` (公開), `SelectOptionHandler` (選択肢), `HierarchyHandler` (進化元) を命令パイプライン形式に移行する。UIインタラクション(`WaitingForInput`)との統合が必要。
+3.  [Status: Todo] **Architecture Switch**: `GameLogicSystem` が直接 `compile()` を呼び出し、生成された命令を一括実行するアーキテクチャへの完全切り替え。
+4.  [Status: Todo] **Integration Test**: 複雑なカード効果（ループ、条件分岐、外部コスト参照など）を含む統合テストケースを作成し、新エンジンの堅牢性を検証する。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
 
