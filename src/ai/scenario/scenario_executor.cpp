@@ -57,6 +57,8 @@ namespace dm::ai {
         GameResultInfo info;
         info.result = result;
         info.turn_count = instance.state.turn_number;
+        // info.states.push_back(instance.state); // Copy deleted. Use clone if we were storing history.
+        // But here we just return result info.
         return info;
     }
 
