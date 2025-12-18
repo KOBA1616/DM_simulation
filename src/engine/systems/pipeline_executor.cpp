@@ -14,10 +14,59 @@ namespace dm::engine::systems {
 
     void PipelineExecutor::execute(const std::vector<Instruction>& instructions, GameState& state,
                                    const std::map<core::CardID, core::CardDefinition>& card_db) {
-        for (const auto& inst : instructions) {
-            if (execution_paused) break;
-            execute_instruction(inst, state, card_db);
+        auto shared_inst = std::make_shared<std::vector<Instruction>>(instructions);
+        execute(shared_inst, state, card_db);
+    }
+
+    void PipelineExecutor::execute(std::shared_ptr<const std::vector<Instruction>> instructions, GameState& state,
+                                   const std::map<core::CardID, core::CardDefinition>& card_db) {
+        if (!instructions || instructions->empty()) return;
+
+        if (call_stack.empty()) {
+            call_stack.push_back({instructions, 0, LoopContext{}});
         }
+
+        execution_paused = false;
+
+        while (!call_stack.empty() && !execution_paused) {
+            auto& frame = call_stack.back();
+
+            if (frame.pc >= (int)frame.instructions->size()) {
+                call_stack.pop_back();
+                continue;
+            }
+
+            const auto& inst = (*frame.instructions)[frame.pc];
+
+            int current_stack_size = call_stack.size();
+
+            execute_instruction(inst, state, card_db);
+
+            if (execution_paused) break;
+
+            if (call_stack.size() > (size_t)current_stack_size) {
+                 // Block pushed. Don't increment PC.
+            } else if (call_stack.size() < (size_t)current_stack_size) {
+                 // Returned.
+            } else {
+                 if (inst.op != InstructionOp::IF &&
+                     inst.op != InstructionOp::LOOP &&
+                     inst.op != InstructionOp::REPEAT) {
+                     frame.pc++;
+                 }
+            }
+        }
+    }
+
+    void PipelineExecutor::resume(GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db,
+                                  const ContextValue& input_value) {
+        if (!waiting_for_key.empty()) {
+            set_context_var(waiting_for_key, input_value);
+            waiting_for_key.clear();
+        }
+        state.waiting_for_user_input = false;
+
+        execute(std::shared_ptr<const std::vector<Instruction>>(), state, card_db);
     }
 
     void PipelineExecutor::set_context_var(const std::string& key, ContextValue value) {
@@ -34,7 +83,7 @@ namespace dm::engine::systems {
         context.clear();
     }
 
-    void PipelineExecutor::execute_instruction(const Instruction& inst, GameState& state,
+     void PipelineExecutor::execute_instruction(const Instruction& inst, GameState& state,
                                                const std::map<core::CardID, core::CardDefinition>& card_db) {
         switch (inst.op) {
             case InstructionOp::GAME_ACTION: {
@@ -68,15 +117,13 @@ namespace dm::engine::systems {
             case InstructionOp::MODIFY: handle_modify(inst, state); break;
             case InstructionOp::IF:     handle_if(inst, state, card_db); break;
             case InstructionOp::LOOP:   handle_loop(inst, state, card_db); break;
-            case InstructionOp::REPEAT: handle_loop(inst, state, card_db); break; // Reuse loop handler logic
+            case InstructionOp::REPEAT: handle_loop(inst, state, card_db); break;
             case InstructionOp::COUNT:
             case InstructionOp::MATH:   handle_calc(inst, state); break;
             case InstructionOp::PRINT:  handle_print(inst, state); break;
             default: break;
         }
     }
-
-    // --- Utils ---
 
     int PipelineExecutor::resolve_int(const nlohmann::json& val) const {
         if (val.is_number()) return val.get<int>();
@@ -102,8 +149,6 @@ namespace dm::engine::systems {
         return "";
     }
 
-    // --- Handlers ---
-
     void PipelineExecutor::execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd, core::GameState& state) {
         state.execute_command(std::move(cmd));
     }
@@ -112,6 +157,8 @@ namespace dm::engine::systems {
                                          const std::map<core::CardID, core::CardDefinition>& card_db) {
         if (inst.args.is_null()) return;
         std::string out_key = inst.args.value("out", "$selection");
+
+        if (context.count(out_key)) return;
 
         FilterDef filter = inst.args.value("filter", FilterDef{});
         std::vector<int> valid_targets;
@@ -159,7 +206,7 @@ namespace dm::engine::systems {
                         if (TargetUtils::is_valid_target(card, def, filter, state, player_id, pid)) {
                             valid_targets.push_back(instance_id);
                         }
-                    } else if (card.card_id == 0) { // Dummy/Test card
+                    } else if (card.card_id == 0) {
                          if (TargetUtils::is_valid_target(card, CardDefinition(), filter, state, player_id, pid)) {
                             valid_targets.push_back(instance_id);
                         }
@@ -169,11 +216,17 @@ namespace dm::engine::systems {
         }
 
         int count = inst.args.value("count", 1);
-        std::vector<int> selection;
-        for (int i = 0; i < count && i < (int)valid_targets.size(); ++i) {
-            selection.push_back(valid_targets[i]);
+        if (valid_targets.empty()) {
+             set_context_var(out_key, std::vector<int>{});
+             return;
         }
-        set_context_var(out_key, selection);
+
+        execution_paused = true;
+        waiting_for_key = out_key;
+        state.waiting_for_user_input = true;
+        state.pending_query = GameState::QueryContext{
+            0, "SELECT_TARGET", {{"min", count}, {"max", count}}, valid_targets, {}
+        };
     }
 
     void PipelineExecutor::handle_move(const Instruction& inst, GameState& state) {
@@ -217,7 +270,7 @@ namespace dm::engine::systems {
         else if (to_zone_str == "SHIELD") to_zone = Zone::SHIELD;
         else if (to_zone_str == "DECK") to_zone = Zone::DECK;
         else if (to_zone_str == "BUFFER") to_zone = Zone::BUFFER;
-        else if (to_zone_str == "STACK") to_zone = Zone::STACK; // Added support for STACK
+        else if (to_zone_str == "STACK") to_zone = Zone::STACK;
 
         bool to_bottom = false;
         if (inst.args.contains("to_bottom") && inst.args["to_bottom"].is_boolean()) {
@@ -290,7 +343,6 @@ namespace dm::engine::systems {
 
         std::string mod_type_str = resolve_string(inst.args.value("type", ""));
 
-        // Handle Shuffle specifically (not MutateCommand)
         if (mod_type_str == "SHUFFLE") {
              std::string target_zone = resolve_string(inst.args.value("target", ""));
              if (target_zone == "DECK") {
@@ -339,35 +391,18 @@ namespace dm::engine::systems {
         }
         else return;
 
-        // Special handling for ADD_PASSIVE and ADD_COST_MODIFIER which are global commands (target -1)
         if (type == MutateCommand::MutationType::ADD_PASSIVE_EFFECT) {
              PassiveEffect eff;
              eff.target_filter = inst.args.value("filter", FilterDef{});
-
-             // Check for specific passive types from string or other args
              if (str_val == "LOCK_SPELL") eff.type = PassiveType::CANNOT_USE_SPELLS;
              else if (str_val == "POWER") eff.type = PassiveType::POWER_MODIFIER;
-             // Add more types if needed
-
              eff.value = val;
              eff.turns_remaining = inst.args.value("duration", 1);
-             // Source/Controller might need to be passed in args or resolved from context if "source_id" is in context?
-             // PipelineExecutor doesn't inherently know "source_id".
-             // We can check context "$source" or pass it in args.
-             // Handler compiles arguments.
              int source_id = -1;
              auto v = get_context_var("$source");
              if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
-
              eff.source_instance_id = source_id;
-             // We need controller. Can't easily get it without card_db or source instance.
-             // If source_id is valid, we can look up owner.
-             if (source_id != -1) {
-                 if (state.card_owner_map.size() > (size_t)source_id) eff.controller = state.card_owner_map[source_id];
-                 else eff.controller = state.active_player_id;
-             } else {
-                 eff.controller = state.active_player_id;
-             }
+             eff.controller = state.active_player_id;
 
              auto cmd = std::make_unique<MutateCommand>(-1, type);
              cmd->passive_effect = eff;
@@ -380,18 +415,11 @@ namespace dm::engine::systems {
              mod.reduction_amount = val;
              mod.condition_filter = inst.args.value("filter", FilterDef{});
              mod.turns_remaining = inst.args.value("duration", 1);
-
              int source_id = -1;
              auto v = get_context_var("$source");
              if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
              mod.source_instance_id = source_id;
-
-             if (source_id != -1) {
-                 if (state.card_owner_map.size() > (size_t)source_id) mod.controller = state.card_owner_map[source_id];
-                 else mod.controller = state.active_player_id;
-             } else {
-                 mod.controller = state.active_player_id;
-             }
+             mod.controller = state.active_player_id;
 
              auto cmd = std::make_unique<MutateCommand>(-1, type);
              cmd->cost_modifier = mod;
@@ -407,46 +435,66 @@ namespace dm::engine::systems {
 
     void PipelineExecutor::handle_if(const Instruction& inst, GameState& state,
                                      const std::map<core::CardID, core::CardDefinition>& card_db) {
-        if (inst.args.is_null() || !inst.args.contains("cond")) return;
-
-        if (check_condition(inst.args["cond"], state, card_db)) {
-            execute(inst.then_block, state, card_db);
-        } else {
-            execute(inst.else_block, state, card_db);
+        if (inst.args.is_null() || !inst.args.contains("cond")) {
+            call_stack.back().pc++;
+            return;
         }
+
+        bool res = check_condition(inst.args["cond"], state, card_db);
+
+        auto block = res ? std::make_shared<std::vector<Instruction>>(inst.then_block)
+                         : std::make_shared<std::vector<Instruction>>(inst.else_block);
+
+        // Increment PC before push so we return to next instruction
+        call_stack.back().pc++;
+
+        call_stack.push_back({block, 0, LoopContext{}});
     }
 
     void PipelineExecutor::handle_loop(const Instruction& inst, GameState& state,
                                        const std::map<core::CardID, core::CardDefinition>& card_db) {
-        if (inst.args.is_null()) return;
+        auto& frame = call_stack.back();
+        auto& ctx = frame.loop_ctx;
 
-        if (inst.op == InstructionOp::REPEAT || (inst.args.contains("count") && !inst.args.contains("in"))) {
-            // Fixed count loop
-            int count = resolve_int(inst.args.value("count", 1));
-            std::string var_name = inst.args.value("var", "$i");
-            for (int i = 0; i < count; ++i) {
-                set_context_var(var_name, i);
-                execute(inst.then_block, state, card_db);
-            }
-        } else {
-            // For-each loop
-            std::string var_name = inst.args.value("as", "$it");
-            std::vector<int> collection;
+        if (!ctx.active) {
+            ctx.active = true;
+            ctx.index = 0;
 
-            if (inst.args.contains("in")) {
-                auto val = inst.args["in"];
-                if (val.is_string() && val.get<std::string>().rfind("$", 0) == 0) {
-                    auto v = get_context_var(val.get<std::string>());
-                    if (std::holds_alternative<std::vector<int>>(v)) {
-                        collection = std::get<std::vector<int>>(v);
+            if (inst.op == InstructionOp::REPEAT || (inst.args.contains("count") && !inst.args.contains("in"))) {
+                ctx.max = resolve_int(inst.args.value("count", 1));
+                ctx.var_name = inst.args.value("var", "$i");
+                ctx.collection.clear();
+            } else {
+                 ctx.var_name = inst.args.value("as", "$it");
+                 if (inst.args.contains("in")) {
+                    auto val = inst.args["in"];
+                    if (val.is_string() && val.get<std::string>().rfind("$", 0) == 0) {
+                        auto v = get_context_var(val.get<std::string>());
+                        if (std::holds_alternative<std::vector<int>>(v)) {
+                            ctx.collection = std::get<std::vector<int>>(v);
+                        }
                     }
                 }
+                ctx.max = (int)ctx.collection.size();
             }
+        }
 
-            for (int id : collection) {
-                set_context_var(var_name, id);
-                execute(inst.then_block, state, card_db);
-            }
+        if (ctx.index < ctx.max) {
+             if (ctx.collection.empty()) {
+                 set_context_var(ctx.var_name, ctx.index);
+             } else {
+                 set_context_var(ctx.var_name, ctx.collection[ctx.index]);
+             }
+
+             auto block = std::make_shared<std::vector<Instruction>>(inst.then_block);
+
+             // Increment index BEFORE push_back invalidates references
+             ctx.index++;
+
+             call_stack.push_back({block, 0, LoopContext{}});
+        } else {
+             ctx.active = false;
+             frame.pc++;
         }
     }
 

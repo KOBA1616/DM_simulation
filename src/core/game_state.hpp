@@ -1,300 +1,173 @@
-#pragma once
+#ifndef DM_CORE_GAME_STATE_HPP
+#define DM_CORE_GAME_STATE_HPP
+
 #include "types.hpp"
-#include "constants.hpp"
-#include "card_stats.hpp"
 #include "card_def.hpp"
+#include "card_stats.hpp"
 #include <vector>
-#include <array>
-#include <random>
-#include <stdexcept>
-#include <optional>
 #include <map>
-#include "card_json_types.hpp"
-#include "modifiers.hpp"
-#include "game_command_fwd.hpp"
-#include "pending_effect.hpp"
-#include "engine/systems/trigger_system/reaction_window.hpp"
+#include <string>
 #include <memory>
-#include <functional>
+#include <random>
+#include <optional>
+
+// Include full command definition to avoid incomplete type errors in unique_ptr
+#include "engine/game_command/commands.hpp"
+
+// Forward declarations
+namespace dm::engine::systems {
+    class PipelineExecutor;
+}
 
 namespace dm::core {
 
-    struct GameEvent; // Forward Declaration for event_dispatcher
+    // Note: Zone, Phase, EffectType defined in types.hpp
 
-    struct CardInstance {
-        CardID card_id; // The definition ID
-        int instance_id; // Unique ID for this instance during the game
-        bool is_tapped = false;
-        bool summoning_sickness = false;
-        bool is_face_down = false; // For shields or terror pit etc? Shields are face down by default.
-        int power_mod = 0; // temporary/ongoing power modifications applied by effects
-        int turn_played = -1; // Turn number when this card was put into the battle zone (for Just Diver/SS)
-        PlayerID owner = 255; // 255 = None/Unknown
-
-        // Step 2-1: Hierarchy Support
-        // Cards stacked underneath this card (Evolution sources, etc.)
-        std::vector<CardInstance> underlying_cards;
-
-        // Step 4-3: Twinpact State (Set when placed in stack)
-        bool is_spell_side_mode = false;
-
-        // Phase 4: Cost Payment Metadata (e.g. number of creatures tapped for reduction)
-        int cost_payment_meta = 0;
-
-        // Constructors
-        CardInstance() : card_id(0), instance_id(-1), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
-        CardInstance(CardID cid, int iid) : card_id(cid), instance_id(iid), is_tapped(false), summoning_sickness(true), is_face_down(false) {}
-    };
-
-    struct AttackRequest {
+    struct PendingEffect {
+        EffectType type;
         int source_instance_id;
-        int target_instance_id; // -1 if attacking player
-        PlayerID target_player; // Valid if target_instance_id == -1
-        bool is_blocked = false;
-        int blocker_instance_id = -1;
+        PlayerID controller;
+        ResolveType resolve_type = ResolveType::NORMAL;
+
+        FilterDef filter;
+        int num_targets_needed = 0;
+        std::vector<int> target_instance_ids;
+        bool optional = false;
+
+        std::optional<EffectDef> effect_def;
+        std::map<std::string, int> execution_context;
+
+        int chain_depth = 0;
+
+        PendingEffect(EffectType t, int src, PlayerID ctrl)
+            : type(t), source_instance_id(src), controller(ctrl) {}
     };
 
-    // Phase 5: Turn Stats for Meta Counter logic
-    struct TurnStats {
-            int current_chain_depth = 0; // Tracks the depth of the current resolving effect chain
-        bool played_without_mana = false; // True if a card was played with 0 actual mana paid (except cost reduction down to >= 1)
-        int cards_drawn_this_turn = 0;
-        int cards_discarded_this_turn = 0;
-        int creatures_played_this_turn = 0;
-        int spells_cast_this_turn = 0;
-        int attacks_declared_this_turn = 0; // Step 2-3: Track attacks
+    struct CostModifier {
+        int reduction_amount = 0;
+        FilterDef condition_filter;
+        int turns_remaining = 0;
+        int source_instance_id = -1;
+        PlayerID controller = 0;
+    };
+
+    enum class PassiveType {
+        NONE,
+        POWER_MODIFIER,
+        ADD_RACE,
+        ADD_CIVILIZATION,
+        KEYWORD_GRANT,
+        BLOCKER_GRANT,
+        SPEED_ATTACKER_GRANT,
+        SLAYER_GRANT,
+        CANNOT_USE_SPELLS,
+        CANNOT_ATTACK_PLAYER,
+        CANNOT_ATTACK_CREATURE
+    };
+
+    struct PassiveEffect {
+        PassiveType type = PassiveType::NONE;
+        int value = 0;
+        std::string str_value;
+        FilterDef target_filter;
+        int turns_remaining = 0;
+        int source_instance_id = -1;
+        PlayerID controller = 0;
     };
 
     struct Player {
-        PlayerID id;
         std::vector<CardInstance> hand;
         std::vector<CardInstance> mana_zone;
         std::vector<CardInstance> battle_zone;
-        std::vector<CardInstance> graveyard;
         std::vector<CardInstance> shield_zone;
+        std::vector<CardInstance> graveyard;
         std::vector<CardInstance> deck;
         std::vector<CardInstance> hyper_spatial_zone;
         std::vector<CardInstance> gr_deck;
 
-        // Step 3-1: Per-Player Effect Buffer [Stability Fix]
         std::vector<CardInstance> effect_buffer;
     };
 
-    struct GameState {
+    class GameState {
+    public:
         int turn_number = 1;
         PlayerID active_player_id = 0;
-        enum class Status {
-            PLAYING,
-            WAITING_FOR_REACTION,
-            GAME_OVER
-        };
-
         Phase current_phase = Phase::START_OF_TURN;
-        Status status = Status::PLAYING;
+        std::vector<Player> players;
+
+        bool game_over = false;
         GameResult winner = GameResult::NONE;
-
-        // Phase 6: Reaction Window Stack
-        std::vector<dm::engine::systems::ReactionWindow> reaction_stack;
-
-        // Loop Detection
-        std::vector<uint64_t> hash_history;
-        bool loop_proven = false;
-        void update_loop_check();
-
-        std::array<Player, 2> players;
         
-        // Pending Effects Pool [Spec 4.1, 4.2]
         std::vector<PendingEffect> pending_effects;
 
-        // Current Attack Context
-        AttackRequest current_attack;
-
-        // Active Cost Modifiers (e.g. Cocco Lupia, Fairy Gift)
         std::vector<CostModifier> active_modifiers;
-
-        // Passive Effects (Step 5-1)
         std::vector<PassiveEffect> passive_effects;
 
-        // Stack Zone for declared cards (waiting for cost payment) [PLAN-002]
-        std::vector<CardInstance> stack_zone;
-
-        // Effect Buffer moved to Player struct [Step 3-1]
-
-        // Turn Stats [Phase 5]
-        TurnStats turn_stats;
-
-        // Determinism: std::mt19937 inside State [Q69]
         std::mt19937 rng;
 
-        // Owner Map [Phase A]
-        // Index is instance_id, Value is owner PlayerID
         std::vector<PlayerID> card_owner_map;
 
-        // Result Stats / POMDP support
-        // Map CardID -> aggregated CardStats (sums and counts)
-        std::map<CardID, CardStats> global_card_stats;
+        TurnStats turn_stats;
+        bool stats_recorded = false;
+        std::vector<std::pair<CardID, int>> played_cards_history_this_game;
 
-        // Initial deck aggregate sums (sum over cards placed in initial deck)
+        // Requires full definition of GameCommand in .cpp for deletion
+        std::vector<std::unique_ptr<dm::engine::game_command::GameCommand>> command_history;
+
+        struct QueryContext {
+            int query_id = 0;
+            std::string query_type;
+            std::map<std::string, int> params;
+            std::vector<int> valid_targets;
+            std::vector<std::string> options;
+        };
+
+        bool waiting_for_user_input = false;
+        QueryContext pending_query;
+
+        std::shared_ptr<void> active_pipeline;
+
+        // Stats members needed for compilation
+        std::map<CardID, CardStats> global_card_stats;
         CardStats initial_deck_stats_sum;
         CardStats visible_stats_sum;
-        int initial_deck_count = 40;
+        int initial_deck_count = 0;
         int visible_card_count = 0;
+        std::vector<size_t> hash_history;
+        bool loop_proven = false;
 
-        // Phase 6: GameCommand History
-        std::vector<std::shared_ptr<dm::engine::game_command::GameCommand>> command_history;
+        GameState(int seed = 0);
+        ~GameState();
 
-        // Phase 6: Command Execution Wrapper
-        void execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd);
+        // Move-only due to unique_ptr
+        GameState(GameState&&) noexcept;
+        GameState& operator=(GameState&&) noexcept;
+        GameState(const GameState&) = delete;
+        GameState& operator=(const GameState&) = delete;
 
-        // Phase 6: Event Dispatcher Reference
-        // To allow commands to dispatch events, we need access to TriggerManager.
-        // GameState does not own TriggerManager (GameInstance does), but we can store a callback or pointer.
-        // For MVP, we use a simple functional callback or void* to avoid circular dependency.
-        std::function<void(const GameEvent&)> event_dispatcher;
+        void setup_test_duel();
+        CardInstance* get_card_instance(int instance_id);
+        const CardInstance* get_card_instance(int instance_id) const;
+        std::vector<int> get_zone(PlayerID pid, Zone zone) const;
+        void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd);
 
-        // Phase 6: Query/Decide
-        bool waiting_for_user_input = false;
-        struct QueryContext {
-             int query_id = 0; // Incrementing ID
-             std::string query_type; // e.g., "SELECT_TARGET", "SELECT_OPTION"
-             std::map<std::string, int> params; // e.g., "min_count": 1, "max_count": 1
-             std::vector<int> valid_target_ids;
-             std::vector<std::string> options;
-        };
-        std::optional<QueryContext> pending_query;
+        GameState clone() const;
+        size_t calculate_hash() const;
 
-        GameState() : rng(0) {
-            players[0].id = 0;
-            players[1].id = 1;
-        }
+        void add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid);
 
-        GameState(uint32_t seed) : rng(seed) {
-            players[0].id = 0;
-            players[1].id = 1;
-        }
-
-        // POMDP helpers
-        void on_card_reveal(CardID cid);
-        std::vector<float> vectorize_card_stats(CardID cid) const;
-        std::vector<float> get_library_potential() const;
-        // Initialize card stats map from card DB (creates entries for all known CardIDs)
-        void initialize_card_stats(const std::map<CardID, CardDefinition>& card_db, int deck_size = 40);
-        // Load historical card stats from JSON file (format: array of {id, play_count, averages:[16] or sums:[16]})
+        // Declarations for methods implemented in other files
+        void update_loop_check();
+        void initialize_card_stats(const std::map<CardID, CardDefinition>& card_db, int deck_size);
         bool load_card_stats_from_json(const std::string& filepath);
-        // Given an explicit deck list (vector of CardIDs), compute initial_deck_stats_sum as sum of per-card averages
         void compute_initial_deck_sums(const std::vector<CardID>& deck_list);
-
-        // Stats tracking
-        // Stores pair of (CardID, TurnNumber)
-        std::vector<std::pair<CardID, int>> played_cards_history_this_game[2];
-        bool stats_recorded = false;
+        void on_card_reveal(CardID cid);
         void on_card_play(CardID cid, int turn, bool is_trigger, int cost_diff, PlayerID pid);
         void on_game_finished(GameResult result);
-
-        Player& get_active_player() {
-            return players[active_player_id];
-        }
-
-        Player& get_non_active_player() {
-            return players[1 - active_player_id];
-        }
-
-        const Player& get_active_player() const {
-            return players[active_player_id];
-        }
-
-        const Player& get_non_active_player() const {
-             return players[1 - active_player_id];
-        }
-
-        // Loop detection / State Identity
-        uint64_t calculate_hash() const;
-
-        // Instance Lookup Helper (O(1) owner check, O(N) zone scan)
-        // Returns pointer to instance or nullptr if not found
-        // Optimized by checking owner first
-        CardInstance* get_card_instance(int instance_id) {
-             if (instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
-
-             PlayerID owner = card_owner_map[instance_id];
-             if (owner > 1) return nullptr; // Invalid owner?
-
-             Player& p = players[owner];
-             // Check zones in order of likelihood
-             for (auto& c : p.battle_zone) {
-                 if (c.instance_id == instance_id) return &c;
-                 for (auto& u : c.underlying_cards) if (u.instance_id == instance_id) return &u;
-             }
-             for (auto& c : p.hand) if (c.instance_id == instance_id) return &c;
-             for (auto& c : p.mana_zone) if (c.instance_id == instance_id) return &c;
-             for (auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
-             for (auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
-             for (auto& c : p.deck) if (c.instance_id == instance_id) return &c;
-
-             // Check effect buffers of BOTH players (card might be in either buffer)
-             // Prioritize the owner's buffer, then opponent's buffer
-             for (auto& c : players[0].effect_buffer) if (c.instance_id == instance_id) return &c;
-             for (auto& c : players[1].effect_buffer) if (c.instance_id == instance_id) return &c;
-
-             return nullptr;
-        }
-
-        // Helper to access zone by enum
-        const std::vector<int> get_zone(PlayerID pid, Zone zone) const {
-            if (pid > 1) return {};
-            const auto& p = players[pid];
-            std::vector<int> ids;
-            const std::vector<CardInstance>* vec_ptr = nullptr;
-
-            switch (zone) {
-                case Zone::HAND: vec_ptr = &p.hand; break;
-                case Zone::MANA: vec_ptr = &p.mana_zone; break;
-                case Zone::BATTLE: vec_ptr = &p.battle_zone; break;
-                case Zone::GRAVEYARD: vec_ptr = &p.graveyard; break;
-                case Zone::SHIELD: vec_ptr = &p.shield_zone; break;
-                case Zone::DECK: vec_ptr = &p.deck; break;
-                case Zone::HYPER_SPATIAL: vec_ptr = &p.hyper_spatial_zone; break;
-                case Zone::BUFFER: vec_ptr = &p.effect_buffer; break;
-                case Zone::STACK:
-                    // Special case: Stack is global
-                    vec_ptr = &stack_zone;
-                    break;
-                default: break;
-            }
-
-            if (vec_ptr) {
-                ids.reserve(vec_ptr->size());
-                for (const auto& c : *vec_ptr) ids.push_back(c.instance_id);
-            }
-            return ids;
-        }
-
-        const CardInstance* get_card_instance(int instance_id) const {
-             if (instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
-
-             PlayerID owner = card_owner_map[instance_id];
-             if (owner > 1) return nullptr;
-
-             const Player& p = players[owner];
-             for (const auto& c : p.battle_zone) {
-                 if (c.instance_id == instance_id) return &c;
-                 for (const auto& u : c.underlying_cards) if (u.instance_id == instance_id) return &u;
-             }
-             for (const auto& c : p.hand) if (c.instance_id == instance_id) return &c;
-             for (const auto& c : p.mana_zone) if (c.instance_id == instance_id) return &c;
-             for (const auto& c : p.shield_zone) if (c.instance_id == instance_id) return &c;
-             for (const auto& c : p.graveyard) if (c.instance_id == instance_id) return &c;
-             for (const auto& c : p.deck) if (c.instance_id == instance_id) return &c;
-
-             for (const auto& c : players[0].effect_buffer) if (c.instance_id == instance_id) return &c;
-             for (const auto& c : players[1].effect_buffer) if (c.instance_id == instance_id) return &c;
-
-             return nullptr;
-        }
-        
-        // Error Handling [Q43, Q87]
-        void panic(const char* message) const {
-            throw std::runtime_error(message);
-        }
+        std::vector<float> vectorize_card_stats(CardID cid) const;
+        std::vector<float> get_library_potential() const;
     };
+
 }
+
+#endif // DM_CORE_GAME_STATE_HPP
