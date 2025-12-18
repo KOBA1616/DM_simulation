@@ -61,6 +61,47 @@ namespace dm::engine::game_command {
         CommandType get_type() const override { return CommandType::MUTATE; }
     };
 
+    // B. Complex Card Processing (Attach/Evolution)
+    class AttachCommand : public GameCommand {
+    public:
+        int card_to_attach_id;   // The card moving (e.g. from Hand)
+        int target_base_card_id; // The card on the field being evolved/cross-geared
+
+        // We assume attachment means "put on top" (Evolution) or "under" (Soul)?
+        // Evolution puts the new card ON TOP. The target becomes UNDER.
+        // But `underlying_cards` vector is usually "cards under this instance".
+        // If we Evolve A onto B:
+        // A is the new top instance. B is removed from Battle Zone and added to A.underlying_cards.
+        // Wait, Instance ID persistence?
+        // If A enters play, it gets a new Instance ID.
+        // B already has Instance ID X.
+        // If we replace B with A... B is gone (from zone). A is in zone.
+        // B is inside A.
+        // BUT, usually Evolution Creature keeps the state (tapped/untapped) of the base?
+        // "Evolution creature is put on top".
+        // So we might want to keep the Instance ID of the base, and just change the Card Definition?
+        // No, that's messy.
+        // Better: A is a new card entering.
+        // B is moved to "Under A".
+        // A inherits B's state (tapped/untapped, summoning sickness status).
+
+        core::Zone source_zone; // Where A comes from (usually Hand)
+
+        // Undo State
+        core::Zone original_zone;
+        int original_zone_index;
+        bool target_was_tapped;
+        bool target_was_sick;
+
+        AttachCommand(int attach_id, int base_id, core::Zone src_zone)
+            : card_to_attach_id(attach_id), target_base_card_id(base_id), source_zone(src_zone),
+              original_zone(core::Zone::HAND), original_zone_index(-1), target_was_tapped(false), target_was_sick(true) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::ATTACH; }
+    };
+
     class FlowCommand : public GameCommand {
     public:
         enum class FlowType {
