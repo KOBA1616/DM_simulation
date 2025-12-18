@@ -50,15 +50,6 @@ namespace dm::engine {
                  move.args["to"] = "HAND";
                  move.args["target"] = "$targets";
 
-                 // Note: SEARCH_DECK_BOTTOM implies we looked at N cards, picked M, and put rest back.
-                 // In legacy flow, "rest" is handled by complex state.
-                 // In pipeline flow, we assume "rest" logic was handled if using compile().
-                 // If using resolve_with_targets, we might be in a mixed state.
-                 // For now, we move selected targets.
-                 // "Rest" logic is hard to infer here without context of what was looked at.
-                 // But typically resolve_with_targets is called AFTER selection.
-                 // If we use pipeline for everything, this shouldn't be reached.
-
                  pipeline.execute({move}, ctx.game_state, ctx.card_db);
              }
              else if (ctx.action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
@@ -81,20 +72,18 @@ namespace dm::engine {
                 ctx.instruction_buffer->push_back(shuffle);
             }
             else if (ctx.action.type == EffectActionType::SEARCH_DECK) {
+                 std::string var_name = "$search_selection_" + std::to_string(ctx.game_state.turn_number);
+
                  Instruction select(InstructionOp::SELECT);
                  select.args["filter"] = ctx.action.filter;
-                 select.args["out"] = "$search_selection";
+                 select.args["out"] = var_name;
 
                  // Default to DECK if not specified
                  if (ctx.action.filter.zones.empty()) {
                      select.args["filter"]["zones"] = std::vector<std::string>{"DECK"};
-                 } else {
-                     // Ensure DECK is in zones? Usually implicit for SEARCH_DECK.
                  }
 
                  // Count (Optional?)
-                 // Search usually "Up to 1".
-                 // Logic for "Up to" is handled by UI/AI.
                  int count = ctx.action.value1;
                  if (count == 0) count = 1;
                  select.args["count"] = count;
@@ -103,7 +92,7 @@ namespace dm::engine {
 
                  Instruction move(InstructionOp::MOVE);
                  move.args["to"] = (ctx.action.destination_zone == "MANA_ZONE") ? "MANA" : "HAND";
-                 move.args["target"] = "$search_selection";
+                 move.args["target"] = var_name;
                  ctx.instruction_buffer->push_back(move);
 
                  Instruction shuffle(InstructionOp::MODIFY);
@@ -114,6 +103,8 @@ namespace dm::engine {
             else if (ctx.action.type == EffectActionType::SEARCH_DECK_BOTTOM) {
                 int look_count = ctx.action.value1;
                 if (look_count == 0) look_count = 1;
+                std::string var_sel = "$search_bottom_sel_" + std::to_string(ctx.game_state.turn_number);
+                std::string var_rest = "$search_bottom_rest_" + std::to_string(ctx.game_state.turn_number);
 
                 // 1. Move Bottom N to Buffer
                 Instruction move_to_buf(InstructionOp::MOVE);
@@ -126,27 +117,27 @@ namespace dm::engine {
                 Instruction select(InstructionOp::SELECT);
                 select.args["filter"] = ctx.action.filter;
                 select.args["filter"]["zones"] = std::vector<std::string>{"EFFECT_BUFFER"};
-                select.args["out"] = "$search_selection";
+                select.args["out"] = var_sel;
                 select.args["count"] = 1; // Usually 1
                 ctx.instruction_buffer->push_back(select);
 
                 // 3. Move Selection to Hand
                 Instruction move_sel(InstructionOp::MOVE);
                 move_sel.args["to"] = "HAND";
-                move_sel.args["target"] = "$search_selection";
+                move_sel.args["target"] = var_sel;
                 ctx.instruction_buffer->push_back(move_sel);
 
                 // 4. Move Rest (from Buffer) to Deck Bottom
                 Instruction select_rest(InstructionOp::SELECT);
                 select_rest.args["filter"]["zones"] = std::vector<std::string>{"EFFECT_BUFFER"};
-                select_rest.args["out"] = "$buffer_rest";
+                select_rest.args["out"] = var_rest;
                 select_rest.args["count"] = 999;
                 ctx.instruction_buffer->push_back(select_rest);
 
                 Instruction move_rest(InstructionOp::MOVE);
                 move_rest.args["to"] = "DECK";
                 move_rest.args["to_bottom"] = true;
-                move_rest.args["target"] = "$buffer_rest";
+                move_rest.args["target"] = var_rest;
                 ctx.instruction_buffer->push_back(move_rest);
             }
             else if (ctx.action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
@@ -155,24 +146,26 @@ namespace dm::engine {
                  move.args["to_bottom"] = true;
 
                  if (ctx.action.scope == TargetScope::TARGET_SELECT) {
-                     move.args["target"] = "$selection"; // Assuming pre-selection or handled via separate SELECT step
-                     // Wait, if scope is TARGET_SELECT, we need a SELECT instruction first!
+                     std::string var_name = "$sdb_selection_" + std::to_string(ctx.game_state.turn_number);
+
                      Instruction select(InstructionOp::SELECT);
                      select.args["filter"] = ctx.action.filter;
-                     select.args["out"] = "$sdb_selection";
+                     select.args["out"] = var_name;
                      select.args["count"] = (ctx.action.value1 > 0) ? ctx.action.value1 : 1;
                      ctx.instruction_buffer->push_back(select);
-                     move.args["target"] = "$sdb_selection";
+                     move.args["target"] = var_name;
                  }
                  else if (!ctx.action.input_value_key.empty()) {
                      move.args["target"] = "$" + ctx.action.input_value_key;
                  } else {
+                     std::string var_name = "$auto_sdb_selection_" + std::to_string(ctx.game_state.turn_number);
+
                      Instruction select(InstructionOp::SELECT);
                      select.args["filter"] = ctx.action.filter;
-                     select.args["out"] = "$auto_sdb_selection";
+                     select.args["out"] = var_name;
                      select.args["count"] = 999;
                      ctx.instruction_buffer->push_back(select);
-                     move.args["target"] = "$auto_sdb_selection";
+                     move.args["target"] = var_name;
                  }
                  ctx.instruction_buffer->push_back(move);
             }

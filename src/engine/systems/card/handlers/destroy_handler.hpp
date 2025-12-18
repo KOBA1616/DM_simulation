@@ -48,19 +48,16 @@ namespace dm::engine {
 
             // Determine Targets
             std::string target_var = "";
-            bool selection_needed = false;
 
             if (!ctx.action.input_value_key.empty()) {
                 target_var = "$" + ctx.action.input_value_key;
             }
             else if (ctx.action.scope == TargetScope::TARGET_SELECT) {
-                 // Selection handled by prior steps or implied?
-                 // Usually compile() is called when we encounter the action.
-                 // If it requires selection, we must generate SELECT instruction.
+                 std::string var_name = "$destroy_selection_" + std::to_string(ctx.game_state.turn_number);
 
                  Instruction select(InstructionOp::SELECT);
                  select.args["filter"] = ctx.action.filter;
-                 select.args["out"] = "$destroy_selection";
+                 select.args["out"] = var_name;
 
                  // Count
                  int count = ctx.action.value1;
@@ -68,17 +65,19 @@ namespace dm::engine {
                  select.args["count"] = count;
 
                  ctx.instruction_buffer->push_back(select);
-                 target_var = "$destroy_selection";
+                 target_var = var_name;
             }
             else {
                  // Auto Select (All/Any matching filter)
+                 std::string var_name = "$auto_destroy_selection_" + std::to_string(ctx.game_state.turn_number);
+
                  Instruction select(InstructionOp::SELECT);
                  select.args["filter"] = ctx.action.filter;
-                 select.args["out"] = "$auto_destroy_selection";
+                 select.args["out"] = var_name;
                  select.args["count"] = 999;
 
                  ctx.instruction_buffer->push_back(select);
-                 target_var = "$auto_destroy_selection";
+                 target_var = var_name;
             }
 
             // Move to Graveyard
