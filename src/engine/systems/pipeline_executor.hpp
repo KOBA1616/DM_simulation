@@ -1,64 +1,73 @@
-#pragma once
-#include "core/instruction.hpp"
+#ifndef DM_ENGINE_SYSTEMS_PIPELINE_EXECUTOR_HPP
+#define DM_ENGINE_SYSTEMS_PIPELINE_EXECUTOR_HPP
+
 #include "core/game_state.hpp"
-#include "core/game_event.hpp"
-#include "engine/game_command/game_command.hpp"
-#include <map>
-#include <variant>
-#include <string>
+#include "core/card_def.hpp"
+#include "core/instruction.hpp"
+#include "nlohmann/json.hpp"
 #include <vector>
+#include <map>
+#include <string>
+#include <variant>
+#include <memory>
+#include "engine/game_command/game_command.hpp"
 
 namespace dm::engine::systems {
 
-    // Context variable types
-    using ContextValue = std::variant<int, std::string, bool, std::vector<int>>;
+    using ContextValue = std::variant<int, std::string, std::vector<int>>;
+
+    struct ExecutionFrame {
+        const std::vector<Instruction>* instructions;
+        int index;
+        // Optional: Local variables scope? For now, we use global context.
+    };
 
     class PipelineExecutor {
     public:
-        PipelineExecutor() = default;
-
-        // Execute a list of instructions
-        void execute(const std::vector<core::Instruction>& instructions, core::GameState& state,
-                     const std::map<core::CardID, core::CardDefinition>& card_db);
-
-        // Resume execution (Phase 7 feature stub, currently just executes synchronously)
-        // void resume(core::GameState& state, int query_id, int selection_index);
-
-        // Context management
-        void set_context_var(const std::string& key, ContextValue value);
-        ContextValue get_context_var(const std::string& key) const;
-        const std::map<std::string, ContextValue>& get_context() const { return context; }
-
-        // Helper to reset context (e.g. between card effects)
-        void clear_context();
-
-    private:
+        // Execution State
         std::map<std::string, ContextValue> context;
         bool execution_paused = false;
+        std::string waiting_for_key; // The context key we are waiting for input to populate
 
-        // Execution primitives
-        void execute_instruction(const core::Instruction& inst, core::GameState& state,
-                                 const std::map<core::CardID, core::CardDefinition>& card_db);
+        // Call Stack for Resume Support
+        std::vector<ExecutionFrame> call_stack;
 
-        // Command execution wrapper (tracks history)
-        void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd, core::GameState& state);
+        PipelineExecutor() = default;
 
-        // Op handlers
-        void handle_select(const core::Instruction& inst, core::GameState& state,
-                           const std::map<core::CardID, core::CardDefinition>& card_db);
-        void handle_move(const core::Instruction& inst, core::GameState& state);
-        void handle_modify(const core::Instruction& inst, core::GameState& state);
-        void handle_if(const core::Instruction& inst, core::GameState& state,
-                       const std::map<core::CardID, core::CardDefinition>& card_db);
-        void handle_loop(const core::Instruction& inst, core::GameState& state,
-                         const std::map<core::CardID, core::CardDefinition>& card_db);
-        void handle_calc(const core::Instruction& inst, core::GameState& state); // COUNT, MATH
-        void handle_print(const core::Instruction& inst, core::GameState& state);
+        // Entry point
+        void execute(const std::vector<Instruction>& instructions, core::GameState& state,
+                     const std::map<core::CardID, core::CardDefinition>& card_db);
 
-        // Utils
+        // Resume execution after input
+        void resume(core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db,
+                    const ContextValue& input_value);
+
+        // Context Management
+        void set_context_var(const std::string& key, ContextValue value);
+        ContextValue get_context_var(const std::string& key) const;
+        void clear_context();
+
+        // Helpers
         int resolve_int(const nlohmann::json& val) const;
         std::string resolve_string(const nlohmann::json& val) const;
         bool check_condition(const nlohmann::json& cond, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+
+        // Instruction Handlers
+        void execute_instruction(const Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_select(const Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_move(const Instruction& inst, core::GameState& state);
+        void handle_modify(const Instruction& inst, core::GameState& state);
+        void handle_if(const Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_loop(const Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_calc(const Instruction& inst, core::GameState& state);
+        void handle_print(const Instruction& inst, core::GameState& state);
+
+        void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd, core::GameState& state);
+
+    private:
+        void run_loop(core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
     };
 
-}
+} // namespace dm::engine::systems
+
+#endif // DM_ENGINE_SYSTEMS_PIPELINE_EXECUTOR_HPP
