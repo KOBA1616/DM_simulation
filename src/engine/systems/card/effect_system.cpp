@@ -28,6 +28,7 @@
 #include "handlers/play_handler.hpp"
 #include "handlers/modify_power_handler.hpp"
 #include "engine/systems/command_system.hpp"
+#include "engine/systems/pipeline_executor.hpp" // Added include for execute_pipeline
 #include <algorithm>
 #include <iostream>
 
@@ -78,19 +79,42 @@ namespace dm::engine {
         initialized = true;
     }
 
+    // Helper method implementation
+    void EffectSystem::execute_pipeline(const ResolutionContext& ctx, const std::vector<dm::core::Instruction>& instructions) {
+         if (instructions.empty()) return;
+
+         dm::engine::systems::PipelineExecutor pipeline;
+
+         // Populate pipeline context
+         for (const auto& kv : ctx.execution_vars) {
+             pipeline.set_context_var(kv.first, kv.second);
+         }
+
+         // FIX: Inject source instance ID as "$source" for context-sensitive operations
+         pipeline.set_context_var("$source", ctx.source_instance_id);
+
+         pipeline.execute(instructions, ctx.game_state, ctx.card_db);
+
+         // Merge back
+         const auto& pipe_ctx = pipeline.get_context();
+         for (const auto& kv : pipe_ctx) {
+             if (std::holds_alternative<int>(kv.second)) {
+                 ctx.execution_vars[kv.first] = std::get<int>(kv.second);
+             }
+         }
+    }
+
     void EffectSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
         initialize();
 
         CardInstance* instance = game_state.get_card_instance(source_instance_id);
         if (!instance) {
-            // std::cerr << "resolve_trigger: Instance " << source_instance_id << " not found." << std::endl;
             return;
         }
 
         std::vector<EffectDef> active_effects;
         bool found = false;
 
-        // Use card_db or registry
         const CardDefinition* def_ptr = nullptr;
         if (card_db.count(instance->card_id)) {
             def_ptr = &card_db.at(instance->card_id);
@@ -104,7 +128,6 @@ namespace dm::engine {
             active_effects.insert(active_effects.end(), data.effects.begin(), data.effects.end());
             active_effects.insert(active_effects.end(), data.metamorph_abilities.begin(), data.metamorph_abilities.end());
 
-            // Friend Burst Logic
             if (data.keywords.friend_burst && trigger == TriggerType::ON_PLAY) {
                 EffectDef fb_effect;
                 fb_effect.trigger = TriggerType::ON_PLAY;
@@ -125,7 +148,6 @@ namespace dm::engine {
             }
         }
 
-        // Underlying cards (e.g., Metamorph)
         for (const auto& under : instance->underlying_cards) {
             if (card_db.count(under.card_id)) {
                 const auto& under_data = card_db.at(under.card_id);
@@ -166,7 +188,6 @@ namespace dm::engine {
         for (size_t i = 0; i < effect.actions.size(); ++i) {
             const auto& action = effect.actions[i];
 
-            // Construct remaining actions for continuation
             std::vector<ActionDef> remaining_actions;
             if (i + 1 < effect.actions.size()) {
                 remaining_actions.insert(remaining_actions.end(), effect.actions.begin() + i + 1, effect.actions.end());
@@ -180,7 +201,6 @@ namespace dm::engine {
             }
         }
 
-        // Execute Commands (Legacy hybrid support)
         for (const auto& cmd : effect.commands) {
             PlayerID controller = get_controller(game_state, source_instance_id);
             dm::engine::systems::CommandSystem::execute_command(game_state, cmd, source_instance_id, controller, execution_context);
@@ -200,8 +220,6 @@ namespace dm::engine {
                 handler->resolve_with_targets(ctx);
                 continue;
             } else {
-                 // Fallback: try standard resolution without target targets (legacy behavior?)
-                 // Actually this matches GenericCardSystem logic
                 resolve_action(game_state, action, source_instance_id, execution_context, card_db);
             }
         }
@@ -210,7 +228,6 @@ namespace dm::engine {
     void EffectSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, bool* interrupted, const std::vector<ActionDef>* remaining_actions) {
         initialize();
 
-        // Check Action-level condition
         if (action.condition.has_value()) {
             bool condition_met = false;
             if (action.condition->type == "COMPARE_STAT" && execution_context.count(action.condition->stat_key)) {
@@ -233,8 +250,6 @@ namespace dm::engine {
         if (IActionHandler* handler = get_handler(action.type)) {
             ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, interrupted, remaining_actions);
             handler->resolve(ctx);
-        } else {
-            // std::cerr << "EffectSystem::resolve_action: No handler for action type " << (int)action.type << std::endl;
         }
     }
 
@@ -250,7 +265,7 @@ namespace dm::engine {
     bool EffectSystem::check_condition(GameState& game_state, const ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& execution_context) {
         if (condition.type == "NONE") return true;
 
-        initialize(); // Ensure ConditionSystem initialized
+        initialize();
         ConditionSystem& sys = ConditionSystem::instance();
         if (IConditionEvaluator* evaluator = sys.get_evaluator(condition.type)) {
             return evaluator->evaluate(game_state, condition, source_instance_id, card_db, execution_context);
@@ -287,7 +302,6 @@ namespace dm::engine {
             pending.num_targets_needed = 1;
         }
 
-        // Variable Linking
         if (!action.input_value_key.empty()) {
             if (execution_context.count(action.input_value_key)) {
                 pending.num_targets_needed = execution_context[action.input_value_key];
@@ -314,7 +328,6 @@ namespace dm::engine {
             ed.actions.insert(ed.actions.end(), ctx.remaining_actions->begin(), ctx.remaining_actions->end());
         }
 
-        // Access via singleton or static
         instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
         *ctx.interrupted = true;
     }
