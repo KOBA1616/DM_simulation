@@ -9,7 +9,7 @@ namespace dm::engine {
 
     class ModifyPowerHandler : public IActionHandler {
     public:
-        void compile(const ResolutionContext& ctx) override {
+        void compile_action(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
             int value = ctx.action.value1;
@@ -40,7 +40,7 @@ namespace dm::engine {
             ResolutionContext compile_ctx = ctx;
             compile_ctx.instruction_buffer = &instructions;
 
-            compile(compile_ctx);
+            compile_action(compile_ctx);
 
             if (instructions.empty()) return;
 

@@ -55,7 +55,7 @@ namespace dm::engine {
              }
         }
 
-        void compile(const ResolutionContext& ctx) override {
+        void compile_action(const ResolutionContext& ctx) override {
             if (!ctx.instruction_buffer) return;
 
             // Determine count

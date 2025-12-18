@@ -42,7 +42,7 @@ namespace dm::engine {
         virtual void resolve_with_targets([[maybe_unused]] const ResolutionContext& ctx) {}
 
         // Pure command generation method
-        virtual void compile([[maybe_unused]] const ResolutionContext& ctx) {}
+        virtual void compile_action([[maybe_unused]] const ResolutionContext& ctx) {}
     };
 
     class EffectSystem {

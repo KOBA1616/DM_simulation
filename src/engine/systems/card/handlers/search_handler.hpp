@@ -19,7 +19,7 @@ namespace dm::engine {
             temp_ctx.instruction_buffer = &insts;
 
             // Use compile for all handled types
-            compile(temp_ctx);
+            compile_action(temp_ctx);
 
             if (!insts.empty()) {
                 dm::engine::systems::PipelineExecutor pipeline;
@@ -70,7 +70,7 @@ namespace dm::engine {
              }
         }
 
-        void compile(const ResolutionContext& ctx) override {
+        void compile_action(const ResolutionContext& ctx) override {
             using namespace dm::core;
             if (!ctx.instruction_buffer) return;
 
