@@ -26,6 +26,7 @@
 #include "ai/self_play/self_play.hpp" // Added to include GameResultInfo definition
 #include "ai/scenario/scenario_executor.hpp" // Missing include
 #include "core/instruction.hpp" // For Instruction and InstructionOp
+#include "engine/game_command/commands.hpp" // Added for GameCommand bindings
 
 namespace py = pybind11;
 using namespace dm;
@@ -40,6 +41,107 @@ std::shared_ptr<dm::engine::systems::PipelineExecutor> get_active_pipeline(GameS
 
 PYBIND11_MODULE(dm_ai_module, m) {
     m.doc() = "Duel Masters AI Module";
+
+    // GameCommand bindings
+    // Do NOT use using namespace dm::engine::game_command; locally to avoid CommandType conflict with core::CommandType
+
+    py::class_<dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameCommand>>(m, "GameCommand")
+        .def("get_type", &dm::engine::game_command::GameCommand::get_type);
+
+    py::enum_<dm::engine::game_command::CommandType>(m, "CommandType")
+        .value("TRANSITION", dm::engine::game_command::CommandType::TRANSITION)
+        .value("MUTATE", dm::engine::game_command::CommandType::MUTATE)
+        .value("ATTACH", dm::engine::game_command::CommandType::ATTACH)
+        .value("FLOW", dm::engine::game_command::CommandType::FLOW)
+        .value("QUERY", dm::engine::game_command::CommandType::QUERY)
+        .value("DECIDE", dm::engine::game_command::CommandType::DECIDE)
+        .value("DECLARE_REACTION", dm::engine::game_command::CommandType::DECLARE_REACTION)
+        .value("STAT", dm::engine::game_command::CommandType::STAT)
+        .value("GAME_RESULT", dm::engine::game_command::CommandType::GAME_RESULT)
+        .export_values();
+
+    py::class_<dm::engine::game_command::TransitionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::TransitionCommand>>(m, "TransitionCommand")
+        .def(py::init<int, Zone, Zone, PlayerID, int>(),
+             py::arg("instance_id"), py::arg("from"), py::arg("to"), py::arg("owner"), py::arg("dest_idx") = -1)
+        .def_readwrite("card_instance_id", &dm::engine::game_command::TransitionCommand::card_instance_id)
+        .def_readwrite("from_zone", &dm::engine::game_command::TransitionCommand::from_zone)
+        .def_readwrite("to_zone", &dm::engine::game_command::TransitionCommand::to_zone)
+        .def_readwrite("owner_id", &dm::engine::game_command::TransitionCommand::owner_id)
+        .def_readwrite("destination_index", &dm::engine::game_command::TransitionCommand::destination_index);
+
+    py::class_<dm::engine::game_command::MutateCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::MutateCommand>>(m, "MutateCommand")
+        .def(py::init<int, dm::engine::game_command::MutateCommand::MutationType, int, std::string>(),
+             py::arg("instance_id"), py::arg("type"), py::arg("val") = 0, py::arg("str") = "")
+        .def_readwrite("target_instance_id", &dm::engine::game_command::MutateCommand::target_instance_id)
+        .def_readwrite("mutation_type", &dm::engine::game_command::MutateCommand::mutation_type)
+        .def_readwrite("int_value", &dm::engine::game_command::MutateCommand::int_value)
+        .def_readwrite("str_value", &dm::engine::game_command::MutateCommand::str_value);
+
+    py::enum_<dm::engine::game_command::MutateCommand::MutationType>(m, "MutationType")
+        .value("TAP", dm::engine::game_command::MutateCommand::MutationType::TAP)
+        .value("UNTAP", dm::engine::game_command::MutateCommand::MutationType::UNTAP)
+        .value("POWER_MOD", dm::engine::game_command::MutateCommand::MutationType::POWER_MOD)
+        .value("ADD_KEYWORD", dm::engine::game_command::MutateCommand::MutationType::ADD_KEYWORD)
+        .value("REMOVE_KEYWORD", dm::engine::game_command::MutateCommand::MutationType::REMOVE_KEYWORD)
+        .value("ADD_PASSIVE_EFFECT", dm::engine::game_command::MutateCommand::MutationType::ADD_PASSIVE_EFFECT)
+        .value("ADD_COST_MODIFIER", dm::engine::game_command::MutateCommand::MutationType::ADD_COST_MODIFIER)
+        .value("ADD_PENDING_EFFECT", dm::engine::game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT)
+        .export_values();
+
+    py::class_<dm::engine::game_command::AttachCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::AttachCommand>>(m, "AttachCommand")
+        .def(py::init<int, int, Zone>())
+        .def_readwrite("card_to_attach_id", &dm::engine::game_command::AttachCommand::card_to_attach_id)
+        .def_readwrite("target_base_card_id", &dm::engine::game_command::AttachCommand::target_base_card_id)
+        .def_readwrite("source_zone", &dm::engine::game_command::AttachCommand::source_zone);
+
+    py::class_<dm::engine::game_command::FlowCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::FlowCommand>>(m, "FlowCommand")
+        .def(py::init<dm::engine::game_command::FlowCommand::FlowType, int>())
+        .def_readwrite("flow_type", &dm::engine::game_command::FlowCommand::flow_type)
+        .def_readwrite("new_value", &dm::engine::game_command::FlowCommand::new_value);
+
+    py::enum_<dm::engine::game_command::FlowCommand::FlowType>(m, "FlowType")
+        .value("PHASE_CHANGE", dm::engine::game_command::FlowCommand::FlowType::PHASE_CHANGE)
+        .value("TURN_CHANGE", dm::engine::game_command::FlowCommand::FlowType::TURN_CHANGE)
+        .value("STEP_CHANGE", dm::engine::game_command::FlowCommand::FlowType::STEP_CHANGE)
+        .value("SET_ATTACK_SOURCE", dm::engine::game_command::FlowCommand::FlowType::SET_ATTACK_SOURCE)
+        .value("SET_ATTACK_TARGET", dm::engine::game_command::FlowCommand::FlowType::SET_ATTACK_TARGET)
+        .value("SET_ATTACK_PLAYER", dm::engine::game_command::FlowCommand::FlowType::SET_ATTACK_PLAYER)
+        .value("SET_ACTIVE_PLAYER", dm::engine::game_command::FlowCommand::FlowType::SET_ACTIVE_PLAYER)
+        .export_values();
+
+    py::class_<dm::engine::game_command::QueryCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::QueryCommand>>(m, "QueryCommand")
+        .def(py::init<std::string, std::vector<int>, std::map<std::string, int>>())
+        .def_readwrite("query_type", &dm::engine::game_command::QueryCommand::query_type)
+        .def_readwrite("valid_targets", &dm::engine::game_command::QueryCommand::valid_targets)
+        .def_readwrite("params", &dm::engine::game_command::QueryCommand::params);
+
+    py::class_<dm::engine::game_command::DecideCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::DecideCommand>>(m, "DecideCommand")
+        .def(py::init<int, std::vector<int>, int>())
+        .def_readwrite("query_id", &dm::engine::game_command::DecideCommand::query_id)
+        .def_readwrite("selected_indices", &dm::engine::game_command::DecideCommand::selected_indices)
+        .def_readwrite("selected_option_index", &dm::engine::game_command::DecideCommand::selected_option_index);
+
+    py::class_<dm::engine::game_command::DeclareReactionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::DeclareReactionCommand>>(m, "DeclareReactionCommand")
+        .def(py::init<PlayerID, bool, int>())
+        .def_readwrite("pass", &dm::engine::game_command::DeclareReactionCommand::pass)
+        .def_readwrite("reaction_index", &dm::engine::game_command::DeclareReactionCommand::reaction_index)
+        .def_readwrite("player_id", &dm::engine::game_command::DeclareReactionCommand::player_id);
+
+    py::class_<dm::engine::game_command::StatCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::StatCommand>>(m, "StatCommand")
+        .def(py::init<dm::engine::game_command::StatCommand::StatType, int>())
+        .def_readwrite("stat", &dm::engine::game_command::StatCommand::stat)
+        .def_readwrite("amount", &dm::engine::game_command::StatCommand::amount);
+
+    py::enum_<dm::engine::game_command::StatCommand::StatType>(m, "StatType")
+        .value("CARDS_DRAWN", dm::engine::game_command::StatCommand::StatType::CARDS_DRAWN)
+        .value("CARDS_DISCARDED", dm::engine::game_command::StatCommand::StatType::CARDS_DISCARDED)
+        .value("CREATURES_PLAYED", dm::engine::game_command::StatCommand::StatType::CREATURES_PLAYED)
+        .value("SPELLS_CAST", dm::engine::game_command::StatCommand::StatType::SPELLS_CAST)
+        .export_values();
+
+    py::class_<dm::engine::game_command::GameResultCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameResultCommand>>(m, "GameResultCommand")
+        .def(py::init<GameResult>())
+        .def_readwrite("result", &dm::engine::game_command::GameResultCommand::result);
 
     // Enums
     py::enum_<Civilization>(m, "Civilization")
@@ -352,6 +454,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<GameState>(m, "GameState")
         .def(py::init<int>())
         .def("setup_test_duel", &GameState::setup_test_duel)
+        .def("execute_command", &GameState::execute_command)
+        .def_readonly("command_history", &GameState::command_history)
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("current_phase", &GameState::current_phase)
