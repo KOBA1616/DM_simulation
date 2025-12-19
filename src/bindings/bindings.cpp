@@ -213,6 +213,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::enum_<TargetScope>(m, "TargetScope")
         .value("TARGET_SELECT", TargetScope::TARGET_SELECT)
+        .value("NONE", TargetScope::NONE)
+        .value("SELF", TargetScope::SELF)
         .export_values();
 
     py::enum_<TriggerType>(m, "TriggerType")
@@ -324,6 +326,15 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("owner", &FilterDef::owner)
         .def_readwrite("count", &FilterDef::count);
 
+    py::class_<ConditionDef>(m, "ConditionDef")
+        .def(py::init<>())
+        .def_readwrite("type", &ConditionDef::type)
+        .def_readwrite("value", &ConditionDef::value)
+        .def_readwrite("str_val", &ConditionDef::str_val)
+        .def_readwrite("stat_key", &ConditionDef::stat_key)
+        .def_readwrite("op", &ConditionDef::op)
+        .def_readwrite("filter", &ConditionDef::filter);
+
     py::class_<ActionDef>(m, "ActionDef")
         .def(py::init<>())
         .def_readwrite("type", &ActionDef::type)
@@ -382,7 +393,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
         .def_property("civilization",
             [](const CardDefinition& c) { return c.civilizations.empty() ? Civilization::NONE : c.civilizations[0]; },
-            [](CardDefinition& c, Civilization civ) { c.civilizations = {civ}; });
+            [](CardDefinition& c, Civilization civ) { c.civilizations = {civ}; })
+        .def_readwrite("civilizations", &CardDefinition::civilizations); // Added property for civilizations vector
 
     py::class_<CardData>(m, "CardData")
         .def(py::init([](CardID id, std::string name, int cost, std::string civilization, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects) {
@@ -503,7 +515,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
              s.players[pid].deck.push_back(c);
              if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
              s.card_owner_map[iid] = pid;
-        });
+        })
+        .def("initialize_card_stats", &GameState::initialize_card_stats); // Added binding
 
     py::class_<Action>(m, "Action")
         .def(py::init<>())
@@ -562,7 +575,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
                      state.active_pipeline.reset();
                  }
              }
-        });
+             });
 
     // Alias GenericCardSystem to EffectResolver or expose EffectSystem wrapper
     // The test calls dm_ai_module.GenericCardSystem.resolve_effect(self.state, ed, -1)
@@ -572,6 +585,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<GenericCardSystemWrapper>(m, "GenericCardSystem")
         .def_static("resolve_effect", [](GameState& state, const EffectDef& eff, int source_id) {
              auto db = CardRegistry::get_all_definitions();
+             dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
+        })
+        .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& eff, int source_id, const std::map<CardID, CardDefinition>& db) {
              dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
         })
         .def_static("resolve_action_with_context", [](GameState& state, int source_id, const ActionDef& action, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {

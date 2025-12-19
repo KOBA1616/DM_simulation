@@ -40,6 +40,9 @@ namespace dm::engine::systems {
         static void handle_use_ability(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_select_target(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst);
 
+        // Command Support
+        static void handle_execute_command(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst);
+
         // Exposed Utils
         static int get_creature_power(const core::CardInstance& creature, const core::GameState& game_state, const std::map<core::CardID, core::CardDefinition>& card_db);
         static int get_breaker_count(const core::CardInstance& creature, const std::map<core::CardID, core::CardDefinition>& card_db);
