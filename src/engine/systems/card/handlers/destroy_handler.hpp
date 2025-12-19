@@ -20,8 +20,11 @@ namespace dm::engine {
             temp_ctx.instruction_buffer = &insts;
             compile_action(temp_ctx);
 
-            dm::engine::systems::PipelineExecutor pipeline;
-            pipeline.execute(insts, ctx.game_state, ctx.card_db);
+            if (!insts.empty()) {
+                auto pipeline = std::make_shared<dm::engine::systems::PipelineExecutor>();
+                ctx.game_state.active_pipeline = pipeline;
+                pipeline->execute(insts, ctx.game_state, ctx.card_db);
+            }
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
