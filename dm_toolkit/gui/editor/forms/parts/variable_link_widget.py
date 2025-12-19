@@ -5,13 +5,12 @@ from dm_toolkit.gui.localization import tr
 class VariableLinkWidget(QWidget):
     """
     Reusable widget for linking variables (Action Chaining).
-    Handles 'Input Source' selection (Manual, Event Source, or Previous Steps) and Output Key generation.
+    Handles 'Input Source' selection (Manual, Event Source, Previous Steps) and Output Key generation.
     """
 
     # Signal emitted when any property changes
     linkChanged = pyqtSignal()
-    # Signal emitted when smart link check state changes (to update parent visibility)
-    # Kept for compatibility, mapped to "is input source not manual"
+    # Signal emitted when smart link state changes (to update parent visibility)
     smartLinkStateChanged = pyqtSignal(bool)
 
     def __init__(self, parent=None):
@@ -23,7 +22,6 @@ class VariableLinkWidget(QWidget):
         layout = QFormLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # Replaced Checkbox with specific Combo
         self.input_key_combo = QComboBox()
         self.input_key_combo.setEditable(False)
         self.input_key_label = QLabel(tr("Input Source"))
@@ -36,7 +34,7 @@ class VariableLinkWidget(QWidget):
         self.output_key_edit.setVisible(False)
 
         # Connect signals
-        self.input_key_combo.currentIndexChanged.connect(self.on_input_changed)
+        self.input_key_combo.currentIndexChanged.connect(self.on_combo_changed)
         self.output_key_edit.textChanged.connect(self.linkChanged.emit)
 
         # Initial Population
@@ -46,7 +44,7 @@ class VariableLinkWidget(QWidget):
         self.current_item = item
         self.populate_input_keys()
 
-    def on_input_changed(self):
+    def on_combo_changed(self):
         self.linkChanged.emit()
         self.smartLinkStateChanged.emit(self.is_smart_link_active())
 
@@ -67,17 +65,14 @@ class VariableLinkWidget(QWidget):
                   found = True
                   break
 
-        # Fallback for "Manual" (empty string)
-        if not found and input_key == "":
-             # Should be index 0
-             self.input_key_combo.setCurrentIndex(0)
-             found = True
-
+        # If not found and not empty, it might be a custom key from JSON
+        # If it's manual (empty), index 0 is already Manual
         if not found and input_key:
-             # Add unknown key temporarily? Or just set manual and warn?
-             # For now, append it so we don't lose data
+             # Add it temporarily so we don't lose data
              self.input_key_combo.addItem(f"{input_key} (Unknown)", input_key)
              self.input_key_combo.setCurrentIndex(self.input_key_combo.count()-1)
+        elif not found and not input_key:
+             self.input_key_combo.setCurrentIndex(0) # Manual Input
 
         self.blockSignals(False)
         # Emit state change to ensure parent UI updates (hiding val1 etc)
@@ -89,15 +84,15 @@ class VariableLinkWidget(QWidget):
         """
         # Input Key
         idx = self.input_key_combo.currentIndex()
+        val = ""
         if idx >= 0:
              val = self.input_key_combo.itemData(idx)
-             data['input_value_key'] = val if val is not None else ""
-        else:
-             data['input_value_key'] = ""
+             if val is None: val = "" # Safety
+
+        data['input_value_key'] = val
 
         # Output Key
-        out_key = self.output_key_edit.text()
-        data['output_value_key'] = out_key
+        data['output_value_key'] = self.output_key_edit.text()
 
     def ensure_output_key(self, action_type, produces_output):
         """
@@ -107,54 +102,56 @@ class VariableLinkWidget(QWidget):
              row = self.current_item.row()
              new_key = f"var_{action_type}_{row}"
              self.output_key_edit.setText(new_key)
-             # This triggers textChanged -> linkChanged -> update_data
+             # This triggers textChanged -> linkChanged
 
     def populate_input_keys(self):
         current_data = self.input_key_combo.currentData()
         self.input_key_combo.clear()
 
-        # 1. Manual Input
-        self.input_key_combo.addItem(tr("Manual Value / None"), "")
-
-        # 2. Event Source
+        # Default options
+        self.input_key_combo.addItem(tr("Manual Input"), "")
         self.input_key_combo.addItem(tr("Event Source"), "EVENT_SOURCE")
 
-        # 3. Dynamic Keys from siblings
-        if self.current_item:
-            parent = self.current_item.parent()
-            if parent:
-                row = self.current_item.row()
-                for i in range(row):
-                    sibling = parent.child(i)
-                    sib_data = sibling.data(Qt.ItemDataRole.UserRole + 2)
-                    if not sib_data:
-                        continue
-                    out_key = sib_data.get('output_value_key')
-                    if out_key:
-                        type_disp = tr(sib_data.get('type'))
-                        label = f"Step {i}: {type_disp}"
-                        self.input_key_combo.addItem(label, out_key)
+        if not self.current_item: return
 
-        # Restore selection if possible
+        parent = self.current_item.parent()
+        if not parent: return
+
+        row = self.current_item.row()
+        for i in range(row):
+            sibling = parent.child(i)
+            sib_data = sibling.data(Qt.ItemDataRole.UserRole + 2)
+            if not sib_data:
+                continue
+            out_key = sib_data.get('output_value_key')
+            if out_key:
+                type_disp = tr(sib_data.get('type'))
+                label = f"Step {i}: {type_disp}"
+                self.input_key_combo.addItem(label, out_key)
+
+        # Try to restore selection if possible
         if current_data is not None:
-             idx = self.input_key_combo.findData(current_data)
-             if idx >= 0:
-                  self.input_key_combo.setCurrentIndex(idx)
-             else:
-                  self.input_key_combo.setCurrentIndex(0)
+             for i in range(self.input_key_combo.count()):
+                  if self.input_key_combo.itemData(i) == current_data:
+                       self.input_key_combo.setCurrentIndex(i)
+                       break
 
     def is_smart_link_active(self):
-        # Active if selected data is NOT empty string
-        val = self.input_key_combo.currentData()
-        return bool(val)
+        # Active if selected item data is not empty string
+        idx = self.input_key_combo.currentIndex()
+        if idx < 0: return False
+        data = self.input_key_combo.itemData(idx)
+        return bool(data)
 
     def set_smart_link_enabled(self, enabled):
         """
-        Controls whether the input source combo is visible/enabled.
+        Controls whether the input source can be changed.
+        If disabled, force Manual Input? Or just hide?
+        Usually this is called to enable/disable the 'feature'.
+        If 'enabled' is False, it means this action does not support input linking or Val1 is hidden.
         """
-        self.input_key_label.setVisible(enabled)
-        self.input_key_combo.setVisible(enabled)
-
-        if not enabled:
-             # Reset to Manual if disabled to avoid hidden state affecting logic
-             self.input_key_combo.setCurrentIndex(0)
+        self.setVisible(enabled)
+        # If disabled, maybe reset to Manual?
+        # But maybe we just want to hide the widget.
+        # BaseEditForm logic: "Enable input linking if Val1 is visible OR explicitly allowed"
+        pass
