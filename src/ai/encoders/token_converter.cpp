@@ -66,7 +66,7 @@ namespace dm::ai::encoders {
         }
     }
 
-    std::vector<int> TokenConverter::encode_state(const dm::core::GameState& state, int max_len) {
+    std::vector<int> TokenConverter::encode_state(const dm::core::GameState& state, int perspective, int max_len) {
         std::vector<int> tokens;
         tokens.reserve(1024);
 
@@ -76,20 +76,23 @@ namespace dm::ai::encoders {
         tokens.push_back(BASE_CONTEXT_MARKER + 50 + (int)state.current_phase);
         tokens.push_back(TOKEN_SEP);
 
-        const auto& p1 = state.players[0];
-        append_zone(tokens, p1.hand, MARKER_HAND_P1, true);
-        append_zone(tokens, p1.mana_zone, MARKER_MANA_P1, true);
-        append_zone(tokens, p1.battle_zone, MARKER_BATTLE_P1, true);
-        append_zone(tokens, p1.shield_zone, MARKER_SHIELD_P1, true);
-        append_zone(tokens, p1.graveyard, MARKER_GRAVE_P1, true);
+        int p1_id = perspective;
+        int p2_id = 1 - perspective;
+
+        const auto& p1 = state.players[p1_id];
+        append_zone(tokens, p1.hand, MARKER_HAND_SELF, true);
+        append_zone(tokens, p1.mana_zone, MARKER_MANA_SELF, true);
+        append_zone(tokens, p1.battle_zone, MARKER_BATTLE_SELF, true);
+        append_zone(tokens, p1.shield_zone, MARKER_SHIELD_SELF, true);
+        append_zone(tokens, p1.graveyard, MARKER_GRAVE_SELF, true);
 
         if (state.players.size() > 1) {
-            const auto& p2 = state.players[1];
-            append_zone(tokens, p2.hand, MARKER_HAND_P2, false);
-            append_zone(tokens, p2.mana_zone, MARKER_MANA_P2, true);
-            append_zone(tokens, p2.battle_zone, MARKER_BATTLE_P2, true);
-            append_zone(tokens, p2.shield_zone, MARKER_SHIELD_P2, false);
-            append_zone(tokens, p2.graveyard, MARKER_GRAVE_P2, true);
+            const auto& p2 = state.players[p2_id];
+            append_zone(tokens, p2.hand, MARKER_HAND_OPP, false); // Opponent hand usually hidden
+            append_zone(tokens, p2.mana_zone, MARKER_MANA_OPP, true);
+            append_zone(tokens, p2.battle_zone, MARKER_BATTLE_OPP, true);
+            append_zone(tokens, p2.shield_zone, MARKER_SHIELD_OPP, false);
+            append_zone(tokens, p2.graveyard, MARKER_GRAVE_OPP, true);
         }
 
         append_command_history(tokens, state, 30);

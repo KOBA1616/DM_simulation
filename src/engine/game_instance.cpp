@@ -2,6 +2,7 @@
 #include "systems/flow/phase_manager.hpp"
 #include "engine/game_command/game_command.hpp"
 #include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/continuous_effect_system.hpp"
 #include <functional>
 #include <iostream>
 
@@ -41,6 +42,7 @@ namespace dm::engine {
             return;
         }
         systems::GameLogicSystem::dispatch_action(*pipeline, state, action, card_db);
+        systems::ContinuousEffectSystem::recalculate(state, card_db);
     }
 
     void GameInstance::undo() {
