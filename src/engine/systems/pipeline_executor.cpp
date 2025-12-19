@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <random>
+#include <set>
 
 namespace dm::engine::systems {
 
@@ -114,6 +115,7 @@ namespace dm::engine::systems {
                 break;
             }
             case InstructionOp::SELECT: handle_select(inst, state, card_db); break;
+            case InstructionOp::GET_STAT: handle_get_stat(inst, state, card_db); break;
             case InstructionOp::MOVE:   handle_move(inst, state); break;
             case InstructionOp::MODIFY: handle_modify(inst, state); break;
             case InstructionOp::IF:     handle_if(inst, state, card_db); break;
@@ -234,6 +236,68 @@ namespace dm::engine::systems {
         state.pending_query = GameState::QueryContext{
             0, "SELECT_TARGET", {{"min", count}, {"max", count}}, valid_targets, {}
         };
+    }
+
+    void PipelineExecutor::handle_get_stat(const Instruction& inst, GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        if (inst.args.is_null()) return;
+
+        std::string stat_name = resolve_string(inst.args.value("stat", ""));
+        std::string out_key = inst.args.value("out", "$stat_result");
+
+        // Determine target player (default: active/self)
+        // If needed, we could support "player": "OPPONENT"
+        PlayerID controller_id = state.active_player_id;
+        // Check if there is a specific player context, but for now CountHandler used source controller.
+        // We can check if "player" arg exists.
+
+        // Since PipelineExecutor is general, we might need to know WHO's stat.
+        // Usually it's the player executing the pipeline (active_player unless modified context).
+        // Let's assume active_player for now or check if we can pass it.
+        // CountHandler used: EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+        // We can pass source_id in context "$source_id" ?
+        // Or assume the pipeline is running for the active player / source controller.
+        // The pipeline is executed in context of an effect.
+
+        // Let's try to get "$controller" from context if available, else active player.
+        auto v = get_context_var("$controller");
+        if (std::holds_alternative<int>(v)) {
+            controller_id = std::get<int>(v);
+        }
+
+        const Player& controller = state.players[controller_id];
+        int result = 0;
+
+        if (stat_name == "MANA_CIVILIZATION_COUNT") {
+            std::set<std::string> civs;
+            for (const auto& c : controller.mana_zone) {
+                if (card_db.count(c.card_id)) {
+                        const auto& cd = card_db.at(c.card_id);
+                        for (const auto& civ : cd.civilizations) {
+                            if (civ == Civilization::LIGHT) civs.insert("LIGHT");
+                            if (civ == Civilization::WATER) civs.insert("WATER");
+                            if (civ == Civilization::DARKNESS) civs.insert("DARKNESS");
+                            if (civ == Civilization::FIRE) civs.insert("FIRE");
+                            if (civ == Civilization::NATURE) civs.insert("NATURE");
+                            if (civ == Civilization::ZERO) civs.insert("ZERO");
+                        }
+                }
+            }
+            result = (int)civs.size();
+        } else if (stat_name == "SHIELD_COUNT") {
+            result = (int)controller.shield_zone.size();
+        } else if (stat_name == "HAND_COUNT") {
+            result = (int)controller.hand.size();
+        } else if (stat_name == "CARDS_DRAWN_THIS_TURN") {
+            result = state.turn_stats.cards_drawn_this_turn;
+        } else if (stat_name == "MANA_COUNT") {
+            result = (int)controller.mana_zone.size();
+        } else if (stat_name == "BATTLE_ZONE_COUNT") {
+            result = (int)controller.battle_zone.size();
+        } else if (stat_name == "GRAVEYARD_COUNT") {
+            result = (int)controller.graveyard.size();
+        }
+
+        set_context_var(out_key, result);
     }
 
     void PipelineExecutor::handle_move(const Instruction& inst, GameState& state) {
