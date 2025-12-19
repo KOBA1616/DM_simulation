@@ -30,9 +30,9 @@ namespace dm::engine::systems {
                     // Check Condition (Source condition, e.g. "If I am tapped")
                     if (mod_def.condition.type != "NONE" && !mod_def.condition.type.empty()) {
                         // ConditionSystem usually requires context.
-                        // Assuming check_condition is static and handles basic conditions.
                         // We pass the card itself as source.
-                        if (!ConditionSystem::check_condition(state, mod_def.condition, card.instance_id, player.id, card_db)) {
+                        // Use instance() to access singleton
+                        if (!ConditionSystem::instance().evaluate_def(state, mod_def.condition, card.instance_id, card_db, {})) {
                             continue;
                         }
                     }
@@ -79,15 +79,25 @@ namespace dm::engine::systems {
                         pe.condition = mod_def.condition; // Store condition?
 
                         // Handle Empty Filter -> Assume SELF (Safety fallback)
-                        if (pe.target_filter.zones.empty() &&
-                            pe.target_filter.races.empty() &&
-                            pe.target_filter.civilizations.empty() &&
-                            !pe.target_filter.owner.has_value()) {
+                        // Must verify all fields are empty to ensure we don't accidentally override valid filters (e.g. "All Dragons")
+                        bool is_empty = pe.target_filter.zones.empty() &&
+                                        pe.target_filter.races.empty() &&
+                                        pe.target_filter.civilizations.empty() &&
+                                        pe.target_filter.types.empty() &&
+                                        !pe.target_filter.owner.has_value() &&
+                                        !pe.target_filter.min_cost.has_value() &&
+                                        !pe.target_filter.max_cost.has_value() &&
+                                        !pe.target_filter.min_power.has_value() &&
+                                        !pe.target_filter.max_power.has_value() &&
+                                        !pe.target_filter.is_tapped.has_value() &&
+                                        !pe.target_filter.is_blocker.has_value() &&
+                                        !pe.target_filter.is_evolution.has_value() &&
+                                        pe.target_filter.and_conditions.empty();
 
-                            // If filter is empty, we assume it applies to SELF for static abilities usually.
-                            // But TargetUtils might treat empty as ALL.
-                            // However, we can't easily construct a "Self" filter without setting logic.
-                            // We rely on data migration to provide correct filters.
+                        if (is_empty) {
+                            // Explicitly target SELF in BATTLE_ZONE
+                            pe.target_filter.owner = "SELF";
+                            pe.target_filter.zones = {"BATTLE_ZONE"};
                         }
 
                         state.passive_effects.push_back(pe);
