@@ -25,6 +25,7 @@ namespace dm::core {
         int turns_remaining; // 1 = this turn only, >1 = persistent, -1 = indefinite
         int source_instance_id; // To track where it came from (e.g. Cocco Lupia)
         PlayerID controller;
+        bool is_source_static = false; // Added for Continuous Effect System
     };
 
     enum class PassiveType {
@@ -49,6 +50,7 @@ namespace dm::core {
         int source_instance_id; // The source of the effect
         PlayerID controller;
         int turns_remaining = -1; // -1 = permanent, 1 = this turn only
+        bool is_source_static = false; // Added for Continuous Effect System
     };
 
 }
