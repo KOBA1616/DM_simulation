@@ -158,25 +158,14 @@ namespace dm::engine {
             return;
         }
 
-        for (size_t i = 0; i < effect.actions.size(); ++i) {
-            const auto& action = effect.actions[i];
+        // Full Pipeline Integration: Compile effect and execute once
+        std::vector<dm::core::Instruction> instructions;
+        compile_effect(game_state, effect, source_instance_id, execution_context, card_db, instructions);
 
-            std::vector<ActionDef> remaining_actions;
-            if (i + 1 < effect.actions.size()) {
-                remaining_actions.insert(remaining_actions.end(), effect.actions.begin() + i + 1, effect.actions.end());
-            }
-
-            bool interrupted = false;
-            resolve_action(game_state, action, source_instance_id, execution_context, card_db, &interrupted, &remaining_actions);
-
-            if (interrupted) {
-                break;
-            }
-        }
-
-        for (const auto& cmd : effect.commands) {
-            PlayerID controller = get_controller(game_state, source_instance_id);
-            dm::engine::systems::CommandSystem::execute_command(game_state, cmd, source_instance_id, controller, execution_context);
+        if (!instructions.empty()) {
+            // ResolutionContext is used here primarily to pass params to execute_pipeline
+            ResolutionContext ctx(game_state, ActionDef(), source_instance_id, execution_context, card_db);
+            execute_pipeline(ctx, instructions);
         }
     }
 
@@ -185,6 +174,21 @@ namespace dm::engine {
 
         if (!check_condition(game_state, effect.condition, source_instance_id, card_db, execution_context)) return;
 
+        // Note: For target handling, we might need to inject targets into the pipeline context
+        // Currently resolve_effect_with_targets is primarily used for handling selected targets.
+        // We can inject them as $selection or similar.
+
+        // This method is often called AFTER select_targets returns.
+        // If we switch to full pipeline, the selection logic should ideally be inside the pipeline via SELECT instruction.
+        // However, existing code flow (PendingEffect -> Target Selection -> resolve_effect_with_targets) persists.
+
+        // Strategy: Pre-populate context with targets, then run pipeline.
+        // But compile_effect generates target selection instructions if action has scope.
+        // If we already selected targets, we shouldn't re-select.
+        // The calling code (PendingEffectStrategy) usually clears the scope in the effect passed here?
+        // Or we set a flag.
+
+        // Legacy: Just iterate actions.
         for (size_t i = 0; i < effect.actions.size(); ++i) {
             const auto& action = effect.actions[i];
 
@@ -250,20 +254,46 @@ namespace dm::engine {
              if_inst.args["cond"] = cond_json;
 
              std::vector<Instruction> then_block;
+
+             // Compile Actions
              for (const auto& action : effect.actions) {
                  compile_action(game_state, action, source_instance_id, execution_context, card_db, then_block);
              }
+
+             // Compile Commands (Fix: Actually generate EXECUTE_COMMAND instructions)
+             for (const auto& cmd : effect.commands) {
+                 nlohmann::json args;
+                 args["type"] = "EXECUTE_COMMAND";
+                 // Serialize CommandDef to JSON
+                 nlohmann::json cmd_json;
+                 dm::core::to_json(cmd_json, cmd);
+                 args["cmd"] = cmd_json;
+                 then_block.emplace_back(InstructionOp::GAME_ACTION, args);
+             }
+
              if_inst.then_block = then_block;
              out_instructions.push_back(if_inst);
          } else {
+             // Compile Actions
              for (const auto& action : effect.actions) {
                  compile_action(game_state, action, source_instance_id, execution_context, card_db, out_instructions);
+             }
+             // Compile Commands
+             for (const auto& cmd : effect.commands) {
+                 nlohmann::json args;
+                 args["type"] = "EXECUTE_COMMAND";
+                 nlohmann::json cmd_json;
+                 dm::core::to_json(cmd_json, cmd);
+                 args["cmd"] = cmd_json;
+                 out_instructions.emplace_back(InstructionOp::GAME_ACTION, args);
              }
          }
     }
 
     void EffectSystem::compile_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::vector<dm::core::Instruction>& out_instructions) {
         initialize();
+
+        std::string selection_var_name;
 
         // 1. Target Selection Scope
         if (action.scope == TargetScope::TARGET_SELECT) {
@@ -280,10 +310,12 @@ namespace dm::engine {
              select_inst.args["out"] = out_key;
 
              out_instructions.push_back(select_inst);
+             selection_var_name = out_key;
         }
 
         if (IActionHandler* handler = get_handler(action.type)) {
-            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, nullptr, nullptr, &out_instructions);
+            // Pass selection_var_name to handler via ResolutionContext
+            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, nullptr, nullptr, &out_instructions, selection_var_name);
             handler->compile_action(ctx);
         }
     }
@@ -291,31 +323,81 @@ namespace dm::engine {
     void EffectSystem::execute_pipeline(const ResolutionContext& ctx, const std::vector<dm::core::Instruction>& instructions) {
          if (instructions.empty()) return;
 
-         // Create and Persist Pipeline Executor
-         auto pipeline = std::make_shared<dm::engine::systems::PipelineExecutor>();
-         ctx.game_state.active_pipeline = pipeline;
+         auto pipeline = std::static_pointer_cast<dm::engine::systems::PipelineExecutor>(ctx.game_state.active_pipeline);
+         bool is_nested = (pipeline != nullptr);
 
-         // Populate pipeline context
-         for (const auto& kv : ctx.execution_vars) {
-             pipeline->set_context_var(kv.first, kv.second);
+         // Variables to restore after nested execution
+         dm::engine::systems::ContextValue old_source = 0;
+         dm::engine::systems::ContextValue old_controller = 0;
+         bool has_old_source = false;
+         bool has_old_controller = false;
+
+         if (!pipeline) {
+             // Root execution: Create new pipeline
+             pipeline = std::make_shared<dm::engine::systems::PipelineExecutor>();
+             ctx.game_state.active_pipeline = pipeline;
+
+             // Populate pipeline context
+             for (const auto& kv : ctx.execution_vars) {
+                 pipeline->set_context_var(kv.first, kv.second);
+             }
+             pipeline->set_context_var("$source", ctx.source_instance_id);
+
+             int controller = 0;
+             if(ctx.source_instance_id >= 0 && (size_t)ctx.source_instance_id < ctx.game_state.card_owner_map.size()) {
+                 controller = ctx.game_state.card_owner_map[ctx.source_instance_id];
+             }
+             pipeline->set_context_var("$controller", controller);
+
+         } else {
+             // Nested execution: Reuse pipeline
+             // Save current context values
+             auto src_val = pipeline->get_context_var("$source");
+             if (!std::holds_alternative<int>(src_val) || std::get<int>(src_val) != 0) { // Check if valid
+                 old_source = src_val;
+                 has_old_source = true;
+             }
+
+             auto ctrl_val = pipeline->get_context_var("$controller");
+             if (!std::holds_alternative<int>(ctrl_val) || std::get<int>(ctrl_val) != 0) {
+                 old_controller = ctrl_val;
+                 has_old_controller = true;
+             }
+
+             // Update context
+             pipeline->set_context_var("$source", ctx.source_instance_id);
+
+             int controller = 0;
+             if(ctx.source_instance_id >= 0 && (size_t)ctx.source_instance_id < ctx.game_state.card_owner_map.size()) {
+                 controller = ctx.game_state.card_owner_map[ctx.source_instance_id];
+             }
+             pipeline->set_context_var("$controller", controller);
          }
-
-         // Inject source instance ID as "$source" for context-sensitive operations
-         pipeline->set_context_var("$source", ctx.source_instance_id);
 
          pipeline->execute(instructions, ctx.game_state, ctx.card_db);
 
-         // Merge back execution vars to context
-         const auto& pipe_ctx = pipeline->context;
-         for (const auto& kv : pipe_ctx) {
-             if (std::holds_alternative<int>(kv.second)) {
-                 ctx.execution_vars[kv.first] = std::get<int>(kv.second);
-             }
-         }
+         if (!is_nested) {
+             // Root execution: Sync back and cleanup
+             // Only if the pipeline is finished or paused at root level.
+             // If paused, we keep active_pipeline.
 
-         // If pipeline finished, clear it. If paused, it stays in active_pipeline.
-         if (pipeline->call_stack.empty()) {
-             ctx.game_state.active_pipeline.reset();
+             // Sync back execution vars to context (legacy support)
+             const auto& pipe_ctx = pipeline->context;
+             for (const auto& kv : pipe_ctx) {
+                 if (std::holds_alternative<int>(kv.second)) {
+                     // Update if key exists or add new?
+                     // Legacy code uses [] operator so it adds.
+                     ctx.execution_vars[kv.first] = std::get<int>(kv.second);
+                 }
+             }
+
+             if (pipeline->call_stack.empty()) {
+                 ctx.game_state.active_pipeline.reset();
+             }
+         } else {
+             // Nested execution: Restore context
+             if (has_old_source) pipeline->set_context_var("$source", old_source);
+             if (has_old_controller) pipeline->set_context_var("$controller", old_controller);
          }
     }
 
