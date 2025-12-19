@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QLabel, QLineEdit
 from PyQt6.QtCore import pyqtSignal, Qt
 from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.editor.constants import RESERVED_VARIABLES
+from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
 
 class VariableLinkWidget(QWidget):
     """
@@ -42,6 +44,18 @@ class VariableLinkWidget(QWidget):
 
     def set_current_item(self, item):
         self.current_item = item
+
+        # Update Input Label if defined in config
+        action_data = item.data(Qt.ItemDataRole.UserRole + 2)
+        if action_data:
+            act_type = action_data.get('type')
+            config = ACTION_UI_CONFIG.get(act_type, {})
+            inputs = config.get('inputs', {})
+            if 'input_value_key' in inputs:
+                self.input_key_label.setText(f"{tr('Input Source')} ({tr(inputs['input_value_key'])})")
+            else:
+                self.input_key_label.setText(tr("Input Source"))
+
         self.populate_input_keys()
 
     def on_combo_changed(self):
@@ -97,10 +111,24 @@ class VariableLinkWidget(QWidget):
     def ensure_output_key(self, action_type, produces_output):
         """
         Generates output key if missing and required.
+        Uses UUID if available, otherwise falls back to row (legacy).
         """
         if produces_output and not self.output_key_edit.text() and self.current_item:
-             row = self.current_item.row()
-             new_key = f"var_{action_type}_{row}"
+             # Try to get UUID from item data
+             action_data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
+             uid = action_data.get('uid')
+
+             if uid:
+                 # Generate a shorter hash/segment for the key for readability, or use full UUID?
+                 # Full UUID is safe.
+                 # To keep it friendly, maybe last 8 chars? But collision risk exists.
+                 # Let's use `var_{uuid}`
+                 new_key = f"var_{uid}"
+             else:
+                 # Fallback to row index if no UUID
+                 row = self.current_item.row()
+                 new_key = f"var_{action_type}_{row}"
+
              self.output_key_edit.setText(new_key)
              # This triggers textChanged -> linkChanged
 
@@ -110,7 +138,10 @@ class VariableLinkWidget(QWidget):
 
         # Default options
         self.input_key_combo.addItem(tr("Manual Input"), "")
-        self.input_key_combo.addItem(tr("Event Source"), "EVENT_SOURCE")
+
+        # Reserved Constants
+        for key, desc in RESERVED_VARIABLES.items():
+            self.input_key_combo.addItem(f"{key} ({tr(desc)})", key)
 
         if not self.current_item: return
 
@@ -123,10 +154,22 @@ class VariableLinkWidget(QWidget):
             sib_data = sibling.data(Qt.ItemDataRole.UserRole + 2)
             if not sib_data:
                 continue
+
             out_key = sib_data.get('output_value_key')
             if out_key:
                 type_disp = tr(sib_data.get('type'))
-                label = f"Step {i}: {type_disp}"
+
+                # Enhance label with Output Port Name if available
+                sib_type = sib_data.get('type')
+                sib_config = ACTION_UI_CONFIG.get(sib_type, {})
+                outputs = sib_config.get('outputs', {})
+                port_name = outputs.get('output_value_key', '')
+
+                if port_name:
+                    label = f"Step {i}: {type_disp} -> {tr(port_name)}"
+                else:
+                    label = f"Step {i}: {type_disp}"
+
                 self.input_key_combo.addItem(label, out_key)
 
         # Try to restore selection if possible
@@ -151,7 +194,4 @@ class VariableLinkWidget(QWidget):
         If 'enabled' is False, it means this action does not support input linking or Val1 is hidden.
         """
         self.setVisible(enabled)
-        # If disabled, maybe reset to Manual?
-        # But maybe we just want to hide the widget.
-        # BaseEditForm logic: "Enable input linking if Val1 is visible OR explicitly allowed"
         pass
