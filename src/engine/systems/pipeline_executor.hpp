@@ -67,6 +67,7 @@ namespace dm::engine::systems {
         // dm::core::Instruction Handlers
         void execute_instruction(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
         void handle_select(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_get_stat(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
         void handle_move(const dm::core::Instruction& inst, core::GameState& state);
         void handle_modify(const dm::core::Instruction& inst, core::GameState& state);
         void handle_if(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
