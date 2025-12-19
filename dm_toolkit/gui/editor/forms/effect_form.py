@@ -75,6 +75,13 @@ class EffectEditForm(BaseEditForm):
     def setup_ui(self):
         layout = QFormLayout(self)
 
+        # Ability Mode
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem(tr("TRIGGERED"), "TRIGGERED")
+        self.mode_combo.addItem(tr("STATIC"), "STATIC")
+        layout.addRow(tr("Ability Mode"), self.mode_combo)
+
+        # Trigger Definition
         self.trigger_combo = QComboBox()
         triggers = [
             "ON_PLAY", "ON_ATTACK", "ON_DESTROY", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
@@ -82,9 +89,32 @@ class EffectEditForm(BaseEditForm):
         ]
         # Use localized strings for display
         self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
-        layout.addRow(tr("Trigger"), self.trigger_combo)
+        self.lbl_trigger = QLabel(tr("Trigger"))
+        layout.addRow(self.lbl_trigger, self.trigger_combo)
 
-        # Condition (Simplified)
+        # Layer Definition (Static)
+        self.layer_group = QGroupBox(tr("Layer Definition"))
+        l_layout = QGridLayout(self.layer_group)
+
+        self.layer_type_combo = QComboBox()
+        layers = ["COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
+        self.populate_combo(self.layer_type_combo, layers, display_func=tr, data_func=lambda x: x)
+
+        self.layer_val_spin = QSpinBox()
+        self.layer_val_spin.setRange(-9999, 9999)
+
+        self.layer_str_edit = QLineEdit()
+
+        l_layout.addWidget(QLabel(tr("Layer Type")), 0, 0)
+        l_layout.addWidget(self.layer_type_combo, 0, 1)
+        l_layout.addWidget(QLabel(tr("Value")), 1, 0)
+        l_layout.addWidget(self.layer_val_spin, 1, 1)
+        l_layout.addWidget(QLabel(tr("String/Keyword")), 2, 0)
+        l_layout.addWidget(self.layer_str_edit, 2, 1)
+
+        layout.addRow(self.layer_group)
+
+        # Condition (Shared)
         self.condition_group = QGroupBox(tr("Condition"))
         c_layout = QGridLayout(self.condition_group)
         self.cond_type_combo = QComboBox()
@@ -112,11 +142,9 @@ class EffectEditForm(BaseEditForm):
         c_layout.addWidget(self.lbl_str, 2, 0)
         c_layout.addWidget(self.cond_str_edit, 2, 1)
 
-        # Filter Widget (New)
+        # Filter Widget
         self.cond_filter = FilterEditorWidget()
         self.cond_filter.filterChanged.connect(self.update_data)
-        # Configure mask for event filter (Zones are usually irrelevant for event context, but maybe needed for 'from Hand'?)
-        # Let's show basic fields
         self.cond_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
         self.cond_filter.setVisible(False)
         c_layout.addWidget(self.cond_filter, 3, 0, 1, 2)
@@ -124,13 +152,36 @@ class EffectEditForm(BaseEditForm):
         layout.addRow(self.condition_group)
 
         # Connect signals
+        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
+        self.mode_combo.currentIndexChanged.connect(self.update_data)
+
         self.trigger_combo.currentIndexChanged.connect(self.update_data)
+
+        self.layer_type_combo.currentIndexChanged.connect(self.update_data)
+        self.layer_val_spin.valueChanged.connect(self.update_data)
+        self.layer_str_edit.textChanged.connect(self.update_data)
+
         self.cond_type_combo.currentIndexChanged.connect(self.on_cond_type_changed)
         self.cond_val_spin.valueChanged.connect(self.update_data)
         self.cond_str_edit.textChanged.connect(self.update_data)
 
         # Initial UI State
         self.update_ui_visibility("NONE")
+        self.on_mode_changed()
+
+    def on_mode_changed(self):
+        mode = self.mode_combo.currentData()
+        is_triggered = (mode == "TRIGGERED")
+
+        self.trigger_combo.setVisible(is_triggered)
+        self.lbl_trigger.setVisible(is_triggered)
+
+        self.layer_group.setVisible(not is_triggered)
+
+        if is_triggered:
+            self.condition_group.setTitle(tr("Trigger Condition"))
+        else:
+            self.condition_group.setTitle(tr("Apply Condition"))
 
     def on_cond_type_changed(self):
         ctype = self.cond_type_combo.currentData()
@@ -161,9 +212,26 @@ class EffectEditForm(BaseEditForm):
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
-        self.set_combo_by_data(self.trigger_combo, data.get('trigger', 'ON_PLAY'))
+        # Determine Mode: If 'layer_type' exists, it's STATIC. Otherwise TRIGGERED.
+        mode = "STATIC" if 'layer_type' in data else "TRIGGERED"
+        self.set_combo_by_data(self.mode_combo, mode)
+        self.on_mode_changed()
 
-        cond = data.get('condition', {})
+        if mode == "TRIGGERED":
+            self.set_combo_by_data(self.trigger_combo, data.get('trigger', 'ON_PLAY'))
+        else:
+            self.set_combo_by_data(self.layer_type_combo, data.get('layer_type', 'COST_MODIFIER'))
+            self.layer_val_spin.setValue(data.get('layer_value', 0))
+            self.layer_str_edit.setText(data.get('layer_str', ''))
+
+        # Condition Mapping
+        # Priority: trigger_condition -> static_condition -> condition (legacy)
+        cond = data.get('trigger_condition', {})
+        if not cond and 'static_condition' in data:
+            cond = data['static_condition']
+        if not cond and 'condition' in data:
+            cond = data['condition']
+
         ctype = cond.get('type', 'NONE')
         self.set_combo_by_data(self.cond_type_combo, ctype)
 
@@ -175,24 +243,51 @@ class EffectEditForm(BaseEditForm):
         self.update_ui_visibility(ctype)
 
     def _save_data(self, data):
-        data['trigger'] = self.trigger_combo.currentData()
+        mode = self.mode_combo.currentData()
 
+        # Build Condition Dict
         cond = {}
         cond['type'] = self.cond_type_combo.currentData()
         cond['value'] = self.cond_val_spin.value()
         str_val = self.cond_str_edit.text()
         if str_val: cond['str_val'] = str_val
-
         if self.cond_filter.isVisible():
              cond['filter'] = self.cond_filter.get_data()
 
-        data['condition'] = cond
+        if mode == "TRIGGERED":
+            data['trigger'] = self.trigger_combo.currentData()
+            data['trigger_condition'] = cond
+
+            # Clean Static Keys
+            data.pop('layer_type', None)
+            data.pop('layer_value', None)
+            data.pop('layer_str', None)
+            data.pop('static_condition', None)
+
+        else: # STATIC
+            data['layer_type'] = self.layer_type_combo.currentData()
+            data['layer_value'] = self.layer_val_spin.value()
+            if self.layer_str_edit.text():
+                data['layer_str'] = self.layer_str_edit.text()
+            data['static_condition'] = cond
+
+            # Clean Trigger Keys
+            data.pop('trigger', None)
+            data.pop('trigger_condition', None)
 
     def _get_display_text(self, data):
-        return f"{tr('Effect')}: {tr(data.get('trigger', ''))}"
+        if 'layer_type' in data:
+            return f"{tr('Static')}: {tr(data.get('layer_type', ''))}"
+        else:
+            return f"{tr('Trigger')}: {tr(data.get('trigger', ''))}"
 
     def block_signals_all(self, block):
+        self.mode_combo.blockSignals(block)
         self.trigger_combo.blockSignals(block)
+        self.layer_type_combo.blockSignals(block)
+        self.layer_val_spin.blockSignals(block)
+        self.layer_str_edit.blockSignals(block)
+
         self.cond_type_combo.blockSignals(block)
         self.cond_val_spin.blockSignals(block)
         self.cond_str_edit.blockSignals(block)
