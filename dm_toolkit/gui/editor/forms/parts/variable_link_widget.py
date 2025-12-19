@@ -1,33 +1,32 @@
-from PyQt6.QtWidgets import QWidget, QFormLayout, QCheckBox, QComboBox, QLabel, QLineEdit
+from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QLabel, QLineEdit
 from PyQt6.QtCore import pyqtSignal, Qt
 from dm_toolkit.gui.localization import tr
 
 class VariableLinkWidget(QWidget):
     """
     Reusable widget for linking variables (Action Chaining).
-    Handles 'Smart Link' checkbox, Input Key selection (from previous steps), and Output Key generation.
+    Handles 'Input Source' selection (Manual, Event Source, or Previous Steps) and Output Key generation.
     """
 
     # Signal emitted when any property changes
     linkChanged = pyqtSignal()
     # Signal emitted when smart link check state changes (to update parent visibility)
+    # Kept for compatibility, mapped to "is input source not manual"
     smartLinkStateChanged = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setup_ui()
         self.current_item = None
+        self.setup_ui()
 
     def setup_ui(self):
         layout = QFormLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.smart_link_check = QCheckBox(tr("Use result from previous measurement"))
-        layout.addRow(self.smart_link_check)
-
+        # Replaced Checkbox with specific Combo
         self.input_key_combo = QComboBox()
         self.input_key_combo.setEditable(False)
-        self.input_key_label = QLabel(tr("Input Key"))
+        self.input_key_label = QLabel(tr("Input Source"))
         layout.addRow(self.input_key_label, self.input_key_combo)
 
         self.output_key_label = QLabel(tr("Output Key"))
@@ -37,57 +36,52 @@ class VariableLinkWidget(QWidget):
         self.output_key_edit.setVisible(False)
 
         # Connect signals
-        self.smart_link_check.stateChanged.connect(self.on_check_changed)
-        self.input_key_combo.currentIndexChanged.connect(self.linkChanged.emit)
+        self.input_key_combo.currentIndexChanged.connect(self.on_input_changed)
         self.output_key_edit.textChanged.connect(self.linkChanged.emit)
 
-        # Initial visibility
-        self.update_visibility()
+        # Initial Population
+        self.populate_input_keys()
 
     def set_current_item(self, item):
         self.current_item = item
+        self.populate_input_keys()
 
-    def on_check_changed(self):
-        is_checked = self.smart_link_check.isChecked()
-        self.update_visibility()
-        self.smartLinkStateChanged.emit(is_checked)
-
-        # Auto-select last available if checked and nothing selected
-        if is_checked and self.input_key_combo.currentIndex() == -1:
-             self.populate_input_keys()
-             if self.input_key_combo.count() > 0:
-                 self.input_key_combo.setCurrentIndex(self.input_key_combo.count() - 1)
-
+    def on_input_changed(self):
         self.linkChanged.emit()
-
-    def update_visibility(self):
-        checked = self.smart_link_check.isChecked()
-        self.input_key_label.setVisible(checked)
-        self.input_key_combo.setVisible(checked)
+        self.smartLinkStateChanged.emit(self.is_smart_link_active())
 
     def set_data(self, data):
         self.blockSignals(True)
 
         input_key = data.get('input_value_key', '')
-        self.smart_link_check.setChecked(bool(input_key))
         self.output_key_edit.setText(data.get('output_value_key', ''))
 
         self.populate_input_keys()
 
         # Match key
         found = False
+        # Try to find exact match
         for i in range(self.input_key_combo.count()):
              if self.input_key_combo.itemData(i) == input_key:
                   self.input_key_combo.setCurrentIndex(i)
                   found = True
                   break
 
+        # Fallback for "Manual" (empty string)
+        if not found and input_key == "":
+             # Should be index 0
+             self.input_key_combo.setCurrentIndex(0)
+             found = True
+
         if not found and input_key:
-             self.input_key_combo.addItem(input_key, input_key)
+             # Add unknown key temporarily? Or just set manual and warn?
+             # For now, append it so we don't lose data
+             self.input_key_combo.addItem(f"{input_key} (Unknown)", input_key)
              self.input_key_combo.setCurrentIndex(self.input_key_combo.count()-1)
 
-        self.update_visibility()
         self.blockSignals(False)
+        # Emit state change to ensure parent UI updates (hiding val1 etc)
+        self.smartLinkStateChanged.emit(self.is_smart_link_active())
 
     def get_data(self, data):
         """
@@ -96,19 +90,13 @@ class VariableLinkWidget(QWidget):
         # Input Key
         idx = self.input_key_combo.currentIndex()
         if idx >= 0:
-             data['input_value_key'] = self.input_key_combo.itemData(idx)
+             val = self.input_key_combo.itemData(idx)
+             data['input_value_key'] = val if val is not None else ""
         else:
-             data['input_value_key'] = self.input_key_combo.currentText()
-
-        # If smart link is unchecked, we might want to clear input_value_key?
-        if not self.smart_link_check.isChecked():
-            data['input_value_key'] = ""
+             data['input_value_key'] = ""
 
         # Output Key
         out_key = self.output_key_edit.text()
-        # Auto-generate if needed is handled by parent or here?
-        # Parent knows ActionType, so let's let parent trigger auto-gen or pass info down.
-        # But we simply read the edit field here.
         data['output_value_key'] = out_key
 
     def ensure_output_key(self, action_type, produces_output):
@@ -122,34 +110,51 @@ class VariableLinkWidget(QWidget):
              # This triggers textChanged -> linkChanged -> update_data
 
     def populate_input_keys(self):
+        current_data = self.input_key_combo.currentData()
         self.input_key_combo.clear()
-        if not self.current_item: return
 
-        parent = self.current_item.parent()
-        if not parent: return
+        # 1. Manual Input
+        self.input_key_combo.addItem(tr("Manual Value / None"), "")
 
-        row = self.current_item.row()
-        for i in range(row):
-            sibling = parent.child(i)
-            sib_data = sibling.data(Qt.ItemDataRole.UserRole + 2)
-            if not sib_data:
-                continue
-            out_key = sib_data.get('output_value_key')
-            if out_key:
-                type_disp = tr(sib_data.get('type'))
-                label = f"Step {i}: {type_disp}"
-                self.input_key_combo.addItem(label, out_key)
+        # 2. Event Source
+        self.input_key_combo.addItem(tr("Event Source"), "EVENT_SOURCE")
+
+        # 3. Dynamic Keys from siblings
+        if self.current_item:
+            parent = self.current_item.parent()
+            if parent:
+                row = self.current_item.row()
+                for i in range(row):
+                    sibling = parent.child(i)
+                    sib_data = sibling.data(Qt.ItemDataRole.UserRole + 2)
+                    if not sib_data:
+                        continue
+                    out_key = sib_data.get('output_value_key')
+                    if out_key:
+                        type_disp = tr(sib_data.get('type'))
+                        label = f"Step {i}: {type_disp}"
+                        self.input_key_combo.addItem(label, out_key)
+
+        # Restore selection if possible
+        if current_data is not None:
+             idx = self.input_key_combo.findData(current_data)
+             if idx >= 0:
+                  self.input_key_combo.setCurrentIndex(idx)
+             else:
+                  self.input_key_combo.setCurrentIndex(0)
 
     def is_smart_link_active(self):
-        return self.smart_link_check.isChecked()
+        # Active if selected data is NOT empty string
+        val = self.input_key_combo.currentData()
+        return bool(val)
 
     def set_smart_link_enabled(self, enabled):
         """
-        Controls whether the smart link checkbox is visible/enabled.
-        Some actions (like Apply Modifier) depend on it.
+        Controls whether the input source combo is visible/enabled.
         """
-        self.smart_link_check.setVisible(enabled)
-        # If hidden, ensure related widgets are hidden too (via update_visibility logic or check state)
+        self.input_key_label.setVisible(enabled)
+        self.input_key_combo.setVisible(enabled)
+
         if not enabled:
-             self.input_key_label.setVisible(False)
-             self.input_key_combo.setVisible(False)
+             # Reset to Manual if disabled to avoid hidden state affecting logic
+             self.input_key_combo.setCurrentIndex(0)
