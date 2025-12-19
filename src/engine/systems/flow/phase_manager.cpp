@@ -2,6 +2,7 @@
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/actions/action_generator.hpp"
 #include "engine/game_command/commands.hpp"
+#include "engine/systems/continuous_effect_system.hpp"
 #include "core/constants.hpp"
 #include <iostream>
 #include <algorithm>
@@ -72,6 +73,9 @@ namespace dm::engine {
                 }
             }
         }
+
+        // Recalculate continuous effects at start of turn (refresh state)
+        systems::ContinuousEffectSystem::recalculate(game_state, card_db);
         
         // Draw Phase
         bool skip_draw = (game_state.turn_number == 1 && game_state.active_player_id == 0);
