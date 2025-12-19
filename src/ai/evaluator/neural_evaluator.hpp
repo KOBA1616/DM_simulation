@@ -18,7 +18,7 @@ namespace dm::ai {
         ~NeuralEvaluator();
 
         std::pair<std::vector<std::vector<float>>, std::vector<float>>
-        evaluate(const std::vector<dm::core::GameState>& states) override;
+        evaluate(const std::vector<std::shared_ptr<dm::core::GameState>>& states) override;
 
         // Load ONNX model from file
         void load_model(const std::string& path);

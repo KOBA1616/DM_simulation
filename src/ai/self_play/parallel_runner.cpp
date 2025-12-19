@@ -22,7 +22,7 @@ namespace dm::ai {
         : card_db_(card_db), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
 
     std::vector<GameResultInfo> ParallelRunner::play_games(
-        const std::vector<dm::core::GameState>& initial_states,
+        const std::vector<std::shared_ptr<dm::core::GameState>>& initial_states,
         BatchEvaluatorCallback evaluator,
         float temperature,
         bool add_noise,
@@ -39,13 +39,20 @@ namespace dm::ai {
         auto worker_func = [&](int game_idx) {
             SelfPlay sp(card_db_, mcts_simulations_, batch_size_);
             
-            BatchEvaluatorCallback worker_cb = [&](const std::vector<dm::core::GameState>& states) {
+            BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
                 InferenceRequest req;
                 // Cannot copy states because GameState copy is deleted.
                 // We need to clone them.
                 req.states.reserve(states.size());
+                // states are now shared_ptr, we need to create new independent clones
+                // for the inference request if inference modifies them, or we can just pass shared_ptr
+                // if inference is read-only. MCTS::search passes clones (inside shared_ptr).
+                // But evaluator callback runs in main thread.
+                // The shared_ptr is just a handle.
+                // req.states is vector<shared_ptr<GameState>>.
+                // We can copy the shared_ptr.
                 for (const auto& s : states) {
-                    req.states.push_back(s.clone());
+                    req.states.push_back(s);
                 }
 
                 auto fut = req.promise.get_future();
@@ -60,7 +67,7 @@ namespace dm::ai {
 
             // play_game expects const GameState& initial_state
             // It will probably clone it internally if needed.
-            results[game_idx] = sp.play_game(initial_states[game_idx], worker_cb, temperature, add_noise, alpha, collect_data);
+            results[game_idx] = sp.play_game(*initial_states[game_idx], worker_cb, temperature, add_noise, alpha, collect_data);
             games_completed++;
             inf_queue.cv.notify_one();
         };
@@ -97,25 +104,18 @@ namespace dm::ai {
 
             if (batch.empty()) continue;
 
-            std::vector<dm::core::GameState> all_states;
+            std::vector<std::shared_ptr<dm::core::GameState>> all_states;
             std::vector<int> split_indices;
             for (auto* req : batch) {
-                // Cannot copy req->states (vector<GameState>) because GameState is not copyable.
-                // Move elements from request to all_states?
-                // Request owns the states (cloned).
-                // Or modify evaluator to accept pointers? No, interface is const vector<GameState>&.
-                // We can move them if we don't need them in request anymore.
-                // But request is valid until promise set.
-
-                // We must use move_iterator if possible, or clone again (expensive).
-                // Since req->states are temp clones for inference, we can move them.
+                // req->states is vector<shared_ptr<GameState>>.
+                // We can just copy the shared_ptr handles.
                 for (auto& s : req->states) {
-                    all_states.push_back(std::move(s));
+                    all_states.push_back(s);
                 }
                 split_indices.push_back(req->states.size());
             }
 
-            // Evaluator expects const vector<GameState>&.
+            // Evaluator expects const vector<shared_ptr<GameState>>&.
             auto result_pair = evaluator(all_states);
             const auto& all_policies = result_pair.first;
             const auto& all_values = result_pair.second;
@@ -164,11 +164,11 @@ namespace dm::ai {
 
             MCTS mcts(card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
 
-            BatchEvaluatorCallback worker_cb = [&](const std::vector<dm::core::GameState>& states) {
+            BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
                 InferenceRequest req;
                 req.states.reserve(states.size());
                 for (const auto& s : states) {
-                    req.states.push_back(s.clone());
+                    req.states.push_back(s);
                 }
                 auto fut = req.promise.get_future();
 
@@ -210,11 +210,11 @@ namespace dm::ai {
 
             if (batch.empty()) continue;
 
-            std::vector<dm::core::GameState> all_states;
+            std::vector<std::shared_ptr<dm::core::GameState>> all_states;
             std::vector<int> split_indices;
             for (auto* req : batch) {
                 for (auto& s : req->states) {
-                    all_states.push_back(std::move(s));
+                    all_states.push_back(s);
                 }
                 split_indices.push_back(req->states.size());
             }

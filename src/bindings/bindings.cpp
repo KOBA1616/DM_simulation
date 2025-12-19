@@ -24,6 +24,7 @@
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/cost_payment_system.hpp" // Typo fix systems/cost... -> engine/cost...
 #include "ai/self_play/self_play.hpp" // Added to include GameResultInfo definition
+#include "ai/scenario/scenario_executor.hpp" // Missing include
 
 namespace py = pybind11;
 using namespace dm;
@@ -68,7 +69,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("BATTLE", Zone::BATTLE)
         .value("SHIELD", Zone::SHIELD)
         .value("HYPER_SPATIAL", Zone::HYPER_SPATIAL)
-        .value("GR_ZONE", Zone::GR_ZONE)
+        .value("GR_ZONE", Zone::GR_DECK)
         .value("BUFFER", Zone::BUFFER)
         .value("STACK", Zone::STACK)
         .export_values();
@@ -81,7 +82,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("ATTACK", Phase::ATTACK)
         .value("BLOCK", Phase::BLOCK)
         .value("END_OF_TURN", Phase::END_OF_TURN)
-        .value("GAME_OVER", Phase::GAME_OVER)
         .export_values();
 
     py::enum_<ActionType>(m, "ActionType")
@@ -119,21 +119,21 @@ PYBIND11_MODULE(dm_ai_module, m) {
     // Card Data Structures
     py::class_<CardKeywords>(m, "CardKeywords")
         .def(py::init<>())
-        .def_readwrite("g_zero", &CardKeywords::g_zero)
-        .def_readwrite("revolution_change", &CardKeywords::revolution_change)
-        .def_readwrite("mach_fighter", &CardKeywords::mach_fighter)
-        .def_readwrite("speed_attacker", &CardKeywords::speed_attacker)
-        .def_readwrite("blocker", &CardKeywords::blocker)
-        .def_readwrite("slayer", &CardKeywords::slayer)
-        .def_readwrite("double_breaker", &CardKeywords::double_breaker)
-        .def_readwrite("triple_breaker", &CardKeywords::triple_breaker)
-        .def_readwrite("shield_trigger", &CardKeywords::shield_trigger)
-        .def_readwrite("evolution", &CardKeywords::evolution)
-        .def_readwrite("cip", &CardKeywords::cip)
-        .def_readwrite("at_attack", &CardKeywords::at_attack)
-        .def_readwrite("destruction", &CardKeywords::destruction)
-        .def_readwrite("just_diver", &CardKeywords::just_diver)
-        .def_readwrite("hyper_energy", &CardKeywords::hyper_energy);
+        .def_property("g_zero", [](const CardKeywords& k) { return k.g_zero; }, [](CardKeywords& k, bool v) { k.g_zero = v; })
+        .def_property("revolution_change", [](const CardKeywords& k) { return k.revolution_change; }, [](CardKeywords& k, bool v) { k.revolution_change = v; })
+        .def_property("mach_fighter", [](const CardKeywords& k) { return k.mach_fighter; }, [](CardKeywords& k, bool v) { k.mach_fighter = v; })
+        .def_property("speed_attacker", [](const CardKeywords& k) { return k.speed_attacker; }, [](CardKeywords& k, bool v) { k.speed_attacker = v; })
+        .def_property("blocker", [](const CardKeywords& k) { return k.blocker; }, [](CardKeywords& k, bool v) { k.blocker = v; })
+        .def_property("slayer", [](const CardKeywords& k) { return k.slayer; }, [](CardKeywords& k, bool v) { k.slayer = v; })
+        .def_property("double_breaker", [](const CardKeywords& k) { return k.double_breaker; }, [](CardKeywords& k, bool v) { k.double_breaker = v; })
+        .def_property("triple_breaker", [](const CardKeywords& k) { return k.triple_breaker; }, [](CardKeywords& k, bool v) { k.triple_breaker = v; })
+        .def_property("shield_trigger", [](const CardKeywords& k) { return k.shield_trigger; }, [](CardKeywords& k, bool v) { k.shield_trigger = v; })
+        .def_property("evolution", [](const CardKeywords& k) { return k.evolution; }, [](CardKeywords& k, bool v) { k.evolution = v; })
+        .def_property("cip", [](const CardKeywords& k) { return k.cip; }, [](CardKeywords& k, bool v) { k.cip = v; })
+        .def_property("at_attack", [](const CardKeywords& k) { return k.at_attack; }, [](CardKeywords& k, bool v) { k.at_attack = v; })
+        .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; })
+        .def_property("just_diver", [](const CardKeywords& k) { return k.just_diver; }, [](CardKeywords& k, bool v) { k.just_diver = v; })
+        .def_property("hyper_energy", [](const CardKeywords& k) { return k.hyper_energy; }, [](CardKeywords& k, bool v) { k.hyper_energy = v; });
 
     py::class_<FilterDef>(m, "FilterDef")
         .def(py::init<>())
@@ -176,7 +176,22 @@ PYBIND11_MODULE(dm_ai_module, m) {
             [](CardDefinition& c, Civilization civ) { c.civilizations = {civ}; });
 
     py::class_<CardData>(m, "CardData")
-        .def(py::init<CardID, std::string, int, std::string, int, std::string, std::vector<std::string>, std::vector<EffectDef>>());
+        .def(py::init([](CardID id, std::string name, int cost, std::string civilization, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects) {
+            CardData c;
+            c.id = id;
+            c.name = name;
+            c.cost = cost;
+            if (civilization == "FIRE") c.civilizations.push_back(Civilization::FIRE);
+            else if (civilization == "WATER") c.civilizations.push_back(Civilization::WATER);
+            else if (civilization == "NATURE") c.civilizations.push_back(Civilization::NATURE);
+            else if (civilization == "LIGHT") c.civilizations.push_back(Civilization::LIGHT);
+            else if (civilization == "DARKNESS") c.civilizations.push_back(Civilization::DARKNESS);
+            c.power = power;
+            c.type = type;
+            c.races = races;
+            c.effects = effects;
+            return c;
+        }));
 
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<>())
@@ -265,8 +280,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<ActionGenerator>(m, "ActionGenerator")
         .def_static("generate_legal_actions", &ActionGenerator::generate_legal_actions);
 
-    py::class_<dm::engine::systems::EffectSystem>(m, "EffectSystem")
-        .def_static("instance", &dm::engine::systems::EffectSystem::instance, py::return_value_policy::reference);
+    py::class_<dm::engine::EffectSystem, std::unique_ptr<dm::engine::EffectSystem, py::nodelete>>(m, "EffectSystem")
+        .def_static("instance", [](){ return &dm::engine::EffectSystem::instance(); }, py::return_value_policy::reference);
 
     // Bind GameLogicSystem instead of EffectResolver
     py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver") // Keep name for compatibility
@@ -307,11 +322,21 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("check_game_over", &PhaseManager::check_game_over);
 
     // AI Components
+    // Register shared_ptr holder for GameState if not already implicit (usually good practice for pybind11)
+    // But py::class_<GameState> is already defined.
+    // If we want to return vector<shared_ptr<GameState>>, we rely on pybind11 smart pointer handling.
+
     py::class_<MCTSNode, std::shared_ptr<MCTSNode>>(m, "MCTSNode")
         .def_readonly("visit_count", &MCTSNode::visit_count)
         .def_readonly("value", &MCTSNode::value_sum)
         .def_readonly("action", &MCTSNode::action_from_parent)
-        .def_readonly("children", &MCTSNode::children);
+        .def_property_readonly("children", [](const MCTSNode& node) {
+            std::vector<MCTSNode*> children_ptrs;
+            for (const auto& child : node.children) {
+                children_ptrs.push_back(child.get());
+            }
+            return children_ptrs;
+        }, py::return_value_policy::reference);
 
     py::class_<MCTS>(m, "MCTS")
         .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int, float>())
@@ -319,7 +344,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("get_last_root", &MCTS::get_last_root);
 
     py::class_<HeuristicEvaluator>(m, "HeuristicEvaluator")
-        .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def("evaluate", &HeuristicEvaluator::evaluate);
 
     py::class_<Determinizer>(m, "Determinizer")
