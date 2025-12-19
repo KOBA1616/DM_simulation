@@ -193,19 +193,19 @@ class ActionEditForm(BaseEditForm):
         self.update_ui_state(self.type_combo.currentData())
         self.update_data()
 
-    def on_smart_link_changed(self, is_checked):
+    def on_smart_link_changed(self, is_active):
         action_type = self.type_combo.currentData()
         config = self._get_ui_config(action_type)
 
         is_no_cost = self.no_cost_check.isChecked()
         # Hide Val1 if Smart Link is active OR Val1 is hidden by config
-        self.val1_label.setVisible(config["val1_visible"] and not is_checked and not is_no_cost)
-        self.val1_spin.setVisible(config["val1_visible"] and not is_checked and not is_no_cost)
+        self.val1_label.setVisible(config["val1_visible"] and not is_active and not is_no_cost)
+        self.val1_spin.setVisible(config["val1_visible"] and not is_active and not is_no_cost)
 
         # Notify FilterWidget if input link is overriding count
         # This applies if we are linking input AND filter is visible
         if config["filter_visible"]:
-             self.filter_widget.set_external_count_control(is_checked)
+             self.filter_widget.set_external_count_control(is_active)
 
         self.update_data()
 
