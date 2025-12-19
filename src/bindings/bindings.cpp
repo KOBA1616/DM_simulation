@@ -25,6 +25,7 @@
 #include "engine/cost_payment_system.hpp" // Typo fix systems/cost... -> engine/cost...
 #include "ai/self_play/self_play.hpp" // Added to include GameResultInfo definition
 #include "ai/scenario/scenario_executor.hpp" // Missing include
+#include "core/instruction.hpp" // For Instruction and InstructionOp
 
 namespace py = pybind11;
 using namespace dm;
@@ -112,8 +113,78 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("TARGET_SELECT", TargetScope::TARGET_SELECT)
         .export_values();
 
+    py::enum_<TriggerType>(m, "TriggerType")
+        .value("ON_PLAY", TriggerType::ON_PLAY)
+        .value("ON_ATTACK", TriggerType::ON_ATTACK)
+        .value("ON_DESTROY", TriggerType::ON_DESTROY)
+        .value("S_TRIGGER", TriggerType::S_TRIGGER)
+        .value("TURN_START", TriggerType::TURN_START)
+        .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
+        .value("NONE", TriggerType::NONE)
+        .export_values();
+
     py::enum_<EffectActionType>(m, "EffectActionType")
         .value("DRAW_CARD", EffectActionType::DRAW_CARD)
+        .value("ADD_MANA", EffectActionType::ADD_MANA)
+        .value("SEARCH_DECK_BOTTOM", EffectActionType::SEARCH_DECK_BOTTOM)
+        .value("SEND_TO_DECK_BOTTOM", EffectActionType::SEND_TO_DECK_BOTTOM)
+        .value("SEARCH_DECK", EffectActionType::SEARCH_DECK)
+        .value("SHUFFLE_DECK", EffectActionType::SHUFFLE_DECK)
+        .value("DESTROY", EffectActionType::DESTROY)
+        .value("RETURN_TO_HAND", EffectActionType::RETURN_TO_HAND)
+        .value("SEND_TO_MANA", EffectActionType::SEND_TO_MANA)
+        .value("TAP", EffectActionType::TAP)
+        .value("UNTAP", EffectActionType::UNTAP)
+        .value("MODIFY_POWER", EffectActionType::MODIFY_POWER)
+        .value("BREAK_SHIELD", EffectActionType::BREAK_SHIELD)
+        .value("LOOK_AND_ADD", EffectActionType::LOOK_AND_ADD)
+        .value("SUMMON_TOKEN", EffectActionType::SUMMON_TOKEN)
+        .value("MEKRAID", EffectActionType::MEKRAID)
+        .value("DISCARD", EffectActionType::DISCARD)
+        .value("PLAY_FROM_ZONE", EffectActionType::PLAY_FROM_ZONE)
+        .value("COST_REFERENCE", EffectActionType::COST_REFERENCE)
+        .value("LOOK_TO_BUFFER", EffectActionType::LOOK_TO_BUFFER)
+        .value("SELECT_FROM_BUFFER", EffectActionType::SELECT_FROM_BUFFER)
+        .value("PLAY_FROM_BUFFER", EffectActionType::PLAY_FROM_BUFFER)
+        .value("MOVE_BUFFER_TO_ZONE", EffectActionType::MOVE_BUFFER_TO_ZONE)
+        .value("REVOLUTION_CHANGE", EffectActionType::REVOLUTION_CHANGE)
+        .value("COUNT_CARDS", EffectActionType::COUNT_CARDS)
+        .value("GET_GAME_STAT", EffectActionType::GET_GAME_STAT)
+        .value("APPLY_MODIFIER", EffectActionType::APPLY_MODIFIER)
+        .value("REVEAL_CARDS", EffectActionType::REVEAL_CARDS)
+        .value("REGISTER_DELAYED_EFFECT", EffectActionType::REGISTER_DELAYED_EFFECT)
+        .value("RESET_INSTANCE", EffectActionType::RESET_INSTANCE)
+        .value("ADD_SHIELD", EffectActionType::ADD_SHIELD)
+        .value("SEND_SHIELD_TO_GRAVE", EffectActionType::SEND_SHIELD_TO_GRAVE)
+        .value("MOVE_TO_UNDER_CARD", EffectActionType::MOVE_TO_UNDER_CARD)
+        .value("SELECT_NUMBER", EffectActionType::SELECT_NUMBER)
+        .value("FRIEND_BURST", EffectActionType::FRIEND_BURST)
+        .value("GRANT_KEYWORD", EffectActionType::GRANT_KEYWORD)
+        .value("MOVE_CARD", EffectActionType::MOVE_CARD)
+        .value("CAST_SPELL", EffectActionType::CAST_SPELL)
+        .value("PUT_CREATURE", EffectActionType::PUT_CREATURE)
+        .value("SELECT_OPTION", EffectActionType::SELECT_OPTION)
+        .value("RESOLVE_BATTLE", EffectActionType::RESOLVE_BATTLE)
+        .export_values();
+
+    py::enum_<InstructionOp>(m, "InstructionOp")
+        .value("NOOP", InstructionOp::NOOP)
+        .value("IF", InstructionOp::IF)
+        .value("LOOP", InstructionOp::LOOP)
+        .value("REPEAT", InstructionOp::REPEAT)
+        .value("SELECT", InstructionOp::SELECT)
+        .value("MOVE", InstructionOp::MOVE)
+        .value("MODIFY", InstructionOp::MODIFY)
+        .value("GAME_ACTION", InstructionOp::GAME_ACTION)
+        .value("PLAY", InstructionOp::PLAY)
+        .value("ATTACK", InstructionOp::ATTACK)
+        .value("BLOCK", InstructionOp::BLOCK)
+        .value("COUNT", InstructionOp::COUNT)
+        .value("MATH", InstructionOp::MATH)
+        .value("CALL", InstructionOp::CALL)
+        .value("RETURN", InstructionOp::RETURN)
+        .value("WAIT_INPUT", InstructionOp::WAIT_INPUT)
+        .value("PRINT", InstructionOp::PRINT)
         .export_values();
 
     // Card Data Structures
@@ -152,14 +223,49 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<ActionDef>(m, "ActionDef")
         .def(py::init<>())
-        .def_readwrite("optional", &ActionDef::optional);
+        .def_readwrite("type", &ActionDef::type)
+        .def_readwrite("value1", &ActionDef::value1)
+        .def_readwrite("value2", &ActionDef::value2)
+        .def_readwrite("str_val", &ActionDef::str_val)
+        .def_readwrite("optional", &ActionDef::optional)
+        .def_readwrite("filter", &ActionDef::filter)
+        .def_readwrite("target_player", &ActionDef::target_player)
+        .def_readwrite("source_zone", &ActionDef::source_zone)
+        .def_readwrite("destination_zone", &ActionDef::destination_zone)
+        .def_readwrite("input_value_key", &ActionDef::input_value_key)
+        .def_readwrite("output_value_key", &ActionDef::output_value_key)
+        .def_readwrite("condition", &ActionDef::condition)
+        .def_readwrite("options", &ActionDef::options)
+        .def_readwrite("scope", &ActionDef::scope);
 
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
+        .def_readwrite("trigger", &EffectDef::trigger)
+        .def_readwrite("condition", &EffectDef::condition)
         .def_readwrite("actions", &EffectDef::actions);
 
     py::class_<CardDefinition>(m, "CardDefinition")
-        .def(py::init<>())
+        .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
+            CardDefinition c;
+            c.id = id;
+            c.name = name;
+            c.cost = cost;
+            if (civ_str == "FIRE") c.civilizations.push_back(Civilization::FIRE);
+            else if (civ_str == "WATER") c.civilizations.push_back(Civilization::WATER);
+            else if (civ_str == "NATURE") c.civilizations.push_back(Civilization::NATURE);
+            else if (civ_str == "LIGHT") c.civilizations.push_back(Civilization::LIGHT);
+            else if (civ_str == "DARKNESS") c.civilizations.push_back(Civilization::DARKNESS);
+            c.power = power;
+            c.races = races;
+            c.keywords = keywords;
+            c.effects = effects;
+            // Default type
+            c.type = CardType::CREATURE;
+            return c;
+        }),
+             py::arg("id") = 0, py::arg("name") = "", py::arg("civilization") = "NONE",
+             py::arg("races") = std::vector<std::string>{}, py::arg("cost") = 0, py::arg("power") = 0,
+             py::arg("keywords") = CardKeywords(), py::arg("effects") = std::vector<EffectDef>{})
         .def_readwrite("id", &CardDefinition::id)
         .def_readwrite("name", &CardDefinition::name)
         .def_readwrite("cost", &CardDefinition::cost)
@@ -203,12 +309,36 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("turn_played", &CardInstance::turn_played)
         .def_readwrite("is_face_down", &CardInstance::is_face_down);
 
+    // Instruction and Pipeline
+    py::class_<Instruction>(m, "Instruction")
+        .def_readwrite("op", &Instruction::op)
+        .def("get_arg_str", [](const Instruction& i, const std::string& key) {
+            if (i.args.contains(key) && i.args[key].is_string()) return i.args[key].get<std::string>();
+            return std::string("");
+        })
+        .def("get_arg_int", [](const Instruction& i, const std::string& key) {
+            if (i.args.contains(key) && i.args[key].is_number()) return i.args[key].get<int>();
+            return 0;
+        })
+        .def("get_then_block_size", [](const Instruction& i) { return (int)i.then_block.size(); })
+        .def("get_then_instruction", [](const Instruction& i, int index) { return i.then_block[index]; })
+        .def("get_else_block_size", [](const Instruction& i) { return (int)i.else_block.size(); })
+        .def("get_else_instruction", [](const Instruction& i, int index) { return i.else_block[index]; });
+
+    py::class_<dm::engine::systems::PipelineExecutor, std::shared_ptr<dm::engine::systems::PipelineExecutor>>(m, "PipelineExecutor")
+        .def(py::init<>())
+        .def("set_context_var", &dm::engine::systems::PipelineExecutor::set_context_var)
+        .def("execute", static_cast<void (dm::engine::systems::PipelineExecutor::*)(const std::vector<dm::core::Instruction>&, core::GameState&, const std::map<core::CardID, core::CardDefinition>&)>(&dm::engine::systems::PipelineExecutor::execute));
+
     py::class_<GameState::QueryContext>(m, "QueryContext")
         .def_readwrite("query_id", &GameState::QueryContext::query_id)
         .def_readwrite("query_type", &GameState::QueryContext::query_type)
         .def_readwrite("params", &GameState::QueryContext::params)
         .def_readwrite("valid_targets", &GameState::QueryContext::valid_targets)
         .def_readwrite("options", &GameState::QueryContext::options);
+
+    py::class_<TurnStats>(m, "TurnStats")
+         .def_readwrite("cards_drawn_this_turn", &TurnStats::cards_drawn_this_turn);
 
     py::class_<Player>(m, "Player")
         .def_readwrite("hand", &Player::hand)
@@ -228,6 +358,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("players", &GameState::players)
         .def_readwrite("game_over", &GameState::game_over)
         .def_readwrite("winner", &GameState::winner)
+        .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("waiting_for_user_input", &GameState::waiting_for_user_input)
         .def_readwrite("pending_query", &GameState::pending_query)
         .def("clone", &GameState::clone)
@@ -281,10 +412,24 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("generate_legal_actions", &ActionGenerator::generate_legal_actions);
 
     py::class_<dm::engine::EffectSystem, std::unique_ptr<dm::engine::EffectSystem, py::nodelete>>(m, "EffectSystem")
-        .def_static("instance", [](){ return &dm::engine::EffectSystem::instance(); }, py::return_value_policy::reference);
+        .def_static("instance", [](){ return &dm::engine::EffectSystem::instance(); }, py::return_value_policy::reference)
+        .def_static("compile_action", [](GameState& state, const ActionDef& action, int source_id, std::map<CardID, CardDefinition>& db, py::object py_ctx) {
+            std::vector<Instruction> instructions;
+            std::map<std::string, int> execution_context;
+            // Simplified: Context from python dict not fully supported for input, mostly output
+            // But we can try to load it
+            if (py::isinstance<py::dict>(py_ctx)) {
+                // Ignore for now or implement conversion
+            }
+
+            dm::engine::EffectSystem::instance().compile_action(state, action, source_id, execution_context, db, instructions);
+            return instructions;
+        });
 
     // Bind GameLogicSystem instead of EffectResolver
-    py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver") // Keep name for compatibility
+    // Also exposing as GenericCardSystem for test compatibility
+    auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver"); // Keep name for compatibility
+    effect_resolver
         .def_static("resolve_action", [](GameState& state, const Action& action, const std::map<CardID, CardDefinition>& db){
             dm::engine::systems::GameLogicSystem::resolve_action(state, action, db);
         })
@@ -313,8 +458,37 @@ PYBIND11_MODULE(dm_ai_module, m) {
              }
         });
 
+    // Alias GenericCardSystem to EffectResolver or expose EffectSystem wrapper
+    // The test calls dm_ai_module.GenericCardSystem.resolve_effect(self.state, ed, -1)
+    // We map this to EffectSystem::compile_effect -> PipelineExecutor::execute
+
+    struct GenericCardSystemWrapper {};
+    py::class_<GenericCardSystemWrapper>(m, "GenericCardSystem")
+        .def_static("resolve_effect", [](GameState& state, const EffectDef& eff, int source_id) {
+             std::vector<Instruction> instructions;
+             std::map<std::string, int> ctx;
+             auto db = CardRegistry::get_all_definitions(); // Use registry
+             dm::engine::EffectSystem::instance().compile_effect(state, eff, source_id, ctx, db, instructions);
+             if (!instructions.empty()) {
+                 dm::engine::systems::PipelineExecutor pipeline;
+                 pipeline.set_context_var("$source", source_id); // FIX: Set $source context
+                 pipeline.execute(instructions, state, db);
+             }
+        });
+
     py::class_<JsonLoader>(m, "JsonLoader")
         .def_static("load_cards", &JsonLoader::load_cards);
+
+    // Expose register_card_data
+    m.def("register_card_data", [](const CardData& data) {
+         // Create a temporary JSON or directly insert into private map?
+         // Since CardRegistry members are private and we don't have direct setter,
+         // We can serialize to JSON and load it.
+         nlohmann::json j;
+         dm::core::to_json(j, data);
+         std::string json_str = j.dump();
+         CardRegistry::load_from_json(json_str);
+    });
 
     py::class_<PhaseManager>(m, "PhaseManager")
         .def_static("start_game", &PhaseManager::start_game)
