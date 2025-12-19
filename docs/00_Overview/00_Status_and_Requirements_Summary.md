@@ -71,7 +71,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   [Status: Review] 各アクションハンドラー (`IActionHandler`) を `compile_action()` メソッドに対応させ、状態直接操作から命令生成へ移行しました。
     *   `DrawHandler`, `DiscardHandler`, `ModifierHandler`: 完了。
     *   `ManaHandler`, `DestroyHandler`, `SearchHandler`: 実装完了。
-    *   [Known Issue] **Execution Logic**: `ADD_MANA` (loop), `SEARCH_DECK` (variable linking), `DESTROY` (logic) の実行時挙動にバグがあり、統合テスト (`tests/test_integration_pipeline.py`) がアサーションエラーで失敗しています。ビルドとバインディングは修正されましたが、パイプラインの実行ロジックの修正が必要です。
+    *   [Status: Done] **Execution Logic**: `ADD_MANA`, `SEARCH_DECK`, `DESTROY` の実行時挙動修正が完了し、統合テスト (`tests/test_integration_pipeline.py`) がパスすることを確認しました。
 
 ### 3.2 [Priority: High] Phase 7: ハイブリッド・エンジン基盤 & データ移行
 [Status: Pending]
@@ -153,9 +153,9 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 
 1.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
 2.  [Status: Done] **Verify Integration**: ビルドおよびバインディングの修正が完了し、モジュールのインポートが可能になりました。
-3.  [Status: Todo] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行（特に `ADD_MANA`, `SEARCH_DECK`, `DESTROY`）において、状態遷移が正しく行われないロジックバグの修正が必要です。
+3.  [Status: Done] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行ロジックの修正が完了し、統合テストがパスすることを確認しました。
 4.  [Status: Todo] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`unique_ptr` vs `shared_ptr`）を一貫させ、メモリリークや二重解放のリスクを排除する。
-5.  [Status: Todo] **Architecture Switch**: `GameLogicSystem` が直接 `compile()` を呼び出し、生成された命令を一括実行するアーキテクチャへの完全切り替え。
+5.  [Status: Done] **Architecture Switch**: `EffectResolver` の廃止により、`GameLogicSystem` と `PipelineExecutor` を中心としたコマンド実行アーキテクチャへの移行が完了しました。
 6.  [Status: Todo] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンスを検証し、従来のResNetモデルと比較評価を行う。また、Phase 8本来の「完全トークン化された入力特徴量」への移行を進める。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
