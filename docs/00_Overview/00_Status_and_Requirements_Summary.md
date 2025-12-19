@@ -24,7 +24,7 @@
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
-現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、アクションハンドラーの `compile_action` 化とビルド修正を集中的に行っています。
+現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、アクションハンドラーの `compile_action` 化とビルド修正を集中的に行っています。また、**Phase 8: AI Architecture** の実装が並行して開始されています。
 
 ## 2. 現行システムステータス (Current Status)
 
@@ -40,14 +40,19 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Handler Migration**: `ManaHandler`, `DestroyHandler`, `SearchHandler` などの実装を `compile_action` ベースに移行しました。
 *   [Status: Done] **Build Fixes**: `GameState` の非コピー可能性に起因するビルドエラーを修正し、`EffectSystem` のシングルトン参照渡しや `bindings.cpp` のラムダ式活用を行いました。Pythonバインディングの `InstructionOp` および `TriggerType` 不足も解消しました。
 
+### 2.1.1 実装済みメカニクス (Mechanics Support)
+*   [Status: Done] **Revolution Change**: `CardDefinition` への `revolution_change` フラグおよび `revolution_change_condition` の追加、及び統合テストでの動作確認完了。
+*   [Status: Done] **Hyper Energy**: `CardKeywords.hyper_energy` および UI サポート実装済み。
+*   [Status: Done] **Just Diver**: `CardKeywords.just_diver` 実装済み。
+
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
-*   [Status: Done] **Status**: 稼働中 (Ver 2.3)。
+*   [Status: Done] **Status**: 稼働中 (Ver 2.3)。`CardEditForm` は Revolution Change や新キーワードに対応済み。
 *   [Status: Done] **Frontend Integration**: GUI (`app.py`) が `waiting_for_user_input` フラグを監視し、対象選択やオプション選択ダイアログを表示してゲームループを再開（Resume）する機能を実装しました。
 *   [Status: Deferred] **Freeze**: 新JSONスキーマが確定次第、新フォーマット専用エディタとして改修を行う。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
 *   [Status: Done] **Status**: パイプライン構築済み。
-*   [Status: Blocked] **Pending**: エンジン刷新に伴うデータ構造の変更が確定するまで凍結。
+*   [Status: WIP] **Transformer Integration**: `NetworkV2` (DuelTransformer) クラスが実装され、`verify_performance.py` への統合が進行中。
 
 ---
 
@@ -90,7 +95,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 
 *   **基本コンセプト (Core Concept)**:
     *   人間が「このカードは強い」といったヒューリスティックを与えるのではなく、**「構造（Structure）」と「素材（Raw Data）」を与え、AIが自己対戦を通じて意味と重みを学習（End-to-End Learning）できる設計**にします。
-    *   **Implementation Status**: `DuelTransformer` クラス (BERT-like) を実装済み。現行の固定長入力 (Feature Vector) を学習可能な入力層でシーケンスに変換するアダプターを搭載し、即時利用可能な状態です。
+    *   **Implementation Status**: `DuelTransformer` クラス (`dm_toolkit.ai.agent.transformer_model`) および `NetworkV2` (`dm_toolkit.training.network_v2`) を実装済み。現行の固定長入力 (Feature Vector) を学習可能な入力層でシーケンスに変換するアダプターを搭載し、検証段階へ移行可能です。
 
 *   **実装要件 (Implementation Requirements)**
 
@@ -154,9 +159,10 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 1.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
 2.  [Status: Done] **Verify Integration**: ビルドおよびバインディングの修正が完了し、モジュールのインポートが可能になりました。
 3.  [Status: Done] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行ロジックの修正が完了し、統合テストがパスすることを確認しました。
-4.  [Status: Todo] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`unique_ptr` vs `shared_ptr`）を一貫させ、メモリリークや二重解放のリスクを排除する。
+4.  [Status: Done] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`shared_ptr`）を一貫させ、メモリリークのリスクを大幅に低減しました。
 5.  [Status: Done] **Architecture Switch**: `EffectResolver` の廃止により、`GameLogicSystem` と `PipelineExecutor` を中心としたコマンド実行アーキテクチャへの移行が完了しました。
-6.  [Status: Todo] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンスを検証し、従来のResNetモデルと比較評価を行う。また、Phase 8本来の「完全トークン化された入力特徴量」への移行を進める。
+6.  [Status: WIP] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が進行中です。
+7.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへのデータ移行と、`CommandSystem` を利用した新フォーマットでのカード定義・実行の本格運用。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
 
@@ -210,37 +216,3 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
           └── Action Sequence
                └─ (Summon, Cast, etc.)
     ```
-    ##### 具体的な変更点と理由
-    1.  **「Trigger」から「Ability Type」への概念拡張**
-        *   これまでは全ての効果を「何かが起きたら実行する」として扱っていましたが、新エンジンでは**「即時解決されるイベント（誘発）」**と**「継続的に適用されるルール（常在）」**を区別する必要があります。
-        *   **GUIの変更:** Effectを追加する際、最初に **「Triggered (誘発型)」** か **「Static (常在型)」** かを選択させます。
-    2.  **条件判定（Condition）の独立ノード化**
-        *   新エンジンでは、イベントが発生しても「条件を満たしていなければ PendingEffect (待機効果) を生成しない」あるいは「解決時に不発になる」という判定が重要です。
-        *   **GUIの変更:** TriggerとActionの間に **「Condition (条件)」** ノードまたはプロパティ欄を設けます。
-    3.  **アクション間の「変数のリンク（Context Linking）」**
-        *   コマンド式になったことで、Action 1（選択）の結果を Action 2（破壊）が受け取るフローが厳格になります。
-        *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を指定するUIを改善します。
-
-    ##### GUI実装詳細: 旧式スタイル(Property Inspector)での新エンジン対応要件
-
-    GUIの操作フロー（ツリー選択 -> 右側プロパティ入力）を維持したまま、新エンジンの要件を満たすための具体的な実装変更点を示します。
-
-    1.  **CardEditForm (基礎データ)**
-        *   キーワード欄は「単純フラグ（Blocker, SA等）」の設定に限定します。
-        *   「条件付きスレイヤー」や「常在型パワーアタッカー」などの条件を伴うキーワード付与は、Effect層（Static Ability）へ委譲する運用ルールを徹底します。
-
-    2.  **EffectEditForm (トリガー/効果)**
-        *   **Ability Mode追加**:
-            *   最上部に **「Ability Mode」** (コンボボックス) を追加し、`TRIGGERED` (誘発型) か `STATIC` (常在型) かを選択させます。
-        *   **コンテキスト切替**:
-            *   `TRIGGERED` 選択時: 従来の **「Trigger Definition」** (ON_PLAY, ON_ATTACK等) を表示します。
-            *   `STATIC` 選択時: 新しい **「Layer Type」** (COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD等) を表示します。
-        *   **Conditionの解釈**:
-            *   Condition欄のUIは共通ですが、内部データ構造上は `TRIGGERED` ならば `trigger_condition` (誘発条件)、`STATIC` ならば `static_condition` (適用条件) として自動的にマッピングします。
-
-    3.  **ActionEditForm (アクション/コマンド)**
-        *   **Input Sourceの明示**:
-            *   コマンド間の連携（Variable Linking）を保証するため、**「Input Source Key」** 設定欄を標準化します。
-            *   コンボボックスにて「前のステップの出力 (Step 1 Result)」や「イベント発生源 (Event Source)」を選択可能にし、コマンドチェーンを明確に定義できるようにします。
-        *   **ActionTypeの整理**:
-            *   GUI上の選択肢を整理し、新エンジンの `GameCommand` に適合しない古いアクションタイプを廃止または統合します。
