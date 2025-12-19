@@ -414,6 +414,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     // Instruction and Pipeline
     py::class_<Instruction>(m, "Instruction")
+        .def(py::init<>())
         .def_readwrite("op", &Instruction::op)
         .def("get_arg_str", [](const Instruction& i, const std::string& key) {
             if (i.args.contains(key) && i.args[key].is_string()) return i.args[key].get<std::string>();
