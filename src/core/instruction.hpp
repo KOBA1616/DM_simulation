@@ -13,6 +13,7 @@ namespace dm::core {
         REPEAT,     // Loop N times
         // Query
         SELECT,
+        GET_STAT,   // Get Game State (Hand count, etc.)
         // Action
         MOVE,       // Zone change
         MODIFY,     // Power/Tap/Shield
@@ -38,6 +39,7 @@ namespace dm::core {
         {InstructionOp::LOOP, "LOOP"},
         {InstructionOp::REPEAT, "REPEAT"},
         {InstructionOp::SELECT, "SELECT"},
+        {InstructionOp::GET_STAT, "GET_STAT"},
         {InstructionOp::MOVE, "MOVE"},
         {InstructionOp::MODIFY, "MODIFY"},
         {InstructionOp::GAME_ACTION, "GAME_ACTION"},

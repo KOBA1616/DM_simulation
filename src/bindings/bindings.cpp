@@ -275,6 +275,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("LOOP", InstructionOp::LOOP)
         .value("REPEAT", InstructionOp::REPEAT)
         .value("SELECT", InstructionOp::SELECT)
+        .value("GET_STAT", InstructionOp::GET_STAT)
         .value("MOVE", InstructionOp::MOVE)
         .value("MODIFY", InstructionOp::MODIFY)
         .value("GAME_ACTION", InstructionOp::GAME_ACTION)
@@ -571,6 +572,35 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("resolve_effect", [](GameState& state, const EffectDef& eff, int source_id) {
              auto db = CardRegistry::get_all_definitions();
              dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
+        })
+        .def_static("resolve_action_with_context", [](GameState& state, int source_id, const ActionDef& action, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
+            std::vector<Instruction> instructions;
+            dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
+            if (!instructions.empty()) {
+                dm::engine::systems::PipelineExecutor pipeline;
+                // Load context
+                for (const auto& [k, v] : ctx) {
+                    pipeline.set_context_var("$" + k, v);
+                }
+
+                // Add default source/controller if missing
+                 pipeline.set_context_var("$source", source_id);
+                 int controller = 0;
+                 if ((size_t)source_id < state.card_owner_map.size()) controller = state.card_owner_map[source_id];
+                 pipeline.set_context_var("$controller", controller);
+
+                pipeline.execute(instructions, state, db);
+
+                // Extract context back
+                for (const auto& [k, v] : pipeline.context) {
+                    if (std::holds_alternative<int>(v)) {
+                         std::string clean_key = k;
+                         if (clean_key.rfind("$", 0) == 0) clean_key = clean_key.substr(1);
+                         ctx[clean_key] = std::get<int>(v);
+                    }
+                }
+            }
+            return ctx;
         });
 
     py::class_<JsonLoader>(m, "JsonLoader")
