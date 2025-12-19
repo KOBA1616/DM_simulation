@@ -20,9 +20,9 @@ namespace dm::core {
         ON_ATTACK_FROM_HAND,
         ON_BLOCK,
         AT_BREAK_SHIELD,
-        ON_SHIELD_ADD, // Added: ON_SHIELD_ADD
-        ON_CAST_SPELL, // Added: ON_CAST_SPELL
-        ON_OPPONENT_DRAW, // Added: ON_OPPONENT_DRAW
+        ON_SHIELD_ADD,
+        ON_CAST_SPELL,
+        ON_OPPONENT_DRAW,
         NONE
     };
 
@@ -42,6 +42,14 @@ namespace dm::core {
         RANDOM,
         ALL_FILTERED,
         NONE
+    };
+
+    enum class ModifierType {
+        NONE,
+        COST_MODIFIER,
+        POWER_MODIFIER,
+        GRANT_KEYWORD,
+        SET_KEYWORD
     };
 
     NLOHMANN_JSON_SERIALIZE_ENUM(Civilization, {
@@ -92,10 +100,10 @@ namespace dm::core {
         FRIEND_BURST,
         GRANT_KEYWORD,
         MOVE_CARD,
-        CAST_SPELL,     // Added: CAST_SPELL
-        PUT_CREATURE,   // Added: PUT_CREATURE
-        SELECT_OPTION,  // Added: SELECT_OPTION
-        RESOLVE_BATTLE, // Added: RESOLVE_BATTLE for engine compatibility
+        CAST_SPELL,
+        PUT_CREATURE,
+        SELECT_OPTION,
+        RESOLVE_BATTLE,
         NONE
     };
 
@@ -126,17 +134,17 @@ namespace dm::core {
 
     // Phase 4: Cost System Enums
     enum class CostType {
-        MANA,               // Standard Mana Payment
-        TAP_CARD,           // Tap cards in specified zone
-        SACRIFICE_CARD,     // Send cards to graveyard
-        RETURN_CARD,        // Return cards to hand
-        SHIELD_BURN,        // Send shields to graveyard
-        DISCARD             // Discard cards from hand
+        MANA,
+        TAP_CARD,
+        SACRIFICE_CARD,
+        RETURN_CARD,
+        SHIELD_BURN,
+        DISCARD
     };
 
     enum class ReductionType {
-        PASSIVE,        // Passive reduction (e.g. -1 for each Dragon)
-        ACTIVE_PAYMENT  // Active payment reduction (e.g. Tap creature to reduce by 2)
+        PASSIVE,
+        ACTIVE_PAYMENT
     };
 
     // JSON Structures
@@ -153,21 +161,17 @@ namespace dm::core {
         std::optional<bool> is_tapped;
         std::optional<bool> is_blocker;
         std::optional<bool> is_evolution;
-        std::optional<bool> is_card_designation; // New field for card vs element distinction
-        std::optional<int> count; // For selection
+        std::optional<bool> is_card_designation;
+        std::optional<int> count;
 
-        // Step 3-1: Advanced Selection
-        std::optional<std::string> selection_mode; // "MIN", "MAX", "RANDOM"
-        std::optional<std::string> selection_sort_key; // "COST", "POWER"
+        std::optional<std::string> selection_mode;
+        std::optional<std::string> selection_sort_key;
 
-        // Step 5.2.3: Context Reference
-        std::optional<std::string> power_max_ref; // e.g., "EVENT_CONTEXT_POWER"
+        std::optional<std::string> power_max_ref;
 
-        // Step 3-2: Composite Filters
         std::vector<FilterDef> and_conditions;
     };
 
-    // Phase 4: Cost System Structs
     struct CostDef {
         CostType type;
         int amount;
@@ -178,25 +182,28 @@ namespace dm::core {
 
     struct CostReductionDef {
         ReductionType type;
-
-        // ACTIVE_PAYMENT specific
         CostDef unit_cost;
         int reduction_amount;
-        int max_units = -1; // -1 for unlimited
+        int max_units = -1;
         int min_mana_cost = 0;
-
         std::string name;
     };
 
     struct ConditionDef {
-        std::string type; // "NONE", "MANA_ARMED", "SHIELD_COUNT", "COMPARE_STAT", "EVENT_FILTER_MATCH"
+        std::string type;
         int value = 0;
         std::string str_val;
-        // Condition Generalization
-        std::string stat_key; // e.g. "OPPONENT_HAND_COUNT"
-        std::string op; // ">", "=", "<"
-        // Step 3-1: Trigger Inclusion
+        std::string stat_key;
+        std::string op;
         std::optional<FilterDef> filter;
+    };
+
+    struct ModifierDef {
+        ModifierType type = ModifierType::NONE;
+        int value = 0;
+        std::string str_val;
+        ConditionDef condition;
+        FilterDef filter;
     };
 
     struct ActionDef {
@@ -206,48 +213,33 @@ namespace dm::core {
         int value1 = 0;
         int value2 = 0;
         std::string str_val;
-        std::string value; // Legacy compat
+        std::string value;
         bool optional = false;
         std::string target_player;
         std::string source_zone;
         std::string destination_zone;
-        std::string target_choice; // Legacy compat
-        // Phase 5: Variable Linking
+        std::string target_choice;
         std::string input_value_key;
         std::string output_value_key;
-        // Step 3-3: Negative Selection
         bool inverse_target = false;
-        // Step 3-1: Conditional Actions
         std::optional<ConditionDef> condition;
-        // Step 3.1: Mode Selection (Nested Actions)
         std::vector<std::vector<ActionDef>> options;
-        // Twinpact Support
         bool cast_spell_side = false;
     };
 
     struct CommandDef {
         CommandType type = CommandType::NONE;
-
-        // Target selection
         TargetScope target_group = TargetScope::NONE;
         FilterDef target_filter;
-
-        // Parameters
         int amount = 0;
         std::string str_param;
         bool optional = false;
-
-        // Primitive Specifics
         std::string from_zone;
         std::string to_zone;
-        std::string mutation_kind; // e.g. "TAP", "POWER"
-
-        // Flow Control
+        std::string mutation_kind;
         std::optional<ConditionDef> condition;
         std::vector<CommandDef> if_true;
         std::vector<CommandDef> if_false;
-
-        // Variable Linking
         std::string input_value_key;
         std::string output_value_key;
     };
@@ -255,12 +247,12 @@ namespace dm::core {
     struct EffectDef {
         TriggerType trigger = TriggerType::NONE;
         ConditionDef condition;
-        std::vector<ActionDef> actions; // Legacy
-        std::vector<CommandDef> commands; // New Engine
+        std::vector<ActionDef> actions;
+        std::vector<CommandDef> commands;
     };
 
     struct ReactionCondition {
-        std::string trigger_event; // "ON_BLOCK_OR_ATTACK", "ON_SHIELD_ADD"
+        std::string trigger_event;
         bool civilization_match = false;
         int mana_count_min = 0;
         bool same_civilization_shield = false;
@@ -282,25 +274,23 @@ namespace dm::core {
         std::string type;
         std::vector<std::string> races;
         std::vector<EffectDef> effects;
-        std::vector<EffectDef> metamorph_abilities; // Ultra Soul Cross abilities
+        std::vector<ModifierDef> static_abilities; // Added
+        std::vector<EffectDef> metamorph_abilities;
         std::optional<FilterDef> revolution_change_condition;
         std::optional<std::map<std::string, bool>> keywords;
         std::vector<ReactionAbility> reaction_abilities;
-        std::vector<CostReductionDef> cost_reductions; // Phase 4
+        std::vector<CostReductionDef> cost_reductions;
         std::shared_ptr<CardData> spell_side;
 
-        // AI Metadata
         bool is_key_card = false;
         int ai_importance_score = 0;
     };
 
-    // Forward declarations
     void to_json(nlohmann::json& j, const CardData& c);
     void from_json(const nlohmann::json& j, CardData& c);
 
 } // namespace dm::core
 
-// JSON Serialization Macros & Helpers
 namespace nlohmann {
     template <typename T>
     struct adl_serializer<std::optional<T>> {
@@ -356,6 +346,14 @@ namespace dm::core {
         {TargetScope::TARGET_SELECT, "TARGET_SELECT"},
         {TargetScope::RANDOM, "RANDOM"},
         {TargetScope::ALL_FILTERED, "ALL_FILTERED"}
+    })
+
+    NLOHMANN_JSON_SERIALIZE_ENUM(ModifierType, {
+        {ModifierType::NONE, "NONE"},
+        {ModifierType::COST_MODIFIER, "COST_MODIFIER"},
+        {ModifierType::POWER_MODIFIER, "POWER_MODIFIER"},
+        {ModifierType::GRANT_KEYWORD, "GRANT_KEYWORD"},
+        {ModifierType::SET_KEYWORD, "SET_KEYWORD"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(EffectActionType, {
@@ -439,13 +437,13 @@ namespace dm::core {
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, and_conditions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition, options, cast_spell_side)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, output_value_key)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions, commands)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
 
-    // Phase 4: Cost System Serialization
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostDef, type, amount, filter, is_optional, cost_id)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostReductionDef, type, unit_cost, reduction_amount, max_units, min_mana_cost, name)
 
@@ -458,7 +456,8 @@ namespace dm::core {
             {"power", c.power},
             {"type", c.type},
             {"races", c.races},
-            {"effects", c.effects},
+            {"triggers", c.effects}, // Mapped to triggers in JSON
+            {"static_abilities", c.static_abilities}, // Added
             {"metamorph_abilities", c.metamorph_abilities},
             {"revolution_change_condition", c.revolution_change_condition},
             {"keywords", c.keywords},
@@ -483,32 +482,23 @@ namespace dm::core {
         c.type = j.value("type", std::string("CREATURE"));
         if (j.contains("races")) j.at("races").get_to(c.races); else c.races = {};
 
-        if (j.contains("effects")) {
-            const auto& arr = j.at("effects");
-            c.effects.clear();
-            if (arr.is_array()) {
-                c.effects.reserve(arr.size());
-                for (const auto& elem : arr) {
-                    EffectDef e;
-                    from_json(elem, e); // Using ADL or found via lookup
-                    c.effects.push_back(e);
-                }
-            }
+        // Support both "triggers" and "effects"
+        if (j.contains("triggers")) {
+            j.at("triggers").get_to(c.effects);
+        } else if (j.contains("effects")) {
+            j.at("effects").get_to(c.effects);
         } else {
             c.effects = {};
         }
 
+        if (j.contains("static_abilities")) {
+            j.at("static_abilities").get_to(c.static_abilities);
+        } else {
+            c.static_abilities = {};
+        }
+
         if (j.contains("metamorph_abilities")) {
-            const auto& arr = j.at("metamorph_abilities");
-            c.metamorph_abilities.clear();
-            if (arr.is_array()) {
-                c.metamorph_abilities.reserve(arr.size());
-                for (const auto& elem : arr) {
-                    EffectDef e;
-                    from_json(elem, e);
-                    c.metamorph_abilities.push_back(e);
-                }
-            }
+            j.at("metamorph_abilities").get_to(c.metamorph_abilities);
         } else {
             c.metamorph_abilities = {};
         }
@@ -520,31 +510,13 @@ namespace dm::core {
         if (j.contains("keywords")) j.at("keywords").get_to(c.keywords);
 
         if (j.contains("reaction_abilities")) {
-            const auto& arr = j.at("reaction_abilities");
-            c.reaction_abilities.clear();
-            if (arr.is_array()) {
-                c.reaction_abilities.reserve(arr.size());
-                for (const auto& elem : arr) {
-                    ReactionAbility ra;
-                    from_json(elem, ra);
-                    c.reaction_abilities.push_back(ra);
-                }
-            }
+            j.at("reaction_abilities").get_to(c.reaction_abilities);
         } else {
             c.reaction_abilities = {};
         }
 
         if (j.contains("cost_reductions")) {
-            const auto& arr = j.at("cost_reductions");
-            c.cost_reductions.clear();
-            if (arr.is_array()) {
-                c.cost_reductions.reserve(arr.size());
-                for (const auto& elem : arr) {
-                    CostReductionDef cr;
-                    from_json(elem, cr);
-                    c.cost_reductions.push_back(cr);
-                }
-            }
+            j.at("cost_reductions").get_to(c.cost_reductions);
         } else {
             c.cost_reductions = {};
         }
@@ -554,7 +526,7 @@ namespace dm::core {
 
         if (j.contains("spell_side") && !j["spell_side"].is_null()) {
             c.spell_side = std::make_shared<CardData>();
-            from_json(j.at("spell_side"), *c.spell_side); // Recursive call using ADL
+            from_json(j.at("spell_side"), *c.spell_side);
         } else {
             c.spell_side = nullptr;
         }
