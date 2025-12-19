@@ -9,13 +9,14 @@ namespace dm::ai {
     HeuristicEvaluator::HeuristicEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db)
         : card_db_(card_db) {}
 
-    std::pair<std::vector<std::vector<float>>, std::vector<float>> HeuristicEvaluator::evaluate(const std::vector<dm::core::GameState>& states) {
+    std::pair<std::vector<std::vector<float>>, std::vector<float>> HeuristicEvaluator::evaluate(const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
         std::vector<std::vector<float>> policies;
         std::vector<float> values;
         policies.reserve(states.size());
         values.reserve(states.size());
 
-        for (const auto& state : states) {
+        for (const auto& state_ptr : states) {
+            const auto& state = *state_ptr;
             // 1. Calculate Value
             // P0 perspective
             const auto& p0 = state.players[0];
