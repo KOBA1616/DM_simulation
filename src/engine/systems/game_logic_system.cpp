@@ -46,6 +46,20 @@ namespace dm::engine::systems {
                 handle_block(pipeline, state, inst, card_db);
                 break;
             }
+            case ActionType::RESOLVE_BATTLE:
+            {
+                nlohmann::json args;
+                // Currently ActionType::RESOLVE_BATTLE does not carry target info in standard fields cleanly
+                // But ActionGenerator::resolve_battle sets target_instance_id for creature-creature battles
+                // If one of them is creature.
+                // Assuming action.source = attacker, action.target = defender
+                args["attacker"] = action.source_instance_id;
+                args["defender"] = action.target_instance_id;
+                Instruction inst(InstructionOp::GAME_ACTION, args);
+                inst.args["type"] = "RESOLVE_BATTLE";
+                handle_resolve_battle(pipeline, state, inst, card_db);
+                break;
+            }
             case ActionType::MANA_CHARGE:
             {
                 nlohmann::json args;
@@ -144,17 +158,72 @@ namespace dm::engine::systems {
         } else {
              const auto& def = card_db.at(card->card_id);
              Zone dest = Zone::BATTLE;
-             if (def.type == CardType::SPELL) dest = Zone::GRAVEYARD;
+             if (def.type == CardType::SPELL) {
+                 dest = Zone::STACK;
+             }
 
              auto cmd = std::make_unique<TransitionCommand>(instance_id, Zone::HAND, dest, state.active_player_id);
              state.execute_command(std::move(cmd));
+
+        }
+
+        // Push RESOLVE_PLAY for Spells immediately
+        if (card_db.at(card->card_id).type == CardType::SPELL && !is_evolution) {
+             // Create a new block for resolution
+             nlohmann::json resolve_args;
+             resolve_args["card"] = instance_id;
+             resolve_args["type"] = "RESOLVE_PLAY";
+
+             std::vector<Instruction> block;
+             block.emplace_back(InstructionOp::GAME_ACTION, resolve_args);
+
+             exec.call_stack.push_back({std::make_shared<std::vector<Instruction>>(block), 0, LoopContext{}});
         }
     }
 
     void GameLogicSystem::handle_resolve_play(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                               const std::map<core::CardID, core::CardDefinition>& card_db) {
-         // Process On-Play effects
-         (void)exec; (void)state; (void)inst; (void)card_db;
+        int instance_id = exec.resolve_int(inst.args.value("card", 0));
+        const CardInstance* card = state.get_card_instance(instance_id);
+        if (!card) return;
+
+        if (!card_db.count(card->card_id)) return;
+        const auto& def = card_db.at(card->card_id);
+
+        // 1. Compile Effects
+        std::vector<Instruction> compiled_effects;
+        std::map<std::string, int> ctx;
+
+        // For Spells, we execute all effects.
+        // For Creatures, this is ON_PLAY (CIP).
+        // Currently EffectSystem::compile_effect handles "trigger" checks?
+        // If we just want to execute the "main" effect of a spell, we iterate def.effects.
+
+        if (def.type == CardType::SPELL) {
+            for (const auto& eff : def.effects) {
+                 // Spells usually don't have triggers like ON_PLAY explicitly in JSON?
+                 // Or they do, but with trigger="NONE" or implicit?
+                 // Usually Spell effects are just the list.
+                 // We should check if EffectSystem needs a trigger type.
+                 EffectSystem::instance().compile_effect(state, eff, instance_id, ctx, card_db, compiled_effects);
+            }
+
+            // 2. Move to Graveyard (after effects)
+            // We append this to the END of compiled effects.
+            nlohmann::json move_args;
+            move_args["target"] = instance_id;
+            move_args["to"] = "GRAVEYARD";
+            compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
+        } else {
+            // Creature ON_PLAY
+            // Handled via TriggerSystem usually?
+            // If we are here, it means we are explicitly resolving play.
+        }
+
+        if (!compiled_effects.empty()) {
+             auto block = std::make_shared<std::vector<Instruction>>(compiled_effects);
+             exec.call_stack.push_back({block, 0, LoopContext{}});
+        }
     }
 
     void GameLogicSystem::handle_attack(PipelineExecutor& exec, GameState& state, const Instruction& inst,
@@ -173,8 +242,64 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_resolve_battle(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                                 const std::map<core::CardID, core::CardDefinition>& card_db) {
-        // Compare powers, destroy loser
-        (void)exec; (void)state; (void)inst; (void)card_db;
+        int attacker_id = exec.resolve_int(inst.args.value("attacker", -1));
+        int defender_id = exec.resolve_int(inst.args.value("defender", -1));
+
+        const CardInstance* attacker = state.get_card_instance(attacker_id);
+        const CardInstance* defender = state.get_card_instance(defender_id);
+
+        if (!attacker || !defender) return;
+
+        // Calculate powers
+        int power_attacker = get_creature_power(*attacker, state, card_db);
+        int power_defender = get_creature_power(*defender, state, card_db);
+
+        bool attacker_dies = false;
+        bool defender_dies = false;
+
+        // Slayer check
+        bool attacker_slayer = false;
+        if (card_db.count(attacker->card_id)) attacker_slayer = card_db.at(attacker->card_id).keywords.slayer;
+
+        bool defender_slayer = false;
+        if (card_db.count(defender->card_id)) defender_slayer = card_db.at(defender->card_id).keywords.slayer;
+
+        if (power_attacker > power_defender) {
+            defender_dies = true;
+            if (defender_slayer) attacker_dies = true;
+        } else if (power_attacker < power_defender) {
+            attacker_dies = true;
+            if (attacker_slayer) defender_dies = true;
+        } else {
+            // Equal power: Both die
+            attacker_dies = true;
+            defender_dies = true;
+        }
+
+        if (attacker_dies) {
+            auto cmd = std::make_unique<TransitionCommand>(attacker_id, Zone::BATTLE, Zone::GRAVEYARD, attacker->owner);
+            state.execute_command(std::move(cmd));
+        }
+
+        if (defender_dies) {
+            auto cmd = std::make_unique<TransitionCommand>(defender_id, Zone::BATTLE, Zone::GRAVEYARD, defender->owner);
+            state.execute_command(std::move(cmd));
+        }
+    }
+
+    int GameLogicSystem::get_creature_power(const core::CardInstance& creature, const core::GameState& game_state, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        if (!card_db.count(creature.card_id)) return 0;
+        int power = card_db.at(creature.card_id).power;
+
+        // Apply modifiers from game_state.active_modifiers or card internal modifiers
+        // For now, simple implementation
+        // Check game state active modifiers
+        for (const auto& mod : game_state.active_modifiers) {
+             // ... Check target ...
+             // For simplicity, we assume no modifiers in this stub unless we implement full matching
+        }
+
+        return power;
     }
 
     void GameLogicSystem::handle_break_shield(PipelineExecutor& exec, GameState& state, const Instruction& inst,
