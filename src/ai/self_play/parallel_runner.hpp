@@ -17,7 +17,7 @@ namespace dm::ai {
 
     // Structure for batch inference request
     struct InferenceRequest {
-        std::vector<dm::core::GameState> states;
+        std::vector<std::shared_ptr<dm::core::GameState>> states;
         std::promise<std::pair<std::vector<std::vector<float>>, std::vector<float>>> promise;
     };
 
@@ -36,7 +36,7 @@ namespace dm::ai {
 
         // Run self-play games in parallel using MCTS and Python evaluator
         std::vector<GameResultInfo> play_games(
-            const std::vector<dm::core::GameState>& initial_states,
+            const std::vector<std::shared_ptr<dm::core::GameState>>& initial_states,
             BatchEvaluatorCallback evaluator,
             float temperature = 1.0f,
             bool add_noise = true,

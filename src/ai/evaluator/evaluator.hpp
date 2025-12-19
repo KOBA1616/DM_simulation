@@ -13,7 +13,7 @@ namespace dm::ai {
         // Evaluate a batch of GameState; returns pair of (policies, values)
         // policies: vector of policy vectors, values: scalar per state
         virtual std::pair<std::vector<std::vector<float>>, std::vector<float>>
-        evaluate(const std::vector<dm::core::GameState>& states) = 0;
+        evaluate(const std::vector<std::shared_ptr<dm::core::GameState>>& states) = 0;
     };
 
 }

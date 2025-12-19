@@ -45,6 +45,13 @@ namespace dm::ai {
             const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
             bool mask_opponent_hand = true
         );
+
+        // Overload for shared_ptr
+        static std::vector<float> convert_batch_flat(
+            const std::vector<std::shared_ptr<dm::core::GameState>>& states,
+            const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
+            bool mask_opponent_hand = true
+        );
         
         static std::vector<float> convert_batch_flat(
             const std::vector<dm::core::GameState>& states,
