@@ -187,6 +187,7 @@ set(SRC_UTILS
 # AI Bridge (Phase 3 & 4)
 set(SRC_AI
     src/ai/encoders/tensor_converter.cpp
+    src/ai/encoders/token_converter.cpp
     src/ai/encoders/action_encoder.cpp
     src/ai/mcts/mcts.cpp
     src/ai/evaluator/heuristic_evaluator.cpp
