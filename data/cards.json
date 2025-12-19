@@ -1,817 +1,794 @@
 [
-  {
-    "cost": 3,
-    "effects": [
-      {
-        "commands": [
-          {
-            "amount": 1,
-            "from_zone": "DECK",
-            "target_filter": {
-              "count": 1,
-              "zones": [
-                "DECK"
-              ]
-            },
-            "target_group": "PLAYER_SELF",
-            "to_zone": "MANA_ZONE",
-            "type": "TRANSITION"
-          }
-        ],
-        "trigger": "ON_PLAY"
-      }
-    ],
-    "id": 1,
-    "keywords": {},
-    "name": "Bronze-Arm Tribe",
-    "power": 1000,
-    "races": [
-      "Beast Folk"
-    ],
-    "reaction_abilities": [],
-    "type": "CREATURE",
-    "civilizations": [
-      "NATURE"
-    ]
-  },
-  {
-    "ai_importance_score": 0,
-    "civilizations": [
-      "FIRE"
-    ],
-    "cost": 3,
-    "effects": [
-      {
-        "actions": [
-          {
-            "str_val": "SPEED_ATTACKER"
-          }
-        ],
-        "trigger": "PASSIVE_CONST"
-      }
-    ],
-    "id": 2,
-    "is_key_card": false,
-    "keywords": {},
-    "name": "Speed Attacker",
-    "power": 3000,
-    "races": [
-      "Human"
-    ],
-    "reaction_abilities": [],
-    "type": "CREATURE"
-  },
-  {
-    "cost": 1,
-    "effects": [],
-    "id": 3,
-    "keywords": {},
-    "name": "Fire Mana",
-    "power": 0,
-    "races": [],
-    "reaction_abilities": [],
-    "type": "SPELL",
-    "civilizations": [
-      "FIRE"
-    ]
-  },
-  {
-    "id": 4,
-    "name": "Bolshack Dragon",
-    "civilizations": [
-      "FIRE"
-    ],
-    "type": "CREATURE",
-    "cost": 6,
-    "power": 6000,
-    "races": [
-      "Armored Dragon"
-    ],
-    "keywords": {
-      "speed_attacker": true
-    },
-    "effects": [],
-    "reaction_abilities": [],
-    "ai_importance_score": 0,
-    "is_key_card": false
-  },
-  {
-    "ai_importance_score": 0,
-    "civilizations": [
-      "DARKNESS"
-    ],
-    "cost": 6,
-    "effects": [
-      {
-        "actions": [
-          {
-            "filter": {
-              "types": [
-                "CREATURE"
-              ],
-              "count": 1,
-              "owner": "OPPONENT",
-              "zones": [
-                "BATTLE_ZONE"
-              ]
-            },
-            "scope": "TARGET_SELECT",
-            "type": "DESTROY"
-          }
-        ],
-        "trigger": "ON_PLAY",
-        "commands": [
-          {
-            "type": "DESTROY",
-            "optional": false,
-            "target_filter": {
-              "types": [
-                "CREATURE"
-              ],
-              "count": 1,
-              "owner": "OPPONENT",
-              "zones": [
-                "BATTLE_ZONE"
-              ]
-            },
-            "target_group": "TARGET_SELECT"
-          }
-        ]
-      }
-    ],
-    "id": 5,
-    "is_key_card": false,
-    "keywords": {
-      "shield_trigger": true
-    },
-    "name": "Terror Pit",
-    "power": 0,
-    "races": [],
-    "reaction_abilities": [],
-    "type": "SPELL"
-  },
-  {
-    "ai_importance_score": 0,
-    "civilizations": [
-      "WATER"
-    ],
-    "cost": 2,
-    "effects": [
-      {
-        "actions": [
-          {
-            "filter": {
-              "types": [
-                "CREATURE"
-              ],
-              "count": 1,
-              "zones": [
-                "BATTLE_ZONE"
-              ]
-            },
-            "scope": "TARGET_SELECT",
-            "type": "RETURN_TO_HAND"
-          }
-        ],
-        "trigger": "ON_PLAY",
-        "commands": [
-          {
-            "type": "RETURN_TO_HAND",
-            "optional": false,
-            "target_filter": {
-              "types": [
-                "CREATURE"
-              ],
-              "count": 1,
-              "zones": [
-                "BATTLE_ZONE"
-              ]
-            },
-            "target_group": "TARGET_SELECT"
-          }
-        ]
-      }
-    ],
-    "id": 6,
-    "is_key_card": false,
-    "keywords": {
-      "shield_trigger": true
-    },
-    "name": "Spiral Gate",
-    "power": 0,
-    "races": [],
-    "reaction_abilities": [],
-    "type": "SPELL"
-  },
-  {
-    "cost": 2,
-    "effects": [
-      {
-        "actions": [
-          {
-            "filter": {},
-            "input_value_key": "",
-            "output_value_key": "var_COUNT_CARDS_0",
-            "scope": "PLAYER_SELF",
-            "str_val": "MANA_CIVILIZATION_COUNT",
-            "type": "GET_GAME_STAT",
-            "value1": 0,
-            "value2": 0
-          },
-          {
-            "destination_zone": "HAND",
-            "filter": {},
-            "input_value_key": "var_COUNT_CARDS_0",
-            "optional": true,
-            "output_value_key": "var_COUNT_CARDS_0",
-            "scope": "PLAYER_SELF",
-            "str_val": "MANA_CIVILIZATION_COUNT",
-            "type": "DRAW_CARD",
-            "value1": 0,
-            "value2": 0
-          },
-          {
-            "destination_zone": "DECK_BOTTOM",
-            "filter": {
-              "count": 1,
-              "zones": [
-                "HAND"
-              ]
-            },
-            "input_value_key": "var_COUNT_CARDS_0",
-            "optional": false,
-            "output_value_key": "var_SEND_TO_DECK_BOTTOM_2",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "MOVE_CARD",
-            "value1": 0,
-            "value2": 0
-          }
-        ],
-        "condition": {
-          "type": "NONE"
-        },
-        "trigger": "ON_PLAY",
-        "commands": []
-      }
-    ],
-    "id": 7,
-    "keywords": {},
-    "name": "月光電人オボロカゲロウ",
-    "power": 1000,
-    "races": [
-      "グレートメカオー"
-    ],
-    "reaction_abilities": [],
-    "type": "CREATURE",
-    "civilizations": [
-      "WATER"
-    ]
-  },
-  {
-    "ai_importance_score": 0,
-    "civilizations": [
-      "WATER"
-    ],
-    "cost": 7,
-    "effects": [
-      {
-        "actions": [
-          {
-            "filter": {},
-            "input_value_key": "",
-            "optional": true,
-            "output_value_key": "var_DRAW_CARD_0",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "DRAW_CARD",
-            "value1": 3,
-            "value2": 0
-          }
-        ],
-        "condition": {
-          "type": "NONE"
-        },
-        "trigger": "ON_PLAY",
-        "commands": [
-          {
-            "type": "DRAW_CARD",
-            "optional": true,
-            "amount": 3,
-            "target_filter": {},
-            "target_group": "PLAYER_SELF"
-          }
-        ]
-      },
-      {
-        "actions": [
-          {
-            "filter": {},
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "var_COUNT_CARDS_0",
-            "scope": "PLAYER_SELF",
-            "str_val": "CARDS_DRAWN_THIS_TURN",
-            "type": "GET_GAME_STAT",
-            "value1": 0,
-            "value2": 0
-          },
-          {
-            "filter": {},
-            "input_value_key": "var_COUNT_CARDS_0",
-            "optional": false,
-            "output_value_key": "var_DESTROY_1",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "COST_REFERENCE",
-            "value1": 0,
-            "value2": 0
-          }
-        ],
-        "condition": {
-          "type": "DURING_YOUR_TURN",
-          "value": 0
-        },
-        "trigger": "PASSIVE_CONST"
-      }
-    ],
-    "id": 8,
-    "is_key_card": false,
-    "keywords": {
-      "blocker": true,
-      "double_breaker": true
-    },
-    "name": "絶海の虎将ティガウォック",
-    "power": 6000,
-    "races": [],
-    "reaction_abilities": [],
-    "type": "CREATURE"
-  },
-  {
-    "ai_importance_score": 0,
-    "civilizations": [
-      "WATER"
-    ],
-    "cost": 2,
-    "effects": [
-      {
-        "actions": [
-          {
-            "filter": {},
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "var_DRAW_CARD_0",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "DRAW_CARD",
-            "value1": 1,
-            "value2": 0
-          }
-        ],
-        "condition": {
-          "type": "NONE"
-        },
-        "trigger": "ON_PLAY",
-        "commands": [
-          {
-            "type": "DRAW_CARD",
-            "optional": false,
-            "amount": 1,
-            "target_filter": {},
-            "target_group": "PLAYER_SELF"
-          }
-        ]
-      }
-    ],
-    "id": 9,
-    "is_key_card": false,
-    "keywords": {},
-    "name": "AQvibrato",
-    "power": 1000,
-    "races": [
-      "マジック"
-    ],
-    "reaction_abilities": [],
-    "type": "CREATURE"
-  },
-  {
-    "ai_importance_score": 0,
-    "civilizations": [
-      "WATER"
-    ],
-    "cost": 2,
-    "effects": [
-      {
-        "actions": [
-          {
-            "destination_zone": "HAND",
-            "filter": {
-              "count": 1,
-              "is_tapped": false,
-              "types": [
-                "CREATURE"
-              ],
-              "zones": [
-                "BATTLE_ZONE"
-              ]
-            },
-            "input_value_key": "",
-            "optional": true,
-            "output_value_key": "",
-            "scope": "PLAYER_SELF",
-            "str_val": "マジック",
-            "type": "FRIEND_BURST",
-            "value1": 0,
-            "value2": 0
-          }
-        ],
-        "condition": {
-          "type": "NONE"
-        },
-        "trigger": "ON_PLAY"
-      },
-      {
-        "actions": [
-          {
-            "destination_zone": "HAND",
-            "filter": {},
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "var_DRAW_CARD_0",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "DRAW_CARD",
-            "value1": 1,
-            "value2": 0
-          }
-        ],
-        "condition": {
-          "type": "OPPONENT_DRAW_COUNT",
-          "value": 2
-        },
-        "trigger": "ON_OPPONENT_DRAW",
-        "commands": [
-          {
-            "type": "DRAW_CARD",
-            "optional": false,
-            "amount": 1,
-            "target_filter": {},
-            "target_group": "PLAYER_SELF",
-            "to_zone": "HAND"
-          }
-        ]
-      }
-    ],
-    "id": 10,
-    "is_key_card": false,
-    "keywords": {},
-    "name": "歌舞音愛ヒメカット",
-    "power": 1000,
-    "races": [],
-    "reaction_abilities": [],
-    "spell_side": {
-      "civilizations": [
-        "WATER"
-      ],
-      "cost": 4,
-      "effects": [
-        {
-          "condition": {
-            "type": "NONE",
-            "value": 0
-          },
-          "trigger": "ON_PLAY",
-          "commands": [
+    {
+        "cost": 3,
+        "effects": [
             {
-              "optional": false,
-              "target_filter": {
-                "count": 2,
-                "zones": [
-                  "BATTLE_ZONE"
+                "commands": [
+                    {
+                        "amount": 1,
+                        "from_zone": "DECK",
+                        "target_filter": {
+                            "count": 1,
+                            "zones": [
+                                "DECK"
+                            ]
+                        },
+                        "target_group": "PLAYER_SELF",
+                        "to_zone": "MANA_ZONE",
+                        "type": "TRANSITION"
+                    }
                 ],
-                "owner": "OPPONENT",
-                "types": [
-                  "ELEMENT"
+                "trigger": "ON_PLAY"
+            }
+        ],
+        "id": 1,
+        "keywords": {},
+        "name": "Bronze-Arm Tribe",
+        "power": 1000,
+        "races": [
+            "Beast Folk"
+        ],
+        "reaction_abilities": [],
+        "type": "CREATURE",
+        "civilizations": [
+            "NATURE"
+        ]
+    },
+    {
+        "ai_importance_score": 0,
+        "civilizations": [
+            "FIRE"
+        ],
+        "cost": 3,
+        "effects": [],
+        "id": 2,
+        "is_key_card": false,
+        "keywords": {},
+        "name": "Speed Attacker",
+        "power": 3000,
+        "races": [
+            "Human"
+        ],
+        "reaction_abilities": [],
+        "type": "CREATURE",
+        "static_abilities": [
+            {
+                "type": "NONE",
+                "value": 0,
+                "condition": {}
+            }
+        ]
+    },
+    {
+        "cost": 1,
+        "effects": [],
+        "id": 3,
+        "keywords": {},
+        "name": "Fire Mana",
+        "power": 0,
+        "races": [],
+        "reaction_abilities": [],
+        "type": "SPELL",
+        "civilizations": [
+            "FIRE"
+        ]
+    },
+    {
+        "id": 4,
+        "name": "Bolshack Dragon",
+        "civilizations": [
+            "FIRE"
+        ],
+        "type": "CREATURE",
+        "cost": 6,
+        "power": 6000,
+        "races": [
+            "Armored Dragon"
+        ],
+        "keywords": {
+            "speed_attacker": true
+        },
+        "effects": [],
+        "reaction_abilities": [],
+        "ai_importance_score": 0,
+        "is_key_card": false
+    },
+    {
+        "ai_importance_score": 0,
+        "civilizations": [
+            "DARKNESS"
+        ],
+        "cost": 6,
+        "effects": [
+            {
+                "actions": [
+                    {
+                        "filter": {
+                            "types": [
+                                "CREATURE"
+                            ],
+                            "count": 1,
+                            "owner": "OPPONENT",
+                            "zones": [
+                                "BATTLE_ZONE"
+                            ]
+                        },
+                        "scope": "TARGET_SELECT",
+                        "type": "DESTROY"
+                    }
+                ],
+                "trigger": "ON_PLAY",
+                "commands": [
+                    {
+                        "type": "DESTROY",
+                        "optional": false,
+                        "target_filter": {
+                            "types": [
+                                "CREATURE"
+                            ],
+                            "count": 1,
+                            "owner": "OPPONENT",
+                            "zones": [
+                                "BATTLE_ZONE"
+                            ]
+                        },
+                        "target_group": "TARGET_SELECT"
+                    }
                 ]
-              },
-              "target_group": "TARGET_SELECT",
-              "to_zone": "HAND",
-              "type": "TRANSITION"
             }
-          ]
-        }
-      ],
-      "name": "♪蛙の子遭えるの何処?好きと謂ひて",
-      "type": "SPELL",
-      "id": 13,
-      "keywords": {}
-    },
-    "type": "CREATURE"
-  },
-  {
-    "ai_importance_score": 0,
-    "civilizations": [
-      "FIRE"
-    ],
-    "cost": 5,
-    "effects": [
-      {
-        "condition": {
-          "type": "NONE"
+        ],
+        "id": 5,
+        "is_key_card": false,
+        "keywords": {
+            "shield_trigger": true
         },
-        "trigger": "ON_PLAY",
-        "actions": [
-          {
-            "destination_zone": "HAND",
-            "filter": {},
-            "input_value_key": "",
-            "optional": true,
-            "output_value_key": "var_discarded_count",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "DISCARD",
-            "value1": 2,
-            "value2": 0
-          },
-          {
-            "destination_zone": "HAND",
-            "filter": {},
-            "input_value_key": "var_discarded_count",
-            "optional": false,
-            "output_value_key": "",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "DRAW_CARD",
-            "value1": 0,
-            "value2": 0
-          },
-          {
-            "destination_zone": "HAND",
-            "filter": {},
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "DRAW_CARD",
-            "value1": 1,
-            "value2": 0
-          }
-        ]
-      }
-    ],
-    "cost_reductions": [
-      {
-        "type": "PASSIVE",
-        "reduction_amount": 1,
-        "filter": {
-          "races": [
-            "マジック"
-          ],
-          "types": [
-            "CREATURE"
-          ],
-          "zones": [
-            "BATTLE_ZONE"
-          ],
-          "owner": "PLAYER_SELF"
-        },
-        "unit_cost": {
-          "type": "MANA",
-          "amount": 0,
-          "filter": {}
-        }
-      }
-    ],
-    "id": 11,
-    "is_key_card": false,
-    "keywords": {
-      "double_breaker": true,
-      "mega_last_burst": true,
-      "speed_attacker": true
+        "name": "Terror Pit",
+        "power": 0,
+        "races": [],
+        "reaction_abilities": [],
+        "type": "SPELL"
     },
-    "name": "ナポレオンバイブス",
-    "power": 1000,
-    "races": [
-      "マジック"
-    ],
-    "reaction_abilities": [],
-    "spell_side": {
-      "civilizations": [
-        "FIRE"
-      ],
-      "cost": 3,
-      "effects": [
-        {
-          "condition": {
-            "type": "NONE",
-            "value": 0
-          },
-          "trigger": "ON_PLAY",
-          "commands": [
+    {
+        "ai_importance_score": 0,
+        "civilizations": [
+            "WATER"
+        ],
+        "cost": 2,
+        "effects": [
             {
-              "optional": false,
-              "target_filter": {
-                "max_cost": 2,
-                "types": [
-                  "ELEMENT"
+                "actions": [
+                    {
+                        "filter": {
+                            "types": [
+                                "CREATURE"
+                            ],
+                            "count": 1,
+                            "zones": [
+                                "BATTLE_ZONE"
+                            ]
+                        },
+                        "scope": "TARGET_SELECT",
+                        "type": "RETURN_TO_HAND"
+                    }
                 ],
-                "zones": [
-                  "BATTLE_ZONE"
+                "trigger": "ON_PLAY",
+                "commands": [
+                    {
+                        "type": "RETURN_TO_HAND",
+                        "optional": false,
+                        "target_filter": {
+                            "types": [
+                                "CREATURE"
+                            ],
+                            "count": 1,
+                            "zones": [
+                                "BATTLE_ZONE"
+                            ]
+                        },
+                        "target_group": "TARGET_SELECT"
+                    }
+                ]
+            }
+        ],
+        "id": 6,
+        "is_key_card": false,
+        "keywords": {
+            "shield_trigger": true
+        },
+        "name": "Spiral Gate",
+        "power": 0,
+        "races": [],
+        "reaction_abilities": [],
+        "type": "SPELL"
+    },
+    {
+        "cost": 2,
+        "effects": [
+            {
+                "actions": [
+                    {
+                        "filter": {},
+                        "input_value_key": "",
+                        "output_value_key": "var_COUNT_CARDS_0",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "MANA_CIVILIZATION_COUNT",
+                        "type": "GET_GAME_STAT",
+                        "value1": 0,
+                        "value2": 0
+                    },
+                    {
+                        "destination_zone": "HAND",
+                        "filter": {},
+                        "input_value_key": "var_COUNT_CARDS_0",
+                        "optional": true,
+                        "output_value_key": "var_COUNT_CARDS_0",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "MANA_CIVILIZATION_COUNT",
+                        "type": "DRAW_CARD",
+                        "value1": 0,
+                        "value2": 0
+                    },
+                    {
+                        "destination_zone": "DECK_BOTTOM",
+                        "filter": {
+                            "count": 1,
+                            "zones": [
+                                "HAND"
+                            ]
+                        },
+                        "input_value_key": "var_COUNT_CARDS_0",
+                        "optional": false,
+                        "output_value_key": "var_SEND_TO_DECK_BOTTOM_2",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "",
+                        "type": "MOVE_CARD",
+                        "value1": 0,
+                        "value2": 0
+                    }
                 ],
-                "owner": "OPPONENT"
-              },
-              "target_group": "TARGET_SELECT",
-              "to_zone": "GRAVEYARD",
-              "type": "TRANSITION"
+                "condition": {
+                    "type": "NONE"
+                },
+                "trigger": "ON_PLAY",
+                "commands": []
             }
-          ]
-        }
-      ],
-      "name": "聞かなきゃ殴り合い",
-      "type": "SPELL",
-      "id": 14,
-      "keywords": {}
-    },
-    "type": "CREATURE"
-  },
-  {
-    "ai_importance_score": 0,
-    "civilizations": [
-      "WATER",
-      "FIRE"
-    ],
-    "cost": 5,
-    "effects": [
-      {
-        "actions": [
-          {
-            "destination_zone": "HAND",
-            "filter": {
-              "races": [
-                "マジック"
-              ]
-            },
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "",
-            "scope": "NONE",
-            "str_val": "",
-            "type": "REVOLUTION_CHANGE",
-            "value1": 0,
-            "value2": 0
-          }
         ],
-        "condition": {
-          "type": "NONE"
-        },
-        "trigger": "ON_ATTACK_FROM_HAND"
-      },
-      {
-        "actions": [
-          {
-            "destination_zone": "HAND",
-            "filter": {},
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "var_DRAW_CARD_0",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "DRAW_CARD",
-            "value1": 1,
-            "value2": 0
-          },
-          {
-            "destination_zone": "HAND",
-            "filter": {
-              "max_cost": 3,
-              "types": [
-                "SPELL"
-              ],
-              "zones": [
-                "HAND"
-              ]
-            },
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "PLAY_FROM_ZONE",
-            "value1": 0,
-            "value2": 0
-          }
+        "id": 7,
+        "keywords": {},
+        "name": "月光電人オボロカゲロウ",
+        "power": 1000,
+        "races": [
+            "グレートメカオー"
         ],
-        "condition": {
-          "type": "NONE"
-        },
-        "trigger": "ON_PLAY",
-        "commands": []
-      }
-    ],
-    "id": 12,
-    "is_key_card": false,
-    "keywords": {
-      "g_strike": true,
-      "revolution_change": true,
-      "speed_attacker": true
-    },
-    "name": "芸魔陰弧カラクリバーシ",
-    "power": 4000,
-    "races": [
-      "マジック"
-    ],
-    "reaction_abilities": [],
-    "revolution_change_condition": {
-      "races": [
-        "マジック"
-      ]
-    },
-    "type": "CREATURE"
-  },
-  {
-    "id": 15,
-    "name": "Aqua Hulcus",
-    "type": "CREATURE",
-    "cost": 3,
-    "power": 2000,
-    "races": [
-      "Liquid People"
-    ],
-    "civilizations": [
-      "WATER"
-    ],
-    "effects": [
-      {
-        "trigger": "ON_PLAY",
-        "actions": [
-          {
-            "type": "DRAW_CARD",
-            "value1": 1,
-            "scope": "PLAYER_SELF"
-          }
-        ],
-        "commands": [
-          {
-            "type": "DRAW_CARD",
-            "amount": 1,
-            "target_group": "PLAYER_SELF"
-          }
-        ],
-        "condition": {
-          "type": "NONE"
-        }
-      }
-    ],
-    "keywords": {}
-  },
-  {
-    "id": 16,
-    "name": "Holy Awe",
-    "type": "SPELL",
-    "cost": 6,
-    "power": 0,
-    "races": [],
-    "civilizations": [
-      "LIGHT"
-    ],
-    "effects": [
-      {
-        "trigger": "ON_PLAY",
-        "actions": [
-          {
-            "type": "TAP",
-            "scope": "ALL_FILTERED",
-            "filter": {
-              "zones": [
-                "BATTLE_ZONE"
-              ],
-              "types": [
-                "CREATURE"
-              ],
-              "owner": "OPPONENT"
-            }
-          }
-        ],
-        "commands": [
-          {
-            "type": "TAP",
-            "target_group": "ALL_FILTERED",
-            "target_filter": {
-              "zones": [
-                "BATTLE_ZONE"
-              ],
-              "types": [
-                "CREATURE"
-              ],
-              "owner": "OPPONENT"
-            }
-          }
+        "reaction_abilities": [],
+        "type": "CREATURE",
+        "civilizations": [
+            "WATER"
         ]
-      }
-    ],
-    "keywords": {
-      "shield_trigger": true
+    },
+    {
+        "ai_importance_score": 0,
+        "civilizations": [
+            "WATER"
+        ],
+        "cost": 7,
+        "effects": [
+            {
+                "actions": [
+                    {
+                        "filter": {},
+                        "input_value_key": "",
+                        "optional": true,
+                        "output_value_key": "var_DRAW_CARD_0",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "",
+                        "type": "DRAW_CARD",
+                        "value1": 3,
+                        "value2": 0
+                    }
+                ],
+                "condition": {
+                    "type": "NONE"
+                },
+                "trigger": "ON_PLAY",
+                "commands": [
+                    {
+                        "type": "DRAW_CARD",
+                        "optional": true,
+                        "amount": 3,
+                        "target_filter": {},
+                        "target_group": "PLAYER_SELF"
+                    }
+                ]
+            }
+        ],
+        "id": 8,
+        "is_key_card": false,
+        "keywords": {
+            "blocker": true,
+            "double_breaker": true
+        },
+        "name": "絶海の虎将ティガウォック",
+        "power": 6000,
+        "races": [],
+        "reaction_abilities": [],
+        "type": "CREATURE",
+        "static_abilities": [
+            {
+                "type": "NONE",
+                "value": 0,
+                "condition": {
+                    "type": "DURING_YOUR_TURN",
+                    "value": 0
+                }
+            }
+        ]
+    },
+    {
+        "ai_importance_score": 0,
+        "civilizations": [
+            "WATER"
+        ],
+        "cost": 2,
+        "effects": [
+            {
+                "actions": [
+                    {
+                        "filter": {},
+                        "input_value_key": "",
+                        "optional": false,
+                        "output_value_key": "var_DRAW_CARD_0",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "",
+                        "type": "DRAW_CARD",
+                        "value1": 1,
+                        "value2": 0
+                    }
+                ],
+                "condition": {
+                    "type": "NONE"
+                },
+                "trigger": "ON_PLAY",
+                "commands": [
+                    {
+                        "type": "DRAW_CARD",
+                        "optional": false,
+                        "amount": 1,
+                        "target_filter": {},
+                        "target_group": "PLAYER_SELF"
+                    }
+                ]
+            }
+        ],
+        "id": 9,
+        "is_key_card": false,
+        "keywords": {},
+        "name": "AQvibrato",
+        "power": 1000,
+        "races": [
+            "マジック"
+        ],
+        "reaction_abilities": [],
+        "type": "CREATURE"
+    },
+    {
+        "ai_importance_score": 0,
+        "civilizations": [
+            "WATER"
+        ],
+        "cost": 2,
+        "effects": [
+            {
+                "actions": [
+                    {
+                        "destination_zone": "HAND",
+                        "filter": {
+                            "count": 1,
+                            "is_tapped": false,
+                            "types": [
+                                "CREATURE"
+                            ],
+                            "zones": [
+                                "BATTLE_ZONE"
+                            ]
+                        },
+                        "input_value_key": "",
+                        "optional": true,
+                        "output_value_key": "",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "マジック",
+                        "type": "FRIEND_BURST",
+                        "value1": 0,
+                        "value2": 0
+                    }
+                ],
+                "condition": {
+                    "type": "NONE"
+                },
+                "trigger": "ON_PLAY"
+            },
+            {
+                "actions": [
+                    {
+                        "destination_zone": "HAND",
+                        "filter": {},
+                        "input_value_key": "",
+                        "optional": false,
+                        "output_value_key": "var_DRAW_CARD_0",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "",
+                        "type": "DRAW_CARD",
+                        "value1": 1,
+                        "value2": 0
+                    }
+                ],
+                "condition": {
+                    "type": "OPPONENT_DRAW_COUNT",
+                    "value": 2
+                },
+                "trigger": "ON_OPPONENT_DRAW",
+                "commands": [
+                    {
+                        "type": "DRAW_CARD",
+                        "optional": false,
+                        "amount": 1,
+                        "target_filter": {},
+                        "target_group": "PLAYER_SELF",
+                        "to_zone": "HAND"
+                    }
+                ]
+            }
+        ],
+        "id": 10,
+        "is_key_card": false,
+        "keywords": {},
+        "name": "歌舞音愛ヒメカット",
+        "power": 1000,
+        "races": [],
+        "reaction_abilities": [],
+        "spell_side": {
+            "civilizations": [
+                "WATER"
+            ],
+            "cost": 4,
+            "effects": [
+                {
+                    "condition": {
+                        "type": "NONE",
+                        "value": 0
+                    },
+                    "trigger": "ON_PLAY",
+                    "commands": [
+                        {
+                            "optional": false,
+                            "target_filter": {
+                                "count": 2,
+                                "zones": [
+                                    "BATTLE_ZONE"
+                                ],
+                                "owner": "OPPONENT",
+                                "types": [
+                                    "ELEMENT"
+                                ]
+                            },
+                            "target_group": "TARGET_SELECT",
+                            "to_zone": "HAND",
+                            "type": "TRANSITION"
+                        }
+                    ]
+                }
+            ],
+            "name": "♪蛙の子遭えるの何処?好きと謂ひて",
+            "type": "SPELL",
+            "id": 13,
+            "keywords": {}
+        },
+        "type": "CREATURE"
+    },
+    {
+        "ai_importance_score": 0,
+        "civilizations": [
+            "FIRE"
+        ],
+        "cost": 5,
+        "effects": [
+            {
+                "condition": {
+                    "type": "NONE"
+                },
+                "trigger": "ON_PLAY",
+                "actions": [
+                    {
+                        "destination_zone": "HAND",
+                        "filter": {},
+                        "input_value_key": "",
+                        "optional": true,
+                        "output_value_key": "var_discarded_count",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "",
+                        "type": "DISCARD",
+                        "value1": 2,
+                        "value2": 0
+                    },
+                    {
+                        "destination_zone": "HAND",
+                        "filter": {},
+                        "input_value_key": "var_discarded_count",
+                        "optional": false,
+                        "output_value_key": "",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "",
+                        "type": "DRAW_CARD",
+                        "value1": 0,
+                        "value2": 0
+                    },
+                    {
+                        "destination_zone": "HAND",
+                        "filter": {},
+                        "input_value_key": "",
+                        "optional": false,
+                        "output_value_key": "",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "",
+                        "type": "DRAW_CARD",
+                        "value1": 1,
+                        "value2": 0
+                    }
+                ]
+            }
+        ],
+        "cost_reductions": [
+            {
+                "type": "PASSIVE",
+                "reduction_amount": 1,
+                "filter": {
+                    "races": [
+                        "マジック"
+                    ],
+                    "types": [
+                        "CREATURE"
+                    ],
+                    "zones": [
+                        "BATTLE_ZONE"
+                    ],
+                    "owner": "PLAYER_SELF"
+                },
+                "unit_cost": {
+                    "type": "MANA",
+                    "amount": 0,
+                    "filter": {}
+                }
+            }
+        ],
+        "id": 11,
+        "is_key_card": false,
+        "keywords": {
+            "double_breaker": true,
+            "mega_last_burst": true,
+            "speed_attacker": true
+        },
+        "name": "ナポレオンバイブス",
+        "power": 1000,
+        "races": [
+            "マジック"
+        ],
+        "reaction_abilities": [],
+        "spell_side": {
+            "civilizations": [
+                "FIRE"
+            ],
+            "cost": 3,
+            "effects": [
+                {
+                    "condition": {
+                        "type": "NONE",
+                        "value": 0
+                    },
+                    "trigger": "ON_PLAY",
+                    "commands": [
+                        {
+                            "optional": false,
+                            "target_filter": {
+                                "max_cost": 2,
+                                "types": [
+                                    "ELEMENT"
+                                ],
+                                "zones": [
+                                    "BATTLE_ZONE"
+                                ],
+                                "owner": "OPPONENT"
+                            },
+                            "target_group": "TARGET_SELECT",
+                            "to_zone": "GRAVEYARD",
+                            "type": "TRANSITION"
+                        }
+                    ]
+                }
+            ],
+            "name": "聞かなきゃ殴り合い",
+            "type": "SPELL",
+            "id": 14,
+            "keywords": {}
+        },
+        "type": "CREATURE"
+    },
+    {
+        "ai_importance_score": 0,
+        "civilizations": [
+            "WATER",
+            "FIRE"
+        ],
+        "cost": 5,
+        "effects": [
+            {
+                "actions": [
+                    {
+                        "destination_zone": "HAND",
+                        "filter": {
+                            "races": [
+                                "マジック"
+                            ]
+                        },
+                        "input_value_key": "",
+                        "optional": false,
+                        "output_value_key": "",
+                        "scope": "NONE",
+                        "str_val": "",
+                        "type": "REVOLUTION_CHANGE",
+                        "value1": 0,
+                        "value2": 0
+                    }
+                ],
+                "condition": {
+                    "type": "NONE"
+                },
+                "trigger": "ON_ATTACK_FROM_HAND"
+            },
+            {
+                "actions": [
+                    {
+                        "destination_zone": "HAND",
+                        "filter": {},
+                        "input_value_key": "",
+                        "optional": false,
+                        "output_value_key": "var_DRAW_CARD_0",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "",
+                        "type": "DRAW_CARD",
+                        "value1": 1,
+                        "value2": 0
+                    },
+                    {
+                        "destination_zone": "HAND",
+                        "filter": {
+                            "max_cost": 3,
+                            "types": [
+                                "SPELL"
+                            ],
+                            "zones": [
+                                "HAND"
+                            ]
+                        },
+                        "input_value_key": "",
+                        "optional": false,
+                        "output_value_key": "",
+                        "scope": "PLAYER_SELF",
+                        "str_val": "",
+                        "type": "PLAY_FROM_ZONE",
+                        "value1": 0,
+                        "value2": 0
+                    }
+                ],
+                "condition": {
+                    "type": "NONE"
+                },
+                "trigger": "ON_PLAY",
+                "commands": []
+            }
+        ],
+        "id": 12,
+        "is_key_card": false,
+        "keywords": {
+            "g_strike": true,
+            "revolution_change": true,
+            "speed_attacker": true
+        },
+        "name": "芸魔陰弧カラクリバーシ",
+        "power": 4000,
+        "races": [
+            "マジック"
+        ],
+        "reaction_abilities": [],
+        "revolution_change_condition": {
+            "races": [
+                "マジック"
+            ]
+        },
+        "type": "CREATURE"
+    },
+    {
+        "id": 15,
+        "name": "Aqua Hulcus",
+        "type": "CREATURE",
+        "cost": 3,
+        "power": 2000,
+        "races": [
+            "Liquid People"
+        ],
+        "civilizations": [
+            "WATER"
+        ],
+        "effects": [
+            {
+                "trigger": "ON_PLAY",
+                "actions": [
+                    {
+                        "type": "DRAW_CARD",
+                        "value1": 1,
+                        "scope": "PLAYER_SELF"
+                    }
+                ],
+                "commands": [
+                    {
+                        "type": "DRAW_CARD",
+                        "amount": 1,
+                        "target_group": "PLAYER_SELF"
+                    }
+                ],
+                "condition": {
+                    "type": "NONE"
+                }
+            }
+        ],
+        "keywords": {}
+    },
+    {
+        "id": 16,
+        "name": "Holy Awe",
+        "type": "SPELL",
+        "cost": 6,
+        "power": 0,
+        "races": [],
+        "civilizations": [
+            "LIGHT"
+        ],
+        "effects": [
+            {
+                "trigger": "ON_PLAY",
+                "actions": [
+                    {
+                        "type": "TAP",
+                        "scope": "ALL_FILTERED",
+                        "filter": {
+                            "zones": [
+                                "BATTLE_ZONE"
+                            ],
+                            "types": [
+                                "CREATURE"
+                            ],
+                            "owner": "OPPONENT"
+                        }
+                    }
+                ],
+                "commands": [
+                    {
+                        "type": "TAP",
+                        "target_group": "ALL_FILTERED",
+                        "target_filter": {
+                            "zones": [
+                                "BATTLE_ZONE"
+                            ],
+                            "types": [
+                                "CREATURE"
+                            ],
+                            "owner": "OPPONENT"
+                        }
+                    }
+                ]
+            }
+        ],
+        "keywords": {
+            "shield_trigger": true
+        }
     }
-  }
 ]
