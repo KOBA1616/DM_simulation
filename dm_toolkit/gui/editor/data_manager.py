@@ -1,6 +1,7 @@
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.localization import tr
+import uuid
 
 class CardDataManager:
     """
@@ -190,6 +191,12 @@ class CardDataManager:
             # Clear options if no children exist in the view (removed by user)
             del act_data['options']
 
+        # Ensure UUID is preserved or generated (though generally handled in creation)
+        # Note: We do NOT write 'uid' to the JSON output for the engine,
+        # unless we decide the engine needs it. For now, we keep it in the item data.
+        # But 'act_data' here is what gets saved to JSON.
+        # If we want to persist UUIDs across saves/loads for the editor to use next time,
+        # we MUST save it. The engine should ignore unknown fields.
         return act_data
 
     def _reconstruct_command(self, cmd_item):
@@ -244,6 +251,10 @@ class CardDataManager:
     def add_child_item(self, parent_index, item_type, data, label):
         if not parent_index.isValid(): return None
         parent_item = self.model.itemFromIndex(parent_index)
+
+        # Ensure UUID for Actions
+        if item_type == "ACTION" and 'uid' not in data:
+            data['uid'] = str(uuid.uuid4())
 
         new_item = QStandardItem(label)
         new_item.setData(item_type, Qt.ItemDataRole.UserRole + 1)
@@ -444,6 +455,10 @@ class CardDataManager:
         return item
 
     def _create_action_item(self, action):
+        # Generate UUID if missing
+        if 'uid' not in action:
+            action['uid'] = str(uuid.uuid4())
+
         act_type = action.get('type', 'NONE')
         display_type = tr(act_type)
 
