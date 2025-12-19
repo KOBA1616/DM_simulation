@@ -121,6 +121,34 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
         *   自分と相手のデッキタイプ（アーキタイプ）や、環境の流行を表すベクトルをLinear圧縮して入力。
         *   目的: 対面に応じたプレイスタイルの切り替え（アグロ対面なら防御優先など）。
 
+    #### B. Neural Network Architecture (Model Config)
+    Phase 4/8 で採用する Transformer (NetworkV2) の具体的な構成要件。
+    *   **Architecture**: Encoder-Only Transformer (BERT-like)
+    *   **Embedding Size ($d_{model}$)**: 256
+    *   **Layers ($N_{layers}$)**: 6
+    *   **Attention Heads ($h$)**: 8
+    *   **Feed-Forward Network ($d_{ff}$)**: 1024
+    *   **Context Length**: 512 tokens (Max)
+    *   **Activation**: GELU
+
+    #### C. Hyperparameters (Search & Training)
+    AIの強さを決定づける探索および学習パラメータのベースライン要件。
+    *   **MCTS Settings**:
+        *   `num_simulations`: 800 (Training), 1600+ (Evaluation/Tournament)
+        *   `c_puct`: 1.25 (Base exploration)
+        *   `root_dirichlet_alpha`: 0.3 (For 30-40 legal moves)
+        *   `root_exploration_fraction`: 0.25
+    *   **Training Config**:
+        *   `batch_size`: 512 - 1024
+        *   `optimizer`: AdamW (`betas=(0.9, 0.999)`, `weight_decay=1e-4`)
+        *   `lr_schedule`: Warmup (1000 steps) -> Cosine Decay
+
+    #### D. Evolution Strategy (PBT Requirements)
+    自己進化（Phase 3）における集団学習の要件。
+    *   **Population Size**: 4 - 8 agents in parallel
+    *   **Evaluation Metric**: Elo Rating (vs Past Versions & Fixed Baselines)
+    *   **Gating**: 勝率 55% 以上で新世代として認定
+
 ## 4. 今後の課題 (Future Tasks)
 
 1.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
