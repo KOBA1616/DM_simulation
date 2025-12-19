@@ -111,6 +111,10 @@ namespace dm::engine::systems {
                     GameLogicSystem::handle_use_ability(*this, state, inst, card_db);
                 } else if (type == "SELECT_TARGET") {
                     GameLogicSystem::handle_select_target(*this, state, inst);
+                } else if (type == "EXECUTE_COMMAND") {
+                    GameLogicSystem::handle_execute_command(*this, state, inst);
+                } else if (type == "PLAY_CARD_INTERNAL") {
+                    GameLogicSystem::handle_play_card(*this, state, inst, card_db);
                 }
                 break;
             }
