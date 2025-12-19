@@ -76,6 +76,9 @@ namespace dm::core {
         // Primary Effects (Added for removal of CardRegistry dependence)
         std::vector<EffectDef> effects;
 
+        // Static Abilities (Phase 7: Hybrid Schema)
+        std::vector<ModifierDef> static_abilities;
+
         // Filter Parsing: store parsed CSV filter conditions (e.g., "OPP_TAPPED") as IDs [Q50, Q55]
         std::vector<int> filter_ids; 
 

@@ -18,8 +18,13 @@ class CardDataManager:
         for card_idx, card in enumerate(cards_data):
             card_item = self._create_card_item(card)
 
-            # 1. Add Creature Effects
-            for eff_idx, effect in enumerate(card.get('effects', [])):
+            # 1. Add Creature Effects (Triggers)
+            # Support both 'triggers' and legacy 'effects' keys
+            triggers = card.get('triggers', [])
+            if not triggers:
+                triggers = card.get('effects', [])
+
+            for eff_idx, effect in enumerate(triggers):
                 eff_item = self._create_effect_item(effect)
 
                 # Load Legacy Actions
@@ -33,6 +38,11 @@ class CardDataManager:
                     eff_item.appendRow(cmd_item)
 
                 card_item.appendRow(eff_item)
+
+            # 1.5 Add Static Abilities
+            for mod_idx, modifier in enumerate(card.get('static_abilities', [])):
+                 mod_item = self._create_modifier_item(modifier)
+                 card_item.appendRow(mod_item)
 
             # 2. Add Reaction Abilities
             for ra_idx, ra in enumerate(card.get('reaction_abilities', [])):
@@ -78,7 +88,8 @@ class CardDataManager:
         card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
         if not card_data: return None
 
-        new_effects = []
+        new_effects = [] # Now strictly triggers
+        new_static = [] # New list for static abilities
         new_reactions = []
         spell_side_dict = None
 
@@ -92,8 +103,9 @@ class CardDataManager:
             item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
 
             if item_type == "EFFECT":
-                # Reconstruct Effect (Creature)
+                # Reconstruct Effect (Trigger)
                 eff_data = self._reconstruct_effect(child_item)
+                # Ensure it's treated as a trigger if ambiguous, though EFFECT usually implies trigger
                 new_effects.append(eff_data)
 
                 # Check for Revolution Change Action to extract condition
@@ -101,6 +113,11 @@ class CardDataManager:
                     if act.get('type') == "REVOLUTION_CHANGE":
                         has_rev_change_action = True
                         rev_change_filter = act.get('filter')
+
+            elif item_type == "MODIFIER":
+                # Reconstruct Static Ability
+                mod_data = self._reconstruct_modifier(child_item)
+                new_static.append(mod_data)
 
             elif item_type == "REACTION_ABILITY":
                 # Reconstruct Reaction Ability
@@ -120,6 +137,8 @@ class CardDataManager:
                 spell_side_dict = spell_side_data
 
         card_data['effects'] = new_effects
+        card_data['triggers'] = new_effects # Populate both for compatibility/transition
+        card_data['static_abilities'] = new_static
         card_data['reaction_abilities'] = new_reactions
         if spell_side_dict:
             card_data['spell_side'] = spell_side_dict
@@ -192,6 +211,11 @@ class CardDataManager:
 
         return act_data
 
+    def _reconstruct_modifier(self, mod_item):
+        """Reconstructs a modifier dict from the item data."""
+        # The item data already contains the updated dictionary from the form
+        return mod_item.data(Qt.ItemDataRole.UserRole + 2)
+
     def _reconstruct_command(self, cmd_item):
         cmd_data = cmd_item.data(Qt.ItemDataRole.UserRole + 2)
 
@@ -250,8 +274,8 @@ class CardDataManager:
         new_item.setData(data, Qt.ItemDataRole.UserRole + 2)
 
         # For Twinpact structure:
-        # If adding EFFECT or REACTION_ABILITY to CARD, insert BEFORE 'SPELL_SIDE' if it exists.
-        if (item_type == "EFFECT" or item_type == "REACTION_ABILITY") and parent_item.data(Qt.ItemDataRole.UserRole + 1) == "CARD":
+        # If adding EFFECT, MODIFIER, or REACTION_ABILITY to CARD, insert BEFORE 'SPELL_SIDE' if it exists.
+        if (item_type == "EFFECT" or item_type == "MODIFIER" or item_type == "REACTION_ABILITY") and parent_item.data(Qt.ItemDataRole.UserRole + 1) == "CARD":
             spell_side_row = -1
             for i in range(parent_item.rowCount()):
                 child = parent_item.child(i)
@@ -409,6 +433,13 @@ class CardDataManager:
         item = QStandardItem(f"{tr('Effect')}: {tr(trig)}")
         item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
         item.setData(effect, Qt.ItemDataRole.UserRole + 2)
+        return item
+
+    def _create_modifier_item(self, modifier):
+        mtype = modifier.get('type', 'NONE')
+        item = QStandardItem(f"{tr('Static')}: {tr(mtype)}")
+        item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
+        item.setData(modifier, Qt.ItemDataRole.UserRole + 2)
         return item
 
     def _create_reaction_item(self, reaction):

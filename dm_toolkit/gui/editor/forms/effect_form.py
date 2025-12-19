@@ -211,26 +211,34 @@ class EffectEditForm(BaseEditForm):
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
+        item_type = item.data(Qt.ItemDataRole.UserRole + 1)
 
-        # Determine Mode: If 'layer_type' exists, it's STATIC. Otherwise TRIGGERED.
-        mode = "STATIC" if 'layer_type' in data else "TRIGGERED"
+        # Determine Mode
+        mode = "TRIGGERED"
+        if item_type == "MODIFIER":
+            mode = "STATIC"
+        elif 'layer_type' in data or 'type' in data and item_type != "EFFECT":
+            # Legacy check or inferred from data
+            mode = "STATIC"
+
         self.set_combo_by_data(self.mode_combo, mode)
         self.on_mode_changed()
 
         if mode == "TRIGGERED":
             self.set_combo_by_data(self.trigger_combo, data.get('trigger', 'ON_PLAY'))
+            cond = data.get('condition', data.get('trigger_condition', {}))
         else:
-            self.set_combo_by_data(self.layer_type_combo, data.get('layer_type', 'COST_MODIFIER'))
-            self.layer_val_spin.setValue(data.get('layer_value', 0))
-            self.layer_str_edit.setText(data.get('layer_str', ''))
+            # STATIC (ModifierDef)
+            # Use 'type' preferentially, fallback to 'layer_type'
+            m_type = data.get('type', data.get('layer_type', 'COST_MODIFIER'))
+            m_val = data.get('value', data.get('layer_value', 0))
+            m_str = data.get('str_val', data.get('layer_str', ''))
 
-        # Condition Mapping
-        # Priority: trigger_condition -> static_condition -> condition (legacy)
-        cond = data.get('trigger_condition', {})
-        if not cond and 'static_condition' in data:
-            cond = data['static_condition']
-        if not cond and 'condition' in data:
-            cond = data['condition']
+            self.set_combo_by_data(self.layer_type_combo, m_type)
+            self.layer_val_spin.setValue(m_val)
+            self.layer_str_edit.setText(m_str)
+
+            cond = data.get('condition', data.get('static_condition', {}))
 
         ctype = cond.get('type', 'NONE')
         self.set_combo_by_data(self.cond_type_combo, ctype)
@@ -254,32 +262,48 @@ class EffectEditForm(BaseEditForm):
         if self.cond_filter.isVisible():
              cond['filter'] = self.cond_filter.get_data()
 
+        # Update Item Type if possible
+        if self.current_item:
+             if mode == "TRIGGERED":
+                 self.current_item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
+             else:
+                 self.current_item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
+
         if mode == "TRIGGERED":
             data['trigger'] = self.trigger_combo.currentData()
-            data['trigger_condition'] = cond
+            data['condition'] = cond
 
-            # Clean Static Keys
-            data.pop('layer_type', None)
-            data.pop('layer_value', None)
-            data.pop('layer_str', None)
-            data.pop('static_condition', None)
+            # Clean Static/Legacy keys
+            for k in ['type', 'value', 'str_val', 'filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
+                data.pop(k, None)
 
         else: # STATIC
-            data['layer_type'] = self.layer_type_combo.currentData()
-            data['layer_value'] = self.layer_val_spin.value()
+            data['type'] = self.layer_type_combo.currentData()
+            data['value'] = self.layer_val_spin.value()
             if self.layer_str_edit.text():
-                data['layer_str'] = self.layer_str_edit.text()
-            data['static_condition'] = cond
+                data['str_val'] = self.layer_str_edit.text()
+            else:
+                data.pop('str_val', None)
 
-            # Clean Trigger Keys
-            data.pop('trigger', None)
-            data.pop('trigger_condition', None)
+            data['condition'] = cond
+
+            # TODO: Handle ModifierDef.filter if needed (e.g. for GRANT_KEYWORD targets)
+            # Currently implicit or not exposed in UI
+
+            # Clean Trigger/Legacy keys
+            for k in ['trigger', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
+                data.pop(k, None)
 
     def _get_display_text(self, data):
-        if 'layer_type' in data:
-            return f"{tr('Static')}: {tr(data.get('layer_type', ''))}"
+        # Use existence of 'type' or 'trigger' keys,
+        # or fallback to item type check (but we don't have item here, only data)
+        if 'trigger' in data:
+             return f"{tr('Effect')}: {tr(data.get('trigger', ''))}"
+        elif 'type' in data or 'layer_type' in data:
+             t = data.get('type', data.get('layer_type', ''))
+             return f"{tr('Static')}: {tr(t)}"
         else:
-            return f"{tr('Trigger')}: {tr(data.get('trigger', ''))}"
+             return tr("Unknown Effect")
 
     def block_signals_all(self, block):
         self.mode_combo.blockSignals(block)
