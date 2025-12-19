@@ -147,6 +147,39 @@ class Trainer:
         torch.save(self.network.state_dict(), self.save_path)
         print(f"Model saved to {self.save_path}")
 
+        # Switch to eval mode for export to disable dropout and ensure deterministic behavior
+        self.network.eval()
+
+        # Export to ONNX (for C++ Inference)
+        onnx_path = self.save_path.replace(".pth", ".onnx")
+        try:
+            dummy_input = torch.randn(1, self.input_size).to(self.device)
+            # Use opset 18 to match modern PyTorch/ONNX Runtime and avoid conversion errors
+            torch.onnx.export(
+                self.network,
+                dummy_input,
+                onnx_path,
+                export_params=True,
+                opset_version=18,
+                do_constant_folding=True,
+                input_names=['input'],
+                output_names=['policy', 'value'],
+                dynamic_axes={'input': {0: 'batch_size'}, 'policy': {0: 'batch_size'}, 'value': {0: 'batch_size'}}
+            )
+            print(f"Model exported to ONNX: {onnx_path}")
+        except Exception as e:
+            print(f"Failed to export to ONNX: {e}")
+
+        # Export to TorchScript (Optional, for LibTorch)
+        script_path = self.save_path.replace(".pth", ".pt")
+        try:
+            dummy_input = torch.randn(1, self.input_size).to(self.device)
+            traced_script_module = torch.jit.trace(self.network, dummy_input)
+            traced_script_module.save(script_path)
+            print(f"Model exported to TorchScript: {script_path}")
+        except Exception as e:
+            print(f"Failed to export to TorchScript: {e}")
+
 def train_pipeline(data_files: List[str], input_model: Optional[str], output_model: str, epochs=10):
     trainer = Trainer(data_files, input_model, output_model)
     trainer.train(epochs=epochs)
