@@ -1,6 +1,6 @@
 import pytest
 import dm_ai_module
-from dm_ai_module import GameState, CardDefinition, CardData, EffectActionType, ActionDef, EffectDef, TriggerType, FilterDef, TargetScope
+from dm_ai_module import GameState, CardDefinition, CardData, EffectActionType, ActionDef, EffectDef, TriggerType, FilterDef, TargetScope, Civilization
 
 # Helper to register test cards
 def register_card(card_id, actions):
@@ -9,6 +9,7 @@ def register_card(card_id, actions):
     if actions:
         ed = EffectDef()
         ed.trigger = TriggerType.ON_PLAY
+        action_list = []
         for a in actions:
             ad = ActionDef()
             ad.type = a.get("type")
@@ -23,7 +24,10 @@ def register_card(card_id, actions):
                 ad.filter = fd
             if "zones" in a: # Search destination
                 ad.destination_zone = a["zones"]
-            ed.actions.append(ad)
+            action_list.append(ad)
+
+        # FIX: Assign list to ed.actions
+        ed.actions = action_list
         effects.append(ed)
 
     # Use CardData for registration
@@ -53,7 +57,9 @@ class TestIntegrationPipeline:
         ad = ActionDef()
         ad.type = EffectActionType.ADD_MANA
         ad.value1 = 2
-        ed.actions.append(ad)
+
+        # FIX: Use assignment instead of append
+        ed.actions = [ad]
 
         p = self.state.players[self.state.active_player_id]
         self.state.add_card_to_deck(self.state.active_player_id, 2001, 1)
@@ -68,59 +74,51 @@ class TestIntegrationPipeline:
     def test_pipeline_search_variable_link(self):
         # Test Case: Search Deck for 1 card, put to Hand. Then ADD MANA using output count.
 
-        cid = 1002
-        actions = [
-            {
-                "type": EffectActionType.SEARCH_DECK,
-                "scope": TargetScope.TARGET_SELECT,
-                "filter": {"zones": ["DECK"], "count": 1},
-            },
-            # Note: SEARCH_DECK doesn't output count automatically in current handler.
-            # But we can verify side effects.
-            # Let's test COUNT_CARDS -> ADD_MANA link.
-            {
-                "type": EffectActionType.COUNT_CARDS,
-                "filter": {"zones": ["HAND"]},
-                "output": "hand_count"
-            },
-            {
-                "type": EffectActionType.ADD_MANA,
-                "input": "hand_count"
-            }
-        ]
+        # Register target cards to ensure they are found by SEARCH
+        target_id = 2000
+        fodder_id = 2001
+        dm_ai_module.register_card_data(CardData(target_id, "Target", 1, "WATER", 1000, "CREATURE", [], []))
+        dm_ai_module.register_card_data(CardData(fodder_id, "Fodder", 1, "FIRE", 1000, "CREATURE", [], []))
 
+        cid = 1002
         ed = EffectDef()
+
+        # Action 1: Search Water Card (Target)
+        # We use specific filter to ensure only 1 match, allowing auto-select optimization to kick in
+        # (count 1 >= valid 1) -> No Pause
         ad1 = ActionDef()
         ad1.type = EffectActionType.SEARCH_DECK
         ad1.scope = TargetScope.TARGET_SELECT
         fd = FilterDef()
         fd.zones = ["DECK"]
+        fd.civilizations = [Civilization.WATER]
         ad1.filter = fd
-        ed.actions.append(ad1)
 
+        # Action 2: Count Hand
         ad2 = ActionDef()
         ad2.type = EffectActionType.COUNT_CARDS
         fd2 = FilterDef()
         fd2.zones = ["HAND"]
         ad2.filter = fd2
         ad2.output_value_key = "hand_count"
-        ed.actions.append(ad2)
 
+        # Action 3: Add Mana (equal to hand count)
         ad3 = ActionDef()
         ad3.type = EffectActionType.ADD_MANA
         ad3.input_value_key = "hand_count"
-        ed.actions.append(ad3)
+
+        # FIX: Use assignment
+        ed.actions = [ad1, ad2, ad3]
 
         p = self.state.players[self.state.active_player_id]
-        # Deck: 10 cards.
-        self.state.add_card_to_deck(self.state.active_player_id, 3001, 10)
+        # Deck: 1 Target (Water), 5 Fodder (Fire).
+        self.state.add_card_to_deck(self.state.active_player_id, target_id, 1)
+        self.state.add_card_to_deck(self.state.active_player_id, fodder_id, 5)
         # Hand: 0 cards initially.
 
-        # SEARCH will move 1 from Deck to Hand. Hand=1.
+        # SEARCH will move 1 (Target) from Deck to Hand. Hand=1.
         # COUNT will find 1.
-        # ADD_MANA will move 1 from Deck Top to Mana.
-
-        # Need to ensure Deck has enough cards. 10 is enough.
+        # ADD_MANA will move 1 (Fodder) from Deck Top to Mana.
 
         # Use resolve_effect via Registry. Variable linking is internal to the effect resolution context.
         dm_ai_module.GenericCardSystem.resolve_effect(self.state, ed, -1)
@@ -139,6 +137,9 @@ class TestIntegrationPipeline:
         fd.zones = ["BATTLE_ZONE"]
         ad.filter = fd
         ed.actions.append(ad)
+
+        # FIX: Use assignment
+        ed.actions = [ad]
 
         # Setup with dummy cards (ID 0) to avoid registry requirement for targets
         self.state.add_test_card_to_battle(self.state.active_player_id, 0, 100, False, False)
@@ -160,7 +161,9 @@ class TestIntegrationPipeline:
         ad = ActionDef()
         ad.type = EffectActionType.REVEAL_CARDS
         ad.value1 = 1
-        ed.actions.append(ad)
+
+        # FIX: Use assignment
+        ed.actions = [ad]
 
         self.state.add_card_to_deck(self.state.active_player_id, 0, 200)
         p = self.state.players[self.state.active_player_id]
