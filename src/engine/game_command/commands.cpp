@@ -27,29 +27,23 @@ namespace dm::engine::game_command {
                 case core::Zone::SHIELD: return &owner.shield_zone;
                 case core::Zone::DECK: return &owner.deck;
                 case core::Zone::BUFFER: return &owner.effect_buffer;
-                // Stack is global in current GameState, not per player.
-                // However, TransitionCommand expects owner_id.
-                // If Stack is global, we need to handle it separately or assume owner_id logic applies to stack items?
-                // Currently pending_effects is std::vector<PendingEffect> in GameState.
-                // But this handles CardInstance. Stack cards are PendingEffects, not CardInstances.
-                // So Zone::STACK usage here is problematic if it refers to pending_effects.
-                // Assuming STACK here refers to a zone of CardInstances which might be legacy or implicit.
-                // If it's legacy, I'll ignore or check if pending_effects is what we want.
-                // But pending_effects stores PendingEffect structs, not CardInstances.
-                // So move to stack isn't a simple vector move.
+                // Treat STACK like BUFFER for now if not implemented separately.
+                // Or map to effect_buffer.
+                case core::Zone::STACK: return &owner.effect_buffer; // Map STACK to effect_buffer for now
                 default: return nullptr;
             }
         };
 
         if (from_zone == core::Zone::STACK) {
-             // Not supported for PendingEffects vector
-             source_vec = nullptr;
+             // source_vec = nullptr; // Old
+             source_vec = get_vec(core::Zone::STACK);
         } else {
              source_vec = get_vec(from_zone);
         }
 
         if (to_zone == core::Zone::STACK) {
-             dest_vec = nullptr;
+             // dest_vec = nullptr; // Old
+             dest_vec = get_vec(core::Zone::STACK);
         } else {
              dest_vec = get_vec(to_zone);
         }
@@ -112,20 +106,22 @@ namespace dm::engine::game_command {
                 case core::Zone::GRAVEYARD: return &owner.graveyard;
                 case core::Zone::SHIELD: return &owner.shield_zone;
                 case core::Zone::DECK: return &owner.deck;
+                case core::Zone::BUFFER: return &owner.effect_buffer;
+                case core::Zone::STACK: return &owner.effect_buffer; // Map STACK to effect_buffer for now
                 default: return nullptr;
             }
         };
 
         // Current location (where it was moved TO) is now the source
         if (to_zone == core::Zone::STACK) {
-             source_vec = nullptr;
+             source_vec = get_vec(core::Zone::STACK);
         } else {
              source_vec = get_vec(to_zone);
         }
 
         // Original location (where it came FROM) is now the dest
         if (from_zone == core::Zone::STACK) {
-             dest_vec = nullptr;
+             dest_vec = get_vec(core::Zone::STACK);
         } else {
              dest_vec = get_vec(from_zone);
         }

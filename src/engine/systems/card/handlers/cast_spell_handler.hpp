@@ -37,7 +37,8 @@ namespace dm::engine {
                 // We add "cast_side" metadata for GameLogicSystem to handle spell sides.
                 nlohmann::json args;
                 args["type"] = "PLAY_CARD_INTERNAL";
-                args["source_id"] = target_id;
+                // Fix: Use "card" key for instance_id, matching handle_play_card expectations
+                args["card"] = target_id;
                 args["spawn_source"] = (int)SpawnSource::EFFECT_SUMMON;
                 args["dest_override"] = 0; // Default
                 args["target_player"] = controller;
