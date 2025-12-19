@@ -42,6 +42,7 @@ class VariableLinkWidget(QWidget):
 
     def set_current_item(self, item):
         self.current_item = item
+        self.populate_input_keys()
 
     def on_combo_changed(self):
         self.linkChanged.emit()
@@ -57,6 +58,7 @@ class VariableLinkWidget(QWidget):
 
         # Match key
         found = False
+        # Try to find exact match
         for i in range(self.input_key_combo.count()):
              if self.input_key_combo.itemData(i) == input_key:
                   self.input_key_combo.setCurrentIndex(i)
@@ -73,6 +75,8 @@ class VariableLinkWidget(QWidget):
              self.input_key_combo.setCurrentIndex(0) # Manual Input
 
         self.blockSignals(False)
+        # Emit state change to ensure parent UI updates (hiding val1 etc)
+        self.smartLinkStateChanged.emit(self.is_smart_link_active())
 
     def get_data(self, data):
         """
