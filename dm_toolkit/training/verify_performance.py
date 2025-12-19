@@ -22,7 +22,8 @@ except ImportError:
     print(f"Error: Could not import dm_ai_module. Make sure it is built and in {bin_path}")
     sys.exit(1)
 
-from dm_toolkit.ai.agent.network import AlphaZeroNetwork
+# from dm_toolkit.ai.agent.network import AlphaZeroNetwork
+from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 
 # Import SCENARIOS
 sys.path.append(os.path.dirname(__file__))
@@ -41,7 +42,8 @@ class PerformanceVerifier:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
 
-        self.network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
+        # Phase 8: Switch to Transformer
+        self.network = DuelTransformer(self.input_size, self.action_size).to(self.device)
 
         if model_path and os.path.exists(model_path):
             print(f"Loading model from {model_path}")
