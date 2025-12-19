@@ -18,7 +18,8 @@ if bin_path not in sys.path:
 if python_path not in sys.path:
     sys.path.append(python_path)
 
-from dm_toolkit.ai.agent.network import AlphaZeroNetwork
+# from dm_toolkit.ai.agent.network import AlphaZeroNetwork
+from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 
 class Trainer:
     def __init__(self, data_files: List[str], model_path=None, save_path="model.pth"):
@@ -77,10 +78,15 @@ class Trainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Training on {self.device}")
 
-        self.network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
+        # Phase 8: Switch to Transformer
+        self.network = DuelTransformer(self.input_size, self.action_size).to(self.device)
+
         if model_path and os.path.exists(model_path):
-            self.network.load_state_dict(torch.load(model_path, map_location=self.device))
-            print("Loaded existing model.")
+            try:
+                self.network.load_state_dict(torch.load(model_path, map_location=self.device))
+                print("Loaded existing model.")
+            except Exception as e:
+                print(f"Warning: Failed to load existing model ({e}). Starting from scratch.")
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=0.001)
 
