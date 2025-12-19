@@ -6,6 +6,7 @@
 #include "core/game_state.hpp"
 #include "core/action.hpp"
 #include "engine/game_command/commands.hpp"
+#include "engine/systems/command_system.hpp" // Added for CommandSystem
 #include <iostream>
 #include <algorithm>
 
@@ -403,6 +404,43 @@ namespace dm::engine::systems {
         exec.execution_paused = true;
         // ... set query ...
         (void)state; (void)inst;
+    }
+
+    // New: Handle Command Execution within Pipeline
+    void GameLogicSystem::handle_execute_command(PipelineExecutor& exec, GameState& state, const Instruction& inst) {
+         if (!inst.args.contains("cmd")) return;
+
+         try {
+             CommandDef cmd = inst.args["cmd"].get<CommandDef>();
+
+             // Resolve necessary IDs
+             int source_id = -1;
+             auto v_source = exec.get_context_var("$source");
+             if (std::holds_alternative<int>(v_source)) source_id = std::get<int>(v_source);
+
+             int controller_id = state.active_player_id;
+             auto v_ctrl = exec.get_context_var("$controller");
+             if (std::holds_alternative<int>(v_ctrl)) controller_id = std::get<int>(v_ctrl);
+
+             // Construct a temporary execution context map for CommandSystem compatibility
+             // Sync FROM pipeline
+             std::map<std::string, int> temp_ctx;
+             for (const auto& kv : exec.context) {
+                 if (std::holds_alternative<int>(kv.second)) {
+                     temp_ctx[kv.first] = std::get<int>(kv.second);
+                 }
+             }
+
+             CommandSystem::execute_command(state, cmd, source_id, controller_id, temp_ctx);
+
+             // Sync TO pipeline (if CommandSystem modified context)
+             for (const auto& kv : temp_ctx) {
+                 exec.set_context_var(kv.first, kv.second);
+             }
+
+         } catch (const std::exception& e) {
+             std::cerr << "[Pipeline] Failed to execute command: " << e.what() << std::endl;
+         }
     }
 
 }
