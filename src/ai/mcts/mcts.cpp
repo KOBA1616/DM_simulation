@@ -28,9 +28,9 @@ namespace dm::ai {
 
         // Initial expansion of root (needs evaluation)
         // Avoid initializer list copying GameState
-        std::vector<GameState> root_batch;
+        std::vector<std::shared_ptr<GameState>> root_batch;
         root_batch.reserve(1);
-        root_batch.push_back(root->state.clone());
+        root_batch.push_back(std::make_shared<GameState>(root->state.clone()));
 
         auto [root_policies, root_values] = evaluator(root_batch);
         expand_node(root, root_policies[0]);
@@ -45,7 +45,7 @@ namespace dm::ai {
         // 3. Simulations Loop
         while (simulations_finished < simulations) {
             std::vector<MCTSNode*> batch_nodes;
-            std::vector<GameState> batch_states;
+            std::vector<std::shared_ptr<GameState>> batch_states;
             
             int current_batch_limit = std::min(batch_size_, simulations - simulations_finished);
             
@@ -80,7 +80,8 @@ namespace dm::ai {
                     simulations_finished++;
                 } else {
                     batch_nodes.push_back(leaf);
-                    batch_states.push_back(leaf->state.clone()); // Explicit clone
+                    // Explicit clone wrapped in shared_ptr
+                    batch_states.push_back(std::make_shared<GameState>(leaf->state.clone()));
                 }
             }
             

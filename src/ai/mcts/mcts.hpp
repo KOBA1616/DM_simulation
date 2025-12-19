@@ -13,7 +13,7 @@ namespace dm::ai {
 
     // Define the callback type directly here or include it from a common place.
     // Since we don't have a batch_evaluator.hpp, we define it.
-    using BatchEvaluatorCallback = std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<dm::core::GameState>&)>;
+    using BatchEvaluatorCallback = std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<std::shared_ptr<dm::core::GameState>>&)>;
 
     struct MCTSNode {
         dm::core::GameState state;

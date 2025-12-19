@@ -44,7 +44,7 @@ namespace dm::ai {
 
             if (collect_data) {
                 // info.states.push_back(state); // Copy -> Deleted
-                info.states.push_back(state.clone());
+                info.states.push_back(std::make_shared<dm::core::GameState>(state.clone()));
                 info.policies.push_back(policy);
                 info.active_players.push_back(state.active_player_id);
             }
