@@ -20,9 +20,10 @@ namespace dm::engine::systems {
 
     void PipelineExecutor::execute(std::shared_ptr<const std::vector<Instruction>> instructions, GameState& state,
                                    const std::map<core::CardID, core::CardDefinition>& card_db) {
-        if (!instructions || instructions->empty()) return;
+        // Fix: Allow resume if instructions is null/empty but stack has frames
+        if ((!instructions || instructions->empty()) && call_stack.empty()) return;
 
-        if (call_stack.empty()) {
+        if (instructions && !instructions->empty()) {
             call_stack.push_back({instructions, 0, LoopContext{}});
         }
 
@@ -221,6 +222,12 @@ namespace dm::engine::systems {
              return;
         }
 
+        // Optimization: Auto-select if we want "All" or "Up to N" where N >= available
+        if (count >= (int)valid_targets.size()) {
+             set_context_var(out_key, valid_targets);
+             return;
+        }
+
         execution_paused = true;
         waiting_for_key = out_key;
         state.waiting_for_user_input = true;
@@ -284,8 +291,12 @@ namespace dm::engine::systems {
             if (virtual_target_type == "DECK_TOP") {
                 int available = (int)deck.size();
                 int count = std::min(virtual_count, available);
+                // Fix: Ensure we don't access out of bounds and handle indices correctly
                 for (int i = 0; i < count; ++i) {
-                     targets.push_back(deck[available - 1 - i].instance_id);
+                     // Deck top is at end.
+                     if (available - 1 - i >= 0) {
+                         targets.push_back(deck[available - 1 - i].instance_id);
+                     }
                 }
             } else if (virtual_target_type == "DECK_BOTTOM") {
                  int available = (int)deck.size();
