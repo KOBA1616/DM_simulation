@@ -121,12 +121,6 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
         *   自分と相手のデッキタイプ（アーキタイプ）や、環境の流行を表すベクトルをLinear圧縮して入力。
         *   目的: 対面に応じたプレイスタイルの切り替え（アグロ対面なら防御優先など）。
 
-    #### B. 説明可能性と分析 (Explainability)
-    13. **[Feature 13] LLM Strategic Explanation (戦術言語化)**
-        *   State-to-Text変換器を実装し、盤面状況をテキスト化してLLMに入力。AIの指し手（Value Delta）を根拠に解説を生成させる。
-    15. **[Feature 15] Interactive Post-Mortem (感想戦機能)**
-        *   対戦ログ（シード値＋コマンド列）から任意のターンを復元し、分岐（Ifルート）をシミュレーションする機能をGUIに実装する。
-
 ## 4. 今後の課題 (Future Tasks)
 
 1.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
