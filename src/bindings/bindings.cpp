@@ -27,6 +27,7 @@
 #include "ai/scenario/scenario_executor.hpp" // Missing include
 #include "core/instruction.hpp" // For Instruction and InstructionOp
 #include "engine/game_command/commands.hpp" // Added for GameCommand bindings
+#include "ai/encoders/token_converter.hpp" // Phase 8: Feature Tokenization
 
 namespace py = pybind11;
 using namespace dm;
@@ -142,6 +143,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<dm::engine::game_command::GameResultCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameResultCommand>>(m, "GameResultCommand")
         .def(py::init<GameResult>())
         .def_readwrite("result", &dm::engine::game_command::GameResultCommand::result);
+
+    // Phase 8: TokenConverter
+    py::class_<dm::ai::encoders::TokenConverter>(m, "TokenConverter")
+        .def_static("encode_state", &dm::ai::encoders::TokenConverter::encode_state,
+            py::arg("state"), py::arg("perspective") = 0, py::arg("max_len") = 0)
+        .def_static("get_vocab_size", &dm::ai::encoders::TokenConverter::get_vocab_size);
 
     // Enums
     py::enum_<Civilization>(m, "Civilization")
