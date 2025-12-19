@@ -219,3 +219,27 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
     3.  **アクション間の「変数のリンク（Context Linking）」**
         *   コマンド式になったことで、Action 1（選択）の結果を Action 2（破壊）が受け取るフローが厳格になります。
         *   **GUIの変更:** Action定義画面に **「Input Source」** という項目を追加し、前のActionの出力やイベント発生源を指定するUIを改善します。
+
+    ##### GUI実装詳細: 旧式スタイル(Property Inspector)での新エンジン対応要件
+
+    GUIの操作フロー（ツリー選択 -> 右側プロパティ入力）を維持したまま、新エンジンの要件を満たすための具体的な実装変更点を示します。
+
+    1.  **CardEditForm (基礎データ)**
+        *   キーワード欄は「単純フラグ（Blocker, SA等）」の設定に限定します。
+        *   「条件付きスレイヤー」や「常在型パワーアタッカー」などの条件を伴うキーワード付与は、Effect層（Static Ability）へ委譲する運用ルールを徹底します。
+
+    2.  **EffectEditForm (トリガー/効果)**
+        *   **Ability Mode追加**:
+            *   最上部に **「Ability Mode」** (コンボボックス) を追加し、`TRIGGERED` (誘発型) か `STATIC` (常在型) かを選択させます。
+        *   **コンテキスト切替**:
+            *   `TRIGGERED` 選択時: 従来の **「Trigger Definition」** (ON_PLAY, ON_ATTACK等) を表示します。
+            *   `STATIC` 選択時: 新しい **「Layer Type」** (COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD等) を表示します。
+        *   **Conditionの解釈**:
+            *   Condition欄のUIは共通ですが、内部データ構造上は `TRIGGERED` ならば `trigger_condition` (誘発条件)、`STATIC` ならば `static_condition` (適用条件) として自動的にマッピングします。
+
+    3.  **ActionEditForm (アクション/コマンド)**
+        *   **Input Sourceの明示**:
+            *   コマンド間の連携（Variable Linking）を保証するため、**「Input Source Key」** 設定欄を標準化します。
+            *   コンボボックスにて「前のステップの出力 (Step 1 Result)」や「イベント発生源 (Event Source)」を選択可能にし、コマンドチェーンを明確に定義できるようにします。
+        *   **ActionTypeの整理**:
+            *   GUI上の選択肢を整理し、新エンジンの `GameCommand` に適合しない古いアクションタイプを廃止または統合します。
