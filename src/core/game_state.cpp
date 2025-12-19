@@ -150,7 +150,7 @@ namespace dm::core {
         return ids;
     }
 
-    void GameState::execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd) {
+    void GameState::execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd) {
         cmd->execute(*this);
         command_history.push_back(std::move(cmd));
     }
