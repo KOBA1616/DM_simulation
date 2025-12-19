@@ -202,6 +202,7 @@ set(SRC_AI
     src/ai/evolution/deck_evolution.cpp
     src/bindings/python_batch_inference.cpp
     src/ai/inference/pimc_generator.cpp
+    src/ai/inference/deck_inference.cpp
     # Optional neural evaluator / inference (guarded by USE_LIBTORCH / USE_ONNXRUNTIME)
     $<$<BOOL:${USE_LIBTORCH}>:src/ai/inference/torch_model.cpp>
     $<$<BOOL:${USE_ONNXRUNTIME}>:src/ai/inference/onnx_model.cpp>

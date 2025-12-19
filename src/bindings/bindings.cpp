@@ -28,6 +28,7 @@
 #include "core/instruction.hpp" // For Instruction and InstructionOp
 #include "engine/game_command/commands.hpp" // Added for GameCommand bindings
 #include "ai/encoders/token_converter.hpp" // Phase 8: Feature Tokenization
+#include "ai/inference/deck_inference.hpp" // Phase 2: Deck Inference
 
 namespace py = pybind11;
 using namespace dm;
@@ -695,6 +696,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
+
+    // Phase 2: Deck Inference
+    py::class_<dm::ai::inference::DeckInference>(m, "DeckInference")
+        .def(py::init<>())
+        .def("load_decks", &dm::ai::inference::DeckInference::load_decks)
+        .def("infer_probabilities", &dm::ai::inference::DeckInference::infer_probabilities)
+        .def("sample_hidden_cards", &dm::ai::inference::DeckInference::sample_hidden_cards);
 
     py::class_<GameResultInfo>(m, "GameResultInfo")
         .def_readwrite("result", &GameResultInfo::result)
