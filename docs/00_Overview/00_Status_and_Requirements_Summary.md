@@ -85,11 +85,12 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   `dm::engine::systems::CommandSystem` を実装。
 
 ### 3.3 [Priority: Future] Phase 8: AI思考アーキテクチャの強化 (Advanced Thinking)
-[Status: Deferred]
+[Status: WIP]
 AIが「人間のような高度な思考（読み、コンボ、大局観）」を獲得するため、NetworkV2（Transformer）に対して以下の機能拡張および特徴量実装を行います。
 
 *   **基本コンセプト (Core Concept)**:
     *   人間が「このカードは強い」といったヒューリスティックを与えるのではなく、**「構造（Structure）」と「素材（Raw Data）」を与え、AIが自己対戦を通じて意味と重みを学習（End-to-End Learning）できる設計**にします。
+    *   **Implementation Status**: `DuelTransformer` クラス (BERT-like) を実装済み。現行の固定長入力 (Feature Vector) を学習可能な入力層でシーケンスに変換するアダプターを搭載し、即時利用可能な状態です。
 
 *   **実装要件 (Implementation Requirements)**
 
@@ -155,6 +156,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 3.  [Status: Todo] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行（特に `ADD_MANA`, `SEARCH_DECK`, `DESTROY`）において、状態遷移が正しく行われないロジックバグの修正が必要です。
 4.  [Status: Todo] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`unique_ptr` vs `shared_ptr`）を一貫させ、メモリリークや二重解放のリスクを排除する。
 5.  [Status: Todo] **Architecture Switch**: `GameLogicSystem` が直接 `compile()` を呼び出し、生成された命令を一括実行するアーキテクチャへの完全切り替え。
+6.  [Status: Todo] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンスを検証し、従来のResNetモデルと比較評価を行う。また、Phase 8本来の「完全トークン化された入力特徴量」への移行を進める。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
 
