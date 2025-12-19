@@ -112,6 +112,13 @@ class EffectEditForm(BaseEditForm):
         l_layout.addWidget(QLabel(tr("String/Keyword")), 2, 0)
         l_layout.addWidget(self.layer_str_edit, 2, 1)
 
+        # Target Filter (Static)
+        self.target_filter = FilterEditorWidget()
+        self.target_filter.filterChanged.connect(self.update_data)
+        self.target_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
+        l_layout.addWidget(QLabel(tr("Target Filter")), 3, 0)
+        l_layout.addWidget(self.target_filter, 3, 1)
+
         layout.addRow(self.layer_group)
 
         # Condition (Shared)
@@ -233,10 +240,12 @@ class EffectEditForm(BaseEditForm):
             m_type = data.get('type', data.get('layer_type', 'COST_MODIFIER'))
             m_val = data.get('value', data.get('layer_value', 0))
             m_str = data.get('str_val', data.get('layer_str', ''))
+            m_filter = data.get('filter', {})
 
             self.set_combo_by_data(self.layer_type_combo, m_type)
             self.layer_val_spin.setValue(m_val)
             self.layer_str_edit.setText(m_str)
+            self.target_filter.set_data(m_filter)
 
             cond = data.get('condition', data.get('static_condition', {}))
 
@@ -286,9 +295,7 @@ class EffectEditForm(BaseEditForm):
                 data.pop('str_val', None)
 
             data['condition'] = cond
-
-            # TODO: Handle ModifierDef.filter if needed (e.g. for GRANT_KEYWORD targets)
-            # Currently implicit or not exposed in UI
+            data['filter'] = self.target_filter.get_data()
 
             # Clean Trigger/Legacy keys
             for k in ['trigger', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
