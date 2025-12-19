@@ -86,7 +86,7 @@ namespace dm::core {
         std::map<PlayerID, std::vector<std::pair<CardID, int>>> played_cards_history_this_game;
 
         // Requires full definition of GameCommand in .cpp for deletion
-        std::vector<std::unique_ptr<dm::engine::game_command::GameCommand>> command_history;
+        std::vector<std::shared_ptr<dm::engine::game_command::GameCommand>> command_history;
 
         struct QueryContext {
             int query_id = 0;
@@ -126,7 +126,7 @@ namespace dm::core {
         CardInstance* get_card_instance(int instance_id);
         const CardInstance* get_card_instance(int instance_id) const;
         std::vector<int> get_zone(PlayerID pid, Zone zone) const;
-        void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd);
+        void execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd);
 
         GameState clone() const;
         size_t calculate_hash() const;
