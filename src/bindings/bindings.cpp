@@ -569,15 +569,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     struct GenericCardSystemWrapper {};
     py::class_<GenericCardSystemWrapper>(m, "GenericCardSystem")
         .def_static("resolve_effect", [](GameState& state, const EffectDef& eff, int source_id) {
-             std::vector<Instruction> instructions;
-             std::map<std::string, int> ctx;
-             auto db = CardRegistry::get_all_definitions(); // Use registry
-             dm::engine::EffectSystem::instance().compile_effect(state, eff, source_id, ctx, db, instructions);
-             if (!instructions.empty()) {
-                 dm::engine::systems::PipelineExecutor pipeline;
-                 pipeline.set_context_var("$source", source_id); // FIX: Set $source context
-                 pipeline.execute(instructions, state, db);
-             }
+             auto db = CardRegistry::get_all_definitions();
+             dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
         });
 
     py::class_<JsonLoader>(m, "JsonLoader")

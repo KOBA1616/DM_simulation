@@ -22,8 +22,9 @@ namespace dm::engine {
             compile_action(temp_ctx);
 
             if (!insts.empty()) {
-                dm::engine::systems::PipelineExecutor pipeline;
-                pipeline.execute(insts, ctx.game_state, ctx.card_db);
+                auto pipeline = std::make_shared<dm::engine::systems::PipelineExecutor>();
+                ctx.game_state.active_pipeline = pipeline;
+                pipeline->execute(insts, ctx.game_state, ctx.card_db);
             }
         }
 

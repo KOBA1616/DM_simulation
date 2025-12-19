@@ -220,6 +220,7 @@ namespace dm::engine {
             if (!condition_met) return;
         }
 
+        // Updated Flow: Always attempt pipeline compilation first
         std::vector<Instruction> pipeline_instructions;
         compile_action(game_state, action, source_instance_id, execution_context, card_db, pipeline_instructions);
 
@@ -228,6 +229,7 @@ namespace dm::engine {
              execute_pipeline(ctx, pipeline_instructions);
         }
         else {
+             // Fallback to resolve/resolve_with_targets (which might implement their own pipeline)
              if (IActionHandler* handler = get_handler(action.type)) {
                 ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, interrupted, remaining_actions);
                 handler->resolve(ctx);
