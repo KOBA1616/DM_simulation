@@ -227,6 +227,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("NONE", TriggerType::NONE)
         .export_values();
 
+    py::enum_<ModifierType>(m, "ModifierType")
+        .value("NONE", ModifierType::NONE)
+        .value("COST_MODIFIER", ModifierType::COST_MODIFIER)
+        .value("POWER_MODIFIER", ModifierType::POWER_MODIFIER)
+        .value("GRANT_KEYWORD", ModifierType::GRANT_KEYWORD)
+        .value("SET_KEYWORD", ModifierType::SET_KEYWORD)
+        .export_values();
+
     py::enum_<EffectActionType>(m, "EffectActionType")
         .value("DRAW_CARD", EffectActionType::DRAW_CARD)
         .value("ADD_MANA", EffectActionType::ADD_MANA)
@@ -335,6 +343,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("op", &ConditionDef::op)
         .def_readwrite("filter", &ConditionDef::filter);
 
+    py::class_<ModifierDef>(m, "ModifierDef")
+        .def(py::init<>())
+        .def_readwrite("type", &ModifierDef::type)
+        .def_readwrite("value", &ModifierDef::value)
+        .def_readwrite("str_val", &ModifierDef::str_val)
+        .def_readwrite("condition", &ModifierDef::condition)
+        .def_readwrite("filter", &ModifierDef::filter);
+
     py::class_<ActionDef>(m, "ActionDef")
         .def(py::init<>())
         .def_readwrite("type", &ActionDef::type)
@@ -388,6 +404,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("races", &CardDefinition::races)
         .def_readwrite("keywords", &CardDefinition::keywords)
         .def_readwrite("effects", &CardDefinition::effects)
+        .def_readwrite("static_abilities", &CardDefinition::static_abilities)
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
         .def_readwrite("is_key_card", &CardDefinition::is_key_card)
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
@@ -412,7 +429,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
             c.races = races;
             c.effects = effects;
             return c;
-        }));
+        }))
+        .def_readwrite("static_abilities", &CardData::static_abilities);
 
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<>())
