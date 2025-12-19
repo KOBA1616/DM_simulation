@@ -20,6 +20,7 @@ namespace dm::engine {
         bool* interrupted = nullptr;
         const std::vector<dm::core::ActionDef>* remaining_actions = nullptr;
         std::vector<dm::core::Instruction>* instruction_buffer = nullptr;
+        std::string selection_var; // Added for pipeline dynamic selection
 
         ResolutionContext(
             dm::core::GameState& state,
@@ -30,9 +31,10 @@ namespace dm::engine {
             const std::vector<int>* tgs = nullptr,
             bool* intr = nullptr,
             const std::vector<dm::core::ActionDef>* rem = nullptr,
-            std::vector<dm::core::Instruction>* inst_buf = nullptr)
+            std::vector<dm::core::Instruction>* inst_buf = nullptr,
+            std::string sel_var = "")
             : game_state(state), action(act), source_instance_id(src),
-              execution_vars(vars), card_db(db), targets(tgs), interrupted(intr), remaining_actions(rem), instruction_buffer(inst_buf) {}
+              execution_vars(vars), card_db(db), targets(tgs), interrupted(intr), remaining_actions(rem), instruction_buffer(inst_buf), selection_var(sel_var) {}
     };
 
     class IActionHandler {
