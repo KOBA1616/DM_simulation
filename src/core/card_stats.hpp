@@ -21,6 +21,7 @@ namespace dm::core {
         // Modifiers
         int power_modifier = 0;
         std::vector<std::string> added_races;
+        std::vector<std::string> added_keywords;
         // ... more modifiers
 
         // Evolution/Cross Gear
