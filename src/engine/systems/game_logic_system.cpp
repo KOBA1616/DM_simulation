@@ -69,6 +69,16 @@ namespace dm::engine::systems {
                 handle_mana_charge(pipeline, state, inst);
                 break;
             }
+            case ActionType::USE_ABILITY:
+            {
+                nlohmann::json args;
+                args["source"] = action.source_instance_id;
+                args["target"] = action.target_instance_id;
+                Instruction inst(InstructionOp::GAME_ACTION, args);
+                inst.args["type"] = "USE_ABILITY";
+                handle_use_ability(pipeline, state, inst, card_db);
+                break;
+            }
             // ...
             default: break;
         }
@@ -396,8 +406,35 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_use_ability(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                              const std::map<core::CardID, core::CardDefinition>& card_db) {
-         // ...
-         (void)exec; (void)state; (void)inst; (void)card_db;
+        int source_id = exec.resolve_int(inst.args.value("source", -1)); // Card in Hand
+        int target_id = exec.resolve_int(inst.args.value("target", -1)); // Attacker in Battle Zone
+
+        if (source_id == -1 || target_id == -1) return;
+
+        // 1. Return Attacker to Hand
+        auto return_cmd = std::make_unique<TransitionCommand>(target_id, Zone::BATTLE, Zone::HAND, state.active_player_id);
+        state.execute_command(std::move(return_cmd));
+
+        // 2. Put Revolution Change Creature into Battle Zone
+        auto play_cmd = std::make_unique<TransitionCommand>(source_id, Zone::HAND, Zone::BATTLE, state.active_player_id);
+        state.execute_command(std::move(play_cmd));
+
+        // 3. Update State
+        CardInstance* new_creature = state.get_card_instance(source_id);
+        if (new_creature) {
+            // Set Summoning Sickness (turn_played = current_turn)
+            new_creature->turn_played = state.turn_number;
+
+            // Set Tapped
+            auto tap_cmd = std::make_unique<MutateCommand>(source_id, MutateCommand::MutationType::TAP);
+            state.execute_command(std::move(tap_cmd));
+        }
+
+        // 4. Update Attack Source
+        auto flow_cmd = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_SOURCE, source_id);
+        state.execute_command(std::move(flow_cmd));
+
+        (void)card_db;
     }
 
     void GameLogicSystem::handle_select_target(PipelineExecutor& exec, GameState& state, const Instruction& inst) {
