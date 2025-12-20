@@ -26,13 +26,12 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 現在、**Phase 1: Game Engine Reliability (Lethal Solverの厳密化)** および **Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、アクションハンドラーの `compile_action` 化とビルド修正を集中的に行っています。また、**Phase 8: AI Architecture** の実装が並行して開始されています。
 
-直近では、Pythonバインディングの拡充（Phase 6）と、テストスイートの適合性向上（Phase 1）を実施しました。特に変数リンクシステム（Variable Linking）の修正に取り組んでいます。
+さらに、Windows環境（日本語ロケール）での開発・実行環境の安定化のため、GUIコンポーネントにおけるエンコーディング（CP932）対応を実施しました。
 
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
-*   [Status: Done] **Binding Update**: `ParametricBelief`, `GameInstance` (再公開), `FilterDef.types`, `EffectType` (Enum) のPythonバインディングを追加・修正しました。これにより多数のテストケース (`test_pomdp_parametric.py`, `test_scenario.py`) がパスするようになりました。
-*   [Status: WIP] **Variable Linking Fix**: `DrawHandler` と `PipelineExecutor` における変数参照（`$var_name`）と動的ループ（`REPEAT`）の処理を修正中です。`test_variable_system.py` でJSON型エラーが発生しており、解決に取り組んでいます。
+*   [Status: WIP] **Lethal Solver Strict Implementation**: 従来のヒューリスティック判定から、`GameInstance` と `ActionGenerator` を使用した完全なDFS（深さ優先探索）シミュレーションへの移行を進めています。
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` クラスおよびファイルを物理的に削除しました。すべての呼び出し元 (`GameInstance`, `ActionGenerator`, `ScenarioExecutor`, `Bindings`) は `GameLogicSystem` へ移行されました。
 *   [Status: Done] **GameLogicSystem Refactor**: アクションディスパッチロジックを `GameLogicSystem` に集約し、`PipelineExecutor` を介した処理フローを確立しました。
 *   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` に加え、`Stat` (統計更新), `GameResult` (勝敗判定), `Attach` (進化/クロス) を実装済み。
@@ -50,6 +49,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Just Diver**: `CardKeywords.just_diver` 実装済み。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
+*   [Status: Done] **Encoding Audit**: `dm_toolkit/gui/` 内の全Pythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、Windows環境での動作安定性を確保しました。
 *   [Status: Done] **Status**: 稼働中 (Ver 2.3)。`CardEditForm` は Revolution Change や新キーワードに対応済み。
 *   [Status: Done] **Frontend Integration**: GUI (`app.py`) が `waiting_for_user_input` フラグを監視し、対象選択やオプション選択ダイアログを表示してゲームループを再開（Resume）する機能を実装しました。
 *   [Status: Done] **Data Structure Update**: 新エンジンの仕様に合わせて、GUI上のデータ構造を以下の3層に明確化しました。
@@ -92,7 +92,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 
 1.  [Status: Todo] **Fix C++ Include Paths**: `src/ai/encoders/token_converter.hpp` および `src/utils/csv_loader.hpp` に存在する相対パスインクルード（`../../` 等）をプロジェクト標準の `src/` 起点の絶対パスに修正する。
 2.  [Status: Todo] **Debug Spell Pipeline**: 統合テスト `tests/verify_pipeline_spell.py` の失敗原因（呪文カードが墓地へ移動せず、効果が発動しない問題）を調査し、`ActionGenerator` または `EffectResolver` (GameLogicSystem) の呪文処理ロジックを修正する。
-3.  [Status: Todo] **Encoding Audit**: `dm_toolkit/gui/` 内のPythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、日本語環境での表示・実行時の不具合を防止する。
+3.  [Status: Done] **Encoding Audit**: `dm_toolkit/gui/` 内のPythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、日本語環境での表示・実行時の不具合を防止しました。
 4.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
 5.  [Status: Done] **Verify Integration**: ビルドおよびバインディングの修正が完了し、モジュールのインポートが可能になりました。
 6.  [Status: Done] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行ロジックの修正が完了し、統合テストがパスすることを確認しました。
