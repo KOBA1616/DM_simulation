@@ -50,6 +50,10 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Status**: 稼働中 (Ver 2.3)。`CardEditForm` は Revolution Change や新キーワードに対応済み。
 *   [Status: Done] **Frontend Integration**: GUI (`app.py`) が `waiting_for_user_input` フラグを監視し、対象選択やオプション選択ダイアログを表示してゲームループを再開（Resume）する機能を実装しました。
+*   [Status: Done] **Data Structure Update**: 新エンジンの仕様に合わせて、GUI上のデータ構造を以下の3層に明確化しました。
+    *   **Keywords (Type 1)**: 単純なキーワード能力（ブロッカー等）を `KeywordEditForm` で管理。
+    *   **Abilities (Type 2)**: 誘発型能力（Triggered）と常在型能力（Static）をグループ化して表示。
+    *   **Reaction Abilities (Type 3)**: ニンジャ・ストライクなどのリアクション能力専用のノードを追加。
 *   [Status: Deferred] **Freeze**: 新JSONスキーマが確定次第、新フォーマット専用エディタとして改修を行う。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
@@ -176,21 +180,20 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 8.  [Status: Done] **Architecture Switch**: `EffectResolver` の廃止により、`GameLogicSystem` と `PipelineExecutor` を中心としたコマンド実行アーキテクチャへの移行が完了しました。
 9.  [Status: Done] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が完了しました。
 10. [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへのデータ移行と、`CommandSystem` を利用した新フォーマットでのカード定義・実行の本格運用。
+11. [Status: Todo] **Reaction Logic Integration**: Card Editorで定義可能になったリアクション能力（Node Type 3）について、ゲームエンジン側での完全な実行ロジックの実装と検証を行う。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
 
     新エンジン（イベント駆動・コマンド型）への移行に伴い、Card EditorのGUI（木構造）は、単なる「トリガー→アクション」のリストから、**「イベントリスナー」と「状態修飾子（Modifier）」を明確に区別する構造**へ変化させる必要があります。
 
-    ##### 推奨される新しい木構造
-
-    現在の `Card -> Effect -> Action` という3層構造を維持しつつ、**第2層（Effect層）の役割を拡張・分岐**させます。
+    [Status: Done] 以下の構造への移行を完了しました。
 
     ```text
     [Root] Card Definition (基本情報: コスト、文明、種族など)
      │
      ├── [Node Type 1] Keywords (単純なキーワード能力)
      │    │  ※ 「ブロッカー」「W・ブレイカー」「SA」などのフラグ管理
-     │    └─ (Checkboxes / List)
+     │    └─ (Checkboxes / List) -> KeywordEditForm
      │
      ├── [Node Type 2] Abilities (複雑な能力リスト)
      │    │
