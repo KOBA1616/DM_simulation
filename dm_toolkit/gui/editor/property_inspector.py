@@ -7,7 +7,7 @@ from dm_toolkit.gui.editor.forms.action_form import ActionEditForm
 from dm_toolkit.gui.editor.forms.spell_side_form import SpellSideForm
 from dm_toolkit.gui.editor.forms.reaction_form import ReactionEditForm
 from dm_toolkit.gui.editor.forms.command_form import CommandEditForm
-from dm_toolkit.gui.editor.forms.modifier_form import ModifierEditForm
+from dm_toolkit.gui.editor.forms.keyword_form import KeywordEditForm
 from dm_toolkit.gui.localization import tr
 
 class PropertyInspector(QWidget):
@@ -57,8 +57,9 @@ class PropertyInspector(QWidget):
         self.command_form = CommandEditForm()
         self.stack.addWidget(self.command_form)
 
-        self.modifier_form = ModifierEditForm()
-        self.stack.addWidget(self.modifier_form)
+        self.keyword_form = KeywordEditForm()
+        self.stack.addWidget(self.keyword_form)
+        self.keyword_form.structure_update_requested.connect(self.structure_update_requested.emit)
 
         layout.addWidget(self.stack)
 
@@ -88,9 +89,9 @@ class PropertyInspector(QWidget):
         elif item_type == "REACTION_ABILITY":
             self.reaction_form.set_data(item)
             self.stack.setCurrentWidget(self.reaction_form)
-        elif item_type == "MODIFIER":
-            self.modifier_form.set_data(item)
-            self.stack.setCurrentWidget(self.modifier_form)
+        elif item_type == "KEYWORDS":
+            self.keyword_form.set_data(item)
+            self.stack.setCurrentWidget(self.keyword_form)
         elif item_type == "OPTION":
             self.stack.setCurrentWidget(self.option_page)
         elif item_type == "CMD_BRANCH_TRUE" or item_type == "CMD_BRANCH_FALSE":
