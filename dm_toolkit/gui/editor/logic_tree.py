@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu
+from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu, QInputDialog
 from PyQt6.QtGui import QStandardItemModel, QStandardItem, QAction
 from PyQt6.QtCore import Qt, QModelIndex
 from dm_toolkit.gui.localization import tr
@@ -70,12 +70,15 @@ class LogicTreeWidget(QTreeView):
 
         is_spell = (card_type == "SPELL")
 
+        if item_type == "CARD" or item_type == "SPELL_SIDE":
+            add_eff_action = QAction(tr("Add Effect"), self)
+            add_eff_action.triggered.connect(lambda: self.add_effect_interactive(index))
+            menu.addAction(add_eff_action)
+
         if item_type == "GROUP_TRIGGER":
             add_trig_action = QAction(tr("Add Trigger"), self)
             add_trig_action.triggered.connect(lambda: self.add_trigger(index))
             menu.addAction(add_trig_action)
-
-            # Paste/Clear logic could go here
 
         elif item_type == "GROUP_STATIC":
             add_static_action = QAction(tr("Add Static Ability"), self)
@@ -83,16 +86,21 @@ class LogicTreeWidget(QTreeView):
             menu.addAction(add_static_action)
 
         elif item_type == "GROUP_REACTION":
-            # Logic Mask: Spells usually don't have reactions (except rare cases?)
-            # But let's allow it unless strictly forbidden.
-            # Requirement says "prevent selecting incompatible".
-            # Ninja Strike on Spell is incompatible.
             if not is_spell:
                 add_reaction_action = QAction(tr("Add Reaction Ability"), self)
                 add_reaction_action.triggered.connect(lambda: self.add_reaction(index))
                 menu.addAction(add_reaction_action)
 
-        elif item_type == "EFFECT" or item_type == "MODIFIER" or item_type == "REACTION_ABILITY":
+        elif item_type == "EFFECT":
+             add_act_action = QAction(tr("Add Action"), self)
+             add_act_action.triggered.connect(lambda: self.add_action_to_effect(index))
+             menu.addAction(add_act_action)
+
+             remove_action = QAction(tr("Remove Item"), self)
+             remove_action.triggered.connect(lambda: self.remove_current_item())
+             menu.addAction(remove_action)
+
+        elif item_type == "MODIFIER" or item_type == "REACTION_ABILITY":
              remove_action = QAction(tr("Remove Item"), self)
              remove_action.triggered.connect(lambda: self.remove_current_item())
              menu.addAction(remove_action)
@@ -177,6 +185,91 @@ class LogicTreeWidget(QTreeView):
         if not option_index.isValid(): return
         act_data = {"type": "NONE"}
         self.add_child_item(option_index, "ACTION", act_data, f"{tr('Action')}: NONE")
+
+    def add_action_to_effect(self, effect_index):
+        if not effect_index.isValid(): return
+        act_data = {"type": "DESTROY", "scope": "TARGET_SELECT", "value1": 0, "filter": {}}
+        self.add_child_item(effect_index, "ACTION", act_data, f"{tr('Action')}: {tr('DESTROY')}")
+
+    def add_effect_interactive(self, parent_index):
+        if not parent_index.isValid(): return
+
+        items = [tr("Triggered Ability"), tr("Static Ability")]
+        item, ok = QInputDialog.getItem(self, tr("Add Effect"), tr("Select Effect Type"), items, 0, False)
+
+        if ok and item:
+            # Explicitly find the target group to ensure UX consistency (e.g. expansion)
+            parent_item = self.model.itemFromIndex(parent_index)
+            target_group_role = "GROUP_TRIGGER" if item == tr("Triggered Ability") else "GROUP_STATIC"
+
+            target_group_item = None
+            for i in range(parent_item.rowCount()):
+                child = parent_item.child(i)
+                if child.data(Qt.ItemDataRole.UserRole + 1) == target_group_role:
+                    target_group_item = child
+                    break
+
+            if target_group_item:
+                target_index = target_group_item.index()
+                if item == tr("Triggered Ability"):
+                    self.add_child_item(target_index, "EFFECT",
+                                        {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "actions": []},
+                                        f"{tr('Effect')}: ON_PLAY")
+                else:
+                    self.add_child_item(target_index, "MODIFIER",
+                                        {"type": "COST_MODIFIER", "value": -1, "condition": {"type": "NONE"}},
+                                        f"{tr('Static')}: COST_MODIFIER")
+            else:
+                # Fallback to parent (DataManager handles redirection, but expansion might be less specific)
+                if item == tr("Triggered Ability"):
+                    self.add_child_item(parent_index, "EFFECT",
+                                        {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "actions": []},
+                                        f"{tr('Effect')}: ON_PLAY")
+                else:
+                    self.add_child_item(parent_index, "MODIFIER",
+                                        {"type": "COST_MODIFIER", "value": -1, "condition": {"type": "NONE"}},
+                                        f"{tr('Static')}: COST_MODIFIER")
+
+    def move_effect_item(self, item, target_type):
+        """Moves an effect item to the appropriate group based on type."""
+        if not item: return
+
+        current_parent = item.parent()
+        if not current_parent: return
+
+        # Find the Card/SpellSide item (grandparent)
+        grandparent = current_parent.parent()
+        if not grandparent: return
+
+        # Find new parent group
+        new_parent = None
+        target_role = "GROUP_TRIGGER" if target_type == "TRIGGERED" else "GROUP_STATIC"
+
+        for i in range(grandparent.rowCount()):
+            child = grandparent.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == target_role:
+                new_parent = child
+                break
+
+        if not new_parent or new_parent == current_parent:
+            return
+
+        # Clone item to new parent
+        # We need to clone the entire subtree (actions, options, etc)
+        # But QStandardItem doesn't have a deep clone.
+        # Easier strategy: Take the data, reconstruct the item using DataManager logic?
+        # Or simple row take/insert.
+
+        row = item.row()
+        taken_row = current_parent.takeRow(row) # Returns list of QStandardItems (one per column)
+
+        # taken_row is [item]
+        # Insert into new parent
+        new_parent.appendRow(taken_row)
+
+        # Restore selection
+        self.setCurrentIndex(taken_row[0].index())
+        self.setExpanded(new_parent.index(), True)
 
     def load_data(self, cards_data):
         self.data_manager.load_data(cards_data)

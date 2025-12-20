@@ -40,6 +40,7 @@ class PropertyInspector(QWidget):
 
         self.effect_form = EffectEditForm()
         self.stack.addWidget(self.effect_form)
+        self.effect_form.structure_update_requested.connect(self.structure_update_requested.emit)
 
         self.action_form = ActionEditForm()
         self.stack.addWidget(self.action_form)
