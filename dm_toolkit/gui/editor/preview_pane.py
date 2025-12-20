@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QGroupBox, QTextEdit, QFrame, QGridLayout,
     QHBoxLayout, QGraphicsDropShadowEffect
