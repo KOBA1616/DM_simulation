@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
@@ -68,6 +68,8 @@ CONDITION_UI_CONFIG = {
 }
 
 class EffectEditForm(BaseEditForm):
+    structure_update_requested = pyqtSignal(str, dict)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
@@ -326,6 +328,18 @@ class EffectEditForm(BaseEditForm):
                  self.current_item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
              else:
                  self.current_item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
+
+             # Check for Group Mismatch and Request Move
+             parent = self.current_item.parent()
+             if parent:
+                 parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
+                 # We use the item pointer itself to identify it, but passing QStandardItem via dict is safe in-process
+                 # However, usually we pass indices. But index is ephemeral.
+                 # Let's pass the item object.
+                 if mode == "TRIGGERED" and parent_type == "GROUP_STATIC":
+                     self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": "TRIGGERED"})
+                 elif mode == "STATIC" and parent_type == "GROUP_TRIGGER":
+                     self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": "STATIC"})
 
         if mode == "TRIGGERED":
             data['trigger'] = self.trigger_combo.currentData()
