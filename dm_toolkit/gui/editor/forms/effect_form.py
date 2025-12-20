@@ -83,11 +83,11 @@ class EffectEditForm(BaseEditForm):
 
         # Trigger Definition
         self.trigger_combo = QComboBox()
+        # Initial population, will be updated by Logic Mask
         triggers = [
-            "ON_PLAY", "ON_ATTACK", "ON_DESTROY", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
+            "ON_PLAY", "ON_ATTACK", "ON_BLOCK", "ON_DESTROY", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
             "ON_ATTACK_FROM_HAND", "AT_BREAK_SHIELD", "ON_CAST_SPELL", "ON_OPPONENT_DRAW"
         ]
-        # Use localized strings for display
         self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
         self.lbl_trigger = QLabel(tr("Trigger"))
         layout.addRow(self.lbl_trigger, self.trigger_combo)
@@ -131,7 +131,6 @@ class EffectEditForm(BaseEditForm):
             "DURING_YOUR_TURN", "DURING_OPPONENT_TURN",
             "FIRST_ATTACK", "EVENT_FILTER_MATCH"
         ]
-        # Use localized strings for display
         self.populate_combo(self.cond_type_combo, cond_types, display_func=tr, data_func=lambda x: x)
 
         c_layout.addWidget(QLabel(tr("Type")), 0, 0)
@@ -220,6 +219,22 @@ class EffectEditForm(BaseEditForm):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
         item_type = item.data(Qt.ItemDataRole.UserRole + 1)
 
+        # Logic Mask: Filter triggers based on Card Type
+        # Traverse up to find Card or Spell Side to determine type
+        card_type = "CREATURE"
+        parent = item.parent() # Group
+        if parent:
+            grandparent = parent.parent() # Card or Spell Side
+            if grandparent:
+                role = grandparent.data(Qt.ItemDataRole.UserRole + 1)
+                if role == "SPELL_SIDE":
+                    card_type = "SPELL"
+                elif role == "CARD":
+                     cdata = grandparent.data(Qt.ItemDataRole.UserRole + 2)
+                     card_type = cdata.get('type', 'CREATURE')
+
+        self.update_trigger_options(card_type)
+
         # Determine Mode
         mode = "TRIGGERED"
         if item_type == "MODIFIER":
@@ -236,7 +251,6 @@ class EffectEditForm(BaseEditForm):
             cond = data.get('condition', data.get('trigger_condition', {}))
         else:
             # STATIC (ModifierDef)
-            # Use 'type' preferentially, fallback to 'layer_type'
             m_type = data.get('type', data.get('layer_type', 'COST_MODIFIER'))
             m_val = data.get('value', data.get('layer_value', 0))
             m_str = data.get('str_val', data.get('layer_str', ''))
@@ -258,6 +272,41 @@ class EffectEditForm(BaseEditForm):
         self.cond_filter.set_data(cond.get('filter', {}))
 
         self.update_ui_visibility(ctype)
+
+    def update_trigger_options(self, card_type):
+        is_spell = (card_type == "SPELL")
+
+        all_triggers = [
+            "ON_PLAY", "ON_ATTACK", "ON_BLOCK", "ON_DESTROY", "TURN_START",
+            "PASSIVE_CONST", "ON_OTHER_ENTER", "ON_ATTACK_FROM_HAND",
+            "AT_BREAK_SHIELD", "ON_CAST_SPELL", "ON_OPPONENT_DRAW"
+        ]
+
+        allowed = []
+        if is_spell:
+            # Limit triggers for Spells to relevant ones
+            allowed = ["ON_PLAY", "ON_CAST_SPELL", "TURN_START", "ON_OPPONENT_DRAW", "PASSIVE_CONST", "ON_OTHER_ENTER"]
+        else:
+            allowed = all_triggers
+
+        current_data = self.trigger_combo.currentData()
+        self.trigger_combo.blockSignals(True)
+        self.trigger_combo.clear()
+
+        # Ensure current data is preserved if it was valid before or legacy
+        if current_data and current_data not in allowed:
+            allowed.append(current_data)
+
+        self.populate_combo(self.trigger_combo, allowed, display_func=tr, data_func=lambda x: x)
+
+        # Restore selection
+        idx = self.trigger_combo.findData(current_data)
+        if idx >= 0:
+            self.trigger_combo.setCurrentIndex(idx)
+        else:
+            self.trigger_combo.setCurrentIndex(0)
+
+        self.trigger_combo.blockSignals(False)
 
     def _save_data(self, data):
         mode = self.mode_combo.currentData()
@@ -302,8 +351,6 @@ class EffectEditForm(BaseEditForm):
                 data.pop(k, None)
 
     def _get_display_text(self, data):
-        # Use existence of 'type' or 'trigger' keys,
-        # or fallback to item type check (but we don't have item here, only data)
         if 'trigger' in data:
              return f"{tr('Effect')}: {tr(data.get('trigger', ''))}"
         elif 'type' in data or 'layer_type' in data:
