@@ -52,7 +52,10 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Status**: 稼働中 (Ver 2.3)。`CardEditForm` は Revolution Change や新キーワードに対応済み。
 *   [Status: Done] **Frontend Integration**: GUI (`app.py`) が `waiting_for_user_input` フラグを監視し、対象選択やオプション選択ダイアログを表示してゲームループを再開（Resume）する機能を実装しました。
-*   [Status: Done] **Simulation Dialog Model Selection**: `dm_toolkit/gui/simulation_dialog.py` にファイル選択ダイアログを追加し、シミュレーション実行時に任意の `.pth` モデルファイルをロードできるよう改修・検証完了。
+*   [Status: Done] **Data Structure Update**: 新エンジンの仕様に合わせて、GUI上のデータ構造を以下の3層に明確化しました。
+    *   **Keywords (Type 1)**: 単純なキーワード能力（ブロッカー等）を `KeywordEditForm` で管理。
+    *   **Abilities (Type 2)**: 誘発型能力（Triggered）と常在型能力（Static）をグループ化して表示。
+    *   **Reaction Abilities (Type 3)**: ニンジャ・ストライクなどのリアクション能力専用のノードを追加。
 *   [Status: Deferred] **Freeze**: 新JSONスキーマが確定次第、新フォーマット専用エディタとして改修を行う。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
@@ -87,8 +90,65 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: WIP] **Fix Variable Linking**: `DrawHandler` と `PipelineExecutor` の連携を修正し、動的なドロー枚数指定を正常化する（`test_variable_system.py` のパス）。
-2.  [Known Issue] **ParallelRunner Memory Leak**: 長時間のシミュレーション実行時に `std::bad_alloc` が発生する問題が確認されています。バッチサイズの調整やメモリ管理の最適化が必要です。
-3.  [Status: Todo] **Fix C++ Include Paths**: `src/ai/encoders/token_converter.hpp` および `src/utils/csv_loader.hpp` に存在する相対パスインクルード（`../../` 等）をプロジェクト標準の `src/` 起点の絶対パスに修正する。
-4.  [Status: Todo] **Debug Spell Pipeline**: 統合テスト `tests/verify_pipeline_spell.py` の失敗原因（呪文カードが墓地へ移動せず、効果が発動しない問題）を調査し、`ActionGenerator` または `EffectResolver` (GameLogicSystem) の呪文処理ロジックを修正する。
-5.  [Status: Todo] **Encoding Audit**: `dm_toolkit/gui/` 内のPythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、日本語環境での表示・実行時の不具合を防止する。
+1.  [Status: Todo] **Fix C++ Include Paths**: `src/ai/encoders/token_converter.hpp` および `src/utils/csv_loader.hpp` に存在する相対パスインクルード（`../../` 等）をプロジェクト標準の `src/` 起点の絶対パスに修正する。
+2.  [Status: Todo] **Debug Spell Pipeline**: 統合テスト `tests/verify_pipeline_spell.py` の失敗原因（呪文カードが墓地へ移動せず、効果が発動しない問題）を調査し、`ActionGenerator` または `EffectResolver` (GameLogicSystem) の呪文処理ロジックを修正する。
+3.  [Status: Todo] **Encoding Audit**: `dm_toolkit/gui/` 内のPythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、日本語環境での表示・実行時の不具合を防止する。
+4.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
+5.  [Status: Done] **Verify Integration**: ビルドおよびバインディングの修正が完了し、モジュールのインポートが可能になりました。
+6.  [Status: Done] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行ロジックの修正が完了し、統合テストがパスすることを確認しました。
+7.  [Status: Done] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`shared_ptr`）を一貫させ、メモリリークのリスクを大幅に低減しました。
+8.  [Status: Done] **Architecture Switch**: `EffectResolver` の廃止により、`GameLogicSystem` と `PipelineExecutor` を中心としたコマンド実行アーキテクチャへの移行が完了しました。
+9.  [Status: Done] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が完了しました。
+10. [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへのデータ移行と、`CommandSystem` を利用した新フォーマットでのカード定義・実行の本格運用。
+11. [Status: Todo] **Reaction Logic Integration**: Card Editorで定義可能になったリアクション能力（Node Type 3）について、ゲームエンジン側での完全な実行ロジックの実装と検証を行う。
+
+#### 新エンジン対応：Card Editor GUI構造の再定義
+
+    新エンジン（イベント駆動・コマンド型）への移行に伴い、Card EditorのGUI（木構造）は、単なる「トリガー→アクション」のリストから、**「イベントリスナー」と「状態修飾子（Modifier）」を明確に区別する構造**へ変化させる必要があります。
+
+    [Status: Done] 以下の構造への移行を完了しました。
+
+    ```text
+    [Root] Card Definition (基本情報: コスト、文明、種族など)
+     │
+     ├── [Node Type 1] Keywords (単純なキーワード能力)
+     │    │  ※ 「ブロッカー」「W・ブレイカー」「SA」などのフラグ管理
+     │    └─ (Checkboxes / List) -> KeywordEditForm
+     │
+     ├── [Node Type 2] Abilities (複雑な能力リスト)
+     │    │
+     │    ├── Case A: Triggered Ability (誘発型能力 / イベントリスナー)
+     │    │    │  ※ 特定のイベントに反応してスタックに乗る能力
+     │    │    │
+     │    │    ├── Trigger Definition (いつ？)
+     │    │    │    └─ Event Type: ON_PLAY, ON_ATTACK, ON_DESTROY, ON_BLOCK
+     │    │    │
+     │    │    ├── Condition (条件は？ - 介入型if節)
+     │    │    │    └─ Filter: "If you have a Fire Bird", "If opponent has no shields"
+     │    │    │
+     │    │    └── Action Sequence (何をする？ - コマンド発行)
+     │    │         ├── Action 1: SELECT_TARGET (Targeting)
+     │    │         └── Action 2: DESTROY_CARD (Execution)
+     │    │
+     │    └── Case B: Static / Passive Ability (常在型能力 / 状態修飾)
+     │         │  ※ 戦場にある限り常に適用される効果（Modifer）
+     │         │
+     │         ├── Layer Definition (何を変える？)
+     │         │    └─ Type: COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD
+     │         │
+     │         ├── Condition (適用条件は？)
+     │         │    └─ Filter: "While tapped", "If mana > 5"
+     │         │
+     │         └── Value / Target Scope (誰に・どれくらい？)
+     │              └─ Target: ALL_FRIENDLY_CREATURES, SELF
+     │              └─ Value: +3000, -1 Cost
+     │
+     └── [Node Type 3] Reaction Abilities (リアクション / 忍者ストライク等)
+          │  ※ 手札などから特定のタイミングで宣言できる能力
+          │
+          ├── Trigger Window (どのタイミングで？)
+          │    └─ Type: NINJA_STRIKE, STRIKE_BACK
+          │
+          └── Action Sequence
+               └─ (Summon, Cast, etc.)
+    ```
