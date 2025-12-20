@@ -2,35 +2,41 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from dm_toolkit.ai.agent.synergy import SynergyGraph
 
 class DuelTransformer(nn.Module):
     """
-    Phase 8 Transformer Architecture (BERT-like).
+    Phase 8 Transformer Architecture (Sequence Understanding).
+
+    Replaces the fixed-length feature vector with a token-based sequence model.
+    Incorporates Synergy Bias Mask for card compatibility understanding.
 
     Specs:
+    - Input: Token Sequence (Integer IDs)
     - Architecture: Encoder-Only Transformer
     - d_model: 256
     - Layers: 6
     - Heads: 8
     - d_ff: 1024
     - Activation: GELU
-    - Context Length: 512 (Max) - Currently adapted for flat input.
+    - Context Length: Dynamic (Max ~512)
     """
-    def __init__(self, input_dim, action_dim, d_model=256, nhead=8, num_layers=6, dim_feedforward=1024, seq_len=16):
+    def __init__(self, vocab_size, action_dim, d_model=256, nhead=8, num_layers=6, dim_feedforward=1024, max_len=512, synergy_matrix_path=None):
         super().__init__()
         self.d_model = d_model
-        self.seq_len = seq_len
+        self.max_len = max_len
+        self.nhead = nhead
 
-        # --- Legacy Feature Adapter ---
-        # Projects flat input (approx 205 floats) into a synthetic sequence.
-        # We project to (seq_len * d_model) to create a sequence of latent tokens.
-        # This allows the Transformer to process the state as a set of features.
-        self.input_projection = nn.Linear(input_dim, seq_len * d_model)
+        # 1. Embeddings
+        self.token_embedding = nn.Embedding(vocab_size, d_model)
+        self.pos_embedding = nn.Parameter(torch.randn(1, max_len, d_model) * 0.02)
 
-        # Positional Encoding (Learnable is often better for fixed-length latent sequences)
-        self.pos_embedding = nn.Parameter(torch.randn(1, seq_len, d_model) * 0.02)
+        # 2. Synergy Manager
+        self.synergy_graph = SynergyGraph(vocab_size, matrix_path=synergy_matrix_path)
 
-        # --- Transformer Encoder ---
+        # 3. Transformer Encoder
+        # We use a custom encoder block loop or standard encoder with custom mask logic.
+        # nn.TransformerEncoderLayer allows passing src_mask (additive).
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=nhead,
@@ -41,13 +47,14 @@ class DuelTransformer(nn.Module):
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
-        # --- Heads ---
-        # We use the mean of the sequence for the final prediction (Global Average Pooling)
+        # 4. Heads
+        # Policy Head: Predicts action logits from the "CLS" token (index 0) or Global Pooling
         self.policy_head = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, action_dim)
         )
 
+        # Value Head: Predicts win probability
         self.value_head = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, d_model),
@@ -58,37 +65,51 @@ class DuelTransformer(nn.Module):
         self._init_weights()
 
     def _init_weights(self):
-        # Initialize parameters with specific logic if needed,
-        # though PyTorch defaults are generally okay.
         for p in self.parameters():
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, x):
-        # x: [Batch, InputDim] (Flat vector)
+    def forward(self, x, padding_mask=None):
+        """
+        Args:
+            x: [Batch, SeqLen] (Integer Token IDs)
+            padding_mask: [Batch, SeqLen] (Boolean, True = Pad/Ignored) - Optional
+        """
+        B, S = x.shape
 
-        batch_size = x.size(0)
+        # 1. Embedding
+        # [Batch, SeqLen, d_model]
+        emb = self.token_embedding(x)
 
-        # 1. Adapt Flat Input to Sequence
-        # [Batch, InputDim] -> [Batch, SeqLen * d_model]
-        x = self.input_projection(x)
+        # Add Positional Embedding (Slice to current seq len)
+        seq_len = min(S, self.max_len)
+        emb = emb[:, :seq_len, :] + self.pos_embedding[:, :seq_len, :]
 
-        # Reshape to [Batch, SeqLen, d_model]
-        x = x.view(batch_size, self.seq_len, self.d_model)
+        # 2. Synergy Bias
+        # [Batch, SeqLen, SeqLen]
+        # bias[b, i, j] is the value to add to attention score.
+        synergy_bias = self.synergy_graph.get_bias_for_sequence(x)
 
-        # 2. Add Positional Embeddings
-        x = x + self.pos_embedding
+        # PyTorch MultiheadAttention expects mask of shape (Batch * NumHeads, SeqLen, SeqLen)
+        # if it's 3D.
+        # Our synergy_bias is (Batch, SeqLen, SeqLen).
+        # We need to repeat it for each head.
+        # Synergy is applied equally to all heads.
 
-        # 3. Transformer Encoder
-        # Output: [Batch, SeqLen, d_model]
-        x = self.transformer_encoder(x)
+        # (Batch, Seq, Seq) -> (Batch, 1, Seq, Seq) -> (Batch, NumHeads, Seq, Seq) -> (Batch*NumHeads, Seq, Seq)
+        synergy_bias = synergy_bias.unsqueeze(1).repeat(1, self.nhead, 1, 1)
+        synergy_bias = synergy_bias.view(B * self.nhead, S, S)
 
-        # 4. Global Pooling (Mean)
-        # [Batch, d_model]
-        x_pooled = x.mean(dim=1)
+        # 3. Encode
+        # Note: We pass synergy_bias as `mask`.
+        encoded = self.transformer_encoder(emb, mask=synergy_bias, src_key_padding_mask=padding_mask)
+
+        # 4. Pooling
+        # Use the CLS token (Index 0) representation
+        cls_token = encoded[:, 0, :]
 
         # 5. Heads
-        policy_logits = self.policy_head(x_pooled)
-        value = torch.tanh(self.value_head(x_pooled))
+        policy_logits = self.policy_head(cls_token)
+        value = torch.tanh(self.value_head(cls_token))
 
         return policy_logits, value
