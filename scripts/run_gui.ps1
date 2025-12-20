@@ -10,8 +10,6 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $projectRoot = Split-Path -Parent $scriptDir
 $buildDir = Join-Path $projectRoot "build"
 
-# Force UTF-8 for Python and console
-$env:PYTHONUTF8 = "1"
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 if ($Build -or -not (Test-Path (Join-Path $buildDir "dm_ai_module*.pyd"))) {
