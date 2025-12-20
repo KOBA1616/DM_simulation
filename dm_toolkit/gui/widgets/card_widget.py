@@ -1,15 +1,18 @@
 # -*- coding: cp932 -*-
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel, QHBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QPalette, QMouseEvent
+from PyQt6.QtGui import QMouseEvent
+
 
 class CardWidget(QFrame):
-    clicked = pyqtSignal(int) # Emits instance_id
-    hovered = pyqtSignal(int) # Emits card_id
+    clicked = pyqtSignal(int)  # Emits instance_id
+    hovered = pyqtSignal(int)  # Emits card_id
 
-    def __init__(self, card_id, card_name, cost, power, civ, tapped=False, instance_id=-1, parent=None, is_face_down=False):
+    def __init__(self, card_id, card_name, cost, power, civ, tapped=False,
+                 instance_id=-1, parent=None, is_face_down=False):
         """
-        civ: Can be a single string (e.g. "FIRE") or a list of strings (e.g. ["FIRE", "NATURE"]).
+        civ: Can be a single string (e.g. "FIRE")
+        or a list of strings (e.g. ["FIRE", "NATURE"]).
         """
         super().__init__(parent)
         self.card_id = card_id
@@ -26,14 +29,28 @@ class CardWidget(QFrame):
         self.tapped = tapped
         self.instance_id = instance_id
         self.is_face_down = is_face_down
-        
+
         self.setFixedSize(100, 140)
         self.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
         self.setLineWidth(2)
 
+        # UX Improvement: Cursor Feedback
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        # UX Improvement: Accessibility
+        self.setAccessibleName(f"Card: {self.card_name}")
         civ_str = "/".join(self.civs)
-        self.setToolTip(f"Name: {self.card_name}\nCost: {self.cost}\nPower: {self.power}\nCiv: {civ_str}")
-        
+        self.setAccessibleDescription(
+            f"Cost {self.cost}, Power {self.power}, Civilization {civ_str}"
+        )
+
+        self.setToolTip(
+            f"Name: {self.card_name}\n"
+            f"Cost: {self.cost}\n"
+            f"Power: {self.power}\n"
+            f"Civ: {civ_str}"
+        )
+
         self.init_ui()
         self.update_style()
 
@@ -61,13 +78,15 @@ class CardWidget(QFrame):
             self.cost_label.setVisible(False)
 
         # Style will be set in update_style
-        
+
         header_layout.addWidget(self.cost_label)
 
         # Name
         self.name_label = QLabel(self.card_name)
         self.name_label.setWordWrap(True)
-        self.name_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.name_label.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
         font = self.name_label.font()
         font.setBold(True)
         font.setPointSize(8)
@@ -76,13 +95,15 @@ class CardWidget(QFrame):
         header_layout.addWidget(self.name_label)
 
         layout.addLayout(header_layout)
-        
+
         layout.addStretch()
-        
+
         # Footer (Power)
         if self.power > 0:
             self.power_label = QLabel(f"BP:{self.power}")
-            self.power_label.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
+            self.power_label.setAlignment(
+                Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight
+            )
             font = self.power_label.font()
             font.setPointSize(7)
             self.power_label.setFont(font)
@@ -98,7 +119,7 @@ class CardWidget(QFrame):
             "ZERO": "#A9A9A9"       # DarkGray
         }
         return colors_base.get(civ, "#A9A9A9")
-        
+
     def get_bg_civ_color(self, civ):
         # Lighter colors for card background
         colors_base = {
@@ -113,10 +134,13 @@ class CardWidget(QFrame):
 
     def update_style(self):
         # 1. Update Cost Circle Style (Multicolor Split)
-        circle_style = "font-weight: bold; font-size: 10px; color: white; border: 1px solid black; border-radius: 12px; padding: 0px;"
+        circle_style = (
+            "font-weight: bold; font-size: 10px; color: white; "
+            "border: 1px solid black; border-radius: 12px; padding: 0px;"
+        )
 
         if not self.civs:
-             circle_bg = "background-color: #A9A9A9;"
+            circle_bg = "background-color: #A9A9A9;"
         elif len(self.civs) >= 1:
             c = self.get_civ_color(self.civs[0])
             circle_bg = f"background-color: {c};"
@@ -137,15 +161,24 @@ class CardWidget(QFrame):
             if len(self.civs) >= 2:
                 c1 = self.get_bg_civ_color(self.civs[0])
                 c2 = self.get_bg_civ_color(self.civs[1])
-                bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2});"
+                bg_style = (
+                    f"background: qlineargradient(spread:pad, "
+                    f"x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2});"
+                )
             else:
-                 bg_style = "background-color: #E6E6FA;"
+                bg_style = "background-color: #E6E6FA;"
 
+        # UX Improvement: Add hover style
+        # We need to explicitly define the hover state to change the border color
+        # This provides a subtle "lift" or focus effect
         self.setStyleSheet(f"""
             CardWidget {{
                 {bg_style}
                 border: {border_width} solid {border_color};
                 border-radius: 5px;
+            }}
+            CardWidget:hover {{
+                border: {border_width} solid #0078d7; /* Highlight blue */
             }}
         """)
 
