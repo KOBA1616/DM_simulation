@@ -186,7 +186,7 @@ class CardWidget(QFrame):
         self.tapped = tapped
         self.update_style()
 
-    def mousePressEvent(self, a0: QMouseEvent | None):
+    def mousePressEvent(self, a0):
         if a0 and a0.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self.instance_id)
         super().mousePressEvent(a0)
