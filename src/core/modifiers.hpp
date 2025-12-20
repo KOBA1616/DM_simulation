@@ -38,7 +38,8 @@ namespace dm::core {
         CANNOT_ATTACK,
         CANNOT_BLOCK,
         CANNOT_USE_SPELLS,
-        LOCK_SPELL_BY_COST
+        LOCK_SPELL_BY_COST,
+        CANNOT_SUMMON
     };
 
     struct PassiveEffect {
