@@ -109,6 +109,7 @@ namespace dm::engine {
             else if (dest == "DECK_BOTTOM") { to_val = "DECK"; to_bottom = true; }
             else if (dest == "DECK_TOP") { to_val = "DECK"; }
             else if (dest == "BATTLE_ZONE") { to_val = "BATTLE"; }
+            else if (dest == "STACK") { to_val = "STACK"; }
 
             for (int t : targets) {
                  nlohmann::json move_args;
