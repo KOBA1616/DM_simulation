@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.localization import tr
