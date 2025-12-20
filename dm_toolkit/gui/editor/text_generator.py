@@ -121,7 +121,7 @@ class CardTextGenerator:
     }
 
     @classmethod
-    def generate_text(cls, data: Dict[str, Any]) -> str:
+    def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True) -> str:
         """
         Generate the full text for a card including name, cost, type, keywords, and effects.
         """
@@ -219,7 +219,7 @@ class CardTextGenerator:
 
         # 4. Twinpact (Spell Side)
         spell_side = data.get("spell_side")
-        if spell_side:
+        if spell_side and include_twinpact:
             lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
             lines.append(cls.generate_text(spell_side))
 
