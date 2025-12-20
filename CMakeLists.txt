@@ -105,6 +105,7 @@ if(USE_ONNXRUNTIME)
     FetchContent_Declare(
         onnxruntime_pkg
         URL ${ORT_URL}
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     FetchContent_MakeAvailable(onnxruntime_pkg)
 
