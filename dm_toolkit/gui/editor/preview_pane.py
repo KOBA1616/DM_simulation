@@ -356,11 +356,8 @@ class CardPreviewWidget(QWidget):
         self.tp_race_label.setText(races if races else "")
         self.tp_power_label.setText(str(data.get('power', 0)))
 
-        # Hack: Generate text for ONLY the creature part
-        creature_data = data.copy()
-        if 'spell_side' in creature_data:
-            del creature_data['spell_side']
-        creature_text = CardTextGenerator.generate_text(creature_data)
+        # Generate text for ONLY the creature part
+        creature_text = CardTextGenerator.generate_text(data, include_twinpact=False)
         self.tp_body_label.setText(self.extract_body_text(creature_text))
 
         # Spell Side
