@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: cp932 -*-
 from typing import Dict, Any, List, Tuple
 from dm_toolkit.gui.localization import tr
 

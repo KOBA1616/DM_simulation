@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 import json
 import os
 from PyQt6.QtWidgets import (
