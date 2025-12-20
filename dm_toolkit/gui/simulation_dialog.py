@@ -5,7 +5,7 @@ import time
 import numpy as np
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QSpinBox,
-    QPushButton, QProgressBar, QTextEdit, QGroupBox, QMessageBox
+    QPushButton, QProgressBar, QTextEdit, QGroupBox, QMessageBox, QFileDialog
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from dm_toolkit.gui.localization import tr
@@ -277,24 +277,17 @@ class SimulationDialog(QDialog):
         threads = self.threads_spin.value()
         sims = self.sims_spin.value()
 
+        model_path = None
+        if evaluator == "Model":
+            file_path, _ = QFileDialog.getOpenFileName(self, tr("Select Model File"), "", "Model Files (*.pth);;All Files (*)")
+            if file_path:
+                model_path = file_path
+            else:
+                return
+
         self.log_text.append(f"{tr('Starting simulation')}: {scenario}, {evaluator}, {episodes} games...")
         self.run_btn.setEnabled(False)
         self.progress.setValue(0)
-
-        # Todo: Allow model selection if Model is chosen
-        model_path = None
-        if evaluator == "Model":
-            # For MVP, assume model_v1.pth or check default
-            # Or ask user?
-            # Let's check for model_v1.pth in current dir or project root
-            # Or just let it fail/warn if not found
-            potential_paths = ["model_v1.pth", "../model_v1.pth", "python/training/model_v1.pth"]
-            for p in potential_paths:
-                if os.path.exists(p):
-                    model_path = p
-                    break
-            if not model_path:
-                self.log_text.append(tr("Warning: No model_v1.pth found. Using random weights."))
 
         self.worker = SimulationWorker(self.card_db, scenario, episodes, threads, sims, evaluator, model_path)
         self.worker.progress_signal.connect(self.update_progress)
