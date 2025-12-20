@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 import math
 import random
 import dm_ai_module
