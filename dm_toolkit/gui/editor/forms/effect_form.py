@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr

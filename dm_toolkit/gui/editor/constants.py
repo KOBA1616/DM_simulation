@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 # Reserved Variable Keys for Action Linking
 # These are constant variable names available in the Card Editor for specific contexts.
 

@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QLabel, QProgressBar, QHeaderView, QTabWidget
 from PyQt6.QtCore import Qt
 from .mcts_graph_view import MCTSGraphView
