@@ -25,11 +25,12 @@ class SelfPlayRunner:
         self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Initialize dimensions
-        dummy_instance = dm_ai_module.GameInstance(42, self.card_db)
+        # GameInstance not exposed, using GameState directly
+        dummy_state = dm_ai_module.GameState(len(self.card_db))
         # Note: instance.state returns a copy, but checking dimensions is fine
-        dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_instance.state, 0, self.card_db)
+        dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_state, 0, self.card_db)
         self.input_size = len(dummy_vec)
-        self.action_size = 600 # Fixed for now, can use ActionEncoder.TOTAL_ACTION_SIZE
+        self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
 
     def load_model(self, model_path: str):
         network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
@@ -53,10 +54,11 @@ class SelfPlayRunner:
             # Create GameInstance just to get a seeded state logic if needed,
             # but we can also just create GameState directly.
             # GameInstance initializes RNG seed.
-            instance = dm_ai_module.GameInstance(int(time.time() * 1000 + i) % 1000000, self.card_db)
+            # instance = dm_ai_module.GameInstance(int(time.time() * 1000 + i) % 1000000, self.card_db)
+            state = dm_ai_module.GameState(len(self.card_db))
 
             # Capture the COPY of the state
-            state = instance.state
+            # state = instance.state
 
             # Setup decks using helper method (direct list modification won't work due to copy)
             deck_list = [deck_card_id] * 40
