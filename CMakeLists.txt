@@ -9,6 +9,8 @@ project(DM_AI_Simulator
 # --- Compiler Settings ---
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Suppress CMake deprecation warnings (specifically for pybind11's older CMake requirement)
+set(CMAKE_WARN_DEPRECATED OFF)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Enable warnings
