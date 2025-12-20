@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QComboBox, QSpinBox, QCheckBox, QLabel, QGroupBox
 )
