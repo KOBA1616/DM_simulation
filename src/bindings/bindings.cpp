@@ -28,6 +28,8 @@
 #include "core/instruction.hpp" // For Instruction and InstructionOp
 #include "engine/game_command/commands.hpp" // Added for GameCommand bindings
 #include "ai/encoders/token_converter.hpp" // Phase 8: Feature Tokenization
+#include "ai/encoders/tensor_converter.hpp" // Tensor Converter
+#include "ai/encoders/action_encoder.hpp" // Action Encoder
 #include "ai/inference/deck_inference.hpp" // Phase 2: Deck Inference
 
 namespace py = pybind11;
@@ -150,6 +152,17 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("encode_state", &dm::ai::encoders::TokenConverter::encode_state,
             py::arg("state"), py::arg("perspective") = 0, py::arg("max_len") = 0)
         .def_static("get_vocab_size", &dm::ai::encoders::TokenConverter::get_vocab_size);
+
+    py::class_<dm::ai::TensorConverter>(m, "TensorConverter")
+        .def_readonly_static("INPUT_SIZE", &dm::ai::TensorConverter::INPUT_SIZE)
+        .def_static("convert_to_tensor", &dm::ai::TensorConverter::convert_to_tensor,
+             py::arg("game_state"), py::arg("player_view"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
+        .def_static("convert_batch_flat", static_cast<std::vector<float> (*)(const std::vector<std::shared_ptr<dm::core::GameState>>&, const std::map<dm::core::CardID, dm::core::CardDefinition>&, bool)>(&dm::ai::TensorConverter::convert_batch_flat),
+             py::arg("states"), py::arg("card_db"), py::arg("mask_opponent_hand") = true);
+
+    py::class_<ActionEncoder>(m, "ActionEncoder")
+        .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
+        .def_static("action_to_index", &ActionEncoder::action_to_index);
 
     // Enums
     py::enum_<Civilization>(m, "Civilization")
