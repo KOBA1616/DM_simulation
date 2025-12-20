@@ -52,6 +52,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Status**: 稼働中 (Ver 2.3)。`CardEditForm` は Revolution Change や新キーワードに対応済み。
 *   [Status: Done] **Frontend Integration**: GUI (`app.py`) が `waiting_for_user_input` フラグを監視し、対象選択やオプション選択ダイアログを表示してゲームループを再開（Resume）する機能を実装しました。
+*   [Status: Done] **Simulation Dialog Model Selection**: `dm_toolkit/gui/simulation_dialog.py` にファイル選択ダイアログを追加し、シミュレーション実行時に任意の `.pth` モデルファイルをロードできるよう改修・検証完了。
 *   [Status: Deferred] **Freeze**: 新JSONスキーマが確定次第、新フォーマット専用エディタとして改修を行う。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
@@ -87,6 +88,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 ## 4. 今後の課題 (Future Tasks)
 
 1.  [Status: WIP] **Fix Variable Linking**: `DrawHandler` と `PipelineExecutor` の連携を修正し、動的なドロー枚数指定を正常化する（`test_variable_system.py` のパス）。
-2.  [Status: Todo] **Fix C++ Include Paths**: `src/ai/encoders/token_converter.hpp` および `src/utils/csv_loader.hpp` に存在する相対パスインクルード（`../../` 等）をプロジェクト標準の `src/` 起点の絶対パスに修正する。
-3.  [Status: Todo] **Debug Spell Pipeline**: 統合テスト `tests/verify_pipeline_spell.py` の失敗原因（呪文カードが墓地へ移動せず、効果が発動しない問題）を調査し、`ActionGenerator` または `EffectResolver` (GameLogicSystem) の呪文処理ロジックを修正する。
-4.  [Status: Todo] **Encoding Audit**: `dm_toolkit/gui/` 内のPythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、日本語環境での表示・実行時の不具合を防止する。
+2.  [Known Issue] **ParallelRunner Memory Leak**: 長時間のシミュレーション実行時に `std::bad_alloc` が発生する問題が確認されています。バッチサイズの調整やメモリ管理の最適化が必要です。
+3.  [Status: Todo] **Fix C++ Include Paths**: `src/ai/encoders/token_converter.hpp` および `src/utils/csv_loader.hpp` に存在する相対パスインクルード（`../../` 等）をプロジェクト標準の `src/` 起点の絶対パスに修正する。
+4.  [Status: Todo] **Debug Spell Pipeline**: 統合テスト `tests/verify_pipeline_spell.py` の失敗原因（呪文カードが墓地へ移動せず、効果が発動しない問題）を調査し、`ActionGenerator` または `EffectResolver` (GameLogicSystem) の呪文処理ロジックを修正する。
+5.  [Status: Todo] **Encoding Audit**: `dm_toolkit/gui/` 内のPythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、日本語環境での表示・実行時の不具合を防止する。
