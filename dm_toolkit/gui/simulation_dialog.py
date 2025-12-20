@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 
 import sys
 import os
