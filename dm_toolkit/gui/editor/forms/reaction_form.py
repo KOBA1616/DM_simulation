@@ -53,6 +53,10 @@ class ReactionEditForm(BaseEditForm):
         self.civ_match_check.stateChanged.connect(self.update_data)
         cond_layout.addRow(self.civ_match_check)
 
+        self.shield_civ_match_check = QCheckBox(tr("Same Civilization Shield Required"))
+        self.shield_civ_match_check.stateChanged.connect(self.update_data)
+        cond_layout.addRow(self.shield_civ_match_check)
+
         self.label_mana = QLabel(tr("Min Mana Required"))
         self.mana_min_spin = QSpinBox()
         self.mana_min_spin.setRange(0, 99)
@@ -73,15 +77,21 @@ class ReactionEditForm(BaseEditForm):
         self.label_mana.setVisible(True)
         self.mana_min_spin.setVisible(True)
         self.civ_match_check.setVisible(True)
+        self.shield_civ_match_check.setVisible(True)
 
         if rtype == "STRIKE_BACK":
             self.label_cost.setVisible(False)
             self.cost_spin.setVisible(False)
             self.label_mana.setVisible(False)
             self.mana_min_spin.setVisible(False)
+            self.civ_match_check.setVisible(False)
+            self.shield_civ_match_check.setVisible(True)
+        elif rtype == "NINJA_STRIKE":
+            self.shield_civ_match_check.setVisible(False)
         elif rtype == "REVOLUTION_0_TRIGGER":
             self.label_cost.setVisible(False)
             self.cost_spin.setVisible(False)
+            self.shield_civ_match_check.setVisible(False)
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
@@ -93,6 +103,7 @@ class ReactionEditForm(BaseEditForm):
         cond = data.get('condition', {})
         self.set_combo_text(self.trigger_event_combo, cond.get('trigger_event', 'NONE'))
         self.civ_match_check.setChecked(cond.get('civilization_match', False))
+        self.shield_civ_match_check.setChecked(cond.get('same_civilization_shield', False))
         self.mana_min_spin.setValue(cond.get('mana_count_min', 0))
 
         self.update_visibility()
@@ -105,6 +116,7 @@ class ReactionEditForm(BaseEditForm):
         cond = {}
         cond['trigger_event'] = self.trigger_event_combo.currentText()
         cond['civilization_match'] = self.civ_match_check.isChecked()
+        cond['same_civilization_shield'] = self.shield_civ_match_check.isChecked()
         cond['mana_count_min'] = self.mana_min_spin.value()
         data['condition'] = cond
 
@@ -117,6 +129,7 @@ class ReactionEditForm(BaseEditForm):
         self.zone_edit.blockSignals(block)
         self.trigger_event_combo.blockSignals(block)
         self.civ_match_check.blockSignals(block)
+        self.shield_civ_match_check.blockSignals(block)
         self.mana_min_spin.blockSignals(block)
 
     def set_combo_text(self, combo, text):

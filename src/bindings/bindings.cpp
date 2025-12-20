@@ -31,6 +31,7 @@
 #include "ai/encoders/tensor_converter.hpp" // Tensor Converter
 #include "ai/encoders/action_encoder.hpp" // Action Encoder
 #include "ai/inference/deck_inference.hpp" // Phase 2: Deck Inference
+#include "ai/pomdp/parametric_belief.hpp" // Added for ParametricBelief
 
 namespace py = pybind11;
 using namespace dm;
@@ -248,6 +249,27 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("NONE", TriggerType::NONE)
         .export_values();
 
+    py::enum_<EffectType>(m, "EffectType")
+        .value("NONE", EffectType::NONE)
+        .value("CIP", EffectType::CIP)
+        .value("AT_ATTACK", EffectType::AT_ATTACK)
+        .value("AT_BLOCK", EffectType::AT_BLOCK)
+        .value("AT_START_OF_TURN", EffectType::AT_START_OF_TURN)
+        .value("AT_END_OF_TURN", EffectType::AT_END_OF_TURN)
+        .value("SHIELD_TRIGGER", EffectType::SHIELD_TRIGGER)
+        .value("G_STRIKE", EffectType::G_STRIKE)
+        .value("DESTRUCTION", EffectType::DESTRUCTION)
+        .value("ON_ATTACK_FROM_HAND", EffectType::ON_ATTACK_FROM_HAND)
+        .value("INTERNAL_PLAY", EffectType::INTERNAL_PLAY)
+        .value("META_COUNTER", EffectType::META_COUNTER)
+        .value("RESOLVE_BATTLE", EffectType::RESOLVE_BATTLE)
+        .value("BREAK_SHIELD", EffectType::BREAK_SHIELD)
+        .value("REACTION_WINDOW", EffectType::REACTION_WINDOW)
+        .value("TRIGGER_ABILITY", EffectType::TRIGGER_ABILITY)
+        .value("SELECT_OPTION", EffectType::SELECT_OPTION)
+        .value("SELECT_NUMBER", EffectType::SELECT_NUMBER)
+        .export_values();
+
     py::enum_<ModifierType>(m, "ModifierType")
         .value("NONE", ModifierType::NONE)
         .value("COST_MODIFIER", ModifierType::COST_MODIFIER)
@@ -343,6 +365,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<FilterDef>(m, "FilterDef")
         .def(py::init<>())
         .def_readwrite("zones", &FilterDef::zones)
+        .def_readwrite("types", &FilterDef::types)
         .def_readwrite("civilizations", &FilterDef::civilizations)
         .def_readwrite("races", &FilterDef::races)
         .def_readwrite("min_cost", &FilterDef::min_cost)
@@ -673,6 +696,19 @@ PYBIND11_MODULE(dm_ai_module, m) {
          CardRegistry::load_from_json(json_str);
     });
 
+    py::class_<GameInstance>(m, "GameInstance")
+        .def(py::init<uint32_t, const std::map<core::CardID, core::CardDefinition>&>())
+        .def_readonly("state", &GameInstance::state)
+        .def("reset_with_scenario", &GameInstance::reset_with_scenario);
+
+    py::class_<CardRegistry>(m, "CardRegistry")
+        .def_static("register_card_data", [](const CardData& data) {
+             nlohmann::json j;
+             dm::core::to_json(j, data);
+             std::string json_str = j.dump();
+             CardRegistry::load_from_json(json_str);
+        });
+
     py::class_<PhaseManager>(m, "PhaseManager")
         .def_static("start_game", &PhaseManager::start_game)
         .def_static("next_phase", &PhaseManager::next_phase)
@@ -747,4 +783,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<ScenarioExecutor>(m, "ScenarioExecutor")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def("run_scenario", &ScenarioExecutor::run_scenario);
+
+    py::class_<ParametricBelief>(m, "ParametricBelief")
+        .def(py::init<>())
+        .def("set_weights", &ParametricBelief::set_weights)
+        .def("initialize", &ParametricBelief::initialize)
+        .def("update", &ParametricBelief::update)
+        .def("get_vector", &ParametricBelief::get_vector);
 }
