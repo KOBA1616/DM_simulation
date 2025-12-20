@@ -72,48 +72,21 @@ namespace dm::engine {
                 count_literal = 1;
             }
 
-            // Generate Loop Instruction
-            core::Instruction loop_inst(core::InstructionOp::LOOP);
-            if (!count_var.empty()) {
-                // Loop N times where N is a variable
-                // Pipeline LOOP works on collection.
-                // We need simple "REPEAT" instruction.
-                // Current LOOP iterates over collection.
-                // We can construct a range? Or just use "count" argument in LOOP if supported.
-                // Pipeline::handle_loop expects "in" to be a collection.
-                // It does not support simple count.
-                // However, we can use a helper or generate N instructions if count is literal.
-            }
-
-            // Simpler approach: Draw is often 1, 2, 3.
-            // If literal, unroll.
             if (count_var.empty()) {
+                // Literal count: Unroll
                 for (int i = 0; i < count_literal; ++i) {
                      generate_single_draw(*ctx.instruction_buffer, ctx);
                 }
             } else {
-                // For variable count, we need "REPEAT" support in PipelineExecutor or "LOOP_RANGE".
-                // Since PipelineExecutor::handle_loop requires a collection, we are stuck.
-                // Workaround: Use COUNT and MATH to generate a sequence? Too complex.
-                // Adding REPEAT support to PipelineExecutor is best.
-                // But for now, let's just push "DRAW_CARD" GameAction which LogicSystem handles?
-                // LogicSystem::handle_draw_card? It is not exposed.
+                // Variable count: Use REPEAT
+                core::Instruction repeat_inst(core::InstructionOp::REPEAT);
+                repeat_inst.args["count"] = "$" + count_var; // e.g. "$my_count"
+                repeat_inst.args["var"] = "$_draw_idx"; // Dummy iterator var
 
-                // Let's use custom logic via GAME_ACTION or fallback to simple unroll limit (e.g. max 5)
-                // Actually, DrawHandler logic is complex (win check).
+                // The body of the loop is a single draw sequence
+                generate_single_draw(repeat_inst.then_block, ctx);
 
-                // Let's rely on standard instructions.
-                // We can use a GAME_ACTION "DRAW" if we implement it.
-                // But the goal is decomposed instructions.
-
-                // Instruction: CHECK_DECK (IF empty -> Win/Lose)
-                // Instruction: MOVE (Deck -> Hand)
-                // Instruction: MODIFY (Stats)
-                // Instruction: TRIGGER_CHECK
-
-                // Since we can't do variable loop easily, we assume most draws are constant.
-                // If variable, we might need to extend PipelineExecutor.
-                // Let's just assume constant for MVP refactor.
+                ctx.instruction_buffer->push_back(repeat_inst);
             }
 
             // Handle output
