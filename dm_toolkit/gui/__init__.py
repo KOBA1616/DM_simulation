@@ -1,1 +1,1 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
