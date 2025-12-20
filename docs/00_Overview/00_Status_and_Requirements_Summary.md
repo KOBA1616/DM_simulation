@@ -31,7 +31,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
-*   [Status: WIP] **Lethal Solver Strict Implementation**: 従来のヒューリスティック判定から、`GameInstance` と `ActionGenerator` を使用した完全なDFS（深さ優先探索）シミュレーションへの移行を進めています。
+*   [Status: WIP] [Test: Fail] **Lethal Solver Strict Implementation**: `GameState` API変更（`clear_zone`削除等）によりテスト `tests/python/test_lethal_solver.py` が失敗しており、改修が必要です。
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` クラスおよびファイルを物理的に削除しました。すべての呼び出し元 (`GameInstance`, `ActionGenerator`, `ScenarioExecutor`, `Bindings`) は `GameLogicSystem` へ移行されました。
 *   [Status: Done] **GameLogicSystem Refactor**: アクションディスパッチロジックを `GameLogicSystem` に集約し、`PipelineExecutor` を介した処理フローを確立しました。
 *   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` に加え、`Stat` (統計更新), `GameResult` (勝敗判定), `Attach` (進化/クロス) を実装済み。
@@ -47,6 +47,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Revolution Change**: `CardDefinition` への `revolution_change` フラグおよび `revolution_change_condition` の追加、及び統合テストでの動作確認完了。
 *   [Status: Done] **Hyper Energy**: `CardKeywords.hyper_energy` および UI サポート実装済み。
 *   [Status: Done] **Just Diver**: `CardKeywords.just_diver` 実装済み。
+*   [Status: Done] **Meta/Counter (Hand Triggers)**: `tests/python/test_meta_counter.py` 等で基盤実装済み。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Encoding Audit**: `dm_toolkit/gui/` 内の全Pythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、Windows環境での動作安定性を確保しました。
@@ -72,7 +73,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 *   **Test Suite Restoration**:
     *   [Status: Done] `test_pomdp_parametric.py`, `test_scenario.py` のバインディング不足を解消しパスさせました。
-    *   [Status: WIP] `test_variable_system.py`: `DRAW_CARD` の変数リンク機能におけるJSON型エラーを修正中。
+    *   [Status: WIP] [Test: Fail] `test_variable_system.py`: `DRAW_CARD` の変数リンク機能および `GET_GAME_STAT` で論理エラー（期待値不一致）が発生しており、修正が必要です。
     *   **Next Action**: 修正後、全てのテスト (`tests/python/`) を実行し、回帰テストを行う。
 
 ### 3.2 [Priority: High] Phase 6: エンジン刷新 (Engine Overhaul)
@@ -91,7 +92,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 ## 4. 今後の課題 (Future Tasks)
 
 1.  [Status: Todo] **Fix C++ Include Paths**: `src/ai/encoders/token_converter.hpp` および `src/utils/csv_loader.hpp` に存在する相対パスインクルード（`../../` 等）をプロジェクト標準の `src/` 起点の絶対パスに修正する。
-2.  [Status: Todo] **Debug Spell Pipeline**: 統合テスト `tests/verify_pipeline_spell.py` の失敗原因（呪文カードが墓地へ移動せず、効果が発動しない問題）を調査し、`ActionGenerator` または `EffectResolver` (GameLogicSystem) の呪文処理ロジックを修正する。
+2.  [Status: WIP] [Test: Fail] **Debug Spell Pipeline**: 統合テスト `tests/verify_pipeline_spell.py` がモジュールインポートエラー等で失敗しています。`ActionGenerator` または `EffectResolver` (GameLogicSystem) の呪文処理ロジックの再検証が必要です。
 3.  [Status: Done] **Encoding Audit**: `dm_toolkit/gui/` 内のPythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、日本語環境での表示・実行時の不具合を防止しました。
 4.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
 5.  [Status: Done] **Verify Integration**: ビルドおよびバインディングの修正が完了し、モジュールのインポートが可能になりました。
@@ -100,7 +101,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 8.  [Status: Done] **Architecture Switch**: `EffectResolver` の廃止により、`GameLogicSystem` と `PipelineExecutor` を中心としたコマンド実行アーキテクチャへの移行が完了しました。
 9.  [Status: Done] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が完了しました。
 10. [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへのデータ移行と、`CommandSystem` を利用した新フォーマットでのカード定義・実行の本格運用。
-11. [Status: Todo] **Reaction Logic Integration**: Card Editorで定義可能になったリアクション能力（Node Type 3）について、ゲームエンジン側での完全な実行ロジックの実装と検証を行う。
+11. [Status: WIP] [Test: Fail] **Reaction Logic Integration**: リアクション能力（Node Type 3）のテスト `tests/test_phase6_reaction.py` がバインディング（`GameEvent`等）の不足により失敗しています。エンジン側での完全な実行ロジックの実装と検証が必要です。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
 
