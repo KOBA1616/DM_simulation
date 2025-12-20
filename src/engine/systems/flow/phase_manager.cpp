@@ -208,7 +208,8 @@ namespace dm::engine {
                      }
 
                      // Direct modify active player (TODO: Command)
-                     game_state.active_player_id = next_active;
+                     auto cmd_active = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ACTIVE_PLAYER, next_active);
+                     game_state.execute_command(std::move(cmd_active));
 
                      next_p = Phase::START_OF_TURN;
                 }
