@@ -26,7 +26,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 現在、**Phase 1: Game Engine Reliability (Lethal Solverの厳密化)** および **Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、アクションハンドラーの `compile_action` 化とビルド修正を集中的に行っています。また、**Phase 8: AI Architecture** の実装が並行して開始されています。
 
-さらに、Windows環境（日本語ロケール）での開発・実行環境の安定化のため、GUIコンポーネントにおけるエンコーディング（CP932）対応を実施しました。
+ディレクトリ構造の再編を行い、Python側のGUIおよび学習コードを `dm_toolkit` パッケージへ移動しました。現在、この変更に伴う **バインディングおよびテストの不整合** が多数発生しており、これらの修復が最優先事項となっています。
 
 ## 2. 現行システムステータス (Current Status)
 
@@ -41,7 +41,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Action Generalization**: すべての `IActionHandler` (合計20クラス以上) に `compile_action` メソッドを追加し、インターフェースを統一しました。
 *   [Status: Done] **Optimization - Shared Pointers**: `GameState` のPythonバインディングにおけるディープコピー問題を解消するため、`ParallelRunner`、`MCTS`、`GameResultInfo`、および `bindings.cpp` を `std::shared_ptr<GameState>` ベースに移行しました。
 *   [Status: Done] **Handler Migration**: `ManaHandler`, `DestroyHandler`, `SearchHandler` などの実装を `compile_action` ベースに移行しました。
-*   [Status: Done] **Build Fixes**: `GameState` の非コピー可能性に起因するビルドエラーを修正し、`EffectSystem` のシングルトン参照渡しや `bindings.cpp` のラムダ式活用を行いました。Pythonバインディングの `InstructionOp` および `TriggerType` 不足も解消しました。
+*   [Status: Done] **Build Fixes**: C++コアのビルドは成功し、`dm_ai_module.so` は生成されています。ただし、Pythonバインディングとの整合性に問題が残っています。
 
 ### 2.1.1 実装済みメカニクス (Mechanics Support)
 *   [Status: Done] **Revolution Change**: `CardDefinition` への `revolution_change` フラグおよび `revolution_change_condition` の追加、及び統合テストでの動作確認完了。
@@ -50,6 +50,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Meta/Counter (Hand Triggers)**: `tests/python/test_meta_counter.py` 等で基盤実装済み。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
+*   [Status: Done] **Directory Restructuring**: `python/gui` を `dm_toolkit/gui` へ移動しました。
 *   [Status: Done] **Encoding Audit**: `dm_toolkit/gui/` 内の全Pythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、Windows環境での動作安定性を確保しました。
 *   [Status: Done] **Status**: 稼働中 (Ver 2.3)。`CardEditForm` は Revolution Change や新キーワードに対応済み。
 *   [Status: Done] **Frontend Integration**: GUI (`app.py`) が `waiting_for_user_input` フラグを監視し、対象選択やオプション選択ダイアログを表示してゲームループを再開（Resume）する機能を実装しました。
@@ -60,6 +61,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Deferred] **Freeze**: 新JSONスキーマが確定次第、新フォーマット専用エディタとして改修を行う。
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
+*   [Status: Done] **Directory Restructuring**: `python/training` を `dm_toolkit/training` へ移動しました。
 *   [Status: Done] **Status**: パイプライン構築済み。
 *   [Status: Done] **Transformer Integration**: `NetworkV2` (DuelTransformer) クラスが実装され、`verify_performance.py` への統合が完了しました。
 
@@ -67,21 +69,34 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ## 3. ロードマップ (Roadmap)
 
-### 3.1 [Priority: High] Phase 1: ゲームエンジンの信頼性 (Game Engine Reliability)
+### 3.1 [Priority: Critical] Python Integration Repair (バインディングとテストの修復)
+[Status: WIP] [Test: Fail]
+C++エンジンの更新に対し、Pythonバインディングおよびテストコードの追従が遅れており、多くの検証スクリプトが動作不能となっています。
+
+*   **Missing / Incompatible Bindings**:
+    *   `GameEvent`: インポートエラー (`test_phase6_reaction.py`)
+    *   `CardDefinition`: コンストラクタ引数の不一致 (`verify_trigger_system.py`)
+    *   `CommandDef` / `CommandType`: 定義不足または名称不一致 (`verify_query_command.py`)
+    *   `CardRegistry`: シングルトンアクセス方法の不一致 (`verify_continuous_recalc.py`)
+    *   `Instruction`: コンストラクタ引数の不一致 (`test_complex_instructions.py`)
+*   **Module Structure**: `dm_toolkit` への移動に伴い、テストコード内のインポートパスおよび `PYTHONPATH` の設定修正が必要です。
+
+### 3.2 [Priority: High] Phase 1: ゲームエンジンの信頼性 (Game Engine Reliability)
 [Status: WIP]
 テストカバレッジの向上とバグ修正を最優先します。
 
 *   **Test Suite Restoration**:
     *   [Status: Done] `test_pomdp_parametric.py`, `test_scenario.py` のバインディング不足を解消しパスさせました。
-    *   [Status: WIP] [Test: Fail] `test_variable_system.py`: `DRAW_CARD` の変数リンク機能および `GET_GAME_STAT` で論理エラー（期待値不一致）が発生しており、修正が必要です。
-    *   **Next Action**: 修正後、全てのテスト (`tests/python/`) を実行し、回帰テストを行う。
+    *   [Status: WIP] [Test: Fail] `test_variable_system.py`: `ActionDef` バインディングの属性不足 (`target_choice`) により失敗中。
+    *   [Status: WIP] [Test: Fail] `verify_pipeline_spell.py`: 呪文解決ロジック（墓地送り、効果発動）が正しく動作しておらず、失敗しています。
+    *   **Next Action**: バインディング修正後、全てのテスト (`tests/python/` および `tests/`) を実行し、回帰テストを行う。
 
-### 3.2 [Priority: High] Phase 6: エンジン刷新 (Engine Overhaul)
+### 3.3 [Priority: High] Phase 6: エンジン刷新 (Engine Overhaul)
 [Status: Done]
 `EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行しました。
-バインディング層のメンテナンス（今回実施分）により、Python側からの利用可能性が回復しました。
+C++側の実装は完了していますが、前述のバインディング問題によりPython側からの制御に支障が出ています。
 
-### 3.3 [Priority: Future] Phase 8: AI思考アーキテクチャの強化 (Advanced Thinking)
+### 3.4 [Priority: Future] Phase 8: AI思考アーキテクチャの強化 (Advanced Thinking)
 [Status: WIP]
 AIが「人間のような高度な思考（読み、コンボ、大局観）」を獲得するため、NetworkV2（Transformer）に対して以下の機能拡張および特徴量実装を行います。
 
@@ -92,7 +107,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 ## 4. 今後の課題 (Future Tasks)
 
 1.  [Status: Todo] **Fix C++ Include Paths**: `src/ai/encoders/token_converter.hpp` および `src/utils/csv_loader.hpp` に存在する相対パスインクルード（`../../` 等）をプロジェクト標準の `src/` 起点の絶対パスに修正する。
-2.  [Status: WIP] [Test: Fail] **Debug Spell Pipeline**: 統合テスト `tests/verify_pipeline_spell.py` がモジュールインポートエラー等で失敗しています。`ActionGenerator` または `EffectResolver` (GameLogicSystem) の呪文処理ロジックの再検証が必要です。
+2.  [Status: WIP] [Test: Fail] **Debug Spell Pipeline**: 統合テスト `tests/verify_pipeline_spell.py` が失敗しています。`ActionGenerator` または `EffectResolver` (GameLogicSystem) の呪文処理ロジックの再検証が必要です。
 3.  [Status: Done] **Encoding Audit**: `dm_toolkit/gui/` 内のPythonソースコードに `coding: cp932` (Shift-JIS) 宣言を追加し、日本語環境での表示・実行時の不具合を防止しました。
 4.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
 5.  [Status: Done] **Verify Integration**: ビルドおよびバインディングの修正が完了し、モジュールのインポートが可能になりました。
@@ -102,6 +117,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 9.  [Status: Done] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が完了しました。
 10. [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへのデータ移行と、`CommandSystem` を利用した新フォーマットでのカード定義・実行の本格運用。
 11. [Status: WIP] [Test: Fail] **Reaction Logic Integration**: リアクション能力（Node Type 3）のテスト `tests/test_phase6_reaction.py` がバインディング（`GameEvent`等）の不足により失敗しています。エンジン側での完全な実行ロジックの実装と検証が必要です。
+12. [Status: WIP] [Test: Fail] **Binding Restoration**: `CardDefinition` コンストラクタ、`Instruction` コンストラクタ、`CardRegistry` シングルトンなどのPythonバインディング不整合を解消し、テストスイートを復旧させる必要があります。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
 
