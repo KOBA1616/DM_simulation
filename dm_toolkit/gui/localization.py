@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 # Simple localization placeholder. Keep ASCII to avoid encoding issues.
 TRANSLATIONS = {
     # Action Types
