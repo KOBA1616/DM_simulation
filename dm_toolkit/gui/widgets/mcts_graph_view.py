@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsTextItem
 from PyQt6.QtGui import QPen, QBrush, QColor, QFont
 from PyQt6.QtCore import Qt, QRectF
