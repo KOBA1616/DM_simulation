@@ -222,7 +222,8 @@ namespace dm::engine::systems {
             }
         }
 
-        int count = inst.args.value("count", 1);
+        auto count_val = inst.args.contains("count") ? inst.args["count"] : nlohmann::json(1);
+        int count = resolve_int(count_val);
         if (valid_targets.empty()) {
              set_context_var(out_key, std::vector<int>{});
              return;
@@ -326,11 +327,13 @@ namespace dm::engine::systems {
                 } else if (s == "DECK_TOP") {
                     is_virtual_target = true;
                     virtual_target_type = "DECK_TOP";
-                    virtual_count = resolve_int(inst.args.value("count", 1));
+                    auto c_val = inst.args.contains("count") ? inst.args["count"] : nlohmann::json(1);
+                    virtual_count = resolve_int(c_val);
                 } else if (s == "DECK_BOTTOM") {
                      is_virtual_target = true;
                      virtual_target_type = "DECK_BOTTOM";
-                     virtual_count = resolve_int(inst.args.value("count", 1));
+                     auto c_val = inst.args.contains("count") ? inst.args["count"] : nlohmann::json(1);
+                     virtual_count = resolve_int(c_val);
                 }
             } else if (target_val.is_number()) {
                 targets.push_back(target_val.get<int>());
@@ -445,7 +448,8 @@ namespace dm::engine::systems {
         }
 
         MutateCommand::MutationType type;
-        int val = resolve_int(inst.args.value("value", 0));
+        auto val_json = inst.args.contains("value") ? inst.args["value"] : nlohmann::json(0);
+        int val = resolve_int(val_json);
         std::string str_val = resolve_string(inst.args.value("str_value", ""));
 
         if (mod_type_str == "TAP") type = MutateCommand::MutationType::TAP;
@@ -540,7 +544,8 @@ namespace dm::engine::systems {
             ctx.index = 0;
 
             if (inst.op == InstructionOp::REPEAT || (inst.args.contains("count") && !inst.args.contains("in"))) {
-                ctx.max = resolve_int(inst.args.value("count", 1));
+                auto c_val = inst.args.contains("count") ? inst.args["count"] : nlohmann::json(1);
+                ctx.max = resolve_int(c_val);
                 ctx.var_name = inst.args.value("var", "$i");
                 ctx.collection.clear();
             } else {
@@ -581,8 +586,10 @@ namespace dm::engine::systems {
         if (inst.args.is_null()) return;
         std::string out_key = inst.args.value("out", "$result");
         if (inst.op == InstructionOp::MATH) {
-            int lhs = resolve_int(inst.args.value("lhs", 0));
-            int rhs = resolve_int(inst.args.value("rhs", 0));
+            auto l_val = inst.args.contains("lhs") ? inst.args["lhs"] : nlohmann::json(0);
+            auto r_val = inst.args.contains("rhs") ? inst.args["rhs"] : nlohmann::json(0);
+            int lhs = resolve_int(l_val);
+            int rhs = resolve_int(r_val);
             std::string op = inst.args.value("op", "+");
             int res = 0;
             if (op == "+") res = lhs + rhs;
