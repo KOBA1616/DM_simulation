@@ -24,11 +24,13 @@
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
-現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、アクションハンドラーの `compile_action` 化とビルド修正を集中的に行っています。また、**Phase 8: AI Architecture** の実装が並行して開始されています。
+現在、**Phase 1: Game Engine Reliability (Lethal Solverの厳密化)** および **Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、アクションハンドラーの `compile_action` 化とビルド修正を集中的に行っています。また、**Phase 8: AI Architecture** の実装が並行して開始されています。
 
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
+*   [Status: WIP] **Lethal Solver Strict Implementation**: 従来のヒューリスティック判定から、`GameInstance` と `ActionGenerator` を使用した完全なDFS（深さ優先探索）シミュレーションへの移行を進めています。
+    *   **現状**: `solve_recursive` ロジックを実装済みですが、検証スクリプト (`tests/verify_strict_lethal.py`) がハングする問題が発生しており、`GameInstance::undo()` の信頼性または状態ループのデバッグが必要です。
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` クラスおよびファイルを物理的に削除しました。すべての呼び出し元 (`GameInstance`, `ActionGenerator`, `ScenarioExecutor`, `Bindings`) は `GameLogicSystem` へ移行されました。
 *   [Status: Done] **GameLogicSystem Refactor**: アクションディスパッチロジックを `GameLogicSystem` に集約し、`PipelineExecutor` を介した処理フローを確立しました。
 *   [Status: Done] **GameCommand**: 新エンジンの核となるコマンドシステム。`Transition`, `Mutate`, `Flow` に加え、`Stat` (統計更新), `GameResult` (勝敗判定), `Attach` (進化/クロス) を実装済み。
@@ -58,7 +60,15 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ## 3. ロードマップ (Roadmap)
 
-### 3.1 [Priority: Critical] Phase 6: エンジン刷新 (Engine Overhaul)
+### 3.1 [Priority: Critical] Phase 1: ゲームエンジンの信頼性 (Game Engine Reliability)
+[Status: WIP]
+リーサル判定の厳密化と、`GameInstance::undo` 機能の信頼性向上を目指します。
+
+*   **Lethal Solver Strict Mode**:
+    *   [Status: WIP] [Known Issue] `LethalSolver::solve_recursive` によるDFS探索を実装しましたが、検証テストが完了していません（ハングアップ）。
+    *   **Next Action**: `GameInstance::undo()` の動作検証用テスト (`tests/cpp/test_undo.cpp`) を作成し、状態復元が完全に行われているかを確認する。
+
+### 3.2 [Priority: High] Phase 6: エンジン刷新 (Engine Overhaul)
 [Status: Review]
 `EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行しました。
 
@@ -78,7 +88,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   `ManaHandler`, `DestroyHandler`, `SearchHandler`: 実装完了。
     *   [Status: Done] **Execution Logic**: `ADD_MANA`, `SEARCH_DECK`, `DESTROY` の実行時挙動修正が完了し、統合テスト (`tests/test_integration_pipeline.py`) がパスすることを確認しました。
 
-### 3.2 [Priority: High] Phase 7: ハイブリッド・エンジン基盤 & データ移行
+### 3.3 [Priority: High] Phase 7: ハイブリッド・エンジン基盤 & データ移行
 [Status: Pending]
 全てのデータを新形式へ移行します。
 
@@ -89,7 +99,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   [Status: Done] [Test: Pass]
     *   `dm::engine::systems::CommandSystem` を実装。
 
-### 3.3 [Priority: Future] Phase 8: AI思考アーキテクチャの強化 (Advanced Thinking)
+### 3.4 [Priority: Future] Phase 8: AI思考アーキテクチャの強化 (Advanced Thinking)
 [Status: WIP]
 AIが「人間のような高度な思考（読み、コンボ、大局観）」を獲得するため、NetworkV2（Transformer）に対して以下の機能拡張および特徴量実装を行います。
 
@@ -156,13 +166,14 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
-2.  [Status: Done] **Verify Integration**: ビルドおよびバインディングの修正が完了し、モジュールのインポートが可能になりました。
-3.  [Status: Done] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行ロジックの修正が完了し、統合テストがパスすることを確認しました。
-4.  [Status: Done] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`shared_ptr`）を一貫させ、メモリリークのリスクを大幅に低減しました。
-5.  [Status: Done] **Architecture Switch**: `EffectResolver` の廃止により、`GameLogicSystem` と `PipelineExecutor` を中心としたコマンド実行アーキテクチャへの移行が完了しました。
-6.  [Status: WIP] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が進行中です。
-7.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへのデータ移行と、`CommandSystem` を利用した新フォーマットでのカード定義・実行の本格運用。
+1.  [Status: WIP] **Lethal Solver Debugging**: シミュレーションベースのリーサル判定がハングアップする問題を解決する。`GameInstance::undo` の動作検証が最優先。
+2.  [Status: Done] **Optimization - Shared Pointers**: `GameState` のバインディングを `shared_ptr` 化し、不要なディープコピーを排除しました。
+3.  [Status: Done] **Verify Integration**: ビルドおよびバインディングの修正が完了し、モジュールのインポートが可能になりました。
+4.  [Status: Done] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行ロジックの修正が完了し、統合テストがパスすることを確認しました。
+5.  [Status: Done] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`shared_ptr`）を一貫させ、メモリリークのリスクを大幅に低減しました。
+6.  [Status: Done] **Architecture Switch**: `EffectResolver` の廃止により、`GameLogicSystem` と `PipelineExecutor` を中心としたコマンド実行アーキテクチャへの移行が完了しました。
+7.  [Status: WIP] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が進行中です。
+8.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへのデータ移行と、`CommandSystem` を利用した新フォーマットでのカード定義・実行の本格運用。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
 
