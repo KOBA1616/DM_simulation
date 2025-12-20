@@ -1,107 +1,152 @@
 #include "token_converter.hpp"
-#include <algorithm>
+#include "engine/systems/card/card_registry.hpp"
 #include <iostream>
+#include <algorithm>
+#include <cmath>
 
 namespace dm::ai::encoders {
 
-    void TokenConverter::append_card(std::vector<int>& tokens, const dm::core::CardInstance& card, bool visible) {
-        if (!visible) {
-            tokens.push_back(TOKEN_UNK);
-            if (card.is_tapped) tokens.push_back(STATE_TAPPED);
-            return;
-        }
-
-        int id_token = BASE_CARD_ID + card.card_id;
-        tokens.push_back(id_token);
-
-        if (card.is_tapped) tokens.push_back(STATE_TAPPED);
-        if (card.summoning_sickness) tokens.push_back(STATE_SICK);
-        if (card.is_face_down) tokens.push_back(STATE_FACE_DOWN);
+    int TokenConverter::get_vocab_size() {
+        return VOCAB_SIZE;
     }
 
-    void TokenConverter::append_zone(std::vector<int>& tokens, const std::vector<dm::core::CardInstance>& zone, int zone_token, bool visible) {
-        tokens.push_back(zone_token);
-        for (const auto& card : zone) {
-            append_card(tokens, card, visible);
-        }
-        tokens.push_back(TOKEN_SEP);
+    int TokenConverter::bucket_val(int val, int max_val) {
+        if (val < 0) return 0;
+        if (val >= max_val) return max_val;
+        return val;
     }
 
-    void TokenConverter::append_command_history(std::vector<int>& tokens, const dm::core::GameState& state, int limit) {
-        int start_idx = 0;
-        int hist_size = state.command_history.size();
-        if (limit > 0 && hist_size > limit) {
-            start_idx = hist_size - limit;
+    std::vector<int> TokenConverter::encode_state(const core::GameState& state, int perspective, int max_len) {
+        const auto& db = dm::engine::CardRegistry::get_all_definitions();
+
+        GameStateTokens tokens = tokenize_state(state, db);
+
+        std::vector<int> flat;
+        flat.reserve(2048);
+
+        // 1. Global Section
+        flat.push_back(TOKEN_CLS);
+        flat.insert(flat.end(), tokens.global_features.begin(), tokens.global_features.end());
+
+        // 2. Board Section
+        flat.push_back(TOKEN_SEP_BOARD);
+        for(auto& vec : tokens.board_tokens) {
+             flat.insert(flat.end(), vec.begin(), vec.end());
         }
-        if (start_idx < 0) start_idx = 0;
 
-        for (int i = start_idx; i < hist_size; ++i) {
-            auto& cmd = state.command_history[i];
-            using namespace dm::engine::game_command;
-            CommandType type = cmd->get_type();
+        // 3. History Section
+        flat.push_back(TOKEN_SEP_HISTORY);
+        for(auto& vec : tokens.history_tokens) {
+            flat.insert(flat.end(), vec.begin(), vec.end());
+        }
 
-            int cmd_token = BASE_COMMAND_MARKER;
-            switch(type) {
-                case CommandType::TRANSITION: cmd_token = CMD_TRANSITION; break;
-                case CommandType::MUTATE: cmd_token = CMD_MUTATE; break;
-                case CommandType::ATTACH: cmd_token = CMD_ATTACH; break;
-                case CommandType::FLOW: cmd_token = CMD_FLOW; break;
-                case CommandType::QUERY: cmd_token = CMD_QUERY; break;
-                case CommandType::DECIDE: cmd_token = CMD_DECIDE; break;
-                case CommandType::DECLARE_REACTION: cmd_token = CMD_REACTION; break;
-                case CommandType::STAT: cmd_token = CMD_STAT; break;
-                case CommandType::GAME_RESULT: cmd_token = CMD_RESULT; break;
-            }
-            tokens.push_back(cmd_token);
+        // Truncate
+        if (max_len > 0 && flat.size() > max_len) {
+            flat.resize(max_len);
+        }
 
-            if (type == CommandType::TRANSITION) {
-                auto trans = std::dynamic_pointer_cast<TransitionCommand>(cmd);
-                if (trans) {
-                    const auto* inst = state.get_card_instance(trans->card_instance_id);
-                    if (inst) {
-                         tokens.push_back(BASE_CARD_ID + inst->card_id);
+        return flat;
+    }
+
+    GameStateTokens TokenConverter::tokenize_state(const core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        GameStateTokens tokens;
+
+        // 1. Global Features (Offset by OFFSET_GLOBAL)
+        // Ensure values don't overflow into other ranges
+        tokens.global_features.push_back(OFFSET_GLOBAL + bucket_val(state.turn_number, 50));
+        tokens.global_features.push_back(OFFSET_GLOBAL + 51 + bucket_val(static_cast<int>(state.active_player_id), 2));
+        tokens.global_features.push_back(OFFSET_GLOBAL + 54 + bucket_val(static_cast<int>(state.current_phase), 10));
+
+        auto add_player_stats = [&](const core::Player& p) {
+            tokens.global_features.push_back(OFFSET_GLOBAL + 70 + bucket_val(p.mana_zone.size(), 20));
+            tokens.global_features.push_back(OFFSET_GLOBAL + 90 + bucket_val(p.shield_zone.size(), 10));
+            tokens.global_features.push_back(OFFSET_GLOBAL + 100 + bucket_val(p.hand.size(), 20));
+        };
+
+        if (state.players.size() > 0) add_player_stats(state.players[0]);
+        else tokens.global_features.insert(tokens.global_features.end(), {OFFSET_GLOBAL, OFFSET_GLOBAL, OFFSET_GLOBAL});
+
+        if (state.players.size() > 1) add_player_stats(state.players[1]);
+        else tokens.global_features.insert(tokens.global_features.end(), {OFFSET_GLOBAL, OFFSET_GLOBAL, OFFSET_GLOBAL});
+
+        // 2. All Zones
+        for (const auto& player : state.players) {
+            auto process_zone = [&](const std::vector<core::CardInstance>& zone) {
+                for (const auto& card : zone) {
+                    if (card_db.count(card.card_id)) {
+                        tokens.board_tokens.push_back(tokenize_card_instance(card, card_db.at(card.card_id)));
+                    } else {
+                        core::CardDefinition dummy; dummy.id = card.card_id;
+                        tokens.board_tokens.push_back(tokenize_card_instance(card, dummy));
                     }
                 }
-            }
-        }
-    }
-
-    std::vector<int> TokenConverter::encode_state(const dm::core::GameState& state, int perspective, int max_len) {
-        std::vector<int> tokens;
-        tokens.reserve(1024);
-
-        tokens.push_back(TOKEN_CLS);
-
-        tokens.push_back(BASE_CONTEXT_MARKER + state.turn_number);
-        tokens.push_back(BASE_CONTEXT_MARKER + 50 + (int)state.current_phase);
-        tokens.push_back(TOKEN_SEP);
-
-        int p1_id = perspective;
-        int p2_id = 1 - perspective;
-
-        const auto& p1 = state.players[p1_id];
-        append_zone(tokens, p1.hand, MARKER_HAND_SELF, true);
-        append_zone(tokens, p1.mana_zone, MARKER_MANA_SELF, true);
-        append_zone(tokens, p1.battle_zone, MARKER_BATTLE_SELF, true);
-        append_zone(tokens, p1.shield_zone, MARKER_SHIELD_SELF, true);
-        append_zone(tokens, p1.graveyard, MARKER_GRAVE_SELF, true);
-
-        if (state.players.size() > 1) {
-            const auto& p2 = state.players[p2_id];
-            append_zone(tokens, p2.hand, MARKER_HAND_OPP, false); // Opponent hand usually hidden
-            append_zone(tokens, p2.mana_zone, MARKER_MANA_OPP, true);
-            append_zone(tokens, p2.battle_zone, MARKER_BATTLE_OPP, true);
-            append_zone(tokens, p2.shield_zone, MARKER_SHIELD_OPP, false);
-            append_zone(tokens, p2.graveyard, MARKER_GRAVE_OPP, true);
+            };
+            process_zone(player.battle_zone);
+            process_zone(player.hand);
+            process_zone(player.mana_zone);
+            process_zone(player.shield_zone);
+            process_zone(player.graveyard);
         }
 
-        append_command_history(tokens, state, 30);
+        if (tokens.board_tokens.size() > MAX_BOARD_ENTITIES) {
+            tokens.board_tokens.resize(MAX_BOARD_ENTITIES);
+        }
 
-        if (max_len > 0 && tokens.size() > max_len) {
-            tokens.resize(max_len);
+        // 3. History
+        int start_idx = std::max(0, (int)state.command_history.size() - MAX_HISTORY_LEN);
+        for (int i = start_idx; i < state.command_history.size(); ++i) {
+            tokens.history_tokens.push_back(tokenize_command(state.command_history[i]));
         }
 
         return tokens;
+    }
+
+    std::vector<int> TokenConverter::tokenize_card_instance(const core::CardInstance& card, const core::CardDefinition& def) {
+        std::vector<int> feat;
+        feat.reserve(8);
+
+        // [0] Card ID (Offset to avoid collision)
+        // Clamp ID to range to avoid overflow
+        int cid = card.card_id;
+        if (cid > 2500) cid = 2500; // Unknown/OOB
+        feat.push_back(OFFSET_CARD_ID + cid);
+
+        // [1] Tapped
+        feat.push_back(card.is_tapped ? TOKEN_TAPPED : TOKEN_UNTAPPED);
+
+        // [2] Sickness
+        feat.push_back(card.summoning_sickness ? TOKEN_SICK : TOKEN_NOT_SICK);
+
+        // [3] Power (Bucketed + Offset)
+        // Reuse OFFSET_STATUS + 10 for power buckets? Or just use OFFSET_GLOBAL if distinct?
+        // Let's use specific status range: OFFSET_STATUS + 20 + bucket
+        int p_bucket = bucket_val(def.power / 1000, 30);
+        feat.push_back(OFFSET_STATUS + 20 + p_bucket);
+
+        // [4] Cost
+        int c_bucket = bucket_val(def.cost, 20);
+        feat.push_back(OFFSET_STATUS + 60 + c_bucket);
+
+        // [5] Civilization (Bitmask mapped to token?)
+        // Simply cast to int and offset, max 32.
+        int civ_mask = 0;
+        for (auto c : def.civilizations) civ_mask |= static_cast<int>(c);
+        feat.push_back(OFFSET_STATUS + 90 + (civ_mask & 0x3F));
+
+        return feat;
+    }
+
+    std::vector<int> TokenConverter::tokenize_command(const std::shared_ptr<dm::engine::game_command::GameCommand>& cmd) {
+        std::vector<int> feat;
+        feat.push_back(OFFSET_ACTION + static_cast<int>(cmd->get_type()));
+
+        using namespace dm::engine::game_command;
+
+        // Add basic args as buckets in Global range or special ranges
+        // Simplify for now: Just Type + maybe generic value bucket
+        feat.push_back(OFFSET_GLOBAL); // Placeholder arg
+
+        return feat;
     }
 
 }
