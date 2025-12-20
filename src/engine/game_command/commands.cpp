@@ -182,7 +182,20 @@ namespace dm::engine::game_command {
                 previous_int_value = card->power_modifier;
                 card->power_modifier += int_value;
                 break;
-            // TODO: Keywords
+            case MutationType::ADD_KEYWORD:
+                card->added_keywords.push_back(str_value);
+                break;
+            case MutationType::REMOVE_KEYWORD:
+                {
+                    auto it = std::find(card->added_keywords.begin(), card->added_keywords.end(), str_value);
+                    if (it != card->added_keywords.end()) {
+                        card->added_keywords.erase(it);
+                        previous_bool_value = true;
+                    } else {
+                        previous_bool_value = false;
+                    }
+                }
+                break;
             default: break;
         }
     }
@@ -216,6 +229,19 @@ namespace dm::engine::game_command {
                 break;
             case MutationType::POWER_MOD:
                 card->power_modifier = previous_int_value;
+                break;
+            case MutationType::ADD_KEYWORD:
+                {
+                    auto it = std::find(card->added_keywords.rbegin(), card->added_keywords.rend(), str_value);
+                    if (it != card->added_keywords.rend()) {
+                        card->added_keywords.erase(std::next(it).base());
+                    }
+                }
+                break;
+            case MutationType::REMOVE_KEYWORD:
+                if (previous_bool_value) {
+                    card->added_keywords.push_back(str_value);
+                }
                 break;
             default: break;
         }
