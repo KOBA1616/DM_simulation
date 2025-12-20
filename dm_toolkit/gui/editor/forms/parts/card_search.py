@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QListWidget, QListWidgetItem,
                              QLineEdit, QComboBox, QHBoxLayout, QLabel, QAbstractItemView)
 from PyQt6.QtCore import Qt, QMimeData, QSize

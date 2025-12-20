@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 from typing import Dict, Any, List, Tuple
 from dm_toolkit.gui.localization import tr
 
@@ -365,7 +365,7 @@ class CardTextGenerator:
             val = condition.get("value", 0)
             civ_raw = condition.get("str_val", "")
             civ = tr(civ_raw)
-            return f"\x83}\x83i\x95\x90\x91\x95 {val} ({civ}): "
+            return f"マナ武装 {val} ({civ}): "
 
         elif cond_type == "SHIELD_COUNT":
             val = condition.get("value", 0)
