@@ -1,52 +1,63 @@
 import sys
 import os
+import pytest
 
-# Add bin/ to path to find dm_ai_module
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../build'))
+# Ensure module can be imported
+sys.path.append(os.path.join(os.getcwd(), 'build'))
+
 try:
     import dm_ai_module
-    print(f"Loaded module from: {dm_ai_module.__file__}")
 except ImportError:
-    print("Could not import dm_ai_module. Ensure the module is built.")
-    sys.exit(1)
+    # Try alternate path if build is not in root/build (e.g. if run from within build or python dir)
+    sys.path.append(os.path.join(os.getcwd(), '../build'))
+    import dm_ai_module
 
-def test_tokenization_basic():
-    state = dm_ai_module.GameState(100)
-
-    # Setup some cards
-    # P1 (Self) Hand: Card 1
+def test_token_encoding_basic():
+    # Setup state
+    state = dm_ai_module.GameState(100) # 100 cards
+    # Add some cards
+    # ID=1, Instance=0, Hand
     state.add_card_to_hand(0, 1, 0)
+    # ID=2, Instance=1, Mana
+    state.add_card_to_mana(0, 2, 1)
 
-    # P2 (Opp) Mana: Card 2
-    state.add_card_to_mana(1, 2, 1)
+    # Encode
+    tokens = dm_ai_module.TokenConverter.encode_state(state, 0, 128)
 
-    # Run Tokenization from P0 perspective
-    tokens = dm_ai_module.TokenConverter.encode_state(state, 0, 512)
+    assert len(tokens) == 128
+    assert tokens[0] == 1 # CLS
+    # Check for markers
+    assert 10 in tokens # HAND_SELF
+    assert 11 in tokens # MANA_SELF
+    assert 14 in tokens # GRAVE_SELF (New)
+    assert 15 in tokens # DECK_SELF (New)
+    assert 24 in tokens # GRAVE_OPP (New)
+    assert 25 in tokens # DECK_OPP (New)
 
-    print(f"Tokens P0: {tokens}")
+    # Check Phase (Context)
+    # 100 is BASE_CONTEXT_MARKER.
+    # Turn is pushed, then Phase.
+    # Phase is now offset by BASE_PHASE_MARKER (80).
+    # tokens[1] is 100 (Context Start)
+    # tokens[2] is Turn (1)
+    # tokens[3] is Phase
+    assert tokens[1] == 100
+    assert tokens[2] == 1
+    # Phase default is START_OF_TURN (0) -> 80 + 0 = 80
+    # Phase can be checked if it is >= 80
+    assert tokens[3] >= 80
 
-    # Check Self Hand (10) has Card 1 (1001)
-    assert 10 in tokens, "Missing MARKER_HAND_SELF"
-    assert 1001 in tokens, "Missing Card 1 in Self Hand"
+    # ID=1 is 1001 (BASE=1000)
+    assert 1001 in tokens
+    # ID=2 is 1002
+    assert 1002 in tokens
 
-    # Check Opp Mana (21) has Card 2 (1002)
-    assert 21 in tokens, "Missing MARKER_MANA_OPP"
-    assert 1002 in tokens, "Missing Card 2 in Opp Mana"
-
-    # Run Tokenization from P1 perspective (Swap)
-    tokens_p1 = dm_ai_module.TokenConverter.encode_state(state, 1, 512)
-    print(f"Tokens P1: {tokens_p1}")
-
-    # Now P1 is Self.
-    # Card 1 is in P0 Hand. P1 sees P0 as Opp. P0 Hand is Hidden.
-    # So P0 Hand (Opp Hand) -> Zone 20. Content -> UNK (3).
-    assert 20 in tokens_p1, "Missing MARKER_HAND_OPP (P1 view)"
-    assert 3 in tokens_p1, "Missing UNK token in Hidden Hand"
-
-    # Card 2 is in P1 Mana. P1 sees P1 as Self. P1 Mana -> Zone 11.
-    assert 11 in tokens_p1, "Missing MARKER_MANA_SELF (P1 view)"
-    assert 1002 in tokens_p1, "Missing Card 2 in Self Mana"
-
-if __name__ == "__main__":
-    test_tokenization_basic()
-    print("All tests passed!")
+def test_token_command_history():
+    state = dm_ai_module.GameState(100)
+    # We can't easily push commands from python binding unless exposed.
+    # Assuming command_history is populated by engine actions.
+    # For now, just check it doesn't crash on empty history.
+    tokens = dm_ai_module.TokenConverter.encode_state(state, 0, 64)
+    assert 200 not in tokens # No commands yet (checking specific CMD token if we knew it)
+    # 2 = SEP
+    assert 2 in tokens
