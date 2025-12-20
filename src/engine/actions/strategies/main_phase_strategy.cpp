@@ -1,6 +1,7 @@
 #include "phase_strategies.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "core/modifiers.hpp"
 #include <iostream>
 
 namespace dm::engine {
@@ -15,6 +16,25 @@ namespace dm::engine {
 
             // Check if play is legal (cost & mana)
             if (ManaSystem::can_pay_cost(state, player, card_def, card_db)) {
+
+                // Check Global Prohibitions (Lock Effects)
+                bool prohibited = false;
+                for (const auto& eff : state.passive_effects) {
+                    if (eff.type == PassiveType::CANNOT_SUMMON && (card_def.type == CardType::CREATURE || card_def.type == CardType::EVOLUTION_CREATURE)) {
+                         // Check if this card matches the prohibition filter
+                         if (TargetUtils::is_valid_target(card, card_def, eff.target_filter, state, eff.controller, player.id, true)) {
+                             prohibited = true;
+                             break;
+                         }
+                    }
+                    if (eff.type == PassiveType::CANNOT_USE_SPELLS && card_def.type == CardType::SPELL) {
+                        if (TargetUtils::is_valid_target(card, card_def, eff.target_filter, state, eff.controller, player.id, true)) {
+                             prohibited = true;
+                             break;
+                         }
+                    }
+                }
+                if (prohibited) continue;
 
                 bool is_evolution = card_def.keywords.evolution || card_def.type == CardType::EVOLUTION_CREATURE;
                 bool is_neo = card_def.keywords.neo;
