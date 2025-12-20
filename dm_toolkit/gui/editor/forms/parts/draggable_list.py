@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 from PyQt6.QtWidgets import QListWidget, QAbstractItemView
 from PyQt6.QtCore import Qt
 
