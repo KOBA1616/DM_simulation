@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 from dm_toolkit.gui.localization import tr
 
 ACTION_UI_CONFIG = {
