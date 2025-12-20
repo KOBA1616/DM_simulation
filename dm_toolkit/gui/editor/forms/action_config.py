@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 from dm_toolkit.gui.localization import tr
 
 ACTION_UI_CONFIG = {
