@@ -203,6 +203,11 @@ class CardEditor(QMainWindow):
             if action_item:
                  self.tree_widget.data_manager.add_option_slots(action_item, count)
                  self.tree_widget.expand(action_item.index())
+        elif command == "MOVE_EFFECT":
+             item_obj = payload.get('item')
+             target_type = payload.get('target_type')
+             if item_obj and target_type:
+                 self.tree_widget.move_effect_item(item_obj, target_type)
 
     def new_card(self):
         self.tree_widget.add_new_card()
