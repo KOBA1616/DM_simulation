@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QGroupBox, QTextEdit, QFrame, QGridLayout,
     QHBoxLayout, QGraphicsDropShadowEffect
@@ -379,11 +380,11 @@ class CardPreviewWidget(QWidget):
         body_lines = []
         skip_mode = True
         for line in lines:
-            if line.startswith("■") or line.startswith("S・トリガー") or line.startswith("G・ストライク"):
+            if line.startswith("\x81\xa1") or line.startswith("S\x81E\x83g\x83\x8a\x83K\x81[") or line.startswith("G\x81E\x83X\x83g\x83\x89\x83C\x83N"):
                 skip_mode = False
 
             # Additional heuristic: If line contains standard keywords
-            if any(k in line for k in ["ブロッカー", "W・ブレイカー", "T・ブレイカー", "スピードアタッカー"]):
+            if any(k in line for k in ["\x83u\x83\x8d\x83b\x83J\x81[", "W\x81E\x83u\x83\x8c\x83C\x83J\x81[", "T\x81E\x83u\x83\x8c\x83C\x83J\x81[", "\x83X\x83s\x81[\x83h\x83A\x83^\x83b\x83J\x81["]):
                 skip_mode = False
 
             if not skip_mode:

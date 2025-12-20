@@ -1,3 +1,4 @@
+# -*- coding: cp932 -*-
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
 from PyQt6.QtCore import Qt, pyqtSignal
 from .card_widget import CardWidget
@@ -52,8 +53,8 @@ class ZoneWidget(QWidget):
         self.cards = []
 
         # Check for Deck Bundle Visualization
-        is_deck = "Deck" in self.title or "デッキ" in self.title
-        is_shield = "Shield" in self.title or "シールド" in self.title
+        is_deck = "Deck" in self.title or "\x83f\x83b\x83L" in self.title
+        is_shield = "Shield" in self.title or "\x83V\x81[\x83\x8b\x83h" in self.title
 
         if (is_deck or is_shield) and card_data_list:
             # Single Bundle Representation
