@@ -98,6 +98,7 @@ class CardDataManager:
         new_static = [] # New list for static abilities
         new_reactions = []
         spell_side_dict = None
+        keywords_dict = {}
 
         # Revolution Change extraction
         rev_change_filter = None
@@ -108,7 +109,13 @@ class CardDataManager:
             child_item = card_item.child(j)
             item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
 
-            if item_type == "GROUP_TRIGGER":
+            if item_type == "KEYWORDS":
+                # The item data itself IS the keywords dictionary in our implementation
+                kw_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
+                if kw_data:
+                    keywords_dict = kw_data.copy()
+
+            elif item_type == "GROUP_TRIGGER":
                 for k in range(child_item.rowCount()):
                     eff_item = child_item.child(k)
                     if eff_item.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
@@ -173,18 +180,28 @@ class CardDataManager:
             if 'spell_side' in card_data:
                 del card_data['spell_side']
 
-        # Auto-set Revolution Change Keyword and Condition
-        if 'keywords' not in card_data:
-            card_data['keywords'] = {}
+        # Merge keywords from KEYWORDS node with any existing in card_data (e.g. set by CardEditForm)
+        # Note: CardEditForm still sets 'evolution' flag based on type.
+        # So we should merge. KEYWORDS node takes precedence for user-edited flags.
 
+        current_keywords = card_data.get('keywords', {})
+        # Merge keywords_dict into current_keywords
+        current_keywords.update(keywords_dict)
+        card_data['keywords'] = current_keywords
+
+        # Auto-set Revolution Change Keyword and Condition
         if has_rev_change_action and rev_change_filter:
             card_data['keywords']['revolution_change'] = True
             card_data['revolution_change_condition'] = rev_change_filter
         else:
-            if 'revolution_change' in card_data['keywords']:
-                del card_data['keywords']['revolution_change']
+            # Check if user manually unchecked it?
+            # The structure logic (removing action) should handle this.
+            # But we must ensure data consistency.
             if 'revolution_change_condition' in card_data:
                 del card_data['revolution_change_condition']
+            # If manually checked in keyword form but no action structure exists?
+            # It should ideally be synced. But we trust the structure here.
+            # If the user checked it, the structure should exist.
 
         return card_data
 
@@ -289,6 +306,10 @@ class CardDataManager:
                 target_item = self._find_child_by_role(parent_item, "GROUP_STATIC")
             elif item_type == "REACTION_ABILITY":
                 target_item = self._find_child_by_role(parent_item, "GROUP_REACTION")
+            elif item_type == "KEYWORDS":
+                 # Should not typically add keywords manually, but if so...
+                 # It's unique, so maybe return existing?
+                 pass
 
         # Create Item
         if item_type == "ACTION" and 'uid' not in data:
@@ -404,14 +425,22 @@ class CardDataManager:
         item.setData("CARD", Qt.ItemDataRole.UserRole + 1)
         item.setData(card, Qt.ItemDataRole.UserRole + 2)
 
-        # Create Structure Groups
-        # 1. Triggered Abilities
+        # Create Node Type 1: Keywords
+        kw_item = QStandardItem(tr("Keywords"))
+        kw_item.setData("KEYWORDS", Qt.ItemDataRole.UserRole + 1)
+        # We pass the keywords dictionary explicitly as data for this item
+        kw_item.setData(card.get('keywords', {}), Qt.ItemDataRole.UserRole + 2)
+        kw_item.setEditable(False)
+        item.appendRow(kw_item)
+
+        # Create Structure Groups (Node Type 2 & 3)
+        # 2a. Triggered Abilities
         trig = QStandardItem(tr("Triggered Abilities"))
         trig.setData("GROUP_TRIGGER", Qt.ItemDataRole.UserRole + 1)
         trig.setEditable(False)
         item.appendRow(trig)
 
-        # 2. Static Abilities
+        # 2b. Static Abilities
         stat = QStandardItem(tr("Static Abilities"))
         stat.setData("GROUP_STATIC", Qt.ItemDataRole.UserRole + 1)
         stat.setEditable(False)

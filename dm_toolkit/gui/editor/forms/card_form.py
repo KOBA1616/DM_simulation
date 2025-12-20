@@ -1,24 +1,18 @@
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QLineEdit, QComboBox, QSpinBox,
-    QCheckBox, QLabel, QGridLayout, QGroupBox, QPushButton,
-    QVBoxLayout, QScrollArea
+    QCheckBox, QLabel, QGroupBox, QVBoxLayout, QScrollArea
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
-from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 
 class CardEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree
-    # command: "ADD_SPELL_SIDE", "REMOVE_SPELL_SIDE", "ADD_REV_CHANGE", "REMOVE_REV_CHANGE"
-    # payload: dict (optional)
     structure_update_requested = pyqtSignal(str, dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.keyword_checks = {} # Map key -> QCheckBox
         self.setup_ui()
 
     def setup_ui(self):
@@ -82,64 +76,6 @@ class CardEditForm(BaseEditForm):
         self.lbl_evolution_condition = QLabel(tr("Evolution Condition"))
         self.form_layout.addRow(self.lbl_evolution_condition, self.evolution_condition_edit)
 
-        # Keywords Section
-        kw_group = QGroupBox(tr("Keywords"))
-        kw_layout = QGridLayout(kw_group)
-
-        # Removed legacy keywords: evolution, untap_in, meta_counter_play
-        # Revolution Change is handled separately now
-        keywords_list = [
-            "speed_attacker", "blocker", "slayer",
-            "double_breaker", "triple_breaker", "shield_trigger",
-            "just_diver", "mach_fighter", "g_strike",
-            "hyper_energy", "shield_burn", "power_attacker", "ex_life",
-            "mega_last_burst"
-        ]
-
-        kw_map = {
-            "speed_attacker": "Speed Attacker",
-            "blocker": "Blocker",
-            "slayer": "Slayer",
-            "double_breaker": "Double Breaker",
-            "triple_breaker": "Triple Breaker",
-            "shield_trigger": "Shield Trigger",
-            "just_diver": "Just Diver",
-            "mach_fighter": "Mach Fighter",
-            "g_strike": "G Strike",
-            "hyper_energy": "Hyper Energy",
-            "shield_burn": "Shield Burn",
-            "power_attacker": "Power Attacker",
-            "ex_life": "Ex-Life",
-            "mega_last_burst": "Mega Last Burst"
-        }
-
-        row = 0
-        col = 0
-        for k in keywords_list:
-            cb = QCheckBox(tr(kw_map.get(k, k)))
-            kw_layout.addWidget(cb, row, col)
-            self.keyword_checks[k] = cb
-            cb.stateChanged.connect(self.update_data)
-
-            col += 1
-            if col > 2: # 3 columns
-                col = 0
-                row += 1
-
-        self.form_layout.addRow(kw_group)
-
-        # Special Abilities Generator
-        special_group = QGroupBox(tr("Special Abilities"))
-        special_layout = QVBoxLayout(special_group)
-
-        # Revolution Change Checkbox
-        self.rev_change_check = QCheckBox(tr("Revolution Change"))
-        self.rev_change_check.setToolTip(tr("Enable Revolution Change to generate the necessary logic tree structure."))
-        self.rev_change_check.stateChanged.connect(self.toggle_rev_change)
-        special_layout.addWidget(self.rev_change_check)
-
-        self.form_layout.addRow(special_group)
-
         # AI Configuration Section
         ai_group = QGroupBox(tr("AI Configuration"))
         ai_layout = QFormLayout(ai_group)
@@ -174,18 +110,6 @@ class CardEditForm(BaseEditForm):
         else:
             self.structure_update_requested.emit("REMOVE_SPELL_SIDE", {})
 
-        # Toggle Mega Last Burst visibility
-        if "mega_last_burst" in self.keyword_checks:
-            self.keyword_checks["mega_last_burst"].setVisible(is_checked)
-        # Note: We do NOT call update_data here as this is a structural change handled by the Tree/DataManager
-
-    def toggle_rev_change(self, state):
-        is_checked = (state == Qt.CheckState.Checked.value or state == True)
-        if is_checked:
-            self.structure_update_requested.emit("ADD_REV_CHANGE", {})
-        else:
-            self.structure_update_requested.emit("REMOVE_REV_CHANGE", {})
-
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
@@ -218,20 +142,6 @@ class CardEditForm(BaseEditForm):
         self.twinpact_check.blockSignals(True)
         self.twinpact_check.setChecked(has_spell_side)
         self.twinpact_check.blockSignals(False)
-
-        # Update Mega Last Burst visibility
-        if "mega_last_burst" in self.keyword_checks:
-            self.keyword_checks["mega_last_burst"].setVisible(has_spell_side)
-
-        kw_data = data.get('keywords', {})
-        for k, cb in self.keyword_checks.items():
-            is_checked = kw_data.get(k, False)
-            cb.setChecked(is_checked)
-
-        # Check Rev Change
-        self.rev_change_check.blockSignals(True)
-        self.rev_change_check.setChecked(kw_data.get('revolution_change', False))
-        self.rev_change_check.blockSignals(False)
 
         self.is_key_card_check.setChecked(data.get('is_key_card', False))
         self.ai_importance_spin.setValue(data.get('ai_importance_score', 0))
@@ -275,37 +185,18 @@ class CardEditForm(BaseEditForm):
         elif 'evolution_condition' in data:
              del data['evolution_condition']
 
-        # Keyword handling
-        # IMPORTANT: Preserve keywords not managed by this loop (like revolution_change)
-        # We start with existing keywords to keep 'revolution_change' if it's there
-        # but we must ensure we don't keep stale ones from the list.
-        current_keywords = data.get('keywords', {}).copy()
+        # Keywords are now handled by KeywordEditForm, but we must ensure we don't accidentally wipe them?
+        # No, update_data reads from UI and writes to 'data' dict reference.
+        # Since Keyword form is separate, we only touch non-keyword data here.
+        # EXCEPT for auto-setting evolution keyword?
 
-        # Reset managed keywords
-        for k in self.keyword_checks.keys():
-            if k in current_keywords:
-                del current_keywords[k]
-
-        # Add checked ones
-        for k, cb in self.keyword_checks.items():
-            if cb.isChecked():
-                current_keywords[k] = True
-
-        # Ensure revolution_change keyword is set correctly if checkbox is checked
-        if self.rev_change_check.isChecked():
-            current_keywords['revolution_change'] = True
-        elif 'revolution_change' in current_keywords:
-            # If unchecked, we might need to remove it, but usually the structure removal handles it.
-            # However, if we are in save_data, the UI state should be the source of truth.
-            del current_keywords['revolution_change']
-
-        # Auto-set evolution keyword based on type
+        current_keywords = data.get('keywords', {})
         if type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE":
             current_keywords['evolution'] = True
-
+        elif 'evolution' in current_keywords:
+            del current_keywords['evolution']
         data['keywords'] = current_keywords
 
-        # data['reaction_abilities'] managed by Logic Tree now
         data['is_key_card'] = self.is_key_card_check.isChecked()
         data['ai_importance_score'] = self.ai_importance_spin.value()
 
@@ -322,8 +213,5 @@ class CardEditForm(BaseEditForm):
         self.races_edit.blockSignals(block)
         self.evolution_condition_edit.blockSignals(block)
         self.twinpact_check.blockSignals(block)
-        self.rev_change_check.blockSignals(block)
-        for cb in self.keyword_checks.values():
-            cb.blockSignals(block)
         self.is_key_card_check.blockSignals(block)
         self.ai_importance_spin.blockSignals(block)
