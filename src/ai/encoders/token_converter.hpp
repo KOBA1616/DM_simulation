@@ -20,6 +20,7 @@ namespace dm::ai::encoders {
         // Marker Base Offsets
         static constexpr int BASE_ZONE_MARKER = 10;
         static constexpr int BASE_STATE_MARKER = 50;
+        static constexpr int BASE_PHASE_MARKER = 80; // New: To avoid collision with 0
         static constexpr int BASE_CONTEXT_MARKER = 100;
         static constexpr int BASE_COMMAND_MARKER = 200;
         static constexpr int BASE_CARD_ID = 1000;

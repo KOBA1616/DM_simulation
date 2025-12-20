@@ -1,22 +1,106 @@
 #include "token_converter.hpp"
 #include <algorithm>
-#include <iostream>
 
 namespace dm::ai::encoders {
+
+    std::vector<int> TokenConverter::encode_state(const dm::core::GameState& state, int perspective, int max_len) {
+        std::vector<int> tokens;
+        tokens.reserve(512);
+
+        if (state.players.size() < 2) {
+             // Should not happen in standard game, but robust return
+             return tokens;
+        }
+
+        // 1. CLS Token
+        tokens.push_back(TOKEN_CLS);
+
+        // 2. Game Metadata (Turn, Mana)
+        tokens.push_back(BASE_CONTEXT_MARKER + 0); // Context Start
+        // Turn
+        tokens.push_back(state.turn_number);
+        // Phase (New) - Offset to avoid collision with 0 (PAD)
+        tokens.push_back(BASE_PHASE_MARKER + static_cast<int>(state.current_phase));
+        // My Mana
+        tokens.push_back(state.players[perspective].mana_zone.size());
+        // Opp Mana
+        tokens.push_back(state.players[1 - perspective].mana_zone.size());
+
+        // 3. Zones
+        const auto& self = state.players[perspective];
+        const auto& opp = state.players[1 - perspective];
+
+        // Self Battle
+        append_zone(tokens, self.battle_zone, MARKER_BATTLE_SELF, true);
+        // Opp Battle
+        append_zone(tokens, opp.battle_zone, MARKER_BATTLE_OPP, true);
+
+        // Self Mana
+        append_zone(tokens, self.mana_zone, MARKER_MANA_SELF, true);
+        // Opp Mana
+        append_zone(tokens, opp.mana_zone, MARKER_MANA_OPP, true); // Usually visible
+
+        // Self Hand
+        append_zone(tokens, self.hand, MARKER_HAND_SELF, true);
+        // Opp Hand (Masked count)
+        tokens.push_back(MARKER_HAND_OPP);
+        for(size_t i=0; i<opp.hand.size(); ++i) {
+            tokens.push_back(TOKEN_UNK); // Or just count
+        }
+
+        // Shields (Masked)
+        tokens.push_back(MARKER_SHIELD_SELF);
+        for(size_t i=0; i<self.shield_zone.size(); ++i) tokens.push_back(TOKEN_UNK);
+
+        tokens.push_back(MARKER_SHIELD_OPP);
+        for(size_t i=0; i<opp.shield_zone.size(); ++i) tokens.push_back(TOKEN_UNK);
+
+        // Graveyard (New)
+        append_zone(tokens, self.graveyard, MARKER_GRAVE_SELF, true);
+        append_zone(tokens, opp.graveyard, MARKER_GRAVE_OPP, true); // Public zone
+
+        // Deck (New)
+        // Self Deck (Masked usually, but owner might know top? For now masked)
+        tokens.push_back(MARKER_DECK_SELF);
+        for(size_t i=0; i<self.deck.size(); ++i) tokens.push_back(TOKEN_UNK);
+
+        // Opp Deck (Masked)
+        tokens.push_back(MARKER_DECK_OPP);
+        for(size_t i=0; i<opp.deck.size(); ++i) tokens.push_back(TOKEN_UNK);
+
+
+        // 4. Command History (Last N commands)
+        tokens.push_back(TOKEN_SEP);
+        append_command_history(tokens, state, 10);
+
+        // Padding
+        if (max_len > 0) {
+            if (tokens.size() > max_len) {
+                tokens.resize(max_len);
+            } else {
+                while(tokens.size() < max_len) {
+                    tokens.push_back(TOKEN_PAD);
+                }
+            }
+        }
+
+        return tokens;
+    }
 
     void TokenConverter::append_card(std::vector<int>& tokens, const dm::core::CardInstance& card, bool visible) {
         if (!visible) {
             tokens.push_back(TOKEN_UNK);
-            if (card.is_tapped) tokens.push_back(STATE_TAPPED);
             return;
         }
 
-        int id_token = BASE_CARD_ID + card.card_id;
-        tokens.push_back(id_token);
+        // Card ID base
+        tokens.push_back(BASE_CARD_ID + card.card_id);
 
+        // Status Flags
         if (card.is_tapped) tokens.push_back(STATE_TAPPED);
         if (card.summoning_sickness) tokens.push_back(STATE_SICK);
-        if (card.is_face_down) tokens.push_back(STATE_FACE_DOWN);
+        // Face down is usually covered by 'visible' arg, but if it's visible to owner but face down (e.g. shield check?)
+        // Standard face down (shields, mana) logic usually handled by caller.
     }
 
     void TokenConverter::append_zone(std::vector<int>& tokens, const std::vector<dm::core::CardInstance>& zone, int zone_token, bool visible) {
@@ -24,84 +108,26 @@ namespace dm::ai::encoders {
         for (const auto& card : zone) {
             append_card(tokens, card, visible);
         }
-        tokens.push_back(TOKEN_SEP);
     }
 
     void TokenConverter::append_command_history(std::vector<int>& tokens, const dm::core::GameState& state, int limit) {
-        int start_idx = 0;
-        int hist_size = state.command_history.size();
-        if (limit > 0 && hist_size > limit) {
-            start_idx = hist_size - limit;
+        // Collect last N commands in chronological order
+        // state.command_history is append-only, so end() is newest.
+
+        int n = state.command_history.size();
+        int start_idx = std::max(0, n - limit);
+
+        for (int i = start_idx; i < n; ++i) {
+            const auto& cmd = state.command_history[i];
+
+            // Map command type to token
+            int cmd_type_token = BASE_COMMAND_MARKER + (int)cmd->get_type();
+            tokens.push_back(cmd_type_token);
+
+            // TODO: Extract card_instance_id or other details if available in base GameCommand
+            // Currently GameCommand base class might not expose card_id directly without casting.
+            // For now, type sequence is better than nothing or reversed sequence.
         }
-        if (start_idx < 0) start_idx = 0;
-
-        for (int i = start_idx; i < hist_size; ++i) {
-            auto& cmd = state.command_history[i];
-            using namespace dm::engine::game_command;
-            CommandType type = cmd->get_type();
-
-            int cmd_token = BASE_COMMAND_MARKER;
-            switch(type) {
-                case CommandType::TRANSITION: cmd_token = CMD_TRANSITION; break;
-                case CommandType::MUTATE: cmd_token = CMD_MUTATE; break;
-                case CommandType::ATTACH: cmd_token = CMD_ATTACH; break;
-                case CommandType::FLOW: cmd_token = CMD_FLOW; break;
-                case CommandType::QUERY: cmd_token = CMD_QUERY; break;
-                case CommandType::DECIDE: cmd_token = CMD_DECIDE; break;
-                case CommandType::DECLARE_REACTION: cmd_token = CMD_REACTION; break;
-                case CommandType::STAT: cmd_token = CMD_STAT; break;
-                case CommandType::GAME_RESULT: cmd_token = CMD_RESULT; break;
-            }
-            tokens.push_back(cmd_token);
-
-            if (type == CommandType::TRANSITION) {
-                auto trans = std::dynamic_pointer_cast<TransitionCommand>(cmd);
-                if (trans) {
-                    const auto* inst = state.get_card_instance(trans->card_instance_id);
-                    if (inst) {
-                         tokens.push_back(BASE_CARD_ID + inst->card_id);
-                    }
-                }
-            }
-        }
-    }
-
-    std::vector<int> TokenConverter::encode_state(const dm::core::GameState& state, int perspective, int max_len) {
-        std::vector<int> tokens;
-        tokens.reserve(1024);
-
-        tokens.push_back(TOKEN_CLS);
-
-        tokens.push_back(BASE_CONTEXT_MARKER + state.turn_number);
-        tokens.push_back(BASE_CONTEXT_MARKER + 50 + (int)state.current_phase);
-        tokens.push_back(TOKEN_SEP);
-
-        int p1_id = perspective;
-        int p2_id = 1 - perspective;
-
-        const auto& p1 = state.players[p1_id];
-        append_zone(tokens, p1.hand, MARKER_HAND_SELF, true);
-        append_zone(tokens, p1.mana_zone, MARKER_MANA_SELF, true);
-        append_zone(tokens, p1.battle_zone, MARKER_BATTLE_SELF, true);
-        append_zone(tokens, p1.shield_zone, MARKER_SHIELD_SELF, true);
-        append_zone(tokens, p1.graveyard, MARKER_GRAVE_SELF, true);
-
-        if (state.players.size() > 1) {
-            const auto& p2 = state.players[p2_id];
-            append_zone(tokens, p2.hand, MARKER_HAND_OPP, false); // Opponent hand usually hidden
-            append_zone(tokens, p2.mana_zone, MARKER_MANA_OPP, true);
-            append_zone(tokens, p2.battle_zone, MARKER_BATTLE_OPP, true);
-            append_zone(tokens, p2.shield_zone, MARKER_SHIELD_OPP, false);
-            append_zone(tokens, p2.graveyard, MARKER_GRAVE_OPP, true);
-        }
-
-        append_command_history(tokens, state, 30);
-
-        if (max_len > 0 && tokens.size() > max_len) {
-            tokens.resize(max_len);
-        }
-
-        return tokens;
     }
 
 }
