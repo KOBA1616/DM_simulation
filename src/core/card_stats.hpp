@@ -53,6 +53,7 @@ namespace dm::core {
         float sum_deck_consumption = 0.0f;
 
         void record_usage(int turn, bool is_trigger, int cost_diff) {
+            (void)turn;
             play_count++;
             if (cost_diff > 0) sum_cost_discount += cost_diff;
             if (is_trigger) sum_trigger_rate += 1.0f;
