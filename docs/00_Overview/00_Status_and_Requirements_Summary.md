@@ -54,7 +54,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
 *   [Status: Done] **Status**: パイプライン構築済み。
-*   [Status: WIP] **Transformer Integration**: `NetworkV2` (DuelTransformer) クラスが実装され、`verify_performance.py` への統合が進行中。
+*   [Status: Done] **Transformer Integration**: `NetworkV2` (DuelTransformer) クラスが実装され、`verify_performance.py` への統合が完了しました。
 
 ---
 
@@ -69,7 +69,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   **Next Action**: `GameInstance::undo()` の動作検証用テスト (`tests/cpp/test_undo.cpp`) を作成し、状態復元が完全に行われているかを確認する。
 
 ### 3.2 [Priority: High] Phase 6: エンジン刷新 (Engine Overhaul)
-[Status: Review]
+[Status: Done]
 `EffectResolver` を解体し、イベント駆動型システムと命令パイプラインへ完全移行しました。
 
 *   **Step 1: イベント駆動基盤の実装**
@@ -82,8 +82,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   **Step 3: GameCommand への統合**
     *   [Status: Done] [Test: Pass]
     *   `EffectResolver` の主要メソッドを `GameLogicSystem` へ移行。
-*   **Step 4: Pure Command Generation (Current Focus)**
-    *   [Status: Review] 各アクションハンドラー (`IActionHandler`) を `compile_action()` メソッドに対応させ、状態直接操作から命令生成へ移行しました。
+*   **Step 4: Pure Command Generation**
+    *   [Status: Done] 各アクションハンドラー (`IActionHandler`) を `compile_action()` メソッドに対応させ、状態直接操作から命令生成へ移行しました。
     *   `DrawHandler`, `DiscardHandler`, `ModifierHandler`: 完了。
     *   `ManaHandler`, `DestroyHandler`, `SearchHandler`: 実装完了。
     *   [Status: Done] **Execution Logic**: `ADD_MANA`, `SEARCH_DECK`, `DESTROY` の実行時挙動修正が完了し、統合テスト (`tests/test_integration_pipeline.py`) がパスすることを確認しました。
@@ -174,7 +174,7 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 6.  [Status: Done] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行ロジックの修正が完了し、統合テストがパスすることを確認しました。
 7.  [Status: Done] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`shared_ptr`）を一貫させ、メモリリークのリスクを大幅に低減しました。
 8.  [Status: Done] **Architecture Switch**: `EffectResolver` の廃止により、`GameLogicSystem` と `PipelineExecutor` を中心としたコマンド実行アーキテクチャへの移行が完了しました。
-9.  [Status: WIP] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が進行中です。
+9.  [Status: Done] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が完了しました。
 10. [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへのデータ移行と、`CommandSystem` を利用した新フォーマットでのカード定義・実行の本格運用。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
