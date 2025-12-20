@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: cp932 -*-
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.editor.forms.card_form import CardEditForm
