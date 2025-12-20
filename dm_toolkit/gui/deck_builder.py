@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 import json
 import os
 from PyQt6.QtWidgets import (

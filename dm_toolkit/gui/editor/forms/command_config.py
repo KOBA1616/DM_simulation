@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 # Configuration for Command Edit Form UI
 
 # Defines which fields are visible for each CommandType.
