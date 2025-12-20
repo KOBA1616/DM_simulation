@@ -1,75 +1,64 @@
-#ifndef DM_AI_ENCODERS_TOKEN_CONVERTER_HPP
-#define DM_AI_ENCODERS_TOKEN_CONVERTER_HPP
+#pragma once
 
-#include "../../core/game_state.hpp"
-#include "../../core/card_def.hpp"
-#include "../../engine/game_command/commands.hpp"
+#include "core/game_state.hpp"
+#include "engine/game_command/commands.hpp"
 #include <vector>
 #include <map>
+#include <optional>
 
 namespace dm::ai::encoders {
 
+    // Tokenized representation of the game state
+    struct GameStateTokens {
+        std::vector<int> global_features;
+        std::vector<std::vector<int>> board_tokens;
+        std::vector<std::vector<int>> history_tokens;
+    };
+
     class TokenConverter {
     public:
-        // Vocabulary Constants
+        // Configuration
+        static constexpr int MAX_HISTORY_LEN = 128;
+        static constexpr int MAX_BOARD_ENTITIES = 64;
+        static constexpr int VOCAB_SIZE = 4096;
+
+        // Vocabulary Layout
+        // 0-99: Special Tokens
         static constexpr int TOKEN_PAD = 0;
-        static constexpr int TOKEN_CLS = 1;
-        static constexpr int TOKEN_SEP = 2;
-        static constexpr int TOKEN_UNK = 3;
+        static constexpr int TOKEN_CLS = 1; // Global Start
+        static constexpr int TOKEN_SEP_BOARD = 2; // Board Start
+        static constexpr int TOKEN_SEP_HISTORY = 3; // History Start
 
-        // Marker Base Offsets
-        static constexpr int BASE_ZONE_MARKER = 10;
-        static constexpr int BASE_STATE_MARKER = 50;
-        static constexpr int BASE_CONTEXT_MARKER = 100;
-        static constexpr int BASE_COMMAND_MARKER = 200;
-        static constexpr int BASE_CARD_ID = 1000;
+        // 100-299: Global Features / Status Buckets
+        static constexpr int OFFSET_GLOBAL = 100;
 
-        // Specific Markers (Relative to Perspective)
-        static constexpr int MARKER_HAND_SELF = 10;
-        static constexpr int MARKER_MANA_SELF = 11;
-        static constexpr int MARKER_BATTLE_SELF = 12;
-        static constexpr int MARKER_SHIELD_SELF = 13;
-        static constexpr int MARKER_GRAVE_SELF = 14;
-        static constexpr int MARKER_DECK_SELF = 15;
+        // 300-499: Status Flags & Properties
+        // Tapped/Sick/Owner: 300-320
+        // Power Buckets: 320-350
+        // Cost Buckets: 360-380
+        // Civ Bitmask: 390-455
+        static constexpr int OFFSET_STATUS = 300;
+        static constexpr int TOKEN_TAPPED = OFFSET_STATUS + 1;
+        static constexpr int TOKEN_UNTAPPED = OFFSET_STATUS + 2;
+        static constexpr int TOKEN_SICK = OFFSET_STATUS + 3;
+        static constexpr int TOKEN_NOT_SICK = OFFSET_STATUS + 4;
 
-        static constexpr int MARKER_HAND_OPP = 20;
-        static constexpr int MARKER_MANA_OPP = 21;
-        static constexpr int MARKER_BATTLE_OPP = 22;
-        static constexpr int MARKER_SHIELD_OPP = 23;
-        static constexpr int MARKER_GRAVE_OPP = 24;
-        static constexpr int MARKER_DECK_OPP = 25;
+        // 500-599: Action Types (Moved from 400 to avoid Civ overlap)
+        static constexpr int OFFSET_ACTION = 500;
 
-        static constexpr int STATE_TAPPED = 50;
-        static constexpr int STATE_SICK = 51;
-        static constexpr int STATE_FACE_DOWN = 52;
+        // 1000+: Card IDs
+        static constexpr int OFFSET_CARD_ID = 1000;
+        static constexpr int MAX_CARD_ID_RANGE = 2500; // IDs 1000 to 3500
 
-        static constexpr int CMD_TRANSITION = 200;
-        static constexpr int CMD_MUTATE = 201;
-        static constexpr int CMD_ATTACH = 202;
-        static constexpr int CMD_FLOW = 203;
-        static constexpr int CMD_QUERY = 204;
-        static constexpr int CMD_DECIDE = 205;
-        static constexpr int CMD_REACTION = 206;
-        static constexpr int CMD_STAT = 207;
-        static constexpr int CMD_RESULT = 208;
-
-        /**
-         * Encodes the game state and history into a token sequence.
-         * @param state The game state.
-         * @param perspective The player ID to view the game from (determines visible cards and Self/Opp markers).
-         * @param max_len Max sequence length (0 = unlimited).
-         * @return Vector of integer tokens.
-         */
-        static std::vector<int> encode_state(const dm::core::GameState& state, int perspective, int max_len = 0);
-
-        static int get_vocab_size() { return 10000; }
+        static std::vector<int> encode_state(const core::GameState& state, int perspective = 0, int max_len = 0);
+        static int get_vocab_size();
 
     private:
-        static void append_card(std::vector<int>& tokens, const dm::core::CardInstance& card, bool visible);
-        static void append_zone(std::vector<int>& tokens, const std::vector<dm::core::CardInstance>& zone, int zone_token, bool visible);
-        static void append_command_history(std::vector<int>& tokens, const dm::core::GameState& state, int limit);
+        static GameStateTokens tokenize_state(const core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        static std::vector<int> tokenize_card_instance(const core::CardInstance& card, const core::CardDefinition& def);
+        static std::vector<int> tokenize_command(const std::shared_ptr<dm::engine::game_command::GameCommand>& cmd);
+
+        static int bucket_val(int val, int max_val);
     };
 
 }
-
-#endif // DM_AI_ENCODERS_TOKEN_CONVERTER_HPP

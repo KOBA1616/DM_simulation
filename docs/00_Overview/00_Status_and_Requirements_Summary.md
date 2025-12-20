@@ -24,7 +24,7 @@
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
-現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** の最終段階にあり、アクションハンドラーの `compile_action` 化とビルド修正を集中的に行っています。また、**Phase 8: AI Architecture** の実装が並行して開始されています。
+現在、**Phase 6: Engine Overhaul (EffectResolverからGameCommandへの完全移行)** が完了し、**Phase 8: AI Architecture** の実装が完了しました。TransformerベースのAIモデル（NetworkV2）と、C++による高速なトークン化システムの統合フェーズに移行しています。
 
 ## 2. 現行システムステータス (Current Status)
 
@@ -52,7 +52,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
 *   [Status: Done] **Status**: パイプライン構築済み。
-*   [Status: WIP] **Transformer Integration**: `NetworkV2` (DuelTransformer) クラスが実装され、`verify_performance.py` への統合が進行中。
+*   [Status: Done] **Transformer Integration**: `NetworkV2` (DuelTransformer) クラス実装済み。Synergy Bias MaskおよびMeta-Game Embeddingを搭載。
+*   [Status: Done] **Tokenization System**: C++側 (`TokenConverter`) での全ゾーン（Hand, Board, Grave, Mana）のトークン化、および語彙衝突回避（Vocabulary Offset）の実装完了。Pythonバインディングによる疎通確認済み。
 
 ---
 
@@ -90,12 +91,14 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   `dm::engine::systems::CommandSystem` を実装。
 
 ### 3.3 [Priority: Future] Phase 8: AI思考アーキテクチャの強化 (Advanced Thinking)
-[Status: WIP]
+[Status: Review]
 AIが「人間のような高度な思考（読み、コンボ、大局観）」を獲得するため、NetworkV2（Transformer）に対して以下の機能拡張および特徴量実装を行います。
 
 *   **基本コンセプト (Core Concept)**:
     *   人間が「このカードは強い」といったヒューリスティックを与えるのではなく、**「構造（Structure）」と「素材（Raw Data）」を与え、AIが自己対戦を通じて意味と重みを学習（End-to-End Learning）できる設計**にします。
-    *   **Implementation Status**: `DuelTransformer` クラス (`dm_toolkit.ai.agent.transformer_model`) および `NetworkV2` (`dm_toolkit.training.network_v2`) を実装済み。現行の固定長入力 (Feature Vector) を学習可能な入力層でシーケンスに変換するアダプターを搭載し、検証段階へ移行可能です。
+    *   **Implementation Status**: `DuelTransformer` クラス (`python.ai.models.transformer_model`) および C++トークナイザー (`dm_ai_module.TokenConverter`) を実装済み。
+    *   **Tokenization Logic**: 全ゾーン（Hand, Board, Grave, Mana, History）を対象としたシーケンストークン化を実装。数値特徴量（Power, Cost, Turn）のバケット化およびOffsetによる語彙衝突回避を実装済み。
+    *   **Model Logic**: Synergy Bias Matrix（カード間相性学習）およびMeta-Game Embedding（環境メタ学習）をTransformerのAttention機構に組み込み済み。
 
 *   **実装要件 (Implementation Requirements)**
 
@@ -103,38 +106,28 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
     入力は固定長ベクトルではなく、複数のトークン系列（Sequence）として構成し、Transformerに入力します。
 
     1.  **[Feature 1] Action History (アクション履歴)**
-        *   過去 $N$ ターン分の「プレイ」「チャージ」「攻撃」を時系列トークンとして入力。
-        *   アクション数上限: **過去10ターン分**、かつ各ターンの主要アクション（Play, Charge, Attack）に絞り込み、最大 **30トークン程度** に制限してノイズを抑制する。
-        *   目的: 「手札温存（ブラフ）」やデッキタイプ推定などの文脈理解。
+        *   [Implemented] 過去のアクションコマンドをトークン列として入力。`MAX_HISTORY_LEN=128`。
     2.  **[Feature 2] Phase Tokens (フェイズトークン)**
-        *   `[MANA]`, `[MAIN]`, `[ATTACK]` 等の特殊トークンを系列先頭に付与。
-        *   目的: フェイズごとにAttentionの注目先（マナカーブ、盤面処理など）を切り替える。
+        *   [Implemented] グローバル特徴量の一部として実装済み。
     3.  **[Feature 4, 6] Imperfect Info & Key Cards (不完全情報と重要カード)**
-        *   **Key Card Count**: 公開領域にある全カードIDの枚数ヒストグラム（2000次元）をLinear圧縮して1トークン化。
-        *   **Hidden Inference**: 相手の手札/シールドにある確率分布（2000次元）をLinear圧縮して1トークン化。
-        *   目的: 「ボルメテウスが墓地に落ちた」等の重要イベントを、人間が指定せずともAIが勝率との相関から学習する。
+        *   [Implemented] `TokenConverter` により全カード情報をトークン化（ID + Status）。AIの視点（Perspective）に応じた情報マスキングは今後の課題。
     4.  **[Feature 7] Synergy Bias Mask (学習可能シナジー行列)**
-        *   カードID間の相性（$N \times N$）を表す学習可能な行列 (`SynergyMatrix`) を導入し、Attentionスコアに加算。
-        *   目的: 種族や文明を超えた「実戦的なコンボ相性」を自動獲得させる。
+        *   [Implemented] `DuelTransformer` 内に `synergy_matrix` [Vocab x Vocab] を実装し、Attention Maskとして適用。
     5.  **[Feature 8] Entity-Centric Board Token (詳細盤面トークン)**
-        *   バトルゾーンのクリーチャーを「ID + パワー(生数値) + フラグ(ブロッカー等)」の結合ベクトルとしてトークン化。
-        *   目的: 「パワー6000以上」といった閾値を人間が決めず、AIに生の数値から脅威度を判断させる。
+        *   [Implemented] クリーチャーごとに ID, Tapped, Sick, Power, Cost, Civ をバケット化してシーケンス化。
     6.  **[Feature 9] Combo Completion (コンボ達成度)**
-        *   Cross-Attention (手札トークン列 vs 盤面トークン列) を導入。
-        *   目的: Multi-Head Attentionに「進化元と進化先」などのペア関係を専門的に監視させ、コンボ成立を検知させる。
+        *   [Pending] Cross-Attentionの実装は未着手。現在はSelf-Attentionによる暗黙的学習に依存。
     7.  **[Feature 12, 15] Meta-Game Context (メタゲーム)**
-        *   自分と相手のデッキタイプ（アーキタイプ）や、環境の流行を表すベクトルをLinear圧縮して入力。
-        *   目的: 対面に応じたプレイスタイルの切り替え（アグロ対面なら防御優先など）。
+        *   [Implemented] `meta_embedding` トークンをシーケンス先頭に付与して実装済み。
 
     #### B. Neural Network Architecture (Model Config)
     Phase 4/8 で採用する Transformer (NetworkV2) の具体的な構成要件。
     *   **Architecture**: Encoder-Only Transformer (BERT-like)
     *   **Embedding Size ($d_{model}$)**: 256
-    *   **Layers ($N_{layers}$)**: 6
+    *   **Layers ($N_{layers}$)**: 4 (Prototype) -> 6 (Production)
     *   **Attention Heads ($h$)**: 8
-    *   **Feed-Forward Network ($d_{ff}$)**: 1024
-    *   **Context Length**: 512 tokens (Max)
-    *   **Activation**: GELU
+    *   **Vocabulary Size**: 4096 (Implemented)
+    *   **Context Length**: 2048 tokens (Implemented)
 
     #### C. Hyperparameters (Search & Training)
     AIの強さを決定づける探索および学習パラメータのベースライン要件。
@@ -161,7 +154,9 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
 3.  [Status: Done] **Execution Logic Debugging**: `PipelineExecutor` を介したアクション実行ロジックの修正が完了し、統合テストがパスすることを確認しました。
 4.  [Status: Done] **Memory Management**: `GameState` や `GameCommand` の所有権管理（`shared_ptr`）を一貫させ、メモリリークのリスクを大幅に低減しました。
 5.  [Status: Done] **Architecture Switch**: `EffectResolver` の廃止により、`GameLogicSystem` と `PipelineExecutor` を中心としたコマンド実行アーキテクチャへの移行が完了しました。
-6.  [Status: WIP] **Transformer Verification**: 実装された `DuelTransformer` の学習パフォーマンス検証と、完全トークン化された入力特徴量への移行が進行中です。
+6.  [Status: Review] **Transformer Implementation**: `DuelTransformer` と `TokenConverter` の実装が完了し、基本動作確認（Verify）をパスしました。今後は学習パイプライン (`train_simple.py`) への組み込みと、大規模学習による性能評価が必要です。
+    *   **Issue 1: Perspective Logic**: 現在のトークナイザーは常にPlayer 1のカードを先にリストします。AIがPlayer 2としてプレイする場合の視点反転（Canonical View）の実装が必要です。
+    *   **Issue 2: Token Spacing**: 一部のGlobal Feature（マナ数とシールド数など）のバケット範囲が隣接しており、モデルが混同する可能性があります（Positional Encodingで緩和されますが、明示的なスペーサートークン推奨）。
 7.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへのデータ移行と、`CommandSystem` を利用した新フォーマットでのカード定義・実行の本格運用。
 
 #### 新エンジン対応：Card Editor GUI構造の再定義
