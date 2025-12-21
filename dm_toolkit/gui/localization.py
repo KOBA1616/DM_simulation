@@ -181,13 +181,28 @@ TRANSLATIONS = {
     "To Zone": "移動先ゾーン",
     "Optional (Arbitrary Amount)": "任意 (任意数)",
     "Query Mode": "クエリモード",
-    "TRANSITION": "移動 (TRANSITION)",
-    "MUTATE": "変異 (MUTATE)",
-    "FLOW": "フロー制御",
-    "QUERY": "クエリ (QUERY)",
+    "TRANSITION": "カード移動",
+    "MUTATE": "状態変更",
+    "FLOW": "進行制御",
+    "QUERY": "クエリ発行",
+    "DECIDE": "決定",
+    "DECLARE_REACTION": "リアクション宣言",
+    "STAT": "統計更新",
+    "GAME_RESULT": "ゲーム終了",
     "POWER_MOD": "パワー修正",
     "ADD_KEYWORD": "キーワード付与",
     "MANA_CHARGE": "マナチャージ",
+    "PHASE_CHANGE": "フェーズ移行",
+    "TURN_CHANGE": "ターン変更",
+    "SET_ACTIVE_PLAYER": "手番変更",
+    "CARDS_DRAWN": "ドロー枚数",
+    "CARDS_DISCARDED": "手札破棄枚数",
+    "CREATURES_PLAYED": "クリーチャープレイ数",
+    "SPELLS_CAST": "呪文詠唱数",
+    "P1_WIN": "P1勝利",
+    "P2_WIN": "P2勝利",
+    "DRAW": "引き分け",
+    "NONE": "なし",
 }
 
 # Add Enum mappings if module is available
@@ -290,11 +305,55 @@ if m:
         m.TargetScope.NONE: "なし",
     })
 
-    # String Values that were keys (kept for compatibility or mapped to Enum str?)
-    # ...
+    # Command Types
+    TRANSLATIONS.update({
+        m.CommandType.TRANSITION: "カード移動",
+        m.CommandType.MUTATE: "状態変更",
+        m.CommandType.FLOW: "進行制御",
+        m.CommandType.QUERY: "クエリ発行",
+        m.CommandType.DECIDE: "決定",
+        m.CommandType.DECLARE_REACTION: "リアクション宣言",
+        m.CommandType.STAT: "統計更新",
+        m.CommandType.GAME_RESULT: "ゲーム終了",
+    })
+
+    # Flow Types
+    TRANSLATIONS.update({
+        m.FlowType.PHASE_CHANGE: "フェーズ移行",
+        m.FlowType.TURN_CHANGE: "ターン変更",
+        m.FlowType.SET_ACTIVE_PLAYER: "手番変更",
+    })
+
+    # Mutation Types
+    TRANSLATIONS.update({
+        m.MutationType.TAP: "タップ",
+        m.MutationType.UNTAP: "アンタップ",
+        m.MutationType.POWER_MOD: "パワー修正",
+        m.MutationType.ADD_KEYWORD: "キーワード付与",
+        m.MutationType.REMOVE_KEYWORD: "キーワード削除",
+        m.MutationType.ADD_PASSIVE_EFFECT: "パッシブ効果付与",
+        m.MutationType.ADD_COST_MODIFIER: "コスト修正付与",
+        m.MutationType.ADD_PENDING_EFFECT: "待機効果追加",
+    })
+
+    # Stat Types
+    TRANSLATIONS.update({
+        m.StatType.CARDS_DRAWN: "ドロー枚数",
+        m.StatType.CARDS_DISCARDED: "手札破棄枚数",
+        m.StatType.CREATURES_PLAYED: "クリーチャープレイ数",
+        m.StatType.SPELLS_CAST: "呪文詠唱数",
+    })
+
+    # Game Result
+    TRANSLATIONS.update({
+        m.GameResult.NONE: "なし",
+        m.GameResult.P1_WIN: "P1勝利",
+        m.GameResult.P2_WIN: "P2勝利",
+        m.GameResult.DRAW: "引き分け",
+    })
 
     # Also keep string keys for Enums for backward compatibility or serialization
-    for enum_cls in [m.ActionType, m.EffectActionType, m.TriggerType, m.Civilization, m.Zone, m.TargetScope]:
+    for enum_cls in [m.ActionType, m.EffectActionType, m.TriggerType, m.Civilization, m.Zone, m.TargetScope, m.CommandType, m.FlowType, m.MutationType, m.StatType, m.GameResult]:
         for member in enum_cls.__members__.values():
             if member in TRANSLATIONS:
                 TRANSLATIONS[member.name] = TRANSLATIONS[member]
@@ -353,3 +412,74 @@ def get_card_civilization(card_data) -> str:
     if civs:
         return civs[0]
     return "COLORLESS"
+
+def get_card_name_by_instance(game_state, card_db, instance_id: int) -> str:
+    if not game_state or not m: return f"Inst_{instance_id}"
+
+    try:
+        # Assuming GameState has get_card_instance exposed
+        inst = game_state.get_card_instance(instance_id)
+        if inst:
+            card_id = inst.card_id
+            if card_id in card_db:
+                return card_db[card_id].name
+    except Exception:
+        pass
+
+    return f"Inst_{instance_id}"
+
+def describe_command(cmd, game_state, card_db) -> str:
+    """Generate a localized string description for a GameCommand."""
+    if not m: return "GameCommand (Module not loaded)"
+
+    cmd_type = cmd.get_type()
+
+    if cmd_type == m.CommandType.TRANSITION:
+        # TransitionCommand
+        c = cmd
+        name = get_card_name_by_instance(game_state, card_db, c.card_instance_id)
+        return f"[{tr('TRANSITION')}] {name} (P{c.owner_id}): {tr(c.from_zone)} -> {tr(c.to_zone)}"
+
+    elif cmd_type == m.CommandType.MUTATE:
+        # MutateCommand
+        c = cmd
+        name = get_card_name_by_instance(game_state, card_db, c.target_instance_id)
+        mutation = tr(c.mutation_type)
+        val = ""
+        if c.mutation_type == m.MutationType.POWER_MOD:
+            val = f"{c.int_value:+}"
+        elif c.mutation_type == m.MutationType.ADD_KEYWORD:
+            val = c.str_value
+
+        return f"[{tr('MUTATE')}] {name}: {mutation} {val}".strip()
+
+    elif cmd_type == m.CommandType.FLOW:
+        # FlowCommand
+        c = cmd
+        flow = tr(c.flow_type)
+        val = c.new_value
+        if c.flow_type == m.FlowType.PHASE_CHANGE:
+            # Cast int to Phase enum if possible
+            try:
+                val = tr(m.Phase(c.new_value))
+            except:
+                pass
+        return f"[{tr('FLOW')}] {flow}: {val}"
+
+    elif cmd_type == m.CommandType.QUERY:
+         c = cmd
+         return f"[{tr('QUERY')}] {c.query_type}"
+
+    elif cmd_type == m.CommandType.DECIDE:
+         c = cmd
+         return f"[{tr('DECIDE')}] Opt: {c.selected_option_index}, Targets: {len(c.selected_indices)}"
+
+    elif cmd_type == m.CommandType.STAT:
+        c = cmd
+        return f"[{tr('STAT')}] {tr(c.stat)} += {c.amount}"
+
+    elif cmd_type == m.CommandType.GAME_RESULT:
+        c = cmd
+        return f"[{tr('GAME_RESULT')}] {tr(c.result)}"
+
+    return f"Command: {cmd_type}"
