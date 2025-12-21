@@ -26,16 +26,33 @@ namespace dm::engine {
         bool check_restriction(const dm::core::GameState& game_state, const dm::core::CardInstance& card, dm::core::PassiveType restriction_type, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             for (const auto& eff : game_state.passive_effects) {
                 if (eff.type == restriction_type) {
-                    if (card_db.count(card.card_id)) {
-                        const auto& def = card_db.at(card.card_id);
-                        dm::core::PlayerID controller = 0;
-                        if (card.instance_id < (int)game_state.card_owner_map.size()) {
-                            controller = game_state.card_owner_map[card.instance_id];
-                        }
+                    bool restricted = false;
 
-                        if (TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, controller)) {
-                            return true; // Restricted
+                    // Check specific targets first
+                    if (eff.specific_targets.has_value() && !eff.specific_targets->empty()) {
+                        for (int id : *eff.specific_targets) {
+                            if (id == card.instance_id) {
+                                restricted = true;
+                                break;
+                            }
                         }
+                    } else {
+                        // Check filter
+                        if (card_db.count(card.card_id)) {
+                            const auto& def = card_db.at(card.card_id);
+                            dm::core::PlayerID controller = 0;
+                            if (card.instance_id < (int)game_state.card_owner_map.size()) {
+                                controller = game_state.card_owner_map[card.instance_id];
+                            }
+
+                            if (TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, controller)) {
+                                restricted = true;
+                            }
+                        }
+                    }
+
+                    if (restricted) {
+                        return true;
                     }
                 }
                 // Lock Spells by Cost
