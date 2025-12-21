@@ -59,6 +59,16 @@ class CardTextGenerator:
         "no_choice": "選ばれない"
     }
 
+    PHASE_MAP = {
+        0: "ターン開始",
+        1: "ドロー",
+        2: "マナ",
+        3: "メイン",
+        4: "攻撃",
+        5: "ブロック",
+        6: "ターン終了"
+    }
+
     ACTION_MAP = {
         "DRAW_CARD": "カードを{value1}枚引く。",
         "ADD_MANA": "自分の山札の上から{value1}枚をマナゾーンに置く。",
@@ -108,6 +118,8 @@ class CardTextGenerator:
         "MUTATE": "{target}の状態を変更する。", # Fallback
         "FLOW": "進行制御: {str_param}",
         "QUERY": "クエリ発行: {query_mode}",
+        "ATTACH": "{target}を{base_target}の下に重ねる。",
+        "GAME_RESULT": "ゲームを終了する（{result}）。",
     }
 
     STAT_KEY_MAP = {
@@ -149,7 +161,9 @@ class CardTextGenerator:
                 civs_data = [civ_single]
         civs = cls._format_civs(civs_data)
 
-        type_str = tr(data.get("type", "CREATURE"))
+        # Use TYPE_MAP for translation
+        raw_type = data.get("type", "CREATURE")
+        type_str = cls.TYPE_MAP.get(raw_type, tr(raw_type))
         races = " / ".join(data.get("races", []))
 
         header = f"【{name}】 {civs} コスト{cost}"
@@ -592,6 +606,16 @@ class CardTextGenerator:
              elif mkind == "REMOVE_KEYWORD":
                  keyword = cls.KEYWORD_TRANSLATION.get(str_param.lower(), str_param)
                  return f"{target_str}の「{keyword}」を無視する。"
+             elif mkind == "ADD_PASSIVE_EFFECT" or mkind == "ADD_MODIFIER":
+                 # Use str_param if available to describe what is added
+                 if str_param:
+                     kw = cls.KEYWORD_TRANSLATION.get(str_param.lower(), str_param)
+                     # Check if it looks like a keyword (standard mapping) or generic
+                     return f"{target_str}に「{kw}」を与える。"
+                 else:
+                     return f"{target_str}にパッシブ効果を与える。"
+             elif mkind == "ADD_COST_MODIFIER":
+                 return f"{target_str}にコスト修正を追加する。"
              else:
                  template = f"状態変更({mkind}): {{target}} (値:{val1})"
 
@@ -600,7 +624,27 @@ class CardTextGenerator:
                  val1 = ""
 
         elif atype == "FLOW":
-             return f"進行制御: {action.get('str_param', '')}"
+             ftype = action.get("flow_type", "")
+             val1 = action.get("value1", 0) # Often raw int
+
+             if ftype == "PHASE_CHANGE":
+                 phase_name = cls.PHASE_MAP.get(val1, str(val1))
+                 return f"{phase_name}フェーズへ移行する。"
+             elif ftype == "TURN_CHANGE":
+                 return f"ターンを終了する。"
+             elif ftype == "SET_ACTIVE_PLAYER":
+                 return f"手番を変更する。"
+
+             return f"進行制御({tr(ftype)}): {val1}"
+
+        elif atype == "GAME_RESULT":
+             res = action.get("result", "")
+             return f"ゲームを終了する（{tr(res)}）。"
+
+        elif atype == "ATTACH":
+            # Resolving base target might be tricky without a full "base_target" definition in Action,
+            # usually ATTACH targets an existing card.
+            return f"{target_str}をカードの下に重ねる。"
 
         if not template:
             return f"({tr(atype)})"
@@ -687,6 +731,11 @@ class CardTextGenerator:
 
         if "{filter}" in text:
              text = text.replace("{filter}", target_str)
+
+        if "{result}" in text:
+             # Handle result replacement if not done yet
+             res = action.get("result", "")
+             text = text.replace("{result}", tr(res))
 
         if atype == "COST_REDUCTION":
             if target_str == "カード" or target_str == "自分のカード":
