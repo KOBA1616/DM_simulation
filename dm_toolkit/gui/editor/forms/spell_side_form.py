@@ -23,21 +23,20 @@ class SpellSideForm(BaseEditForm):
 
         # Name
         self.name_edit = QLineEdit()
+        self.connect_signal(self.name_edit, self.name_edit.textChanged, self.update_data)
         self.form_layout.addRow(tr("Name"), self.name_edit)
 
         # Civilization
         self.civ_selector = CivilizationSelector()
+        self.register_widget(self.civ_selector)
         self.civ_selector.changed.connect(self.update_data)
         self.form_layout.addRow(tr("Civilization"), self.civ_selector)
 
         # Cost
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
+        self.connect_signal(self.cost_spin, self.cost_spin.valueChanged, self.update_data)
         self.form_layout.addRow(tr("Cost"), self.cost_spin)
-
-        # Connect signals
-        self.name_edit.textChanged.connect(self.update_data)
-        self.cost_spin.valueChanged.connect(self.update_data)
 
         main_layout.addStretch()
 
@@ -66,8 +65,3 @@ class SpellSideForm(BaseEditForm):
 
     def _get_display_text(self, data):
         return f"{tr('Spell Side')}: {data.get('name', '')}"
-
-    def block_signals_all(self, block):
-        self.name_edit.blockSignals(block)
-        self.civ_selector.blockSignals(block)
-        self.cost_spin.blockSignals(block)

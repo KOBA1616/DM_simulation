@@ -42,11 +42,12 @@ class CardEditForm(BaseEditForm):
         # Twinpact Checkbox
         self.twinpact_check = QCheckBox(tr("Is Twinpact?"))
         self.twinpact_check.setToolTip(tr("Enable to generate a Spell Side node in the logic tree."))
-        self.twinpact_check.stateChanged.connect(self.toggle_twinpact)
+        self.connect_signal(self.twinpact_check, self.twinpact_check.stateChanged, self.toggle_twinpact)
         self.form_layout.addRow(tr("Twinpact"), self.twinpact_check)
 
         # Civilization
         self.civ_selector = CivilizationSelector()
+        self.register_widget(self.civ_selector)
         self.civ_selector.changed.connect(self.update_data)
         self.form_layout.addRow(tr("Civilization"), self.civ_selector)
 
@@ -84,12 +85,12 @@ class CardEditForm(BaseEditForm):
         ai_layout = QFormLayout(ai_group)
 
         self.is_key_card_check = QCheckBox(tr("Is Key Card / Combo Piece"))
-        self.is_key_card_check.stateChanged.connect(self.update_data)
+        self.connect_signal(self.is_key_card_check, self.is_key_card_check.stateChanged, self.update_data)
         ai_layout.addRow(self.is_key_card_check)
 
         self.ai_importance_spin = QSpinBox()
         self.ai_importance_spin.setRange(0, 1000)
-        self.ai_importance_spin.valueChanged.connect(self.update_data)
+        self.connect_signal(self.ai_importance_spin, self.ai_importance_spin.valueChanged, self.update_data)
         ai_layout.addRow(tr("AI Importance Score"), self.ai_importance_spin)
 
         self.form_layout.addRow(ai_group)
@@ -105,13 +106,13 @@ class CardEditForm(BaseEditForm):
         self.form_layout.addRow(actions_group)
 
         # Connect signals
-        self.id_spin.valueChanged.connect(self.update_data)
-        self.name_edit.textChanged.connect(self.update_data)
-        self.type_combo.currentIndexChanged.connect(self.update_data)
-        self.cost_spin.valueChanged.connect(self.update_data)
-        self.power_spin.valueChanged.connect(self.update_data)
-        self.races_edit.textChanged.connect(self.update_data)
-        self.evolution_condition_edit.textChanged.connect(self.update_data)
+        self.connect_signal(self.id_spin, self.id_spin.valueChanged, self.update_data)
+        self.connect_signal(self.name_edit, self.name_edit.textChanged, self.update_data)
+        self.connect_signal(self.type_combo, self.type_combo.currentIndexChanged, self.update_data)
+        self.connect_signal(self.cost_spin, self.cost_spin.valueChanged, self.update_data)
+        self.connect_signal(self.power_spin, self.power_spin.valueChanged, self.update_data)
+        self.connect_signal(self.races_edit, self.races_edit.textChanged, self.update_data)
+        self.connect_signal(self.evolution_condition_edit, self.evolution_condition_edit.textChanged, self.update_data)
 
         # Initialize visibility
         self.update_type_visibility(self.type_combo.currentData())
@@ -232,16 +233,3 @@ class CardEditForm(BaseEditForm):
 
     def _get_display_text(self, data):
         return f"{data.get('id', 0)} - {data.get('name', '')}"
-
-    def block_signals_all(self, block):
-        self.id_spin.blockSignals(block)
-        self.name_edit.blockSignals(block)
-        self.civ_selector.blockSignals(block)
-        self.type_combo.blockSignals(block)
-        self.cost_spin.blockSignals(block)
-        self.power_spin.blockSignals(block)
-        self.races_edit.blockSignals(block)
-        self.evolution_condition_edit.blockSignals(block)
-        self.twinpact_check.blockSignals(block)
-        self.is_key_card_check.blockSignals(block)
-        self.ai_importance_spin.blockSignals(block)

@@ -55,7 +55,7 @@ class KeywordEditForm(BaseEditForm):
             cb = QCheckBox(tr(kw_map.get(k, k)))
             kw_layout.addWidget(cb, row, col)
             self.keyword_checks[k] = cb
-            cb.stateChanged.connect(self.update_data)
+            self.connect_signal(cb, cb.stateChanged, self.update_data)
 
             col += 1
             if col > 2: # 3 columns
@@ -71,7 +71,7 @@ class KeywordEditForm(BaseEditForm):
         # Revolution Change
         self.rev_change_check = QCheckBox(tr("Revolution Change"))
         self.rev_change_check.setToolTip(tr("Enable Revolution Change to generate the necessary logic tree structure."))
-        self.rev_change_check.stateChanged.connect(self.toggle_rev_change)
+        self.connect_signal(self.rev_change_check, self.rev_change_check.stateChanged, self.toggle_rev_change)
         special_layout.addWidget(self.rev_change_check)
 
         main_layout.addWidget(special_group)
@@ -132,8 +132,3 @@ class KeywordEditForm(BaseEditForm):
 
     def _get_display_text(self, data):
         return tr("Keywords")
-
-    def block_signals_all(self, block):
-        for cb in self.keyword_checks.values():
-            cb.blockSignals(block)
-        self.rev_change_check.blockSignals(block)

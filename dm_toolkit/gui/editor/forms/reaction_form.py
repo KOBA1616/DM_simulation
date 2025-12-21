@@ -21,7 +21,7 @@ class ReactionEditForm(BaseEditForm):
         # Type
         self.type_combo = QComboBox()
         self.type_combo.addItems(["NONE", "NINJA_STRIKE", "STRIKE_BACK", "REVOLUTION_0_TRIGGER"])
-        self.type_combo.currentIndexChanged.connect(self.update_data)
+        self.connect_signal(self.type_combo, self.type_combo.currentIndexChanged, self.update_data)
         self.type_combo.currentIndexChanged.connect(self.update_visibility)
         layout.addRow(tr("Type"), self.type_combo)
 
@@ -29,14 +29,14 @@ class ReactionEditForm(BaseEditForm):
         self.label_cost = QLabel(tr("Cost / Requirement"))
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
-        self.cost_spin.valueChanged.connect(self.update_data)
+        self.connect_signal(self.cost_spin, self.cost_spin.valueChanged, self.update_data)
         layout.addRow(self.label_cost, self.cost_spin)
 
         # Zone
         self.label_zone = QLabel(tr("Zone"))
         self.zone_edit = QComboBox()
         self.zone_edit.addItems(["HAND", "GRAVEYARD", "MANA_ZONE"])
-        self.zone_edit.currentTextChanged.connect(self.update_data)
+        self.connect_signal(self.zone_edit, self.zone_edit.currentTextChanged, self.update_data)
         layout.addRow(self.label_zone, self.zone_edit)
 
         # Condition Group
@@ -46,21 +46,21 @@ class ReactionEditForm(BaseEditForm):
         self.label_trigger = QLabel(tr("Trigger Event"))
         self.trigger_event_combo = QComboBox()
         self.trigger_event_combo.addItems(["NONE", "ON_BLOCK_OR_ATTACK", "ON_SHIELD_ADD", "ON_ATTACK_PLAYER"])
-        self.trigger_event_combo.currentTextChanged.connect(self.update_data)
+        self.connect_signal(self.trigger_event_combo, self.trigger_event_combo.currentTextChanged, self.update_data)
         cond_layout.addRow(self.label_trigger, self.trigger_event_combo)
 
         self.civ_match_check = QCheckBox(tr("Civilization Match Required"))
-        self.civ_match_check.stateChanged.connect(self.update_data)
+        self.connect_signal(self.civ_match_check, self.civ_match_check.stateChanged, self.update_data)
         cond_layout.addRow(self.civ_match_check)
 
         self.shield_civ_match_check = QCheckBox(tr("Same Civilization Shield Required"))
-        self.shield_civ_match_check.stateChanged.connect(self.update_data)
+        self.connect_signal(self.shield_civ_match_check, self.shield_civ_match_check.stateChanged, self.update_data)
         cond_layout.addRow(self.shield_civ_match_check)
 
         self.label_mana = QLabel(tr("Min Mana Required"))
         self.mana_min_spin = QSpinBox()
         self.mana_min_spin.setRange(0, 99)
-        self.mana_min_spin.valueChanged.connect(self.update_data)
+        self.connect_signal(self.mana_min_spin, self.mana_min_spin.valueChanged, self.update_data)
         cond_layout.addRow(self.label_mana, self.mana_min_spin)
 
         layout.addRow(self.cond_group)
@@ -122,15 +122,6 @@ class ReactionEditForm(BaseEditForm):
 
     def _get_display_text(self, data):
         return f"{tr('Reaction Ability')}: {data.get('type', 'NONE')}"
-
-    def block_signals_all(self, block):
-        self.type_combo.blockSignals(block)
-        self.cost_spin.blockSignals(block)
-        self.zone_edit.blockSignals(block)
-        self.trigger_event_combo.blockSignals(block)
-        self.civ_match_check.blockSignals(block)
-        self.shield_civ_match_check.blockSignals(block)
-        self.mana_min_spin.blockSignals(block)
 
     def set_combo_text(self, combo, text):
         idx = combo.findText(text)

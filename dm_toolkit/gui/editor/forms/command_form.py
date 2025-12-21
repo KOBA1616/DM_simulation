@@ -130,6 +130,7 @@ class CommandEditForm(BaseEditForm):
         # Filter
         self.filter_group = QGroupBox(tr("Target Filter"))
         self.filter_widget = FilterEditorWidget()
+        self.register_widget(self.filter_widget)
         fg_layout = QVBoxLayout(self.filter_group)
         fg_layout.addWidget(self.filter_widget)
         self.filter_widget.filterChanged.connect(self.update_data)
@@ -147,20 +148,21 @@ class CommandEditForm(BaseEditForm):
 
         # Variable Linking
         self.link_widget = VariableLinkWidget()
+        self.register_widget(self.link_widget)
         self.link_widget.linkChanged.connect(self.update_data)
         self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed)
         layout.addRow(self.link_widget)
 
         # Signals
-        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
-        self.target_group_combo.currentIndexChanged.connect(self.update_data)
-        self.mutation_kind_edit.textChanged.connect(self.update_data)
-        self.str_param_edit.textChanged.connect(self.update_data)
-        self.amount_spin.valueChanged.connect(self.update_data)
-        self.optional_check.stateChanged.connect(self.update_data)
-        self.from_zone_combo.currentIndexChanged.connect(self.update_data)
-        self.to_zone_combo.currentIndexChanged.connect(self.update_data)
-        self.query_mode_combo.currentIndexChanged.connect(self.on_query_mode_changed)
+        self.connect_signal(self.type_combo, self.type_combo.currentIndexChanged, self.on_type_changed)
+        self.connect_signal(self.target_group_combo, self.target_group_combo.currentIndexChanged, self.update_data)
+        self.connect_signal(self.mutation_kind_edit, self.mutation_kind_edit.textChanged, self.update_data)
+        self.connect_signal(self.str_param_edit, self.str_param_edit.textChanged, self.update_data)
+        self.connect_signal(self.amount_spin, self.amount_spin.valueChanged, self.update_data)
+        self.connect_signal(self.optional_check, self.optional_check.stateChanged, self.update_data)
+        self.connect_signal(self.from_zone_combo, self.from_zone_combo.currentIndexChanged, self.update_data)
+        self.connect_signal(self.to_zone_combo, self.to_zone_combo.currentIndexChanged, self.update_data)
+        self.connect_signal(self.query_mode_combo, self.query_mode_combo.currentIndexChanged, self.on_query_mode_changed)
 
         self.update_ui_state(self.type_combo.currentData())
 
@@ -311,16 +313,3 @@ class CommandEditForm(BaseEditForm):
                   row = self.current_item.row()
                   out_key = f"var_{cmd_type}_{row}"
                   data['output_value_key'] = out_key
-
-    def block_signals_all(self, block):
-        self.type_combo.blockSignals(block)
-        self.target_group_combo.blockSignals(block)
-        self.amount_spin.blockSignals(block)
-        self.mutation_kind_edit.blockSignals(block)
-        self.str_param_edit.blockSignals(block)
-        self.optional_check.blockSignals(block)
-        self.from_zone_combo.blockSignals(block)
-        self.to_zone_combo.blockSignals(block)
-        self.query_mode_combo.blockSignals(block)
-        self.filter_widget.blockSignals(block)
-        self.link_widget.blockSignals(block)
