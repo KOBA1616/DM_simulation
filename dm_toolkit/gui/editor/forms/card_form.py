@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QLineEdit, QComboBox, QSpinBox,
-    QCheckBox, QLabel, QGroupBox, QVBoxLayout, QScrollArea
+    QCheckBox, QLabel, QGroupBox, QVBoxLayout, QScrollArea,
+    QPushButton, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QCursor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
@@ -92,6 +94,16 @@ class CardEditForm(BaseEditForm):
 
         self.form_layout.addRow(ai_group)
 
+        # Actions Section
+        actions_group = QGroupBox(tr("Actions"))
+        actions_layout = QVBoxLayout(actions_group)
+
+        self.add_effect_btn = QPushButton(tr("Add Effect"))
+        self.add_effect_btn.clicked.connect(self.on_add_effect_clicked)
+        actions_layout.addWidget(self.add_effect_btn)
+
+        self.form_layout.addRow(actions_group)
+
         # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
@@ -103,6 +115,23 @@ class CardEditForm(BaseEditForm):
 
         # Initialize visibility
         self.update_type_visibility(self.type_combo.currentData())
+
+    def on_add_effect_clicked(self):
+        menu = QMenu(self)
+
+        kw_act = menu.addAction(tr("Keyword Ability"))
+        kw_act.triggered.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_EFFECT", {"type": "KEYWORDS"}))
+
+        trig_act = menu.addAction(tr("Triggered Ability"))
+        trig_act.triggered.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_EFFECT", {"type": "TRIGGERED"}))
+
+        static_act = menu.addAction(tr("Static Ability"))
+        static_act.triggered.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_EFFECT", {"type": "STATIC"}))
+
+        react_act = menu.addAction(tr("Reaction Ability"))
+        react_act.triggered.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_EFFECT", {"type": "REACTION"}))
+
+        menu.exec(QCursor.pos())
 
     def toggle_twinpact(self, state):
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
