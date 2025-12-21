@@ -268,6 +268,22 @@ TRANSLATIONS = {
     "Card Name": "カード名",
     "Unknown Card": "不明なカード",
     "Card effects will appear here...": "カード効果がここに表示されます...",
+    "Target Group": "対象グループ",
+    "Command Type": "コマンドタイプ",
+    "Mutation Kind": "変異種別 (Mutation Kind)",
+    "String Param": "文字列パラメータ",
+    "Amount": "量/数値",
+    "From Zone": "移動元ゾーン",
+    "To Zone": "移動先ゾーン",
+    "Optional (Arbitrary Amount)": "任意 (任意数)",
+    "Query Mode": "クエリモード",
+    "TRANSITION": "移動 (TRANSITION)",
+    "MUTATE": "変異 (MUTATE)",
+    "FLOW": "フロー制御",
+    "QUERY": "クエリ (QUERY)",
+    "POWER_MOD": "パワー修正",
+    "ADD_KEYWORD": "キーワード付与",
+    "MANA_CHARGE": "マナチャージ",
 }
 
 def translate(key: str) -> str:
