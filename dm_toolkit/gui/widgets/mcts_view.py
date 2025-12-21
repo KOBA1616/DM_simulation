@@ -12,7 +12,7 @@ class MCTSView(QWidget):
         layout = QVBoxLayout(self)
         
         # Show the current MCTS processing status
-        self.label = QLabel("AI\x8ev\x8dl\x83v\x83\x8d\x83Z\x83X (MCTS)")
+        self.label = QLabel("AI思考プロセス (MCTS)")
         self.label.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.label)
         
@@ -21,20 +21,20 @@ class MCTSView(QWidget):
         
         # Tab 1: Tree Table
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["\x83A\x83N\x83V\x83\x87\x83\x93", "\x96K\x96\xe2\x89\xf1\x90\x94", "\x95]\x89\xbf\x92l (Q)", "\x97D\x90\xe6\x93x (P)"])
+        self.tree.setHeaderLabels(["アクション", "訪問回数", "評価値 (Q)", "優先度 (P)"])
         header = self.tree.header()
         if header:
             header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.tree.setColumnWidth(0, 200)
-        self.tabs.addTab(self.tree, "\x83e\x81[\x83u\x83\x8b\x95\\x8e\xa6")
+        self.tabs.addTab(self.tree, "テーブル表示")
         
         # Tab 2: Graph View
         self.graph_view = MCTSGraphView()
-        self.tabs.addTab(self.graph_view, "\x83O\x83\x89\x83t\x95\\x8e\xa6")
+        self.tabs.addTab(self.graph_view, "グラフ表示")
         
         self.win_rate_bar = QProgressBar()
         self.win_rate_bar.setRange(0, 100)
-        self.win_rate_bar.setFormat("\x8f\x9f\x97\xa6\x97\\x91\xaa: %p%")
+        self.win_rate_bar.setFormat("勝率予測: %p%")
         layout.addWidget(self.win_rate_bar)
 
     def update_from_data(self, tree_data):
