@@ -86,7 +86,7 @@ namespace dm::engine {
         }
 
     private:
-        void apply_modifier(const ResolutionContext& ctx, [[maybe_unused]] const std::vector<int>* targets) {
+        void apply_modifier(const ResolutionContext& ctx, const std::vector<int>* targets) {
             using namespace dm::core;
             using namespace dm::engine::game_command;
 
@@ -94,6 +94,24 @@ namespace dm::engine {
             if (!ctx.action.input_value_key.empty() && ctx.execution_vars.count(ctx.action.input_value_key)) {
                 value = ctx.execution_vars.at(ctx.action.input_value_key);
             }
+
+            auto create_passive = [&](PassiveType type, int val = 0) {
+                PassiveEffect eff;
+                eff.type = type;
+                eff.value = val;
+                eff.target_filter = ctx.action.filter;
+                if (targets && !targets->empty()) {
+                    eff.specific_targets = *targets;
+                }
+                eff.source_instance_id = ctx.source_instance_id;
+                eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
+
+                auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
+                cmd->passive_effect = eff;
+                cmd->execute(ctx.game_state);
+                ctx.game_state.command_history.push_back(std::move(cmd));
+            };
 
             if (ctx.action.str_val == "COST") {
                  CostModifier mod;
@@ -110,31 +128,16 @@ namespace dm::engine {
                  ctx.game_state.command_history.push_back(std::move(cmd));
 
             } else if (ctx.action.str_val == "LOCK_SPELL") {
-                PassiveEffect eff;
-                eff.type = PassiveType::CANNOT_USE_SPELLS;
-                eff.target_filter = ctx.action.filter;
-                eff.source_instance_id = ctx.source_instance_id;
-                eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
-                eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
-
-                auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
-                cmd->passive_effect = eff;
-                cmd->execute(ctx.game_state);
-                ctx.game_state.command_history.push_back(std::move(cmd));
-
+                create_passive(PassiveType::CANNOT_USE_SPELLS);
             } else if (ctx.action.str_val == "POWER") {
-                PassiveEffect eff;
-                eff.type = PassiveType::POWER_MODIFIER;
-                eff.value = value;
-                eff.target_filter = ctx.action.filter;
-                eff.source_instance_id = ctx.source_instance_id;
-                eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
-                eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
-
-                auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
-                cmd->passive_effect = eff;
-                cmd->execute(ctx.game_state);
-                ctx.game_state.command_history.push_back(std::move(cmd));
+                create_passive(PassiveType::POWER_MODIFIER, value);
+            } else if (ctx.action.str_val == "CANNOT_ATTACK") {
+                create_passive(PassiveType::CANNOT_ATTACK);
+            } else if (ctx.action.str_val == "CANNOT_BLOCK") {
+                create_passive(PassiveType::CANNOT_BLOCK);
+            } else if (ctx.action.str_val == "CANNOT_ATTACK_OR_BLOCK") {
+                create_passive(PassiveType::CANNOT_ATTACK);
+                create_passive(PassiveType::CANNOT_BLOCK);
             }
         }
     };
