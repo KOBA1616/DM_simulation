@@ -3,6 +3,8 @@
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/game_logic_system.hpp"
+#include <set>
+#include <stdexcept>
 
 namespace dm::engine {
 
@@ -31,6 +33,39 @@ namespace dm::engine {
              if (!ctx.targets) return;
 
              if (ctx.action.type == EffectActionType::COST_REFERENCE && ctx.action.str_val == "FINISH_HYPER_ENERGY") {
+                 std::set<int> seen_costs;
+                 bool valid_costs = true;
+
+                 for (int tid : *ctx.targets) {
+                    int card_id = -1;
+                    bool found = false;
+                    for (const auto &p : ctx.game_state.players) {
+                        for (const auto& c : p.battle_zone) {
+                            if (c.instance_id == tid) {
+                                card_id = c.card_id;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+
+                    if (found && card_id != -1) {
+                        if (ctx.card_db.count(card_id)) {
+                             int cost = ctx.card_db.at(card_id).cost;
+                             if (seen_costs.count(cost)) {
+                                 valid_costs = false;
+                                 break;
+                             }
+                             seen_costs.insert(cost);
+                        }
+                    }
+                 }
+
+                 if (!valid_costs) {
+                     throw std::runtime_error("Hyper Energy requires creatures with different costs.");
+                 }
+
                  for (int tid : *ctx.targets) {
                      for (auto &p : ctx.game_state.players) {
                           auto it = std::find_if(p.battle_zone.begin(), p.battle_zone.end(),
