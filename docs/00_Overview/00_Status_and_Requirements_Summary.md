@@ -178,3 +178,24 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
           └── Action Sequence
                └─ (Summon, Cast, etc.)
     ```
+
+## 5. テスト標準と運用要件 (Standard Testing Requirements)
+
+本プロジェクトの品質を担保するため、以下のテスト群を標準テストスイートとして定義し、開発プロセスにおいて必ず実行・維持するものとします。
+
+### 5.1 ユニットテスト (Unit Tests)
+C++エンジン、バインディング、および基本ルールロジックの整合性を検証します。
+*   **実行コマンド**: `pytest tests/`
+*   **必須パス基準**: `tests/test_*.py` に分類される全てのテストケース。
+
+### 5.2 シナリオ検証 (Scenario & Integration)
+複雑な盤面状態や特定のメカニクス（Lethal、ループ、特殊勝利）を検証する統合テストです。
+*   `tests/verify_lethal_puzzle.py`: 詰将棋的なリーサル計算の正確性検証。
+*   `tests/verify_pipeline_spell.py`: 呪文処理パイプラインの動作検証。
+*   `tests/verify_trigger_system.py`: トリガー連鎖および解決順序の検証。
+*   `tests/verify_performance.py`: AI思考エンジンの動作確認および基本パフォーマンス計測。
+
+### 5.3 運用ルール (Operational Rules)
+1.  **コミット前検証**: 変更を加えた際は、関連するユニットテストおよび `pytest` 全体を実行し、回帰（Regression）がないことを確認する。
+2.  **バインディング追従**: C++側のAPI変更を行った場合、即座にPythonバインディングを更新し、`test_binding.py` 等で不整合がないか確認する。
+3.  **ドキュメント更新**: テスト環境や実行方法に変更があった場合、本ドキュメントおよび `AGENTS.md` を更新する。
