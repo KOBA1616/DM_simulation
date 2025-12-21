@@ -9,6 +9,8 @@ from PyQt6.QtGui import QCursor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
+from dm_toolkit.gui.editor.wizards.revolution_wizard import RevolutionChangeWizard
+from dm_toolkit.gui.editor.wizards.hyper_energy_wizard import HyperEnergyWizard
 
 class CardEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree
@@ -95,6 +97,11 @@ class CardEditForm(BaseEditForm):
         actions_group = QGroupBox(tr("Actions"))
         actions_layout = QVBoxLayout(actions_group)
 
+        # Wizards Button
+        self.btn_wizards = QPushButton(tr("Wizard: Add Advanced Mechanic"))
+        self.btn_wizards.clicked.connect(self.on_wizards_clicked)
+        actions_layout.addWidget(self.btn_wizards)
+
         self.add_effect_btn = QPushButton(tr("Add Effect"))
         self.add_effect_btn.clicked.connect(self.on_add_effect_clicked)
         actions_layout.addWidget(self.add_effect_btn)
@@ -111,9 +118,6 @@ class CardEditForm(BaseEditForm):
             'evolution_condition': self.evolution_condition_edit,
             'is_key_card': self.is_key_card_check,
             'ai_importance_score': self.ai_importance_spin
-            # 'civilizations': self.civ_selector, # Custom widget, handled manually or via duck typing set_data/get_data?
-            # CivilizationSelector has set_selected_civs and get_selected_civs. Not standard.
-            # 'races': handled manually (list vs string)
         }
 
         # Connect signals
@@ -144,6 +148,35 @@ class CardEditForm(BaseEditForm):
         react_act.triggered.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_EFFECT", {"type": "REACTION"}))
 
         menu.exec(QCursor.pos())
+
+    def on_wizards_clicked(self):
+        menu = QMenu(self)
+
+        # Revolution Change Wizard
+        rev_act = menu.addAction(tr("Revolution Change"))
+        rev_act.triggered.connect(self.open_revolution_wizard)
+
+        # Hyper Energy Wizard
+        hyper_act = menu.addAction(tr("Hyper Energy"))
+        hyper_act.triggered.connect(self.open_hyper_energy_wizard)
+
+        menu.exec(QCursor.pos())
+
+    def open_revolution_wizard(self):
+        dlg = RevolutionChangeWizard(self)
+        if dlg.exec():
+            data = dlg.get_data()
+            if data:
+                # Request DataManager to implement the structure
+                self.structure_update_requested.emit("WIZARD_REVOLUTION_CHANGE", data)
+
+    def open_hyper_energy_wizard(self):
+        dlg = HyperEnergyWizard(self)
+        if dlg.exec():
+            data = dlg.get_data()
+            if data:
+                # Request DataManager to set the keyword
+                self.structure_update_requested.emit("WIZARD_HYPER_ENERGY", data)
 
     def toggle_twinpact(self, state):
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
@@ -218,11 +251,6 @@ class CardEditForm(BaseEditForm):
         if not (type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE"):
              if 'evolution_condition' in data:
                  del data['evolution_condition']
-
-        # Keywords are now handled by KeywordEditForm, but we must ensure we don't accidentally wipe them?
-        # No, update_data reads from UI and writes to 'data' dict reference.
-        # Since Keyword form is separate, we only touch non-keyword data here.
-        # EXCEPT for auto-setting evolution keyword?
 
         current_keywords = data.get('keywords', {})
         if type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE":

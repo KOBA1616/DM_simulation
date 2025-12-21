@@ -121,31 +121,19 @@ class TestCardEditorV2(unittest.TestCase):
         card_item.setData("CARD", 256 + 1)
         card_item.setData(card_data, 256 + 2)
 
-        # IMPORTANT: The CardDataManager expects the CARD item to have 3 children:
-        # 1. Keywords
-        # 2. Group Trigger
-        # 3. Group Static
-        # 4. Group Reaction
-        # We must manually create them to simulate a valid card item, OR call _create_card_item logic.
-
-        # Let's manually add the structure expected by add_revolution_change_logic
-        trig_group = MockQStandardItem("Trigger Group")
-        trig_group.setData("GROUP_TRIGGER", 256 + 1)
-        card_item.appendRow(trig_group)
-
+        # In flattened structure, we don't need group nodes.
         self.root_item.appendRow(card_item)
 
         # Call logic
         self.manager.add_revolution_change_logic(card_item)
 
         # Verify Structure
-        # The card item now has 1 child (Trigger Group)
+        # The card item should now have at least 1 child (the effect).
+        # Note: In real usage, it might have KEYWORDS node too if created via _create_card_item,
+        # but here we manually created it empty.
         self.assertEqual(card_item.rowCount(), 1)
 
-        # The trigger group should have 1 child (the effect)
-        self.assertEqual(trig_group.rowCount(), 1)
-
-        eff_item = trig_group.child(0)
+        eff_item = card_item.child(0)
         self.assertEqual(eff_item.data(256 + 1), "EFFECT")
         eff_data = eff_item.data(256 + 2)
         self.assertEqual(eff_data['trigger'], "ON_ATTACK_FROM_HAND")
