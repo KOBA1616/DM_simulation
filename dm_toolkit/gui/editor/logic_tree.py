@@ -78,10 +78,6 @@ class LogicTreeWidget(QTreeView):
                  menu.addAction(add_reaction_action)
 
         elif item_type == "EFFECT":
-             add_act_action = QAction(tr("Add Action"), self)
-             add_act_action.triggered.connect(lambda: self.add_action_to_effect(index))
-             menu.addAction(add_act_action)
-
              add_cmd_action = QAction(tr("Add Command"), self)
              add_cmd_action.triggered.connect(lambda: self.add_command_to_effect(index))
              menu.addAction(add_cmd_action)
@@ -107,9 +103,9 @@ class LogicTreeWidget(QTreeView):
             menu.addAction(remove_action)
 
         elif item_type == "OPTION":
-            add_act_action = QAction(tr("Add Action"), self)
-            add_act_action.triggered.connect(lambda: self.add_action_to_option(index))
-            menu.addAction(add_act_action)
+            add_cmd_action = QAction(tr("Add Command"), self)
+            add_cmd_action.triggered.connect(lambda: self.add_command_to_option(index))
+            menu.addAction(add_cmd_action)
 
             remove_opt_action = QAction(tr("Remove Option"), self)
             remove_opt_action.triggered.connect(lambda: self.remove_current_item())
@@ -175,15 +171,15 @@ class LogicTreeWidget(QTreeView):
         self.expand(parent_index)
         self.setCurrentIndex(new_item.index())
 
-    def add_action_to_option(self, option_index):
+    def add_command_to_option(self, option_index):
         if not option_index.isValid(): return
-        act_data = {"type": "NONE"}
-        self.add_child_item(option_index, "ACTION", act_data, f"{tr('Action')}: NONE")
-
-    def add_action_to_effect(self, effect_index):
-        if not effect_index.isValid(): return
-        act_data = {"type": "DESTROY", "scope": "TARGET_SELECT", "value1": 0, "filter": {}}
-        self.add_child_item(effect_index, "ACTION", act_data, f"{tr('Action')}: {tr('DESTROY')}")
+        cmd_data = {
+            "type": "TRANSITION",
+            "target_group": "NONE",
+            "to_zone": "HAND",
+            "target_filter": {}
+        }
+        self.add_child_item(option_index, "COMMAND", cmd_data, f"{tr('Command')}: {tr('TRANSITION')}")
 
     def add_command_to_effect(self, effect_index):
         if not effect_index.isValid(): return
