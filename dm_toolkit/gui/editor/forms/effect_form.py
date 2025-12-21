@@ -14,13 +14,13 @@ class EffectEditForm(BaseEditForm):
         self.setup_ui()
 
     def setup_ui(self):
-        layout = QFormLayout(self)
+        self.form_layout = QFormLayout(self)
 
         # Ability Mode
         self.mode_combo = QComboBox()
         self.mode_combo.addItem(tr("TRIGGERED"), "TRIGGERED")
         self.mode_combo.addItem(tr("STATIC"), "STATIC")
-        layout.addRow(tr("Ability Mode"), self.mode_combo)
+        self.add_field(tr("Ability Mode"), self.mode_combo)
 
         # Trigger Definition
         self.trigger_combo = QComboBox()
@@ -30,8 +30,7 @@ class EffectEditForm(BaseEditForm):
             "ON_ATTACK_FROM_HAND", "AT_BREAK_SHIELD", "ON_CAST_SPELL", "ON_OPPONENT_DRAW"
         ]
         self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
-        self.lbl_trigger = QLabel(tr("Trigger"))
-        layout.addRow(self.lbl_trigger, self.trigger_combo)
+        self.lbl_trigger = self.add_field(tr("Trigger"), self.trigger_combo)
 
         # Layer Definition (Static)
         self.layer_group = QGroupBox(tr("Layer Definition"))
@@ -60,17 +59,17 @@ class EffectEditForm(BaseEditForm):
         l_layout.addWidget(QLabel(tr("Target Filter")), 3, 0)
         l_layout.addWidget(self.target_filter, 3, 1)
 
-        layout.addRow(self.layer_group)
+        self.add_field(None, self.layer_group)
 
         # Condition (Shared)
         self.condition_widget = ConditionEditorWidget()
         self.condition_widget.dataChanged.connect(self.update_data)
-        layout.addRow(self.condition_widget)
+        self.add_field(None, self.condition_widget)
 
         # Actions Section
         self.add_action_btn = QPushButton(tr("Add Action"))
         self.add_action_btn.clicked.connect(self.on_add_action_clicked)
-        layout.addRow(self.add_action_btn)
+        self.add_field(None, self.add_action_btn)
 
         # Define bindings
         # Note: 'trigger', 'condition', 'type', 'value', 'str_val' are context dependent
