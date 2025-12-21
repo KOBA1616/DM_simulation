@@ -5,7 +5,7 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
-from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
+from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED, GRANTABLE_KEYWORDS
 
 class CommandEditForm(BaseEditForm):
