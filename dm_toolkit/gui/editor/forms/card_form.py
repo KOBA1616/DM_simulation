@@ -33,51 +33,48 @@ class CardEditForm(BaseEditForm):
         self.id_spin = QSpinBox()
         self.id_spin.setRange(0, 9999)
         self.id_spin.setVisible(False)
-        # self.form_layout.addRow(tr("ID"), self.id_spin)
+        # self.add_field(tr("ID"), self.id_spin)
 
         # Name
         self.name_edit = QLineEdit()
-        self.form_layout.addRow(tr("Name"), self.name_edit)
+        self.add_field(tr("Name"), self.name_edit)
 
         # Twinpact Checkbox
         self.twinpact_check = QCheckBox(tr("Is Twinpact?"))
         self.twinpact_check.setToolTip(tr("Enable to generate a Spell Side node in the logic tree."))
         self.twinpact_check.stateChanged.connect(self.toggle_twinpact)
-        self.form_layout.addRow(tr("Twinpact"), self.twinpact_check)
+        self.add_field(tr("Twinpact"), self.twinpact_check)
 
         # Civilization
         self.civ_selector = CivilizationSelector()
         self.civ_selector.changed.connect(self.update_data)
-        self.form_layout.addRow(tr("Civilization"), self.civ_selector)
+        self.add_field(tr("Civilization"), self.civ_selector)
 
         # Type
         self.type_combo = QComboBox()
         types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE", "TAMASEED", "CROSS_GEAR", "CASTLE", "PSYCHIC_CREATURE", "GR_CREATURE", "NEO_CREATURE"]
         self.populate_combo(self.type_combo, types, data_func=lambda x: x)
-        self.form_layout.addRow(tr("Type"), self.type_combo)
+        self.add_field(tr("Type"), self.type_combo)
 
         # Cost
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
-        self.form_layout.addRow(tr("Cost"), self.cost_spin)
+        self.add_field(tr("Cost"), self.cost_spin)
 
         # Power
         self.power_spin = QSpinBox()
         self.power_spin.setRange(0, 99999)
         self.power_spin.setSingleStep(500)
-        self.lbl_power = QLabel(tr("Power"))
-        self.form_layout.addRow(self.lbl_power, self.power_spin)
+        self.lbl_power = self.add_field(tr("Power"), self.power_spin)
 
         # Races
         self.races_edit = QLineEdit()
-        self.lbl_races = QLabel(tr("Races"))
-        self.form_layout.addRow(self.lbl_races, self.races_edit)
+        self.lbl_races = self.add_field(tr("Races"), self.races_edit)
 
         # Evolution Condition (Hidden by default, shown for Evolution types)
         self.evolution_condition_edit = QLineEdit()
         self.evolution_condition_edit.setPlaceholderText(tr("e.g. Fire Bird"))
-        self.lbl_evolution_condition = QLabel(tr("Evolution Condition"))
-        self.form_layout.addRow(self.lbl_evolution_condition, self.evolution_condition_edit)
+        self.lbl_evolution_condition = self.add_field(tr("Evolution Condition"), self.evolution_condition_edit)
 
         # AI Configuration Section
         ai_group = QGroupBox(tr("AI Configuration"))
@@ -85,14 +82,14 @@ class CardEditForm(BaseEditForm):
 
         self.is_key_card_check = QCheckBox(tr("Is Key Card / Combo Piece"))
         self.is_key_card_check.stateChanged.connect(self.update_data)
-        ai_layout.addRow(self.is_key_card_check)
+        self.add_field(None, self.is_key_card_check, layout=ai_layout)
 
         self.ai_importance_spin = QSpinBox()
         self.ai_importance_spin.setRange(0, 1000)
         self.ai_importance_spin.valueChanged.connect(self.update_data)
-        ai_layout.addRow(tr("AI Importance Score"), self.ai_importance_spin)
+        self.add_field(tr("AI Importance Score"), self.ai_importance_spin, layout=ai_layout)
 
-        self.form_layout.addRow(ai_group)
+        self.add_field(None, ai_group)
 
         # Actions Section
         actions_group = QGroupBox(tr("Actions"))
@@ -102,7 +99,7 @@ class CardEditForm(BaseEditForm):
         self.add_effect_btn.clicked.connect(self.on_add_effect_clicked)
         actions_layout.addWidget(self.add_effect_btn)
 
-        self.form_layout.addRow(actions_group)
+        self.add_field(None, actions_group)
 
         # Define bindings
         self.bindings = {
