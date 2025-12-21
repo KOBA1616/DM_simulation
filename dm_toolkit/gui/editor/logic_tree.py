@@ -82,6 +82,10 @@ class LogicTreeWidget(QTreeView):
              add_act_action.triggered.connect(lambda: self.add_action_to_effect(index))
              menu.addAction(add_act_action)
 
+             add_cmd_action = QAction(tr("Add Command"), self)
+             add_cmd_action.triggered.connect(lambda: self.add_command_to_effect(index))
+             menu.addAction(add_cmd_action)
+
              remove_action = QAction(tr("Remove Item"), self)
              remove_action.triggered.connect(lambda: self.remove_current_item())
              menu.addAction(remove_action)
@@ -180,6 +184,16 @@ class LogicTreeWidget(QTreeView):
         if not effect_index.isValid(): return
         act_data = {"type": "DESTROY", "scope": "TARGET_SELECT", "value1": 0, "filter": {}}
         self.add_child_item(effect_index, "ACTION", act_data, f"{tr('Action')}: {tr('DESTROY')}")
+
+    def add_command_to_effect(self, effect_index):
+        if not effect_index.isValid(): return
+        cmd_data = {
+            "type": "TRANSITION",
+            "target_group": "NONE",
+            "to_zone": "HAND",
+            "target_filter": {}
+        }
+        self.add_child_item(effect_index, "COMMAND", cmd_data, f"{tr('Command')}: {tr('TRANSITION')}")
 
     def add_effect_interactive(self, parent_index):
         if not parent_index.isValid(): return
