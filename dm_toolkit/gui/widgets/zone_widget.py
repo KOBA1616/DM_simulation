@@ -97,3 +97,9 @@ class ZoneWidget(QWidget):
                 widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
                 self.card_layout.addWidget(widget)
+
+    def set_card_selected(self, instance_id, selected):
+        for widget in self.cards:
+            if widget.instance_id == instance_id:
+                widget.set_selected(selected)
+                return
