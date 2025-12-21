@@ -75,6 +75,16 @@ class GameWindow(QMainWindow):
         sim_act.triggered.connect(self.open_simulation_dialog)
         self.toolbar.addAction(sim_act)
 
+        # AI Tools Button (MCTS)
+        ai_act = QAction(tr("AI Analysis"), self)
+        ai_act.triggered.connect(lambda: self.mcts_dock.setVisible(not self.mcts_dock.isVisible()))
+        self.toolbar.addAction(ai_act)
+
+        # Loop Recorder Button
+        loop_act = QAction(tr("Loop Recorder"), self)
+        loop_act.triggered.connect(lambda: self.loop_dock.setVisible(not self.loop_dock.isVisible()))
+        self.toolbar.addAction(loop_act)
+
         # UI Setup
         self.info_dock = QDockWidget(tr("Game Info & Controls"), self)
         self.info_dock.setObjectName("InfoDock")
@@ -270,13 +280,16 @@ class GameWindow(QMainWindow):
         
         self.setCentralWidget(self.board_panel)
         
-        self.mcts_dock = QDockWidget(tr("MCTS Analysis"), self)
-        self.mcts_dock.setObjectName("MCTSDock")
-        self.mcts_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        self.mcts_view = MCTSView()
-        self.mcts_dock.setWidget(self.mcts_view)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mcts_dock)
-        
+        # 1. Pending Stack Dock (Right) - Created first to be top
+        self.stack_dock = QDockWidget(tr("Pending Effects"), self)
+        self.stack_dock.setObjectName("StackDock")
+        self.stack_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        self.stack_view = StackViewWidget()
+        self.stack_view.effect_resolved.connect(self.on_resolve_effect_from_stack)
+        self.stack_dock.setWidget(self.stack_view)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.stack_dock)
+
+        # 2. Log Dock (Right)
         self.log_dock = QDockWidget(tr("Logs"), self)
         self.log_dock.setObjectName("LogDock")
         self.log_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
@@ -284,22 +297,26 @@ class GameWindow(QMainWindow):
         self.log_dock.setWidget(self.log_list)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.log_dock)
         
-        # New: Pending Stack Dock
-        self.stack_dock = QDockWidget(tr("Pending Effects"), self)
-        self.stack_dock.setObjectName("StackDock")
-        self.stack_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
-        self.stack_view = StackViewWidget()
-        self.stack_view.effect_resolved.connect(self.on_resolve_effect_from_stack)
-        self.stack_dock.setWidget(self.stack_view)
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.stack_dock)
+        # Stack above Log
+        self.splitDockWidget(self.stack_dock, self.log_dock, Qt.Orientation.Vertical)
 
-        # New: Loop Recorder Dock
+        # 3. MCTS Dock (Right) - Default Hidden
+        self.mcts_dock = QDockWidget(tr("MCTS Analysis"), self)
+        self.mcts_dock.setObjectName("MCTSDock")
+        self.mcts_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+        self.mcts_view = MCTSView()
+        self.mcts_dock.setWidget(self.mcts_view)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mcts_dock)
+        self.mcts_dock.hide()
+
+        # 4. Loop Recorder Dock (Left) - Default Hidden
         self.loop_dock = QDockWidget(tr("Loop Recorder"), self)
         self.loop_dock.setObjectName("LoopDock")
         self.loop_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.loop_recorder = LoopRecorderWidget(lambda: self.gs)
         self.loop_dock.setWidget(self.loop_recorder)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.loop_dock)
+        self.loop_dock.hide()
 
         self.update_ui()
         self.showMaximized()
