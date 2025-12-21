@@ -9,8 +9,9 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox, QSplitter,
     QCheckBox, QGroupBox, QRadioButton, QButtonGroup, QScrollArea, QDockWidget, QTabWidget,
-    QInputDialog
+    QInputDialog, QToolBar
 )
+from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
 from dm_toolkit.gui.localization import tr
@@ -44,6 +45,27 @@ class GameWindow(QMainWindow):
         self.timer.timeout.connect(self.step_phase)
         self.is_running = False
         self.is_processing = False
+
+        # Toolbar Setup
+        self.toolbar = QToolBar(tr("Main Toolbar"), self)
+        self.toolbar.setObjectName("MainToolbar")
+        self.addToolBar(self.toolbar)
+
+        deck_act = QAction(tr("Deck Builder"), self)
+        deck_act.triggered.connect(self.open_deck_builder)
+        self.toolbar.addAction(deck_act)
+
+        card_act = QAction(tr("Card Editor"), self)
+        card_act.triggered.connect(self.open_card_editor)
+        self.toolbar.addAction(card_act)
+
+        scen_act = QAction(tr("Scenario Editor"), self)
+        scen_act.triggered.connect(self.open_scenario_editor)
+        self.toolbar.addAction(scen_act)
+
+        sim_act = QAction(tr("Batch Simulation"), self)
+        sim_act.triggered.connect(self.open_simulation_dialog)
+        self.toolbar.addAction(sim_act)
 
         # UI Setup
         self.info_dock = QDockWidget(tr("Game Info & Controls"), self)
