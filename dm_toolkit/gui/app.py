@@ -23,7 +23,7 @@ import dm_ai_module
 from dm_toolkit.gui.localization import tr, describe_command
 from dm_toolkit.gui.deck_builder import DeckBuilder
 from dm_toolkit.gui.card_editor import CardEditor
-from dm_toolkit.gui.editor.scenario_editor import ScenarioEditor
+from dm_toolkit.gui.widgets.scenario_tools import ScenarioToolsDock
 from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
 from dm_toolkit.gui.widgets.mcts_view import MCTSView
 from dm_toolkit.gui.widgets.card_detail_panel import CardDetailPanel
@@ -68,9 +68,10 @@ class GameWindow(QMainWindow):
         card_act.triggered.connect(self.open_card_editor)
         self.toolbar.addAction(card_act)
 
-        scen_act = QAction(tr("Scenario Editor"), self)
-        scen_act.triggered.connect(self.open_scenario_editor)
-        self.toolbar.addAction(scen_act)
+        self.scen_act = QAction(tr("Scenario Mode"), self)
+        self.scen_act.setCheckable(True)
+        self.scen_act.triggered.connect(self.toggle_scenario_mode)
+        self.toolbar.addAction(self.scen_act)
 
         sim_act = QAction(tr("Batch Simulation"), self)
         sim_act.triggered.connect(self.open_simulation_dialog)
@@ -319,6 +320,11 @@ class GameWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.loop_dock)
         self.loop_dock.hide()
 
+        # 5. Scenario Tools Dock (Bottom/Right) - Default Hidden
+        self.scenario_tools = ScenarioToolsDock(self, self.gs, self.card_db)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.scenario_tools)
+        self.scenario_tools.hide()
+
         self.update_ui()
         self.showMaximized()
         
@@ -340,13 +346,23 @@ class GameWindow(QMainWindow):
             if hasattr(self, 'deck_builder') and self.deck_builder.isVisible():
                 self.deck_builder.reload_database()
 
+            # Update Scenario Tools DB
+            self.scenario_tools.set_game_state(self.gs, self.card_db)
+
             self.log_list.addItem(tr("Card Data Reloaded from Editor Save"))
         except Exception as e:
             self.log_list.addItem(f"{tr('Error reloading cards')}: {e}")
 
-    def open_scenario_editor(self):
-        self.scenario_editor = ScenarioEditor(self)
-        self.scenario_editor.show()
+    def toggle_scenario_mode(self, checked):
+        if checked:
+            self.scenario_tools.show()
+            self.log_list.addItem(tr("Scenario Mode Enabled"))
+            # Stop any simulation
+            if self.is_running:
+                self.toggle_simulation()
+        else:
+            self.scenario_tools.hide()
+            self.log_list.addItem(tr("Scenario Mode Disabled"))
 
     def open_simulation_dialog(self):
         self.sim_dialog = SimulationDialog(self.card_db, self)
@@ -412,6 +428,7 @@ class GameWindow(QMainWindow):
         if self.p0_deck_ids: self.gs.set_deck(0, self.p0_deck_ids)
         if self.p1_deck_ids: self.gs.set_deck(1, self.p1_deck_ids)
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+        self.scenario_tools.set_game_state(self.gs, self.card_db)
         self.log_list.clear()
         self.log_list.addItem(tr("Game Reset"))
         self.last_command_index = 0 # Reset command index
@@ -485,6 +502,7 @@ class GameWindow(QMainWindow):
         )
         # self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
         self.loop_recorder.record_action(action.to_string())
+        self.scenario_tools.record_action(action.to_string())
         
         if self.gs.waiting_for_user_input:
             self.handle_user_input_request()
@@ -590,6 +608,7 @@ class GameWindow(QMainWindow):
                     )
                     # self.log_list.addItem(f"P{active_pid} {tr('AI Action')}: {best_action.to_string()}")
                     self.loop_recorder.record_action(best_action.to_string())
+                    self.scenario_tools.record_action(best_action.to_string())
 
                     if self.gs.waiting_for_user_input:
                          # self.log_list.addItem("AI Paused for Input (Not Implemented). Stopping Sim.")
