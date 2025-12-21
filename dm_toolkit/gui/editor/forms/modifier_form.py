@@ -64,8 +64,8 @@ class ModifierEditForm(BaseEditForm):
 
         # Filter Section (Target Filter or Source Filter)
         self.filter_widget = FilterEditorWidget()
-        self.filter_widget.setTitle(tr("Target Filter"))
-        self.filter_widget.dataChanged.connect(self.update_data)
+        self.filter_widget.basic_group.setTitle(tr("Target Filter")) # FilterWidget doesn't have setTitle, but groups do
+        self.filter_widget.filterChanged.connect(self.update_data)
         layout.addWidget(self.filter_widget)
 
         # Initial visibility

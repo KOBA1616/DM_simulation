@@ -88,6 +88,7 @@ class CardEditor(QMainWindow):
         self.inspector.effect_form.dataChanged.connect(self.on_data_changed)
         self.inspector.action_form.dataChanged.connect(self.on_data_changed)
         self.inspector.spell_side_form.dataChanged.connect(self.on_data_changed)
+        self.inspector.modifier_form.dataChanged.connect(self.on_data_changed)
 
         # Connect Structural Changes
         self.inspector.structure_update_requested.connect(self.on_structure_update)
