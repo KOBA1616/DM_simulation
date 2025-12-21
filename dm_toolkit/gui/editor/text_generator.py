@@ -55,7 +55,8 @@ class CardTextGenerator:
         "power_attacker": "パワーアタッカー",
         "g_zero": "G・ゼロ",
         "ex_life": "EXライフ",
-        "unblockable": "ブロックされない"
+        "unblockable": "ブロックされない",
+        "no_choice": "選ばれない"
     }
 
     ACTION_MAP = {
@@ -74,7 +75,7 @@ class CardTextGenerator:
         "MEKRAID": "メクレイド{value1}",
         "DISCARD": "手札を{value1}枚捨てる。",
         "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下の{target}をプレイしてもよい。",
-        "COUNT_CARDS": "（{filter}の数を数える）",
+        "COUNT_CARDS": "{filter}の数を数える。",
         "GET_GAME_STAT": "（{str_val}を参照）",
         "REVEAL_CARDS": "山札の上から{value1}枚を表向きにする。",
         "SHUFFLE_DECK": "山札をシャッフルする。",
@@ -313,13 +314,6 @@ class CardTextGenerator:
         full_action_text = " ".join(action_texts).strip()
 
         # If it's a Spell's main effect (ON_PLAY), we can often omit the trigger text "Played/Cast"
-        # unless there's a condition or it's a specific sub-trigger.
-        # But usually spells just list the effect. S-Trigger is handled as a Keyword (mostly),
-        # but in legacy JSON it might be in effects? No, keywords.
-        # However, "S-Trigger" is displayed via keywords.
-        # If trigger is ON_PLAY and is_spell is True, we might suppress "このクリーチャーが出た時"
-        # but if it was mapped to "呪文を唱えた時", we might keep it?
-        # Standard duel masters text: Spells don't say "When you cast this spell" for the main effect.
         if is_spell and trigger == "ON_PLAY":
             trigger_text = ""
 
@@ -426,6 +420,36 @@ class CardTextGenerator:
         # Resolve dynamic target strings
         target_str, unit = cls._resolve_target(action, is_spell)
 
+        # Parameter Substitution
+        val1 = action.get("value1", 0)
+        val2 = action.get("value2", 0)
+        str_val = action.get("str_val", "")
+        input_key = action.get("input_value_key", "")
+
+        is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA", "MOVE_CARD"]
+
+        # 1. Handle Input Variable Linking (Contextual substitution)
+        if input_key:
+            # Replaces numerical value1 with a reference to the previous input
+            val1 = "その数"
+            # Note: The template will become e.g., "カードをその数枚引く。" -> "Draw 'that number' cards."
+            # Ideally we want "その数だけ..." but changing the template dynamically is complex.
+            # "カードをその数枚引く" is understandable in Japanese (draw that-number-of cards).
+            if atype == "DRAW_CARD": template = "カードをその枚数引く。"
+            elif atype == "DESTROY": template = "{target}をその数だけ破壊する。"
+            elif atype == "TAP": template = "{target}をその数だけ選び、タップする。"
+            elif atype == "UNTAP": template = "{target}をその数だけ選び、アンタップする。"
+            elif atype == "RETURN_TO_HAND": template = "{target}をその数だけ選び、手札に戻す。"
+            elif atype == "SEND_TO_MANA": template = "{target}をその数だけ選び、マナゾーンに置く。"
+        elif val1 == 0 and is_generic_selection:
+             # Logic for "All" if 0 and generic
+             if atype == "DESTROY": template = "{target}をすべて破壊する。"
+             elif atype == "TAP": template = "{target}をすべてタップする。"
+             elif atype == "UNTAP": template = "{target}をすべてアンタップする。"
+             elif atype == "RETURN_TO_HAND": template = "{target}をすべて手札に戻す。"
+             elif atype == "SEND_TO_MANA": template = "{target}をすべてマナゾーンに置く。"
+             elif atype == "MOVE_CARD": pass # Handled below
+
         # Complex Action Logic
         if atype == "MODIFY_POWER":
             val = action.get("value1", 0)
@@ -503,46 +527,29 @@ class CardTextGenerator:
                  sign = "少なくする" if val1 > 0 else "増やす"
                  return f"{target_str}のコストを{abs(val1)}{sign}。"
              else:
+                 # Generic fallback or specific custom modifiers
+                 # Try to translate the keyword
+                 jp_val = cls.KEYWORD_TRANSLATION.get(str_val.lower(), str_val)
+                 if jp_val != str_val:
+                     return f"{target_str}に「{jp_val}」を与える。"
                  return f"{target_str}に効果（{str_val}）を与える。"
 
         if not template:
             return f"({tr(atype)})"
 
-        # Parameter Substitution
-        val1 = action.get("value1", 0)
-        val2 = action.get("value2", 0)
-        str_val = action.get("str_val", "")
-        input_key = action.get("input_value_key", "")
-
-        is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA", "MOVE_CARD"]
-
-        if input_key:
-             val1 = "（その数）"
-        elif val1 == 0 and is_generic_selection:
-             # Logic for "All" if 0 and generic
-             if atype == "DESTROY": template = "{target}をすべて破壊する。"
-             elif atype == "TAP": template = "{target}をすべてタップする。"
-             elif atype == "UNTAP": template = "{target}をすべてアンタップする。"
-             elif atype == "RETURN_TO_HAND": template = "{target}をすべて手札に戻す。"
-             elif atype == "SEND_TO_MANA": template = "{target}をすべてマナゾーンに置く。"
-             elif atype == "MOVE_CARD":
-                 # Fallback handled in specific logic below, this is just template swap
-                 pass
-
         if atype == "GRANT_KEYWORD":
             str_val = tr(str_val)
 
         elif atype == "GET_GAME_STAT":
-            stat_name = cls.STAT_KEY_MAP.get(str_val, (str_val, ""))[0]
-            return f"（{stat_name}を参照）"
+            # Hidden / Implied
+            return ""
 
         elif atype == "COUNT_CARDS":
-            mode = str_val
-            if not mode or mode == "CARDS_MATCHING_FILTER":
-                 return f"（{target_str}の数を数える）"
-            else:
-                 stat_name = cls.STAT_KEY_MAP.get(mode, (mode, ""))[0]
-                 return f"（{stat_name}を数える）"
+            # Make it more natural: "Targetの数を数える。"
+            if not target_str or target_str == "カード":
+                 # Fallback if filter is complex
+                 return f"({tr('COUNT_CARDS')})"
+            return f"{target_str}の数を数える。"
 
         elif atype == "MOVE_CARD":
             dest_zone = action.get("destination_zone", "")
