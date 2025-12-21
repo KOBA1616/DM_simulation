@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QKeySequence
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
 from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
@@ -32,22 +32,32 @@ class CardEditor(QMainWindow):
 
         new_act = QAction(tr("New Card"), self)
         new_act.triggered.connect(self.new_card)
+        new_act.setShortcut(QKeySequence.StandardKey.New)
+        new_act.setStatusTip(tr("Create a new card"))
         toolbar.addAction(new_act)
 
         save_act = QAction(tr("Save JSON"), self)
         save_act.triggered.connect(self.save_data)
+        save_act.setShortcut(QKeySequence.StandardKey.Save)
+        save_act.setStatusTip(tr("Save all changes to JSON"))
         toolbar.addAction(save_act)
 
         add_eff_act = QAction(tr("Add Effect"), self)
         add_eff_act.triggered.connect(self.add_effect)
+        add_eff_act.setShortcut("Ctrl+Shift+E")
+        add_eff_act.setStatusTip(tr("Add a new effect to the selected card"))
         toolbar.addAction(add_eff_act)
 
         add_act_act = QAction(tr("Add Command"), self)
         add_act_act.triggered.connect(self.add_command)
+        add_act_act.setShortcut("Ctrl+Shift+C")
+        add_act_act.setStatusTip(tr("Add a command to the selected effect"))
         toolbar.addAction(add_act_act)
 
         del_act = QAction(tr("Delete Item"), self)
         del_act.triggered.connect(self.delete_item)
+        del_act.setShortcut(QKeySequence.StandardKey.Delete)
+        del_act.setStatusTip(tr("Delete the selected item"))
         toolbar.addAction(del_act)
 
         # Update Preview Button (Right side)
@@ -57,6 +67,8 @@ class CardEditor(QMainWindow):
 
         update_preview_act = QAction(tr("Update Preview"), self)
         update_preview_act.triggered.connect(self.update_preview_manual)
+        update_preview_act.setShortcut(QKeySequence.StandardKey.Refresh)
+        update_preview_act.setStatusTip(tr("Force update the card preview"))
         toolbar.addAction(update_preview_act)
 
         # Splitter Layout (3 Panes)
@@ -81,6 +93,7 @@ class CardEditor(QMainWindow):
         self.splitter.setStretchFactor(2, 1) # Preview
 
         self.setCentralWidget(self.splitter)
+        self.statusBar() # Ensure status bar is created
 
         # Signals
         self.tree_widget.selectionModel().selectionChanged.connect(self.on_selection_changed)
@@ -114,7 +127,7 @@ class CardEditor(QMainWindow):
             with open(self.json_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             self.data_saved.emit()
-            QMessageBox.information(self, tr("Success"), tr("Cards saved successfully!"))
+            self.statusBar().showMessage(tr("Cards saved successfully!"), 3000)
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
 
