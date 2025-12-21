@@ -4,69 +4,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
-
-# Configuration for Condition UI logic
-CONDITION_UI_CONFIG = {
-    "NONE": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "MANA_ARMED": {
-        "show_val": True,
-        "show_str": True, # Usually specifies civ
-        "label_val": "Count",
-        "label_str": "Civilization"
-    },
-    "SHIELD_COUNT": {
-        "show_val": True,
-        "show_str": False,
-        "label_val": "Count",
-        "label_str": "Comparison (Optional)"
-    },
-    "CIVILIZATION_MATCH": {
-        "show_val": False,
-        "show_str": True,
-        "label_val": "Value",
-        "label_str": "Civilization"
-    },
-    "OPPONENT_PLAYED_WITHOUT_MANA": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "OPPONENT_DRAW_COUNT": {
-        "show_val": True,
-        "show_str": False,
-        "label_val": "Count (>=)",
-        "label_str": "String"
-    },
-    "DURING_YOUR_TURN": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "DURING_OPPONENT_TURN": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "FIRST_ATTACK": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "EVENT_FILTER_MATCH": {
-        "show_val": False,
-        "show_str": False,
-        "show_filter": True
-    }
-}
+from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
 
 class EffectEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -125,40 +63,9 @@ class EffectEditForm(BaseEditForm):
         layout.addRow(self.layer_group)
 
         # Condition (Shared)
-        self.condition_group = QGroupBox(tr("Condition"))
-        c_layout = QGridLayout(self.condition_group)
-        self.cond_type_combo = QComboBox()
-        cond_types = [
-            "NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH",
-            "OPPONENT_PLAYED_WITHOUT_MANA", "OPPONENT_DRAW_COUNT",
-            "DURING_YOUR_TURN", "DURING_OPPONENT_TURN",
-            "FIRST_ATTACK", "EVENT_FILTER_MATCH"
-        ]
-        self.populate_combo(self.cond_type_combo, cond_types, display_func=tr, data_func=lambda x: x)
-
-        c_layout.addWidget(QLabel(tr("Type")), 0, 0)
-        c_layout.addWidget(self.cond_type_combo, 0, 1)
-
-        # Value Row
-        self.lbl_val = QLabel(tr("Value"))
-        self.cond_val_spin = QSpinBox()
-        c_layout.addWidget(self.lbl_val, 1, 0)
-        c_layout.addWidget(self.cond_val_spin, 1, 1)
-
-        # String Row
-        self.lbl_str = QLabel(tr("String Value"))
-        self.cond_str_edit = QLineEdit()
-        c_layout.addWidget(self.lbl_str, 2, 0)
-        c_layout.addWidget(self.cond_str_edit, 2, 1)
-
-        # Filter Widget
-        self.cond_filter = FilterEditorWidget()
-        self.cond_filter.filterChanged.connect(self.update_data)
-        self.cond_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
-        self.cond_filter.setVisible(False)
-        c_layout.addWidget(self.cond_filter, 3, 0, 1, 2)
-
-        layout.addRow(self.condition_group)
+        self.condition_widget = ConditionEditorWidget()
+        self.condition_widget.dataChanged.connect(self.update_data)
+        layout.addRow(self.condition_widget)
 
         # Actions Section
         self.add_action_btn = QPushButton(tr("Add Action"))
@@ -175,12 +82,7 @@ class EffectEditForm(BaseEditForm):
         self.layer_val_spin.valueChanged.connect(self.update_data)
         self.layer_str_edit.textChanged.connect(self.update_data)
 
-        self.cond_type_combo.currentIndexChanged.connect(self.on_cond_type_changed)
-        self.cond_val_spin.valueChanged.connect(self.update_data)
-        self.cond_str_edit.textChanged.connect(self.update_data)
-
         # Initial UI State
-        self.update_ui_visibility("NONE")
         self.on_mode_changed()
 
     def on_mode_changed(self):
@@ -193,38 +95,12 @@ class EffectEditForm(BaseEditForm):
         self.layer_group.setVisible(not is_triggered)
 
         if is_triggered:
-            self.condition_group.setTitle(tr("Trigger Condition"))
+            self.condition_widget.setTitle(tr("Trigger Condition"))
         else:
-            self.condition_group.setTitle(tr("Apply Condition"))
+            self.condition_widget.setTitle(tr("Apply Condition"))
 
     def on_add_action_clicked(self):
         self.structure_update_requested.emit("ADD_CHILD_ACTION", {})
-
-    def on_cond_type_changed(self):
-        ctype = self.cond_type_combo.currentData()
-        self.update_ui_visibility(ctype)
-        self.update_data()
-
-    def update_ui_visibility(self, condition_type):
-        config = CONDITION_UI_CONFIG.get(condition_type, CONDITION_UI_CONFIG["NONE"])
-
-        show_val = config.get("show_val", True)
-        label_val = config.get("label_val", "Value")
-
-        show_str = config.get("show_str", True)
-        label_str = config.get("label_str", "String Value")
-
-        show_filter = config.get("show_filter", False)
-
-        self.lbl_val.setText(tr(label_val))
-        self.lbl_val.setVisible(show_val)
-        self.cond_val_spin.setVisible(show_val)
-
-        self.lbl_str.setText(tr(label_str))
-        self.lbl_str.setVisible(show_str)
-        self.cond_str_edit.setVisible(show_str)
-
-        self.cond_filter.setVisible(show_filter)
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
@@ -274,15 +150,7 @@ class EffectEditForm(BaseEditForm):
 
             cond = data.get('condition', data.get('static_condition', {}))
 
-        ctype = cond.get('type', 'NONE')
-        self.set_combo_by_data(self.cond_type_combo, ctype)
-
-        self.cond_val_spin.setValue(cond.get('value', 0))
-        self.cond_str_edit.setText(cond.get('str_val', ''))
-
-        self.cond_filter.set_data(cond.get('filter', {}))
-
-        self.update_ui_visibility(ctype)
+        self.condition_widget.set_data(cond)
 
     def update_trigger_options(self, card_type):
         is_spell = (card_type == "SPELL")
@@ -323,13 +191,7 @@ class EffectEditForm(BaseEditForm):
         mode = self.mode_combo.currentData()
 
         # Build Condition Dict
-        cond = {}
-        cond['type'] = self.cond_type_combo.currentData()
-        cond['value'] = self.cond_val_spin.value()
-        str_val = self.cond_str_edit.text()
-        if str_val: cond['str_val'] = str_val
-        if self.cond_filter.isVisible():
-             cond['filter'] = self.cond_filter.get_data()
+        cond = self.condition_widget.get_data()
 
         # Update Item Type if possible
         if self.current_item:
@@ -389,7 +251,4 @@ class EffectEditForm(BaseEditForm):
         self.layer_val_spin.blockSignals(block)
         self.layer_str_edit.blockSignals(block)
 
-        self.cond_type_combo.blockSignals(block)
-        self.cond_val_spin.blockSignals(block)
-        self.cond_str_edit.blockSignals(block)
-        self.cond_filter.blockSignals(block)
+        self.condition_widget.blockSignals(block)
