@@ -123,3 +123,23 @@ EDITOR_ACTION_TYPES = [
     "GRANT_KEYWORD",
     "SELECT_OPTION"
 ]
+
+# =============================================================================
+# Grantable Keywords
+# =============================================================================
+# Keywords that can be granted via ADD_KEYWORD / GRANT_KEYWORD
+GRANTABLE_KEYWORDS = [
+    "speed_attacker",
+    "blocker",
+    "slayer",
+    "double_breaker",
+    "triple_breaker",
+    "world_breaker",
+    "mach_fighter",
+    "g_strike",
+    "unblockable",
+    "shield_burn",
+    "just_diver",
+    "shield_trigger",
+    "power_attacker"
+]
