@@ -881,5 +881,24 @@
       }
     ],
     "type": "CREATURE"
+  },
+  {
+    "ai_importance_score": 0,
+    "civilizations": [
+      "WATER",
+      "FIRE"
+    ],
+    "cost": 3,
+    "effects": [],
+    "id": 13,
+    "is_key_card": false,
+    "keywords": {},
+    "name": "氷柱と炎弧の決断",
+    "power": 0,
+    "races": [],
+    "type": "SPELL",
+    "triggers": [],
+    "static_abilities": [],
+    "reaction_abilities": []
   }
 ]
