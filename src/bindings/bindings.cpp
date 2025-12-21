@@ -714,6 +714,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& eff, int source_id, const std::map<CardID, CardDefinition>& db) {
              dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
         })
+        .def_static("resolve_effect_with_targets", [](GameState& state, const EffectDef& eff, const std::vector<int>& targets, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
+             dm::engine::EffectSystem::instance().resolve_effect_with_targets(state, eff, targets, source_id, db, ctx);
+             return ctx;
+        })
         .def_static("resolve_action_with_context", [](GameState& state, int source_id, const ActionDef& action, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
             std::vector<Instruction> instructions;
             dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
