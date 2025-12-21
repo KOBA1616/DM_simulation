@@ -40,7 +40,9 @@ class ActionEditForm(BaseEditForm):
             "can_be_optional": raw.get("can_be_optional", False),
             "produces_output": raw.get("produces_output", False),
             "tooltip": raw.get("tooltip", ""),
-            "allowed_filter_fields": raw.get("allowed_filter_fields", None)
+            "allowed_filter_fields": raw.get("allowed_filter_fields", None),
+            "deprecated": raw.get("deprecated", False),
+            "deprecation_message": raw.get("deprecation_message", "")
         }
 
     def setup_ui(self):
@@ -62,6 +64,13 @@ class ActionEditForm(BaseEditForm):
         ]
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Action Type"), self.type_combo)
+
+        # Warning Label for Deprecated Actions
+        self.warning_label = QLabel()
+        self.warning_label.setStyleSheet("color: red; font-weight: bold;")
+        self.warning_label.setWordWrap(True)
+        self.warning_label.setVisible(False)
+        layout.addRow(self.warning_label)
 
         self.scope_combo = QComboBox()
         scopes = ["PLAYER_SELF", "PLAYER_OPPONENT", "TARGET_SELECT", "ALL_PLAYERS", "RANDOM", "ALL_FILTERED", "NONE"]
@@ -217,6 +226,13 @@ class ActionEditForm(BaseEditForm):
         if not action_type: return
 
         config = self._get_ui_config(action_type)
+
+        # Handle Deprecation Warning
+        if config.get("deprecated", False):
+            self.warning_label.setText(tr(config.get("deprecation_message", "Deprecated Action")))
+            self.warning_label.setVisible(True)
+        else:
+            self.warning_label.setVisible(False)
 
         self.val1_label.setText(tr(config["val1_label"]))
         self.val2_label.setText(tr(config["val2_label"]))
