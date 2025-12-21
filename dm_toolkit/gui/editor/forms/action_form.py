@@ -152,6 +152,18 @@ class ActionEditForm(BaseEditForm):
         self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed)
         layout.addRow(self.link_widget)
 
+        # Define bindings for automatic data transfer
+        self.bindings = {
+            'scope': self.scope_combo,
+            'destination_zone': self.dest_zone_combo,
+            'filter': self.filter_widget,
+            'value1': self.val1_spin,
+            'value2': self.val2_spin,
+            'optional': self.arbitrary_check,
+            # 'type' is handled manually due to UI mapping
+            # 'str_val' is handled manually
+        }
+
         # Connect signals
         self.type_combo.currentIndexChanged.connect(self.on_type_changed)
         self.scope_combo.currentIndexChanged.connect(self.update_data)
@@ -330,18 +342,13 @@ class ActionEditForm(BaseEditForm):
         elif ui_type == "COST_REFERENCE":
              self.set_combo_by_data(self.ref_mode_combo, str_val)
 
-        self.set_combo_by_data(self.dest_zone_combo, data.get('destination_zone', 'HAND'))
+        # Use bindings for standard fields
+        self._apply_bindings(data)
 
+        # Handle special cases not covered by bindings or needing overrides
         self.update_ui_state(ui_type)
 
-        self.set_combo_by_data(self.scope_combo, data.get('scope', 'NONE'))
-
-        filt = data.get('filter', {})
-        self.filter_widget.set_data(filt)
-
         val1 = data.get('value1', 0)
-        self.val1_spin.setValue(val1)
-        self.val2_spin.setValue(data.get('value2', 0))
         self.no_cost_check.setChecked(ui_type == "PLAY_FROM_ZONE" and val1 >= 999)
 
         if ui_type == "SELECT_OPTION":
@@ -349,8 +356,6 @@ class ActionEditForm(BaseEditForm):
 
         if ui_type != "MEASURE_COUNT" and ui_type != "COST_REFERENCE":
              self.str_val_edit.setText(str_val)
-
-        self.arbitrary_check.setChecked(data.get('optional', False))
 
         self.link_widget.set_data(data)
 
@@ -360,6 +365,9 @@ class ActionEditForm(BaseEditForm):
         self.structure_update_requested.emit("GENERATE_OPTIONS", {"count": count})
 
     def _save_data(self, data):
+        # Apply standard bindings
+        self._collect_bindings(data)
+
         action_type = self.type_combo.currentData()
 
         # Map UI Type -> Internal Type
@@ -388,16 +396,11 @@ class ActionEditForm(BaseEditForm):
             data['type'] = action_type
             data['str_val'] = self.str_val_edit.text()
 
-        data['destination_zone'] = self.dest_zone_combo.currentData()
-        data['scope'] = self.scope_combo.currentData()
-        data['filter'] = self.filter_widget.get_data()
+        # Custom logic overrides or additions
         if action_type == "PLAY_FROM_ZONE" and self.no_cost_check.isChecked():
             data['value1'] = 999
-        else:
-            data['value1'] = self.val1_spin.value()
-        data['value2'] = self.val2_spin.value()
-        data['optional'] = self.arbitrary_check.isChecked()
 
+        # Link widget handling (it updates data in place usually)
         self.link_widget.get_data(data)
 
         # Auto output key generation
@@ -416,15 +419,14 @@ class ActionEditForm(BaseEditForm):
         return f"{tr('Action')}: {tr(data['type'])}"
 
     def block_signals_all(self, block):
+        # Block type combo specifically as it's not in bindings
         self.type_combo.blockSignals(block)
-        self.scope_combo.blockSignals(block)
-        self.val1_spin.blockSignals(block)
-        self.val2_spin.blockSignals(block)
-        self.str_val_edit.blockSignals(block)
         self.measure_mode_combo.blockSignals(block)
-        self.filter_widget.blockSignals(block)
-        self.link_widget.blockSignals(block)
-        self.arbitrary_check.blockSignals(block)
-        self.allow_duplicates_check.blockSignals(block)
         self.ref_mode_combo.blockSignals(block)
-        self.dest_zone_combo.blockSignals(block)
+        self.allow_duplicates_check.blockSignals(block)
+        self.str_val_edit.blockSignals(block)
+        self.link_widget.blockSignals(block)
+        self.no_cost_check.blockSignals(block)
+
+        # Block everything else in bindings
+        super().block_signals_all(block)
