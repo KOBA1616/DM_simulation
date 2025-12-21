@@ -105,6 +105,11 @@ class CommandEditForm(BaseEditForm):
         self.optional_check = QCheckBox(tr("Optional (Arbitrary Amount)"))
         layout.addRow(self.optional_check)
 
+        # Branch Generation (For FLOW)
+        self.gen_branch_btn = QPushButton(tr("Generate Branches"))
+        self.gen_branch_btn.clicked.connect(self.request_generate_branches)
+        layout.addRow(self.gen_branch_btn)
+
         # Variable Linking
         self.link_widget = VariableLinkWidget()
         self.link_widget.linkChanged.connect(self.update_data)
@@ -207,6 +212,9 @@ class CommandEditForm(BaseEditForm):
 
         self.optional_check.setVisible(config["optional_visible"])
 
+        # Branch Generation Button Visibility
+        self.gen_branch_btn.setVisible(cmd_type == "FLOW")
+
         # Filter
         show_filter = config["target_filter_visible"]
         if is_query:
@@ -254,6 +262,9 @@ class CommandEditForm(BaseEditForm):
 
         self.link_widget.set_data(data)
         self.update_ui_state(raw_type)
+
+    def request_generate_branches(self):
+        self.structure_update_requested.emit("GENERATE_BRANCHES", {})
 
     def _save_data(self, data):
         cmd_type = self.type_combo.currentData()

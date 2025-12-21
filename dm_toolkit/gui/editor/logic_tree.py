@@ -191,6 +191,18 @@ class LogicTreeWidget(QTreeView):
         }
         self.add_child_item(effect_index, "COMMAND", cmd_data, f"{tr('Command')}: {tr('TRANSITION')}")
 
+    def generate_branches_for_current(self):
+        """Generates child branches for the currently selected command item."""
+        index = self.currentIndex()
+        if not index.isValid(): return
+
+        item = self.model.itemFromIndex(index)
+        item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+
+        if item_type == "COMMAND":
+            self.data_manager.add_command_branches(item)
+            self.expand(index)
+
     def add_effect_interactive(self, parent_index):
         if not parent_index.isValid(): return
 

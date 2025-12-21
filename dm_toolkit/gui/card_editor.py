@@ -208,6 +208,8 @@ class CardEditor(QMainWindow):
             if action_item:
                  self.tree_widget.data_manager.add_option_slots(action_item, count)
                  self.tree_widget.expand(action_item.index())
+        elif command == "GENERATE_BRANCHES":
+            self.tree_widget.generate_branches_for_current()
         elif command == "MOVE_EFFECT":
              item_obj = payload.get('item')
              target_type = payload.get('target_type')
