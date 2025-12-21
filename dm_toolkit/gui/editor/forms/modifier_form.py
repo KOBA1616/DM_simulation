@@ -68,6 +68,29 @@ class ModifierEditForm(BaseEditForm):
         self.filter_widget.filterChanged.connect(self.update_data)
         layout.addWidget(self.filter_widget)
 
+        # Define bindings
+        # Note: type_combo uses text, not user data, so binding won't work automatically with current BaseEditForm
+        # which uses currentData() for ComboBox.
+        # But wait, QComboBox without user data uses text as data if addItem(text) is used.
+        # But we need to verify if set_combo_by_data works. It uses findData.
+        # If we added items with text only, data is None or same as text?
+        # Actually in Qt6, currentData returns None if not set?
+        # ModifierEditForm uses addItems which sets text.
+        # So we should probably fix ModifierEditForm to use data or custom populate.
+
+        # Let's fix type_combo population to use data same as text
+        self.type_combo.clear()
+        types = ["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
+        for t in types: self.type_combo.addItem(t, t)
+
+        self.bindings = {
+            'type': self.type_combo,
+            'value': self.value_spin,
+            'str_val': self.str_val_edit,
+            'condition': self.condition_widget,
+            'filter': self.filter_widget
+        }
+
         # Initial visibility
         self.update_visibility()
 
@@ -114,42 +137,34 @@ class ModifierEditForm(BaseEditForm):
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
-        self.set_combo_text(self.type_combo, data.get('type', 'NONE'))
-        self.value_spin.setValue(data.get('value', 0))
-        self.str_val_edit.setText(data.get('str_val', ''))
+        # Fallbacks for empty structures
+        if not data.get('condition'):
+             self.condition_widget.set_data({"type": "NONE"})
+        if not data.get('filter'):
+             self.filter_widget.set_data({})
 
-        if data.get('condition'):
-            self.condition_widget.set_data(data.get('condition'))
-        else:
-            self.condition_widget.set_data({"type": "NONE"})
-
-        if data.get('filter'):
-            self.filter_widget.set_data(data.get('filter'))
-        else:
-            self.filter_widget.set_data({})
+        self._apply_bindings(data)
 
         self.update_visibility()
 
     def _save_data(self, data):
-        data['type'] = self.type_combo.currentText()
-        data['value'] = self.value_spin.value()
-        data['str_val'] = self.str_val_edit.text()
-        data['condition'] = self.condition_widget.get_data()
-        data['filter'] = self.filter_widget.get_data()
+        self._collect_bindings(data)
+
+        # Clean up empty filter/condition?
+        # Maybe not strictly necessary but cleaner JSON
+        pass
 
     def _get_display_text(self, data):
         mtype = data.get('type', 'NONE')
         return f"{tr('Static')}: {tr(mtype)}"
 
     def block_signals_all(self, block):
-        self.type_combo.blockSignals(block)
-        self.value_spin.blockSignals(block)
-        self.str_val_edit.blockSignals(block)
         self.keyword_combo.blockSignals(block)
-        self.condition_widget.blockSignals(block)
-        self.filter_widget.blockSignals(block)
+        super().block_signals_all(block)
 
     def set_combo_text(self, combo, text):
+        # Legacy support if needed, but BaseEditForm.set_combo_by_data should work now
+        # that we populated with data.
         idx = combo.findText(text)
         if idx >= 0:
             combo.setCurrentIndex(idx)

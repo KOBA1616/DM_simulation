@@ -72,6 +72,23 @@ class EffectEditForm(BaseEditForm):
         self.add_action_btn.clicked.connect(self.on_add_action_clicked)
         layout.addRow(self.add_action_btn)
 
+        # Define bindings
+        # Note: 'trigger', 'condition', 'type', 'value', 'str_val' are context dependent
+        # We can bind the widgets, but need to be careful with saving when mode switches.
+        # But _apply_bindings sets widgets, _collect_bindings gathers.
+        # Since triggers are hidden in static mode, gathering them doesn't matter much if we clear them in _save_data override.
+        # However, due to logic structure, we might want to keep manual saving for conditional parts.
+        # Let's bind what is straightforward or 1:1.
+        self.bindings = {
+            'trigger': self.trigger_combo,
+            # For static/modifier
+            'type': self.layer_type_combo,
+            'value': self.layer_val_spin,
+            'str_val': self.layer_str_edit,
+            'filter': self.target_filter,
+            'condition': self.condition_widget
+        }
+
         # Connect signals
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         self.mode_combo.currentIndexChanged.connect(self.update_data)
@@ -134,23 +151,25 @@ class EffectEditForm(BaseEditForm):
         self.on_mode_changed()
 
         if mode == "TRIGGERED":
-            self.set_combo_by_data(self.trigger_combo, data.get('trigger', 'ON_PLAY'))
-            cond = data.get('condition', data.get('trigger_condition', {}))
+             # Try to normalize data for binding if legacy keys exist
+             if 'trigger_condition' in data and 'condition' not in data:
+                 data['condition'] = data['trigger_condition']
         else:
-            # STATIC (ModifierDef)
-            m_type = data.get('type', data.get('layer_type', 'COST_MODIFIER'))
-            m_val = data.get('value', data.get('layer_value', 0))
-            m_str = data.get('str_val', data.get('layer_str', ''))
-            m_filter = data.get('filter', {})
+            # STATIC (ModifierDef) - Normalize for bindings
+            # Map legacy/variant keys to standard keys matching bindings
+            if 'layer_type' in data: data['type'] = data['layer_type']
+            if 'layer_value' in data: data['value'] = data['layer_value']
+            if 'layer_str' in data: data['str_val'] = data['layer_str']
+            if 'static_condition' in data and 'condition' not in data:
+                 data['condition'] = data['static_condition']
 
-            self.set_combo_by_data(self.layer_type_combo, m_type)
-            self.layer_val_spin.setValue(m_val)
-            self.layer_str_edit.setText(m_str)
-            self.target_filter.set_data(m_filter)
+        # Use Bindings
+        self._apply_bindings(data)
 
-            cond = data.get('condition', data.get('static_condition', {}))
+        # Ensure fallback for condition if missing
+        if not data.get('condition'):
+             self.condition_widget.set_data({})
 
-        self.condition_widget.set_data(cond)
 
     def update_trigger_options(self, card_type):
         is_spell = (card_type == "SPELL")
@@ -190,10 +209,10 @@ class EffectEditForm(BaseEditForm):
     def _save_data(self, data):
         mode = self.mode_combo.currentData()
 
-        # Build Condition Dict
-        cond = self.condition_widget.get_data()
+        # Apply bindings (collects into data)
+        self._collect_bindings(data)
 
-        # Update Item Type if possible
+        # Post-processing based on Mode
         if self.current_item:
              if mode == "TRIGGERED":
                  self.current_item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
@@ -204,32 +223,21 @@ class EffectEditForm(BaseEditForm):
              parent = self.current_item.parent()
              if parent:
                  parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
-                 # We use the item pointer itself to identify it, but passing QStandardItem via dict is safe in-process
-                 # However, usually we pass indices. But index is ephemeral.
-                 # Let's pass the item object.
+                 # We use the item pointer itself to identify it
                  if mode == "TRIGGERED" and parent_type == "GROUP_STATIC":
                      self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": "TRIGGERED"})
                  elif mode == "STATIC" and parent_type == "GROUP_TRIGGER":
                      self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": "STATIC"})
 
         if mode == "TRIGGERED":
-            data['trigger'] = self.trigger_combo.currentData()
-            data['condition'] = cond
-
             # Clean Static/Legacy keys
             for k in ['type', 'value', 'str_val', 'filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
                 data.pop(k, None)
 
         else: # STATIC
-            data['type'] = self.layer_type_combo.currentData()
-            data['value'] = self.layer_val_spin.value()
-            if self.layer_str_edit.text():
-                data['str_val'] = self.layer_str_edit.text()
-            else:
+            # Handle str_val optionality
+            if not self.layer_str_edit.text():
                 data.pop('str_val', None)
-
-            data['condition'] = cond
-            data['filter'] = self.target_filter.get_data()
 
             # Clean Trigger/Legacy keys
             for k in ['trigger', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
@@ -246,9 +254,4 @@ class EffectEditForm(BaseEditForm):
 
     def block_signals_all(self, block):
         self.mode_combo.blockSignals(block)
-        self.trigger_combo.blockSignals(block)
-        self.layer_type_combo.blockSignals(block)
-        self.layer_val_spin.blockSignals(block)
-        self.layer_str_edit.blockSignals(block)
-
-        self.condition_widget.blockSignals(block)
+        super().block_signals_all(block)
