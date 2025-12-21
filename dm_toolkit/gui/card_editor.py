@@ -200,7 +200,6 @@ class CardEditor(QMainWindow):
             self.tree_widget.remove_rev_change(card_item.index())
         elif command == "GENERATE_OPTIONS":
             count = payload.get('count', 1)
-            # Find the actual Action Item from the current selection
             action_item = None
             if item_type == "ACTION":
                  action_item = item
@@ -223,14 +222,14 @@ class CardEditor(QMainWindow):
                 self.tree_widget.add_static(item.index())
             elif eff_type == "REACTION":
                 self.tree_widget.add_reaction(item.index())
+        elif command == "WIZARD_REVOLUTION_CHANGE":
+            # Payload contains the FilterDef
+            self.tree_widget.data_manager.add_revolution_change_logic_from_wizard(card_item, payload)
+            self.tree_widget.expand(card_item.index())
+        elif command == "WIZARD_HYPER_ENERGY":
+            self.tree_widget.data_manager.set_hyper_energy(card_item, payload.get('hyper_energy', False))
         elif command == "ADD_CHILD_ACTION":
-            if item_type == "EFFECT":
-                self.tree_widget.add_action_to_effect(item.index())
-            elif item_type == "ACTION":
-                 # If adding action to action, it usually means adding to an option or maybe insert after?
-                 # For now, let's assume it only works on EFFECT nodes or we redirect logic.
-                 # The user wants "Add Action" button.
-                 pass
+            pass
 
     def new_card(self):
         self.tree_widget.add_new_card()
@@ -252,8 +251,6 @@ class CardEditor(QMainWindow):
         elif type_ == "ACTION":
             target_item = item.parent().parent()
         elif type_ in ["GROUP_TRIGGER", "GROUP_STATIC", "GROUP_REACTION"]:
-            # If a group is selected, add to the Card (parent of group)
-            # DataManager will redirect to the correct group based on item type being added
             target_item = item.parent()
             
         if target_item:

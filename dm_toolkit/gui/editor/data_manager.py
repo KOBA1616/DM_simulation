@@ -325,6 +325,66 @@ class CardDataManager:
         card_item.appendRow(eff_item)
         return eff_item
 
+    def add_revolution_change_logic_from_wizard(self, card_item, filter_def):
+        """
+        Adds or updates the Revolution Change logic using the data from the wizard.
+        """
+        # Search for existing logic
+        existing_item = None
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                if eff_data.get('trigger') == "ON_ATTACK_FROM_HAND":
+                    for act in eff_data.get('actions', []):
+                        if act.get('type') == 'REVOLUTION_CHANGE':
+                            existing_item = child
+                            break
+            if existing_item: break
+
+        if existing_item:
+            # Update existing
+            eff_data = existing_item.data(Qt.ItemDataRole.UserRole + 2)
+            # Find action
+            for i in range(existing_item.rowCount()):
+                act_item = existing_item.child(i)
+                if act_item.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
+                    act_data = act_item.data(Qt.ItemDataRole.UserRole + 2)
+                    if act_data.get('type') == 'REVOLUTION_CHANGE':
+                        act_data['filter'] = filter_def
+                        act_item.setData(act_data, Qt.ItemDataRole.UserRole + 2)
+                        return existing_item
+
+        # Create new
+        eff_data = {
+            "trigger": "ON_ATTACK_FROM_HAND",
+            "condition": {"type": "NONE"},
+            "actions": []
+        }
+        eff_item = self._create_effect_item(eff_data)
+
+        act_data = {
+            "type": "REVOLUTION_CHANGE",
+            "filter": filter_def
+        }
+        act_item = self._create_action_item(act_data)
+        eff_item.appendRow(act_item)
+
+        card_item.appendRow(eff_item)
+        return eff_item
+
+    def set_hyper_energy(self, card_item, enable):
+        """Sets the Hyper Energy keyword in the Keywords item."""
+        kw_item = self._find_child_by_role(card_item, "KEYWORDS")
+        if kw_item:
+            data = kw_item.data(Qt.ItemDataRole.UserRole + 2)
+            if enable:
+                data['hyper_energy'] = True
+            else:
+                if 'hyper_energy' in data:
+                    del data['hyper_energy']
+            kw_item.setData(data, Qt.ItemDataRole.UserRole + 2)
+
     def remove_revolution_change_logic(self, card_item):
         rows_to_remove = []
         for i in range(card_item.rowCount()):
