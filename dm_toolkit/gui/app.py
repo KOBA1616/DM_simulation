@@ -40,7 +40,6 @@ class GameWindow(QMainWindow):
         self.gs.setup_test_duel()
         self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
-        self.civ_map = self.build_civ_map()
         
         self.p0_deck_ids = None
         self.p1_deck_ids = None
@@ -279,18 +278,8 @@ class GameWindow(QMainWindow):
         self.update_ui()
         self.showMaximized()
         
-    def build_civ_map(self):
-        civ_map = {}
-        for cid, card in self.card_db.items():
-            if card.civilizations:
-                # Use the name of the first civ (e.g. "FIRE")
-                civ_map[cid] = card.civilizations[0].name
-            elif hasattr(card, 'civilization'): # Fallback
-                civ_map[cid] = str(card.civilization).split('.')[-1]
-        return civ_map
-
     def open_deck_builder(self):
-        self.deck_builder = DeckBuilder(self.card_db, self.civ_map)
+        self.deck_builder = DeckBuilder(self.card_db)
         self.deck_builder.show()
 
     def open_card_editor(self):
@@ -416,7 +405,7 @@ class GameWindow(QMainWindow):
         if card_id >= 0:
             card_data = self.card_db.get(card_id)
             if card_data:
-                self.card_detail_panel.update_card(card_data, self.civ_map)
+                self.card_detail_panel.update_card(card_data)
 
     def execute_action(self, action):
         self.last_action = action
@@ -526,19 +515,19 @@ class GameWindow(QMainWindow):
             
         god_view = self.god_view_check.isChecked()
         
-        self.p0_hand.update_cards(convert_zone(p0.hand), self.card_db, self.civ_map)
-        self.p0_mana.update_cards(convert_zone(p0.mana_zone), self.card_db, self.civ_map)
-        self.p0_battle.update_cards(convert_zone(p0.battle_zone), self.card_db, self.civ_map)
-        self.p0_shield.update_cards(convert_zone(p0.shield_zone), self.card_db, self.civ_map)
-        self.p0_graveyard.update_cards(convert_zone(p0.graveyard), self.card_db, self.civ_map)
-        self.p0_deck_zone.update_cards(convert_zone(p0.deck, hide=True), self.card_db, self.civ_map)
+        self.p0_hand.update_cards(convert_zone(p0.hand), self.card_db)
+        self.p0_mana.update_cards(convert_zone(p0.mana_zone), self.card_db)
+        self.p0_battle.update_cards(convert_zone(p0.battle_zone), self.card_db)
+        self.p0_shield.update_cards(convert_zone(p0.shield_zone), self.card_db)
+        self.p0_graveyard.update_cards(convert_zone(p0.graveyard), self.card_db)
+        self.p0_deck_zone.update_cards(convert_zone(p0.deck, hide=True), self.card_db)
         
-        self.p1_hand.update_cards(convert_zone(p1.hand, hide=not god_view), self.card_db, self.civ_map)
-        self.p1_mana.update_cards(convert_zone(p1.mana_zone), self.card_db, self.civ_map)
-        self.p1_battle.update_cards(convert_zone(p1.battle_zone), self.card_db, self.civ_map)
-        self.p1_shield.update_cards(convert_zone(p1.shield_zone, hide=not god_view), self.card_db, self.civ_map)
-        self.p1_graveyard.update_cards(convert_zone(p1.graveyard), self.card_db, self.civ_map)
-        self.p1_deck_zone.update_cards(convert_zone(p1.deck, hide=True), self.card_db, self.civ_map)
+        self.p1_hand.update_cards(convert_zone(p1.hand, hide=not god_view), self.card_db)
+        self.p1_mana.update_cards(convert_zone(p1.mana_zone), self.card_db)
+        self.p1_battle.update_cards(convert_zone(p1.battle_zone), self.card_db)
+        self.p1_shield.update_cards(convert_zone(p1.shield_zone, hide=not god_view), self.card_db)
+        self.p1_graveyard.update_cards(convert_zone(p1.graveyard), self.card_db)
+        self.p1_deck_zone.update_cards(convert_zone(p1.deck, hide=True), self.card_db)
 
         if self.gs.waiting_for_user_input and self.gs.pending_query.query_type == "SELECT_TARGET":
             valid_targets = self.gs.pending_query.valid_targets
