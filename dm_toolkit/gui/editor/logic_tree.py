@@ -8,8 +8,8 @@ from dm_toolkit.gui.editor.data_manager import CardDataManager
 class LogicTreeWidget(QTreeView):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.model = QStandardItemModel()
-        self.setModel(self.model)
+        self.standard_model = QStandardItemModel()
+        self.setModel(self.standard_model)
         self.setHeaderHidden(True)
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -21,7 +21,7 @@ class LogicTreeWidget(QTreeView):
         self.customContextMenuRequested.connect(self.show_context_menu)
 
         # Initialize Data Manager
-        self.data_manager = CardDataManager(self.model)
+        self.data_manager = CardDataManager(self.standard_model)
 
         self.selectionModel().selectionChanged.connect(self.on_selection_changed)
 
@@ -34,16 +34,9 @@ class LogicTreeWidget(QTreeView):
         # but usually Main Window handles checking selection.
 
     def mousePressEvent(self, event):
-        index = self.indexAt(event.pos())
-        if index.isValid() and event.button() == Qt.MouseButton.LeftButton:
-             item_type = index.data(Qt.ItemDataRole.UserRole + 1)
-             expandable_types = ["CARD", "SPELL_SIDE", "EFFECT", "ACTION", "OPTION", "COMMAND", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
-             if item_type in expandable_types:
-                 # Toggle expansion on row click
-                 if self.isExpanded(index):
-                     self.collapse(index)
-                 else:
-                     self.expand(index)
+        # Default behavior: Click selects, Arrow click toggles expansion.
+        # We removed the forced toggle on row click to prevent accidental collapsing
+        # when trying to select an item.
         super().mousePressEvent(event)
 
     def show_context_menu(self, pos):
@@ -160,7 +153,7 @@ class LogicTreeWidget(QTreeView):
 
     def add_option(self, parent_index):
         if not parent_index.isValid(): return
-        parent_item = self.model.itemFromIndex(parent_index)
+        parent_item = self.standard_model.itemFromIndex(parent_index)
         count = parent_item.rowCount() + 1
 
         new_item = QStandardItem(f"{tr('Option')} {count}")
@@ -196,7 +189,7 @@ class LogicTreeWidget(QTreeView):
         index = self.currentIndex()
         if not index.isValid(): return
 
-        item = self.model.itemFromIndex(index)
+        item = self.standard_model.itemFromIndex(index)
         item_type = item.data(Qt.ItemDataRole.UserRole + 1)
 
         if item_type == "COMMAND":
@@ -206,7 +199,7 @@ class LogicTreeWidget(QTreeView):
     def add_effect_interactive(self, parent_index):
         if not parent_index.isValid(): return
 
-        parent_item = self.model.itemFromIndex(parent_index)
+        parent_item = self.standard_model.itemFromIndex(parent_index)
         role = parent_item.data(Qt.ItemDataRole.UserRole + 1)
         card_data = parent_item.data(Qt.ItemDataRole.UserRole + 2) or {}
 
@@ -238,7 +231,58 @@ class LogicTreeWidget(QTreeView):
         return
 
     def load_data(self, cards_data):
+        # Save Expansion State
+        expanded_ids = self._save_expansion_state()
+
         self.data_manager.load_data(cards_data)
+
+        # Restore Expansion State
+        self._restore_expansion_state(expanded_ids)
+
+    def _save_expansion_state(self):
+        """Saves the IDs of expanded items."""
+        expanded_ids = set()
+        root = self.standard_model.invisibleRootItem()
+        self._traverse_save_expansion(root, expanded_ids)
+        return expanded_ids
+
+    def _traverse_save_expansion(self, item, expanded_ids):
+        index = item.index()
+        # Root index is invalid but we traverse its children
+        if index.isValid() and self.isExpanded(index):
+            # Use a unique identifier if possible, e.g., the name + type path?
+            # Or rely on object structure. For cards, use ID.
+            # For children, using a path-like string might be safer.
+            # Here we use a path string: "0:0:1"
+            path = self._get_item_path(item)
+            expanded_ids.add(path)
+
+        for i in range(item.rowCount()):
+            self._traverse_save_expansion(item.child(i), expanded_ids)
+
+    def _restore_expansion_state(self, expanded_ids):
+        """Restores expansion state based on saved paths."""
+        root = self.standard_model.invisibleRootItem()
+        self._traverse_restore_expansion(root, expanded_ids)
+
+    def _traverse_restore_expansion(self, item, expanded_ids):
+        index = item.index()
+        if index.isValid():
+            path = self._get_item_path(item)
+            if path in expanded_ids:
+                self.setExpanded(index, True)
+
+        for i in range(item.rowCount()):
+            self._traverse_restore_expansion(item.child(i), expanded_ids)
+
+    def _get_item_path(self, item):
+        """Generates a simple path string 'row:row:row'."""
+        path = []
+        curr = item
+        while curr:
+            path.append(str(curr.row()))
+            curr = curr.parent()
+        return ":".join(reversed(path))
 
     def get_full_data_from_model(self):
         return self.data_manager.get_full_data()
@@ -260,11 +304,11 @@ class LogicTreeWidget(QTreeView):
     def remove_current_item(self):
         idx = self.currentIndex()
         if not idx.isValid(): return
-        self.model.removeRow(idx.row(), idx.parent())
+        self.standard_model.removeRow(idx.row(), idx.parent())
 
     def add_spell_side(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.model.itemFromIndex(card_index)
+        card_item = self.standard_model.itemFromIndex(card_index)
         item = self.data_manager.add_spell_side_item(card_item)
         if item:
             self.setCurrentIndex(item.index())
@@ -273,12 +317,12 @@ class LogicTreeWidget(QTreeView):
 
     def remove_spell_side(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.model.itemFromIndex(card_index)
+        card_item = self.standard_model.itemFromIndex(card_index)
         self.data_manager.remove_spell_side_item(card_item)
 
     def add_rev_change(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.model.itemFromIndex(card_index)
+        card_item = self.standard_model.itemFromIndex(card_index)
         eff_item = self.data_manager.add_revolution_change_logic(card_item)
         if eff_item:
             self.setCurrentIndex(eff_item.index())
@@ -287,5 +331,5 @@ class LogicTreeWidget(QTreeView):
 
     def remove_rev_change(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.model.itemFromIndex(card_index)
+        card_item = self.standard_model.itemFromIndex(card_index)
         self.data_manager.remove_revolution_change_logic(card_item)
