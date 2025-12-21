@@ -164,6 +164,7 @@ TRANSLATIONS = {
     "Include BATTLE_ZONE in target selection": "バトルゾーンを対象に含める",
     "Play without paying cost": "コストを支払わずにプレイする",
     "Reaction Abilities": "リアクション能力 (手札誘発)",
+    "Add Command": "コマンドを追加",
     "Add": "追加",
     "Remove": "削除",
     "Reaction Details": "詳細設定",
