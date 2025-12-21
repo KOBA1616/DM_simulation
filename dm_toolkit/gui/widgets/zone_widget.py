@@ -2,6 +2,7 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
 from PyQt6.QtCore import Qt, pyqtSignal
 from .card_widget import CardWidget
+from dm_toolkit.gui.localization import get_card_civilization
 
 class ZoneWidget(QWidget):
     card_clicked = pyqtSignal(int, int) # card_id, instance_id
@@ -79,9 +80,7 @@ class ZoneWidget(QWidget):
             
             if cid in card_db:
                 card_def = card_db[cid]
-                civ = "COLORLESS"
-                if civ_map and cid in civ_map:
-                    civ = civ_map[cid]
+                civ = get_card_civilization(card_def)
                 
                 widget = CardWidget(
                     cid, card_def.name, card_def.cost, card_def.power, 

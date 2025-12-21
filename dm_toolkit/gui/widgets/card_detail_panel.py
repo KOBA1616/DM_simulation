@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.localization import tr, get_card_civilizations
 
 class CardDetailPanel(QWidget):
     def __init__(self, parent=None):
@@ -33,20 +33,11 @@ class CardDetailPanel(QWidget):
             self.text_area.setText("")
             return
 
-        civ = "COLORLESS"
-        # Prioritize civilizations vector (multi-civ)
-        if hasattr(card_data, 'civilizations') and card_data.civilizations:
-             civs = [tr(str(c).split('.')[-1]) for c in card_data.civilizations]
-             civ = "/".join(civs)
-        # Fallback to single civilization property
-        elif hasattr(card_data, 'civilization'):
-             civ = tr(str(card_data.civilization).split('.')[-1])
-        # Legacy fallback (should be removed eventually, kept for safety)
-        elif civ_map and card_data.id in civ_map:
-            civ = tr(civ_map[card_data.id])
+        civs = get_card_civilizations(card_data)
+        civ_text = "/".join([tr(c) for c in civs])
 
         self.name_label.setText(card_data.name)
-        self.info_label.setText(f"{tr('Cost')}: {card_data.cost} | {tr('Power')}: {card_data.power} | {tr('Civ')}: {civ}")
+        self.info_label.setText(f"{tr('Cost')}: {card_data.cost} | {tr('Power')}: {card_data.power} | {tr('Civ')}: {civ_text}")
         
         text = f"ID: {card_data.id}\n"
         text += f"{tr('Type')}: {str(card_data.type).split('.')[-1]}\n"
