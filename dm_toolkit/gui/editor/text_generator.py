@@ -104,8 +104,8 @@ class CardTextGenerator:
         "APPLY_MODIFIER": "効果を付与する。",
 
         # --- Generalized Commands (Mapped to natural text if encountered in Card Data) ---
-        "TRANSITION": "{target}を{from_zone}から{to_zone}へ移動する。",
-        "MUTATE": "状態変更({mutation_kind}): {target} (値:{amount})",
+        "TRANSITION": "{target}を{from_zone}から{to_zone}へ移動する。", # Fallback
+        "MUTATE": "{target}の状態を変更する。", # Fallback
         "FLOW": "進行制御: {str_param}",
         "QUERY": "クエリ発行: {query_mode}",
     }
@@ -432,29 +432,26 @@ class CardTextGenerator:
         str_val = action.get("str_val", "")
         input_key = action.get("input_value_key", "")
 
-        is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA", "MOVE_CARD"]
+        is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA", "MOVE_CARD", "TRANSITION"]
 
         # 1. Handle Input Variable Linking (Contextual substitution)
         if input_key:
-            # Replaces numerical value1 with a reference to the previous input
             val1 = "その数"
-            # Note: The template will become e.g., "カードをその数枚引く。" -> "Draw 'that number' cards."
-            # Ideally we want "その数だけ..." but changing the template dynamically is complex.
-            # "カードをその数枚引く" is understandable in Japanese (draw that-number-of cards).
             if atype == "DRAW_CARD": template = "カードをその枚数引く。"
             elif atype == "DESTROY": template = "{target}をその数だけ破壊する。"
             elif atype == "TAP": template = "{target}をその数だけ選び、タップする。"
             elif atype == "UNTAP": template = "{target}をその数だけ選び、アンタップする。"
             elif atype == "RETURN_TO_HAND": template = "{target}をその数だけ選び、手札に戻す。"
             elif atype == "SEND_TO_MANA": template = "{target}をその数だけ選び、マナゾーンに置く。"
-        elif val1 == 0 and is_generic_selection:
-             # Logic for "All" if 0 and generic
+        elif (val1 == 0 or (atype == "TRANSITION" and action.get("amount", 0) == 0)) and is_generic_selection:
+             # Logic for "All"
              if atype == "DESTROY": template = "{target}をすべて破壊する。"
              elif atype == "TAP": template = "{target}をすべてタップする。"
              elif atype == "UNTAP": template = "{target}をすべてアンタップする。"
              elif atype == "RETURN_TO_HAND": template = "{target}をすべて手札に戻す。"
              elif atype == "SEND_TO_MANA": template = "{target}をすべてマナゾーンに置く。"
              elif atype == "MOVE_CARD": pass # Handled below
+             elif atype == "TRANSITION": pass # Handled below
 
         # Complex Action Logic
         if atype == "MODIFY_POWER":
@@ -509,7 +506,6 @@ class CardTextGenerator:
 
         elif atype == "MEKRAID":
             val1 = action.get("value1", 0)
-            # Add simple civ detection if possible, otherwise generic
             return f"メクレイド{val1}（自分の山札の上から3枚を見る。その中からコスト{val1}以下のクリーチャーを1体、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
 
         elif atype == "FRIEND_BURST":
@@ -517,10 +513,9 @@ class CardTextGenerator:
             return f"＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
 
         elif atype == "REVOLUTION_CHANGE":
-             return "" # Covered by keyword
+             return ""
 
         elif atype == "APPLY_MODIFIER":
-             # Need to know WHAT modifier
              str_val = action.get("str_val", "")
              val1 = action.get("value1", 0)
              if str_val == "SPEED_ATTACKER":
@@ -533,24 +528,76 @@ class CardTextGenerator:
                  sign = "少なくする" if val1 > 0 else "増やす"
                  return f"{target_str}のコストを{abs(val1)}{sign}。"
              else:
-                 # Generic fallback or specific custom modifiers
-                 # Try to translate the keyword
                  jp_val = cls.KEYWORD_TRANSLATION.get(str_val.lower(), str_val)
                  if jp_val != str_val:
                      return f"{target_str}に「{jp_val}」を与える。"
                  return f"{target_str}に効果（{str_val}）を与える。"
 
-        # --- Handle Command-like actions (TRANSITION, MUTATE, etc.) ---
+        # --- Enhanced Command-like actions ---
         elif atype == "TRANSITION":
-             from_z = tr(action.get("from_zone", "").split('.')[-1])
-             to_z = tr(action.get("to_zone", "").split('.')[-1])
-             template = f"{{target}}を{from_z}から{to_z}へ移動する。"
+             from_z = action.get("from_zone", "").split('.')[-1]
+             to_z = action.get("to_zone", "").split('.')[-1]
+             amount = action.get("amount", 0)
+
+             # Natural Language Mapping for Zones and Verbs
+             if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
+                 template = "{target}を{amount}{unit}破壊する。"
+                 if amount == 0: template = "{target}をすべて破壊する。"
+             elif from_z == "BATTLE_ZONE" and to_z == "MANA_ZONE":
+                 template = "{target}を{amount}{unit}選び、マナゾーンに置く。"
+                 if amount == 0: template = "{target}をすべてマナゾーンに置く。"
+             elif from_z == "BATTLE_ZONE" and to_z == "HAND":
+                 template = "{target}を{amount}{unit}選び、手札に戻す。"
+                 if amount == 0: template = "{target}をすべて手札に戻す。"
+             elif from_z == "HAND" and to_z == "MANA_ZONE":
+                 template = "{target}を{amount}{unit}選び、マナゾーンに置く。"
+             elif from_z == "DECK" and to_z == "HAND":
+                 template = "カードを{amount}枚引く。" # Simplification for generic draw
+                 if target_str != "カード": # Search logic
+                     template = "山札から{target}を{amount}{unit}手札に加える。"
+             elif from_z == "GRAVEYARD" and to_z == "HAND":
+                 template = "{target}を{amount}{unit}選び、墓地から手札に戻す。"
+             elif from_z == "GRAVEYARD" and to_z == "BATTLE_ZONE":
+                 template = "{target}を{amount}{unit}選び、墓地からバトルゾーンに出す。"
+             elif to_z == "GRAVEYARD":
+                 template = "{target}を{amount}{unit}選び、墓地に置く。" # Generic discard/mill
+             else:
+                 template = "{target}を{from_z}から{to_z}へ移動する。"
+
+             if amount == 0 and not is_generic_selection:
+                  val1 = "すべて"
+             else:
+                  val1 = amount
+
+             # Fallback translation for zones if generic template hit
+             if "{from_z}" in template:
+                 template = template.replace("{from_z}", tr(from_z))
+                 template = template.replace("{to_z}", tr(to_z))
 
         elif atype == "MUTATE":
              mkind = action.get("mutation_kind", "")
              val1 = action.get("amount", 0)
-             # Basic fallback
-             return f"{target_str}の状態を変更する({mkind}: {val1})"
+             str_param = action.get("str_param", "")
+
+             if mkind == "TAP":
+                 template = "{target}を{amount}{unit}選び、タップする。"
+             elif mkind == "UNTAP":
+                 template = "{target}を{amount}{unit}選び、アンタップする。"
+             elif mkind == "POWER_MOD":
+                 sign = "+" if val1 >= 0 else ""
+                 return f"{target_str}のパワーを{sign}{val1}する。"
+             elif mkind == "ADD_KEYWORD":
+                 keyword = cls.KEYWORD_TRANSLATION.get(str_param.lower(), str_param)
+                 return f"{target_str}に「{keyword}」を与える。"
+             elif mkind == "REMOVE_KEYWORD":
+                 keyword = cls.KEYWORD_TRANSLATION.get(str_param.lower(), str_param)
+                 return f"{target_str}の「{keyword}」を無視する。"
+             else:
+                 template = f"状態変更({mkind}): {{target}} (値:{val1})"
+
+             if val1 == 0:
+                 template = template.replace("{amount}{unit}選び、", "すべて") # Simplified "choose all"
+                 val1 = ""
 
         elif atype == "FLOW":
              return f"進行制御: {action.get('str_param', '')}"
@@ -562,19 +609,15 @@ class CardTextGenerator:
             str_val = tr(str_val)
 
         elif atype == "GET_GAME_STAT":
-            # Hidden / Implied
             return ""
 
         elif atype == "COUNT_CARDS":
-            # Make it more natural: "Targetの数を数える。"
             if not target_str or target_str == "カード":
-                 # Fallback if filter is complex
                  return f"({tr('COUNT_CARDS')})"
             return f"{target_str}の数を数える。"
 
         elif atype == "MOVE_CARD":
             dest_zone = action.get("destination_zone", "")
-            # Check for "All" condition
             is_all = (val1 == 0 and not input_key)
 
             if dest_zone == "HAND":
@@ -611,7 +654,6 @@ class CardTextGenerator:
             scope = action.get("scope", "NONE")
             if scope in ["PLAYER_SELF", "SELF"]: action["scope"] = "NONE"
 
-            # Re-resolve target with cleaned filter
             target_str, unit = cls._resolve_target(action)
             verb = "プレイする"
             types = temp_filter.get("types", [])
@@ -638,6 +680,10 @@ class CardTextGenerator:
         text = text.replace("{unit}", unit)
         text = text.replace("{zone}", zone_str)
         text = text.replace("{source_zone}", src_str)
+
+        # Handle specific replacements for TRANSITION/MUTATE
+        if atype in ["TRANSITION", "MUTATE"]:
+            text = text.replace("{amount}", str(val1))
 
         if "{filter}" in text:
              text = text.replace("{filter}", target_str)
