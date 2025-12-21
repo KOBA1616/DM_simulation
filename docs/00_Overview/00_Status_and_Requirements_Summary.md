@@ -104,6 +104,15 @@ AIが「人間のような高度な思考（読み、コンボ、大局観）」
     *   人間が「このカードは強い」といったヒューリスティックを与えるのではなく、**「構造（Structure）」と「素材（Raw Data）」を与え、AIが自己対戦を通じて意味と重みを学習（End-to-End Learning）できる設計**にします。
     *   **Implementation Status**: `DuelTransformer` クラス (`dm_toolkit.ai.agent.transformer_model`) および `NetworkV2` (`dm_toolkit.training.network_v2`) を実装済み。
 
+### 3.5 [Priority: High] Test Directory Reorganization (テストディレクトリの再編)
+[Status: Done]
+新エンジン対応の単一のテストコードベースを確立するため、分散していたテストディレクトリを統合しました。
+
+*   **Changes**:
+    *   `python/tests/` および `tests/python/` の内容を全て `tests/` ルートへ移動しました。
+    *   `pytest.ini` の `testpaths` を `tests` に変更しました。
+    *   今後は全てのテストコードを `tests/` 直下に配置し、新エンジン（`dm_ai_module`）に対する検証を一元管理します。
+
 ## 4. 今後の課題 (Future Tasks)
 
 1.  [Status: Todo] **Fix C++ Include Paths**: `src/ai/encoders/token_converter.hpp` および `src/utils/csv_loader.hpp` に存在する相対パスインクルード（`../../` 等）をプロジェクト標準の `src/` 起点の絶対パスに修正する。
