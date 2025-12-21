@@ -9,8 +9,8 @@ sys.modules['PyQt6.QtCore'] = MagicMock()
 
 # Setup QStandardItem mock
 class MockQStandardItem(MagicMock):
-    def __init__(self, text=""):
-        super().__init__()
+    def __init__(self, text="", **kwargs):
+        super().__init__(**kwargs)
         self.text_val = text
         self._data = {}
         self._children = []
@@ -40,9 +40,14 @@ class MockQStandardItem(MagicMock):
     def parent(self):
         return self._parent
 
+    # Mocking setEditable to do nothing
+    def setEditable(self, editable):
+        pass
+
 sys.modules['PyQt6.QtGui'].QStandardItem = MockQStandardItem
 sys.modules['PyQt6.QtGui'].QStandardItemModel = MagicMock()
 sys.modules['PyQt6.QtCore'].Qt.ItemDataRole.UserRole = 256
+sys.modules['PyQt6.QtCore'].Qt.ItemDataRole.DisplayRole = 0
 
 # Now import DataManager
 from dm_toolkit.gui.editor.data_manager import CardDataManager
@@ -53,6 +58,9 @@ class TestCardEditorV2(unittest.TestCase):
         # Mock invisibleRootItem
         self.root_item = MockQStandardItem("Root")
         self.mock_model.invisibleRootItem.return_value = self.root_item
+
+        # When model.itemFromIndex is called, we need to return something valid if possible.
+        # But DataManager mostly works with items directly or iterates rows.
 
         # Helper to bypass QStandardItemModel.itemFromIndex since we deal with items directly
         self.manager = CardDataManager(self.mock_model)
@@ -69,15 +77,6 @@ class TestCardEditorV2(unittest.TestCase):
         }]
 
         # 1. Load Data
-        # We manually simulate what load_data does because creating items via manager calls mocked classes
-        # But manager uses self.model.appendRow...
-        # Let's override manager._create_card_item to return our MockItem
-
-        # Actually, since we replaced QStandardItem with MockQStandardItem class globally,
-        # manager instantiates MockQStandardItem.
-        # But manager calls self.model.appendRow(item).
-        # We need to capture that.
-
         def append_to_root(item):
             self.root_item.appendRow(item)
         self.mock_model.appendRow = append_to_root
@@ -94,6 +93,7 @@ class TestCardEditorV2(unittest.TestCase):
         spell_side_item = None
         for i in range(card_item.rowCount()):
             child = card_item.child(i)
+            # Check DisplayRole or UserRole for type
             if child.data(256 + 1) == "SPELL_SIDE":
                 has_spell_side = True
                 spell_side_item = child
@@ -102,6 +102,9 @@ class TestCardEditorV2(unittest.TestCase):
         self.assertTrue(has_spell_side, "Spell Side node should be created")
 
         # 2. Get Full Data (Reconstruct)
+        # We need to make sure invisibleRootItem has the children we added
+        # self.root_item already has them because we appended to it via append_to_root hook.
+
         output_data = self.manager.get_full_data()
         self.assertEqual(len(output_data), 1)
         out_card = output_data[0]
@@ -118,14 +121,31 @@ class TestCardEditorV2(unittest.TestCase):
         card_item.setData("CARD", 256 + 1)
         card_item.setData(card_data, 256 + 2)
 
+        # IMPORTANT: The CardDataManager expects the CARD item to have 3 children:
+        # 1. Keywords
+        # 2. Group Trigger
+        # 3. Group Static
+        # 4. Group Reaction
+        # We must manually create them to simulate a valid card item, OR call _create_card_item logic.
+
+        # Let's manually add the structure expected by add_revolution_change_logic
+        trig_group = MockQStandardItem("Trigger Group")
+        trig_group.setData("GROUP_TRIGGER", 256 + 1)
+        card_item.appendRow(trig_group)
+
         self.root_item.appendRow(card_item)
 
         # Call logic
         self.manager.add_revolution_change_logic(card_item)
 
         # Verify Structure
+        # The card item now has 1 child (Trigger Group)
         self.assertEqual(card_item.rowCount(), 1)
-        eff_item = card_item.child(0)
+
+        # The trigger group should have 1 child (the effect)
+        self.assertEqual(trig_group.rowCount(), 1)
+
+        eff_item = trig_group.child(0)
         self.assertEqual(eff_item.data(256 + 1), "EFFECT")
         eff_data = eff_item.data(256 + 2)
         self.assertEqual(eff_data['trigger'], "ON_ATTACK_FROM_HAND")
