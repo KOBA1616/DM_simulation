@@ -257,9 +257,7 @@ class CardEditor(QMainWindow):
             target_item = item.parent()
             
         if target_item:
-            new_eff = {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "actions": []}
-            label = f"{tr('Effect')}: {tr('ON_PLAY')}"
-            self.tree_widget.add_child_item(target_item.index(), "EFFECT", new_eff, label)
+            self.tree_widget.add_effect_interactive(target_item.index())
         else:
             QMessageBox.warning(self, tr("Warning"), tr("Please select a Card or Effect group to add an Effect."))
 
