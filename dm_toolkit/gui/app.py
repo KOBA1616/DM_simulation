@@ -5,6 +5,12 @@ import random
 import json
 import csv
 
+# Ensure bin is in path for dm_ai_module
+current_dir = os.path.dirname(os.path.abspath(__file__))
+bin_dir = os.path.join(current_dir, "../../../bin")
+if os.path.exists(bin_dir):
+    sys.path.append(bin_dir)
+
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox, QSplitter,
@@ -34,7 +40,7 @@ class GameWindow(QMainWindow):
         self.gs.setup_test_duel()
         self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
-        self.civ_map = self.load_civilizations_from_json("data/cards.json")
+        self.civ_map = self.build_civ_map()
         
         self.p0_deck_ids = None
         self.p1_deck_ids = None
@@ -273,18 +279,14 @@ class GameWindow(QMainWindow):
         self.update_ui()
         self.showMaximized()
         
-    def load_civilizations_from_json(self, filepath):
+    def build_civ_map(self):
         civ_map = {}
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                cards = json.load(f)
-                for card in cards:
-                    cid = card.get('id')
-                    civ = card.get('civilization')
-                    if cid is not None and civ is not None:
-                        civ_map[cid] = civ
-        except Exception as e:
-            print(f"Error loading civilizations from json: {e}")
+        for cid, card in self.card_db.items():
+            if card.civilizations:
+                # Use the name of the first civ (e.g. "FIRE")
+                civ_map[cid] = card.civilizations[0].name
+            elif hasattr(card, 'civilization'): # Fallback
+                civ_map[cid] = str(card.civilization).split('.')[-1]
         return civ_map
 
     def open_deck_builder(self):
@@ -436,19 +438,18 @@ class GameWindow(QMainWindow):
     def step_phase(self):
         if self.is_processing: return
         self.is_processing = True
-        was_running_at_start = self.is_running
         
         try:
             if self.gs.waiting_for_user_input:
                 self.handle_user_input_request()
                 return
 
-            is_over, result = dm_ai_module.PhaseManager.check_game_over(self.gs)
-            if is_over:
+            if self.gs.game_over:
                 self.timer.stop()
                 self.is_running = False
                 self.start_btn.setText(tr("Start Sim"))
-                self.log_list.addItem(f"{tr('Game Over! Result')}: {result}")
+                winner = self.gs.winner
+                self.log_list.addItem(f"{tr('Game Over! Winner')}: P{winner}")
                 return
 
             active_pid = self.gs.active_player_id
@@ -506,8 +507,8 @@ class GameWindow(QMainWindow):
         
         def convert_zone(zone_cards, hide=False):
             if hide:
-                return [{'id': -1, 'tapped': c.is_tapped} for c in zone_cards]
-            return [{'id': c.card_id, 'tapped': c.is_tapped} for c in zone_cards]
+                return [{'id': -1, 'tapped': c.is_tapped, 'instance_id': c.instance_id} for c in zone_cards]
+            return [{'id': c.card_id, 'tapped': c.is_tapped, 'instance_id': c.instance_id} for c in zone_cards]
             
         god_view = self.god_view_check.isChecked()
         
