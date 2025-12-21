@@ -376,3 +376,9 @@ class FilterEditorWidget(QWidget):
 
         self.race_label.setVisible(is_allowed('races'))
         self.races_edit.setVisible(is_allowed('races'))
+
+    def setTitle(self, title: str):
+        """
+        Sets the title of the basic filter group.
+        """
+        self.basic_group.setTitle(title)
