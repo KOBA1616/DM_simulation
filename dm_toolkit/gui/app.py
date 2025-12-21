@@ -295,7 +295,21 @@ class GameWindow(QMainWindow):
 
     def open_card_editor(self):
         self.card_editor = CardEditor("data/cards.json")
+        self.card_editor.data_saved.connect(self.reload_card_data)
         self.card_editor.show()
+
+    def reload_card_data(self):
+        try:
+            self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+            self.civ_map = self.build_civ_map()
+
+            # Refresh Deck Builder if open
+            if hasattr(self, 'deck_builder') and self.deck_builder.isVisible():
+                self.deck_builder.reload_database()
+
+            self.log_list.addItem(tr("Card Data Reloaded from Editor Save"))
+        except Exception as e:
+            self.log_list.addItem(f"{tr('Error reloading cards')}: {e}")
 
     def open_scenario_editor(self):
         self.scenario_editor = ScenarioEditor(self)
