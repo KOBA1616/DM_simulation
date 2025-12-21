@@ -20,11 +20,6 @@ class CardDataManager:
         for card_idx, card in enumerate(cards_data):
             card_item = self._create_card_item(card)
 
-            # Find Group Nodes
-            trigger_group = self._find_child_by_role(card_item, "GROUP_TRIGGER")
-            static_group = self._find_child_by_role(card_item, "GROUP_STATIC")
-            reaction_group = self._find_child_by_role(card_item, "GROUP_REACTION")
-
             # 1. Add Creature Effects (Triggers)
             triggers = card.get('triggers', [])
             if not triggers:
@@ -33,36 +28,33 @@ class CardDataManager:
             for eff_idx, effect in enumerate(triggers):
                 eff_item = self._create_effect_item(effect)
                 self._load_effect_children(eff_item, effect)
-                trigger_group.appendRow(eff_item)
+                card_item.appendRow(eff_item)
 
             # 1.5 Add Static Abilities
             for mod_idx, modifier in enumerate(card.get('static_abilities', [])):
                  mod_item = self._create_modifier_item(modifier)
-                 static_group.appendRow(mod_item)
+                 card_item.appendRow(mod_item)
 
             # 2. Add Reaction Abilities
             for ra_idx, ra in enumerate(card.get('reaction_abilities', [])):
                 ra_item = self._create_reaction_item(ra)
-                reaction_group.appendRow(ra_item)
+                card_item.appendRow(ra_item)
 
             # 3. Add Spell Side if exists
             spell_side_data = card.get('spell_side')
             if spell_side_data:
                 spell_item = self._create_spell_side_item(spell_side_data)
 
-                sp_trigger_group = self._find_child_by_role(spell_item, "GROUP_TRIGGER")
-                sp_static_group = self._find_child_by_role(spell_item, "GROUP_STATIC")
-
                 # Add Spell Effects
                 for eff_idx, effect in enumerate(spell_side_data.get('effects', [])):
                     eff_item = self._create_effect_item(effect)
                     self._load_effect_children(eff_item, effect)
-                    sp_trigger_group.appendRow(eff_item)
+                    spell_item.appendRow(eff_item)
 
                 # Add Spell Static (if any support in future)
                 for mod_idx, modifier in enumerate(spell_side_data.get('static_abilities', [])):
                      mod_item = self._create_modifier_item(modifier)
-                     sp_static_group.appendRow(mod_item)
+                     spell_item.appendRow(mod_item)
 
                 card_item.appendRow(spell_item)
 
@@ -105,41 +97,31 @@ class CardDataManager:
         rev_change_filter = None
         has_rev_change_action = False
 
-        # Iterate children of CARD node (Groups and Spell Side)
+        # Iterate children of CARD node (Flattened structure)
         for j in range(card_item.rowCount()):
             child_item = card_item.child(j)
             item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
 
             if item_type == "KEYWORDS":
-                # The item data itself IS the keywords dictionary in our implementation
                 kw_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
                 if kw_data:
                     keywords_dict = kw_data.copy()
 
-            elif item_type == "GROUP_TRIGGER":
-                for k in range(child_item.rowCount()):
-                    eff_item = child_item.child(k)
-                    if eff_item.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
-                        eff_data = self._reconstruct_effect(eff_item)
-                        new_effects.append(eff_data)
+            elif item_type == "EFFECT":
+                eff_data = self._reconstruct_effect(child_item)
+                new_effects.append(eff_data)
 
-                        # Check for Revolution Change Action
-                        for act in eff_data.get('actions', []):
-                            if act.get('type') == "REVOLUTION_CHANGE":
-                                has_rev_change_action = True
-                                rev_change_filter = act.get('filter')
+                # Check for Revolution Change Action
+                for act in eff_data.get('actions', []):
+                    if act.get('type') == "REVOLUTION_CHANGE":
+                        has_rev_change_action = True
+                        rev_change_filter = act.get('filter')
 
-            elif item_type == "GROUP_STATIC":
-                for k in range(child_item.rowCount()):
-                    mod_item = child_item.child(k)
-                    if mod_item.data(Qt.ItemDataRole.UserRole + 1) == "MODIFIER":
-                        new_static.append(self._reconstruct_modifier(mod_item))
+            elif item_type == "MODIFIER":
+                new_static.append(self._reconstruct_modifier(child_item))
 
-            elif item_type == "GROUP_REACTION":
-                 for k in range(child_item.rowCount()):
-                    ra_item = child_item.child(k)
-                    if ra_item.data(Qt.ItemDataRole.UserRole + 1) == "REACTION_ABILITY":
-                        new_reactions.append(ra_item.data(Qt.ItemDataRole.UserRole + 2))
+            elif item_type == "REACTION_ABILITY":
+                new_reactions.append(child_item.data(Qt.ItemDataRole.UserRole + 2))
 
             elif item_type == "SPELL_SIDE":
                 # Reconstruct Spell Side
@@ -147,22 +129,16 @@ class CardDataManager:
                 spell_side_effects = []
                 spell_side_static = []
 
-                # Iterate Spell Side Groups
+                # Iterate Spell Side Children (Flattened)
                 for k in range(child_item.rowCount()):
                     sp_child = child_item.child(k)
                     sp_type = sp_child.data(Qt.ItemDataRole.UserRole + 1)
 
-                    if sp_type == "GROUP_TRIGGER":
-                        for m in range(sp_child.rowCount()):
-                             eff_item = sp_child.child(m)
-                             if eff_item.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
-                                 spell_side_effects.append(self._reconstruct_effect(eff_item))
+                    if sp_type == "EFFECT":
+                        spell_side_effects.append(self._reconstruct_effect(sp_child))
 
-                    elif sp_type == "GROUP_STATIC":
-                        for m in range(sp_child.rowCount()):
-                             mod_item = sp_child.child(m)
-                             if mod_item.data(Qt.ItemDataRole.UserRole + 1) == "MODIFIER":
-                                 spell_side_static.append(self._reconstruct_modifier(mod_item))
+                    elif sp_type == "MODIFIER":
+                        spell_side_static.append(self._reconstruct_modifier(sp_child))
 
                 spell_side_data['effects'] = spell_side_effects
                 if spell_side_static:
@@ -181,12 +157,8 @@ class CardDataManager:
             if 'spell_side' in card_data:
                 del card_data['spell_side']
 
-        # Merge keywords from KEYWORDS node with any existing in card_data (e.g. set by CardEditForm)
-        # Note: CardEditForm still sets 'evolution' flag based on type.
-        # So we should merge. KEYWORDS node takes precedence for user-edited flags.
-
+        # Merge keywords
         current_keywords = card_data.get('keywords', {})
-        # Merge keywords_dict into current_keywords
         current_keywords.update(keywords_dict)
         card_data['keywords'] = current_keywords
 
@@ -195,14 +167,8 @@ class CardDataManager:
             card_data['keywords']['revolution_change'] = True
             card_data['revolution_change_condition'] = rev_change_filter
         else:
-            # Check if user manually unchecked it?
-            # The structure logic (removing action) should handle this.
-            # But we must ensure data consistency.
             if 'revolution_change_condition' in card_data:
                 del card_data['revolution_change_condition']
-            # If manually checked in keyword form but no action structure exists?
-            # It should ideally be synced. But we trust the structure here.
-            # If the user checked it, the structure should exist.
 
         return card_data
 
@@ -299,21 +265,6 @@ class CardDataManager:
 
         target_item = parent_item
 
-        # Redirect to correct Group Node if parent is CARD or SPELL_SIDE
-        if parent_role in ["CARD", "SPELL_SIDE"]:
-            if item_type == "EFFECT":
-                target_item = self._find_child_by_role(parent_item, "GROUP_TRIGGER")
-            elif item_type == "MODIFIER":
-                target_item = self._find_child_by_role(parent_item, "GROUP_STATIC")
-            elif item_type == "REACTION_ABILITY":
-                target_item = self._find_child_by_role(parent_item, "GROUP_REACTION")
-            elif item_type == "KEYWORDS":
-                 # Check if exists
-                 existing = self._find_child_by_role(parent_item, "KEYWORDS")
-                 if existing:
-                     return existing
-                 # else fall through to create
-
         # Create Item
         if item_type == "ACTION" and 'uid' not in data:
             data['uid'] = str(uuid.uuid4())
@@ -348,16 +299,14 @@ class CardDataManager:
         return False
 
     def add_revolution_change_logic(self, card_item):
-        # Must add to GROUP_TRIGGER
-        trigger_group = self._find_child_by_role(card_item, "GROUP_TRIGGER")
-        if not trigger_group: return None # Should not happen
-
-        for i in range(trigger_group.rowCount()):
-            child = trigger_group.child(i)
-            eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
-            for act in eff_data.get('actions', []):
-                if act.get('type') == 'REVOLUTION_CHANGE':
-                    return child
+        # Must add to card_item directly, searching for existing one
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                for act in eff_data.get('actions', []):
+                    if act.get('type') == 'REVOLUTION_CHANGE':
+                        return child
 
         eff_data = {
             "trigger": "ON_ATTACK_FROM_HAND",
@@ -373,24 +322,22 @@ class CardDataManager:
         act_item = self._create_action_item(act_data)
         eff_item.appendRow(act_item)
 
-        trigger_group.appendRow(eff_item)
+        card_item.appendRow(eff_item)
         return eff_item
 
     def remove_revolution_change_logic(self, card_item):
-        trigger_group = self._find_child_by_role(card_item, "GROUP_TRIGGER")
-        if not trigger_group: return
-
         rows_to_remove = []
-        for i in range(trigger_group.rowCount()):
-            child = trigger_group.child(i)
-            eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
-            for act in eff_data.get('actions', []):
-                if act.get('type') == 'REVOLUTION_CHANGE':
-                    rows_to_remove.append(i)
-                    break
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                for act in eff_data.get('actions', []):
+                    if act.get('type') == 'REVOLUTION_CHANGE':
+                        rows_to_remove.append(i)
+                        break
 
         for i in reversed(rows_to_remove):
-            trigger_group.removeRow(i)
+            card_item.removeRow(i)
 
     def add_option_slots(self, action_item, count):
         current_options = 0
@@ -436,24 +383,7 @@ class CardDataManager:
         kw_item.setEditable(False)
         item.appendRow(kw_item)
 
-        # Create Structure Groups (Node Type 2 & 3)
-        # 2a. Triggered Abilities
-        trig = QStandardItem(tr("Triggered Abilities"))
-        trig.setData("GROUP_TRIGGER", Qt.ItemDataRole.UserRole + 1)
-        trig.setEditable(False)
-        item.appendRow(trig)
-
-        # 2b. Static Abilities
-        stat = QStandardItem(tr("Static Abilities"))
-        stat.setData("GROUP_STATIC", Qt.ItemDataRole.UserRole + 1)
-        stat.setEditable(False)
-        item.appendRow(stat)
-
-        # 3. Reaction Abilities
-        react = QStandardItem(tr("Reaction Abilities"))
-        react.setData("GROUP_REACTION", Qt.ItemDataRole.UserRole + 1)
-        react.setEditable(False)
-        item.appendRow(react)
+        # Structure Groups are REMOVED per user request
 
         return item
 
@@ -462,16 +392,7 @@ class CardDataManager:
         item.setData("SPELL_SIDE", Qt.ItemDataRole.UserRole + 1)
         item.setData(spell_data, Qt.ItemDataRole.UserRole + 2)
 
-        trig = QStandardItem(tr("Triggered Abilities"))
-        trig.setData("GROUP_TRIGGER", Qt.ItemDataRole.UserRole + 1)
-        trig.setEditable(False)
-        item.appendRow(trig)
-
-        stat = QStandardItem(tr("Static Abilities"))
-        stat.setData("GROUP_STATIC", Qt.ItemDataRole.UserRole + 1)
-        stat.setEditable(False)
-        item.appendRow(stat)
-
+        # Groups removed for Spell Side as well
         return item
 
     def _create_effect_item(self, effect):
