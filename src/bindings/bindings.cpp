@@ -47,6 +47,39 @@ std::shared_ptr<dm::engine::systems::PipelineExecutor> get_active_pipeline(GameS
 PYBIND11_MODULE(dm_ai_module, m) {
     m.doc() = "Duel Masters AI Module";
 
+    // GameEvent bindings
+    py::enum_<dm::core::EventType>(m, "EventType")
+        .value("NONE", dm::core::EventType::NONE)
+        .value("ZONE_ENTER", dm::core::EventType::ZONE_ENTER)
+        .value("ZONE_LEAVE", dm::core::EventType::ZONE_LEAVE)
+        .value("TURN_START", dm::core::EventType::TURN_START)
+        .value("TURN_END", dm::core::EventType::TURN_END)
+        .value("PHASE_START", dm::core::EventType::PHASE_START)
+        .value("PHASE_END", dm::core::EventType::PHASE_END)
+        .value("PLAY_CARD", dm::core::EventType::PLAY_CARD)
+        .value("ATTACK_INITIATE", dm::core::EventType::ATTACK_INITIATE)
+        .value("BLOCK_INITIATE", dm::core::EventType::BLOCK_INITIATE)
+        .value("BATTLE_START", dm::core::EventType::BATTLE_START)
+        .value("BATTLE_WIN", dm::core::EventType::BATTLE_WIN)
+        .value("BATTLE_LOSE", dm::core::EventType::BATTLE_LOSE)
+        .value("SHIELD_BREAK", dm::core::EventType::SHIELD_BREAK)
+        .value("DIRECT_ATTACK", dm::core::EventType::DIRECT_ATTACK)
+        .value("TAP_CARD", dm::core::EventType::TAP_CARD)
+        .value("UNTAP_CARD", dm::core::EventType::UNTAP_CARD)
+        .value("CUSTOM", dm::core::EventType::CUSTOM)
+        .export_values();
+
+    py::class_<dm::core::GameEvent>(m, "GameEvent")
+        .def(py::init<>())
+        .def(py::init<dm::core::EventType, int, int, PlayerID>(),
+             py::arg("type"), py::arg("inst") = -1, py::arg("tgt") = -1, py::arg("pid") = 255)
+        .def_readwrite("type", &dm::core::GameEvent::type)
+        .def_readwrite("instance_id", &dm::core::GameEvent::instance_id)
+        .def_readwrite("card_id", &dm::core::GameEvent::card_id)
+        .def_readwrite("player_id", &dm::core::GameEvent::player_id)
+        .def_readwrite("target_id", &dm::core::GameEvent::target_id)
+        .def_readwrite("context", &dm::core::GameEvent::context);
+
     // GameCommand bindings
     // Do NOT use using namespace dm::engine::game_command; locally to avoid CommandType conflict with core::CommandType
 
@@ -418,23 +451,23 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("condition", &EffectDef::condition)
         .def_readwrite("actions", &EffectDef::actions);
 
-    py::class_<CardDefinition>(m, "CardDefinition")
+    py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
         .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
-            CardDefinition c;
-            c.id = id;
-            c.name = name;
-            c.cost = cost;
-            if (civ_str == "FIRE") c.civilizations.push_back(Civilization::FIRE);
-            else if (civ_str == "WATER") c.civilizations.push_back(Civilization::WATER);
-            else if (civ_str == "NATURE") c.civilizations.push_back(Civilization::NATURE);
-            else if (civ_str == "LIGHT") c.civilizations.push_back(Civilization::LIGHT);
-            else if (civ_str == "DARKNESS") c.civilizations.push_back(Civilization::DARKNESS);
-            c.power = power;
-            c.races = races;
-            c.keywords = keywords;
-            c.effects = effects;
+            auto c = std::make_shared<CardDefinition>();
+            c->id = id;
+            c->name = name;
+            c->cost = cost;
+            if (civ_str == "FIRE") c->civilizations.push_back(Civilization::FIRE);
+            else if (civ_str == "WATER") c->civilizations.push_back(Civilization::WATER);
+            else if (civ_str == "NATURE") c->civilizations.push_back(Civilization::NATURE);
+            else if (civ_str == "LIGHT") c->civilizations.push_back(Civilization::LIGHT);
+            else if (civ_str == "DARKNESS") c->civilizations.push_back(Civilization::DARKNESS);
+            c->power = power;
+            c->races = races;
+            c->keywords = keywords;
+            c->effects = effects;
             // Default type
-            c.type = CardType::CREATURE;
+            c->type = CardType::CREATURE;
             return c;
         }),
              py::arg("id") = 0, py::arg("name") = "", py::arg("civilization") = "NONE",
@@ -452,6 +485,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
         .def_readwrite("is_key_card", &CardDefinition::is_key_card)
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
+        .def_readwrite("spell_side", &CardDefinition::spell_side)
         .def_property("civilization",
             [](const CardDefinition& c) { return c.civilizations.empty() ? Civilization::NONE : c.civilizations[0]; },
             [](CardDefinition& c, Civilization civ) { c.civilizations = {civ}; })
@@ -489,6 +523,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     // Instruction and Pipeline
     py::class_<Instruction>(m, "Instruction")
         .def(py::init<>())
+        .def(py::init<InstructionOp>())
         .def_readwrite("op", &Instruction::op)
         .def("get_arg_str", [](const Instruction& i, const std::string& key) {
             if (i.args.contains(key) && i.args[key].is_string()) return i.args[key].get<std::string>();
