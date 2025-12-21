@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 import dm_ai_module
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.localization import tr, get_card_civilizations
 from dm_toolkit.gui.card_editor import CardEditor
 from dm_toolkit.gui.widgets.card_widget import CardWidget
 from dm_toolkit.gui.widgets.card_detail_panel import CardDetailPanel
@@ -117,11 +117,7 @@ class DeckBuilder(QWidget):
             card = self.card_db[card_id]
             
             # Determine civilizations for widget
-            civ_input = "COLORLESS"
-            if hasattr(card, 'civilizations') and card.civilizations:
-                civ_input = [str(c).split('.')[-1] for c in card.civilizations]
-            elif hasattr(card, 'civilization'):
-                civ_input = str(card.civilization).split('.')[-1]
+            civ_input = get_card_civilizations(card)
 
             widget = CardWidget(card.id, card.name, card.cost, card.power, civ_input)
             self.preview_layout.addWidget(widget)
