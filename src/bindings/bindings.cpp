@@ -418,23 +418,23 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("condition", &EffectDef::condition)
         .def_readwrite("actions", &EffectDef::actions);
 
-    py::class_<CardDefinition>(m, "CardDefinition")
+    py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
         .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
-            CardDefinition c;
-            c.id = id;
-            c.name = name;
-            c.cost = cost;
-            if (civ_str == "FIRE") c.civilizations.push_back(Civilization::FIRE);
-            else if (civ_str == "WATER") c.civilizations.push_back(Civilization::WATER);
-            else if (civ_str == "NATURE") c.civilizations.push_back(Civilization::NATURE);
-            else if (civ_str == "LIGHT") c.civilizations.push_back(Civilization::LIGHT);
-            else if (civ_str == "DARKNESS") c.civilizations.push_back(Civilization::DARKNESS);
-            c.power = power;
-            c.races = races;
-            c.keywords = keywords;
-            c.effects = effects;
+            auto c = std::make_shared<CardDefinition>();
+            c->id = id;
+            c->name = name;
+            c->cost = cost;
+            if (civ_str == "FIRE") c->civilizations.push_back(Civilization::FIRE);
+            else if (civ_str == "WATER") c->civilizations.push_back(Civilization::WATER);
+            else if (civ_str == "NATURE") c->civilizations.push_back(Civilization::NATURE);
+            else if (civ_str == "LIGHT") c->civilizations.push_back(Civilization::LIGHT);
+            else if (civ_str == "DARKNESS") c->civilizations.push_back(Civilization::DARKNESS);
+            c->power = power;
+            c->races = races;
+            c->keywords = keywords;
+            c->effects = effects;
             // Default type
-            c.type = CardType::CREATURE;
+            c->type = CardType::CREATURE;
             return c;
         }),
              py::arg("id") = 0, py::arg("name") = "", py::arg("civilization") = "NONE",
@@ -452,6 +452,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
         .def_readwrite("is_key_card", &CardDefinition::is_key_card)
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
+        .def_readwrite("spell_side", &CardDefinition::spell_side)
         .def_property("civilization",
             [](const CardDefinition& c) { return c.civilizations.empty() ? Civilization::NONE : c.civilizations[0]; },
             [](CardDefinition& c, Civilization civ) { c.civilizations = {civ}; })
