@@ -134,6 +134,13 @@ class LogicTreeWidget(QTreeView):
         if not menu.isEmpty():
             menu.exec(self.viewport().mapToGlobal(pos))
 
+    def add_keywords(self, parent_index):
+        if not parent_index.isValid(): return
+        # Check if already exists? handled by DataManager or we allow duplicates?
+        # Typically one keywords block per card.
+        # But we delegate to add_child_item which calls DataManager.
+        self.add_child_item(parent_index, "KEYWORDS", {}, tr("Keywords"))
+
     def add_trigger(self, parent_index):
         if not parent_index.isValid(): return
         # Default Trigger Data

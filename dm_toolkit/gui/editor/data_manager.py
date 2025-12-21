@@ -308,9 +308,11 @@ class CardDataManager:
             elif item_type == "REACTION_ABILITY":
                 target_item = self._find_child_by_role(parent_item, "GROUP_REACTION")
             elif item_type == "KEYWORDS":
-                 # Should not typically add keywords manually, but if so...
-                 # It's unique, so maybe return existing?
-                 pass
+                 # Check if exists
+                 existing = self._find_child_by_role(parent_item, "KEYWORDS")
+                 if existing:
+                     return existing
+                 # else fall through to create
 
         # Create Item
         if item_type == "ACTION" and 'uid' not in data:
