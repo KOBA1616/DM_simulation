@@ -45,6 +45,7 @@ class GameWindow(QMainWindow):
         self.p0_deck_ids = None
         self.p1_deck_ids = None
         self.last_action = None
+        self.selected_targets = []
 
         # Simulation Timer
         self.timer = QTimer()
@@ -109,6 +110,12 @@ class GameWindow(QMainWindow):
         self.step_button = QPushButton(tr("Step"))
         self.step_button.clicked.connect(self.step_phase)
         game_ctrl_layout.addWidget(self.step_button)
+
+        self.confirm_btn = QPushButton(tr("Confirm Selection"))
+        self.confirm_btn.clicked.connect(self.confirm_selection)
+        self.confirm_btn.setVisible(False)
+        self.confirm_btn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
+        game_ctrl_layout.addWidget(self.confirm_btn)
 
         self.reset_btn = QPushButton(tr("Reset"))
         self.reset_btn.clicked.connect(self.reset_game)
@@ -357,6 +364,8 @@ class GameWindow(QMainWindow):
     def reset_game(self):
         self.timer.stop()
         self.is_running = False
+        self.selected_targets = []
+        self.confirm_btn.setVisible(False)
         self.start_btn.setText(tr("Start Sim"))
         self.gs = dm_ai_module.GameState(random.randint(0, 10000))
         self.gs.setup_test_duel()
@@ -367,6 +376,24 @@ class GameWindow(QMainWindow):
         self.log_list.addItem(tr("Game Reset"))
         self.update_ui()
 
+    def confirm_selection(self):
+        if not self.gs.waiting_for_user_input: return
+
+        query = self.gs.pending_query
+        min_targets = query.params.get('min', 1)
+
+        if len(self.selected_targets) < min_targets:
+            QMessageBox.warning(self, "Invalid Selection", f"Please select at least {min_targets} target(s).")
+            return
+
+        targets = list(self.selected_targets)
+        self.selected_targets = []
+        self.confirm_btn.setVisible(False)
+
+        dm_ai_module.EffectResolver.resume(self.gs, self.card_db, targets)
+        self.log_list.addItem(f"Resumed with targets: {targets}")
+        self.step_phase()
+
     def on_card_clicked(self, card_id, instance_id):
         if self.gs.active_player_id != 0 or not self.p0_human_radio.isChecked():
             return
@@ -375,10 +402,16 @@ class GameWindow(QMainWindow):
              if self.gs.pending_query.query_type == "SELECT_TARGET":
                  valid_targets = self.gs.pending_query.valid_targets
                  if instance_id in valid_targets:
-                     dm_ai_module.EffectResolver.resume(self.gs, self.card_db, [instance_id])
-                     self.log_list.addItem(f"Resumed with target: {instance_id}")
-                     self.step_phase()
-                     return
+                     if instance_id in self.selected_targets:
+                         self.selected_targets.remove(instance_id)
+                     else:
+                         query_max = self.gs.pending_query.params.get('max', 99)
+                         if len(self.selected_targets) < query_max:
+                             self.selected_targets.append(instance_id)
+                         else:
+                             self.log_list.addItem(f"Max targets reached ({query_max})")
+                             return
+                     self.update_ui()
                  else:
                      self.log_list.addItem("Invalid target selected.")
              return
@@ -528,6 +561,25 @@ class GameWindow(QMainWindow):
 
         if self.gs.waiting_for_user_input and self.gs.pending_query.query_type == "SELECT_TARGET":
             valid_targets = self.gs.pending_query.valid_targets
+            min_targets = self.gs.pending_query.params.get('min', 1)
+            max_targets = self.gs.pending_query.params.get('max', 99)
+
+            # Update button text with count
+            current = len(self.selected_targets)
+            self.confirm_btn.setText(f"{tr('Confirm')} ({current}/{min_targets}-{max_targets})")
+            self.confirm_btn.setVisible(True)
+            self.confirm_btn.setEnabled(current >= min_targets)
+
+            # Apply selections visually
+            zones = [
+                self.p0_hand, self.p0_mana, self.p0_battle, self.p0_shield, self.p0_graveyard,
+                self.p1_hand, self.p1_mana, self.p1_battle, self.p1_shield, self.p1_graveyard
+            ]
+            for zone in zones:
+                for target_id in self.selected_targets:
+                    zone.set_card_selected(target_id, True)
+        else:
+            self.confirm_btn.setVisible(False)
 
 if __name__ == "__main__":
     import signal

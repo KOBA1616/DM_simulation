@@ -27,6 +27,7 @@ class CardWidget(QFrame):
             self.civs = [civ] if civ else []
 
         self.tapped = tapped
+        self.selected = False  # Selection state
         self.instance_id = instance_id
         self.is_face_down = is_face_down
 
@@ -148,8 +149,16 @@ class CardWidget(QFrame):
         self.cost_label.setStyleSheet(circle_style + circle_bg)
 
         # 2. Update Card Background Style
-        border_color = '#555' if not self.tapped else 'red'
-        border_width = '2px' if not self.tapped else '3px'
+        border_color = '#555'
+        border_width = '2px'
+
+        if self.tapped:
+            border_color = 'red'
+            border_width = '3px'
+
+        if self.selected:
+            border_color = '#00FF00'  # Bright green for selection
+            border_width = '4px'
 
         if not self.civs:
             bg_style = "background-color: #FFFFFF;"
@@ -178,12 +187,16 @@ class CardWidget(QFrame):
                 border-radius: 5px;
             }}
             CardWidget:hover {{
-                border: {border_width} solid #0078d7; /* Highlight blue */
+                border: {border_width} solid {'#0078d7' if not self.selected else '#32CD32'}; /* Highlight blue or lighter green */
             }}
         """)
 
     def set_tapped(self, tapped):
         self.tapped = tapped
+        self.update_style()
+
+    def set_selected(self, selected):
+        self.selected = selected
         self.update_style()
 
     def mousePressEvent(self, a0):
