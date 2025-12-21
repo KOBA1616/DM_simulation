@@ -47,6 +47,7 @@ namespace dm::core {
         int value; // e.g. +1000 power
         std::string str_value; // e.g. "SPEED_ATTACKER"
         FilterDef target_filter; // Which creatures get this buff?
+        std::optional<std::vector<int>> specific_targets; // Specific instances (overrides filter if present)
         ConditionDef condition; // "If shields 0..."
         int source_instance_id; // The source of the effect
         PlayerID controller;

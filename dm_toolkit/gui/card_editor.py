@@ -42,8 +42,8 @@ class CardEditor(QMainWindow):
         add_eff_act.triggered.connect(self.add_effect)
         toolbar.addAction(add_eff_act)
 
-        add_act_act = QAction(tr("Add Action"), self)
-        add_act_act.triggered.connect(self.add_action)
+        add_act_act = QAction(tr("Add Command"), self)
+        add_act_act.triggered.connect(self.add_command)
         toolbar.addAction(add_act_act)
 
         del_act = QAction(tr("Delete Item"), self)
@@ -257,33 +257,42 @@ class CardEditor(QMainWindow):
             target_item = item.parent()
             
         if target_item:
-            new_eff = {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "actions": []}
-            label = f"{tr('Effect')}: {tr('ON_PLAY')}"
-            self.tree_widget.add_child_item(target_item.index(), "EFFECT", new_eff, label)
+            self.tree_widget.add_effect_interactive(target_item.index())
         else:
             QMessageBox.warning(self, tr("Warning"), tr("Please select a Card or Effect group to add an Effect."))
 
-    def add_action(self):
+    def add_command(self):
         idx = self.tree_widget.currentIndex()
         if not idx.isValid(): return
-        
+
         item = self.tree_widget.model.itemFromIndex(idx)
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
-        
-        target_item = None
-        if type_ == "EFFECT":
-            target_item = item
-        elif type_ == "ACTION":
-            target_item = item.parent()
-        elif type_ == "OPTION":
-            target_item = item
 
-        if target_item:
-            new_act = {"type": "DESTROY", "scope": "TARGET_SELECT", "value1": 0, "filter": {}}
-            label = f"{tr('Action')}: {tr('DESTROY')}"
-            self.tree_widget.add_child_item(target_item.index(), "ACTION", new_act, label)
+        # Delegate to LogicTreeWidget methods for consistency
+        if type_ == "EFFECT":
+            self.tree_widget.add_command_to_effect(idx)
+        elif type_ == "OPTION":
+            self.tree_widget.add_command_to_option(idx)
+        elif type_ == "COMMAND":
+            # Add sibling command
+            parent = item.parent()
+            if parent:
+                parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
+                if parent_type == "EFFECT":
+                    self.tree_widget.add_command_to_effect(parent.index())
+                elif parent_type == "OPTION":
+                    self.tree_widget.add_command_to_option(parent.index())
+        elif type_ == "ACTION":
+            # Legacy ACTION support, treat as sibling if parent is valid
+            parent = item.parent()
+            if parent:
+                parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
+                if parent_type == "EFFECT":
+                    self.tree_widget.add_command_to_effect(parent.index())
+                elif parent_type == "OPTION":
+                    self.tree_widget.add_command_to_option(parent.index())
         else:
-            QMessageBox.warning(self, tr("Warning"), tr("Please select an Effect to add an Action."))
+            QMessageBox.warning(self, tr("Warning"), tr("Please select an Effect or Option to add a Command."))
 
     def delete_item(self):
         self.tree_widget.remove_current_item()
