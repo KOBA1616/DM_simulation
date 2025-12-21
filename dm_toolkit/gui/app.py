@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.localization import tr, describe_command
 from dm_toolkit.gui.deck_builder import DeckBuilder
 from dm_toolkit.gui.card_editor import CardEditor
 from dm_toolkit.gui.editor.scenario_editor import ScenarioEditor
@@ -47,6 +47,7 @@ class GameWindow(QMainWindow):
         self.p1_deck_ids = None
         self.last_action = None
         self.selected_targets = []
+        self.last_command_index = 0  # For incremental command logging
 
         # Simulation Timer
         self.timer = QTimer()
@@ -413,6 +414,7 @@ class GameWindow(QMainWindow):
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
         self.log_list.clear()
         self.log_list.addItem(tr("Game Reset"))
+        self.last_command_index = 0 # Reset command index
         self.update_ui()
 
     def confirm_selection(self):
@@ -430,7 +432,7 @@ class GameWindow(QMainWindow):
         self.confirm_btn.setVisible(False)
 
         dm_ai_module.EffectResolver.resume(self.gs, self.card_db, targets)
-        self.log_list.addItem(f"Resumed with targets: {targets}")
+        # self.log_list.addItem(f"Resumed with targets: {targets}")
         self.step_phase()
 
     def on_card_clicked(self, card_id, instance_id):
@@ -448,11 +450,11 @@ class GameWindow(QMainWindow):
                          if len(self.selected_targets) < query_max:
                              self.selected_targets.append(instance_id)
                          else:
-                             self.log_list.addItem(f"Max targets reached ({query_max})")
+                             # self.log_list.addItem(f"Max targets reached ({query_max})")
                              return
                      self.update_ui()
                  else:
-                     self.log_list.addItem("Invalid target selected.")
+                     pass # self.log_list.addItem("Invalid target selected.")
              return
 
         actions = dm_ai_module.ActionGenerator.generate_legal_actions(
@@ -461,13 +463,13 @@ class GameWindow(QMainWindow):
         relevant_actions = [a for a in actions if a.source_instance_id == instance_id]
 
         if not relevant_actions:
-            self.log_list.addItem(f"{tr('No actions for card')} {card_id} (Inst: {instance_id})")
+            # self.log_list.addItem(f"{tr('No actions for card')} {card_id} (Inst: {instance_id})")
             return
 
         if len(relevant_actions) == 1:
             self.execute_action(relevant_actions[0])
         else:
-            self.log_list.addItem(tr("Multiple actions found. Executing first."))
+            # self.log_list.addItem(tr("Multiple actions found. Executing first."))
             self.execute_action(relevant_actions[0])
 
     def on_card_hovered(self, card_id):
@@ -481,7 +483,7 @@ class GameWindow(QMainWindow):
         dm_ai_module.EffectResolver.resolve_action(
             self.gs, action, self.card_db
         )
-        self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
+        # self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
         self.loop_recorder.record_action(action.to_string())
         
         if self.gs.waiting_for_user_input:
@@ -523,7 +525,7 @@ class GameWindow(QMainWindow):
              if len(resolve_actions) == 1:
                   self.execute_action(resolve_actions[0])
              else:
-                  self.log_list.addItem(f"Cannot resolve effect at index {index}. (Not in legal actions)")
+                  pass # self.log_list.addItem(f"Cannot resolve effect at index {index}. (Not in legal actions)")
 
     def handle_user_input_request(self):
         query = self.gs.pending_query
@@ -537,7 +539,7 @@ class GameWindow(QMainWindow):
                  self.step_phase()
 
         elif query.query_type == "SELECT_TARGET":
-             self.log_list.addItem(f"Please select {query.params['min']} target(s).")
+             # self.log_list.addItem(f"Please select {query.params['min']} target(s).")
              self.update_ui()
 
     def step_phase(self):
@@ -554,7 +556,7 @@ class GameWindow(QMainWindow):
                 self.is_running = False
                 self.start_btn.setText(tr("Start Sim"))
                 winner = self.gs.winner
-                self.log_list.addItem(f"{tr('Game Over! Winner')}: P{winner}")
+                # self.log_list.addItem(f"{tr('Game Over! Winner')}: P{winner}")
                 return
 
             active_pid = self.gs.active_player_id
@@ -567,7 +569,7 @@ class GameWindow(QMainWindow):
                 )
                 if not actions:
                     dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
-                    self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
+                    # self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
                     self.update_ui()
                 return
 
@@ -577,7 +579,7 @@ class GameWindow(QMainWindow):
 
             if not actions:
                 dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
-                self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
+                # self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
             else:
                 best_action = actions[0] # Fallback
                 
@@ -586,11 +588,11 @@ class GameWindow(QMainWindow):
                     dm_ai_module.EffectResolver.resolve_action(
                         self.gs, best_action, self.card_db
                     )
-                    self.log_list.addItem(f"P{active_pid} {tr('AI Action')}: {best_action.to_string()}")
+                    # self.log_list.addItem(f"P{active_pid} {tr('AI Action')}: {best_action.to_string()}")
                     self.loop_recorder.record_action(best_action.to_string())
 
                     if self.gs.waiting_for_user_input:
-                         self.log_list.addItem("AI Paused for Input (Not Implemented). Stopping Sim.")
+                         # self.log_list.addItem("AI Paused for Input (Not Implemented). Stopping Sim.")
                          self.timer.stop()
                          self.is_running = False
                          self.start_btn.setText(tr("Start Sim"))
@@ -612,6 +614,19 @@ class GameWindow(QMainWindow):
         
         # Update Stack View
         self.stack_view.update_state(self.gs, self.card_db)
+
+        # ---------------------------------------------------------------------
+        # COMMAND LOG UPDATE
+        # ---------------------------------------------------------------------
+        history = self.gs.command_history
+        current_len = len(history)
+        if current_len > self.last_command_index:
+            for i in range(self.last_command_index, current_len):
+                cmd = history[i]
+                desc = describe_command(cmd, self.gs, self.card_db)
+                self.log_list.addItem(desc)
+            self.log_list.scrollToBottom()
+            self.last_command_index = current_len
 
         p0 = self.gs.players[0]
         p1 = self.gs.players[1]
