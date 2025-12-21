@@ -209,6 +209,24 @@ class CardEditor(QMainWindow):
              target_type = payload.get('target_type')
              if item_obj and target_type:
                  self.tree_widget.move_effect_item(item_obj, target_type)
+        elif command == "ADD_CHILD_EFFECT":
+            eff_type = payload.get('type')
+            if eff_type == "KEYWORDS":
+                self.tree_widget.add_keywords(item.index())
+            elif eff_type == "TRIGGERED":
+                self.tree_widget.add_trigger(item.index())
+            elif eff_type == "STATIC":
+                self.tree_widget.add_static(item.index())
+            elif eff_type == "REACTION":
+                self.tree_widget.add_reaction(item.index())
+        elif command == "ADD_CHILD_ACTION":
+            if item_type == "EFFECT":
+                self.tree_widget.add_action_to_effect(item.index())
+            elif item_type == "ACTION":
+                 # If adding action to action, it usually means adding to an option or maybe insert after?
+                 # For now, let's assume it only works on EFFECT nodes or we redirect logic.
+                 # The user wants "Add Action" button.
+                 pass
 
     def new_card(self):
         self.tree_widget.add_new_card()
