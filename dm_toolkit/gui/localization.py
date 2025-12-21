@@ -1,110 +1,13 @@
 # -*- coding: utf-8 -*-
 # Localized Japanese text.
+try:
+    import dm_ai_module as m
+except ImportError:
+    m = None
+
+# Base translations
 TRANSLATIONS = {
-    "GRANT_KEYWORD": "キーワード付与",
-    "MOVE_CARD": "カード移動",
-    "FRIEND_BURST": "フレンド・バースト",
-    "LOCK_SPELL": "呪文ロック",
-    "APPLY_MODIFIER": "効果付与",
-    "PLAY_CARD": "カードをプレイ",
-    "DRAW_CARD": "カードを引く",
-    "ADD_MANA": "マナ追加",
-    "DESTROY": "破壊",
-    "RETURN_TO_HAND": "手札に戻す",
-    "SEND_TO_MANA": "マナ送りにする",
-    "TAP": "タップする",
-    "UNTAP": "アンタップする",
-    "MODIFY_POWER": "パワー修正",
-    "BREAK_SHIELD": "シールドブレイク",
-    "LOOK_AND_ADD": "見て加える(サーチ)",
-    "SEARCH_DECK_BOTTOM": "デッキ下サーチ",
-    "MEKRAID": "メクレイド",
-    "REVOLUTION_CHANGE": "革命チェンジ",
-    "COUNT_CARDS": "カードカウント",
-    "GET_GAME_STAT": "ゲーム統計取得",
-    "REVEAL_CARDS": "カード公開",
-    "RESET_INSTANCE": "カード状態リセット",
-    "REGISTER_DELAYED_EFFECT": "遅延効果登録",
-    "SEARCH_DECK": "デッキ探索",
-    "SHUFFLE_DECK": "デッキシャッフル",
-    "ADD_SHIELD": "シールド追加",
-    "SEND_SHIELD_TO_GRAVE": "シールド焼却",
-    "SEND_TO_DECK_BOTTOM": "デッキ下に送る",
-    "MOVE_TO_UNDER_CARD": "カードの下に重ねる",
-    "CAST_SPELL": "呪文を唱える",
-    "PUT_CREATURE": "クリーチャーを出す",
-    "COST_REFERENCE": "コスト参照/軽減",
-    "SELECT_NUMBER": "数字を選択",
-    "SUMMON_TOKEN": "トークン生成",
-    "DISCARD": "手札を捨てる",
-    "PLAY_FROM_ZONE": "ゾーンからプレイ",
-    "MEASURE_COUNT": "カウント/計測",
-    "COST_REDUCTION": "コスト軽減",
-    "LOOK_TO_BUFFER": "バッファへ移動(Look)",
-    "SELECT_FROM_BUFFER": "バッファから選択",
-    "PLAY_FROM_BUFFER": "バッファからプレイ",
-    "MOVE_BUFFER_TO_ZONE": "バッファから移動",
-    "SELECT_OPTION": "選択肢",
-    "DECLARE_NUMBER": "数字宣言",
-    "CARDS_MATCHING_FILTER": "条件に合うカード数",
-    "MANA_CIVILIZATION_COUNT": "マナ文明数",
-    "SHIELD_COUNT": "シールド枚数",
-    "HAND_COUNT": "手札枚数",
-    "CARDS_DRAWN_THIS_TURN": "ターン内ドロー枚数",
-    "SYM_CREATURE": "シンパシー: クリーチャー",
-    "SYM_SPELL": "シンパシー: 呪文",
-    "HYPER_ENERGY": "ハイパーエナジー",
-    "G_ZERO": "G・ゼロ",
-    "ON_PLAY": "出た時 (CIP)",
-    "ON_ATTACK": "攻撃する時",
-    "ON_DESTROY": "破壊された時",
-    "S_TRIGGER": "S・トリガー",
-    "TURN_START": "ターン開始時",
-    "PASSIVE_CONST": "常在効果(パッシブ)",
-    "ON_BLOCK": "ブロックした時",
-    "AT_END_OF_TURN": "ターン終了時",
-    "AT_START_OF_TURN": "ターン開始時",
-    "AT_ATTACK": "攻撃時",
-    "AT_BLOCK": "ブロック時",
-    "G_STRIKE": "G・ストライク",
-    "ON_OPPONENT_DRAW": "相手がカードを引いたとき",
-    "ON_CAST_SPELL": "この呪文を唱えた時",
-    "ON_SHIELD_ADD": "シールドが加わった時",
-    "AT_BREAK_SHIELD": "シールドブレイク時",
-    "ON_OTHER_ENTER": "他のクリーチャーが出た時",
-    "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
-    "NINJA_STRIKE": "ニンジャ・ストライク",
-    "STRIKE_BACK": "ストライク・バック",
-    "REVOLUTION_0_TRIGGER": "革命0トリガー",
-    "MANA": "マナ",
-    "TAP_CARD": "カードをタップ",
-    "SACRIFICE_CARD": "カードを破壊",
-    "RETURN_CARD": "手札に戻す",
-    "SHIELD_BURN": "シールド焼却",
-    "ACTIVE_PAYMENT": "アクション型軽減",
-    "PASSIVE": "パッシブ型軽減",
-    "HAND": "手札",
-    "BATTLE_ZONE": "バトルゾーン",
-    "GRAVEYARD": "墓地",
-    "MANA_ZONE": "マナゾーン",
-    "SHIELD_ZONE": "シールドゾーン",
-    "DECK_BOTTOM": "デッキ下",
-    "DECK_TOP": "デッキ上",
-    "DECK": "デッキ",
-    "EFFECT_BUFFER": "効果バッファ",
-    "PLAYER_SELF": "自分",
-    "PLAYER_OPPONENT": "相手",
-    "TARGET_SELECT": "対象選択",
-    "ALL_PLAYERS": "両プレイヤー",
-    "RANDOM": "ランダム",
-    "ALL_FILTERED": "全体(フィルタ)",
-    "NONE": "なし",
-    "LIGHT": "光",
-    "WATER": "水",
-    "DARKNESS": "闇",
-    "FIRE": "火",
-    "NATURE": "自然",
-    "ZERO": "無色",
+    # Keys for Enums will be dynamically added below if m is available
     "Destination Zone": "移動先ゾーン",
     "Keyword": "キーワード",
     "Duration (Turns)": "持続ターン数",
@@ -286,12 +189,133 @@ TRANSLATIONS = {
     "MANA_CHARGE": "マナチャージ",
 }
 
-def translate(key: str) -> str:
+# Add Enum mappings if module is available
+if m:
+    # EffectActionType
+    TRANSLATIONS.update({
+        m.EffectActionType.GRANT_KEYWORD: "キーワード付与",
+        m.EffectActionType.MOVE_CARD: "カード移動",
+        m.EffectActionType.FRIEND_BURST: "フレンド・バースト",
+        m.EffectActionType.APPLY_MODIFIER: "効果付与",
+        m.EffectActionType.DRAW_CARD: "カードを引く",
+        m.EffectActionType.ADD_MANA: "マナ追加",
+        m.EffectActionType.DESTROY: "破壊",
+        m.EffectActionType.RETURN_TO_HAND: "手札に戻す",
+        m.EffectActionType.SEND_TO_MANA: "マナ送りにする",
+        m.EffectActionType.TAP: "タップする",
+        m.EffectActionType.UNTAP: "アンタップする",
+        m.EffectActionType.MODIFY_POWER: "パワー修正",
+        m.EffectActionType.BREAK_SHIELD: "シールドブレイク",
+        m.EffectActionType.LOOK_AND_ADD: "見て加える(サーチ)",
+        m.EffectActionType.SEARCH_DECK_BOTTOM: "デッキ下サーチ",
+        m.EffectActionType.MEKRAID: "メクレイド",
+        m.EffectActionType.REVOLUTION_CHANGE: "革命チェンジ",
+        m.EffectActionType.COUNT_CARDS: "カードカウント",
+        m.EffectActionType.GET_GAME_STAT: "ゲーム統計取得",
+        m.EffectActionType.REVEAL_CARDS: "カード公開",
+        m.EffectActionType.RESET_INSTANCE: "カード状態リセット",
+        m.EffectActionType.REGISTER_DELAYED_EFFECT: "遅延効果登録",
+        m.EffectActionType.SEARCH_DECK: "デッキ探索",
+        m.EffectActionType.SHUFFLE_DECK: "デッキシャッフル",
+        m.EffectActionType.ADD_SHIELD: "シールド追加",
+        m.EffectActionType.SEND_SHIELD_TO_GRAVE: "シールド焼却",
+        m.EffectActionType.SEND_TO_DECK_BOTTOM: "デッキ下に送る",
+        m.EffectActionType.MOVE_TO_UNDER_CARD: "カードの下に重ねる",
+        m.EffectActionType.CAST_SPELL: "呪文を唱える",
+        m.EffectActionType.PUT_CREATURE: "クリーチャーを出す",
+        m.EffectActionType.COST_REFERENCE: "コスト参照/軽減",
+        m.EffectActionType.SELECT_NUMBER: "数字を選択",
+        m.EffectActionType.SUMMON_TOKEN: "トークン生成",
+        m.EffectActionType.DISCARD: "手札を捨てる",
+        m.EffectActionType.PLAY_FROM_ZONE: "ゾーンからプレイ",
+        m.EffectActionType.LOOK_TO_BUFFER: "バッファへ移動(Look)",
+        m.EffectActionType.SELECT_FROM_BUFFER: "バッファから選択",
+        m.EffectActionType.PLAY_FROM_BUFFER: "バッファからプレイ",
+        m.EffectActionType.MOVE_BUFFER_TO_ZONE: "バッファから移動",
+        m.EffectActionType.SELECT_OPTION: "選択肢",
+        m.EffectActionType.RESOLVE_BATTLE: "バトル解決",
+    })
+
+    # ActionType
+    TRANSLATIONS.update({
+        m.ActionType.PLAY_CARD: "カードをプレイ",
+        m.ActionType.ATTACK_CREATURE: "クリーチャー攻撃",
+        m.ActionType.ATTACK_PLAYER: "プレイヤー攻撃",
+        m.ActionType.BLOCK: "ブロック",
+        m.ActionType.USE_SHIELD_TRIGGER: "S・トリガー使用",
+        m.ActionType.RESOLVE_EFFECT: "効果解決",
+        m.ActionType.SELECT_TARGET: "対象選択",
+        m.ActionType.USE_ABILITY: "能力使用",
+        m.ActionType.DECLARE_REACTION: "リアクション宣言",
+        m.ActionType.MANA_CHARGE: "マナチャージ",
+        m.ActionType.PASS: "パス",
+    })
+
+    # TriggerType
+    TRANSLATIONS.update({
+        m.TriggerType.ON_PLAY: "出た時 (CIP)",
+        m.TriggerType.ON_ATTACK: "攻撃する時",
+        m.TriggerType.ON_DESTROY: "破壊された時",
+        m.TriggerType.S_TRIGGER: "S・トリガー",
+        m.TriggerType.TURN_START: "ターン開始時",
+        m.TriggerType.PASSIVE_CONST: "常在効果(パッシブ)",
+    })
+
+    # Civilization
+    TRANSLATIONS.update({
+        m.Civilization.FIRE: "火",
+        m.Civilization.WATER: "水",
+        m.Civilization.NATURE: "自然",
+        m.Civilization.LIGHT: "光",
+        m.Civilization.DARKNESS: "闇",
+        m.Civilization.ZERO: "無色",
+    })
+
+    # Zone
+    TRANSLATIONS.update({
+        m.Zone.HAND: "手札",
+        m.Zone.BATTLE: "バトルゾーン",
+        m.Zone.GRAVEYARD: "墓地",
+        m.Zone.MANA: "マナゾーン",
+        m.Zone.SHIELD: "シールドゾーン",
+        m.Zone.DECK: "デッキ",
+        m.Zone.BUFFER: "効果バッファ",
+    })
+
+    # TargetScope
+    TRANSLATIONS.update({
+        m.TargetScope.SELF: "自分",
+        m.TargetScope.TARGET_SELECT: "対象選択",
+        m.TargetScope.NONE: "なし",
+    })
+
+    # String Values that were keys (kept for compatibility or mapped to Enum str?)
+    # ...
+
+    # Also keep string keys for Enums for backward compatibility or serialization
+    for enum_cls in [m.ActionType, m.EffectActionType, m.TriggerType, m.Civilization, m.Zone, m.TargetScope]:
+        for member in enum_cls.__members__.values():
+            if member in TRANSLATIONS:
+                TRANSLATIONS[member.name] = TRANSLATIONS[member]
+
+def translate(key) -> str:
     """Return localized text when available, otherwise echo the key."""
-    return TRANSLATIONS.get(key, key)
+    # Try direct lookup (works for Enums and strings)
+    res = TRANSLATIONS.get(key)
+    if res is not None:
+        return res
+
+    # If key is an Enum, try looking up its name (fallback)
+    if hasattr(key, "name"):
+         res = TRANSLATIONS.get(key.name)
+         if res is not None:
+             return res
+
+    # If key is a string and not found, return as is
+    return str(key)
 
 def tr(text: str) -> str:
-    return TRANSLATIONS.get(text, text)
+    return translate(text)
 
 def get_card_civilizations(card_data) -> list:
     """
