@@ -47,7 +47,7 @@ class ActionEditForm(BaseEditForm):
         }
 
     def setup_ui(self):
-        layout = QFormLayout(self)
+        self.form_layout = QFormLayout(self)
 
         self.type_combo = QComboBox()
         # "MEASURE_COUNT" is a UI-only type that maps to COUNT_CARDS or GET_GAME_STAT
@@ -55,47 +55,40 @@ class ActionEditForm(BaseEditForm):
         # Kept generic MOVE_CARD
         self.known_types = EDITOR_ACTION_TYPES
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
-        layout.addRow(tr("Action Type"), self.type_combo)
+        self.add_field(tr("Action Type"), self.type_combo)
 
         # Warning Label for Deprecated Actions
         self.warning_label = QLabel()
         self.warning_label.setStyleSheet("color: red; font-weight: bold;")
         self.warning_label.setWordWrap(True)
         self.warning_label.setVisible(False)
-        layout.addRow(self.warning_label)
+        self.add_field(None, self.warning_label)
 
         self.scope_combo = QComboBox()
         scopes = ["PLAYER_SELF", "PLAYER_OPPONENT", "TARGET_SELECT", "ALL_PLAYERS", "RANDOM", "ALL_FILTERED", "NONE"]
         self.populate_combo(self.scope_combo, scopes, data_func=lambda x: x, display_func=tr)
-        layout.addRow(tr("Scope"), self.scope_combo)
+        self.add_field(tr("Scope"), self.scope_combo)
 
-        self.str_val_label = QLabel(tr("String Value"))
         self.str_val_edit = QLineEdit()
+        self.str_val_label = self.add_field(tr("String Value"), self.str_val_edit)
 
         # Measure Mode Combo (Unified)
         self.measure_mode_combo = QComboBox()
         self.measure_mode_combo.addItem(tr("CARDS_MATCHING_FILTER"), "CARDS_MATCHING_FILTER")
         stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT", "CARDS_DRAWN_THIS_TURN"]
         self.populate_combo(self.measure_mode_combo, stats, data_func=lambda x: x, display_func=tr, clear=False)
+        self.mode_label = self.add_field(tr("Mode"), self.measure_mode_combo)
 
         self.ref_mode_combo = QComboBox()
         ref_modes = ["SYM_CREATURE", "SYM_SPELL", "G_ZERO", "HYPER_ENERGY", "NONE"]
         self.populate_combo(self.ref_mode_combo, ref_modes, data_func=lambda x: x, display_func=tr)
-
-        layout.addRow(self.str_val_label, self.str_val_edit)
-
-        self.mode_label = QLabel(tr("Mode"))
-        layout.addRow(self.mode_label, self.measure_mode_combo)
-
-        self.ref_mode_label = QLabel(tr("Ref Mode"))
-        layout.addRow(self.ref_mode_label, self.ref_mode_combo)
+        self.ref_mode_label = self.add_field(tr("Ref Mode"), self.ref_mode_combo)
 
         # Destination Zone Combo (For MOVE_CARD)
         self.dest_zone_combo = QComboBox()
         zones = ZONES_EXTENDED
         self.populate_combo(self.dest_zone_combo, zones, data_func=lambda x: x, display_func=tr)
-        self.dest_zone_label = QLabel(tr("Destination Zone"))
-        layout.addRow(self.dest_zone_label, self.dest_zone_combo)
+        self.dest_zone_label = self.add_field(tr("Destination Zone"), self.dest_zone_combo)
 
         # Filter Widget
         self.filter_group = QGroupBox(tr("Filter"))
@@ -104,20 +97,17 @@ class ActionEditForm(BaseEditForm):
         fg_layout.addWidget(self.filter_widget)
         self.filter_widget.filterChanged.connect(self.update_data)
 
-        layout.addRow(self.filter_group)
+        self.add_field(None, self.filter_group)
 
-        self.val1_label = QLabel(tr("Value 1"))
         self.val1_spin = QSpinBox()
         self.val1_spin.setRange(-9999, 9999)
-        layout.addRow(self.val1_label, self.val1_spin)
+        self.val1_label = self.add_field(tr("Value 1"), self.val1_spin)
 
-        self.val2_label = QLabel(tr("Value 2"))
         self.val2_spin = QSpinBox()
         self.val2_spin.setRange(-9999, 9999)
-        layout.addRow(self.val2_label, self.val2_spin)
+        self.val2_label = self.add_field(tr("Value 2"), self.val2_spin)
 
         # Option Generation Controls (For SELECT_OPTION)
-        self.option_count_label = QLabel(tr("Options to Add"))
         self.option_gen_layout = QHBoxLayout()
         self.option_count_spin = QSpinBox()
         self.option_count_spin.setRange(1, 10)
@@ -126,23 +116,23 @@ class ActionEditForm(BaseEditForm):
         self.generate_options_btn.clicked.connect(self.request_generate_options)
         self.option_gen_layout.addWidget(self.option_count_spin)
         self.option_gen_layout.addWidget(self.generate_options_btn)
-        layout.addRow(self.option_count_label, self.option_gen_layout)
+        self.option_count_label = self.add_field(tr("Options to Add"), self.option_gen_layout)
 
 
         self.no_cost_check = QCheckBox(tr("Play without paying cost"))
-        layout.addRow(self.no_cost_check)
+        self.add_field(None, self.no_cost_check)
 
         self.allow_duplicates_check = QCheckBox(tr("Allow Duplicates"))
-        layout.addRow(self.allow_duplicates_check)
+        self.add_field(None, self.allow_duplicates_check)
 
         self.arbitrary_check = QCheckBox(tr("Arbitrary Amount (Up to N)"))
-        layout.addRow(self.arbitrary_check)
+        self.add_field(None, self.arbitrary_check)
 
         # Variable Link Widget
         self.link_widget = VariableLinkWidget()
         self.link_widget.linkChanged.connect(self.update_data)
         self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed)
-        layout.addRow(self.link_widget)
+        self.add_field(None, self.link_widget)
 
         # Define bindings for automatic data transfer
         self.bindings = {
