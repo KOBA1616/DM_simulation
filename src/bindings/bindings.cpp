@@ -773,6 +773,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<PhaseManager>(m, "PhaseManager")
         .def_static("start_game", &PhaseManager::start_game)
+        .def_static("setup_scenario", &PhaseManager::setup_scenario)
         .def_static("next_phase", &PhaseManager::next_phase)
         .def_static("check_game_over", &PhaseManager::check_game_over);
 

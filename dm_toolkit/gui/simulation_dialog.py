@@ -64,9 +64,10 @@ class SimulationWorker(QThread):
         # Prepare Initial States
         initial_states = []
         for i in range(self.episodes):
-             instance = dm_ai_module.GameInstance(int(time.time() * 1000 + i) % 1000000, self.card_db)
-             instance.reset_with_scenario(config)
-             initial_states.append(instance.state)
+             seed = int(time.time() * 1000 + i) % 1000000
+             state = dm_ai_module.GameState(seed)
+             dm_ai_module.PhaseManager.setup_scenario(state, config, self.card_db)
+             initial_states.append(state)
 
         # Setup Evaluator
         evaluator_func = None
@@ -83,8 +84,8 @@ class SimulationWorker(QThread):
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
                 # Input Size check
-                dummy_instance = dm_ai_module.GameInstance(42, self.card_db)
-                dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_instance.state, 0, self.card_db)
+                dummy_state = dm_ai_module.GameState(42)
+                dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_state, 0, self.card_db)
                 input_size = len(dummy_vec)
                 action_size = 600
 
