@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QWidget, QComboBox
 from PyQt6.QtCore import Qt, pyqtSignal
+from contextlib import contextmanager
 
 class BaseEditForm(QWidget):
     """
@@ -15,6 +16,17 @@ class BaseEditForm(QWidget):
         super().__init__(parent)
         self.current_item = None
         self._is_populating = False
+        self._bound_widgets = [] # List of widgets to block signals for
+
+    def register_widget(self, widget):
+        """Registers a widget to have its signals blocked during set_data."""
+        if widget not in self._bound_widgets:
+            self._bound_widgets.append(widget)
+
+    def connect_signal(self, widget, signal, slot):
+        """Registers the widget and connects the signal to the slot."""
+        self.register_widget(widget)
+        signal.connect(slot)
 
     def set_data(self, item):
         """
@@ -24,10 +36,9 @@ class BaseEditForm(QWidget):
         self._is_populating = True
 
         try:
-            self.block_signals_all(True)
-            self._populate_ui(item)
+            with self.block_signals():
+                self._populate_ui(item)
         finally:
-            self.block_signals_all(False)
             self._is_populating = False
             self.current_item = item
 
@@ -71,11 +82,22 @@ class BaseEditForm(QWidget):
 
     def block_signals_all(self, block):
         """
-        Override to block signals for all input widgets.
-        Alternatively, we can rely on _is_populating flag in update_data,
-        but explicit blocking is often safer for complex widgets.
+        Blocks or unblocks signals for all registered widgets.
+        Can be overridden, but using register_widget is preferred.
         """
-        pass
+        for widget in self._bound_widgets:
+            widget.blockSignals(block)
+
+    @contextmanager
+    def block_signals(self):
+        """
+        Context manager to block signals for all registered widgets.
+        """
+        self.block_signals_all(True)
+        try:
+            yield
+        finally:
+            self.block_signals_all(False)
 
     # Helper methods
     def populate_combo(self, combo: QComboBox, items: list, data_func=None, display_func=None, clear=True):

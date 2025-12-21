@@ -110,6 +110,8 @@ class ActionEditForm(BaseEditForm):
         self.filter_widget = FilterEditorWidget()
         fg_layout = QVBoxLayout(self.filter_group)
         fg_layout.addWidget(self.filter_widget)
+        # Manually register complex widget
+        self.register_widget(self.filter_widget)
         self.filter_widget.filterChanged.connect(self.update_data)
 
         layout.addRow(self.filter_group)
@@ -148,22 +150,25 @@ class ActionEditForm(BaseEditForm):
 
         # Variable Link Widget
         self.link_widget = VariableLinkWidget()
+        # Manually register complex widget
+        self.register_widget(self.link_widget)
         self.link_widget.linkChanged.connect(self.update_data)
         self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed)
         layout.addRow(self.link_widget)
 
-        # Connect signals
-        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
-        self.scope_combo.currentIndexChanged.connect(self.update_data)
-        self.val1_spin.valueChanged.connect(self.update_data)
-        self.val2_spin.valueChanged.connect(self.update_data)
-        self.str_val_edit.textChanged.connect(self.update_data)
-        self.measure_mode_combo.currentIndexChanged.connect(self.on_measure_mode_changed)
-        self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
-        self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
-        self.allow_duplicates_check.stateChanged.connect(self.update_data)
-        self.arbitrary_check.stateChanged.connect(self.update_data)
-        self.no_cost_check.stateChanged.connect(self.update_data)
+        # Connect signals and register widgets
+        self.connect_signal(self.type_combo, self.type_combo.currentIndexChanged, self.on_type_changed)
+        self.connect_signal(self.scope_combo, self.scope_combo.currentIndexChanged, self.update_data)
+        self.connect_signal(self.val1_spin, self.val1_spin.valueChanged, self.update_data)
+        self.connect_signal(self.val2_spin, self.val2_spin.valueChanged, self.update_data)
+        self.connect_signal(self.str_val_edit, self.str_val_edit.textChanged, self.update_data)
+        self.connect_signal(self.measure_mode_combo, self.measure_mode_combo.currentIndexChanged, self.on_measure_mode_changed)
+        self.connect_signal(self.ref_mode_combo, self.ref_mode_combo.currentIndexChanged, self.update_data)
+        self.connect_signal(self.dest_zone_combo, self.dest_zone_combo.currentIndexChanged, self.update_data)
+        self.connect_signal(self.allow_duplicates_check, self.allow_duplicates_check.stateChanged, self.update_data)
+        self.connect_signal(self.arbitrary_check, self.arbitrary_check.stateChanged, self.update_data)
+        self.connect_signal(self.no_cost_check, self.no_cost_check.stateChanged, self.update_data)
+        # Note: no_cost_check is already registered above, but doing it again is safe (checks existence)
         self.no_cost_check.stateChanged.connect(self.on_no_cost_changed)
 
         self.update_ui_state(self.type_combo.currentData())
@@ -414,17 +419,3 @@ class ActionEditForm(BaseEditForm):
         # NOTE: This method seems unused? LogicTreeWidget uses data_manager.py
         # But kept for safety if BaseEditForm uses it for window title or something.
         return f"{tr('Action')}: {tr(data['type'])}"
-
-    def block_signals_all(self, block):
-        self.type_combo.blockSignals(block)
-        self.scope_combo.blockSignals(block)
-        self.val1_spin.blockSignals(block)
-        self.val2_spin.blockSignals(block)
-        self.str_val_edit.blockSignals(block)
-        self.measure_mode_combo.blockSignals(block)
-        self.filter_widget.blockSignals(block)
-        self.link_widget.blockSignals(block)
-        self.arbitrary_check.blockSignals(block)
-        self.allow_duplicates_check.blockSignals(block)
-        self.ref_mode_combo.blockSignals(block)
-        self.dest_zone_combo.blockSignals(block)

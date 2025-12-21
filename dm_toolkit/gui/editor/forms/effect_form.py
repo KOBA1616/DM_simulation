@@ -55,6 +55,7 @@ class EffectEditForm(BaseEditForm):
 
         # Target Filter (Static)
         self.target_filter = FilterEditorWidget()
+        self.register_widget(self.target_filter)
         self.target_filter.filterChanged.connect(self.update_data)
         self.target_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
         l_layout.addWidget(QLabel(tr("Target Filter")), 3, 0)
@@ -64,6 +65,7 @@ class EffectEditForm(BaseEditForm):
 
         # Condition (Shared)
         self.condition_widget = ConditionEditorWidget()
+        self.register_widget(self.condition_widget)
         self.condition_widget.dataChanged.connect(self.update_data)
         layout.addRow(self.condition_widget)
 
@@ -73,14 +75,14 @@ class EffectEditForm(BaseEditForm):
         layout.addRow(self.add_action_btn)
 
         # Connect signals
-        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
-        self.mode_combo.currentIndexChanged.connect(self.update_data)
+        self.connect_signal(self.mode_combo, self.mode_combo.currentIndexChanged, self.on_mode_changed)
+        self.connect_signal(self.mode_combo, self.mode_combo.currentIndexChanged, self.update_data)
 
-        self.trigger_combo.currentIndexChanged.connect(self.update_data)
+        self.connect_signal(self.trigger_combo, self.trigger_combo.currentIndexChanged, self.update_data)
 
-        self.layer_type_combo.currentIndexChanged.connect(self.update_data)
-        self.layer_val_spin.valueChanged.connect(self.update_data)
-        self.layer_str_edit.textChanged.connect(self.update_data)
+        self.connect_signal(self.layer_type_combo, self.layer_type_combo.currentIndexChanged, self.update_data)
+        self.connect_signal(self.layer_val_spin, self.layer_val_spin.valueChanged, self.update_data)
+        self.connect_signal(self.layer_str_edit, self.layer_str_edit.textChanged, self.update_data)
 
         # Initial UI State
         self.on_mode_changed()
@@ -243,12 +245,3 @@ class EffectEditForm(BaseEditForm):
              return f"{tr('Static')}: {tr(t)}"
         else:
              return tr("Unknown Effect")
-
-    def block_signals_all(self, block):
-        self.mode_combo.blockSignals(block)
-        self.trigger_combo.blockSignals(block)
-        self.layer_type_combo.blockSignals(block)
-        self.layer_val_spin.blockSignals(block)
-        self.layer_str_edit.blockSignals(block)
-
-        self.condition_widget.blockSignals(block)
