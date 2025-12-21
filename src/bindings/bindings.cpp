@@ -69,6 +69,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("CUSTOM", dm::core::EventType::CUSTOM)
         .export_values();
 
+    py::enum_<dm::core::GameState::Status>(m, "GameStatus")
+        .value("PLAYING", dm::core::GameState::Status::PLAYING)
+        .value("WAITING_FOR_REACTION", dm::core::GameState::Status::WAITING_FOR_REACTION)
+        .value("GAME_OVER", dm::core::GameState::Status::GAME_OVER)
+        .export_values();
+
     py::class_<dm::core::GameEvent>(m, "GameEvent")
         .def(py::init<>())
         .def(py::init<dm::core::EventType, int, int, PlayerID>(),
@@ -576,6 +582,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("waiting_for_user_input", &GameState::waiting_for_user_input)
         .def_readwrite("pending_query", &GameState::pending_query)
+        .def_readwrite("status", &GameState::status)
+        .def("get_pending_effect_count", [](const GameState& s) { return s.pending_effects.size(); })
         .def("clone", &GameState::clone)
         .def("get_card_instance", [](GameState& s, int id) { return s.get_card_instance(id); }, py::return_value_policy::reference)
         .def("get_zone", &GameState::get_zone)
