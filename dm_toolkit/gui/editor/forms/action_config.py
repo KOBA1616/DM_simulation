@@ -14,7 +14,9 @@ ACTION_UI_CONFIG = {
     "ADD_MANA": {
         "visible": ["value1"],
         "label_value1": "Cards to Charge",
-        "can_be_optional": True
+        "can_be_optional": True,
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use MOVE_CARD (Hand -> Mana) or similar."
     },
     "MODIFY_POWER": {
         "visible": ["scope", "filter", "value1", "value2"],
@@ -167,34 +169,46 @@ ACTION_UI_CONFIG = {
     "DESTROY": {
         "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True,
-        "inputs": {"input_value_key": "Target Selection (Pre-selected)"}
+        "inputs": {"input_value_key": "Target Selection (Pre-selected)"},
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use MOVE_CARD (Dest: GRAVEYARD)."
     },
     "TAP": {
         "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True,
-        "inputs": {"input_value_key": "Target Selection (Pre-selected)"}
+        "inputs": {"input_value_key": "Target Selection (Pre-selected)"},
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use MUTATE or similar logic."
     },
     "UNTAP": {
         "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True,
-        "inputs": {"input_value_key": "Target Selection (Pre-selected)"}
+        "inputs": {"input_value_key": "Target Selection (Pre-selected)"},
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use MUTATE or similar logic."
     },
     "RETURN_TO_HAND": {
         "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True,
-        "inputs": {"input_value_key": "Target Selection (Pre-selected)"}
+        "inputs": {"input_value_key": "Target Selection (Pre-selected)"},
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use MOVE_CARD (Dest: HAND)."
     },
     "SEND_TO_MANA": {
         "visible": ["scope", "filter", "target_choice", "input_value_key"],
         "can_be_optional": True,
-        "inputs": {"input_value_key": "Target Selection (Pre-selected)"}
+        "inputs": {"input_value_key": "Target Selection (Pre-selected)"},
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use MOVE_CARD (Dest: MANA_ZONE)."
     },
     "SEARCH_DECK_BOTTOM": {
         "visible": ["value1", "filter", "output_value_key", "input_value_key"],
         "label_value1": "Reveal N (from Bottom)",
         "produces_output": True,
         "outputs": {"output_value_key": "Selected Cards"},
-        "inputs": {"input_value_key": "Count Override"}
+        "inputs": {"input_value_key": "Count Override"},
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use REVEAL_CARDS or similar."
     },
     "DISCARD": {
         "visible": ["scope", "filter", "value1", "target_choice", "output_value_key", "input_value_key"],
@@ -202,16 +216,22 @@ ACTION_UI_CONFIG = {
         "can_be_optional": True,
         "produces_output": True,
         "outputs": {"output_value_key": "Discarded Cards"},
-        "inputs": {"input_value_key": "Count Override"}
+        "inputs": {"input_value_key": "Count Override"},
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use MOVE_CARD (Hand -> Grave)."
     },
     "SEND_SHIELD_TO_GRAVE": {
         "visible": ["scope", "filter", "value1", "input_value_key"],
         "label_value1": "Count",
-        "inputs": {"input_value_key": "Count Override"}
+        "inputs": {"input_value_key": "Count Override"},
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use MOVE_CARD (Shield -> Grave)."
     },
     "SEND_TO_DECK_BOTTOM": {
         "visible": ["scope", "filter", "value1", "input_value_key"],
         "label_value1": "Count",
-        "inputs": {"input_value_key": "Count Override"}
+        "inputs": {"input_value_key": "Count Override"},
+        "deprecated": True,
+        "deprecation_message": "Legacy Action: Use MOVE_CARD (Zone -> Deck Bottom)."
     }
 }
