@@ -621,10 +621,10 @@ class CardTextGenerator:
             if text.endswith("する。"):
                 text = text[:-3] + "してもよい。"
             elif text.endswith("く。"): # 引く、置く
-                text = text[:-2] + "いてもよい。" # 引いてもよい、置いてもよい
-            elif text.endswith("す。"): # 出す、戻す
-                text = text[:-2] + "してもよい。" # 出してもよい、戻してもよい
-            elif text.endswith("る。"): # 見る、捨てる、加える
+                text = text[:-2] + "いてもよい。" # 引いてもよい
+            elif text.endswith("す。"): # 戻す、出す
+                text = text[:-2] + "してもよい。" # 戻してもよい
+            elif text.endswith("る。"): # 見る、捨てる、唱える
                 text = text[:-2] + "てもよい。"
             elif text.endswith("う。"): # 支払う
                 text = text[:-2] + "ってもよい。"
