@@ -434,10 +434,13 @@
           "actions": [],
           "commands": [
             {
-              "optional": false,
+              "amount": 0,
+              "from_zone": "NONE",
+              "mutation_kind": "",
+              "optional": true,
+              "str_param": "",
               "target_filter": {
                 "count": 2,
-                "owner": "OPPONENT",
                 "types": [
                   "ELEMENT"
                 ],
@@ -445,7 +448,7 @@
                   "BATTLE_ZONE"
                 ]
               },
-              "target_group": "TARGET_SELECT",
+              "target_group": "PLAYER_SELF",
               "to_zone": "HAND",
               "type": "TRANSITION"
             }
@@ -454,7 +457,7 @@
             "type": "NONE",
             "value": 0
           },
-          "trigger": "ON_PLAY"
+          "trigger": "ON_CAST_SPELL"
         }
       ],
       "id": 13,
@@ -630,10 +633,13 @@
           "actions": [],
           "commands": [
             {
+              "amount": 0,
+              "from_zone": "NONE",
+              "mutation_kind": "",
               "optional": false,
+              "str_param": "",
               "target_filter": {
                 "max_cost": 2,
-                "owner": "OPPONENT",
                 "types": [
                   "ELEMENT"
                 ],
@@ -641,7 +647,7 @@
                   "BATTLE_ZONE"
                 ]
               },
-              "target_group": "TARGET_SELECT",
+              "target_group": "PLAYER_OPPONENT",
               "to_zone": "GRAVEYARD",
               "type": "TRANSITION"
             }
@@ -650,7 +656,7 @@
             "type": "NONE",
             "value": 0
           },
-          "trigger": "ON_PLAY"
+          "trigger": "ON_CAST_SPELL"
         }
       ],
       "id": 14,
