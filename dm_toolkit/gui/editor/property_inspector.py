@@ -67,6 +67,21 @@ class PropertyInspector(QWidget):
 
         layout.addWidget(self.stack)
 
+        # Initialize dispatch table
+        self.form_map = {
+            "CARD": self.card_form,
+            "EFFECT": self.effect_form,
+            "ACTION": self.action_form,
+            "COMMAND": self.command_form,
+            "SPELL_SIDE": self.spell_side_form,
+            "REACTION_ABILITY": self.reaction_form,
+            "KEYWORDS": self.keyword_form,
+            "MODIFIER": self.modifier_form,
+            "OPTION": self.option_page,
+            "CMD_BRANCH_TRUE": self.cmd_branch_page,
+            "CMD_BRANCH_FALSE": self.cmd_branch_page,
+        }
+
     def set_selection(self, index):
         if index is None or not index.isValid():
             self.stack.setCurrentWidget(self.empty_page)
@@ -75,33 +90,9 @@ class PropertyInspector(QWidget):
         item_type = index.data(Qt.ItemDataRole.UserRole + 1)
         item = index.model().itemFromIndex(index)
 
-        if item_type == "CARD":
-            self.card_form.set_data(item)
-            self.stack.setCurrentWidget(self.card_form)
-        elif item_type == "EFFECT":
-            self.effect_form.set_data(item)
-            self.stack.setCurrentWidget(self.effect_form)
-        elif item_type == "ACTION":
-            self.action_form.set_data(item)
-            self.stack.setCurrentWidget(self.action_form)
-        elif item_type == "COMMAND":
-            self.command_form.set_data(item)
-            self.stack.setCurrentWidget(self.command_form)
-        elif item_type == "SPELL_SIDE":
-            self.spell_side_form.set_data(item)
-            self.stack.setCurrentWidget(self.spell_side_form)
-        elif item_type == "REACTION_ABILITY":
-            self.reaction_form.set_data(item)
-            self.stack.setCurrentWidget(self.reaction_form)
-        elif item_type == "KEYWORDS":
-            self.keyword_form.set_data(item)
-            self.stack.setCurrentWidget(self.keyword_form)
-        elif item_type == "MODIFIER":
-            self.modifier_form.set_data(item)
-            self.stack.setCurrentWidget(self.modifier_form)
-        elif item_type == "OPTION":
-            self.stack.setCurrentWidget(self.option_page)
-        elif item_type == "CMD_BRANCH_TRUE" or item_type == "CMD_BRANCH_FALSE":
-            self.stack.setCurrentWidget(self.cmd_branch_page)
-        else:
-            self.stack.setCurrentWidget(self.empty_page)
+        widget = self.form_map.get(item_type, self.empty_page)
+
+        if hasattr(widget, 'set_data'):
+            widget.set_data(item)
+
+        self.stack.setCurrentWidget(widget)
