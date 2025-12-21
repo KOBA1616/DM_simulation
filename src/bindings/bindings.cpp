@@ -303,6 +303,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SELECT_NUMBER", EffectType::SELECT_NUMBER)
         .export_values();
 
+    py::enum_<ResolveType>(m, "ResolveType")
+        .value("NONE", ResolveType::NONE)
+        .value("TARGET_SELECT", ResolveType::TARGET_SELECT)
+        .value("EFFECT_RESOLUTION", ResolveType::EFFECT_RESOLUTION)
+        .export_values();
+
     py::enum_<ModifierType>(m, "ModifierType")
         .value("NONE", ModifierType::NONE)
         .value("COST_MODIFIER", ModifierType::COST_MODIFIER)
@@ -613,7 +619,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
              if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
              s.card_owner_map[iid] = pid;
         })
-        .def("initialize_card_stats", &GameState::initialize_card_stats); // Added binding
+        .def("initialize_card_stats", &GameState::initialize_card_stats)
+        .def("calculate_hash", &GameState::calculate_hash)
+        .def("get_pending_effects_info", [](const GameState& s) {
+            py::list list;
+            for (const auto& pe : s.pending_effects) {
+                py::dict d;
+                d["type"] = pe.type;
+                d["source_instance_id"] = pe.source_instance_id;
+                d["controller"] = pe.controller;
+                d["resolve_type"] = pe.resolve_type;
+                list.append(d);
+            }
+            return list;
+        });
 
     py::class_<Action>(m, "Action")
         .def(py::init<>())
