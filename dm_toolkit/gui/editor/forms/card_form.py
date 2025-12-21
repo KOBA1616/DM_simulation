@@ -104,6 +104,21 @@ class CardEditForm(BaseEditForm):
 
         self.form_layout.addRow(actions_group)
 
+        # Define bindings
+        self.bindings = {
+            'id': self.id_spin,
+            'name': self.name_edit,
+            'type': self.type_combo,
+            'cost': self.cost_spin,
+            'power': self.power_spin,
+            'evolution_condition': self.evolution_condition_edit,
+            'is_key_card': self.is_key_card_check,
+            'ai_importance_score': self.ai_importance_spin
+            # 'civilizations': self.civ_selector, # Custom widget, handled manually or via duck typing set_data/get_data?
+            # CivilizationSelector has set_selected_civs and get_selected_civs. Not standard.
+            # 'races': handled manually (list vs string)
+        }
+
         # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
         self.name_edit.textChanged.connect(self.update_data)
@@ -143,9 +158,10 @@ class CardEditForm(BaseEditForm):
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
-        self.id_spin.setValue(data.get('id', 0))
-        self.name_edit.setText(data.get('name', ''))
+        # Apply standard bindings
+        self._apply_bindings(data)
 
+        # Custom population
         civs = data.get('civilizations')
         if not civs:
             civ_single = data.get('civilization')
@@ -153,13 +169,9 @@ class CardEditForm(BaseEditForm):
         self.civ_selector.set_selected_civs(civs)
 
         current_type = data.get('type', 'CREATURE')
-        self.set_combo_by_data(self.type_combo, current_type)
         self.update_type_visibility(current_type)
 
-        self.cost_spin.setValue(data.get('cost', 0))
-        self.power_spin.setValue(data.get('power', 0))
         self.races_edit.setText(", ".join(data.get('races', [])))
-        self.evolution_condition_edit.setText(data.get('evolution_condition', ''))
 
         # Check for Spell Side child node to toggle Twinpact checkbox
         has_spell_side = False
@@ -173,8 +185,6 @@ class CardEditForm(BaseEditForm):
         self.twinpact_check.setChecked(has_spell_side)
         self.twinpact_check.blockSignals(False)
 
-        self.is_key_card_check.setChecked(data.get('is_key_card', False))
-        self.ai_importance_spin.setValue(data.get('ai_importance_score', 0))
 
     def update_type_visibility(self, type_str):
         # Hide Power if Spell
@@ -189,31 +199,28 @@ class CardEditForm(BaseEditForm):
         self.lbl_evolution_condition.setVisible(is_evolution)
 
     def _save_data(self, data):
-        data['id'] = self.id_spin.value()
-        data['name'] = self.name_edit.text()
+        # Apply bindings (collects into data)
+        self._collect_bindings(data)
 
+        # Custom saving
         data['civilizations'] = self.civ_selector.get_selected_civs()
         if 'civilization' in data:
             del data['civilization']
 
         type_str = self.type_combo.currentData()
-        data['type'] = type_str
         self.update_type_visibility(type_str)
 
-        data['cost'] = self.cost_spin.value()
         # Force power to 0 if Spell, regardless of hidden spinner value
         if type_str == "SPELL":
             data['power'] = 0
-        else:
-            data['power'] = self.power_spin.value()
+
         races_str = self.races_edit.text()
         data['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
 
         # Save evolution condition if applicable
-        if type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE":
-             data['evolution_condition'] = self.evolution_condition_edit.text()
-        elif 'evolution_condition' in data:
-             del data['evolution_condition']
+        if not (type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE"):
+             if 'evolution_condition' in data:
+                 del data['evolution_condition']
 
         # Keywords are now handled by KeywordEditForm, but we must ensure we don't accidentally wipe them?
         # No, update_data reads from UI and writes to 'data' dict reference.
@@ -227,21 +234,11 @@ class CardEditForm(BaseEditForm):
             del current_keywords['evolution']
         data['keywords'] = current_keywords
 
-        data['is_key_card'] = self.is_key_card_check.isChecked()
-        data['ai_importance_score'] = self.ai_importance_spin.value()
-
     def _get_display_text(self, data):
         return f"{data.get('id', 0)} - {data.get('name', '')}"
 
     def block_signals_all(self, block):
-        self.id_spin.blockSignals(block)
-        self.name_edit.blockSignals(block)
         self.civ_selector.blockSignals(block)
-        self.type_combo.blockSignals(block)
-        self.cost_spin.blockSignals(block)
-        self.power_spin.blockSignals(block)
         self.races_edit.blockSignals(block)
-        self.evolution_condition_edit.blockSignals(block)
         self.twinpact_check.blockSignals(block)
-        self.is_key_card_check.blockSignals(block)
-        self.ai_importance_spin.blockSignals(block)
+        super().block_signals_all(block)
