@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit
+from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit, QPushButton
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
@@ -160,6 +160,11 @@ class EffectEditForm(BaseEditForm):
 
         layout.addRow(self.condition_group)
 
+        # Actions Section
+        self.add_action_btn = QPushButton(tr("Add Action"))
+        self.add_action_btn.clicked.connect(self.on_add_action_clicked)
+        layout.addRow(self.add_action_btn)
+
         # Connect signals
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         self.mode_combo.currentIndexChanged.connect(self.update_data)
@@ -191,6 +196,9 @@ class EffectEditForm(BaseEditForm):
             self.condition_group.setTitle(tr("Trigger Condition"))
         else:
             self.condition_group.setTitle(tr("Apply Condition"))
+
+    def on_add_action_clicked(self):
+        self.structure_update_requested.emit("ADD_CHILD_ACTION", {})
 
     def on_cond_type_changed(self):
         ctype = self.cond_type_combo.currentData()
