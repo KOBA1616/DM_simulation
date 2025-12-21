@@ -28,12 +28,14 @@ from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
 from dm_toolkit.gui.widgets.mcts_view import MCTSView
 from dm_toolkit.gui.widgets.card_detail_panel import CardDetailPanel
 from dm_toolkit.gui.simulation_dialog import SimulationDialog
+from dm_toolkit.gui.widgets.stack_view import StackViewWidget
+from dm_toolkit.gui.widgets.loop_recorder import LoopRecorderWidget
 
 class GameWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DM AI Simulator")
-        self.resize(1400, 900)
+        self.resize(1600, 900)
         
         # Game State
         self.gs = dm_ai_module.GameState(42)
@@ -275,6 +277,23 @@ class GameWindow(QMainWindow):
         self.log_dock.setWidget(self.log_list)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.log_dock)
         
+        # New: Pending Stack Dock
+        self.stack_dock = QDockWidget(tr("Pending Effects"), self)
+        self.stack_dock.setObjectName("StackDock")
+        self.stack_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        self.stack_view = StackViewWidget()
+        self.stack_view.effect_resolved.connect(self.on_resolve_effect_from_stack)
+        self.stack_dock.setWidget(self.stack_view)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.stack_dock)
+
+        # New: Loop Recorder Dock
+        self.loop_dock = QDockWidget(tr("Loop Recorder"), self)
+        self.loop_dock.setObjectName("LoopDock")
+        self.loop_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        self.loop_recorder = LoopRecorderWidget(lambda: self.gs)
+        self.loop_dock.setWidget(self.loop_recorder)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.loop_dock)
+
         self.update_ui()
         self.showMaximized()
         
@@ -413,6 +432,7 @@ class GameWindow(QMainWindow):
             self.gs, action, self.card_db
         )
         self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
+        self.loop_recorder.record_action(action.to_string())
         
         if self.gs.waiting_for_user_input:
             self.handle_user_input_request()
@@ -424,6 +444,36 @@ class GameWindow(QMainWindow):
             dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
             
         self.update_ui()
+
+    def on_resolve_effect_from_stack(self, index):
+        # Generate actions and find RESOLVE_EFFECT with matching slot index?
+        # OR usually RESOLVE_EFFECT doesn't expose slot_index in ActionGenerator if it only generates ONE action (resolve top).
+        # We need to check if we can arbitrarily resolve.
+        # If PendingEffect list is exposed, we can assume we want to resolve the one at 'index'.
+
+        # NOTE: C++ engine might strict about resolving TOP effect (LIFO).
+        # But for simultaneous triggers, we can choose order.
+        # If we are in a state where we can choose, ActionGenerator should return multiple RESOLVE_EFFECT actions.
+
+        actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.gs, self.card_db)
+        resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
+
+        target_action = None
+        for a in resolve_actions:
+            # Check if action corresponds to our index.
+            # Assuming slot_index holds the index in pending_effects vector.
+            if a.slot_index == index:
+                target_action = a
+                break
+
+        if target_action:
+            self.execute_action(target_action)
+        else:
+             # If exact index match fail, maybe it's implicitly the only one available?
+             if len(resolve_actions) == 1:
+                  self.execute_action(resolve_actions[0])
+             else:
+                  self.log_list.addItem(f"Cannot resolve effect at index {index}. (Not in legal actions)")
 
     def handle_user_input_request(self):
         query = self.gs.pending_query
@@ -487,6 +537,7 @@ class GameWindow(QMainWindow):
                         self.gs, best_action, self.card_db
                     )
                     self.log_list.addItem(f"P{active_pid} {tr('AI Action')}: {best_action.to_string()}")
+                    self.loop_recorder.record_action(best_action.to_string())
 
                     if self.gs.waiting_for_user_input:
                          self.log_list.addItem("AI Paused for Input (Not Implemented). Stopping Sim.")
@@ -509,6 +560,9 @@ class GameWindow(QMainWindow):
         self.phase_label.setText(f"{tr('Phase')}: {self.gs.current_phase}")
         self.active_label.setText(f"{tr('Active')}: P{self.gs.active_player_id}")
         
+        # Update Stack View
+        self.stack_view.update_state(self.gs, self.card_db)
+
         p0 = self.gs.players[0]
         p1 = self.gs.players[1]
         
