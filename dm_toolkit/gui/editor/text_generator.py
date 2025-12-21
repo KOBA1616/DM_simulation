@@ -299,7 +299,7 @@ class CardTextGenerator:
         if trigger != "NONE" and trigger != "PASSIVE_CONST":
             if cond_type == "DURING_YOUR_TURN" or cond_type == "DURING_OPPONENT_TURN":
                 base_cond = cond_text.replace(": ", "")
-                trigger_text = f"{base_cond}、{trigger_text}" # \x8e\xa9\x95\xaa\x82のタ\x81[\x83\x93\x92\x86\x81A\x82\xb1\x82のク\x83\x8a\x81[\x83`\x83\x83\x81[\x82\xaa\x8fo\x82\xbd\x8e\x9e
+                trigger_text = f"{base_cond}、{trigger_text}" # 自分のターン中、このクリーチャーが出た時
                 cond_text = ""
             elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
                 val = condition.get("value", 0)
@@ -620,13 +620,13 @@ class CardTextGenerator:
         if optional:
             if text.endswith("する。"):
                 text = text[:-3] + "してもよい。"
-            elif text.endswith("く。"): # \x88\xf8\x82\xad\x81A\x92u\x82\xad
-                text = text[:-2] + "いてもよい。" # \x88\xf8\x82\xa2\x82て\xe0\x82悢
-            elif text.endswith("す。"): # \x96め\xb7\x81A\x8fo\x82\xb7
-                text = text[:-2] + "してもよい。" # \x96め\xb5\x82て\xe0\x82悢
-            elif text.endswith("る。"): # \x8c\xa9\x82\xe9\x81A\x8e捨て\xe9\x81A\x8f\xa5\x82\xa6\x82\xe9
+            elif text.endswith("く。"): # 引く、置く
+                text = text[:-2] + "いてもよい。" # 引いてもよい
+            elif text.endswith("す。"): # 戻す、出す
+                text = text[:-2] + "してもよい。" # 戻してもよい
+            elif text.endswith("る。"): # 見る、捨てる、唱える
                 text = text[:-2] + "てもよい。"
-            elif text.endswith("う。"): # \x8ex\x95\xa5\x82\xa4
+            elif text.endswith("う。"): # 支払う
                 text = text[:-2] + "ってもよい。"
             else:
                 if not text.endswith("てもよい。"):
