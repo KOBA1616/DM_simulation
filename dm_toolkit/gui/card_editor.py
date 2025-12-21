@@ -247,11 +247,17 @@ class CardEditor(QMainWindow):
             target_item = item.parent()
         elif type_ == "ACTION":
             target_item = item.parent().parent()
+        elif type_ in ["GROUP_TRIGGER", "GROUP_STATIC", "GROUP_REACTION"]:
+            # If a group is selected, add to the Card (parent of group)
+            # DataManager will redirect to the correct group based on item type being added
+            target_item = item.parent()
             
         if target_item:
             new_eff = {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "actions": []}
             label = f"{tr('Effect')}: {tr('ON_PLAY')}"
             self.tree_widget.add_child_item(target_item.index(), "EFFECT", new_eff, label)
+        else:
+            QMessageBox.warning(self, tr("Warning"), tr("Please select a Card or Effect group to add an Effect."))
 
     def add_action(self):
         idx = self.tree_widget.currentIndex()
@@ -272,6 +278,8 @@ class CardEditor(QMainWindow):
             new_act = {"type": "DESTROY", "scope": "TARGET_SELECT", "value1": 0, "filter": {}}
             label = f"{tr('Action')}: {tr('DESTROY')}"
             self.tree_widget.add_child_item(target_item.index(), "ACTION", new_act, label)
+        else:
+            QMessageBox.warning(self, tr("Warning"), tr("Please select an Effect to add an Action."))
 
     def delete_item(self):
         self.tree_widget.remove_current_item()
