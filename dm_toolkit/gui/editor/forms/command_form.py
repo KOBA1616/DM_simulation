@@ -6,6 +6,7 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
+from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED
 
 class CommandEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -81,13 +82,7 @@ class CommandEditForm(BaseEditForm):
 
         # Command Type
         self.type_combo = QComboBox()
-        self.known_types = [
-            "TRANSITION", "MUTATE", "FLOW", "QUERY",
-            "DRAW_CARD", "DISCARD", "DESTROY", "MANA_CHARGE",
-            "TAP", "UNTAP", "POWER_MOD", "ADD_KEYWORD",
-            "RETURN_TO_HAND", "BREAK_SHIELD", "SEARCH_DECK", "SHIELD_TRIGGER",
-            "NONE"
-        ]
+        self.known_types = COMMAND_TYPES
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Command Type"), self.type_combo)
 
@@ -118,7 +113,7 @@ class CommandEditForm(BaseEditForm):
         # Zones
         self.from_zone_combo = QComboBox()
         self.to_zone_combo = QComboBox()
-        zones = ["NONE", "HAND", "BATTLE_ZONE", "GRAVEYARD", "MANA_ZONE", "SHIELD_ZONE", "DECK", "DECK_BOTTOM", "DECK_TOP"]
+        zones = ZONES_EXTENDED
         self.populate_combo(self.from_zone_combo, zones, data_func=lambda x: x, display_func=tr)
         self.populate_combo(self.to_zone_combo, zones, data_func=lambda x: x, display_func=tr)
 
