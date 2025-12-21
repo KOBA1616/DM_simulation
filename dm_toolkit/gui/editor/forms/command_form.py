@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout
+from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QStackedWidget
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
-from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
-from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED
+from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
+from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED, GRANTABLE_KEYWORDS
 
 class CommandEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -59,9 +59,18 @@ class CommandEditForm(BaseEditForm):
         layout.addRow(self.target_group_label, self.target_group_combo)
 
         # Mutation Kind / Str Param (Merged conceptual slot)
+        # Using a QStackedWidget to switch between Edit and Combo occupying the same layout slot
+        self.mutation_kind_container = QStackedWidget()
+
         self.mutation_kind_edit = QLineEdit()
+        self.mutation_kind_combo = QComboBox()
+        self.populate_combo(self.mutation_kind_combo, GRANTABLE_KEYWORDS, data_func=lambda x: x, display_func=tr)
+
+        self.mutation_kind_container.addWidget(self.mutation_kind_edit) # Index 0
+        self.mutation_kind_container.addWidget(self.mutation_kind_combo) # Index 1
+
         self.mutation_kind_label = QLabel(tr("Mutation Kind"))
-        layout.addRow(self.mutation_kind_label, self.mutation_kind_edit)
+        layout.addRow(self.mutation_kind_label, self.mutation_kind_container)
 
         self.str_param_edit = QLineEdit()
         self.str_param_label = QLabel(tr("String Param"))
@@ -115,6 +124,7 @@ class CommandEditForm(BaseEditForm):
         self.type_combo.currentIndexChanged.connect(self.on_type_changed)
         self.target_group_combo.currentIndexChanged.connect(self.update_data)
         self.mutation_kind_edit.textChanged.connect(self.update_data)
+        self.mutation_kind_combo.currentIndexChanged.connect(self.update_data)
         self.str_param_edit.textChanged.connect(self.update_data)
         self.amount_spin.valueChanged.connect(self.update_data)
         self.optional_check.stateChanged.connect(self.update_data)
@@ -176,8 +186,15 @@ class CommandEditForm(BaseEditForm):
         self.str_param_edit.setVisible(config["str_param_visible"])
 
         # Mutation Kind
+        is_add_keyword = (cmd_type == "ADD_KEYWORD")
         self.mutation_kind_label.setVisible(config["mutation_kind_visible"])
-        self.mutation_kind_edit.setVisible(config["mutation_kind_visible"])
+        self.mutation_kind_container.setVisible(config["mutation_kind_visible"])
+
+        # Switch stack
+        if is_add_keyword:
+             self.mutation_kind_container.setCurrentIndex(1) # Combo
+        else:
+             self.mutation_kind_container.setCurrentIndex(0) # Edit
 
         # Query Mode
         is_query = (cmd_type == "QUERY")
@@ -236,7 +253,17 @@ class CommandEditForm(BaseEditForm):
         self.set_combo_by_data(self.to_zone_combo, data.get('to_zone', 'NONE'))
 
         self.amount_spin.setValue(data.get('amount', 0))
-        self.mutation_kind_edit.setText(data.get('mutation_kind', ''))
+
+        mutation_kind = data.get('mutation_kind', '')
+        self.mutation_kind_edit.setText(mutation_kind)
+
+        # Check if keyword is valid for combo
+        if raw_type == "ADD_KEYWORD" and mutation_kind not in GRANTABLE_KEYWORDS and mutation_kind:
+             # Add temporarily to prevent data loss or display issue
+             self.mutation_kind_combo.addItem(f"{mutation_kind} (Unknown)", mutation_kind)
+
+        self.set_combo_by_data(self.mutation_kind_combo, mutation_kind)
+
         self.str_param_edit.setText(data.get('str_param', ''))
         self.optional_check.setChecked(data.get('optional', False))
 
@@ -265,7 +292,13 @@ class CommandEditForm(BaseEditForm):
         data['optional'] = self.optional_check.isChecked()
         data['from_zone'] = self.from_zone_combo.currentData()
         data['to_zone'] = self.to_zone_combo.currentData()
-        data['mutation_kind'] = self.mutation_kind_edit.text()
+
+        # Mutation Kind: Use Combo if ADD_KEYWORD, else Edit
+        if cmd_type == "ADD_KEYWORD":
+             data['mutation_kind'] = self.mutation_kind_combo.currentData()
+        else:
+             data['mutation_kind'] = self.mutation_kind_edit.text()
+
         data['str_param'] = self.str_param_edit.text()
 
         # Query Logic
@@ -292,6 +325,7 @@ class CommandEditForm(BaseEditForm):
         self.target_group_combo.blockSignals(block)
         self.amount_spin.blockSignals(block)
         self.mutation_kind_edit.blockSignals(block)
+        self.mutation_kind_combo.blockSignals(block)
         self.str_param_edit.blockSignals(block)
         self.optional_check.blockSignals(block)
         self.from_zone_combo.blockSignals(block)
