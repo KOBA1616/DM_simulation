@@ -255,23 +255,18 @@ class CardEditor(QMainWindow):
         if not idx.isValid(): return
         
         item = self.tree_widget.model.itemFromIndex(idx)
-        type_ = item.data(Qt.ItemDataRole.UserRole + 1)
         
-        target_item = None
-        if type_ == "CARD":
-            target_item = item
-        elif type_ == "SPELL_SIDE":
-            target_item = item
-        elif type_ == "EFFECT":
-            target_item = item.parent()
-        elif type_ == "ACTION":
-            target_item = item.parent().parent()
-        elif type_ in ["GROUP_TRIGGER", "GROUP_STATIC", "GROUP_REACTION"]:
-            # If a group is selected, add to the Card (parent of group)
-            # DataManager will redirect to the correct group based on item type being added
-            target_item = item.parent()
+        # Traverse up to find CARD or SPELL_SIDE
+        target_item = item
+        found = False
+        while target_item:
+            type_ = target_item.data(Qt.ItemDataRole.UserRole + 1)
+            if type_ in ["CARD", "SPELL_SIDE"]:
+                found = True
+                break
+            target_item = target_item.parent()
             
-        if target_item:
+        if found and target_item:
             self.tree_widget.add_effect_interactive(target_item.index())
         else:
             QMessageBox.warning(self, tr("Warning"), tr("Please select a Card or Effect group to add an Effect."))
