@@ -56,7 +56,23 @@ class StackViewWidget(QWidget):
 
     def update_state(self, game_state, card_db):
         self.list_widget.clear()
-        self.current_effects = game_state.get_pending_effects_info()
+        try:
+            self.current_effects = game_state.get_pending_effects_info()
+        except AttributeError:
+            try:
+                # Fallback to module level function if available (legacy support)
+                import dm_ai_module
+                if hasattr(dm_ai_module, 'get_pending_effects_info'):
+                     self.current_effects = dm_ai_module.get_pending_effects_info(game_state)
+                else:
+                     raise AttributeError("No pending effects accessor found")
+            except Exception:
+                # Fallback for outdated binary
+                item = QListWidgetItem("Error: Outdated C++ Module. Please rebuild.")
+                item.setForeground(Qt.GlobalColor.red)
+                self.list_widget.addItem(item)
+                self.current_effects = []
+                return
 
         # Reverse to show stack top at top (if index 0 is bottom) or vice versa.
         # Usually stack top is the last element in vector, but visual stack usually shows top at top.
