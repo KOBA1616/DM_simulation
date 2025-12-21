@@ -6,6 +6,7 @@ from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
+from dm_toolkit.consts import EDITOR_ACTION_TYPES, ZONES_EXTENDED
 
 class ActionEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -52,16 +53,7 @@ class ActionEditForm(BaseEditForm):
         # "MEASURE_COUNT" is a UI-only type that maps to COUNT_CARDS or GET_GAME_STAT
         # Removed legacy actions: DESTROY, RETURN_TO_HAND, ADD_MANA, SEARCH_DECK_BOTTOM, DISCARD, SEND_TO_DECK_BOTTOM
         # Kept generic MOVE_CARD
-        self.known_types = [
-            "MOVE_CARD", # Consolidated Action
-            "DRAW_CARD", # Excluded from consolidation
-            "TAP", "UNTAP",
-            "SEARCH_DECK", "MEKRAID",
-            "COST_REFERENCE", "COST_REDUCTION", "NONE", "BREAK_SHIELD", "LOOK_AND_ADD", "SUMMON_TOKEN", "PLAY_FROM_ZONE",
-            "REVOLUTION_CHANGE", "MEASURE_COUNT", "APPLY_MODIFIER", "REVEAL_CARDS",
-            "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE",
-            "FRIEND_BURST", "GRANT_KEYWORD", "SELECT_OPTION"
-        ]
+        self.known_types = EDITOR_ACTION_TYPES
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Action Type"), self.type_combo)
 
@@ -100,7 +92,7 @@ class ActionEditForm(BaseEditForm):
 
         # Destination Zone Combo (For MOVE_CARD)
         self.dest_zone_combo = QComboBox()
-        zones = ["HAND", "BATTLE_ZONE", "GRAVEYARD", "MANA_ZONE", "SHIELD_ZONE", "DECK_BOTTOM", "DECK_TOP"]
+        zones = ZONES_EXTENDED
         self.populate_combo(self.dest_zone_combo, zones, data_func=lambda x: x, display_func=tr)
         self.dest_zone_label = QLabel(tr("Destination Zone"))
         layout.addRow(self.dest_zone_label, self.dest_zone_combo)
