@@ -308,7 +308,7 @@ class CardTextGenerator:
 
         action_texts = []
         for action in actions:
-            action_texts.append(cls._format_action(action))
+            action_texts.append(cls._format_action(action, is_spell))
 
         full_action_text = " ".join(action_texts).strip()
 
@@ -413,7 +413,7 @@ class CardTextGenerator:
         return ""
 
     @classmethod
-    def _format_action(cls, action: Dict[str, Any]) -> str:
+    def _format_action(cls, action: Dict[str, Any], is_spell: bool = False) -> str:
         if not action:
             return ""
 
@@ -424,7 +424,7 @@ class CardTextGenerator:
         optional = action.get("optional", False)
 
         # Resolve dynamic target strings
-        target_str, unit = cls._resolve_target(action)
+        target_str, unit = cls._resolve_target(action, is_spell)
 
         # Complex Action Logic
         if atype == "MODIFY_POWER":
@@ -443,21 +443,28 @@ class CardTextGenerator:
             if str_val == "G_ZERO":
                 cond = action.get("condition", {})
                 cond_text = cls._format_condition(cond).strip().rstrip(':')
-                return f"G・ゼロ：{cond_text}（このクリーチャーをコストを支払わずに召喚してもよい）"
+                if is_spell:
+                    return f"G・ゼロ：{cond_text}（この呪文をコストを支払わずに唱えてもよい）"
+                else:
+                    return f"G・ゼロ：{cond_text}（このクリーチャーをコストを支払わずに召喚してもよい）"
             elif str_val == "HYPER_ENERGY":
                 return "ハイパーエナジー"
             elif str_val in ["SYM_CREATURE", "SYM_SPELL", "SYM_SHIELD"]:
                 val1 = action.get("value1", 0)
-                cost_term = "召喚コスト" if "CREATURE" in str_val else "コスト"
-                return f"{target_str}1{unit}につき、このクリーチャーの{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
+                cost_term = "召喚コスト" if "CREATURE" in str_val and not is_spell else "コスト"
+                this_ref = "この呪文" if is_spell else "このクリーチャー"
+                return f"{target_str}1{unit}につき、{this_ref}の{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
             elif str_val == "CARDS_DRAWN_THIS_TURN":
                 val1 = action.get("value1", 0)
-                return f"このターンに引いたカード1枚につき、このクリーチャーの召喚コストを{val1}少なくする。ただし、コストは0以下にはならない。"
+                this_ref = "この呪文" if is_spell else "このクリーチャー"
+                cost_term = "コスト" if is_spell else "召喚コスト"
+                return f"このターンに引いたカード1枚につき、{this_ref}の{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
             else:
                 filter_def = action.get("filter")
                 if filter_def:
                      val1 = action.get("value1", 0)
-                     return f"{target_str}1{unit}につき、このクリーチャーのコストを{val1}少なくする。ただし、コストは0以下にはならない。"
+                     this_ref = "この呪文" if is_spell else "このクリーチャー"
+                     return f"{target_str}1{unit}につき、{this_ref}のコストを{val1}少なくする。ただし、コストは0以下にはならない。"
                 return "コストを軽減する。"
 
         elif atype == "SELECT_OPTION":
@@ -466,7 +473,7 @@ class CardTextGenerator:
             val1 = action.get("value1", 1)
             lines.append(f"次の中から{val1}回選ぶ。（同じものを選んでもよい）")
             for i, opt_chain in enumerate(options):
-                chain_text = " ".join([cls._format_action(a) for a in opt_chain])
+                chain_text = " ".join([cls._format_action(a, is_spell) for a in opt_chain])
                 lines.append(f"> {chain_text}")
             return "\n".join(lines)
 
@@ -609,8 +616,9 @@ class CardTextGenerator:
 
         if atype == "COST_REDUCTION":
             if target_str == "カード" or target_str == "自分のカード":
-                text = text.replace("カード", "このクリーチャー")
-                text = text.replace("自分のカード", "このクリーチャー")
+                replacement = "この呪文" if is_spell else "このクリーチャー"
+                text = text.replace("カード", replacement)
+                text = text.replace("自分のカード", replacement)
             cond = action.get("condition", {})
             if cond:
                 cond_text = cls._format_condition(cond)
@@ -635,7 +643,7 @@ class CardTextGenerator:
         return text
 
     @classmethod
-    def _resolve_target(cls, action: Dict[str, Any]) -> Tuple[str, str]:
+    def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False) -> Tuple[str, str]:
         """
         Attempt to describe the target based on scope, filter, etc.
         Returns (target_description, unit_counter)
@@ -654,7 +662,8 @@ class CardTextGenerator:
         if atype == "DISCARD" and scope == "NONE":
              scope = "PLAYER_SELF"
         if atype == "COST_REDUCTION" and not filter_def and scope == "NONE":
-             return ("このクリーチャー", "枚")
+             target = "この呪文" if is_spell else "このクリーチャー"
+             return (target, "枚")
 
         if scope == "PLAYER_OPPONENT": prefix = "相手の"
         elif scope == "PLAYER_SELF" or scope == "SELF": prefix = "自分の"
