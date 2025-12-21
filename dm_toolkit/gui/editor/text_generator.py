@@ -102,6 +102,12 @@ class CardTextGenerator:
         "SELECT_OPTION": "次の中から選ぶ。",
         "LOCK_SPELL": "相手は呪文を唱えられない。",
         "APPLY_MODIFIER": "効果を付与する。",
+
+        # --- Generalized Commands (Mapped to natural text if encountered in Card Data) ---
+        "TRANSITION": "{target}を{from_zone}から{to_zone}へ移動する。",
+        "MUTATE": "状態変更({mutation_kind}): {target} (値:{amount})",
+        "FLOW": "進行制御: {str_param}",
+        "QUERY": "クエリ発行: {query_mode}",
     }
 
     STAT_KEY_MAP = {
@@ -533,6 +539,21 @@ class CardTextGenerator:
                  if jp_val != str_val:
                      return f"{target_str}に「{jp_val}」を与える。"
                  return f"{target_str}に効果（{str_val}）を与える。"
+
+        # --- Handle Command-like actions (TRANSITION, MUTATE, etc.) ---
+        elif atype == "TRANSITION":
+             from_z = tr(action.get("from_zone", "").split('.')[-1])
+             to_z = tr(action.get("to_zone", "").split('.')[-1])
+             template = f"{{target}}を{from_z}から{to_z}へ移動する。"
+
+        elif atype == "MUTATE":
+             mkind = action.get("mutation_kind", "")
+             val1 = action.get("amount", 0)
+             # Basic fallback
+             return f"{target_str}の状態を変更する({mkind}: {val1})"
+
+        elif atype == "FLOW":
+             return f"進行制御: {action.get('str_param', '')}"
 
         if not template:
             return f"({tr(atype)})"
