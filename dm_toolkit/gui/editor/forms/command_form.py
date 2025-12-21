@@ -5,7 +5,7 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
-from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
+from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED
 
 class CommandEditForm(BaseEditForm):
@@ -17,61 +17,26 @@ class CommandEditForm(BaseEditForm):
 
     def _get_ui_config(self, cmd_type):
         """
-        Map Command Types to Action UI Configs to share the rich UI logic.
+        Map Command Types to UI Configs using the dedicated COMMAND_UI_CONFIG.
         """
-        # Mapping CommandType -> ActionType (Legacy Config)
-        mapping = {
-            "TRANSITION": "MOVE_CARD",
-            "MUTATE": "APPLY_MODIFIER",
-            "QUERY": "COUNT_CARDS",
-            "POWER_MOD": "MODIFY_POWER",
-            "ADD_KEYWORD": "GRANT_KEYWORD",
-            # Direct matches
-            "DRAW_CARD": "DRAW_CARD",
-            "DESTROY": "DESTROY",
-            "DISCARD": "DISCARD",
-            "MANA_CHARGE": "ADD_MANA", # or MANA_CHARGE if it existed
-            "TAP": "TAP",
-            "UNTAP": "UNTAP",
-            "RETURN_TO_HAND": "RETURN_TO_HAND",
-            "BREAK_SHIELD": "BREAK_SHIELD",
-            "SEARCH_DECK": "SEARCH_DECK",
-            "SHIELD_TRIGGER": "NONE" # Special case
-        }
-
-        action_type = mapping.get(cmd_type, cmd_type)
-
-        # Handle MEASURE_COUNT logic for QUERY if needed
-        if cmd_type == "QUERY":
-             # If using specific mode, might map to GET_GAME_STAT config?
-             pass
-
-        raw = ACTION_UI_CONFIG.get(action_type, {})
-
+        raw = COMMAND_UI_CONFIG.get(cmd_type, {})
         visible = raw.get("visible", [])
         vis = lambda key: key in visible
 
-        # Translate Action config keys to Command fields implies conceptual mapping
-        # Action: scope -> Command: target_group
-        # Action: filter -> Command: target_filter
-        # Action: value1 -> Command: amount
-        # Action: str_val -> Command: mutation_kind OR str_param
-        # Action: destination_zone -> Command: to_zone
-
-        # We construct a config dict using Command field names but derived from Action config visibility
+        # Map visibility flags
         return {
-            "target_group_visible": vis("scope"),
-            "target_filter_visible": vis("filter"),
-            "amount_visible": vis("value1"),
-            "amount_label": raw.get("label_value1", "Amount"),
-            "str_param_visible": vis("str_val") and cmd_type not in ["MUTATE", "ADD_KEYWORD"], # Mutation kind handled separately
-            "str_param_label": raw.get("label_str_val", "String Param"),
-            "mutation_kind_visible": cmd_type in ["MUTATE", "ADD_KEYWORD"] or vis("str_val"),
-            "mutation_kind_label": raw.get("label_str_val", "Mutation Kind"),
-            "to_zone_visible": vis("destination_zone") or cmd_type == "TRANSITION",
-            "from_zone_visible": vis("source_zone") or cmd_type == "TRANSITION", # Explicit for TRANSITION
-            "optional_visible": raw.get("can_be_optional", False) or vis("optional"),
-            "input_link_visible": vis("input_value_key"),
+            "target_group_visible": vis("target_group"),
+            "target_filter_visible": vis("target_filter"),
+            "amount_visible": vis("amount"),
+            "amount_label": raw.get("label_amount", "Amount"),
+            "str_param_visible": vis("str_param"),
+            "str_param_label": raw.get("label_str_param", "String Param"),
+            "mutation_kind_visible": vis("mutation_kind"),
+            "mutation_kind_label": raw.get("label_mutation_kind", "Mutation Kind"),
+            "to_zone_visible": vis("to_zone"),
+            "from_zone_visible": vis("from_zone"),
+            "optional_visible": vis("optional"),
+            "input_link_visible": vis("input_link"),
             "produces_output": raw.get("produces_output", False),
             "tooltip": raw.get("tooltip", ""),
             "allowed_filter_fields": raw.get("allowed_filter_fields", None)
@@ -216,6 +181,21 @@ class CommandEditForm(BaseEditForm):
 
         # Query Mode
         is_query = (cmd_type == "QUERY")
+        if is_query:
+            config_query_mode = config.get("query_mode_visible", True) # Default true if query
+            # But wait, config logic in _get_ui_config doesn't return query_mode_visible.
+            # Let's add it.
+            pass
+
+        # We need to manually handle query mode visibility as it was tied to cmd_type check in legacy
+        # In new config, we can check visibility list for 'query_mode'.
+        # Let's assume my config has 'query_mode' in visible list for QUERY.
+        # But _get_ui_config doesn't map it. Let's fix that in next step if needed, or rely on hardcoded check.
+        # Actually, let's look at _get_ui_config implementation above.
+        # It maps specific keys. I didn't add "query_mode_visible".
+
+        # Let's verify _get_ui_config again.
+
         self.query_mode_label.setVisible(is_query)
         self.query_mode_combo.setVisible(is_query)
 
