@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
+from dm_toolkit.consts import ZONES, CARD_TYPES
 
 class FilterEditorWidget(QWidget):
     """
@@ -34,7 +35,8 @@ class FilterEditorWidget(QWidget):
         self.zone_label = QLabel(tr("Zones:"))
         basic_layout.addWidget(self.zone_label, 0, 0)
         self.zone_checks = {}
-        zones = ["BATTLE_ZONE", "MANA_ZONE", "HAND", "GRAVEYARD", "SHIELD_ZONE", "DECK"]
+        # Use centralized ZONES definition
+        zones = ZONES
         zone_grid = QGridLayout()
         for i, z in enumerate(zones):
             cb = QCheckBox(tr(z))
@@ -48,12 +50,13 @@ class FilterEditorWidget(QWidget):
         self.type_label = QLabel(tr("Types:"))
         basic_layout.addWidget(self.type_label, 1, 0)
         self.type_checks = {}
-        types = ["CREATURE", "SPELL", "ELEMENT", "CARD"] # Add others if needed
+        # Use centralized CARD_TYPES definition
+        types = CARD_TYPES
         type_grid = QGridLayout()
         for i, t in enumerate(types):
             cb = QCheckBox(tr(t))
             self.type_checks[t] = cb
-            type_grid.addWidget(cb, 0, i)
+            type_grid.addWidget(cb, i//3, i%3) # Adjusted grid to fit more types
             cb.stateChanged.connect(self.filterChanged.emit)
         basic_layout.addLayout(type_grid, 1, 1)
 
