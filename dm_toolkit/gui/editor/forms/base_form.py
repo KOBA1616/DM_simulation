@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QDoubleSpinBox
+from PyQt6.QtWidgets import (
+    QWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox,
+    QGroupBox, QDoubleSpinBox, QLabel, QFormLayout
+)
 from PyQt6.QtCore import Qt, pyqtSignal
 
 class BaseEditForm(QWidget):
@@ -16,6 +19,42 @@ class BaseEditForm(QWidget):
         self.current_item = None
         self._is_populating = False
         self.bindings = {} # key: widget
+
+    def add_field(self, label, widget, layout=None):
+        """
+        Helper method to add a labeled field to a form layout.
+
+        Args:
+            label (str or QWidget): The label text or widget.
+            widget (QWidget): The input widget.
+            layout (QFormLayout, optional): The layout to add to.
+                                            Defaults to self.form_layout if available.
+
+        Returns:
+            QLabel or QWidget: The label widget created or passed.
+        """
+        if layout is None:
+            layout = getattr(self, 'form_layout', None)
+
+        if layout is None and isinstance(self.layout(), QFormLayout):
+            layout = self.layout()
+
+        if layout is None:
+            # If no layout found, we can't add.
+            # In a strict scenario, we might raise an error, but here we'll just return.
+            return None
+
+        if isinstance(label, str):
+            lbl = QLabel(label)
+            layout.addRow(lbl, widget)
+            return lbl
+        elif isinstance(label, QWidget):
+            layout.addRow(label, widget)
+            return label
+        else:
+            # If label is None, just add the widget spanning
+            layout.addRow(widget)
+            return None
 
     def set_data(self, item):
         """
