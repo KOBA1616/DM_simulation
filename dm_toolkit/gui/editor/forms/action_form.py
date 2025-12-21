@@ -14,6 +14,21 @@ class ActionEditForm(BaseEditForm):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
+        self.enforce_readonly_mode()
+
+    def enforce_readonly_mode(self):
+        """Disable all input widgets to deprecate this form."""
+        self.warning_label.setVisible(True)
+        self.warning_label.setText(tr("Legacy Action format is deprecated. Please recreate using Commands."))
+
+        # Disable all inputs
+        for widget in self.findChildren(QWidget):
+            if isinstance(widget, (QComboBox, QSpinBox, QLineEdit, QCheckBox, QPushButton)):
+                widget.setEnabled(False)
+
+        # Specifically disable custom widgets if they aren't caught above
+        self.filter_widget.setEnabled(False)
+        self.link_widget.setEnabled(False)
 
     def _get_ui_config(self, action_type):
         """Normalize raw UI config with safe defaults to avoid missing keys."""
@@ -42,8 +57,8 @@ class ActionEditForm(BaseEditForm):
             "produces_output": raw.get("produces_output", False),
             "tooltip": raw.get("tooltip", ""),
             "allowed_filter_fields": raw.get("allowed_filter_fields", None),
-            "deprecated": raw.get("deprecated", False),
-            "deprecation_message": raw.get("deprecation_message", "")
+            "deprecated": True, # Always deprecated
+            "deprecation_message": "Legacy Action format is deprecated. Please recreate using Commands."
         }
 
     def setup_ui(self):
@@ -95,7 +110,7 @@ class ActionEditForm(BaseEditForm):
         self.filter_widget = FilterEditorWidget()
         fg_layout = QVBoxLayout(self.filter_group)
         fg_layout.addWidget(self.filter_widget)
-        self.filter_widget.filterChanged.connect(self.update_data)
+        # self.filter_widget.filterChanged.connect(self.update_data) # Disabled for read-only
 
         self.add_field(None, self.filter_group)
 
@@ -113,7 +128,7 @@ class ActionEditForm(BaseEditForm):
         self.option_count_spin.setRange(1, 10)
         self.option_count_spin.setValue(1)
         self.generate_options_btn = QPushButton(tr("Generate Options"))
-        self.generate_options_btn.clicked.connect(self.request_generate_options)
+        # self.generate_options_btn.clicked.connect(self.request_generate_options) # Disabled
         self.option_gen_layout.addWidget(self.option_count_spin)
         self.option_gen_layout.addWidget(self.generate_options_btn)
         self.option_count_label = self.add_field(tr("Options to Add"), self.option_gen_layout)
@@ -130,11 +145,11 @@ class ActionEditForm(BaseEditForm):
 
         # Variable Link Widget
         self.link_widget = VariableLinkWidget()
-        self.link_widget.linkChanged.connect(self.update_data)
-        self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed)
+        # self.link_widget.linkChanged.connect(self.update_data) # Disabled
+        # self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed) # Disabled
         self.add_field(None, self.link_widget)
 
-        # Define bindings for automatic data transfer
+        # Define bindings for automatic data transfer (still used for populating, not saving)
         self.bindings = {
             'scope': self.scope_combo,
             'destination_zone': self.dest_zone_combo,
@@ -146,56 +161,29 @@ class ActionEditForm(BaseEditForm):
             # 'str_val' is handled manually
         }
 
-        # Connect signals
-        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
-        self.scope_combo.currentIndexChanged.connect(self.update_data)
-        self.val1_spin.valueChanged.connect(self.update_data)
-        self.val2_spin.valueChanged.connect(self.update_data)
-        self.str_val_edit.textChanged.connect(self.update_data)
-        self.measure_mode_combo.currentIndexChanged.connect(self.on_measure_mode_changed)
-        self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
-        self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
-        self.allow_duplicates_check.stateChanged.connect(self.update_data)
-        self.arbitrary_check.stateChanged.connect(self.update_data)
-        self.no_cost_check.stateChanged.connect(self.update_data)
-        self.no_cost_check.stateChanged.connect(self.on_no_cost_changed)
+        # Connect signals - DISABLED for Read-Only
+        # self.type_combo.currentIndexChanged.connect(self.on_type_changed)
+        # self.scope_combo.currentIndexChanged.connect(self.update_data)
+        # self.val1_spin.valueChanged.connect(self.update_data)
+        # self.val2_spin.valueChanged.connect(self.update_data)
+        # self.str_val_edit.textChanged.connect(self.update_data)
+        # self.measure_mode_combo.currentIndexChanged.connect(self.on_measure_mode_changed)
+        # self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
+        # self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
+        # self.allow_duplicates_check.stateChanged.connect(self.update_data)
+        # self.arbitrary_check.stateChanged.connect(self.update_data)
+        # self.no_cost_check.stateChanged.connect(self.update_data)
+        # self.no_cost_check.stateChanged.connect(self.on_no_cost_changed)
 
-        self.update_ui_state(self.type_combo.currentData())
+        # self.update_ui_state(self.type_combo.currentData())
 
     def on_type_changed(self):
+        # Disabled logic, but kept structure if needed for static view update
         action_type = self.type_combo.currentData()
         self.update_ui_state(action_type)
 
-        if self.current_item and not self._is_populating:
-            config = self._get_ui_config(action_type)
-            produces = config.get("produces_output", False)
-
-            # Use unified name for linking logic
-            if action_type == "MEASURE_COUNT": produces = True
-
-            # Delegate to link widget
-            self.link_widget.ensure_output_key(action_type, produces)
-
-            # Auto-generate options if switching to SELECT_OPTION
-            if action_type == "SELECT_OPTION":
-                 has_options = False
-                 # Check existing options in the model via current_item (QStandardItem)
-                 if self.current_item.hasChildren():
-                     for i in range(self.current_item.rowCount()):
-                         child = self.current_item.child(i)
-                         if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
-                              has_options = True
-                              break
-
-                 if not has_options:
-                      self.option_count_spin.setValue(2) # Default 2 options
-                      self.request_generate_options()
-
-        self.update_data()
-
     def on_measure_mode_changed(self):
         self.update_ui_state(self.type_combo.currentData())
-        self.update_data()
 
     def on_smart_link_changed(self, is_active):
         action_type = self.type_combo.currentData()
@@ -206,13 +194,6 @@ class ActionEditForm(BaseEditForm):
         self.val1_label.setVisible(config["val1_visible"] and not is_active and not is_no_cost)
         self.val1_spin.setVisible(config["val1_visible"] and not is_active and not is_no_cost)
 
-        # Notify FilterWidget if input link is overriding count
-        # This applies if we are linking input AND filter is visible
-        if config["filter_visible"]:
-             self.filter_widget.set_external_count_control(is_active)
-
-        self.update_data()
-
     def on_no_cost_changed(self, state):
         self.on_smart_link_changed(self.link_widget.is_smart_link_active())
 
@@ -221,12 +202,9 @@ class ActionEditForm(BaseEditForm):
 
         config = self._get_ui_config(action_type)
 
-        # Handle Deprecation Warning
-        if config.get("deprecated", False):
-            self.warning_label.setText(tr(config.get("deprecation_message", "Deprecated Action")))
-            self.warning_label.setVisible(True)
-        else:
-            self.warning_label.setVisible(False)
+        # Always show warning
+        self.warning_label.setVisible(True)
+        self.warning_label.setText(tr("Legacy Action format is deprecated. Please recreate using Commands."))
 
         self.val1_label.setText(tr(config["val1_label"]))
         self.val2_label.setText(tr(config["val2_label"]))
@@ -234,7 +212,7 @@ class ActionEditForm(BaseEditForm):
 
         # Enable input linking if Val1 is visible OR explicitly allowed (e.g. for count override)
         can_link_input = config["val1_visible"] or config.get("input_link_visible", False)
-        self.link_widget.set_smart_link_enabled(can_link_input)
+        # self.link_widget.set_smart_link_enabled(can_link_input) # Disabled
 
         self.arbitrary_check.setVisible(config.get("can_be_optional", False))
         self.no_cost_check.setVisible(action_type == "PLAY_FROM_ZONE")
@@ -247,7 +225,8 @@ class ActionEditForm(BaseEditForm):
 
         # Sync filter widget state with link state
         if config["filter_visible"]:
-             self.filter_widget.set_external_count_control(is_smart_linked)
+             # self.filter_widget.set_external_count_control(is_smart_linked)
+             pass
 
         is_select_option = (action_type == "SELECT_OPTION")
         self.allow_duplicates_check.setVisible(is_select_option)
@@ -286,7 +265,8 @@ class ActionEditForm(BaseEditForm):
 
         self.filter_group.setVisible(show_filter)
         if show_filter:
-             self.filter_widget.set_allowed_fields(config.get("allowed_filter_fields", None))
+             # self.filter_widget.set_allowed_fields(config.get("allowed_filter_fields", None))
+             pass
 
         self.type_combo.setToolTip(tr(config.get("tooltip", "")))
 
@@ -305,20 +285,15 @@ class ActionEditForm(BaseEditForm):
              ui_type = "COST_REDUCTION"
         elif raw_type in ["DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DISCARD", "SEND_TO_DECK_BOTTOM", "SEND_SHIELD_TO_GRAVE", "SEND_TO_MANA"]:
              # If legacy type is not in known_types, temporarily add it to combo
-             # so it can be viewed and edited without data loss.
              if raw_type not in self.known_types:
-                 # Check if we already added it (avoid duplicates if populated multiple times)
                  idx = self.type_combo.findData(raw_type)
                  if idx == -1:
-                     # Insert nicely? Just append.
                      self.type_combo.addItem(f"{tr(raw_type)} (Legacy)", raw_type)
 
         self.set_combo_by_data(self.type_combo, ui_type)
 
         # Map Values to Combos
         if ui_type == "MEASURE_COUNT":
-             # If raw is COUNT_CARDS, str_val is empty -> CARDS_MATCHING_FILTER
-             # If raw is GET_GAME_STAT, str_val is stat name
              val = "CARDS_MATCHING_FILTER" if raw_type == "COUNT_CARDS" else str_val
              self.set_combo_by_data(self.measure_mode_combo, val)
         elif ui_type == "COST_REFERENCE":
@@ -327,7 +302,7 @@ class ActionEditForm(BaseEditForm):
         # Use bindings for standard fields
         self._apply_bindings(data)
 
-        # Handle special cases not covered by bindings or needing overrides
+        # Handle special cases
         self.update_ui_state(ui_type)
 
         val1 = data.get('value1', 0)
@@ -341,74 +316,19 @@ class ActionEditForm(BaseEditForm):
 
         self.link_widget.set_data(data)
 
+        # Finally, ensure everything is disabled
+        self.enforce_readonly_mode()
+
     def request_generate_options(self):
-        count = self.option_count_spin.value()
-        if count <= 0: count = 1 # Fallback
-        self.structure_update_requested.emit("GENERATE_OPTIONS", {"count": count})
+        # Disabled
+        pass
 
     def _save_data(self, data):
-        # Apply standard bindings
-        self._collect_bindings(data)
-
-        action_type = self.type_combo.currentData()
-
-        # Map UI Type -> Internal Type
-        if action_type == "MEASURE_COUNT":
-            selected_mode = self.measure_mode_combo.currentData()
-            if selected_mode == "CARDS_MATCHING_FILTER":
-                data['type'] = "COUNT_CARDS"
-                data['str_val'] = ""
-            else:
-                data['type'] = "GET_GAME_STAT"
-                data['str_val'] = selected_mode
-
-        elif action_type == "COST_REDUCTION":
-            data['type'] = "APPLY_MODIFIER"
-            data['str_val'] = "COST"
-
-        elif action_type == "COST_REFERENCE":
-            data['type'] = "COST_REFERENCE"
-            data['str_val'] = self.ref_mode_combo.currentData()
-
-        elif action_type == "SELECT_OPTION":
-            data['type'] = action_type
-            data['value2'] = 1 if self.allow_duplicates_check.isChecked() else 0
-
-        else:
-            data['type'] = action_type
-            data['str_val'] = self.str_val_edit.text()
-
-        # Custom logic overrides or additions
-        if action_type == "PLAY_FROM_ZONE" and self.no_cost_check.isChecked():
-            data['value1'] = 999
-
-        # Link widget handling (it updates data in place usually)
-        self.link_widget.get_data(data)
-
-        # Auto output key generation
-        out_key = data.get('output_value_key')
-        if not out_key:
-             # Need to use the ACTUAL saved type here, not UI type
-             config = ACTION_UI_CONFIG.get(data['type'], {})
-             if config.get("produces_output", False):
-                  row = self.current_item.row()
-                  out_key = f"var_{data['type']}_{row}"
-                  data['output_value_key'] = out_key
+        # Disable saving
+        pass
 
     def _get_display_text(self, data):
-        # NOTE: This method seems unused? LogicTreeWidget uses data_manager.py
-        # But kept for safety if BaseEditForm uses it for window title or something.
         return f"{tr('Action')}: {tr(data['type'])}"
 
     def block_signals_all(self, block):
-        # Block type combo specifically as it's not in bindings
-        self.type_combo.blockSignals(block)
-        self.measure_mode_combo.blockSignals(block)
-        self.ref_mode_combo.blockSignals(block)
-        self.allow_duplicates_check.blockSignals(block)
-        self.str_val_edit.blockSignals(block)
-        self.link_widget.blockSignals(block)
-        self.no_cost_check.blockSignals(block)
-
-        # Block everything else in bindings
         super().block_signals_all(block)
