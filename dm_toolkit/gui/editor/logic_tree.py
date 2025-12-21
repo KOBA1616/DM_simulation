@@ -194,7 +194,19 @@ class LogicTreeWidget(QTreeView):
     def add_effect_interactive(self, parent_index):
         if not parent_index.isValid(): return
 
+        parent_item = self.model.itemFromIndex(parent_index)
+        role = parent_item.data(Qt.ItemDataRole.UserRole + 1)
+        card_data = parent_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+
         items = [tr("Triggered Ability"), tr("Static Ability")]
+
+        # Check if we can add Reaction Ability
+        # Only for CARD (not SPELL_SIDE) and type is not SPELL
+        if role == "CARD":
+             card_type = card_data.get('type', 'CREATURE')
+             if card_type != "SPELL":
+                  items.append(tr("Reaction Ability"))
+
         item, ok = QInputDialog.getItem(self, tr("Add Effect"), tr("Select Effect Type"), items, 0, False)
 
         if ok and item:
@@ -202,10 +214,12 @@ class LogicTreeWidget(QTreeView):
                 self.add_child_item(parent_index, "EFFECT",
                                     {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "actions": []},
                                     f"{tr('Effect')}: ON_PLAY")
-            else:
+            elif item == tr("Static Ability"):
                 self.add_child_item(parent_index, "MODIFIER",
                                     {"type": "COST_MODIFIER", "value": -1, "condition": {"type": "NONE"}},
                                     f"{tr('Static')}: COST_MODIFIER")
+            elif item == tr("Reaction Ability"):
+                self.add_reaction(parent_index)
 
     def move_effect_item(self, item, target_type):
         """No-op as we use a flat structure now."""
