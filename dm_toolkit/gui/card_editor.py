@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QSplitter, QVBoxLayout, QWidget, QMessageBox, QToolBar, QFileDialog,
     QSizePolicy
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
@@ -13,6 +13,8 @@ from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
 from dm_toolkit.gui.localization import tr
 
 class CardEditor(QMainWindow):
+    data_saved = pyqtSignal()
+
     def __init__(self, json_path):
         super().__init__()
         self.json_path = json_path
@@ -111,6 +113,7 @@ class CardEditor(QMainWindow):
         try:
             with open(self.json_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
+            self.data_saved.emit()
             QMessageBox.information(self, tr("Success"), tr("Cards saved successfully!"))
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
