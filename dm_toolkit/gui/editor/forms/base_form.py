@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QComboBox
+from PyQt6.QtWidgets import QWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QDoubleSpinBox
 from PyQt6.QtCore import Qt, pyqtSignal
 
 class BaseEditForm(QWidget):
@@ -15,6 +15,7 @@ class BaseEditForm(QWidget):
         super().__init__(parent)
         self.current_item = None
         self._is_populating = False
+        self.bindings = {} # key: widget
 
     def set_data(self, item):
         """
@@ -55,13 +56,90 @@ class BaseEditForm(QWidget):
         """
         Override this to populate UI widgets from item data.
         """
-        raise NotImplementedError
+        # Default implementation uses bindings
+        data = item.data(Qt.ItemDataRole.UserRole + 2)
+        self._apply_bindings(data)
 
     def _save_data(self, data):
         """
         Override this to save UI values back into the data dictionary.
         """
-        raise NotImplementedError
+        # Default implementation uses bindings
+        self._collect_bindings(data)
+
+    def _apply_bindings(self, data):
+        """
+        Populate widgets from data using self.bindings.
+        """
+        for key, widget in self.bindings.items():
+            val = data.get(key)
+
+            # Handle default values if binding is (widget, default)
+            if isinstance(widget, tuple):
+                widget_obj, default_val = widget
+                if val is None: val = default_val
+            else:
+                widget_obj = widget
+                # If val is None, we might want a default based on widget type,
+                # but usually data.get(key) returning None means key missing.
+
+            if val is None:
+                 # Try to deduce default from widget type
+                 if isinstance(widget_obj, (QSpinBox, QDoubleSpinBox)): val = 0
+                 elif isinstance(widget_obj, QCheckBox): val = False
+                 elif isinstance(widget_obj, QLineEdit): val = ""
+                 elif isinstance(widget_obj, QComboBox): val = None # Combo handling handles None usually
+
+            # Apply to widget
+            if hasattr(widget_obj, 'set_data'):
+                widget_obj.set_data(val if val is not None else {})
+            elif isinstance(widget_obj, QComboBox):
+                self.set_combo_by_data(widget_obj, val)
+            elif isinstance(widget_obj, (QSpinBox, QDoubleSpinBox)):
+                widget_obj.setValue(val)
+            elif isinstance(widget_obj, QLineEdit):
+                widget_obj.setText(str(val) if val is not None else "")
+            elif isinstance(widget_obj, QCheckBox):
+                widget_obj.setChecked(bool(val))
+
+    def _collect_bindings(self, data):
+        """
+        Collect data from widgets using self.bindings.
+        """
+        for key, widget in self.bindings.items():
+            widget_obj = widget
+            if isinstance(widget, tuple):
+                widget_obj = widget[0]
+
+            if hasattr(widget_obj, 'get_data'):
+                # Special handling for VariableLinkWidget which updates data in-place usually,
+                # but assuming get_data returns the value or updates the dict
+                # The existing VariableLinkWidget.get_data(data) updates in place.
+                # FilterWidget.get_data() returns a dict.
+                # We need to distinguish based on signature or convention.
+                # In ActionForm: filter_widget.get_data() returns dict. link_widget.get_data(data) modifies data.
+                # This is inconsistent. We should standardize or handle exception.
+
+                # Hacky check for now, or just assume assignment for those returning value
+                # Check method signature? No.
+
+                # Let's look at FilterEditorWidget. It returns a dict.
+                # VariableLinkWidget updates passed data.
+
+                # Ideally, we standardize. But for now:
+                if widget_obj.__class__.__name__ == 'VariableLinkWidget':
+                     widget_obj.get_data(data) # Updates in place, returns nothing
+                else:
+                     data[key] = widget_obj.get_data()
+
+            elif isinstance(widget_obj, QComboBox):
+                data[key] = widget_obj.currentData()
+            elif isinstance(widget_obj, (QSpinBox, QDoubleSpinBox)):
+                data[key] = widget_obj.value()
+            elif isinstance(widget_obj, QLineEdit):
+                data[key] = widget_obj.text()
+            elif isinstance(widget_obj, QCheckBox):
+                data[key] = widget_obj.isChecked()
 
     def _get_display_text(self, data):
         """
@@ -72,10 +150,11 @@ class BaseEditForm(QWidget):
     def block_signals_all(self, block):
         """
         Override to block signals for all input widgets.
-        Alternatively, we can rely on _is_populating flag in update_data,
-        but explicit blocking is often safer for complex widgets.
+        Default implementation blocks signals for widgets in bindings.
         """
-        pass
+        for widget in self.bindings.values():
+            w = widget[0] if isinstance(widget, tuple) else widget
+            w.blockSignals(block)
 
     # Helper methods
     def populate_combo(self, combo: QComboBox, items: list, data_func=None, display_func=None, clear=True):
