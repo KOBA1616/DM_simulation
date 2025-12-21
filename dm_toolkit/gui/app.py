@@ -415,7 +415,9 @@ class GameWindow(QMainWindow):
             self.handle_user_input_request()
             return
 
-        if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
+        # Refactored phase logic: Check pending effects
+        pending_count = self.gs.get_pending_effect_count()
+        if (action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
             dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
             
         self.update_ui()
@@ -490,7 +492,9 @@ class GameWindow(QMainWindow):
                          self.start_btn.setText(tr("Start Sim"))
                          return
 
-                    if best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE:
+                    # Refactored Phase Logic
+                    pending_count = self.gs.get_pending_effect_count()
+                    if (best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
                         dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
 
             self.update_ui()
