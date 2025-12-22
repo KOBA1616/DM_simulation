@@ -49,7 +49,11 @@ namespace dm::core {
         new_state.waiting_for_user_input = waiting_for_user_input;
         new_state.pending_query = pending_query;
         new_state.status = status;
-        new_state.event_dispatcher = event_dispatcher; // Can we copy std::function? Yes.
+        // Do NOT copy event_dispatcher. It may contain callbacks to UI or logger that are not thread-safe or needed for simulation.
+        // new_state.event_dispatcher = event_dispatcher;
+
+        // Do NOT copy command_history. It is only for replay/undo and grows indefinitely.
+        // new_state.command_history = command_history;
 
         // Deep copy pipeline if active
         if (active_pipeline) {
