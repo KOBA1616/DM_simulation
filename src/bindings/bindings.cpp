@@ -460,6 +460,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("target_player", &ActionDef::target_player)
         .def_readwrite("source_zone", &ActionDef::source_zone)
         .def_readwrite("destination_zone", &ActionDef::destination_zone)
+        .def_readwrite("target_choice", &ActionDef::target_choice)
         .def_readwrite("input_value_key", &ActionDef::input_value_key)
         .def_readwrite("output_value_key", &ActionDef::output_value_key)
         .def_readwrite("condition", &ActionDef::condition)
@@ -744,6 +745,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     struct GenericCardSystemWrapper {};
     py::class_<GenericCardSystemWrapper>(m, "GenericCardSystem")
+        .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id) {
+            auto db = CardRegistry::get_all_definitions();
+            std::vector<Instruction> instructions;
+            std::map<std::string, int> ctx;
+            dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
+            if (!instructions.empty()) {
+                dm::engine::systems::PipelineExecutor pipeline;
+                pipeline.set_context_var("$source", source_id);
+                int controller = 0;
+                if ((size_t)source_id < state.card_owner_map.size()) controller = state.card_owner_map[source_id];
+                pipeline.set_context_var("$controller", controller);
+                pipeline.execute(instructions, state, db);
+            }
+        })
         .def_static("resolve_effect", [](GameState& state, const EffectDef& eff, int source_id) {
              auto db = CardRegistry::get_all_definitions();
              dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
@@ -944,17 +959,4 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def(py::init<>()) // NEW
         .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic);
-
-    py::class_<DeckEvolutionConfig>(m, "DeckEvolutionConfig")
-        .def(py::init<>())
-        .def_readwrite("target_deck_size", &DeckEvolutionConfig::target_deck_size)
-        .def_readwrite("mutation_rate", &DeckEvolutionConfig::mutation_rate)
-        .def_readwrite("synergy_weight", &DeckEvolutionConfig::synergy_weight)
-        .def_readwrite("curve_weight", &DeckEvolutionConfig::curve_weight);
-
-    py::class_<DeckEvolution>(m, "DeckEvolution")
-        .def(py::init<const std::map<CardID, CardDefinition>&>())
-        .def("evolve_deck", &DeckEvolution::evolve_deck)
-        .def("calculate_interaction_score", &DeckEvolution::calculate_interaction_score)
-        .def("get_candidates_by_civ", &DeckEvolution::get_candidates_by_civ);
 }
