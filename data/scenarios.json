@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "name": "lethal_puzzle_easy",
+    "description": "Simple lethal puzzle",
+    "config": {
+      "my_mana": 5,
+      "my_hand_cards": [1, 2],
+      "my_battle_zone": [3],
+      "my_mana_zone": [1, 1, 1, 1, 1],
+      "my_shields": [1, 1],
+      "enemy_shield_count": 0,
+      "enemy_battle_zone": []
+    }
+  }
+]
