@@ -5,6 +5,7 @@
 #include "ai/encoders/tensor_converter.hpp"
 #include <vector>
 #include <map>
+#include <memory>
 
 namespace dm::ai {
 
@@ -25,13 +26,15 @@ namespace dm::ai {
     class DataCollector {
     public:
         DataCollector(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        DataCollector(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db);
+        DataCollector(); // Default using Registry
 
         // Run self-play episodes and collect data (Heuristic vs Heuristic)
         CollectedBatch collect_data_batch(int episodes);
         CollectedBatch collect_data_batch_heuristic(int episodes);
 
     private:
-        std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
+        std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;
     };
 
 }

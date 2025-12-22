@@ -59,6 +59,13 @@ namespace dm::ai {
              int batch_size = 1,
              float alpha = 0.0f); // Risk aversion coefficient
 
+        MCTS(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db,
+             float c_puct = 1.0f,
+             float dirichlet_alpha = 0.3f,
+             float dirichlet_epsilon = 0.25f,
+             int batch_size = 1,
+             float alpha = 0.0f);
+
         std::vector<float> search(const dm::core::GameState& root_state,
                                   int simulations,
                                   BatchEvaluatorCallback evaluator,
@@ -76,7 +83,7 @@ namespace dm::ai {
         void backpropagate(MCTSNode* node, float value);
         void add_exploration_noise(MCTSNode* node);
 
-        const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db_;
+        std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;
         float c_puct_;
         float dirichlet_alpha_;
         float dirichlet_epsilon_;

@@ -3,6 +3,7 @@
 #include <chrono>
 #include "ai/agents/heuristic_agent.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include "engine/actions/action_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/game_instance.hpp"
@@ -19,7 +20,16 @@ namespace dm::ai {
     ParallelRunner::ParallelRunner(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
                                    int mcts_simulations,
                                    int batch_size)
+        : card_db_(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db)),
+          mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
+
+    ParallelRunner::ParallelRunner(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db,
+                                   int mcts_simulations,
+                                   int batch_size)
         : card_db_(card_db), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
+
+    ParallelRunner::ParallelRunner(int mcts_simulations, int batch_size)
+        : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
 
     std::vector<GameResultInfo> ParallelRunner::play_games(
         const std::vector<std::shared_ptr<dm::core::GameState>>& initial_states,
@@ -37,7 +47,7 @@ namespace dm::ai {
 
         // Worker Lambda
         auto worker_func = [&](int game_idx) {
-            SelfPlay sp(card_db_, mcts_simulations_, batch_size_);
+            SelfPlay sp(*card_db_, mcts_simulations_, batch_size_);
             
             BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
                 InferenceRequest req;
@@ -159,10 +169,10 @@ namespace dm::ai {
             uint32_t seed = std::random_device{}();
             // generate_determinized_state returns by value (move constructed)
             dm::core::GameState determinized_state = dm::ai::inference::PIMCGenerator::generate_determinized_state(
-                observation, card_db_, observer_id, opponent_deck_candidates, seed
+                observation, *card_db_, observer_id, opponent_deck_candidates, seed
             );
 
-            MCTS mcts(card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
+            MCTS mcts(*card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
 
             BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
                 InferenceRequest req;
@@ -275,8 +285,8 @@ namespace dm::ai {
             dm::engine::GameInstance instance(seed, card_db_);
             instance.reset_with_scenario(config);
 
-            HeuristicAgent agent0(0, card_db_);
-            HeuristicAgent agent1(1, card_db_);
+            HeuristicAgent agent0(0, *card_db_);
+            HeuristicAgent agent1(1, *card_db_);
 
             int steps = 0;
             int max_steps = 1000;
@@ -289,9 +299,9 @@ namespace dm::ai {
                     break;
                  }
 
-                 auto legal_actions = dm::engine::ActionGenerator::generate_legal_actions(instance.state, card_db_);
+                 auto legal_actions = dm::engine::ActionGenerator::generate_legal_actions(instance.state, *card_db_);
                  if (legal_actions.empty()) {
-                     dm::engine::PhaseManager::next_phase(instance.state, card_db_);
+                     dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
                      if(dm::engine::PhaseManager::check_game_over(instance.state, res)) {
                          final_res = res;
                          break;
@@ -306,7 +316,7 @@ namespace dm::ai {
                      action = agent1.get_action(instance.state, legal_actions);
                  }
 
-                 GameLogicSystem::resolve_action(instance.state, action, card_db_);
+                 GameLogicSystem::resolve_action(instance.state, action, *card_db_);
                  steps++;
             }
 
@@ -347,10 +357,10 @@ namespace dm::ai {
             setup_deck(instance.state.players[0], deck1);
             setup_deck(instance.state.players[1], deck2);
 
-            dm::engine::PhaseManager::start_game(instance.state, card_db_);
+            dm::engine::PhaseManager::start_game(instance.state, *card_db_);
 
-            HeuristicAgent agent0(0, card_db_);
-            HeuristicAgent agent1(1, card_db_);
+            HeuristicAgent agent0(0, *card_db_);
+            HeuristicAgent agent1(1, *card_db_);
 
             int steps = 0;
             int max_steps = 1000;
@@ -368,9 +378,9 @@ namespace dm::ai {
                     break;
                  }
 
-                 auto legal_actions = dm::engine::ActionGenerator::generate_legal_actions(instance.state, card_db_);
+                 auto legal_actions = dm::engine::ActionGenerator::generate_legal_actions(instance.state, *card_db_);
                  if (legal_actions.empty()) {
-                     dm::engine::PhaseManager::next_phase(instance.state, card_db_);
+                     dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
                      continue;
                  }
 
@@ -381,7 +391,7 @@ namespace dm::ai {
                      action = agent1.get_action(instance.state, legal_actions);
                  }
 
-                 GameLogicSystem::resolve_action(instance.state, action, card_db_);
+                 GameLogicSystem::resolve_action(instance.state, action, *card_db_);
                  steps++;
             }
 
