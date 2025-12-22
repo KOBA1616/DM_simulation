@@ -26,6 +26,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 現在、**Phase 1: Game Engine Reliability** および **Phase 6: Engine Overhaul** の実装が完了し、C++コア（`dm_ai_module`）のビルドは安定しています。しかし、大規模なリファクタリング（EffectResolver削除、ディレクトリ移動）に伴い、**Pythonバインディングの不整合** が多数発生しており、テストスイートの半数以上が失敗している状態です。
 
+また、**Phase 8: Transformer Model Integration** において、Transformerベースの学習パイプラインの実装と動作確認が完了しました。
+
 直近の最優先課題は、**「Python Integration Repair（バインディング修復）」** を完了させ、既存のテストケースを全てパスさせることです。
 
 ## 2. 現行システムステータス (Current Status)
@@ -49,7 +51,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 2.3 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
 *   [Status: Done] **Directory Restructuring**: `python/training` を `dm_toolkit/training` へ移動しました。
-*   [Status: Done] **Transformer Integration**: `NetworkV2` 実装完了。
+*   [Status: Done] **Transformer Integration**: `NetworkV2` (DuelTransformer) の実装、および学習パイプライン（`train_simple.py`）への統合が完了しました。ダミーデータを用いたResNetとの比較検証を実行し、パイプラインの動作を確認しました。ただし、推論（`verify_performance.py`）においてはC++側が `float` 状態ベクトルしか送信しないため、Transformerの推論はモック動作となります。
 *   [Status: Review] **Search Engine (MCTS)**: `src/ai/mcts` 実装完了。
 *   [Status: Review] **Inference Engine**: `src/ai/inference` (PIMC, Deck Inference) 実装完了。
 *   [Status: Review] **Lethal Solver**: `src/ai/solver` 実装完了 (Strict Implementation)。ただし `verify_lethal_puzzle.py` はバインディング欠落により失敗中。
@@ -70,7 +72,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   `dm_ai_module.TriggerManager`: `test_phase6_reaction.py` で必須。
     *   `dm_ai_module.get_pending_effects_info`: `test_trigger_stack.py` で必須。
     *   `ScenarioConfig.my_deck`: `test_scenario.py` で必須。
-    *   `dm_ai_module.register_batch_inference_numpy`: `verify_performance.py` で必須。
+    *   `dm_ai_module.register_batch_inference_numpy`: `verify_performance.py` で必須。ただし現在は `set_flat_batch_callback` にリネームされています。
     *   `dm_ai_module.set_sequence_batch_callback`: `verify_transformer_support.py` で必須。
 
 *   **Logic Disconnect**:
@@ -122,7 +124,7 @@ C++側のリファクタリングは完了しました。現在はPython側か�
 
 ### 5.2 シナリオ検証 (Scenario & Integration)
 *   `tests/verify_lethal_puzzle.py`: リーサル計算検証。
-*   `dm_toolkit/training/verify_performance.py`: AIパフォーマンス検証（要 `register_batch_inference_numpy`）。
+*   `dm_toolkit/training/verify_performance.py`: AIパフォーマンス検証（要 `register_batch_inference_numpy` または `set_flat_batch_callback`）。
 
 ### 5.3 運用ルール (Operational Rules)
 1.  **コミット前検証**: `pytest` を実行し、既存のPass数（49）を下回らないことを確認する。

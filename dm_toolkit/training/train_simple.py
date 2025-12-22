@@ -23,49 +23,56 @@ if python_path not in sys.path:
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-# from dm_toolkit.ai.agent.network import AlphaZeroNetwork
+from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 
 class DuelDataset(Dataset):
-    def __init__(self, tokens: List[torch.Tensor], policies: torch.Tensor, values: torch.Tensor, masks: Optional[torch.Tensor] = None):
+    def __init__(self, tokens: Optional[List[torch.Tensor]], states: Optional[torch.Tensor], policies: torch.Tensor, values: torch.Tensor, masks: Optional[torch.Tensor] = None):
         self.tokens = tokens
+        self.states = states
         self.policies = policies
         self.values = values
         self.masks = masks
 
     def __len__(self):
-        return len(self.tokens)
+        return len(self.policies)
 
     def __getitem__(self, idx):
         item = {
-            'tokens': self.tokens[idx],
             'policy': self.policies[idx],
             'value': self.values[idx]
         }
+        if self.tokens is not None:
+            item['tokens'] = self.tokens[idx]
+        if self.states is not None:
+            item['states'] = self.states[idx]
+
         if self.masks is not None:
             item['mask'] = self.masks[idx]
         return item
 
 def collate_batch(batch):
-    tokens_list = [item['tokens'] for item in batch]
     policies_list = [item['policy'] for item in batch]
     values_list = [item['value'] for item in batch]
-
-    # Pad tokens (assuming 0 is padding)
-    padded_tokens = pad_sequence(tokens_list, batch_first=True, padding_value=0)
-
-    # Generate padding mask (True where token is 0)
-    padding_mask = (padded_tokens == 0)
 
     policies = torch.stack(policies_list)
     values = torch.stack(values_list)
 
     batch_out = {
-        'tokens': padded_tokens,
-        'padding_mask': padding_mask,
         'policy': policies,
         'value': values
     }
+
+    if 'tokens' in batch[0]:
+        tokens_list = [item['tokens'] for item in batch]
+        padded_tokens = pad_sequence(tokens_list, batch_first=True, padding_value=0)
+        padding_mask = (padded_tokens == 0)
+        batch_out['tokens'] = padded_tokens
+        batch_out['padding_mask'] = padding_mask
+
+    if 'states' in batch[0]:
+        states_list = [item['states'] for item in batch]
+        batch_out['states'] = torch.stack(states_list)
 
     if 'mask' in batch[0]:
         masks_list = [item['mask'] for item in batch]
@@ -157,7 +164,7 @@ class Trainer:
 
             self.network = DuelTransformer(self.vocab_size, self.action_size).to(self.device)
 
-            self.dataset = DuelDataset(self.tokens, self.policies, self.values, self.masks)
+            self.dataset = DuelDataset(self.tokens, None, self.policies, self.values, self.masks)
 
         else:
             print("Mode: RESNET/MLP (State Vector)")
@@ -165,13 +172,8 @@ class Trainer:
             self.input_size = self.states.shape[1]
             print(f"Input Size: {self.input_size}")
 
-            # Fallback to existing network logic (using Transformer container or actual logic)
-            # Since the original code tried to use DuelTransformer for states, we must ensure consistency.
-            # However, DuelTransformer expects tokens (Long).
-            # If we are here, we have Floats. We cannot use DuelTransformer.
-            # We should assume AlphaZeroNetwork or raise error.
-            # For this task, we assume the user provides tokens for Transformer.
-            raise ValueError("Legacy state vectors not supported for Transformer. Please provide tokenized data.")
+            self.network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
+            self.dataset = DuelDataset(None, self.states, self.policies, self.values, self.masks)
 
         print(f"Total Data: {len(self.policies)} samples. Action={self.action_size}")
 
@@ -201,8 +203,6 @@ class Trainer:
             batches = 0
 
             for batch in dataloader:
-                batch_tokens = batch['tokens'].to(self.device)
-                batch_padding_mask = batch['padding_mask'].to(self.device)
                 batch_target_policies = batch['policy'].to(self.device)
                 batch_target_values = batch['value'].to(self.device)
 
@@ -210,8 +210,14 @@ class Trainer:
                 if 'mask' in batch:
                     batch_masks = batch['mask'].to(self.device)
 
-                # Forward Pass with Mask
-                pred_policies, pred_values = self.network(batch_tokens, padding_mask=batch_padding_mask)
+                if self.use_transformer:
+                    batch_tokens = batch['tokens'].to(self.device)
+                    batch_padding_mask = batch['padding_mask'].to(self.device)
+                    # Forward Pass with Mask
+                    pred_policies, pred_values = self.network(batch_tokens, padding_mask=batch_padding_mask)
+                else:
+                    batch_states = batch['states'].to(self.device)
+                    pred_policies, pred_values = self.network(batch_states)
 
                 # Value Loss: MSE
                 value_loss = F.mse_loss(pred_values, batch_target_values)
@@ -241,32 +247,44 @@ class Trainer:
         torch.save(self.network.state_dict(), self.save_path)
         print(f"Model saved to {self.save_path}")
 
-        # Export (Simplified for Transformer)
-        # Note: ONNX export for Transformer with variable length requires dynamic axes
+        # Export
         self.network.eval()
-
-        # We need a dummy input of integer tokens
-        dummy_seq_len = 32
-        dummy_input = torch.randint(0, self.vocab_size, (1, dummy_seq_len), dtype=torch.long).to(self.device)
-        dummy_mask = torch.zeros((1, dummy_seq_len), dtype=torch.bool).to(self.device)
-
         onnx_path = self.save_path.replace(".pth", ".onnx")
+
         try:
-            torch.onnx.export(
-                self.network,
-                (dummy_input, dummy_mask),
-                onnx_path,
-                export_params=True,
-                opset_version=14, # 14+ for better Transformer support
-                input_names=['input_ids', 'padding_mask'],
-                output_names=['policy', 'value'],
-                dynamic_axes={
-                    'input_ids': {0: 'batch_size', 1: 'seq_len'},
-                    'padding_mask': {0: 'batch_size', 1: 'seq_len'},
-                    'policy': {0: 'batch_size'},
-                    'value': {0: 'batch_size'}
-                }
-            )
+            if self.use_transformer:
+                # We need a dummy input of integer tokens
+                dummy_seq_len = 32
+                dummy_input = torch.randint(0, self.vocab_size, (1, dummy_seq_len), dtype=torch.long).to(self.device)
+                dummy_mask = torch.zeros((1, dummy_seq_len), dtype=torch.bool).to(self.device)
+
+                torch.onnx.export(
+                    self.network,
+                    (dummy_input, dummy_mask),
+                    onnx_path,
+                    export_params=True,
+                    opset_version=14,
+                    input_names=['input_ids', 'padding_mask'],
+                    output_names=['policy', 'value'],
+                    dynamic_axes={
+                        'input_ids': {0: 'batch_size', 1: 'seq_len'},
+                        'padding_mask': {0: 'batch_size', 1: 'seq_len'},
+                        'policy': {0: 'batch_size'},
+                        'value': {0: 'batch_size'}
+                    }
+                )
+            else:
+                dummy_input = torch.randn(1, self.input_size).to(self.device)
+                torch.onnx.export(
+                    self.network,
+                    dummy_input,
+                    onnx_path,
+                    export_params=True,
+                    input_names=['state'],
+                    output_names=['policy', 'value'],
+                    dynamic_axes={'state': {0: 'batch_size'}, 'policy': {0: 'batch_size'}, 'value': {0: 'batch_size'}}
+                )
+
             print(f"Model exported to ONNX: {onnx_path}")
         except Exception as e:
             print(f"Failed to export to ONNX: {e}")
