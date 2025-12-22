@@ -23,17 +23,17 @@
 #include "engine/systems/card/condition_system.hpp"
 #include "engine/systems/trigger_system/trigger_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
-#include "engine/cost_payment_system.hpp"
-#include "ai/self_play/self_play.hpp"
-#include "ai/scenario/scenario_executor.hpp"
-#include "core/instruction.hpp"
-#include "engine/game_command/commands.hpp"
-#include "ai/encoders/token_converter.hpp"
-#include "ai/encoders/tensor_converter.hpp"
-#include "ai/encoders/action_encoder.hpp"
-#include "ai/inference/deck_inference.hpp"
-#include "ai/pomdp/parametric_belief.hpp"
-#include "bindings/python_batch_inference.hpp" // For callback registration
+#include "engine/cost_payment_system.hpp" // Typo fix systems/cost... -> engine/cost...
+#include "ai/self_play/self_play.hpp" // Added to include GameResultInfo definition
+#include "ai/scenario/scenario_executor.hpp" // Missing include
+#include "core/instruction.hpp" // For Instruction and InstructionOp
+#include "engine/game_command/commands.hpp" // Added for GameCommand bindings
+#include "ai/encoders/token_converter.hpp" // Phase 8: Feature Tokenization
+#include "ai/encoders/tensor_converter.hpp" // Tensor Converter
+#include "ai/encoders/action_encoder.hpp" // Action Encoder
+#include "ai/inference/deck_inference.hpp" // Phase 2: Deck Inference
+#include "ai/pomdp/parametric_belief.hpp" // Added for ParametricBelief
+#include "ai/data_collection/data_collector.hpp" // Added for DataCollector
 
 namespace py = pybind11;
 using namespace dm;
@@ -850,14 +850,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("update", &ParametricBelief::update)
         .def("get_vector", &ParametricBelief::get_vector);
 
-    // Bind batch inference callback functions
-    m.def("set_batch_callback", &set_batch_callback);
-    m.def("has_batch_callback", &has_batch_callback);
-    m.def("clear_batch_callback", &clear_batch_callback);
-    m.def("set_flat_batch_callback", &set_flat_batch_callback);
-    m.def("has_flat_batch_callback", &has_flat_batch_callback);
-    m.def("clear_flat_batch_callback", &clear_flat_batch_callback);
-    m.def("set_sequence_batch_callback", &set_sequence_batch_callback);
-    m.def("has_sequence_batch_callback", &has_sequence_batch_callback);
-    m.def("clear_sequence_batch_callback", &clear_sequence_batch_callback);
+    py::class_<CollectedBatch>(m, "CollectedBatch")
+        .def(py::init<>())
+        .def_readwrite("states", &CollectedBatch::states)
+        .def_readwrite("policies", &CollectedBatch::policies)
+        .def_readwrite("values", &CollectedBatch::values);
+
+    py::class_<DataCollector>(m, "DataCollector")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic);
 }
