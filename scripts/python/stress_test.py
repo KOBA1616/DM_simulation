@@ -22,19 +22,12 @@ def run_stress_test(iterations=10000, max_steps=2000, verbose=False):
 
     # Load Cards
     try:
-        # Try loading real cards first
-        card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
-        print(f"Loaded {len(card_db)} cards from data/cards.csv")
-    except Exception:
-        # Fallback or empty? We need cards to play.
-        # If CsvLoader fails, maybe JsonLoader?
-        try:
-             # Try JSON if available
-             card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-             print(f"Loaded {len(card_db)} cards from data/cards.json")
-        except Exception as e:
-             print(f"Failed to load cards: {e}")
-             sys.exit(1)
+        # Try JSON
+        card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+        print(f"Loaded {len(card_db)} cards from data/cards.json")
+    except Exception as e:
+        print(f"Failed to load cards: {e}")
+        sys.exit(1)
 
     if not card_db:
         print("No cards loaded. Exiting.")

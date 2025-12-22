@@ -8,10 +8,10 @@ import dm_ai_module
 
 
 def test_cip_add_mana():
-    # Load registry and csv
-    with open('data/cards.json', 'r', encoding='utf-8') as f:
-        dm_ai_module.card_registry_load_from_json(f.read())
-    card_db = dm_ai_module.CsvLoader.load_cards('data/cards.csv')
+    # Load registry and json
+    card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+    # Also register for CardRegistry if needed by system internals
+    # But usually GameInstance/EffectResolver use the passed card_db map
 
     gs = dm_ai_module.GameState(1)
     gs.setup_test_duel()
@@ -46,9 +46,7 @@ def test_cip_add_mana():
 
 def test_spell_return_to_hand():
     # Spiral Gate (id=6) should return a creature to hand
-    with open('data/cards.json', 'r', encoding='utf-8') as f:
-        dm_ai_module.card_registry_load_from_json(f.read())
-    card_db = dm_ai_module.CsvLoader.load_cards('data/cards.csv')
+    card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
 
     gs = dm_ai_module.GameState(2)
     gs.setup_test_duel()
