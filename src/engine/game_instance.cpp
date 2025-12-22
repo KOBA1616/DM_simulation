@@ -3,6 +3,7 @@
 #include "engine/game_command/game_command.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/continuous_effect_system.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include <functional>
 #include <iostream>
 
@@ -25,6 +26,19 @@ namespace dm::engine {
 
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
         : state(seed), card_db_ptr(db), card_db(*card_db_ptr) {
+        trigger_manager = std::make_shared<systems::TriggerManager>();
+        pipeline = std::make_shared<systems::PipelineExecutor>();
+
+        // Wire up GameState's event dispatcher to TriggerManager
+        state.event_dispatcher = [this](const core::GameEvent& event) {
+            trigger_manager->dispatch(event, state);
+            trigger_manager->check_triggers(event, state, card_db);
+            trigger_manager->check_reactions(event, state, card_db);
+        };
+    }
+
+    GameInstance::GameInstance(uint32_t seed)
+        : state(seed), card_db_ptr(CardRegistry::get_all_definitions_ptr()), card_db(*card_db_ptr) {
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 

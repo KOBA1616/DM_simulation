@@ -4,6 +4,7 @@
 #include "ai/mcts/mcts.hpp"
 #include <vector>
 #include <map>
+#include <memory>
 #include <functional>
 
 namespace dm::ai {
@@ -22,6 +23,10 @@ namespace dm::ai {
                  int mcts_simulations = 50,
                  int batch_size = 1);
 
+        SelfPlay(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db,
+                 int mcts_simulations = 50,
+                 int batch_size = 1);
+
         // Play a single game from start to finish
         // Changed to pass by reference to avoid copy constructor issue
         GameResultInfo play_game(
@@ -34,7 +39,7 @@ namespace dm::ai {
         );
 
     private:
-        std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
+        std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;
         int mcts_simulations_;
         int batch_size_;
     };
