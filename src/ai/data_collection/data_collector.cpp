@@ -2,6 +2,7 @@
 #include "ai/agents/heuristic_agent.hpp"
 #include "engine/game_instance.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include "engine/actions/action_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "ai/encoders/action_encoder.hpp"
@@ -13,7 +14,13 @@ namespace dm::ai {
     using namespace dm::engine::systems;
 
     DataCollector::DataCollector(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db)
+        : card_db_(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db)) {}
+
+    DataCollector::DataCollector(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db)
         : card_db_(card_db) {}
+
+    DataCollector::DataCollector()
+        : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()) {}
 
     CollectedBatch DataCollector::collect_data_batch(int episodes) {
         return collect_data_batch_heuristic(episodes);
@@ -23,16 +30,16 @@ namespace dm::ai {
         CollectedBatch batch;
 
         // Instantiate agents once outside the loop to reuse RNG initialization
-        HeuristicAgent agent1(0, card_db_);
-        HeuristicAgent agent2(1, card_db_);
+        HeuristicAgent agent1(0, *card_db_);
+        HeuristicAgent agent2(1, *card_db_);
 
         // Pre-calculate decks (using a simple strategy if none provided, but here we assume all cards are available)
         // In a real scenario, we might want to randomize decks or pass them in.
         // For now, we construct a simple deck from the DB or default dummy.
         std::vector<dm::core::CardID> deck1, deck2;
-        if (!card_db_.empty()) {
+        if (card_db_ && !card_db_->empty()) {
             std::vector<dm::core::CardID> available_ids;
-            for (const auto& kv : card_db_) {
+            for (const auto& kv : *card_db_) {
                 available_ids.push_back(kv.first);
             }
             for (int k = 0; k < 40; ++k) {
@@ -63,7 +70,7 @@ namespace dm::ai {
             setup_deck(game.state.players[1], deck2);
 
             // Game Loop
-            dm::engine::PhaseManager::start_game(game.state, card_db_);
+            dm::engine::PhaseManager::start_game(game.state, *card_db_);
 
             std::vector<std::vector<long>> game_states;
             std::vector<std::vector<float>> game_policies;
@@ -77,11 +84,11 @@ namespace dm::ai {
                 int active_player = game.state.active_player_id;
 
                 dm::engine::ActionGenerator action_gen;
-                auto legal_actions = action_gen.generate_legal_actions(game.state, card_db_);
+                auto legal_actions = action_gen.generate_legal_actions(game.state, *card_db_);
 
                 // If no actions, transition phase
                 if (legal_actions.empty()) {
-                     dm::engine::PhaseManager::next_phase(game.state, card_db_);
+                     dm::engine::PhaseManager::next_phase(game.state, *card_db_);
 
                      dm::core::GameResult res;
                      if(dm::engine::PhaseManager::check_game_over(game.state, res)){
@@ -100,7 +107,7 @@ namespace dm::ai {
 
                 // Record data
                 std::vector<long> state_seq = TensorConverter::convert_to_sequence(
-                    game.state, active_player, card_db_, true
+                    game.state, active_player, *card_db_, true
                 );
 
                 std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
@@ -114,10 +121,10 @@ namespace dm::ai {
                 game_players.push_back(active_player);
 
                 // Apply action
-                GameLogicSystem::resolve_action(game.state, chosen_action, card_db_);
+                GameLogicSystem::resolve_action(game.state, chosen_action, *card_db_);
 
                 if (chosen_action.type == dm::core::ActionType::PASS) {
-                     dm::engine::PhaseManager::next_phase(game.state, card_db_);
+                     dm::engine::PhaseManager::next_phase(game.state, *card_db_);
                 }
 
                 game.state.update_loop_check();

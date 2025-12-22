@@ -5,14 +5,13 @@
 #include "core/card_def.hpp"
 #include "engine/game_instance.hpp"
 #include "engine/actions/action_generator.hpp"
-// #include "engine/game/effect_resolver.hpp" // Removed
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "ai/mcts/mcts.hpp"
 #include "ai/evaluator/heuristic_evaluator.hpp"
-#include "ai/evaluator/neural_evaluator.hpp" // Added NeuralEvaluator
+#include "ai/evaluator/neural_evaluator.hpp"
 #include "engine/utils/determinizer.hpp"
 #include "core/card_json_types.hpp"
 #include "engine/systems/card/json_loader.hpp"
@@ -23,17 +22,18 @@
 #include "engine/systems/card/condition_system.hpp"
 #include "engine/systems/trigger_system/trigger_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
-#include "engine/cost_payment_system.hpp" // Typo fix systems/cost... -> engine/cost...
-#include "ai/self_play/self_play.hpp" // Added to include GameResultInfo definition
-#include "ai/scenario/scenario_executor.hpp" // Missing include
-#include "core/instruction.hpp" // For Instruction and InstructionOp
-#include "engine/game_command/commands.hpp" // Added for GameCommand bindings
-#include "ai/encoders/token_converter.hpp" // Phase 8: Feature Tokenization
-#include "ai/encoders/tensor_converter.hpp" // Tensor Converter
-#include "ai/encoders/action_encoder.hpp" // Action Encoder
-#include "ai/inference/deck_inference.hpp" // Phase 2: Deck Inference
-#include "ai/pomdp/parametric_belief.hpp" // Added for ParametricBelief
-#include "ai/data_collection/data_collector.hpp" // Added for DataCollector
+#include "engine/cost_payment_system.hpp"
+#include "ai/self_play/self_play.hpp"
+#include "ai/scenario/scenario_executor.hpp"
+#include "core/instruction.hpp"
+#include "engine/game_command/commands.hpp"
+#include "ai/encoders/token_converter.hpp"
+#include "ai/encoders/tensor_converter.hpp"
+#include "ai/encoders/action_encoder.hpp"
+#include "ai/inference/deck_inference.hpp"
+#include "ai/pomdp/parametric_belief.hpp"
+#include "ai/data_collection/data_collector.hpp"
+#include "bindings/python_batch_inference.hpp"
 
 namespace py = pybind11;
 using namespace dm;
@@ -264,6 +264,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("PLAY_CARD_INTERNAL", ActionType::PLAY_CARD_INTERNAL)
         .value("RESOLVE_BATTLE", ActionType::RESOLVE_BATTLE)
         .value("BREAK_SHIELD", ActionType::BREAK_SHIELD)
+        // Added missing values
+        .value("MOVE_CARD", ActionType::MOVE_CARD)
+        .value("DECLARE_PLAY", ActionType::DECLARE_PLAY)
+        .value("PAY_COST", ActionType::PAY_COST)
+        .value("RESOLVE_PLAY", ActionType::RESOLVE_PLAY)
+        .value("SELECT_OPTION", ActionType::SELECT_OPTION)
+        .value("SELECT_NUMBER", ActionType::SELECT_NUMBER)
         .export_values();
 
     py::enum_<GameResult>(m, "GameResult")
@@ -643,12 +650,29 @@ PYBIND11_MODULE(dm_ai_module, m) {
             return list;
         });
 
+    m.def("get_card_stats", [](const GameState& state) {
+        py::dict result;
+        for (const auto& [cid, stats] : state.global_card_stats) {
+            py::dict s;
+            s["play_count"] = stats.play_count;
+            s["win_count"] = stats.win_count;
+            s["sum_cost_discount"] = stats.sum_cost_discount;
+            s["sum_early_usage"] = stats.sum_early_usage;
+            s["sum_win_contribution"] = stats.sum_win_contribution;
+            result[py::int_(cid)] = s;
+        }
+        return result;
+    });
+
     py::class_<Action>(m, "Action")
         .def(py::init<>())
         .def_readwrite("type", &Action::type)
+        .def_readwrite("card_id", &Action::card_id) // Added
         .def_readwrite("source_instance_id", &Action::source_instance_id)
         .def_readwrite("target_instance_id", &Action::target_instance_id)
+        .def_readwrite("target_player", &Action::target_player) // Added
         .def_readwrite("slot_index", &Action::slot_index)
+        .def_readwrite("target_slot_index", &Action::target_slot_index) // Added
         .def("to_string", &Action::to_string);
 
     // Systems
@@ -751,6 +775,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<GameInstance>(m, "GameInstance")
         .def(py::init<uint32_t, const std::map<core::CardID, core::CardDefinition>&>())
+        .def(py::init<uint32_t>()) // NEW
         .def_readonly("state", &GameInstance::state)
         .def("start_game", &GameInstance::start_game)
         .def("resolve_action", &GameInstance::resolve_action)
@@ -764,7 +789,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
              dm::core::to_json(j, data);
              std::string json_str = j.dump();
              CardRegistry::load_from_json(json_str);
-        });
+        })
+        .def_static("load_from_json", &CardRegistry::load_from_json)
+        .def_static("clear", &CardRegistry::clear);
 
     py::class_<PhaseManager>(m, "PhaseManager")
         .def_static("start_game", &PhaseManager::start_game)
@@ -826,6 +853,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<ParallelRunner>(m, "ParallelRunner")
         .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
+        .def(py::init<int, int>()) // NEW
         .def("play_games", &ParallelRunner::play_games, py::return_value_policy::move) // Use move policy
         .def("play_scenario_match", &ParallelRunner::play_scenario_match)
         .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
@@ -845,6 +873,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<ScenarioExecutor>(m, "ScenarioExecutor")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def(py::init<>()) // NEW
         .def("run_scenario", &ScenarioExecutor::run_scenario);
 
     py::class_<ParametricBelief>(m, "ParametricBelief")
@@ -862,5 +891,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<DataCollector>(m, "DataCollector")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def(py::init<>()) // NEW
         .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic);
 }

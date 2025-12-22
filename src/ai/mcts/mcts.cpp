@@ -16,12 +16,15 @@ namespace dm::ai {
     using namespace dm::engine::systems;
 
     MCTS::MCTS(const std::map<CardID, CardDefinition>& card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size, float alpha)
+        : card_db_(std::make_shared<std::map<CardID, CardDefinition>>(card_db)), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size), alpha_(alpha) {}
+
+    MCTS::MCTS(std::shared_ptr<const std::map<CardID, CardDefinition>> card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size, float alpha)
         : card_db_(card_db), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size), alpha_(alpha) {}
 
     std::vector<float> MCTS::search(const GameState& root_state, int simulations, BatchEvaluatorCallback evaluator, bool add_noise, float temperature) {
         // 1. Clone and Fast Forward Root
         GameState root_gs = root_state.clone(); // Copy
-        PhaseManager::fast_forward(root_gs, card_db_);
+        PhaseManager::fast_forward(root_gs, *card_db_);
         
         last_root_ = std::make_unique<MCTSNode>(std::move(root_gs));
         MCTSNode* root = last_root_.get();
@@ -144,7 +147,7 @@ namespace dm::ai {
     }
 
     void MCTS::expand_node(MCTSNode* node, const std::vector<float>& policy_logits) {
-        auto actions = ActionGenerator::generate_legal_actions(node->state, card_db_);
+        auto actions = ActionGenerator::generate_legal_actions(node->state, *card_db_);
         
         if (actions.empty()) return;
 
@@ -169,21 +172,14 @@ namespace dm::ai {
             
             GameState next_state = node->state.clone();
             // Replaced EffectResolver::resolve_action with GameLogicSystem::resolve_action
-            GameLogicSystem::resolve_action(next_state, action, card_db_);
+            GameLogicSystem::resolve_action(next_state, action, *card_db_);
 
             if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
-                PhaseManager::next_phase(next_state, card_db_);
+                PhaseManager::next_phase(next_state, *card_db_);
             }
-            PhaseManager::fast_forward(next_state, card_db_);
+            PhaseManager::fast_forward(next_state, *card_db_);
             
-            auto child = std::make_unique<MCTSNode>(std::move(next_state)); // next_state is moved?
-            // MCTSNode ctor takes GameState&& so it moves.
-            // `next_state` is local var, `std::move(next_state)` or implicit?
-            // Implicit move if it's the last use. But constructor signature might be const ref in old code.
-            // I changed MCTSNode ctor to take GameState&& in mcts.hpp (in Plan Step 4 of previous iteration, wait, did I?)
-            // I did `sed -i 's/MCTSNode(const dm::core::GameState& s) : state(s)/MCTSNode(dm::core::GameState&& s) : state(std::move(s))/g' src/ai/mcts/mcts.hpp`
-            // So implicit move should work if next_state is rvalue or using std::move.
-            // Let's use std::move(next_state) to be safe.
+            auto child = std::make_unique<MCTSNode>(std::move(next_state)); // next_state is moved
 
             child->parent = node;
             child->action_from_parent = action;
@@ -237,13 +233,7 @@ namespace dm::ai {
         while (node) {
             node->visit_count++;
 
-            // value is the result of the game (-1, 0, 1) from the perspective of the leaf's active player?
-            // No, 'value' passed here is usually from the perspective of the node that was evaluated.
-            // But MCTS backprop flips value if parent player is different.
-
             // Variance accumulation: E[X^2]
-            // Since value is in range [-1, 1], value^2 is [0, 1].
-            // (-v)^2 == v^2, so we don't need to flip it for squared sum.
             node->value_squared_sum += value * value;
 
             node->value_sum += value;
