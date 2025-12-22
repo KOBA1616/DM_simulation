@@ -24,7 +24,7 @@ namespace dm::ai {
 
     // Queue for inference requests
     struct InferenceQueue {
-        std::queue<InferenceRequest*> queue;
+        std::queue<std::shared_ptr<InferenceRequest>> queue;
         std::mutex mutex;
         std::condition_variable cv;
     };
