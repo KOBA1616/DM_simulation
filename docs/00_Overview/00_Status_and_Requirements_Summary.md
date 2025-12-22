@@ -31,7 +31,6 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
-*   [Status: WIP] [Test: Fail] **Lethal Solver Strict Implementation**: `tests/verify_lethal_puzzle.py` が `card_registry_load_from_json` のバインディング欠落により実行不能です。
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` を削除し、`GameLogicSystem` へ完全移行しました。
 *   [Status: Done] **GameLogicSystem Refactor**: `PipelineExecutor` を介したコマンド実行フローが確立されました。
 *   [Status: Done] **Action Generalization**: 全アクションハンドラーの `compile_action` 化が完了しました。
@@ -48,9 +47,13 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Encoding Audit**: ソースコードのShift-JIS対応完了。
 *   [Test: Skip] **GUI Tests**: 現在のテスト環境（Headless）には `PyQt6` が含まれていないため、`tests/test_action_form_syntax.py` 等のGUIテストは実行不能（Skip/Fail）です。
 
-### 2.3 AI & 学習基盤 (`dm_toolkit/training`)
+### 2.3 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
 *   [Status: Done] **Directory Restructuring**: `python/training` を `dm_toolkit/training` へ移動しました。
 *   [Status: Done] **Transformer Integration**: `NetworkV2` 実装完了。
+*   [Status: Review] **Search Engine (MCTS)**: `src/ai/mcts` 実装完了。
+*   [Status: Review] **Inference Engine**: `src/ai/inference` (PIMC, Deck Inference) 実装完了。
+*   [Status: Review] **Lethal Solver**: `src/ai/solver` 実装完了 (Strict Implementation)。ただし `verify_lethal_puzzle.py` はバインディング欠落により失敗中。
+*   [Status: Review] **POMDP**: `src/ai/pomdp` 実装完了。
 *   [Status: WIP] [Test: Fail] **Deck Evolution**: `DeckEvolution` クラスのバインディング欠落により `tests/test_deck_evolution_cpp.py` が失敗しています。
 
 ---
