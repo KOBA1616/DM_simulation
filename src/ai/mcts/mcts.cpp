@@ -15,6 +15,28 @@ namespace dm::ai {
     using namespace dm::engine;
     using namespace dm::engine::systems;
 
+    MCTSNode::~MCTSNode() {
+        // Iterative destruction to avoid stack overflow for deep trees
+        std::vector<std::unique_ptr<MCTSNode>> nodes_to_delete;
+        // Move children to local vector
+        for (auto& child : children) {
+            if (child) nodes_to_delete.push_back(std::move(child));
+        }
+        children.clear();
+
+        while (!nodes_to_delete.empty()) {
+            auto node = std::move(nodes_to_delete.back());
+            nodes_to_delete.pop_back();
+
+            if (node) {
+                for (auto& child : node->children) {
+                    if (child) nodes_to_delete.push_back(std::move(child));
+                }
+                node->children.clear();
+            }
+        }
+    }
+
     MCTS::MCTS(const std::map<CardID, CardDefinition>& card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size, float alpha)
         : card_db_(std::make_shared<std::map<CardID, CardDefinition>>(card_db)), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size), alpha_(alpha) {}
 
@@ -26,6 +48,8 @@ namespace dm::ai {
         GameState root_gs = root_state.clone(); // Copy
         PhaseManager::fast_forward(root_gs, *card_db_);
         
+        // Explicitly free the old tree before allocating the new one to reduce peak memory usage
+        last_root_.reset();
         last_root_ = std::make_unique<MCTSNode>(std::move(root_gs));
         MCTSNode* root = last_root_.get();
 
