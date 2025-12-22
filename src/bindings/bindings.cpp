@@ -765,6 +765,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<GameInstance>(m, "GameInstance")
         .def(py::init<uint32_t, const std::map<core::CardID, core::CardDefinition>&>())
         .def_readonly("state", &GameInstance::state)
+        .def("start_game", &GameInstance::start_game)
+        .def("resolve_action", &GameInstance::resolve_action)
+        .def("undo", &GameInstance::undo)
+        .def("initialize_card_stats", &GameInstance::initialize_card_stats)
         .def("reset_with_scenario", &GameInstance::reset_with_scenario);
 
     py::class_<CardRegistry>(m, "CardRegistry")
