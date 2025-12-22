@@ -34,6 +34,7 @@
 #include "ai/pomdp/parametric_belief.hpp"
 #include "ai/data_collection/data_collector.hpp"
 #include "bindings/python_batch_inference.hpp"
+#include "ai/evolution/deck_evolution.hpp"
 
 namespace py = pybind11;
 using namespace dm;
@@ -563,6 +564,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("set_context_var", &dm::engine::systems::PipelineExecutor::set_context_var)
         .def("execute", static_cast<void (dm::engine::systems::PipelineExecutor::*)(const std::vector<dm::core::Instruction>&, core::GameState&, const std::map<core::CardID, core::CardDefinition>&)>(&dm::engine::systems::PipelineExecutor::execute));
 
+    py::class_<dm::engine::systems::TriggerManager>(m, "TriggerManager")
+        .def(py::init<>())
+        .def("check_triggers", &dm::engine::systems::TriggerManager::check_triggers)
+        .def("check_reactions", &dm::engine::systems::TriggerManager::check_reactions)
+        .def("dispatch", &dm::engine::systems::TriggerManager::dispatch)
+        .def("clear", &dm::engine::systems::TriggerManager::clear);
+
     py::class_<GameState::QueryContext>(m, "QueryContext")
         .def_readwrite("query_id", &GameState::QueryContext::query_id)
         .def_readwrite("query_type", &GameState::QueryContext::query_type)
@@ -632,6 +640,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
              CardInstance c(cid, pid);
              c.instance_id = iid;
              s.players[pid].deck.push_back(c);
+             if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
+             s.card_owner_map[iid] = pid;
+        })
+        .def("add_card_to_shield", [](GameState& s, PlayerID pid, int cid, int iid) {
+             CardInstance c(cid, pid);
+             c.instance_id = iid;
+             s.players[pid].shield_zone.push_back(c);
+             if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
+             s.card_owner_map[iid] = pid;
+        })
+        .def("add_card_to_graveyard", [](GameState& s, PlayerID pid, int cid, int iid) {
+             CardInstance c(cid, pid);
+             c.instance_id = iid;
+             s.players[pid].graveyard.push_back(c);
              if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
              s.card_owner_map[iid] = pid;
         })
@@ -838,6 +860,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
 
+    // Deck Evolution
+    py::class_<DeckEvolutionConfig>(m, "DeckEvolutionConfig")
+        .def(py::init<>())
+        .def_readwrite("target_deck_size", &DeckEvolutionConfig::target_deck_size)
+        .def_readwrite("mutation_rate", &DeckEvolutionConfig::mutation_rate)
+        .def_readwrite("synergy_weight", &DeckEvolutionConfig::synergy_weight)
+        .def_readwrite("curve_weight", &DeckEvolutionConfig::curve_weight);
+
+    py::class_<DeckEvolution>(m, "DeckEvolution")
+        .def(py::init<const std::map<dm::core::CardID, dm::core::CardDefinition>&>())
+        .def("evolve_deck", &DeckEvolution::evolve_deck)
+        .def("calculate_interaction_score", &DeckEvolution::calculate_interaction_score)
+        .def("get_candidates_by_civ", &DeckEvolution::get_candidates_by_civ);
+
     py::class_<dm::ai::inference::DeckInference>(m, "DeckInference")
         .def(py::init<>())
         .def("load_decks", &dm::ai::inference::DeckInference::load_decks)
@@ -866,7 +902,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("my_mana_zone", &ScenarioConfig::my_mana_zone)
         .def_readwrite("my_grave_yard", &ScenarioConfig::my_grave_yard)
         .def_readwrite("my_shields", &ScenarioConfig::my_shields)
+        .def_readwrite("my_deck", &ScenarioConfig::my_deck)
         .def_readwrite("enemy_shield_count", &ScenarioConfig::enemy_shield_count)
+        .def_readwrite("enemy_deck", &ScenarioConfig::enemy_deck)
         .def_readwrite("enemy_battle_zone", &ScenarioConfig::enemy_battle_zone)
         .def_readwrite("enemy_can_use_trigger", &ScenarioConfig::enemy_can_use_trigger)
         .def_readwrite("loop_proof_mode", &ScenarioConfig::loop_proof_mode);
