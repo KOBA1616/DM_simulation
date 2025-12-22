@@ -4,10 +4,11 @@ import random
 import json
 
 # Add root to path if needed
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 import dm_ai_module
-from dm_toolkit.ai.agent.mcts import MCTS
+# from dm_toolkit.ai.agent.mcts import MCTS # MCTS might not be available in python toolkit yet or deprecated
+# Since MCTS is now in C++ (dm_ai_module.MCTS), we should use that or skip deep logic here.
 
 class DeckEvolution:
     def __init__(self, card_db):
@@ -20,6 +21,8 @@ class DeckEvolution:
     def initialize_population(self):
         # Create random decks
         all_ids = list(self.card_db.keys())
+        if not all_ids:
+            return
         for _ in range(self.population_size):
             deck = []
             for _ in range(40):
@@ -52,11 +55,13 @@ class DeckEvolution:
         gs = dm_ai_module.GameState(random.randint(0, 100000))
         gs.set_deck(0, deck_a)
         gs.set_deck(1, deck_b)
-        dm_ai_module.PhaseManager.start_game(gs)
+        dm_ai_module.PhaseManager.start_game(gs, self.card_db)
         
+        # MCTS usage in python via C++ binding requires correct setup
+        # If network is None, we use random play in this script
         mcts = None
-        if network:
-            mcts = MCTS(network, self.card_db, simulations=10)
+        # if network:
+        #     mcts = dm_ai_module.MCTS(self.card_db, 1.4, 0.25, 1.0, 1600, 1.0)
             
         turn_count = 0
         while True:
@@ -74,31 +79,16 @@ class DeckEvolution:
                 return -1
                 
             if mcts:
-                root = mcts.search(gs)
-                # Select best action by visit count
-                best_action = None
-                max_visits = -1
-                for child in root.children:
-                    if child.visit_count > max_visits:
-                        max_visits = child.visit_count
-                        best_action = child.action
-                
-                if best_action is None:
-                    # Fallback if no children (should be game over or pass)
-                    actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db)
-                    if not actions:
-                        dm_ai_module.PhaseManager.next_phase(gs)
-                        continue
-                    action = actions[0]
-                else:
-                    action = best_action
-            else:
-                # Random
-                actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db)
-                if not actions:
-                    dm_ai_module.PhaseManager.next_phase(gs)
-                    continue
-                action = random.choice(actions)
+                # Need to use C++ MCTS search
+                # For now let's stick to random for this script update
+                pass
+
+            # Random
+            actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db)
+            if not actions:
+                dm_ai_module.PhaseManager.next_phase(gs)
+                continue
+            action = random.choice(actions)
                 
             dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
             if action.type == dm_ai_module.ActionType.PASS:
@@ -109,6 +99,7 @@ class DeckEvolution:
         new_deck = deck.copy()
         num_swaps = random.randint(1, 4)
         all_ids = list(self.card_db.keys())
+        if not all_ids: return new_deck
         
         for _ in range(num_swaps):
             idx = random.randint(0, 39)
@@ -129,7 +120,10 @@ class DeckEvolution:
         
     def evolve(self, generations=10):
         self.initialize_population()
-        
+        if not self.population:
+            print("Population empty (no cards?)")
+            return
+
         for gen in range(generations):
             print(f"Generation {gen}")
             self.save_generation(gen)
@@ -163,6 +157,9 @@ class DeckEvolution:
 
 if __name__ == "__main__":
     # Test
-    card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
-    evo = DeckEvolution(card_db)
-    evo.evolve(generations=3)
+    try:
+        card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+        evo = DeckEvolution(card_db)
+        evo.evolve(generations=3)
+    except Exception as e:
+        print(f"Evolution failed: {e}")
