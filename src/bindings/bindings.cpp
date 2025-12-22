@@ -265,7 +265,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("PLAY_CARD_INTERNAL", ActionType::PLAY_CARD_INTERNAL)
         .value("RESOLVE_BATTLE", ActionType::RESOLVE_BATTLE)
         .value("BREAK_SHIELD", ActionType::BREAK_SHIELD)
-        // Added missing values
         .value("MOVE_CARD", ActionType::MOVE_CARD)
         .value("DECLARE_PLAY", ActionType::DECLARE_PLAY)
         .value("PAY_COST", ActionType::PAY_COST)
@@ -475,22 +474,30 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
         .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
-            auto c = std::make_shared<CardDefinition>();
-            c->id = id;
-            c->name = name;
-            c->cost = cost;
-            if (civ_str == "FIRE") c->civilizations.push_back(Civilization::FIRE);
-            else if (civ_str == "WATER") c->civilizations.push_back(Civilization::WATER);
-            else if (civ_str == "NATURE") c->civilizations.push_back(Civilization::NATURE);
-            else if (civ_str == "LIGHT") c->civilizations.push_back(Civilization::LIGHT);
-            else if (civ_str == "DARKNESS") c->civilizations.push_back(Civilization::DARKNESS);
-            c->power = power;
-            c->races = races;
-            c->keywords = keywords;
-            c->effects = effects;
-            // Default type
-            c->type = CardType::CREATURE;
-            return c;
+            try {
+                auto c = std::make_shared<CardDefinition>();
+                c->id = id;
+                c->name = name;
+                c->cost = cost;
+                if (civ_str == "FIRE") c->civilizations.push_back(Civilization::FIRE);
+                else if (civ_str == "WATER") c->civilizations.push_back(Civilization::WATER);
+                else if (civ_str == "NATURE") c->civilizations.push_back(Civilization::NATURE);
+                else if (civ_str == "LIGHT") c->civilizations.push_back(Civilization::LIGHT);
+                else if (civ_str == "DARKNESS") c->civilizations.push_back(Civilization::DARKNESS);
+                c->power = power;
+                c->races = races;
+                c->keywords = keywords;
+                c->effects = effects;
+                // Default type
+                c->type = CardType::CREATURE;
+                return c;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in CardDefinition constructor: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in CardDefinition constructor");
+            }
         }),
              py::arg("id") = 0, py::arg("name") = "", py::arg("civilization") = "NONE",
              py::arg("races") = std::vector<std::string>{}, py::arg("cost") = 0, py::arg("power") = 0,
@@ -515,20 +522,28 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<CardData>(m, "CardData")
         .def(py::init([](CardID id, std::string name, int cost, std::string civilization, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects) {
-            CardData c;
-            c.id = id;
-            c.name = name;
-            c.cost = cost;
-            if (civilization == "FIRE") c.civilizations.push_back(Civilization::FIRE);
-            else if (civilization == "WATER") c.civilizations.push_back(Civilization::WATER);
-            else if (civilization == "NATURE") c.civilizations.push_back(Civilization::NATURE);
-            else if (civilization == "LIGHT") c.civilizations.push_back(Civilization::LIGHT);
-            else if (civilization == "DARKNESS") c.civilizations.push_back(Civilization::DARKNESS);
-            c.power = power;
-            c.type = type;
-            c.races = races;
-            c.effects = effects;
-            return c;
+            try {
+                CardData c;
+                c.id = id;
+                c.name = name;
+                c.cost = cost;
+                if (civilization == "FIRE") c.civilizations.push_back(Civilization::FIRE);
+                else if (civilization == "WATER") c.civilizations.push_back(Civilization::WATER);
+                else if (civilization == "NATURE") c.civilizations.push_back(Civilization::NATURE);
+                else if (civilization == "LIGHT") c.civilizations.push_back(Civilization::LIGHT);
+                else if (civilization == "DARKNESS") c.civilizations.push_back(Civilization::DARKNESS);
+                c.power = power;
+                c.type = type;
+                c.races = races;
+                c.effects = effects;
+                return c;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in CardData constructor: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in CardData constructor");
+            }
         }))
         .def_readwrite("static_abilities", &CardData::static_abilities);
 
@@ -608,83 +623,165 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("status", &GameState::status)
         .def("get_pending_effect_count", [](const GameState& s) { return s.pending_effects.size(); })
         .def("clone", &GameState::clone)
-        .def("get_card_instance", [](GameState& s, int id) { return s.get_card_instance(id); }, py::return_value_policy::reference)
+        .def("get_card_instance", [](GameState& s, int id) {
+            try {
+                return s.get_card_instance(id);
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in get_card_instance: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in get_card_instance");
+            }
+        }, py::return_value_policy::reference)
         .def("get_zone", &GameState::get_zone)
         .def("set_deck", [](GameState& s, PlayerID pid, std::vector<int> ids) {
-             s.players[pid].deck.clear();
-             for (int id : ids) s.players[pid].deck.push_back(CardInstance(id, pid));
+            try {
+                 s.players[pid].deck.clear();
+                 for (int id : ids) s.players[pid].deck.push_back(CardInstance(id, pid));
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in set_deck: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in set_deck");
+            }
         })
         .def("add_test_card_to_battle", [](GameState& s, PlayerID pid, int cid, int iid, bool tapped, bool sick) {
-             CardInstance c(cid, pid);
-             c.instance_id = iid;
-             c.is_tapped = tapped;
-             c.summoning_sickness = sick;
-             s.players[pid].battle_zone.push_back(c);
-             if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-             s.card_owner_map[iid] = pid;
+            try {
+                 CardInstance c(cid, pid);
+                 c.instance_id = iid;
+                 c.is_tapped = tapped;
+                 c.summoning_sickness = sick;
+                 s.players[pid].battle_zone.push_back(c);
+                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
+                 s.card_owner_map[iid] = pid;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in add_test_card_to_battle: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in add_test_card_to_battle");
+            }
         })
         .def("add_card_to_hand", [](GameState& s, PlayerID pid, int cid, int iid) {
-             CardInstance c(cid, pid);
-             c.instance_id = iid;
-             s.players[pid].hand.push_back(c);
-             if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-             s.card_owner_map[iid] = pid;
+            try {
+                 CardInstance c(cid, pid);
+                 c.instance_id = iid;
+                 s.players[pid].hand.push_back(c);
+                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
+                 s.card_owner_map[iid] = pid;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in add_card_to_hand: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in add_card_to_hand");
+            }
         })
         .def("add_card_to_mana", [](GameState& s, PlayerID pid, int cid, int iid) {
-             CardInstance c(cid, pid);
-             c.instance_id = iid;
-             s.players[pid].mana_zone.push_back(c);
-             if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-             s.card_owner_map[iid] = pid;
+            try {
+                 CardInstance c(cid, pid);
+                 c.instance_id = iid;
+                 s.players[pid].mana_zone.push_back(c);
+                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
+                 s.card_owner_map[iid] = pid;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in add_card_to_mana: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in add_card_to_mana");
+            }
         })
         .def("add_card_to_deck", [](GameState& s, PlayerID pid, int cid, int iid) {
-             CardInstance c(cid, pid);
-             c.instance_id = iid;
-             s.players[pid].deck.push_back(c);
-             if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-             s.card_owner_map[iid] = pid;
+            try {
+                 CardInstance c(cid, pid);
+                 c.instance_id = iid;
+                 s.players[pid].deck.push_back(c);
+                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
+                 s.card_owner_map[iid] = pid;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in add_card_to_deck: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in add_card_to_deck");
+            }
         })
         .def("add_card_to_shield", [](GameState& s, PlayerID pid, int cid, int iid) {
-             CardInstance c(cid, pid);
-             c.instance_id = iid;
-             s.players[pid].shield_zone.push_back(c);
-             if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-             s.card_owner_map[iid] = pid;
+            try {
+                 CardInstance c(cid, pid);
+                 c.instance_id = iid;
+                 s.players[pid].shield_zone.push_back(c);
+                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
+                 s.card_owner_map[iid] = pid;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in add_card_to_shield: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in add_card_to_shield");
+            }
         })
         .def("add_card_to_graveyard", [](GameState& s, PlayerID pid, int cid, int iid) {
-             CardInstance c(cid, pid);
-             c.instance_id = iid;
-             s.players[pid].graveyard.push_back(c);
-             if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-             s.card_owner_map[iid] = pid;
+            try {
+                 CardInstance c(cid, pid);
+                 c.instance_id = iid;
+                 s.players[pid].graveyard.push_back(c);
+                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
+                 s.card_owner_map[iid] = pid;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in add_card_to_graveyard: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in add_card_to_graveyard");
+            }
         })
         .def("initialize_card_stats", &GameState::initialize_card_stats)
         .def("calculate_hash", &GameState::calculate_hash)
         .def("get_pending_effects_info", [](const GameState& s) {
-            py::list list;
-            for (const auto& pe : s.pending_effects) {
-                py::dict d;
-                d["type"] = pe.type;
-                d["source_instance_id"] = pe.source_instance_id;
-                d["controller"] = pe.controller;
-                d["resolve_type"] = pe.resolve_type;
-                list.append(d);
+            try {
+                py::list list;
+                for (const auto& pe : s.pending_effects) {
+                    py::dict d;
+                    d["type"] = pe.type;
+                    d["source_instance_id"] = pe.source_instance_id;
+                    d["controller"] = pe.controller;
+                    d["resolve_type"] = pe.resolve_type;
+                    list.append(d);
+                }
+                return list;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in get_pending_effects_info: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in get_pending_effects_info");
             }
-            return list;
         });
 
     m.def("get_card_stats", [](const GameState& state) {
-        py::dict result;
-        for (const auto& [cid, stats] : state.global_card_stats) {
-            py::dict s;
-            s["play_count"] = stats.play_count;
-            s["win_count"] = stats.win_count;
-            s["sum_cost_discount"] = stats.sum_cost_discount;
-            s["sum_early_usage"] = stats.sum_early_usage;
-            s["sum_win_contribution"] = stats.sum_win_contribution;
-            result[py::int_(cid)] = s;
+        try {
+            py::dict result;
+            for (const auto& [cid, stats] : state.global_card_stats) {
+                py::dict s;
+                s["play_count"] = stats.play_count;
+                s["win_count"] = stats.win_count;
+                s["sum_cost_discount"] = stats.sum_cost_discount;
+                s["sum_early_usage"] = stats.sum_early_usage;
+                s["sum_win_contribution"] = stats.sum_win_contribution;
+                result[py::int_(cid)] = s;
+            }
+            return result;
+        } catch (const py::error_already_set& e) {
+            throw;
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Error in get_card_stats: " + std::string(e.what()));
+        } catch (...) {
+            throw std::runtime_error("Unknown error in get_card_stats");
         }
-        return result;
     });
 
     py::class_<Action>(m, "Action")
@@ -705,109 +802,182 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<dm::engine::EffectSystem, std::unique_ptr<dm::engine::EffectSystem, py::nodelete>>(m, "EffectSystem")
         .def_static("instance", [](){ return &dm::engine::EffectSystem::instance(); }, py::return_value_policy::reference)
         .def_static("compile_action", [](GameState& state, const ActionDef& action, int source_id, std::map<CardID, CardDefinition>& db, py::object py_ctx) {
-            std::vector<Instruction> instructions;
-            std::map<std::string, int> execution_context;
-            if (py::isinstance<py::dict>(py_ctx)) {
+            try {
+                std::vector<Instruction> instructions;
+                std::map<std::string, int> execution_context;
+                if (py::isinstance<py::dict>(py_ctx)) {
+                    // Logic to extract dict could go here if needed, but for now just validation
+                }
+                dm::engine::EffectSystem::instance().compile_action(state, action, source_id, execution_context, db, instructions);
+                return instructions;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in EffectSystem.compile_action: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in EffectSystem.compile_action");
             }
-            dm::engine::EffectSystem::instance().compile_action(state, action, source_id, execution_context, db, instructions);
-            return instructions;
         });
 
     auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
     effect_resolver
         .def_static("resolve_action", [](GameState& state, const Action& action, const std::map<CardID, CardDefinition>& db){
-            dm::engine::systems::GameLogicSystem::resolve_action(state, action, db);
+            try {
+                dm::engine::systems::GameLogicSystem::resolve_action(state, action, db);
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in EffectResolver.resolve_action: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in EffectResolver.resolve_action");
+            }
         })
         .def_static("resume", [](GameState& state, const std::map<CardID, CardDefinition>& db, py::object input_val) {
-             if (!state.active_pipeline) return;
+             try {
+                 if (!state.active_pipeline) return;
 
-             dm::engine::systems::ContextValue val;
-             if (py::isinstance<py::int_>(input_val)) {
-                 val = input_val.cast<int>();
-             } else if (py::isinstance<py::str>(input_val)) {
-                 val = input_val.cast<std::string>();
-             } else if (py::isinstance<py::list>(input_val)) {
-                 std::vector<int> vec;
-                 for (auto item : input_val.cast<py::list>()) {
-                     vec.push_back(item.cast<int>());
+                 dm::engine::systems::ContextValue val;
+                 if (py::isinstance<py::int_>(input_val)) {
+                     val = input_val.cast<int>();
+                 } else if (py::isinstance<py::str>(input_val)) {
+                     val = input_val.cast<std::string>();
+                 } else if (py::isinstance<py::list>(input_val)) {
+                     std::vector<int> vec;
+                     for (auto item : input_val.cast<py::list>()) {
+                         vec.push_back(item.cast<int>());
+                     }
+                     val = vec;
                  }
-                 val = vec;
-             }
 
-             auto pipeline = get_active_pipeline(state);
-             if (pipeline) {
-                 pipeline->resume(state, db, val);
-                 if (pipeline->call_stack.empty()) {
-                     state.active_pipeline.reset();
+                 auto pipeline = get_active_pipeline(state);
+                 if (pipeline) {
+                     pipeline->resume(state, db, val);
+                     if (pipeline->call_stack.empty()) {
+                         state.active_pipeline.reset();
+                     }
                  }
+             } catch (const py::error_already_set& e) {
+                throw;
+             } catch (const std::exception& e) {
+                throw std::runtime_error("Error in EffectResolver.resume: " + std::string(e.what()));
+             } catch (...) {
+                throw std::runtime_error("Unknown error in EffectResolver.resume");
              }
-             });
+        });
 
     struct GenericCardSystemWrapper {};
     py::class_<GenericCardSystemWrapper>(m, "GenericCardSystem")
         .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id) {
-            auto db = CardRegistry::get_all_definitions();
-            std::vector<Instruction> instructions;
-            std::map<std::string, int> ctx;
-            dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
-            if (!instructions.empty()) {
-                dm::engine::systems::PipelineExecutor pipeline;
-                pipeline.set_context_var("$source", source_id);
-                int controller = 0;
-                if ((size_t)source_id < state.card_owner_map.size()) controller = state.card_owner_map[source_id];
-                pipeline.set_context_var("$controller", controller);
-                pipeline.execute(instructions, state, db);
+            try {
+                auto db = CardRegistry::get_all_definitions();
+                std::vector<Instruction> instructions;
+                std::map<std::string, int> ctx;
+                dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
+                if (!instructions.empty()) {
+                    dm::engine::systems::PipelineExecutor pipeline;
+                    pipeline.set_context_var("$source", source_id);
+                    int controller = 0;
+                    if ((size_t)source_id < state.card_owner_map.size()) controller = state.card_owner_map[source_id];
+                    pipeline.set_context_var("$controller", controller);
+                    pipeline.execute(instructions, state, db);
+                }
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in GenericCardSystem.resolve_action: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in GenericCardSystem.resolve_action");
             }
         })
         .def_static("resolve_effect", [](GameState& state, const EffectDef& eff, int source_id) {
-             auto db = CardRegistry::get_all_definitions();
-             dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
+             try {
+                 auto db = CardRegistry::get_all_definitions();
+                 dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
+             } catch (const py::error_already_set& e) {
+                throw;
+             } catch (const std::exception& e) {
+                throw std::runtime_error("Error in GenericCardSystem.resolve_effect: " + std::string(e.what()));
+             } catch (...) {
+                throw std::runtime_error("Unknown error in GenericCardSystem.resolve_effect");
+             }
         })
         .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& eff, int source_id, const std::map<CardID, CardDefinition>& db) {
-             dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
+             try {
+                 dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
+             } catch (const py::error_already_set& e) {
+                throw;
+             } catch (const std::exception& e) {
+                throw std::runtime_error("Error in GenericCardSystem.resolve_effect_with_db: " + std::string(e.what()));
+             } catch (...) {
+                throw std::runtime_error("Unknown error in GenericCardSystem.resolve_effect_with_db");
+             }
         })
         .def_static("resolve_effect_with_targets", [](GameState& state, const EffectDef& eff, const std::vector<int>& targets, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
-             dm::engine::EffectSystem::instance().resolve_effect_with_targets(state, eff, targets, source_id, db, ctx);
-             return ctx;
+             try {
+                 dm::engine::EffectSystem::instance().resolve_effect_with_targets(state, eff, targets, source_id, db, ctx);
+                 return ctx;
+             } catch (const py::error_already_set& e) {
+                throw;
+             } catch (const std::exception& e) {
+                throw std::runtime_error("Error in GenericCardSystem.resolve_effect_with_targets: " + std::string(e.what()));
+             } catch (...) {
+                throw std::runtime_error("Unknown error in GenericCardSystem.resolve_effect_with_targets");
+             }
         })
         .def_static("resolve_action_with_context", [](GameState& state, int source_id, const ActionDef& action, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
-            std::vector<Instruction> instructions;
-            dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
-            if (!instructions.empty()) {
-                dm::engine::systems::PipelineExecutor pipeline;
-                // Load context
-                for (const auto& [k, v] : ctx) {
-                    pipeline.set_context_var("$" + k, v);
-                }
+            try {
+                std::vector<Instruction> instructions;
+                dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
+                if (!instructions.empty()) {
+                    dm::engine::systems::PipelineExecutor pipeline;
+                    // Load context
+                    for (const auto& [k, v] : ctx) {
+                        pipeline.set_context_var("$" + k, v);
+                    }
 
-                // Add default source/controller if missing
-                 pipeline.set_context_var("$source", source_id);
-                 int controller = 0;
-                 if ((size_t)source_id < state.card_owner_map.size()) controller = state.card_owner_map[source_id];
-                 pipeline.set_context_var("$controller", controller);
+                    // Add default source/controller if missing
+                     pipeline.set_context_var("$source", source_id);
+                     int controller = 0;
+                     if ((size_t)source_id < state.card_owner_map.size()) controller = state.card_owner_map[source_id];
+                     pipeline.set_context_var("$controller", controller);
 
-                pipeline.execute(instructions, state, db);
+                    pipeline.execute(instructions, state, db);
 
-                // Extract context back
-                for (const auto& [k, v] : pipeline.context) {
-                    if (std::holds_alternative<int>(v)) {
-                         std::string clean_key = k;
-                         if (clean_key.rfind("$", 0) == 0) clean_key = clean_key.substr(1);
-                         ctx[clean_key] = std::get<int>(v);
+                    // Extract context back
+                    for (const auto& [k, v] : pipeline.context) {
+                        if (std::holds_alternative<int>(v)) {
+                             std::string clean_key = k;
+                             if (clean_key.rfind("$", 0) == 0) clean_key = clean_key.substr(1);
+                             ctx[clean_key] = std::get<int>(v);
+                        }
                     }
                 }
+                return ctx;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in GenericCardSystem.resolve_action_with_context: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in GenericCardSystem.resolve_action_with_context");
             }
-            return ctx;
         });
 
     py::class_<JsonLoader>(m, "JsonLoader")
         .def_static("load_cards", &JsonLoader::load_cards);
 
     m.def("register_card_data", [](const CardData& data) {
-         nlohmann::json j;
-         dm::core::to_json(j, data);
-         std::string json_str = j.dump();
-         CardRegistry::load_from_json(json_str);
+         try {
+             nlohmann::json j;
+             dm::core::to_json(j, data);
+             std::string json_str = j.dump();
+             CardRegistry::load_from_json(json_str);
+         } catch (const py::error_already_set& e) {
+            throw;
+         } catch (const std::exception& e) {
+            throw std::runtime_error("Error in register_card_data: " + std::string(e.what()));
+         } catch (...) {
+            throw std::runtime_error("Unknown error in register_card_data");
+         }
     });
 
     py::class_<GameInstance>(m, "GameInstance")
@@ -822,10 +992,18 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<CardRegistry>(m, "CardRegistry")
         .def_static("register_card_data", [](const CardData& data) {
-             nlohmann::json j;
-             dm::core::to_json(j, data);
-             std::string json_str = j.dump();
-             CardRegistry::load_from_json(json_str);
+             try {
+                 nlohmann::json j;
+                 dm::core::to_json(j, data);
+                 std::string json_str = j.dump();
+                 CardRegistry::load_from_json(json_str);
+             } catch (const py::error_already_set& e) {
+                throw;
+             } catch (const std::exception& e) {
+                throw std::runtime_error("Error in CardRegistry.register_card_data: " + std::string(e.what()));
+             } catch (...) {
+                throw std::runtime_error("Unknown error in CardRegistry.register_card_data");
+             }
         })
         .def_static("load_from_json", &CardRegistry::load_from_json)
         .def_static("clear", &CardRegistry::clear);
