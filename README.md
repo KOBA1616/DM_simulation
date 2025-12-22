@@ -12,18 +12,18 @@ dm_simulation/
 ├── data/                       # Assets (Cards, Decks, Logs)
 ├── docs/                       # Documentation
 ├── models/                     # Trained AI Models (.pth)
-├── python/                     # Python Source Code
+├── dm_toolkit/                 # Python Toolkit & Modules
+│   ├── ai/                     # Python AI Components
 │   ├── gui/                    # PyQt Frontend
-│   ├── py_ai/                  # Python AI Modules
-│   ├── scripts/                # Utility Scripts (train.py, validator.py)
-│   └── tests/                  # Python Unit Tests
+│   ├── training/               # Training Scripts & Modules
+│   └── utils/                  # Utility Modules
 ├── scripts/                    # Shell/PowerShell Helper Scripts
 ├── src/                        # C++ Source Code
 │   ├── ai/                     # AI Components (MCTS, Evaluator)
+│   ├── bindings/               # Pybind11 Bindings
 │   ├── core/                   # Core Types & Constants
-│   ├── engine/                 # Game Engine Logic
-│   └── python/                 # Pybind11 Bindings
-├── tests/                      # Integration Tests
+│   └── engine/                 # Game Engine Logic
+├── tests/                      # Python Unit Tests & Integration Tests
 └── tools/                      # Development Tools
 ```
 
