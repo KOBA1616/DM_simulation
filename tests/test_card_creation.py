@@ -2,9 +2,8 @@ import sys
 import os
 import csv
 
-# Add python/ and root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+# Add root to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import dm_ai_module
 
