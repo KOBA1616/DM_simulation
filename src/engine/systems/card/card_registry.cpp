@@ -8,7 +8,8 @@ namespace dm::engine {
     using namespace dm::core;
 
     std::map<int, dm::core::CardData> CardRegistry::cards;
-    std::map<dm::core::CardID, dm::core::CardDefinition> CardRegistry::definitions;
+    std::shared_ptr<std::map<dm::core::CardID, dm::core::CardDefinition>> CardRegistry::definitions_ptr =
+        std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>();
 
     // Helper for legacy conversion (duplicated from JsonLoader due to architectural split)
     static CommandDef convert_legacy_action_internal(const ActionDef& act) {
@@ -44,6 +45,8 @@ namespace dm::engine {
     void CardRegistry::load_from_json(const std::string& json_str) {
         try {
             auto j = nlohmann::json::parse(json_str);
+            auto new_defs = std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>();
+
             if (j.is_array()) {
                 for (const auto& item : j) {
                     dm::core::CardData card = item.get<dm::core::CardData>();
@@ -58,7 +61,7 @@ namespace dm::engine {
                         else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
                     }
                     cards[card.id] = card;
-                    definitions[static_cast<CardID>(card.id)] = convert_to_def(card);
+                    (*new_defs)[static_cast<CardID>(card.id)] = convert_to_def(card);
                 }
             } else {
                 // Single object
@@ -73,8 +76,11 @@ namespace dm::engine {
                     else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
                 }
                 cards[card.id] = card;
-                definitions[static_cast<CardID>(card.id)] = convert_to_def(card);
+                (*new_defs)[static_cast<CardID>(card.id)] = convert_to_def(card);
             }
+            // Update the shared pointer
+            definitions_ptr = new_defs;
+
         } catch (const std::exception& e) {
             std::cerr << "Error loading card JSON: " << e.what() << std::endl;
         }
@@ -94,12 +100,22 @@ namespace dm::engine {
     }
 
     const std::map<dm::core::CardID, dm::core::CardDefinition>& CardRegistry::get_all_definitions() {
-        return definitions;
+        if (!definitions_ptr) {
+            definitions_ptr = std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>();
+        }
+        return *definitions_ptr;
+    }
+
+    std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> CardRegistry::get_all_definitions_ptr() {
+        if (!definitions_ptr) {
+            definitions_ptr = std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>();
+        }
+        return definitions_ptr;
     }
 
     void CardRegistry::clear() {
         cards.clear();
-        definitions.clear();
+        definitions_ptr = std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>();
     }
 
     dm::core::CardDefinition CardRegistry::convert_to_def(const dm::core::CardData& data) {
