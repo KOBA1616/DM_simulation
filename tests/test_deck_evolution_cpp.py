@@ -16,12 +16,26 @@ except ImportError:
 
 from dm_ai_module import DeckEvolution, DeckEvolutionConfig, Civilization, CardDefinition, CardKeywords, EffectDef
 
-def create_mock_card(id, name, civ, races, cost, power, evolution=False):
+def create_mock_card(id, name, civ_enum, races, cost, power, evolution=False):
     keywords = CardKeywords()
     keywords.evolution = evolution
     # Create empty effects list
     effects = []
-    return CardDefinition(id, name, civ, races, cost, power, keywords, effects)
+
+    # Map Enum to String for Constructor
+    civ_str = "NONE"
+    if civ_enum == Civilization.FIRE:
+        civ_str = "FIRE"
+    elif civ_enum == Civilization.WATER:
+        civ_str = "WATER"
+    elif civ_enum == Civilization.NATURE:
+        civ_str = "NATURE"
+    elif civ_enum == Civilization.LIGHT:
+        civ_str = "LIGHT"
+    elif civ_enum == Civilization.DARKNESS:
+        civ_str = "DARKNESS"
+
+    return CardDefinition(id, name, civ_str, races, cost, power, keywords, effects)
 
 class TestDeckEvolutionCpp:
     @pytest.fixture
