@@ -13,7 +13,7 @@ except ImportError:
 from dm_ai_module import (
     GameState, CardDefinition, CardType, Zone, Civilization,
     GameCommand, CommandType, Phase, GameEvent, EventType,
-    TriggerManager, TransitionCommand, DeclareReactionCommand, Status,
+    TriggerManager, TransitionCommand, DeclareReactionCommand, GameStatus,
     EffectDef, TriggerType, EffectActionType, ActionDef, ConditionDef
 )
 
@@ -32,7 +32,7 @@ def create_dummy_card_def(card_id, shield_trigger=False, revolution_change=False
     return CardDefinition(
         card_id,
         f"Card_{card_id}",
-        Civilization.FIRE,
+        "FIRE",
         ["Dragon"],
         5,
         5000,
@@ -57,41 +57,48 @@ def test_shield_trigger_integration():
 
     # Setup State: Player 0 has Card 100 in Shield
     state.setup_test_duel()
-    state.add_test_card_to_shield(0, 100, 0) # instance_id 0
-
-    # 2. Hook up Event Dispatcher
-    # We define a python callback that delegates to TriggerManager
-    def dispatch_cb(event):
-        # Check reactions
-        tm.check_reactions(event, state, db)
-
-    state.set_event_dispatcher(dispatch_cb)
+    state.add_card_to_shield(0, 100, 0) # instance_id 0
 
     # 3. Execution: Break Shield
     # Move Card 0 from Shield to Hand
     cmd = TransitionCommand(0, Zone.SHIELD, Zone.HAND, 0)
-    cmd.execute(state)
+    state.execute_command(cmd) # Corrected execution
+
+    # Manually trigger the reaction check
+    evt = GameEvent(EventType.ZONE_ENTER, 0, -1, 0)
+
+    # Based on the C++ code read:
+    # if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::HAND &&
+    #     event.context.count("from_zone") && event.context.at("from_zone") == (int)Zone::SHIELD) {
+    #     int instance_id = event.context.at("instance_id");
+
+    # So we need all three keys.
+    evt.context = {
+        "to_zone": int(Zone.HAND),
+        "from_zone": int(Zone.SHIELD),
+        "instance_id": 0
+    }
+
+    tm.check_reactions(evt, state, db)
 
     # 4. Verification: Reaction Window Open
-    assert state.status == Status.WAITING_FOR_REACTION, "State should be WAITING_FOR_REACTION"
-    # Cannot easily access reaction_stack via bindings unless exposed as list...
-    # bindings.cpp did not expose reaction_stack directly as a list we can inspect easily?
-    # Actually it's hidden. We rely on status.
+    assert state.status == GameStatus.WAITING_FOR_REACTION, f"State should be WAITING_FOR_REACTION but is {state.status}"
 
     # 5. Declare Reaction (Use)
     # We want to USE the reaction. Index 0 (since only 1 candidate)
     react_cmd = DeclareReactionCommand(0, False, 0) # pass=False, index=0
-    react_cmd.execute(state)
+    state.execute_command(react_cmd) # Corrected execution
 
     # 6. Verification: Pending Effect Queued
     # We expect a pending effect of type TRIGGER_ABILITY
-    pending = dm_ai_module.get_pending_effects_info(state)
+    pending = state.get_pending_effects_info()
     assert len(pending) > 0, "Should have pending effects"
     last_eff = pending[-1]
-    # Tuple: (type, source, controller)
-    # EffectType.TRIGGER_ABILITY is what we used
-    assert last_eff[0] == dm_ai_module.EffectType.TRIGGER_ABILITY
-    assert last_eff[1] == 0 # instance_id
+
+    # Check if dict
+    assert isinstance(last_eff, dict)
+    assert last_eff["type"] == dm_ai_module.EffectType.TRIGGER_ABILITY
+    assert last_eff["source_instance_id"] == 0
 
     print("Shield Trigger Integration Test Passed!")
 
@@ -101,20 +108,28 @@ def test_reaction_pass():
     db = {}
     db[100] = create_dummy_card_def(100, shield_trigger=True)
     state.setup_test_duel()
-    state.add_test_card_to_shield(0, 100, 0)
+    state.add_card_to_shield(0, 100, 0)
 
-    state.set_event_dispatcher(lambda e: tm.check_reactions(e, state, db))
+    # state.set_event_dispatcher... same as above
 
     cmd = TransitionCommand(0, Zone.SHIELD, Zone.HAND, 0)
-    cmd.execute(state)
+    state.execute_command(cmd) # Corrected execution
 
-    assert state.status == Status.WAITING_FOR_REACTION
+    evt = GameEvent(EventType.ZONE_ENTER, 0, -1, 0)
+    evt.context = {
+        "to_zone": int(Zone.HAND),
+        "from_zone": int(Zone.SHIELD),
+        "instance_id": 0
+    }
+    tm.check_reactions(evt, state, db)
+
+    assert state.status == GameStatus.WAITING_FOR_REACTION
 
     # Pass
-    pass_cmd = DeclareReactionCommand(0, True) # pass=True
-    pass_cmd.execute(state)
+    pass_cmd = DeclareReactionCommand(0, True, 0) # pass=True
+    state.execute_command(pass_cmd) # Corrected execution
 
-    assert state.status == Status.PLAYING
+    assert state.status == GameStatus.PLAYING
     print("Reaction Pass Test Passed!")
 
 if __name__ == "__main__":
