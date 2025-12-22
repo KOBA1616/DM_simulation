@@ -12,8 +12,8 @@ def sample_model(batch):
 def test_batch_inference_basic():
     try:
         print('registering sample model')
-        dm_ai_module.register_batch_inference(sample_model)
-        print('registered?', dm_ai_module.has_batch_inference_registered())
+        dm_ai_module.set_batch_callback(sample_model)
+        print('registered?', dm_ai_module.has_batch_callback())
 
         # Create simple state
         s = dm_ai_module.GameState(0)
@@ -30,7 +30,7 @@ def test_batch_inference_basic():
         assert len(values) == 1
         assert len(policies) == 1
     finally:
-        dm_ai_module.clear_batch_inference()
+        dm_ai_module.clear_batch_callback()
 
 
 if __name__ == '__main__':
