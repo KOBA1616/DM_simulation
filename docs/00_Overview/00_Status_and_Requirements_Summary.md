@@ -47,7 +47,11 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Encoding Audit**: ソースコードのShift-JIS対応完了。
 *   [Test: Skip] **GUI Tests**: 現在のテスト環境（Headless）には `PyQt6` が含まれていないため、`tests/test_action_form_syntax.py` 等のGUIテストは実行不能（Skip/Fail）です。
 
-### 2.3 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
+### 2.3 テスト環境 (`tests/`)
+*   [Status: Done] **Directory Consolidation**: `python/tests/` 配下のテストファイルを `tests/` へ統合し、ディレクトリを削除しました。
+
+### 2.4 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
+### 2.4 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
 *   [Status: Done] **Directory Restructuring**: `python/training` を `dm_toolkit/training` へ移動しました。
 *   [Status: Done] **Transformer Integration**: `NetworkV2` 実装完了。
 *   [Status: Review] **Search Engine (MCTS)**: `src/ai/mcts` 実装完了。
@@ -128,3 +132,7 @@ C++側のリファクタリングは完了しました。現在はPython側か�
 1.  **コミット前検証**: `pytest` を実行し、既存のPass数（49）を下回らないことを確認する。
 2.  **バインディング追従**: C++変更時は必ず `src/bindings/bindings.cpp` を更新する。
 3.  **ドキュメント更新**: ステータスに変更があった場合は本ドキュメントを更新する。
+
+### 5.4 新規テスト作成ルール (New Test Creation Rules)
+*   新規にテストファイルを作成する場合は、原則として `tests/` ディレクトリ直下に配置すること。
+*   学習基盤など `dm_toolkit` 固有の機能に関するテストで、モジュール結合度が極めて高い場合に限り、`dm_toolkit` 内の適切なサブディレクトリへの配置を許容するが、基本的には `tests/` への集約を推奨する。
