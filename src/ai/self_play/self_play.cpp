@@ -14,6 +14,10 @@ namespace dm::ai {
     using namespace dm::engine::systems;
 
     SelfPlay::SelfPlay(const std::map<CardID, CardDefinition>& card_db, int mcts_simulations, int batch_size)
+        : card_db_(std::make_shared<std::map<CardID, CardDefinition>>(card_db)),
+          mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
+
+    SelfPlay::SelfPlay(std::shared_ptr<const std::map<CardID, CardDefinition>> card_db, int mcts_simulations, int batch_size)
         : card_db_(card_db), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
 
     GameResultInfo SelfPlay::play_game(const GameState& initial_state, BatchEvaluatorCallback evaluator, float temperature, bool add_noise, float alpha, bool collect_data) {
@@ -22,14 +26,13 @@ namespace dm::ai {
         GameState state = initial_state.clone();
         
         // MCTS instance with risk aversion coefficient alpha
+        // Now MCTS accepts shared_ptr
         MCTS mcts(card_db_, 1.0f, 0.3f, 0.25f, batch_size_, alpha);
 
         // Game Loop
         while (true) {
             GameResult result;
             // Check game over on current state.
-            // PhaseManager::check_game_over(state, result) modifies state?
-            // The signature is GameState&. But logic usually check without modification.
             if (PhaseManager::check_game_over(state, result)) {
                 info.result = result;
                 info.turn_count = state.turn_number;
@@ -49,9 +52,9 @@ namespace dm::ai {
                 info.active_players.push_back(state.active_player_id);
             }
 
-            auto legal_actions = ActionGenerator::generate_legal_actions(state, card_db_);
+            auto legal_actions = ActionGenerator::generate_legal_actions(state, *card_db_);
             if (legal_actions.empty()) {
-                PhaseManager::next_phase(state, card_db_);
+                PhaseManager::next_phase(state, *card_db_);
                 continue;
             }
 
@@ -81,17 +84,17 @@ namespace dm::ai {
             }
 
             if (!found) {
-                PhaseManager::next_phase(state, card_db_);
+                PhaseManager::next_phase(state, *card_db_);
                 continue;
             }
 
-            GameLogicSystem::resolve_action(state, selected_action, card_db_);
+            GameLogicSystem::resolve_action(state, selected_action, *card_db_);
             
             if (selected_action.type == ActionType::PASS || selected_action.type == ActionType::MANA_CHARGE) {
                  if (state.current_phase == Phase::MANA && selected_action.type == ActionType::MANA_CHARGE) {
-                     PhaseManager::next_phase(state, card_db_);
+                     PhaseManager::next_phase(state, *card_db_);
                  } else if (selected_action.type == ActionType::PASS) {
-                     PhaseManager::next_phase(state, card_db_);
+                     PhaseManager::next_phase(state, *card_db_);
                  }
             }
         }
