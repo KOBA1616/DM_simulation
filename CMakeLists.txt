@@ -183,7 +183,7 @@ set(SRC_ENGINE
 
 # Utils (Phase 1)
 set(SRC_UTILS
-    src/utils/csv_loader.cpp
+    # src/utils/csv_loader.cpp # REMOVED: CsvLoader is deprecated
     # src/utils/rng.cpp
 )
 

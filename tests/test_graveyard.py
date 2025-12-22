@@ -8,8 +8,8 @@ import dm_ai_module
 def test_graveyard():
     print("Testing Graveyard Mechanics...")
     try:
-        db_path = os.path.join(os.path.dirname(__file__), '../../data/cards.csv')
-        card_db = dm_ai_module.CsvLoader.load_cards(db_path)
+        db_path = os.path.join(os.path.dirname(__file__), '../../data/cards.json')
+        card_db = dm_ai_module.JsonLoader.load_cards(db_path)
 
         gs = dm_ai_module.GameState(123)
         gs.setup_test_duel()
@@ -83,6 +83,21 @@ def test_graveyard():
                 pass_action = dm_ai_module.Action()
                 pass_action.type = dm_ai_module.ActionType.PASS
                 dm_ai_module.EffectResolver.resolve_action(gs, pass_action, card_db)
+
+                # After block phase pass, we need to handle resolve battle if it's pending
+                pending = dm_ai_module.get_pending_effects_info(gs)
+                if pending:
+                     # e.g. RESOLVE_BATTLE
+                     r = dm_ai_module.Action()
+                     r.type = dm_ai_module.ActionType.RESOLVE_EFFECT # or whatever the engine requires now
+                     # Usually RESOLVE_BATTLE is handled via pending effects
+                     # Just call resolve_action if there is a pending effect
+
+                     # Actually if we passed, the engine might have queued RESOLVE_BATTLE.
+                     # We need to execute it.
+                     actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+                     if actions and actions[0].type == dm_ai_module.ActionType.RESOLVE_BATTLE:
+                          dm_ai_module.EffectResolver.resolve_action(gs, actions[0], card_db)
 
             # Refresh snapshots
             p0 = gs.players[0]
