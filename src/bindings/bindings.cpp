@@ -34,6 +34,7 @@
 #include "ai/pomdp/parametric_belief.hpp"
 #include "ai/data_collection/data_collector.hpp"
 #include "bindings/python_batch_inference.hpp"
+#include "ai/evolution/deck_evolution.hpp"
 
 namespace py = pybind11;
 using namespace dm;
@@ -906,4 +907,17 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def(py::init<>()) // NEW
         .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic);
+
+    py::class_<DeckEvolutionConfig>(m, "DeckEvolutionConfig")
+        .def(py::init<>())
+        .def_readwrite("target_deck_size", &DeckEvolutionConfig::target_deck_size)
+        .def_readwrite("mutation_rate", &DeckEvolutionConfig::mutation_rate)
+        .def_readwrite("synergy_weight", &DeckEvolutionConfig::synergy_weight)
+        .def_readwrite("curve_weight", &DeckEvolutionConfig::curve_weight);
+
+    py::class_<DeckEvolution>(m, "DeckEvolution")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("evolve_deck", &DeckEvolution::evolve_deck)
+        .def("calculate_interaction_score", &DeckEvolution::calculate_interaction_score)
+        .def("get_candidates_by_civ", &DeckEvolution::get_candidates_by_civ);
 }
