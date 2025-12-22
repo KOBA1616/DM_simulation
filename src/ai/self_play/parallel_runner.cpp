@@ -50,10 +50,10 @@ namespace dm::ai {
             SelfPlay sp(*card_db_, mcts_simulations_, batch_size_);
             
             BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
-                InferenceRequest req;
+                auto req = std::make_shared<InferenceRequest>();
                 // Cannot copy states because GameState copy is deleted.
                 // We need to clone them.
-                req.states.reserve(states.size());
+                req->states.reserve(states.size());
                 // states are now shared_ptr, we need to create new independent clones
                 // for the inference request if inference modifies them, or we can just pass shared_ptr
                 // if inference is read-only. MCTS::search passes clones (inside shared_ptr).
@@ -62,14 +62,14 @@ namespace dm::ai {
                 // req.states is vector<shared_ptr<GameState>>.
                 // We can copy the shared_ptr.
                 for (const auto& s : states) {
-                    req.states.push_back(s);
+                    req->states.push_back(s);
                 }
 
-                auto fut = req.promise.get_future();
+                auto fut = req->promise.get_future();
 
                 {
                     std::lock_guard<std::mutex> lock(inf_queue.mutex);
-                    inf_queue.queue.push(&req);
+                    inf_queue.queue.push(req);
                 }
                 inf_queue.cv.notify_one();
                 return fut.get();
@@ -96,7 +96,7 @@ namespace dm::ai {
         }
 
         while (games_completed < total_games) {
-            std::vector<InferenceRequest*> batch;
+            std::vector<std::shared_ptr<InferenceRequest>> batch;
             {
                 std::unique_lock<std::mutex> lock(inf_queue.mutex);
                 inf_queue.cv.wait_for(lock, std::chrono::milliseconds(1), [&] {
@@ -116,7 +116,7 @@ namespace dm::ai {
 
             std::vector<std::shared_ptr<dm::core::GameState>> all_states;
             std::vector<int> split_indices;
-            for (auto* req : batch) {
+            for (auto req : batch) {
                 // req->states is vector<shared_ptr<GameState>>.
                 // We can just copy the shared_ptr handles.
                 for (auto& s : req->states) {
@@ -175,16 +175,16 @@ namespace dm::ai {
             MCTS mcts(*card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
 
             BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
-                InferenceRequest req;
-                req.states.reserve(states.size());
+                auto req = std::make_shared<InferenceRequest>();
+                req->states.reserve(states.size());
                 for (const auto& s : states) {
-                    req.states.push_back(s);
+                    req->states.push_back(s);
                 }
-                auto fut = req.promise.get_future();
+                auto fut = req->promise.get_future();
 
                 {
                     std::lock_guard<std::mutex> lock(inf_queue.mutex);
-                    inf_queue.queue.push(&req);
+                    inf_queue.queue.push(req);
                 }
                 inf_queue.cv.notify_one();
                 return fut.get();
@@ -202,7 +202,7 @@ namespace dm::ai {
         }
 
         while (completed_worlds < num_worlds) {
-            std::vector<InferenceRequest*> batch;
+            std::vector<std::shared_ptr<InferenceRequest>> batch;
             {
                 std::unique_lock<std::mutex> lock(inf_queue.mutex);
                 inf_queue.cv.wait_for(lock, std::chrono::milliseconds(1), [&] {
@@ -222,7 +222,7 @@ namespace dm::ai {
 
             std::vector<std::shared_ptr<dm::core::GameState>> all_states;
             std::vector<int> split_indices;
-            for (auto* req : batch) {
+            for (auto req : batch) {
                 for (auto& s : req->states) {
                     all_states.push_back(s);
                 }
