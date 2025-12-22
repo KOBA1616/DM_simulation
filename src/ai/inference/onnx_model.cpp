@@ -57,33 +57,82 @@ namespace dm::ai::inference {
         int batch_size,
         int input_size
     ) {
-        // Create input tensor
-        std::vector<int64_t> input_node_dims = {batch_size, input_size};
+        // Delegate to generic infer
+        InputTensor input;
+        // Use the name detected from the model if available, otherwise "input"
+        if (!input_node_names_.empty()) {
+            input.name = input_node_names_[0];
+        } else {
+            input.name = "input";
+        }
+        input.shape = {static_cast<int64_t>(batch_size), static_cast<int64_t>(input_size)};
+        input.data = input_data.data();
+        input.type = TensorType::FLOAT;
 
+        return infer({input}, batch_size);
+    }
+
+    std::pair<std::vector<float>, std::vector<float>> OnnxModel::infer(
+        const std::vector<InputTensor>& inputs,
+        int batch_size
+    ) {
         auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
-        // Cast away constness because ORT API requires non-const pointer,
-        // but we are creating a tensor over existing memory which we treat as read-only for input.
-        Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-            memory_info,
-            const_cast<float*>(input_data.data()),
-            input_data.size(),
-            input_node_dims.data(),
-            input_node_dims.size()
-        );
+        std::vector<Ort::Value> input_tensors;
+        std::vector<const char*> input_names;
+        input_tensors.reserve(inputs.size());
+        input_names.reserve(inputs.size());
+
+        for (const auto& inp : inputs) {
+            input_names.push_back(inp.name.c_str());
+
+            size_t element_count = 1;
+            for(auto d : inp.shape) element_count *= d;
+
+            if (inp.type == TensorType::FLOAT) {
+                input_tensors.push_back(Ort::Value::CreateTensor<float>(
+                    memory_info,
+                    const_cast<float*>(static_cast<const float*>(inp.data)),
+                    element_count,
+                    inp.shape.data(),
+                    inp.shape.size()
+                ));
+            } else if (inp.type == TensorType::INT64) {
+                input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                    memory_info,
+                    const_cast<int64_t*>(static_cast<const int64_t*>(inp.data)),
+                    element_count,
+                    inp.shape.data(),
+                    inp.shape.size()
+                ));
+            } else if (inp.type == TensorType::BOOL) {
+                // Assuming bool is 1 byte and compatible with C++ bool
+                // ONNX Runtime usually treats BOOL as bool or uint8_t
+                input_tensors.push_back(Ort::Value::CreateTensor<bool>(
+                    memory_info,
+                    const_cast<bool*>(static_cast<const bool*>(inp.data)),
+                    element_count,
+                    inp.shape.data(),
+                    inp.shape.size()
+                ));
+            } else {
+                 throw std::runtime_error("Unsupported TensorType in OnnxModel::infer");
+            }
+        }
 
         // Run inference
         auto output_tensors = session_->Run(
             Ort::RunOptions{nullptr},
-            input_node_names_.data(),
-            &input_tensor,
-            1,
+            input_names.data(),
+            input_tensors.data(),
+            input_tensors.size(),
             output_node_names_.data(),
             output_node_names_.size()
         );
 
         // Extract outputs
-        // Assuming Output 0 is Policy and Output 1 is Value based on export script
+        // Assuming Output 0 is Policy and Output 1 is Value based on AlphaZero standard
+        // This part is specific to the RL usecase, but the input part is now generic.
 
         float* policy_arr = output_tensors[0].GetTensorMutableData<float>();
         size_t policy_count = output_tensors[0].GetTensorTypeAndShapeInfo().GetElementCount();
