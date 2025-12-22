@@ -203,6 +203,18 @@ TRANSLATIONS = {
     "P2_WIN": "P2勝利",
     "DRAW": "引き分け",
     "NONE": "なし",
+
+    # Tooltips
+    "Open the Deck Builder tool": "デッキビルダーを開きます",
+    "Open the Card Editor tool": "カードエディタを開きます",
+    "Toggle Scenario Mode for testing specific game states": "シナリオモードの切り替え (特定盤面のテスト)",
+    "Run multiple games for statistical analysis": "統計分析用の一括シミュレーションを実行",
+    "Toggle the MCTS Analysis dock": "MCTS分析ドックの表示切り替え",
+    "Toggle the Loop Recorder dock": "ループ記録ドックの表示切り替え",
+    "Start/Stop continuous simulation": "シミュレーションの開始/停止",
+    "Advance game by one step": "ゲームを1ステップ進める",
+    "Confirm target selection": "対象選択を確定",
+    "Reset the game state": "ゲーム状態をリセット",
 }
 
 # Add Enum mappings if module is available
