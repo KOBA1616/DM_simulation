@@ -11,7 +11,7 @@ namespace dm::engine {
     using namespace dm::core;
 
     GameInstance::GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db)
-        : state(seed), card_db(db) {
+        : state(seed), card_db_ptr(std::make_shared<std::map<core::CardID, core::CardDefinition>>(db)), card_db(*card_db_ptr) {
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
@@ -24,7 +24,7 @@ namespace dm::engine {
     }
 
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
-        : state(seed), card_db_copy(*db), card_db(card_db_copy) {
+        : state(seed), card_db_ptr(db), card_db(*card_db_ptr) {
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
@@ -34,6 +34,10 @@ namespace dm::engine {
             trigger_manager->check_triggers(event, state, card_db);
             trigger_manager->check_reactions(event, state, card_db);
         };
+    }
+
+    void GameInstance::start_game() {
+        PhaseManager::start_game(state, card_db);
     }
 
     void GameInstance::resolve_action(const core::Action& action) {
