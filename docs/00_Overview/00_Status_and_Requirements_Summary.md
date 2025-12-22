@@ -62,28 +62,29 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 3.1 [Priority: Critical] Python Integration Repair (バインディングとテストの修復)
 [Status: WIP] [Test: Fail]
-テスト実行（`pytest tests/`）の結果、以下のバインディング欠落が特定されました。これらを `src/bindings/bindings.cpp` に追加・修正する必要があります。
+テスト実行（`pytest`）の結果、以下のバインディング欠落が特定されました。これらを `src/bindings/bindings.cpp` に追加・修正する必要があります。
 
-*   **Missing Attributes / Methods**:
-    *   `dm_ai_module.card_registry_load_from_json`: `verify_lethal_puzzle.py` で必須。
-    *   `dm_ai_module.get_card_stats`: `test_dm_ai_module.py` で必須。
-    *   `dm_ai_module.DeckEvolution`: `test_deck_evolution_cpp.py` で必須。
+*   **Missing Attributes / Methods (C++ -> Python)**:
+    *   `dm_ai_module.DeckEvolution` / `DeckEvolutionConfig`: `verify_deck_evolution.py` で必須。
     *   `dm_ai_module.TriggerManager`: `test_phase6_reaction.py` で必須。
     *   `dm_ai_module.get_pending_effects_info`: `test_trigger_stack.py` で必須。
-    *   `ActionDef.target_choice`: `test_variable_system.py` で必須。
+    *   `dm_ai_module.register_batch_inference_numpy`: `verify_performance.py` で必須。
+    *   `dm_ai_module.set_sequence_batch_callback`: `verify_transformer_support.py` で必須。
+    *   `GameState` helper methods (`add_card_to_mana`, `add_card_to_deck`, `add_test_card_to_battle` など): `test_atomic_actions.py` や多くのユニットテストで消失しており、AttributeErrorが発生中。
 *   **Logic Disconnect**:
-    *   `test_variable_system.py`: アクション（ドロー等）が実行されていません（Expected 3, got 0）。`PipelineExecutor` とPythonテストハーネス間の連携確認が必要です。
+    *   `test_variable_system.py`: アクション（ドロー等）が実行されていません（Expected 3, got 0）。`PipelineExecutor` のコンテキスト変数の受け渡し（`$` prefixの処理など）に問題がある可能性があります。
+    *   `verify_scenario_cpp.py`: ファイルパス参照エラー（`archive/` を参照している）により失敗中。
 
 ### 3.2 [Priority: High] Phase 1: ゲームエンジンの信頼性 (Game Engine Reliability)
 [Status: WIP]
 エンジンのコアロジック自体は実装されていますが、テストを通じた検証が完了していません。
 
-*   **Test Suite Status (2024/12 Update)**:
-    *   Total: 106 tests
-    *   Passing: 42
-    *   Failing: 54
-    *   Errors: 4 (Import Errors)
-    *   Skipped: 2
+*   **Test Suite Status (2025/01 Update)**:
+    *   Total: ~110 tests
+    *   Passing: 48
+    *   Failing: 52
+    *   Errors: 8 (Import/Binding Errors)
+    *   Skipped: 1 (PyQt6)
 
 ### 3.3 [Priority: High] Phase 6: エンジン刷新 (Engine Overhaul)
 [Status: Done]
@@ -108,18 +109,20 @@ C++側のリファクタリングは完了しました。現在はPython側か�
 10. [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの移行。
 11. [Status: WIP] [Test: Fail] **Reaction Logic Integration**: `TriggerManager` バインディング待ち。
 12. [Status: WIP] [Test: Fail] **Binding Restoration**: 最優先対応中。
+13. [Status: Todo] **Verification Script Repair**: `verify_scenario_cpp.py` のパス修正。
 
 ## 5. テスト標準と運用要件 (Standard Testing Requirements)
 
 ### 5.1 ユニットテスト (Unit Tests)
-*   **実行コマンド**: `PYTHONPATH=bin python3 -m pytest tests/`
+*   **実行コマンド**: `PYTHONPATH=bin python3 -m pytest python/tests/`
     *   `bin` ディレクトリに `dm_ai_module.so` が存在することを確認してください。
     *   `PyQt6` 依存テストはGUI環境がない場合スキップまたは失敗します。
 
 ### 5.2 シナリオ検証 (Scenario & Integration)
-*   `tests/verify_lethal_puzzle.py`: リーサル計算検証（現在実行不可）。
+*   `tests/verify_lethal_puzzle.py`: リーサル計算検証。
+*   `dm_toolkit/training/verify_performance.py`: AIパフォーマンス検証（要 `register_batch_inference_numpy`）。
 
 ### 5.3 運用ルール (Operational Rules)
-1.  **コミット前検証**: `pytest tests/` を実行し、既存のPass数（42）を下回らないことを確認する。
+1.  **コミット前検証**: `pytest` を実行し、既存のPass数（48）を下回らないことを確認する。
 2.  **バインディング追従**: C++変更時は必ず `src/bindings/bindings.cpp` を更新する。
 3.  **ドキュメント更新**: ステータスに変更があった場合は本ドキュメントを更新する。
