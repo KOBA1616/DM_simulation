@@ -11,6 +11,10 @@ namespace dm::python {
     // Flat (contiguous) batch callback: flat vector, batch size, stride
     using FlatBatchCallback = std::function<BatchOutput(const std::vector<float>& flat, size_t n, size_t stride)>;
 
+    // Sequence (token) batch callback: vector of vector of ints
+    using SequenceBatchInput = std::vector<std::vector<int>>;
+    using SequenceBatchCallback = std::function<BatchOutput(const SequenceBatchInput&)>;
+
     // Set the batch callback (thread-safe from caller side)
     void set_batch_callback(BatchCallback cb);
 
@@ -28,5 +32,11 @@ namespace dm::python {
     void clear_batch_callback();
     void clear_flat_batch_callback();
     BatchOutput call_flat_batch_callback(const std::vector<float>& flat, size_t n, size_t stride);
+
+    // Sequence API
+    void set_sequence_batch_callback(SequenceBatchCallback cb);
+    bool has_sequence_batch_callback();
+    void clear_sequence_batch_callback();
+    BatchOutput call_sequence_batch_callback(const SequenceBatchInput& input);
 
 }
