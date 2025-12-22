@@ -8,6 +8,8 @@ namespace dm::python {
     static std::mutex g_cb_mutex;
     static FlatBatchCallback g_flat_callback = nullptr;
     static std::mutex g_flat_cb_mutex;
+    static SequenceBatchCallback g_seq_callback = nullptr;
+    static std::mutex g_seq_cb_mutex;
 
     void set_batch_callback(BatchCallback cb) {
         std::lock_guard<std::mutex> lk(g_cb_mutex);
@@ -61,6 +63,33 @@ namespace dm::python {
             throw std::runtime_error("No flat batch inference callback registered");
         }
         return cb_copy(flat, n, stride);
+    }
+
+    void set_sequence_batch_callback(SequenceBatchCallback cb) {
+        std::lock_guard<std::mutex> lk(g_seq_cb_mutex);
+        g_seq_callback = std::move(cb);
+    }
+
+    bool has_sequence_batch_callback() {
+        std::lock_guard<std::mutex> lk(g_seq_cb_mutex);
+        return (bool)g_seq_callback;
+    }
+
+    void clear_sequence_batch_callback() {
+        std::lock_guard<std::mutex> lk(g_seq_cb_mutex);
+        g_seq_callback = nullptr;
+    }
+
+    BatchOutput call_sequence_batch_callback(const SequenceBatchInput& input) {
+        SequenceBatchCallback cb_copy;
+        {
+            std::lock_guard<std::mutex> lk(g_seq_cb_mutex);
+            cb_copy = g_seq_callback;
+        }
+        if (!cb_copy) {
+            throw std::runtime_error("No sequence batch inference callback registered");
+        }
+        return cb_copy(input);
     }
 
 }
