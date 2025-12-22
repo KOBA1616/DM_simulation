@@ -24,7 +24,8 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
-from dm_toolkit.ai.agent.transformer_model import DuelTransformer
+# from dm_toolkit.ai.agent.transformer_model import DuelTransformer
+from dm_toolkit.training.network_v2 import NetworkV2
 
 class DuelDataset(Dataset):
     def __init__(self, tokens: Optional[List[torch.Tensor]], states: Optional[torch.Tensor], policies: torch.Tensor, values: torch.Tensor, masks: Optional[torch.Tensor] = None):
@@ -67,8 +68,11 @@ def collate_batch(batch):
         tokens_list = [item['tokens'] for item in batch]
         padded_tokens = pad_sequence(tokens_list, batch_first=True, padding_value=0)
         padding_mask = (padded_tokens == 0)
+        valid_mask = ~padding_mask
+
         batch_out['tokens'] = padded_tokens
         batch_out['padding_mask'] = padding_mask
+        batch_out['valid_mask'] = valid_mask
 
     if 'states' in batch[0]:
         states_list = [item['states'] for item in batch]
@@ -150,19 +154,26 @@ class Trainer:
         self.action_size = self.policies.shape[1]
 
         if self.use_transformer:
-            print("Mode: TRANSFORMER (Tokenized Data)")
+            print("Mode: TRANSFORMER (Tokenized Data) - NetworkV2")
             self.tokens = all_tokens
 
-            # Calculate vocab size
+            # Calculate vocab size and max sequence length
             max_token = 0
+            max_seq = 0
             for t in self.tokens:
                 if t.numel() > 0:
                     max_token = max(max_token, t.max().item())
+                    max_seq = max(max_seq, t.shape[0])
 
             self.vocab_size = max_token + 1
-            print(f"Detected Vocab Size: {self.vocab_size}")
+            self.max_seq_len = max(max_seq, 200) # Ensure at least 200
 
-            self.network = DuelTransformer(self.vocab_size, self.action_size).to(self.device)
+            print(f"Detected Vocab Size: {self.vocab_size}, Max Seq Len: {self.max_seq_len}")
+
+            # self.network = DuelTransformer(self.vocab_size, self.action_size).to(self.device)
+            self.network = NetworkV2(input_vocab_size=self.vocab_size,
+                                     action_space=self.action_size,
+                                     max_seq_len=self.max_seq_len).to(self.device)
 
             self.dataset = DuelDataset(self.tokens, None, self.policies, self.values, self.masks)
 
@@ -212,9 +223,11 @@ class Trainer:
 
                 if self.use_transformer:
                     batch_tokens = batch['tokens'].to(self.device)
-                    batch_padding_mask = batch['padding_mask'].to(self.device)
-                    # Forward Pass with Mask
-                    pred_policies, pred_values = self.network(batch_tokens, padding_mask=batch_padding_mask)
+                    # batch_padding_mask = batch['padding_mask'].to(self.device)
+                    batch_valid_mask = batch['valid_mask'].to(self.device)
+
+                    # Forward Pass with Valid Mask
+                    pred_policies, pred_values = self.network(batch_tokens, mask=batch_valid_mask)
                 else:
                     batch_states = batch['states'].to(self.device)
                     pred_policies, pred_values = self.network(batch_states)
@@ -256,7 +269,8 @@ class Trainer:
                 # We need a dummy input of integer tokens
                 dummy_seq_len = 32
                 dummy_input = torch.randint(0, self.vocab_size, (1, dummy_seq_len), dtype=torch.long).to(self.device)
-                dummy_mask = torch.zeros((1, dummy_seq_len), dtype=torch.bool).to(self.device)
+                # Valid mask (all valid for dummy)
+                dummy_mask = torch.ones((1, dummy_seq_len), dtype=torch.bool).to(self.device)
 
                 torch.onnx.export(
                     self.network,
@@ -264,11 +278,11 @@ class Trainer:
                     onnx_path,
                     export_params=True,
                     opset_version=14,
-                    input_names=['input_ids', 'padding_mask'],
+                    input_names=['input_ids', 'mask'],
                     output_names=['policy', 'value'],
                     dynamic_axes={
                         'input_ids': {0: 'batch_size', 1: 'seq_len'},
-                        'padding_mask': {0: 'batch_size', 1: 'seq_len'},
+                        'mask': {0: 'batch_size', 1: 'seq_len'},
                         'policy': {0: 'batch_size'},
                         'value': {0: 'batch_size'}
                     }
