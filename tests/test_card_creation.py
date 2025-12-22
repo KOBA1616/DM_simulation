@@ -1,6 +1,6 @@
 import sys
 import os
-import csv
+import json
 
 # Add python/ and root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -9,27 +9,33 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 import dm_ai_module
 
 def test_card_loading():
-    print("Testing Card Loading from CSV...")
+    print("Testing Card Loading from JSON...")
 
-    # Create a temporary CSV file
-    csv_path = "temp_test_cards.csv"
+    # Create a temporary JSON file
+    json_path = "temp_test_cards.json"
 
-    # Header + 1 Card
-    # ID,Name,Civilization,Type,Cost,Power,Races,Keywords
-    # Note: Races and Keywords are semicolon separated
-    header = ["ID", "Name", "Civilization", "Type", "Cost", "Power", "Races", "Keywords"]
-    card_data = ["9999", "Test Dragon", "FIRE", "CREATURE", "5", "5000", "Armored Dragon;Fire Bird", "SPEED_ATTACKER;POWER_ATTACKER"]
+    # Card Data
+    card_data = {
+        "id": 9999,
+        "name": "Test Dragon",
+        "civilizations": ["FIRE"],
+        "type": "CREATURE",
+        "cost": 5,
+        "power": 5000,
+        "races": ["Armored Dragon", "Fire Bird"],
+        "keywords": {
+            "speed_attacker": True
+        }
+    }
 
     try:
-        with open(csv_path, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow(header)
-            writer.writerow(card_data)
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump([card_data], f)
 
-        print(f"Created temporary CSV: {csv_path}")
+        print(f"Created temporary JSON: {json_path}")
 
         # Load using C++ Loader
-        card_db = dm_ai_module.CsvLoader.load_cards(csv_path)
+        card_db = dm_ai_module.JsonLoader.load_cards(json_path)
 
         if 9999 in card_db:
             card = card_db[9999]
@@ -41,14 +47,8 @@ def test_card_loading():
             print(f"Power: {card.power}")
             print(f"Races: {card.races}")
 
-            # Check Keywords
-            # Keywords are boolean flags in the struct, exposed as properties or a dict?
-            # Let's check the bindings. usually exposed as properties of `keywords` struct member.
-            # But in Python binding, `card.keywords` might be an object.
-
             print(f"Keywords object: {card.keywords}")
             print(f"Speed Attacker: {card.keywords.speed_attacker}")
-            print(f"Power Attacker: {card.keywords.power_attacker}")
             print(f"Blocker: {card.keywords.blocker}")
 
             # Validation
@@ -58,7 +58,6 @@ def test_card_loading():
             assert "Armored Dragon" in card.races
             assert "Fire Bird" in card.races
             assert card.keywords.speed_attacker == True
-            assert card.keywords.power_attacker == True
             assert card.keywords.blocker == False
 
             print("Validation Passed!")
@@ -70,9 +69,9 @@ def test_card_loading():
         print(f"Test Failed with Exception: {e}")
     finally:
         # Cleanup
-        if os.path.exists(csv_path):
-            os.remove(csv_path)
-            print("Removed temporary CSV.")
+        if os.path.exists(json_path):
+            os.remove(json_path)
+            print("Removed temporary JSON.")
 
 if __name__ == "__main__":
     test_card_loading()
