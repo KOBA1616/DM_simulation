@@ -1,5 +1,6 @@
 #include "neural_evaluator.hpp"
 #include "ai/encoders/tensor_converter.hpp"
+#include "ai/encoders/token_converter.hpp"
 #include "bindings/python_batch_inference.hpp"
 #include <stdexcept>
 #include <iostream>
@@ -30,16 +31,52 @@ namespace dm::ai {
 #endif
     }
 
+    void NeuralEvaluator::set_model_type(ModelType type) {
+        model_type_ = type;
+    }
+
     std::pair<std::vector<std::vector<float>>, std::vector<float>> NeuralEvaluator::evaluate(const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
         using BatchInput = dm::python::BatchInput;
         using BatchOutput = dm::python::BatchOutput;
 
         if (states.empty()) return {{}, {}};
+        size_t n = states.size();
+
+        // 1. Transformer (Sequence) Path
+        if (model_type_ == ModelType::TRANSFORMER) {
+            if (dm::python::has_sequence_batch_callback()) {
+                dm::python::SequenceBatchInput batch_tokens;
+                batch_tokens.reserve(n);
+                for (const auto& s : states) {
+                    if (!s) {
+                        batch_tokens.push_back({});
+                        continue;
+                    }
+                    // Use active player as perspective, max_len=0 for now (or dynamic)
+                    batch_tokens.push_back(dm::ai::encoders::TokenConverter::encode_state(*s, s->active_player_id));
+                }
+
+                try {
+                    return dm::python::call_sequence_batch_callback(batch_tokens);
+                } catch (const std::exception& e) {
+                    std::cerr << "NeuralEvaluator: Sequence callback failed: " << e.what() << std::endl;
+                    // Fallback to zeros
+                }
+            } else {
+                std::cerr << "NeuralEvaluator: Transformer mode selected but no sequence callback registered." << std::endl;
+            }
+
+            // Fallback for missing callback
+            std::vector<std::vector<float>> policies(n, std::vector<float>());
+            std::vector<float> values(n, 0.0f);
+            return {policies, values};
+        }
+
+        // 2. ResNet (Flat Tensor) Path
 
         // Convert states to flat feature vectors using TensorConverter
         const int stride = dm::ai::TensorConverter::INPUT_SIZE;
         std::vector<float> flat = dm::ai::TensorConverter::convert_batch_flat(states, card_db_);
-        size_t n = states.size();
 
         if (flat.size() != n * (size_t)stride) {
             // Fallback: return zeros
