@@ -460,6 +460,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("target_player", &ActionDef::target_player)
         .def_readwrite("source_zone", &ActionDef::source_zone)
         .def_readwrite("destination_zone", &ActionDef::destination_zone)
+        .def_readwrite("target_choice", &ActionDef::target_choice)
         .def_readwrite("input_value_key", &ActionDef::input_value_key)
         .def_readwrite("output_value_key", &ActionDef::output_value_key)
         .def_readwrite("condition", &ActionDef::condition)
@@ -744,6 +745,20 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     struct GenericCardSystemWrapper {};
     py::class_<GenericCardSystemWrapper>(m, "GenericCardSystem")
+        .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id) {
+            auto db = CardRegistry::get_all_definitions();
+            std::vector<Instruction> instructions;
+            std::map<std::string, int> ctx;
+            dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
+            if (!instructions.empty()) {
+                dm::engine::systems::PipelineExecutor pipeline;
+                pipeline.set_context_var("$source", source_id);
+                int controller = 0;
+                if ((size_t)source_id < state.card_owner_map.size()) controller = state.card_owner_map[source_id];
+                pipeline.set_context_var("$controller", controller);
+                pipeline.execute(instructions, state, db);
+            }
+        })
         .def_static("resolve_effect", [](GameState& state, const EffectDef& eff, int source_id) {
              auto db = CardRegistry::get_all_definitions();
              dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
