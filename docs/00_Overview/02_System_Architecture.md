@@ -43,15 +43,14 @@ dm_simulation/
 │   │   ├── evaluator/          # Heuristic Evaluator [New]
 │   │   └── encoders/           # TensorConverter
 │   ├── utils/                  # [dm::utils] RNG, CSV Loader
-│   └── python/                 # Pybind11 Interface
-├── python/                     # Python Source Code [Refactored]
+│   └── bindings/               # Pybind11 Interface
+├── dm_toolkit/                 # Python Toolkit & Modules
 │   ├── gui/                    # PyQt Frontend
 │   │   ├── app.py              # Main Window
 │   │   └── widgets/            # Custom Widgets (GraphView, DetailPanel)
-│   ├── py_ai/                  # Python AI Modules (Training, GA)
-│   ├── scripts/                # Entry Points (train.py, validator.py)
-│   └── tests/                  # Python Unit & Manual Tests
-├── tests/                      # Integration Tests
+│   ├── ai/                     # Python AI Modules
+│   └── training/               # Training Scripts
+├── tests/                      # Python Unit Tests & Integration Tests
 │   ├── test_card_creation_integration.py
 │   └── test_spiral_gate.py
 ├── tools/                      # Development Tools

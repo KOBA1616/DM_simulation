@@ -888,7 +888,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
 
-    // Deck Evolution
+    // Deck Evolution - defined only once here, removed duplicate definition at end
     py::class_<DeckEvolutionConfig>(m, "DeckEvolutionConfig")
         .def(py::init<>())
         .def_readwrite("target_deck_size", &DeckEvolutionConfig::target_deck_size)
