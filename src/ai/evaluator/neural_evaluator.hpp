@@ -12,6 +12,11 @@ namespace dm::ai::inference {
 
 namespace dm::ai {
 
+    enum class ModelType {
+        RESNET,
+        TRANSFORMER
+    };
+
     class NeuralEvaluator : public IEvaluator {
     public:
         NeuralEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
@@ -23,9 +28,13 @@ namespace dm::ai {
         // Load ONNX model from file
         void load_model(const std::string& path);
 
+        // Set model type
+        void set_model_type(ModelType type);
+
     private:
         std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
         std::unique_ptr<dm::ai::inference::OnnxModel> onnx_model_;
+        ModelType model_type_ = ModelType::RESNET;
     };
 
 }
