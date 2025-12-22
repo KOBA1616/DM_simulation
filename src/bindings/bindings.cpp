@@ -32,6 +32,7 @@
 #include "ai/encoders/action_encoder.hpp" // Action Encoder
 #include "ai/inference/deck_inference.hpp" // Phase 2: Deck Inference
 #include "ai/pomdp/parametric_belief.hpp" // Added for ParametricBelief
+#include "ai/data_collection/data_collector.hpp" // Added for DataCollector
 
 namespace py = pybind11;
 using namespace dm;
@@ -857,4 +858,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("initialize", &ParametricBelief::initialize)
         .def("update", &ParametricBelief::update)
         .def("get_vector", &ParametricBelief::get_vector);
+
+    py::class_<CollectedBatch>(m, "CollectedBatch")
+        .def(py::init<>())
+        .def_readwrite("states", &CollectedBatch::states)
+        .def_readwrite("policies", &CollectedBatch::policies)
+        .def_readwrite("values", &CollectedBatch::values);
+
+    py::class_<DataCollector>(m, "DataCollector")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic);
 }
