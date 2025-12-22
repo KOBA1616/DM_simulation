@@ -65,7 +65,7 @@ namespace dm::ai {
             // Game Loop
             dm::engine::PhaseManager::start_game(game.state, card_db_);
 
-            std::vector<std::vector<float>> game_states;
+            std::vector<std::vector<long>> game_states;
             std::vector<std::vector<float>> game_policies;
             std::vector<int> game_players;
 
@@ -99,7 +99,7 @@ namespace dm::ai {
                 }
 
                 // Record data
-                std::vector<float> state_tensor = TensorConverter::convert_to_tensor(
+                std::vector<long> state_seq = TensorConverter::convert_to_sequence(
                     game.state, active_player, card_db_, true
                 );
 
@@ -109,7 +109,7 @@ namespace dm::ai {
                     policy[action_idx] = 1.0f;
                 }
 
-                game_states.push_back(state_tensor);
+                game_states.push_back(state_seq);
                 game_policies.push_back(policy);
                 game_players.push_back(active_player);
 
