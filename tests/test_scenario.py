@@ -21,13 +21,8 @@ def test_scenario_config():
     assert config.enemy_shield_count == 2
 
 def test_game_instance_scenario():
-    # Setup card DB (minimal)
-    card_db = {}
-    # Try to load cards.csv if available
-    try:
-        card_db = dm_ai_module.CsvLoader.load_cards("data/cards.csv")
-    except:
-        pass
+    # Setup card DB
+    card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
 
     gi = dm_ai_module.GameInstance(42, card_db)
 
