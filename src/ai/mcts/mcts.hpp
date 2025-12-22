@@ -28,6 +28,7 @@ namespace dm::ai {
         int virtual_loss = 0;
 
         MCTSNode(dm::core::GameState&& s) : state(std::move(s)) {}
+        ~MCTSNode();
 
         bool is_expanded() const { return !children.empty(); }
         
