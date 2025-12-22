@@ -7,6 +7,7 @@
 #include "core/action.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/command_system.hpp" // Added for CommandSystem
+#include "engine/systems/flow/phase_manager.hpp" // Added for PhaseManager
 #include <iostream>
 #include <algorithm>
 
@@ -61,12 +62,19 @@ namespace dm::engine::systems {
                 handle_resolve_battle(pipeline, state, inst, card_db);
                 break;
             }
+            case ActionType::PASS:
+            {
+                PhaseManager::next_phase(state, card_db);
+                break;
+            }
             case ActionType::MANA_CHARGE:
             {
-                nlohmann::json args;
-                args["card"] = action.source_instance_id;
-                Instruction inst(InstructionOp::MOVE, args); // Or specialized
-                handle_mana_charge(pipeline, state, inst);
+                int iid = action.source_instance_id;
+                int pid = state.active_player_id;
+                if (iid >= 0) {
+                     auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
+                     state.execute_command(std::move(cmd));
+                }
                 break;
             }
             case ActionType::USE_ABILITY:
@@ -242,6 +250,11 @@ namespace dm::engine::systems {
          int instance_id = exec.resolve_int(inst.args.value("source", 0));
          auto cmd = std::make_unique<MutateCommand>(instance_id, MutateCommand::MutationType::TAP);
          state.execute_command(std::move(cmd));
+
+         // Transition to BLOCK phase
+         auto phase_cmd = std::make_unique<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(Phase::BLOCK));
+         state.execute_command(std::move(phase_cmd));
+
          (void)card_db;
     }
 
