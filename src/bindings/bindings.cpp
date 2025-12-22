@@ -832,6 +832,19 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("set_model_type", &NeuralEvaluator::set_model_type)
         .def("evaluate", &NeuralEvaluator::evaluate);
 
+    // Batch Inference Callbacks
+    m.def("set_batch_callback", &dm::python::set_batch_callback);
+    m.def("has_batch_callback", &dm::python::has_batch_callback);
+    m.def("clear_batch_callback", &dm::python::clear_batch_callback);
+
+    m.def("set_flat_batch_callback", &dm::python::set_flat_batch_callback);
+    m.def("has_flat_batch_callback", &dm::python::has_flat_batch_callback);
+    m.def("clear_flat_batch_callback", &dm::python::clear_flat_batch_callback);
+
+    m.def("set_sequence_batch_callback", &dm::python::set_sequence_batch_callback);
+    m.def("has_sequence_batch_callback", &dm::python::has_sequence_batch_callback);
+    m.def("clear_sequence_batch_callback", &dm::python::clear_sequence_batch_callback);
+
     py::class_<Determinizer>(m, "Determinizer")
         .def_static("determinize", &Determinizer::determinize);
 
