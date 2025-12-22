@@ -75,4 +75,4 @@ The project uses GitHub Actions for Continuous Integration.
 - `scripts/`: Helper scripts for setup and maintenance.
 - `docs/`: Project documentation.
 - `src/`: C++ source code.
-- `python/`: Python bindings and scripts.
+- `dm_toolkit/`: Python toolkit and modules.

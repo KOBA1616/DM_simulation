@@ -49,4 +49,4 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}\build\Release;${{ github.workspace }}\build
         run: |
-          python -m pytest python/tests -q
+          python -m pytest tests -q
