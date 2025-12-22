@@ -22,8 +22,9 @@ namespace dm::engine {
     public:
         // Core Components
         core::GameState state;
-        // Should store shared_ptr or value to match cpp implementation usage?
-        std::map<core::CardID, core::CardDefinition> card_db_copy;
+
+        // Use shared_ptr to own or share the card database
+        std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> card_db_ptr;
         const std::map<core::CardID, core::CardDefinition>& card_db;
 
         // Pipeline Executor (Pointer)
