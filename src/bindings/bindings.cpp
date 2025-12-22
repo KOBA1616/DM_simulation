@@ -11,12 +11,13 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "ai/mcts/mcts.hpp"
-#include "ai/evaluator/heuristic_evaluator.hpp" // Typo fix evaluator/evaluators
-#include "engine/utils/determinizer.hpp" // Typo fix ai/utils -> engine/utils
+#include "ai/evaluator/heuristic_evaluator.hpp"
+#include "ai/evaluator/neural_evaluator.hpp" // Added NeuralEvaluator
+#include "engine/utils/determinizer.hpp"
 #include "core/card_json_types.hpp"
 #include "engine/systems/card/json_loader.hpp"
-#include "ai/self_play/parallel_runner.hpp" // Typo fix mcts/parallel_runner
-#include "engine/systems/flow/phase_manager.hpp" // Typo fix game/phase_manager
+#include "ai/self_play/parallel_runner.hpp"
+#include "engine/systems/flow/phase_manager.hpp"
 #include "core/card_stats.hpp"
 #include "ai/solver/lethal_solver.hpp"
 #include "engine/systems/card/condition_system.hpp"
@@ -39,6 +40,7 @@ using namespace dm;
 using namespace dm::core;
 using namespace dm::engine;
 using namespace dm::ai;
+using namespace dm::python;
 
 // Helper to access pipeline
 std::shared_ptr<dm::engine::systems::PipelineExecutor> get_active_pipeline(GameState& state) {
@@ -88,8 +90,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("context", &dm::core::GameEvent::context);
 
     // GameCommand bindings
-    // Do NOT use using namespace dm::engine::game_command; locally to avoid CommandType conflict with core::CommandType
-
     py::class_<dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameCommand>>(m, "GameCommand")
         .def("get_type", &dm::engine::game_command::GameCommand::get_type);
 
@@ -502,7 +502,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property("civilization",
             [](const CardDefinition& c) { return c.civilizations.empty() ? Civilization::NONE : c.civilizations[0]; },
             [](CardDefinition& c, Civilization civ) { c.civilizations = {civ}; })
-        .def_readwrite("civilizations", &CardDefinition::civilizations); // Added property for civilizations vector
+        .def_readwrite("civilizations", &CardDefinition::civilizations);
 
     py::class_<CardData>(m, "CardData")
         .def(py::init([](CardID id, std::string name, int cost, std::string civilization, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects) {
@@ -575,7 +575,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_readwrite("deck", &Player::deck)
         .def_readwrite("effect_buffer", &Player::effect_buffer);
 
-    py::class_<GameState>(m, "GameState")
+    py::class_<GameState, std::shared_ptr<GameState>>(m, "GameState")
         .def(py::init<int>())
         .def("setup_test_duel", &GameState::setup_test_duel)
         .def("execute_command", &GameState::execute_command)
@@ -660,19 +660,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("compile_action", [](GameState& state, const ActionDef& action, int source_id, std::map<CardID, CardDefinition>& db, py::object py_ctx) {
             std::vector<Instruction> instructions;
             std::map<std::string, int> execution_context;
-            // Simplified: Context from python dict not fully supported for input, mostly output
-            // But we can try to load it
             if (py::isinstance<py::dict>(py_ctx)) {
-                // Ignore for now or implement conversion
             }
-
             dm::engine::EffectSystem::instance().compile_action(state, action, source_id, execution_context, db, instructions);
             return instructions;
         });
 
-    // Bind GameLogicSystem instead of EffectResolver
-    // Also exposing as GenericCardSystem for test compatibility
-    auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver"); // Keep name for compatibility
+    auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
     effect_resolver
         .def_static("resolve_action", [](GameState& state, const Action& action, const std::map<CardID, CardDefinition>& db){
             dm::engine::systems::GameLogicSystem::resolve_action(state, action, db);
@@ -701,10 +695,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
                  }
              }
              });
-
-    // Alias GenericCardSystem to EffectResolver or expose EffectSystem wrapper
-    // The test calls dm_ai_module.GenericCardSystem.resolve_effect(self.state, ed, -1)
-    // We map this to EffectSystem::compile_effect -> PipelineExecutor::execute
 
     struct GenericCardSystemWrapper {};
     py::class_<GenericCardSystemWrapper>(m, "GenericCardSystem")
@@ -752,11 +742,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<JsonLoader>(m, "JsonLoader")
         .def_static("load_cards", &JsonLoader::load_cards);
 
-    // Expose register_card_data
     m.def("register_card_data", [](const CardData& data) {
-         // Create a temporary JSON or directly insert into private map?
-         // Since CardRegistry members are private and we don't have direct setter,
-         // We can serialize to JSON and load it.
          nlohmann::json j;
          dm::core::to_json(j, data);
          std::string json_str = j.dump();
@@ -782,11 +768,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_static("next_phase", &PhaseManager::next_phase)
         .def_static("check_game_over", &PhaseManager::check_game_over);
 
-    // AI Components
-    // Register shared_ptr holder for GameState if not already implicit (usually good practice for pybind11)
-    // But py::class_<GameState> is already defined.
-    // If we want to return vector<shared_ptr<GameState>>, we rely on pybind11 smart pointer handling.
-
     py::class_<MCTSNode, std::shared_ptr<MCTSNode>>(m, "MCTSNode")
         .def_readonly("visit_count", &MCTSNode::visit_count)
         .def_readonly("value", &MCTSNode::value_sum)
@@ -808,13 +789,24 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def("evaluate", &HeuristicEvaluator::evaluate);
 
+    // Bind NeuralEvaluator and ModelType
+    py::enum_<ModelType>(m, "ModelType")
+        .value("RESNET", ModelType::RESNET)
+        .value("TRANSFORMER", ModelType::TRANSFORMER)
+        .export_values();
+
+    py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
+        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def("load_model", &NeuralEvaluator::load_model)
+        .def("set_model_type", &NeuralEvaluator::set_model_type)
+        .def("evaluate", &NeuralEvaluator::evaluate);
+
     py::class_<Determinizer>(m, "Determinizer")
         .def_static("determinize", &Determinizer::determinize);
 
     py::class_<LethalSolver>(m, "LethalSolver")
         .def_static("is_lethal", &LethalSolver::is_lethal);
 
-    // Phase 2: Deck Inference
     py::class_<dm::ai::inference::DeckInference>(m, "DeckInference")
         .def(py::init<>())
         .def("load_decks", &dm::ai::inference::DeckInference::load_decks)
@@ -834,7 +826,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("play_scenario_match", &ParallelRunner::play_scenario_match)
         .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
 
-    // Scenarios
     py::class_<ScenarioConfig>(m, "ScenarioConfig")
         .def(py::init<>())
         .def_readwrite("my_mana", &ScenarioConfig::my_mana)
