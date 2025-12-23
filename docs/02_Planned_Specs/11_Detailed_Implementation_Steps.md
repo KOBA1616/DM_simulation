@@ -23,7 +23,7 @@
 
 ### Step 3: 知識の蒸留システムの実装 (Teacher-Student Distillation)
 *   **参照**: [13. 非公開領域推論システム設計書](./13_POMDP_Inference_Spec.md)
-*   **対象ファイル**: `python/models/network.py`, `python/scripts/train.py`
+*   **対象ファイル**: `dm_toolkit/ai/agent/network.py`, `dm_toolkit/training/train_simple.py`
 *   **タスク**:
     1.  **Teacher Model**: 入力層に「相手の手札・シールド情報」を含めたモデル定義を作成する。
     2.  **Student Model**: 通常の入力のみを受け取るモデル定義を作成する。
@@ -44,7 +44,7 @@
 
 ### Step 2: ループ検知と特訓ループ (Loop Detection & Drill)
 *   **参照**: [16. シナリオ・トレーニング設計書](./16_Scenario_Training_Spec.md)
-*   **対象ファイル**: `src/engine/game_state.cpp`, `python/training/scenario_runner.py`
+*   **対象ファイル**: `src/engine/game_state.cpp`, `dm_toolkit/training/scenario_runner.py`
 *   **タスク**:
     1.  **C++**: `calculate_hash()` を実装し、同一局面が3回続いたら `loop_proven` フラグを立てて勝利とする。
     2.  **Python**: `SCENARIOS` 辞書にコンボ練習用の盤面定義を記述する。
@@ -52,7 +52,7 @@
 
 ### Step 3: メタゲーム・カリキュラムの実装 (Curriculum & League)
 *   **参照**: [14. メタゲーム・カリキュラム設計書](./14_Meta_Game_Curriculum_Spec.md)
-*   **対象ファイル**: `python/training/curriculum.py`, `python/training/league_manager.py`
+*   **対象ファイル**: `dm_toolkit/training/curriculum.py`, `dm_toolkit/training/league_manager.py`
 *   **タスク**:
     1.  **Dual Curriculum**: エピソード数に応じて「アグロデッキ/報酬」と「コントロールデッキ/報酬」を切り替えるロジックを実装。
     2.  **League Manager**: 過去のモデルファイル (`.pth`) をロードし、勝率の低い相手を優先的にサンプリングする `get_opponent()` を実装。
@@ -63,7 +63,7 @@
 
 ### Step 1: PBTワーカーの実装 (Population Based Training)
 *   **参照**: [12. PBT導入設計書](./12_PBT_Design_Spec.md)
-*   **対象ファイル**: `python/training/pbt_worker.py`
+*   **対象ファイル**: `dm_toolkit/training/pbt_worker.py`
 *   **タスク**:
     1.  ハイパーパラメータ（学習率、割引率、エントロピー係数）をJSONからロードして学習を開始するワーカークラスを作成。
     2.  一定期間ごとに `eval_performance()` を実行し、結果を共有ストレージ（CSV等）に書き込む。
@@ -114,7 +114,7 @@ dm_ai_module.clear_batch_inference_numpy()
 ```
 
 ベンチ実行
-- スクリプト: `python/tests/benchmark_batch_inference.py` を参照。各サブベンチ後に `clear_batch_inference*()` を呼んで GC しています。
+- スクリプト: `tests/test_batch_inference.py` を参照。各サブベンチ後に `clear_batch_inference*()` を呼んで GC しています。
 
 注意点
 - Python で `register_batch_inference_numpy` に登録する関数は、可能なら `float32` かつ C-contiguous な `numpy.ndarray` を返すようにしてください。そうすることで C++ 側の高速パスが有効になります。
