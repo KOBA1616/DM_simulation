@@ -88,6 +88,7 @@ class HeuristicDataCollector:
 
             masked_tensor = dm_ai_module.TensorConverter.convert_to_tensor(state, active_pid, self.card_db, True)
             full_tensor = dm_ai_module.TensorConverter.convert_to_tensor(state, active_pid, self.card_db, False)
+            token_seq = dm_ai_module.TokenConverter.encode_state(state, active_pid, 200)
 
             policy_vec = np.zeros(self.action_size, dtype=np.float32)
             action_idx = dm_ai_module.ActionEncoder.action_to_index(chosen_action)
@@ -103,6 +104,7 @@ class HeuristicDataCollector:
             examples.append({
                 "masked_state": masked_tensor,
                 "full_state": full_tensor,
+                "tokens": token_seq,
                 "policy": policy_vec,
                 "mask": mask_vec,
                 "player": active_pid
@@ -146,6 +148,7 @@ class HeuristicDataCollector:
                 all_data.append({
                     "masked": ex["masked_state"],
                     "full": ex["full_state"],
+                    "tokens": ex["tokens"],
                     "policy": ex["policy"],
                     "mask": ex["mask"],
                     "value": value
@@ -161,6 +164,8 @@ class HeuristicDataCollector:
 
         masked_states = np.array([x["masked"] for x in all_data], dtype=np.float32)
         full_states = np.array([x["full"] for x in all_data], dtype=np.float32)
+        # Use object array for jagged tokens
+        tokens = np.array([x["tokens"] for x in all_data], dtype=object)
         policies = np.array([x["policy"] for x in all_data], dtype=np.float32)
         masks = np.array([x["mask"] for x in all_data], dtype=np.float32)
         values = np.array([x["value"] for x in all_data], dtype=np.float32)
@@ -168,6 +173,7 @@ class HeuristicDataCollector:
         np.savez_compressed(output_file,
             states_masked=masked_states,
             states_full=full_states,
+            tokens=tokens,
             policies=policies,
             masks=masks,
             values=values

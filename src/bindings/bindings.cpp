@@ -35,6 +35,7 @@
 #include "ai/data_collection/data_collector.hpp"
 #include "bindings/python_batch_inference.hpp"
 #include "ai/evolution/deck_evolution.hpp"
+#include "engine/utils/dev_tools.hpp"
 
 namespace py = pybind11;
 using namespace dm;
@@ -1034,6 +1035,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     m.def("set_batch_callback", &dm::python::set_batch_callback);
     m.def("has_batch_callback", &dm::python::has_batch_callback);
     m.def("clear_batch_callback", &dm::python::clear_batch_callback);
+
+    m.def("trigger_loop_detection", &dm::engine::DevTools::trigger_loop_detection);
 
     m.def("set_flat_batch_callback", &dm::python::set_flat_batch_callback);
     m.def("has_flat_batch_callback", &dm::python::has_flat_batch_callback);

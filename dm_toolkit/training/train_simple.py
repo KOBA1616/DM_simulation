@@ -121,7 +121,17 @@ class Trainer:
                     self.use_transformer = True
                     # tokens is likely an object array of numpy arrays (jagged)
                     raw_tokens = data['tokens']
-                    token_tensors = [torch.tensor(t, dtype=torch.long) for t in raw_tokens]
+                    # Handle object array manually if needed, but it should be loaded as numpy array of objects
+                    token_tensors = []
+                    for t in raw_tokens:
+                        if isinstance(t, np.ndarray):
+                            token_tensors.append(torch.tensor(t.astype(np.int64), dtype=torch.long))
+                        elif isinstance(t, list):
+                            token_tensors.append(torch.tensor(t, dtype=torch.long))
+                        else:
+                            # Scalar or other type?
+                            token_tensors.append(torch.tensor(np.array(t, dtype=np.int64), dtype=torch.long))
+
                     all_tokens.extend(token_tensors)
                 # Fallback to states
                 elif 'states_masked' in data:
