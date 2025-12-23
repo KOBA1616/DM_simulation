@@ -24,7 +24,7 @@ dm_simulation/
 │   ├── core/                   # Core Types & Constants
 │   └── engine/                 # Game Engine Logic
 ├── tests/                      # Python Unit Tests & Integration Tests
-└── tools/                      # Development Tools
+└── scripts/                    # Scripts & Development Tools
 ```
 
 ## Getting Started
