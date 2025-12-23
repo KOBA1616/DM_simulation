@@ -81,6 +81,36 @@ namespace dm::engine::systems {
                 }
                 break;
             }
+            case ActionType::MOVE_CARD:
+            {
+                int iid = action.source_instance_id;
+                int pid = state.active_player_id;
+                if (const auto* c = state.get_card_instance(iid)) {
+                    pid = c->owner;
+                }
+                if (iid >= 0) {
+                     Zone dest = Zone::GRAVEYARD; // Default
+                     if (action.destination_override == 3) dest = Zone::HAND;
+                     else if (action.destination_override == 4) dest = Zone::MANA;
+                     else if (action.destination_override == 5) dest = Zone::SHIELD;
+                     else if (action.destination_override == 1) dest = Zone::DECK;
+                     else if (state.current_phase == Phase::MANA) dest = Zone::MANA; // Fallback for Mana Phase
+                     // TransitionCommand doesn't support deck bottom explicitly via Zone::DECK.
+                     // But for Mana Charge (4), it works.
+
+                     // Helper: deck bottom usually requires specific handling or TransitionCommand index.
+                     // For now, support MANA/HAND/GRAVE/SHIELD.
+
+                     auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, dest, pid);
+                     // Note: Assuming FROM HAND. ActionGenerator for Mana sets it from Hand.
+                     // If generic MOVE_CARD, we might need source zone?
+                     // Action struct doesn't have source zone.
+                     // We assume Hand for Mana Charge context.
+
+                     state.execute_command(std::move(cmd));
+                }
+                break;
+            }
             case ActionType::USE_ABILITY:
             {
                 nlohmann::json args;
