@@ -6,8 +6,7 @@ import shutil
 import json
 
 # Add bin directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../bin'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../python'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
 
 try:
     import dm_ai_module
