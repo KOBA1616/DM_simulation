@@ -71,6 +71,10 @@ namespace dm::engine::systems {
             {
                 int iid = action.source_instance_id;
                 int pid = state.active_player_id;
+                // Check if card exists and get current owner (usually active player)
+                if (const auto* c = state.get_card_instance(iid)) {
+                    pid = c->owner;
+                }
                 if (iid >= 0) {
                      auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
                      state.execute_command(std::move(cmd));
