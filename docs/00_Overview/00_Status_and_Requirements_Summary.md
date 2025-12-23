@@ -25,19 +25,17 @@
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
 現在、**Phase 1: Game Engine Reliability** および **Phase 6: Engine Overhaul** の実装が完了し、C++コア（`dm_ai_module`）のビルドは安定しています。
-2025年2月の開発サイクルにおいて、Pythonインテグレーション（バインディング）の修復と、CI（Continuous Integration）環境でのテスト通過率の向上に注力しました。
-
-特に `PyQt6` などのGUIライブラリへの依存関係整理と、`libEGL` 欠如によるヘッドレス環境でのテストスキップ機構の導入により、CIの安定化を図りました。
-また、Phase 6の核心である「リアクションシステム（シールドトリガー）」の統合テストがパスする状態に至りました。
+2025年2月の開発サイクルにおいて、CardInstanceの所有権管理リファクタリングを実施し、`CardInstance` への `owner` フィールドの追加と、`GameState::card_owner_map` の廃止を行いました。
 
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
+*   [Status: Done] **Card Owner Refactor**: `CardInstance` 構造体に `owner` フィールドを追加し、外部マップ `card_owner_map` を廃止しました。これにより、カードの所有者情報へのアクセスがO(1)となり、マップ同期ズレのリスクが解消されました。
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` を削除し、`GameLogicSystem` へ完全移行しました。
 *   [Status: Done] **GameLogicSystem Refactor**: `PipelineExecutor` を介したコマンド実行フローが確立されました。
 *   [Status: Done] **Action Generalization**: 全アクションハンドラーの `compile_action` 化が完了しました。
 *   [Status: Done] **Build Stability**: `cmake` によるビルドは警告のみで成功し、`dm_ai_module.so` が正常に生成されています。
-*   [Status: WIP] **Trigger System Integration**: `TriggerManager` の `GameInstance` への組み込みとイベントディスパッチャの接続を実装中。`test_trigger_stack.py` にてスタック挙動を検証中ですが、一部アクションのトリガー検知に課題があり修正中です。
+*   [Status: WIP] **Trigger System Integration**: `TriggerManager` の `GameInstance` への組み込みとイベントディスパッチャの接続を実装中。
 
 ### 2.1.1 実装済みメカニクス (Mechanics Support)
 *   [Status: Done] **Revolution Change**: `tests/test_integrated_mechanics.py` にて検証済み。
@@ -53,7 +51,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 2.3 テスト環境 (`tests/`)
 *   [Status: Done] **Directory Consolidation**: `python/tests/` 配下のテストファイルを `tests/` へ統合し、ディレクトリを削除しました。
-*   [Status: Done] **CI Error Resolution**: `ModuleNotFoundError` およびライブラリ欠損によるCI落ちを修正しました。
+*   [Test: Fail] **Engine Basics**: `tests/test_engine_basics.py` において、`test_mana_charge` および `test_play_creature` が失敗（AssertionError）。所有権リファクタリング後の `MOVE_CARD` 処理（`TransitionCommand`）または `get_card_instance` の挙動に回帰バグが発生している可能性があります。
 
 ### 2.4 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
 *   [Status: Done] **Directory Restructuring**: `python/training` を `dm_toolkit/training` へ移動しました。
@@ -70,8 +68,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 [Status: WIP]
 テスト環境における以下の課題に取り組んでいます。
 
-*   **Trigger Stack Logic**: `test_trigger_stack.py` において、`GameInstance` を用いたイベントループ内でのトリガー発火（ON_PLAY）の完全な動作検証。現在テストは `skip` 状態とし、引き続きデバッグを行います。
-*   **Binding Coverage**: `TriggerManager` や `get_pending_effects_info` などのデバッグ用バインディングを追加し、状態の可視化を強化しました。
+*   **Regression Fix**: `test_engine_basics.py` の失敗原因の特定と修正。`CardInstance` の `owner` 更新ロジックまたはゾーン移動ロジック（`TransitionCommand`）の修正が必要です。
+*   **Trigger Stack Logic**: `test_trigger_stack.py` において、`GameInstance` を用いたイベントループ内でのトリガー発火（ON_PLAY）の完全な動作検証。
 
 ### 3.2 [Priority: High] Phase 1: ゲームエンジンの信頼性 (Game Engine Reliability)
 [Status: WIP]
@@ -83,9 +81,9 @@ C++側のリファクタリングは完了し、Python側からのリアクシ�
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: WIP] **Finalize Trigger Stack**: `test_trigger_stack.py` を完全にパスさせる。
-2.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの移行。
-3.  [Status: WIP] **Binding Restoration**: 残るテストケースの修正。
+1.  [Status: WIP] **Fix Engine Regressions**: `card_owner_map` 削除に伴うゾーン移動・所有権判定の不具合修正。
+2.  [Status: WIP] **Finalize Trigger Stack**: `test_trigger_stack.py` を完全にパスさせる。
+3.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの移行。
 
 ## 5. 運用ルール (Operational Rules)
 *   **CI遵守**: `PyQt6` 依存テストはスキップし、必ずCIがグリーンになる状態でマージする。

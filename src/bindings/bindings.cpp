@@ -638,7 +638,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("set_deck", [](GameState& s, PlayerID pid, std::vector<int> ids) {
             try {
                  s.players[pid].deck.clear();
-                 for (int id : ids) s.players[pid].deck.push_back(CardInstance(id, pid));
+                 int counter = 0;
+                 for (int id : ids) s.players[pid].deck.push_back(CardInstance(id, counter++, pid));
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -649,13 +650,10 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def("add_test_card_to_battle", [](GameState& s, PlayerID pid, int cid, int iid, bool tapped, bool sick) {
             try {
-                 CardInstance c(cid, pid);
-                 c.instance_id = iid;
+                 CardInstance c(cid, iid, pid);
                  c.is_tapped = tapped;
                  c.summoning_sickness = sick;
                  s.players[pid].battle_zone.push_back(c);
-                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-                 s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -666,11 +664,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def("add_card_to_hand", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
-                 CardInstance c(cid, pid);
-                 c.instance_id = iid;
+                 CardInstance c(cid, iid, pid);
                  s.players[pid].hand.push_back(c);
-                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-                 s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -681,11 +676,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def("add_card_to_mana", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
-                 CardInstance c(cid, pid);
-                 c.instance_id = iid;
+                 CardInstance c(cid, iid, pid);
                  s.players[pid].mana_zone.push_back(c);
-                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-                 s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -696,11 +688,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def("add_card_to_deck", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
-                 CardInstance c(cid, pid);
-                 c.instance_id = iid;
+                 CardInstance c(cid, iid, pid);
                  s.players[pid].deck.push_back(c);
-                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-                 s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -711,11 +700,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def("add_card_to_shield", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
-                 CardInstance c(cid, pid);
-                 c.instance_id = iid;
+                 CardInstance c(cid, iid, pid);
                  s.players[pid].shield_zone.push_back(c);
-                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-                 s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -726,11 +712,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         })
         .def("add_card_to_graveyard", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
-                 CardInstance c(cid, pid);
-                 c.instance_id = iid;
+                 CardInstance c(cid, iid, pid);
                  s.players[pid].graveyard.push_back(c);
-                 if((size_t)iid >= s.card_owner_map.size()) s.card_owner_map.resize(iid+1);
-                 s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
