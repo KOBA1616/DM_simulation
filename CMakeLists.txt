@@ -22,7 +22,7 @@ else()
     add_compile_options(-Wall -Wextra -pedantic)
     # Force UTF-8 source/exec encoding on Windows for MinGW/Clang
     if(WIN32)
-        add_compile_options(-finput-charset=UTF-8 -fexec-charset=UTF-8)
+        add_compile_options(-finput-charset=utf-8 -fexec-charset=utf-8)
     endif()
     # Suppress warnings from nlohmann/json with newer Clang
     add_compile_options(-Wno-deprecated-literal-operator)
