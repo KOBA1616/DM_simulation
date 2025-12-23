@@ -141,5 +141,8 @@ GRANTABLE_KEYWORDS = [
     "shield_burn",
     "just_diver",
     "shield_trigger",
-    "power_attacker"
+    "power_attacker",
+    "CANNOT_ATTACK",
+    "CANNOT_BLOCK",
+    "CANNOT_ATTACK_OR_BLOCK"
 ]

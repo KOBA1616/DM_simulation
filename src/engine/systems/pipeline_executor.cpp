@@ -21,7 +21,6 @@ namespace dm::engine::systems {
 
     void PipelineExecutor::execute(std::shared_ptr<const std::vector<Instruction>> instructions, GameState& state,
                                    const std::map<core::CardID, core::CardDefinition>& card_db) {
-        // Fix: Allow resume if instructions is null/empty but stack has frames
         if ((!instructions || instructions->empty()) && call_stack.empty()) return;
 
         if (instructions && !instructions->empty()) {
@@ -47,23 +46,9 @@ namespace dm::engine::systems {
             if (execution_paused) break;
 
             if (call_stack.size() > (size_t)current_stack_size) {
-                 // Block pushed.
-                 // For GAME_ACTION/PLAY/etc acting as subroutines, we must increment the caller's PC
-                 // so when the block returns, we proceed to the next instruction.
-                 // IF/LOOP handle PC themselves.
                  if (inst.op != InstructionOp::IF &&
                      inst.op != InstructionOp::LOOP &&
                      inst.op != InstructionOp::REPEAT) {
-                     // Caller frame is the one before the newly pushed frame(s)
-                     // If multiple frames pushed, we still increment the one that executed `inst`.
-                     // Since `frame` variable is a reference to `call_stack.back()` at start of loop,
-                     // but `call_stack` grew, `frame` might be invalid if reallocation happened!
-                     // Actually `auto& frame = call_stack.back()` holds reference to element.
-                     // Vector reallocation invalidates references.
-                     // This is dangerous!
-
-                     // Use index to access caller frame
-                     // Caller frame index is `current_stack_size - 1`
                      if (current_stack_size > 0 && current_stack_size <= (int)call_stack.size()) {
                          call_stack[current_stack_size - 1].pc++;
                      }
@@ -74,10 +59,6 @@ namespace dm::engine::systems {
                  if (inst.op != InstructionOp::IF &&
                      inst.op != InstructionOp::LOOP &&
                      inst.op != InstructionOp::REPEAT) {
-                     // Need to refresh frame reference if we access it?
-                     // frame.pc works if frame is valid.
-                     // But if we didn't push, vector didn't grow.
-                     // So frame is valid.
                      frame.pc++;
                  }
             }
@@ -253,7 +234,6 @@ namespace dm::engine::systems {
              return;
         }
 
-        // Optimization: Auto-select if we want "All" or "Up to N" where N >= available
         if (count >= (int)valid_targets.size()) {
              set_context_var(out_key, valid_targets);
              return;
@@ -273,21 +253,7 @@ namespace dm::engine::systems {
         std::string stat_name = resolve_string(inst.args.value("stat", ""));
         std::string out_key = inst.args.value("out", "$stat_result");
 
-        // Determine target player (default: active/self)
-        // If needed, we could support "player": "OPPONENT"
         PlayerID controller_id = state.active_player_id;
-        // Check if there is a specific player context, but for now CountHandler used source controller.
-        // We can check if "player" arg exists.
-
-        // Since PipelineExecutor is general, we might need to know WHO's stat.
-        // Usually it's the player executing the pipeline (active_player unless modified context).
-        // Let's assume active_player for now or check if we can pass it.
-        // CountHandler used: EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
-        // We can pass source_id in context "$source_id" ?
-        // Or assume the pipeline is running for the active player / source controller.
-        // The pipeline is executed in context of an effect.
-
-        // Let's try to get "$controller" from context if available, else active player.
         auto v = get_context_var("$controller");
         if (std::holds_alternative<int>(v)) {
             controller_id = std::get<int>(v);
@@ -386,9 +352,7 @@ namespace dm::engine::systems {
             if (virtual_target_type == "DECK_TOP") {
                 int available = (int)deck.size();
                 int count = std::min(virtual_count, available);
-                // Fix: Ensure we don't access out of bounds and handle indices correctly
                 for (int i = 0; i < count; ++i) {
-                     // Deck top is at end.
                      if (available - 1 - i >= 0) {
                          targets.push_back(deck[available - 1 - i].instance_id);
                      }
@@ -498,6 +462,45 @@ namespace dm::engine::systems {
         }
         else return;
 
+        // --- NEW: Intercept specific keywords to create PASSIVE EFFECTS instead ---
+        if (type == MutateCommand::MutationType::ADD_KEYWORD) {
+            std::vector<PassiveType> p_types;
+            if (str_val == "CANNOT_ATTACK") p_types.push_back(PassiveType::CANNOT_ATTACK);
+            else if (str_val == "CANNOT_BLOCK") p_types.push_back(PassiveType::CANNOT_BLOCK);
+            else if (str_val == "CANNOT_ATTACK_OR_BLOCK") {
+                p_types.push_back(PassiveType::CANNOT_ATTACK);
+                p_types.push_back(PassiveType::CANNOT_BLOCK);
+            }
+
+            if (!p_types.empty()) {
+                // For each target, apply each passive effect
+                // Since MutateCommand is 1-to-1, we iterate targets here.
+                for (int id : targets) {
+                    for (auto pt : p_types) {
+                        PassiveEffect eff;
+                        eff.type = pt;
+                        eff.value = 0;
+                        eff.turns_remaining = inst.args.value("duration", 1);
+                        eff.controller = state.active_player_id;
+                        eff.specific_targets = std::vector<int>{id};
+
+                        // We set source if available, though for ADD_KEYWORD it is often the card itself or effect source
+                        int source_id = -1;
+                        auto v = get_context_var("$source");
+                        if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
+                        eff.source_instance_id = source_id;
+
+                        auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
+                        cmd->passive_effect = eff;
+                        execute_command(std::move(cmd), state);
+                    }
+                }
+                // Return early as we handled this instruction
+                return;
+            }
+        }
+        // -----------------------------------------------------------------------
+
         if (type == MutateCommand::MutationType::ADD_PASSIVE_EFFECT) {
              PassiveEffect eff;
              eff.target_filter = inst.args.value("filter", FilterDef{});
@@ -552,7 +555,6 @@ namespace dm::engine::systems {
         auto block = res ? std::make_shared<std::vector<Instruction>>(inst.then_block)
                          : std::make_shared<std::vector<Instruction>>(inst.else_block);
 
-        // Increment PC before push so we return to next instruction
         call_stack.back().pc++;
 
         call_stack.push_back({block, 0, LoopContext{}});
@@ -596,7 +598,6 @@ namespace dm::engine::systems {
 
              auto block = std::make_shared<std::vector<Instruction>>(inst.then_block);
 
-             // Increment index BEFORE push_back invalidates references
              ctx.index++;
 
              call_stack.push_back({block, 0, LoopContext{}});
