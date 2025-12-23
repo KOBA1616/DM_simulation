@@ -30,8 +30,21 @@ class LogicTreeWidget(QTreeView):
         if not indexes:
             return
         index = indexes[0]
-        # Could trigger property inspector update here if needed,
-        # but usually Main Window handles checking selection.
+
+        # Auto-expand if CARD is selected
+        item = self.standard_model.itemFromIndex(index)
+        if item:
+            item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+            if item_type == "CARD":
+                self._expand_card_tree(index)
+
+    def _expand_card_tree(self, card_index):
+        """Expands the card and its immediate children (Effects) to show Commands."""
+        self.expand(card_index)
+        item = self.standard_model.itemFromIndex(card_index)
+        for i in range(item.rowCount()):
+            child_index = item.child(i).index()
+            self.expand(child_index)
 
     def mousePressEvent(self, event):
         # Default behavior: Click selects, Arrow click toggles expansion.
