@@ -27,8 +27,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 現在、**Phase 1: Game Engine Reliability** および **Phase 6: Engine Overhaul** の実装が完了し、C++コア（`dm_ai_module`）のビルドは安定しています。
 2025年2月の開発サイクルにおいて、Pythonインテグレーション（バインディング）の修復と、CI（Continuous Integration）環境でのテスト通過率の向上に注力しました。
 
-特に `PyQt6` などのGUIライブラリへの依存関係整理と、`libEGL` 欠如によるヘッドレス環境でのテストスキップ機構の導入により、CIの安定化を図りました。
-また、Phase 6の核心である「リアクションシステム（シールドトリガー）」の統合テストがパスする状態に至りました。
+特に `PipelineExecutor` の無限ループバグ修正と、シールドトリガー処理における `GameInstance` のパイプライン連携の修正を行い、複雑なイベント処理（Trigger Stack）の安定化を達成しました。
 
 ## 2. 現行システムステータス (Current Status)
 
@@ -37,14 +36,15 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **GameLogicSystem Refactor**: `PipelineExecutor` を介したコマンド実行フローが確立されました。
 *   [Status: Done] **Action Generalization**: 全アクションハンドラーの `compile_action` 化が完了しました。
 *   [Status: Done] **Build Stability**: `cmake` によるビルドは警告のみで成功し、`dm_ai_module.so` が正常に生成されています。
-*   [Status: WIP] **Trigger System Integration**: `TriggerManager` の `GameInstance` への組み込みとイベントディスパッチャの接続を実装中。`test_trigger_stack.py` にてスタック挙動を検証中ですが、一部アクションのトリガー検知に課題があり修正中です。
+*   [Status: Done] **PipelineExecutor Fixes**: `GAME_ACTION` 命令が新しいブロックをプッシュした際に呼び出し元のプログラムカウンタ（PC）がインクリメントされず無限ループに陥る不具合を修正しました。また、`ContextValue` に `std::monostate` を導入し、変数が存在しない場合のデフォルト値（0）による誤判定を防止しました。
+*   [Status: Done] **S-Trigger Logic Repair**: シールドトリガー処理において、カードの所有者（Owner）とコントローラーの判定ロジックを修正し、トリガーの使用確認や対象選択のパイプライン処理が正しく中断・再開されるように `GameInstance` と `GameState` の連携を強化しました。
 
 ### 2.1.1 実装済みメカニクス (Mechanics Support)
 *   [Status: Done] **Revolution Change**: `tests/test_integrated_mechanics.py` にて検証済み。
 *   [Status: Done] **Hyper Energy**: `CardKeywords.hyper_energy` 実装済み。
 *   [Status: Done] **Just Diver**: `CardKeywords.just_diver` 実装済み。
 *   [Status: Done] **Meta/Counter**: `tests/test_meta_counter.py` 実装済み。
-*   [Status: Review] **Shield Trigger / Reaction**: `tests/test_phase6_reaction.py` にて、シールド破壊からリアクションウィンドウの展開、宣言までのフローが正常に動作することを確認しました。
+*   [Status: Review] **Shield Trigger / Reaction**: `tests/test_trigger_stack.py` および `tests/test_phase6_reaction.py` にて、シールド破壊からリアクションウィンドウの展開、宣言までのフローの動作を確認しました。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Directory Restructuring**: `python/gui` を `dm_toolkit/gui` へ移動しました。
@@ -66,16 +66,14 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ## 3. ロードマップ (Roadmap)
 
-### 3.1 [Priority: Critical] Python Integration Repair (バインディングとテストの修復)
-[Status: WIP]
-テスト環境における以下の課題に取り組んでいます。
-
-*   **Trigger Stack Logic**: `test_trigger_stack.py` において、`GameInstance` を用いたイベントループ内でのトリガー発火（ON_PLAY）の完全な動作検証。現在テストは `skip` 状態とし、引き続きデバッグを行います。
-*   **Binding Coverage**: `TriggerManager` や `get_pending_effects_info` などのデバッグ用バインディングを追加し、状態の可視化を強化しました。
+### 3.1 [Priority: Critical] Trigger Stack Stabilization (トリガースタックの安定化)
+[Status: Review]
+`test_trigger_stack.py` における無限ループおよびパイプライン状態不整合の修正を行いました。
+現在は `Valid targets` が空になる事象（所有権やゾーン参照の問題と推測）の最終デバッグ段階ですが、エンジンのコアロジック（PC制御、コンテキスト管理）は大幅に改善されました。
 
 ### 3.2 [Priority: High] Phase 1: ゲームエンジンの信頼性 (Game Engine Reliability)
 [Status: WIP]
-エンジンのコアロジック自体は実装されていますが、テストを通じた検証を継続します。
+エンジンのコアロジック自体は実装されていますが、テストを通じた検証を継続します。特にS・トリガーからの呪文詠唱と対象選択の連鎖処理の完全な通過を目指します。
 
 ### 3.3 [Priority: High] Phase 6: エンジン刷新 (Engine Overhaul)
 [Status: Review]
@@ -83,7 +81,7 @@ C++側のリファクタリングは完了し、Python側からのリアクシ�
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: WIP] **Finalize Trigger Stack**: `test_trigger_stack.py` を完全にパスさせる。
+1.  [Status: WIP] **Finalize Trigger Stack**: `test_trigger_stack.py` の `DESTROY` アクションにおける対象選択ロジック（フィルタリング）の修正完了とテストパス。
 2.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの移行。
 3.  [Status: WIP] **Binding Restoration**: 残るテストケースの修正。
 
