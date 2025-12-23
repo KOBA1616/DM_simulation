@@ -24,8 +24,8 @@ namespace dm::engine {
         core::GameState state;
 
         // Use shared_ptr to own or share the card database
-        std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> card_db_ptr;
-        const std::map<core::CardID, core::CardDefinition>& card_db;
+        // UNIFIED: card_db is now a shared_ptr. The reference member is removed.
+        std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> card_db;
 
         // Pipeline Executor (Pointer)
         std::shared_ptr<systems::PipelineExecutor> pipeline;
