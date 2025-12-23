@@ -23,6 +23,12 @@ if python_path not in sys.path:
 if project_root not in sys.path:
     sys.path.append(project_root)
 
+try:
+    import dm_ai_module
+except ImportError:
+    print("Warning: Could not import dm_ai_module. Using fallback logic.")
+    dm_ai_module = None
+
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 # from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 from dm_toolkit.training.network_v2 import NetworkV2
@@ -179,9 +185,15 @@ class Trainer:
                     max_seq = max(max_seq, t.shape[0])
 
             self.vocab_size = max_token + 1
+            if dm_ai_module is not None:
+                try:
+                    self.vocab_size = max(self.vocab_size, dm_ai_module.TokenConverter.get_vocab_size())
+                except Exception as e:
+                    print(f"Warning: Could not get vocab size from module: {e}")
+
             self.max_seq_len = max(max_seq, 200) # Ensure at least 200
 
-            print(f"Detected Vocab Size: {self.vocab_size}, Max Seq Len: {self.max_seq_len}")
+            print(f"Vocab Size: {self.vocab_size}, Max Seq Len: {self.max_seq_len}")
 
             # Initialize NetworkV2
             self.network = NetworkV2(input_vocab_size=self.vocab_size,
