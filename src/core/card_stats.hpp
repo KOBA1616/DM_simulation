@@ -28,7 +28,7 @@ namespace dm::core {
         std::vector<CardInstance> underlying_cards;
 
         CardInstance() = default;
-        CardInstance(CardID cid, PlayerID oid) : card_id(cid), owner(oid) {}
+        CardInstance(CardID cid, int inst_id, PlayerID oid) : instance_id(inst_id), card_id(cid), owner(oid) {}
     };
 
     struct CardStats {
