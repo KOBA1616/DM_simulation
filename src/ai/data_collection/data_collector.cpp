@@ -6,6 +6,7 @@
 #include "engine/actions/action_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "ai/encoders/action_encoder.hpp"
+#include "ai/encoders/token_converter.hpp"
 #include <iostream>
 #include <chrono>
 
@@ -74,6 +75,7 @@ namespace dm::ai {
 
             std::vector<std::vector<long>> game_states;
             std::vector<std::vector<float>> game_policies;
+            std::vector<std::vector<float>> game_masks;
             std::vector<int> game_players;
 
             int max_steps = 1000;
@@ -106,9 +108,8 @@ namespace dm::ai {
                 }
 
                 // Record data
-                std::vector<long> state_seq = TensorConverter::convert_to_sequence(
-                    game.state, active_player, *card_db_, true
-                );
+                std::vector<int> tokens_int = encoders::TokenConverter::encode_state(game.state, active_player, 0);
+                std::vector<long> state_seq(tokens_int.begin(), tokens_int.end());
 
                 std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
                 int action_idx = ActionEncoder::action_to_index(chosen_action);
@@ -116,8 +117,17 @@ namespace dm::ai {
                     policy[action_idx] = 1.0f;
                 }
 
+                std::vector<float> mask(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+                for (const auto& act : legal_actions) {
+                    int idx = ActionEncoder::action_to_index(act);
+                    if (idx >= 0 && idx < ActionEncoder::TOTAL_ACTION_SIZE) {
+                        mask[idx] = 1.0f;
+                    }
+                }
+
                 game_states.push_back(state_seq);
                 game_policies.push_back(policy);
+                game_masks.push_back(mask);
                 game_players.push_back(active_player);
 
                 // Apply action
@@ -154,6 +164,7 @@ namespace dm::ai {
             for (size_t k = 0; k < game_states.size(); ++k) {
                 batch.states.push_back(game_states[k]);
                 batch.policies.push_back(game_policies[k]);
+                batch.masks.push_back(game_masks[k]);
 
                 if (game_players[k] == 0) {
                     batch.values.push_back(result_p0);
