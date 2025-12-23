@@ -47,7 +47,8 @@ class CommandEditForm(BaseEditForm):
 
         # Command Type
         self.type_combo = QComboBox()
-        self.known_types = COMMAND_TYPES
+        # Filter out MUTATE and FLOW from user selection
+        self.known_types = [t for t in COMMAND_TYPES if t not in ["MUTATE", "FLOW"]]
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Command Type"), self.type_combo)
 
