@@ -47,13 +47,37 @@ namespace dm::engine::systems {
             if (execution_paused) break;
 
             if (call_stack.size() > (size_t)current_stack_size) {
-                 // Block pushed. Don't increment PC.
+                 // Block pushed.
+                 // For GAME_ACTION/PLAY/etc acting as subroutines, we must increment the caller's PC
+                 // so when the block returns, we proceed to the next instruction.
+                 // IF/LOOP handle PC themselves.
+                 if (inst.op != InstructionOp::IF &&
+                     inst.op != InstructionOp::LOOP &&
+                     inst.op != InstructionOp::REPEAT) {
+                     // Caller frame is the one before the newly pushed frame(s)
+                     // If multiple frames pushed, we still increment the one that executed `inst`.
+                     // Since `frame` variable is a reference to `call_stack.back()` at start of loop,
+                     // but `call_stack` grew, `frame` might be invalid if reallocation happened!
+                     // Actually `auto& frame = call_stack.back()` holds reference to element.
+                     // Vector reallocation invalidates references.
+                     // This is dangerous!
+
+                     // Use index to access caller frame
+                     // Caller frame index is `current_stack_size - 1`
+                     if (current_stack_size > 0 && current_stack_size <= (int)call_stack.size()) {
+                         call_stack[current_stack_size - 1].pc++;
+                     }
+                 }
             } else if (call_stack.size() < (size_t)current_stack_size) {
                  // Returned.
             } else {
                  if (inst.op != InstructionOp::IF &&
                      inst.op != InstructionOp::LOOP &&
                      inst.op != InstructionOp::REPEAT) {
+                     // Need to refresh frame reference if we access it?
+                     // frame.pc works if frame is valid.
+                     // But if we didn't push, vector didn't grow.
+                     // So frame is valid.
                      frame.pc++;
                  }
             }
@@ -78,7 +102,7 @@ namespace dm::engine::systems {
     ContextValue PipelineExecutor::get_context_var(const std::string& key) const {
         auto it = context.find(key);
         if (it != context.end()) return it->second;
-        return 0; // Default
+        return std::monostate{}; // Default
     }
 
     void PipelineExecutor::clear_context() {
