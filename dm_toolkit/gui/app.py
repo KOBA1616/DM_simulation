@@ -41,8 +41,19 @@ class GameWindow(QMainWindow):
         # Game State
         self.gs = dm_ai_module.GameState(42)
         self.gs.setup_test_duel()
-        self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-        dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+        # Load card database: prefer C++ JsonLoader if available, otherwise fallback to Python JSON
+        if hasattr(dm_ai_module, 'JsonLoader') and getattr(dm_ai_module.JsonLoader, 'load_cards', None) is not None:
+            self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+            # Only start the phase manager when we have the proper C++ card_db
+            if hasattr(dm_ai_module, 'PhaseManager') and getattr(dm_ai_module.PhaseManager, 'start_game', None) is not None:
+                dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+        else:
+            try:
+                with open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'cards.json'), 'r', encoding='utf-8') as _f:
+                    self.card_db = json.load(_f)
+            except Exception:
+                # Fallback to empty DB to allow UI to start; functionality will be limited
+                self.card_db = []
         
         self.p0_deck_ids = None
         self.p1_deck_ids = None
@@ -357,6 +368,19 @@ class GameWindow(QMainWindow):
         self.card_editor = CardEditor("data/cards.json")
         self.card_editor.data_saved.connect(self.reload_card_data)
         self.card_editor.show()
+
+    def open_scenario_editor(self):
+        """Open the Scenario Editor if available; otherwise show info."""
+        try:
+            from dm_toolkit.gui import scenario_editor
+            # Expect ScenarioEditor to be a dialog/class taking card_db
+            if hasattr(scenario_editor, 'ScenarioEditor'):
+                self.scenario_editor = scenario_editor.ScenarioEditor(self.card_db, parent=self)
+                self.scenario_editor.show()
+                return
+        except Exception:
+            pass
+        QMessageBox.information(self, tr("Scenario Editor"), tr("Scenario Editor not available in this environment."))
 
     def reload_card_data(self):
         try:
@@ -741,31 +765,49 @@ class GameWindow(QMainWindow):
             self.is_processing = False
         
     def update_ui(self):
-        self.turn_label.setText(f"{tr('Turn')}: {self.gs.turn_number}")
-        self.phase_label.setText(f"{tr('Phase')}: {self.gs.current_phase}")
-        self.active_label.setText(f"{tr('Active')}: P{self.gs.active_player_id}")
+        # Guard attributes on GameState that may not exist in minimal dm_ai_module builds
+        turn_number = getattr(self.gs, 'turn_number', '?')
+        current_phase = getattr(self.gs, 'current_phase', getattr(self.gs, 'phase', '?'))
+        active_pid = getattr(self.gs, 'active_player_id', getattr(self.gs, 'active_player', '?'))
+        self.turn_label.setText(f"{tr('Turn')}: {turn_number}")
+        self.phase_label.setText(f"{tr('Phase')}: {current_phase}")
+        self.active_label.setText(f"{tr('Active')}: P{active_pid}")
         
         # Update Stack View
         self.stack_view.update_state(self.gs, self.card_db)
 
         # ---------------------------------------------------------------------
-        # COMMAND LOG UPDATE
+        # COMMAND LOG UPDATE (safe: GameState may not expose command_history)
         # ---------------------------------------------------------------------
-        history = self.gs.command_history
-        current_len = len(history)
+        history = getattr(self.gs, 'command_history', []) or []
+        try:
+            current_len = len(history)
+        except Exception:
+            current_len = 0
         if current_len > self.last_command_index:
             for i in range(self.last_command_index, current_len):
                 cmd = history[i]
-                desc = describe_command(cmd, self.gs, self.card_db)
+                try:
+                    desc = describe_command(cmd, self.gs, self.card_db)
+                except Exception:
+                    desc = str(cmd)
                 self.log_list.addItem(desc)
             self.log_list.scrollToBottom()
             self.last_command_index = current_len
 
-        p0 = self.gs.players[0]
-        p1 = self.gs.players[1]
+        players = getattr(self.gs, 'players', None)
+        if players and len(players) >= 2:
+            p0 = players[0]
+            p1 = players[1]
+        else:
+            # Create minimal stand-ins to avoid attribute errors when rendering UI
+            class _P: pass
+            p0 = getattr(self.gs, 'player0', None) or _P()
+            p1 = getattr(self.gs, 'player1', None) or _P()
         
         # Calculate legal actions for context menus
-        active_pid = self.gs.active_player_id
+        # active_pid may have been determined earlier from turn labels
+        active_pid = active_pid if 'active_pid' in locals() else getattr(self.gs, 'active_player_id', 0)
         legal_actions = []
         if active_pid == 0 and self.p0_human_radio.isChecked():
              legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.gs, self.card_db)
@@ -791,9 +833,11 @@ class GameWindow(QMainWindow):
         self.p1_graveyard.update_cards(convert_zone(p1.graveyard), self.card_db)
         self.p1_deck_zone.update_cards(convert_zone(p1.deck, hide=True), self.card_db)
 
-        if self.gs.waiting_for_user_input and self.gs.pending_query.query_type == "SELECT_TARGET":
-            valid_targets = self.gs.pending_query.valid_targets
-            min_targets = self.gs.pending_query.params.get('min', 1)
+        # Pending user input may not exist on all GameState builds
+        pending = getattr(self.gs, 'pending_query', None)
+        if getattr(self.gs, 'waiting_for_user_input', False) and pending is not None and getattr(pending, 'query_type', '') == "SELECT_TARGET":
+            valid_targets = getattr(pending, 'valid_targets', [])
+            min_targets = getattr(getattr(pending, 'params', {}), 'get', lambda k, d=None: d)('min', 1) if hasattr(getattr(pending, 'params', None), 'get') else 1
             max_targets = self.gs.pending_query.params.get('max', 99)
 
             # Update button text with count
