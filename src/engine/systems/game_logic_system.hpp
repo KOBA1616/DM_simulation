@@ -28,17 +28,20 @@ namespace dm::engine::systems {
 
         // Main handlers for High-Level Game Actions
         static void handle_play_card(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
+        static void handle_pay_cost(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_resolve_play(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_attack(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_block(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_resolve_battle(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_break_shield(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
+        static void handle_check_s_trigger(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Misc Actions
         static void handle_mana_charge(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst);
         static void handle_resolve_reaction(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_use_ability(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_select_target(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst);
+        static void handle_game_result(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst);
 
         // Command Support
         static void handle_execute_command(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst);
