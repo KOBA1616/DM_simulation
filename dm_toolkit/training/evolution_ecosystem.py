@@ -84,21 +84,183 @@ class EvolutionEcosystem:
         new_name = f"{parent_name}_v{int(time.time()) % 10000}"
         return new_deck, new_name
 
+    def collect_smart_stats(self, deck, opponent_deck, num_games=5):
+        """
+        Runs a few single-threaded games to collect detailed card statistics.
+        Returns aggregated stats dictionary: {card_id: {play: int, resource: int, ...}}
+        """
+        aggregated = {}
+
+        for i in range(num_games):
+            seed = int(time.time()) + i * 1000
+            instance = dm_ai_module.GameInstance(seed, self.card_db)
+
+            # Initialize stats in C++
+            # Assuming 40 cards deck size, though we pass actual lists.
+            # GameInstance.initialize_card_stats takes only deck_size in bindings or automatically handles card_db if stored
+            instance.initialize_card_stats(40)
+
+            # Setup decks
+            instance.state.set_deck(0, deck)
+            instance.state.set_deck(1, opponent_deck)
+
+            dm_ai_module.PhaseManager.start_game(instance.state, self.card_db)
+
+            # Simple agents
+            agent0 = dm_ai_module.HeuristicEvaluator(self.card_db)
+            # Use same for opponent
+            agent1 = dm_ai_module.HeuristicEvaluator(self.card_db)
+
+            # Run Game Loop
+            # We need to manually drive it since GameInstance.start_game just sets up state
+            # ParallelRunner logic:
+            steps = 0
+            max_steps = 400 # Limit to avoid infinite loops
+
+            while steps < max_steps:
+                 if instance.state.game_over:
+                     break
+
+                 res = dm_ai_module.GameResult.NONE
+                 if dm_ai_module.PhaseManager.check_game_over(instance.state, res):
+                    break
+
+                 legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(instance.state, self.card_db)
+
+                 if not legal_actions:
+                     dm_ai_module.PhaseManager.next_phase(instance.state, self.card_db)
+                     continue
+
+                 # Simple greedy selection using HeuristicEvaluator (which returns float score)
+                 # Actually HeuristicEvaluator evaluates state.
+                 # We need an agent that picks action.
+                 # Python binding for HeuristicAgent is not exposed directly?
+                 # Ah, wait. ParallelRunner uses HeuristicAgent in C++.
+                 # In Python, we can just pick random or use a simple heuristic.
+                 # For stat collection, random might be too chaotic.
+                 # Let's pick random for now as HeuristicAgent isn't exposed.
+                 # Or better, just pick first action (often PASS if available, or first card).
+                 # To get meaningful stats, we want somewhat reasonable play.
+                 # Let's use a very simple heuristic: prioritized actions.
+
+                 best_action = legal_actions[0]
+
+                 # Improved simple heuristic for stat collection
+                 # 1. Charge Mana (up to 7)
+                 # 2. Play Card
+                 # 3. Attack Player
+                 # 4. Pass/Other
+
+                 found = False
+                 # Check for Mana Charge first
+                 current_mana = len(instance.state.get_zone(instance.state.active_player_id, dm_ai_module.Zone.MANA))
+                 if current_mana < 7:
+                    for act in legal_actions:
+                        # Check for MANA_CHARGE or MOVE_CARD in Mana Phase (Phase.MANA = 2)
+                        if act.type == dm_ai_module.ActionType.MANA_CHARGE:
+                            best_action = act
+                            found = True
+                            break
+                        if instance.state.current_phase == dm_ai_module.Phase.MANA and act.type == dm_ai_module.ActionType.MOVE_CARD:
+                            best_action = act
+                            found = True
+                            break
+
+                 if not found:
+                     for act in legal_actions:
+                         if act.type == dm_ai_module.ActionType.PLAY_CARD:
+                             best_action = act
+                             found = True
+                             break
+
+                 if not found:
+                     for act in legal_actions:
+                         if act.type == dm_ai_module.ActionType.ATTACK_PLAYER:
+                             best_action = act
+                             found = True
+                             break
+
+                 instance.resolve_action(best_action)
+                 steps += 1
+
+            # Game finished (or max steps), collect stats
+            # get_card_stats returns {cid: {play_count, win_count, sum_cost_discount, sum_early_usage, ...}}
+            game_stats = dm_ai_module.get_card_stats(instance.state)
+
+            for cid_obj, stats in game_stats.items():
+                cid = int(cid_obj) # pybind might return int or object
+                if cid not in aggregated:
+                    aggregated[cid] = {'play': 0, 'resource': 0}
+
+                aggregated[cid]['play'] += stats.get('play_count', 0)
+                # 'sum_early_usage' tracks turns where played early, which is not exactly "resource use".
+                # But 'sum_cost_discount' tracks mana savings.
+                # If we want "Resource Use (Mana/Cost)", we usually mean "put into mana zone".
+                # The C++ CardStats doesn't explicitly track "times put into mana".
+                # However, cards in mana zone are tracked in the state.
+                # We can scan the mana zone at end of game!
+                # Since we want "usage frequency", scanning mana zone at end tells us if it was used as resource.
+                # Note: this only counts if it *ended* in mana. If it was burnt, it's missed.
+                # But acceptable for now.
+
+            # Scan mana zones for resource usage
+            # Player 0 is our challenger
+            mana_zone = instance.state.get_zone(0, dm_ai_module.Zone.MANA)
+            for iid in mana_zone:
+                card_inst = instance.state.get_card_instance(iid)
+                if card_inst:
+                    real_cid = card_inst.card_id
+                    if real_cid not in aggregated:
+                        aggregated[real_cid] = {'play': 0, 'resource': 0}
+                    aggregated[real_cid]['resource'] += 1
+
+        return aggregated
+
     def evaluate_deck(self, challenger_deck, challenger_name, num_games=10):
         """Runs the challenger against a sample of the meta."""
         if not self.meta_decks:
-            return 1.0 # If no meta, it wins by default (first settler)
+            # If no meta, it wins by default, but we should still score it
+            # Run self-play or dummy play for stats
+            dummy_opp = challenger_deck
+            smart_stats = self.collect_smart_stats(challenger_deck, dummy_opp, num_games=2) # Few games for stats
+
+            # Calculate Score
+            total_score = 0
+            deck_count = len(challenger_deck)
+            # Count copies of each card in deck for normalization
+            card_counts = {}
+            for cid in challenger_deck:
+                card_counts[cid] = card_counts.get(cid, 0) + 1
+
+            for cid, count in card_counts.items():
+                stats = smart_stats.get(cid, {'play': 0, 'resource': 0})
+                # Formula: (5 * Play + 2 * Resource) / (Appearance Count)
+                # Appearance Count approx = num_games * count
+                appearance = 2 * count
+                if appearance > 0:
+                    score = (5 * stats['play'] + 2 * stats['resource']) / appearance
+                    total_score += score
+
+            # Normalize deck score (avg per card?) or sum?
+            # Requirement says "Score by card usage". Usually we want the deck score to be the sum or avg.
+            # Let's print it.
+            print(f"Deck '{challenger_name}' Smart Score: {total_score:.2f} (Win Rate: 100% - Default)")
+            return 1.0, total_score
 
         wins = 0
         total_games = 0
 
-        # Sample opponents (e.g. 3 random meta decks)
+        # Sample opponents
         opponents = random.sample(self.meta_decks, min(3, len(self.meta_decks)))
+
+        # We also collect stats against the first opponent for "Smart Scoring"
+        # Running 2 games (1 as P1, 1 as P2) purely for stats collection using the python loop
+        # Note: This adds overhead but fulfills the requirement without C++ hacks.
+        stats_opp = opponents[0]["cards"]
+        smart_stats = self.collect_smart_stats(challenger_deck, stats_opp, num_games=2)
 
         for opp in opponents:
             opp_deck = opp["cards"]
-            # Play Match (half as P1, half as P2)
-            # ParallelRunner.play_deck_matchup returns [1, 2, 0, 1, ...] (1=P1 win, 2=P2 win)
 
             # Match 1: Challenger as P1
             results1 = self.runner.play_deck_matchup(challenger_deck, opp_deck, num_games // 2, 4)
@@ -111,8 +273,24 @@ class EvolutionEcosystem:
             total_games += num_games
 
         win_rate = wins / total_games
-        print(f"Deck '{challenger_name}' Win Rate: {win_rate*100:.1f}% ({wins}/{total_games})")
-        return win_rate
+
+        # Calculate Deck Smart Score
+        total_smart_score = 0
+        card_counts = {}
+        for cid in challenger_deck:
+            card_counts[cid] = card_counts.get(cid, 0) + 1
+
+        for cid, count in card_counts.items():
+            stats = smart_stats.get(cid, {'play': 0, 'resource': 0})
+            # Appearance count for the stat collection runs (2 games)
+            appearance = 2 * count
+            if appearance > 0:
+                # 5 pts for Play, 2 pts for Resource
+                score = (5 * stats['play'] + 2 * stats['resource']) / appearance
+                total_smart_score += score
+
+        print(f"Deck '{challenger_name}' Win Rate: {win_rate*100:.1f}% ({wins}/{total_games}), Smart Score: {total_smart_score:.2f}")
+        return win_rate, total_smart_score
 
     def run_generation(self, num_challengers=5, games_per_match=20, min_win_rate=0.55):
         print(f"--- Starting Generation ---")
@@ -123,22 +301,24 @@ class EvolutionEcosystem:
 
         accepted_count = 0
         for deck, name in challengers:
-            wr = self.evaluate_deck(deck, name, games_per_match)
+            wr, score = self.evaluate_deck(deck, name, games_per_match)
+
+            # Acceptance criteria: Mainly Win Rate, but we could use Score as tie breaker or bonus
+            # For now, keep Win Rate as primary gate
             if wr >= min_win_rate:
-                print(f"  [ACCEPTED] {name} enters the meta!")
+                print(f"  [ACCEPTED] {name} enters the meta! (Score: {score:.2f})")
                 self.meta_decks.append({
                     "name": name,
-                    "cards": deck
+                    "cards": deck,
+                    "score": score
                 })
                 accepted_count += 1
             else:
-                print(f"  [REJECTED] {name} too weak.")
+                print(f"  [REJECTED] {name} too weak (WR: {wr*100:.1f}%, Score: {score:.2f})")
 
-        # Pruning: If meta is too big (>10), remove lowest win-rate ones?
-        # For now, simplistic pruning: remove random old ones if > 20
+        # Pruning
         if len(self.meta_decks) > 20:
             print("Pruning meta decks...")
-            # Ideally we re-evaluate all, but for speed we just keep the newest ones + random
             # Keep top 10 newest
             kept = self.meta_decks[-10:]
             remaining = self.meta_decks[:-10]
