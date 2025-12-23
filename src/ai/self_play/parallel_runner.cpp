@@ -48,7 +48,8 @@ namespace dm::ai {
         // Worker Lambda
         auto worker_func = [&](int game_idx) {
             try {
-                SelfPlay sp(*card_db_, mcts_simulations_, batch_size_);
+                // Use shared_ptr constructor to avoid deep copying the CardDB
+                SelfPlay sp(card_db_, mcts_simulations_, batch_size_);
 
                 BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
                     auto req = std::make_shared<InferenceRequest>();
@@ -174,7 +175,8 @@ namespace dm::ai {
                     observation, *card_db_, observer_id, opponent_deck_candidates, seed
                 );
 
-                MCTS mcts(*card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
+                // Use shared_ptr constructor to avoid deep copying the CardDB
+                MCTS mcts(card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
 
                 BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
                     auto req = std::make_shared<InferenceRequest>();
