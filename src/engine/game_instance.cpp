@@ -12,46 +12,54 @@ namespace dm::engine {
     using namespace dm::core;
 
     GameInstance::GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db)
-        : state(seed), card_db_ptr(std::make_shared<std::map<core::CardID, core::CardDefinition>>(db)), card_db(*card_db_ptr) {
+        : state(seed), card_db(std::make_shared<std::map<core::CardID, core::CardDefinition>>(db)) {
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
         // Wire up GameState's event dispatcher to TriggerManager
         state.event_dispatcher = [this](const core::GameEvent& event) {
             trigger_manager->dispatch(event, state);
-            trigger_manager->check_triggers(event, state, card_db);
-            trigger_manager->check_reactions(event, state, card_db);
+            if (card_db) {
+                trigger_manager->check_triggers(event, state, *card_db);
+                trigger_manager->check_reactions(event, state, *card_db);
+            }
         };
     }
 
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
-        : state(seed), card_db_ptr(db), card_db(*card_db_ptr) {
+        : state(seed), card_db(db) {
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
         // Wire up GameState's event dispatcher to TriggerManager
         state.event_dispatcher = [this](const core::GameEvent& event) {
             trigger_manager->dispatch(event, state);
-            trigger_manager->check_triggers(event, state, card_db);
-            trigger_manager->check_reactions(event, state, card_db);
+            if (card_db) {
+                trigger_manager->check_triggers(event, state, *card_db);
+                trigger_manager->check_reactions(event, state, *card_db);
+            }
         };
     }
 
     GameInstance::GameInstance(uint32_t seed)
-        : state(seed), card_db_ptr(CardRegistry::get_all_definitions_ptr()), card_db(*card_db_ptr) {
+        : state(seed), card_db(CardRegistry::get_all_definitions_ptr()) {
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
         // Wire up GameState's event dispatcher to TriggerManager
         state.event_dispatcher = [this](const core::GameEvent& event) {
             trigger_manager->dispatch(event, state);
-            trigger_manager->check_triggers(event, state, card_db);
-            trigger_manager->check_reactions(event, state, card_db);
+            if (card_db) {
+                trigger_manager->check_triggers(event, state, *card_db);
+                trigger_manager->check_reactions(event, state, *card_db);
+            }
         };
     }
 
     void GameInstance::start_game() {
-        PhaseManager::start_game(state, card_db);
+        if (card_db) {
+            PhaseManager::start_game(state, *card_db);
+        }
     }
 
     void GameInstance::resolve_action(const core::Action& action) {
@@ -59,9 +67,13 @@ namespace dm::engine {
             std::cerr << "FATAL: pipeline is null!" << std::endl;
             return;
         }
+        if (!card_db) {
+             std::cerr << "FATAL: card_db is null!" << std::endl;
+             return;
+        }
         state.active_pipeline = pipeline;
-        systems::GameLogicSystem::dispatch_action(*pipeline, state, action, card_db);
-        systems::ContinuousEffectSystem::recalculate(state, card_db);
+        systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
+        systems::ContinuousEffectSystem::recalculate(state, *card_db);
     }
 
     void GameInstance::undo() {
@@ -80,7 +92,9 @@ namespace dm::engine {
     }
 
     void GameInstance::initialize_card_stats(int deck_size) {
-        state.initialize_card_stats(card_db, deck_size);
+        if (card_db) {
+            state.initialize_card_stats(*card_db, deck_size);
+        }
     }
 
     void GameInstance::reset_with_scenario(const ScenarioConfig& config) {
