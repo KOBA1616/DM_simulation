@@ -24,7 +24,8 @@ class TestEngineBasics:
 
     def test_mana_charge(self):
         """Test charging mana functionality."""
-        gi = dm_ai_module.GameInstance(42, self.card_db)
+        # Use GameState directly to avoid copy issues with GameInstance.state
+        state = dm_ai_module.GameState(1000)
 
         # Setup scenario: Player has 1 card in hand
         config = dm_ai_module.ScenarioConfig()
@@ -34,10 +35,11 @@ class TestEngineBasics:
             card_id = list(self.card_db.keys())[0]
 
         config.my_hand_cards = [card_id]
-        gi.reset_with_scenario(config)
 
-        state = gi.state
-        # Manually set phase to MANA because reset_with_scenario defaults to MAIN
+        # Use PhaseManager to setup scenario on the state
+        dm_ai_module.PhaseManager.setup_scenario(state, config, self.card_db)
+
+        # Manually set phase to MANA
         state.current_phase = dm_ai_module.Phase.MANA
 
         p0 = state.players[0]
@@ -58,15 +60,18 @@ class TestEngineBasics:
 
         assert charge_action is not None, "Mana charge action should be available (MOVE_CARD or MANA_CHARGE)"
 
-        # Execute action
-        gi.resolve_action(charge_action)
+        # Execute action using EffectResolver (GameLogicSystem)
+        dm_ai_module.EffectResolver.resolve_action(state, charge_action, self.card_db)
+
+        # Refresh player view
+        p0 = state.players[0]
 
         assert len(p0.mana_zone) == 1
         assert len(p0.hand) == 0
 
     def test_play_creature(self):
         """Test playing a creature."""
-        gi = dm_ai_module.GameInstance(42, self.card_db)
+        state = dm_ai_module.GameState(1000)
 
         # Find a low cost creature
         creature_id = -1
@@ -81,10 +86,10 @@ class TestEngineBasics:
         config = dm_ai_module.ScenarioConfig()
         config.my_hand_cards = [creature_id]
         config.my_mana_zone = [creature_id] * 5 # Plenty of mana
-        gi.reset_with_scenario(config)
+
+        dm_ai_module.PhaseManager.setup_scenario(state, config, self.card_db)
 
         # Ensure phase is MAIN (default)
-        state = gi.state
         state.current_phase = dm_ai_module.Phase.MAIN
 
         p0 = state.players[0]
@@ -102,12 +107,12 @@ class TestEngineBasics:
         print(f"DEBUG: Play Action: Type={play_action.type}, Card={play_action.card_id}, Source={play_action.source_instance_id}, Target={play_action.target_instance_id}")
         sys.stdout.flush()
 
-        # Initialize stats to check if they update (though actual update logic is in C++, we just check it runs)
-        # gi.initialize_card_stats(40)
+        # Initialize stats
+        state.initialize_card_stats(self.card_db, 40)
 
-        print("DEBUG: Calling resolve_action via GameInstance...")
+        print("DEBUG: Calling resolve_action...")
         sys.stdout.flush()
-        gi.resolve_action(play_action)
+        dm_ai_module.EffectResolver.resolve_action(state, play_action, self.card_db)
         print("DEBUG: resolve_action returned.")
         sys.stdout.flush()
 
@@ -120,7 +125,7 @@ class TestEngineBasics:
                     pay_action = action
                     break
             if pay_action:
-                 gi.resolve_action(pay_action)
+                 dm_ai_module.EffectResolver.resolve_action(state, pay_action, self.card_db)
 
             # Step 3: RESOLVE_PLAY
             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
@@ -130,7 +135,10 @@ class TestEngineBasics:
                     resolve_action = action
                     break
             if resolve_action:
-                 gi.resolve_action(resolve_action)
+                 dm_ai_module.EffectResolver.resolve_action(state, resolve_action, self.card_db)
+
+        # Refresh player view
+        p0 = state.players[0]
 
         assert len(p0.battle_zone) == 1
         assert p0.battle_zone[0].card_id == creature_id
@@ -142,7 +150,7 @@ class TestEngineBasics:
 
     def test_attack_player(self):
         """Test attacking player and shield break."""
-        gi = dm_ai_module.GameInstance(42, self.card_db)
+        state = dm_ai_module.GameState(1000)
 
         # Find a creature
         creature_id = -1
@@ -157,11 +165,10 @@ class TestEngineBasics:
         config = dm_ai_module.ScenarioConfig()
         config.my_battle_zone = [creature_id] # Creature on board
         config.enemy_shield_count = 1
-        gi.reset_with_scenario(config)
 
-        state = gi.state
+        dm_ai_module.PhaseManager.setup_scenario(state, config, self.card_db)
+
         # Manually set phase to ATTACK because we want to attack
-        # In reality, one would PASS in MAIN to get here, but we shortcut for unit test
         state.current_phase = dm_ai_module.Phase.ATTACK
 
         p0 = state.players[0]
@@ -176,7 +183,7 @@ class TestEngineBasics:
 
         assert attack_action is not None, "Should be able to attack player"
 
-        gi.resolve_action(attack_action)
+        dm_ai_module.EffectResolver.resolve_action(state, attack_action, self.card_db)
 
         # After ATTACK_PLAYER action, the phase transitions to BLOCK
         assert state.current_phase == dm_ai_module.Phase.BLOCK
@@ -192,22 +199,22 @@ class TestEngineBasics:
         assert pass_action is not None, "Should be able to pass in block phase"
 
         # Resolve PASS in BLOCK phase -> queues BREAK_SHIELD
-        gi.resolve_action(pass_action)
+        dm_ai_module.EffectResolver.resolve_action(state, pass_action, self.card_db)
 
         # Check shield count (assuming auto break resolution for now or manual if pending effects)
         # assert len(p1.shield_zone) == 0
 
     def test_card_stats_initialization(self):
         """Verify CardStats initialization."""
-        gi = dm_ai_module.GameInstance(42, self.card_db)
-        state = gi.state
+        # Use GameState directly
+        state = dm_ai_module.GameState(1000)
 
         # Check if stats are initialized for a known card
         if not self.card_db:
             return
 
         # Initialize stats explicitly
-        gi.initialize_card_stats(40)
+        state.initialize_card_stats(self.card_db, 40)
 
         card_id = list(self.card_db.keys())[0]
         stats = dm_ai_module.get_card_stats(state)
