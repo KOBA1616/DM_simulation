@@ -45,43 +45,43 @@ namespace dm::engine {
         if (act.destination_zone.empty() == false) cmd.to_zone = act.destination_zone;
 
         switch (act.type) {
-            case EffectActionType::DRAW_CARD:
+            case EffectPrimitive::DRAW_CARD:
                 cmd.type = CommandType::DRAW_CARD;
                 break;
-            case EffectActionType::ADD_MANA:
+            case EffectPrimitive::ADD_MANA:
                 cmd.type = CommandType::MANA_CHARGE;
                 break;
-            case EffectActionType::DESTROY:
+            case EffectPrimitive::DESTROY:
                 cmd.type = CommandType::DESTROY;
                 break;
-            case EffectActionType::RETURN_TO_HAND:
+            case EffectPrimitive::RETURN_TO_HAND:
                 cmd.type = CommandType::RETURN_TO_HAND;
                 break;
-            case EffectActionType::TAP:
+            case EffectPrimitive::TAP:
                 cmd.type = CommandType::TAP;
                 break;
-            case EffectActionType::UNTAP:
+            case EffectPrimitive::UNTAP:
                 cmd.type = CommandType::UNTAP;
                 break;
-            case EffectActionType::MODIFY_POWER:
+            case EffectPrimitive::MODIFY_POWER:
                 cmd.type = CommandType::POWER_MOD;
                 break;
-            case EffectActionType::BREAK_SHIELD:
+            case EffectPrimitive::BREAK_SHIELD:
                 cmd.type = CommandType::BREAK_SHIELD;
                 break;
-            case EffectActionType::DISCARD:
+            case EffectPrimitive::DISCARD:
                 cmd.type = CommandType::DISCARD;
                 break;
-            case EffectActionType::SEARCH_DECK:
+            case EffectPrimitive::SEARCH_DECK:
                 cmd.type = CommandType::SEARCH_DECK;
                 break;
-            case EffectActionType::GRANT_KEYWORD:
+            case EffectPrimitive::GRANT_KEYWORD:
                 cmd.type = CommandType::ADD_KEYWORD;
                 break;
-            case EffectActionType::SEND_TO_MANA:
+            case EffectPrimitive::SEND_TO_MANA:
                 cmd.type = CommandType::MANA_CHARGE; // Usually Send to Mana
                 break;
-            case EffectActionType::MOVE_CARD:
+            case EffectPrimitive::MOVE_CARD:
                 cmd.type = CommandType::TRANSITION;
                 break;
             // Map other types as needed or log warning
@@ -182,7 +182,7 @@ namespace dm::engine {
                 engine_eff.commands.reserve(engine_eff.actions.size());
                 for (const auto& act : engine_eff.actions) {
                     CommandDef cmd = convert_legacy_action(act);
-                    std::cout << "Converted ActionType " << (int)act.type << " to CommandType " << (int)cmd.type << std::endl;
+                    std::cout << "Converted PlayerIntent " << (int)act.type << " to CommandType " << (int)cmd.type << std::endl;
                     if (cmd.type != CommandType::NONE) {
                         engine_eff.commands.push_back(cmd);
                     }

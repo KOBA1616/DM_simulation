@@ -56,11 +56,11 @@ namespace dm::engine {
 
         void initialize();
 
-        void register_handler(dm::core::EffectActionType type, std::unique_ptr<IActionHandler> handler) {
+        void register_handler(dm::core::EffectPrimitive type, std::unique_ptr<IActionHandler> handler) {
             handlers[type] = std::move(handler);
         }
 
-        IActionHandler* get_handler(dm::core::EffectActionType type) {
+        IActionHandler* get_handler(dm::core::EffectPrimitive type) {
             if (handlers.count(type)) {
                 return handlers[type].get();
             }
@@ -95,7 +95,7 @@ namespace dm::engine {
         EffectSystem() = default;
         EffectSystem(const EffectSystem&) = delete;
         EffectSystem& operator=(const EffectSystem&) = delete;
-        std::map<dm::core::EffectActionType, std::unique_ptr<IActionHandler>> handlers;
+        std::map<dm::core::EffectPrimitive, std::unique_ptr<IActionHandler>> handlers;
         bool initialized = false;
     };
 }

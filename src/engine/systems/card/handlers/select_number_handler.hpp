@@ -71,7 +71,7 @@ namespace dm::engine {
             // We can put the current action in `effect_def.actions[0]` but mark it or something?
 
             // Alternative:
-            // When `ActionType::SELECT_NUMBER` is resolved in `EffectResolver` (or `GenericCardSystem`),
+            // When `PlayerIntent::SELECT_NUMBER` is resolved in `EffectResolver` (or `GenericCardSystem`),
             // it needs to know where to write the value.
             // If we use the standard `resolve_effect` flow...
 

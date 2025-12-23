@@ -4,7 +4,7 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "engine/game_instance.hpp"
-#include "engine/actions/action_generator.hpp"
+#include "engine/actions/intent_generator.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/card/effect_system.hpp"
@@ -271,28 +271,31 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("END_OF_TURN", Phase::END_OF_TURN)
         .export_values();
 
-    py::enum_<ActionType>(m, "ActionType")
-        .value("PASS", ActionType::PASS)
-        .value("PLAY_CARD", ActionType::PLAY_CARD)
-        .value("MANA_CHARGE", ActionType::MANA_CHARGE)
-        .value("ATTACK_CREATURE", ActionType::ATTACK_CREATURE)
-        .value("ATTACK_PLAYER", ActionType::ATTACK_PLAYER)
-        .value("BLOCK", ActionType::BLOCK)
-        .value("USE_SHIELD_TRIGGER", ActionType::USE_SHIELD_TRIGGER)
-        .value("RESOLVE_EFFECT", ActionType::RESOLVE_EFFECT)
-        .value("SELECT_TARGET", ActionType::SELECT_TARGET)
-        .value("USE_ABILITY", ActionType::USE_ABILITY)
-        .value("DECLARE_REACTION", ActionType::DECLARE_REACTION)
-        .value("PLAY_CARD_INTERNAL", ActionType::PLAY_CARD_INTERNAL)
-        .value("RESOLVE_BATTLE", ActionType::RESOLVE_BATTLE)
-        .value("BREAK_SHIELD", ActionType::BREAK_SHIELD)
-        .value("MOVE_CARD", ActionType::MOVE_CARD)
-        .value("DECLARE_PLAY", ActionType::DECLARE_PLAY)
-        .value("PAY_COST", ActionType::PAY_COST)
-        .value("RESOLVE_PLAY", ActionType::RESOLVE_PLAY)
-        .value("SELECT_OPTION", ActionType::SELECT_OPTION)
-        .value("SELECT_NUMBER", ActionType::SELECT_NUMBER)
+    py::enum_<PlayerIntent>(m, "PlayerIntent")
+        .value("PASS", PlayerIntent::PASS)
+        .value("PLAY_CARD", PlayerIntent::PLAY_CARD)
+        .value("MANA_CHARGE", PlayerIntent::MANA_CHARGE)
+        .value("ATTACK_CREATURE", PlayerIntent::ATTACK_CREATURE)
+        .value("ATTACK_PLAYER", PlayerIntent::ATTACK_PLAYER)
+        .value("BLOCK", PlayerIntent::BLOCK)
+        .value("USE_SHIELD_TRIGGER", PlayerIntent::USE_SHIELD_TRIGGER)
+        .value("RESOLVE_EFFECT", PlayerIntent::RESOLVE_EFFECT)
+        .value("SELECT_TARGET", PlayerIntent::SELECT_TARGET)
+        .value("USE_ABILITY", PlayerIntent::USE_ABILITY)
+        .value("DECLARE_REACTION", PlayerIntent::DECLARE_REACTION)
+        .value("PLAY_CARD_INTERNAL", PlayerIntent::PLAY_CARD_INTERNAL)
+        .value("RESOLVE_BATTLE", PlayerIntent::RESOLVE_BATTLE)
+        .value("BREAK_SHIELD", PlayerIntent::BREAK_SHIELD)
+        .value("MOVE_CARD", PlayerIntent::MOVE_CARD)
+        .value("DECLARE_PLAY", PlayerIntent::DECLARE_PLAY)
+        .value("PAY_COST", PlayerIntent::PAY_COST)
+        .value("RESOLVE_PLAY", PlayerIntent::RESOLVE_PLAY)
+        .value("SELECT_OPTION", PlayerIntent::SELECT_OPTION)
+        .value("SELECT_NUMBER", PlayerIntent::SELECT_NUMBER)
         .export_values();
+
+    // Alias for backward compatibility
+    m.attr("ActionType") = m.attr("PlayerIntent");
 
     py::enum_<GameResult>(m, "GameResult")
         .value("NONE", GameResult::NONE)
@@ -352,49 +355,52 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("SET_KEYWORD", ModifierType::SET_KEYWORD)
         .export_values();
 
-    py::enum_<EffectActionType>(m, "EffectActionType")
-        .value("DRAW_CARD", EffectActionType::DRAW_CARD)
-        .value("ADD_MANA", EffectActionType::ADD_MANA)
-        .value("SEARCH_DECK_BOTTOM", EffectActionType::SEARCH_DECK_BOTTOM)
-        .value("SEND_TO_DECK_BOTTOM", EffectActionType::SEND_TO_DECK_BOTTOM)
-        .value("SEARCH_DECK", EffectActionType::SEARCH_DECK)
-        .value("SHUFFLE_DECK", EffectActionType::SHUFFLE_DECK)
-        .value("DESTROY", EffectActionType::DESTROY)
-        .value("RETURN_TO_HAND", EffectActionType::RETURN_TO_HAND)
-        .value("SEND_TO_MANA", EffectActionType::SEND_TO_MANA)
-        .value("TAP", EffectActionType::TAP)
-        .value("UNTAP", EffectActionType::UNTAP)
-        .value("MODIFY_POWER", EffectActionType::MODIFY_POWER)
-        .value("BREAK_SHIELD", EffectActionType::BREAK_SHIELD)
-        .value("LOOK_AND_ADD", EffectActionType::LOOK_AND_ADD)
-        .value("SUMMON_TOKEN", EffectActionType::SUMMON_TOKEN)
-        .value("MEKRAID", EffectActionType::MEKRAID)
-        .value("DISCARD", EffectActionType::DISCARD)
-        .value("PLAY_FROM_ZONE", EffectActionType::PLAY_FROM_ZONE)
-        .value("COST_REFERENCE", EffectActionType::COST_REFERENCE)
-        .value("LOOK_TO_BUFFER", EffectActionType::LOOK_TO_BUFFER)
-        .value("SELECT_FROM_BUFFER", EffectActionType::SELECT_FROM_BUFFER)
-        .value("PLAY_FROM_BUFFER", EffectActionType::PLAY_FROM_BUFFER)
-        .value("MOVE_BUFFER_TO_ZONE", EffectActionType::MOVE_BUFFER_TO_ZONE)
-        .value("REVOLUTION_CHANGE", EffectActionType::REVOLUTION_CHANGE)
-        .value("COUNT_CARDS", EffectActionType::COUNT_CARDS)
-        .value("GET_GAME_STAT", EffectActionType::GET_GAME_STAT)
-        .value("APPLY_MODIFIER", EffectActionType::APPLY_MODIFIER)
-        .value("REVEAL_CARDS", EffectActionType::REVEAL_CARDS)
-        .value("REGISTER_DELAYED_EFFECT", EffectActionType::REGISTER_DELAYED_EFFECT)
-        .value("RESET_INSTANCE", EffectActionType::RESET_INSTANCE)
-        .value("ADD_SHIELD", EffectActionType::ADD_SHIELD)
-        .value("SEND_SHIELD_TO_GRAVE", EffectActionType::SEND_SHIELD_TO_GRAVE)
-        .value("MOVE_TO_UNDER_CARD", EffectActionType::MOVE_TO_UNDER_CARD)
-        .value("SELECT_NUMBER", EffectActionType::SELECT_NUMBER)
-        .value("FRIEND_BURST", EffectActionType::FRIEND_BURST)
-        .value("GRANT_KEYWORD", EffectActionType::GRANT_KEYWORD)
-        .value("MOVE_CARD", EffectActionType::MOVE_CARD)
-        .value("CAST_SPELL", EffectActionType::CAST_SPELL)
-        .value("PUT_CREATURE", EffectActionType::PUT_CREATURE)
-        .value("SELECT_OPTION", EffectActionType::SELECT_OPTION)
-        .value("RESOLVE_BATTLE", EffectActionType::RESOLVE_BATTLE)
+    py::enum_<EffectPrimitive>(m, "EffectPrimitive")
+        .value("DRAW_CARD", EffectPrimitive::DRAW_CARD)
+        .value("ADD_MANA", EffectPrimitive::ADD_MANA)
+        .value("SEARCH_DECK_BOTTOM", EffectPrimitive::SEARCH_DECK_BOTTOM)
+        .value("SEND_TO_DECK_BOTTOM", EffectPrimitive::SEND_TO_DECK_BOTTOM)
+        .value("SEARCH_DECK", EffectPrimitive::SEARCH_DECK)
+        .value("SHUFFLE_DECK", EffectPrimitive::SHUFFLE_DECK)
+        .value("DESTROY", EffectPrimitive::DESTROY)
+        .value("RETURN_TO_HAND", EffectPrimitive::RETURN_TO_HAND)
+        .value("SEND_TO_MANA", EffectPrimitive::SEND_TO_MANA)
+        .value("TAP", EffectPrimitive::TAP)
+        .value("UNTAP", EffectPrimitive::UNTAP)
+        .value("MODIFY_POWER", EffectPrimitive::MODIFY_POWER)
+        .value("BREAK_SHIELD", EffectPrimitive::BREAK_SHIELD)
+        .value("LOOK_AND_ADD", EffectPrimitive::LOOK_AND_ADD)
+        .value("SUMMON_TOKEN", EffectPrimitive::SUMMON_TOKEN)
+        .value("MEKRAID", EffectPrimitive::MEKRAID)
+        .value("DISCARD", EffectPrimitive::DISCARD)
+        .value("PLAY_FROM_ZONE", EffectPrimitive::PLAY_FROM_ZONE)
+        .value("COST_REFERENCE", EffectPrimitive::COST_REFERENCE)
+        .value("LOOK_TO_BUFFER", EffectPrimitive::LOOK_TO_BUFFER)
+        .value("SELECT_FROM_BUFFER", EffectPrimitive::SELECT_FROM_BUFFER)
+        .value("PLAY_FROM_BUFFER", EffectPrimitive::PLAY_FROM_BUFFER)
+        .value("MOVE_BUFFER_TO_ZONE", EffectPrimitive::MOVE_BUFFER_TO_ZONE)
+        .value("REVOLUTION_CHANGE", EffectPrimitive::REVOLUTION_CHANGE)
+        .value("COUNT_CARDS", EffectPrimitive::COUNT_CARDS)
+        .value("GET_GAME_STAT", EffectPrimitive::GET_GAME_STAT)
+        .value("APPLY_MODIFIER", EffectPrimitive::APPLY_MODIFIER)
+        .value("REVEAL_CARDS", EffectPrimitive::REVEAL_CARDS)
+        .value("REGISTER_DELAYED_EFFECT", EffectPrimitive::REGISTER_DELAYED_EFFECT)
+        .value("RESET_INSTANCE", EffectPrimitive::RESET_INSTANCE)
+        .value("ADD_SHIELD", EffectPrimitive::ADD_SHIELD)
+        .value("SEND_SHIELD_TO_GRAVE", EffectPrimitive::SEND_SHIELD_TO_GRAVE)
+        .value("MOVE_TO_UNDER_CARD", EffectPrimitive::MOVE_TO_UNDER_CARD)
+        .value("SELECT_NUMBER", EffectPrimitive::SELECT_NUMBER)
+        .value("FRIEND_BURST", EffectPrimitive::FRIEND_BURST)
+        .value("GRANT_KEYWORD", EffectPrimitive::GRANT_KEYWORD)
+        .value("MOVE_CARD", EffectPrimitive::MOVE_CARD)
+        .value("CAST_SPELL", EffectPrimitive::CAST_SPELL)
+        .value("PUT_CREATURE", EffectPrimitive::PUT_CREATURE)
+        .value("SELECT_OPTION", EffectPrimitive::SELECT_OPTION)
+        .value("RESOLVE_BATTLE", EffectPrimitive::RESOLVE_BATTLE)
         .export_values();
+
+    // Alias for backward compatibility
+    m.attr("EffectActionType") = m.attr("EffectPrimitive");
 
     py::enum_<InstructionOp>(m, "InstructionOp")
         .value("NOOP", InstructionOp::NOOP)
@@ -813,8 +819,11 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("to_string", &Action::to_string);
 
     // Systems
-    py::class_<ActionGenerator>(m, "ActionGenerator")
-        .def_static("generate_legal_actions", &ActionGenerator::generate_legal_actions);
+    py::class_<IntentGenerator>(m, "IntentGenerator")
+        .def_static("generate_legal_actions", &IntentGenerator::generate_legal_actions);
+
+    // Alias for backward compatibility
+    m.attr("ActionGenerator") = m.attr("IntentGenerator");
 
     py::class_<dm::engine::EffectSystem, std::unique_ptr<dm::engine::EffectSystem, py::nodelete>>(m, "EffectSystem")
         .def_static("instance", [](){ return &dm::engine::EffectSystem::instance(); }, py::return_value_policy::reference)
