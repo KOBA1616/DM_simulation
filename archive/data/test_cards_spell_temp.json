@@ -1,1 +1,0 @@
-[{"id": 999, "name": "Test Spell", "type": "SPELL", "civilization": "FIRE", "cost": 1, "effects": [{"trigger": "ON_PLAY", "actions": [{"type": "ADD_MANA", "scope": "PLAYER_SELF", "value1": 1}]}]}]
