@@ -1,1 +1,0 @@
-[{"id": 1000, "name": "Hyper Creature", "cost": 6, "civilization": "FIRE", "type": "CREATURE", "power": 6000, "races": [], "effects": [{"trigger": "NONE", "condition": {"type": "NONE"}, "actions": [{"type": "COST_REFERENCE", "str_val": "HYPER_ENERGY"}]}]}, {"id": 1, "name": "Dummy", "cost": 2, "civilization": "FIRE", "type": "CREATURE", "power": 1000, "races": [], "effects": []}]
