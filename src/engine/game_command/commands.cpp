@@ -1,6 +1,7 @@
 #include "commands.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "core/game_event.hpp"
+#include "engine/systems/card/card_registry.hpp" // Added for G-Neo lookup
 #include <iostream>
 #include <algorithm>
 
@@ -60,6 +61,54 @@ namespace dm::engine::game_command {
         original_index = std::distance(source_vec->begin(), it);
 
         core::CardInstance card = *it;
+
+        // --- G-Neo Handling ---
+        // Requirement: "G-Neo Creature... when it leaves the field, if there is a card under this creature,
+        // instead of leaving, all cards under it are put in the graveyard."
+
+        bool should_replace = false;
+        if (from_zone == core::Zone::BATTLE && to_zone != core::Zone::BATTLE && !card.underlying_cards.empty()) {
+             // Access Global Card Registry (Singleton)
+             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+             if (card_db.count(card.card_id)) {
+                 const auto& def = card_db.at(card.card_id);
+                 if (def.keywords.g_neo) {
+                     should_replace = true;
+                 }
+             }
+        }
+
+        if (should_replace) {
+             g_neo_activated = true;
+
+             // Store underlying cards for Undo
+             moved_underlying_cards = card.underlying_cards;
+
+             // Move underlying to Graveyard
+             auto& grave = state.players[owner_id].graveyard;
+             for (const auto& under : card.underlying_cards) {
+                 grave.push_back(under);
+
+                 // Dispatch ZONE_ENTER for underlying cards entering Graveyard
+                 if (state.event_dispatcher) {
+                    core::GameEvent evt;
+                    evt.type = core::EventType::ZONE_ENTER;
+                    evt.card_id = under.card_id;
+                    evt.instance_id = under.instance_id;
+                    evt.player_id = owner_id;
+                    evt.context["from_zone"] = static_cast<int>(core::Zone::BATTLE); // Effectively from under battle card
+                    evt.context["to_zone"] = static_cast<int>(core::Zone::GRAVEYARD);
+                    state.event_dispatcher(evt);
+                 }
+             }
+
+             // Update the card in source vector (clear underlying)
+             it->underlying_cards.clear();
+
+             // Abort the move of the top card (Replacement Effect)
+             return;
+        }
+
         source_vec->erase(it);
 
         // Add to dest
@@ -90,7 +139,6 @@ namespace dm::engine::game_command {
 
     void TransitionCommand::invert(core::GameState& state) {
         // Reverse operation
-        // Move FROM to_zone BACK TO from_zone at original_index
 
         core::Player& owner = state.players[owner_id];
         std::vector<core::CardInstance>* source_vec = nullptr; // Note: Invert swaps source/dest
@@ -109,6 +157,42 @@ namespace dm::engine::game_command {
                 default: return nullptr;
             }
         };
+
+        // --- G-Neo Undo Logic ---
+        if (g_neo_activated) {
+            // Restore underlying cards from Graveyard to Battle Zone (under the creature).
+            // The creature (card_instance_id) is still in from_zone (BATTLE).
+
+            dest_vec = get_vec(from_zone);
+            if (!dest_vec) return;
+
+            // Find the creature
+            auto it = std::find_if(dest_vec->begin(), dest_vec->end(),
+                [&](const core::CardInstance& c){ return c.instance_id == card_instance_id; });
+
+            if (it == dest_vec->end()) return;
+
+            // Restore underlying cards
+            auto& grave = state.players[owner_id].graveyard;
+            it->underlying_cards = moved_underlying_cards;
+
+            // Remove from Graveyard
+            // Note: We need to find and remove specific instances.
+            // Assuming they are at the end of graveyard if pushed recently?
+            // Safer to find by instance ID.
+            for (const auto& moved_card : moved_underlying_cards) {
+                auto git = std::find_if(grave.begin(), grave.end(),
+                    [&](const core::CardInstance& c){ return c.instance_id == moved_card.instance_id; });
+                if (git != grave.end()) {
+                    grave.erase(git);
+                }
+            }
+
+            // No need to move the top card, as it never moved.
+            return;
+        }
+
+        // --- Standard Undo Logic ---
 
         // Current location (where it was moved TO) is now the source
         if (to_zone == core::Zone::STACK) {

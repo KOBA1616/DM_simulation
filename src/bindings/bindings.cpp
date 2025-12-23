@@ -409,6 +409,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def_property("triple_breaker", [](const CardKeywords& k) { return k.triple_breaker; }, [](CardKeywords& k, bool v) { k.triple_breaker = v; })
         .def_property("shield_trigger", [](const CardKeywords& k) { return k.shield_trigger; }, [](CardKeywords& k, bool v) { k.shield_trigger = v; })
         .def_property("evolution", [](const CardKeywords& k) { return k.evolution; }, [](CardKeywords& k, bool v) { k.evolution = v; })
+        .def_property("neo", [](const CardKeywords& k) { return k.neo; }, [](CardKeywords& k, bool v) { k.neo = v; })
+        .def_property("g_neo", [](const CardKeywords& k) { return k.g_neo; }, [](CardKeywords& k, bool v) { k.g_neo = v; })
         .def_property("cip", [](const CardKeywords& k) { return k.cip; }, [](CardKeywords& k, bool v) { k.cip = v; })
         .def_property("at_attack", [](const CardKeywords& k) { return k.at_attack; }, [](CardKeywords& k, bool v) { k.at_attack = v; })
         .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; })
