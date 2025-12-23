@@ -27,64 +27,49 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 現在、**Phase 1: Game Engine Reliability** および **Phase 6: Engine Overhaul** の実装が完了し、C++コア（`dm_ai_module`）のビルドは安定しています。
 2025年2月の開発サイクルにおいて、Pythonインテグレーション（バインディング）の修復と、CI（Continuous Integration）環境でのテスト通過率の向上に注力しました。
 
-特に `PipelineExecutor` の無限ループバグ修正と、シールドトリガー処理における `GameInstance` のパイプライン連携の修正を行い、複雑なイベント処理（Trigger Stack）の安定化を達成しました。
+直近では「スマートな進化（Smart Evolution）」評価指標の実装に伴い、C++ゲームエンジンにおける `MOVE_CARD` アクション（マナチャージ等で使用）のハンドリング不具合を修正しました。
 
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
-*   [Status: Done] **Card Owner Refactor**: `CardInstance` 構造体に `owner` フィールドを追加し、外部マップ `card_owner_map` を廃止しました。これにより、カードの所有者情報へのアクセスがO(1)となり、マップ同期ズレのリスクが解消されました。
+*   [Status: Done] **Card Owner Refactor**: `CardInstance` 構造体に `owner` フィールドを追加し、外部マップ `card_owner_map` を廃止しました。
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` を削除し、`GameLogicSystem` へ完全移行しました。
 *   [Status: Done] **GameLogicSystem Refactor**: `PipelineExecutor` を介したコマンド実行フローが確立されました。
 *   [Status: Done] **Action Generalization**: 全アクションハンドラーの `compile_action` 化が完了しました。
-*   [Status: Done] **Build Stability**: `cmake` によるビルドは警告のみで成功し、`dm_ai_module.so` が正常に生成されています。
-*   [Status: Done] **PipelineExecutor Fixes**: `GAME_ACTION` 命令が新しいブロックをプッシュした際に呼び出し元のプログラムカウンタ（PC）がインクリメントされず無限ループに陥る不具合を修正しました。また、`ContextValue` に `std::monostate` を導入し、変数が存在しない場合のデフォルト値（0）による誤判定を防止しました。
-*   [Status: Done] **S-Trigger Logic Repair**: シールドトリガー処理において、カードの所有者（Owner）とコントローラーの判定ロジックを修正し、トリガーの使用確認や対象選択のパイプライン処理が正しく中断・再開されるように `GameInstance` と `GameState` の連携を強化しました。
-
-### 2.1.1 実装済みメカニクス (Mechanics Support)
-*   [Status: Done] **Revolution Change**: `tests/test_integrated_mechanics.py` にて検証済み。
-*   [Status: Done] **Hyper Energy**: `CardKeywords.hyper_energy` 実装済み。
-*   [Status: Done] **Just Diver**: `CardKeywords.just_diver` 実装済み。
-*   [Status: Done] **Meta/Counter**: `tests/test_meta_counter.py` 実装済み。
-*   [Status: Review] **Shield Trigger / Reaction**: `tests/test_trigger_stack.py` および `tests/test_phase6_reaction.py` にて、シールド破壊からリアクションウィンドウの展開、宣言までのフローの動作を確認しました。
+*   [Status: Done] **ActionType::MOVE_CARD Fix**: `GameLogicSystem` にて `MOVE_CARD` アクション（Type 2）のハンドリング処理を追加し、マナチャージ等のゾーン移動が正しく機能するように修正しました。また、フェーズ依存のフォールバックロジックを一時的に導入しています。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Directory Restructuring**: `python/gui` を `dm_toolkit/gui` へ移動しました。
 *   [Status: Done] **Encoding Audit**: ソースコードのShift-JIS対応完了。
-*   [Test: Pass] **GUI Tests (Headless)**: `tests/test_action_form_syntax.py` 等のGUIテストに対し、`PyQt6` や `libEGL` が存在しない環境（CI/Headless）では自動的にスキップするロジックを追加し、CIエラーを解消しました。
+*   [Test: Pass] **GUI Tests (Headless)**: CI環境向けのスキップロジック実装済み。
 
 ### 2.3 テスト環境 (`tests/`)
-*   [Status: Done] **Directory Consolidation**: `python/tests/` 配下のテストファイルを `tests/` へ統合し、ディレクトリを削除しました。
-*   [Test: Fail] **Engine Basics**: `tests/test_engine_basics.py` において、`test_mana_charge` および `test_play_creature` が失敗（AssertionError）。所有権リファクタリング後の `MOVE_CARD` 処理（`TransitionCommand`）または `get_card_instance` の挙動に回帰バグが発生している可能性があります。
+*   [Status: Done] **Directory Consolidation**: `python/tests/` を `tests/` へ統合。
+*   [Test: Pass] **Evolution Ecosystem Verify**: `dm_toolkit/training/evolution_ecosystem.py` がエラーなく実行可能であることを確認（ただし統計値が0になる問題あり）。
 
 ### 2.4 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
-*   [Status: Done] **Directory Restructuring**: `python/training` を `dm_toolkit/training` へ移動しました。
-*   [Status: Done] **Transformer Integration**: `NetworkV2` (DuelTransformer) の実装と検証完了。
-*   [Status: Review] **Search Engine (MCTS)**: `src/ai/mcts` 実装完了。
-*   [Status: Review] **Inference Engine**: `src/ai/inference` (PIMC, Deck Inference) 実装完了。
-*   [Status: Review] **Lethal Solver**: `src/ai/solver` 実装完了。
-
----
+*   [Status: WIP] **Smart Evolution Scoring**: `evolution_ecosystem.py` に「使用頻度」と「リソース使用」に基づく評価ロジックを追加しました。
+    *   **実装**: `collect_smart_stats` 関数により、`GameInstance` を用いた統計収集ループを実装。
+    *   **課題**: C++側での修正によりマナチャージは機能していますが、Python側での統計集計（`get_card_stats` の結果）がまだ0のままです（IDマッチングの問題の可能性）。
 
 ## 3. ロードマップ (Roadmap)
 
 ### 3.1 [Priority: Critical] Trigger Stack Stabilization (トリガースタックの安定化)
 [Status: Review]
-`test_trigger_stack.py` における無限ループおよびパイプライン状態不整合の修正を行いました。
-現在は `Valid targets` が空になる事象（所有権やゾーン参照の問題と推測）の最終デバッグ段階ですが、エンジンのコアロジック（PC制御、コンテキスト管理）は大幅に改善されました。
+パイプライン制御の安定化は完了。引き続きエッジケースの検証を行います。
 
-### 3.2 [Priority: High] Phase 1: ゲームエンジンの信頼性 (Game Engine Reliability)
+### 3.2 [Priority: High] Evolution Ecosystem Refinement (進化エコシステムの改善)
 [Status: WIP]
-エンジンのコアロジック自体は実装されていますが、テストを通じた検証を継続します。特にS・トリガーからの呪文詠唱と対象選択の連鎖処理の完全な通過を目指します。
+スマートスコアの実装を行いました。次は統計収集の不具合修正とパフォーマンス改善です。
 
-### 3.3 [Priority: High] Phase 6: エンジン刷新 (Engine Overhaul)
-[Status: Review]
-C++側のリファクタリングは完了し、Python側からのリアクション制御（Phase 6主要要件）の動作確認が取れました。
+1.  [Status: Todo] **Stats Aggregation Debug**: Python側で統計値が正しく集計されない問題（ID不整合等）を修正する。
+2.  [Status: Todo] **C++ Stats Migration**: 現在Pythonで行っている低速な統計収集ループを、C++の `ParallelRunner` に統合し、高速化・安定化を図る。
+3.  [Status: Todo] **Engine Cleanup**: `GameLogicSystem` に追加した `MOVE_CARD` のフェーズ依存フォールバックを、`ActionGenerator` 側の `destination_override` 設定修正により正規化する。
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: WIP] **Finalize Trigger Stack**: `test_trigger_stack.py` の `DESTROY` アクションにおける対象選択ロジック（フィルタリング）の修正完了とテストパス。
-2.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの移行。
-3.  [Status: WIP] **Binding Restoration**: 残るテストケースの修正。
+1.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの移行。
+2.  [Status: WIP] **Binding Restoration**: 残るテストケースの修正。
 
 ## 5. 運用ルール (Operational Rules)
 *   **CI遵守**: `PyQt6` 依存テストはスキップし、必ずCIがグリーンになる状態でマージする。
