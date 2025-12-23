@@ -2,6 +2,7 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "engine/game_command/commands.hpp"
 
 namespace dm::engine {
 
@@ -27,16 +28,31 @@ namespace dm::engine {
              int actual_drawn = 0;
              for (int i = 0; i < count; ++i) {
                 if (controller.deck.empty()) {
-                    ctx.game_state.winner = (controller.id == 0) ? GameResult::P2_WIN : GameResult::P1_WIN;
+                    auto result = (controller.id == 0) ? GameResult::P2_WIN : GameResult::P1_WIN;
+                    auto cmd = std::make_shared<dm::engine::game_command::GameResultCommand>(result);
+                    ctx.game_state.execute_command(cmd);
                     return;
                 }
-                CardInstance c = controller.deck.back();
-                controller.deck.pop_back();
-                controller.hand.push_back(c);
+
+                int card_instance_id = controller.deck.back().instance_id;
+
+                // Move Card Command
+                auto move_cmd = std::make_shared<dm::engine::game_command::TransitionCommand>(
+                    card_instance_id,
+                    Zone::DECK,
+                    Zone::HAND,
+                    controller.id
+                );
+                ctx.game_state.execute_command(move_cmd);
+
                 actual_drawn++;
 
                 if (controller.id == ctx.game_state.active_player_id) {
-                    ctx.game_state.turn_stats.cards_drawn_this_turn++;
+                    auto stat_cmd = std::make_shared<dm::engine::game_command::StatCommand>(
+                        dm::engine::game_command::StatCommand::StatType::CARDS_DRAWN,
+                        1
+                    );
+                    ctx.game_state.execute_command(stat_cmd);
                 }
 
                 // Trigger Logic: Check for ON_OPPONENT_DRAW effects for the non-drawing player
