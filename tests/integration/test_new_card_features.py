@@ -4,7 +4,7 @@ import os
 import sys
 
 # Add bin/ to sys.path to import dm_ai_module
-sys.path.append(os.path.join(os.path.dirname(__file__), '../bin'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
 try:
     import dm_ai_module
 except ImportError:
