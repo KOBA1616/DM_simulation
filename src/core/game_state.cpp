@@ -83,6 +83,7 @@ namespace dm::core {
             case Zone::GRAVEYARD: players[pid].graveyard.push_back(card); break;
             case Zone::DECK: players[pid].deck.push_back(card); break;
             case Zone::BUFFER: players[pid].effect_buffer.push_back(card); break;
+            case Zone::STACK: players[pid].stack.push_back(card); break;
             default: break;
         }
     }
@@ -104,6 +105,8 @@ namespace dm::core {
         if(auto* c = find_in(players[pid].graveyard)) return c;
         if(auto* c = find_in(players[pid].deck)) return c;
         if(auto* c = find_in(players[pid].effect_buffer)) return c;
+        if(auto* c = find_in(players[pid].stack)) return c;
+        if(auto* c = find_in(players[pid].stack)) return c;
         if(auto* c = find_in(players[pid].hyper_spatial_zone)) return c;
         if(auto* c = find_in(players[pid].gr_deck)) return c;
         return nullptr;
@@ -144,6 +147,7 @@ namespace dm::core {
             case Zone::GRAVEYARD: z = &p.graveyard; break;
             case Zone::DECK: z = &p.deck; break;
             case Zone::BUFFER: z = &p.effect_buffer; break;
+            case Zone::STACK: z = &p.stack; break;
             case Zone::HYPER_SPATIAL: z = &p.hyper_spatial_zone; break;
             case Zone::GR_DECK: z = &p.gr_deck; break;
             default: break;

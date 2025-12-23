@@ -39,6 +39,7 @@ namespace dm::core {
         std::vector<CardInstance> deck;
         std::vector<CardInstance> hyper_spatial_zone;
         std::vector<CardInstance> gr_deck;
+        std::vector<CardInstance> stack; // Added stack for play transaction
 
         std::vector<CardInstance> effect_buffer;
     };
