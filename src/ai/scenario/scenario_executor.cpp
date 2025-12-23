@@ -1,7 +1,7 @@
 #include "scenario_executor.hpp"
 #include "engine/game_instance.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
-#include "engine/actions/action_generator.hpp"
+#include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "ai/agents/heuristic_agent.hpp"
@@ -43,7 +43,7 @@ namespace dm::ai {
                 break;
             }
 
-            std::vector<Action> legal_actions = ActionGenerator::generate_legal_actions(instance.state, *card_db);
+            std::vector<Action> legal_actions = IntentGenerator::generate_legal_actions(instance.state, *card_db);
             if (legal_actions.empty()) {
                 PhaseManager::next_phase(instance.state, *card_db);
                 continue;

@@ -54,7 +54,7 @@ namespace dm::engine {
              std::string out_key = ctx.action.output_value_key;
              if (out_key.empty()) out_key = "$count_result";
 
-             if (ctx.action.type == EffectActionType::COUNT_CARDS) {
+             if (ctx.action.type == EffectPrimitive::COUNT_CARDS) {
                  Instruction count_inst(InstructionOp::COUNT);
                  count_inst.args["filter"] = ctx.action.filter;
 
@@ -68,7 +68,7 @@ namespace dm::engine {
                  count_inst.args["out"] = out_key;
                  ctx.instruction_buffer->push_back(count_inst);
              }
-             else if (ctx.action.type == EffectActionType::GET_GAME_STAT) {
+             else if (ctx.action.type == EffectPrimitive::GET_GAME_STAT) {
                  Instruction stat(InstructionOp::GET_STAT);
                  stat.args["stat"] = ctx.action.str_val;
                  stat.args["out"] = out_key;

@@ -49,7 +49,7 @@ namespace dm::engine {
             using namespace dm::core;
             if (!ctx.instruction_buffer) return;
 
-            if (ctx.action.type == EffectActionType::SEND_TO_MANA) {
+            if (ctx.action.type == EffectPrimitive::SEND_TO_MANA) {
                 // If the input is from a previous step (variable linking)
                 if (!ctx.action.input_value_key.empty()) {
                      Instruction move(InstructionOp::MOVE);

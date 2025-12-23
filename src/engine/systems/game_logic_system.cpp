@@ -22,11 +22,11 @@ namespace dm::engine::systems {
                                 const std::map<core::CardID, core::CardDefinition>& card_db);
 
     void GameLogicSystem::dispatch_action(PipelineExecutor& pipeline, core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
-        // Map ActionType to handler
+        // Map PlayerIntent to handler
         // Simplified mapping for now
 
         switch (action.type) {
-            case ActionType::PLAY_CARD:
+            case PlayerIntent::PLAY_CARD:
             {
                 // Convert Action to Instruction
                 nlohmann::json args;
@@ -35,7 +35,7 @@ namespace dm::engine::systems {
                 handle_play_card(pipeline, state, inst, card_db);
                 break;
             }
-            case ActionType::RESOLVE_PLAY:
+            case PlayerIntent::RESOLVE_PLAY:
             {
                 nlohmann::json args;
                 args["card"] = action.source_instance_id;
@@ -44,7 +44,7 @@ namespace dm::engine::systems {
                 handle_resolve_play(pipeline, state, inst, card_db);
                 break;
             }
-            case ActionType::DECLARE_PLAY:
+            case PlayerIntent::DECLARE_PLAY:
             {
                 int iid = action.source_instance_id;
                 int pid = state.active_player_id;
@@ -53,7 +53,7 @@ namespace dm::engine::systems {
                 state.execute_command(std::move(cmd));
                 break;
             }
-            case ActionType::PAY_COST:
+            case PlayerIntent::PAY_COST:
             {
                 int iid = action.source_instance_id;
                 // Auto tap mana
@@ -67,8 +67,8 @@ namespace dm::engine::systems {
                 }
                 break;
             }
-            case ActionType::ATTACK_CREATURE:
-            case ActionType::ATTACK_PLAYER:
+            case PlayerIntent::ATTACK_CREATURE:
+            case PlayerIntent::ATTACK_PLAYER:
             {
                 nlohmann::json args;
                 args["source"] = action.source_instance_id;
@@ -77,7 +77,7 @@ namespace dm::engine::systems {
                 handle_attack(pipeline, state, inst, card_db);
                 break;
             }
-            case ActionType::BLOCK:
+            case PlayerIntent::BLOCK:
             {
                 nlohmann::json args;
                 args["blocker"] = action.source_instance_id;
@@ -85,7 +85,7 @@ namespace dm::engine::systems {
                 handle_block(pipeline, state, inst, card_db);
                 break;
             }
-            case ActionType::RESOLVE_BATTLE:
+            case PlayerIntent::RESOLVE_BATTLE:
             {
                 nlohmann::json args;
                 args["attacker"] = action.source_instance_id;
@@ -95,12 +95,12 @@ namespace dm::engine::systems {
                 handle_resolve_battle(pipeline, state, inst, card_db);
                 break;
             }
-            case ActionType::PASS:
+            case PlayerIntent::PASS:
             {
                 PhaseManager::next_phase(state, card_db);
                 break;
             }
-            case ActionType::MANA_CHARGE:
+            case PlayerIntent::MANA_CHARGE:
             {
                 int iid = action.source_instance_id;
                 int pid = state.active_player_id;
@@ -113,7 +113,7 @@ namespace dm::engine::systems {
                 }
                 break;
             }
-            case ActionType::MOVE_CARD:
+            case PlayerIntent::MOVE_CARD:
             {
                 int iid = action.source_instance_id;
                 int pid = state.active_player_id;
@@ -142,7 +142,7 @@ namespace dm::engine::systems {
                 }
                 break;
             }
-            case ActionType::USE_ABILITY:
+            case PlayerIntent::USE_ABILITY:
             {
                 nlohmann::json args;
                 args["source"] = action.source_instance_id;

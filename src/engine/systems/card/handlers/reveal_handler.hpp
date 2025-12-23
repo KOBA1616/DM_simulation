@@ -47,7 +47,7 @@ namespace dm::engine {
             // But if it is standalone "Reveal Top Card", it usually stays there?
             // "Reveal top card of deck." usually implies checking it.
             // If we move to BUFFER, we must move it back if nothing else happens?
-            // Current `EffectActionType` includes `LOOK_AT_TOP_DECK`? No, `REVEAL_TOP_CARDS`.
+            // Current `EffectPrimitive` includes `LOOK_AT_TOP_DECK`? No, `REVEAL_TOP_CARDS`.
 
             // If this is just "Reveal", we might need to know what to do next.
             // But typically this is used with Variable Linking (Reveal -> Filter -> Add).

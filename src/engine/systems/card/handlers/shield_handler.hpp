@@ -17,7 +17,7 @@ namespace dm::engine {
             PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
             Player& controller = ctx.game_state.players[controller_id];
 
-            if (ctx.action.type == EffectActionType::ADD_SHIELD) {
+            if (ctx.action.type == EffectPrimitive::ADD_SHIELD) {
                 // Determine source zone: HAND, GRAVEYARD, DECK (default)
                 std::string source_zone = "DECK";
                 if (ctx.action.source_zone == "HAND") source_zone = "HAND";
@@ -81,7 +81,7 @@ namespace dm::engine {
                      ctx.instruction_buffer->emplace_back(InstructionOp::MATH, math_args);
                 }
 
-            } else if (ctx.action.type == EffectActionType::SEND_SHIELD_TO_GRAVE) {
+            } else if (ctx.action.type == EffectPrimitive::SEND_SHIELD_TO_GRAVE) {
                 // Determine Targets
                 std::vector<int> targets;
 
@@ -127,7 +127,7 @@ namespace dm::engine {
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
-            if (ctx.action.type == EffectActionType::SEND_SHIELD_TO_GRAVE &&
+            if (ctx.action.type == EffectPrimitive::SEND_SHIELD_TO_GRAVE &&
                (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") &&
                (!ctx.targets || ctx.targets->empty())) {
                      EffectDef ed;

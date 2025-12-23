@@ -18,7 +18,7 @@ namespace dm::engine {
             const auto& pending = game_state.pending_effects.back();
             if (pending.type == EffectType::INTERNAL_PLAY) {
                  Action resolve;
-                 resolve.type = ActionType::RESOLVE_PLAY;
+                 resolve.type = PlayerIntent::RESOLVE_PLAY;
                  resolve.source_instance_id = pending.source_instance_id;
                  actions.push_back(resolve);
             }
@@ -29,7 +29,7 @@ namespace dm::engine {
             if (card.is_tapped) {
                 // Already paid -> RESOLVE_PLAY
                 Action resolve;
-                resolve.type = ActionType::RESOLVE_PLAY;
+                resolve.type = PlayerIntent::RESOLVE_PLAY;
                 resolve.source_instance_id = card.instance_id;
                 resolve.card_id = card.card_id;
                 actions.push_back(resolve);
@@ -41,7 +41,7 @@ namespace dm::engine {
                 // Since DECLARE_PLAY already happened (which usually checks cost legality),
                 // we assume payment is possible or at least attempted.
                 Action pay;
-                pay.type = ActionType::PAY_COST;
+                pay.type = PlayerIntent::PAY_COST;
                 pay.source_instance_id = card.instance_id;
                 pay.card_id = card.card_id;
                 actions.push_back(pay);

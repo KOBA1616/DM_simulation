@@ -1,6 +1,6 @@
 #include "phase_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
-#include "engine/actions/action_generator.hpp"
+#include "engine/actions/intent_generator.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/continuous_effect_system.hpp"
 #include "core/constants.hpp"
@@ -228,7 +228,7 @@ namespace dm::engine {
                 return;
             }
             
-            auto actions = ActionGenerator::generate_legal_actions(game_state, card_db);
+            auto actions = IntentGenerator::generate_legal_actions(game_state, card_db);
             if (!actions.empty()) {
                 return;
             }
