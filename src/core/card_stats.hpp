@@ -73,6 +73,7 @@ namespace dm::core {
     };
 
     struct TurnStats {
+        bool mana_charged_this_turn = false;
         int played_without_mana = 0;
         int cards_drawn_this_turn = 0;
         int cards_discarded_this_turn = 0;
