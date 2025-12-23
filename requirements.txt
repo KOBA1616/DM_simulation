@@ -1,0 +1,5 @@
+numpy
+torch
+PyQt6
+onnx
+onnxruntime
