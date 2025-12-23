@@ -22,6 +22,7 @@ except ImportError:
     sys.exit(1)
 
 from dm_toolkit.ai.agent.heuristic_agent import HeuristicAgent
+from dm_toolkit.training.state_tokenizer import StateTokenizer
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -89,6 +90,10 @@ class HeuristicDataCollector:
             masked_tensor = dm_ai_module.TensorConverter.convert_to_tensor(state, active_pid, self.card_db, True)
             full_tensor = dm_ai_module.TensorConverter.convert_to_tensor(state, active_pid, self.card_db, False)
 
+            # Tokenize state (Transformer integration)
+            masked_tokens = StateTokenizer.tokenize(state, active_pid, full_info=False)
+            full_tokens = StateTokenizer.tokenize(state, active_pid, full_info=True)
+
             policy_vec = np.zeros(self.action_size, dtype=np.float32)
             action_idx = dm_ai_module.ActionEncoder.action_to_index(chosen_action)
             if 0 <= action_idx < self.action_size:
@@ -103,6 +108,8 @@ class HeuristicDataCollector:
             examples.append({
                 "masked_state": masked_tensor,
                 "full_state": full_tensor,
+                "masked_tokens": masked_tokens,
+                "full_tokens": full_tokens,
                 "policy": policy_vec,
                 "mask": mask_vec,
                 "player": active_pid
@@ -113,7 +120,7 @@ class HeuristicDataCollector:
             if chosen_action.type == dm_ai_module.ActionType.PASS:
                 dm_ai_module.PhaseManager.next_phase(state, self.card_db)
 
-            dm_ai_module.trigger_loop_detection(state)
+            # Loop detection is handled internally by PhaseManager/GameState execution
             step_count += 1
 
         return examples, dm_ai_module.GameResult.DRAW
@@ -146,6 +153,7 @@ class HeuristicDataCollector:
                 all_data.append({
                     "masked": ex["masked_state"],
                     "full": ex["full_state"],
+                    "tokens": ex["masked_tokens"], # Default to masked tokens for training
                     "policy": ex["policy"],
                     "mask": ex["mask"],
                     "value": value
@@ -161,6 +169,7 @@ class HeuristicDataCollector:
 
         masked_states = np.array([x["masked"] for x in all_data], dtype=np.float32)
         full_states = np.array([x["full"] for x in all_data], dtype=np.float32)
+        tokens = np.array([x["tokens"] for x in all_data], dtype=np.int64)
         policies = np.array([x["policy"] for x in all_data], dtype=np.float32)
         masks = np.array([x["mask"] for x in all_data], dtype=np.float32)
         values = np.array([x["value"] for x in all_data], dtype=np.float32)
@@ -168,6 +177,7 @@ class HeuristicDataCollector:
         np.savez_compressed(output_file,
             states_masked=masked_states,
             states_full=full_states,
+            tokens=tokens,
             policies=policies,
             masks=masks,
             values=values

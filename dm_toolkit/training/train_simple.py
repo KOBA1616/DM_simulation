@@ -151,6 +151,10 @@ class Trainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Training on {self.device}")
 
+        if not self.use_transformer:
+             print("WARNING: Transformer tokens not found in data. Using legacy ResNet/MLP.")
+             print("To use Transformer, regenerate data using collect_training_data.py")
+
         # Consolidate Data
         self.policies = torch.tensor(np.concatenate(all_policies), dtype=torch.float32)
         self.values = torch.tensor(np.concatenate(all_values), dtype=torch.float32)
