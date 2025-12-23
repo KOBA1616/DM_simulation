@@ -160,7 +160,7 @@ class FilterEditorWidget(QWidget):
         sel_layout = QGridLayout(self.sel_group)
         main_layout.addWidget(self.sel_group)
 
-        self.mode_label = QLabel(tr("Selection Mode"))
+        self.mode_label = QLabel(tr("Count Mode"))
         self.mode_combo = QComboBox()
         self.mode_combo.addItem(tr("Selection_All"), 0)
         self.mode_combo.addItem(tr("Selection_Any"), 2)
@@ -184,13 +184,45 @@ class FilterEditorWidget(QWidget):
         self.external_count_label.setVisible(False)
         sel_layout.addWidget(self.external_count_label, 0, 1)
 
+        # 5. Sort / Auto-Select Logic
+        self.sort_mode_label = QLabel(tr("Selection Method"))
+        self.sort_mode_combo = QComboBox()
+        self.sort_mode_combo.addItem(tr("Manual (Default)"), None)
+        self.sort_mode_combo.addItem(tr("Random"), "RANDOM")
+        self.sort_mode_combo.addItem(tr("Lowest (MIN)"), "MIN")
+        self.sort_mode_combo.addItem(tr("Highest (MAX)"), "MAX")
+        self.sort_mode_combo.addItem(tr("All (Override)"), "ALL")
+
+        self.sort_key_label = QLabel(tr("Sort Key"))
+        self.sort_key_combo = QComboBox()
+        self.sort_key_combo.addItem(tr("None"), None)
+        self.sort_key_combo.addItem(tr("Cost"), "COST")
+        self.sort_key_combo.addItem(tr("Power"), "POWER")
+
+        sel_layout.addWidget(self.sort_mode_label, 2, 0)
+        sel_layout.addWidget(self.sort_mode_combo, 2, 1)
+        sel_layout.addWidget(self.sort_key_label, 3, 0)
+        sel_layout.addWidget(self.sort_key_combo, 3, 1)
+
+        self.sort_mode_combo.currentIndexChanged.connect(self.on_sort_mode_changed)
+        self.sort_mode_combo.currentIndexChanged.connect(self.filterChanged.emit)
+        self.sort_key_combo.currentIndexChanged.connect(self.filterChanged.emit)
+
         self.on_mode_changed() # Init visibility
+        self.on_sort_mode_changed()
 
     def on_mode_changed(self):
         mode = self.mode_combo.currentData()
         is_fixed = (mode == 1)
         self.count_spin.setVisible(is_fixed and self.mode_combo.isVisible())
         self.filterChanged.emit()
+
+    def on_sort_mode_changed(self):
+        mode = self.sort_mode_combo.currentData()
+        # Enable key only for MIN/MAX
+        needs_key = (mode == "MIN" or mode == "MAX")
+        self.sort_key_combo.setEnabled(needs_key)
+        self.sort_key_label.setEnabled(needs_key)
 
     def set_external_count_control(self, active: bool):
         """
@@ -263,6 +295,18 @@ class FilterEditorWidget(QWidget):
             self.count_spin.setValue(1)
             self.count_spin.setVisible(False)
 
+        # Selection Mode
+        mode = filt_data.get('selection_mode')
+        idx = self.sort_mode_combo.findData(mode)
+        if idx < 0: idx = 0
+        self.sort_mode_combo.setCurrentIndex(idx)
+
+        # Sort Key
+        key = filt_data.get('selection_sort_key')
+        idx = self.sort_key_combo.findData(key)
+        if idx < 0: idx = 0
+        self.sort_key_combo.setCurrentIndex(idx)
+
         self.blockSignals(False)
 
     def get_data(self):
@@ -314,6 +358,13 @@ class FilterEditorWidget(QWidget):
         elif mode == 2:
             filt['count'] = 1
 
+        sort_mode = self.sort_mode_combo.currentData()
+        if sort_mode:
+            filt['selection_mode'] = sort_mode
+            sort_key = self.sort_key_combo.currentData()
+            if sort_key and (sort_mode == "MIN" or sort_mode == "MAX"):
+                filt['selection_sort_key'] = sort_key
+
         return filt
 
     def blockSignals(self, block):
@@ -332,6 +383,8 @@ class FilterEditorWidget(QWidget):
         self.card_designation_combo.blockSignals(block)
         self.mode_combo.blockSignals(block)
         self.count_spin.blockSignals(block)
+        self.sort_mode_combo.blockSignals(block)
+        self.sort_key_combo.blockSignals(block)
 
     def set_visible_sections(self, sections: dict):
         """
