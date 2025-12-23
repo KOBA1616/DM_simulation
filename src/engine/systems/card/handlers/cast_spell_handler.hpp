@@ -32,19 +32,16 @@ namespace dm::engine {
             }
 
             for (int target_id : targets) {
-                // Generate PLAY_CARD_INTERNAL (which maps to RESOLVE_PLAY with logic)
-                // We assume PLAY_CARD_INTERNAL handles the "Move to Stack" + "Resolve" flow.
-                // We add "cast_side" metadata for GameLogicSystem to handle spell sides.
+                // Refactored to use direct MOVE to STACK as PipelineExecutor now supports "STACK".
+                // Previously used PLAY_CARD_INTERNAL workaround.
                 nlohmann::json args;
-                args["type"] = "PLAY_CARD_INTERNAL";
-                // Fix: Use "card" key for instance_id, matching handle_play_card expectations
-                args["card"] = target_id;
-                args["spawn_source"] = (int)SpawnSource::EFFECT_SUMMON;
-                args["dest_override"] = 0; // Default
-                args["target_player"] = controller;
-                args["cast_side"] = ctx.action.cast_spell_side; // Metadata
+                args["target"] = target_id;
+                args["to"] = "STACK";
 
-                ctx.instruction_buffer->emplace_back(InstructionOp::GAME_ACTION, args);
+                // Note: cast_side metadata was passed in PLAY_CARD_INTERNAL but wasn't used by handle_play_card logic for simple moves.
+                // If it's needed for resolution, it should be handled by whatever processes the card on stack (e.g. handle_resolve_play).
+
+                ctx.instruction_buffer->emplace_back(InstructionOp::MOVE, args);
             }
         }
 
