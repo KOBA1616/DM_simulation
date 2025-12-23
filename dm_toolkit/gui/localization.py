@@ -204,6 +204,17 @@ TRANSLATIONS = {
     "DRAW": "引き分け",
     "NONE": "なし",
 
+    # Command Types (Macros)
+    "DRAW_CARD": "カードを引く",
+    "DISCARD": "手札を捨てる",
+    "DESTROY": "破壊",
+    "TAP": "タップ",
+    "UNTAP": "アンタップ",
+    "RETURN_TO_HAND": "手札に戻す",
+    "BREAK_SHIELD": "シールドブレイク",
+    "SEARCH_DECK": "デッキ探索",
+    "SHIELD_TRIGGER": "S・トリガー",
+
     # Tooltips
     "Open the Deck Builder tool": "デッキビルダーを開きます",
     "Open the Card Editor tool": "カードエディタを開きます",
