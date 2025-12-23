@@ -23,7 +23,6 @@ namespace dm::engine::systems {
 
         switch (action.type) {
             case ActionType::PLAY_CARD:
-            case ActionType::DECLARE_PLAY: // Handle declare play same as play card (move to zone)
             {
                 // Convert Action to Instruction
                 nlohmann::json args;
@@ -32,42 +31,6 @@ namespace dm::engine::systems {
                 handle_play_card(pipeline, state, inst, card_db);
                 break;
             }
-            case ActionType::PAY_COST:
-            {
-                 // Handle cost payment
-                 // ActionGenerator typically puts payment info in action?
-                 // Actually ActionType::PAY_COST might assume standard payment.
-                 // We need to implement handle_pay_cost.
-                 // For now, let's use a GAME_ACTION instruction.
-                 nlohmann::json args;
-                 args["type"] = "PAY_COST";
-                 args["card"] = action.source_instance_id; // Card being paid for? Or is it implicit?
-                 // ActionGenerator.generate_legal_actions produces PAY_COST if pending_effects has PAY_COST type.
-                 // The pending effect has the source instance id.
-
-                 // We will implement handle_pay_cost to deduce card from pending or action.
-                 Instruction inst(InstructionOp::GAME_ACTION, args);
-                 // We need a handle_pay_cost function.
-                 // We can inline it here or add to GameLogicSystem.
-                 // Let's add it.
-                 handle_execute_command(pipeline, state, inst); // Use execute_command generic handler? No.
-                 // Let's call a new handler or static method.
-
-                 // Inline implementation for now to avoid header change if possible?
-                 // But we have access to cpp.
-
-                 // Retrieve card to pay for.
-                 // Usually it's in pending_effects.
-                 // But action.source_instance_id should be correct.
-                 if (const CardInstance* c = state.get_card_instance(action.source_instance_id)) {
-                      Player& p = state.players[state.active_player_id];
-                      if (card_db.count(c->card_id)) {
-                          const auto& def = card_db.at(c->card_id);
-                          ManaSystem::auto_tap_mana(state, p, def, card_db);
-                      }
-                 }
-                 break;
-            }
             case ActionType::RESOLVE_PLAY:
             {
                 nlohmann::json args;
@@ -75,6 +38,29 @@ namespace dm::engine::systems {
                 Instruction inst(InstructionOp::GAME_ACTION, args);
                 inst.args["type"] = "RESOLVE_PLAY";
                 handle_resolve_play(pipeline, state, inst, card_db);
+                break;
+            }
+            case ActionType::DECLARE_PLAY:
+            {
+                int iid = action.source_instance_id;
+                int pid = state.active_player_id;
+                // Move to Stack
+                auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::STACK, pid);
+                state.execute_command(std::move(cmd));
+                break;
+            }
+            case ActionType::PAY_COST:
+            {
+                int iid = action.source_instance_id;
+                // Auto tap mana
+                if (auto* c = state.get_card_instance(iid)) {
+                    if (card_db.count(c->card_id)) {
+                        const auto& def = card_db.at(c->card_id);
+                        ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
+                    }
+                    // Mark as paid (using is_tapped flag on stack card)
+                    c->is_tapped = true;
+                }
                 break;
             }
             case ActionType::ATTACK_CREATURE:
@@ -108,38 +94,6 @@ namespace dm::engine::systems {
             case ActionType::PASS:
             {
                 PhaseManager::next_phase(state, card_db);
-                break;
-            }
-            case ActionType::DECLARE_PLAY:
-            {
-                int iid = action.source_instance_id;
-                int pid = state.active_player_id;
-                // Move to Stack
-                auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::STACK, pid);
-                state.execute_command(std::move(cmd));
-                break;
-            }
-            case ActionType::PAY_COST:
-            {
-                int iid = action.source_instance_id;
-                // Auto tap mana
-                if (auto* c = state.get_card_instance(iid)) {
-                    if (card_db.count(c->card_id)) {
-                        const auto& def = card_db.at(c->card_id);
-                        ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
-                    }
-                    // Mark as paid (using is_tapped flag on stack card)
-                    c->is_tapped = true;
-                }
-                break;
-            }
-            case ActionType::RESOLVE_PLAY:
-            {
-                nlohmann::json args;
-                args["card"] = action.source_instance_id;
-                Instruction inst(InstructionOp::GAME_ACTION, args);
-                inst.args["type"] = "RESOLVE_PLAY";
-                handle_resolve_play(pipeline, state, inst, card_db);
                 break;
             }
             case ActionType::MANA_CHARGE:
