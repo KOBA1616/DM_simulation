@@ -28,6 +28,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 2025年2月の開発サイクルにおいて、コスト軽減システムの柔軟性向上に取り組み、動的な値（ドロー枚数など）に基づくコスト計算を実現しました。
 
 直近では「動的コスト軽減（Dynamic Cost Reduction）」機能を実装し、特定の統計値（カードドロー数、マナ数、シールド数など）を参照してコストを増減させるメカニズムを導入しました。
+また、カードエディタのUI改善として、サポート対象外のカードタイプ（クロスギア、GR、サイキック）を削除し、Neoクリーチャー/G-Neoクリーチャーの実装とGUI対応を行いました。
 
 ## 2. 現行システムステータス (Current Status)
 
@@ -37,12 +38,18 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **GameLogicSystem Refactor**: `PipelineExecutor` を介したコマンド実行フローが確立されました。
 *   [Status: Done] **Action Generalization**: 全アクションハンドラーの `compile_action` 化が完了しました。
 *   [Status: Done] **Dynamic Cost Reduction**: `ModifierDef` および `CostModifier` に `value_reference` フィールドを追加し、`ManaSystem` にて動的な値（`CARDS_DRAWN_THIS_TURN` 等）に基づくコスト計算ロジックを実装しました。
+*   [Status: Done] **Neo/G-Neo Logic**: NeoクリーチャーとG-Neoクリーチャーの論理的な定義を実装しました。
+    *   `CardKeywords` に `neo`, `g_neo` を追加。
+    *   `TransitionCommand` にて、G-Neoクリーチャーがバトルゾーンを離れる際に、進化元のカードのみを墓地に送る置換効果ロジックを実装しました。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Directory Restructuring**: `python/gui` を `dm_toolkit/gui` へ移動しました。
 *   [Status: Done] **Encoding Audit**: ソースコードのShift-JIS対応完了。
 *   [Test: Pass] **GUI Tests (Headless)**: CI環境向けのスキップロジック実装済み。
 *   [Status: Done] **ModifierEditForm Update**: スタティックアビリティ編集画面（`ModifierEditForm`）に「値参照（Value Reference）」の選択プルダウンを追加し、固定値以外の動的参照設定を可能にしました。
+*   [Status: Done] **CardEditForm Update**:
+    *   チェックボックス（クロスギア、GR、サイキック）を削除。
+    *   タイプ選択肢に `NEO_CREATURE`, `G_NEO_CREATURE` を追加し、選択時に自動的に `neo`, `g_neo`, `evolution` キーワードが設定されるように実装しました。
 
 ### 2.3 テスト環境 (`tests/`)
 *   [Status: Done] **Directory Consolidation**: `python/tests/` を `tests/` へ統合。
@@ -76,6 +83,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 1.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの移行。
 2.  [Status: WIP] **Binding Restoration**: 残るテストケースの修正。
+3.  [Status: Todo] **G-Neo Robustness**: G-Neoの置換効果は現在 `TransitionCommand` 内でハードコードされていますが、将来的にはより汎用的な「置換効果イベントシステム」への移行が望まれます。
+4.  [Status: Todo] **Evolution Condition Refinement**: 進化条件（特定の種族や文明からのみ進化可能）のロジックは、現在簡易的なチェックに留まっており、将来的に `FilterDef` を用いた厳密な定義に対応する必要があります。
 
 ## 5. 運用ルール (Operational Rules)
 *   **テストコードの配置**: すべてのテストコード（Python）はプロジェクトルートの `tests/` ディレクトリに集約する。`python/tests/` などの他のディレクトリには新規テストを作成しないこと。

@@ -52,7 +52,7 @@ class CardEditForm(BaseEditForm):
 
         # Type
         self.type_combo = QComboBox()
-        types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE", "TAMASEED", "CROSS_GEAR", "CASTLE", "PSYCHIC_CREATURE", "GR_CREATURE", "NEO_CREATURE"]
+        types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE", "TAMASEED", "CASTLE", "NEO_CREATURE", "G_NEO_CREATURE"]
         self.populate_combo(self.type_combo, types, data_func=lambda x: x)
         self.add_field(tr("Type"), self.type_combo)
 
@@ -190,7 +190,7 @@ class CardEditForm(BaseEditForm):
         self.lbl_power.setVisible(not is_spell)
 
         # Evolution Condition
-        is_evolution = (type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE")
+        is_evolution = (type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE" or type_str == "G_NEO_CREATURE")
         self.evolution_condition_edit.setVisible(is_evolution)
         self.evolution_condition_edit.setEnabled(is_evolution)
         self.lbl_evolution_condition.setVisible(is_evolution)
@@ -215,7 +215,7 @@ class CardEditForm(BaseEditForm):
         data['races'] = [r.strip() for r in races_str.split(',') if r.strip()]
 
         # Save evolution condition if applicable
-        if not (type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE"):
+        if not (type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE" or type_str == "G_NEO_CREATURE"):
              if 'evolution_condition' in data:
                  del data['evolution_condition']
 
@@ -225,10 +225,22 @@ class CardEditForm(BaseEditForm):
         # EXCEPT for auto-setting evolution keyword?
 
         current_keywords = data.get('keywords', {})
-        if type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE":
+
+        # Clear specific flags first
+        if 'evolution' in current_keywords: del current_keywords['evolution']
+        if 'neo' in current_keywords: del current_keywords['neo']
+        if 'g_neo' in current_keywords: del current_keywords['g_neo']
+
+        if type_str == "EVOLUTION_CREATURE":
             current_keywords['evolution'] = True
-        elif 'evolution' in current_keywords:
-            del current_keywords['evolution']
+        elif type_str == "NEO_CREATURE":
+            current_keywords['evolution'] = True
+            current_keywords['neo'] = True
+        elif type_str == "G_NEO_CREATURE":
+            current_keywords['evolution'] = True
+            current_keywords['neo'] = True
+            current_keywords['g_neo'] = True
+
         data['keywords'] = current_keywords
 
     def _get_display_text(self, data):
