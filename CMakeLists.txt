@@ -28,6 +28,11 @@ else()
     add_compile_options(-Wno-deprecated-literal-operator)
 endif()
 
+if(WIN32)
+    # Ensure dependencies like onnxruntime.dll can be found if they are in the same dir
+    # This might not be strictly necessary for building, but good practice
+endif()
+
 # --- Dependencies ---
 # Pybind11 is required for Python bindings (Phase 3)
 # Try to find an installed pybind11 first; if not present, fetch it via FetchContent

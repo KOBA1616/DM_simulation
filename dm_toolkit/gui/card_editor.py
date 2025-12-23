@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence
+from dm_toolkit.utils.paths import get_resource_path
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
 from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
@@ -109,6 +110,7 @@ class CardEditor(QMainWindow):
         self.inspector.structure_update_requested.connect(self.on_structure_update)
 
     def load_data(self):
+        # json_path is already processed by get_resource_path in app.py before being passed here
         if os.path.exists(self.json_path):
             try:
                 with open(self.json_path, 'r', encoding='utf-8') as f:

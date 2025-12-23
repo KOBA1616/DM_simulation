@@ -5,11 +5,8 @@ import random
 import json
 import csv
 
-# Ensure bin is in path for dm_ai_module
-current_dir = os.path.dirname(os.path.abspath(__file__))
-bin_dir = os.path.join(current_dir, "../../../bin")
-if os.path.exists(bin_dir):
-    sys.path.append(bin_dir)
+from dm_toolkit.utils.paths import ensure_bin_in_path, get_resource_path
+ensure_bin_in_path()
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -40,7 +37,7 @@ class GameWindow(QMainWindow):
         # Game State
         self.gs = dm_ai_module.GameState(42)
         self.gs.setup_test_duel()
-        self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+        self.card_db = dm_ai_module.JsonLoader.load_cards(get_resource_path("data/cards.json"))
         dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
         
         self.p0_deck_ids = None
@@ -347,14 +344,14 @@ class GameWindow(QMainWindow):
         self.deck_builder.show()
 
     def open_card_editor(self):
-        self.card_editor = CardEditor("data/cards.json")
+        self.card_editor = CardEditor(get_resource_path("data/cards.json"))
         self.card_editor.data_saved.connect(self.reload_card_data)
         self.card_editor.show()
 
     def reload_card_data(self):
         try:
-            self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-            self.civ_map = self.build_civ_map()
+            self.card_db = dm_ai_module.JsonLoader.load_cards(get_resource_path("data/cards.json"))
+            # self.civ_map = self.build_civ_map() # Assuming this is not needed or handled elsewhere as it was commented out in original if logic didn't exist
 
             # Refresh Deck Builder if open
             if hasattr(self, 'deck_builder') and self.deck_builder.isVisible():
@@ -383,9 +380,10 @@ class GameWindow(QMainWindow):
         self.sim_dialog.show()
 
     def load_deck_p0(self):
-        os.makedirs("data/decks", exist_ok=True)
+        deck_dir = get_resource_path("data/decks")
+        os.makedirs(deck_dir, exist_ok=True)
         fname, _ = QFileDialog.getOpenFileName(
-            self, tr("Load Deck P0"), "data/decks", "JSON Files (*.json)"
+            self, tr("Load Deck P0"), deck_dir, "JSON Files (*.json)"
         )
         if fname:
             try:
@@ -401,9 +399,10 @@ class GameWindow(QMainWindow):
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
     def load_deck_p1(self):
-        os.makedirs("data/decks", exist_ok=True)
+        deck_dir = get_resource_path("data/decks")
+        os.makedirs(deck_dir, exist_ok=True)
         fname, _ = QFileDialog.getOpenFileName(
-            self, tr("Load Deck P1"), "data/decks", "JSON Files (*.json)"
+            self, tr("Load Deck P1"), deck_dir, "JSON Files (*.json)"
         )
         if fname:
             try:
