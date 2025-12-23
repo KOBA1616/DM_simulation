@@ -1,7 +1,7 @@
 #include "lethal_solver.hpp"
 #include <algorithm>
-#include <iostream>
 #include <vector>
+#include <map>
 #include <cmath>
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
@@ -11,18 +11,134 @@ namespace dm::ai {
     using namespace dm::core;
     using namespace dm::engine;
 
-    // Helper struct for detailed attacker info
-    struct AttackerDetail {
-        int instance_id;
+    // Search Structures
+    struct SimAttacker {
+        int index; // Bit index in mask
         int power;
-        int breaker_count; // 1 = Single, 2 = Double, 3 = Triple
-        bool is_unblockable;
-        bool can_attack_creatures; // For future use (clearing blockers)
+        int breaker; // 999 for World Breaker
+        bool unblockable;
+        // Future: bool slayer, bool untaps_after_win, etc.
     };
 
-    struct BlockerDetail {
-        int instance_id;
+    struct SimBlocker {
+        int index; // Bit index in mask
         int power;
+        // Future: bool slayer, bool blocks_multiple, etc.
+    };
+
+    // State key for memoization
+    struct SearchState {
+        uint64_t attacker_mask;
+        uint64_t blocker_mask;
+        int shields;
+
+        bool operator<(const SearchState& other) const {
+            if (attacker_mask != other.attacker_mask) return attacker_mask < other.attacker_mask;
+            if (blocker_mask != other.blocker_mask) return blocker_mask < other.blocker_mask;
+            return shields < other.shields;
+        }
+    };
+
+    class LethalDFS {
+        const std::vector<SimAttacker>& attackers;
+        const std::vector<SimBlocker>& blockers;
+        std::map<SearchState, bool> memo;
+        int initial_shields;
+
+    public:
+        LethalDFS(const std::vector<SimAttacker>& a, const std::vector<SimBlocker>& b, int shields)
+            : attackers(a), blockers(b), initial_shields(shields) {}
+
+        bool solve(SearchState state) {
+            // Check memoization
+            auto it = memo.find(state);
+            if (it != memo.end()) return it->second;
+
+            // Base case: No attackers left
+            if (state.attacker_mask == 0) {
+                // If we haven't won yet (shields <= 0 checked at transition), we lose this branch
+                return false;
+            }
+
+            // Max Node (Attacker Choice)
+            // We want to find AT LEAST ONE attack that guarantees a win.
+
+            bool can_force_win = false;
+
+            for (const auto& att : attackers) {
+                if (!((state.attacker_mask >> att.index) & 1)) continue;
+
+                if (simulate_attack(att, state)) {
+                    can_force_win = true;
+                    break; // Pruning: Found a winning move
+                }
+            }
+
+            memo[state] = can_force_win;
+            return can_force_win;
+        }
+
+        bool simulate_attack(const SimAttacker& att, SearchState state) {
+            // Min Node (Opponent Choice)
+            // Opponent wants to find AT LEAST ONE response that prevents our win.
+            // If they find a survival path, this attack fails (return false).
+            // If ALL responses lead to our win, return true.
+
+            // 1. Path: No Block
+            {
+                // Check direct attack condition
+                if (state.shields <= 0) {
+                    // Direct attack successful -> WIN
+                    // This path leads to Win.
+                    // Opponent cannot choose this to survive.
+                    // So we treat this as "Opponent cannot survive via No Block".
+                    // (Proceed to check Block)
+                } else {
+                    // Shield Break
+                    SearchState next_state = state;
+                    next_state.attacker_mask &= ~(1ULL << att.index); // Attacker taps/used
+
+                    int damage = att.breaker;
+                    if (damage >= 999) next_state.shields = 0; // World Breaker
+                    else next_state.shields = std::max(0, state.shields - damage);
+
+                    // Recursively check if we can win from the post-break state
+                    if (!solve(next_state)) {
+                        return false; // Opponent survives by taking the hit
+                    }
+                }
+            }
+
+            // If unblockable, No Block is the only option.
+            // Since we passed the check above (didn't return false), it means No Block leads to Win.
+            if (att.unblockable) return true;
+
+            // 2. Path: Block with eligible blocker
+            for (const auto& blk : blockers) {
+                if (!((state.blocker_mask >> blk.index) & 1)) continue;
+
+                // Assumption: Filter logic already verified this blocker can block.
+                // In future, check "can block this specific creature" here.
+
+                SearchState next_state = state;
+                next_state.attacker_mask &= ~(1ULL << att.index); // Attacker taps
+                next_state.blocker_mask &= ~(1ULL << blk.index);  // Blocker taps
+
+                // Combat Logic (Who dies?)
+                // Currently, death implies removal from mask for NEXT turns.
+                // But taps also imply removal from mask.
+                // So effectively both are removed from the available pool for this turn.
+                // (Unless "Untap" abilities exist).
+                // For this implementation, removing from mask is correct.
+
+                if (!solve(next_state)) {
+                    return false; // Opponent survives by blocking with 'blk'
+                }
+            }
+
+            // If we get here, it means Opponent cannot survive via No Block AND cannot survive via any Block.
+            return true;
+        }
     };
 
     bool LethalSolver::is_lethal(const GameState& game_state,
@@ -32,17 +148,16 @@ namespace dm::ai {
         const Player& opponent = game_state.players[1 - game_state.active_player_id];
 
         // 1. Gather Attackers
-        std::vector<AttackerDetail> attackers;
+        std::vector<SimAttacker> attackers;
+        int att_index = 0;
 
         for (const auto& card : active_player.battle_zone) {
-            // Definition Check
             if (!card_db.count(card.card_id)) continue;
             const auto& def = card_db.at(card.card_id);
 
-            // Use Unified Logic - Strict Player Attack Check
             bool can_attack = TargetUtils::can_attack_player(card, def, game_state, card_db);
 
-            // Manual Passive Check (since TargetUtils cannot depend on PassiveEffectSystem)
+            // Manual Passive Check
             if (can_attack) {
                 if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_ATTACK, card_db)) {
                     can_attack = false;
@@ -51,119 +166,50 @@ namespace dm::ai {
 
             if (!can_attack) continue;
 
-            AttackerDetail info;
-            info.instance_id = card.instance_id;
+            SimAttacker info;
+            info.index = att_index++;
             info.power = def.power;
 
-            // Breaker Capability
-            info.breaker_count = 1;
-            if (def.keywords.world_breaker) info.breaker_count = 999;
-            else if (def.keywords.triple_breaker) info.breaker_count = 3;
-            else if (def.keywords.double_breaker) info.breaker_count = 2;
+            info.breaker = 1;
+            if (def.keywords.world_breaker) info.breaker = 999;
+            else if (def.keywords.triple_breaker) info.breaker = 3;
+            else if (def.keywords.double_breaker) info.breaker = 2;
 
-            // Unblockable Capability
-            info.is_unblockable = def.keywords.unblockable;
+            info.unblockable = def.keywords.unblockable;
 
             attackers.push_back(info);
+            if (att_index >= 64) break; // Safety limit
         }
 
         // 2. Gather Blockers
-        std::vector<BlockerDetail> blockers;
+        std::vector<SimBlocker> blockers;
+        int blk_index = 0;
+
         for (const auto& card : opponent.battle_zone) {
             if (!card.is_tapped) {
                 if (card_db.count(card.card_id)) {
                     const auto& def = card_db.at(card.card_id);
                     if (def.keywords.blocker) {
-                        blockers.push_back({card.instance_id, def.power});
+                        SimBlocker info;
+                        info.index = blk_index++;
+                        info.power = def.power;
+                        blockers.push_back(info);
+                        if (blk_index >= 64) break;
                     }
                 }
             }
         }
 
-        int blockers_count = blockers.size();
         int opponent_shields = opponent.shield_zone.size();
 
-        // 3. Simulation Logic
-        // Strategy:
-        // Attackers want to maximize shield damage to reach direct attack.
-        // Defenders want to minimize shield damage or prevent direct attack.
-        // Assuming "Greedy" play from both sides for Solver.
+        // 3. Run Search
+        SearchState initial_state;
+        initial_state.attacker_mask = (attackers.size() == 64) ? ~0ULL : ((1ULL << attackers.size()) - 1);
+        initial_state.blocker_mask = (blockers.size() == 64) ? ~0ULL : ((1ULL << blockers.size()) - 1);
+        initial_state.shields = opponent_shields;
 
-        // Sort Attackers:
-        // Priority 1: Unblockable (Guaranteed damage) - put them effectively last?
-        // No, put High Breakers first to force blocks.
-        // If we have Unblockable Breakers, they guarantee breaks.
-        // If we have Blockable Breakers, they consume blockers.
-
-        // Let's sort blockable attackers by Breaker Count (Desc).
-        // Let's keep unblockable separately or mark them.
-
-        std::vector<AttackerDetail> blockable_attackers;
-        std::vector<AttackerDetail> unblockable_attackers;
-
-        for (const auto& att : attackers) {
-            if (att.is_unblockable) {
-                unblockable_attackers.push_back(att);
-            } else {
-                blockable_attackers.push_back(att);
-            }
-        }
-
-        // Sort blockable attackers: Highest breakers first.
-        std::sort(blockable_attackers.begin(), blockable_attackers.end(), [](const AttackerDetail& a, const AttackerDetail& b) {
-            return a.breaker_count > b.breaker_count;
-        });
-
-        // Resolve Blocks
-        // Defender strategy: Block the highest threat.
-        // "Threat" usually means Breaker Count.
-        // So Defender consumes blockers against the first N blockable attackers.
-
-        std::vector<AttackerDetail> successful_attackers;
-
-        // Add all unblockables (they are always successful)
-        successful_attackers.insert(successful_attackers.end(), unblockable_attackers.begin(), unblockable_attackers.end());
-
-        // Process blockables
-        for (const auto& att : blockable_attackers) {
-            if (blockers_count > 0) {
-                // Blocked!
-                // Assumption: Blocker defeats Attacker or stops it.
-                // We ignore "Blocker destruction" or "Slayer" for now in this Greedy Solver.
-                // Just assume the attack is stopped.
-                blockers_count--;
-            } else {
-                // Not blocked
-                successful_attackers.push_back(att);
-            }
-        }
-
-        // 4. Resolve Breaks
-        // Now we have a list of attackers that hit.
-        // We need to see if they can clear shields and land a direct attack.
-
-        std::sort(successful_attackers.begin(), successful_attackers.end(), [](const AttackerDetail& a, const AttackerDetail& b) {
-            return a.breaker_count > b.breaker_count;
-        });
-
-        int current_shields = opponent_shields;
-        int direct_attacks_landed = 0;
-
-        for (const auto& att : successful_attackers) {
-            if (current_shields > 0) {
-                int breaks = std::min(current_shields, att.breaker_count);
-                current_shields -= breaks;
-
-                // Note: If breaker_count > current_shields, the excess is lost (doesn't carry over to players).
-                // But wait, if shields become 0 *during* this attack, this attacker does NOT continue to player.
-                // The attack resolves on shields.
-            } else {
-                // Shields are 0. Direct Attack!
-                direct_attacks_landed++;
-            }
-        }
-
-        return direct_attacks_landed > 0;
+        LethalDFS dfs(attackers, blockers, opponent_shields);
+        return dfs.solve(initial_state);
     }
 
 }
