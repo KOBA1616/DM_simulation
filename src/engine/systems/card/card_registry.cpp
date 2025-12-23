@@ -24,19 +24,19 @@ namespace dm::engine {
         if (act.destination_zone.empty() == false) cmd.to_zone = act.destination_zone;
 
         switch (act.type) {
-            case EffectActionType::DRAW_CARD: cmd.type = CommandType::DRAW_CARD; break;
-            case EffectActionType::ADD_MANA: cmd.type = CommandType::MANA_CHARGE; break;
-            case EffectActionType::DESTROY: cmd.type = CommandType::DESTROY; break;
-            case EffectActionType::RETURN_TO_HAND: cmd.type = CommandType::RETURN_TO_HAND; break;
-            case EffectActionType::TAP: cmd.type = CommandType::TAP; break;
-            case EffectActionType::UNTAP: cmd.type = CommandType::UNTAP; break;
-            case EffectActionType::MODIFY_POWER: cmd.type = CommandType::POWER_MOD; break;
-            case EffectActionType::BREAK_SHIELD: cmd.type = CommandType::BREAK_SHIELD; break;
-            case EffectActionType::DISCARD: cmd.type = CommandType::DISCARD; break;
-            case EffectActionType::SEARCH_DECK: cmd.type = CommandType::SEARCH_DECK; break;
-            case EffectActionType::GRANT_KEYWORD: cmd.type = CommandType::ADD_KEYWORD; break;
-            case EffectActionType::SEND_TO_MANA: cmd.type = CommandType::MANA_CHARGE; break;
-            case EffectActionType::MOVE_CARD: cmd.type = CommandType::TRANSITION; break;
+            case EffectPrimitive::DRAW_CARD: cmd.type = CommandType::DRAW_CARD; break;
+            case EffectPrimitive::ADD_MANA: cmd.type = CommandType::MANA_CHARGE; break;
+            case EffectPrimitive::DESTROY: cmd.type = CommandType::DESTROY; break;
+            case EffectPrimitive::RETURN_TO_HAND: cmd.type = CommandType::RETURN_TO_HAND; break;
+            case EffectPrimitive::TAP: cmd.type = CommandType::TAP; break;
+            case EffectPrimitive::UNTAP: cmd.type = CommandType::UNTAP; break;
+            case EffectPrimitive::MODIFY_POWER: cmd.type = CommandType::POWER_MOD; break;
+            case EffectPrimitive::BREAK_SHIELD: cmd.type = CommandType::BREAK_SHIELD; break;
+            case EffectPrimitive::DISCARD: cmd.type = CommandType::DISCARD; break;
+            case EffectPrimitive::SEARCH_DECK: cmd.type = CommandType::SEARCH_DECK; break;
+            case EffectPrimitive::GRANT_KEYWORD: cmd.type = CommandType::ADD_KEYWORD; break;
+            case EffectPrimitive::SEND_TO_MANA: cmd.type = CommandType::MANA_CHARGE; break;
+            case EffectPrimitive::MOVE_CARD: cmd.type = CommandType::TRANSITION; break;
             default: cmd.type = CommandType::NONE; break;
         }
         return cmd;

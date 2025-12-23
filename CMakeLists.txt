@@ -159,7 +159,7 @@ set(SRC_CORE
 
 # Engine (Phase 2)
 set(SRC_ENGINE
-    src/engine/actions/action_generator.cpp
+    src/engine/actions/intent_generator.cpp
     src/engine/actions/strategies/pending_strategy.cpp
     src/engine/actions/strategies/stack_strategy.cpp
     src/engine/actions/strategies/phase_strategies.cpp
