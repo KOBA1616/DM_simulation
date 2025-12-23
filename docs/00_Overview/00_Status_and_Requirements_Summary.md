@@ -25,9 +25,9 @@
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
 現在、**Phase 1: Game Engine Reliability** および **Phase 6: Engine Overhaul** の実装が完了し、C++コア（`dm_ai_module`）のビルドは安定しています。
-2025年2月の開発サイクルにおいて、コスト軽減システムの柔軟性向上に取り組み、動的な値（ドロー枚数など）に基づくコスト計算を実現しました。
+2025年2月の開発サイクルにおいて、Pythonインテグレーション（バインディング）の修復と、CI（Continuous Integration）環境でのテスト通過率の向上に注力しました。
 
-直近では「動的コスト軽減（Dynamic Cost Reduction）」機能を実装し、特定の統計値（カードドロー数、マナ数、シールド数など）を参照してコストを増減させるメカニズムを導入しました。
+直近では「スマートな進化（Smart Evolution）」評価指標の実装に伴い、C++ゲームエンジンにおける `MOVE_CARD` アクション（マナチャージ等で使用）のハンドリング不具合を修正しました。
 
 ## 2. 現行システムステータス (Current Status)
 
@@ -36,21 +36,21 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` を削除し、`GameLogicSystem` へ完全移行しました。
 *   [Status: Done] **GameLogicSystem Refactor**: `PipelineExecutor` を介したコマンド実行フローが確立されました。
 *   [Status: Done] **Action Generalization**: 全アクションハンドラーの `compile_action` 化が完了しました。
-*   [Status: Done] **Dynamic Cost Reduction**: `ModifierDef` および `CostModifier` に `value_reference` フィールドを追加し、`ManaSystem` にて動的な値（`CARDS_DRAWN_THIS_TURN` 等）に基づくコスト計算ロジックを実装しました。
+*   [Status: Done] **ActionType::MOVE_CARD Fix**: `GameLogicSystem` にて `MOVE_CARD` アクション（Type 2）のハンドリング処理を追加し、マナチャージ等のゾーン移動が正しく機能するように修正しました。また、フェーズ依存のフォールバックロジックを一時的に導入しています。
 
 ### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
 *   [Status: Done] **Directory Restructuring**: `python/gui` を `dm_toolkit/gui` へ移動しました。
 *   [Status: Done] **Encoding Audit**: ソースコードのShift-JIS対応完了。
 *   [Test: Pass] **GUI Tests (Headless)**: CI環境向けのスキップロジック実装済み。
-*   [Status: Done] **ModifierEditForm Update**: スタティックアビリティ編集画面（`ModifierEditForm`）に「値参照（Value Reference）」の選択プルダウンを追加し、固定値以外の動的参照設定を可能にしました。
 
 ### 2.3 テスト環境 (`tests/`)
 *   [Status: Done] **Directory Consolidation**: `python/tests/` を `tests/` へ統合。
-*   [Test: Fail] **Dynamic Cost Reduction Verification**: `tests/verify_dynamic_cost_reduction.py` は検証中ですが、Pythonバインディング経由での `ManaSystem` 呼び出しに一部型不整合の課題が残っています（実装自体はC++側で完了）。
+*   [Test: Pass] **Evolution Ecosystem Verify**: `dm_toolkit/training/evolution_ecosystem.py` がエラーなく実行可能であることを確認（ただし統計値が0になる問題あり）。
 
 ### 2.4 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
 *   [Status: WIP] **Smart Evolution Scoring**: `evolution_ecosystem.py` に「使用頻度」と「リソース使用」に基づく評価ロジックを追加しました。
     *   **実装**: `collect_smart_stats` 関数により、`GameInstance` を用いた統計収集ループを実装。
+    *   **課題**: C++側での修正によりマナチャージは機能していますが、Python側での統計集計（`get_card_stats` の結果）がまだ0のままです（IDマッチングの問題の可能性）。
 
 ## 3. ロードマップ (Roadmap)
 
@@ -58,19 +58,13 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 [Status: Review]
 パイプライン制御の安定化は完了。引き続きエッジケースの検証を行います。
 
-### 3.2 [Priority: High] Dynamic Cost & Stat Integration (動的コストと統計統合)
-[Status: Review]
-動的コスト軽減のコアロジックは実装完了しました。
-
-1.  [Status: Todo] **Verification Script Fix**: `ManaSystem` のPythonバインディングにおける型変換の問題を解決し、検証スクリプトをパスさせる。
-2.  [Status: Todo] **Self-Targeting Logic**: 現在の `TargetUtils` ロジックと `CostModifier` の相互作用（特に `owner="SELF"` フィルタの挙動）を詳細に検証する。
-
-### 3.3 [Priority: High] Evolution Ecosystem Refinement (進化エコシステムの改善)
+### 3.2 [Priority: High] Evolution Ecosystem Refinement (進化エコシステムの改善)
 [Status: WIP]
 スマートスコアの実装を行いました。次は統計収集の不具合修正とパフォーマンス改善です。
 
 1.  [Status: Todo] **Stats Aggregation Debug**: Python側で統計値が正しく集計されない問題（ID不整合等）を修正する。
 2.  [Status: Todo] **C++ Stats Migration**: 現在Pythonで行っている低速な統計収集ループを、C++の `ParallelRunner` に統合し、高速化・安定化を図る。
+3.  [Status: Todo] **Engine Cleanup**: `GameLogicSystem` に追加した `MOVE_CARD` のフェーズ依存フォールバックを、`ActionGenerator` 側の `destination_override` 設定修正により正規化する。
 
 ## 4. 今後の課題 (Future Tasks)
 
