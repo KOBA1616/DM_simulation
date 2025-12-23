@@ -87,5 +87,6 @@ C++側のリファクタリングは完了し、Python側からのリアクシ�
 3.  [Status: WIP] **Binding Restoration**: 残るテストケースの修正。
 
 ## 5. 運用ルール (Operational Rules)
+*   **テストコードの配置**: すべてのテストコード（Python）はプロジェクトルートの `tests/` ディレクトリに集約する。`python/tests/` などの他のディレクトリには新規テストを作成しないこと。
 *   **CI遵守**: `PyQt6` 依存テストはスキップし、必ずCIがグリーンになる状態でマージする。
 *   **バインディング追従**: C++変更時は必ず `src/bindings/bindings.cpp` を更新する。
