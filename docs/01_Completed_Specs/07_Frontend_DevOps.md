@@ -9,7 +9,7 @@
 - **Concurrency**: ポーリング方式による非同期更新.
 
 ## 7.2 開発補助
-- **Card Generator**: `tools/card_gen/`
+- **Card Generator**: `scripts/python/card_generator.py`
     - JSON定義ファイル (`data/card_effects.json`) からC++のカード効果実装コード (`generated_effects.hpp`) を自動生成。
     - **Supported Effects**: `mana_charge`, `draw_card`, `tap_all`, `destroy`, `bounce`.
     - 単純な効果（ドロー、マナブースト、破壊、バウンス）の実装工数を大幅に削減。

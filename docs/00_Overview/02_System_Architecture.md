@@ -53,8 +53,8 @@ dm_simulation/
 ├── tests/                      # Python Unit Tests & Integration Tests
 │   ├── test_card_creation_integration.py
 │   └── test_spiral_gate.py
-├── tools/                      # Development Tools
-│   └── card_gen/               # Card Logic Generator (JSON -> C++) [New]
+├── scripts/                    # Scripts & Development Tools
+│   └── python/                 # Python Utilities (Card Generator, etc.)
 ├── models/                     # Trained Models
 └── bin/                        # Compiled Executables
 ```
