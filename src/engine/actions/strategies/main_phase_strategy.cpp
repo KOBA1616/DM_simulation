@@ -36,8 +36,8 @@ namespace dm::engine {
                 }
                 if (prohibited) continue;
 
-                bool is_evolution = card_def.keywords.evolution || card_def.type == CardType::EVOLUTION_CREATURE;
-                bool is_neo = card_def.keywords.neo;
+                bool is_evolution = card_def.keywords.has(dm::core::Keyword::EVOLUTION) || card_def.type == CardType::EVOLUTION_CREATURE;
+                bool is_neo = card_def.keywords.has(dm::core::Keyword::NEO);
 
                 // NEO Creatures can be played as NORMAL or EVOLUTION.
                 // If Normal (or NEO choosing Normal):

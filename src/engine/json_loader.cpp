@@ -3,6 +3,9 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include "core/card_def.hpp"
+#include "core/keywords.hpp"
+#include <algorithm>
+#include <cctype>
 
 namespace dm::engine {
 
@@ -112,57 +115,41 @@ namespace dm::engine {
 
         // Keywords from explicit 'keywords' block
         if (data.keywords.has_value()) {
-            const auto& k = data.keywords.value();
-            if (k.count("g_zero")) def.keywords.g_zero = k.at("g_zero");
-            if (k.count("revolution_change")) def.keywords.revolution_change = k.at("revolution_change");
-            if (k.count("mach_fighter")) def.keywords.mach_fighter = k.at("mach_fighter");
-            if (k.count("g_strike")) def.keywords.g_strike = k.at("g_strike");
-            if (k.count("speed_attacker")) def.keywords.speed_attacker = k.at("speed_attacker");
-            if (k.count("blocker")) def.keywords.blocker = k.at("blocker");
-            if (k.count("slayer")) def.keywords.slayer = k.at("slayer");
-            if (k.count("double_breaker")) def.keywords.double_breaker = k.at("double_breaker");
-            if (k.count("triple_breaker")) def.keywords.triple_breaker = k.at("triple_breaker");
-            if (k.count("world_breaker")) def.keywords.world_breaker = k.at("world_breaker");
-            if (k.count("shield_trigger")) def.keywords.shield_trigger = k.at("shield_trigger");
-            if (k.count("evolution")) def.keywords.evolution = k.at("evolution");
-            if (k.count("neo")) def.keywords.neo = k.at("neo");
-            if (k.count("just_diver")) def.keywords.just_diver = k.at("just_diver");
-            if (k.count("hyper_energy")) def.keywords.hyper_energy = k.at("hyper_energy");
-            if (k.count("friend_burst")) def.keywords.friend_burst = k.at("friend_burst");
-            if (k.count("shield_burn")) def.keywords.shield_burn = k.at("shield_burn");
-            if (k.count("untap_in")) def.keywords.untap_in = k.at("untap_in");
-            if (k.count("meta_counter_play")) def.keywords.meta_counter_play = k.at("meta_counter_play");
-            if (k.count("power_attacker")) def.keywords.power_attacker = k.at("power_attacker");
-            if (k.count("ex_life")) def.keywords.ex_life = k.at("ex_life");
-            if (k.count("mega_last_burst")) def.keywords.mega_last_burst = k.at("mega_last_burst");
+            const auto& kws = *data.keywords;
+            for (const auto& [key, val] : kws) {
+                if (val) {
+                    auto kw = string_to_keyword(key);
+                    if (kw) {
+                        def.keywords.add(*kw);
+                    }
+                }
+            }
         }
 
         // Auto-infer keywords from effects
         for (const auto& eff : data.effects) {
-            if (eff.trigger == TriggerType::ON_PLAY) def.keywords.cip = true;
-            if (eff.trigger == TriggerType::ON_ATTACK) def.keywords.at_attack = true;
-            if (eff.trigger == TriggerType::ON_DESTROY) def.keywords.destruction = true;
-            if (eff.trigger == TriggerType::S_TRIGGER) def.keywords.shield_trigger = true;
+            if (eff.trigger == TriggerType::ON_PLAY) def.keywords.add(dm::core::Keyword::CIP);
+            if (eff.trigger == TriggerType::ON_ATTACK) def.keywords.add(dm::core::Keyword::AT_ATTACK);
+            if (eff.trigger == TriggerType::ON_DESTROY) def.keywords.add(dm::core::Keyword::DESTRUCTION);
+            if (eff.trigger == TriggerType::S_TRIGGER) def.keywords.add(dm::core::Keyword::SHIELD_TRIGGER);
 
             if (eff.trigger == TriggerType::PASSIVE_CONST) {
-                 for (const auto& act : eff.actions) {
-                      if (act.str_val == "SPEED_ATTACKER") def.keywords.speed_attacker = true;
-                      if (act.str_val == "BLOCKER") def.keywords.blocker = true;
-                      if (act.str_val == "SLAYER") def.keywords.slayer = true;
-                      if (act.str_val == "DOUBLE_BREAKER") def.keywords.double_breaker = true;
-                      if (act.str_val == "TRIPLE_BREAKER") def.keywords.triple_breaker = true;
-                      if (act.str_val == "WORLD_BREAKER") def.keywords.world_breaker = true;
-                      if (act.str_val == "MACH_FIGHTER") def.keywords.mach_fighter = true;
-                      if (act.str_val == "POWER_ATTACKER") {
-                           def.keywords.power_attacker = true;
-                           def.power_attacker_bonus = act.value1;
-                      }
+                 for (const auto& action : eff.actions) {
+                    std::string k_str = action.str_val;
+                    std::transform(k_str.begin(), k_str.end(), k_str.begin(), ::tolower);
+                    auto kw = string_to_keyword(k_str);
+                    if (kw) {
+                        def.keywords.add(*kw);
+                        if (*kw == dm::core::Keyword::POWER_ATTACKER) {
+                            def.power_attacker_bonus = action.value1;
+                        }
+                    }
                  }
             }
         }
 
         if (data.revolution_change_condition.has_value()) {
-            def.keywords.revolution_change = true;
+            def.keywords.add(dm::core::Keyword::REVOLUTION_CHANGE);
             def.revolution_change_condition = data.revolution_change_condition;
         }
 
@@ -177,11 +164,11 @@ namespace dm::engine {
 
             // Legacy Conversion: If commands are empty but actions exist
             if (engine_eff.commands.empty() && !engine_eff.actions.empty()) {
-                std::cout << "Converting Legacy Actions. Count: " << engine_eff.actions.size() << std::endl;
+                // std::cout << "Converting Legacy Actions. Count: " << engine_eff.actions.size() << std::endl;
                 engine_eff.commands.reserve(engine_eff.actions.size());
                 for (const auto& act : engine_eff.actions) {
                     CommandDef cmd = convert_legacy_action(act);
-                    std::cout << "Converted ActionType " << (int)act.type << " to CommandType " << (int)cmd.type << std::endl;
+                    // std::cout << "Converted ActionType " << (int)act.type << " to CommandType " << (int)cmd.type << std::endl;
                     if (cmd.type != CommandType::NONE) {
                         engine_eff.commands.push_back(cmd);
                     }

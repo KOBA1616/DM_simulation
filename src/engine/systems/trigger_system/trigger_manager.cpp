@@ -149,7 +149,7 @@ namespace dm::engine::systems {
                 const CardInstance* card = state.get_card_instance(instance_id);
                 if (card && card_db.count(card->card_id)) {
                     const auto& def = card_db.at(card->card_id);
-                    if (def.keywords.shield_trigger) {
+                    if (def.keywords.has(dm::core::Keyword::SHIELD_TRIGGER)) {
                         ReactionCandidate c;
                         c.card_id = card->card_id;
                         c.instance_id = instance_id;
@@ -173,7 +173,7 @@ namespace dm::engine::systems {
                     if (!card_db.count(hand_card.card_id)) continue;
                     const auto& def = card_db.at(hand_card.card_id);
 
-                    if (def.keywords.revolution_change) {
+                    if (def.keywords.has(dm::core::Keyword::REVOLUTION_CHANGE)) {
                         if (def.revolution_change_condition.has_value()) {
                             bool match = TargetUtils::is_valid_target(*attacker, card_db.at(attacker->card_id),
                                                                     def.revolution_change_condition.value(),

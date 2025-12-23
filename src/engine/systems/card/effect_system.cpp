@@ -102,7 +102,7 @@ namespace dm::engine {
             active_effects.insert(active_effects.end(), data.effects.begin(), data.effects.end());
             active_effects.insert(active_effects.end(), data.metamorph_abilities.begin(), data.metamorph_abilities.end());
 
-            if (data.keywords.friend_burst && trigger == TriggerType::ON_PLAY) {
+            if (data.keywords.has(dm::core::Keyword::FRIEND_BURST) && trigger == TriggerType::ON_PLAY) {
                 EffectDef fb_effect;
                 fb_effect.trigger = TriggerType::ON_PLAY;
 
@@ -482,7 +482,7 @@ namespace dm::engine {
          if (!def_ptr) return;
          const auto& def = *def_ptr;
 
-         if (def.keywords.mega_last_burst && def.spell_side) {
+         if (def.keywords.has(dm::core::Keyword::MEGA_LAST_BURST) && def.spell_side) {
              PlayerID controller = get_controller(game_state, card.instance_id);
 
              EffectDef eff;

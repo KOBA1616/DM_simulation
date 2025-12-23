@@ -112,7 +112,7 @@ namespace dm::engine {
                                                const dm::core::GameState& game_state,
                                                dm::core::PlayerID opponent_id) { // opponent_id is who is trying to target
              (void)opponent_id;
-             if (!def.keywords.just_diver) return false;
+             if (!def.keywords.has(dm::core::Keyword::JUST_DIVER)) return false;
              return game_state.turn_number == card.turn_played;
         }
 
@@ -169,7 +169,7 @@ namespace dm::engine {
 
             if (card.summoning_sickness) {
                 bool has_sa = has_keyword_simple(game_state, card, def, "SPEED_ATTACKER");
-                bool is_evo = (def.type == dm::core::CardType::EVOLUTION_CREATURE) || def.keywords.evolution;
+                bool is_evo = (def.type == dm::core::CardType::EVOLUTION_CREATURE) || def.keywords.has(dm::core::Keyword::EVOLUTION);
                 bool has_mach = has_keyword_simple(game_state, card, def, "MACH_FIGHTER");
 
                 // Can attack creatures if SA, Evo, or Mach Fighter
@@ -189,7 +189,7 @@ namespace dm::engine {
 
             if (card.summoning_sickness) {
                 bool has_sa = has_keyword_simple(game_state, card, def, "SPEED_ATTACKER");
-                bool is_evo = (def.type == dm::core::CardType::EVOLUTION_CREATURE) || def.keywords.evolution;
+                bool is_evo = (def.type == dm::core::CardType::EVOLUTION_CREATURE) || def.keywords.has(dm::core::Keyword::EVOLUTION);
 
                 // Mach Fighter does NOT allow attacking players
                 if (!has_sa && !is_evo) {
@@ -229,18 +229,18 @@ namespace dm::engine {
             return false;
         }
         static bool is_evolution(const dm::core::CardDefinition& c) {
-            return c.type == dm::core::CardType::EVOLUTION_CREATURE || c.keywords.evolution;
+            return c.type == dm::core::CardType::EVOLUTION_CREATURE || c.keywords.has(dm::core::Keyword::EVOLUTION);
         }
         static bool is_blocker(const dm::core::CardDefinition& c) {
-            return c.keywords.blocker;
+            return c.keywords.has(dm::core::Keyword::BLOCKER);
         }
         static bool has_keyword_intrinsic(const dm::core::CardDefinition& c, const std::string& k) {
-            if (k == "BLOCKER") return c.keywords.blocker;
-            if (k == "SPEED_ATTACKER") return c.keywords.speed_attacker;
-            if (k == "SLAYER") return c.keywords.slayer;
-            if (k == "POWER_ATTACKER") return c.keywords.power_attacker;
-            if (k == "MACH_FIGHTER") return c.keywords.mach_fighter;
-            if (k == "SHIELD_TRIGGER") return c.keywords.shield_trigger; // Added
+            if (k == "BLOCKER") return c.keywords.has(dm::core::Keyword::BLOCKER);
+            if (k == "SPEED_ATTACKER") return c.keywords.has(dm::core::Keyword::SPEED_ATTACKER);
+            if (k == "SLAYER") return c.keywords.has(dm::core::Keyword::SLAYER);
+            if (k == "POWER_ATTACKER") return c.keywords.has(dm::core::Keyword::POWER_ATTACKER);
+            if (k == "MACH_FIGHTER") return c.keywords.has(dm::core::Keyword::MACH_FIGHTER);
+            if (k == "SHIELD_TRIGGER") return c.keywords.has(dm::core::Keyword::SHIELD_TRIGGER); // Added
             return false;
         }
     };

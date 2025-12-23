@@ -231,7 +231,7 @@ namespace dm::engine {
                         const auto& card = player.hand[k];
                         if (card_db.count(card.card_id)) {
                             const auto& def = card_db.at(card.card_id);
-                            if (def.keywords.revolution_change) {
+                            if (def.keywords.has(dm::core::Keyword::REVOLUTION_CHANGE)) {
                                 // Validate Condition
                                 bool valid_condition = true;
                                 if (def.revolution_change_condition.has_value()) {

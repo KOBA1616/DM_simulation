@@ -1,9 +1,12 @@
 #include "json_loader.hpp"
 #include "card_registry.hpp"
 #include "core/card_json_types.hpp"
+#include "core/keywords.hpp"
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <algorithm>
+#include <cctype>
 
 namespace dm::engine {
 
@@ -43,7 +46,7 @@ namespace dm::engine {
         // Revolution Change
         if (data.revolution_change_condition.has_value()) {
             def.revolution_change_condition = data.revolution_change_condition;
-            def.keywords.revolution_change = true;
+            def.keywords.add(dm::core::Keyword::REVOLUTION_CHANGE);
         }
 
         // Reaction Abilities
@@ -57,50 +60,36 @@ namespace dm::engine {
         // Keywords from explicit 'keywords' block (e.g. S-Trigger)
         if (data.keywords.has_value()) {
             const auto& kws = *data.keywords;
-            if (kws.count("shield_trigger") && kws.at("shield_trigger")) def.keywords.shield_trigger = true;
-            if (kws.count("blocker") && kws.at("blocker")) def.keywords.blocker = true;
-            if (kws.count("speed_attacker") && kws.at("speed_attacker")) def.keywords.speed_attacker = true;
-            if (kws.count("slayer") && kws.at("slayer")) def.keywords.slayer = true;
-            if (kws.count("double_breaker") && kws.at("double_breaker")) def.keywords.double_breaker = true;
-            if (kws.count("triple_breaker") && kws.at("triple_breaker")) def.keywords.triple_breaker = true;
-            if (kws.count("mach_fighter") && kws.at("mach_fighter")) def.keywords.mach_fighter = true;
-            if (kws.count("evolution") && kws.at("evolution")) def.keywords.evolution = true;
-            if (kws.count("g_strike") && kws.at("g_strike")) def.keywords.g_strike = true;
-            if (kws.count("just_diver") && kws.at("just_diver")) def.keywords.just_diver = true;
-            if (kws.count("shield_burn") && kws.at("shield_burn")) def.keywords.shield_burn = true;
-            if (kws.count("untap_in") && kws.at("untap_in")) def.keywords.untap_in = true;
-            if (kws.count("unblockable") && kws.at("unblockable")) def.keywords.unblockable = true;
-            // Add other keywords as needed
+            for (const auto& [key, val] : kws) {
+                if (val) {
+                    auto kw = string_to_keyword(key);
+                    if (kw) {
+                        def.keywords.add(*kw);
+                    }
+                }
+            }
         }
 
         // Keywords mapping from effects
         for (const auto& eff : data.effects) {
             // 1. Trigger Flags
-            if (eff.trigger == TriggerType::S_TRIGGER) def.keywords.shield_trigger = true;
-            if (eff.trigger == TriggerType::ON_PLAY) def.keywords.cip = true;
-            if (eff.trigger == TriggerType::ON_ATTACK) def.keywords.at_attack = true;
-            if (eff.trigger == TriggerType::ON_DESTROY) def.keywords.destruction = true;
+            if (eff.trigger == TriggerType::S_TRIGGER) def.keywords.add(dm::core::Keyword::SHIELD_TRIGGER);
+            if (eff.trigger == TriggerType::ON_PLAY) def.keywords.add(dm::core::Keyword::CIP);
+            if (eff.trigger == TriggerType::ON_ATTACK) def.keywords.add(dm::core::Keyword::AT_ATTACK);
+            if (eff.trigger == TriggerType::ON_DESTROY) def.keywords.add(dm::core::Keyword::DESTRUCTION);
 
             // 2. Passive Keywords (Blocker, Speed Attacker, etc.)
             if (eff.trigger == TriggerType::PASSIVE_CONST) {
                 for (const auto& action : eff.actions) {
-                    if (action.str_val == "BLOCKER") def.keywords.blocker = true;
-                    if (action.str_val == "SPEED_ATTACKER") def.keywords.speed_attacker = true;
-                    if (action.str_val == "SLAYER") def.keywords.slayer = true;
-                    if (action.str_val == "DOUBLE_BREAKER") def.keywords.double_breaker = true;
-                    if (action.str_val == "TRIPLE_BREAKER") def.keywords.triple_breaker = true;
-                    if (action.str_val == "POWER_ATTACKER") {
-                        def.keywords.power_attacker = true;
-                        def.power_attacker_bonus = action.value1;
+                    std::string k_str = action.str_val;
+                    std::transform(k_str.begin(), k_str.end(), k_str.begin(), ::tolower);
+                    auto kw = string_to_keyword(k_str);
+                    if (kw) {
+                        def.keywords.add(*kw);
+                        if (*kw == dm::core::Keyword::POWER_ATTACKER) {
+                            def.power_attacker_bonus = action.value1;
+                        }
                     }
-                    if (action.str_val == "EVOLUTION") def.keywords.evolution = true;
-                    if (action.str_val == "MACH_FIGHTER") def.keywords.mach_fighter = true;
-                    if (action.str_val == "G_STRIKE") def.keywords.g_strike = true;
-                    if (action.str_val == "JUST_DIVER") def.keywords.just_diver = true;
-                    if (action.str_val == "HYPER_ENERGY") def.keywords.hyper_energy = true;
-                    if (action.str_val == "META_COUNTER") def.keywords.meta_counter_play = true;
-                    if (action.str_val == "SHIELD_BURN") def.keywords.shield_burn = true;
-                    if (action.str_val == "UNBLOCKABLE") def.keywords.unblockable = true;
                 }
             }
         }
@@ -130,12 +119,6 @@ namespace dm::engine {
                     // Backward compatibility: allow single "civilization" field
                     if (card.civilizations.empty() && item.contains("civilization")) {
             std::string civ_str = item.at("civilization").get<std::string>();
-            // Since we defined the JSON serializer for Civilization, we cannot push_back string directly.
-            // We must convert manually if we are doing this manual patch.
-            // Actually, CardData::civilizations is vector<Civilization>.
-            // nlohmann::json deserializes string to Enum automatically if using get<Civilization>().
-            // But here we are patching the struct after load.
-            // We should use JsonLoader::parse_civilization logic or similar.
             if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
             else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
             else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);

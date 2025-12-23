@@ -8,7 +8,7 @@ namespace dm::engine {
         static void apply_tap_in_rule(dm::core::CardInstance& card, const dm::core::CardDefinition& def) {
              // Multi-color tap-in logic
              if (def.civilizations.size() > 1) {
-                 if (!def.keywords.untap_in) {
+                 if (!def.keywords.has(dm::core::Keyword::UNTAP_IN)) {
                      card.is_tapped = true;
                  }
              }

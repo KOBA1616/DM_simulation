@@ -242,7 +242,7 @@ namespace dm::ai {
         for (const auto& card : opp.shield_zone) {
             if (card_db_.find(card.card_id) != card_db_.end()) {
                 const auto& def = card_db_.at(card.card_id);
-                if (def.keywords.shield_trigger) {
+                if (def.keywords.has(Keyword::SHIELD_TRIGGER)) {
                     trigger_count++;
                 }
             }

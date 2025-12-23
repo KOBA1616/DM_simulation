@@ -88,7 +88,7 @@ namespace dm::ai {
 
         // 3. Evolution Synergy
         // If c1 is evolution and c2 has matching race -> High Score
-        if (c1.keywords.evolution) {
+        if (c1.keywords.has(Keyword::EVOLUTION)) {
             for (const auto& r2 : c2.races) {
                  // Simplified check: usually race match is enough.
                  // Ideally check if c1 evolves FROM r2.

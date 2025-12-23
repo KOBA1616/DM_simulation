@@ -57,12 +57,12 @@ namespace dm::ai {
 
             // Breaker Capability
             info.breaker_count = 1;
-            if (def.keywords.world_breaker) info.breaker_count = 999;
-            else if (def.keywords.triple_breaker) info.breaker_count = 3;
-            else if (def.keywords.double_breaker) info.breaker_count = 2;
+            if (def.keywords.has(Keyword::WORLD_BREAKER)) info.breaker_count = 999;
+            else if (def.keywords.has(Keyword::TRIPLE_BREAKER)) info.breaker_count = 3;
+            else if (def.keywords.has(Keyword::DOUBLE_BREAKER)) info.breaker_count = 2;
 
             // Unblockable Capability
-            info.is_unblockable = def.keywords.unblockable;
+            info.is_unblockable = def.keywords.has(Keyword::UNBLOCKABLE);
 
             attackers.push_back(info);
         }
@@ -73,7 +73,7 @@ namespace dm::ai {
             if (!card.is_tapped) {
                 if (card_db.count(card.card_id)) {
                     const auto& def = card_db.at(card.card_id);
-                    if (def.keywords.blocker) {
+                    if (def.keywords.has(Keyword::BLOCKER)) {
                         blockers.push_back({card.instance_id, def.power});
                     }
                 }

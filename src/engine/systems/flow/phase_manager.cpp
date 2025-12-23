@@ -197,7 +197,7 @@ namespace dm::engine {
         for (const auto& card : active_player.battle_zone) {
             if (card_db.count(card.card_id)) {
                 const auto& def = card_db.at(card.card_id);
-                if (def.keywords.at_start_of_turn) {
+                if (def.keywords.has(dm::core::Keyword::AT_START_OF_TURN)) {
                     game_state.pending_effects.emplace_back(EffectType::AT_START_OF_TURN, card.instance_id, active_player.id);
                 }
             }
@@ -360,7 +360,7 @@ namespace dm::engine {
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
 
-                        if (def.keywords.meta_counter_play) {
+                        if (def.keywords.has(dm::core::Keyword::META_COUNTER_PLAY)) {
                             if (game_state.turn_stats.played_without_mana) {
                                 game_state.pending_effects.emplace_back(EffectType::META_COUNTER, card.instance_id, opponent.id);
                             }
@@ -386,7 +386,7 @@ namespace dm::engine {
                 for (const auto& card : active_player.battle_zone) {
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
-                        if (def.keywords.at_end_of_turn) {
+                        if (def.keywords.has(dm::core::Keyword::AT_END_OF_TURN)) {
                             game_state.pending_effects.emplace_back(EffectType::AT_END_OF_TURN, card.instance_id, active_player.id);
                         }
                     }

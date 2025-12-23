@@ -7,44 +7,32 @@
 #include <memory>
 #include "card_json_types.hpp" // Include for FilterDef, CostReductionDef
 #include <algorithm> // For std::find
+#include "keywords.hpp"
 
 namespace dm::core {
 
     // 3.2 カードデータ構造
     
     // AltCostKeywords flags and other boolean properties
+    // Refactored to use generic bitset based on Keyword enum
     struct CardKeywords {
-        bool g_zero : 1;
-        bool revolution_change : 1;
-        bool mach_fighter : 1;
-        bool g_strike : 1;
-        bool speed_attacker : 1;
-        bool blocker : 1;
-        bool slayer : 1;
-        bool double_breaker : 1;
-        bool triple_breaker : 1;
-        bool world_breaker : 1;
-        bool power_attacker : 1;
-        bool shield_trigger : 1;
-        bool evolution : 1;
-        bool neo : 1;             // Added for Step 2-4 (NEO / G-NEO)
-        // Triggers
-        bool cip : 1;             // Comes Into Play
-        bool at_attack : 1;       // Attack Trigger
-        bool at_block : 1;        // Block Trigger
-        bool at_start_of_turn : 1;
-        bool at_end_of_turn : 1;
-        bool destruction : 1;     // Destruction Trigger
+        std::bitset<static_cast<size_t>(Keyword::COUNT)> flags;
 
-        bool just_diver : 1;      // Just Diver
-        bool hyper_energy : 1;    // Phase 5 (Hyper Energy)
-        bool meta_counter_play : 1; // Phase 5 (Meta Counter)
-        bool shield_burn : 1;     // Shield Incineration (Burn)
-        bool untap_in : 1;        // Step 1-2 (Multi-color Tap-in Exception)
-        bool unblockable : 1;     // Unblockable
-        bool friend_burst : 1;    // Friend Burst (New Requirement)
-        bool ex_life : 1;         // Ex-Life
-        bool mega_last_burst : 1; // Mega Last Burst
+        bool has(Keyword k) const {
+            return flags.test(static_cast<size_t>(k));
+        }
+
+        void add(Keyword k) {
+            flags.set(static_cast<size_t>(k));
+        }
+
+        void remove(Keyword k) {
+            flags.reset(static_cast<size_t>(k));
+        }
+
+        void set(Keyword k, bool val) {
+            flags.set(static_cast<size_t>(k), val);
+        }
     };
 
     // Mode Selection: ModalEffectGroup stores selectable modes [Q71]

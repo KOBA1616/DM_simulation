@@ -116,7 +116,7 @@ namespace dm::engine::systems {
         FilterDef evo_filter;
         if (card_db.count(card->card_id)) {
             const auto& def = card_db.at(card->card_id);
-            if (def.keywords.evolution) {
+            if (def.keywords.has(dm::core::Keyword::EVOLUTION)) {
                 is_evolution = true;
                 // Task B: Refined Evolution Filters
                 evo_filter.zones = {"BATTLE_ZONE"};
@@ -283,10 +283,10 @@ namespace dm::engine::systems {
 
         // Slayer check
         bool attacker_slayer = false;
-        if (card_db.count(attacker->card_id)) attacker_slayer = card_db.at(attacker->card_id).keywords.slayer;
+        if (card_db.count(attacker->card_id)) attacker_slayer = card_db.at(attacker->card_id).keywords.has(dm::core::Keyword::SLAYER);
 
         bool defender_slayer = false;
-        if (card_db.count(defender->card_id)) defender_slayer = card_db.at(defender->card_id).keywords.slayer;
+        if (card_db.count(defender->card_id)) defender_slayer = card_db.at(defender->card_id).keywords.has(dm::core::Keyword::SLAYER);
 
         if (power_attacker > power_defender) {
             defender_dies = true;
@@ -337,7 +337,7 @@ namespace dm::engine::systems {
         const auto* card = state.get_card_instance(shield_id);
         if (card && card_db.count(card->card_id)) {
             const auto& def = card_db.at(card->card_id);
-            if (def.keywords.shield_trigger) {
+            if (def.keywords.has(dm::core::Keyword::SHIELD_TRIGGER)) {
 
                 std::string decision_key = "$strigger_decision_" + std::to_string(shield_id);
                 ContextValue val = exec.get_context_var(decision_key);
