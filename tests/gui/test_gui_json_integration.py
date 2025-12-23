@@ -89,7 +89,7 @@ try:
 except ImportError as e:
     raise RuntimeError(f"Failed to import CardDataManager: {e}")
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../bin'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
 try:
     import dm_ai_module
     from dm_ai_module import Civilization, CardType
