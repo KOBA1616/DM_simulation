@@ -101,7 +101,7 @@ namespace dm::ai {
                     if (games_completed == total_games && inf_queue.queue.empty()) break;
 
                     while (!inf_queue.queue.empty()) {
-                        batch.push_back(inf_queue.queue.front().get());
+                        batch.push_back(inf_queue.queue.front());
                         inf_queue.queue.pop();
                         if (batch.size() >= 32) break;
                     }
@@ -216,7 +216,7 @@ namespace dm::ai {
                     if (completed_worlds == num_worlds && inf_queue.queue.empty()) break;
 
                     while (!inf_queue.queue.empty()) {
-                        batch.push_back(inf_queue.queue.front().get());
+                        batch.push_back(inf_queue.queue.front());
                         inf_queue.queue.pop();
                         if (batch.size() >= 32) break;
                     }
@@ -360,7 +360,7 @@ namespace dm::ai {
             auto setup_deck = [&](dm::core::Player& p, const std::vector<dm::core::CardID>& deck_list) {
                 p.deck.clear();
                 for(auto cid : deck_list) {
-                    p.deck.emplace_back(cid, instance_counter++);
+                    p.deck.emplace_back(cid, instance_counter++, p.id);
                 }
                 std::mt19937 rng(seed + p.id);
                 std::shuffle(p.deck.begin(), p.deck.end(), rng);
