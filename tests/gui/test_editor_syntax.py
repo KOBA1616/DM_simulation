@@ -9,7 +9,6 @@ class TestCardEditorSyntax(unittest.TestCase):
             print("PyQt6 not installed, skipping test")
             return
 
-        sys.path.append('python')
         try:
             from dm_toolkit.gui.card_editor import CardEditor
         except ImportError as e:
