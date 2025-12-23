@@ -76,24 +76,24 @@ namespace dm::engine {
         // Player 0 (Me)
         if (!config.my_deck.empty()) {
              for (int cid : config.my_deck) {
-                  state.players[0].deck.emplace_back((CardID)cid, instance_id_counter++);
+                  state.players[0].deck.emplace_back((CardID)cid, instance_id_counter++, (PlayerID)0);
              }
         } else {
              // Fallback to dummy deck
              for(int i=0; i<30; ++i) {
-                  state.players[0].deck.emplace_back((CardID)1, instance_id_counter++);
+                  state.players[0].deck.emplace_back((CardID)1, instance_id_counter++, (PlayerID)0);
              }
         }
 
         // Player 1 (Enemy)
         if (!config.enemy_deck.empty()) {
              for (int cid : config.enemy_deck) {
-                  state.players[1].deck.emplace_back((CardID)cid, instance_id_counter++);
+                  state.players[1].deck.emplace_back((CardID)cid, instance_id_counter++, (PlayerID)1);
              }
         } else {
              // Fallback to dummy deck
              for(int i=0; i<30; ++i) {
-                  state.players[1].deck.emplace_back((CardID)1, instance_id_counter++);
+                  state.players[1].deck.emplace_back((CardID)1, instance_id_counter++, (PlayerID)1);
              }
         }
 
@@ -102,37 +102,37 @@ namespace dm::engine {
 
         // Hand
         for (int cid : config.my_hand_cards) {
-            me.hand.emplace_back((CardID)cid, instance_id_counter++);
+            me.hand.emplace_back((CardID)cid, instance_id_counter++, me.id);
         }
 
         // Battle Zone
         for (int cid : config.my_battle_zone) {
-            CardInstance c((CardID)cid, instance_id_counter++);
+            CardInstance c((CardID)cid, instance_id_counter++, me.id);
             c.summoning_sickness = false; // Assume creatures on board are ready
             me.battle_zone.push_back(c);
         }
 
         // Mana Zone
         for (int cid : config.my_mana_zone) {
-            CardInstance c((CardID)cid, instance_id_counter++);
+            CardInstance c((CardID)cid, instance_id_counter++, me.id);
             c.is_tapped = false;
             me.mana_zone.push_back(c);
         }
 
         if (config.my_mana_zone.empty() && config.my_mana > 0) {
             for (int i = 0; i < config.my_mana; ++i) {
-                me.mana_zone.emplace_back(1, instance_id_counter++);
+                me.mana_zone.emplace_back(1, instance_id_counter++, me.id);
             }
         }
 
         // Graveyard
         for (int cid : config.my_grave_yard) {
-            me.graveyard.emplace_back((CardID)cid, instance_id_counter++);
+            me.graveyard.emplace_back((CardID)cid, instance_id_counter++, me.id);
         }
 
         // My Shields (Player 0)
         for (int cid : config.my_shields) {
-             me.shield_zone.emplace_back((CardID)cid, instance_id_counter++);
+             me.shield_zone.emplace_back((CardID)cid, instance_id_counter++, me.id);
         }
 
         // 3. Setup Enemy Resources (Player 1)
@@ -140,14 +140,14 @@ namespace dm::engine {
 
         // Enemy Battle Zone
         for (int cid : config.enemy_battle_zone) {
-            CardInstance c((CardID)cid, instance_id_counter++);
+            CardInstance c((CardID)cid, instance_id_counter++, enemy.id);
             c.summoning_sickness = false;
             enemy.battle_zone.push_back(c);
         }
 
         // Enemy Shields
         for (int i = 0; i < config.enemy_shield_count; ++i) {
-             enemy.shield_zone.emplace_back(1, instance_id_counter++);
+             enemy.shield_zone.emplace_back(1, instance_id_counter++, enemy.id);
         }
 
         // Initialize Owner Map
