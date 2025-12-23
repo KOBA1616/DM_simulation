@@ -51,17 +51,17 @@ namespace dm::ai {
                 SelfPlay sp(*card_db_, mcts_simulations_, batch_size_);
 
                 BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
-                    auto req_ptr = std::make_shared<InferenceRequest>();
-                    req_ptr->states.reserve(states.size());
+                    auto req = std::make_shared<InferenceRequest>();
+                    req->states.reserve(states.size());
                     for (const auto& s : states) {
-                        req_ptr->states.push_back(s);
+                        req->states.push_back(s);
                     }
 
-                    auto fut = req_ptr->promise.get_future();
+                    auto fut = req->promise.get_future();
 
                     {
                         std::lock_guard<std::mutex> lock(inf_queue.mutex);
-                        inf_queue.queue.push(req_ptr);
+                        inf_queue.queue.push(req);
                     }
                     inf_queue.cv.notify_one();
                     return fut.get();
@@ -177,16 +177,16 @@ namespace dm::ai {
                 MCTS mcts(*card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
 
                 BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
-                    auto req_ptr = std::make_shared<InferenceRequest>();
-                    req_ptr->states.reserve(states.size());
+                    auto req = std::make_shared<InferenceRequest>();
+                    req->states.reserve(states.size());
                     for (const auto& s : states) {
-                        req_ptr->states.push_back(s);
+                        req->states.push_back(s);
                     }
-                    auto fut = req_ptr->promise.get_future();
+                    auto fut = req->promise.get_future();
 
                     {
                         std::lock_guard<std::mutex> lock(inf_queue.mutex);
-                        inf_queue.queue.push(req_ptr);
+                        inf_queue.queue.push(req);
                     }
                     inf_queue.cv.notify_one();
                     return fut.get();
