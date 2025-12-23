@@ -218,7 +218,7 @@ namespace dm::engine {
 }
 ```
 
-#### 1.3 `src/python/bindings.cpp` の修正
+#### 1.3 `src/bindings/bindings.cpp` の修正
 *   **目的**: `GameInstance` と `ScenarioConfig` をPythonに公開する。
 *   **変更点**:
     *   `py::class_<ScenarioConfig>(m, "ScenarioConfig")` を定義。
@@ -230,7 +230,7 @@ namespace dm::engine {
 
 ### Step 1: PBTワーカーの実装
 
-#### 1.1 `python/training/pbt_worker.py` の作成
+#### 1.1 `dm_toolkit/training/pbt_worker.py` の作成
 *   **目的**: ハイパーパラメータを変異させながら学習するワーカー。
 *   **内容**:
 ```python
@@ -348,11 +348,11 @@ vec = pb.get_vector()   # numpy配列として受け取れる
 ```
 
 - **テスト & デバッグ**:
-    - トレースベースの統合テストは `python/tests/` に配置されています。例: `python/tests/data/trace_battle.json`。
+    - トレースベースの統合テストは `tests/` に配置されています。例: `tests/data/trace_battle.json`。
     - ローカルでpytestを走らせる際は、ビルドした拡張モジュールのパスを `PYTHONPATH` に追加してください（Windows PowerShellの例）:
 
 ```powershell
-$env:PYTHONPATH = "$PWD/build/python"; pytest -q python/tests/test_pomdp_trace_battle.py
+$env:PYTHONPATH = "$PWD/build/python"; pytest -q tests/test_pomdp_trace_battle.py
 ```
 
     - CIでは `PYTHONPATH` を設定済みのワークフローを用いています。テストが期待通りに失敗する場合は、`test_pomdp_transition.py` と `test_pomdp_weights.py` を確認し、`set_weights` / `set_reveal_weight` の値を調整してください。
@@ -364,7 +364,7 @@ $env:PYTHONPATH = "$PWD/build/python"; pytest -q python/tests/test_pomdp_trace_b
 ---
 
 ### 次の推奨作業
-- `POMDP: Add more traces (battle/shield/graveyard)` を優先して完了してください（`python/tests/data/` に新規トレースを追加し、対応する `python/tests/test_pomdp_trace_*.py` を追加）。
+- `POMDP: Add more traces (battle/shield/graveyard)` を優先して完了してください（`tests/data/` に新規トレースを追加し、対応する `tests/test_pomdp_trace_*.py` を追加）。
 - その後、`docs/` にあるこの節を `README` か `docs/POMDP_ParametricBelief_Usage.md` として分離し、開発者向け手順として参照可能にしてください。
 
 ---
