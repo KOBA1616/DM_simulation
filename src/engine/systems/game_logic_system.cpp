@@ -110,38 +110,6 @@ namespace dm::engine::systems {
                 PhaseManager::next_phase(state, card_db);
                 break;
             }
-            case ActionType::DECLARE_PLAY:
-            {
-                int iid = action.source_instance_id;
-                int pid = state.active_player_id;
-                // Move to Stack
-                auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::STACK, pid);
-                state.execute_command(std::move(cmd));
-                break;
-            }
-            case ActionType::PAY_COST:
-            {
-                int iid = action.source_instance_id;
-                // Auto tap mana
-                if (auto* c = state.get_card_instance(iid)) {
-                    if (card_db.count(c->card_id)) {
-                        const auto& def = card_db.at(c->card_id);
-                        ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
-                    }
-                    // Mark as paid (using is_tapped flag on stack card)
-                    c->is_tapped = true;
-                }
-                break;
-            }
-            case ActionType::RESOLVE_PLAY:
-            {
-                nlohmann::json args;
-                args["card"] = action.source_instance_id;
-                Instruction inst(InstructionOp::GAME_ACTION, args);
-                inst.args["type"] = "RESOLVE_PLAY";
-                handle_resolve_play(pipeline, state, inst, card_db);
-                break;
-            }
             case ActionType::MANA_CHARGE:
             case ActionType::MOVE_CARD: // Handle MOVE_CARD if used for mana charge
             {
