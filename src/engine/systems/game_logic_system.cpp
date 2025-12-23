@@ -37,6 +37,23 @@ namespace dm::engine::systems {
             }
             case ActionType::RESOLVE_PLAY:
             {
+                // Record Stats
+                if (const auto* c = state.get_card_instance(action.source_instance_id)) {
+                    state.on_card_play(c->card_id, state.turn_number, false, 0, c->owner);
+
+                    // Update Turn Stats
+                    if (card_db.count(c->card_id)) {
+                        const auto& def = card_db.at(c->card_id);
+                        if (def.type == CardType::SPELL) {
+                             auto cmd = std::make_unique<StatCommand>(StatCommand::StatType::SPELLS_CAST, 1);
+                             state.execute_command(std::move(cmd));
+                        } else {
+                             auto cmd = std::make_unique<StatCommand>(StatCommand::StatType::CREATURES_PLAYED, 1);
+                             state.execute_command(std::move(cmd));
+                        }
+                    }
+                }
+
                 nlohmann::json args;
                 args["card"] = action.source_instance_id;
                 Instruction inst(InstructionOp::GAME_ACTION, args);
@@ -139,6 +156,10 @@ namespace dm::engine::systems {
 
                      auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, dest, pid);
                      state.execute_command(std::move(cmd));
+
+                     if (dest == Zone::MANA) {
+                         state.turn_stats.mana_charged_this_turn = true;
+                     }
                 }
                 break;
             }

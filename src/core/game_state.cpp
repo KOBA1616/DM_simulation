@@ -129,6 +129,7 @@ namespace dm::core {
         if(auto* c = find_in(players[pid].graveyard)) return c;
         if(auto* c = find_in(players[pid].deck)) return c;
         if(auto* c = find_in(players[pid].effect_buffer)) return c;
+        if(auto* c = find_in(players[pid].stack)) return c;
         if(auto* c = find_in(players[pid].hyper_spatial_zone)) return c;
         if(auto* c = find_in(players[pid].gr_deck)) return c;
         return nullptr;
