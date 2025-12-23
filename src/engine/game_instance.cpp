@@ -59,6 +59,7 @@ namespace dm::engine {
             std::cerr << "FATAL: pipeline is null!" << std::endl;
             return;
         }
+        state.active_pipeline = pipeline;
         systems::GameLogicSystem::dispatch_action(*pipeline, state, action, card_db);
         systems::ContinuousEffectSystem::recalculate(state, card_db);
     }
