@@ -6,7 +6,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import argparse
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict, Any
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
 
@@ -28,6 +28,10 @@ from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 from dm_toolkit.training.network_v2 import NetworkV2
 
 class DuelDataset(Dataset):
+    """
+    Custom Dataset for Duel Masters training data.
+    Supports both tokenized (Transformer) and state-vector (ResNet) inputs.
+    """
     def __init__(self, tokens: Optional[List[torch.Tensor]], states: Optional[torch.Tensor], policies: torch.Tensor, values: torch.Tensor, masks: Optional[torch.Tensor] = None):
         self.tokens = tokens
         self.states = states
@@ -35,10 +39,10 @@ class DuelDataset(Dataset):
         self.values = values
         self.masks = masks
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.policies)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
         item = {
             'policy': self.policies[idx],
             'value': self.values[idx]
@@ -52,7 +56,10 @@ class DuelDataset(Dataset):
             item['mask'] = self.masks[idx]
         return item
 
-def collate_batch(batch):
+def collate_batch(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Custom collate function to handle variable length token sequences.
+    """
     policies_list = [item['policy'] for item in batch]
     values_list = [item['value'] for item in batch]
 
@@ -66,6 +73,7 @@ def collate_batch(batch):
 
     if 'tokens' in batch[0]:
         tokens_list = [item['tokens'] for item in batch]
+        # Pad sequences for batch processing
         padded_tokens = pad_sequence(tokens_list, batch_first=True, padding_value=0)
         padding_mask = (padded_tokens == 0)
         valid_mask = ~padding_mask
@@ -85,7 +93,12 @@ def collate_batch(batch):
     return batch_out
 
 class Trainer:
-    def __init__(self, data_files: List[str], model_path=None, save_path="model.pth"):
+    """
+    Training pipeline for Duel Masters AI.
+    Automatically detects input data format (Tokens vs State Vector) and initializes
+    the appropriate network architecture (NetworkV2 vs AlphaZeroNetwork).
+    """
+    def __init__(self, data_files: List[str], model_path: Optional[str] = None, save_path: str = "model.pth"):
         self.save_path = save_path
 
         # Load multiple data files
@@ -103,7 +116,7 @@ class Trainer:
             try:
                 data = np.load(f, allow_pickle=True)
 
-                # Check for tokens first (Phase 8 Transformer)
+                # Check for tokens first (Phase 4/8 Transformer)
                 if 'tokens' in data:
                     self.use_transformer = True
                     # tokens is likely an object array of numpy arrays (jagged)
@@ -170,7 +183,7 @@ class Trainer:
 
             print(f"Detected Vocab Size: {self.vocab_size}, Max Seq Len: {self.max_seq_len}")
 
-            # self.network = DuelTransformer(self.vocab_size, self.action_size).to(self.device)
+            # Initialize NetworkV2
             self.network = NetworkV2(input_vocab_size=self.vocab_size,
                                      action_space=self.action_size,
                                      max_seq_len=self.max_seq_len).to(self.device)
@@ -197,7 +210,10 @@ class Trainer:
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=0.001)
 
-    def train(self, epochs=10, batch_size=64):
+    def train(self, epochs: int = 10, batch_size: int = 64):
+        """
+        Executes the training loop.
+        """
         self.network.train()
 
         dataloader = DataLoader(
@@ -223,7 +239,6 @@ class Trainer:
 
                 if self.use_transformer:
                     batch_tokens = batch['tokens'].to(self.device)
-                    # batch_padding_mask = batch['padding_mask'].to(self.device)
                     batch_valid_mask = batch['valid_mask'].to(self.device)
 
                     # Forward Pass with Valid Mask
@@ -260,7 +275,7 @@ class Trainer:
         torch.save(self.network.state_dict(), self.save_path)
         print(f"Model saved to {self.save_path}")
 
-        # Export
+        # Export logic (ONNX)
         self.network.eval()
         onnx_path = self.save_path.replace(".pth", ".onnx")
 
