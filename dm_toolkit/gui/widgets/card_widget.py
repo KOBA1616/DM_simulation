@@ -1,24 +1,28 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel, QHBoxLayout
+from PyQt6.QtWidgets import (
+    QFrame, QVBoxLayout, QLabel, QHBoxLayout, QMenu
+)
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QMouseEvent
-
+from PyQt6.QtGui import QAction, QCursor
 
 class CardWidget(QFrame):
     clicked = pyqtSignal(int)  # Emits instance_id
     hovered = pyqtSignal(int)  # Emits card_id
+    action_triggered = pyqtSignal(object) # Emits the action object
 
     def __init__(self, card_id, card_name, cost, power, civ, tapped=False,
-                 instance_id=-1, parent=None, is_face_down=False):
+                 instance_id=-1, parent=None, is_face_down=False, legal_actions=None):
         """
         civ: Can be a single string (e.g. "FIRE")
         or a list of strings (e.g. ["FIRE", "NATURE"]).
+        legal_actions: List of actions available for this card.
         """
         super().__init__(parent)
         self.card_id = card_id
         self.card_name = card_name
         self.cost = cost
         self.power = power
+        self.legal_actions = legal_actions if legal_actions else []
 
         # Normalize civ to list
         if isinstance(civ, list):
@@ -55,9 +59,48 @@ class CardWidget(QFrame):
         self.init_ui()
         self.update_style()
 
+    def update_legal_actions(self, actions):
+        self.legal_actions = actions
+
     def enterEvent(self, event):
         self.hovered.emit(self.card_id)
         super().enterEvent(event)
+
+    def contextMenuEvent(self, event):
+        """Show context menu on right click."""
+        if not self.legal_actions:
+            return
+
+        menu = QMenu(self)
+
+        # Categorize actions
+        # Simplified categorization logic
+        added_types = set()
+
+        for action in self.legal_actions:
+            action_str = action.to_string() # Fallback description
+
+            # Simple heuristic for display text
+            label = action_str
+            if "Play" in action_str: label = "Play Card"
+            elif "Attack" in action_str:
+                if "Player" in action_str: label = "Attack Player"
+                elif "Creature" in action_str: label = "Attack Creature"
+                else: label = "Attack"
+            elif "Mana" in action_str: label = "Charge Mana"
+            elif "Use Ability" in action_str: label = "Use Ability"
+
+            # De-duplicate identical labels if multiple similar actions exist (e.g. attack different shields)
+            # For simplicity, if we have multiple Attack Player (different shields), we might want to just show one "Attack Player"
+            # and let the engine resolve/ask target, BUT the engine usually generates distinct actions.
+            # For now, list them all but try to be descriptive.
+
+            act = QAction(label, self)
+            # Use a closure to capture the specific action
+            act.triggered.connect(lambda checked, a=action: self.action_triggered.emit(a))
+            menu.addAction(act)
+
+        menu.exec(event.globalPos())
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -178,8 +221,6 @@ class CardWidget(QFrame):
                 bg_style = "background-color: #E6E6FA;"
 
         # UX Improvement: Add hover style
-        # We need to explicitly define the hover state to change the border color
-        # This provides a subtle "lift" or focus effect
         self.setStyleSheet(f"""
             CardWidget {{
                 {bg_style}
@@ -187,7 +228,7 @@ class CardWidget(QFrame):
                 border-radius: 5px;
             }}
             CardWidget:hover {{
-                border: {border_width} solid {'#0078d7' if not self.selected else '#32CD32'}; /* Highlight blue or lighter green */
+                border: {border_width} solid {'#0078d7' if not self.selected else '#32CD32'};
             }}
         """)
 
