@@ -27,6 +27,7 @@
 #include "handlers/discard_handler.hpp"
 #include "handlers/play_handler.hpp"
 #include "handlers/modify_power_handler.hpp"
+#include "handlers/resolve_battle_handler.hpp"
 #include "engine/systems/command_system.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include <algorithm>
@@ -73,6 +74,7 @@ namespace dm::engine {
         register_handler(EffectActionType::DISCARD, std::make_unique<DiscardHandler>());
         register_handler(EffectActionType::PLAY_FROM_ZONE, std::make_unique<PlayHandler>());
         register_handler(EffectActionType::MODIFY_POWER, std::make_unique<ModifyPowerHandler>());
+        register_handler(EffectActionType::RESOLVE_BATTLE, std::make_unique<ResolveBattleHandler>());
 
         ConditionSystem::instance().initialize_defaults();
 
