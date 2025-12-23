@@ -51,17 +51,17 @@ namespace dm::ai {
                 SelfPlay sp(*card_db_, mcts_simulations_, batch_size_);
 
                 BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
-                    auto req = std::make_shared<InferenceRequest>();
-                    req->states.reserve(states.size());
+                    auto req_ptr = std::make_shared<InferenceRequest>();
+                    req_ptr->states.reserve(states.size());
                     for (const auto& s : states) {
-                        req->states.push_back(s);
+                        req_ptr->states.push_back(s);
                     }
 
-                    auto fut = req->promise.get_future();
+                    auto fut = req_ptr->promise.get_future();
 
                     {
                         std::lock_guard<std::mutex> lock(inf_queue.mutex);
-                        inf_queue.queue.push(req);
+                        inf_queue.queue.push(req_ptr);
                     }
                     inf_queue.cv.notify_one();
                     return fut.get();
@@ -91,7 +91,7 @@ namespace dm::ai {
 
         try {
             while (games_completed < total_games) {
-                std::vector<InferenceRequest*> batch;
+                std::vector<std::shared_ptr<InferenceRequest>> batch;
                 {
                     std::unique_lock<std::mutex> lock(inf_queue.mutex);
                     inf_queue.cv.wait_for(lock, std::chrono::milliseconds(1), [&] {
@@ -111,7 +111,7 @@ namespace dm::ai {
 
                 std::vector<std::shared_ptr<dm::core::GameState>> all_states;
                 std::vector<int> split_indices;
-                for (auto* req : batch) {
+                for (auto& req : batch) {
                     for (auto& s : req->states) {
                         all_states.push_back(s);
                     }
@@ -177,16 +177,16 @@ namespace dm::ai {
                 MCTS mcts(*card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
 
                 BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
-                    auto req = std::make_shared<InferenceRequest>();
-                    req->states.reserve(states.size());
+                    auto req_ptr = std::make_shared<InferenceRequest>();
+                    req_ptr->states.reserve(states.size());
                     for (const auto& s : states) {
-                        req->states.push_back(s);
+                        req_ptr->states.push_back(s);
                     }
-                    auto fut = req->promise.get_future();
+                    auto fut = req_ptr->promise.get_future();
 
                     {
                         std::lock_guard<std::mutex> lock(inf_queue.mutex);
-                        inf_queue.queue.push(req);
+                        inf_queue.queue.push(req_ptr);
                     }
                     inf_queue.cv.notify_one();
                     return fut.get();
@@ -206,7 +206,7 @@ namespace dm::ai {
 
         try {
             while (completed_worlds < num_worlds) {
-                std::vector<InferenceRequest*> batch;
+                std::vector<std::shared_ptr<InferenceRequest>> batch;
                 {
                     std::unique_lock<std::mutex> lock(inf_queue.mutex);
                     inf_queue.cv.wait_for(lock, std::chrono::milliseconds(1), [&] {
@@ -226,7 +226,7 @@ namespace dm::ai {
 
                 std::vector<std::shared_ptr<dm::core::GameState>> all_states;
                 std::vector<int> split_indices;
-                for (auto* req : batch) {
+                for (auto& req : batch) {
                     for (auto& s : req->states) {
                         all_states.push_back(s);
                     }
