@@ -30,7 +30,7 @@ namespace dm::ai {
         // 1. Mana Charge
         std::vector<Action> mana_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == ActionType::MANA_CHARGE || action.type == ActionType::MOVE_CARD) {
+            if (action.type == PlayerIntent::MANA_CHARGE || action.type == PlayerIntent::MOVE_CARD) {
                 mana_actions.push_back(action);
             }
         }
@@ -47,7 +47,7 @@ namespace dm::ai {
         // 2. Play Card
         std::vector<Action> play_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == ActionType::PLAY_CARD) {
+            if (action.type == PlayerIntent::PLAY_CARD) {
                 play_actions.push_back(action);
             }
         }
@@ -67,7 +67,7 @@ namespace dm::ai {
         // 3. Attack Player (Aggro)
         std::vector<Action> attack_player_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == ActionType::ATTACK_PLAYER) {
+            if (action.type == PlayerIntent::ATTACK_PLAYER) {
                 attack_player_actions.push_back(action);
             }
         }
@@ -80,7 +80,7 @@ namespace dm::ai {
         // 4. Attack Creature
         std::vector<Action> attack_creature_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == ActionType::ATTACK_CREATURE) {
+            if (action.type == PlayerIntent::ATTACK_CREATURE) {
                 attack_creature_actions.push_back(action);
             }
         }
@@ -93,7 +93,7 @@ namespace dm::ai {
         // 5. Block
         std::vector<Action> block_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == ActionType::BLOCK) {
+            if (action.type == PlayerIntent::BLOCK) {
                 block_actions.push_back(action);
             }
         }
@@ -120,7 +120,7 @@ namespace dm::ai {
         // 6. Select Target
         std::vector<Action> select_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == ActionType::SELECT_TARGET) {
+            if (action.type == PlayerIntent::SELECT_TARGET) {
                 select_actions.push_back(action);
             }
         }
@@ -133,7 +133,7 @@ namespace dm::ai {
         // 7. Shield Trigger
         std::vector<Action> st_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == ActionType::USE_SHIELD_TRIGGER) {
+            if (action.type == PlayerIntent::USE_SHIELD_TRIGGER) {
                 st_actions.push_back(action);
             }
         }
