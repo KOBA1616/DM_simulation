@@ -30,6 +30,7 @@ from dm_toolkit.gui.widgets.card_detail_panel import CardDetailPanel
 from dm_toolkit.gui.simulation_dialog import SimulationDialog
 from dm_toolkit.gui.widgets.stack_view import StackViewWidget
 from dm_toolkit.gui.widgets.loop_recorder import LoopRecorderWidget
+from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 
 class GameWindow(QMainWindow):
     def __init__(self):
@@ -260,6 +261,12 @@ class GameWindow(QMainWindow):
         self.p0_graveyard = ZoneWidget("P0 墓地")
         self.p0_hand = ZoneWidget("P0 手札")
         
+        # Connect Context Menu Signals
+        self.p0_hand.action_triggered.connect(self.execute_action)
+        self.p0_mana.action_triggered.connect(self.execute_action)
+        self.p0_battle.action_triggered.connect(self.execute_action)
+        self.p0_graveyard.action_triggered.connect(self.execute_action)
+
         self.p0_hand.card_clicked.connect(self.on_card_clicked)
         self.p0_mana.card_clicked.connect(self.on_card_clicked)
         self.p0_battle.card_clicked.connect(self.on_card_clicked)
@@ -473,6 +480,11 @@ class GameWindow(QMainWindow):
         if self.gs.waiting_for_user_input:
              if self.gs.pending_query.query_type == "SELECT_TARGET":
                  valid_targets = self.gs.pending_query.valid_targets
+
+                 # Check if we need to show a popup (Searching from Buffer/Stack)
+                 # If valid_targets are in BUFFER or STACK, usually they aren't clickable on board widgets
+                 # UNLESS the board widget (e.g. StackView) emits this signal.
+
                  if instance_id in valid_targets:
                      if instance_id in self.selected_targets:
                          self.selected_targets.remove(instance_id)
@@ -571,6 +583,46 @@ class GameWindow(QMainWindow):
                  self.step_phase()
 
         elif query.query_type == "SELECT_TARGET":
+             # CHECK FOR BUFFER/STACK SELECTION (POPUP REQUIRED)
+             valid_targets = query.valid_targets
+             if not valid_targets:
+                 # Should not happen, but safe guard
+                 return
+
+             # Inspect first target to guess location
+             first_target_id = valid_targets[0]
+             # We need to know if this card is in Buffer/Stack.
+             # Use GameState helper or check effect_buffer.
+
+             # Check if targets are in effect buffer
+             in_buffer = False
+             buffer_cards = self.gs.effect_buffer
+             for c in buffer_cards:
+                 if c.instance_id == first_target_id:
+                     in_buffer = True
+                     break
+
+             if in_buffer:
+                 # Show Popup
+                 items = []
+                 for tid in valid_targets:
+                     # Find card in buffer
+                     found = next((c for c in buffer_cards if c.instance_id == tid), None)
+                     if found:
+                         items.append(found) # CardInstance object (has card_id)
+
+                 min_sel = query.params.get('min', 1)
+                 max_sel = query.params.get('max', 99)
+
+                 dialog = CardSelectionDialog("Select Cards", "Please select cards:", items, min_sel, max_sel, self, self.card_db)
+                 if dialog.exec():
+                     indices = dialog.get_selected_indices()
+                     selected_instance_ids = [items[i].instance_id for i in indices]
+                     dm_ai_module.EffectResolver.resume(self.gs, self.card_db, selected_instance_ids)
+                     self.step_phase()
+                 return
+
+             # Otherwise, standard UI selection (Hand/Battle/Mana)
              # self.log_list.addItem(f"Please select {query.params['min']} target(s).")
              self.update_ui()
 
@@ -599,6 +651,54 @@ class GameWindow(QMainWindow):
                 actions = dm_ai_module.ActionGenerator.generate_legal_actions(
                     self.gs, self.card_db
                 )
+
+                # CHECK FOR TRIGGER SELECTION (Multiple RESOLVE_EFFECT)
+                resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
+                if len(resolve_actions) > 1:
+                    # Show Popup for Trigger Order/Selection
+                    # We need details about pending effects.
+                    # Use get_pending_effects_info(state) -> list of (type, source_id, controller)
+                    # This might not map 1:1 if multiple effects are from same source?
+                    # But RESOLVE_EFFECT usually maps to the top of stack OR specific index if implemented.
+
+                    # Assuming we can match actions to pending effects via slot_index
+                    pending_info = dm_ai_module.get_pending_effects_info(self.gs)
+
+                    # Map actions to descriptions
+                    items = []
+                    valid_actions = []
+
+                    for act in resolve_actions:
+                        idx = act.slot_index
+                        if 0 <= idx < len(pending_info):
+                            p_type, p_source, p_ctrl = pending_info[idx]
+                            c_def = self.card_db.get(p_source, None) # p_source is instance_id? No, usually card_id or we need look up.
+                            # Memory says: "get_pending_effects_info(state) returns a list of tuples (type, source_instance_id, controller)"
+
+                            source_name = "Unknown"
+                            if c_def: # If it was card_id
+                                source_name = c_def.name
+                            else:
+                                # Try to look up instance
+                                try:
+                                    inst = self.gs.get_card_instance(p_source)
+                                    c_def = self.card_db.get(inst.card_id)
+                                    source_name = c_def.name
+                                except:
+                                    source_name = f"Instance {p_source}"
+
+                            desc = f"Trigger: {p_type} (Controller: P{p_ctrl})"
+                            items.append({'source_name': source_name, 'description': desc, 'card_id': inst.card_id if 'inst' in locals() else -1})
+                            valid_actions.append(act)
+
+                    if items:
+                         dialog = CardSelectionDialog("Select Trigger", "Select effect to resolve:", items, 1, 1, self, self.card_db)
+                         if dialog.exec():
+                             indices = dialog.get_selected_indices()
+                             if indices:
+                                 self.execute_action(valid_actions[indices[0]])
+                                 return # Action executed, loop will continue
+
                 if not actions:
                     dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
                     # self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
@@ -664,6 +764,12 @@ class GameWindow(QMainWindow):
         p0 = self.gs.players[0]
         p1 = self.gs.players[1]
         
+        # Calculate legal actions for context menus
+        active_pid = self.gs.active_player_id
+        legal_actions = []
+        if active_pid == 0 and self.p0_human_radio.isChecked():
+             legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.gs, self.card_db)
+
         def convert_zone(zone_cards, hide=False):
             if hide:
                 return [{'id': -1, 'tapped': c.is_tapped, 'instance_id': c.instance_id} for c in zone_cards]
@@ -671,12 +777,12 @@ class GameWindow(QMainWindow):
             
         god_view = self.god_view_check.isChecked()
         
-        self.p0_hand.update_cards(convert_zone(p0.hand), self.card_db)
-        self.p0_mana.update_cards(convert_zone(p0.mana_zone), self.card_db)
-        self.p0_battle.update_cards(convert_zone(p0.battle_zone), self.card_db)
-        self.p0_shield.update_cards(convert_zone(p0.shield_zone), self.card_db)
-        self.p0_graveyard.update_cards(convert_zone(p0.graveyard), self.card_db)
-        self.p0_deck_zone.update_cards(convert_zone(p0.deck, hide=True), self.card_db)
+        self.p0_hand.update_cards(convert_zone(p0.hand), self.card_db, legal_actions=legal_actions)
+        self.p0_mana.update_cards(convert_zone(p0.mana_zone), self.card_db, legal_actions=legal_actions)
+        self.p0_battle.update_cards(convert_zone(p0.battle_zone), self.card_db, legal_actions=legal_actions)
+        self.p0_shield.update_cards(convert_zone(p0.shield_zone), self.card_db, legal_actions=legal_actions)
+        self.p0_graveyard.update_cards(convert_zone(p0.graveyard), self.card_db, legal_actions=legal_actions)
+        self.p0_deck_zone.update_cards(convert_zone(p0.deck, hide=True), self.card_db, legal_actions=legal_actions)
         
         self.p1_hand.update_cards(convert_zone(p1.hand, hide=not god_view), self.card_db)
         self.p1_mana.update_cards(convert_zone(p1.mana_zone), self.card_db)
