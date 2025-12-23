@@ -126,6 +126,7 @@ namespace dm::engine {
             if (k.count("shield_trigger")) def.keywords.shield_trigger = k.at("shield_trigger");
             if (k.count("evolution")) def.keywords.evolution = k.at("evolution");
             if (k.count("neo")) def.keywords.neo = k.at("neo");
+            if (k.count("g_neo")) def.keywords.g_neo = k.at("g_neo");
             if (k.count("just_diver")) def.keywords.just_diver = k.at("just_diver");
             if (k.count("hyper_energy")) def.keywords.hyper_energy = k.at("hyper_energy");
             if (k.count("friend_burst")) def.keywords.friend_burst = k.at("friend_burst");

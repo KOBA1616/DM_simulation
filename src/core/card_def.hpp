@@ -28,6 +28,7 @@ namespace dm::core {
         bool shield_trigger : 1;
         bool evolution : 1;
         bool neo : 1;             // Added for Step 2-4 (NEO / G-NEO)
+        bool g_neo : 1;           // G-Neo
         // Triggers
         bool cip : 1;             // Comes Into Play
         bool at_attack : 1;       // Attack Trigger
