@@ -1114,6 +1114,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init<>())
         .def_readwrite("states", &CollectedBatch::states)
         .def_readwrite("policies", &CollectedBatch::policies)
+        .def_readwrite("masks", &CollectedBatch::masks)
         .def_readwrite("values", &CollectedBatch::values);
 
     py::class_<DataCollector>(m, "DataCollector")
