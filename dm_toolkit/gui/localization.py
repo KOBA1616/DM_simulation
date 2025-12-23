@@ -219,153 +219,217 @@ TRANSLATIONS = {
 
 # Add Enum mappings if module is available
 if m:
-    # EffectActionType
-    TRANSLATIONS.update({
-        m.EffectActionType.GRANT_KEYWORD: "キーワード付与",
-        m.EffectActionType.MOVE_CARD: "カード移動",
-        m.EffectActionType.FRIEND_BURST: "フレンド・バースト",
-        m.EffectActionType.APPLY_MODIFIER: "効果付与",
-        m.EffectActionType.DRAW_CARD: "カードを引く",
-        m.EffectActionType.ADD_MANA: "マナ追加",
-        m.EffectActionType.DESTROY: "破壊",
-        m.EffectActionType.RETURN_TO_HAND: "手札に戻す",
-        m.EffectActionType.SEND_TO_MANA: "マナ送りにする",
-        m.EffectActionType.TAP: "タップする",
-        m.EffectActionType.UNTAP: "アンタップする",
-        m.EffectActionType.MODIFY_POWER: "パワー修正",
-        m.EffectActionType.BREAK_SHIELD: "シールドブレイク",
-        m.EffectActionType.LOOK_AND_ADD: "見て加える(サーチ)",
-        m.EffectActionType.SEARCH_DECK_BOTTOM: "デッキ下サーチ",
-        m.EffectActionType.MEKRAID: "メクレイド",
-        m.EffectActionType.REVOLUTION_CHANGE: "革命チェンジ",
-        m.EffectActionType.COUNT_CARDS: "カードカウント",
-        m.EffectActionType.GET_GAME_STAT: "ゲーム統計取得",
-        m.EffectActionType.REVEAL_CARDS: "カード公開",
-        m.EffectActionType.RESET_INSTANCE: "カード状態リセット",
-        m.EffectActionType.REGISTER_DELAYED_EFFECT: "遅延効果登録",
-        m.EffectActionType.SEARCH_DECK: "デッキ探索",
-        m.EffectActionType.SHUFFLE_DECK: "デッキシャッフル",
-        m.EffectActionType.ADD_SHIELD: "シールド追加",
-        m.EffectActionType.SEND_SHIELD_TO_GRAVE: "シールド焼却",
-        m.EffectActionType.SEND_TO_DECK_BOTTOM: "デッキ下に送る",
-        m.EffectActionType.MOVE_TO_UNDER_CARD: "カードの下に重ねる",
-        m.EffectActionType.CAST_SPELL: "呪文を唱える",
-        m.EffectActionType.PUT_CREATURE: "クリーチャーを出す",
-        m.EffectActionType.COST_REFERENCE: "コスト参照/軽減",
-        m.EffectActionType.SELECT_NUMBER: "数字を選択",
-        m.EffectActionType.SUMMON_TOKEN: "トークン生成",
-        m.EffectActionType.DISCARD: "手札を捨てる",
-        m.EffectActionType.PLAY_FROM_ZONE: "ゾーンからプレイ",
-        m.EffectActionType.LOOK_TO_BUFFER: "バッファへ移動(Look)",
-        m.EffectActionType.SELECT_FROM_BUFFER: "バッファから選択",
-        m.EffectActionType.PLAY_FROM_BUFFER: "バッファからプレイ",
-        m.EffectActionType.MOVE_BUFFER_TO_ZONE: "バッファから移動",
-        m.EffectActionType.SELECT_OPTION: "選択肢",
-        m.EffectActionType.RESOLVE_BATTLE: "バトル解決",
-    })
+    # EffectActionType (only if available on the module)
+    if hasattr(m, 'EffectActionType'):
+        TRANSLATIONS.update({
+            m.EffectActionType.GRANT_KEYWORD: "キーワード付与",
+            m.EffectActionType.MOVE_CARD: "カード移動",
+            m.EffectActionType.FRIEND_BURST: "フレンド・バースト",
+            m.EffectActionType.APPLY_MODIFIER: "効果付与",
+            m.EffectActionType.DRAW_CARD: "カードを引く",
+            m.EffectActionType.ADD_MANA: "マナ追加",
+            m.EffectActionType.DESTROY: "破壊",
+            m.EffectActionType.RETURN_TO_HAND: "手札に戻す",
+            m.EffectActionType.SEND_TO_MANA: "マナ送りにする",
+            m.EffectActionType.TAP: "タップする",
+            m.EffectActionType.UNTAP: "アンタップする",
+            m.EffectActionType.MODIFY_POWER: "パワー修正",
+            m.EffectActionType.BREAK_SHIELD: "シールドブレイク",
+            m.EffectActionType.LOOK_AND_ADD: "見て加える(サーチ)",
+            m.EffectActionType.SEARCH_DECK_BOTTOM: "デッキ下サーチ",
+            m.EffectActionType.MEKRAID: "メクレイド",
+            m.EffectActionType.REVOLUTION_CHANGE: "革命チェンジ",
+            m.EffectActionType.COUNT_CARDS: "カードカウント",
+            m.EffectActionType.GET_GAME_STAT: "ゲーム統計取得",
+            m.EffectActionType.REVEAL_CARDS: "カード公開",
+            m.EffectActionType.RESET_INSTANCE: "カード状態リセット",
+            m.EffectActionType.REGISTER_DELAYED_EFFECT: "遅延効果登録",
+            m.EffectActionType.SEARCH_DECK: "デッキ探索",
+            m.EffectActionType.SHUFFLE_DECK: "デッキシャッフル",
+            m.EffectActionType.ADD_SHIELD: "シールド追加",
+            m.EffectActionType.SEND_SHIELD_TO_GRAVE: "シールド焼却",
+            m.EffectActionType.SEND_TO_DECK_BOTTOM: "デッキ下に送る",
+            m.EffectActionType.MOVE_TO_UNDER_CARD: "カードの下に重ねる",
+            m.EffectActionType.CAST_SPELL: "呪文を唱える",
+            m.EffectActionType.PUT_CREATURE: "クリーチャーを出す",
+            m.EffectActionType.COST_REFERENCE: "コスト参照/軽減",
+            m.EffectActionType.SELECT_NUMBER: "数字を選択",
+            m.EffectActionType.SUMMON_TOKEN: "トークン生成",
+            m.EffectActionType.DISCARD: "手札を捨てる",
+            m.EffectActionType.PLAY_FROM_ZONE: "ゾーンからプレイ",
+            m.EffectActionType.LOOK_TO_BUFFER: "バッファへ移動(Look)",
+            m.EffectActionType.SELECT_FROM_BUFFER: "バッファから選択",
+            m.EffectActionType.PLAY_FROM_BUFFER: "バッファからプレイ",
+            m.EffectActionType.MOVE_BUFFER_TO_ZONE: "バッファから移動",
+            m.EffectActionType.SELECT_OPTION: "選択肢",
+            m.EffectActionType.RESOLVE_BATTLE: "バトル解決",
+        })
 
-    # ActionType
-    TRANSLATIONS.update({
-        m.ActionType.PLAY_CARD: "カードをプレイ",
-        m.ActionType.ATTACK_CREATURE: "クリーチャー攻撃",
-        m.ActionType.ATTACK_PLAYER: "プレイヤー攻撃",
-        m.ActionType.BLOCK: "ブロック",
-        m.ActionType.USE_SHIELD_TRIGGER: "S・トリガー使用",
-        m.ActionType.RESOLVE_EFFECT: "効果解決",
-        m.ActionType.SELECT_TARGET: "対象選択",
-        m.ActionType.USE_ABILITY: "能力使用",
-        m.ActionType.DECLARE_REACTION: "リアクション宣言",
-        m.ActionType.MANA_CHARGE: "マナチャージ",
-        m.ActionType.PASS: "パス",
-    })
+    # ActionType (map by name to avoid referencing missing enum attributes)
+    if hasattr(m, 'ActionType'):
+        _action_map = {
+            'PLAY_CARD': "カードをプレイ",
+            'ATTACK_CREATURE': "クリーチャー攻撃",
+            'ATTACK_PLAYER': "プレイヤー攻撃",
+            'BLOCK': "ブロック",
+            'USE_SHIELD_TRIGGER': "S・トリガー使用",
+            'RESOLVE_EFFECT': "効果解決",
+            'SELECT_TARGET': "対象選択",
+            'USE_ABILITY': "能力使用",
+            'DECLARE_REACTION': "リアクション宣言",
+            'MANA_CHARGE': "マナチャージ",
+            'PASS': "パス",
+        }
+        for _name, _text in _action_map.items():
+            _member = getattr(m.ActionType, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # TriggerType
-    TRANSLATIONS.update({
-        m.TriggerType.ON_PLAY: "出た時 (CIP)",
-        m.TriggerType.ON_ATTACK: "攻撃する時",
-        m.TriggerType.ON_DESTROY: "破壊された時",
-        m.TriggerType.S_TRIGGER: "S・トリガー",
-        m.TriggerType.TURN_START: "ターン開始時",
-        m.TriggerType.PASSIVE_CONST: "常在効果(パッシブ)",
-    })
+    if hasattr(m, 'TriggerType'):
+        _trigger_map = {
+            'ON_PLAY': "出た時 (CIP)",
+            'ON_ATTACK': "攻撃する時",
+            'ON_DESTROY': "破壊された時",
+            'S_TRIGGER': "S・トリガー",
+            'TURN_START': "ターン開始時",
+            'PASSIVE_CONST': "常在効果(パッシブ)",
+        }
+        for _name, _text in _trigger_map.items():
+            _member = getattr(m.TriggerType, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # Civilization
-    TRANSLATIONS.update({
-        m.Civilization.FIRE: "火",
-        m.Civilization.WATER: "水",
-        m.Civilization.NATURE: "自然",
-        m.Civilization.LIGHT: "光",
-        m.Civilization.DARKNESS: "闇",
-        m.Civilization.ZERO: "無色",
-    })
+    if hasattr(m, 'Civilization'):
+        _civ_map = {
+            'FIRE': "火",
+            'WATER': "水",
+            'NATURE': "自然",
+            'LIGHT': "光",
+            'DARKNESS': "闇",
+            'ZERO': "無色",
+        }
+        for _name, _text in _civ_map.items():
+            _member = getattr(m.Civilization, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # Zone
-    TRANSLATIONS.update({
-        m.Zone.HAND: "手札",
-        m.Zone.BATTLE: "バトルゾーン",
-        m.Zone.GRAVEYARD: "墓地",
-        m.Zone.MANA: "マナゾーン",
-        m.Zone.SHIELD: "シールドゾーン",
-        m.Zone.DECK: "デッキ",
-        m.Zone.BUFFER: "効果バッファ",
-    })
+    if hasattr(m, 'Zone'):
+        _zone_map = {
+            'HAND': "手札",
+            'BATTLE': "バトルゾーン",
+            'GRAVEYARD': "墓地",
+            'MANA': "マナゾーン",
+            'SHIELD': "シールドゾーン",
+            'DECK': "デッキ",
+            'BUFFER': "効果バッファ",
+        }
+        for _name, _text in _zone_map.items():
+            _member = getattr(m.Zone, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # TargetScope
-    TRANSLATIONS.update({
-        m.TargetScope.SELF: "自分",
-        m.TargetScope.TARGET_SELECT: "対象選択",
-        m.TargetScope.NONE: "なし",
-    })
+    if hasattr(m, 'TargetScope'):
+        _ts_map = {
+            'SELF': "自分",
+            'TARGET_SELECT': "対象選択",
+            'NONE': "なし",
+        }
+        for _name, _text in _ts_map.items():
+            _member = getattr(m.TargetScope, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # Command Types
-    TRANSLATIONS.update({
-        m.CommandType.TRANSITION: "カード移動",
-        m.CommandType.MUTATE: "状態変更",
-        m.CommandType.FLOW: "進行制御",
-        m.CommandType.QUERY: "クエリ発行",
-        m.CommandType.DECIDE: "決定",
-        m.CommandType.DECLARE_REACTION: "リアクション宣言",
-        m.CommandType.STAT: "統計更新",
-        m.CommandType.GAME_RESULT: "ゲーム終了",
-    })
+    if hasattr(m, 'CommandType'):
+        _cmd_map = {
+            'TRANSITION': "カード移動",
+            'MUTATE': "状態変更",
+            'FLOW': "進行制御",
+            'QUERY': "クエリ発行",
+            'DECIDE': "決定",
+            'DECLARE_REACTION': "リアクション宣言",
+            'STAT': "統計更新",
+            'GAME_RESULT': "ゲーム終了",
+        }
+        for _name, _text in _cmd_map.items():
+            _member = getattr(m.CommandType, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # Flow Types
-    TRANSLATIONS.update({
-        m.FlowType.PHASE_CHANGE: "フェーズ移行",
-        m.FlowType.TURN_CHANGE: "ターン変更",
-        m.FlowType.SET_ACTIVE_PLAYER: "手番変更",
-    })
+    if hasattr(m, 'FlowType'):
+        _flow_map = {
+            'PHASE_CHANGE': "フェーズ移行",
+            'TURN_CHANGE': "ターン変更",
+            'SET_ACTIVE_PLAYER': "手番変更",
+        }
+        for _name, _text in _flow_map.items():
+            _member = getattr(m.FlowType, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # Mutation Types
-    TRANSLATIONS.update({
-        m.MutationType.TAP: "タップ",
-        m.MutationType.UNTAP: "アンタップ",
-        m.MutationType.POWER_MOD: "パワー修正",
-        m.MutationType.ADD_KEYWORD: "キーワード付与",
-        m.MutationType.REMOVE_KEYWORD: "キーワード削除",
-        m.MutationType.ADD_PASSIVE_EFFECT: "パッシブ効果付与",
-        m.MutationType.ADD_COST_MODIFIER: "コスト修正付与",
-        m.MutationType.ADD_PENDING_EFFECT: "待機効果追加",
-    })
+    if hasattr(m, 'MutationType'):
+        _mut_map = {
+            'TAP': "タップ",
+            'UNTAP': "アンタップ",
+            'POWER_MOD': "パワー修正",
+            'ADD_KEYWORD': "キーワード付与",
+            'REMOVE_KEYWORD': "キーワード削除",
+            'ADD_PASSIVE_EFFECT': "パッシブ効果付与",
+            'ADD_COST_MODIFIER': "コスト修正付与",
+            'ADD_PENDING_EFFECT': "待機効果追加",
+        }
+        for _name, _text in _mut_map.items():
+            _member = getattr(m.MutationType, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # Stat Types
-    TRANSLATIONS.update({
-        m.StatType.CARDS_DRAWN: "ドロー枚数",
-        m.StatType.CARDS_DISCARDED: "手札破棄枚数",
-        m.StatType.CREATURES_PLAYED: "クリーチャープレイ数",
-        m.StatType.SPELLS_CAST: "呪文詠唱数",
-    })
+    if hasattr(m, 'StatType'):
+        _stat_map = {
+            'CARDS_DRAWN': "ドロー枚数",
+            'CARDS_DISCARDED': "手札破棄枚数",
+            'CREATURES_PLAYED': "クリーチャープレイ数",
+            'SPELLS_CAST': "呪文詠唱数",
+        }
+        for _name, _text in _stat_map.items():
+            _member = getattr(m.StatType, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # Game Result
-    TRANSLATIONS.update({
-        m.GameResult.NONE: "なし",
-        m.GameResult.P1_WIN: "P1勝利",
-        m.GameResult.P2_WIN: "P2勝利",
-        m.GameResult.DRAW: "引き分け",
-    })
+    if hasattr(m, 'GameResult'):
+        _gr_map = {
+            'NONE': "なし",
+            'P1_WIN': "P1勝利",
+            'P2_WIN': "P2勝利",
+            'DRAW': "引き分け",
+        }
+        for _name, _text in _gr_map.items():
+            _member = getattr(m.GameResult, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
 
     # Also keep string keys for Enums for backward compatibility or serialization
-    for enum_cls in [m.ActionType, m.EffectActionType, m.TriggerType, m.Civilization, m.Zone, m.TargetScope, m.CommandType, m.FlowType, m.MutationType, m.StatType, m.GameResult]:
+    enum_candidates = [
+        getattr(m, 'ActionType', None),
+        getattr(m, 'EffectActionType', None),
+        getattr(m, 'TriggerType', None),
+        getattr(m, 'Civilization', None),
+        getattr(m, 'Zone', None),
+        getattr(m, 'TargetScope', None),
+        getattr(m, 'CommandType', None),
+        getattr(m, 'FlowType', None),
+        getattr(m, 'MutationType', None),
+        getattr(m, 'StatType', None),
+        getattr(m, 'GameResult', None),
+    ]
+    for enum_cls in [e for e in enum_candidates if e is not None]:
         for member in enum_cls.__members__.values():
             if member in TRANSLATIONS:
                 TRANSLATIONS[member.name] = TRANSLATIONS[member]
