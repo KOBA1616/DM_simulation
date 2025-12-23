@@ -203,6 +203,9 @@ TRANSLATIONS = {
     "P2_WIN": "P2勝利",
     "DRAW": "引き分け",
     "NONE": "なし",
+    "CANNOT_ATTACK": "攻撃できない",
+    "CANNOT_BLOCK": "ブロックできない",
+    "CANNOT_ATTACK_OR_BLOCK": "攻撃もブロックもできない",
 
     # Command Types (Macros)
     "DRAW_CARD": "カードを引く",

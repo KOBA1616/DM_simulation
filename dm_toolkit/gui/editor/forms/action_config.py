@@ -130,24 +130,47 @@ if m:
 
 else:
     # Fallback to string keys if module is not present (e.g. CI without build)
-    # This matches the original file content for safety
     ACTION_UI_CONFIG = {
         "NONE": {"visible": []},
-        "DRAW_CARD": {
-            "visible": ["value1", "input_value_key"],
-            "label_value1": "Cards to Draw",
-            "can_be_optional": True,
-            "produces_output": True,
-            "outputs": {"output_value_key": "Cards Drawn"},
-            "inputs": {"input_value_key": "Count Override (optional)"}
-        },
-        # ... (Abbreviated fallback to avoid huge file size duplication in thought,
-        # but in practice I should probably include it or just accept that the editor requires the module)
-        # For now, I will include the minimal fallback to prevent import errors in dumb linters
-    }
-    # (Actually, if m is missing, the user probably can't run the editor anyway.
-    # But let's keep the original dict as fallback)
-    ACTION_UI_CONFIG.update({
         "DRAW_CARD": {"visible": ["value1"], "label_value1": "Cards to Draw"},
-        # Simplified fallback
-    })
+        "ADD_MANA": {"visible": ["value1"], "label_value1": "Cards to Charge"},
+        "DESTROY": {"visible": ["scope", "filter"]},
+        "RETURN_TO_HAND": {"visible": ["scope", "filter"]},
+        "SEND_TO_MANA": {"visible": ["scope", "filter"]},
+        "TAP": {"visible": ["scope", "filter"]},
+        "UNTAP": {"visible": ["scope", "filter"]},
+        "MODIFY_POWER": {"visible": ["scope", "filter", "value1", "value2"], "label_value1": "Power Mod", "label_value2": "Duration"},
+        "BREAK_SHIELD": {"visible": ["value1"], "label_value1": "Shields to Break"},
+        "LOOK_AND_ADD": {"visible": ["value1", "value2", "filter"], "label_value1": "Look at N", "label_value2": "Add M to Hand"},
+        "SUMMON_TOKEN": {"visible": ["value1", "str_val"], "label_value1": "Count", "label_str_val": "Token ID"},
+        "SEARCH_DECK_BOTTOM": {"visible": ["value1", "filter"], "label_value1": "Reveal N (from Bottom)"},
+        "MEKRAID": {"visible": ["value1", "filter"], "label_value1": "Level"},
+        "DISCARD": {"visible": ["scope", "filter", "value1"], "label_value1": "Count"},
+        "PLAY_FROM_ZONE": {"visible": ["source_zone", "filter", "value1"], "label_value1": "Cost Reduction"},
+        "COST_REFERENCE": {"visible": ["value1", "str_val"], "label_value1": "Multiplier"},
+        "LOOK_TO_BUFFER": {"visible": ["value1", "source_zone"]},
+        "SELECT_FROM_BUFFER": {"visible": ["filter", "value1"]},
+        "PLAY_FROM_BUFFER": {"visible": ["filter"]},
+        "MOVE_BUFFER_TO_ZONE": {"visible": ["destination_zone"]},
+        "REVOLUTION_CHANGE": {"visible": ["filter"]},
+        "COUNT_CARDS": {"visible": ["scope", "filter", "output_value_key", "str_val"]},
+        "GET_GAME_STAT": {"visible": ["str_val", "output_value_key"]},
+        "APPLY_MODIFIER": {"visible": ["filter", "str_val", "value1", "value2"]},
+        "REVEAL_CARDS": {"visible": ["scope", "filter", "value1"]},
+        "REGISTER_DELAYED_EFFECT": {"visible": ["str_val", "value1"]},
+        "RESET_INSTANCE": {"visible": ["scope", "filter"]},
+        "SEARCH_DECK": {"visible": ["filter", "output_value_key"]},
+        "SHUFFLE_DECK": {"visible": ["scope"]},
+        "ADD_SHIELD": {"visible": ["scope", "value1"]},
+        "SEND_SHIELD_TO_GRAVE": {"visible": ["scope", "filter", "value1"]},
+        "SEND_TO_DECK_BOTTOM": {"visible": ["scope", "filter", "value1"]},
+        "MOVE_TO_UNDER_CARD": {"visible": ["scope", "filter", "value1"]},
+        "SELECT_NUMBER": {"visible": ["output_value_key", "value1"]},
+        "FRIEND_BURST": {"visible": ["str_val", "filter"]},
+        "GRANT_KEYWORD": {"visible": ["scope", "filter", "str_val", "value2"]},
+        "MOVE_CARD": {"visible": ["scope", "filter", "destination_zone"]},
+        "CAST_SPELL": {"visible": ["scope", "filter"]},
+        "PUT_CREATURE": {"visible": ["scope", "filter"]},
+        "SELECT_OPTION": {"visible": ["value1", "value2", "str_val"]},
+        "RESOLVE_BATTLE": {"visible": []}
+    }
