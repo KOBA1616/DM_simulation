@@ -20,6 +20,7 @@ namespace dm::ai {
     struct CollectedBatch {
         std::vector<std::vector<long>> states; // Changed to long for token sequences
         std::vector<std::vector<float>> policies;
+        std::vector<std::vector<float>> masks;
         std::vector<float> values;
     };
 
