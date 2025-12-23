@@ -7,11 +7,12 @@ import os
 import sys
 
 # Add bin to path for imports
-sys.path.append(os.path.abspath("bin"))
-sys.path.append(os.path.abspath("."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 from dm_toolkit.training.train_simple import Trainer
-from dm_toolkit.ai.agent.transformer_model import DuelTransformer
+from dm_toolkit.training.network_v2 import NetworkV2
 
 class TestTransformerTraining(unittest.TestCase):
     def setUp(self):
@@ -46,7 +47,7 @@ class TestTransformerTraining(unittest.TestCase):
     def test_transformer_initialization(self):
         trainer = Trainer([self.data_file], save_path=os.path.join(self.tmp_dir, "model.pth"))
         self.assertTrue(trainer.use_transformer)
-        self.assertIsInstance(trainer.network, DuelTransformer)
+        self.assertIsInstance(trainer.network, NetworkV2)
 
     def test_training_loop(self):
         trainer = Trainer([self.data_file], save_path=os.path.join(self.tmp_dir, "model.pth"))
