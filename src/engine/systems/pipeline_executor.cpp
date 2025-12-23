@@ -133,6 +133,7 @@ namespace dm::engine::systems {
             case InstructionOp::COUNT:
             case InstructionOp::MATH:   handle_calc(inst, state); break;
             case InstructionOp::PRINT:  handle_print(inst, state); break;
+            case InstructionOp::WAIT_INPUT: handle_wait_input(inst, state); break;
             default: break;
         }
     }
@@ -642,6 +643,32 @@ namespace dm::engine::systems {
     void PipelineExecutor::handle_print(const Instruction& inst, GameState& /*state*/) {
         if (inst.args.is_null()) return;
         std::cout << "[Pipeline] " << resolve_string(inst.args.value("msg", "")) << std::endl;
+    }
+
+    void PipelineExecutor::handle_wait_input(const Instruction& inst, GameState& state) {
+        if (inst.args.is_null()) return;
+
+        std::string out_key = inst.args.value("out", "$input");
+
+        // If we already have the value (via resume), don't pause again
+        if (context.count(out_key)) return;
+
+        std::string query_type = inst.args.value("query_type", "NONE");
+        std::vector<std::string> options;
+        if (inst.args.contains("options")) {
+            for (const auto& opt : inst.args["options"]) {
+                if (opt.is_string()) options.push_back(opt.get<std::string>());
+            }
+        }
+
+        execution_paused = true;
+        waiting_for_key = out_key;
+        state.waiting_for_user_input = true;
+
+        // Setup pending query
+        state.pending_query = GameState::QueryContext{
+            0, query_type, {}, {}, options
+        };
     }
 
     bool PipelineExecutor::check_condition(const nlohmann::json& cond, GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db) {

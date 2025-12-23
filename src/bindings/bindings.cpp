@@ -48,6 +48,27 @@ std::shared_ptr<dm::engine::systems::PipelineExecutor> get_active_pipeline(GameS
     return std::static_pointer_cast<dm::engine::systems::PipelineExecutor>(state.active_pipeline);
 }
 
+nlohmann::json py_to_json(py::handle obj) {
+    if (obj.is_none()) return nullptr;
+    if (py::isinstance<py::bool_>(obj)) return obj.cast<bool>();
+    if (py::isinstance<py::int_>(obj)) return obj.cast<int>();
+    if (py::isinstance<py::float_>(obj)) return obj.cast<double>();
+    if (py::isinstance<py::str>(obj)) return obj.cast<std::string>();
+    if (py::isinstance<py::list>(obj)) {
+        nlohmann::json j = nlohmann::json::array();
+        for (auto item : obj.cast<py::list>()) j.push_back(py_to_json(item));
+        return j;
+    }
+    if (py::isinstance<py::dict>(obj)) {
+        nlohmann::json j = nlohmann::json::object();
+        for (auto item : obj.cast<py::dict>()) {
+            j[item.first.cast<std::string>()] = py_to_json(item.second);
+        }
+        return j;
+    }
+    return nullptr;
+}
+
 PYBIND11_MODULE(dm_ai_module, m) {
     m.doc() = "Duel Masters AI Module";
 
@@ -564,6 +585,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def(py::init<>())
         .def(py::init<InstructionOp>())
         .def_readwrite("op", &Instruction::op)
+        .def("set_args", [](Instruction& i, py::dict args) {
+             i.args = py_to_json(args);
+        })
         .def("get_arg_str", [](const Instruction& i, const std::string& key) {
             if (i.args.contains(key) && i.args[key].is_string()) return i.args[key].get<std::string>();
             return std::string("");
@@ -580,6 +604,14 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<dm::engine::systems::PipelineExecutor, std::shared_ptr<dm::engine::systems::PipelineExecutor>>(m, "PipelineExecutor")
         .def(py::init<>())
         .def("set_context_var", &dm::engine::systems::PipelineExecutor::set_context_var)
+        .def("get_context_var_int", [](const dm::engine::systems::PipelineExecutor& p, const std::string& key) {
+            auto v = p.get_context_var(key);
+            if (std::holds_alternative<int>(v)) return std::get<int>(v);
+            return 0;
+        })
+        .def_readonly("execution_paused", &dm::engine::systems::PipelineExecutor::execution_paused)
+        .def_readonly("waiting_for_key", &dm::engine::systems::PipelineExecutor::waiting_for_key)
+        .def("resume", &dm::engine::systems::PipelineExecutor::resume)
         .def("execute", static_cast<void (dm::engine::systems::PipelineExecutor::*)(const std::vector<dm::core::Instruction>&, core::GameState&, const std::map<core::CardID, core::CardDefinition>&)>(&dm::engine::systems::PipelineExecutor::execute));
 
     py::class_<dm::engine::systems::TriggerManager>(m, "TriggerManager")
