@@ -331,6 +331,10 @@ class CardTextGenerator:
         for action in actions:
             action_texts.append(cls._format_action(action, is_spell))
 
+        commands = effect.get("commands", [])
+        for command in commands:
+            action_texts.append(cls._format_command(command, is_spell))
+
         full_action_text = " ".join(action_texts).strip()
 
         # If it's a Spell's main effect (ON_PLAY), we can often omit the trigger text "Played/Cast"
@@ -367,6 +371,48 @@ class CardTextGenerator:
             "NONE": ""
         }
         return mapping.get(trigger, trigger)
+
+    @classmethod
+    def _format_command(cls, command: Dict[str, Any], is_spell: bool = False) -> str:
+        if not command:
+            return ""
+
+        # Map CommandDef fields to Action-like dict to reuse _format_action logic where possible
+        cmd_type = command.get("type", "NONE")
+
+        # Mapping CommandType to ActionType logic where applicable
+        original_cmd_type = cmd_type
+        if cmd_type == "POWER_MOD": cmd_type = "MODIFY_POWER"
+        elif cmd_type == "ADD_KEYWORD": cmd_type = "GRANT_KEYWORD"
+        elif cmd_type == "MANA_CHARGE": cmd_type = "SEND_TO_MANA" # Or ADD_MANA depending on context
+
+        # Construct proxy action object
+        action_proxy = {
+            "type": cmd_type,
+            "scope": command.get("target_group", "NONE"),
+            "filter": command.get("target_filter", {}),
+            "value1": command.get("amount", 0),
+            "optional": command.get("optional", False),
+            "str_val": command.get("str_param", ""),
+            "input_value_key": command.get("input_value_key", ""),
+            "from_zone": command.get("from_zone", ""),
+            "to_zone": command.get("to_zone", ""),
+            "mutation_kind": command.get("mutation_kind", ""),
+            "destination_zone": command.get("to_zone", ""), # For MOVE_CARD mapping
+            "result": command.get("str_param", "") # For GAME_RESULT
+        }
+
+        # Specific Adjustments
+        if original_cmd_type == "MANA_CHARGE":
+            if action_proxy["scope"] == "NONE":
+                 action_proxy["type"] = "ADD_MANA" # Top of deck charge
+            else:
+                 action_proxy["type"] = "SEND_TO_MANA"
+
+        if original_cmd_type == "SHIELD_TRIGGER":
+             return "S・トリガー"
+
+        return cls._format_action(action_proxy, is_spell)
 
     @classmethod
     def _format_condition(cls, condition: Dict[str, Any]) -> str:
