@@ -7,11 +7,13 @@ from dm_toolkit.gui.localization import get_card_civilization
 class ZoneWidget(QWidget):
     card_clicked = pyqtSignal(int, int) # card_id, instance_id
     card_hovered = pyqtSignal(int) # card_id
+    action_triggered = pyqtSignal(object) # Action object
 
     def __init__(self, title, parent=None):
         super().__init__(parent)
         self.title = title
         self.cards = []
+        self.legal_actions = []
         
         self.init_ui()
 
@@ -42,7 +44,20 @@ class ZoneWidget(QWidget):
         self.scroll_area.setWidget(self.card_container)
         main_layout.addWidget(self.scroll_area)
 
-    def update_cards(self, card_data_list, card_db, civ_map=None):
+    def set_legal_actions(self, actions):
+        self.legal_actions = actions
+        # Update existing widgets if possible, but usually update_cards handles recreation
+        # If we want live updates without recreation:
+        for widget in self.cards:
+             if widget.instance_id != -1:
+                 relevant = [a for a in self.legal_actions if a.source_instance_id == widget.instance_id]
+                 widget.update_legal_actions(relevant)
+
+    def update_cards(self, card_data_list, card_db, civ_map=None, legal_actions=None):
+        # Update cached legal actions if provided
+        if legal_actions is not None:
+            self.legal_actions = legal_actions
+
         # Clear existing
         for i in reversed(range(self.card_layout.count())):
             item = self.card_layout.itemAt(i)
@@ -78,24 +93,32 @@ class ZoneWidget(QWidget):
             tapped = c_data.get('tapped', False)
             instance_id = c_data.get('instance_id', -1)
             
+            # Filter actions for this card
+            relevant_actions = []
+            if instance_id != -1:
+                relevant_actions = [a for a in self.legal_actions if a.source_instance_id == instance_id]
+
             if cid in card_db:
                 card_def = card_db[cid]
                 civ = get_card_civilization(card_def)
                 
                 widget = CardWidget(
                     cid, card_def.name, card_def.cost, card_def.power, 
-                    civ, tapped, instance_id
+                    civ, tapped, instance_id,
+                    legal_actions=relevant_actions
                 )
                 widget.clicked.connect(lambda i_id, c_id=cid: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
+                widget.action_triggered.connect(self.action_triggered.emit)
                 self.card_layout.addWidget(widget)
                 self.cards.append(widget)
             else:
                 # Unknown/Masked
                 # Pass is_face_down=True
-                widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id, None, True)
+                widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id, None, True, legal_actions=relevant_actions)
                 widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
+                widget.action_triggered.connect(self.action_triggered.emit)
                 self.card_layout.addWidget(widget)
 
     def set_card_selected(self, instance_id, selected):

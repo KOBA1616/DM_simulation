@@ -32,6 +32,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
+*   [Status: Done] **Card Owner Refactor**: `CardInstance` 構造体に `owner` フィールドを追加し、外部マップ `card_owner_map` を廃止しました。これにより、カードの所有者情報へのアクセスがO(1)となり、マップ同期ズレのリスクが解消されました。
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` を削除し、`GameLogicSystem` へ完全移行しました。
 *   [Status: Done] **GameLogicSystem Refactor**: `PipelineExecutor` を介したコマンド実行フローが確立されました。
 *   [Status: Done] **Action Generalization**: 全アクションハンドラーの `compile_action` 化が完了しました。
@@ -53,7 +54,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 2.3 テスト環境 (`tests/`)
 *   [Status: Done] **Directory Consolidation**: `python/tests/` 配下のテストファイルを `tests/` へ統合し、ディレクトリを削除しました。
-*   [Status: Done] **CI Error Resolution**: `ModuleNotFoundError` およびライブラリ欠損によるCI落ちを修正しました。
+*   [Test: Fail] **Engine Basics**: `tests/test_engine_basics.py` において、`test_mana_charge` および `test_play_creature` が失敗（AssertionError）。所有権リファクタリング後の `MOVE_CARD` 処理（`TransitionCommand`）または `get_card_instance` の挙動に回帰バグが発生している可能性があります。
 
 ### 2.4 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
 *   [Status: Done] **Directory Restructuring**: `python/training` を `dm_toolkit/training` へ移動しました。
