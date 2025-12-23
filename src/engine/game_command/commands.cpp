@@ -27,9 +27,7 @@ namespace dm::engine::game_command {
                 case core::Zone::SHIELD: return &owner.shield_zone;
                 case core::Zone::DECK: return &owner.deck;
                 case core::Zone::BUFFER: return &owner.effect_buffer;
-                // Treat STACK like BUFFER for now if not implemented separately.
-                // Or map to effect_buffer.
-                case core::Zone::STACK: return &owner.effect_buffer; // Map STACK to effect_buffer for now
+                case core::Zone::STACK: return &owner.stack;
                 default: return nullptr;
             }
         };
@@ -107,7 +105,7 @@ namespace dm::engine::game_command {
                 case core::Zone::SHIELD: return &owner.shield_zone;
                 case core::Zone::DECK: return &owner.deck;
                 case core::Zone::BUFFER: return &owner.effect_buffer;
-                case core::Zone::STACK: return &owner.effect_buffer; // Map STACK to effect_buffer for now
+                case core::Zone::STACK: return &owner.stack;
                 default: return nullptr;
             }
         };

@@ -8,6 +8,7 @@
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/command_system.hpp" // Added for CommandSystem
 #include "engine/systems/flow/phase_manager.hpp" // Added for PhaseManager
+#include "engine/systems/mana/mana_system.hpp" // Added for ManaSystem
 #include <iostream>
 #include <algorithm>
 
@@ -67,7 +68,40 @@ namespace dm::engine::systems {
                 PhaseManager::next_phase(state, card_db);
                 break;
             }
+            case ActionType::DECLARE_PLAY:
+            {
+                int iid = action.source_instance_id;
+                int pid = state.active_player_id;
+                // Move to Stack
+                auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::STACK, pid);
+                state.execute_command(std::move(cmd));
+                break;
+            }
+            case ActionType::PAY_COST:
+            {
+                int iid = action.source_instance_id;
+                // Auto tap mana
+                if (auto* c = state.get_card_instance(iid)) {
+                    if (card_db.count(c->card_id)) {
+                        const auto& def = card_db.at(c->card_id);
+                        ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
+                    }
+                    // Mark as paid (using is_tapped flag on stack card)
+                    c->is_tapped = true;
+                }
+                break;
+            }
+            case ActionType::RESOLVE_PLAY:
+            {
+                nlohmann::json args;
+                args["card"] = action.source_instance_id;
+                Instruction inst(InstructionOp::GAME_ACTION, args);
+                inst.args["type"] = "RESOLVE_PLAY";
+                handle_resolve_play(pipeline, state, inst, card_db);
+                break;
+            }
             case ActionType::MANA_CHARGE:
+            case ActionType::MOVE_CARD:
             {
                 int iid = action.source_instance_id;
                 int pid = state.active_player_id;
@@ -75,8 +109,27 @@ namespace dm::engine::systems {
                 if (const auto* c = state.get_card_instance(iid)) {
                     pid = c->owner;
                 }
+
+                // Determine destination
+                Zone dest = Zone::MANA;
+                if (action.destination_override == 1) dest = Zone::DECK; // Bottom
+                else if (action.destination_override == 2) dest = Zone::DECK; // Top (Not supported by TransitionCommand directly? Default append is bottom?)
+                else if (action.destination_override == 3) dest = Zone::HAND;
+                else if (action.destination_override == 4) dest = Zone::MANA;
+                else if (action.destination_override == 5) dest = Zone::SHIELD;
+
+                // If default (0) and MANA_CHARGE type, it's Mana.
+                // If MOVE_CARD and default, check Phase?
+                // For now, if MOVE_CARD comes in with 0, we assume it matches Mana Phase generation.
+                // But ideally we should be strict.
+                // However, ManaPhaseStrategy uses 0. So default to MANA if phase is MANA?
+                if (action.type == ActionType::MOVE_CARD && action.destination_override == 0) {
+                    if (state.current_phase == Phase::MANA) dest = Zone::MANA;
+                    // Else?
+                }
+
                 if (iid >= 0) {
-                     auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
+                     auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, dest, pid);
                      state.execute_command(std::move(cmd));
                 }
                 break;
@@ -238,9 +291,9 @@ namespace dm::engine::systems {
             move_args["to"] = "GRAVEYARD";
             compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
         } else {
-            // Creature ON_PLAY
-            // Handled via TriggerSystem usually?
-            // If we are here, it means we are explicitly resolving play.
+            // Creature: Move from Stack to Battle Zone
+            auto cmd = std::make_unique<TransitionCommand>(instance_id, Zone::STACK, Zone::BATTLE, state.active_player_id);
+            state.execute_command(std::move(cmd));
         }
 
         if (!compiled_effects.empty()) {

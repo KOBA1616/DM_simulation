@@ -46,9 +46,12 @@ namespace dm::engine {
         }
 
         // 2. Stack (Atomic Action Flow)
-        if (!game_state.pending_effects.empty()) {
+        {
             StackStrategy stack_strategy;
-            return stack_strategy.generate(ctx);
+            auto stack_actions = stack_strategy.generate(ctx);
+            if (!stack_actions.empty()) {
+                return stack_actions;
+            }
         }
 
         // 3. Phase Specific Strategies
