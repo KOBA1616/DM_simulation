@@ -4,11 +4,11 @@ import sys
 from pathlib import Path
 
 # Minimal CLI tool to simulate player selecting targets for pending effects.
-# Usage: python tools/cli_target_selector.py <game_state_dump.json>
+# Usage: python scripts/python/cli_target_selector.py <game_state_dump.json>
 # The game_state_dump.json should be a JSON export produced by the engine containing pending_effects and zones with instance ids.
 
 if len(sys.argv) < 2:
-    print("Usage: python tools/cli_target_selector.py <game_state_dump.json>")
+    print("Usage: python scripts/python/cli_target_selector.py <game_state_dump.json>")
     sys.exit(1)
 
 p = Path(sys.argv[1])
@@ -62,7 +62,7 @@ for t in chosen:
         'target_instance_id': t
     })
 
-outp = Path('tools/selected_targets.json')
+outp = Path('scripts/selected_targets.json')
 with outp.open('w', encoding='utf-8') as f:
     json.dump(actions, f, indent=2)
 
