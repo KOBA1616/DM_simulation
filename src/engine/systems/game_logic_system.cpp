@@ -97,20 +97,15 @@ namespace dm::engine::systems {
                 break;
             }
             case ActionType::MANA_CHARGE:
-            case ActionType::MOVE_CARD: // Handle MOVE_CARD if used for mana charge
             {
                 int iid = action.source_instance_id;
                 int pid = state.active_player_id;
                 if (const auto* c = state.get_card_instance(iid)) {
                     pid = c->owner;
                 }
-
-                // If this is MANA_CHARGE or MOVE_CARD during MANA phase -> Charge Mana
-                if (action.type == ActionType::MANA_CHARGE || (state.current_phase == Phase::MANA && action.type == ActionType::MOVE_CARD)) {
-                     if (iid >= 0) {
-                         auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
-                         state.execute_command(std::move(cmd));
-                     }
+                if (iid >= 0) {
+                    auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
+                    state.execute_command(std::move(cmd));
                 }
                 break;
             }

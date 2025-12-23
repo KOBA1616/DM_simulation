@@ -26,6 +26,7 @@ namespace dm::core {
         int source_instance_id; // To track where it came from (e.g. Cocco Lupia)
         PlayerID controller;
         bool is_source_static = false; // Added for Continuous Effect System
+        std::string value_reference; // Phase 4: Dynamic reduction (e.g. "CARDS_DRAWN_THIS_TURN")
     };
 
     enum class PassiveType {

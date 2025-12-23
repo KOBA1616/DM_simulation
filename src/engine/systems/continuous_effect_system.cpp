@@ -47,6 +47,12 @@ namespace dm::engine::systems {
                         cm.controller = player.id;
                         cm.is_source_static = true;
 
+                        // Phase 4: Dynamic Cost Reduction Support
+                        // Use str_val as reference key if set
+                        if (!mod_def.str_val.empty()) {
+                            cm.value_reference = mod_def.str_val;
+                        }
+
                         state.active_modifiers.push_back(cm);
                     }
                     else {

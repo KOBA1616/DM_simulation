@@ -45,6 +45,13 @@ class ModifierEditForm(BaseEditForm):
         self.label_str_val = QLabel(tr("Keyword / String"))
         form_layout.addRow(self.label_str_val, self.str_val_edit)
 
+        # Value Reference (for Cost Modifier)
+        self.ref_combo = QComboBox()
+        self.ref_combo.addItems(["FIXED", "CARDS_DRAWN_THIS_TURN", "MANA_COUNT", "SHIELD_COUNT", "OPPONENT_SHIELD_COUNT", "CREATURE_COUNT", "OPPONENT_CREATURE_COUNT", "GRAVEYARD_COUNT", "HAND_COUNT"])
+        self.ref_combo.currentTextChanged.connect(self.on_ref_combo_changed)
+        self.label_ref = QLabel(tr("Value Reference"))
+        form_layout.addRow(self.label_ref, self.ref_combo)
+
         # Keyword Helper (ComboBox) - optional, for easier selection
         self.keyword_combo = QComboBox()
         self.keyword_combo.addItems([
@@ -104,6 +111,8 @@ class ModifierEditForm(BaseEditForm):
         self.str_val_edit.setVisible(False)
         self.label_keyword.setVisible(False)
         self.keyword_combo.setVisible(False)
+        self.label_ref.setVisible(False)
+        self.ref_combo.setVisible(False)
 
         if mtype == "COST_MODIFIER":
             self.label_value.setVisible(True)
@@ -134,6 +143,12 @@ class ModifierEditForm(BaseEditForm):
     def on_keyword_combo_changed(self, text):
         self.str_val_edit.setText(text)
 
+    def on_ref_combo_changed(self, text):
+        if text == "FIXED":
+            self.str_val_edit.setText("")
+        else:
+            self.str_val_edit.setText(text)
+
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
@@ -144,6 +159,19 @@ class ModifierEditForm(BaseEditForm):
              self.filter_widget.set_data({})
 
         self._apply_bindings(data)
+
+        # Manually populate ref_combo based on str_val if COST_MODIFIER
+        mtype = data.get('type', 'NONE')
+        if mtype == "COST_MODIFIER":
+            val = data.get('str_val', "")
+            if val and val != "":
+                idx = self.ref_combo.findText(val)
+                if idx >= 0:
+                    self.ref_combo.setCurrentIndex(idx)
+                else:
+                    self.ref_combo.setCurrentIndex(0) # FIXED or unknown
+            else:
+                self.ref_combo.setCurrentIndex(0) # FIXED
 
         self.update_visibility()
 
@@ -160,6 +188,7 @@ class ModifierEditForm(BaseEditForm):
 
     def block_signals_all(self, block):
         self.keyword_combo.blockSignals(block)
+        self.ref_combo.blockSignals(block)
         super().block_signals_all(block)
 
     def set_combo_text(self, combo, text):
