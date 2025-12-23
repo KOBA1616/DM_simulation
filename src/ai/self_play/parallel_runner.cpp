@@ -360,7 +360,7 @@ namespace dm::ai {
             auto setup_deck = [&](dm::core::Player& p, const std::vector<dm::core::CardID>& deck_list) {
                 p.deck.clear();
                 for(auto cid : deck_list) {
-                    p.deck.emplace_back(cid, instance_counter++);
+                    p.deck.emplace_back(cid, instance_counter++, p.id);
                 }
                 std::mt19937 rng(seed + p.id);
                 std::shuffle(p.deck.begin(), p.deck.end(), rng);
