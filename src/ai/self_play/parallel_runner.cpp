@@ -101,7 +101,7 @@ namespace dm::ai {
                     if (games_completed == total_games && inf_queue.queue.empty()) break;
 
                     while (!inf_queue.queue.empty()) {
-                        batch.push_back(inf_queue.queue.front());
+                        batch.push_back(inf_queue.queue.front().get());
                         inf_queue.queue.pop();
                         if (batch.size() >= 32) break;
                     }
@@ -216,7 +216,7 @@ namespace dm::ai {
                     if (completed_worlds == num_worlds && inf_queue.queue.empty()) break;
 
                     while (!inf_queue.queue.empty()) {
-                        batch.push_back(inf_queue.queue.front());
+                        batch.push_back(inf_queue.queue.front().get());
                         inf_queue.queue.pop();
                         if (batch.size() >= 32) break;
                     }
