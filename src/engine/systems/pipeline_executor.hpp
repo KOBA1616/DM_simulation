@@ -74,6 +74,7 @@ namespace dm::engine::systems {
         void handle_loop(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
         void handle_calc(const dm::core::Instruction& inst, core::GameState& state);
         void handle_print(const dm::core::Instruction& inst, core::GameState& state);
+        void handle_wait_input(const dm::core::Instruction& inst, core::GameState& state);
 
         void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd, core::GameState& state);
 
