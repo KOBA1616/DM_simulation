@@ -19,7 +19,15 @@ namespace dm::ai {
 
     class NeuralEvaluator : public IEvaluator {
     public:
+        // Constructor using shared pointer
+        NeuralEvaluator(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db);
+
+        // Constructor using reference (Legacy)
         NeuralEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+
+        // Default constructor (Uses CardRegistry)
+        NeuralEvaluator();
+
         ~NeuralEvaluator();
 
         std::pair<std::vector<std::vector<float>>, std::vector<float>>
@@ -32,7 +40,7 @@ namespace dm::ai {
         void set_model_type(ModelType type);
 
     private:
-        std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
+        std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;
         std::unique_ptr<dm::ai::inference::OnnxModel> onnx_model_;
         ModelType model_type_ = ModelType::RESNET;
     };

@@ -58,6 +58,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ### 2.4 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
 *   [Status: Done] **Directory Restructuring**: `python/training` を `dm_toolkit/training` へ移動しました。
 *   [Status: Done] **Transformer Integration**: `NetworkV2` (DuelTransformer) の実装と検証完了。
+*   [Status: Done] **Memory Safety**: `GameInstance`, `MCTS`, `SelfPlay` 等の主要クラスにおける `card_db` 参照管理を `std::shared_ptr` に移行し、PythonオブジェクトGC時の不正アクセスクラッシュを防止しました。また、`CardRegistry` シングルトンを活用したデフォルトコンストラクタを追加し、Python側からの利用を簡素化しました。
 *   [Status: Review] **Search Engine (MCTS)**: `src/ai/mcts` 実装完了。
 *   [Status: Review] **Inference Engine**: `src/ai/inference` (PIMC, Deck Inference) 実装完了。
 *   [Status: Review] **Lethal Solver**: `src/ai/solver` 実装完了。
@@ -72,6 +73,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 *   **Trigger Stack Logic**: `test_trigger_stack.py` において、`GameInstance` を用いたイベントループ内でのトリガー発火（ON_PLAY）の完全な動作検証。現在テストは `skip` 状態とし、引き続きデバッグを行います。
 *   **Binding Coverage**: `TriggerManager` や `get_pending_effects_info` などのデバッグ用バインディングを追加し、状態の可視化を強化しました。
+*   **Memory Safety**: `card_db` の `shared_ptr` 化と `CardRegistry` 連携の実装・検証が完了しました。
 
 ### 3.2 [Priority: High] Phase 1: ゲームエンジンの信頼性 (Game Engine Reliability)
 [Status: WIP]
@@ -85,7 +87,7 @@ C++側のリファクタリングは完了し、Python側からのリアクシ�
 
 1.  [Status: WIP] **Finalize Trigger Stack**: `test_trigger_stack.py` を完全にパスさせる。
 2.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの移行。
-3.  [Status: WIP] **Binding Restoration**: 残るテストケースの修正。
+3.  [Status: WIP] **Binding Restoration**: 残るテストケース (`test_card_stats.py` 等) のロジック修正。
 
 ## 5. 運用ルール (Operational Rules)
 *   **CI遵守**: `PyQt6` 依存テストはスキップし、必ずCIがグリーンになる状態でマージする。

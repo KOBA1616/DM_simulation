@@ -53,15 +53,24 @@ namespace dm::ai {
 
     class MCTS {
     public:
+        // Original constructor (Reference) - Deprecated-ish but kept for compat
         MCTS(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, 
              float c_puct = 1.0f, 
              float dirichlet_alpha = 0.3f, 
              float dirichlet_epsilon = 0.25f,
              int batch_size = 1,
-             float alpha = 0.0f); // Risk aversion coefficient
+             float alpha = 0.0f);
 
+        // Shared Pointer Constructor
         MCTS(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db,
              float c_puct = 1.0f,
+             float dirichlet_alpha = 0.3f,
+             float dirichlet_epsilon = 0.25f,
+             int batch_size = 1,
+             float alpha = 0.0f);
+
+        // Default Constructor (Uses CardRegistry)
+        MCTS(float c_puct = 1.0f,
              float dirichlet_alpha = 0.3f,
              float dirichlet_epsilon = 0.25f,
              int batch_size = 1,

@@ -19,12 +19,18 @@ namespace dm::ai {
 
     class SelfPlay {
     public:
+        // Shared Pointer Constructor
+        SelfPlay(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db,
+                 int mcts_simulations = 50,
+                 int batch_size = 1);
+
+        // Legacy Reference Constructor
         SelfPlay(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
                  int mcts_simulations = 50,
                  int batch_size = 1);
 
-        SelfPlay(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db,
-                 int mcts_simulations = 50,
+        // Default Constructor (Uses CardRegistry)
+        SelfPlay(int mcts_simulations = 50,
                  int batch_size = 1);
 
         // Play a single game from start to finish

@@ -338,6 +338,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<HeuristicEvaluator>(m, "HeuristicEvaluator")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def(py::init<>()) // New default constructor using Registry
         .def("evaluate", &HeuristicEvaluator::evaluate);
 
     py::class_<MCTSNode>(m, "MCTSNode")
@@ -357,10 +358,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<MCTS>(m, "MCTS")
         .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int>(),
              py::arg("card_db"), py::arg("c_puct") = 1.0f, py::arg("dirichlet_alpha") = 0.3f, py::arg("dirichlet_epsilon") = 0.25f, py::arg("batch_size") = 1)
+        .def(py::init<float, float, float, int>(), // New default constructor using Registry (no card_db)
+             py::arg("c_puct") = 1.0f, py::arg("dirichlet_alpha") = 0.3f, py::arg("dirichlet_epsilon") = 0.25f, py::arg("batch_size") = 1)
         .def("search", &MCTS::search, py::call_guard<py::gil_scoped_release>(),
              py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f)
         .def("search_with_heuristic", [](MCTS& self, const GameState& root, int sims, HeuristicEvaluator& evaluator, bool noise, float temp) {
-            return self.search(root, sims, [&](const std::vector<GameState>& states){
+            return self.search(root, sims, [&](const std::vector<std::shared_ptr<GameState>>& states){
                 return evaluator.evaluate(states);
             }, noise, temp);
         }, py::arg("root_state"), py::arg("simulations"), py::arg("evaluator"), py::arg("add_noise") = false, py::arg("temperature") = 1.0f)
@@ -376,7 +379,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<SelfPlay>(m, "SelfPlay")
         .def(py::init<const std::map<CardID, CardDefinition>&, int, int>(),
              py::arg("card_db"), py::arg("mcts_simulations") = 50, py::arg("batch_size") = 1)
-        .def("play_game", [](SelfPlay& self, GameState initial_state, std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<GameState>&)> evaluator, float temp, bool noise) {
+        .def(py::init<int, int>(), // New default constructor using Registry
+             py::arg("mcts_simulations") = 50, py::arg("batch_size") = 1)
+        .def("play_game", [](SelfPlay& self, GameState initial_state, std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<std::shared_ptr<GameState>>&)> evaluator, float temp, bool noise) {
             return self.play_game(initial_state, evaluator, temp, noise);
         }, py::call_guard<py::gil_scoped_release>(),
            py::arg("initial_state"), py::arg("evaluator"), py::arg("temperature") = 1.0f, py::arg("add_noise") = true);
@@ -384,7 +389,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<ParallelRunner>(m, "ParallelRunner")
         .def(py::init<const std::map<CardID, CardDefinition>&, int, int>(),
              py::arg("card_db"), py::arg("mcts_simulations") = 50, py::arg("batch_size") = 1)
-        .def("play_games", [](ParallelRunner& self, const std::vector<GameState>& initial_states, std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<GameState>&)> evaluator, float temp, bool noise, int num_threads) {
+        .def(py::init<int, int>(), // New default constructor using Registry
+             py::arg("mcts_simulations") = 50, py::arg("batch_size") = 1)
+        .def("play_games", [](ParallelRunner& self, const std::vector<std::shared_ptr<GameState>>& initial_states, std::function<std::pair<std::vector<std::vector<float>>, std::vector<float>>(const std::vector<std::shared_ptr<GameState>>&)> evaluator, float temp, bool noise, int num_threads) {
             return self.play_games(initial_states, evaluator, temp, noise, num_threads);
         }, py::call_guard<py::gil_scoped_release>(),
            py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature") = 1.0f, py::arg("add_noise") = true, py::arg("num_threads") = 4);
@@ -651,5 +658,6 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
         py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
             .def(py::init<const std::map<CardID, CardDefinition>&>())
+            .def(py::init<>()) // New default constructor using Registry
             .def("evaluate", &NeuralEvaluator::evaluate);
 }

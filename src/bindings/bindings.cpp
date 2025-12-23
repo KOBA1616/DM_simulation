@@ -597,6 +597,26 @@ PYBIND11_MODULE(dm_ai_module, m) {
     py::class_<TurnStats>(m, "TurnStats")
          .def_readwrite("cards_drawn_this_turn", &TurnStats::cards_drawn_this_turn);
 
+    py::class_<CardStats>(m, "CardStats")
+        .def_readwrite("play_count", &CardStats::play_count)
+        .def_readwrite("win_count", &CardStats::win_count)
+        .def_readwrite("sum_cost_discount", &CardStats::sum_cost_discount)
+        .def_readwrite("sum_early_usage", &CardStats::sum_early_usage)
+        .def_readwrite("sum_win_contribution", &CardStats::sum_win_contribution)
+        .def_readwrite("sum_trigger_rate", &CardStats::sum_trigger_rate)
+        .def_readwrite("sum_hand_adv", &CardStats::sum_hand_adv)
+        .def_readwrite("sum_board_adv", &CardStats::sum_board_adv)
+        .def_readwrite("sum_mana_adv", &CardStats::sum_mana_adv)
+        .def_readwrite("sum_shield_dmg", &CardStats::sum_shield_dmg)
+        .def_readwrite("sum_hand_var", &CardStats::sum_hand_var)
+        .def_readwrite("sum_board_var", &CardStats::sum_board_var)
+        .def_readwrite("sum_survival_rate", &CardStats::sum_survival_rate)
+        .def_readwrite("sum_effect_death", &CardStats::sum_effect_death)
+        .def_readwrite("sum_comeback_win", &CardStats::sum_comeback_win)
+        .def_readwrite("sum_finish_blow", &CardStats::sum_finish_blow)
+        .def_readwrite("sum_deck_consumption", &CardStats::sum_deck_consumption)
+        .def("to_vector", &CardStats::to_vector);
+
     py::class_<Player>(m, "Player")
         .def_readwrite("hand", &Player::hand)
         .def_readwrite("mana_zone", &Player::mana_zone)
@@ -762,26 +782,12 @@ PYBIND11_MODULE(dm_ai_module, m) {
             }
         });
 
+    m.def("initialize_card_stats", [](GameState& s, const std::map<CardID, CardDefinition>& card_db, int deck_size) {
+        s.initialize_card_stats(card_db, deck_size);
+    }, py::arg("state"), py::arg("card_db"), py::arg("deck_size") = 40);
+
     m.def("get_card_stats", [](const GameState& state) {
-        try {
-            py::dict result;
-            for (const auto& [cid, stats] : state.global_card_stats) {
-                py::dict s;
-                s["play_count"] = stats.play_count;
-                s["win_count"] = stats.win_count;
-                s["sum_cost_discount"] = stats.sum_cost_discount;
-                s["sum_early_usage"] = stats.sum_early_usage;
-                s["sum_win_contribution"] = stats.sum_win_contribution;
-                result[py::int_(cid)] = s;
-            }
-            return result;
-        } catch (const py::error_already_set& e) {
-            throw;
-        } catch (const std::exception& e) {
-            throw std::runtime_error("Error in get_card_stats: " + std::string(e.what()));
-        } catch (...) {
-            throw std::runtime_error("Unknown error in get_card_stats");
-        }
+        return state.global_card_stats;
     });
 
     py::class_<Action>(m, "Action")
@@ -1028,11 +1034,13 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<MCTS>(m, "MCTS")
         .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int, float>())
+        .def(py::init<float, float, float, int, float>()) // NEW (Added default constructor)
         .def("search", &MCTS::search)
         .def("get_last_root", &MCTS::get_last_root);
 
     py::class_<HeuristicEvaluator>(m, "HeuristicEvaluator")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def(py::init<>()) // NEW
         .def("evaluate", &HeuristicEvaluator::evaluate);
 
     // Bind NeuralEvaluator and ModelType
@@ -1043,6 +1051,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
 
     py::class_<NeuralEvaluator>(m, "NeuralEvaluator")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def(py::init<>()) // NEW
         .def("load_model", &NeuralEvaluator::load_model)
         .def("set_model_type", &NeuralEvaluator::set_model_type)
         .def("evaluate", &NeuralEvaluator::evaluate);

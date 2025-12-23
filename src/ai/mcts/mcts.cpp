@@ -2,6 +2,7 @@
 #include "engine/actions/action_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include <cmath>
 #include <limits>
@@ -42,6 +43,9 @@ namespace dm::ai {
 
     MCTS::MCTS(std::shared_ptr<const std::map<CardID, CardDefinition>> card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size, float alpha)
         : card_db_(card_db), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size), alpha_(alpha) {}
+
+    MCTS::MCTS(float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size, float alpha)
+        : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size), alpha_(alpha) {}
 
     std::vector<float> MCTS::search(const GameState& root_state, int simulations, BatchEvaluatorCallback evaluator, bool add_noise, float temperature) {
         // 1. Clone and Fast Forward Root

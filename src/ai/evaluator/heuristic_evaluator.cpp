@@ -1,13 +1,20 @@
 #include "heuristic_evaluator.hpp"
 #include "engine/actions/action_generator.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include <algorithm>
 #include "ai/inference/torch_model.hpp"
 
 namespace dm::ai {
 
-    HeuristicEvaluator::HeuristicEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db)
+    HeuristicEvaluator::HeuristicEvaluator(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db)
         : card_db_(card_db) {}
+
+    HeuristicEvaluator::HeuristicEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db)
+        : card_db_(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db)) {}
+
+    HeuristicEvaluator::HeuristicEvaluator()
+        : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()) {}
 
     std::pair<std::vector<std::vector<float>>, std::vector<float>> HeuristicEvaluator::evaluate(const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
         std::vector<std::vector<float>> policies;
@@ -39,14 +46,6 @@ namespace dm::ai {
 
             // Normalize roughly to [-1, 1]
             float val = std::max(-1.0f, std::min(1.0f, score));
-
-            // Value is always from the perspective of the current player for MCTS?
-            // Usually AlphaZero value head returns value for the current player or always P0?
-            // In my MCTS implementation (standard AlphaZero), value is usually for the player who just moved (parent) or current player?
-            // Let's check MCTS::backpropagate.
-            // If MCTS expects value for the player whose turn it is in the leaf node:
-            // If active_player is 0, and val is high (good for 0), return val.
-            // If active_player is 1, and val is high (good for 0), return -val.
             
             if (state.active_player_id == 1) {
                 val = -val;
@@ -55,7 +54,7 @@ namespace dm::ai {
 
             // 2. Calculate Policy (Uniform over legal actions)
             std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
-            auto legal_actions = dm::engine::ActionGenerator::generate_legal_actions(const_cast<dm::core::GameState&>(state), card_db_);
+            auto legal_actions = dm::engine::ActionGenerator::generate_legal_actions(const_cast<dm::core::GameState&>(state), *card_db_);
             
             if (!legal_actions.empty()) {
                 float prob = 1.0f / legal_actions.size();
@@ -71,7 +70,5 @@ namespace dm::ai {
 
         return {policies, values};
     }
-
-// If LibTorch is enabled, prepare a NeuralEvaluator wrapper here in future.
 
 }

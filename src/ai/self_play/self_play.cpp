@@ -1,6 +1,7 @@
 #include "self_play.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include "engine/utils/determinizer.hpp"
 #include "engine/actions/action_generator.hpp"
 #include "ai/encoders/action_encoder.hpp"
@@ -19,6 +20,10 @@ namespace dm::ai {
 
     SelfPlay::SelfPlay(std::shared_ptr<const std::map<CardID, CardDefinition>> card_db, int mcts_simulations, int batch_size)
         : card_db_(card_db), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
+
+    SelfPlay::SelfPlay(int mcts_simulations, int batch_size)
+        : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()),
+          mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
 
     GameResultInfo SelfPlay::play_game(const GameState& initial_state, BatchEvaluatorCallback evaluator, float temperature, bool add_noise, float alpha, bool collect_data) {
         GameResultInfo info;

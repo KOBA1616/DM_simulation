@@ -1,6 +1,7 @@
 #include "neural_evaluator.hpp"
 #include "ai/encoders/tensor_converter.hpp"
 #include "ai/encoders/token_converter.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include "bindings/python_batch_inference.hpp"
 #include <stdexcept>
 #include <iostream>
@@ -11,8 +12,14 @@
 
 namespace dm::ai {
 
-    NeuralEvaluator::NeuralEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db)
+    NeuralEvaluator::NeuralEvaluator(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db)
         : card_db_(card_db) {}
+
+    NeuralEvaluator::NeuralEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db)
+        : card_db_(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db)) {}
+
+    NeuralEvaluator::NeuralEvaluator()
+        : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()) {}
 
     NeuralEvaluator::~NeuralEvaluator() = default;
 
@@ -76,7 +83,7 @@ namespace dm::ai {
 
         // Convert states to flat feature vectors using TensorConverter
         const int stride = dm::ai::TensorConverter::INPUT_SIZE;
-        std::vector<float> flat = dm::ai::TensorConverter::convert_batch_flat(states, card_db_);
+        std::vector<float> flat = dm::ai::TensorConverter::convert_batch_flat(states, *card_db_);
 
         if (flat.size() != n * (size_t)stride) {
             // Fallback: return zeros
