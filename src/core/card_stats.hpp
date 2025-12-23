@@ -18,6 +18,10 @@ namespace dm::core {
         int turn_played = 0;
         bool is_face_down = false;
 
+        // Neo / G-Neo Flags
+        bool is_neo_evolution_play = false;
+        bool is_g_neo = false;
+
         // Modifiers
         int power_modifier = 0;
         std::vector<std::string> added_races;

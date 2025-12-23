@@ -225,6 +225,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .value("TAMASEED", CardType::TAMASEED)
         .value("PSYCHIC_CREATURE", CardType::PSYCHIC_CREATURE)
         .value("GR_CREATURE", CardType::GR_CREATURE)
+        .value("NEO_CREATURE", CardType::NEO_CREATURE)
+        .value("G_NEO_CREATURE", CardType::G_NEO_CREATURE)
         .export_values();
 
     py::enum_<Zone>(m, "Zone")

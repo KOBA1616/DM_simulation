@@ -48,6 +48,9 @@ namespace dm::core {
         // Step 4-1: Twinpact Support
         bool is_spell_side = false;
 
+        // Neo Evolution Choice
+        bool is_evolution_play = false;
+
         // For debugging
         std::string to_string() const {
             // Simplified string representation

@@ -76,3 +76,16 @@ def test_trigger_type_consistency():
                 missing_translations.append(name)
 
     assert not missing_translations, f"Missing translations for TriggerType: {missing_translations}"
+
+def test_card_type_consistency():
+    """Verify CardType values in localization."""
+    missing_translations = []
+
+    # Check if localization has keys for all CardTypes
+    # Note: localization keys might be string names or Enum members
+
+    for name, member in dm_ai_module.CardType.__members__.items():
+        if member not in TRANSLATIONS and name not in TRANSLATIONS:
+             missing_translations.append(name)
+
+    assert not missing_translations, f"Missing translations for CardType: {missing_translations}"

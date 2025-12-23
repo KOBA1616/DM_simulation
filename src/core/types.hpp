@@ -36,7 +36,9 @@ namespace dm::core {
         CASTLE,
         PSYCHIC_CREATURE,
         GR_CREATURE,
-        TAMASEED
+        TAMASEED,
+        NEO_CREATURE,
+        G_NEO_CREATURE
     };
 
     enum class Zone : uint8_t {

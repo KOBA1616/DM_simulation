@@ -12,6 +12,34 @@ namespace dm::engine::game_command {
         // Logic similar to ZoneUtils::move_card
         // But simplified for primitive operation
 
+        // G-Neo Protection Check
+        // If moving from BATTLE to NON-BATTLE (leave), and is G-Neo with underlying cards
+        if (from_zone == core::Zone::BATTLE && to_zone != core::Zone::BATTLE) {
+             if (auto* c = state.get_card_instance(card_instance_id)) {
+                 if (c->is_g_neo && !c->underlying_cards.empty()) {
+                     // 1. Move underlying cards to Graveyard
+                     core::Player& card_owner = state.players[c->owner];
+                     card_owner.graveyard.insert(card_owner.graveyard.end(), c->underlying_cards.begin(), c->underlying_cards.end());
+
+                     // 2. Clear underlying cards
+                     c->underlying_cards.clear();
+
+                     // 3. Dispatch event for clarity (optional but good)
+                     if (state.event_dispatcher) {
+                        core::GameEvent evt;
+                        evt.type = core::EventType::CUSTOM;
+                        evt.instance_id = card_instance_id;
+                        evt.player_id = c->owner;
+                        evt.context["message"] = 1; // 1 = G-Neo Saved
+                        state.event_dispatcher(evt);
+                     }
+
+                     // 4. Abort transition (Card stays in Battle Zone)
+                     return;
+                 }
+             }
+        }
+
         // 1. Find card and remove from source zone
         core::Player& owner = state.players[owner_id];
         std::vector<core::CardInstance>* source_vec = nullptr;

@@ -30,6 +30,8 @@ namespace dm::engine {
         else if (data.type == "CASTLE") def.type = CardType::CASTLE;
         else if (data.type == "PSYCHIC_CREATURE") def.type = CardType::PSYCHIC_CREATURE;
         else if (data.type == "GR_CREATURE") def.type = CardType::GR_CREATURE;
+        else if (data.type == "NEO_CREATURE") def.type = CardType::NEO_CREATURE;
+        else if (data.type == "G_NEO_CREATURE") def.type = CardType::G_NEO_CREATURE;
 
         def.cost = data.cost;
         def.power = data.power;

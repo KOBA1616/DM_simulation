@@ -24,6 +24,8 @@ TRANSLATIONS = {
     "Name": "カード名",
     "Civilization": "文明",
     "Type": "タイプ",
+    "NEO_CREATURE": "Neoクリーチャー",
+    "G_NEO_CREATURE": "G・Neoクリーチャー",
     "ELEMENT": "エレメント",
     "CARD": "カード",
     "Cost": "コスト",
@@ -290,6 +292,9 @@ if m:
             'DECLARE_REACTION': "リアクション宣言",
             'MANA_CHARGE': "マナチャージ",
             'PASS': "パス",
+            'DECLARE_PLAY': "プレイ宣言",
+            'PAY_COST': "コスト支払い",
+            'RESOLVE_PLAY': "プレイ解決",
         }
         for _name, _text in _action_map.items():
             _member = getattr(m.ActionType, _name, None)
@@ -308,6 +313,25 @@ if m:
         }
         for _name, _text in _trigger_map.items():
             _member = getattr(m.TriggerType, _name, None)
+            if _member is not None:
+                TRANSLATIONS[_member] = _text
+
+    # CardType
+    if hasattr(m, 'CardType'):
+        _card_type_map = {
+            'CREATURE': "クリーチャー",
+            'SPELL': "呪文",
+            'EVOLUTION_CREATURE': "進化クリーチャー",
+            'CROSS_GEAR': "クロスギア",
+            'CASTLE': "城",
+            'PSYCHIC_CREATURE': "サイキック・クリーチャー",
+            'GR_CREATURE': "GRクリーチャー",
+            'TAMASEED': "タマシード",
+            'NEO_CREATURE': "Neoクリーチャー",
+            'G_NEO_CREATURE': "G・Neoクリーチャー",
+        }
+        for _name, _text in _card_type_map.items():
+            _member = getattr(m.CardType, _name, None)
             if _member is not None:
                 TRANSLATIONS[_member] = _text
 
@@ -431,6 +455,7 @@ if m:
         getattr(m, 'ActionType', None),
         getattr(m, 'EffectActionType', None),
         getattr(m, 'TriggerType', None),
+        getattr(m, 'CardType', None),
         getattr(m, 'Civilization', None),
         getattr(m, 'Zone', None),
         getattr(m, 'TargetScope', None),

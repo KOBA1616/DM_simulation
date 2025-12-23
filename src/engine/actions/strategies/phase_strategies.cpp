@@ -55,12 +55,41 @@ namespace dm::engine {
 
                 // 1. Standard Play (Creature side if Twinpact)
                 if (!spell_restricted && ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
+                    // Normal Play
                     Action action;
                     action.type = ActionType::DECLARE_PLAY;
                     action.card_id = card.card_id;
                     action.source_instance_id = card.instance_id;
                     action.slot_index = static_cast<int>(i);
                     actions.push_back(action);
+
+                    // Neo / G-Neo Evolution Play Option
+                    if (def.type == CardType::NEO_CREATURE || def.type == CardType::G_NEO_CREATURE) {
+                        // Check for valid evolution base (Race Match)
+                        bool can_evolve = false;
+                        for (const auto& battle_card : active_player.battle_zone) {
+                            if (card_db.count(battle_card.card_id)) {
+                                const auto& base_def = card_db.at(battle_card.card_id);
+                                // Check for common race
+                                for (const auto& race : def.races) {
+                                    for (const auto& base_race : base_def.races) {
+                                        if (race == base_race) {
+                                            can_evolve = true;
+                                            break;
+                                        }
+                                    }
+                                    if (can_evolve) break;
+                                }
+                            }
+                            if (can_evolve) break;
+                        }
+
+                        if (can_evolve) {
+                            Action evo_action = action; // Copy base action
+                            evo_action.is_evolution_play = true;
+                            actions.push_back(evo_action);
+                        }
+                    }
                 }
 
                 // 2. Twinpact Spell Side Play

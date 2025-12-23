@@ -47,6 +47,11 @@ namespace dm::engine::systems {
                 // Move to Stack
                 auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::STACK, pid);
                 state.execute_command(std::move(cmd));
+
+                // Set Neo flag on the stack instance
+                if (auto* c = state.get_card_instance(iid)) {
+                    c->is_neo_evolution_play = action.is_evolution_play;
+                }
                 break;
             }
             case ActionType::PAY_COST:
@@ -97,7 +102,6 @@ namespace dm::engine::systems {
                 break;
             }
             case ActionType::MANA_CHARGE:
-            case ActionType::MOVE_CARD: // Handle MOVE_CARD if used for mana charge
             {
                 int iid = action.source_instance_id;
                 int pid = state.active_player_id;
@@ -105,12 +109,9 @@ namespace dm::engine::systems {
                     pid = c->owner;
                 }
 
-                // If this is MANA_CHARGE or MOVE_CARD during MANA phase -> Charge Mana
-                if (action.type == ActionType::MANA_CHARGE || (state.current_phase == Phase::MANA && action.type == ActionType::MOVE_CARD)) {
-                     if (iid >= 0) {
-                         auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
-                         state.execute_command(std::move(cmd));
-                     }
+                if (iid >= 0) {
+                     auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
+                     state.execute_command(std::move(cmd));
                 }
                 break;
             }
@@ -182,7 +183,13 @@ namespace dm::engine::systems {
         FilterDef evo_filter;
         if (card_db.count(card->card_id)) {
             const auto& def = card_db.at(card->card_id);
-            if (def.keywords.evolution) {
+
+            // Auto-set G-Neo flag
+            if (def.type == CardType::G_NEO_CREATURE) {
+                card->is_g_neo = true;
+            }
+
+            if (def.keywords.evolution || card->is_neo_evolution_play) {
                 is_evolution = true;
                 // Task B: Refined Evolution Filters
                 evo_filter.zones = {"BATTLE_ZONE"};
