@@ -62,7 +62,7 @@ namespace dm::ai {
             auto setup_deck = [&](dm::core::Player& p, const std::vector<dm::core::CardID>& deck_list) {
                 p.deck.clear();
                 for(auto cid : deck_list) {
-                    p.deck.emplace_back(cid, instance_counter++);
+                    p.deck.emplace_back(cid, instance_counter++, p.id);
                 }
             };
 
