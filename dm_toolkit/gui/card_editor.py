@@ -141,7 +141,7 @@ class CardEditor(QMainWindow):
             self.update_current_preview()
 
             # Auto-expand if it's a card and not already expanded
-            item = self.tree_widget.model.itemFromIndex(index)
+            item = self.tree_widget.standard_model.itemFromIndex(index)
             if item:
                 type_ = item.data(Qt.ItemDataRole.UserRole + 1)
                 if type_ == "CARD":
@@ -163,7 +163,7 @@ class CardEditor(QMainWindow):
             self.preview_widget.clear_preview()
             return
 
-        item = self.tree_widget.model.itemFromIndex(idx)
+        item = self.tree_widget.standard_model.itemFromIndex(idx)
 
         # Find card item
         card_item = item
@@ -188,7 +188,7 @@ class CardEditor(QMainWindow):
         if not idx.isValid(): return
 
         # Ensure we are operating on the Card Item
-        item = self.tree_widget.model.itemFromIndex(idx)
+        item = self.tree_widget.standard_model.itemFromIndex(idx)
         card_item = None
 
         item_type = item.data(Qt.ItemDataRole.UserRole + 1)
@@ -254,7 +254,7 @@ class CardEditor(QMainWindow):
         idx = self.tree_widget.currentIndex()
         if not idx.isValid(): return
         
-        item = self.tree_widget.model.itemFromIndex(idx)
+        item = self.tree_widget.standard_model.itemFromIndex(idx)
         
         # Traverse up to find CARD or SPELL_SIDE
         target_item = item
@@ -275,7 +275,7 @@ class CardEditor(QMainWindow):
         idx = self.tree_widget.currentIndex()
         if not idx.isValid(): return
 
-        item = self.tree_widget.model.itemFromIndex(idx)
+        item = self.tree_widget.standard_model.itemFromIndex(idx)
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
 
         # Delegate to LogicTreeWidget methods for consistency
