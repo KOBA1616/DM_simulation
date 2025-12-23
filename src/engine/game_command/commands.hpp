@@ -20,6 +20,10 @@ namespace dm::engine::game_command {
         // Context to restore exact position in from_zone for undo
         int original_index;
 
+        // G-Neo replacement support
+        bool g_neo_activated = false;
+        std::vector<core::CardInstance> moved_underlying_cards;
+
         TransitionCommand(int instance_id, core::Zone from, core::Zone to, core::PlayerID owner, int dest_idx = -1)
             : card_instance_id(instance_id), from_zone(from), to_zone(to), owner_id(owner), destination_index(dest_idx), original_index(-1) {}
 
