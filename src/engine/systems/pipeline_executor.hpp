@@ -14,7 +14,7 @@
 
 namespace dm::engine::systems {
 
-    using ContextValue = std::variant<int, std::string, std::vector<int>>;
+    using ContextValue = std::variant<std::monostate, int, std::string, std::vector<int>>;
 
     struct LoopContext {
          int index = 0;

@@ -355,7 +355,6 @@ namespace dm::engine::systems {
                 }
 
                 if (!decision_made) {
-                    std::cout << "[GameLogic] S-Trigger detected: " << def.name << ". Pausing for input." << std::endl;
                     exec.waiting_for_key = decision_key;
                     exec.execution_paused = true;
 
@@ -367,8 +366,6 @@ namespace dm::engine::systems {
                 }
 
                 if (use_trigger) {
-                    std::cout << "[GameLogic] Activating S-Trigger: " << def.name << std::endl;
-
                     // Task A: Complete Effect Resolution
                     // 1. Play (Free)
                     Zone dest = (def.type == CardType::SPELL) ? Zone::GRAVEYARD : Zone::BATTLE;
