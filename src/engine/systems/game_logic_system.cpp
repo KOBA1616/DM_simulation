@@ -17,6 +17,10 @@ namespace dm::engine::systems {
     using namespace core;
     using namespace game_command;
 
+    // Forward declaration of helper
+    void handle_check_s_trigger(PipelineExecutor& exec, GameState& state, const Instruction& inst,
+                                const std::map<core::CardID, core::CardDefinition>& card_db);
+
     void GameLogicSystem::dispatch_action(PipelineExecutor& pipeline, core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
         // Map ActionType to handler
         // Simplified mapping for now
@@ -97,6 +101,18 @@ namespace dm::engine::systems {
                 break;
             }
             case ActionType::MANA_CHARGE:
+            {
+                int iid = action.source_instance_id;
+                int pid = state.active_player_id;
+                if (const auto* c = state.get_card_instance(iid)) {
+                    pid = c->owner;
+                }
+                if (iid >= 0) {
+                     auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
+                     state.execute_command(std::move(cmd));
+                }
+                break;
+            }
             case ActionType::MOVE_CARD:
             {
                 int iid = action.source_instance_id;
@@ -105,35 +121,24 @@ namespace dm::engine::systems {
                     pid = c->owner;
                 }
 
-                // If this is MANA_CHARGE or MOVE_CARD during MANA phase -> Charge Mana
-                if (action.type == ActionType::MANA_CHARGE || (state.current_phase == Phase::MANA && action.type == ActionType::MOVE_CARD)) {
+                // Handling for mana charge via MOVE_CARD if in Mana Phase
+                if (state.current_phase == Phase::MANA) {
                      if (iid >= 0) {
                          auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
                          state.execute_command(std::move(cmd));
                      }
-                } else if (action.type == ActionType::MOVE_CARD) {
-                     // General MOVE_CARD handling
-                     if (iid >= 0) {
-                         Zone dest = Zone::GRAVEYARD; // Default
-                         if (action.destination_override == 3) dest = Zone::HAND;
-                         else if (action.destination_override == 4) dest = Zone::MANA;
-                         else if (action.destination_override == 5) dest = Zone::SHIELD;
-                         else if (action.destination_override == 1) dest = Zone::DECK;
-                         else if (state.current_phase == Phase::MANA) dest = Zone::MANA; // Fallback for Mana Phase
-                         // TransitionCommand doesn't support deck bottom explicitly via Zone::DECK.
-                         // But for Mana Charge (4), it works.
+                     break;
+                }
 
-                         // Helper: deck bottom usually requires specific handling or TransitionCommand index.
-                         // For now, support MANA/HAND/GRAVE/SHIELD.
+                if (iid >= 0) {
+                     Zone dest = Zone::GRAVEYARD; // Default
+                     if (action.destination_override == 3) dest = Zone::HAND;
+                     else if (action.destination_override == 4) dest = Zone::MANA;
+                     else if (action.destination_override == 5) dest = Zone::SHIELD;
+                     else if (action.destination_override == 1) dest = Zone::DECK;
 
-                         auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, dest, pid);
-                         // Note: Assuming FROM HAND. ActionGenerator for Mana sets it from Hand.
-                         // If generic MOVE_CARD, we might need source zone?
-                         // Action struct doesn't have source zone.
-                         // We assume Hand for Mana Charge context.
-
-                         state.execute_command(std::move(cmd));
-                    }
+                     auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, dest, pid);
+                     state.execute_command(std::move(cmd));
                 }
                 break;
             }
@@ -316,8 +321,10 @@ namespace dm::engine::systems {
     int GameLogicSystem::get_creature_power(const core::CardInstance& creature, const core::GameState& game_state, const std::map<core::CardID, core::CardDefinition>& card_db) {
         if (!card_db.count(creature.card_id)) return 0;
         int power = card_db.at(creature.card_id).power;
+        // Use mod to silence unused variable warning if loop body is empty or doesn't use it
         for (const auto& mod : game_state.active_modifiers) {
-             // ...
+             (void)mod;
+             // Logic for checking power modifier would go here
         }
         return power;
     }
@@ -380,16 +387,13 @@ namespace dm::engine::systems {
         }
 
         if (use) {
-             const auto& def = card_db.at(state.get_card_instance(card_id)->card_id);
+             // Silence unused warning for card_db if not used below
+             // Actually card_db might be needed for verification logic, but simple play doesn't use it here explicitly
+             (void)card_db;
+             // const auto& def = card_db.at(state.get_card_instance(card_id)->card_id);
 
              Instruction play_inst(InstructionOp::PLAY);
              play_inst.args["card"] = card_id;
-             // We rely on standard play.
-             // Note: S-Trigger Play is free.
-             // handle_play_card does NOT check cost. It just moves card.
-             // Payment (PAY_COST) is a separate action in the loop.
-             // S-Trigger execution does not generate PAY_COST action.
-             // So simply calling PLAY instruction works!
 
              auto block = std::make_shared<std::vector<Instruction>>();
              block->push_back(play_inst);
