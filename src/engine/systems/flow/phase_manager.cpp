@@ -36,12 +36,12 @@ namespace dm::engine {
         for (auto& player : game_state.players) {
             for (int i = 0; i < 5; ++i) {
                 if (player.deck.empty()) break;
-                move_card_direct(player.deck, player.shield_zone);
+                move_card_cmd(game_state, player.deck, Zone::DECK, Zone::SHIELD, player.id);
             }
             // Draw Hand (5 cards)
             for (int i = 0; i < 5; ++i) {
                 if (player.deck.empty()) break;
-                move_card_direct(player.deck, player.hand);
+                move_card_cmd(game_state, player.deck, Zone::DECK, Zone::HAND, player.id);
             }
         }
 
@@ -183,14 +183,17 @@ namespace dm::engine {
         Player& active_player = game_state.players[game_state.active_player_id];
         
         // Reset Turn Stats
-        game_state.turn_stats = TurnStats{};
+        using namespace dm::engine::game_command;
+        auto cmd_stats = std::make_unique<FlowCommand>(FlowCommand::FlowType::RESET_TURN_STATS, 0);
+        game_state.execute_command(std::move(cmd_stats));
 
         // Untap (Using Command)
         ManaSystem::untap_all(game_state, active_player);
 
         // Clear Summoning Sickness
         for (auto& card : active_player.battle_zone) {
-            card.summoning_sickness = false;
+             auto cmd = std::make_unique<MutateCommand>(card.instance_id, MutateCommand::MutationType::SET_SUMMONING_SICKNESS, 0);
+             game_state.execute_command(std::move(cmd));
         }
 
         // Trigger Reservation: AT_START_OF_TURN
@@ -307,19 +310,10 @@ namespace dm::engine {
                 next_p = Phase::ATTACK;
                 break;
             case Phase::END_OF_TURN:
-                // Cleanup Step: Remove expired modifiers and passive effects
+                // Cleanup Step
                 {
-                     auto& mods = game_state.active_modifiers;
-                     mods.erase(std::remove_if(mods.begin(), mods.end(), [](CostModifier& m) {
-                         if (m.turns_remaining > 0) m.turns_remaining--;
-                         return m.turns_remaining == 0;
-                     }), mods.end());
-
-                     auto& passives = game_state.passive_effects;
-                     passives.erase(std::remove_if(passives.begin(), passives.end(), [](PassiveEffect& p) {
-                         if (p.turns_remaining > 0) p.turns_remaining--;
-                         return p.turns_remaining == 0;
-                     }), passives.end());
+                     auto cmd_cleanup = std::make_unique<FlowCommand>(FlowCommand::FlowType::CLEANUP_STEP, 0);
+                     game_state.execute_command(std::move(cmd_cleanup));
                 }
 
                 // Switch turn
@@ -336,7 +330,7 @@ namespace dm::engine {
                          game_state.execute_command(std::move(cmd_turn));
                      }
 
-                     // Direct modify active player (TODO: Command)
+                     // FlowCommand for Active Player
                      auto cmd_active = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ACTIVE_PLAYER, next_active);
                      game_state.execute_command(std::move(cmd_active));
 

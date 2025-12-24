@@ -59,7 +59,8 @@ namespace dm::engine::game_command {
             REMOVE_KEYWORD,
             ADD_PASSIVE_EFFECT,
             ADD_COST_MODIFIER,
-            ADD_PENDING_EFFECT
+            ADD_PENDING_EFFECT,
+            SET_SUMMONING_SICKNESS // int_value used as bool (1=true, 0=false)
         };
 
         int target_instance_id;
@@ -117,7 +118,9 @@ namespace dm::engine::game_command {
             SET_ATTACK_SOURCE,
             SET_ATTACK_TARGET,
             SET_ATTACK_PLAYER,
-            SET_ACTIVE_PLAYER
+            SET_ACTIVE_PLAYER,
+            CLEANUP_STEP, // Remove expired modifiers/passives
+            RESET_TURN_STATS // Reset turn statistics
         };
 
         FlowType flow_type;
@@ -125,6 +128,9 @@ namespace dm::engine::game_command {
 
         // Undo context
         int previous_value;
+        core::TurnStats previous_turn_stats;
+        std::vector<core::CostModifier> removed_modifiers;
+        std::vector<core::PassiveEffect> removed_passives;
 
         FlowCommand(FlowType type, int val)
             : flow_type(type), new_value(val), previous_value(0) {}
