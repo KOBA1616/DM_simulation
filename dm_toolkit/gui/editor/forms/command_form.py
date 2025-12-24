@@ -7,6 +7,7 @@ from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED, GRANTABLE_KEYWORDS
+from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_BRANCHES
 
 class CommandEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -292,7 +293,7 @@ class CommandEditForm(BaseEditForm):
         self.update_ui_state(raw_type)
 
     def request_generate_branches(self):
-        self.structure_update_requested.emit("GENERATE_BRANCHES", {})
+        self.structure_update_requested.emit(STRUCT_CMD_GENERATE_BRANCHES, {})
 
     def _save_data(self, data):
         cmd_type = self.type_combo.currentData()
