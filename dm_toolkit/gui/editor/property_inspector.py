@@ -11,6 +11,17 @@ from dm_toolkit.gui.editor.forms.keyword_form import KeywordEditForm
 from dm_toolkit.gui.editor.forms.modifier_form import ModifierEditForm
 from dm_toolkit.gui.localization import tr
 
+class OptionEditPage(QWidget):
+    structure_update_requested = pyqtSignal(str, dict)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(tr("Option selected. Add Actions to define behavior.")))
+        btn = QPushButton(tr("Add Action"))
+        btn.clicked.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_ACTION", {}))
+        layout.addWidget(btn)
+        layout.addStretch()
+
 class PropertyInspector(QWidget):
     # Forward signal from forms
     structure_update_requested = pyqtSignal(str, dict)
@@ -29,20 +40,8 @@ class PropertyInspector(QWidget):
         self.empty_page = QLabel(tr("Select an item to edit"))
         self.stack.addWidget(self.empty_page)
 
-        # OPTION page with "Add Action" button
-        self.option_page = QWidget()
-        option_layout = QVBoxLayout(self.option_page)
-
-        option_label = QLabel(tr("Option selected. Use 'Add Action' to define behavior."))
-        option_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        option_layout.addWidget(option_label)
-
-        option_add_btn = QPushButton(tr("Add Action"))
-        option_add_btn.clicked.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_ACTION", {}))
-        option_layout.addWidget(option_add_btn)
-
-        option_layout.addStretch() # Push widgets to top
-
+        self.option_page = OptionEditPage()
+        self.option_page.structure_update_requested.connect(self.structure_update_requested.emit)
         self.stack.addWidget(self.option_page)
 
         self.cmd_branch_page = QLabel(tr("Branch selected. Add Commands to this branch."))
