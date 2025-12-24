@@ -142,6 +142,29 @@ class LogicTreeWidget(QTreeView):
         if not menu.isEmpty():
             menu.exec(self.viewport().mapToGlobal(pos))
 
+    def replace_item_with_command(self, index, cmd_data):
+        """Replaces a legacy Action item with a new Command item."""
+        if not index.isValid(): return
+
+        parent_item = self.standard_model.itemFromIndex(index.parent())
+        row = index.row()
+
+        # Remove old Action
+        parent_item.removeRow(row)
+
+        # Insert new Command at same position
+        # Using insertRow with new item
+
+        # We need to construct the command item hierarchy using data_manager
+        # data_manager doesn't have public insert, so we do it via model or add helper
+
+        # But wait, data_manager._create_command_item creates a QStandardItem
+        cmd_item = self.data_manager._create_command_item(cmd_data)
+        parent_item.insertRow(row, cmd_item)
+
+        # Select the new item
+        self.setCurrentIndex(cmd_item.index())
+
     def add_keywords(self, parent_index):
         if not parent_index.isValid(): return
         self.add_child_item(parent_index, "KEYWORDS", {}, tr("Keywords"))
