@@ -396,19 +396,8 @@ class CardPreviewWidget(QWidget):
             label.set_civs(civs)
             return
 
-        # Fallback for standard QLabel (if any)
-        # Note: We replaced all instances with ManaCostLabel, so this might not be hit.
-        style = "font-weight: bold; font-size: 16px; color: white; border: 2px solid black; border-radius: 12px; padding: 0px;"
-        if not civs:
-            bg_style = "background-color: #A9A9A9;"
-        elif len(civs) == 1:
-            # We don't have get_civ_color here anymore, need a local map or use a default
-            # Just fallback to gray if this path is ever hit (it shouldn't be)
-            bg_style = "background-color: #A9A9A9;"
-        else:
-            bg_style = "background-color: #A9A9A9;"
-
-        label.setStyleSheet(style + bg_style)
+        # Fallback implementation removed to ensure consistency.
+        # All cost labels should be ManaCostLabel instances.
 
     def apply_civ_style(self, civs):
         # Requirement: "All borders should be thin black lines"
