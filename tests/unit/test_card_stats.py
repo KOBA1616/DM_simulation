@@ -49,7 +49,7 @@ def test_card_stats_tracking():
         dm_ai_module.register_card_data(cdata)
 
     # Initialize stats for all cards in DB
-    dm_ai_module.initialize_card_stats(gs, card_db, 40)
+    gs.initialize_card_stats(card_db, 40)
 
     gi = dm_ai_module.GameInstance(42, card_db)
     config = dm_ai_module.ScenarioConfig()
@@ -61,7 +61,7 @@ def test_card_stats_tracking():
     state.current_phase = dm_ai_module.Phase.MAIN
 
     # Initialize stats on this new state
-    dm_ai_module.initialize_card_stats(state, card_db, 40)
+    state.initialize_card_stats(card_db, 40)
 
     # Generate play action
     actions = ActionGenerator.generate_legal_actions(state, card_db)
@@ -93,15 +93,15 @@ def test_card_stats_tracking():
     # Check stats again
     stats_after = dm_ai_module.get_card_stats(state)
     assert 1 in stats_after
-    # Use attribute access, not dict access
-    assert stats_after[1].play_count == 1
-    assert stats_after[1].sum_cost_discount == 0 # Cost 3 played with 3 mana
+    # Use dict access
+    assert stats_after[1]['play_count'] == 1
+    assert stats_after[1]['sum_cost_discount'] == 0 # Cost 3 played with 3 mana
 
     # Check early usage
     # Scenario defaults to Turn 5.
     assert state.turn_number == 5
     # So early_usage should be 0.
-    assert stats_after[1].sum_early_usage == 0.0
+    assert stats_after[1]['sum_early_usage'] == 0.0
 
 def test_card_stats_win_contribution():
     """
@@ -126,7 +126,7 @@ def test_card_stats_win_contribution():
 
     state = gi.state
     # Initialize stats
-    dm_ai_module.initialize_card_stats(state, card_db, 40)
+    state.initialize_card_stats(card_db, 40)
 
     # Play Aqua Hulcus (Card 2)
     state.current_phase = dm_ai_module.Phase.MAIN
@@ -189,7 +189,7 @@ def test_card_stats_win_contribution():
     # Check stats for Card 2
     stats = dm_ai_module.get_card_stats(state)
     assert 2 in stats
-    # Use attribute access
-    assert stats[2].play_count == 1
-    assert stats[2].win_count == 1
-    assert stats[2].sum_win_contribution == 1.0
+    # Use dict access
+    assert stats[2]['play_count'] == 1
+    assert stats[2]['win_count'] == 1
+    assert stats[2]['sum_win_contribution'] == 1.0
