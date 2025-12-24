@@ -4,7 +4,7 @@
 #include "ai/agents/heuristic_agent.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/card/card_registry.hpp"
-#include "engine/actions/action_generator.hpp"
+#include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/game_instance.hpp"
 #include "ai/mcts/mcts.hpp"
@@ -313,7 +313,7 @@ namespace dm::ai {
                     break;
                  }
 
-                 auto legal_actions = dm::engine::ActionGenerator::generate_legal_actions(instance.state, *card_db_);
+                 auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(instance.state, *card_db_);
                  if (legal_actions.empty()) {
                      dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
                      if(dm::engine::PhaseManager::check_game_over(instance.state, res)) {
@@ -392,7 +392,7 @@ namespace dm::ai {
                     break;
                  }
 
-                 auto legal_actions = dm::engine::ActionGenerator::generate_legal_actions(instance.state, *card_db_);
+                 auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(instance.state, *card_db_);
                  if (legal_actions.empty()) {
                      dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
                      continue;

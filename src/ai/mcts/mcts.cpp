@@ -1,5 +1,5 @@
 #include "mcts.hpp"
-#include "engine/actions/action_generator.hpp"
+#include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "ai/encoders/action_encoder.hpp"
@@ -171,7 +171,7 @@ namespace dm::ai {
     }
 
     void MCTS::expand_node(MCTSNode* node, const std::vector<float>& policy_logits) {
-        auto actions = ActionGenerator::generate_legal_actions(node->state, *card_db_);
+        auto actions = IntentGenerator::generate_legal_actions(node->state, *card_db_);
         
         if (actions.empty()) return;
 
@@ -198,7 +198,7 @@ namespace dm::ai {
             // Replaced EffectResolver::resolve_action with GameLogicSystem::resolve_action
             GameLogicSystem::resolve_action(next_state, action, *card_db_);
 
-            if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
+            if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
                 PhaseManager::next_phase(next_state, *card_db_);
             }
             PhaseManager::fast_forward(next_state, *card_db_);

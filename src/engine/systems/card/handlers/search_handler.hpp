@@ -35,7 +35,7 @@ namespace dm::engine {
              dm::engine::systems::PipelineExecutor pipeline;
              pipeline.set_context_var("$targets", *ctx.targets);
 
-             if (ctx.action.type == EffectActionType::SEARCH_DECK) {
+             if (ctx.action.type == EffectPrimitive::SEARCH_DECK) {
                  Instruction move(InstructionOp::MOVE);
                  move.args["to"] = (ctx.action.destination_zone == "MANA_ZONE") ? "MANA" : "HAND";
                  move.args["target"] = "$targets";
@@ -46,7 +46,7 @@ namespace dm::engine {
 
                  pipeline.execute({move, shuffle}, ctx.game_state, ctx.card_db);
              }
-             else if (ctx.action.type == EffectActionType::SEARCH_DECK_BOTTOM) {
+             else if (ctx.action.type == EffectPrimitive::SEARCH_DECK_BOTTOM) {
                  Instruction move(InstructionOp::MOVE);
                  move.args["to"] = "HAND";
                  move.args["target"] = "$targets";
@@ -62,7 +62,7 @@ namespace dm::engine {
 
                  pipeline.execute({move}, ctx.game_state, ctx.card_db);
              }
-             else if (ctx.action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
+             else if (ctx.action.type == EffectPrimitive::SEND_TO_DECK_BOTTOM) {
                  Instruction move(InstructionOp::MOVE);
                  move.args["to"] = "DECK";
                  move.args["to_bottom"] = true;
@@ -75,13 +75,13 @@ namespace dm::engine {
             using namespace dm::core;
             if (!ctx.instruction_buffer) return;
 
-            if (ctx.action.type == EffectActionType::SHUFFLE_DECK) {
+            if (ctx.action.type == EffectPrimitive::SHUFFLE_DECK) {
                 Instruction shuffle(InstructionOp::MODIFY);
                 shuffle.args["type"] = "SHUFFLE";
                 shuffle.args["target"] = "DECK";
                 ctx.instruction_buffer->push_back(shuffle);
             }
-            else if (ctx.action.type == EffectActionType::SEARCH_DECK) {
+            else if (ctx.action.type == EffectPrimitive::SEARCH_DECK) {
                  Instruction select(InstructionOp::SELECT);
                  select.args["filter"] = ctx.action.filter;
                  select.args["out"] = "$search_selection";
@@ -112,7 +112,7 @@ namespace dm::engine {
                  shuffle.args["target"] = "DECK";
                  ctx.instruction_buffer->push_back(shuffle);
             }
-            else if (ctx.action.type == EffectActionType::SEARCH_DECK_BOTTOM) {
+            else if (ctx.action.type == EffectPrimitive::SEARCH_DECK_BOTTOM) {
                 int look_count = ctx.action.value1;
                 if (look_count == 0) look_count = 1;
 
@@ -150,7 +150,7 @@ namespace dm::engine {
                 move_rest.args["target"] = "$buffer_rest";
                 ctx.instruction_buffer->push_back(move_rest);
             }
-            else if (ctx.action.type == EffectActionType::SEND_TO_DECK_BOTTOM) {
+            else if (ctx.action.type == EffectPrimitive::SEND_TO_DECK_BOTTOM) {
                  Instruction move(InstructionOp::MOVE);
                  move.args["to"] = "DECK";
                  move.args["to_bottom"] = true;

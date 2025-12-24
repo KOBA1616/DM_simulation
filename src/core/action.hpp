@@ -4,7 +4,7 @@
 
 namespace dm::core {
 
-    enum class ActionType : uint8_t {
+    enum class PlayerIntent : uint8_t {
         PASS,
         MANA_CHARGE,
         MOVE_CARD,
@@ -28,7 +28,7 @@ namespace dm::core {
     };
 
     struct Action {
-        ActionType type;
+        PlayerIntent type;
         CardID card_id; // For PLAY_CARD, MANA_CHARGE
         int source_instance_id; // For ATTACK, BLOCK (instance ID of the creature)
         int target_instance_id; // For ATTACK_CREATURE, SELECT_TARGET

@@ -16,7 +16,7 @@ namespace dm::engine {
 
     /**
      * @brief Manages the high-level game loop, state, and pipeline execution.
-     *        It owns the GameState and the ActionGenerator (implied or separate).
+     *        It owns the GameState and the IntentGenerator (implied or separate).
      */
     class GameInstance {
     public:
