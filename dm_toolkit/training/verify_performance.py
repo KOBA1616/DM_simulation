@@ -1,10 +1,8 @@
 
 import os
 import sys
-import numpy as np
-import torch
-import argparse
 import time
+import argparse
 
 # Ensure bin is in path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -29,6 +27,8 @@ from dm_toolkit.ai.agent.tokenization import game_state_to_tokens
 # Import SCENARIOS
 sys.path.append(os.path.dirname(__file__))
 from scenario_definitions import SCENARIOS
+
+import torch
 
 class PerformanceVerifier:
     def __init__(self, card_db, model_path=None, model_type="resnet"):
@@ -127,19 +127,10 @@ class PerformanceVerifier:
         for i in range(episodes):
              instance = dm_ai_module.GameInstance(int(time.time() * 1000 + i) % 1000000, self.card_db)
              instance.reset_with_scenario(config)
-             initial_states.append(instance.state)
+             # Use clone() to ensure we have shared_ptr managed GameStates
+             initial_states.append(instance.state.clone())
 
         # Setup ParallelRunner
-        # Note: NeuralEvaluator in Python doesn't have parallel logic itself, but C++ ParallelRunner does.
-        # We need to pass a python wrapper around NeuralEvaluator.evaluate.
-        # But wait, NeuralEvaluator is C++ binding.
-        # dm_ai_module.NeuralEvaluator().evaluate is a python-callable that calls C++.
-
-        # In ParallelRunner.play_games(..., evaluator, ...):
-        # evaluator is std::function taking vector<GameState> returning pair<...>.
-        # We can pass dm_ai_module.NeuralEvaluator(self.card_db).evaluate directly?
-        # Yes, pybind11 should adapt it.
-
         runner = dm_ai_module.ParallelRunner(self.card_db, mcts_sims, batch_size)
         neural_evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
 
@@ -147,15 +138,10 @@ class PerformanceVerifier:
 
         # Run games
         # play_games returns vector<GameResultInfo>
-        # but binding for GameResultInfo might need inspection if we use it.
-        # Actually binding returns list of GameResultInfo objects.
-        # GameResultInfo has .result (int)
-
-        # Pass collect_data=False to avoid memory accumulation (Memory Leak fix)
-        # Note: Pybind11 signature: (self, states, evaluator, temperature, add_noise, num_threads, alpha, collect_data)
+        # Pass neural_evaluator object directly (instead of .evaluate method) to use optimized C++ path
         results_info = runner.play_games(
             initial_states,
-            neural_evaluator.evaluate,
+            neural_evaluator,
             1.0,   # temperature
             False, # add_noise
             num_threads,
