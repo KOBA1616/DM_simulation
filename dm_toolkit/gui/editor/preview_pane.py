@@ -76,10 +76,17 @@ class ManaCostLabel(QLabel):
         painter.setPen(pen)
         painter.drawEllipse(draw_rect)
 
-        painter.end()
+        # Draw Text (Number) - Manual drawing to ensure centering
+        font = self.font()
+        font.setBold(True)
+        # Adjust font size based on circle size (approx 55% of diameter)
+        font_size = max(8, int(d * 0.55))
+        font.setPixelSize(font_size)
+        painter.setFont(font)
+        painter.setPen(Qt.GlobalColor.white)
+        painter.drawText(draw_rect, Qt.AlignmentFlag.AlignCenter, self.text())
 
-        # Draw Text (Number)
-        super().paintEvent(event)
+        painter.end()
 
 class CardPreviewWidget(QWidget):
     """
