@@ -17,6 +17,7 @@ try:
 except ImportError:
     dm_ai_module = None
 
+from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.training.scenario_definitions import SCENARIOS
 
 # Worker Thread for Running Simulations
@@ -36,7 +37,7 @@ class SimulationWorker(QThread):
         self.is_cancelled = False
 
     def run(self):
-        if not dm_ai_module:
+        if not EngineCompat.is_available():
             self.finished_signal.emit(0.0, tr("Error: dm_ai_module not loaded."))
             return
 
@@ -85,7 +86,7 @@ class SimulationWorker(QThread):
 
                 # Input Size check
                 dummy_state = dm_ai_module.GameState(42)
-                dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_state, 0, self.card_db)
+                dummy_vec = EngineCompat.TensorConverter_convert_to_tensor(dummy_state, 0, self.card_db)
                 input_size = len(dummy_vec)
                 action_size = 600
 
@@ -109,7 +110,7 @@ class SimulationWorker(QThread):
                         return policies, vals
 
                 # Register global callback
-                dm_ai_module.register_batch_inference_numpy(batch_inference)
+                EngineCompat.register_batch_inference_numpy(batch_inference)
 
                 self.neural_evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
                 evaluator_func = self.neural_evaluator.evaluate
@@ -150,13 +151,13 @@ class SimulationWorker(QThread):
 
         # NOTE: ParallelRunner is known to cause std::bad_alloc with large simulation counts.
         # This is a tracked issue in Requirement Definition 00.
-        runner = dm_ai_module.ParallelRunner(self.card_db, self.sims, batch_size)
+        runner = EngineCompat.create_parallel_runner(self.card_db, self.sims, batch_size)
 
         # Run
         start_time = time.time()
 
         try:
-            results_info = runner.play_games(initial_states, evaluator_func, 1.0, False, self.threads)
+            results_info = EngineCompat.ParallelRunner_play_games(runner, initial_states, evaluator_func, 1.0, False, self.threads)
         except Exception as e:
             self.finished_signal.emit(0.0, f"{tr('Simulation Error')}: {e}")
             return
