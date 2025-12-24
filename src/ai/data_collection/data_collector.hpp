@@ -18,7 +18,8 @@ namespace dm::ai {
     };
 
     struct CollectedBatch {
-        std::vector<std::vector<long>> states; // Changed to long for token sequences
+        std::vector<std::vector<long>> token_states;   // For Transformer (Tokens)
+        std::vector<std::vector<float>> tensor_states; // For ResNet/MLP (Flat Tensors)
         std::vector<std::vector<float>> policies;
         std::vector<std::vector<float>> masks;
         std::vector<float> values;
@@ -32,7 +33,9 @@ namespace dm::ai {
 
         // Run self-play episodes and collect data (Heuristic vs Heuristic)
         CollectedBatch collect_data_batch(int episodes);
-        CollectedBatch collect_data_batch_heuristic(int episodes);
+
+        // Revised signature: allow choosing what to collect
+        CollectedBatch collect_data_batch_heuristic(int episodes, bool collect_tokens = false, bool collect_tensors = true);
 
     private:
         std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;

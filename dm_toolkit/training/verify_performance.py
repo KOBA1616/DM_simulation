@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import argparse
+import numpy as np
 
 # Ensure bin is in path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -21,8 +22,7 @@ except ImportError:
     sys.exit(1)
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
-from dm_toolkit.ai.agent.transformer_model import DuelTransformer
-from dm_toolkit.ai.agent.tokenization import game_state_to_tokens
+from dm_toolkit.training.network_v2 import NetworkV2
 
 # Import SCENARIOS
 sys.path.append(os.path.dirname(__file__))
@@ -34,22 +34,25 @@ class PerformanceVerifier:
     def __init__(self, card_db, model_path=None, model_type="resnet"):
         self.card_db = card_db
         self.model_type = model_type.lower()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {self.device}")
 
-        # Determine input size dynamically
+        # Determine input size dynamically for ResNet
         dummy_instance = dm_ai_module.GameInstance(42, self.card_db)
         dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_instance.state, 0, self.card_db)
         self.input_size = len(dummy_vec)
         self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"Using device: {self.device}")
-
+        # Initialize Network based on type
         if self.model_type == "transformer":
-            print("Initializing TRANSFORMER model...")
-            self.vocab_size = 1000 # Must match tokenization.py
-            self.network = DuelTransformer(self.vocab_size, self.action_size).to(self.device)
+            print("Initializing TRANSFORMER model (NetworkV2)...")
+            self.vocab_size = dm_ai_module.TokenConverter.get_vocab_size()
+            self.max_seq_len = 200 # Should match training
+            self.network = NetworkV2(input_vocab_size=self.vocab_size,
+                                     action_space=self.action_size,
+                                     max_seq_len=self.max_seq_len).to(self.device)
         else:
-            print("Initializing RESNET model...")
+            print("Initializing RESNET model (AlphaZeroNetwork)...")
             self.network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
 
         if model_path and os.path.exists(model_path):
@@ -67,43 +70,84 @@ class PerformanceVerifier:
         self.network.eval()
 
         # Register Batch Callback
-        # Based on bindings.cpp, we have set_flat_batch_callback for ResNet (State Vectors)
-        # and set_sequence_batch_callback for Transformer (Tokens).
-        # Currently, ParallelRunner uses NeuralEvaluator which likely calls "evaluate" which triggers the callback.
-        # The NeuralEvaluator (C++) needs to know WHICH callback to trigger.
-        # This is controlled by NeuralEvaluator::set_model_type.
+        self._register_callback()
 
-        def batch_inference(input_array):
-            # Input is numpy array (Batch, InputSize)
-            with torch.no_grad():
-                if self.model_type == "transformer":
-                     # MOCK: Even with set_flat_batch_callback, if we are testing Transformer without C++ tokenization support,
-                     # we receive floats. We mock tokenization here for pipeline verification.
-                    B = input_array.shape[0]
-                    dummy_tokens = torch.randint(0, self.vocab_size, (B, 32)).to(self.device)
-                    policy_logits, values = self.network(dummy_tokens)
-                else:
+    def _register_callback(self):
+        """Registers the appropriate C++ callback for batch inference."""
+
+        if self.model_type == "transformer":
+            def sequence_batch_inference(token_lists):
+                # token_lists is List[List[int]] from C++
+                # Convert to padded tensor
+                # We need to manually pad here because C++ sends raw vectors
+
+                max_len = 0
+                for tokens in token_lists:
+                    max_len = max(max_len, len(tokens))
+
+                # Ensure min length if needed, though NetworkV2 handles it
+                max_len = max(max_len, 1)
+
+                batch_size = len(token_lists)
+                padded_tensor = torch.zeros((batch_size, max_len), dtype=torch.long, device=self.device)
+                mask_tensor = torch.zeros((batch_size, max_len), dtype=torch.bool, device=self.device)
+
+                for i, tokens in enumerate(token_lists):
+                    L = len(tokens)
+                    if L > 0:
+                        t = torch.tensor(tokens, dtype=torch.long, device=self.device)
+                        padded_tensor[i, :L] = t
+                        mask_tensor[i, :L] = True
+
+                with torch.no_grad():
+                    policy_logits, values = self.network(padded_tensor, mask=mask_tensor)
+
+                    policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
+                    vals = values.squeeze(1).cpu().numpy()
+
+                    # Return tuple of list-of-lists and list-of-floats
+                    # C++ expects vector<vector<float>> policies, vector<float> values
+                    return policies.tolist(), vals.tolist()
+
+            if hasattr(dm_ai_module, "set_sequence_batch_callback"):
+                dm_ai_module.set_sequence_batch_callback(sequence_batch_inference)
+                print("Registered sequence batch callback.")
+            else:
+                print("Error: set_sequence_batch_callback not found in module.")
+                sys.exit(1)
+
+        else:
+            # ResNet / Flat Tensor
+            def flat_batch_inference(input_array):
+                # Input is numpy array (Batch, InputSize) (via buffer protocol/copy in binding)
+                # But wait, the binding for set_flat_batch_callback passes a pointer/vector?
+                # The binding `dm::python::call_flat_batch_callback` converts C++ vector to numpy array.
+
+                with torch.no_grad():
+                    # Input array comes as a single flat float32 array or list of lists depending on binding implementation.
+                    # Based on standard usage in this project:
+                    # It seems to receive a numpy array or a list of lists.
+
+                    if isinstance(input_array, list):
+                         input_array = np.array(input_array, dtype=np.float32)
+
                     tensor = torch.from_numpy(input_array).float().to(self.device)
                     policy_logits, values = self.network(tensor)
 
-                policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
-                vals = values.squeeze(1).cpu().numpy()
-                return policies, vals
+                    policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
+                    vals = values.squeeze(1).cpu().numpy()
+                    return policies, vals
 
-        # We use set_flat_batch_callback because the C++ side currently sends state vectors (ParallelRunner default).
-        # If we wanted true Transformer support, we'd need C++ to send tokens via set_sequence_batch_callback.
-        if hasattr(dm_ai_module, "set_flat_batch_callback"):
-            dm_ai_module.set_flat_batch_callback(batch_inference)
-        elif hasattr(dm_ai_module, "register_batch_inference_numpy"):
-             # Fallback for legacy binding name if existent
-             dm_ai_module.register_batch_inference_numpy(batch_inference)
-        else:
-             print("Error: No batch callback registration function found in dm_ai_module.")
-             sys.exit(1)
+            if hasattr(dm_ai_module, "set_flat_batch_callback"):
+                dm_ai_module.set_flat_batch_callback(flat_batch_inference)
+                print("Registered flat batch callback.")
+            else:
+                 print("Error: No batch callback registration function found in dm_ai_module.")
+                 sys.exit(1)
 
     def verify(self, scenario_name, episodes, mcts_sims=800, batch_size=32, num_threads=4):
         print(f"Verifying performance for '{self.model_name}' on scenario '{scenario_name}'...")
-        print(f"Settings: sims={mcts_sims}, batch_size={batch_size}, threads={num_threads}")
+        print(f"Settings: sims={mcts_sims}, batch_size={batch_size}, threads={num_threads}, mode={self.model_type}")
 
         if scenario_name not in SCENARIOS:
             raise ValueError(f"Unknown scenario: {scenario_name}")
@@ -134,11 +178,15 @@ class PerformanceVerifier:
         runner = dm_ai_module.ParallelRunner(self.card_db, mcts_sims, batch_size)
         neural_evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
 
+        # IMPORTANT: Set the model type on the C++ evaluator
+        if self.model_type == "transformer":
+            neural_evaluator.set_model_type(dm_ai_module.ModelType.TRANSFORMER)
+        else:
+            neural_evaluator.set_model_type(dm_ai_module.ModelType.RESNET)
+
         start_time = time.time()
 
         # Run games
-        # play_games returns vector<GameResultInfo>
-        # Pass neural_evaluator object directly (instead of .evaluate method) to use optimized C++ path
         results_info = runner.play_games(
             initial_states,
             neural_evaluator,
@@ -204,5 +252,5 @@ if __name__ == "__main__":
         # Cleanup to avoid Segfaults
         if hasattr(dm_ai_module, "clear_flat_batch_callback"):
             dm_ai_module.clear_flat_batch_callback()
-        if hasattr(dm_ai_module, "clear_batch_inference_numpy"):
-            dm_ai_module.clear_batch_inference_numpy()
+        if hasattr(dm_ai_module, "clear_sequence_batch_callback"):
+            dm_ai_module.clear_sequence_batch_callback()
