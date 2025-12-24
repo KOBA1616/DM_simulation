@@ -1,0 +1,61 @@
+{
+  "commands": [
+    {
+      "name": "Transition (Move Card)",
+      "data": {
+        "type": "TRANSITION",
+        "target_group": "NONE",
+        "to_zone": "HAND",
+        "target_filter": {}
+      }
+    },
+    {
+      "name": "Branch (Condition)",
+      "data": {
+        "type": "BRANCH",
+        "condition": {},
+        "if_true": [],
+        "if_false": []
+      }
+    },
+    {
+      "name": "Mutate (Modifier)",
+      "data": {
+        "type": "MUTATE",
+        "mutation_type": "ADD_MODIFIER",
+        "payload": {}
+      }
+    },
+    {
+      "name": "Flow (Sequence)",
+      "data": {
+        "type": "FLOW",
+        "flow_type": "SEQUENCE",
+        "commands": []
+      }
+    }
+  ],
+  "actions": [
+    {
+      "name": "Draw Card",
+      "data": {
+        "type": "DRAW_CARD",
+        "filter": { "count": 1 }
+      }
+    },
+    {
+      "name": "Destroy Card",
+      "data": {
+        "type": "DESTROY",
+        "filter": { "count": 1, "zones": ["BATTLE_ZONE"] }
+      }
+    },
+    {
+      "name": "Mana Charge",
+      "data": {
+        "type": "SEND_TO_MANA",
+        "filter": { "count": 1, "zones": ["HAND"] }
+      }
+    }
+  ]
+}
