@@ -16,7 +16,7 @@ namespace dm::engine {
         for (size_t i = 0; i < active_player.hand.size(); ++i) {
             const auto& card = active_player.hand[i];
             Action action;
-            action.type = ActionType::MOVE_CARD;
+            action.type = PlayerIntent::MOVE_CARD;
             action.card_id = card.card_id;
             action.source_instance_id = card.instance_id;
             action.slot_index = static_cast<int>(i);
@@ -24,7 +24,7 @@ namespace dm::engine {
         }
 
         Action pass;
-        pass.type = ActionType::PASS;
+        pass.type = PlayerIntent::PASS;
         actions.push_back(pass);
 
         return actions;
@@ -56,7 +56,7 @@ namespace dm::engine {
                 // 1. Standard Play (Creature side if Twinpact)
                 if (!spell_restricted && ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
                     Action action;
-                    action.type = ActionType::DECLARE_PLAY;
+                    action.type = PlayerIntent::DECLARE_PLAY;
                     action.card_id = card.card_id;
                     action.source_instance_id = card.instance_id;
                     action.slot_index = static_cast<int>(i);
@@ -76,7 +76,7 @@ namespace dm::engine {
 
                     if (!side_restricted && ManaSystem::can_pay_cost(game_state, active_player, spell_def, card_db)) {
                         Action action;
-                        action.type = ActionType::DECLARE_PLAY;
+                        action.type = PlayerIntent::DECLARE_PLAY;
                         action.card_id = card.card_id; // Same ID? Or should we use spell_side ID?
                         // Usually Twinpact cards share ID but behave differently.
                         // We use `is_spell_side` flag.
@@ -107,7 +107,7 @@ namespace dm::engine {
 
                             if (available_mana >= effective_cost) {
                                 Action action;
-                                action.type = ActionType::DECLARE_PLAY;
+                                action.type = PlayerIntent::DECLARE_PLAY;
                                 action.card_id = card.card_id;
                                 action.source_instance_id = card.instance_id;
                                 action.slot_index = static_cast<int>(i);
@@ -126,7 +126,7 @@ namespace dm::engine {
         }
 
         Action pass;
-        pass.type = ActionType::PASS;
+        pass.type = PlayerIntent::PASS;
         actions.push_back(pass);
 
         return actions;
@@ -157,7 +157,7 @@ namespace dm::engine {
                 // Attack Player
                 if (can_attack_player && !passive_restricted) {
                     Action attack_player;
-                    attack_player.type = ActionType::ATTACK_PLAYER;
+                    attack_player.type = PlayerIntent::ATTACK_PLAYER;
                     attack_player.source_instance_id = card.instance_id;
                     attack_player.slot_index = static_cast<int>(i);
                     attack_player.target_player = opponent.id;
@@ -180,7 +180,7 @@ namespace dm::engine {
                             }
 
                             Action attack_creature;
-                            attack_creature.type = ActionType::ATTACK_CREATURE;
+                            attack_creature.type = PlayerIntent::ATTACK_CREATURE;
                             attack_creature.source_instance_id = card.instance_id;
                             attack_creature.slot_index = static_cast<int>(i);
                             attack_creature.target_instance_id = opp_card.instance_id;
@@ -193,7 +193,7 @@ namespace dm::engine {
         }
 
         Action pass;
-        pass.type = ActionType::PASS;
+        pass.type = PlayerIntent::PASS;
         actions.push_back(pass);
 
         return actions;
@@ -215,7 +215,7 @@ namespace dm::engine {
                         // Step 3-4: CANNOT_BLOCK check
                         if (!PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_BLOCK, card_db)) {
                             Action block;
-                            block.type = ActionType::BLOCK;
+                            block.type = PlayerIntent::BLOCK;
                             block.source_instance_id = card.instance_id;
                             block.slot_index = static_cast<int>(i);
                             actions.push_back(block);
@@ -225,7 +225,7 @@ namespace dm::engine {
             }
         }
         Action pass;
-        pass.type = ActionType::PASS;
+        pass.type = PlayerIntent::PASS;
         actions.push_back(pass);
         return actions;
     }

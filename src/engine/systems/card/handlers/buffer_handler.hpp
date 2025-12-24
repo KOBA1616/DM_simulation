@@ -22,7 +22,7 @@ namespace dm::engine {
              }
              if (val1 == 0) val1 = 1;
 
-            if (ctx.action.type == EffectActionType::MEKRAID) {
+            if (ctx.action.type == EffectPrimitive::MEKRAID) {
                 int look = val1;
                 if (look == 1) look = 3;
 
@@ -53,7 +53,7 @@ namespace dm::engine {
                     if (i == chosen_idx) continue;
                     controller.deck.insert(controller.deck.begin(), looked[i]);
                 }
-            } else if (ctx.action.type == EffectActionType::LOOK_TO_BUFFER) {
+            } else if (ctx.action.type == EffectPrimitive::LOOK_TO_BUFFER) {
                 int count = val1;
                 std::vector<CardInstance>* source = nullptr;
                 if (ctx.action.source_zone == "DECK" || ctx.action.source_zone.empty()) {
@@ -71,7 +71,7 @@ namespace dm::engine {
                         controller.effect_buffer.push_back(c);
                     }
                 }
-            } else if (ctx.action.type == EffectActionType::MOVE_BUFFER_TO_ZONE) {
+            } else if (ctx.action.type == EffectPrimitive::MOVE_BUFFER_TO_ZONE) {
                 if (ctx.action.destination_zone == "DECK_BOTTOM") {
                     for (auto& c : controller.effect_buffer) {
                         controller.deck.insert(controller.deck.begin(), c);
@@ -105,7 +105,7 @@ namespace dm::engine {
              // But here we have targets (IDs).
              // We can search both buffers.
 
-             if (ctx.action.type == EffectActionType::PLAY_FROM_BUFFER) {
+             if (ctx.action.type == EffectPrimitive::PLAY_FROM_BUFFER) {
                  Player& active = ctx.game_state.players[ctx.game_state.active_player_id];
                  for (int tid : *ctx.targets) {
                       // Check P0
