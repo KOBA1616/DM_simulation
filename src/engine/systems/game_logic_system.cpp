@@ -344,14 +344,25 @@ namespace dm::engine::systems {
             defender_dies = true;
         }
 
+        std::vector<Instruction> generated;
+
         if (attacker_dies) {
-            auto cmd = std::make_unique<TransitionCommand>(attacker_id, Zone::BATTLE, Zone::GRAVEYARD, attacker->owner);
-            state.execute_command(std::move(cmd));
+            Instruction move(InstructionOp::MOVE);
+            move.args["target"] = attacker_id;
+            move.args["to"] = "GRAVEYARD";
+            generated.push_back(move);
         }
 
         if (defender_dies) {
-            auto cmd = std::make_unique<TransitionCommand>(defender_id, Zone::BATTLE, Zone::GRAVEYARD, defender->owner);
-            state.execute_command(std::move(cmd));
+            Instruction move(InstructionOp::MOVE);
+            move.args["target"] = defender_id;
+            move.args["to"] = "GRAVEYARD";
+            generated.push_back(move);
+        }
+
+        if (!generated.empty()) {
+             auto block = std::make_shared<std::vector<Instruction>>(generated);
+             exec.call_stack.push_back({block, 0, LoopContext{}});
         }
     }
 
