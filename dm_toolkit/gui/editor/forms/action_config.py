@@ -5,172 +5,263 @@ try:
 except ImportError:
     m = None
 
-# Default empty config
-ACTION_UI_CONFIG = {}
-
-# Only populate config using enums if the module and enums exist
-if m:
-    # Add simple ActionType entries if present
-    if hasattr(m, 'ActionType') and getattr(m.ActionType, 'PASS', None) is not None:
-        ACTION_UI_CONFIG[m.ActionType.PASS] = {"visible": []}
-
-    # Populate EffectActionType-driven entries only when EffectActionType exists
-    if hasattr(m, 'EffectActionType'):
-        _mapping = {}
-        # Define configs keyed by enum member name
-        _mapping.update({
-            'DRAW_CARD': {
-                "visible": ["value1", "input_value_key"],
-                "label_value1": "Cards to Draw",
-                "can_be_optional": True,
-                "produces_output": True,
-                "outputs": {"output_value_key": "Cards Drawn"},
-                "inputs": {"input_value_key": "Count Override (optional)"}
-            },
-            'ADD_MANA': {
-                "visible": ["value1"],
-                "label_value1": "Cards to Charge",
-                "can_be_optional": True,
-                "deprecated": True,
-                "deprecation_message": "Legacy Action: Use MOVE_CARD (Hand -> Mana) or similar."
-            },
-            'MODIFY_POWER': {
-                "visible": ["scope", "filter", "value1", "value2"],
-                "label_value1": "Power Mod",
-                "label_value2": "Duration (Turns)",
-                "can_be_optional": True
-            },
-            'BREAK_SHIELD': {
-                "visible": ["value1", "input_value_key"],
-                "label_value1": "Shields to Break",
-                "inputs": {"input_value_key": "Count Override (optional)"}
-            },
-            'LOOK_AND_ADD': {
-                "visible": ["value1", "value2", "filter", "output_value_key"],
-                "label_value1": "Look at N",
-                "label_value2": "Add M to Hand",
-                "produces_output": True,
-                "outputs": {"output_value_key": "Added Cards"},
-            },
-            'SUMMON_TOKEN': {
-                "visible": ["value1", "str_val"],
-                "label_value1": "Count",
-                "label_str_val": "Token ID/Name"
-            },
-            'SEARCH_DECK': {
-                "visible": ["filter", "output_value_key", "input_value_key"],
-                "produces_output": True,
-                "allowed_filter_fields": ["civilizations", "races", "types", "cost", "power"],
-                "outputs": {"output_value_key": "Selected Cards"},
-                "inputs": {"input_value_key": "Count Override (optional)"}
-            },
-            'MEKRAID': {
-                "visible": ["value1", "filter"],
-                "label_value1": "Level"
-            },
-            'PLAY_FROM_ZONE': {
-                "visible": ["source_zone", "filter", "value1"],
-                "label_value1": "Cost Reduction"
-            },
-            'COST_REFERENCE': {
-                "visible": ["value1", "str_val"],
-                "label_value1": "Multiplier"
-            },
-            'LOOK_TO_BUFFER': {
-                "visible": ["value1", "source_zone", "input_value_key"],
-                "label_value1": "Count",
-                "inputs": {"input_value_key": "Count Override"}
-            },
-            'SELECT_FROM_BUFFER': {
-                "visible": ["filter", "value1", "output_value_key", "input_value_key"],
-                "label_value1": "Count",
-                "produces_output": True,
-                "outputs": {"output_value_key": "Selected Cards"},
-                "inputs": {"input_value_key": "Count Override"}
-            },
-            'PLAY_FROM_BUFFER': {"visible": ["filter"]},
-            'MOVE_BUFFER_TO_ZONE': {"visible": ["destination_zone"]},
-            'REVOLUTION_CHANGE': {"visible": ["filter"], "allowed_filter_fields": ["civilizations", "races", "cost"]},
-            'COUNT_CARDS': {"visible": ["scope", "filter", "output_value_key", "str_val"], "label_str_val": "Mode (Optional)", "produces_output": True, "outputs": {"output_value_key": "Count Result"}},
-            'GET_GAME_STAT': {"visible": ["str_val", "output_value_key"], "label_str_val": "Stat Name", "produces_output": True, "outputs": {"output_value_key": "Stat Value"}},
-            'APPLY_MODIFIER': {"visible": ["filter", "str_val", "value1", "value2"], "label_str_val": "Modifier Type", "label_value1": "Value", "label_value2": "Duration (Turns)"},
-            'REVEAL_CARDS': {"visible": ["scope", "filter", "value1", "input_value_key"], "label_value1": "Count (from Top)", "inputs": {"input_value_key": "Count Override"}},
-            'REGISTER_DELAYED_EFFECT': {"visible": ["str_val", "value1"], "label_str_val": "Effect ID/Name", "label_value1": "Duration"},
-            'RESET_INSTANCE': {"visible": ["scope", "filter"]},
-            'SHUFFLE_DECK': {"visible": ["scope"]},
-            'ADD_SHIELD': {"visible": ["scope", "value1", "input_value_key"], "label_value1": "Count", "inputs": {"input_value_key": "Count Override"}},
-            'MOVE_TO_UNDER_CARD': {"visible": ["scope", "filter", "value1", "input_value_key"], "label_value1": "Count", "inputs": {"input_value_key": "Target Card (Destination)"}},
-            'SELECT_NUMBER': {"visible": ["output_value_key", "value1"], "label_value1": "Default/Max (Heuristic)", "produces_output": True, "outputs": {"output_value_key": "Selected Number"}},
-            'FRIEND_BURST': {"visible": ["str_val", "filter"], "label_str_val": "Race (e.g. Fire Bird)", "can_be_optional": True},
-            'GRANT_KEYWORD': {"visible": ["scope", "filter", "str_val", "value2"], "label_str_val": "Keyword", "label_value2": "Duration (Turns)"},
-            'MOVE_CARD': {"visible": ["scope", "filter", "destination_zone", "target_choice", "input_value_key"], "can_be_optional": True, "inputs": {"input_value_key": "Target Selection (Pre-selected)"}},
-            'SELECT_OPTION': {"visible": ["value1", "value2", "str_val"], "label_value1": "Select Count", "label_value2": "Allow Duplicates", "label_str_val": "Mode Name (Optional)", "can_be_optional": True},
-            'DESTROY': {"visible": ["scope", "filter", "target_choice", "input_value_key"], "can_be_optional": True, "inputs": {"input_value_key": "Target Selection (Pre-selected)"}, "deprecated": True, "deprecation_message": "Legacy Action: Use MOVE_CARD (Dest: GRAVEYARD)."},
-            'TAP': {"visible": ["scope", "filter", "target_choice", "input_value_key"], "can_be_optional": True, "inputs": {"input_value_key": "Target Selection (Pre-selected)"}, "deprecated": True, "deprecation_message": "Legacy Action: Use MUTATE or similar logic."},
-            'UNTAP': {"visible": ["scope", "filter", "target_choice", "input_value_key"], "can_be_optional": True, "inputs": {"input_value_key": "Target Selection (Pre-selected)"}, "deprecated": True, "deprecation_message": "Legacy Action: Use MUTATE or similar logic."},
-            'RETURN_TO_HAND': {"visible": ["scope", "filter", "target_choice", "input_value_key"], "can_be_optional": True, "inputs": {"input_value_key": "Target Selection (Pre-selected)"}, "deprecated": True, "deprecation_message": "Legacy Action: Use MOVE_CARD (Dest: HAND)."},
-            'SEND_TO_MANA': {"visible": ["scope", "filter", "target_choice", "input_value_key"], "can_be_optional": True, "inputs": {"input_value_key": "Target Selection (Pre-selected)"}, "deprecated": True, "deprecation_message": "Legacy Action: Use MOVE_CARD (Dest: MANA_ZONE)."},
-            'SEARCH_DECK_BOTTOM': {"visible": ["value1", "filter", "output_value_key", "input_value_key"], "label_value1": "Reveal N (from Bottom)", "produces_output": True, "outputs": {"output_value_key": "Selected Cards"}, "inputs": {"input_value_key": "Count Override"}, "deprecated": True, "deprecation_message": "Legacy Action: Use REVEAL_CARDS or similar."},
-            'DISCARD': {"visible": ["scope", "filter", "value1", "target_choice", "output_value_key", "input_value_key"], "label_value1": "Count", "can_be_optional": True, "produces_output": True, "outputs": {"output_value_key": "Discarded Cards"}, "inputs": {"input_value_key": "Count Override"}, "deprecated": True, "deprecation_message": "Legacy Action: Use MOVE_CARD (Hand -> Grave)."},
-            'SEND_SHIELD_TO_GRAVE': {"visible": ["scope", "filter", "value1", "input_value_key"], "label_value1": "Count", "inputs": {"input_value_key": "Count Override"}, "deprecated": True, "deprecation_message": "Legacy Action: Use MOVE_CARD (Shield -> Grave)."},
-            'SEND_TO_DECK_BOTTOM': {"visible": ["scope", "filter", "value1", "input_value_key"], "label_value1": "Count", "inputs": {"input_value_key": "Count Override"}, "deprecated": True, "deprecation_message": "Legacy Action: Use MOVE_CARD (Zone -> Deck Bottom)."},
-        })
-
-        # Attach actual enum members if they exist
-        for _name, _cfg in _mapping.items():
-            _member = getattr(m.EffectActionType, _name, None)
-            if _member is not None:
-                ACTION_UI_CONFIG[_member] = _cfg
-
-    # Also add string key fallback for backward compatibility if needed by editor logic that loads legacy JSON
-    # Iterating over the new enum keys we just added
-    for k, v in list(ACTION_UI_CONFIG.items()):
-        if hasattr(k, "name"):
-            ACTION_UI_CONFIG[k.name] = v
-
-else:
-    # Fallback to string keys if module is not present (e.g. CI without build)
-    ACTION_UI_CONFIG = {
-        "NONE": {"visible": []},
-        "DRAW_CARD": {"visible": ["value1"], "label_value1": "Cards to Draw"},
-        "ADD_MANA": {"visible": ["value1"], "label_value1": "Cards to Charge"},
-        "DESTROY": {"visible": ["scope", "filter"]},
-        "RETURN_TO_HAND": {"visible": ["scope", "filter"]},
-        "SEND_TO_MANA": {"visible": ["scope", "filter"]},
-        "TAP": {"visible": ["scope", "filter"]},
-        "UNTAP": {"visible": ["scope", "filter"]},
-        "MODIFY_POWER": {"visible": ["scope", "filter", "value1", "value2"], "label_value1": "Power Mod", "label_value2": "Duration"},
-        "BREAK_SHIELD": {"visible": ["value1"], "label_value1": "Shields to Break"},
-        "LOOK_AND_ADD": {"visible": ["value1", "value2", "filter"], "label_value1": "Look at N", "label_value2": "Add M to Hand"},
-        "SUMMON_TOKEN": {"visible": ["value1", "str_val"], "label_value1": "Count", "label_str_val": "Token ID"},
-        "SEARCH_DECK_BOTTOM": {"visible": ["value1", "filter"], "label_value1": "Reveal N (from Bottom)"},
-        "MEKRAID": {"visible": ["value1", "filter"], "label_value1": "Level"},
-        "DISCARD": {"visible": ["scope", "filter", "value1"], "label_value1": "Count"},
-        "PLAY_FROM_ZONE": {"visible": ["source_zone", "filter", "value1"], "label_value1": "Cost Reduction"},
-        "COST_REFERENCE": {"visible": ["value1", "str_val"], "label_value1": "Multiplier"},
-        "LOOK_TO_BUFFER": {"visible": ["value1", "source_zone"]},
-        "SELECT_FROM_BUFFER": {"visible": ["filter", "value1"]},
-        "PLAY_FROM_BUFFER": {"visible": ["filter"]},
-        "MOVE_BUFFER_TO_ZONE": {"visible": ["destination_zone"]},
-        "REVOLUTION_CHANGE": {"visible": ["filter"]},
-        "COUNT_CARDS": {"visible": ["scope", "filter", "output_value_key", "str_val"]},
-        "GET_GAME_STAT": {"visible": ["str_val", "output_value_key"]},
-        "APPLY_MODIFIER": {"visible": ["filter", "str_val", "value1", "value2"]},
-        "REVEAL_CARDS": {"visible": ["scope", "filter", "value1"]},
-        "REGISTER_DELAYED_EFFECT": {"visible": ["str_val", "value1"]},
-        "RESET_INSTANCE": {"visible": ["scope", "filter"]},
-        "SEARCH_DECK": {"visible": ["filter", "output_value_key"]},
-        "SHUFFLE_DECK": {"visible": ["scope"]},
-        "ADD_SHIELD": {"visible": ["scope", "value1"]},
-        "SEND_SHIELD_TO_GRAVE": {"visible": ["scope", "filter", "value1"]},
-        "SEND_TO_DECK_BOTTOM": {"visible": ["scope", "filter", "value1"]},
-        "MOVE_TO_UNDER_CARD": {"visible": ["scope", "filter", "value1"]},
-        "SELECT_NUMBER": {"visible": ["output_value_key", "value1"]},
-        "FRIEND_BURST": {"visible": ["str_val", "filter"]},
-        "GRANT_KEYWORD": {"visible": ["scope", "filter", "str_val", "value2"]},
-        "MOVE_CARD": {"visible": ["scope", "filter", "destination_zone"]},
-        "CAST_SPELL": {"visible": ["scope", "filter"]},
-        "PUT_CREATURE": {"visible": ["scope", "filter"]},
-        "SELECT_OPTION": {"visible": ["value1", "value2", "str_val"]},
-        "RESOLVE_BATTLE": {"visible": []}
+# Define Categories and Sub-Actions (The "Menu" Structure)
+ACTION_CATEGORIES = {
+    "ZONE_CONTROL": {
+        "label": "Zone Control (Move)",
+        "actions": [
+            "DRAW_CARD",
+            "DESTROY",
+            "SEND_TO_MANA",
+            "BOUNCE",
+            "SHIELD_BREAK",
+            "ADD_SHIELD_TO_HAND",
+            "ADD_SHIELD",
+            "DISCARD",
+            "PUT_INTO_BATTLE",
+            "SEND_TO_DECK"
+        ]
+    },
+    "STATE_MUTATION": {
+        "label": "State & Mutation",
+        "actions": [
+            "MODIFY_POWER",
+            "GRANT_ABILITY",
+            "TAP",
+            "UNTAP",
+            "SHIELD_BURN",
+            "COST_REDUCTION"
+        ]
+    },
+    "SEARCH_REVEAL": {
+        "label": "Search & Reveal",
+        "actions": [
+            "SEARCH_DECK",
+            "LOOK_AND_ADD",
+            "REVEAL_CARDS",
+            "SHUFFLE_DECK"
+        ]
+    },
+    "MULTILAYER": {
+        "label": "Multilayer Card Operations",
+        "actions": [
+            "REVOLUTION_CHANGE",
+            "MEKRAID",
+            "MOVE_UNDER",
+            "RESET_INSTANCE"
+        ]
+    },
+    "LOGIC_SPECIAL": {
+        "label": "Logic & Special",
+        "actions": [
+            "SUMMON_TOKEN",
+            "COUNT_CARDS",
+            "GET_GAME_STAT",
+            "SELECT_NUMBER",
+            "SELECT_OPTION",
+            "FRIEND_BURST",
+            "CAST_SPELL"
+        ]
     }
+}
+
+# Define UI Configuration for each Sub-Action
+# This maps the UI selection to Visible Fields and Underlying Data
+ACTION_UI_CONFIG = {
+    # --- ZONE CONTROL ---
+    "DRAW_CARD": {
+        "label": "Draw Card",
+        "visible": ["value1"],
+        "label_value1": "Count",
+        "produces_output": True,
+        "outputs": {"output_value_key": "Cards Drawn"},
+        "json_template": {"type": "MOVE_CARD", "from_zone": "DECK", "to_zone": "HAND"}
+    },
+    "DESTROY": {
+        "label": "Destroy",
+        "visible": ["scope", "filter", "target_choice"],
+        "can_be_optional": True,
+        "json_template": {"type": "MOVE_CARD", "to_zone": "GRAVEYARD", "from_zone": "BATTLE_ZONE"}
+    },
+    "SEND_TO_MANA": {
+        "label": "Send to Mana",
+        "visible": ["scope", "filter", "target_choice", "source_zone"], # Source zone configurable? Usually Battle or Hand.
+        "can_be_optional": True,
+        "json_template": {"type": "MOVE_CARD", "to_zone": "MANA_ZONE"}
+    },
+    "BOUNCE": {
+        "label": "Return to Hand (Bounce)",
+        "visible": ["scope", "filter", "target_choice", "source_zone"],
+        "can_be_optional": True,
+        "json_template": {"type": "MOVE_CARD", "to_zone": "HAND"}
+    },
+    "SHIELD_BREAK": {
+        "label": "Shield Break (Triggers OK)",
+        "visible": ["scope", "filter", "target_choice", "value1"], # Value1 for count if selecting multiple? Usually filter handles count.
+        "label_value1": "Count (if random/top)",
+        "json_template": {"type": "MOVE_CARD", "from_zone": "SHIELD_ZONE", "to_zone": "HAND", "str_val": "BREAK"}
+    },
+    "ADD_SHIELD_TO_HAND": {
+        "label": "Add Shield to Hand (No Triggers)",
+        "visible": ["scope", "filter", "target_choice", "value1"],
+        "label_value1": "Count",
+        "json_template": {"type": "MOVE_CARD", "from_zone": "SHIELD_ZONE", "to_zone": "HAND", "str_val": "RETURN"}
+    },
+    "ADD_SHIELD": {
+        "label": "Add Shield",
+        "visible": ["scope", "filter", "value1", "source_zone"], # Source can be Deck or Hand
+        "label_value1": "Count",
+        "json_template": {"type": "ADD_SHIELD"} # Keep primitive or wrap in MOVE_CARD to SHIELD_ZONE? MOVE_CARD is better if source is flexible.
+        # But ADD_SHIELD primitive handles "Top of Deck" implicitly if source not specified.
+        # Let's map to ADD_SHIELD primitive for now to be safe, or MOVE_CARD if source specified.
+    },
+    "DISCARD": {
+        "label": "Discard",
+        "visible": ["scope", "filter", "target_choice", "value1"],
+        "label_value1": "Count (Random/Select)",
+        "produces_output": True,
+        "json_template": {"type": "MOVE_CARD", "from_zone": "HAND", "to_zone": "GRAVEYARD"}
+    },
+    "PUT_INTO_BATTLE": {
+        "label": "Put into Battle",
+        "visible": ["source_zone", "filter", "scope"],
+        "json_template": {"type": "MOVE_CARD", "to_zone": "BATTLE_ZONE"}
+    },
+    "SEND_TO_DECK": {
+        "label": "Send to Deck",
+        "visible": ["scope", "filter", "target_choice", "str_val"],
+        "label_str_val": "Position (TOP/BOTTOM)",
+        "json_template": {"type": "MOVE_CARD", "to_zone": "DECK"}
+    },
+
+    # --- STATE & MUTATION ---
+    "MODIFY_POWER": {
+        "label": "Modify Power",
+        "visible": ["scope", "filter", "value1", "value2"],
+        "label_value1": "Power Mod",
+        "label_value2": "Duration (Turns)",
+        "json_template": {"type": "MODIFY_POWER"} # Or APPLY_MODIFIER generic
+    },
+    "GRANT_ABILITY": {
+        "label": "Grant Ability",
+        "visible": ["scope", "filter", "str_val", "value2"],
+        "label_str_val": "Keyword (e.g. blocker)",
+        "label_value2": "Duration (Turns)",
+        "json_template": {"type": "GRANT_KEYWORD"}
+    },
+    "TAP": {
+        "label": "Tap",
+        "visible": ["scope", "filter", "target_choice"],
+        "json_template": {"type": "MUTATE", "str_val": "TAP"}
+    },
+    "UNTAP": {
+        "label": "Untap",
+        "visible": ["scope", "filter", "target_choice"],
+        "json_template": {"type": "MUTATE", "str_val": "UNTAP"}
+    },
+    "SHIELD_BURN": {
+        "label": "Shield Burn",
+        "visible": ["scope", "filter", "value1"],
+        "label_value1": "Count",
+        "json_template": {"type": "MUTATE", "str_val": "SHIELD_BURN"}
+    },
+    "COST_REDUCTION": {
+        "label": "Cost Reduction",
+        "visible": ["filter", "value1", "source_zone"], # Filter defines what cards are reduced
+        "label_value1": "Reduction Amount",
+        "json_template": {"type": "APPLY_MODIFIER", "str_val": "COST"}
+    },
+
+    # --- SEARCH & REVEAL ---
+    "SEARCH_DECK": {
+        "label": "Search Deck",
+        "visible": ["filter", "output_value_key", "value1"], # Value1 for max count
+        "produces_output": True,
+        "json_template": {"type": "SEARCH_DECK"}
+    },
+    "LOOK_AND_ADD": {
+        "label": "Look & Add",
+        "visible": ["value1", "value2", "filter", "output_value_key"],
+        "label_value1": "Look N",
+        "label_value2": "Add M",
+        "produces_output": True,
+        "json_template": {"type": "LOOK_AND_ADD"}
+    },
+    "REVEAL_CARDS": {
+        "label": "Reveal Cards",
+        "visible": ["scope", "filter", "value1"],
+        "json_template": {"type": "REVEAL_CARDS"}
+    },
+    "SHUFFLE_DECK": {
+        "label": "Shuffle Deck",
+        "visible": ["scope"], # Usually owner of deck
+        "json_template": {"type": "SHUFFLE_DECK"}
+    },
+
+    # --- MULTILAYER ---
+    "REVOLUTION_CHANGE": {
+        "label": "Revolution Change",
+        "visible": ["filter"],
+        "json_template": {"type": "REVOLUTION_CHANGE"}
+    },
+    "MEKRAID": {
+        "label": "Mekraid",
+        "visible": ["value1", "filter"],
+        "label_value1": "Level",
+        "json_template": {"type": "MEKRAID"}
+    },
+    "MOVE_UNDER": {
+        "label": "Move Card Under",
+        "visible": ["scope", "filter", "value1"],
+        "json_template": {"type": "MOVE_TO_UNDER_CARD"}
+    },
+    "RESET_INSTANCE": {
+        "label": "Reset (Devolve/Un-link)",
+        "visible": ["scope", "filter"],
+        "json_template": {"type": "RESET_INSTANCE"}
+    },
+
+    # --- LOGIC & SPECIAL ---
+    "SUMMON_TOKEN": {
+        "label": "Summon Token",
+        "visible": ["value1", "str_val"],
+        "label_value1": "Count",
+        "label_str_val": "Token ID",
+        "json_template": {"type": "SUMMON_TOKEN"}
+    },
+    "COUNT_CARDS": {
+        "label": "Count Cards",
+        "visible": ["scope", "filter", "output_value_key"],
+        "produces_output": True,
+        "json_template": {"type": "COUNT_CARDS"}
+    },
+    "GET_GAME_STAT": {
+        "label": "Get Game Stat",
+        "visible": ["str_val", "output_value_key"],
+        "label_str_val": "Stat Key",
+        "produces_output": True,
+        "json_template": {"type": "GET_GAME_STAT"}
+    },
+    "SELECT_NUMBER": {
+        "label": "Select Number",
+        "visible": ["value1", "output_value_key"],
+        "label_value1": "Max",
+        "produces_output": True,
+        "json_template": {"type": "SELECT_NUMBER"}
+    },
+    "SELECT_OPTION": {
+        "label": "Select Option",
+        "visible": ["value1", "value2", "str_val"],
+        "json_template": {"type": "SELECT_OPTION"}
+    },
+    "FRIEND_BURST": {
+        "label": "Friend Burst",
+        "visible": ["filter"],
+        "json_template": {"type": "FRIEND_BURST"}
+    },
+    "CAST_SPELL": {
+        "label": "Cast Spell (Effect)",
+        "visible": ["scope", "filter"],
+        "json_template": {"type": "CAST_SPELL"}
+    }
+}
