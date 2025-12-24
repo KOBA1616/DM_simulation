@@ -10,6 +10,7 @@
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/trigger_system/trigger_manager.hpp"
 #include "engine/game_command/commands.hpp"
+#include "engine/utils/dev_tools.hpp"
 #include <pybind11/stl.h>
 
 using namespace dm;
@@ -24,7 +25,8 @@ std::shared_ptr<dm::engine::systems::PipelineExecutor> get_active_pipeline(GameS
 void bind_engine(py::module& m) {
      // GameCommand bindings
     py::class_<dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameCommand>>(m, "GameCommand")
-        .def("get_type", &dm::engine::game_command::GameCommand::get_type);
+        .def("get_type", &dm::engine::game_command::GameCommand::get_type)
+        .def("invert", &dm::engine::game_command::GameCommand::invert);
 
     py::enum_<dm::engine::game_command::CommandType>(m, "CommandType")
         .value("TRANSITION", dm::engine::game_command::CommandType::TRANSITION)
@@ -311,6 +313,10 @@ void bind_engine(py::module& m) {
 
     py::class_<JsonLoader>(m, "JsonLoader")
         .def_static("load_cards", &JsonLoader::load_cards);
+
+    py::class_<DevTools>(m, "DevTools")
+        .def_static("move_cards", &DevTools::move_cards)
+        .def_static("trigger_loop_detection", &DevTools::trigger_loop_detection);
 
     m.def("register_card_data", [](const CardData& data) {
          try {

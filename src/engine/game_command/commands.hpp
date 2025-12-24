@@ -120,7 +120,8 @@ namespace dm::engine::game_command {
             SET_ATTACK_PLAYER,
             SET_ACTIVE_PLAYER,
             CLEANUP_STEP, // Remove expired modifiers/passives
-            RESET_TURN_STATS // Reset turn statistics
+            RESET_TURN_STATS, // Reset turn statistics
+            SET_PLAYED_WITHOUT_MANA // Set played_without_mana flag
         };
 
         FlowType flow_type;
