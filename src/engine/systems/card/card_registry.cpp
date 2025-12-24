@@ -47,6 +47,11 @@ namespace dm::engine {
             auto j = nlohmann::json::parse(json_str);
             auto new_defs = std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>();
 
+            // Merge with existing definitions
+            if (definitions_ptr) {
+                *new_defs = *definitions_ptr;
+            }
+
             if (j.is_array()) {
                 for (const auto& item : j) {
                     dm::core::CardData card = item.get<dm::core::CardData>();
