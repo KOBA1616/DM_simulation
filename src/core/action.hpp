@@ -5,9 +5,10 @@
 namespace dm::core {
 
     enum class PlayerIntent : uint8_t {
+        // --- User Actions ---
         PASS,
         MANA_CHARGE,
-        MOVE_CARD,
+        MOVE_CARD, // Deprecated/Generic: Prefer specific intents
         PLAY_CARD,
         ATTACK_PLAYER,
         ATTACK_CREATURE,
@@ -16,15 +17,17 @@ namespace dm::core {
         SELECT_TARGET,
         RESOLVE_EFFECT,
         USE_ABILITY, // For things like Revolution Change, Ninja Strike
+        DECLARE_REACTION, // For Ninja Strike / Strike Back
+        SELECT_OPTION, // For choosing from options
+        SELECT_NUMBER, // For choosing a number
+
+        // --- Engine/Internal Actions ---
         DECLARE_PLAY, // Atomic
         PAY_COST,     // Atomic
         RESOLVE_PLAY, // Atomic
         PLAY_CARD_INTERNAL, // For stacked play actions
         RESOLVE_BATTLE, // Battle resolution (Power comparison)
-        BREAK_SHIELD,   // Shield break
-        DECLARE_REACTION, // For Ninja Strike / Strike Back
-        SELECT_OPTION, // For choosing from options
-        SELECT_NUMBER // For choosing a number
+        BREAK_SHIELD   // Shield break
     };
 
     struct Action {
@@ -41,10 +44,6 @@ namespace dm::core {
         // Spawn Source for PLAY_CARD_INTERNAL
         SpawnSource spawn_source = SpawnSource::HAND_SUMMON;
         
-        // Step 3-3: Destination Override
-        // 0 = Default (Grave for spell, Battle for creature), 1 = Deck Bottom, 2 = Deck Top, 3 = Hand, 4 = Mana, 5 = Shield
-        uint8_t destination_override = 0;
-
         // Step 4-1: Twinpact Support
         bool is_spell_side = false;
 
