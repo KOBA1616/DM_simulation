@@ -85,6 +85,52 @@ namespace dm::engine {
                 }
             }
 
+            // Handle implicit "Draw" logic: if no targets selected and source is DECK, pick top N
+            if (targets.empty() && ctx.action.source_zone == "DECK") {
+                int count = ctx.action.value1;
+                if (count <= 0) count = 1;
+                // Cap count at deck size
+                PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                // Check if scope specifies implicit target player different from controller?
+                // Usually ActionDef.target_player or scope determines it.
+                // For simplified logic, assume implicit Draw is for controller or derived scope.
+
+                // If filter specified zones, we might have checked them above.
+                // But for pure "Draw 2" action, source_zone="DECK" and filter might be empty.
+                // We need to fetch deck cards.
+
+                std::vector<PlayerID> pids;
+                 if (ctx.action.scope == TargetScope::ALL_PLAYERS) {
+                        pids = {0, 1};
+                } else if (ctx.action.scope == TargetScope::PLAYER_OPPONENT) {
+                        pids = { (PlayerID)(1 - controller_id) };
+                } else {
+                        // Default to self for Draw
+                        pids = { controller_id };
+                }
+                 if (ctx.action.filter.owner == "OPPONENT") {
+                        pids = { (PlayerID)(1 - controller_id) };
+                } else if (ctx.action.filter.owner == "SELF") {
+                        pids = { controller_id };
+                }
+
+                for (PlayerID pid : pids) {
+                     Player& p = ctx.game_state.players[pid];
+                     int available = p.deck.size();
+                     int to_take = std::min(count, available);
+                     // Take from top (end of vector)
+                     for (int i = 0; i < to_take; ++i) {
+                          // index: size - 1 - i
+                          if (p.deck.empty()) break;
+                          // Better to just push back the ID. We assume deck structure is valid.
+                          // However, we need Instance ID.
+                          // Deck stores CardInstance.
+                          int idx = p.deck.size() - 1 - i;
+                          if (idx >= 0) targets.push_back(p.deck[idx].instance_id);
+                     }
+                }
+            }
+
             if (targets.empty()) return;
 
             std::string dest = ctx.action.destination_zone;
