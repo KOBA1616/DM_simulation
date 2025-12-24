@@ -653,3 +653,56 @@ namespace dm::engine::game_command {
     }
 
 }
+#include "commands.hpp"
+#include <algorithm>
+#include <random>
+
+namespace dm::engine::game_command {
+
+    void ShuffleCommand::execute(core::GameState& state) {
+        if (player_id >= state.players.size()) return;
+        auto& deck = state.players[player_id].deck;
+
+        // Store original order for undo
+        original_deck_order.clear();
+        for (const auto& card : deck) {
+            original_deck_order.push_back(card.instance_id);
+        }
+
+        std::shuffle(deck.begin(), deck.end(), state.rng);
+    }
+
+    void ShuffleCommand::invert(core::GameState& state) {
+        if (player_id >= state.players.size()) return;
+        auto& deck = state.players[player_id].deck;
+
+        // Restore original order
+        if (deck.size() != original_deck_order.size()) {
+            // Something went wrong or deck size changed (unlikely within undo stack constraints)
+            // Fallback: try to reconstruct as best as possible or do nothing.
+            // Ideally this shouldn't happen if undo stack is consistent.
+            return;
+        }
+
+        std::vector<core::CardInstance> restored_deck;
+        restored_deck.reserve(deck.size());
+
+        // Reconstruct the deck based on original_deck_order
+        // We have the cards in 'deck' (shuffled), we need to reorder them.
+        for (int id : original_deck_order) {
+            auto it = std::find_if(deck.begin(), deck.end(), [id](const core::CardInstance& c) {
+                return c.instance_id == id;
+            });
+            if (it != deck.end()) {
+                restored_deck.push_back(*it);
+            } else {
+                 // Card missing?
+            }
+        }
+
+        if (restored_deck.size() == deck.size()) {
+            deck = std::move(restored_deck);
+        }
+    }
+
+}
