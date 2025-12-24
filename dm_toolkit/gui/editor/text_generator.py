@@ -669,6 +669,10 @@ class CardTextGenerator:
                  template = template.replace("{amount}{unit}選び、", "すべて") # Simplified "choose all"
                  val1 = ""
 
+        elif atype == "QUERY":
+             mode = action.get("query_mode", "")
+             return f"質問: {tr(mode)}"
+
         elif atype == "FLOW":
              ftype = action.get("flow_type", "")
              val1 = action.get("value1", 0) # Often raw int
