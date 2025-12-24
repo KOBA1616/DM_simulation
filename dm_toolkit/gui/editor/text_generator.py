@@ -178,6 +178,30 @@ class CardTextGenerator:
 
         lines.append("-" * 20)
 
+        # Body Text (Keywords, Effects, etc.)
+        body_text = cls.generate_body_text(data)
+        if body_text:
+            lines.append(body_text)
+
+        # 4. Twinpact (Spell Side)
+        spell_side = data.get("spell_side")
+        if spell_side and include_twinpact:
+            lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
+            lines.append(cls.generate_text(spell_side))
+
+        return "\n".join(lines)
+
+    @classmethod
+    def generate_body_text(cls, data: Dict[str, Any]) -> str:
+        """
+        Generates only the body text (Keywords, Effects, Reactions) without headers.
+        Useful for structured preview and Twinpact separation.
+        """
+        if not data:
+            return ""
+
+        lines = []
+
         # 2. Keywords
         keywords = data.get("keywords", {})
         kw_lines = []
@@ -237,12 +261,6 @@ class CardTextGenerator:
                  text = cls._format_effect(effect, is_spell)
                  if text:
                      lines.append(f"■ {text}")
-
-        # 4. Twinpact (Spell Side)
-        spell_side = data.get("spell_side")
-        if spell_side and include_twinpact:
-            lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            lines.append(cls.generate_text(spell_side))
 
         return "\n".join(lines)
 

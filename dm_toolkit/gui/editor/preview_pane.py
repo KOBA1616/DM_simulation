@@ -335,7 +335,7 @@ class CardPreviewWidget(QWidget):
         type_str = CardTextGenerator.TYPE_MAP.get(data.get('type', 'CREATURE'), data.get('type', ''))
         self.type_label.setText(f"[{type_str}]")
 
-        body_text = self.extract_body_text(CardTextGenerator.generate_text(data))
+        body_text = CardTextGenerator.generate_body_text(data)
         self.text_body.setText(body_text)
 
         power = data.get('power', 0)
@@ -358,8 +358,8 @@ class CardPreviewWidget(QWidget):
         self.tp_power_label.setText(str(data.get('power', 0)))
 
         # Generate text for ONLY the creature part
-        creature_text = CardTextGenerator.generate_text(data, include_twinpact=False)
-        self.tp_body_label.setText(self.extract_body_text(creature_text))
+        creature_body = CardTextGenerator.generate_body_text(data)
+        self.tp_body_label.setText(creature_body)
 
         # Spell Side
         spell_data = data.get('spell_side', {})
@@ -372,30 +372,8 @@ class CardPreviewWidget(QWidget):
         # For spell text, we can use the generator on the spell data object
         if 'type' not in spell_data:
             spell_data['type'] = 'SPELL'
-        spell_text = CardTextGenerator.generate_text(spell_data)
-        self.tp_spell_body_label.setText(self.extract_body_text(spell_text))
-
-    def extract_body_text(self, full_text):
-        lines = full_text.split('\n')
-        body_lines = []
-        skip_mode = True
-        for line in lines:
-            if line.startswith("■") or line.startswith("S・トリガー") or line.startswith("G・ストライク"):
-                skip_mode = False
-
-            # Additional heuristic: If line contains standard keywords
-            if any(k in line for k in ["ブロッカー", "W・ブレイカー", "T・ブレイカー", "スピードアタッカー"]):
-                skip_mode = False
-
-            if not skip_mode:
-                body_lines.append(line)
-            elif "--------------------" in line:
-                skip_mode = False
-
-        if not body_lines and len(lines) > 2:
-            return "\n".join(lines[2:]) # Skip header lines if heuristics fail
-
-        return "\n".join(body_lines)
+        spell_body = CardTextGenerator.generate_body_text(spell_data)
+        self.tp_spell_body_label.setText(spell_body)
 
     def apply_cost_circle_style(self, label, civs):
         # Delegate to ManaCostLabel if applicable
