@@ -468,16 +468,27 @@ class GameWindow(QMainWindow):
         self.selected_targets = []
         self.confirm_btn.setVisible(False)
         self.start_btn.setText(tr("Start Sim"))
-        self.gs = dm_ai_module.GameState(random.randint(0, 10000))
-        self.gs.setup_test_duel()
-        if self.p0_deck_ids: self.gs.set_deck(0, self.p0_deck_ids)
-        if self.p1_deck_ids: self.gs.set_deck(1, self.p1_deck_ids)
-        dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
-        self.scenario_tools.set_game_state(self.gs, self.card_db)
-        self.log_list.clear()
-        self.log_list.addItem(tr("Game Reset"))
-        self.last_command_index = 0 # Reset command index
-        self.update_ui()
+
+        try:
+            self.gs = dm_ai_module.GameState(random.randint(0, 10000))
+            self.gs.setup_test_duel()
+            if self.p0_deck_ids: self.gs.set_deck(0, self.p0_deck_ids)
+            if self.p1_deck_ids: self.gs.set_deck(1, self.p1_deck_ids)
+
+            if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
+                dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+            else:
+                self.log_list.addItem(tr("Warning: PhaseManager.start_game not available"))
+
+            self.scenario_tools.set_game_state(self.gs, self.card_db)
+            self.log_list.clear()
+            self.log_list.addItem(tr("Game Reset"))
+            self.last_command_index = 0 # Reset command index
+            self.update_ui()
+
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), f"{tr('Failed to reset game')}: {e}")
+            self.log_list.addItem(f"{tr('Reset Error')}: {e}")
 
     def confirm_selection(self):
         if not self.gs.waiting_for_user_input: return
@@ -554,8 +565,7 @@ class GameWindow(QMainWindow):
         self.loop_recorder.record_action(action.to_string())
         self.scenario_tools.record_action(action.to_string())
         
-        if self.gs.waiting_for_user_input:
-            self.handle_user_input_request()
+        if self.check_and_handle_input_wait():
             return
 
         # Refactored phase logic: Check pending effects
@@ -594,6 +604,30 @@ class GameWindow(QMainWindow):
                   self.execute_action(resolve_actions[0])
              else:
                   pass # self.log_list.addItem(f"Cannot resolve effect at index {index}. (Not in legal actions)")
+
+    def check_and_handle_input_wait(self):
+        """
+        Checks if the game engine is waiting for input.
+        If so, stops simulation, updates UI controls, and triggers specific input handlers if applicable.
+        Returns True if waiting for input.
+        """
+        if not self.gs.waiting_for_user_input:
+            return False
+
+        # Stop Simulation if running
+        if self.is_running:
+            self.timer.stop()
+            self.is_running = False
+            self.start_btn.setText(tr("Start Sim"))
+            # self.log_list.addItem(tr("Simulation paused for user input"))
+
+        # Trigger appropriate handler
+        self.handle_user_input_request()
+
+        # Ensure UI is updated
+        self.update_ui()
+
+        return True
 
     def handle_user_input_request(self):
         query = self.gs.pending_query
@@ -648,15 +682,14 @@ class GameWindow(QMainWindow):
 
              # Otherwise, standard UI selection (Hand/Battle/Mana)
              # self.log_list.addItem(f"Please select {query.params['min']} target(s).")
-             self.update_ui()
+             # self.update_ui() # Handled by caller or centralized handler
 
     def step_phase(self):
         if self.is_processing: return
         self.is_processing = True
         
         try:
-            if self.gs.waiting_for_user_input:
-                self.handle_user_input_request()
+            if self.check_and_handle_input_wait():
                 return
 
             if self.gs.game_over:
@@ -748,11 +781,7 @@ class GameWindow(QMainWindow):
                     self.loop_recorder.record_action(best_action.to_string())
                     self.scenario_tools.record_action(best_action.to_string())
 
-                    if self.gs.waiting_for_user_input:
-                         # self.log_list.addItem("AI Paused for Input (Not Implemented). Stopping Sim.")
-                         self.timer.stop()
-                         self.is_running = False
-                         self.start_btn.setText(tr("Start Sim"))
+                    if self.check_and_handle_input_wait():
                          return
 
                     # Refactored Phase Logic
@@ -789,8 +818,13 @@ class GameWindow(QMainWindow):
                 cmd = history[i]
                 try:
                     desc = describe_command(cmd, self.gs, self.card_db)
-                except Exception:
-                    desc = str(cmd)
+                except Exception as e:
+                    # Fallback: Try JSON dump or raw string
+                    try:
+                        raw = str(cmd)
+                        desc = f"[RAW] {raw} (Parse Error: {e})"
+                    except:
+                        desc = f"[Unknown Command Format] (Error: {e})"
                 self.log_list.addItem(desc)
             self.log_list.scrollToBottom()
             self.last_command_index = current_len
