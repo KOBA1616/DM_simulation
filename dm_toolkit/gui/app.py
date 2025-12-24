@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, QTimer
 import dm_ai_module
+from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.gui.localization import tr, describe_command
 from dm_toolkit.gui.deck_builder import DeckBuilder
 from dm_toolkit.gui.card_editor import CardEditor
@@ -42,11 +43,9 @@ class GameWindow(QMainWindow):
         self.gs = dm_ai_module.GameState(42)
         self.gs.setup_test_duel()
         # Load card database: prefer C++ JsonLoader if available, otherwise fallback to Python JSON
-        if hasattr(dm_ai_module, 'JsonLoader') and getattr(dm_ai_module.JsonLoader, 'load_cards', None) is not None:
-            self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-            # Only start the phase manager when we have the proper C++ card_db
-            if hasattr(dm_ai_module, 'PhaseManager') and getattr(dm_ai_module.PhaseManager, 'start_game', None) is not None:
-                dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+        self.card_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
+        if self.card_db:
+             EngineCompat.PhaseManager_start_game(self.gs, self.card_db)
         else:
             try:
                 with open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'cards.json'), 'r', encoding='utf-8') as _f:
@@ -472,7 +471,7 @@ class GameWindow(QMainWindow):
         self.gs.setup_test_duel()
         if self.p0_deck_ids: self.gs.set_deck(0, self.p0_deck_ids)
         if self.p1_deck_ids: self.gs.set_deck(1, self.p1_deck_ids)
-        dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+        EngineCompat.PhaseManager_start_game(self.gs, self.card_db)
         self.scenario_tools.set_game_state(self.gs, self.card_db)
         self.log_list.clear()
         self.log_list.addItem(tr("Game Reset"))
@@ -480,9 +479,9 @@ class GameWindow(QMainWindow):
         self.update_ui()
 
     def confirm_selection(self):
-        if not self.gs.waiting_for_user_input: return
+        if not EngineCompat.is_waiting_for_user_input(self.gs): return
 
-        query = self.gs.pending_query
+        query = EngineCompat.get_pending_query(self.gs)
         min_targets = query.params.get('min', 1)
 
         if len(self.selected_targets) < min_targets:
@@ -493,17 +492,18 @@ class GameWindow(QMainWindow):
         self.selected_targets = []
         self.confirm_btn.setVisible(False)
 
-        dm_ai_module.EffectResolver.resume(self.gs, self.card_db, targets)
+        EngineCompat.EffectResolver_resume(self.gs, self.card_db, targets)
         # self.log_list.addItem(f"Resumed with targets: {targets}")
         self.step_phase()
 
     def on_card_clicked(self, card_id, instance_id):
-        if self.gs.active_player_id != 0 or not self.p0_human_radio.isChecked():
+        if EngineCompat.get_active_player_id(self.gs) != 0 or not self.p0_human_radio.isChecked():
             return
 
-        if self.gs.waiting_for_user_input:
-             if self.gs.pending_query.query_type == "SELECT_TARGET":
-                 valid_targets = self.gs.pending_query.valid_targets
+        if EngineCompat.is_waiting_for_user_input(self.gs):
+             pending = EngineCompat.get_pending_query(self.gs)
+             if pending.query_type == "SELECT_TARGET":
+                 valid_targets = pending.valid_targets
 
                  # Check if we need to show a popup (Searching from Buffer/Stack)
                  # If valid_targets are in BUFFER or STACK, usually they aren't clickable on board widgets
@@ -513,7 +513,7 @@ class GameWindow(QMainWindow):
                      if instance_id in self.selected_targets:
                          self.selected_targets.remove(instance_id)
                      else:
-                         query_max = self.gs.pending_query.params.get('max', 99)
+                         query_max = pending.params.get('max', 99)
                          if len(self.selected_targets) < query_max:
                              self.selected_targets.append(instance_id)
                          else:
@@ -524,10 +524,10 @@ class GameWindow(QMainWindow):
                      pass # self.log_list.addItem("Invalid target selected.")
              return
 
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(
+        actions = EngineCompat.ActionGenerator_generate_legal_actions(
             self.gs, self.card_db
         )
-        relevant_actions = [a for a in actions if a.source_instance_id == instance_id]
+        relevant_actions = [a for a in actions if EngineCompat.get_action_source_id(a) == instance_id]
 
         if not relevant_actions:
             # self.log_list.addItem(f"{tr('No actions for card')} {card_id} (Inst: {instance_id})")
@@ -547,21 +547,21 @@ class GameWindow(QMainWindow):
 
     def execute_action(self, action):
         self.last_action = action
-        dm_ai_module.EffectResolver.resolve_action(
+        EngineCompat.EffectResolver_resolve_action(
             self.gs, action, self.card_db
         )
         # self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
         self.loop_recorder.record_action(action.to_string())
         self.scenario_tools.record_action(action.to_string())
         
-        if self.gs.waiting_for_user_input:
+        if EngineCompat.is_waiting_for_user_input(self.gs):
             self.handle_user_input_request()
             return
 
         # Refactored phase logic: Check pending effects
         pending_count = self.gs.get_pending_effect_count()
         if (action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
-            dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
+            EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
             
         self.update_ui()
 
@@ -575,14 +575,14 @@ class GameWindow(QMainWindow):
         # But for simultaneous triggers, we can choose order.
         # If we are in a state where we can choose, ActionGenerator should return multiple RESOLVE_EFFECT actions.
 
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.gs, self.card_db)
+        actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
         resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
 
         target_action = None
         for a in resolve_actions:
             # Check if action corresponds to our index.
             # Assuming slot_index holds the index in pending_effects vector.
-            if a.slot_index == index:
+            if EngineCompat.get_action_slot_index(a) == index:
                 target_action = a
                 break
 
@@ -596,14 +596,14 @@ class GameWindow(QMainWindow):
                   pass # self.log_list.addItem(f"Cannot resolve effect at index {index}. (Not in legal actions)")
 
     def handle_user_input_request(self):
-        query = self.gs.pending_query
+        query = EngineCompat.get_pending_query(self.gs)
 
         if query.query_type == "SELECT_OPTION":
              options = query.options
              item, ok = QInputDialog.getItem(self, "Select Option", "Choose an option:", options, 0, False)
              if ok and item:
                  idx = options.index(item)
-                 dm_ai_module.EffectResolver.resume(self.gs, self.card_db, idx)
+                 EngineCompat.EffectResolver_resume(self.gs, self.card_db, idx)
                  self.step_phase()
 
         elif query.query_type == "SELECT_TARGET":
@@ -620,7 +620,7 @@ class GameWindow(QMainWindow):
 
              # Check if targets are in effect buffer
              in_buffer = False
-             buffer_cards = self.gs.effect_buffer
+             buffer_cards = EngineCompat.get_effect_buffer(self.gs)
              for c in buffer_cards:
                  if c.instance_id == first_target_id:
                      in_buffer = True
@@ -642,7 +642,7 @@ class GameWindow(QMainWindow):
                  if dialog.exec():
                      indices = dialog.get_selected_indices()
                      selected_instance_ids = [items[i].instance_id for i in indices]
-                     dm_ai_module.EffectResolver.resume(self.gs, self.card_db, selected_instance_ids)
+                     EngineCompat.EffectResolver_resume(self.gs, self.card_db, selected_instance_ids)
                      self.step_phase()
                  return
 
@@ -655,7 +655,7 @@ class GameWindow(QMainWindow):
         self.is_processing = True
         
         try:
-            if self.gs.waiting_for_user_input:
+            if EngineCompat.is_waiting_for_user_input(self.gs):
                 self.handle_user_input_request()
                 return
 
@@ -667,12 +667,12 @@ class GameWindow(QMainWindow):
                 # self.log_list.addItem(f"{tr('Game Over! Winner')}: P{winner}")
                 return
 
-            active_pid = self.gs.active_player_id
+            active_pid = EngineCompat.get_active_player_id(self.gs)
             is_human = (active_pid == 0 and self.p0_human_radio.isChecked()) or \
                        (active_pid == 1 and self.p1_human_radio.isChecked())
 
             if is_human:
-                actions = dm_ai_module.ActionGenerator.generate_legal_actions(
+                actions = EngineCompat.ActionGenerator_generate_legal_actions(
                     self.gs, self.card_db
                 )
 
@@ -686,14 +686,14 @@ class GameWindow(QMainWindow):
                     # But RESOLVE_EFFECT usually maps to the top of stack OR specific index if implemented.
 
                     # Assuming we can match actions to pending effects via slot_index
-                    pending_info = dm_ai_module.get_pending_effects_info(self.gs)
+                    pending_info = EngineCompat.get_pending_effects_info(self.gs)
 
                     # Map actions to descriptions
                     items = []
                     valid_actions = []
 
                     for act in resolve_actions:
-                        idx = act.slot_index
+                        idx = EngineCompat.get_action_slot_index(act)
                         if 0 <= idx < len(pending_info):
                             p_type, p_source, p_ctrl = pending_info[idx]
                             c_def = self.card_db.get(p_source, None) # p_source is instance_id? No, usually card_id or we need look up.
@@ -724,31 +724,31 @@ class GameWindow(QMainWindow):
                                  return # Action executed, loop will continue
 
                 if not actions:
-                    dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
+                    EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
                     # self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
                     self.update_ui()
                 return
 
-            actions = dm_ai_module.ActionGenerator.generate_legal_actions(
+            actions = EngineCompat.ActionGenerator_generate_legal_actions(
                 self.gs, self.card_db
             )
 
             if not actions:
-                dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
+                EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
                 # self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
             else:
                 best_action = actions[0] # Fallback
                 
                 if best_action:
                     self.last_action = best_action
-                    dm_ai_module.EffectResolver.resolve_action(
+                    EngineCompat.EffectResolver_resolve_action(
                         self.gs, best_action, self.card_db
                     )
                     # self.log_list.addItem(f"P{active_pid} {tr('AI Action')}: {best_action.to_string()}")
                     self.loop_recorder.record_action(best_action.to_string())
                     self.scenario_tools.record_action(best_action.to_string())
 
-                    if self.gs.waiting_for_user_input:
+                    if EngineCompat.is_waiting_for_user_input(self.gs):
                          # self.log_list.addItem("AI Paused for Input (Not Implemented). Stopping Sim.")
                          self.timer.stop()
                          self.is_running = False
@@ -758,7 +758,7 @@ class GameWindow(QMainWindow):
                     # Refactored Phase Logic
                     pending_count = self.gs.get_pending_effect_count()
                     if (best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
-                        dm_ai_module.PhaseManager.next_phase(self.gs, self.card_db)
+                        EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
 
             self.update_ui()
         finally:
@@ -766,9 +766,9 @@ class GameWindow(QMainWindow):
         
     def update_ui(self):
         # Guard attributes on GameState that may not exist in minimal dm_ai_module builds
-        turn_number = getattr(self.gs, 'turn_number', '?')
-        current_phase = getattr(self.gs, 'current_phase', getattr(self.gs, 'phase', '?'))
-        active_pid = getattr(self.gs, 'active_player_id', getattr(self.gs, 'active_player', '?'))
+        turn_number = EngineCompat.get_turn_number(self.gs)
+        current_phase = EngineCompat.get_current_phase(self.gs)
+        active_pid = EngineCompat.get_active_player_id(self.gs)
         self.turn_label.setText(f"{tr('Turn')}: {turn_number}")
         self.phase_label.setText(f"{tr('Phase')}: {current_phase}")
         self.active_label.setText(f"{tr('Active')}: P{active_pid}")
@@ -779,7 +779,7 @@ class GameWindow(QMainWindow):
         # ---------------------------------------------------------------------
         # COMMAND LOG UPDATE (safe: GameState may not expose command_history)
         # ---------------------------------------------------------------------
-        history = getattr(self.gs, 'command_history', []) or []
+        history = EngineCompat.get_command_history(self.gs)
         try:
             current_len = len(history)
         except Exception:
@@ -795,22 +795,17 @@ class GameWindow(QMainWindow):
             self.log_list.scrollToBottom()
             self.last_command_index = current_len
 
-        players = getattr(self.gs, 'players', None)
-        if players and len(players) >= 2:
-            p0 = players[0]
-            p1 = players[1]
-        else:
-            # Create minimal stand-ins to avoid attribute errors when rendering UI
-            class _P: pass
-            p0 = getattr(self.gs, 'player0', None) or _P()
-            p1 = getattr(self.gs, 'player1', None) or _P()
+        # Use EngineCompat to get players or fallback
+        class _P: pass
+        p0 = EngineCompat.get_player(self.gs, 0) or _P()
+        p1 = EngineCompat.get_player(self.gs, 1) or _P()
         
         # Calculate legal actions for context menus
         # active_pid may have been determined earlier from turn labels
-        active_pid = active_pid if 'active_pid' in locals() else getattr(self.gs, 'active_player_id', 0)
+        active_pid = active_pid if 'active_pid' in locals() else EngineCompat.get_active_player_id(self.gs)
         legal_actions = []
         if active_pid == 0 and self.p0_human_radio.isChecked():
-             legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.gs, self.card_db)
+             legal_actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
 
         def convert_zone(zone_cards, hide=False):
             if hide:
@@ -834,11 +829,11 @@ class GameWindow(QMainWindow):
         self.p1_deck_zone.update_cards(convert_zone(p1.deck, hide=True), self.card_db)
 
         # Pending user input may not exist on all GameState builds
-        pending = getattr(self.gs, 'pending_query', None)
-        if getattr(self.gs, 'waiting_for_user_input', False) and pending is not None and getattr(pending, 'query_type', '') == "SELECT_TARGET":
+        pending = EngineCompat.get_pending_query(self.gs)
+        if EngineCompat.is_waiting_for_user_input(self.gs) and pending is not None and getattr(pending, 'query_type', '') == "SELECT_TARGET":
             valid_targets = getattr(pending, 'valid_targets', [])
             min_targets = getattr(getattr(pending, 'params', {}), 'get', lambda k, d=None: d)('min', 1) if hasattr(getattr(pending, 'params', None), 'get') else 1
-            max_targets = self.gs.pending_query.params.get('max', 99)
+            max_targets = pending.params.get('max', 99)
 
             # Update button text with count
             current = len(self.selected_targets)
