@@ -124,6 +124,12 @@ EDITOR_ACTION_TYPES = [
     "SELECT_OPTION"
 ]
 
+# Actions that are deprecated and should be replaced (e.g. by MOVE_CARD)
+LEGACY_ACTION_TYPES = [
+    "DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DISCARD",
+    "SEND_TO_DECK_BOTTOM", "SEND_SHIELD_TO_GRAVE", "SEND_TO_MANA"
+]
+
 # =============================================================================
 # Grantable Keywords
 # =============================================================================

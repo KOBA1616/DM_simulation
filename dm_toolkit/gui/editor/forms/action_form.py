@@ -6,7 +6,7 @@ from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
-from dm_toolkit.consts import EDITOR_ACTION_TYPES, ZONES_EXTENDED
+from dm_toolkit.consts import EDITOR_ACTION_TYPES, ZONES_EXTENDED, LEGACY_ACTION_TYPES
 
 class ActionEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -54,7 +54,12 @@ class ActionEditForm(BaseEditForm):
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         self.add_field(tr("Action Type"), self.type_combo)
 
-        # Removed warning label
+        # Legacy Warning Label (Initially hidden)
+        self.legacy_warning_label = QLabel()
+        self.legacy_warning_label.setStyleSheet("color: red; font-weight: bold;")
+        self.legacy_warning_label.setWordWrap(True)
+        self.legacy_warning_label.setVisible(False)
+        self.add_field(None, self.legacy_warning_label)
 
         self.scope_combo = QComboBox()
         scopes = ["PLAYER_SELF", "PLAYER_OPPONENT", "TARGET_SELECT", "ALL_PLAYERS", "RANDOM", "ALL_FILTERED", "NONE"]
@@ -178,6 +183,16 @@ class ActionEditForm(BaseEditForm):
     def update_ui_state(self, action_type):
         if not action_type: return
 
+        # Check Legacy Status
+        if action_type in LEGACY_ACTION_TYPES:
+            self.legacy_warning_label.setText(
+                f"{tr('Warning')}: {tr(action_type)} {tr('is deprecated')}. "
+                f"{tr('Please use')} MOVE_CARD."
+            )
+            self.legacy_warning_label.setVisible(True)
+        else:
+            self.legacy_warning_label.setVisible(False)
+
         config = self._get_ui_config(action_type)
 
         self.val1_label.setText(tr(config["val1_label"]))
@@ -256,7 +271,7 @@ class ActionEditForm(BaseEditForm):
              ui_type = "MEASURE_COUNT"
         elif raw_type == "APPLY_MODIFIER" and str_val == "COST":
              ui_type = "COST_REDUCTION"
-        elif raw_type in ["DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DISCARD", "SEND_TO_DECK_BOTTOM", "SEND_SHIELD_TO_GRAVE", "SEND_TO_MANA"]:
+        elif raw_type in LEGACY_ACTION_TYPES:
              # If legacy type is not in known_types, temporarily add it to combo
              if raw_type not in self.known_types:
                  idx = self.type_combo.findData(raw_type)

@@ -11,6 +11,8 @@ from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
 from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
 from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.editor.forms.action_form import ActionEditForm # Import to access legacy types definition if needed, or define here.
+from dm_toolkit.consts import LEGACY_ACTION_TYPES
 
 class CardEditor(QMainWindow):
     data_saved = pyqtSignal()
@@ -121,8 +123,68 @@ class CardEditor(QMainWindow):
 
         self.tree_widget.load_data(self.cards_data)
 
+    def _has_legacy_actions(self, data):
+        """Recursively checks for legacy actions in the data structure."""
+        found = False
+        details = []
+
+        def check_actions(actions, context):
+            nonlocal found
+            for action in actions:
+                atype = action.get('type')
+                if atype in LEGACY_ACTION_TYPES:
+                    found = True
+                    details.append(f"{context}: {atype}")
+
+                # Check options recursively if any (SELECT_OPTION -> options -> actions)
+                if atype == "SELECT_OPTION":
+                    options = action.get('options', [])
+                    for i, opt in enumerate(options):
+                        check_actions(opt.get('actions', []), f"{context} > Option {i+1}")
+
+        for card in data:
+            card_name = card.get('name', 'Unknown')
+            # Check effects
+            for i, eff in enumerate(card.get('effects', [])):
+                check_actions(eff.get('actions', []), f"{card_name} > Effect {i+1}")
+
+            # Check reaction abilities
+            for i, react in enumerate(card.get('reaction_abilities', [])):
+                check_actions(react.get('actions', []), f"{card_name} > Reaction {i+1}")
+
+            # Check spell side if present
+            if 'spell_side' in card:
+                for i, eff in enumerate(card['spell_side'].get('effects', [])):
+                    check_actions(eff.get('actions', []), f"{card_name} (Spell Side) > Effect {i+1}")
+
+        return found, details
+
     def save_data(self):
         data = self.tree_widget.get_full_data_from_model()
+
+        # Pre-save validation for Legacy Actions
+        has_legacy, details = self._has_legacy_actions(data)
+
+        if has_legacy:
+            msg = tr("Legacy actions detected which may be deprecated in future versions:") + "\n\n"
+            # Show up to 5 details
+            msg += "\n".join(details[:5])
+            if len(details) > 5:
+                msg += "\n" + tr("...and {} more").format(len(details) - 5)
+
+            msg += "\n\n" + tr("Do you want to continue saving anyway?")
+
+            reply = QMessageBox.warning(
+                self,
+                tr("Legacy Action Warning"),
+                msg,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+
+            if reply == QMessageBox.StandardButton.No:
+                return
+
         try:
             with open(self.json_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
