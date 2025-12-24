@@ -279,6 +279,12 @@ namespace dm::engine::systems {
             move_args["target"] = instance_id;
             move_args["to"] = "GRAVEYARD";
             compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
+        } else if (def.type == CardType::CREATURE) {
+            // Move to Battle Zone
+            nlohmann::json move_args;
+            move_args["target"] = instance_id;
+            move_args["to"] = "BATTLE";
+            compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
         }
 
         if (!compiled_effects.empty()) {
