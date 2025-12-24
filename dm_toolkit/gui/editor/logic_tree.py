@@ -226,6 +226,86 @@ class LogicTreeWidget(QTreeView):
 
         self.add_child_item(effect_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
 
+    def add_action_to_effect(self, effect_index, action_data=None):
+        if not effect_index.isValid(): return
+        if action_data is None:
+             action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
+
+        import copy
+        data_copy = copy.deepcopy(action_data)
+
+        self.add_child_item(effect_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
+
+    def add_action_to_option(self, option_index, action_data=None):
+        if not option_index.isValid(): return
+        if action_data is None:
+             action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
+
+        import copy
+        data_copy = copy.deepcopy(action_data)
+
+        self.add_child_item(option_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
+
+    def add_command_contextual(self, cmd_data=None):
+        idx = self.currentIndex()
+        if not idx.isValid(): return
+
+        item = self.standard_model.itemFromIndex(idx)
+        type_ = item.data(Qt.ItemDataRole.UserRole + 1)
+
+        if type_ == "EFFECT":
+            self.add_command_to_effect(idx, cmd_data)
+        elif type_ == "OPTION":
+            self.add_command_to_option(idx, cmd_data)
+        elif type_ in ["COMMAND", "ACTION"]:
+             # Sibling or Branch
+             parent = item.parent()
+             if parent:
+                 parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
+                 if parent_type == "EFFECT":
+                     self.add_command_to_effect(parent.index(), cmd_data)
+                 elif parent_type == "OPTION":
+                     self.add_command_to_option(parent.index(), cmd_data)
+                 elif parent_type in ["CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
+                     self._add_command_to_branch(parent.index(), cmd_data)
+        elif type_ in ["CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
+             self._add_command_to_branch(idx, cmd_data)
+
+    def add_action_contextual(self, action_data=None):
+        idx = self.currentIndex()
+        if not idx.isValid(): return
+
+        item = self.standard_model.itemFromIndex(idx)
+        type_ = item.data(Qt.ItemDataRole.UserRole + 1)
+
+        if type_ == "EFFECT":
+            self.add_action_to_effect(idx, action_data)
+        elif type_ == "OPTION":
+            self.add_action_to_option(idx, action_data)
+        elif type_ in ["COMMAND", "ACTION"]:
+             # Sibling
+             parent = item.parent()
+             if parent:
+                 parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
+                 if parent_type == "EFFECT":
+                     self.add_action_to_effect(parent.index(), action_data)
+                 elif parent_type == "OPTION":
+                     self.add_action_to_option(parent.index(), action_data)
+
+    def _add_command_to_branch(self, branch_index, cmd_data=None):
+        if not branch_index.isValid(): return
+        if cmd_data is None:
+            cmd_data = {
+                "type": "TRANSITION",
+                "target_group": "NONE",
+                "to_zone": "HAND",
+                "target_filter": {}
+            }
+
+        import copy
+        data_copy = copy.deepcopy(cmd_data)
+        self.add_child_item(branch_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
+
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""
         index = self.currentIndex()
