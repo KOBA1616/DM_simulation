@@ -3,6 +3,8 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.localization import tr
 import uuid
+import json
+import os
 
 class CardDataManager:
     """
@@ -12,6 +14,27 @@ class CardDataManager:
 
     def __init__(self, model: QStandardItemModel):
         self.model = model
+        self.templates = {"commands": [], "actions": []}
+        self.load_templates()
+
+    def load_templates(self):
+        # Resolve path to data/editor_templates.json
+        # Current file: dm_toolkit/gui/editor/data_manager.py
+        # Root is 4 levels up
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        filepath = os.path.join(base_dir, 'data', 'editor_templates.json')
+
+        if not os.path.exists(filepath):
+            # Try current working directory fallback
+            filepath = 'data/editor_templates.json'
+
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    self.templates = json.load(f)
+            except Exception as e:
+                print(f"Error loading templates: {e}")
+                self.templates = {"commands": [], "actions": []}
 
     def load_data(self, cards_data):
         self.model.clear()
@@ -392,16 +415,12 @@ class CardDataManager:
         kw_item.setEditable(False)
         item.appendRow(kw_item)
 
-        # Structure Groups are REMOVED per user request
-
         return item
 
     def _create_spell_side_item(self, spell_data):
         item = QStandardItem(f"{tr('Spell Side')}: {spell_data.get('name', 'No Name')}")
         item.setData("SPELL_SIDE", Qt.ItemDataRole.UserRole + 1)
         item.setData(spell_data, Qt.ItemDataRole.UserRole + 2)
-
-        # Groups removed for Spell Side as well
         return item
 
     def _create_effect_item(self, effect):
