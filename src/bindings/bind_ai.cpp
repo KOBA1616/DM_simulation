@@ -14,6 +14,7 @@
 #include "ai/data_collection/data_collector.hpp"
 #include "bindings/python_batch_inference.hpp"
 #include "ai/evolution/deck_evolution.hpp"
+#include "ai/evolution/meta_environment.hpp"
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
 
@@ -96,14 +97,33 @@ void bind_ai(py::module& m) {
         .def(py::init<>())
         .def_readwrite("target_deck_size", &DeckEvolutionConfig::target_deck_size)
         .def_readwrite("mutation_rate", &DeckEvolutionConfig::mutation_rate)
+        .def_readwrite("crossover_rate", &DeckEvolutionConfig::crossover_rate)
         .def_readwrite("synergy_weight", &DeckEvolutionConfig::synergy_weight)
         .def_readwrite("curve_weight", &DeckEvolutionConfig::curve_weight);
 
     py::class_<DeckEvolution>(m, "DeckEvolution")
         .def(py::init<const std::map<dm::core::CardID, dm::core::CardDefinition>&>())
         .def("evolve_deck", &DeckEvolution::evolve_deck)
+        .def("crossover_decks", &DeckEvolution::crossover_decks)
         .def("calculate_interaction_score", &DeckEvolution::calculate_interaction_score)
         .def("get_candidates_by_civ", &DeckEvolution::get_candidates_by_civ);
+
+    py::class_<DeckAgent>(m, "DeckAgent")
+        .def_readwrite("id", &DeckAgent::id)
+        .def_readwrite("deck", &DeckAgent::deck)
+        .def_readwrite("elo_rating", &DeckAgent::elo_rating)
+        .def_readwrite("matches_played", &DeckAgent::matches_played)
+        .def_readwrite("wins", &DeckAgent::wins)
+        .def_readwrite("generation", &DeckAgent::generation)
+        .def_readwrite("archetype", &DeckAgent::archetype);
+
+    py::class_<MetaEnvironment>(m, "MetaEnvironment")
+        .def(py::init<const std::map<dm::core::CardID, dm::core::CardDefinition>&>())
+        .def("initialize_population", &MetaEnvironment::initialize_population)
+        .def("record_match", &MetaEnvironment::record_match)
+        .def("step_generation", &MetaEnvironment::step_generation)
+        .def("get_population", &MetaEnvironment::get_population)
+        .def("get_agent", &MetaEnvironment::get_agent);
 
     py::class_<dm::ai::inference::DeckInference>(m, "DeckInference")
         .def(py::init<>())
