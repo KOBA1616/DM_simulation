@@ -10,83 +10,39 @@ namespace dm::engine::game_command {
     // --- TransitionCommand ---
 
     void TransitionCommand::execute(core::GameState& state) {
-        // Logic similar to ZoneUtils::move_card
-        // But simplified for primitive operation
-
-        // 1. Find card and remove from source zone
-        core::Player& owner = state.players[owner_id];
-        std::vector<core::CardInstance>* source_vec = nullptr;
-        std::vector<core::CardInstance>* dest_vec = nullptr;
-
-        // Helper to get vector
-        auto get_vec = [&](core::Zone z) -> std::vector<core::CardInstance>* {
-            switch(z) {
-                case core::Zone::HAND: return &owner.hand;
-                case core::Zone::MANA: return &owner.mana_zone;
-                case core::Zone::BATTLE: return &owner.battle_zone;
-                case core::Zone::GRAVEYARD: return &owner.graveyard;
-                case core::Zone::SHIELD: return &owner.shield_zone;
-                case core::Zone::DECK: return &owner.deck;
-                case core::Zone::BUFFER: return &owner.effect_buffer;
-                case core::Zone::STACK: return &owner.stack;
-                default: return nullptr;
-            }
-        };
-
-        if (from_zone == core::Zone::STACK) {
-             // source_vec = nullptr; // Old
-             source_vec = get_vec(core::Zone::STACK);
-        } else {
-             source_vec = get_vec(from_zone);
-        }
-
-        if (to_zone == core::Zone::STACK) {
-             // dest_vec = nullptr; // Old
-             dest_vec = get_vec(core::Zone::STACK);
-        } else {
-             dest_vec = get_vec(to_zone);
-        }
-
-        if (!source_vec || !dest_vec) return; // Error
-
-        // Find
-        auto it = std::find_if(source_vec->begin(), source_vec->end(),
-            [&](const core::CardInstance& c){ return c.instance_id == card_instance_id; });
-
-        if (it == source_vec->end()) {
-             return;
-        }
-
-        // Store original index for undo
-        original_index = std::distance(source_vec->begin(), it);
-
-        core::CardInstance card = *it;
-
         // --- G-Neo Handling ---
-        // Requirement: "G-Neo Creature... when it leaves the field, if there is a card under this creature,
-        // instead of leaving, all cards under it are put in the graveyard."
+        // We must check for G-Neo BEFORE removing the card, as removal might trigger things
+        // or we need access to the card in its original context.
+        // However, we can use state.get_card_instance() to inspect it.
 
         bool should_replace = false;
-        if (from_zone == core::Zone::BATTLE && to_zone != core::Zone::BATTLE && !card.underlying_cards.empty()) {
-             // Access Global Card Registry (Singleton)
-             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
-             if (card_db.count(card.card_id)) {
-                 const auto& def = card_db.at(card.card_id);
-                 if (def.keywords.g_neo) {
-                     should_replace = true;
+        if (from_zone == core::Zone::BATTLE && to_zone != core::Zone::BATTLE) {
+            core::CardInstance* card_ptr = state.get_card_instance(card_instance_id);
+            if (card_ptr && !card_ptr->underlying_cards.empty()) {
+                 // Access Global Card Registry (Singleton)
+                 const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+                 if (card_db.count(card_ptr->card_id)) {
+                     const auto& def = card_db.at(card_ptr->card_id);
+                     if (def.keywords.g_neo) {
+                         should_replace = true;
+                     }
                  }
-             }
+            }
         }
 
         if (should_replace) {
              g_neo_activated = true;
 
+             core::CardInstance* card_ptr = state.get_card_instance(card_instance_id);
+             // Safety check
+             if (!card_ptr) return;
+
              // Store underlying cards for Undo
-             moved_underlying_cards = card.underlying_cards;
+             moved_underlying_cards = card_ptr->underlying_cards;
 
              // Move underlying to Graveyard
              auto& grave = state.players[owner_id].graveyard;
-             for (const auto& under : card.underlying_cards) {
+             for (const auto& under : card_ptr->underlying_cards) {
                  grave.push_back(under);
 
                  // Dispatch ZONE_ENTER for underlying cards entering Graveyard
@@ -103,23 +59,38 @@ namespace dm::engine::game_command {
              }
 
              // Update the card in source vector (clear underlying)
-             it->underlying_cards.clear();
+             card_ptr->underlying_cards.clear();
 
              // Abort the move of the top card (Replacement Effect)
              return;
         }
 
-        source_vec->erase(it);
+        // --- Standard Move Logic using GameState Primitives ---
 
-        // Add to dest
-        if (destination_index == -1 || destination_index >= (int)dest_vec->size()) {
-            dest_vec->push_back(card);
-        } else {
-            dest_vec->insert(dest_vec->begin() + destination_index, card);
+        auto removed_data = state.remove_card_from_zone(owner_id, from_zone, card_instance_id);
+        if (!removed_data.first.has_value()) {
+            // Card not found in source zone. Abort.
+            return;
         }
 
+        core::CardInstance card = removed_data.first.value();
+        original_index = removed_data.second; // Store for undo
+
+        // Update card state for destination
+        if (to_zone == core::Zone::HAND || to_zone == core::Zone::DECK) {
+            card.is_tapped = false;
+            card.summoning_sickness = true; // Hand cards have sickness technically (cannot attack)
+            card.underlying_cards.clear();
+        }
+        if (to_zone == core::Zone::BATTLE) {
+            card.turn_played = state.turn_number;
+            card.summoning_sickness = true;
+        }
+
+        // Insert into destination
+        state.insert_card_to_zone(owner_id, to_zone, card, destination_index);
+
         // Phase 6: Event Dispatch
-        // We need to dispatch ZONE_ENTER or similar.
         if (state.event_dispatcher) {
             core::GameEvent evt;
             evt.type = core::EventType::ZONE_ENTER;
@@ -138,93 +109,44 @@ namespace dm::engine::game_command {
     }
 
     void TransitionCommand::invert(core::GameState& state) {
-        // Reverse operation
-
-        core::Player& owner = state.players[owner_id];
-        std::vector<core::CardInstance>* source_vec = nullptr; // Note: Invert swaps source/dest
-        std::vector<core::CardInstance>* dest_vec = nullptr;
-
-        auto get_vec = [&](core::Zone z) -> std::vector<core::CardInstance>* {
-            switch(z) {
-                case core::Zone::HAND: return &owner.hand;
-                case core::Zone::MANA: return &owner.mana_zone;
-                case core::Zone::BATTLE: return &owner.battle_zone;
-                case core::Zone::GRAVEYARD: return &owner.graveyard;
-                case core::Zone::SHIELD: return &owner.shield_zone;
-                case core::Zone::DECK: return &owner.deck;
-                case core::Zone::BUFFER: return &owner.effect_buffer;
-                case core::Zone::STACK: return &owner.stack;
-                default: return nullptr;
-            }
-        };
-
         // --- G-Neo Undo Logic ---
         if (g_neo_activated) {
             // Restore underlying cards from Graveyard to Battle Zone (under the creature).
             // The creature (card_instance_id) is still in from_zone (BATTLE).
 
-            dest_vec = get_vec(from_zone);
-            if (!dest_vec) return;
+            core::CardInstance* card_ptr = state.get_card_instance(card_instance_id);
+            if (!card_ptr) return; // Should be there
 
-            // Find the creature
-            auto it = std::find_if(dest_vec->begin(), dest_vec->end(),
-                [&](const core::CardInstance& c){ return c.instance_id == card_instance_id; });
+            // Restore underlying cards structure
+            card_ptr->underlying_cards = moved_underlying_cards;
 
-            if (it == dest_vec->end()) return;
-
-            // Restore underlying cards
-            auto& grave = state.players[owner_id].graveyard;
-            it->underlying_cards = moved_underlying_cards;
-
-            // Remove from Graveyard
-            // Note: We need to find and remove specific instances.
-            // Assuming they are at the end of graveyard if pushed recently?
-            // Safer to find by instance ID.
+            // Remove specific instances from Graveyard
             for (const auto& moved_card : moved_underlying_cards) {
-                auto git = std::find_if(grave.begin(), grave.end(),
-                    [&](const core::CardInstance& c){ return c.instance_id == moved_card.instance_id; });
-                if (git != grave.end()) {
-                    grave.erase(git);
-                }
+                state.remove_card_from_zone(owner_id, core::Zone::GRAVEYARD, moved_card.instance_id);
             }
 
-            // No need to move the top card, as it never moved.
             return;
         }
 
         // --- Standard Undo Logic ---
+        // Move from `to_zone` back to `from_zone` at `original_index`.
 
-        // Current location (where it was moved TO) is now the source
-        if (to_zone == core::Zone::STACK) {
-             source_vec = get_vec(core::Zone::STACK);
-        } else {
-             source_vec = get_vec(to_zone);
+        auto removed_data = state.remove_card_from_zone(owner_id, to_zone, card_instance_id);
+        if (!removed_data.first.has_value()) {
+            return;
         }
 
-        // Original location (where it came FROM) is now the dest
-        if (from_zone == core::Zone::STACK) {
-             dest_vec = get_vec(core::Zone::STACK);
-        } else {
-             dest_vec = get_vec(from_zone);
-        }
+        core::CardInstance card = removed_data.first.value();
 
-        if (!source_vec || !dest_vec) return;
+        // Note: We might want to restore original state flags (tapped, sick), but currently TransitionCommand
+        // doesn't store them all. It assumes they are reset on move or managed by other commands.
+        // For strict undo, we usually rely on the fact that `CardInstance` is a value type and we pushed a copy?
+        // No, `remove_card_from_zone` returns the CURRENT state of the card in the `to_zone`.
+        // If the card was modified in `to_zone` (e.g. tapped), moving it back might keep it tapped unless we reset.
+        // However, `TransitionCommand` logic typically assumes the move is the only thing happening in this command step.
+        // If other commands modified it, their `invert` should have run first.
 
-        // Find card in current location
-        auto it = std::find_if(source_vec->begin(), source_vec->end(),
-            [&](const core::CardInstance& c){ return c.instance_id == card_instance_id; });
-
-        if (it == source_vec->end()) return;
-
-        core::CardInstance card = *it;
-        source_vec->erase(it);
-
-        // Restore to original index
-        if (original_index >= 0 && original_index <= (int)dest_vec->size()) {
-            dest_vec->insert(dest_vec->begin() + original_index, card);
-        } else {
-            dest_vec->push_back(card);
-        }
+        state.insert_card_to_zone(owner_id, from_zone, card, original_index);
     }
 
     // --- MutateCommand ---
