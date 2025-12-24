@@ -3,7 +3,7 @@
 #include "engine/game_instance.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/card/card_registry.hpp"
-#include "engine/actions/action_generator.hpp"
+#include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include "ai/encoders/token_converter.hpp"
@@ -85,7 +85,7 @@ namespace dm::ai {
                 step++;
                 int active_player = game.state.active_player_id;
 
-                dm::engine::ActionGenerator action_gen;
+                dm::engine::IntentGenerator action_gen;
                 auto legal_actions = action_gen.generate_legal_actions(game.state, *card_db_);
 
                 // If no actions, transition phase
@@ -133,7 +133,7 @@ namespace dm::ai {
                 // Apply action
                 GameLogicSystem::resolve_action(game.state, chosen_action, *card_db_);
 
-                if (chosen_action.type == dm::core::ActionType::PASS) {
+                if (chosen_action.type == dm::core::PlayerIntent::PASS) {
                      dm::engine::PhaseManager::next_phase(game.state, *card_db_);
                 }
 

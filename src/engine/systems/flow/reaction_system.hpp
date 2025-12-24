@@ -87,7 +87,7 @@ namespace dm::engine {
 
             if (has_reaction) {
                 dm::core::PendingEffect effect(dm::core::EffectType::REACTION_WINDOW, -1, reaction_player_id);
-                effect.resolve_type = dm::core::ResolveType::EFFECT_RESOLUTION; // Handled by ActionGenerator
+                effect.resolve_type = dm::core::ResolveType::EFFECT_RESOLUTION; // Handled by IntentGenerator
                 effect.optional = true; // Player can choose PASS
 
                 dm::core::PendingEffect::ReactionContext context;

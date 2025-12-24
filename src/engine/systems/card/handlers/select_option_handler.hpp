@@ -57,8 +57,8 @@ namespace dm::engine {
             // Actually `SelectOptionHandler` logic usually sets up `PendingEffect` with sub-effects.
             // The `ResolutionContext` doesn't easily carry "sub-effects" unless we look at `ctx.action`.
             // The `ActionDef` might have metadata?
-            // Usually `SELECT_OPTION` is an `EffectType` (pending), not `ActionType`.
-            // Wait, `EffectActionType` has `SELECT_OPTION`.
+            // Usually `SELECT_OPTION` is an `EffectType` (pending), not `PlayerIntent`.
+            // Wait, `EffectPrimitive` has `SELECT_OPTION`.
             // But how are options defined?
             // They are usually in `ctx.action.args` or derived from `remaining_actions`?
             // Actually `SelectOption` usually involves branching logic defined in JSON.
@@ -90,14 +90,14 @@ namespace dm::engine {
 
             queue.args["type"] = "SELECT_OPTION";
             // We need to pass options...
-            // `GameLogicSystem::handle_select_option` (via dispatch) handles `ActionType::SELECT_OPTION`.
+            // `GameLogicSystem::handle_select_option` (via dispatch) handles `PlayerIntent::SELECT_OPTION`.
             // But `Instruction` needs to setup the `PendingEffect`.
 
             // Let's leave `resolve` doing the work via `EffectSystem` directly if `compile` is too hard?
             // But I must implement `compile`.
 
             // If I look at `GameLogicSystem.cpp`:
-            // `case ActionType::SELECT_OPTION:` handles response.
+            // `case PlayerIntent::SELECT_OPTION:` handles response.
             // It does NOT handle setup. Setup is usually done by `EffectResolver`.
 
             // I will implement a new GAME_ACTION "SETUP_OPTION" in `GameLogicSystem` if I can modify it.

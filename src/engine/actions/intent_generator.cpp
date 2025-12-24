@@ -1,11 +1,11 @@
-#include "action_generator.hpp"
+#include "intent_generator.hpp"
 #include "core/constants.hpp"
 
 namespace dm::engine {
 
     using namespace dm::core;
 
-    std::vector<Action> ActionGenerator::generate_legal_actions(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    std::vector<Action> IntentGenerator::generate_legal_actions(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         // Phase 6: Handle Waiting for User Input (Query Response)
         if (game_state.waiting_for_user_input && game_state.waiting_for_user_input) {
             std::vector<Action> actions;
@@ -14,7 +14,7 @@ namespace dm::engine {
             if (query.query_type == "SELECT_TARGET") {
                 for (int target_id : query.valid_targets) {
                     Action act;
-                    act.type = ActionType::SELECT_TARGET;
+                    act.type = PlayerIntent::SELECT_TARGET;
                     act.target_instance_id = target_id;
                     // We might need to encode query_id to ensure we are answering the right query,
                     // but Action struct is limited. The engine state implies the context.
@@ -24,7 +24,7 @@ namespace dm::engine {
             else if (query.query_type == "SELECT_OPTION") {
                 for (size_t i = 0; i < query.options.size(); ++i) {
                     Action act;
-                    act.type = ActionType::SELECT_OPTION;
+                    act.type = PlayerIntent::SELECT_OPTION;
                     act.target_slot_index = static_cast<int>(i);
                     // Optionally store string value in a future Action extension
                     actions.push_back(act);
@@ -67,7 +67,7 @@ namespace dm::engine {
                     // No actions logic required for these phases in current design, just PASS
                     std::vector<Action> actions;
                     Action pass;
-                    pass.type = ActionType::PASS;
+                    pass.type = PlayerIntent::PASS;
                     actions.push_back(pass);
                     return actions;
                 }
