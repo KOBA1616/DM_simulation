@@ -7,6 +7,7 @@
 #include "engine/systems/game_logic_system.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include "ai/encoders/token_converter.hpp"
+#include "ai/encoders/tensor_converter.hpp"
 #include <iostream>
 #include <chrono>
 
@@ -24,10 +25,11 @@ namespace dm::ai {
         : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()) {}
 
     CollectedBatch DataCollector::collect_data_batch(int episodes) {
-        return collect_data_batch_heuristic(episodes);
+        // Default behavior: Collect Tensors (legacy compatible)
+        return collect_data_batch_heuristic(episodes, false, true);
     }
 
-    CollectedBatch DataCollector::collect_data_batch_heuristic(int episodes) {
+    CollectedBatch DataCollector::collect_data_batch_heuristic(int episodes, bool collect_tokens, bool collect_tensors) {
         CollectedBatch batch;
 
         // Instantiate agents once outside the loop to reuse RNG initialization
@@ -35,8 +37,6 @@ namespace dm::ai {
         HeuristicAgent agent2(1, *card_db_);
 
         // Pre-calculate decks (using a simple strategy if none provided, but here we assume all cards are available)
-        // In a real scenario, we might want to randomize decks or pass them in.
-        // For now, we construct a simple deck from the DB or default dummy.
         std::vector<dm::core::CardID> deck1, deck2;
         if (card_db_ && !card_db_->empty()) {
             std::vector<dm::core::CardID> available_ids;
@@ -73,7 +73,8 @@ namespace dm::ai {
             // Game Loop
             dm::engine::PhaseManager::start_game(game.state, *card_db_);
 
-            std::vector<std::vector<long>> game_states;
+            std::vector<std::vector<long>> game_tokens;
+            std::vector<std::vector<float>> game_tensors;
             std::vector<std::vector<float>> game_policies;
             std::vector<std::vector<float>> game_masks;
             std::vector<int> game_players;
@@ -108,8 +109,19 @@ namespace dm::ai {
                 }
 
                 // Record data
-                std::vector<int> tokens_int = encoders::TokenConverter::encode_state(game.state, active_player, 0);
-                std::vector<long> state_seq(tokens_int.begin(), tokens_int.end());
+
+                // 1. Tokens (Transformer)
+                if (collect_tokens) {
+                    std::vector<int> tokens_int = encoders::TokenConverter::encode_state(game.state, active_player, 0);
+                    std::vector<long> state_seq(tokens_int.begin(), tokens_int.end());
+                    game_tokens.push_back(state_seq);
+                }
+
+                // 2. Tensors (ResNet/MLP)
+                if (collect_tensors) {
+                    std::vector<float> tensor = TensorConverter::convert_to_tensor(game.state, active_player, *card_db_);
+                    game_tensors.push_back(tensor);
+                }
 
                 std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
                 int action_idx = ActionEncoder::action_to_index(chosen_action);
@@ -125,7 +137,6 @@ namespace dm::ai {
                     }
                 }
 
-                game_states.push_back(state_seq);
                 game_policies.push_back(policy);
                 game_masks.push_back(mask);
                 game_players.push_back(active_player);
@@ -161,8 +172,10 @@ namespace dm::ai {
                 result_p1 = 1.0f;
             }
 
-            for (size_t k = 0; k < game_states.size(); ++k) {
-                batch.states.push_back(game_states[k]);
+            for (size_t k = 0; k < game_policies.size(); ++k) {
+                if (collect_tokens) batch.token_states.push_back(game_tokens[k]);
+                if (collect_tensors) batch.tensor_states.push_back(game_tensors[k]);
+
                 batch.policies.push_back(game_policies[k]);
                 batch.masks.push_back(game_masks[k]);
 
