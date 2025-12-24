@@ -391,6 +391,23 @@ namespace dm::engine::systems {
 
         std::vector<Instruction> generated;
 
+        // 0. Check Before Break Triggers
+        int source_id = exec.resolve_int(inst.args.value("source_id", -1));
+        if (source_id != -1) {
+             const CardInstance* source = state.get_card_instance(source_id);
+             if (source && card_db.count(source->card_id)) {
+                 const auto& def = card_db.at(source->card_id);
+                 if (def.keywords.before_break_shield) {
+                     std::map<std::string, int> ctx;
+                     for (const auto& eff : def.effects) {
+                         if (eff.trigger == TriggerType::BEFORE_BREAK_SHIELD) {
+                             EffectSystem::instance().compile_effect(state, eff, source_id, ctx, card_db, generated);
+                         }
+                     }
+                 }
+             }
+        }
+
         // 1. Move Shield to Hand
         Instruction move(InstructionOp::MOVE);
         move.args["to"] = "HAND";
