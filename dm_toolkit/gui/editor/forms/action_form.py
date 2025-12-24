@@ -7,6 +7,7 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.consts import EDITOR_ACTION_TYPES, ZONES_EXTENDED
+from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
 
 class ActionEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -291,7 +292,7 @@ class ActionEditForm(BaseEditForm):
 
     def request_generate_options(self):
         count = self.option_count_spin.value()
-        self.structure_update_requested.emit("generate_options", {"count": count})
+        self.structure_update_requested.emit(STRUCT_CMD_GENERATE_OPTIONS, {"count": count})
 
     def _save_data(self, data):
         ui_type = self.type_combo.currentData()
