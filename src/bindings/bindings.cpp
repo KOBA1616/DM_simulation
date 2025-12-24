@@ -694,6 +694,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
                  c.is_tapped = tapped;
                  c.summoning_sickness = sick;
                  s.players[pid].battle_zone.push_back(c);
+                 // Update owner map
+                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 100, 0);
+                 s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -706,6 +709,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
             try {
                  CardInstance c(cid, iid, pid);
                  s.players[pid].hand.push_back(c);
+                 // Update owner map to allow lookup
+                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 100, 0);
+                 s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
