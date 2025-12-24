@@ -267,7 +267,19 @@ void bind_core(py::module& m) {
         .def_property("at_attack", [](const CardKeywords& k) { return k.at_attack; }, [](CardKeywords& k, bool v) { k.at_attack = v; })
         .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; })
         .def_property("just_diver", [](const CardKeywords& k) { return k.just_diver; }, [](CardKeywords& k, bool v) { k.just_diver = v; })
-        .def_property("hyper_energy", [](const CardKeywords& k) { return k.hyper_energy; }, [](CardKeywords& k, bool v) { k.hyper_energy = v; });
+        .def_property("hyper_energy", [](const CardKeywords& k) { return k.hyper_energy; }, [](CardKeywords& k, bool v) { k.hyper_energy = v; })
+        .def_property("at_block", [](const CardKeywords& k) { return k.at_block; }, [](CardKeywords& k, bool v) { k.at_block = v; })
+        .def_property("at_start_of_turn", [](const CardKeywords& k) { return k.at_start_of_turn; }, [](CardKeywords& k, bool v) { k.at_start_of_turn = v; })
+        .def_property("at_end_of_turn", [](const CardKeywords& k) { return k.at_end_of_turn; }, [](CardKeywords& k, bool v) { k.at_end_of_turn = v; })
+        .def_property("g_strike", [](const CardKeywords& k) { return k.g_strike; }, [](CardKeywords& k, bool v) { k.g_strike = v; })
+        .def_property("world_breaker", [](const CardKeywords& k) { return k.world_breaker; }, [](CardKeywords& k, bool v) { k.world_breaker = v; })
+        .def_property("power_attacker", [](const CardKeywords& k) { return k.power_attacker; }, [](CardKeywords& k, bool v) { k.power_attacker = v; })
+        .def_property("shield_burn", [](const CardKeywords& k) { return k.shield_burn; }, [](CardKeywords& k, bool v) { k.shield_burn = v; })
+        .def_property("untap_in", [](const CardKeywords& k) { return k.untap_in; }, [](CardKeywords& k, bool v) { k.untap_in = v; })
+        .def_property("unblockable", [](const CardKeywords& k) { return k.unblockable; }, [](CardKeywords& k, bool v) { k.unblockable = v; })
+        .def_property("friend_burst", [](const CardKeywords& k) { return k.friend_burst; }, [](CardKeywords& k, bool v) { k.friend_burst = v; })
+        .def_property("ex_life", [](const CardKeywords& k) { return k.ex_life; }, [](CardKeywords& k, bool v) { k.ex_life = v; })
+        .def_property("mega_last_burst", [](const CardKeywords& k) { return k.mega_last_burst; }, [](CardKeywords& k, bool v) { k.mega_last_burst = v; });
 
     py::class_<FilterDef>(m, "FilterDef")
         .def(py::init<>())
