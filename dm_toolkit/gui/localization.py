@@ -229,6 +229,15 @@ TRANSLATIONS = {
     "Advance game by one step": "ゲームを1ステップ進める",
     "Confirm target selection": "対象選択を確定",
     "Reset the game state": "ゲーム状態をリセット",
+
+    # Warning / Legacy
+    "Legacy Action Warning": "レガシーアクション警告",
+    "Legacy actions detected which may be deprecated in future versions:": "将来のバージョンで廃止される可能性のあるレガシーアクションが検出されました:",
+    "Do you want to continue saving anyway?": "保存を続行しますか?",
+    "Warning": "警告",
+    "is deprecated": "は非推奨です",
+    "Please use": "推奨:",
+    "...and {} more": "...他 {} 件",
 }
 
 # Add Enum mappings if module is available
