@@ -210,38 +210,54 @@ class SimulationDialog(QDialog):
 
         # Scenario
         h_scen = QHBoxLayout()
-        h_scen.addWidget(QLabel(tr("Scenario") + ":"))
+        lbl_scen = QLabel(tr("Scenario") + ":")
         self.scenario_combo = QComboBox()
         self.scenario_combo.addItems(list(SCENARIOS.keys()))
+        self.scenario_combo.setToolTip(tr("Select the game scenario to simulate"))
+        lbl_scen.setBuddy(self.scenario_combo)
+        h_scen.addWidget(lbl_scen)
         h_scen.addWidget(self.scenario_combo, 1)
         form.addLayout(h_scen)
 
         # Evaluator
         h_eval = QHBoxLayout()
-        h_eval.addWidget(QLabel(tr("Evaluator") + ":"))
+        lbl_eval = QLabel(tr("Evaluator") + ":")
         self.eval_combo = QComboBox()
         self.eval_combo.addItems(["Heuristic", "Random", "Model"])
+        self.eval_combo.setToolTip(tr("Select the AI agent type for evaluation"))
+        lbl_eval.setBuddy(self.eval_combo)
+        h_eval.addWidget(lbl_eval)
         h_eval.addWidget(self.eval_combo, 1)
         form.addLayout(h_eval)
 
         # Parameters
         h_params = QHBoxLayout()
-        h_params.addWidget(QLabel(tr("Games") + ":"))
+
+        lbl_episodes = QLabel(tr("Games") + ":")
         self.episodes_spin = QSpinBox()
         self.episodes_spin.setRange(1, 10000)
         self.episodes_spin.setValue(100)
+        self.episodes_spin.setToolTip(tr("Total number of games to simulate"))
+        lbl_episodes.setBuddy(self.episodes_spin)
+        h_params.addWidget(lbl_episodes)
         h_params.addWidget(self.episodes_spin)
 
-        h_params.addWidget(QLabel(tr("Threads") + ":"))
+        lbl_threads = QLabel(tr("Threads") + ":")
         self.threads_spin = QSpinBox()
         self.threads_spin.setRange(1, 32)
         self.threads_spin.setValue(4)
+        self.threads_spin.setToolTip(tr("Number of CPU threads to use"))
+        lbl_threads.setBuddy(self.threads_spin)
+        h_params.addWidget(lbl_threads)
         h_params.addWidget(self.threads_spin)
 
-        h_params.addWidget(QLabel(tr("MCTS Sims") + ":"))
+        lbl_sims = QLabel(tr("MCTS Sims") + ":")
         self.sims_spin = QSpinBox()
         self.sims_spin.setRange(10, 5000)
         self.sims_spin.setValue(800)
+        self.sims_spin.setToolTip(tr("Monte Carlo Tree Search simulations per move"))
+        lbl_sims.setBuddy(self.sims_spin)
+        h_params.addWidget(lbl_sims)
         h_params.addWidget(self.sims_spin)
 
         form.addLayout(h_params)
@@ -255,8 +271,11 @@ class SimulationDialog(QDialog):
         # Action Buttons
         btn_layout = QHBoxLayout()
         self.run_btn = QPushButton(tr("Run Simulation"))
+        self.run_btn.setToolTip(tr("Start the batch simulation with current settings"))
         self.run_btn.clicked.connect(self.start_simulation)
+
         self.cancel_btn = QPushButton(tr("Cancel"))
+        self.cancel_btn.setToolTip(tr("Close this dialog"))
         self.cancel_btn.clicked.connect(self.reject)
         self.cancel_btn.setEnabled(True) # Always enabled to close dialog
 
