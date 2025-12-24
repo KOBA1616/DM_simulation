@@ -13,6 +13,7 @@
 #include <atomic>
 #include <queue>
 #include <memory>
+#include <functional>
 
 namespace dm::ai {
 
@@ -38,6 +39,8 @@ namespace dm::ai {
                        int mcts_simulations,
                        int batch_size);
         ParallelRunner(int mcts_simulations, int batch_size); // Default
+
+        ~ParallelRunner();
 
         // Run self-play games in parallel using MCTS and Python evaluator
         std::vector<GameResultInfo> play_games(
@@ -82,6 +85,16 @@ namespace dm::ai {
         std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;
         int mcts_simulations_;
         int batch_size_;
+
+        // Thread Pool
+        std::vector<std::thread> pool_;
+        std::queue<std::function<void()>> tasks_;
+        std::mutex pool_mutex_;
+        std::condition_variable pool_cv_;
+        bool stop_pool_ = false;
+
+        void ensure_thread_pool(int num_threads);
+        void submit_task(std::function<void()> task);
     };
 
 }

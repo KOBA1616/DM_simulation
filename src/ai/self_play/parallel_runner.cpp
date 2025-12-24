@@ -31,6 +31,61 @@ namespace dm::ai {
     ParallelRunner::ParallelRunner(int mcts_simulations, int batch_size)
         : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
 
+    ParallelRunner::~ParallelRunner() {
+        {
+            std::lock_guard<std::mutex> lock(pool_mutex_);
+            stop_pool_ = true;
+        }
+        pool_cv_.notify_all();
+        for (auto& t : pool_) {
+            if (t.joinable()) t.join();
+        }
+    }
+
+    void ParallelRunner::ensure_thread_pool(int num_threads) {
+        std::lock_guard<std::mutex> lock(pool_mutex_);
+        if ((int)pool_.size() >= num_threads && !pool_.empty()) return;
+
+        // If pool is too small or empty, expand it
+        // Note: we don't shrink the pool
+        int current_size = pool_.size();
+        for (int i = current_size; i < num_threads; ++i) {
+            pool_.emplace_back([this]() {
+                while (true) {
+                    std::function<void()> task;
+                    {
+                        std::unique_lock<std::mutex> lk(pool_mutex_);
+                        pool_cv_.wait(lk, [this] {
+                            return stop_pool_ || !tasks_.empty();
+                        });
+
+                        if (stop_pool_ && tasks_.empty()) return;
+
+                        if (!tasks_.empty()) {
+                            task = std::move(tasks_.front());
+                            tasks_.pop();
+                        }
+                    }
+                    if (task) {
+                        try {
+                            task();
+                        } catch (...) {
+                            // Task threw exception, ignore to keep worker alive
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    void ParallelRunner::submit_task(std::function<void()> task) {
+        {
+            std::lock_guard<std::mutex> lock(pool_mutex_);
+            tasks_.push(std::move(task));
+        }
+        pool_cv_.notify_one();
+    }
+
     std::vector<GameResultInfo> ParallelRunner::play_games(
         const std::vector<std::shared_ptr<dm::core::GameState>>& initial_states,
         BatchEvaluatorCallback evaluator,
@@ -76,17 +131,38 @@ namespace dm::ai {
             inf_queue.cv.notify_one();
         };
 
-        std::vector<std::thread> threads;
-        std::atomic<int> next_game_idx = 0;
-        std::atomic<bool> stop_threads = false;
+        // Initialize Thread Pool
+        ensure_thread_pool(num_threads);
 
+        std::atomic<int> next_game_idx = 0;
+        std::atomic<bool> stop_loop = false;
+
+        // Use a barrier-like mechanism to wait for completion
+        // But since we use a shared pool, we can't just join().
+        // We will wait on games_completed instead.
+
+        // We submit 'num_threads' long-running tasks that pull game indices.
+        // This is better than submitting 'total_games' small tasks because it avoids contention on the task queue for large N.
+
+        // Since the pool threads are reused, we need to know when *this specific batch* is done.
+
+        std::vector<std::future<void>> futures;
         for (int i = 0; i < num_threads; ++i) {
-            threads.emplace_back([&]() {
-                while (!stop_threads) {
+            // We use std::packaged_task or similar? No, submit_task takes void().
+            // We need to wait for these tasks to finish.
+
+            auto task = std::make_shared<std::packaged_task<void()>>([&]() {
+                while (!stop_loop) {
                     int idx = next_game_idx.fetch_add(1);
                     if (idx >= total_games) break;
                     worker_func(idx);
                 }
+            });
+
+            futures.push_back(task->get_future());
+
+            submit_task([task]() {
+                (*task)();
             });
         }
 
@@ -137,16 +213,17 @@ namespace dm::ai {
                 }
             }
         } catch (...) {
-            stop_threads = true;
+            stop_loop = true;
             inf_queue.cv.notify_all();
         }
 
-        // Ensure threads stop if exception occurred
-        stop_threads = true;
+        // Ensure tasks stop
+        stop_loop = true;
         inf_queue.cv.notify_all();
 
-        for (auto& t : threads) {
-            if (t.joinable()) t.join();
+        // Wait for all submitted tasks to complete
+        for (auto& fut : futures) {
+            fut.wait();
         }
 
         return results;
@@ -175,7 +252,6 @@ namespace dm::ai {
                     observation, *card_db_, observer_id, opponent_deck_candidates, seed
                 );
 
-                // Use shared_ptr constructor to avoid deep copying the CardDB
                 MCTS mcts(card_db_, 1.0f, 0.3f, 0.25f, batch_size_, 0.0f);
 
                 BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
@@ -201,9 +277,15 @@ namespace dm::ai {
             inf_queue.cv.notify_one();
         };
 
-        std::vector<std::thread> threads;
+        ensure_thread_pool(num_threads);
+
+        std::vector<std::future<void>> futures;
         for (int i = 0; i < num_worlds; ++i) {
-            threads.emplace_back(worker_func, i);
+            auto task = std::make_shared<std::packaged_task<void()>>([&, i]() {
+                worker_func(i);
+            });
+            futures.push_back(task->get_future());
+            submit_task([task]() { (*task)(); });
         }
 
         try {
@@ -260,8 +342,8 @@ namespace dm::ai {
         stop_threads = true;
         inf_queue.cv.notify_all();
 
-        for (auto& t : threads) {
-            if (t.joinable()) t.join();
+        for (auto& fut : futures) {
+            fut.wait();
         }
 
         if (policies.empty()) return {};
@@ -283,6 +365,7 @@ namespace dm::ai {
         return aggregated_policy;
     }
 
+    // play_scenario_match and play_deck_matchup remain unchanged (using OpenMP)
     std::vector<int> ParallelRunner::play_scenario_match(
         const dm::core::ScenarioConfig& config,
         int num_games,
