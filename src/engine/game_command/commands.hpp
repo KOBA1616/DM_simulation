@@ -32,6 +32,23 @@ namespace dm::engine::game_command {
         CommandType get_type() const override { return CommandType::TRANSITION; }
     };
 
+    class AddCardCommand : public GameCommand {
+    public:
+        core::CardInstance card;
+        core::Zone to_zone;
+        core::PlayerID player_id;
+
+        // Undo context
+        int added_index = -1;
+
+        AddCardCommand(const core::CardInstance& c, core::Zone zone, core::PlayerID pid)
+            : card(c), to_zone(zone), player_id(pid) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::ADD_CARD; }
+    };
+
     class MutateCommand : public GameCommand {
     public:
         enum class MutationType {
