@@ -248,6 +248,20 @@ class LogicTreeWidget(QTreeView):
 
         self.add_child_item(effect_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
 
+    def add_action_to_effect(self, effect_index, action_data=None):
+        if not effect_index.isValid(): return
+        if action_data is None:
+            action_data = {
+                "type": "DRAW_CARD",
+                "value": 1
+            }
+
+        # Deep copy
+        import copy
+        data_copy = copy.deepcopy(action_data)
+
+        self.add_child_item(effect_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
+
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""
         index = self.currentIndex()
