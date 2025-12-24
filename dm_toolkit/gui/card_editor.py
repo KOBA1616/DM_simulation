@@ -278,29 +278,10 @@ class CardEditor(QMainWindow):
         item = self.tree_widget.standard_model.itemFromIndex(idx)
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
 
-        # Delegate to LogicTreeWidget methods for consistency
-        if type_ == "EFFECT":
-            self.tree_widget.add_command_to_effect(idx)
-        elif type_ == "OPTION":
-            self.tree_widget.add_command_to_option(idx)
-        elif type_ == "COMMAND":
-            # Add sibling command
-            parent = item.parent()
-            if parent:
-                parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
-                if parent_type == "EFFECT":
-                    self.tree_widget.add_command_to_effect(parent.index())
-                elif parent_type == "OPTION":
-                    self.tree_widget.add_command_to_option(parent.index())
-        elif type_ == "ACTION":
-            # Legacy ACTION support, treat as sibling if parent is valid
-            parent = item.parent()
-            if parent:
-                parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
-                if parent_type == "EFFECT":
-                    self.tree_widget.add_command_to_effect(parent.index())
-                elif parent_type == "OPTION":
-                    self.tree_widget.add_command_to_option(parent.index())
+        # Centralized logic in LogicTreeWidget
+        valid_types = ["EFFECT", "OPTION", "COMMAND", "ACTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
+        if type_ in valid_types:
+            self.tree_widget.add_command_contextual()
         else:
             QMessageBox.warning(self, tr("Warning"), tr("Please select an Effect or Option to add a Command."))
 
