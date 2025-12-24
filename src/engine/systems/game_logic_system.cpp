@@ -109,38 +109,42 @@ namespace dm::engine::systems {
             handle_mana_charge(pipeline, state, inst);
                 break;
             }
-            case PlayerIntent::MOVE_CARD:
+            case PlayerIntent::PLAY_CARD_INTERNAL:
             {
-                int iid = action.source_instance_id;
-            if (iid < 0) break;
+                nlohmann::json args;
+                args["card"] = action.source_instance_id;
+                Instruction inst(InstructionOp::GAME_ACTION, args);
+                inst.args["type"] = "PLAY_CARD_INTERNAL";
 
-                // Handling for mana charge via MOVE_CARD if in Mana Phase
-                if (state.current_phase == Phase::MANA) {
-                 nlohmann::json args;
-                 args["card"] = iid;
-                 Instruction inst(InstructionOp::GAME_ACTION, args);
-                 inst.args["type"] = "MANA_CHARGE";
-                 handle_mana_charge(pipeline, state, inst);
-                     break;
+                // Lookup pending effect to determine destination if needed
+                if (action.slot_index >= 0 && action.slot_index < (int)state.pending_effects.size()) {
+                    const auto& eff = state.pending_effects[action.slot_index];
+                    if (eff.effect_def.has_value()) {
+                        for (const auto& act : eff.effect_def->actions) {
+                            // Map all relevant destination zones to override flags
+                            if (!act.destination_zone.empty()) {
+                                if (act.destination_zone == "DECK_BOTTOM") {
+                                    inst.args["dest_override"] = 1; // 1 = Deck Bottom
+                                    break;
+                                } else if (act.destination_zone == "DECK" || act.destination_zone == "DECK_TOP") {
+                                    inst.args["dest_override"] = 2; // 2 = Deck Top (if needed)
+                                    break;
+                                } else if (act.destination_zone == "HAND") {
+                                    inst.args["dest_override"] = 3;
+                                    break;
+                                } else if (act.destination_zone == "MANA_ZONE") {
+                                    inst.args["dest_override"] = 4;
+                                    break;
+                                } else if (act.destination_zone == "SHIELD_ZONE") {
+                                    inst.args["dest_override"] = 5;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
 
-            std::string dest = "GRAVEYARD";
-            bool to_bottom = false;
-
-            if (action.destination_override == 3) dest = "HAND";
-            else if (action.destination_override == 4) dest = "MANA";
-            else if (action.destination_override == 5) dest = "SHIELD";
-            else if (action.destination_override == 1) { dest = "DECK"; to_bottom = true; } // Assuming override 1 is bottom
-
-            Instruction move(InstructionOp::MOVE);
-            move.args["target"] = iid;
-            move.args["to"] = dest;
-            if (to_bottom) move.args["to_bottom"] = true;
-
-            auto block = std::make_shared<std::vector<Instruction>>();
-            block->push_back(move);
-            pipeline.call_stack.push_back({block, 0, LoopContext{}});
-
+                handle_play_card(pipeline, state, inst, card_db);
                 break;
             }
             case PlayerIntent::USE_ABILITY:
@@ -209,14 +213,40 @@ namespace dm::engine::systems {
         } else {
              const auto& def = card_db.at(card->card_id);
              Zone dest = Zone::BATTLE;
-             if (def.type == CardType::SPELL) {
-                 dest = Zone::STACK;
+             bool to_bottom = false;
+
+             if (inst.args.contains("dest_override")) {
+                 int override_val = exec.resolve_int(inst.args["dest_override"]);
+                 if (override_val == 1) { // 1 = DECK_BOTTOM
+                     dest = Zone::DECK;
+                     to_bottom = true;
+                 } else if (override_val == 2) { // 2 = DECK_TOP
+                     dest = Zone::DECK;
+                 } else if (override_val == 3) { // 3 = HAND
+                     dest = Zone::HAND;
+                 } else if (override_val == 4) { // 4 = MANA
+                     dest = Zone::MANA;
+                 } else if (override_val == 5) { // 5 = SHIELD
+                     dest = Zone::SHIELD;
+                 }
+             } else {
+                 if (def.type == CardType::SPELL) {
+                     dest = Zone::STACK;
+                 }
              }
 
              Instruction move(InstructionOp::MOVE);
              move.args["target"] = instance_id;
+
              if (dest == Zone::STACK) move.args["to"] = "STACK";
+             else if (dest == Zone::DECK) move.args["to"] = "DECK";
+             else if (dest == Zone::HAND) move.args["to"] = "HAND";
+             else if (dest == Zone::MANA) move.args["to"] = "MANA";
+             else if (dest == Zone::SHIELD) move.args["to"] = "SHIELD";
              else move.args["to"] = "BATTLE";
+
+             if (to_bottom) move.args["to_bottom"] = true;
+
              generated.push_back(move);
         }
 
