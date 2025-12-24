@@ -84,9 +84,18 @@ class LogicTreeWidget(QTreeView):
                  menu.addAction(add_reaction_action)
 
         elif item_type == "EFFECT":
-             add_cmd_action = QAction(tr("Add Command"), self)
-             add_cmd_action.triggered.connect(lambda: self.add_command_to_effect(index))
-             menu.addAction(add_cmd_action)
+             cmd_menu = menu.addMenu(tr("Add Command"))
+             templates = self.data_manager.templates.get("commands", [])
+             if not templates:
+                 add_cmd_action = QAction(tr("Transition (Default)"), self)
+                 add_cmd_action.triggered.connect(lambda: self.add_command_to_effect(index))
+                 cmd_menu.addAction(add_cmd_action)
+             else:
+                 for tpl in templates:
+                     action = QAction(tr(tpl['name']), self)
+                     # Capture tpl['data'] in lambda default arg
+                     action.triggered.connect(lambda checked, data=tpl['data']: self.add_command_to_effect(index, data))
+                     cmd_menu.addAction(action)
 
              remove_action = QAction(tr("Remove Item"), self)
              remove_action.triggered.connect(lambda: self.remove_current_item())
@@ -109,9 +118,17 @@ class LogicTreeWidget(QTreeView):
             menu.addAction(remove_action)
 
         elif item_type == "OPTION":
-            add_cmd_action = QAction(tr("Add Command"), self)
-            add_cmd_action.triggered.connect(lambda: self.add_command_to_option(index))
-            menu.addAction(add_cmd_action)
+            cmd_menu = menu.addMenu(tr("Add Command"))
+            templates = self.data_manager.templates.get("commands", [])
+            if not templates:
+                add_cmd_action = QAction(tr("Transition (Default)"), self)
+                add_cmd_action.triggered.connect(lambda: self.add_command_to_option(index))
+                cmd_menu.addAction(add_cmd_action)
+            else:
+                for tpl in templates:
+                    action = QAction(tr(tpl['name']), self)
+                    action.triggered.connect(lambda checked, data=tpl['data']: self.add_command_to_option(index, data))
+                    cmd_menu.addAction(action)
 
             remove_opt_action = QAction(tr("Remove Option"), self)
             remove_opt_action.triggered.connect(lambda: self.remove_current_item())
@@ -177,25 +194,37 @@ class LogicTreeWidget(QTreeView):
         self.expand(parent_index)
         self.setCurrentIndex(new_item.index())
 
-    def add_command_to_option(self, option_index):
+    def add_command_to_option(self, option_index, cmd_data=None):
         if not option_index.isValid(): return
-        cmd_data = {
-            "type": "TRANSITION",
-            "target_group": "NONE",
-            "to_zone": "HAND",
-            "target_filter": {}
-        }
-        self.add_child_item(option_index, "COMMAND", cmd_data, f"{tr('Command')}: {tr('TRANSITION')}")
+        if cmd_data is None:
+            cmd_data = {
+                "type": "TRANSITION",
+                "target_group": "NONE",
+                "to_zone": "HAND",
+                "target_filter": {}
+            }
 
-    def add_command_to_effect(self, effect_index):
+        # Deep copy to avoid reference issues
+        import copy
+        data_copy = copy.deepcopy(cmd_data)
+
+        self.add_child_item(option_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
+
+    def add_command_to_effect(self, effect_index, cmd_data=None):
         if not effect_index.isValid(): return
-        cmd_data = {
-            "type": "TRANSITION",
-            "target_group": "NONE",
-            "to_zone": "HAND",
-            "target_filter": {}
-        }
-        self.add_child_item(effect_index, "COMMAND", cmd_data, f"{tr('Command')}: {tr('TRANSITION')}")
+        if cmd_data is None:
+            cmd_data = {
+                "type": "TRANSITION",
+                "target_group": "NONE",
+                "to_zone": "HAND",
+                "target_filter": {}
+            }
+
+        # Deep copy
+        import copy
+        data_copy = copy.deepcopy(cmd_data)
+
+        self.add_child_item(effect_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
 
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""
