@@ -312,6 +312,7 @@ void bind_engine(py::module& m) {
         });
 
     py::class_<JsonLoader>(m, "JsonLoader")
+        .def(py::init<>())
         .def_static("load_cards", &JsonLoader::load_cards);
 
     py::class_<DevTools>(m, "DevTools")
