@@ -20,6 +20,7 @@ namespace dm::core {
         ON_ATTACK_FROM_HAND,
         ON_BLOCK,
         AT_BREAK_SHIELD,
+        BEFORE_BREAK_SHIELD,
         ON_SHIELD_ADD,
         ON_CAST_SPELL,
         ON_OPPONENT_DRAW,
@@ -325,6 +326,7 @@ namespace dm::core {
         {TriggerType::ON_ATTACK_FROM_HAND, "ON_ATTACK_FROM_HAND"},
         {TriggerType::ON_BLOCK, "ON_BLOCK"},
         {TriggerType::AT_BREAK_SHIELD, "AT_BREAK_SHIELD"},
+        {TriggerType::BEFORE_BREAK_SHIELD, "BEFORE_BREAK_SHIELD"},
         {TriggerType::ON_SHIELD_ADD, "ON_SHIELD_ADD"},
         {TriggerType::ON_CAST_SPELL, "ON_CAST_SPELL"},
         {TriggerType::ON_OPPONENT_DRAW, "ON_OPPONENT_DRAW"}
