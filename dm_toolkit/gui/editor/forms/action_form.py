@@ -291,7 +291,7 @@ class ActionEditForm(BaseEditForm):
 
     def request_generate_options(self):
         count = self.option_count_spin.value()
-        self.structure_update_requested.emit("generate_options", {"count": count})
+        self.structure_update_requested.emit("GENERATE_OPTIONS", {"count": count})
 
     def _save_data(self, data):
         ui_type = self.type_combo.currentData()
