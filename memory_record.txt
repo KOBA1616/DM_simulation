@@ -1,0 +1,14 @@
+Refactored `src/bindings/bindings.cpp` into `bind_core.cpp`, `bind_engine.cpp`, and `bind_ai.cpp`.
+-   **Structure:**
+    -   `bind_core.cpp`: Core types (`GameState`, `CardDefinition`, Enums).
+    -   `bind_engine.cpp`: Engine systems (`GameCommand`, `EffectSystem`, `GameInstance`).
+    -   `bind_ai.cpp`: AI components (`MCTS`, `DataCollector`, `ParallelRunner`).
+    -   `bindings.cpp`: Entry point calling init functions.
+-   **Key Issues Resolved:**
+    -   `bind_core.cpp` needed `#include "engine/game_command/commands.hpp"` because `GameState` exposes `command_history` (vector of `GameCommand` ptrs) and pybind11 requires the full type definition for binding interactions.
+    -   `bind_core.cpp` also needed `#include "core/action.hpp"` for `Action` class binding.
+    -   `bind_ai.cpp` required `using namespace dm::engine;` to access `Determinizer` correctly.
+-   **Verification:**
+    -   Created `verify_bindings.py` to check existence of key classes in `dm_ai_module`.
+    -   Ran existing `python/tests/test_event_dispatch.py` successfully.
+    -   Confirmed other unit test failures were pre-existing and not caused by refactoring.
