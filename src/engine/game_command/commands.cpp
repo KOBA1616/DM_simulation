@@ -62,6 +62,23 @@ namespace dm::engine::game_command {
 
         core::CardInstance card = *it;
 
+        // Phase 6: Event Dispatch (ZONE_LEAVE)
+        if (state.event_dispatcher) {
+            core::GameEvent evt;
+            evt.type = core::EventType::ZONE_LEAVE;
+            evt.card_id = card.card_id;
+            evt.instance_id = card_instance_id;
+            evt.player_id = owner_id;
+
+            // Context
+            evt.context["instance_id"] = card_instance_id;
+            evt.context["from_zone"] = static_cast<int>(from_zone);
+            evt.context["to_zone"] = static_cast<int>(to_zone);
+            evt.context["card_id"] = card.card_id;
+
+            state.event_dispatcher(evt);
+        }
+
         // --- G-Neo Handling ---
         // Requirement: "G-Neo Creature... when it leaves the field, if there is a card under this creature,
         // instead of leaving, all cards under it are put in the graveyard."
@@ -118,8 +135,7 @@ namespace dm::engine::game_command {
             dest_vec->insert(dest_vec->begin() + destination_index, card);
         }
 
-        // Phase 6: Event Dispatch
-        // We need to dispatch ZONE_ENTER or similar.
+        // Phase 6: Event Dispatch (ZONE_ENTER)
         if (state.event_dispatcher) {
             core::GameEvent evt;
             evt.type = core::EventType::ZONE_ENTER;
@@ -255,10 +271,26 @@ namespace dm::engine::game_command {
             case MutationType::TAP:
                 previous_bool_value = card->is_tapped;
                 card->is_tapped = true;
+                // Event Dispatch
+                if (!previous_bool_value && state.event_dispatcher) {
+                    core::GameEvent evt;
+                    evt.type = core::EventType::TAP_CARD;
+                    evt.instance_id = target_instance_id;
+                    evt.player_id = card->owner;
+                    state.event_dispatcher(evt);
+                }
                 break;
             case MutationType::UNTAP:
                 previous_bool_value = card->is_tapped;
                 card->is_tapped = false;
+                // Event Dispatch
+                if (previous_bool_value && state.event_dispatcher) {
+                    core::GameEvent evt;
+                    evt.type = core::EventType::UNTAP_CARD;
+                    evt.instance_id = target_instance_id;
+                    evt.player_id = card->owner;
+                    state.event_dispatcher(evt);
+                }
                 break;
             case MutationType::POWER_MOD:
                 previous_int_value = card->power_modifier;
