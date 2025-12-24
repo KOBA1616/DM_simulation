@@ -241,11 +241,10 @@ class CardEditor(QMainWindow):
         elif command == "ADD_CHILD_ACTION":
             if item_type == "EFFECT":
                 self.tree_widget.add_action_to_effect(item.index())
+            elif item_type == "OPTION":
+                self.tree_widget.add_action_to_option(item.index())
             elif item_type == "ACTION":
-                 # If adding action to action, it usually means adding to an option or maybe insert after?
-                 # For now, let's assume it only works on EFFECT nodes or we redirect logic.
-                 # The user wants "Add Action" button.
-                 pass
+                self.tree_widget.add_action_sibling(item.index())
 
     def new_card(self):
         self.tree_widget.add_new_card()
