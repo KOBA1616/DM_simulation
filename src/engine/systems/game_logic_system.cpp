@@ -102,44 +102,45 @@ namespace dm::engine::systems {
             }
             case PlayerIntent::MANA_CHARGE:
             {
-                int iid = action.source_instance_id;
-                int pid = state.active_player_id;
-                if (const auto* c = state.get_card_instance(iid)) {
-                    pid = c->owner;
-                }
-                if (iid >= 0) {
-                     auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
-                     state.execute_command(std::move(cmd));
-                }
+            nlohmann::json args;
+            args["card"] = action.source_instance_id;
+            Instruction inst(InstructionOp::GAME_ACTION, args);
+            inst.args["type"] = "MANA_CHARGE";
+            handle_mana_charge(pipeline, state, inst);
                 break;
             }
             case PlayerIntent::MOVE_CARD:
             {
                 int iid = action.source_instance_id;
-                int pid = state.active_player_id;
-                if (const auto* c = state.get_card_instance(iid)) {
-                    pid = c->owner;
-                }
+            if (iid < 0) break;
 
                 // Handling for mana charge via MOVE_CARD if in Mana Phase
                 if (state.current_phase == Phase::MANA) {
-                     if (iid >= 0) {
-                         auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::MANA, pid);
-                         state.execute_command(std::move(cmd));
-                     }
+                 nlohmann::json args;
+                 args["card"] = iid;
+                 Instruction inst(InstructionOp::GAME_ACTION, args);
+                 inst.args["type"] = "MANA_CHARGE";
+                 handle_mana_charge(pipeline, state, inst);
                      break;
                 }
 
-                if (iid >= 0) {
-                     Zone dest = Zone::GRAVEYARD; // Default
-                     if (action.destination_override == 3) dest = Zone::HAND;
-                     else if (action.destination_override == 4) dest = Zone::MANA;
-                     else if (action.destination_override == 5) dest = Zone::SHIELD;
-                     else if (action.destination_override == 1) dest = Zone::DECK;
+            std::string dest = "GRAVEYARD";
+            bool to_bottom = false;
 
-                     auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, dest, pid);
-                     state.execute_command(std::move(cmd));
-                }
+            if (action.destination_override == 3) dest = "HAND";
+            else if (action.destination_override == 4) dest = "MANA";
+            else if (action.destination_override == 5) dest = "SHIELD";
+            else if (action.destination_override == 1) { dest = "DECK"; to_bottom = true; } // Assuming override 1 is bottom
+
+            Instruction move(InstructionOp::MOVE);
+            move.args["target"] = iid;
+            move.args["to"] = dest;
+            if (to_bottom) move.args["to_bottom"] = true;
+
+            auto block = std::make_shared<std::vector<Instruction>>();
+            block->push_back(move);
+            pipeline.call_stack.push_back({block, 0, LoopContext{}});
+
                 break;
             }
             case PlayerIntent::USE_ABILITY:
@@ -402,8 +403,16 @@ namespace dm::engine::systems {
     }
 
     void GameLogicSystem::handle_mana_charge(PipelineExecutor& exec, GameState& state, const Instruction& inst) {
-         // ...
-         (void)exec; (void)state; (void)inst;
+         int card_id = exec.resolve_int(inst.args.value("card", 0));
+         if (card_id < 0) return;
+
+         Instruction move(InstructionOp::MOVE);
+         move.args["target"] = card_id;
+         move.args["to"] = "MANA";
+
+         auto block = std::make_shared<std::vector<Instruction>>();
+         block->push_back(move);
+         exec.call_stack.push_back({block, 0, LoopContext{}});
     }
 
     void GameLogicSystem::handle_resolve_reaction(PipelineExecutor& exec, GameState& state, const Instruction& inst,
