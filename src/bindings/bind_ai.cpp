@@ -168,7 +168,8 @@ void bind_ai(py::module& m) {
 
     py::class_<CollectedBatch>(m, "CollectedBatch")
         .def(py::init<>())
-        .def_readwrite("states", &CollectedBatch::states)
+        .def_readwrite("token_states", &CollectedBatch::token_states)
+        .def_readwrite("tensor_states", &CollectedBatch::tensor_states)
         .def_readwrite("policies", &CollectedBatch::policies)
         .def_readwrite("masks", &CollectedBatch::masks)
         .def_readwrite("values", &CollectedBatch::values);
@@ -176,5 +177,6 @@ void bind_ai(py::module& m) {
     py::class_<DataCollector>(m, "DataCollector")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def(py::init<>())
-        .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic);
+        .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic,
+             py::arg("episodes"), py::arg("collect_tokens") = false, py::arg("collect_tensors") = true);
 }
