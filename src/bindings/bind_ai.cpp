@@ -15,6 +15,7 @@
 #include "bindings/python_batch_inference.hpp"
 #include "ai/evolution/deck_evolution.hpp"
 #include <pybind11/stl.h>
+#include <pybind11/functional.h>
 
 using namespace dm;
 using namespace dm::core;
@@ -121,6 +122,20 @@ void bind_ai(py::module& m) {
         .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
         .def(py::init<int, int>())
         .def("play_games", &ParallelRunner::play_games, py::return_value_policy::move)
+        .def("play_games", [](ParallelRunner& self,
+                              const std::vector<std::shared_ptr<dm::core::GameState>>& initial_states,
+                              NeuralEvaluator& evaluator,
+                              float temperature,
+                              bool add_noise,
+                              int num_threads,
+                              float alpha,
+                              bool collect_data) {
+            return self.play_games(initial_states,
+                [&evaluator](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
+                    return evaluator.evaluate(states);
+                },
+                temperature, add_noise, num_threads, alpha, collect_data);
+        }, py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature")=1.0f, py::arg("add_noise")=true, py::arg("num_threads")=4, py::arg("alpha")=0.0f, py::arg("collect_data")=true, py::return_value_policy::move)
         .def("play_scenario_match", &ParallelRunner::play_scenario_match)
         .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
 
