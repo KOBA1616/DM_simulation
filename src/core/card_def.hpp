@@ -36,6 +36,7 @@ namespace dm::core {
         bool at_start_of_turn : 1;
         bool at_end_of_turn : 1;
         bool destruction : 1;     // Destruction Trigger
+        bool before_break_shield : 1; // Before Break Shield
 
         bool just_diver : 1;      // Just Diver
         bool hyper_energy : 1;    // Phase 5 (Hyper Energy)
