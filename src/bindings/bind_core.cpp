@@ -133,6 +133,11 @@ void bind_core(py::module& m) {
         .value("TARGET_SELECT", TargetScope::TARGET_SELECT)
         .value("NONE", TargetScope::NONE)
         .value("SELF", TargetScope::SELF)
+        .value("PLAYER_SELF", TargetScope::PLAYER_SELF)
+        .value("PLAYER_OPPONENT", TargetScope::PLAYER_OPPONENT)
+        .value("ALL_PLAYERS", TargetScope::ALL_PLAYERS)
+        .value("RANDOM", TargetScope::RANDOM)
+        .value("ALL_FILTERED", TargetScope::ALL_FILTERED)
         .export_values();
 
     py::enum_<TriggerType>(m, "TriggerType")
@@ -142,6 +147,7 @@ void bind_core(py::module& m) {
         .value("S_TRIGGER", TriggerType::S_TRIGGER)
         .value("TURN_START", TriggerType::TURN_START)
         .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
+        .value("BEFORE_BREAK_SHIELD", TriggerType::BEFORE_BREAK_SHIELD)
         .value("NONE", TriggerType::NONE)
         .export_values();
 
@@ -266,6 +272,7 @@ void bind_core(py::module& m) {
         .def_property("cip", [](const CardKeywords& k) { return k.cip; }, [](CardKeywords& k, bool v) { k.cip = v; })
         .def_property("at_attack", [](const CardKeywords& k) { return k.at_attack; }, [](CardKeywords& k, bool v) { k.at_attack = v; })
         .def_property("destruction", [](const CardKeywords& k) { return k.destruction; }, [](CardKeywords& k, bool v) { k.destruction = v; })
+        .def_property("before_break_shield", [](const CardKeywords& k) { return k.before_break_shield; }, [](CardKeywords& k, bool v) { k.before_break_shield = v; })
         .def_property("just_diver", [](const CardKeywords& k) { return k.just_diver; }, [](CardKeywords& k, bool v) { k.just_diver = v; })
         .def_property("hyper_energy", [](const CardKeywords& k) { return k.hyper_energy; }, [](CardKeywords& k, bool v) { k.hyper_energy = v; })
         .def_property("at_block", [](const CardKeywords& k) { return k.at_block; }, [](CardKeywords& k, bool v) { k.at_block = v; })
@@ -411,7 +418,15 @@ void bind_core(py::module& m) {
                 throw std::runtime_error("Unknown error in CardData constructor");
             }
         }))
-        .def_readwrite("static_abilities", &CardData::static_abilities);
+        .def_readwrite("id", &CardData::id)
+        .def_readwrite("name", &CardData::name)
+        .def_readwrite("cost", &CardData::cost)
+        .def_readwrite("power", &CardData::power)
+        .def_readwrite("type", &CardData::type)
+        .def_readwrite("races", &CardData::races)
+        .def_readwrite("effects", &CardData::effects)
+        .def_readwrite("static_abilities", &CardData::static_abilities)
+        .def_readwrite("keywords", &CardData::keywords);
 
     py::class_<CardInstance>(m, "CardInstance")
         .def(py::init<>())
