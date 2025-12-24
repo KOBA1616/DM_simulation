@@ -296,14 +296,9 @@ namespace dm::engine {
                 // Usually comes from "Gatekeeper" actions.
 
                 // If we want to override, we should inspect `eff.effect_def` if present.
-                if (eff.effect_def.has_value()) {
-                    for (const auto& act : eff.effect_def->actions) {
-                        if (act.destination_zone == "DECK_BOTTOM") {
-                            action.destination_override = 1; // 1 = Deck Bottom
-                            break;
-                        }
-                    }
-                }
+                // NOTE: destination_override removed from Action struct.
+                // The handler (GameLogicSystem) will look up the pending effect via slot_index
+                // to determine destination zone.
 
                 actions.push_back(action);
             }
