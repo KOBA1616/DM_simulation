@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
 
 class ManaCostLabel(QLabel):
     def __init__(self, text="", parent=None):
@@ -21,15 +22,7 @@ class ManaCostLabel(QLabel):
         self.update() # Trigger repaint
 
     def get_civ_color(self, civ):
-        colors_base = {
-            "LIGHT": "#DAA520",     # GoldenRod
-            "WATER": "#1E90FF",     # DodgerBlue
-            "DARKNESS": "#696969",  # DimGray
-            "FIRE": "#FF4500",      # OrangeRed
-            "NATURE": "#228B22",    # ForestGreen
-            "ZERO": "#A9A9A9"       # DarkGray
-        }
-        return QColor(colors_base.get(civ, "#A9A9A9"))
+        return QColor(CIV_COLORS_FOREGROUND.get(civ, "#A9A9A9"))
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -418,16 +411,6 @@ class CardPreviewWidget(QWidget):
         label.setStyleSheet(style + bg_style)
 
     def apply_civ_style(self, civs):
-        # Updated mapping (Darker Gradients requested)
-        colors_base = {
-            "LIGHT": "#FFFACD",     # LemonChiffon
-            "WATER": "#E0FFFF",     # LightCyan
-            "DARKNESS": "#D3D3D3",  # LightGray
-            "FIRE": "#FFE4E1",      # MistyRose
-            "NATURE": "#90EE90",    # LightGreen
-            "ZERO": "#F5F5F5"       # WhiteSmoke
-        }
-
         # Requirement: "All borders should be thin black lines"
         border_color = "#000000"
 
@@ -435,13 +418,13 @@ class CardPreviewWidget(QWidget):
             bg_style = "background-color: #FFFFFF;"
         elif len(civs) == 1:
             c = civs[0]
-            c1 = colors_base.get(c, "#FFFFFF")
+            c1 = CIV_COLORS_BACKGROUND.get(c, "#FFFFFF")
             # Solid color as requested
             bg_style = f"background-color: {c1};"
         else:
             if len(civs) >= 2:
-                c1 = colors_base.get(civs[0], "#FFFFFF")
-                c2 = colors_base.get(civs[1], "#FFFFFF")
+                c1 = CIV_COLORS_BACKGROUND.get(civs[0], "#FFFFFF")
+                c2 = CIV_COLORS_BACKGROUND.get(civs[1], "#FFFFFF")
                 bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2});"
             else:
                 bg_style = "background-color: #E6E6FA;"
