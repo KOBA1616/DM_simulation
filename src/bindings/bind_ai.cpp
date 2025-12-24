@@ -10,6 +10,7 @@
 #include "ai/encoders/tensor_converter.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include "ai/inference/deck_inference.hpp"
+#include "ai/pomdp/pomdp.hpp"
 #include "ai/pomdp/parametric_belief.hpp"
 #include "ai/data_collection/data_collector.hpp"
 #include "bindings/python_batch_inference.hpp"
@@ -110,6 +111,13 @@ void bind_ai(py::module& m) {
         .def("load_decks", &dm::ai::inference::DeckInference::load_decks)
         .def("infer_probabilities", &dm::ai::inference::DeckInference::infer_probabilities)
         .def("sample_hidden_cards", &dm::ai::inference::DeckInference::sample_hidden_cards);
+
+    py::class_<dm::ai::POMDPInference>(m, "POMDPInference")
+        .def(py::init<>())
+        .def("initialize", &dm::ai::POMDPInference::initialize)
+        .def("update_belief", &dm::ai::POMDPInference::update_belief)
+        .def("sample_state", &dm::ai::POMDPInference::sample_state)
+        .def("get_deck_probabilities", &dm::ai::POMDPInference::get_deck_probabilities);
 
     py::class_<GameResultInfo>(m, "GameResultInfo")
         .def_readwrite("result", &GameResultInfo::result)
