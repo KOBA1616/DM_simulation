@@ -705,7 +705,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("add_card_to_hand", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
                  CardInstance c(cid, iid, pid);
-                 s.players[pid].hand.push_back(c);
+                 s.add_card_to_zone(c, Zone::HAND, pid);
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -717,7 +717,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("add_card_to_mana", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
                  CardInstance c(cid, iid, pid);
-                 s.players[pid].mana_zone.push_back(c);
+                 s.add_card_to_zone(c, Zone::MANA, pid);
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -729,7 +729,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("add_card_to_deck", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
                  CardInstance c(cid, iid, pid);
-                 s.players[pid].deck.push_back(c);
+                 s.add_card_to_zone(c, Zone::DECK, pid);
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -741,7 +741,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("add_card_to_shield", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
                  CardInstance c(cid, iid, pid);
-                 s.players[pid].shield_zone.push_back(c);
+                 s.add_card_to_zone(c, Zone::SHIELD, pid);
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -753,7 +753,7 @@ PYBIND11_MODULE(dm_ai_module, m) {
         .def("add_card_to_graveyard", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
                  CardInstance c(cid, iid, pid);
-                 s.players[pid].graveyard.push_back(c);
+                 s.add_card_to_zone(c, Zone::GRAVEYARD, pid);
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
