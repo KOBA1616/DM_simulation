@@ -474,6 +474,10 @@ namespace dm::engine::game_command {
                 previous_value = state.active_player_id;
                 state.active_player_id = new_value;
                 break;
+            case FlowType::SET_PLAYED_WITHOUT_MANA:
+                previous_value = state.turn_stats.played_without_mana;
+                state.turn_stats.played_without_mana = new_value;
+                break;
             default: break;
         }
     }
@@ -497,6 +501,9 @@ namespace dm::engine::game_command {
                 break;
             case FlowType::SET_ACTIVE_PLAYER:
                 state.active_player_id = previous_value;
+                break;
+            case FlowType::SET_PLAYED_WITHOUT_MANA:
+                state.turn_stats.played_without_mana = previous_value;
                 break;
             default: break;
         }

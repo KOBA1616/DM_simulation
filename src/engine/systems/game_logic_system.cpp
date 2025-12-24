@@ -63,7 +63,9 @@ namespace dm::engine::systems {
                         ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
                     }
                     // Mark as paid (using is_tapped flag on stack card)
-                    c->is_tapped = true;
+                    // Use Command to allow undo
+                    auto cmd = std::make_unique<MutateCommand>(iid, MutateCommand::MutationType::TAP);
+                    state.execute_command(std::move(cmd));
                 }
                 break;
             }
