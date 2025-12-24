@@ -146,9 +146,10 @@ namespace dm::engine::game_command {
         std::string query_type;
         std::vector<int> valid_targets;
         std::map<std::string, int> params;
+        std::vector<std::string> options;
 
-        QueryCommand(std::string type, std::vector<int> targets = {}, std::map<std::string, int> p = {})
-            : query_type(type), valid_targets(targets), params(p) {}
+        QueryCommand(std::string type, std::vector<int> targets = {}, std::map<std::string, int> p = {}, std::vector<std::string> opts = {})
+            : query_type(type), valid_targets(targets), params(p), options(opts) {}
 
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override; // Clears the query
