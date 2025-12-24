@@ -228,6 +228,20 @@ namespace dm::engine::game_command {
         CommandType get_type() const override { return CommandType::GAME_RESULT; }
     };
 
+    class ShuffleCommand : public GameCommand {
+    public:
+        core::PlayerID player_id;
+
+        // Undo context: store the original order of card instance IDs
+        std::vector<int> original_deck_order;
+
+        ShuffleCommand(core::PlayerID pid) : player_id(pid) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::SHUFFLE; }
+    };
+
 }
 
 #endif // DM_ENGINE_GAME_COMMAND_COMMANDS_HPP
