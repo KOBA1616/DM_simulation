@@ -140,7 +140,9 @@ namespace dm::engine {
         int cost = get_adjusted_cost(game_state, player, card_def);
 
         if (cost <= 0) {
-            game_state.turn_stats.played_without_mana = true;
+            // Use Command for undo support
+            auto cmd = std::make_unique<game_command::FlowCommand>(game_command::FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
+            game_state.execute_command(std::move(cmd));
             return true;
         }
 
@@ -164,7 +166,8 @@ namespace dm::engine {
         int cost = cost_override;
 
         if (cost <= 0) {
-            game_state.turn_stats.played_without_mana = true;
+            auto cmd = std::make_unique<game_command::FlowCommand>(game_command::FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
+            game_state.execute_command(std::move(cmd));
             return true;
         }
 
