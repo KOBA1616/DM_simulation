@@ -12,7 +12,7 @@
 
 namespace dm::engine {
 
-    class ActionGenerator {
+    class IntentGenerator {
     public:
         static std::vector<dm::core::Action> generate_legal_actions(
             const dm::core::GameState& game_state, 

@@ -40,41 +40,41 @@ namespace dm::engine {
     void EffectSystem::initialize() {
         if (initialized) return;
 
-        register_handler(EffectActionType::DRAW_CARD, std::make_unique<DrawHandler>());
-        register_handler(EffectActionType::ADD_MANA, std::make_unique<ManaChargeHandler>());
-        register_handler(EffectActionType::SEND_TO_MANA, std::make_unique<ManaChargeHandler>());
-        register_handler(EffectActionType::DESTROY, std::make_unique<DestroyHandler>());
-        register_handler(EffectActionType::RETURN_TO_HAND, std::make_unique<ReturnToHandHandler>());
-        register_handler(EffectActionType::TAP, std::make_unique<TapHandler>());
-        register_handler(EffectActionType::UNTAP, std::make_unique<UntapHandler>());
-        register_handler(EffectActionType::COUNT_CARDS, std::make_unique<CountHandler>());
-        register_handler(EffectActionType::GET_GAME_STAT, std::make_unique<CountHandler>());
-        register_handler(EffectActionType::ADD_SHIELD, std::make_unique<ShieldHandler>());
-        register_handler(EffectActionType::SEND_SHIELD_TO_GRAVE, std::make_unique<ShieldHandler>());
-        register_handler(EffectActionType::SEARCH_DECK, std::make_unique<SearchHandler>());
-        register_handler(EffectActionType::SEARCH_DECK_BOTTOM, std::make_unique<SearchHandler>());
-        register_handler(EffectActionType::SEND_TO_DECK_BOTTOM, std::make_unique<SearchHandler>());
-        register_handler(EffectActionType::SHUFFLE_DECK, std::make_unique<SearchHandler>());
-        register_handler(EffectActionType::MEKRAID, std::make_unique<BufferHandler>());
-        register_handler(EffectActionType::LOOK_TO_BUFFER, std::make_unique<BufferHandler>());
-        register_handler(EffectActionType::MOVE_BUFFER_TO_ZONE, std::make_unique<BufferHandler>());
-        register_handler(EffectActionType::PLAY_FROM_BUFFER, std::make_unique<BufferHandler>());
-        register_handler(EffectActionType::COST_REFERENCE, std::make_unique<CostHandler>());
-        register_handler(EffectActionType::MOVE_TO_UNDER_CARD, std::make_unique<MoveToUnderCardHandler>());
-        register_handler(EffectActionType::REVEAL_CARDS, std::make_unique<RevealHandler>());
-        register_handler(EffectActionType::SELECT_NUMBER, std::make_unique<SelectNumberHandler>());
-        register_handler(EffectActionType::FRIEND_BURST, std::make_unique<FriendBurstHandler>());
-        register_handler(EffectActionType::GRANT_KEYWORD, std::make_unique<GrantKeywordHandler>());
-        register_handler(EffectActionType::MOVE_CARD, std::make_unique<MoveCardHandler>());
-        register_handler(EffectActionType::CAST_SPELL, std::make_unique<CastSpellHandler>());
-        register_handler(EffectActionType::PUT_CREATURE, std::make_unique<PutCreatureHandler>());
-        register_handler(EffectActionType::APPLY_MODIFIER, std::make_unique<ModifierHandler>());
-        register_handler(EffectActionType::SELECT_OPTION, std::make_unique<SelectOptionHandler>());
-        register_handler(EffectActionType::BREAK_SHIELD, std::make_unique<BreakShieldHandler>());
-        register_handler(EffectActionType::DISCARD, std::make_unique<DiscardHandler>());
-        register_handler(EffectActionType::PLAY_FROM_ZONE, std::make_unique<PlayHandler>());
-        register_handler(EffectActionType::MODIFY_POWER, std::make_unique<ModifyPowerHandler>());
-        register_handler(EffectActionType::RESOLVE_BATTLE, std::make_unique<ResolveBattleHandler>());
+        register_handler(EffectPrimitive::DRAW_CARD, std::make_unique<DrawHandler>());
+        register_handler(EffectPrimitive::ADD_MANA, std::make_unique<ManaChargeHandler>());
+        register_handler(EffectPrimitive::SEND_TO_MANA, std::make_unique<ManaChargeHandler>());
+        register_handler(EffectPrimitive::DESTROY, std::make_unique<DestroyHandler>());
+        register_handler(EffectPrimitive::RETURN_TO_HAND, std::make_unique<ReturnToHandHandler>());
+        register_handler(EffectPrimitive::TAP, std::make_unique<TapHandler>());
+        register_handler(EffectPrimitive::UNTAP, std::make_unique<UntapHandler>());
+        register_handler(EffectPrimitive::COUNT_CARDS, std::make_unique<CountHandler>());
+        register_handler(EffectPrimitive::GET_GAME_STAT, std::make_unique<CountHandler>());
+        register_handler(EffectPrimitive::ADD_SHIELD, std::make_unique<ShieldHandler>());
+        register_handler(EffectPrimitive::SEND_SHIELD_TO_GRAVE, std::make_unique<ShieldHandler>());
+        register_handler(EffectPrimitive::SEARCH_DECK, std::make_unique<SearchHandler>());
+        register_handler(EffectPrimitive::SEARCH_DECK_BOTTOM, std::make_unique<SearchHandler>());
+        register_handler(EffectPrimitive::SEND_TO_DECK_BOTTOM, std::make_unique<SearchHandler>());
+        register_handler(EffectPrimitive::SHUFFLE_DECK, std::make_unique<SearchHandler>());
+        register_handler(EffectPrimitive::MEKRAID, std::make_unique<BufferHandler>());
+        register_handler(EffectPrimitive::LOOK_TO_BUFFER, std::make_unique<BufferHandler>());
+        register_handler(EffectPrimitive::MOVE_BUFFER_TO_ZONE, std::make_unique<BufferHandler>());
+        register_handler(EffectPrimitive::PLAY_FROM_BUFFER, std::make_unique<BufferHandler>());
+        register_handler(EffectPrimitive::COST_REFERENCE, std::make_unique<CostHandler>());
+        register_handler(EffectPrimitive::MOVE_TO_UNDER_CARD, std::make_unique<MoveToUnderCardHandler>());
+        register_handler(EffectPrimitive::REVEAL_CARDS, std::make_unique<RevealHandler>());
+        register_handler(EffectPrimitive::SELECT_NUMBER, std::make_unique<SelectNumberHandler>());
+        register_handler(EffectPrimitive::FRIEND_BURST, std::make_unique<FriendBurstHandler>());
+        register_handler(EffectPrimitive::GRANT_KEYWORD, std::make_unique<GrantKeywordHandler>());
+        register_handler(EffectPrimitive::MOVE_CARD, std::make_unique<MoveCardHandler>());
+        register_handler(EffectPrimitive::CAST_SPELL, std::make_unique<CastSpellHandler>());
+        register_handler(EffectPrimitive::PUT_CREATURE, std::make_unique<PutCreatureHandler>());
+        register_handler(EffectPrimitive::APPLY_MODIFIER, std::make_unique<ModifierHandler>());
+        register_handler(EffectPrimitive::SELECT_OPTION, std::make_unique<SelectOptionHandler>());
+        register_handler(EffectPrimitive::BREAK_SHIELD, std::make_unique<BreakShieldHandler>());
+        register_handler(EffectPrimitive::DISCARD, std::make_unique<DiscardHandler>());
+        register_handler(EffectPrimitive::PLAY_FROM_ZONE, std::make_unique<PlayHandler>());
+        register_handler(EffectPrimitive::MODIFY_POWER, std::make_unique<ModifyPowerHandler>());
+        register_handler(EffectPrimitive::RESOLVE_BATTLE, std::make_unique<ResolveBattleHandler>());
 
         ConditionSystem::instance().initialize_defaults();
 
@@ -109,7 +109,7 @@ namespace dm::engine {
                 fb_effect.trigger = TriggerType::ON_PLAY;
 
                 ActionDef fb_action;
-                fb_action.type = EffectActionType::FRIEND_BURST;
+                fb_action.type = EffectPrimitive::FRIEND_BURST;
                 fb_action.scope = TargetScope::TARGET_SELECT;
                 fb_action.optional = true;
                 fb_action.filter.owner = "SELF";
@@ -491,7 +491,7 @@ namespace dm::engine {
              eff.trigger = TriggerType::NONE;
 
              ActionDef act;
-             act.type = EffectActionType::CAST_SPELL;
+             act.type = EffectPrimitive::CAST_SPELL;
              act.scope = TargetScope::TARGET_SELECT;
              act.optional = true;
              act.cast_spell_side = true;

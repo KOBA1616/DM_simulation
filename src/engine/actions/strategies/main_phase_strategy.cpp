@@ -43,7 +43,7 @@ namespace dm::engine {
                 // If Normal (or NEO choosing Normal):
                 if (!is_evolution || is_neo) {
                     Action action;
-                    action.type = ActionType::PLAY_CARD;
+                    action.type = PlayerIntent::PLAY_CARD;
                     action.card_id = card.card_id;
                     action.source_instance_id = card.instance_id;
                     action.target_player = player.id; // Usually self
@@ -98,7 +98,7 @@ namespace dm::engine {
 
                         if (valid) {
                             Action action;
-                            action.type = ActionType::PLAY_CARD;
+                            action.type = PlayerIntent::PLAY_CARD;
                             action.card_id = card.card_id;
                             action.source_instance_id = card.instance_id;
                             action.target_instance_id = source.instance_id; // Evolution Source
@@ -116,9 +116,9 @@ namespace dm::engine {
         // 3. Pass (End Turn) - Always legal in Main Phase if stack is empty?
         // Actually Main Phase -> Attack Phase.
         // If we want to end turn, we pass to Attack Phase, then Pass in Attack Phase.
-        // But ActionType::PASS usually means "Next Phase".
+        // But PlayerIntent::PASS usually means "Next Phase".
         Action pass_action;
-        pass_action.type = ActionType::PASS;
+        pass_action.type = PlayerIntent::PASS;
         actions.push_back(pass_action);
     }
 }

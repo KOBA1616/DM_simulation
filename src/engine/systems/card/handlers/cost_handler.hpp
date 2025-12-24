@@ -13,7 +13,7 @@ namespace dm::engine {
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
-            if (ctx.action.type == EffectActionType::COST_REFERENCE) {
+            if (ctx.action.type == EffectPrimitive::COST_REFERENCE) {
                 if (ctx.action.str_val == "FINISH_HYPER_ENERGY") {
                      if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                          EffectDef ed;
@@ -32,7 +32,7 @@ namespace dm::engine {
 
              if (!ctx.targets) return;
 
-             if (ctx.action.type == EffectActionType::COST_REFERENCE && ctx.action.str_val == "FINISH_HYPER_ENERGY") {
+             if (ctx.action.type == EffectPrimitive::COST_REFERENCE && ctx.action.str_val == "FINISH_HYPER_ENERGY") {
                  std::set<int> seen_costs;
                  bool valid_costs = true;
 

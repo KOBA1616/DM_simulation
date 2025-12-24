@@ -62,7 +62,7 @@ namespace dm::core {
         {Civilization::ZERO, "ZERO"}
     })
 
-    enum class EffectActionType {
+    enum class EffectPrimitive {
         DRAW_CARD,
         ADD_MANA,
         DESTROY,
@@ -207,7 +207,7 @@ namespace dm::core {
     };
 
     struct ActionDef {
-        EffectActionType type = EffectActionType::NONE;
+        EffectPrimitive type = EffectPrimitive::NONE;
         TargetScope scope = TargetScope::NONE;
         FilterDef filter;
         int value1 = 0;
@@ -356,49 +356,49 @@ namespace dm::core {
         {ModifierType::SET_KEYWORD, "SET_KEYWORD"}
     })
 
-    NLOHMANN_JSON_SERIALIZE_ENUM(EffectActionType, {
-        {EffectActionType::NONE, "NONE"},
-        {EffectActionType::DRAW_CARD, "DRAW_CARD"},
-        {EffectActionType::ADD_MANA, "ADD_MANA"},
-        {EffectActionType::DESTROY, "DESTROY"},
-        {EffectActionType::RETURN_TO_HAND, "RETURN_TO_HAND"},
-        {EffectActionType::SEND_TO_MANA, "SEND_TO_MANA"},
-        {EffectActionType::TAP, "TAP"},
-        {EffectActionType::UNTAP, "UNTAP"},
-        {EffectActionType::MODIFY_POWER, "MODIFY_POWER"},
-        {EffectActionType::BREAK_SHIELD, "BREAK_SHIELD"},
-        {EffectActionType::LOOK_AND_ADD, "LOOK_AND_ADD"},
-        {EffectActionType::SUMMON_TOKEN, "SUMMON_TOKEN"},
-        {EffectActionType::SEARCH_DECK_BOTTOM, "SEARCH_DECK_BOTTOM"},
-        {EffectActionType::MEKRAID, "MEKRAID"},
-        {EffectActionType::DISCARD, "DISCARD"},
-        {EffectActionType::PLAY_FROM_ZONE, "PLAY_FROM_ZONE"},
-        {EffectActionType::COST_REFERENCE, "COST_REFERENCE"},
-        {EffectActionType::LOOK_TO_BUFFER, "LOOK_TO_BUFFER"},
-        {EffectActionType::SELECT_FROM_BUFFER, "SELECT_FROM_BUFFER"},
-        {EffectActionType::PLAY_FROM_BUFFER, "PLAY_FROM_BUFFER"},
-        {EffectActionType::MOVE_BUFFER_TO_ZONE, "MOVE_BUFFER_TO_ZONE"},
-        {EffectActionType::REVOLUTION_CHANGE, "REVOLUTION_CHANGE"},
-        {EffectActionType::COUNT_CARDS, "COUNT_CARDS"},
-        {EffectActionType::GET_GAME_STAT, "GET_GAME_STAT"},
-        {EffectActionType::APPLY_MODIFIER, "APPLY_MODIFIER"},
-        {EffectActionType::REVEAL_CARDS, "REVEAL_CARDS"},
-        {EffectActionType::REGISTER_DELAYED_EFFECT, "REGISTER_DELAYED_EFFECT"},
-        {EffectActionType::RESET_INSTANCE, "RESET_INSTANCE"},
-        {EffectActionType::SEARCH_DECK, "SEARCH_DECK"},
-        {EffectActionType::SHUFFLE_DECK, "SHUFFLE_DECK"},
-        {EffectActionType::ADD_SHIELD, "ADD_SHIELD"},
-        {EffectActionType::SEND_SHIELD_TO_GRAVE, "SEND_SHIELD_TO_GRAVE"},
-        {EffectActionType::SEND_TO_DECK_BOTTOM, "SEND_TO_DECK_BOTTOM"},
-        {EffectActionType::MOVE_TO_UNDER_CARD, "MOVE_TO_UNDER_CARD"},
-        {EffectActionType::SELECT_NUMBER, "SELECT_NUMBER"},
-        {EffectActionType::FRIEND_BURST, "FRIEND_BURST"},
-        {EffectActionType::GRANT_KEYWORD, "GRANT_KEYWORD"},
-        {EffectActionType::MOVE_CARD, "MOVE_CARD"},
-        {EffectActionType::CAST_SPELL, "CAST_SPELL"},
-        {EffectActionType::PUT_CREATURE, "PUT_CREATURE"},
-        {EffectActionType::SELECT_OPTION, "SELECT_OPTION"},
-        {EffectActionType::RESOLVE_BATTLE, "RESOLVE_BATTLE"}
+    NLOHMANN_JSON_SERIALIZE_ENUM(EffectPrimitive, {
+        {EffectPrimitive::NONE, "NONE"},
+        {EffectPrimitive::DRAW_CARD, "DRAW_CARD"},
+        {EffectPrimitive::ADD_MANA, "ADD_MANA"},
+        {EffectPrimitive::DESTROY, "DESTROY"},
+        {EffectPrimitive::RETURN_TO_HAND, "RETURN_TO_HAND"},
+        {EffectPrimitive::SEND_TO_MANA, "SEND_TO_MANA"},
+        {EffectPrimitive::TAP, "TAP"},
+        {EffectPrimitive::UNTAP, "UNTAP"},
+        {EffectPrimitive::MODIFY_POWER, "MODIFY_POWER"},
+        {EffectPrimitive::BREAK_SHIELD, "BREAK_SHIELD"},
+        {EffectPrimitive::LOOK_AND_ADD, "LOOK_AND_ADD"},
+        {EffectPrimitive::SUMMON_TOKEN, "SUMMON_TOKEN"},
+        {EffectPrimitive::SEARCH_DECK_BOTTOM, "SEARCH_DECK_BOTTOM"},
+        {EffectPrimitive::MEKRAID, "MEKRAID"},
+        {EffectPrimitive::DISCARD, "DISCARD"},
+        {EffectPrimitive::PLAY_FROM_ZONE, "PLAY_FROM_ZONE"},
+        {EffectPrimitive::COST_REFERENCE, "COST_REFERENCE"},
+        {EffectPrimitive::LOOK_TO_BUFFER, "LOOK_TO_BUFFER"},
+        {EffectPrimitive::SELECT_FROM_BUFFER, "SELECT_FROM_BUFFER"},
+        {EffectPrimitive::PLAY_FROM_BUFFER, "PLAY_FROM_BUFFER"},
+        {EffectPrimitive::MOVE_BUFFER_TO_ZONE, "MOVE_BUFFER_TO_ZONE"},
+        {EffectPrimitive::REVOLUTION_CHANGE, "REVOLUTION_CHANGE"},
+        {EffectPrimitive::COUNT_CARDS, "COUNT_CARDS"},
+        {EffectPrimitive::GET_GAME_STAT, "GET_GAME_STAT"},
+        {EffectPrimitive::APPLY_MODIFIER, "APPLY_MODIFIER"},
+        {EffectPrimitive::REVEAL_CARDS, "REVEAL_CARDS"},
+        {EffectPrimitive::REGISTER_DELAYED_EFFECT, "REGISTER_DELAYED_EFFECT"},
+        {EffectPrimitive::RESET_INSTANCE, "RESET_INSTANCE"},
+        {EffectPrimitive::SEARCH_DECK, "SEARCH_DECK"},
+        {EffectPrimitive::SHUFFLE_DECK, "SHUFFLE_DECK"},
+        {EffectPrimitive::ADD_SHIELD, "ADD_SHIELD"},
+        {EffectPrimitive::SEND_SHIELD_TO_GRAVE, "SEND_SHIELD_TO_GRAVE"},
+        {EffectPrimitive::SEND_TO_DECK_BOTTOM, "SEND_TO_DECK_BOTTOM"},
+        {EffectPrimitive::MOVE_TO_UNDER_CARD, "MOVE_TO_UNDER_CARD"},
+        {EffectPrimitive::SELECT_NUMBER, "SELECT_NUMBER"},
+        {EffectPrimitive::FRIEND_BURST, "FRIEND_BURST"},
+        {EffectPrimitive::GRANT_KEYWORD, "GRANT_KEYWORD"},
+        {EffectPrimitive::MOVE_CARD, "MOVE_CARD"},
+        {EffectPrimitive::CAST_SPELL, "CAST_SPELL"},
+        {EffectPrimitive::PUT_CREATURE, "PUT_CREATURE"},
+        {EffectPrimitive::SELECT_OPTION, "SELECT_OPTION"},
+        {EffectPrimitive::RESOLVE_BATTLE, "RESOLVE_BATTLE"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CommandType, {

@@ -21,7 +21,7 @@ namespace dm::engine {
             using namespace dm::core;
             if (!ctx.instruction_buffer) return;
 
-            if (ctx.action.type == EffectActionType::MOVE_TO_UNDER_CARD) {
+            if (ctx.action.type == EffectPrimitive::MOVE_TO_UNDER_CARD) {
                  Instruction attach(InstructionOp::GAME_ACTION);
                  attach.args["type"] = "ATTACH_CARD";
 

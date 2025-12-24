@@ -1,5 +1,5 @@
 #include "beam_search_evaluator.hpp"
-#include "engine/actions/action_generator.hpp"
+#include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
@@ -43,7 +43,7 @@ namespace dm::ai {
         std::vector<BeamNode> current_beam;
 
         // Generate actions from root to initialize first step policy
-        auto root_actions = ActionGenerator::generate_legal_actions(root_state, card_db_);
+        auto root_actions = IntentGenerator::generate_legal_actions(root_state, card_db_);
         if (root_actions.empty()) {
             return -1.0f; // Loss (No moves)
         }
@@ -52,7 +52,7 @@ namespace dm::ai {
         for (const auto& action : root_actions) {
             GameState next_state = root_state.clone(); // Use clone() instead of copy
             GameLogicSystem::resolve_action(next_state, action, card_db_);
-            if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
+            if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
                 PhaseManager::next_phase(next_state, card_db_);
             }
             PhaseManager::fast_forward(next_state, card_db_);
@@ -122,11 +122,11 @@ namespace dm::ai {
                     continue;
                 }
 
-                auto actions = ActionGenerator::generate_legal_actions(base_state, card_db_);
+                auto actions = IntentGenerator::generate_legal_actions(base_state, card_db_);
                 for (const auto& action : actions) {
                     GameState next_state = base_state.clone();
                     GameLogicSystem::resolve_action(next_state, action, card_db_);
-                    if (action.type == ActionType::PASS || action.type == ActionType::MANA_CHARGE) {
+                    if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
                         PhaseManager::next_phase(next_state, card_db_);
                     }
                     PhaseManager::fast_forward(next_state, card_db_);
