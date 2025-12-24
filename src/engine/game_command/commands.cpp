@@ -243,6 +243,66 @@ namespace dm::engine::game_command {
         }
     }
 
+    // --- AddCardCommand ---
+
+    void AddCardCommand::execute(core::GameState& state) {
+        if(player_id >= state.players.size()) return;
+        core::Player& p = state.players[player_id];
+        std::vector<core::CardInstance>* vec = nullptr;
+
+        switch(to_zone) {
+            case core::Zone::HAND: vec = &p.hand; break;
+            case core::Zone::MANA: vec = &p.mana_zone; break;
+            case core::Zone::BATTLE: vec = &p.battle_zone; break;
+            case core::Zone::SHIELD: vec = &p.shield_zone; break;
+            case core::Zone::GRAVEYARD: vec = &p.graveyard; break;
+            case core::Zone::DECK: vec = &p.deck; break;
+            case core::Zone::BUFFER: vec = &p.effect_buffer; break;
+            case core::Zone::STACK: vec = &p.stack; break;
+            default: break;
+        }
+
+        if(vec) {
+            vec->push_back(card);
+            added_index = vec->size() - 1;
+
+            // Also update card_owner_map if instance_id is within range
+            if (card.instance_id >= 0) {
+                 if ((size_t)card.instance_id >= state.card_owner_map.size()) {
+                     state.card_owner_map.resize(card.instance_id + 1, 0); // Should handle resizing appropriately, usually ID is pre-allocated
+                 }
+                 if ((size_t)card.instance_id < state.card_owner_map.size()) {
+                     state.card_owner_map[card.instance_id] = player_id;
+                 }
+            }
+        }
+    }
+
+    void AddCardCommand::invert(core::GameState& state) {
+        if(player_id >= state.players.size() || added_index < 0) return;
+        core::Player& p = state.players[player_id];
+        std::vector<core::CardInstance>* vec = nullptr;
+
+        switch(to_zone) {
+            case core::Zone::HAND: vec = &p.hand; break;
+            case core::Zone::MANA: vec = &p.mana_zone; break;
+            case core::Zone::BATTLE: vec = &p.battle_zone; break;
+            case core::Zone::SHIELD: vec = &p.shield_zone; break;
+            case core::Zone::GRAVEYARD: vec = &p.graveyard; break;
+            case core::Zone::DECK: vec = &p.deck; break;
+            case core::Zone::BUFFER: vec = &p.effect_buffer; break;
+            case core::Zone::STACK: vec = &p.stack; break;
+            default: break;
+        }
+
+        if(vec && added_index < (int)vec->size()) {
+             // Verify instance ID matches to be safe?
+             // For now just remove at index.
+             // If other commands pushed after this, they should have been undone first.
+             vec->erase(vec->begin() + added_index);
+        }
+    }
+
     // --- MutateCommand ---
 
     void MutateCommand::execute(core::GameState& state) {
