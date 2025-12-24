@@ -104,7 +104,7 @@ class LogicTreeWidget(QTreeView):
                 add_opt_action.triggered.connect(lambda: self.add_option(index))
                 menu.addAction(add_opt_action)
 
-            remove_action = QAction(tr("Remove Action"), self)
+            remove_action = QAction(tr("Remove"), self)
             remove_action.triggered.connect(lambda: self.remove_current_item())
             menu.addAction(remove_action)
 

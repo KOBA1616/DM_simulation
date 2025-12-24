@@ -70,7 +70,7 @@ class ActionEditForm(BaseEditForm):
         # Kept generic MOVE_CARD
         self.known_types = EDITOR_ACTION_TYPES
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
-        self.add_field(tr("Action Type"), self.type_combo)
+        self.add_field(tr("Instruction Type"), self.type_combo)
 
         # Warning Label for Deprecated Actions
         self.warning_label = QLabel()
@@ -328,7 +328,7 @@ class ActionEditForm(BaseEditForm):
         pass
 
     def _get_display_text(self, data):
-        return f"{tr('Action')}: {tr(data['type'])}"
+        return f"{tr('Instruction')}: {tr(data['type'])}"
 
     def block_signals_all(self, block):
         super().block_signals_all(block)
