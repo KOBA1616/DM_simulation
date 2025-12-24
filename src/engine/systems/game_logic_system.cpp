@@ -267,6 +267,11 @@ namespace dm::engine::systems {
         if (!card_db.count(card->card_id)) return;
         const auto& def = card_db.at(card->card_id);
 
+        // Record Stats
+        // Calculate cost difference (assuming no reduction info passed here, default 0)
+        // TODO: Pass cost reduction info via instruction context if needed
+        state.on_card_play(card->card_id, state.turn_number, false, 0, card->owner);
+
         // 1. Compile Effects
         std::vector<Instruction> compiled_effects;
         std::map<std::string, int> ctx;
