@@ -127,16 +127,24 @@ class Trainer:
                     self.use_transformer = True
                     # tokens is likely an object array of numpy arrays (jagged)
                     raw_tokens = data['tokens']
-                    token_tensors = [torch.tensor(t, dtype=torch.long) for t in raw_tokens]
-                    all_tokens.extend(token_tensors)
-                # Fallback to states
+                    # Handle jagged array robustly
+                    for t in raw_tokens:
+                        # t might be a numpy array or list inside the object array
+                        if isinstance(t, np.ndarray):
+                            t_tensor = torch.from_numpy(t.astype(np.int64))
+                        else:
+                            t_tensor = torch.tensor(t, dtype=torch.long)
+                        all_tokens.append(t_tensor)
+
+                # Check for states (ResNet/MLP)
+                if 'states' in data:
+                    s = data['states']
+                    all_states.append(s)
                 elif 'states_masked' in data:
                     s = data['states_masked']
                     all_states.append(s)
-                elif 'states' in data:
-                    s = data['states']
-                    all_states.append(s)
-                else:
+
+                if not self.use_transformer and not all_states:
                     print(f"Skipping {f}: no valid data found")
                     continue
 
@@ -150,6 +158,9 @@ class Trainer:
                     all_masks.append(data['masks'])
             except Exception as e:
                 print(f"Error loading {f}: {e}")
+                # Print detailed error for debugging
+                import traceback
+                traceback.print_exc()
 
         if not all_tokens and not all_states:
             raise ValueError("No valid data loaded")
@@ -171,6 +182,10 @@ class Trainer:
             print("No action masks found.")
 
         self.action_size = self.policies.shape[1]
+
+        # Mode Selection
+        # Prioritize Transformer if tokens are present, UNLESS we specifically want ResNet (need arg?)
+        # For now, auto-detect: if tokens exist, use Transformer.
 
         if self.use_transformer:
             print("Mode: TRANSFORMER (Tokenized Data) - NetworkV2")
