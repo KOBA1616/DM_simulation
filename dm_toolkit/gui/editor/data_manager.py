@@ -167,18 +167,18 @@ class CardDataManager:
                     elif sp_type == "MODIFIER":
                         spell_side_static.append(self._reconstruct_modifier(sp_child))
 
-                spell_side_data['triggers'] = spell_side_effects
-                if 'effects' in spell_side_data:
-                    del spell_side_data['effects']
+                spell_side_data['effects'] = spell_side_effects
+                if 'triggers' in spell_side_data:
+                    del spell_side_data['triggers']
 
                 if spell_side_static:
                     spell_side_data['static_abilities'] = spell_side_static
 
                 spell_side_dict = spell_side_data
 
-        card_data['triggers'] = new_effects
-        if 'effects' in card_data:
-            del card_data['effects']
+        card_data['effects'] = new_effects
+        if 'triggers' in card_data:
+            del card_data['triggers']
 
         card_data['static_abilities'] = new_static
         card_data['reaction_abilities'] = new_reactions
