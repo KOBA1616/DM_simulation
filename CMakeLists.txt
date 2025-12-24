@@ -228,6 +228,9 @@ set_target_properties(dm_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Python Module (Phase 3)
 pybind11_add_module(dm_ai_module
     src/bindings/bindings.cpp
+    src/bindings/bind_core.cpp
+    src/bindings/bind_engine.cpp
+    src/bindings/bind_ai.cpp
 )
 target_link_libraries(dm_ai_module PRIVATE dm_core)
 
