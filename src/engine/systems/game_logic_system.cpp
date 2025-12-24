@@ -451,10 +451,10 @@ namespace dm::engine::systems {
         if (!decided) {
              exec.execution_paused = true;
              exec.waiting_for_key = decision_key;
-             state.waiting_for_user_input = true;
-             state.pending_query = GameState::QueryContext{
-                 0, "SELECT_OPTION", {}, {}, {"No", "Yes"}
-             };
+
+             // Use Command System for Query
+             auto cmd = std::make_unique<QueryCommand>("SELECT_OPTION", std::vector<int>{}, std::map<std::string, int>{}, std::vector<std::string>{"No", "Yes"});
+             state.execute_command(std::move(cmd));
              return;
         }
 
