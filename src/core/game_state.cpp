@@ -74,18 +74,9 @@ namespace dm::core {
     }
 
     void GameState::add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid) {
-        if(pid >= players.size()) return;
-        switch(zone) {
-            case Zone::HAND: players[pid].hand.push_back(card); break;
-            case Zone::MANA: players[pid].mana_zone.push_back(card); break;
-            case Zone::BATTLE: players[pid].battle_zone.push_back(card); break;
-            case Zone::SHIELD: players[pid].shield_zone.push_back(card); break;
-            case Zone::GRAVEYARD: players[pid].graveyard.push_back(card); break;
-            case Zone::DECK: players[pid].deck.push_back(card); break;
-            case Zone::BUFFER: players[pid].effect_buffer.push_back(card); break;
-            case Zone::STACK: players[pid].stack.push_back(card); break;
-            default: break;
-        }
+        // Delegate to GameCommand to ensure history tracking
+        auto cmd = std::make_shared<dm::engine::game_command::AddCardCommand>(card, zone, pid);
+        execute_command(cmd);
     }
 
     CardInstance* GameState::get_card_instance(int instance_id) {
