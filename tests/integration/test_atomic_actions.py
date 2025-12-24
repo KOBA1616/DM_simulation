@@ -17,12 +17,15 @@ P2_ID = 1
 
 def setup_game():
     game_state = dm_ai_module.GameState(100) # 100 max cards
-    # game_state.setup_test_players() # Removed as not exposed
     return game_state
+
+def register_dummy_card(id, type="CREATURE", civ="FIRE", cost=1):
+    c = CardData(id, f"Card_{id}", cost, civ, 1000, type, [], [])
+    dm_ai_module.register_card_data(c)
 
 def test_draw_card():
     state = setup_game()
-    card_db = {}
+    register_dummy_card(1)
     state.add_card_to_deck(P1_ID, 1, 101)
     state.add_card_to_deck(P1_ID, 1, 102)
     initial_hand_count = len(state.players[P1_ID].hand)
@@ -37,21 +40,21 @@ def test_draw_card():
 
 def test_mana_charge():
     state = setup_game()
-    card_db = {}
+    register_dummy_card(1)
     state.add_card_to_hand(P1_ID, 1, 201)
     action = dm_ai_module.Action()
     action.type = dm_ai_module.ActionType.MANA_CHARGE
     action.card_id = 1
     action.source_instance_id = 201
     action.target_player = P1_ID
-    dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+    dm_ai_module.EffectResolver.resolve_action(state, action, {})
     assert len(state.players[P1_ID].hand) == 0
     assert len(state.players[P1_ID].mana_zone) == 1
     assert state.players[P1_ID].mana_zone[0].instance_id == 201
 
 def test_tap_untap():
     state = setup_game()
-    card_db = {}
+    register_dummy_card(1)
     state.add_test_card_to_battle(P1_ID, 1, 301, False, False)
     state.add_test_card_to_battle(P1_ID, 1, 302, True, False)
     untap_action = dm_ai_module.ActionDef()
@@ -64,13 +67,23 @@ def test_tap_untap():
             card_302 = c
             break
     assert card_302.is_tapped == False
+
     state.current_phase = dm_ai_module.Phase.ATTACK
     state.active_player_id = P1_ID
     attack_action = dm_ai_module.Action()
     attack_action.type = dm_ai_module.ActionType.ATTACK_PLAYER
     attack_action.source_instance_id = 301
     attack_action.target_player = P2_ID
+    # EffectResolver.resolve_action requires card_db if it needs to check keywords
+    # We must ensure GenericCardSystem.resolve_action (bound) or EffectResolver (bound) gets it.
+    # The binding for EffectResolver.resolve_action expects a map.
+    # We can fetch it via CardRegistry but that's C++ side.
+    # Python side needs to construct it or pass empty.
+    # However, to check keywords for attacking, it needs data.
+    c_def = dm_ai_module.CardDefinition(1, "Dummy", "FIRE", [], 1, 1000, dm_ai_module.CardKeywords(), [])
+    card_db = {1: c_def}
     dm_ai_module.EffectResolver.resolve_action(state, attack_action, card_db)
+
     card_301 = None
     for c in state.players[P1_ID].battle_zone:
         if c.instance_id == 301:
@@ -80,7 +93,7 @@ def test_tap_untap():
 
 def test_break_shield():
     state = setup_game()
-    card_db = {}
+    register_dummy_card(1)
     state.add_card_to_deck(P2_ID, 1, 401)
     dm_ai_module.DevTools.move_cards(state, P2_ID, dm_ai_module.Zone.DECK, dm_ai_module.Zone.SHIELD, 1, -1)
     grave_def = dm_ai_module.ActionDef()
@@ -92,7 +105,7 @@ def test_break_shield():
 
 def test_move_card_generic():
     state = setup_game()
-    card_db = {}
+    register_dummy_card(1)
     state.add_card_to_hand(P1_ID, 1, 501)
     dm_ai_module.DevTools.move_cards(state, P1_ID, dm_ai_module.Zone.HAND, dm_ai_module.Zone.GRAVEYARD, 1, -1)
     assert len(state.players[P1_ID].hand) == 0
@@ -101,6 +114,9 @@ def test_move_card_generic():
 def test_condition_system():
     state = setup_game()
     state.active_player_id = 0
+    register_dummy_card(1)
+    register_dummy_card(1000, "CREATURE")
+
     cond = ConditionDef()
     cond.type = "DURING_YOUR_TURN"
     act = ActionDef()
@@ -111,16 +127,10 @@ def test_condition_system():
     eff.condition = cond
     eff.actions = [act]
     state.add_card_to_deck(0, 1, 9001)
-    # Ensure source instance exists and has an owner, otherwise get_controller defaults to active_player which might be ok but let's be safe
-    # If using instance_id 100, we must add it to a zone or assume it works if get_controller handles it.
-    # GenericCardSystem::get_controller checks owner map.
-    # We should add a dummy card as source.
     state.add_card_to_hand(0, 1000, 100)
 
     prev_hand = len(state.players[0].hand)
     dm_ai_module.GenericCardSystem.resolve_effect(state, eff, 100)
-    # The source (100) is in hand. Controller is 0. Active player is 0. Condition (YOUR_TURN) passes.
-    # Effect is DRAW 1.
     assert len(state.players[0].hand) == prev_hand + 1
     state.active_player_id = 1
     state.add_card_to_deck(0, 1, 9002)
@@ -131,12 +141,16 @@ def test_condition_system():
 def test_mana_armed():
     state = setup_game()
     state.active_player_id = 0
-    card_db = {}
-    # 8 arguments
+
+    # Register cards into CardRegistry to ensure GenericCardSystem finds them
+    # Note: GenericCardSystem.resolve_effect uses CardRegistry::get_all_definitions()
+
     c1 = CardData(201, "Fire1", 1, "FIRE", 1000, "CREATURE", [], [])
     dm_ai_module.register_card_data(c1)
     c2 = CardData(203, "Water1", 1, "WATER", 1000, "CREATURE", [], [])
     dm_ai_module.register_card_data(c2)
+    register_dummy_card(1) # For deck
+
     cond = ConditionDef()
     cond.type = "MANA_ARMED"
     cond.value = 3
@@ -148,14 +162,25 @@ def test_mana_armed():
     eff.trigger = TriggerType.NONE
     eff.condition = cond
     eff.actions = [act]
+
+    # 301, 302 are Fire (201). 303 is Water (203).
     state.add_card_to_mana(0, 201, 301)
     state.add_card_to_mana(0, 201, 302)
     state.add_card_to_mana(0, 203, 303)
+
     state.add_card_to_deck(0, 1, 9003)
+
+    # Mana Fire Count = 2. Condition needs 3.
+
     prev_hand = len(state.players[0].hand)
     dm_ai_module.GenericCardSystem.resolve_effect(state, eff, 301)
     assert len(state.players[0].hand) == prev_hand
+
+    # Add 3rd Fire card
     state.add_card_to_mana(0, 201, 304)
+
+    # Mana Fire Count = 3.
+
     prev_hand = len(state.players[0].hand)
     dm_ai_module.GenericCardSystem.resolve_effect(state, eff, 301)
     assert len(state.players[0].hand) == prev_hand + 1
@@ -163,7 +188,10 @@ def test_mana_armed():
 def test_hyper_energy_cost_handler():
     state = setup_game()
     state.active_player_id = 0
-    card_db = {}
+    register_dummy_card(1) # Cost 1
+    register_dummy_card(3, "CREATURE", "FIRE", 2) # Cost 2
+    register_dummy_card(2, "SPELL", "WATER", 5)
+
     act = ActionDef()
     act.type = EffectActionType.COST_REFERENCE
     act.str_val = "FINISH_HYPER_ENERGY"
@@ -171,10 +199,20 @@ def test_hyper_energy_cost_handler():
     eff = EffectDef()
     eff.trigger = TriggerType.NONE
     eff.actions = [act]
-    state.add_test_card_to_battle(0, 1, 401, False, False)
-    state.add_test_card_to_battle(0, 1, 402, False, False)
+
+    # Use different cards with different costs to satisfy "different costs" requirement
+    state.add_test_card_to_battle(0, 1, 401, False, False) # Cost 1
+    state.add_test_card_to_battle(0, 3, 402, False, False) # Cost 2
+
     targets = [401, 402]
     state.add_card_to_hand(0, 2, 300)
+
+    c1 = dm_ai_module.CardDefinition(1, "Dummy", "FIRE", [], 1, 1000, dm_ai_module.CardKeywords(), [])
+    c2 = dm_ai_module.CardDefinition(2, "Spell", "WATER", [], 5, 0, dm_ai_module.CardKeywords(), [])
+    c3 = dm_ai_module.CardDefinition(3, "Dummy2", "FIRE", [], 2, 2000, dm_ai_module.CardKeywords(), [])
+
+    card_db = {1: c1, 2: c2, 3: c3}
+
     ctx = {}
     dm_ai_module.GenericCardSystem.resolve_effect_with_targets(state, eff, targets, 300, card_db, ctx)
     c401 = None
