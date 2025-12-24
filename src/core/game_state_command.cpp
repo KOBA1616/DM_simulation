@@ -35,6 +35,7 @@ namespace dm::engine::game_command {
             case Zone::GRAVEYARD: card_opt = remove_from_zone(p_owner.graveyard); break;
             case Zone::DECK: card_opt = remove_from_zone(p_owner.deck); break;
             case Zone::BUFFER: card_opt = remove_from_zone(p_owner.effect_buffer); break;
+            case Zone::STACK: card_opt = remove_from_zone(p_owner.stack); break;
             default: break;
         }
 
@@ -59,6 +60,7 @@ namespace dm::engine::game_command {
                 case Zone::GRAVEYARD: dest_zone_ptr = &p_owner.graveyard; break;
                 case Zone::DECK: dest_zone_ptr = &p_owner.deck; break;
                 case Zone::BUFFER: dest_zone_ptr = &p_owner.effect_buffer; break;
+                case Zone::STACK: dest_zone_ptr = &p_owner.stack; break;
                 default: break;
             }
 
@@ -107,6 +109,10 @@ namespace dm::engine::game_command {
                 previous_int_value = card->power_modifier;
                 card->power_modifier += int_value;
                 break;
+            case MutationType::SET_SUMMONING_SICKNESS:
+                previous_bool_value = card->summoning_sickness;
+                card->summoning_sickness = (int_value != 0);
+                break;
             default: break;
         }
     }
@@ -128,6 +134,9 @@ namespace dm::engine::game_command {
                 break;
              case MutationType::POWER_MOD:
                 card->power_modifier = previous_int_value;
+                break;
+             case MutationType::SET_SUMMONING_SICKNESS:
+                card->summoning_sickness = previous_bool_value;
                 break;
             default: break;
         }
@@ -211,8 +220,68 @@ namespace dm::engine::game_command {
 
     // --- FlowCommand ---
     void FlowCommand::execute(GameState& state) {
+        switch (flow_type) {
+            case FlowType::PHASE_CHANGE:
+                previous_value = static_cast<int>(state.current_phase);
+                state.current_phase = static_cast<Phase>(new_value);
+                break;
+            case FlowType::TURN_CHANGE:
+                previous_value = state.turn_number;
+                state.turn_number = new_value;
+                break;
+            case FlowType::SET_ACTIVE_PLAYER:
+                previous_value = state.active_player_id;
+                state.active_player_id = static_cast<PlayerID>(new_value);
+                break;
+            case FlowType::RESET_TURN_STATS:
+                previous_turn_stats = state.turn_stats;
+                state.turn_stats = TurnStats{};
+                break;
+            case FlowType::CLEANUP_STEP:
+                {
+                     auto& mods = state.active_modifiers;
+                     for (const auto& m : mods) {
+                         if (m.turns_remaining == 1) removed_modifiers.push_back(m);
+                     }
+                     mods.erase(std::remove_if(mods.begin(), mods.end(), [](CostModifier& m) {
+                         if (m.turns_remaining > 0) m.turns_remaining--;
+                         return m.turns_remaining == 0;
+                     }), mods.end());
+
+                     auto& passives = state.passive_effects;
+                     for (const auto& p : passives) {
+                         if (p.turns_remaining == 1) removed_passives.push_back(p);
+                     }
+                     passives.erase(std::remove_if(passives.begin(), passives.end(), [](PassiveEffect& p) {
+                         if (p.turns_remaining > 0) p.turns_remaining--;
+                         return p.turns_remaining == 0;
+                     }), passives.end());
+                }
+                break;
+            default: break;
+        }
     }
     void FlowCommand::invert(GameState& state) {
+        switch (flow_type) {
+            case FlowType::PHASE_CHANGE:
+                state.current_phase = static_cast<Phase>(previous_value);
+                break;
+            case FlowType::TURN_CHANGE:
+                state.turn_number = previous_value;
+                break;
+            case FlowType::SET_ACTIVE_PLAYER:
+                state.active_player_id = static_cast<PlayerID>(previous_value);
+                break;
+            case FlowType::RESET_TURN_STATS:
+                state.turn_stats = previous_turn_stats;
+                break;
+            case FlowType::CLEANUP_STEP:
+                // Restore removed items (Note: Survivors have decremented counters, which is not reverted here yet)
+                state.active_modifiers.insert(state.active_modifiers.end(), removed_modifiers.begin(), removed_modifiers.end());
+                state.passive_effects.insert(state.passive_effects.end(), removed_passives.begin(), removed_passives.end());
+                break;
+            default: break;
+        }
     }
 
     // --- QueryCommand ---
