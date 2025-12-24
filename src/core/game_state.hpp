@@ -3,6 +3,7 @@
 
 #include "types.hpp"
 #include "card_def.hpp"
+#include "card_instance.hpp"
 #include "card_stats.hpp"
 #include "pending_effect.hpp"
 #include "modifiers.hpp"
