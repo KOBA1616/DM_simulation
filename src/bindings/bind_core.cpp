@@ -449,6 +449,7 @@ void bind_core(py::module& m) {
         .def_readwrite("shield_zone", &Player::shield_zone)
         .def_readwrite("graveyard", &Player::graveyard)
         .def_readwrite("deck", &Player::deck)
+        .def_readwrite("stack", &Player::stack)
         .def_readwrite("effect_buffer", &Player::effect_buffer);
 
     py::class_<GameState, std::shared_ptr<GameState>>(m, "GameState")
