@@ -62,6 +62,11 @@ namespace dm::engine::game_command {
 
         core::CardInstance card = *it;
 
+        // Ensure ownership is updated if moving between players (though TransitionCommand is usually intra-player,
+        // the owner_id implies the destination owner context).
+        // Since owner_id is passed to TransitionCommand, it effectively sets the controller.
+        card.owner = owner_id;
+
         // Phase 6: Event Dispatch (ZONE_LEAVE)
         if (state.event_dispatcher) {
             core::GameEvent evt;
@@ -263,6 +268,9 @@ namespace dm::engine::game_command {
         }
 
         if(vec) {
+            // Update the owner of the card instance to match the destination player
+            card.owner = player_id;
+
             vec->push_back(card);
             added_index = vec->size() - 1;
 

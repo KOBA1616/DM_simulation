@@ -510,6 +510,11 @@ namespace dm::engine {
     }
 
     PlayerID EffectSystem::get_controller(const GameState& game_state, int instance_id) {
+        const CardInstance* card = game_state.get_card_instance(instance_id);
+        if (card) {
+            return card->owner;
+        }
+
         if (instance_id >= 0 && instance_id < (int)game_state.card_owner_map.size()) {
             return game_state.card_owner_map[instance_id];
         }
