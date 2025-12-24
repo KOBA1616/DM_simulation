@@ -67,7 +67,7 @@ class EffectEditForm(BaseEditForm):
         self.add_field(None, self.condition_widget)
 
         # Actions Section
-        self.add_action_btn = QPushButton(tr("Add Command"))
+        self.add_action_btn = QPushButton(tr("Add Instruction"))
         self.add_action_btn.clicked.connect(self.on_add_action_clicked)
         self.add_field(None, self.add_action_btn)
 

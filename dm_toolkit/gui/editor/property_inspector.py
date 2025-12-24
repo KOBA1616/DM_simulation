@@ -29,7 +29,7 @@ class PropertyInspector(QWidget):
         self.empty_page = QLabel(tr("Select an item to edit"))
         self.stack.addWidget(self.empty_page)
 
-        self.option_page = QLabel(tr("Option selected. Use 'Add Action' to define behavior."))
+        self.option_page = QLabel(tr("Option selected. Use 'Add Instruction' to define behavior."))
         self.option_page.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.stack.addWidget(self.option_page)
 
