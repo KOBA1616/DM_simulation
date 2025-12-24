@@ -6,7 +6,7 @@
 #include "card_stats.hpp"
 #include "pending_effect.hpp"
 #include "modifiers.hpp"
-#include "game_event.hpp" // Added and removed struct GameEvent def
+#include "game_event.hpp"
 #include "engine/systems/trigger_system/reaction_window.hpp"
 #include <vector>
 #include <map>
@@ -134,6 +134,12 @@ namespace dm::core {
 
         void add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid);
 
+        // Low-level zone manipulation for Commands
+        // Returns the removed card and its original index. If not found, returns {nullopt, -1}.
+        std::pair<std::optional<CardInstance>, int> remove_card_from_zone(PlayerID pid, Zone zone, int instance_id);
+        // Inserts card at index. If index is -1 or out of bounds, push_back.
+        void insert_card_to_zone(PlayerID pid, Zone zone, const CardInstance& card, int index = -1);
+
         // Declarations for methods implemented in other files
         void update_loop_check();
         void initialize_card_stats(const std::map<CardID, CardDefinition>& card_db, int deck_size);
@@ -144,6 +150,9 @@ namespace dm::core {
         void on_game_finished(GameResult result);
         std::vector<float> vectorize_card_stats(CardID cid) const;
         std::vector<float> get_library_potential() const;
+
+    private:
+        std::vector<CardInstance>* get_zone_ptr(PlayerID pid, Zone zone);
     };
 
 }

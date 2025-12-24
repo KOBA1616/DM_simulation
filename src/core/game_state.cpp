@@ -1,6 +1,7 @@
 #include "game_state.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/pipeline_executor.hpp" // Include for cloning
+#include <algorithm>
 
 namespace dm::core {
 
@@ -73,18 +74,49 @@ namespace dm::core {
         return new_state;
     }
 
-    void GameState::add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid) {
-        if(pid >= players.size()) return;
+    std::vector<CardInstance>* GameState::get_zone_ptr(PlayerID pid, Zone zone) {
+        if(pid >= players.size()) return nullptr;
+        Player& p = players[pid];
         switch(zone) {
-            case Zone::HAND: players[pid].hand.push_back(card); break;
-            case Zone::MANA: players[pid].mana_zone.push_back(card); break;
-            case Zone::BATTLE: players[pid].battle_zone.push_back(card); break;
-            case Zone::SHIELD: players[pid].shield_zone.push_back(card); break;
-            case Zone::GRAVEYARD: players[pid].graveyard.push_back(card); break;
-            case Zone::DECK: players[pid].deck.push_back(card); break;
-            case Zone::BUFFER: players[pid].effect_buffer.push_back(card); break;
-            case Zone::STACK: players[pid].stack.push_back(card); break;
-            default: break;
+            case Zone::HAND: return &p.hand;
+            case Zone::MANA: return &p.mana_zone;
+            case Zone::BATTLE: return &p.battle_zone;
+            case Zone::SHIELD: return &p.shield_zone;
+            case Zone::GRAVEYARD: return &p.graveyard;
+            case Zone::DECK: return &p.deck;
+            case Zone::BUFFER: return &p.effect_buffer;
+            case Zone::STACK: return &p.stack;
+            case Zone::HYPER_SPATIAL: return &p.hyper_spatial_zone;
+            case Zone::GR_DECK: return &p.gr_deck;
+            default: return nullptr;
+        }
+    }
+
+    void GameState::add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid) {
+        insert_card_to_zone(pid, zone, card, -1);
+    }
+
+    std::pair<std::optional<CardInstance>, int> GameState::remove_card_from_zone(PlayerID pid, Zone zone, int instance_id) {
+        auto* vec = get_zone_ptr(pid, zone);
+        if (!vec) return {std::nullopt, -1};
+
+        auto it = std::find_if(vec->begin(), vec->end(), [&](const CardInstance& c){ return c.instance_id == instance_id; });
+        if (it == vec->end()) return {std::nullopt, -1};
+
+        int index = std::distance(vec->begin(), it);
+        CardInstance card = *it;
+        vec->erase(it);
+        return {card, index};
+    }
+
+    void GameState::insert_card_to_zone(PlayerID pid, Zone zone, const CardInstance& card, int index) {
+        auto* vec = get_zone_ptr(pid, zone);
+        if (!vec) return;
+
+        if (index >= 0 && index <= (int)vec->size()) {
+            vec->insert(vec->begin() + index, card);
+        } else {
+            vec->push_back(card);
         }
     }
 
