@@ -25,68 +25,60 @@
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
 現在、**Phase 1: Game Engine Reliability** および **Phase 6: Engine Overhaul** の実装が完了し、C++コア（`dm_ai_module`）のビルドは安定しています。
-2025年2月の開発サイクルにおいて、コスト軽減システムの柔軟性向上に取り組み、動的な値（ドロー枚数など）に基づくコスト計算を実現しました。
-
-直近では「動的コスト軽減（Dynamic Cost Reduction）」機能を実装し、特定の統計値（カードドロー数、マナ数、シールド数など）を参照してコストを増減させるメカニズムを導入しました。
-また、カードエディタのUI改善として、サポート対象外のカードタイプ（クロスギア、GR、サイキック）を削除し、Neoクリーチャー/G-Neoクリーチャーの実装とGUI対応を行いました。
+AI領域では、探索ベースのリーサルソルバー（DFS）の実装が完了し、現在は進化型デッキ構築システム（Smart Evolution）と並列シミュレーション（ParallelRunner）の統合フェーズにあります。
 
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
 *   [Status: Done] **Card Owner Refactor**: `CardInstance` 構造体に `owner` フィールドを追加し、外部マップ `card_owner_map` を廃止しました。
 *   [Status: Done] **EffectResolver Removal**: `EffectResolver` を削除し、`GameLogicSystem` へ完全移行しました。
-*   [Status: Done] **GameLogicSystem Refactor**: `PipelineExecutor` を介したコマンド実行フローが確立されました。
 *   [Status: Done] **Action Generalization**: 全アクションハンドラーの `compile_action` 化が完了しました。
-*   [Status: Done] **Dynamic Cost Reduction**: `ModifierDef` および `CostModifier` に `value_reference` フィールドを追加し、`ManaSystem` にて動的な値（`CARDS_DRAWN_THIS_TURN` 等）に基づくコスト計算ロジックを実装しました。
-*   [Status: Done] **Neo/G-Neo Logic**: NeoクリーチャーとG-Neoクリーチャーの論理的な定義を実装しました。
-    *   `CardKeywords` に `neo`, `g_neo` を追加。
-    *   `TransitionCommand` にて、G-Neoクリーチャーがバトルゾーンを離れる際に、進化元のカードのみを墓地に送る置換効果ロジックを実装しました。
+*   [Status: Done] **Dynamic Cost Reduction**: `ModifierDef` および `CostModifier` に `value_reference` フィールドを追加し、動的な値（`CARDS_DRAWN_THIS_TURN` 等）に基づくコスト計算を実現。
+*   [Status: Done] **Revolution Change Logic**: 革命チェンジのロジックを実装し、攻撃時の入れ替え処理をサポートしました。
+*   [Status: Done] **Hyper Energy**: ハイパー化（Hyper Energy）のコスト軽減ロジックおよびUIフラグを実装しました。
 
-### 2.2 カードエディタ & ツール (`dm_toolkit/gui`)
-*   [Status: Done] **Directory Restructuring**: `python/gui` を `dm_toolkit/gui` へ移動しました。
-*   [Status: Done] **Encoding Audit**: ソースコードのShift-JIS対応完了。
-*   [Test: Pass] **GUI Tests (Headless)**: CI環境向けのスキップロジック実装済み。
-*   [Status: Done] **ModifierEditForm Update**: スタティックアビリティ編集画面（`ModifierEditForm`）に「値参照（Value Reference）」の選択プルダウンを追加し、固定値以外の動的参照設定を可能にしました。
-*   [Status: Done] **CardEditForm Update**:
-    *   チェックボックス（クロスギア、GR、サイキック）を削除。
-    *   タイプ選択肢に `NEO_CREATURE`, `G_NEO_CREATURE` を追加し、選択時に自動的に `neo`, `g_neo`, `evolution` キーワードが設定されるように実装しました。
+### 2.2 AI & ソルバー (`src/ai`)
+*   [Status: Done] **Lethal Solver (DFS)**: `LethalDFS` クラスによる深さ優先探索ベースの詰み判定を実装。攻撃者とブロッカーのビットマスク管理による高速化を実現しています（トリガー等は現状未考慮）。
+*   [Status: Done] **Parallel Runner**: OpenMPを用いた並列対戦実行環境 (`ParallelRunner`) を実装し、Pythonから制御可能にしました。
 
-### 2.3 テスト環境 (`tests/`)
-*   [Status: Done] **Directory Consolidation**: `python/tests/` を `tests/` へ統合。
-*   [Test: Fail] **Dynamic Cost Reduction Verification**: `tests/verify_dynamic_cost_reduction.py` は検証中ですが、Pythonバインディング経由での `ManaSystem` 呼び出しに一部型不整合の課題が残っています（実装自体はC++側で完了）。
+### 2.3 カードエディタ & ツール (`dm_toolkit/gui`)
+*   [Status: Done] **Card Editor V2**: JSONベースのデータ駆動型エディタへの移行完了。
+*   [Status: Done] **Neo/G-Neo UI**: Neoクリーチャー/G-Neoクリーチャーの選択および自動キーワード設定機能を追加。
+*   [Status: Done] **Modifier Reference UI**: スタティックアビリティ編集画面にて「値参照（Value Reference）」の設定UIを追加。
 
-### 2.4 AI & 学習基盤 (`src/ai` & `dm_toolkit/training`)
-*   [Status: WIP] **Smart Evolution Scoring**: `evolution_ecosystem.py` に「使用頻度」と「リソース使用」に基づく評価ロジックを追加しました。
-    *   **実装**: `collect_smart_stats` 関数により、`GameInstance` を用いた統計収集ループを実装。
+### 2.4 学習基盤 (`dm_toolkit/training`)
+*   [Status: WIP] **Smart Evolution Ecosystem**: デッキ進化システム (`evolution_ecosystem.py`) のプロトタイプを作成。「使用頻度」「リソース貢献度」に基づくスコアリングロジックを検証中。
 
 ## 3. ロードマップ (Roadmap)
 
-### 3.1 [Priority: Critical] Trigger Stack Stabilization (トリガースタックの安定化)
-[Status: Review]
-パイプライン制御の安定化は完了。引き続きエッジケースの検証を行います。
-
-### 3.2 [Priority: High] Dynamic Cost & Stat Integration (動的コストと統計統合)
-[Status: Review]
-動的コスト軽減のコアロジックは実装完了しました。
-
-1.  [Status: Todo] **Verification Script Fix**: `ManaSystem` のPythonバインディングにおける型変換の問題を解決し、検証スクリプトをパスさせる。
-2.  [Status: Todo] **Self-Targeting Logic**: 現在の `TargetUtils` ロジックと `CostModifier` の相互作用（特に `owner="SELF"` フィルタの挙動）を詳細に検証する。
-
-### 3.3 [Priority: High] Evolution Ecosystem Refinement (進化エコシステムの改善)
+### 3.1 [Priority: Critical] AI Evolution & PBT (AI進化とPBT)
 [Status: WIP]
-スマートスコアの実装を行いました。次は統計収集の不具合修正とパフォーマンス改善です。
+単なる自己対戦だけでなく、Population Based Training (PBT) を用いた「メタゲーム進化」を実現します。
 
-1.  [Status: Todo] **Stats Aggregation Debug**: Python側で統計値が正しく集計されない問題（ID不整合等）を修正する。
-2.  [Status: Todo] **C++ Stats Migration**: 現在Pythonで行っている低速な統計収集ループを、C++の `ParallelRunner` に統合し、高速化・安定化を図る。
+1.  [Status: Todo] **C++ Stats Integration**: `ParallelRunner` 内でカード使用統計（Win Contribution等）を直接集計し、Pythonへの転送コストを削減する。
+2.  [Status: Todo] **PBT Pipeline**: 複数のエージェント（デッキ）を並列で対戦させ、勝者を交叉・変異させるPBTループを実装する。
+
+### 3.2 [Priority: High] Search Solver Enhancement (探索ソルバーの高度化)
+[Status: Todo]
+現在の `LethalSolver` は純粋な盤面情報のみを使用していますが、不確定情報（シールドトリガー確率）を考慮したリスク評価を組み込みます。
+
+1.  [Status: Todo] **Probabilistic Trigger Check**: 相手の公開デッキ情報からシールドトリガーの発動確率を計算し、期待値ベースで攻撃を判断するロジックを追加。
+
+### 3.3 [Priority: Medium] GUI Advanced Features (GUI高度化)
+[Status: Deferred]
+エディタの機能拡充を行います。
+
+1.  [Status: Todo] **Reaction Ability Editor**: `Ninja Strike` や `Strike Back` などの `ReactionAbility` を編集するための専用フォームを実装する。
+2.  [Status: Todo] **Logic Mask System**: カードタイプや文明に基づき、矛盾する効果やアクションの組み合わせをUI上で禁止するバリデーション機能。
 
 ## 4. 今後の課題 (Future Tasks)
 
-1.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの移行。
-2.  [Status: WIP] **Binding Restoration**: 残るテストケースの修正。
-3.  [Status: Todo] **G-Neo Robustness**: G-Neoの置換効果は現在 `TransitionCommand` 内でハードコードされていますが、将来的にはより汎用的な「置換効果イベントシステム」への移行が望まれます。
-4.  [Status: Todo] **Evolution Condition Refinement**: 進化条件（特定の種族や文明からのみ進化可能）のロジックは、現在簡易的なチェックに留まっており、将来的に `FilterDef` を用いた厳密な定義に対応する必要があります。
+1.  [Status: Todo] **Transformer Architecture**: 現在の単純なResNet/MLPモデルから、自己注意機構（Self-Attention）を用いたTransformerモデルへの移行（Phase 4）。
+2.  [Status: Todo] **G-Neo Robustness**: G-Neoの置換効果をハードコードから汎用イベントシステムへ移行。
+3.  [Status: WIP] **Binding Restoration**: リファクタリングに伴い無効化された一部テストケースの復旧。
+4.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの完全移行（古いCSV/JSON互換性の廃止）。
 
 ## 5. 運用ルール (Operational Rules)
-*   **テストコードの配置**: すべてのテストコード（Python）はプロジェクトルートの `tests/` ディレクトリに集約する。`python/tests/` などの他のディレクトリには新規テストを作成しないこと。
+*   **テストコードの配置**: すべてのテストコード（Python）はプロジェクトルートの `tests/` ディレクトリに集約する。
 *   **CI遵守**: `PyQt6` 依存テストはスキップし、必ずCIがグリーンになる状態でマージする。
 *   **バインディング追従**: C++変更時は必ず `src/bindings/bindings.cpp` を更新する。
