@@ -400,6 +400,7 @@ namespace dm::engine::systems {
              if(!found) for(const auto& c : p.deck) if(c.instance_id == id) { from_zone = Zone::DECK; found = true; break; }
              if(!found) for(const auto& c : p.graveyard) if(c.instance_id == id) { from_zone = Zone::GRAVEYARD; found = true; break; }
              if(!found) for(const auto& c : p.effect_buffer) if(c.instance_id == id) { from_zone = Zone::BUFFER; found = true; break; }
+             if(!found) for(const auto& c : p.stack) if(c.instance_id == id) { from_zone = Zone::STACK; found = true; break; }
 
              if (!found) continue;
 
