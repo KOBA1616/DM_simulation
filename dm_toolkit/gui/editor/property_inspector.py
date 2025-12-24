@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel, QPushButton
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.editor.forms.card_form import CardEditForm
 from dm_toolkit.gui.editor.forms.effect_form import EffectEditForm
@@ -10,6 +10,17 @@ from dm_toolkit.gui.editor.forms.command_form import CommandEditForm
 from dm_toolkit.gui.editor.forms.keyword_form import KeywordEditForm
 from dm_toolkit.gui.editor.forms.modifier_form import ModifierEditForm
 from dm_toolkit.gui.localization import tr
+
+class OptionEditPage(QWidget):
+    structure_update_requested = pyqtSignal(str, dict)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(tr("Option selected. Add Actions to define behavior.")))
+        btn = QPushButton(tr("Add Action"))
+        btn.clicked.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_ACTION", {}))
+        layout.addWidget(btn)
+        layout.addStretch()
 
 class PropertyInspector(QWidget):
     # Forward signal from forms
@@ -29,8 +40,8 @@ class PropertyInspector(QWidget):
         self.empty_page = QLabel(tr("Select an item to edit"))
         self.stack.addWidget(self.empty_page)
 
-        self.option_page = QLabel(tr("Option selected. Use 'Add Action' to define behavior."))
-        self.option_page.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.option_page = OptionEditPage()
+        self.option_page.structure_update_requested.connect(self.structure_update_requested.emit)
         self.stack.addWidget(self.option_page)
 
         self.cmd_branch_page = QLabel(tr("Branch selected. Add Commands to this branch."))
