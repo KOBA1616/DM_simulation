@@ -427,7 +427,7 @@ class CardDataManager:
              opt_num = current_options + i + 1
              opt_item = QStandardItem(f"{tr('Option')} {opt_num}")
              opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
-             opt_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+             opt_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
              action_item.appendRow(opt_item)
 
     def add_command_branches(self, cmd_item):
@@ -440,13 +440,13 @@ class CardDataManager:
         if not has_true:
             true_item = QStandardItem(tr("If True"))
             true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
-            true_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            true_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
             cmd_item.appendRow(true_item)
 
         if not has_false:
             false_item = QStandardItem(tr("If False"))
             false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
-            false_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            false_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
             cmd_item.appendRow(false_item)
 
     def _create_card_item(self, card):
@@ -523,7 +523,7 @@ class CardDataManager:
             for i, opt_actions in enumerate(action['options']):
                 opt_item = QStandardItem(f"{tr('Option')} {i+1}")
                 opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
-                opt_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+                opt_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
                 item.appendRow(opt_item)
                 for sub_action in opt_actions:
                     sub_item = self._create_action_item(sub_action)
@@ -545,7 +545,7 @@ class CardDataManager:
         if 'if_true' in command and command['if_true']:
             true_item = QStandardItem(tr("If True"))
             true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
-            true_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            true_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
             item.appendRow(true_item)
             for child in command['if_true']:
                 true_item.appendRow(self.create_command_item(child))
@@ -553,7 +553,7 @@ class CardDataManager:
         if 'if_false' in command and command['if_false']:
             false_item = QStandardItem(tr("If False"))
             false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
-            false_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            false_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
             item.appendRow(false_item)
             for child in command['if_false']:
                 false_item.appendRow(self.create_command_item(child))
@@ -563,7 +563,7 @@ class CardDataManager:
             for i, opt_cmds in enumerate(command['options']):
                 opt_item = QStandardItem(f"{tr('Option')} {i+1}")
                 opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
-                opt_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+                opt_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
                 item.appendRow(opt_item)
                 for sub_cmd in opt_cmds:
                     opt_item.appendRow(self.create_command_item(sub_cmd))
