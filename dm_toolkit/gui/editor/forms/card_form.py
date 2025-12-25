@@ -9,6 +9,9 @@ from PyQt6.QtGui import QCursor
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
+from dm_toolkit.gui.editor.consts import (
+    STRUCT_CMD_ADD_CHILD_EFFECT, STRUCT_CMD_ADD_SPELL_SIDE, STRUCT_CMD_REMOVE_SPELL_SIDE
+)
 
 class CardEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree
@@ -132,25 +135,25 @@ class CardEditForm(BaseEditForm):
         menu = QMenu(self)
 
         kw_act = menu.addAction(tr("Keyword Ability"))
-        kw_act.triggered.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_EFFECT", {"type": "KEYWORDS"}))
+        kw_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "KEYWORDS"}))
 
         trig_act = menu.addAction(tr("Triggered Ability"))
-        trig_act.triggered.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_EFFECT", {"type": "TRIGGERED"}))
+        trig_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "TRIGGERED"}))
 
         static_act = menu.addAction(tr("Static Ability"))
-        static_act.triggered.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_EFFECT", {"type": "STATIC"}))
+        static_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "STATIC"}))
 
         react_act = menu.addAction(tr("Reaction Ability"))
-        react_act.triggered.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_EFFECT", {"type": "REACTION"}))
+        react_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "REACTION"}))
 
         menu.exec(QCursor.pos())
 
     def toggle_twinpact(self, state):
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
         if is_checked:
-            self.structure_update_requested.emit("ADD_SPELL_SIDE", {})
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_SPELL_SIDE, {})
         else:
-            self.structure_update_requested.emit("REMOVE_SPELL_SIDE", {})
+            self.structure_update_requested.emit(STRUCT_CMD_REMOVE_SPELL_SIDE, {})
 
     def _populate_ui(self, item):
         data = item.data(Qt.ItemDataRole.UserRole + 2)
