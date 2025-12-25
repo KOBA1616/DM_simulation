@@ -5,6 +5,7 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
+from dm_toolkit.gui.editor.utils import normalize_command_zone_keys
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED, GRANTABLE_KEYWORDS
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_BRANCHES
@@ -244,6 +245,9 @@ class CommandEditForm(BaseEditForm):
     def _populate_ui(self, item):
         self.link_widget.set_current_item(item)
         data = item.data(Qt.ItemDataRole.UserRole + 2)
+
+        # Normalize keys to ensure 'from_zone'/'to_zone' are used
+        normalize_command_zone_keys(data)
 
         # Check for Legacy Warning
         legacy_warning = data.get('legacy_warning', False)
