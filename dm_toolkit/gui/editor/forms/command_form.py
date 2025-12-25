@@ -7,7 +7,7 @@ from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED, GRANTABLE_KEYWORDS
-from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_BRANCHES
+from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_BRANCHES, STRUCT_CMD_CONVERT_MEKRAID
 
 class CommandEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -47,10 +47,23 @@ class CommandEditForm(BaseEditForm):
         layout = QFormLayout(self)
 
         # Migration / Warning Label
+        self.warning_container = QWidget()
+        warn_layout = QHBoxLayout(self.warning_container)
+        warn_layout.setContentsMargins(0, 0, 0, 0)
+
         self.warning_label = QLabel(tr("Warning: Imperfect Conversion"))
         self.warning_label.setStyleSheet("color: red; font-weight: bold;")
-        self.warning_label.setVisible(False)
-        layout.addRow(self.warning_label)
+
+        self.resolve_btn = QPushButton(tr("Resolve Issue"))
+        self.resolve_btn.setStyleSheet("background-color: #ffcccc; color: #800000; font-weight: bold;")
+        self.resolve_btn.clicked.connect(self.on_resolve_warning)
+
+        warn_layout.addWidget(self.warning_label)
+        warn_layout.addWidget(self.resolve_btn)
+        warn_layout.addStretch()
+
+        self.warning_container.setVisible(False)
+        layout.addRow(self.warning_container)
 
         # Command Type
         self.type_combo = QComboBox()
@@ -247,12 +260,19 @@ class CommandEditForm(BaseEditForm):
 
         # Check for Legacy Warning
         legacy_warning = data.get('legacy_warning', False)
+        orig = data.get('legacy_original_type', 'Unknown')
+
         if legacy_warning:
-             orig = data.get('legacy_original_type', 'Unknown')
              self.warning_label.setText(tr(f"Warning: Imperfect Conversion from {orig}"))
-             self.warning_label.setVisible(True)
+             self.warning_container.setVisible(True)
+
+             # Show Resolve Button only for supported types (e.g. MEKRAID)
+             if orig == "MEKRAID":
+                 self.resolve_btn.setVisible(True)
+             else:
+                 self.resolve_btn.setVisible(False)
         else:
-             self.warning_label.setVisible(False)
+             self.warning_container.setVisible(False)
 
         raw_type = data.get('type', 'NONE')
 
@@ -291,6 +311,15 @@ class CommandEditForm(BaseEditForm):
 
         self.link_widget.set_data(data)
         self.update_ui_state(raw_type)
+
+    def on_resolve_warning(self):
+        # Handle automated recovery for legacy warnings
+        if not self.current_item: return
+        data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
+        orig = data.get('legacy_original_type', '')
+
+        if orig == "MEKRAID":
+            self.structure_update_requested.emit(STRUCT_CMD_CONVERT_MEKRAID, data)
 
     def request_generate_branches(self):
         self.structure_update_requested.emit(STRUCT_CMD_GENERATE_BRANCHES, {})
