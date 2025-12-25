@@ -200,6 +200,37 @@ class UnifiedActionForm(BaseEditForm):
             pass
         self.update_data()
 
+    def request_generate_options(self):
+        """Generate placeholder option chains for `SELECT_OPTION` types.
+
+        Creates `options` as a list of option-chains (each chain is a list of action dicts)
+        and writes it into the current item's data, then refreshes the UI.
+        """
+        if not getattr(self, 'current_item', None):
+            return
+        try:
+            count = int(self.option_count_spin.value())
+        except Exception:
+            count = 1
+
+        new_options = []
+        for _ in range(max(1, count)):
+            # single-placeholder action per option chain
+            new_options.append([{"type": "NONE"}])
+
+        data = self.current_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+        data['options'] = new_options
+        data['type'] = 'SELECT_OPTION'
+
+        # Persist back to the item and refresh UI
+        self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
+        # Re-populate UI to reflect changes
+        try:
+            self.set_data(self.current_item)
+        except Exception:
+            # Fallback: emit dataChanged so outer logic updates
+            self.dataChanged.emit()
+
     def on_convert_clicked(self):
         # Convert current item (legacy action) into a Command via ActionConverter
         if not getattr(self, 'current_item', None):
