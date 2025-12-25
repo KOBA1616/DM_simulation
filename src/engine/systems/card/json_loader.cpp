@@ -70,7 +70,44 @@ namespace dm::engine {
             if (kws.count("shield_burn") && kws.at("shield_burn")) def.keywords.shield_burn = true;
             if (kws.count("untap_in") && kws.at("untap_in")) def.keywords.untap_in = true;
             if (kws.count("unblockable") && kws.at("unblockable")) def.keywords.unblockable = true;
-            // Add other keywords as needed
+
+            // Friend Burst
+            if (kws.count("friend_burst") && kws.at("friend_burst")) {
+                def.keywords.friend_burst = true;
+                EffectDef fb_effect;
+                fb_effect.trigger = TriggerType::ON_PLAY;
+
+                ActionDef fb_action;
+                fb_action.type = EffectPrimitive::FRIEND_BURST;
+                fb_action.scope = TargetScope::TARGET_SELECT;
+                fb_action.optional = true;
+                fb_action.filter.owner = "SELF";
+                fb_action.filter.zones = {"BATTLE_ZONE"};
+                fb_action.filter.types = {"CREATURE"};
+                fb_action.filter.is_tapped = false;
+                fb_action.filter.count = 1;
+
+                fb_effect.actions.push_back(fb_action);
+                def.effects.push_back(fb_effect);
+            }
+
+            // Mega Last Burst
+            if (kws.count("mega_last_burst") && kws.at("mega_last_burst")) {
+                def.keywords.mega_last_burst = true;
+                if (data.spell_side) {
+                    EffectDef mlb_effect;
+                    mlb_effect.trigger = TriggerType::ON_DESTROY;
+
+                    ActionDef mlb_action;
+                    mlb_action.type = EffectPrimitive::CAST_SPELL;
+                    mlb_action.scope = TargetScope::SELF; // Use SELF to target the card itself (in graveyard)
+                    mlb_action.optional = true;
+                    mlb_action.cast_spell_side = true;
+
+                    mlb_effect.actions.push_back(mlb_action);
+                    def.effects.push_back(mlb_effect);
+                }
+            }
         }
 
         // Keywords mapping from effects
