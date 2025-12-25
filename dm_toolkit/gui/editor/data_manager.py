@@ -27,12 +27,7 @@ class CardDataManager:
             filepath = env_path
         else:
             # 2. Search relative to this file
-            # We look in specific known locations relative to the module file to avoid unsafe upward traversal.
             current_dir = os.path.dirname(os.path.abspath(__file__))
-
-            # Candidates:
-            # - Root data (dev/source layout): ../../../data/editor_templates.json
-            # - Package data (dist layout): ../../data/editor_templates.json
             candidates = [
                 os.path.join(current_dir, '..', '..', '..', 'data', 'editor_templates.json'),
                 os.path.join(current_dir, '..', '..', 'data', 'editor_templates.json')
@@ -58,6 +53,10 @@ class CardDataManager:
         self.model.setHorizontalHeaderLabels(["Logic Tree"])
 
         for card_idx, card in enumerate(cards_data):
+            # 0. Check for 'triggers' key presence (Meta-info for preservation)
+            if 'triggers' in card:
+                card['_meta_use_triggers'] = True
+
             card_item = self._create_card_item(card)
 
             # 1. Add Creature Effects (Triggers)
@@ -83,6 +82,10 @@ class CardDataManager:
             # 3. Add Spell Side if exists
             spell_side_data = card.get('spell_side')
             if spell_side_data:
+                # Check for 'triggers' in spell side
+                if 'triggers' in spell_side_data:
+                    spell_side_data['_meta_use_triggers'] = True
+
                 spell_item = self._create_spell_side_item(spell_side_data)
 
                 # Add Spell Effects
@@ -184,18 +187,32 @@ class CardDataManager:
                     elif sp_type == "MODIFIER":
                         spell_side_static.append(self._reconstruct_modifier(sp_child))
 
-                spell_side_data['effects'] = spell_side_effects
-                if 'triggers' in spell_side_data:
-                    del spell_side_data['triggers']
+                # Handle Triggers vs Effects based on meta-info
+                if spell_side_data.get('_meta_use_triggers'):
+                    spell_side_data['triggers'] = spell_side_effects
+                    if 'effects' in spell_side_data:
+                        del spell_side_data['effects']
+                    del spell_side_data['_meta_use_triggers']
+                else:
+                    spell_side_data['effects'] = spell_side_effects
+                    if 'triggers' in spell_side_data:
+                        del spell_side_data['triggers']
 
                 if spell_side_static:
                     spell_side_data['static_abilities'] = spell_side_static
 
                 spell_side_dict = spell_side_data
 
-        card_data['effects'] = new_effects
-        if 'triggers' in card_data:
-            del card_data['triggers']
+        # Handle Triggers vs Effects based on meta-info
+        if card_data.get('_meta_use_triggers'):
+            card_data['triggers'] = new_effects
+            if 'effects' in card_data:
+                del card_data['effects']
+            del card_data['_meta_use_triggers']
+        else:
+            card_data['effects'] = new_effects
+            if 'triggers' in card_data:
+                del card_data['triggers']
 
         card_data['static_abilities'] = new_static
         card_data['reaction_abilities'] = new_reactions
@@ -272,6 +289,7 @@ class CardDataManager:
         cmd_data = cmd_item.data(Qt.ItemDataRole.UserRole + 2)
         if_true_list = []
         if_false_list = []
+        options_list = []
 
         for i in range(cmd_item.rowCount()):
             child = cmd_item.child(i)
@@ -287,12 +305,23 @@ class CardDataManager:
                     sub_item = child.child(j)
                     if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
                         if_false_list.append(self._reconstruct_command(sub_item))
+            elif role == "OPTION":
+                # Handle CHOICE options (list of commands)
+                opt_cmds = []
+                for j in range(child.rowCount()):
+                    sub_item = child.child(j)
+                    if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                        opt_cmds.append(self._reconstruct_command(sub_item))
+                options_list.append(opt_cmds)
 
         if if_true_list: cmd_data['if_true'] = if_true_list
         elif 'if_true' in cmd_data: del cmd_data['if_true']
 
         if if_false_list: cmd_data['if_false'] = if_false_list
         elif 'if_false' in cmd_data: del cmd_data['if_false']
+
+        if options_list: cmd_data['options'] = options_list
+        elif 'options' in cmd_data: del cmd_data['options']
 
         return cmd_data
 
@@ -461,8 +490,42 @@ class CardDataManager:
         item.setData(reaction, Qt.ItemDataRole.UserRole + 2)
         return item
 
-    def format_action_label(self, action):
-        """Generates a human-readable label for an action."""
+    def _create_command_item(self, command):
+        cmd_type = command.get('type', 'NONE')
+        item = QStandardItem(f"{tr('Command')}: {tr(cmd_type)}")
+        item.setData("COMMAND", Qt.ItemDataRole.UserRole + 1)
+        item.setData(command, Qt.ItemDataRole.UserRole + 2)
+
+        # If True / If False
+        if 'if_true' in command and command['if_true']:
+            true_item = QStandardItem(tr("If True"))
+            true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
+            true_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            item.appendRow(true_item)
+            for child in command['if_true']:
+                true_item.appendRow(self._create_command_item(child))
+        if 'if_false' in command and command['if_false']:
+            false_item = QStandardItem(tr("If False"))
+            false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
+            false_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            item.appendRow(false_item)
+            for child in command['if_false']:
+                false_item.appendRow(self._create_command_item(child))
+
+        # Options (Choice)
+        if 'options' in command and command['options']:
+            for i, opt_cmds in enumerate(command['options']):
+                opt_item = QStandardItem(f"{tr('Option')} {i+1}")
+                opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
+                opt_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+                item.appendRow(opt_item)
+                for sub_cmd in opt_cmds:
+                    opt_item.appendRow(self._create_command_item(sub_cmd))
+        return item
+
+    def _create_action_item(self, action):
+        if 'uid' not in action:
+            action['uid'] = str(uuid.uuid4())
         act_type = action.get('type', 'NONE')
         display_type = tr(act_type)
 
