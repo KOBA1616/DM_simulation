@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 # Localized Japanese text.
+from typing import Any, Dict, List, Optional, Union
 try:
     import dm_ai_module as m
 except ImportError:
     m = None
 
 # Base translations
-TRANSLATIONS = {
+TRANSLATIONS: Dict[Any, str] = {
     # Keys for Enums will be dynamically added below if m is available
     "Destination Zone": "移動先ゾーン",
     "Keyword": "キーワード",
@@ -448,7 +449,7 @@ if m:
             if member in TRANSLATIONS:
                 TRANSLATIONS[member.name] = TRANSLATIONS[member]
 
-def translate(key) -> str:
+def translate(key: Any) -> str:
     """Return localized text when available, otherwise echo the key."""
     # Try direct lookup (works for Enums and strings)
     res = TRANSLATIONS.get(key)
@@ -464,10 +465,10 @@ def translate(key) -> str:
     # If key is a string and not found, return as is
     return str(key)
 
-def tr(text: str) -> str:
+def tr(text: Any) -> str:
     return translate(text)
 
-def get_card_civilizations(card_data) -> list:
+def get_card_civilizations(card_data: Any) -> List[str]:
     """
     Returns a list of civilization names (e.g. ["FIRE", "NATURE"]) from card data.
     Handles C++ pybind11 objects and legacy dicts.
@@ -493,7 +494,7 @@ def get_card_civilizations(card_data) -> list:
 
     return ["COLORLESS"]
 
-def get_card_civilization(card_data) -> str:
+def get_card_civilization(card_data: Any) -> str:
     """
     Returns the primary civilization name as a string.
     If multiple, returns the first one.
@@ -503,7 +504,7 @@ def get_card_civilization(card_data) -> str:
         return civs[0]
     return "COLORLESS"
 
-def get_card_name_by_instance(game_state, card_db, instance_id: int) -> str:
+def get_card_name_by_instance(game_state: Any, card_db: Dict[int, Any], instance_id: int) -> str:
     if not game_state or not m: return f"Inst_{instance_id}"
 
     try:
@@ -512,13 +513,13 @@ def get_card_name_by_instance(game_state, card_db, instance_id: int) -> str:
         if inst:
             card_id = inst.card_id
             if card_id in card_db:
-                return card_db[card_id].name
+                return card_db[card_id].name  # type: ignore
     except Exception:
         pass
 
     return f"Inst_{instance_id}"
 
-def describe_command(cmd, game_state, card_db) -> str:
+def describe_command(cmd: Any, game_state: Any, card_db: Any) -> str:
     """Generate a localized string description for a GameCommand."""
     if not m: return "GameCommand (Module not loaded)"
 
