@@ -31,7 +31,9 @@ class CardDataManager:
             current_dir = os.path.dirname(os.path.abspath(__file__))
             candidates = [
                 os.path.join(current_dir, '..', '..', '..', 'data', 'editor_templates.json'),
-                os.path.join(current_dir, '..', '..', 'data', 'editor_templates.json')
+                os.path.join(current_dir, '..', '..', 'data', 'editor_templates.json'),
+                # Add explicit data path relative to CWD for robustness in various envs
+                os.path.join(os.getcwd(), 'data', 'editor_templates.json')
             ]
 
             for candidate in candidates:
@@ -532,9 +534,18 @@ class CardDataManager:
             command['uid'] = str(uuid.uuid4())
 
         label = self.format_command_label(command)
+
+        # Legacy Warning Handling
+        if command.get('legacy_warning'):
+             label = f"⚠️ {label}"
+
         item = QStandardItem(label)
         item.setData("COMMAND", Qt.ItemDataRole.UserRole + 1)
         item.setData(command, Qt.ItemDataRole.UserRole + 2)
+
+        if command.get('legacy_warning'):
+             item.setToolTip(f"Legacy Action: {command.get('legacy_original_type', 'Unknown')}\nPlease replace with modern Commands.")
+             # item.setForeground(QColor("orange")) # Requires QColor import, relying on label icon for now
 
         if 'if_true' in command and command['if_true']:
             true_item = QStandardItem(tr("If True"))
