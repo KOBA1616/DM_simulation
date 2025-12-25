@@ -530,6 +530,7 @@ namespace dm::engine::game_command {
         ctx.query_type = query_type;
         ctx.valid_targets = valid_targets;
         ctx.params = params;
+        ctx.options = options;
 
         state.pending_query = ctx;
     }

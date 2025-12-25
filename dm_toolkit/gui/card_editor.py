@@ -196,6 +196,11 @@ class CardEditor(QMainWindow):
         item = self.tree_widget.standard_model.itemFromIndex(idx)
         card_item = None
 
+        # Determine context for updates that modify hierarchy
+        if command == "REPLACE_WITH_COMMAND":
+            self.tree_widget.replace_item_with_command(idx, payload)
+            return
+
         item_type = item.data(Qt.ItemDataRole.UserRole + 1)
         if item_type == "CARD":
             card_item = item
@@ -246,11 +251,10 @@ class CardEditor(QMainWindow):
         elif command == STRUCT_CMD_ADD_CHILD_ACTION:
             if item_type == "EFFECT":
                 self.tree_widget.add_action_to_effect(item.index())
+            elif item_type == "OPTION":
+                self.tree_widget.add_action_to_option(item.index())
             elif item_type == "ACTION":
-                 # If adding action to action, it usually means adding to an option or maybe insert after?
-                 # For now, let's assume it only works on EFFECT nodes or we redirect logic.
-                 # The user wants "Add Action" button.
-                 pass
+                self.tree_widget.add_action_sibling(item.index())
 
     def new_card(self):
         self.tree_widget.add_new_card()
@@ -283,29 +287,10 @@ class CardEditor(QMainWindow):
         item = self.tree_widget.standard_model.itemFromIndex(idx)
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
 
-        # Delegate to LogicTreeWidget methods for consistency
-        if type_ == "EFFECT":
-            self.tree_widget.add_command_to_effect(idx)
-        elif type_ == "OPTION":
-            self.tree_widget.add_command_to_option(idx)
-        elif type_ == "COMMAND":
-            # Add sibling command
-            parent = item.parent()
-            if parent:
-                parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
-                if parent_type == "EFFECT":
-                    self.tree_widget.add_command_to_effect(parent.index())
-                elif parent_type == "OPTION":
-                    self.tree_widget.add_command_to_option(parent.index())
-        elif type_ == "ACTION":
-            # Legacy ACTION support, treat as sibling if parent is valid
-            parent = item.parent()
-            if parent:
-                parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
-                if parent_type == "EFFECT":
-                    self.tree_widget.add_command_to_effect(parent.index())
-                elif parent_type == "OPTION":
-                    self.tree_widget.add_command_to_option(parent.index())
+        # Centralized logic in LogicTreeWidget
+        valid_types = ["EFFECT", "OPTION", "COMMAND", "ACTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
+        if type_ in valid_types:
+            self.tree_widget.add_command_contextual()
         else:
             QMessageBox.warning(self, tr("Warning"), tr("Please select an Effect or Option to add a Command."))
 
