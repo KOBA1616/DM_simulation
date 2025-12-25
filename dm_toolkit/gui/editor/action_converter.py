@@ -110,7 +110,15 @@ class ActionConverter:
             cmd['amount'] = action_data.get('value1', 0)
             ActionConverter._transfer_targeting(action_data, cmd)
 
-        # 6. OTHER
+        # 6. SELECT_OPTION (Added)
+        elif act_type == "SELECT_OPTION":
+            cmd['type'] = "CHOICE"
+            # In SELECT_OPTION, value1 is usually irrelevant or default 1, value2 is allow_duplicates
+            cmd['amount'] = action_data.get('value1', 1)
+            if action_data.get('value2', 0) == 1:
+                cmd['flags'] = ["ALLOW_DUPLICATES"]
+
+        # 7. OTHER
         elif act_type == "SEARCH_DECK":
             cmd['type'] = "SEARCH_DECK"
             cmd['amount'] = action_data.get('value1', 1)
@@ -130,9 +138,6 @@ class ActionConverter:
 
         elif act_type == "MEKRAID":
             # Mekraid is complex (Look top N, Filter, Play).
-            # Ideally this is a series of commands, but we might not have a direct 1:1 atomic command.
-            # We will map to NONE with warning for now, or FLOW?
-            # Or if Mekraid is supported as a high-level command (it isn't in COMMAND_TYPES).
             cmd['type'] = "NONE"
             cmd['str_param'] = f"Legacy: {act_type}"
 
