@@ -337,7 +337,8 @@ void bind_core(py::module& m) {
         .def_readwrite("output_value_key", &ActionDef::output_value_key)
         .def_readwrite("condition", &ActionDef::condition)
         .def_readwrite("options", &ActionDef::options)
-        .def_readwrite("scope", &ActionDef::scope);
+        .def_readwrite("scope", &ActionDef::scope)
+        .def_readwrite("cast_spell_side", &ActionDef::cast_spell_side);
 
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
