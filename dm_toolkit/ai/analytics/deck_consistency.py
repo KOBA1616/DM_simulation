@@ -9,10 +9,10 @@ class SolitaireRunner:
     Runs a solitaire (1-player) simulation to measure deck consistency.
     Corresponds to Requirement 2-A: Access Count Simulation.
     """
-    def __init__(self, card_db: CardDB, deck_list: List[int], max_turns=5):
+    def __init__(self, card_db: CardDB, deck_list: List[int], max_turns: int = 5) -> None:
         self.card_db: CardDB = card_db
-        self.deck_list = deck_list
-        self.max_turns = max_turns
+        self.deck_list: List[int] = deck_list
+        self.max_turns: int = max_turns
         self.logger = logging.getLogger("SolitaireRunner")
 
     def run_simulation(self) -> int:
