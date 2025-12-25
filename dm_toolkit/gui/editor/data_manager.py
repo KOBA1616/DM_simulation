@@ -7,6 +7,7 @@ import json
 import os
 import copy
 from dm_toolkit.types import JSON
+from dm_toolkit.gui.editor import normalize
 
 class CardDataManager:
     """
@@ -18,6 +19,8 @@ class CardDataManager:
         self.model = model
         self.templates: JSON = {"commands": [], "actions": []}
         self.load_templates()
+        # cache can hold internal representations keyed by uid for editor-only use
+        self._internal_cache = {}
 
     def load_templates(self):
         # Resolve path to data/editor_templates.json
@@ -52,6 +55,37 @@ class CardDataManager:
         else:
             print("Warning: editor_templates.json not found.")
 
+    def _ensure_uid(self, obj: dict):
+        """Ensure a UID exists on the given dict object."""
+        if obj is None or not isinstance(obj, dict):
+            return
+        if 'uid' not in obj:
+            obj['uid'] = str(uuid.uuid4())
+
+    def _internalize_item(self, item):
+        """Create and cache an internal representation for the given tree item.
+        This uses the normalize.to_internal heuristic and stores by uid.
+        """
+        try:
+            data = item.data(Qt.ItemDataRole.UserRole + 2)
+        except Exception:
+            data = None
+
+        # produce a canonical internal representation and cache it
+        internal = normalize.canonicalize(data)
+        uid = None
+        if isinstance(data, dict):
+            uid = data.get('uid')
+        if not uid:
+            # fallback: try to generate a temporary uid for caching
+            uid = str(uuid.uuid4())
+
+        self._internal_cache[uid] = internal
+        return internal
+
+    def get_internal_by_uid(self, uid: str):
+        return self._internal_cache.get(uid)
+
     def load_data(self, cards_data):
         self.model.clear()
         self.model.setHorizontalHeaderLabels(["Logic Tree"])
@@ -77,6 +111,8 @@ class CardDataManager:
             for mod_idx, modifier in enumerate(card.get('static_abilities', [])):
                  mod_item = self._create_modifier_item(modifier)
                  card_item.appendRow(mod_item)
+
+        # end load_data
 
             # 2. Add Reaction Abilities
             for ra_idx, ra in enumerate(card.get('reaction_abilities', [])):
@@ -156,6 +192,20 @@ class CardDataManager:
         for j in range(card_item.rowCount()):
             child_item = card_item.child(j)
             item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
+            # Handle group containers (e.g., GROUP_TRIGGER holding EFFECT nodes)
+            if isinstance(item_type, str) and item_type.startswith("GROUP_"):
+                for k in range(child_item.rowCount()):
+                    grp_child = child_item.child(k)
+                    if grp_child is None:
+                        continue
+                    if grp_child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                        eff_data = self._reconstruct_effect(grp_child)
+                        new_effects.append(eff_data)
+                        for act in eff_data.get('actions', []):
+                            if act.get('type') == "REVOLUTION_CHANGE":
+                                has_rev_change_action = True
+                                rev_change_filter = act.get('filter')
+                continue
 
             if item_type == "KEYWORDS":
                 kw_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
@@ -378,6 +428,11 @@ class CardDataManager:
         }
         item = self._create_spell_side_item(spell_data)
         card_item.appendRow(item)
+        # Update card data stored on the CARD node
+        try:
+            self._update_card_from_child(card_item)
+        except Exception:
+            pass
         return item
 
     def remove_spell_side_item(self, card_item):
@@ -385,6 +440,10 @@ class CardDataManager:
             child = card_item.child(i)
             if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
                 card_item.removeRow(i)
+                try:
+                    self._update_card_from_child(card_item)
+                except Exception:
+                    pass
                 return True
         return False
 
@@ -412,7 +471,24 @@ class CardDataManager:
         act_item = self._create_action_item(act_data)
         eff_item.appendRow(act_item)
 
-        card_item.appendRow(eff_item)
+        # Prefer attaching to an existing GROUP_TRIGGER node if present
+        attached = False
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "GROUP_TRIGGER":
+                child.appendRow(eff_item)
+                attached = True
+                break
+
+        if not attached:
+            card_item.appendRow(eff_item)
+
+        # Update reconstructed card data cache on change
+        try:
+            self._update_card_from_child(eff_item)
+        except Exception:
+            pass
+
         return eff_item
 
     def remove_revolution_change_logic(self, card_item):
@@ -435,11 +511,22 @@ class CardDataManager:
              if action_item.child(i).data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
                   current_options += 1
         for i in range(count):
-             opt_num = current_options + i + 1
-             opt_item = QStandardItem(f"{tr('Option')} {opt_num}")
-             opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
-             opt_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
-             action_item.appendRow(opt_item)
+            opt_num = current_options + i + 1
+            opt_item = QStandardItem(f"{tr('Option')} {opt_num}")
+            opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
+            uid = str(uuid.uuid4())
+            opt_item.setData({'uid': uid}, Qt.ItemDataRole.UserRole + 2)
+            # register internal representation for this newly created option
+            try:
+                self._internalize_item(opt_item)
+            except Exception:
+                pass
+            action_item.appendRow(opt_item)
+        # Update parent card data
+        try:
+            self._update_card_from_child(action_item)
+        except Exception:
+            pass
 
     def add_command_branches(self, cmd_item):
         has_true, has_false = False, False
@@ -451,14 +538,29 @@ class CardDataManager:
         if not has_true:
             true_item = QStandardItem(tr("If True"))
             true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
-            true_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
+            t_uid = str(uuid.uuid4())
+            true_item.setData({'uid': t_uid}, Qt.ItemDataRole.UserRole + 2)
+            try:
+                self._internalize_item(true_item)
+            except Exception:
+                pass
             cmd_item.appendRow(true_item)
 
         if not has_false:
             false_item = QStandardItem(tr("If False"))
             false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
-            false_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
+            f_uid = str(uuid.uuid4())
+            false_item.setData({'uid': f_uid}, Qt.ItemDataRole.UserRole + 2)
+            try:
+                self._internalize_item(false_item)
+            except Exception:
+                pass
             cmd_item.appendRow(false_item)
+        # Update parent card data
+        try:
+            self._update_card_from_child(cmd_item)
+        except Exception:
+            pass
 
     def _create_card_item(self, card):
         if 'uid' not in card:
@@ -475,28 +577,35 @@ class CardDataManager:
         kw_item.setEditable(False)
         item.appendRow(kw_item)
 
+        # Cache internal representation
+        try:
+            self._internalize_item(item)
+        except Exception:
+            pass
+
         return item
 
     def _create_spell_side_item(self, spell_data):
-        if 'uid' not in spell_data:
-            spell_data['uid'] = str(uuid.uuid4())
+        self._ensure_uid(spell_data)
         item = QStandardItem(f"{tr('Spell Side')}: {spell_data.get('name', 'No Name')}")
         item.setData("SPELL_SIDE", Qt.ItemDataRole.UserRole + 1)
         item.setData(spell_data, Qt.ItemDataRole.UserRole + 2)
         return item
 
     def _create_effect_item(self, effect):
-        if 'uid' not in effect:
-            effect['uid'] = str(uuid.uuid4())
+        self._ensure_uid(effect)
         trig = effect.get('trigger', 'NONE')
         item = QStandardItem(f"{tr('Effect')}: {tr(trig)}")
         item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
         item.setData(effect, Qt.ItemDataRole.UserRole + 2)
+        try:
+            self._internalize_item(item)
+        except Exception:
+            pass
         return item
 
     def _create_modifier_item(self, modifier):
-        if 'uid' not in modifier:
-            modifier['uid'] = str(uuid.uuid4())
+        self._ensure_uid(modifier)
         mtype = modifier.get('type', 'NONE')
         item = QStandardItem(f"{tr('Static')}: {tr(mtype)}")
         item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
@@ -504,8 +613,7 @@ class CardDataManager:
         return item
 
     def _create_reaction_item(self, reaction):
-        if 'uid' not in reaction:
-            reaction['uid'] = str(uuid.uuid4())
+        self._ensure_uid(reaction)
         rtype = reaction.get('type', 'NONE')
         item = QStandardItem(f"{tr('Reaction Ability')}: {rtype}")
         item.setData("REACTION_ABILITY", Qt.ItemDataRole.UserRole + 1)
@@ -539,6 +647,10 @@ class CardDataManager:
                 for sub_action in opt_actions:
                     sub_item = self._create_action_item(sub_action)
                     opt_item.appendRow(sub_item)
+        try:
+            self._internalize_item(item)
+        except Exception:
+            pass
         return item
 
     def format_action_label(self, action):
@@ -587,6 +699,10 @@ class CardDataManager:
                 item.appendRow(opt_item)
                 for sub_cmd in opt_cmds:
                     opt_item.appendRow(self.create_command_item(sub_cmd))
+        try:
+            self._internalize_item(item)
+        except Exception:
+            pass
         return item
 
     def _generate_new_id(self):
@@ -606,6 +722,33 @@ class CardDataManager:
                 except ValueError:
                     pass
         return max_id + 1
+
+    def _find_card_root(self, item):
+        """Climb tree to find the CARD node for a given QStandardItem or index."""
+        cur_item = item
+        # If a QModelIndex was passed, callers should convert to item beforehand.
+        while cur_item is not None:
+            role = cur_item.data(Qt.ItemDataRole.UserRole + 1)
+            if role == 'CARD':
+                return cur_item
+            parent = cur_item.parent()
+            if parent is None:
+                return None
+            cur_item = parent
+
+    def _update_card_from_child(self, child_item):
+        """Reconstruct card data from tree and set it on the CARD node's stored dict."""
+        card_item = self._find_card_root(child_item)
+        if card_item is None:
+            return None
+        try:
+            updated = self.reconstruct_card_data(card_item)
+            if updated:
+                card_item.setData(updated, Qt.ItemDataRole.UserRole + 2)
+                return updated
+        except Exception:
+            pass
+        return None
 
     def _find_child_by_role(self, parent_item, role_string):
         """Helper to find a child item with a specific user role data."""
