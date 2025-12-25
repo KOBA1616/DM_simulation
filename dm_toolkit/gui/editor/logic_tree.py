@@ -275,7 +275,8 @@ class LogicTreeWidget(QTreeView):
         import copy
         data_copy = copy.deepcopy(cmd_data)
 
-        self.add_child_item(option_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
+        label = self.data_manager.format_command_label(data_copy)
+        self.add_child_item(option_index, "COMMAND", data_copy, label)
 
     def add_action_sibling(self, action_index, action_data=None):
         if not action_index.isValid(): return
@@ -288,7 +289,8 @@ class LogicTreeWidget(QTreeView):
         import copy
         data_copy = copy.deepcopy(action_data)
 
-        self.add_child_item(parent_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
+        label = self.data_manager.format_action_label(data_copy)
+        self.add_child_item(parent_index, "ACTION", data_copy, label)
 
     def add_command_to_effect(self, effect_index, cmd_data=None):
         if not effect_index.isValid(): return
@@ -304,7 +306,8 @@ class LogicTreeWidget(QTreeView):
         import copy
         data_copy = copy.deepcopy(cmd_data)
 
-        self.add_child_item(effect_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
+        label = self.data_manager.format_command_label(data_copy)
+        self.add_child_item(effect_index, "COMMAND", data_copy, label)
 
     def add_action_to_effect(self, effect_index, action_data=None):
         if not effect_index.isValid(): return
@@ -314,7 +317,8 @@ class LogicTreeWidget(QTreeView):
         import copy
         data_copy = copy.deepcopy(action_data)
 
-        self.add_child_item(effect_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
+        label = self.data_manager.format_action_label(data_copy)
+        self.add_child_item(effect_index, "ACTION", data_copy, label)
 
     def add_action_to_option(self, option_index, action_data=None):
         if not option_index.isValid(): return
@@ -324,7 +328,8 @@ class LogicTreeWidget(QTreeView):
         import copy
         data_copy = copy.deepcopy(action_data)
 
-        self.add_child_item(option_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
+        label = self.data_manager.format_action_label(data_copy)
+        self.add_child_item(option_index, "ACTION", data_copy, label)
 
     def add_command_contextual(self, cmd_data=None):
         idx = self.currentIndex()
@@ -384,7 +389,8 @@ class LogicTreeWidget(QTreeView):
 
         import copy
         data_copy = copy.deepcopy(cmd_data)
-        self.add_child_item(branch_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
+        label = self.data_manager.format_command_label(data_copy)
+        self.add_child_item(branch_index, "COMMAND", data_copy, label)
 
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""
