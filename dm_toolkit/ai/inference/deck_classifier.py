@@ -1,11 +1,11 @@
 import json
 import logging
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Set, Optional, Any
 
 class DeckClassifier:
     def __init__(self, meta_decks_path: str):
         self.meta_decks_path = meta_decks_path
-        self.decks = []
+        self.decks: List[Dict[str, Any]] = []
         self._load_meta_decks()
 
     def _load_meta_decks(self):
