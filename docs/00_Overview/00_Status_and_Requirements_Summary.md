@@ -45,6 +45,7 @@ AI領域では、探索ベースのリーサルソルバー（DFS）の実装が
 *   [Status: Done] **Card Editor V2**: JSONベースのデータ駆動型エディタへの移行完了。
 *   [Status: Done] **Neo/G-Neo UI**: Neoクリーチャー/G-Neoクリーチャーの選択および自動キーワード設定機能を追加。
 *   [Status: Done] **Modifier Reference UI**: スタティックアビリティ編集画面にて「値参照（Value Reference）」の設定UIを追加。
+*   [Status: Done] **LogicTreeWidget Refactor**: `add_action_to_effect` / `add_action_to_option` の重複定義を解消し、アクション追加時の既定値（デフォルト動作）を安定化させました。
 
 ### 2.4 学習基盤 (`dm_toolkit/training`)
 *   [Status: WIP] **Smart Evolution Ecosystem**: デッキ進化システム (`evolution_ecosystem.py`) のプロトタイプを作成。「使用頻度」「リソース貢献度」に基づくスコアリングロジックを検証中。
