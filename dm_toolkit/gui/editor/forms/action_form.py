@@ -164,13 +164,22 @@ class ActionEditForm(BaseEditForm):
     def on_convert_clicked(self):
         if not self.current_item: return
 
+        # Check for children (OPTIONS) and warn user
+        if self.current_item.hasChildren():
+             from PyQt6.QtWidgets import QMessageBox
+             reply = QMessageBox.question(self, tr("Confirm Conversion"),
+                                          tr("This action has child options. The conversion will attempt to migrate them to the Command structure, but verify the result. Continue?"),
+                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+             if reply == QMessageBox.StandardButton.No:
+                 return
+
         # 1. Get current data
         act_data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
 
-        # 2. Convert to Command
+        # 2. Convert to Command (Base)
         cmd_data = ActionConverter.convert(act_data)
 
-        # 3. Request Update from Parent (LogicTreeWidget handles replacement)
+        # 3. Request Update from Parent (LogicTreeWidget handles recursive replacement)
         # We send a special signal to replace the current item with a new type
         self.structure_update_requested.emit(STRUCT_CMD_REPLACE_WITH_COMMAND, cmd_data)
 
