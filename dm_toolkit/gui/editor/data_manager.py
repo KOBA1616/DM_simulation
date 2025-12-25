@@ -19,25 +19,29 @@ class CardDataManager:
 
     def load_templates(self):
         # Resolve path to data/editor_templates.json
-        # Search upwards from current file to find the project root containing 'data/editor_templates.json'
-        current_dir = os.path.dirname(os.path.abspath(__file__))
         filepath = None
 
-        # Traverse upwards
-        while True:
-            check_path = os.path.join(current_dir, 'data', 'editor_templates.json')
-            if os.path.exists(check_path):
-                filepath = check_path
-                break
+        # 1. Check Environment Variable
+        env_path = os.environ.get('DM_EDITOR_TEMPLATES_PATH')
+        if env_path and os.path.exists(env_path):
+            filepath = env_path
+        else:
+            # 2. Search relative to this file
+            # We look in specific known locations relative to the module file to avoid unsafe upward traversal.
+            current_dir = os.path.dirname(os.path.abspath(__file__))
 
-            parent_dir = os.path.dirname(current_dir)
-            if parent_dir == current_dir: # Reached filesystem root
-                break
-            current_dir = parent_dir
+            # Candidates:
+            # - Root data (dev/source layout): ../../../data/editor_templates.json
+            # - Package data (dist layout): ../../data/editor_templates.json
+            candidates = [
+                os.path.join(current_dir, '..', '..', '..', 'data', 'editor_templates.json'),
+                os.path.join(current_dir, '..', '..', 'data', 'editor_templates.json')
+            ]
 
-        # Fallback to CWD only if not found (though user warned about brittleness, we need at least one fallback or fail gracefully)
-        if not filepath and os.path.exists('data/editor_templates.json'):
-             filepath = 'data/editor_templates.json'
+            for candidate in candidates:
+                if os.path.exists(candidate):
+                    filepath = candidate
+                    break
 
         if filepath and os.path.exists(filepath):
             try:
@@ -46,6 +50,8 @@ class CardDataManager:
             except Exception as e:
                 print(f"Error loading templates: {e}")
                 self.templates = {"commands": [], "actions": []}
+        else:
+            print("Warning: editor_templates.json not found.")
 
     def load_data(self, cards_data):
         self.model.clear()
