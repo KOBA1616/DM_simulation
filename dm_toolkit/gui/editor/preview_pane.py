@@ -302,22 +302,26 @@ class CardPreviewWidget(QWidget):
         """
         Consolidated logic to determine if power should be displayed.
         """
-        power = data.get('power', 0)
+        try:
+            power = int(data.get('power', 0))
+        except (ValueError, TypeError):
+            return False
+
         if power <= 0:
             return False
 
-        t = data.get('type', '').upper()
-        # Logic: Show power if > 0, but hide if it's strictly a Spell (and not a Creature).
-        # This handles cases where Spells might accidentally have power set,
-        # or where we want to strictly follow the type rule.
-        is_spell = 'SPELL' in t
+        raw_type = data.get('type', '')
+        if isinstance(raw_type, list):
+            t = " ".join([str(x) for x in raw_type]).upper()
+        else:
+            t = str(raw_type).upper()
+
+        # Logic: Only show power if the type explicitly indicates it is a Creature.
+        # This aligns with standard Duel Masters rules where only Creatures (and variants) have Power.
+        # It prevents power from showing on Spells, Cross Gears, Castles, etc. even if power > 0 is set in data.
         is_creature = 'CREATURE' in t
 
-        # If it is a Spell and NOT a Creature, hide power.
-        if is_spell and not is_creature:
-            return False
-
-        return True
+        return is_creature
 
     def render_standard(self, data, civs):
         self.name_label.setText(data.get('name', '???'))
