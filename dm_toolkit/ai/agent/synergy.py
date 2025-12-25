@@ -2,12 +2,13 @@ import torch
 import torch.nn as nn
 import numpy as np
 import os
+from typing import Optional, cast, Any
 
 class SynergyGraph(nn.Module):
-    def __init__(self, vocab_size, embedding_dim=64, matrix_path=None):
+    def __init__(self, vocab_size: int, embedding_dim: int = 64, matrix_path: Optional[str] = None) -> None:
         super().__init__()
-        self.vocab_size = vocab_size
-        self.embedding_dim = embedding_dim
+        self.vocab_size: int = vocab_size
+        self.embedding_dim: int = embedding_dim
 
         # Learnable synergy embeddings
         # Each card gets a vector representation for synergy calculation
@@ -30,7 +31,7 @@ class SynergyGraph(nn.Module):
         elif matrix_path:
              print(f"Warning: Synergy matrix path {matrix_path} does not exist.")
 
-    def get_bias_for_sequence(self, sequence):
+    def get_bias_for_sequence(self, sequence: torch.Tensor) -> Any:
         """
         Calculates pairwise synergy bias for a sequence of tokens.
 
@@ -43,7 +44,7 @@ class SynergyGraph(nn.Module):
         B, S = sequence.shape
 
         # [Batch, SeqLen, EmbDim]
-        embs = self.synergy_embeddings(sequence)
+        embs = cast(torch.Tensor, self.synergy_embeddings(sequence))
 
         # Calculate pairwise dot product as synergy score
         # [Batch, SeqLen, EmbDim] @ [Batch, EmbDim, SeqLen] -> [Batch, SeqLen, SeqLen]

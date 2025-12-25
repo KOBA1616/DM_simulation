@@ -2,7 +2,7 @@ from typing import Dict, List, Set, Optional
 from .deck_classifier import DeckClassifier
 
 class HandEstimator:
-    def __init__(self, deck_classifier: DeckClassifier):
+    def __init__(self, deck_classifier: DeckClassifier) -> None:
         self.classifier = deck_classifier
         self.observed_cards: Set[int] = set()
         self.deck_probabilities: Dict[str, float] = {}
@@ -10,7 +10,7 @@ class HandEstimator:
         self.default_pool_size = 35.0
         self.default_hand_size = 5.0
 
-    def update(self, observed_card_ids: List[int]):
+    def update(self, observed_card_ids: List[int]) -> None:
         """
         Updates the internal state with newly observed card IDs (e.g., from mana zone, graveyard, battle zone).
         """

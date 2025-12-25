@@ -4,23 +4,23 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Any, List, Optional
 
 
 class Analytics:
-    def __init__(self, data_dir="data/generations"):
-        self.data_dir = data_dir
+    def __init__(self, data_dir: str = "data/generations") -> None:
+        self.data_dir: str = data_dir
         os.makedirs(self.data_dir, exist_ok=True)
 
-    def load_generations(self):
+    def load_generations(self) -> List[Dict[str, Any]]:
         files = sorted(glob.glob(os.path.join(self.data_dir, "gen_*.json")))
-        generations = []
+        generations: List[Dict[str, Any]] = []
         for f in files:
             with open(f, 'r', encoding='utf-8') as fp:
                 generations.append(json.load(fp))
         return generations
 
-    def generate_heatmap(self, output_path="data/analytics/heatmap.png"):
+    def generate_heatmap(self, output_path: str = "data/analytics/heatmap.png") -> None:
         generations = self.load_generations()
         if not generations:
             print("No generation data found.")
@@ -75,7 +75,7 @@ class Analytics:
         plt.savefig(output_path)
         print(f"Heatmap saved to {output_path}")
 
-    def generate_report(self, output_path="data/analytics/report.html"):
+    def generate_report(self, output_path: str = "data/analytics/report.html") -> None:
         generations = self.load_generations()
         if not generations:
             with open(output_path, 'w') as f:

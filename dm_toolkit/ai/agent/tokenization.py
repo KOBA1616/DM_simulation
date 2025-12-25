@@ -1,8 +1,10 @@
 
 import numpy as np
 import dm_ai_module
+from typing import Any
 
-def game_state_to_tokens(game_state, card_db, max_len=64, vocab_size=1000):
+
+def game_state_to_tokens(game_state: Any, card_db: Any, max_len: int = 64, vocab_size: int = 1000) -> np.ndarray:
     """
     Converts a C++ GameState object into a sequence of integer tokens.
     Token Mapping:
