@@ -9,6 +9,7 @@ from dm_toolkit.gui.editor.forms.reaction_form import ReactionEditForm
 from dm_toolkit.gui.editor.forms.command_form import CommandEditForm
 from dm_toolkit.gui.editor.forms.keyword_form import KeywordEditForm
 from dm_toolkit.gui.editor.forms.modifier_form import ModifierEditForm
+from dm_toolkit.gui.editor.forms.option_form import OptionForm
 from dm_toolkit.gui.localization import tr
 
 class OptionEditPage(QWidget):
@@ -40,9 +41,9 @@ class PropertyInspector(QWidget):
         self.empty_page = QLabel(tr("Select an item to edit"))
         self.stack.addWidget(self.empty_page)
 
-        self.option_page = OptionEditPage()
-        self.option_page.structure_update_requested.connect(self.structure_update_requested.emit)
-        self.stack.addWidget(self.option_page)
+        # Replaced Label page with OptionForm
+        self.option_form = OptionForm()
+        self.stack.addWidget(self.option_form)
 
         self.cmd_branch_page = QLabel(tr("Branch selected. Add Commands to this branch."))
         self.cmd_branch_page.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -89,7 +90,7 @@ class PropertyInspector(QWidget):
             "REACTION_ABILITY": self.reaction_form,
             "KEYWORDS": self.keyword_form,
             "MODIFIER": self.modifier_form,
-            "OPTION": self.option_page,
+            "OPTION": self.option_form, # Updated to use Form
             "CMD_BRANCH_TRUE": self.cmd_branch_page,
             "CMD_BRANCH_FALSE": self.cmd_branch_page,
         }
