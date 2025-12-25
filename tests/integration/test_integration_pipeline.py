@@ -1,5 +1,6 @@
 import pytest
 import dm_ai_module
+from typing import Any
 from dm_ai_module import GameState, CardDefinition, CardData, EffectActionType, ActionDef, EffectDef, TriggerType, FilterDef, TargetScope, Civilization
 
 # Helper to register test cards
@@ -39,7 +40,7 @@ class TestIntegrationPipeline:
 
     def setup_method(self):
         self.state = GameState(100)
-        self.card_db = {} # Local db, but we prefer Registry for tests using register_card
+        self.card_db: dict[int, Any] = {} # Local db, but we prefer Registry for tests using register_card
         # Ensure registry is clean/ready or use ids that don't conflict
 
     def test_pipeline_loop_mana(self):

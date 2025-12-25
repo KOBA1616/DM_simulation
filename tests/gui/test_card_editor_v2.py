@@ -1,6 +1,7 @@
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
+from typing import Any, cast
 
 # Mock PyQt6 before importing dm_toolkit modules
 sys.modules['PyQt6.QtWidgets'] = MagicMock()
@@ -44,10 +45,12 @@ class MockQStandardItem(MagicMock):
     def setEditable(self, editable):
         pass
 
-sys.modules['PyQt6.QtGui'].QStandardItem = MockQStandardItem
-sys.modules['PyQt6.QtGui'].QStandardItemModel = MagicMock()
-sys.modules['PyQt6.QtCore'].Qt.ItemDataRole.UserRole = 256
-sys.modules['PyQt6.QtCore'].Qt.ItemDataRole.DisplayRole = 0
+cast(Any, sys.modules['PyQt6.QtGui']).QStandardItem = MockQStandardItem
+cast(Any, sys.modules['PyQt6.QtGui']).QStandardItemModel = MagicMock()
+cast(Any, sys.modules['PyQt6.QtCore']).Qt = MagicMock()
+cast(Any, sys.modules['PyQt6.QtCore']).Qt.ItemDataRole = MagicMock()
+cast(Any, sys.modules['PyQt6.QtCore']).Qt.ItemDataRole.UserRole = 256
+cast(Any, sys.modules['PyQt6.QtCore']).Qt.ItemDataRole.DisplayRole = 0
 
 # Now import DataManager
 from dm_toolkit.gui.editor.data_manager import CardDataManager

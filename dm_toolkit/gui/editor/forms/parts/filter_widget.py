@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 from dm_toolkit.gui.localization import tr
+from typing import Any
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.consts import ZONES, CARD_TYPES
 
@@ -313,7 +314,7 @@ class FilterEditorWidget(QWidget):
         """
         Return dictionary (FilterDef) from UI.
         """
-        filt = {}
+        filt: dict[str, Any] = {}
 
         zones = [z for z, cb in self.zone_checks.items() if cb.isChecked()]
         if zones: filt['zones'] = zones

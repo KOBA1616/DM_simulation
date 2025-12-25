@@ -57,7 +57,7 @@ def export_to_onnx(model_path, output_path, input_size=DEFAULT_INPUT_SIZE, actio
     try:
         torch.onnx.export(
             model,
-            dummy_input,
+            (dummy_input,),
             output_path,
             export_params=True,
             opset_version=18,  # Increased to match modern torch default

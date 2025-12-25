@@ -12,8 +12,12 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from dm_toolkit.gui.localization import tr
 
 # Import Backend Modules
+from types import ModuleType
+
+dm_ai_module: ModuleType | None
 try:
-    import dm_ai_module
+    import dm_ai_module as _dm_ai_module  # type: ignore
+    dm_ai_module = _dm_ai_module
 except ImportError:
     dm_ai_module = None
 
@@ -40,6 +44,9 @@ class SimulationWorker(QThread):
         if not EngineCompat.is_available():
             self.finished_signal.emit(0.0, tr("Error: dm_ai_module not loaded."))
             return
+
+        # Tell mypy that dm_ai_module is available after EngineCompat check
+        assert dm_ai_module is not None
 
         self.progress_signal.emit(0, tr("Initializing..."))
 

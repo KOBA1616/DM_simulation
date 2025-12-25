@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 from dm_toolkit.gui.localization import tr
+from typing import Any, cast
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 
 # Configuration for Condition UI logic
@@ -133,7 +134,7 @@ class ConditionEditorWidget(QGroupBox):
         # dataChanged is connected directly
 
     def update_ui_visibility(self, condition_type):
-        config = CONDITION_UI_CONFIG.get(condition_type, CONDITION_UI_CONFIG["NONE"])
+        config = cast(dict[str, Any], CONDITION_UI_CONFIG.get(condition_type, CONDITION_UI_CONFIG["NONE"]))
 
         show_val = config.get("show_val", True)
         label_val = config.get("label_val", "Value")

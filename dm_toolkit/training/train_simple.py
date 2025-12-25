@@ -7,6 +7,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import argparse
 from typing import List, Optional, Tuple, Dict, Any
+from types import ModuleType
 from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
 
@@ -23,8 +24,10 @@ if python_path not in sys.path:
 if project_root not in sys.path:
     sys.path.append(project_root)
 
+dm_ai_module: ModuleType | None
 try:
-    import dm_ai_module
+    import dm_ai_module as _dm_ai_module  # type: ignore
+    dm_ai_module = _dm_ai_module
 except ImportError:
     print("Warning: Could not import dm_ai_module. Using fallback logic.")
     dm_ai_module = None
@@ -32,6 +35,7 @@ except ImportError:
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 # from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 from dm_toolkit.training.network_v2 import NetworkV2
+from typing import Any
 
 class DuelDataset(Dataset):
     """
@@ -174,6 +178,9 @@ class Trainer:
         if self.values.dim() == 1:
             self.values = self.values.unsqueeze(1)
 
+        # Type: Optional torch Tensor for masks
+        from typing import Optional as _Optional
+        self.masks: _Optional[torch.Tensor]
         if all_masks:
             self.masks = torch.tensor(np.concatenate(all_masks), dtype=torch.float32)
             print("Action masks loaded.")
@@ -187,6 +194,7 @@ class Trainer:
         # Prioritize Transformer if tokens are present, UNLESS we specifically want ResNet (need arg?)
         # For now, auto-detect: if tokens exist, use Transformer.
 
+        self.network: Any
         if self.use_transformer:
             print("Mode: TRANSFORMER (Tokenized Data) - NetworkV2")
             self.tokens = all_tokens
@@ -196,8 +204,8 @@ class Trainer:
             max_seq = 0
             for t in self.tokens:
                 if t.numel() > 0:
-                    max_token = max(max_token, t.max().item())
-                    max_seq = max(max_seq, t.shape[0])
+                    max_token = max(max_token, int(t.max().item()))
+                    max_seq = max(max_seq, int(t.shape[0]))
 
             self.vocab_size = max_token + 1
             if dm_ai_module is not None:
@@ -206,7 +214,7 @@ class Trainer:
                 except Exception as e:
                     print(f"Warning: Could not get vocab size from module: {e}")
 
-            self.max_seq_len = max(max_seq, 200) # Ensure at least 200
+            self.max_seq_len = int(max(max_seq, 200)) # Ensure at least 200 and cast to int
 
             print(f"Vocab Size: {self.vocab_size}, Max Seq Len: {self.max_seq_len}")
 
@@ -333,7 +341,7 @@ class Trainer:
                 dummy_input = torch.randn(1, self.input_size).to(self.device)
                 torch.onnx.export(
                     self.network,
-                    dummy_input,
+                    (dummy_input,),
                     onnx_path,
                     export_params=True,
                     input_names=['state'],

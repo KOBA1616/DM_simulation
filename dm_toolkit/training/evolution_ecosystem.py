@@ -220,6 +220,8 @@ class EvolutionEcosystem:
 
     def evaluate_deck(self, challenger_deck, challenger_name, num_games=10):
         """Runs the challenger against a sample of the meta."""
+        # Predeclare card_counts for mypy (used in both branches)
+        card_counts: CardCounts
         if not self.meta_decks:
             # If no meta, it wins by default, but we should still score it
             # Run self-play or dummy play for stats
@@ -278,7 +280,7 @@ class EvolutionEcosystem:
 
         # Calculate Deck Smart Score
         total_smart_score = 0
-        card_counts: CardCounts = {}
+        card_counts = {}
         for cid in challenger_deck:
             card_counts[cid] = card_counts.get(cid, 0) + 1
 

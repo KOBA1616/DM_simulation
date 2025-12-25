@@ -58,7 +58,9 @@ class CardSearchWidget(QWidget):
         self.result_list = QListWidget()
         self.result_list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.result_list.setDragEnabled(True)
-        self.result_list.viewport().setAcceptDrops(False)
+        vp = self.result_list.viewport()
+        if vp is not None:
+            vp.setAcceptDrops(False)
         self.result_list.setDropIndicatorShown(True)
         self.result_list.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
         layout.addWidget(self.result_list)

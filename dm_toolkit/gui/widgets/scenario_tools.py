@@ -373,7 +373,7 @@ class ScenarioToolsDock(QDockWidget):
         name, ok = QInputDialog.getText(self, tr("Save Scenario"), tr("Scenario Name:"))
         if not ok or not name: return
 
-        config = {
+        config: dict[str, object] = {
             "my_mana": len(self.gs.players[0].mana_zone),
             "enemy_shield_count": len(self.gs.players[1].shield_zone),
             "enemy_can_use_trigger": True,

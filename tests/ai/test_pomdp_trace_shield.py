@@ -28,7 +28,7 @@ def test_shield_trace_reduces_prob():
     vec0 = b.get_vector()
 
     prev = None
-    v_after = None
+    v_after: list[float] | None = None
     for step in trace:
         s = apply_state_to_gamestate(step)
         if prev is None:
@@ -38,5 +38,6 @@ def test_shield_trace_reduces_prob():
         prev = s
         v_after = b.get_vector()
 
+    assert v_after is not None
     assert abs(sum(v_after) - 1.0) < 1e-6
     assert vec0[0] >= v_after[0]

@@ -5,6 +5,7 @@ import random
 import json
 import csv
 from typing import Any, List, Optional, Dict, cast
+from types import ModuleType
 
 # Ensure bin is in path for dm_ai_module
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,8 +22,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, QTimer
 
+dm_ai_module: ModuleType | None
 try:
-    import dm_ai_module
+    import dm_ai_module as _dm_ai_module  # type: ignore
+    dm_ai_module = _dm_ai_module
 except ImportError:
     dm_ai_module = None
 
@@ -398,7 +401,7 @@ class GameWindow(QMainWindow):
 
     def reload_card_data(self) -> None:
         try:
-            loaded = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+            loaded = EngineCompat.JsonLoader_load_cards("data/cards.json")
             if loaded is not None:
                 self.card_db = loaded
             self.civ_map = self.build_civ_map()
