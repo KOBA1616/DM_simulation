@@ -4,8 +4,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 # Mock dm_ai_module if it's not available in the environment
-sys.modules['dm_ai_module'] = MagicMock()
-import dm_ai_module
+try:
+    import dm_ai_module
+except ImportError:
+    sys.modules['dm_ai_module'] = MagicMock()
+    import dm_ai_module
 
 from dm_toolkit.engine.compat import EngineCompat
 
