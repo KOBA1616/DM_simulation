@@ -505,7 +505,10 @@ class CardDataManager:
     def format_command_label(self, command):
         """Generates a human-readable label for a command."""
         cmd_type = command.get('type', 'NONE')
-        return f"{tr('Command')}: {tr(cmd_type)}"
+        label = f"{tr('Command')}: {tr(cmd_type)}"
+        if command.get('legacy_warning'):
+             label += " [WARNING: Incomplete Conversion]"
+        return label
 
     def _create_action_item(self, action):
         if 'uid' not in action:
@@ -526,6 +529,9 @@ class CardDataManager:
                     sub_item = self._create_action_item(sub_action)
                     opt_item.appendRow(sub_item)
         return item
+
+    def format_action_label(self, action):
+        return f"{tr('Action')}: {tr(action.get('type', 'NONE'))}"
 
     def create_command_item(self, command):
         if 'uid' not in command:

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu, QInputDialog
+from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu, QInputDialog, QMessageBox
 from PyQt6.QtGui import QStandardItemModel, QStandardItem, QAction
 from PyQt6.QtCore import Qt, QModelIndex
 from dm_toolkit.gui.localization import tr
@@ -84,6 +84,11 @@ class LogicTreeWidget(QTreeView):
                  add_reaction_action.triggered.connect(lambda: self.add_reaction(index))
                  menu.addAction(add_reaction_action)
 
+            # Bulk Conversion Action
+            convert_all_action = QAction(tr("Convert All Legacy Actions to Commands"), self)
+            convert_all_action.triggered.connect(lambda: self.convert_all_legacy_actions_in_node(index))
+            menu.addAction(convert_all_action)
+
         elif item_type == "EFFECT":
              cmd_menu = menu.addMenu(tr("Add Command"))
              templates = self.data_manager.templates.get("commands", [])
@@ -114,6 +119,10 @@ class LogicTreeWidget(QTreeView):
                 add_opt_action.triggered.connect(lambda: self.add_option(index))
                 menu.addAction(add_opt_action)
 
+            replace_cmd_action = QAction(tr("Convert to Command"), self)
+            replace_cmd_action.triggered.connect(lambda: self.replace_item_with_command(index, self._convert_action_tree_to_command(self.standard_model.itemFromIndex(index))))
+            menu.addAction(replace_cmd_action)
+
             remove_action = QAction(tr("Remove Action"), self)
             remove_action.triggered.connect(lambda: self.remove_current_item())
             menu.addAction(remove_action)
@@ -143,6 +152,40 @@ class LogicTreeWidget(QTreeView):
         if not menu.isEmpty():
             menu.exec(self.viewport().mapToGlobal(pos))
 
+    def convert_all_legacy_actions_in_node(self, index):
+        """Recursively converts all Actions to Commands starting from the given node."""
+        if not index.isValid(): return
+
+        item = self.standard_model.itemFromIndex(index)
+        count = self._recursive_convert_actions(item)
+        if count > 0:
+            QMessageBox.information(self, tr("Conversion Complete"), f"{tr('Converted')} {count} {tr('actions to commands.')}")
+        else:
+            QMessageBox.information(self, tr("Conversion Info"), tr("No legacy actions found to convert."))
+
+    def _recursive_convert_actions(self, item):
+        """
+        Traverses the tree and converts ACTION items to COMMAND items.
+        Returns the number of converted actions.
+        """
+        count = 0
+        # Iterate backwards to safely remove/insert rows
+        for i in reversed(range(item.rowCount())):
+            child = item.child(i)
+            child_type = child.data(Qt.ItemDataRole.UserRole + 1)
+
+            if child_type == "ACTION":
+                # Convert this Action (and its children)
+                cmd_data = self._convert_action_tree_to_command(child)
+                self.replace_item_with_command(child.index(), cmd_data)
+                count += 1
+                # Note: replace_item_with_command reconstructs the node, so we don't recurse into the old child.
+                # However, _convert_action_tree_to_command ALREADY handled the recursion for options.
+            else:
+                # Recurse deeper
+                count += self._recursive_convert_actions(child)
+        return count
+
     def replace_item_with_command(self, index, cmd_data):
         """Replaces a legacy Action item with a new Command item."""
         if not index.isValid(): return
@@ -167,11 +210,20 @@ class LogicTreeWidget(QTreeView):
                                # Recursively capture and convert
                                c_cmd = self._convert_action_tree_to_command(act_child)
                                opt_actions_data.append(c_cmd)
+                          elif act_child.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                               # Already a command, preserve it
+                               opt_actions_data.append(act_child.data(Qt.ItemDataRole.UserRole + 2))
                       preserved_options_data.append(opt_actions_data)
 
         # 2. Inject options into cmd_data if exists
-        if preserved_options_data:
-             cmd_data['options'] = preserved_options_data
+        # NOTE: _convert_action_tree_to_command already handles options conversion!
+        # If replace_item_with_command is called with the result of _convert..., cmd_data has 'options'.
+        # But if we collected existing COMMAND nodes (mixed model), we need to ensure structure matches.
+
+        # If cmd_data ALREADY has options (from conversion), we prefer that.
+        # But wait, mixed models might have COMMANDs inside ACTION options?
+        # _convert_action_tree_to_command recurses. If it finds COMMAND inside ACTION, it needs to handle it.
+        # Let's fix _convert_action_tree_to_command to handle mixed children.
 
         # 3. Remove old Action
         if parent_item is None:
@@ -202,9 +254,12 @@ class LogicTreeWidget(QTreeView):
                 if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
                     opt_cmds = []
                     for k in range(child.rowCount()):
-                        sub_act = child.child(k)
-                        if sub_act.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
-                            opt_cmds.append(self._convert_action_tree_to_command(sub_act))
+                        sub_item = child.child(k)
+                        if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
+                            opt_cmds.append(self._convert_action_tree_to_command(sub_item))
+                        elif sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                            # Preserve existing commands
+                            opt_cmds.append(sub_item.data(Qt.ItemDataRole.UserRole + 2))
                     options_list.append(opt_cmds)
 
         if options_list:
