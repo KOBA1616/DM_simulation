@@ -87,8 +87,6 @@ namespace dm::engine {
         std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation, std::map<std::string, int>& execution_context);
         void delegate_selection(const ResolutionContext& ctx);
 
-        void check_mega_last_burst(dm::core::GameState& game_state, const dm::core::CardInstance& card, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
-
         static dm::core::PlayerID get_controller(const dm::core::GameState& game_state, int instance_id);
 
     private:

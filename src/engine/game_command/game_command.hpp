@@ -14,7 +14,8 @@ namespace dm::engine::game_command {
         DECLARE_REACTION,
         STAT,
         GAME_RESULT,
-        ADD_CARD
+        ADD_CARD,
+        SHUFFLE
     };
 
     class GameCommand {
