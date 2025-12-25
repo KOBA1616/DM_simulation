@@ -345,7 +345,7 @@ class CardDataManager:
         target_item = parent_item
 
         # Create Item
-        if item_type == "ACTION" and 'uid' not in data:
+        if 'uid' not in data:
             data['uid'] = str(uuid.uuid4())
 
         new_item = QStandardItem(label)
@@ -450,6 +450,8 @@ class CardDataManager:
             cmd_item.appendRow(false_item)
 
     def _create_card_item(self, card):
+        if 'uid' not in card:
+            card['uid'] = str(uuid.uuid4())
         item = QStandardItem(f"{card.get('id')} - {card.get('name', 'No Name')}")
         item.setData("CARD", Qt.ItemDataRole.UserRole + 1)
         item.setData(card, Qt.ItemDataRole.UserRole + 2)
@@ -465,12 +467,16 @@ class CardDataManager:
         return item
 
     def _create_spell_side_item(self, spell_data):
+        if 'uid' not in spell_data:
+            spell_data['uid'] = str(uuid.uuid4())
         item = QStandardItem(f"{tr('Spell Side')}: {spell_data.get('name', 'No Name')}")
         item.setData("SPELL_SIDE", Qt.ItemDataRole.UserRole + 1)
         item.setData(spell_data, Qt.ItemDataRole.UserRole + 2)
         return item
 
     def _create_effect_item(self, effect):
+        if 'uid' not in effect:
+            effect['uid'] = str(uuid.uuid4())
         trig = effect.get('trigger', 'NONE')
         item = QStandardItem(f"{tr('Effect')}: {tr(trig)}")
         item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
@@ -478,6 +484,8 @@ class CardDataManager:
         return item
 
     def _create_modifier_item(self, modifier):
+        if 'uid' not in modifier:
+            modifier['uid'] = str(uuid.uuid4())
         mtype = modifier.get('type', 'NONE')
         item = QStandardItem(f"{tr('Static')}: {tr(mtype)}")
         item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
@@ -485,6 +493,8 @@ class CardDataManager:
         return item
 
     def _create_reaction_item(self, reaction):
+        if 'uid' not in reaction:
+            reaction['uid'] = str(uuid.uuid4())
         rtype = reaction.get('type', 'NONE')
         item = QStandardItem(f"{tr('Reaction Ability')}: {rtype}")
         item.setData("REACTION_ABILITY", Qt.ItemDataRole.UserRole + 1)
@@ -492,6 +502,8 @@ class CardDataManager:
         return item
 
     def _create_command_item(self, command):
+        if 'uid' not in command:
+            command['uid'] = str(uuid.uuid4())
         cmd_type = command.get('type', 'NONE')
         item = QStandardItem(f"{tr('Command')}: {tr(cmd_type)}")
         item.setData("COMMAND", Qt.ItemDataRole.UserRole + 1)
