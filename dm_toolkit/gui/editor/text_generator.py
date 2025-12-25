@@ -150,6 +150,22 @@ class CardTextGenerator:
         lines = []
 
         # 1. Header (Name / Cost / Civ / Race)
+        lines.extend(cls.generate_header_lines(data))
+
+        # 2. Body (Keywords, Effects, etc.)
+        lines.extend(cls.generate_body_text_lines(data))
+
+        # 4. Twinpact (Spell Side)
+        spell_side = data.get("spell_side")
+        if spell_side and include_twinpact:
+            lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
+            lines.append(cls.generate_text(spell_side))
+
+        return "\n".join(lines)
+
+    @classmethod
+    def generate_header_lines(cls, data: Dict[str, Any]) -> List[str]:
+        lines = []
         name = data.get("name", "Unknown")
         cost = data.get("cost", 0)
 
@@ -177,6 +193,14 @@ class CardTextGenerator:
              lines.append(f"パワー {power}")
 
         lines.append("-" * 20)
+        return lines
+
+    @classmethod
+    def generate_body_text_lines(cls, data: Dict[str, Any]) -> List[str]:
+        """
+        Generates just the body text (keywords, effects, etc.) without the header.
+        """
+        lines = []
 
         # 2. Keywords
         keywords = data.get("keywords", {})
@@ -238,13 +262,7 @@ class CardTextGenerator:
                  if text:
                      lines.append(f"■ {text}")
 
-        # 4. Twinpact (Spell Side)
-        spell_side = data.get("spell_side")
-        if spell_side and include_twinpact:
-            lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            lines.append(cls.generate_text(spell_side))
-
-        return "\n".join(lines)
+        return lines
 
     @classmethod
     def _format_civs(cls, civs: List[str]) -> str:
