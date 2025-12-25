@@ -11,7 +11,8 @@ class ActionConverter:
         act_type = action_data.get('type', 'NONE')
         cmd = {
             "type": "NONE",
-            "uid": str(uuid.uuid4())
+            "uid": str(uuid.uuid4()),
+            "legacy_warning": False
         }
 
         # Common fields transfer
@@ -59,9 +60,12 @@ class ActionConverter:
                 cmd['type'] = "TRANSITION"
                 cmd['to_zone'] = "SHIELD_ZONE"
             elif act_type == "SHIELD_BURN":
-                 cmd['type'] = "DESTROY" # Close enough, or TRANSITION
+                 # Use TRANSITION to avoid potential 'Break' logic triggers associated with DESTROY
+                 cmd['type'] = "TRANSITION"
                  cmd['from_zone'] = "SHIELD_ZONE"
                  cmd['to_zone'] = "GRAVEYARD"
+                 cmd['legacy_warning'] = True
+                 cmd['legacy_original_type'] = "SHIELD_BURN"
             else:
                 cmd['type'] = act_type # Direct map for DESTROY, DISCARD, RETURN_TO_HAND
 
@@ -145,11 +149,15 @@ class ActionConverter:
         elif act_type == "MEKRAID":
             # Mekraid is complex (Look top N, Filter, Play).
             cmd['type'] = "NONE"
-            cmd['str_param'] = f"Legacy: {act_type}"
+            cmd['legacy_warning'] = True
+            cmd['legacy_original_type'] = "MEKRAID"
+            cmd['str_param'] = f"Legacy: {act_type} - Requires manual reconstruction (FLOW)"
 
         # Fallback for unknown
         else:
             cmd['type'] = "NONE"
+            cmd['legacy_warning'] = True
+            cmd['legacy_original_type'] = act_type
             cmd['str_param'] = f"Legacy: {act_type}"
             ActionConverter._transfer_targeting(action_data, cmd)
 
