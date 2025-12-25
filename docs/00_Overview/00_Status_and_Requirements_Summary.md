@@ -42,7 +42,7 @@ AI領域では、並列対戦環境の構築が完了し、次は不完全情報
 *   [Status: Done] **Lethal Solver (DFS)**: 基本的な詰み判定（`LethalSolver`）の実装完了。ただし現在はヒューリスティックベースであり、厳密解ではない。
 *   [Status: Done] **Parallel Runner**: OpenMPを用いた並列対戦環境 (`ParallelRunner`) の実装完了。`verify_performance.py` によるバッチ推論との連携を確認済み。
 *   [Status: Done] **MCTS Implementation**: AlphaZero準拠のモンテカルロ木探索実装完了。
-*   [Status: WIP] **Inference System**: 相手の手札やシールド推論を行うシステムの設計段階（Phase 2）。
+*   [Status: Review] **Inference System**: 相手の手札やシールド推論を行う `PimcGenerator` および `DeckInference` の基本実装と、Pythonバインディング・テストが完了（Phase 2）。
 
 ### 2.3 カードエディタ & ツール (`dm_toolkit/gui` / `python/gui`)
 *   [Status: Done] **Card Editor V2**: データ構造をJSONツリーベースに刷新。
