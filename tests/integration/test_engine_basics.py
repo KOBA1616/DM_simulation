@@ -2,6 +2,7 @@ import sys
 import os
 import pytest
 import time
+from typing import Dict, Any, Type
 
 # Add the bin directory to sys.path
 sys.path.append(os.path.join(os.getcwd(), 'bin'))
@@ -12,8 +13,10 @@ except ImportError:
     pass
 
 class TestEngineBasics:
+    card_db: Dict[int, Any] = {}
+
     @classmethod
-    def setup_class(cls):
+    def setup_class(cls) -> None:
         # Load real cards if available, otherwise mock
         try:
             cls.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
@@ -22,7 +25,7 @@ class TestEngineBasics:
             print(f"Failed to load cards: {e}")
             cls.card_db = {}
 
-    def test_mana_charge(self):
+    def test_mana_charge(self) -> None:
         """Test charging mana functionality."""
         # Use GameState directly to avoid copy issues with GameInstance.state
         state = dm_ai_module.GameState(1000)
@@ -69,7 +72,7 @@ class TestEngineBasics:
         assert len(p0.mana_zone) == 1
         assert len(p0.hand) == 0
 
-    def test_play_creature(self):
+    def test_play_creature(self) -> None:
         """Test playing a creature."""
         state = dm_ai_module.GameState(1000)
 
@@ -148,7 +151,7 @@ class TestEngineBasics:
         # if creature_id in stats:
         #      assert stats[creature_id]['play_count'] >= 1
 
-    def test_attack_player(self):
+    def test_attack_player(self) -> None:
         """Test attacking player and shield break."""
         state = dm_ai_module.GameState(1000)
 
@@ -204,7 +207,7 @@ class TestEngineBasics:
         # Check shield count (assuming auto break resolution for now or manual if pending effects)
         # assert len(p1.shield_zone) == 0
 
-    def test_card_stats_initialization(self):
+    def test_card_stats_initialization(self) -> None:
         """Verify CardStats initialization."""
         # Use GameState directly
         state = dm_ai_module.GameState(1000)
