@@ -66,7 +66,8 @@ class LogicTreeWidget(QTreeView):
         temp = index
         while temp.isValid():
             if temp.data(Qt.ItemDataRole.UserRole + 1) == "CARD":
-                cdata = temp.data(Qt.ItemDataRole.UserRole + 2)
+                # Null Safety Fix: Default to empty dict if data is missing
+                cdata = temp.data(Qt.ItemDataRole.UserRole + 2) or {}
                 card_type = cdata.get('type', 'CREATURE')
                 break
             temp = temp.parent()
@@ -107,7 +108,7 @@ class LogicTreeWidget(QTreeView):
              menu.addAction(remove_action)
 
         elif item_type == "ACTION":
-            act_data = index.data(Qt.ItemDataRole.UserRole + 2)
+            act_data = index.data(Qt.ItemDataRole.UserRole + 2) or {}
             if act_data.get('type') == "SELECT_OPTION":
                 add_opt_action = QAction(tr("Add Option"), self)
                 add_opt_action.triggered.connect(lambda: self.add_option(index))
