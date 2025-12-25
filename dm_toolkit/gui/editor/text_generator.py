@@ -161,7 +161,7 @@ class CardTextGenerator:
             lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
             lines.append(cls.generate_text(spell_side))
 
-        return "\n".join(lines)
+        return lines
 
     @classmethod
     def generate_header_lines(cls, data: Dict[str, Any]) -> List[str]:
@@ -196,7 +196,7 @@ class CardTextGenerator:
         return lines
 
     @classmethod
-    def generate_body_text_lines(cls, data: Dict[str, Any]) -> List[str]:
+    def generate_body_text_lines(cls, data: Dict[str, Any], include_twinpact: bool = True) -> List[str]:
         """
         Generates just the body text (keywords, effects, etc.) without the header.
         """
