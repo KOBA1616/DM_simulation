@@ -1,0 +1,8 @@
+scipy-stubs
+types-Pygments
+types-colorama
+types-networkx
+types-pexpect
+types-protobuf
+types-tabulate
+types-tqdm
