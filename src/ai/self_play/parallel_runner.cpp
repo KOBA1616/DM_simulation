@@ -248,7 +248,7 @@ namespace dm::ai {
             if (stop_threads) return;
             try {
                 uint32_t seed = std::random_device{}();
-                dm::core::GameState determinized_state = dm::ai::inference::PIMCGenerator::generate_determinized_state(
+                dm::core::GameState determinized_state = dm::ai::inference::PimcGenerator::generate_determinized_state(
                     observation, *card_db_, observer_id, opponent_deck_candidates, seed
                 );
 

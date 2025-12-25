@@ -10,6 +10,7 @@
 #include "ai/encoders/tensor_converter.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include "ai/inference/deck_inference.hpp"
+#include "ai/inference/pimc_generator.hpp"
 #include "ai/pomdp/pomdp.hpp"
 #include "ai/pomdp/parametric_belief.hpp"
 #include "ai/data_collection/data_collector.hpp"
@@ -126,11 +127,20 @@ void bind_ai(py::module& m) {
         .def("get_population", &MetaEnvironment::get_population)
         .def("get_agent", &MetaEnvironment::get_agent);
 
-    py::class_<dm::ai::inference::DeckInference>(m, "DeckInference")
+    py::class_<dm::ai::inference::DeckInference, std::shared_ptr<dm::ai::inference::DeckInference>>(m, "DeckInference")
         .def(py::init<>())
         .def("load_decks", &dm::ai::inference::DeckInference::load_decks)
         .def("infer_probabilities", &dm::ai::inference::DeckInference::infer_probabilities)
         .def("sample_hidden_cards", &dm::ai::inference::DeckInference::sample_hidden_cards);
+
+    py::class_<dm::ai::inference::PimcGenerator>(m, "PimcGenerator")
+        .def(py::init([](const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+            // Create shared_ptr by copying the map
+            return std::make_unique<dm::ai::inference::PimcGenerator>(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db));
+        }))
+        .def("set_inference_model", &dm::ai::inference::PimcGenerator::set_inference_model)
+        .def("generate_determinized_state", static_cast<dm::core::GameState (dm::ai::inference::PimcGenerator::*)(const dm::core::GameState&, dm::core::PlayerID, uint32_t)>(&dm::ai::inference::PimcGenerator::generate_determinized_state))
+        .def_static("generate_determinized_state_static", static_cast<dm::core::GameState (*)(const dm::core::GameState&, const std::map<dm::core::CardID, dm::core::CardDefinition>&, dm::core::PlayerID, const std::vector<dm::core::CardID>&, uint32_t)>(&dm::ai::inference::PimcGenerator::generate_determinized_state));
 
     py::class_<dm::ai::POMDPInference>(m, "POMDPInference")
         .def(py::init<>())
