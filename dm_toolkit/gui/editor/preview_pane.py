@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QGroupBox, QTextEdit, QFrame, QGridLayout,
     QHBoxLayout, QGraphicsDropShadowEffect
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QRect
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
@@ -28,21 +28,23 @@ class ManaCostLabel(QLabel):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
+        # Calculate square drawing area centered in the widget
         rect = self.rect()
-        # Ensure it's a circle - take min dimension
-        d = min(rect.width(), rect.height())
-        # Center the circle
-        x = (rect.width() - d) // 2
-        y = (rect.height() - d) // 2
+        side = min(rect.width(), rect.height())
 
-        # Adjust for border (2px width -> 1px inset from each side to fit)
+        # Calculate offsets to center the square
+        x_offset = (rect.width() - side) // 2
+        y_offset = (rect.height() - side) // 2
+
+        # Define the drawing rect with a margin for the border
+        # Border width is 2, so we need 1px margin on each side to keep it inside
         margin = 1
-        draw_rect = rect.adjusted(x + margin, y + margin, -(x + margin), -(y + margin))
+        draw_size = side - 2 * margin
 
-        # If rect is too small, fallback
-        if draw_rect.width() <= 0:
-            super().paintEvent(event)
+        if draw_size <= 0:
             return
+
+        draw_rect = QRect(x_offset + margin, y_offset + margin, draw_size, draw_size)
 
         if not self.civs:
              painter.setBrush(QColor("#A9A9A9"))
@@ -76,11 +78,12 @@ class ManaCostLabel(QLabel):
         painter.setPen(pen)
         painter.drawEllipse(draw_rect)
 
-        # Draw Text (Number) - Manual drawing to ensure centering
+        # Draw Text (Number)
         font = self.font()
         font.setBold(True)
-        # Adjust font size based on circle size (approx 55% of diameter)
-        font_size = max(8, int(d * 0.55))
+        # Calculate font size relative to the actual drawing area
+        # Using approx 60% of the inner diameter for better visibility
+        font_size = max(8, int(draw_size * 0.6))
         font.setPixelSize(font_size)
         painter.setFont(font)
         painter.setPen(Qt.GlobalColor.white)
