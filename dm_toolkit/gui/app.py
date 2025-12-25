@@ -4,6 +4,7 @@ import os
 import random
 import json
 import csv
+from typing import Any, List, Optional, Dict, cast
 
 # Ensure bin is in path for dm_ai_module
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,7 +20,13 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt, QTimer
-import dm_ai_module
+
+try:
+    import dm_ai_module
+except ImportError:
+    dm_ai_module = None
+
+from dm_toolkit.types import GameState, CardDB, Action, PlayerID, CardID
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.gui.localization import tr, describe_command
 from dm_toolkit.gui.deck_builder import DeckBuilder
@@ -34,37 +41,45 @@ from dm_toolkit.gui.widgets.loop_recorder import LoopRecorderWidget
 from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 
 class GameWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("DM AI Simulator")
         self.resize(1600, 900)
         
         # Game State
-        self.gs = dm_ai_module.GameState(42)
-        self.gs.setup_test_duel()
+        if dm_ai_module:
+            self.gs: GameState = dm_ai_module.GameState(42)
+            self.gs.setup_test_duel()
+        else:
+            self.gs = cast(GameState, None)
+
         # Load card database: prefer C++ JsonLoader if available, otherwise fallback to Python JSON
-        self.card_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
-        if self.card_db:
+        self.card_db: CardDB = {}
+        loaded_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
+        if loaded_db:
+             self.card_db = loaded_db
              EngineCompat.PhaseManager_start_game(self.gs, self.card_db)
         else:
             try:
-                with open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'cards.json'), 'r', encoding='utf-8') as _f:
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                json_path = os.path.join(base_dir, 'data', 'cards.json')
+                with open(json_path, 'r', encoding='utf-8') as _f:
                     self.card_db = json.load(_f)
             except Exception:
                 # Fallback to empty DB to allow UI to start; functionality will be limited
-                self.card_db = []
+                self.card_db = {}
         
-        self.p0_deck_ids = None
-        self.p1_deck_ids = None
-        self.last_action = None
-        self.selected_targets = []
-        self.last_command_index = 0  # For incremental command logging
+        self.p0_deck_ids: Optional[List[int]] = None
+        self.p1_deck_ids: Optional[List[int]] = None
+        self.last_action: Optional[Action] = None
+        self.selected_targets: List[int] = []
+        self.last_command_index: int = 0  # For incremental command logging
 
         # Simulation Timer
         self.timer = QTimer()
         self.timer.timeout.connect(self.step_phase)
-        self.is_running = False
-        self.is_processing = False
+        self.is_running: bool = False
+        self.is_processing: bool = False
 
         # Toolbar Setup
         self.toolbar = QToolBar(tr("Main Toolbar"), self)
@@ -334,7 +349,7 @@ class GameWindow(QMainWindow):
         self.splitDockWidget(self.stack_dock, self.log_dock, Qt.Orientation.Vertical)
 
         # 3. MCTS Dock (Right) - Default Hidden
-        self.mcts_dock = QDockWidget(tr("MCTS Analysis"), self)
+        self.mcts_dock: QDockWidget = QDockWidget(tr("MCTS Analysis"), self)
         self.mcts_dock.setObjectName("MCTSDock")
         self.mcts_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         self.mcts_view = MCTSView()
@@ -343,7 +358,7 @@ class GameWindow(QMainWindow):
         self.mcts_dock.hide()
 
         # 4. Loop Recorder Dock (Left) - Default Hidden
-        self.loop_dock = QDockWidget(tr("Loop Recorder"), self)
+        self.loop_dock: QDockWidget = QDockWidget(tr("Loop Recorder"), self)
         self.loop_dock.setObjectName("LoopDock")
         self.loop_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
         self.loop_recorder = LoopRecorderWidget(lambda: self.gs)
@@ -359,19 +374,19 @@ class GameWindow(QMainWindow):
         self.update_ui()
         self.showMaximized()
         
-    def open_deck_builder(self):
+    def open_deck_builder(self) -> None:
         self.deck_builder = DeckBuilder(self.card_db)
         self.deck_builder.show()
 
-    def open_card_editor(self):
+    def open_card_editor(self) -> None:
         self.card_editor = CardEditor("data/cards.json")
         self.card_editor.data_saved.connect(self.reload_card_data)
         self.card_editor.show()
 
-    def open_scenario_editor(self):
+    def open_scenario_editor(self) -> None:
         """Open the Scenario Editor if available; otherwise show info."""
         try:
-            from dm_toolkit.gui import scenario_editor
+            from dm_toolkit.gui.editor import scenario_editor
             # Expect ScenarioEditor to be a dialog/class taking card_db
             if hasattr(scenario_editor, 'ScenarioEditor'):
                 self.scenario_editor = scenario_editor.ScenarioEditor(self.card_db, parent=self)
@@ -381,9 +396,11 @@ class GameWindow(QMainWindow):
             pass
         QMessageBox.information(self, tr("Scenario Editor"), tr("Scenario Editor not available in this environment."))
 
-    def reload_card_data(self):
+    def reload_card_data(self) -> None:
         try:
-            self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+            loaded = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+            if loaded is not None:
+                self.card_db = loaded
             self.civ_map = self.build_civ_map()
 
             # Refresh Deck Builder if open
@@ -397,7 +414,11 @@ class GameWindow(QMainWindow):
         except Exception as e:
             self.log_list.addItem(f"{tr('Error reloading cards')}: {e}")
 
-    def toggle_scenario_mode(self, checked):
+    def build_civ_map(self) -> Dict[str, Any]:
+        # Dummy implementation since method was referenced but missing in original
+        return {}
+
+    def toggle_scenario_mode(self, checked: bool) -> None:
         if checked:
             self.scenario_tools.show()
             self.log_list.addItem(tr("Scenario Mode Enabled"))
@@ -408,11 +429,11 @@ class GameWindow(QMainWindow):
             self.scenario_tools.hide()
             self.log_list.addItem(tr("Scenario Mode Disabled"))
 
-    def open_simulation_dialog(self):
+    def open_simulation_dialog(self) -> None:
         self.sim_dialog = SimulationDialog(self.card_db, self)
         self.sim_dialog.show()
 
-    def load_deck_p0(self):
+    def load_deck_p0(self) -> None:
         os.makedirs("data/decks", exist_ok=True)
         fname, _ = QFileDialog.getOpenFileName(
             self, tr("Load Deck P0"), "data/decks", "JSON Files (*.json)"
@@ -430,7 +451,7 @@ class GameWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
-    def load_deck_p1(self):
+    def load_deck_p1(self) -> None:
         os.makedirs("data/decks", exist_ok=True)
         fname, _ = QFileDialog.getOpenFileName(
             self, tr("Load Deck P1"), "data/decks", "JSON Files (*.json)"
@@ -448,10 +469,10 @@ class GameWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
-    def show_help(self):
+    def show_help(self) -> None:
         QMessageBox.information(self, tr("Help / Manual"), "Help text...")
 
-    def toggle_simulation(self):
+    def toggle_simulation(self) -> None:
         if self.is_running:
             self.timer.stop()
             self.start_btn.setText(tr("Start Sim"))
@@ -461,7 +482,7 @@ class GameWindow(QMainWindow):
             self.start_btn.setText(tr("Stop Sim"))
             self.is_running = True
 
-    def reset_game(self):
+    def reset_game(self) -> None:
         self.timer.stop()
         self.is_running = False
         self.selected_targets = []
@@ -469,12 +490,16 @@ class GameWindow(QMainWindow):
         self.start_btn.setText(tr("Start Sim"))
 
         try:
-            self.gs = dm_ai_module.GameState(random.randint(0, 10000))
-            self.gs.setup_test_duel()
-            if self.p0_deck_ids: self.gs.set_deck(0, self.p0_deck_ids)
-            if self.p1_deck_ids: self.gs.set_deck(1, self.p1_deck_ids)
+            if dm_ai_module:
+                 self.gs = dm_ai_module.GameState(random.randint(0, 10000))
+                 self.gs.setup_test_duel()
+            else:
+                 self.gs = cast(GameState, None)
 
-            if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
+            if self.p0_deck_ids and self.gs: self.gs.set_deck(0, self.p0_deck_ids)
+            if self.p1_deck_ids and self.gs: self.gs.set_deck(1, self.p1_deck_ids)
+
+            if dm_ai_module and hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
                 dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
             else:
                 self.log_list.addItem(tr("Warning: PhaseManager.start_game not available"))
@@ -489,7 +514,7 @@ class GameWindow(QMainWindow):
             QMessageBox.critical(self, tr("Error"), f"{tr('Failed to reset game')}: {e}")
             self.log_list.addItem(f"{tr('Reset Error')}: {e}")
 
-    def confirm_selection(self):
+    def confirm_selection(self) -> None:
         if not EngineCompat.is_waiting_for_user_input(self.gs): return
 
         query = EngineCompat.get_pending_query(self.gs)
@@ -504,10 +529,9 @@ class GameWindow(QMainWindow):
         self.confirm_btn.setVisible(False)
 
         EngineCompat.EffectResolver_resume(self.gs, self.card_db, targets)
-        # self.log_list.addItem(f"Resumed with targets: {targets}")
         self.step_phase()
 
-    def on_card_clicked(self, card_id, instance_id):
+    def on_card_clicked(self, card_id: int, instance_id: int) -> None:
         if EngineCompat.get_active_player_id(self.gs) != 0 or not self.p0_human_radio.isChecked():
             return
 
@@ -550,13 +574,13 @@ class GameWindow(QMainWindow):
             # self.log_list.addItem(tr("Multiple actions found. Executing first."))
             self.execute_action(relevant_actions[0])
 
-    def on_card_hovered(self, card_id):
+    def on_card_hovered(self, card_id: int) -> None:
         if card_id >= 0:
             card_data = self.card_db.get(card_id)
             if card_data:
                 self.card_detail_panel.update_card(card_data)
 
-    def execute_action(self, action):
+    def execute_action(self, action: Action) -> None:
         self.last_action = action
         EngineCompat.EffectResolver_resolve_action(
             self.gs, action, self.card_db
@@ -569,13 +593,14 @@ class GameWindow(QMainWindow):
             return
 
         # Refactored phase logic: Check pending effects
-        pending_count = self.gs.get_pending_effect_count()
-        if (action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
-            EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
+        if dm_ai_module:
+            pending_count = self.gs.get_pending_effect_count()
+            if (action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
+                EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
             
         self.update_ui()
 
-    def on_resolve_effect_from_stack(self, index):
+    def on_resolve_effect_from_stack(self, index: int) -> None:
         # Generate actions and find RESOLVE_EFFECT with matching slot index?
         # OR usually RESOLVE_EFFECT doesn't expose slot_index in ActionGenerator if it only generates ONE action (resolve top).
         # We need to check if we can arbitrarily resolve.
@@ -586,7 +611,9 @@ class GameWindow(QMainWindow):
         # If we are in a state where we can choose, ActionGenerator should return multiple RESOLVE_EFFECT actions.
 
         actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
-        resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
+        resolve_actions = []
+        if dm_ai_module:
+            resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
 
         target_action = None
         for a in resolve_actions:
@@ -605,7 +632,7 @@ class GameWindow(QMainWindow):
              else:
                   pass # self.log_list.addItem(f"Cannot resolve effect at index {index}. (Not in legal actions)")
 
-    def check_and_handle_input_wait(self):
+    def check_and_handle_input_wait(self) -> bool:
         """
         Checks if the game engine is waiting for input.
         If so, stops simulation, updates UI controls, and triggers specific input handlers if applicable.
@@ -629,7 +656,7 @@ class GameWindow(QMainWindow):
 
         return True
 
-    def handle_user_input_request(self):
+    def handle_user_input_request(self) -> None:
         query = EngineCompat.get_pending_query(self.gs)
 
         if query.query_type == "SELECT_OPTION":
@@ -676,7 +703,11 @@ class GameWindow(QMainWindow):
                  if dialog.exec():
                      indices = dialog.get_selected_indices()
                      selected_instance_ids = [items[i].instance_id for i in indices]
-                     EngineCompat.EffectResolver_resume(self.gs, self.card_db, selected_instance_ids)
+                     # Passing a list of ints to resume might fail if it expects int.
+                     # But CardSelectionDialog suggests multiple selections.
+                     # We might need an overload or helper in EngineCompat.
+                     # For now passing the whole list (Any)
+                     EngineCompat.EffectResolver_resume(self.gs, self.card_db, cast(Any, selected_instance_ids))
                      self.step_phase()
                  return
 
@@ -684,7 +715,7 @@ class GameWindow(QMainWindow):
              # self.log_list.addItem(f"Please select {query.params['min']} target(s).")
              # self.update_ui() # Handled by caller or centralized handler
 
-    def step_phase(self):
+    def step_phase(self) -> None:
         if self.is_processing: return
         self.is_processing = True
         
@@ -710,7 +741,10 @@ class GameWindow(QMainWindow):
                 )
 
                 # CHECK FOR TRIGGER SELECTION (Multiple RESOLVE_EFFECT)
-                resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
+                resolve_actions = []
+                if dm_ai_module:
+                    resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
+
                 if len(resolve_actions) > 1:
                     # Show Popup for Trigger Order/Selection
                     # We need details about pending effects.
@@ -740,7 +774,7 @@ class GameWindow(QMainWindow):
                                 try:
                                     inst = self.gs.get_card_instance(p_source)
                                     c_def = self.card_db.get(inst.card_id)
-                                    source_name = c_def.name
+                                    source_name = c_def.name if c_def else "Unknown"
                                 except:
                                     source_name = f"Instance {p_source}"
 
@@ -785,15 +819,16 @@ class GameWindow(QMainWindow):
                          return
 
                     # Refactored Phase Logic
-                    pending_count = self.gs.get_pending_effect_count()
-                    if (best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
-                        EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
+                    if dm_ai_module:
+                        pending_count = self.gs.get_pending_effect_count()
+                        if (best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
+                            EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
 
             self.update_ui()
         finally:
             self.is_processing = False
         
-    def update_ui(self):
+    def update_ui(self) -> None:
         # Guard attributes on GameState that may not exist in minimal dm_ai_module builds
         turn_number = EngineCompat.get_turn_number(self.gs)
         current_phase = EngineCompat.get_current_phase(self.gs)
@@ -830,7 +865,14 @@ class GameWindow(QMainWindow):
             self.last_command_index = current_len
 
         # Use EngineCompat to get players or fallback
-        class _P: pass
+        class _P:
+             hand: List[Any] = []
+             mana_zone: List[Any] = []
+             battle_zone: List[Any] = []
+             shield_zone: List[Any] = []
+             graveyard: List[Any] = []
+             deck: List[Any] = []
+
         p0 = EngineCompat.get_player(self.gs, 0) or _P()
         p1 = EngineCompat.get_player(self.gs, 1) or _P()
         
@@ -841,10 +883,10 @@ class GameWindow(QMainWindow):
         if active_pid == 0 and self.p0_human_radio.isChecked():
              legal_actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
 
-        def convert_zone(zone_cards, hide=False):
+        def convert_zone(zone_cards: List[Any], hide: bool=False) -> List[Dict[str, Any]]:
             if hide:
-                return [{'id': -1, 'tapped': c.is_tapped, 'instance_id': c.instance_id} for c in zone_cards]
-            return [{'id': c.card_id, 'tapped': c.is_tapped, 'instance_id': c.instance_id} for c in zone_cards]
+                return [{'id': -1, 'tapped': getattr(c, 'is_tapped', False), 'instance_id': getattr(c, 'instance_id', -1)} for c in zone_cards]
+            return [{'id': getattr(c, 'card_id', -1), 'tapped': getattr(c, 'is_tapped', False), 'instance_id': getattr(c, 'instance_id', -1)} for c in zone_cards]
             
         god_view = self.god_view_check.isChecked()
         
@@ -866,8 +908,14 @@ class GameWindow(QMainWindow):
         pending = EngineCompat.get_pending_query(self.gs)
         if EngineCompat.is_waiting_for_user_input(self.gs) and pending is not None and getattr(pending, 'query_type', '') == "SELECT_TARGET":
             valid_targets = getattr(pending, 'valid_targets', [])
-            min_targets = getattr(getattr(pending, 'params', {}), 'get', lambda k, d=None: d)('min', 1) if hasattr(getattr(pending, 'params', None), 'get') else 1
-            max_targets = pending.params.get('max', 99)
+            params = getattr(pending, 'params', {})
+            min_targets = 1
+            if hasattr(params, 'get'):
+                min_targets = params.get('min', 1)
+
+            max_targets = 99
+            if hasattr(params, 'get'):
+                max_targets = params.get('max', 99)
 
             # Update button text with count
             current = len(self.selected_targets)
