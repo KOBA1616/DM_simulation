@@ -6,7 +6,7 @@ import random
 import time
 import argparse
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Any, List, Tuple, Optional
 from dm_toolkit.types import CardCounts
 
 # Set up paths
@@ -22,10 +22,10 @@ except ImportError:
     sys.exit(1)
 
 class EvolutionEcosystem:
-    def __init__(self, cards_path, meta_decks_path, output_path=None):
-        self.cards_path = cards_path
-        self.meta_decks_path = meta_decks_path
-        self.output_path = output_path or meta_decks_path
+    def __init__(self, cards_path: str, meta_decks_path: str, output_path: Optional[str] = None) -> None:
+        self.cards_path: str = cards_path
+        self.meta_decks_path: str = meta_decks_path
+        self.output_path: str = output_path or meta_decks_path
 
         # Load Data
         print(f"Loading cards from {cards_path}...")
@@ -45,7 +45,7 @@ class EvolutionEcosystem:
         # We use heuristic agent for deck evaluation for speed
         self.runner = dm_ai_module.ParallelRunner(self.card_db, 50, 1)
 
-    def load_meta_decks(self):
+    def load_meta_decks(self) -> None:
         if os.path.exists(self.meta_decks_path):
             with open(self.meta_decks_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -55,13 +55,13 @@ class EvolutionEcosystem:
             print("Meta decks file not found. Starting with empty meta.")
             self.meta_decks = []
 
-    def save_meta_decks(self):
+    def save_meta_decks(self) -> None:
         data = {"decks": self.meta_decks}
         with open(self.output_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         print(f"Saved {len(self.meta_decks)} decks to {self.output_path}")
 
-    def generate_challenger(self):
+    def generate_challenger(self) -> Tuple[List[Any], str]:
         """Generates a challenger deck by mutating an existing meta deck or random creation."""
         if not self.meta_decks:
             # Create random deck if no meta
@@ -86,7 +86,7 @@ class EvolutionEcosystem:
         new_name = f"{parent_name}_v{int(time.time()) % 10000}"
         return new_deck, new_name
 
-    def collect_smart_stats(self, deck, opponent_deck, num_games=5):
+    def collect_smart_stats(self, deck: List[Any], opponent_deck: List[Any], num_games: int = 5) -> Dict[Any, Dict[str, int]]:
         """
         Runs a few single-threaded games to collect detailed card statistics.
         Returns aggregated stats dictionary: {card_id: {play: int, resource: int, ...}}
@@ -218,10 +218,9 @@ class EvolutionEcosystem:
 
         return aggregated
 
-    def evaluate_deck(self, challenger_deck, challenger_name, num_games=10):
+    def evaluate_deck(self, challenger_deck: List[Any], challenger_name: str, num_games: int = 10) -> Tuple[float, float]:
         """Runs the challenger against a sample of the meta."""
-        # Predeclare card_counts for mypy (used in both branches)
-        card_counts: CardCounts
+        # card_counts will be populated below
         if not self.meta_decks:
             # If no meta, it wins by default, but we should still score it
             # Run self-play or dummy play for stats
@@ -229,10 +228,10 @@ class EvolutionEcosystem:
             smart_stats = self.collect_smart_stats(challenger_deck, dummy_opp, num_games=2) # Few games for stats
 
             # Calculate Score
-            total_score = 0
+            total_score: float = 0.0
             deck_count = len(challenger_deck)
             # Count copies of each card in deck for normalization
-            card_counts = {}
+            card_counts: Dict[Any, int] = {}
             for cid in challenger_deck:
                 card_counts[cid] = card_counts.get(cid, 0) + 1
 
@@ -279,7 +278,7 @@ class EvolutionEcosystem:
         win_rate = wins / total_games
 
         # Calculate Deck Smart Score
-        total_smart_score = 0
+        total_smart_score: float = 0.0
         card_counts = {}
         for cid in challenger_deck:
             card_counts[cid] = card_counts.get(cid, 0) + 1
@@ -296,7 +295,7 @@ class EvolutionEcosystem:
         print(f"Deck '{challenger_name}' Win Rate: {win_rate*100:.1f}% ({wins}/{total_games}), Smart Score: {total_smart_score:.2f}")
         return win_rate, total_smart_score
 
-    def run_generation(self, num_challengers=5, games_per_match=20, min_win_rate=0.55):
+    def run_generation(self, num_challengers: int = 5, games_per_match: int = 20, min_win_rate: float = 0.55) -> None:
         print(f"--- Starting Generation ---")
         challengers = []
         for _ in range(num_challengers):
@@ -333,7 +332,7 @@ class EvolutionEcosystem:
         if accepted_count > 0:
             self.save_meta_decks()
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Self-Evolution Ecosystem")
     parser.add_argument("--cards", default="data/cards.json", help="Path to cards.json")
     parser.add_argument("--meta", default="data/meta_decks.json", help="Path to meta_decks.json")

@@ -2,23 +2,25 @@ import os
 import shutil
 import glob
 import re
+from typing import Optional
+
 
 class GenerationManager:
-    def __init__(self, data_root="data"):
-        self.data_root = data_root
-        self.models_dir = os.path.join(data_root, "models")
-        self.production_dir = os.path.join(self.models_dir, "production")
-        self.candidates_dir = os.path.join(self.models_dir, "candidates")
-        self.archive_dir = os.path.join(self.models_dir, "archive")
-        self.training_data_dir = os.path.join(data_root, "training_data")
+    def __init__(self, data_root: str = "data") -> None:
+        self.data_root: str = data_root
+        self.models_dir: str = os.path.join(data_root, "models")
+        self.production_dir: str = os.path.join(self.models_dir, "production")
+        self.candidates_dir: str = os.path.join(self.models_dir, "candidates")
+        self.archive_dir: str = os.path.join(self.models_dir, "archive")
+        self.training_data_dir: str = os.path.join(data_root, "training_data")
 
         self.setup_directories()
 
-    def setup_directories(self):
+    def setup_directories(self) -> None:
         for d in [self.production_dir, self.candidates_dir, self.archive_dir, self.training_data_dir]:
             os.makedirs(d, exist_ok=True)
 
-    def get_production_model_path(self):
+    def get_production_model_path(self) -> Optional[str]:
         # Look for *.pth in production dir
         files = glob.glob(os.path.join(self.production_dir, "*.pth"))
         if not files:
@@ -26,7 +28,7 @@ class GenerationManager:
         # Return the most recent one or the first one
         return files[0] # Should be only one
 
-    def get_latest_generation_number(self):
+    def get_latest_generation_number(self) -> int:
         # Check archive and production for highest gen number
         # Format: model_gen_XXX.pth
         max_gen = 0
@@ -44,11 +46,11 @@ class GenerationManager:
 
         return max_gen
 
-    def create_candidate_path(self, generation):
+    def create_candidate_path(self, generation: int) -> str:
         filename = f"model_gen_{generation:04d}.pth"
         return os.path.join(self.candidates_dir, filename)
 
-    def promote_candidate(self, candidate_path):
+    def promote_candidate(self, candidate_path: str) -> str:
         if not os.path.exists(candidate_path):
             raise FileNotFoundError(f"Candidate not found: {candidate_path}")
 
@@ -65,11 +67,11 @@ class GenerationManager:
         print(f"Promoted {candidate_path} to production: {dest}")
         return dest
 
-    def get_training_data_path(self, generation):
+    def get_training_data_path(self, generation: int) -> str:
         filename = f"data_gen_{generation:04d}.npz"
         return os.path.join(self.training_data_dir, filename)
 
-    def cleanup_candidates(self):
+    def cleanup_candidates(self) -> None:
         # Remove all files in candidates dir
         files = glob.glob(os.path.join(self.candidates_dir, "*"))
         for f in files:

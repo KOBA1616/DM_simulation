@@ -12,14 +12,14 @@ import dm_ai_module
 from dm_toolkit.types import CardDB
 
 class TestLoopDetection(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         # Dummy DB
         self.card_db: CardDB = {}
         # Create a simple game state
         self.instance = dm_ai_module.GameInstance(42, self.card_db)
         self.state = self.instance.state
 
-    def test_loop_detection(self):
+    def test_loop_detection(self) -> None:
         # Verify initial winner
         self.assertEqual(self.state.winner, dm_ai_module.GameResult.NONE)
 
@@ -43,6 +43,7 @@ class TestLoopDetection(unittest.TestCase):
 
         self.assertEqual(result, int(dm_ai_module.GameResult.P1_WIN))
         self.assertEqual(self.state.winner, dm_ai_module.GameResult.P1_WIN)
+
 
 if __name__ == '__main__':
     unittest.main()

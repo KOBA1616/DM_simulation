@@ -1,7 +1,7 @@
 import dm_ai_module
 import random
 import logging
-from typing import List
+from typing import Any, List
 from dm_toolkit.types import CardDB, SeenCards
 
 class SolitaireRunner:
@@ -15,7 +15,7 @@ class SolitaireRunner:
         self.max_turns = max_turns
         self.logger = logging.getLogger("SolitaireRunner")
 
-    def run_simulation(self):
+    def run_simulation(self) -> int:
         """
         Runs one simulation and returns the number of unique cards accessed.
         """
@@ -67,7 +67,7 @@ class SolitaireRunner:
 
         return len(seen_cards)
 
-    def _play_turn_heuristic(self, state):
+    def _play_turn_heuristic(self, state: Any) -> None:
         """
         Simple heuristic: Mana Charge -> Play max cost card -> Attack -> End.
         """
@@ -88,21 +88,20 @@ class SolitaireRunner:
 
         # Let's perform ONE action here to respect the outer safety counter.
 
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+        actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
         if not actions:
             # If no actions, we must pass phase manually?
             dm_ai_module.PhaseManager.next_phase(state, self.card_db)
             return
 
-        best_action = self._choose_action(actions, state)
+        best_action: Any = self._choose_action(actions, state)
 
         if best_action.type == dm_ai_module.ActionType.PASS:
-             # Explicitly call next_phase for PASS
-             dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+            dm_ai_module.PhaseManager.next_phase(state, self.card_db)
         else:
-             dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
+            dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
 
-    def _choose_action(self, actions, state):
+    def _choose_action(self, actions: List[Any], state: Any) -> Any:
         # Prioritize:
         # 1. Mana Charge (if not done)
         # 2. Play Card (Effect)
@@ -121,22 +120,22 @@ class SolitaireRunner:
             return max(play_actions, key=lambda a: self.card_db[state.get_card_instance(a.source_instance_id).card_id].cost)
 
         if attack_actions:
-             return random.choice(attack_actions)
+            return random.choice(attack_actions)
 
         if pass_actions:
             return pass_actions[0]
 
         return actions[0] # Fallback
 
-    def _pass_turn(self, state):
+    def _pass_turn(self, state: Any) -> None:
         """Pass through opponent turn."""
         # Perform one step for opponent
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+        actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
         if not actions:
              dm_ai_module.PhaseManager.next_phase(state, self.card_db)
              return
 
-        pass_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PASS), None)
+        pass_action: Any = next((a for a in actions if a.type == dm_ai_module.ActionType.PASS), None)
 
         if pass_action:
              dm_ai_module.PhaseManager.next_phase(state, self.card_db)
@@ -144,7 +143,7 @@ class SolitaireRunner:
             # Must perform mandatory action (e.g. resolve effect)
              dm_ai_module.EffectResolver.resolve_action(state, actions[0], self.card_db)
 
-    def _scan_accessed_cards(self, state, player_id, seen_cards):
+    def _scan_accessed_cards(self, state: Any, player_id: int, seen_cards: SeenCards) -> None:
         # Scan Hand
         for card in state.players[player_id].hand:
             seen_cards.add(card.instance_id)

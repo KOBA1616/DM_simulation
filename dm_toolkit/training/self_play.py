@@ -21,9 +21,9 @@ from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 from dm_toolkit.types import CardDB, ResultsList
 
 class SelfPlayRunner:
-    def __init__(self, card_db: CardDB, device=None):
+    def __init__(self, card_db: CardDB, device: Optional[Any] = None) -> None:
         self.card_db: CardDB = card_db
-        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device: Any = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Initialize dimensions
         # GameInstance not exposed, using GameState directly
@@ -33,7 +33,7 @@ class SelfPlayRunner:
         self.input_size = len(dummy_vec)
         self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
 
-    def load_model(self, model_path: str):
+    def load_model(self, model_path: Optional[str]) -> Any:
         network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
         if model_path and os.path.exists(model_path):
             print(f"Loading model: {model_path}")
@@ -43,7 +43,7 @@ class SelfPlayRunner:
         network.eval()
         return network
 
-    def _prepare_initial_states(self, num_games: int, deck_card_id: int):
+    def _prepare_initial_states(self, num_games: int, deck_card_id: int) -> List[Any]:
         states = []
         if deck_card_id == 0:
              print("Error: No valid card ID found for deck construction.")
@@ -79,7 +79,7 @@ class SelfPlayRunner:
             states.append(state)
         return states
 
-    def collect_data(self, model_path: str, output_path: str, episodes=10, sims=800, batch_size=32, threads=4):
+    def collect_data(self, model_path: Optional[str], output_path: str, episodes: int = 10, sims: int = 800, batch_size: int = 32, threads: int = 4) -> None:
         network = self.load_model(model_path)
 
         # Find a valid creature for dummy deck
@@ -97,7 +97,7 @@ class SelfPlayRunner:
         runner = dm_ai_module.ParallelRunner(self.card_db, sims, batch_size)
 
         # Evaluator callback
-        def evaluator(states: List[dm_ai_module.GameState]):
+        def evaluator(states: List[Any]) -> Tuple[Any, Any]:
             tensors = []
             for s in states:
                 # Assuming s.active_player_id is valid
@@ -176,7 +176,7 @@ class SelfPlayRunner:
             )
             print(f"Saved to {output_path}")
 
-    def evaluate_matchup(self, model1_path, model2_path, episodes=10, sims=800, batch_size=32, threads=4):
+    def evaluate_matchup(self, model1_path: Optional[str], model2_path: Optional[str], episodes: int = 10, sims: int = 800, batch_size: int = 32, threads: int = 4) -> float:
         # Model 1 plays as P1 (Player 0), Model 2 as P2 (Player 1)
         net1 = self.load_model(model1_path)
         net2 = self.load_model(model2_path)
@@ -190,7 +190,7 @@ class SelfPlayRunner:
         initial_states = self._prepare_initial_states(episodes, valid_cid)
         runner = dm_ai_module.ParallelRunner(self.card_db, sims, batch_size)
 
-        def evaluator(states: List[dm_ai_module.GameState]):
+        def evaluator(states: List[Any]) -> Tuple[Any, Any]:
             # Split by active player
             indices_p1 = []
             states_p1 = []

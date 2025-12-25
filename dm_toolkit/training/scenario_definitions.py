@@ -2,10 +2,12 @@
 import dm_ai_module
 import json
 import os
+from typing import Any, Dict, Optional
 
-SCENARIOS = {}
+SCENARIOS: Dict[str, Any] = {}
 
-def load_scenarios():
+
+def load_scenarios() -> None:
     global SCENARIOS
     # Try to find data/scenarios.json
     paths = [
@@ -33,7 +35,7 @@ def load_scenarios():
 # Load on import
 load_scenarios()
 
-def get_scenario_config(name):
+def get_scenario_config(name: str) -> Any:
     if name not in SCENARIOS:
         raise ValueError(f"Scenario {name} not found.")
 

@@ -26,16 +26,19 @@ class CardEffectVector:
     is_self_move: bool = False  # True if the card itself is moving (e.g. Summon)
     condition: Optional[str] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         arrow = "=>" if self.is_self_move else "->"
-        return f"[{self.source_zone} {arrow} {self.destination_zone}] (x{self.count})"
+        return str(f"[{self.source_zone} {arrow} {self.destination_zone}] (x{self.count})")
+    
+    def __repr__(self) -> str:
+        return self.__str__()
 
 class VectorAnalyzer:
     """
     Analyzes card definitions to extract effect vectors.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger("VectorAnalyzer")
 
     def analyze_card(self, card_data: Dict[str, Any]) -> List[CardEffectVector]:

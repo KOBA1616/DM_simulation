@@ -14,7 +14,7 @@ except ImportError:
     print("Error: Could not import dm_ai_module. Make sure it is built and in the bin/ directory.")
     sys.exit(1)
 
-def verify_deck_evolution_logic():
+def verify_deck_evolution_logic() -> None:
     print("Verifying Deck Evolution Logic (C++ Module)...")
 
     # 1. Load Real Card Data

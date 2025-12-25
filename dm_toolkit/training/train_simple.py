@@ -245,7 +245,7 @@ class Trainer:
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=0.001)
 
-    def train(self, epochs: int = 10, batch_size: int = 64):
+    def train(self, epochs: int = 10, batch_size: int = 64) -> None:
         """
         Executes the training loop.
         """
@@ -353,7 +353,7 @@ class Trainer:
         except Exception as e:
             print(f"Failed to export to ONNX: {e}")
 
-def train_pipeline(data_files: List[str], input_model: Optional[str], output_model: str, epochs=10):
+def train_pipeline(data_files: List[str], input_model: Optional[str], output_model: str, epochs: int = 10) -> None:
     trainer = Trainer(data_files, input_model, output_model)
     trainer.train(epochs=epochs)
 

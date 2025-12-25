@@ -2,6 +2,7 @@ import os
 import sys
 import random
 import json
+from typing import Any, Dict, List, Optional
 
 # Add root to path if needed
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
@@ -11,14 +12,14 @@ import dm_ai_module
 # Since MCTS is now in C++ (dm_ai_module.MCTS), we should use that or skip deep logic here.
 
 class DeckEvolution:
-    def __init__(self, card_db):
+    def __init__(self, card_db: Dict[str, Any]) -> None:
         self.card_db = card_db
         self.population_size = 10
-        self.population = [] # List of deck lists (list of card IDs)
+        self.population: List[List[Any]] = []  # List of deck lists (list of card IDs)
         self.generation_dir = "data/generations"
         os.makedirs(self.generation_dir, exist_ok=True)
         
-    def initialize_population(self):
+    def initialize_population(self) -> None:
         # Create random decks
         all_ids = list(self.card_db.keys())
         if not all_ids:
@@ -29,7 +30,7 @@ class DeckEvolution:
                 deck.append(random.choice(all_ids))
             self.population.append(deck)
             
-    def evaluate(self, network):
+    def evaluate(self, network: Optional[Any]) -> List[int]:
         scores = [0] * self.population_size
         matches_per_deck = 2 # Keep low for dev speed
         
@@ -51,7 +52,7 @@ class DeckEvolution:
                     
         return scores
 
-    def _play_match(self, deck_a, deck_b, network):
+    def _play_match(self, deck_a: List[Any], deck_b: List[Any], network: Optional[Any]) -> int:
         gs = dm_ai_module.GameState(random.randint(0, 100000))
         gs.set_deck(0, deck_a)
         gs.set_deck(1, deck_b)
@@ -94,7 +95,7 @@ class DeckEvolution:
             if action.type == dm_ai_module.ActionType.PASS:
                 dm_ai_module.PhaseManager.next_phase(gs)
         
-    def mutate(self, deck):
+    def mutate(self, deck: List[Any]) -> List[Any]:
         # Swap 1-4 cards
         new_deck = deck.copy()
         num_swaps = random.randint(1, 4)
@@ -108,7 +109,7 @@ class DeckEvolution:
             
         return new_deck
         
-    def save_generation(self, gen_idx):
+    def save_generation(self, gen_idx: int) -> None:
         data = {
             "generation": gen_idx,
             "decks": self.population
@@ -118,7 +119,7 @@ class DeckEvolution:
             json.dump(data, f)
         print(f"Saved generation {gen_idx} to {path}")
         
-    def evolve(self, generations=10):
+    def evolve(self, generations: int = 10) -> None:
         self.initialize_population()
         if not self.population:
             print("Population empty (no cards?)")

@@ -45,7 +45,7 @@ SCENARIOS: Dict[str, Dict[str, Any]] = {
 }
 
 class ScenarioRunner:
-    def __init__(self, card_db: Dict[int, dm_ai_module.CardDefinition]):
+    def __init__(self, card_db: Dict[int, dm_ai_module.CardDefinition]) -> None:
         self.card_db = card_db
         self.executor = dm_ai_module.ScenarioExecutor(self.card_db)
 
@@ -72,7 +72,7 @@ class ScenarioRunner:
              config.loop_proof_mode = config_dict["loop_proof_mode"]
         return config
 
-    def run_training_loop(self, scenario_name: str, episodes: int = 100):
+    def run_training_loop(self, scenario_name: str, episodes: int = 100) -> None:
         print(f"Starting training on scenario: {scenario_name}")
         success_count = 0
 

@@ -19,14 +19,16 @@ except ImportError:
 from dm_toolkit.training.generation_manager import GenerationManager
 from dm_toolkit.training.self_play import SelfPlayRunner
 from dm_toolkit.training.train_simple import train_pipeline
+from typing import Any, Dict, List
+from dm_toolkit.types import CardDB
 
 class AutomationLoop:
-    def __init__(self, card_db):
-        self.card_db = card_db
-        self.manager = GenerationManager()
-        self.runner = SelfPlayRunner(card_db)
+    def __init__(self, card_db: CardDB) -> None:
+        self.card_db: CardDB = card_db
+        self.manager: GenerationManager = GenerationManager()
+        self.runner: SelfPlayRunner = SelfPlayRunner(card_db)
 
-    def run(self, max_generations=10):
+    def run(self, max_generations: int = 10) -> None:
         current_gen = self.manager.get_latest_generation_number()
         print(f"Starting Automation Loop. Current Generation: {current_gen}")
 
