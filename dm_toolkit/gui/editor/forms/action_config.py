@@ -53,30 +53,30 @@ _definitions = [
     ActionDef("DRAW_CARD", "Draw Card", "ZONE_CONTROL",
               visible=["value1"], labels={"value1": "Count"},
               produces_output=True, output_label="Cards Drawn",
-              json_template={"type": "MOVE_CARD", "from_zone": "DECK", "to_zone": "HAND"}),
+              json_template={"type": "MOVE_CARD", "source_zone": "DECK", "destination_zone": "HAND"}),
 
     ActionDef("DESTROY", "Destroy", "ZONE_CONTROL",
               visible=["scope", "filter", "target_choice"],
               can_be_optional=True,
-              json_template={"type": "MOVE_CARD", "to_zone": "GRAVEYARD", "from_zone": "BATTLE_ZONE"}),
+              json_template={"type": "MOVE_CARD", "destination_zone": "GRAVEYARD", "source_zone": "BATTLE_ZONE"}),
 
     ActionDef("SEND_TO_MANA", "Send to Mana", "ZONE_CONTROL",
               visible=["scope", "filter", "target_choice", "source_zone"],
               can_be_optional=True,
-              json_template={"type": "MOVE_CARD", "to_zone": "MANA_ZONE"}),
+              json_template={"type": "MOVE_CARD", "destination_zone": "MANA_ZONE"}),
 
     ActionDef("BOUNCE", "Return to Hand (Bounce)", "ZONE_CONTROL",
               visible=["scope", "filter", "target_choice", "source_zone"],
               can_be_optional=True,
-              json_template={"type": "MOVE_CARD", "to_zone": "HAND"}),
+              json_template={"type": "MOVE_CARD", "destination_zone": "HAND"}),
 
     ActionDef("SHIELD_BREAK", "Shield Break (Triggers OK)", "ZONE_CONTROL",
               visible=["scope", "filter", "target_choice", "value1"], labels={"value1": "Count (if random/top)"},
-              json_template={"type": "MOVE_CARD", "from_zone": "SHIELD_ZONE", "to_zone": "HAND", "str_val": "BREAK"}),
+              json_template={"type": "MOVE_CARD", "source_zone": "SHIELD_ZONE", "destination_zone": "HAND", "str_val": "BREAK"}),
 
     ActionDef("ADD_SHIELD_TO_HAND", "Add Shield to Hand (No Triggers)", "ZONE_CONTROL",
               visible=["scope", "filter", "target_choice", "value1"], labels={"value1": "Count"},
-              json_template={"type": "MOVE_CARD", "from_zone": "SHIELD_ZONE", "to_zone": "HAND", "str_val": "RETURN"}),
+              json_template={"type": "MOVE_CARD", "source_zone": "SHIELD_ZONE", "destination_zone": "HAND", "str_val": "RETURN"}),
 
     ActionDef("ADD_SHIELD", "Add Shield", "ZONE_CONTROL",
               visible=["scope", "filter", "value1", "source_zone"], labels={"value1": "Count"},
@@ -85,15 +85,15 @@ _definitions = [
     ActionDef("DISCARD", "Discard", "ZONE_CONTROL",
               visible=["scope", "filter", "target_choice", "value1"], labels={"value1": "Count (Random/Select)"},
               produces_output=True,
-              json_template={"type": "MOVE_CARD", "from_zone": "HAND", "to_zone": "GRAVEYARD"}),
+              json_template={"type": "MOVE_CARD", "source_zone": "HAND", "destination_zone": "GRAVEYARD"}),
 
     ActionDef("PUT_INTO_BATTLE", "Put into Battle", "ZONE_CONTROL",
               visible=["source_zone", "filter", "scope"],
-              json_template={"type": "MOVE_CARD", "to_zone": "BATTLE_ZONE"}),
+              json_template={"type": "MOVE_CARD", "destination_zone": "BATTLE_ZONE"}),
 
     ActionDef("SEND_TO_DECK", "Send to Deck", "ZONE_CONTROL",
               visible=["scope", "filter", "target_choice", "str_val"], labels={"str_val": "Position (TOP/BOTTOM)"},
-              json_template={"type": "MOVE_CARD", "to_zone": "DECK"}),
+              json_template={"type": "MOVE_CARD", "destination_zone": "DECK"}),
 
     # --- STATE & MUTATION ---
     ActionDef("MODIFY_POWER", "Modify Power", "STATE_MUTATION",
