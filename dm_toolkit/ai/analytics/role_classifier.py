@@ -19,7 +19,7 @@ class RoleClassifier:
     ROLE_META = "META"
     ROLE_FLEX = "FLEX"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.analyzer = VectorAnalyzer()
 
     def classify_card(self, card_data: Dict[str, Any]) -> Set[str]:

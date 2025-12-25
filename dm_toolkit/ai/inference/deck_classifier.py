@@ -8,7 +8,9 @@ class DeckClassifier:
         self.decks: List[Dict[str, Any]] = []
         self._load_meta_decks()
 
-    def _load_meta_decks(self):
+    def _load_meta_decks(self) -> None:
+        """Load meta deck definitions from JSON file."""
+        
         try:
             with open(self.meta_decks_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)

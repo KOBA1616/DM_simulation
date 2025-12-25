@@ -10,7 +10,10 @@ try:
 except ImportError:
     _HAS_MODULE = False
 
-def _get_enum_names(enum_cls):
+from typing import Any, List
+
+
+def _get_enum_names(enum_cls: Any) -> List[str]:
     """Helper to extract names from pybind11 enum."""
     # pybind11 enums usually have __members__ dict
     if hasattr(enum_cls, '__members__'):
