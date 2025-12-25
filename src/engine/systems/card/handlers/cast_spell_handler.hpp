@@ -19,6 +19,9 @@ namespace dm::engine {
             std::vector<int> targets;
             if (ctx.targets && !ctx.targets->empty()) {
                 targets = *ctx.targets;
+            } else if (ctx.action.scope == dm::core::TargetScope::SELF) {
+                // If scope is SELF, target the source card itself
+                targets.push_back(ctx.source_instance_id);
             } else {
                  // Fallback or implicit logic if needed, similar to PlayHandler
                  // For CastSpell, usually targets are provided via SELECT or context.
