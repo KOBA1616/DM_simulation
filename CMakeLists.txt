@@ -202,6 +202,7 @@ set(SRC_AI
     src/ai/scenario/scenario_executor.cpp
     src/ai/solver/lethal_solver.cpp
     src/ai/evolution/deck_evolution.cpp
+    src/ai/evolution/meta_environment.cpp
     src/bindings/python_batch_inference.cpp
     src/ai/inference/pimc_generator.cpp
     src/ai/inference/deck_inference.cpp

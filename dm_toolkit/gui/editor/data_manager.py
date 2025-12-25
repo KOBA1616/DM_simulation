@@ -19,16 +19,27 @@ class CardDataManager:
 
     def load_templates(self):
         # Resolve path to data/editor_templates.json
-        # Current file: dm_toolkit/gui/editor/data_manager.py
-        # Root is 4 levels up
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        filepath = os.path.join(base_dir, 'data', 'editor_templates.json')
+        # Search upwards from current file to find the project root containing 'data/editor_templates.json'
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        filepath = None
 
-        if not os.path.exists(filepath):
-            # Try current working directory fallback
-            filepath = 'data/editor_templates.json'
+        # Traverse upwards
+        while True:
+            check_path = os.path.join(current_dir, 'data', 'editor_templates.json')
+            if os.path.exists(check_path):
+                filepath = check_path
+                break
 
-        if os.path.exists(filepath):
+            parent_dir = os.path.dirname(current_dir)
+            if parent_dir == current_dir: # Reached filesystem root
+                break
+            current_dir = parent_dir
+
+        # Fallback to CWD only if not found (though user warned about brittleness, we need at least one fallback or fail gracefully)
+        if not filepath and os.path.exists('data/editor_templates.json'):
+             filepath = 'data/editor_templates.json'
+
+        if filepath and os.path.exists(filepath):
             try:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     self.templates = json.load(f)
