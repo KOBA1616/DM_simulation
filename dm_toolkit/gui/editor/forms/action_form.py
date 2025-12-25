@@ -7,7 +7,7 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.consts import EDITOR_ACTION_TYPES, ZONES_EXTENDED
-from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
+from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS, STRUCT_CMD_REPLACE_WITH_COMMAND
 from dm_toolkit.gui.editor.action_converter import ActionConverter
 
 class ActionEditForm(BaseEditForm):
@@ -172,7 +172,7 @@ class ActionEditForm(BaseEditForm):
 
         # 3. Request Update from Parent (LogicTreeWidget handles replacement)
         # We send a special signal to replace the current item with a new type
-        self.structure_update_requested.emit("REPLACE_WITH_COMMAND", cmd_data)
+        self.structure_update_requested.emit(STRUCT_CMD_REPLACE_WITH_COMMAND, cmd_data)
 
     def on_type_changed(self):
         action_type = self.type_combo.currentData()
