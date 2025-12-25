@@ -561,7 +561,19 @@ class CardDataManager:
         elif act_type == "SELECT_OPTION":
              display_type = tr("Mode Selection")
 
-        item = QStandardItem(f"{tr('Action')}: {display_type}")
+        return f"{tr('Action')}: {display_type}"
+
+    def format_command_label(self, command):
+        """Generates a human-readable label for a command."""
+        cmd_type = command.get('type', 'NONE')
+        return f"{tr('Command')}: {tr(cmd_type)}"
+
+    def _create_action_item(self, action):
+        if 'uid' not in action:
+            action['uid'] = str(uuid.uuid4())
+
+        label = self.format_action_label(action)
+        item = QStandardItem(label)
         item.setData("ACTION", Qt.ItemDataRole.UserRole + 1)
         item.setData(action, Qt.ItemDataRole.UserRole + 2)
 
@@ -574,6 +586,27 @@ class CardDataManager:
                 for sub_action in opt_actions:
                     sub_item = self._create_action_item(sub_action)
                     opt_item.appendRow(sub_item)
+        return item
+
+    def _create_command_item(self, command):
+        label = self.format_command_label(command)
+        item = QStandardItem(label)
+        item.setData("COMMAND", Qt.ItemDataRole.UserRole + 1)
+        item.setData(command, Qt.ItemDataRole.UserRole + 2)
+        if 'if_true' in command and command['if_true']:
+            true_item = QStandardItem(tr("If True"))
+            true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
+            true_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            item.appendRow(true_item)
+            for child in command['if_true']:
+                true_item.appendRow(self._create_command_item(child))
+        if 'if_false' in command and command['if_false']:
+            false_item = QStandardItem(tr("If False"))
+            false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
+            false_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+            item.appendRow(false_item)
+            for child in command['if_false']:
+                false_item.appendRow(self._create_command_item(child))
         return item
 
     def _generate_new_id(self):
