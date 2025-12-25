@@ -178,18 +178,25 @@ class LogicTreeWidget(QTreeView):
         if not index.isValid(): return
 
         item = self.standard_model.itemFromIndex(index)
-        count = self._recursive_convert_actions(item)
+        count, warnings = self._recursive_convert_actions(item)
         if count > 0:
-            QMessageBox.information(self, tr("Conversion Complete"), f"{tr('Converted')} {count} {tr('actions to commands.')}")
+            msg = f"{tr('Converted')} {count} {tr('actions to commands.')}"
+            if warnings > 0:
+                msg += f"\n\n{tr('Warnings')}: {warnings} {tr('items require attention.')}\n"
+                msg += tr("(Look for items marked with 'Legacy Warning')")
+                QMessageBox.warning(self, tr("Conversion Complete"), msg)
+            else:
+                QMessageBox.information(self, tr("Conversion Complete"), msg)
         else:
             QMessageBox.information(self, tr("Conversion Info"), tr("No legacy actions found to convert."))
 
     def _recursive_convert_actions(self, item):
         """
         Traverses the tree and converts ACTION items to COMMAND items.
-        Returns the number of converted actions.
+        Returns (converted_count, warning_count).
         """
-        count = 0
+        converted_count = 0
+        warning_count = 0
         # Iterate backwards to safely remove/insert rows
         for i in reversed(range(item.rowCount())):
             child = item.child(i)
@@ -198,14 +205,32 @@ class LogicTreeWidget(QTreeView):
             if child_type == "ACTION":
                 # Convert this Action (and its children)
                 cmd_data = self._convert_action_tree_to_command(child)
+
+                # Check for warnings in this conversion branch
+                w = self._scan_warnings_in_cmd(cmd_data)
+                warning_count += w
+
                 self.replace_item_with_command(child.index(), cmd_data)
-                count += 1
+                converted_count += 1
                 # Note: replace_item_with_command reconstructs the node, so we don't recurse into the old child.
                 # However, _convert_action_tree_to_command ALREADY handled the recursion for options.
             else:
                 # Recurse deeper
-                count += self._recursive_convert_actions(child)
-        return count
+                c, w = self._recursive_convert_actions(child)
+                converted_count += c
+                warning_count += w
+        return converted_count, warning_count
+
+    def _scan_warnings_in_cmd(self, cmd_data):
+        w = 0
+        if cmd_data.get('legacy_warning', False):
+            w += 1
+
+        if 'options' in cmd_data:
+            for opt_list in cmd_data['options']:
+                for sub_cmd in opt_list:
+                    w += self._scan_warnings_in_cmd(sub_cmd)
+        return w
 
     def replace_item_with_command(self, index, cmd_data):
         """Replaces a legacy Action item with a new Command item."""
