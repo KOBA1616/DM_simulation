@@ -8,7 +8,7 @@ import argparse
 import glob
 import numpy as np
 import torch
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 
 # Ensure bin and src are in path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -61,13 +61,13 @@ class PBTAgent:
         }
 
 class PBTManager:
-    def __init__(self, card_db, population_size: int = 10, model_path: str = None):
+    def __init__(self, card_db, population_size: int = 10, model_path: Optional[str] = None):
         self.card_db = card_db
         self.population_size = population_size
         self.agents: List[PBTAgent] = []
         self.model_path = model_path
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.network = None
+        self.network: Optional[AlphaZeroNetwork] = None
         self.input_size = dm_ai_module.TensorConverter.INPUT_SIZE
         self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
 
@@ -95,7 +95,8 @@ class PBTManager:
                 self.network.load_state_dict(torch.load(self.model_path, map_location=self.device))
             except Exception as e:
                 print(f"Failed to load model: {e}. Starting fresh.")
-        self.network.eval()
+        if self.network:
+            self.network.eval()
 
     def init_population(self):
         # Try to load meta decks
@@ -155,6 +156,9 @@ class PBTManager:
             # Convert to Torch
             # batch_tensor_list is a list of floats (flattened batch)
             input_data = torch.tensor(batch_tensor_list, dtype=torch.float32).view(len(states), self.input_size).to(self.device)
+
+            if self.network is None:
+                return [], []
 
             with torch.no_grad():
                 policies, values = self.network(input_data)
@@ -234,7 +238,7 @@ class PBTManager:
         print("Games finished.")
 
         # 3. Process Results & Training Data
-        training_data_batch = {
+        training_data_batch: Dict[str, List[Any]] = {
             'states': [],
             'policies': [],
             'values': []
