@@ -573,12 +573,15 @@
     "uid": "40ef9d59-cd86-4e50-a419-5e3ce746631c"
   },
   {
+    "ai_importance_score": 0,
     "civilizations": [
+      "WATER",
       "FIRE"
     ],
     "cost": 1,
     "effects": [],
     "id": 13,
+    "is_key_card": false,
     "keywords": {
       "double_breaker": true,
       "revolution_change": true
