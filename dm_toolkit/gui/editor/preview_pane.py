@@ -322,6 +322,27 @@ class CardPreviewWidget(QWidget):
 
         self.apply_civ_style(civs)
 
+    def _should_show_power(self, data):
+        """
+        Consolidated logic to determine if power should be displayed.
+        """
+        power = data.get('power', 0)
+        if power <= 0:
+            return False
+
+        t = data.get('type', '').upper()
+        # Logic: Show power if > 0, but hide if it's strictly a Spell (and not a Creature).
+        # This handles cases where Spells might accidentally have power set,
+        # or where we want to strictly follow the type rule.
+        is_spell = 'SPELL' in t
+        is_creature = 'CREATURE' in t
+
+        # If it is a Spell and NOT a Creature, hide power.
+        if is_spell and not is_creature:
+            return False
+
+        return True
+
     def render_standard(self, data, civs):
         self.name_label.setText(data.get('name', '???'))
         self.cost_label.setText(str(data.get('cost', 0)))
@@ -340,9 +361,8 @@ class CardPreviewWidget(QWidget):
         body_text = "\n".join(body_lines)
         self.text_body.setText(body_text)
 
-        power = data.get('power', 0)
-        if power > 0 and 'SPELL' not in data.get('type', ''):
-            self.power_label.setText(str(power))
+        if self._should_show_power(data):
+            self.power_label.setText(str(data.get('power', 0)))
             self.power_label.setVisible(True)
         else:
             self.power_label.setVisible(False)
@@ -357,7 +377,12 @@ class CardPreviewWidget(QWidget):
 
         races = " / ".join(data.get('races', []))
         self.tp_race_label.setText(races if races else "")
-        self.tp_power_label.setText(str(data.get('power', 0)))
+
+        if self._should_show_power(data):
+            self.tp_power_label.setText(str(data.get('power', 0)))
+            self.tp_power_label.setVisible(True)
+        else:
+            self.tp_power_label.setVisible(False)
 
         # Generate text for ONLY the creature part
         creature_lines = CardTextGenerator.generate_body_text_lines(data)
