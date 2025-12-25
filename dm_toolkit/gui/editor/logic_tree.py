@@ -148,23 +148,66 @@ class LogicTreeWidget(QTreeView):
         if not index.isValid(): return
 
         parent_item = self.standard_model.itemFromIndex(index.parent())
+        old_item = self.standard_model.itemFromIndex(index)
         row = index.row()
 
-        # Remove old Action
+        # 1. Capture old structure if it has children (OPTIONS)
+        preserved_options_data = []
+        if old_item.rowCount() > 0:
+             # Check if children are OPTIONS
+             for i in range(old_item.rowCount()):
+                  child = old_item.child(i)
+                  if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+                      # Collect actions inside
+                      opt_actions_data = []
+                      for k in range(child.rowCount()):
+                          act_child = child.child(k)
+                          # We only care about ACTIONs to convert
+                          if act_child.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
+                               # Recursively capture and convert
+                               c_cmd = self._convert_action_tree_to_command(act_child)
+                               opt_actions_data.append(c_cmd)
+                      preserved_options_data.append(opt_actions_data)
+
+        # 2. Inject options into cmd_data if exists
+        if preserved_options_data:
+             cmd_data['options'] = preserved_options_data
+
+        # 3. Remove old Action
         parent_item.removeRow(row)
 
-        # Insert new Command at same position
-        # Using insertRow with new item
-
-        # We need to construct the command item hierarchy using data_manager
-        # data_manager doesn't have public insert, so we do it via model or add helper
-
-        # But wait, data_manager._create_command_item creates a QStandardItem
+        # 4. Insert new Command at same position
         cmd_item = self.data_manager._create_command_item(cmd_data)
         parent_item.insertRow(row, cmd_item)
 
         # Select the new item
         self.setCurrentIndex(cmd_item.index())
+        self.expand(cmd_item.index()) # Expand to show preserved children
+
+    def _convert_action_tree_to_command(self, action_item):
+        """Recursively converts an Action Item and its children to Command Data."""
+        from dm_toolkit.gui.editor.action_converter import ActionConverter
+
+        act_data = action_item.data(Qt.ItemDataRole.UserRole + 2)
+        cmd_data = ActionConverter.convert(act_data)
+
+        # Check for children (Options)
+        options_list = []
+        if action_item.rowCount() > 0:
+            for i in range(action_item.rowCount()):
+                child = action_item.child(i)
+                if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+                    opt_cmds = []
+                    for k in range(child.rowCount()):
+                        sub_act = child.child(k)
+                        if sub_act.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
+                            opt_cmds.append(self._convert_action_tree_to_command(sub_act))
+                    options_list.append(opt_cmds)
+
+        if options_list:
+            cmd_data['options'] = options_list
+
+        return cmd_data
 
     def add_keywords(self, parent_index):
         if not parent_index.isValid(): return
