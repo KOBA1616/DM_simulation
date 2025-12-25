@@ -161,11 +161,22 @@ class ActionConverter:
             cmd['str_param'] = f"Legacy: {act_type}"
             ActionConverter._transfer_targeting(action_data, cmd)
 
+        # Final Check for Critical Missing Fields in standard types
+        if not cmd['legacy_warning']:
+             if cmd['type'] in ["TRANSITION", "DESTROY", "DISCARD", "RETURN_TO_HAND", "MANA_CHARGE"]:
+                  if cmd.get('target_group', 'NONE') == 'NONE':
+                       cmd['legacy_warning'] = True
+                       cmd['str_param'] = (cmd.get('str_param', '') + " [Missing Target]").strip()
+
         return cmd
 
     @staticmethod
     def _transfer_targeting(act, cmd):
         scope = act.get('scope', 'NONE')
+        # Heuristic Inference: If scope is missing but filter is present, imply TARGET_SELECT
+        if scope == 'NONE' and 'filter' in act:
+             scope = 'TARGET_SELECT'
+
         cmd['target_group'] = scope
         if 'filter' in act:
             cmd['target_filter'] = copy.deepcopy(act['filter'])
