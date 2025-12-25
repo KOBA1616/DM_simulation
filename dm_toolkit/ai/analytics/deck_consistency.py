@@ -1,14 +1,16 @@
 import dm_ai_module
 import random
 import logging
+from typing import List
+from dm_toolkit.types import CardDB, SeenCards
 
 class SolitaireRunner:
     """
     Runs a solitaire (1-player) simulation to measure deck consistency.
     Corresponds to Requirement 2-A: Access Count Simulation.
     """
-    def __init__(self, card_db, deck_list, max_turns=5):
-        self.card_db = card_db
+    def __init__(self, card_db: CardDB, deck_list: List[int], max_turns=5):
+        self.card_db: CardDB = card_db
         self.deck_list = deck_list
         self.max_turns = max_turns
         self.logger = logging.getLogger("SolitaireRunner")
@@ -35,7 +37,7 @@ class SolitaireRunner:
         # 3. Start Game
         dm_ai_module.PhaseManager.start_game(state, self.card_db)
 
-        seen_cards = set()
+        seen_cards: SeenCards = set()
 
         # 4. Game Loop
         for turn in range(1, self.max_turns + 1):

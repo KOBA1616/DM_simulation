@@ -1,11 +1,12 @@
 
 import dm_ai_module
 from dm_ai_module import GameState, EffectSystem, ActionDef, EffectActionType, InstructionOp
+from dm_toolkit.types import CardDB, Context
 
 def test_draw_handler_compile():
     print("Setup Compile Test")
     state = GameState(100)
-    card_db = {}
+    card_db: CardDB = {}
 
     state.add_card_to_hand(0, 1, 100)
 
@@ -14,7 +15,7 @@ def test_draw_handler_compile():
     action.type = EffectActionType.DRAW_CARD
     action.value1 = 2
 
-    ctx = {}
+    ctx: Context = {}
 
     print("Compiling...")
     instructions = EffectSystem.compile_action(state, action, 100, card_db, ctx)
@@ -34,7 +35,7 @@ def test_draw_handler_compile():
 def test_draw_handler_execution():
     print("Setup Execution Test")
     state = GameState(200)
-    card_db = {}
+    card_db: CardDB = {}
 
     # Setup Player 0 with deck
     state.add_card_to_deck(0, 1, 101)
@@ -46,7 +47,7 @@ def test_draw_handler_execution():
     action.type = EffectActionType.DRAW_CARD
     action.value1 = 1
 
-    ctx = {}
+    ctx: Context = {}
     instructions = EffectSystem.compile_action(state, action, 100, card_db, ctx)
 
     pipeline = dm_ai_module.PipelineExecutor()
@@ -66,7 +67,7 @@ def test_draw_handler_execution():
 def test_mana_handler_execution():
     print("Setup Mana Execution Test")
     state = GameState(200)
-    card_db = {}
+    card_db: CardDB = {}
 
     state.add_card_to_deck(0, 1, 101)
     state.add_card_to_deck(0, 1, 102)
@@ -76,7 +77,7 @@ def test_mana_handler_execution():
     action.type = EffectActionType.ADD_MANA
     action.value1 = 1
 
-    ctx = {}
+    ctx: Context = {}
     instructions = EffectSystem.compile_action(state, action, 100, card_db, ctx)
     assert len(instructions) == 1
 
@@ -91,7 +92,7 @@ def test_mana_handler_execution():
 def test_search_handler_execution():
     print("Setup Search Execution Test (Deck Bottom)")
     state = GameState(200)
-    card_db = {}
+    card_db: CardDB = {}
 
     for cid in [1, 2, 3]:
         cdef = dm_ai_module.CardDefinition(cid, "Dummy", "FIRE", ["Dragon"], 5, 5000, dm_ai_module.CardKeywords(), [])
@@ -106,7 +107,7 @@ def test_search_handler_execution():
     action.value1 = 2
     action.filter = dm_ai_module.FilterDef()
 
-    ctx = {}
+    ctx: Context = {}
     instructions = EffectSystem.compile_action(state, action, 100, card_db, ctx)
 
     pipeline = dm_ai_module.PipelineExecutor()

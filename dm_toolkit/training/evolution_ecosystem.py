@@ -6,6 +6,8 @@ import random
 import time
 import argparse
 from datetime import datetime
+from typing import Dict
+from dm_toolkit.types import CardCounts
 
 # Set up paths
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -276,7 +278,7 @@ class EvolutionEcosystem:
 
         # Calculate Deck Smart Score
         total_smart_score = 0
-        card_counts = {}
+        card_counts: CardCounts = {}
         for cid in challenger_deck:
             card_counts[cid] = card_counts.get(cid, 0) + 1
 
