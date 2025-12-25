@@ -38,6 +38,19 @@ class CardSelectionDialog(QDialog):
         self.list_widget = QListWidget()
         self.list_widget.setIconSize(QSize(32, 32))
 
+        # UX Improvement: Accessibility & Focus
+        # Associate the instruction with the list for screen readers
+        self.list_widget.setAccessibleName(instruction)
+        # Ensure focus lands on the list immediately
+        self.list_widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+        # UX Improvement: Empty State
+        if not items:
+            empty_item = QListWidgetItem("No items available to select.")
+            empty_item.setFlags(Qt.ItemFlag.NoItemFlags) # Disable interaction
+            self.list_widget.addItem(empty_item)
+            self.list_widget.setEnabled(False)
+
         if max_selection > 1:
             self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         else:
@@ -50,8 +63,14 @@ class CardSelectionDialog(QDialog):
         btn_layout = QHBoxLayout()
         self.ok_btn = QPushButton("OK")
         self.ok_btn.clicked.connect(self.accept_selection)
+
+        # UX Improvement: Default Action
+        self.ok_btn.setDefault(True)
+        self.ok_btn.setAccessibleName("Confirm Selection")
+
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.clicked.connect(self.reject)
+        self.cancel_btn.setAccessibleName("Cancel Selection")
 
         # If selection is mandatory (min >= 1), user shouldn't be able to just close/cancel easily
         # unless the game flow allows it. But for a dialog, Cancel usually means "Cancel Action" if possible.
@@ -65,7 +84,15 @@ class CardSelectionDialog(QDialog):
         self.list_widget.itemSelectionChanged.connect(self.validate_selection)
         self.validate_selection()
 
+        # UX Improvement: Set initial focus to list
+        if items:
+            self.list_widget.setFocus()
+            # Optionally select the first item if single selection is forced?
+            # self.list_widget.setCurrentRow(0)
+
     def populate_list(self, items):
+        if not items: return
+
         for idx, item in enumerate(items):
             # Determine display text based on item type
             display_text = "Unknown Item"
@@ -89,6 +116,9 @@ class CardSelectionDialog(QDialog):
 
             list_item = QListWidgetItem(display_text)
             list_item.setData(Qt.ItemDataRole.UserRole, idx)
+
+            # UX Improvement: Tooltip for full text if truncated or for clarity
+            list_item.setToolTip(display_text)
 
             # TODO: If we have card images or icons, set them here
             # list_item.setIcon(...)
