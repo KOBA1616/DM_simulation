@@ -191,21 +191,30 @@ class LogicTreeWidget(QTreeView):
                 menu.exec(vp.mapToGlobal(pos))
 
     def convert_all_legacy_actions_in_node(self, index):
-        """Recursively converts all Actions to Commands starting from the given node."""
+        """Preview then (optionally) convert all Actions to Commands starting from the given node."""
         if not index.isValid(): return
 
         item = self.standard_model.itemFromIndex(index)
-        count, warnings = self._recursive_convert_actions(item)
-        if count > 0:
-            msg = f"{tr('Converted')} {count} {tr('actions to commands.')}"
-            if warnings > 0:
-                msg += f"\n\n{tr('Warnings')}: {warnings} {tr('items require attention.')}\n"
-                msg += tr("(Look for items marked with 'Legacy Warning')")
-                QMessageBox.warning(self, tr("Conversion Complete"), msg)
-            else:
-                QMessageBox.information(self, tr("Conversion Complete"), msg)
-        else:
+        preview_items = self._collect_conversion_preview(item)
+
+        if not preview_items:
             QMessageBox.information(self, tr("Conversion Info"), tr("No legacy actions found to convert."))
+            return
+
+        # Show preview dialog and apply only if user accepts
+        from dm_toolkit.gui.editor.forms.convert_batch_preview_dialog import ConvertBatchPreviewDialog
+        dlg = ConvertBatchPreviewDialog(self, preview_items)
+        res = dlg.exec()
+        if res == dlg.Accepted:
+            count, warnings = self._recursive_convert_actions(item)
+            if count > 0:
+                msg = f"{tr('Converted')} {count} {tr('actions to commands.')}"
+                if warnings > 0:
+                    msg += f"\n\n{tr('Warnings')}: {warnings} {tr('items require attention.')}\n"
+                    msg += tr("(Look for items marked with 'Legacy Warning')")
+                    QMessageBox.warning(self, tr("Conversion Complete"), msg)
+                else:
+                    QMessageBox.information(self, tr("Conversion Complete"), msg)
 
     def _recursive_convert_actions(self, item):
         """
@@ -250,6 +259,40 @@ class LogicTreeWidget(QTreeView):
                 for sub_cmd in opt_list:
                     w += self._scan_warnings_in_cmd(sub_cmd)
         return w
+
+    def _collect_conversion_preview(self, item):
+        """Return a flat list of preview dicts for ACTION items under `item` without modifying tree.
+
+        Each preview dict: { 'path': str, 'label': str, 'warning': bool, 'cmd_data': dict }
+        """
+        previews = []
+
+        def _recurse(cur_item):
+            for i in range(cur_item.rowCount()):
+                child = cur_item.child(i)
+                if child is None:
+                    continue
+                child_type = child.data(Qt.ItemDataRole.UserRole + 1)
+                if child_type == 'ACTION':
+                    cmd_data = self._convert_action_tree_to_command(child)
+                    warn = bool(cmd_data.get('legacy_warning', False))
+                    previews.append({
+                        'path': self._get_item_path(child),
+                        'label': child.text(),
+                        'warning': warn,
+                        'cmd_data': cmd_data
+                    })
+                    # Also traverse OPTION children to collect nested ACTIONs
+                    for j in range(child.rowCount()):
+                        opt = child.child(j)
+                        if opt and opt.data(Qt.ItemDataRole.UserRole + 1) == 'OPTION':
+                            _recurse(opt)
+                else:
+                    # Recurse deeper
+                    _recurse(child)
+
+        _recurse(item)
+        return previews
 
     def replace_item_with_command(self, index, cmd_data):
         """Replaces a legacy Action item with a new Command item."""

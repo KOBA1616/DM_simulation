@@ -108,7 +108,8 @@ class CardEditor(QMainWindow):
         # Connect Data Changes from Inspector to Preview
         self.inspector.card_form.dataChanged.connect(self.on_data_changed)
         self.inspector.effect_form.dataChanged.connect(self.on_data_changed)
-        self.inspector.action_form.dataChanged.connect(self.on_data_changed)
+        # Unified form replaces previous action/command editors
+        self.inspector.unified_form.dataChanged.connect(self.on_data_changed)
         self.inspector.spell_side_form.dataChanged.connect(self.on_data_changed)
         self.inspector.modifier_form.dataChanged.connect(self.on_data_changed)
 
