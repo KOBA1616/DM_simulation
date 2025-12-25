@@ -209,6 +209,17 @@ class ActionEditForm(BaseEditForm):
     def on_type_changed(self):
         action_type = self.type_combo.currentData()
         self.update_ui_state(action_type)
+
+        # If the selected type is natively a Command type, offer conversion
+        if action_type and action_type in COMMAND_TYPES:
+            self.warning_label.setText(tr(f"The selected type '{action_type}' is best represented as a Command. You can convert it."))
+            self.warning_label.setVisible(True)
+            self.convert_btn.setVisible(True)
+        else:
+            # For legacy-native types, show legacy warning when appropriate
+            self.warning_label.setVisible(False)
+            self.convert_btn.setVisible(False)
+
         self.update_data()
 
     def on_measure_mode_changed(self):

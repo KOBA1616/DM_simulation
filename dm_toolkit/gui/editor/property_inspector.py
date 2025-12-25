@@ -7,6 +7,7 @@ from dm_toolkit.gui.editor.forms.action_form import ActionEditForm
 from dm_toolkit.gui.editor.forms.spell_side_form import SpellSideForm
 from dm_toolkit.gui.editor.forms.reaction_form import ReactionEditForm
 from dm_toolkit.gui.editor.forms.command_form import CommandEditForm
+from dm_toolkit.gui.editor.forms.unified_action_form import UnifiedActionForm
 from dm_toolkit.gui.editor.forms.keyword_form import KeywordEditForm
 from dm_toolkit.gui.editor.forms.modifier_form import ModifierEditForm
 from dm_toolkit.gui.editor.forms.option_form import OptionForm
@@ -62,9 +63,10 @@ class PropertyInspector(QWidget):
         self.stack.addWidget(self.effect_form)
         self.effect_form.structure_update_requested.connect(self._on_structure_update)
 
-        self.action_form = ActionEditForm()
-        self.stack.addWidget(self.action_form)
-        self.action_form.structure_update_requested.connect(self._on_structure_update)
+        # Unified Action UI replaces separate Action/Command editors
+        self.unified_form = UnifiedActionForm()
+        self.stack.addWidget(self.unified_form)
+        self.unified_form.structure_update_requested.connect(self._on_structure_update)
 
         self.spell_side_form = SpellSideForm()
         self.stack.addWidget(self.spell_side_form)
@@ -72,9 +74,11 @@ class PropertyInspector(QWidget):
         self.reaction_form = ReactionEditForm()
         self.stack.addWidget(self.reaction_form)
 
+        # Keep old forms available for now but DO NOT add them to the visible stack
+        # This effectively disables the legacy editors in the UI while preserving code.
         self.command_form = CommandEditForm()
-        self.stack.addWidget(self.command_form)
-        self.command_form.structure_update_requested.connect(self._on_structure_update)
+        # Do not add to stack: self.stack.addWidget(self.command_form)
+        # Do not connect signals to avoid UI interactions until removal/cleanup
 
         self.keyword_form = KeywordEditForm()
         self.stack.addWidget(self.keyword_form)
@@ -89,8 +93,9 @@ class PropertyInspector(QWidget):
         self.form_map = {
             "CARD": self.card_form,
             "EFFECT": self.effect_form,
-            "ACTION": self.action_form,
-            "COMMAND": self.command_form,
+            # Use UnifiedActionForm for both ACTION and COMMAND types
+            "ACTION": self.unified_form,
+            "COMMAND": self.unified_form,
             "SPELL_SIDE": self.spell_side_form,
             "REACTION_ABILITY": self.reaction_form,
             "KEYWORDS": self.keyword_form,

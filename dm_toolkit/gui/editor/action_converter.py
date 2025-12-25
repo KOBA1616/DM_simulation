@@ -166,6 +166,40 @@ class ActionConverter:
                        cmd['legacy_warning'] = True
                        cmd['str_param'] = (str(cmd.get('str_param') or '') + " [Missing Target]").strip()
 
+        # Finalize and normalize command (ensure uid, infer basic targets where possible)
+        ActionConverter._finalize_command(cmd, act_data)
+
+        return cmd
+
+    @staticmethod
+    def _finalize_command(cmd, act):
+        """Post-process converted command to improve compatibility and reduce false negatives.
+
+        - Ensure `uid` exists.
+        - If a `target_filter` exists but `target_group` is NONE, infer `TARGET_SELECT`.
+        - For TRANSITION commands, if `to_zone` exists but `target_group` is NONE, set a reasonable default.
+        - If essential fields are missing, leave `legacy_warning` set so callers can handle.
+        """
+        if 'uid' not in cmd:
+            cmd['uid'] = str(uuid.uuid4())
+
+        # Infer target_group from target_filter if possible
+        if cmd.get('target_group', 'NONE') == 'NONE' and 'target_filter' in cmd:
+            cmd['target_group'] = 'TARGET_SELECT'
+
+        # For TRANSITION, prefer to set target_group when to_zone present
+        if cmd.get('type') == 'TRANSITION':
+            if 'to_zone' in cmd and cmd.get('target_group', 'NONE') == 'NONE':
+                # If the command moves a card to a zone, default to PLAYER_SELF when ambiguous
+                cmd['target_group'] = 'PLAYER_SELF'
+
+        # Ensure flags/amount keys exist in normalized form where used
+        if 'amount' in act and 'amount' not in cmd:
+            try:
+                cmd['amount'] = int(act.get('amount') or act.get('value1') or 0)
+            except Exception:
+                cmd['amount'] = act.get('value1') if 'value1' in act else cmd.get('amount', 0)
+
         return cmd
 
     @staticmethod
