@@ -27,12 +27,7 @@ class CardDataManager:
             filepath = env_path
         else:
             # 2. Search relative to this file
-            # We look in specific known locations relative to the module file to avoid unsafe upward traversal.
             current_dir = os.path.dirname(os.path.abspath(__file__))
-
-            # Candidates:
-            # - Root data (dev/source layout): ../../../data/editor_templates.json
-            # - Package data (dist layout): ../../data/editor_templates.json
             candidates = [
                 os.path.join(current_dir, '..', '..', '..', 'data', 'editor_templates.json'),
                 os.path.join(current_dir, '..', '..', 'data', 'editor_templates.json')
@@ -272,6 +267,7 @@ class CardDataManager:
         cmd_data = cmd_item.data(Qt.ItemDataRole.UserRole + 2)
         if_true_list = []
         if_false_list = []
+        options_list = []
 
         for i in range(cmd_item.rowCount()):
             child = cmd_item.child(i)
@@ -287,12 +283,23 @@ class CardDataManager:
                     sub_item = child.child(j)
                     if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
                         if_false_list.append(self._reconstruct_command(sub_item))
+            elif role == "OPTION":
+                # Handle CHOICE options (list of commands)
+                opt_cmds = []
+                for j in range(child.rowCount()):
+                    sub_item = child.child(j)
+                    if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                        opt_cmds.append(self._reconstruct_command(sub_item))
+                options_list.append(opt_cmds)
 
         if if_true_list: cmd_data['if_true'] = if_true_list
         elif 'if_true' in cmd_data: del cmd_data['if_true']
 
         if if_false_list: cmd_data['if_false'] = if_false_list
         elif 'if_false' in cmd_data: del cmd_data['if_false']
+
+        if options_list: cmd_data['options'] = options_list
+        elif 'options' in cmd_data: del cmd_data['options']
 
         return cmd_data
 
@@ -466,6 +473,8 @@ class CardDataManager:
         item = QStandardItem(f"{tr('Command')}: {tr(cmd_type)}")
         item.setData("COMMAND", Qt.ItemDataRole.UserRole + 1)
         item.setData(command, Qt.ItemDataRole.UserRole + 2)
+
+        # If True / If False
         if 'if_true' in command and command['if_true']:
             true_item = QStandardItem(tr("If True"))
             true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
@@ -480,6 +489,16 @@ class CardDataManager:
             item.appendRow(false_item)
             for child in command['if_false']:
                 false_item.appendRow(self._create_command_item(child))
+
+        # Options (Choice)
+        if 'options' in command and command['options']:
+            for i, opt_cmds in enumerate(command['options']):
+                opt_item = QStandardItem(f"{tr('Option')} {i+1}")
+                opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
+                opt_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+                item.appendRow(opt_item)
+                for sub_cmd in opt_cmds:
+                    opt_item.appendRow(self._create_command_item(sub_cmd))
         return item
 
     def _create_action_item(self, action):
