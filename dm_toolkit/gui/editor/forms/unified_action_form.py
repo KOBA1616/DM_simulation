@@ -12,6 +12,10 @@ from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
 from dm_toolkit.gui.editor.action_converter import ActionConverter
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_REPLACE_WITH_COMMAND
 from dm_toolkit.gui.editor.forms.convert_preview_dialog import ConvertPreviewDialog
+from dm_toolkit.gui.editor.forms.unified_widgets import (
+    make_scope_combo, make_value_spin, make_measure_mode_combo,
+    make_ref_mode_combo, make_zone_combos, make_option_controls
+)
 
 
 class UnifiedActionForm(BaseEditForm):
@@ -79,15 +83,14 @@ class UnifiedActionForm(BaseEditForm):
         self.convert_btn.setVisible(False)
         layout.addRow(self.convert_btn)
 
+        from PyQt6.QtWidgets import QComboBox
         self.type_combo = QComboBox()
         self.known_types = UNIFIED_ACTION_TYPES
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Action Type"), self.type_combo)
 
         # Scope / Target Group
-        self.scope_combo = QComboBox()
-        scopes = ["PLAYER_SELF","PLAYER_OPPONENT","TARGET_SELECT","ALL_PLAYERS","RANDOM","ALL_FILTERED","NONE"]
-        self.populate_combo(self.scope_combo, scopes, data_func=lambda x: x, display_func=tr)
+        self.scope_combo = make_scope_combo(self)
         layout.addRow(tr("Scope"), self.scope_combo)
 
         # Common fields
@@ -96,37 +99,23 @@ class UnifiedActionForm(BaseEditForm):
         layout.addRow(self.str_label, self.str_edit)
 
         # Measure Mode (for COUNT/GET_STAT)
-        self.measure_mode_combo = QComboBox()
-        self.measure_mode_combo.addItem(tr("CARDS_MATCHING_FILTER"), "CARDS_MATCHING_FILTER")
-        stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT", "CARDS_DRAWN_THIS_TURN"]
-        self.populate_combo(self.measure_mode_combo, stats, data_func=lambda x: x, display_func=tr, clear=False)
+        self.measure_mode_combo = make_measure_mode_combo(self)
         layout.addRow(tr("Mode"), self.measure_mode_combo)
 
         # Ref Mode (for COST_REFERENCE)
-        self.ref_mode_combo = QComboBox()
-        ref_modes = ["SYM_CREATURE", "SYM_SPELL", "G_ZERO", "HYPER_ENERGY", "NONE"]
-        self.populate_combo(self.ref_mode_combo, ref_modes, data_func=lambda x: x, display_func=tr)
+        self.ref_mode_combo = make_ref_mode_combo(self)
         layout.addRow(tr("Ref Mode"), self.ref_mode_combo)
 
-        self.val1_spin = QSpinBox()
-        self.val1_spin.setRange(-9999, 9999)
+        self.val1_spin = make_value_spin(self)
         self.val1_label = QLabel(tr("Value 1"))
         layout.addRow(self.val1_label, self.val1_spin)
 
-        self.val2_spin = QSpinBox()
-        self.val2_spin.setRange(-9999, 9999)
+        self.val2_spin = make_value_spin(self)
         self.val2_label = QLabel(tr("Value 2"))
         layout.addRow(self.val2_label, self.val2_spin)
 
         # Option generation controls (for SELECT_OPTION)
-        self.option_count_spin = QSpinBox()
-        self.option_count_spin.setRange(1, 10)
-        self.option_count_spin.setValue(1)
-        self.generate_options_btn = QPushButton(tr("Generate Options"))
-        self.option_gen_layout = QHBoxLayout()
-        self.option_gen_layout.addWidget(self.option_count_spin)
-        self.option_gen_layout.addWidget(self.generate_options_btn)
-        self.option_count_label = QLabel(tr("Options to Add"))
+        self.option_count_spin, self.generate_options_btn, self.option_count_label, self.option_gen_layout = make_option_controls(self)
         layout.addRow(self.option_count_label, self.option_gen_layout)
 
         # Play without cost / allow duplicates / arbitrary amount
@@ -141,10 +130,7 @@ class UnifiedActionForm(BaseEditForm):
         layout.addRow(self.arbitrary_label, self.arbitrary_check)
 
         # Zones
-        self.source_zone_combo = QComboBox()
-        self.dest_zone_combo = QComboBox()
-        self.populate_combo(self.source_zone_combo, ZONES_EXTENDED, data_func=lambda x: x, display_func=tr)
-        self.populate_combo(self.dest_zone_combo, ZONES_EXTENDED, data_func=lambda x: x, display_func=tr)
+        self.source_zone_combo, self.dest_zone_combo = make_zone_combos(self)
         self.source_zone_label = QLabel(tr("Source Zone"))
         self.dest_zone_label = QLabel(tr("Destination Zone"))
         layout.addRow(self.source_zone_label, self.source_zone_combo)
@@ -201,6 +187,17 @@ class UnifiedActionForm(BaseEditForm):
             # Allow user to attempt conversion from Action -> Command when legacy selected
             self.convert_btn.setVisible(True)
         self.update_ui_state(t)
+        self.update_data()
+
+    def on_measure_mode_changed(self):
+        """Handle measure mode selection: update string field and propagate change."""
+        try:
+            val = self.measure_mode_combo.currentData()
+            if val:
+                # store the selected mode into the string/value field used by converter
+                self.str_edit.setText(val)
+        except Exception:
+            pass
         self.update_data()
 
     def on_convert_clicked(self):

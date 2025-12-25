@@ -55,85 +55,23 @@ class CommandEditForm(BaseEditForm):
         layout.addRow(self.warning_label)
 
           # Command Type
-        self.type_combo = QComboBox()
-          # Use Unified Action Types
-        self.known_types = [t for t in UNIFIED_ACTION_TYPES if t not in ["MUTATE", "FLOW"]]
-        self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
-        layout.addRow(tr("Action Type"), self.type_combo)
+        """
+        Legacy `CommandEditForm` implementation preserved for reference but deprecated.
+        The editor now uses `UnifiedActionForm` for both Command and Action editing.
+        This module provides a lightweight shim that delegates to `UnifiedActionForm`.
+        """
 
-          # Target Group (formerly Scope)
-        self.target_group_combo = QComboBox()
-        scopes = [
-            "PLAYER_SELF",
-            "PLAYER_OPPONENT",
-            "TARGET_SELECT",
-            "ALL_PLAYERS",
-            "RANDOM",
-            "ALL_FILTERED",
-            "NONE",
-        ]
-        self.populate_combo(self.target_group_combo, scopes, data_func=lambda x: x, display_func=tr)
-        self.target_group_label = QLabel(tr("Target Group"))
-        layout.addRow(self.target_group_label, self.target_group_combo)
+        from dm_toolkit.gui.editor.forms.unified_action_form import UnifiedActionForm
+        from dm_toolkit.gui.localization import tr
+        import warnings
 
-          # Mutation Kind / Str Param (Merged conceptual slot)
-          # Using a QStackedWidget to switch between Edit and Combo occupying the same layout slot
-        self.mutation_kind_container = QStackedWidget()
 
-        self.mutation_kind_edit = QLineEdit()
-        self.mutation_kind_combo = QComboBox()
-        self.populate_combo(self.mutation_kind_combo, GRANTABLE_KEYWORDS, data_func=lambda x: x, display_func=tr)
+        class CommandEditForm(UnifiedActionForm):
+          def __init__(self, parent=None):
+            warnings.warn("CommandEditForm is deprecated: using UnifiedActionForm instead", DeprecationWarning)
+            super().__init__(parent)
 
-        self.mutation_kind_container.addWidget(self.mutation_kind_edit)  # Index 0
-        self.mutation_kind_container.addWidget(self.mutation_kind_combo)  # Index 1
-
-        self.mutation_kind_label = QLabel(tr("Mutation Kind"))
-        layout.addRow(self.mutation_kind_label, self.mutation_kind_container)
-
-        self.str_param_edit = QLineEdit()
-        self.str_param_label = QLabel(tr("String Param"))
-        layout.addRow(self.str_param_label, self.str_param_edit)
-
-          # Query Mode (For QUERY type, similar to MEASURE_COUNT)
-        self.query_mode_combo = QComboBox()
-        self.query_mode_combo.addItem(tr("CARDS_MATCHING_FILTER"), "CARDS_MATCHING_FILTER")
-        stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT", "CARDS_DRAWN_THIS_TURN"]
-        self.populate_combo(self.query_mode_combo, stats, data_func=lambda x: x, display_func=tr, clear=False)
-        self.query_mode_label = QLabel(tr("Query Mode"))
-        layout.addRow(self.query_mode_label, self.query_mode_combo)
-
-          # Zones
-        self.from_zone_combo = QComboBox()
-        self.to_zone_combo = QComboBox()
-        zones = ZONES_EXTENDED
-        self.populate_combo(self.from_zone_combo, zones, data_func=lambda x: x, display_func=tr)
-        self.populate_combo(self.to_zone_combo, zones, data_func=lambda x: x, display_func=tr)
-
-        self.from_zone_label = QLabel(tr("From Zone"))
-        self.to_zone_label = QLabel(tr("To Zone"))
-        layout.addRow(self.from_zone_label, self.from_zone_combo)
-        layout.addRow(self.to_zone_label, self.to_zone_combo)
-
-          # Filter
-        self.filter_group = QGroupBox(tr("Target Filter"))
-        self.filter_widget = FilterEditorWidget()
-        fg_layout = QVBoxLayout(self.filter_group)
-        fg_layout.addWidget(self.filter_widget)
-        self.filter_widget.filterChanged.connect(self.update_data)
-        layout.addRow(self.filter_group)
-
-          # Amount (formerly Value 1)
-        self.amount_spin = QSpinBox()
-        self.amount_spin.setRange(-9999, 9999)
-        self.amount_label = QLabel(tr("Amount"))
-        layout.addRow(self.amount_label, self.amount_spin)
-
-          # Optional
-        self.optional_check = QCheckBox(tr("Optional (Arbitrary Amount)"))
-        layout.addRow(self.optional_check)
-
-          # Branch Generation (For FLOW)
-        self.gen_branch_btn = QPushButton(tr("Generate Branches"))
+          # Keep API surface compatible by inheriting UnifiedActionForm
         self.gen_branch_btn.clicked.connect(self.request_generate_branches)
         layout.addRow(self.gen_branch_btn)
 
