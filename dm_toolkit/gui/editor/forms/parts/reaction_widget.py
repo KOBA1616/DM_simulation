@@ -200,7 +200,9 @@ class ReactionWidget(QWidget):
         data['condition']['mana_count_min'] = self.mana_min_spin.value()
 
         # Update list label
-        self.reaction_list.item(row).setText(f"{data.get('type')} ({data.get('zone')})")
+        item = self.reaction_list.item(row)
+        if item is not None:
+            item.setText(f"{data.get('type')} ({data.get('zone')})")
 
         self.dataChanged.emit()
 

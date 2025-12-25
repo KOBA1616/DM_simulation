@@ -2,6 +2,7 @@
 import sys
 import os
 import pytest
+from typing import Any
 import random
 import json
 
@@ -19,7 +20,7 @@ def create_mock_card(id, name, civ_enum, races, cost, power, evolution=False):
     keywords = CardKeywords()
     keywords.evolution = evolution
     # Create empty effects list
-    effects = []
+    effects: list[Any] = []
 
     # Map Enum to String for Constructor
     civ_str = "NONE"

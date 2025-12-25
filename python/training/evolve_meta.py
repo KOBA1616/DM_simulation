@@ -59,8 +59,8 @@ class DeckEvolutionSystem:
     def __init__(self, card_db_path: str, meta_decks_path: str):
         self.card_db_path = card_db_path
         self.meta_decks_path = meta_decks_path
-        self.card_db = {}
-        self.valid_card_ids = []
+        self.card_db: dict[int, Any] = {}
+        self.valid_card_ids: list[int] = []
         self.population: List[MetaDeck] = []
         self.meta_archetypes: List[Dict] = []
 
@@ -127,7 +127,7 @@ class DeckEvolutionSystem:
 
     def create_random_deck(self) -> MetaDeck:
         # Simple random deck
-        deck = []
+        deck: list[int] = []
         while len(deck) < 40:
             cid = random.choice(self.valid_card_ids)
             if deck.count(cid) < 4:

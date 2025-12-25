@@ -5,7 +5,7 @@ import json
 import unittest
 import pytest
 from unittest.mock import MagicMock
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict, Optional, cast
 
 # --- Mocking PyQt6 and GUI dependencies ---
 # This must happen BEFORE importing dm_toolkit.gui.editor.data_manager
@@ -69,12 +69,15 @@ class MockQt:
 # Mock sys.modules
 if "PyQt6" not in sys.modules:
     sys.modules["PyQt6"] = MagicMock()
-    sys.modules["PyQt6.QtGui"] = MagicMock()
-    sys.modules["PyQt6.QtCore"] = MagicMock()
+    gui_mod = MagicMock()
+    core_mod = MagicMock()
 
-    sys.modules["PyQt6.QtGui"].QStandardItemModel = MockQStandardItemModel
-    sys.modules["PyQt6.QtGui"].QStandardItem = MockQStandardItem
-    sys.modules["PyQt6.QtCore"].Qt = MockQt
+    cast(Any, gui_mod).QStandardItemModel = MockQStandardItemModel
+    cast(Any, gui_mod).QStandardItem = MockQStandardItem
+    cast(Any, core_mod).Qt = MockQt
+
+    sys.modules["PyQt6.QtGui"] = gui_mod
+    sys.modules["PyQt6.QtCore"] = core_mod
 
 if "dm_toolkit.gui.localization" not in sys.modules:
     mock_loc = MagicMock()
@@ -89,7 +92,7 @@ try:
     from dm_toolkit.gui.editor.data_manager import CardDataManager
 except ImportError as e:
     # raise RuntimeError(f"Failed to import CardDataManager: {e}")
-    CardDataManager = MagicMock() # Fallback for mypy check if file not found in path
+    CardDataManager = MagicMock()  # type: ignore[misc]  # Fallback for mypy check if file not found in path
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
 try:
@@ -103,7 +106,7 @@ except ImportError:
 @pytest.mark.skipif("dm_ai_module" not in sys.modules, reason="dm_ai_module not found")
 class TestGuiJsonIntegration(unittest.TestCase):
     def setUp(self) -> None:
-        self.model = MockQStandardItemModel()
+        self.model = cast(Any, MockQStandardItemModel())
         self.manager = CardDataManager(self.model)
         self.temp_file = "temp_gui_integration_test.json"
 

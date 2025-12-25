@@ -2,7 +2,7 @@
 import os
 import sys
 import random
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import numpy as np
 
 # Ensure bin is in path (absolute path)
@@ -13,7 +13,7 @@ if bin_path not in sys.path:
 import dm_ai_module
 
 # Spec Step 2.2: Define combo practice board definitions in SCENARIOS
-SCENARIOS = {
+SCENARIOS: Dict[str, Dict[str, Any]] = {
     "infinite_loop_drill": {
         "description": "Start with a board state that allows an infinite loop. The goal is to prove the loop.",
         "config": {
@@ -54,7 +54,7 @@ class ScenarioRunner:
             raise ValueError(f"Unknown scenario: {scenario_name}")
 
         scenario_def = SCENARIOS[scenario_name]
-        config_dict = scenario_def["config"]
+        config_dict: Dict[str, Any] = scenario_def["config"]
 
         # Convert dict to ScenarioConfig
         # Note: dm_ai_module.ScenarioConfig has attributes like my_mana, etc.

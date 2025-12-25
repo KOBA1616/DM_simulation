@@ -63,7 +63,7 @@ def create_dummy_onnx(path):
     dummy_input = torch.randn(1, 10)
     
     # Export
-    torch.onnx.export(model, dummy_input, path, 
+    torch.onnx.export(model, (dummy_input,), path, 
                       input_names=['input'], output_names=['output'],
                       dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}})
     print(f"Exported dummy ONNX model to {path}")
@@ -77,7 +77,8 @@ def verify_cpp_loading(model_path):
     # The binding expects: const std::map<CardID, CardDefinition>&
     # In python: dict
     
-    card_db = {} 
+    from typing import Any
+    card_db: dict[int, Any] = {}
     
     try:
         evaluator = dm_ai_module.NeuralEvaluator(card_db)

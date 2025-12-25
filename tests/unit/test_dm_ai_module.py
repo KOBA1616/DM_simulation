@@ -1,6 +1,7 @@
 import sys
 import os
 import pytest
+from typing import Any
 
 # Add the bin directory to sys.path
 sys.path.append(os.path.join(os.getcwd(), 'bin'))
@@ -20,7 +21,7 @@ def test_game_state_init():
 
 def test_stats_vectorization():
     gs = dm_ai_module.GameState(42)
-    card_db = {}
+    card_db: dict[int, Any] = {}
     # Fixed: initialize_card_stats is an instance method
     gs.initialize_card_stats(card_db, 40)
 

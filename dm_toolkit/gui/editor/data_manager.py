@@ -124,10 +124,14 @@ class CardDataManager:
 
     def get_full_data(self):
         """Reconstructs the full JSON list from the tree model."""
-        cards = []
+        cards: list[JSON] = []
         root = self.model.invisibleRootItem()
+        if root is None:
+            return cards
         for i in range(root.rowCount()):
             card_item = root.child(i)
+            if card_item is None:
+                continue
             card_data = self.reconstruct_card_data(card_item)
             if card_data:
                 cards.append(card_data)
@@ -343,6 +347,8 @@ class CardDataManager:
     def add_child_item(self, parent_index, item_type, data, label):
         if not parent_index.isValid(): return None
         parent_item = self.model.itemFromIndex(parent_index)
+        if parent_item is None:
+            return None
         parent_role = parent_item.data(Qt.ItemDataRole.UserRole + 1)
 
         target_item = parent_item
@@ -361,6 +367,8 @@ class CardDataManager:
     def add_spell_side_item(self, card_item):
         for i in range(card_item.rowCount()):
             child = card_item.child(i)
+            if child is None:
+                continue
             if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
                 return child
 
@@ -584,14 +592,19 @@ class CardDataManager:
     def _generate_new_id(self):
         max_id = 0
         root = self.model.invisibleRootItem()
+        if root is None:
+            return 1
         for i in range(root.rowCount()):
             card_item = root.child(i)
+            if card_item is None:
+                continue
             card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
             if card_data and 'id' in card_data:
                 try:
                     cid = int(card_data['id'])
                     if cid > max_id: max_id = cid
-                except ValueError: pass
+                except ValueError:
+                    pass
         return max_id + 1
 
     def _find_child_by_role(self, parent_item, role_string):

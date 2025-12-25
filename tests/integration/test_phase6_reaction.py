@@ -1,6 +1,7 @@
 
 import sys
 import os
+from typing import Any
 
 # Ensure the module can be loaded
 sys.path.append(os.path.abspath("bin"))
@@ -27,7 +28,7 @@ def create_dummy_card_def(card_id, shield_trigger=False, revolution_change=False
     kw.revolution_change = revolution_change
 
     # Create basic effect (required by constructor)
-    effs = []
+    effs: list[Any] = []
 
     return CardDefinition(
         card_id,

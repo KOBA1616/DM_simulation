@@ -2,6 +2,7 @@
 import os
 import sys
 import numpy as np
+from typing import Any, cast
 import argparse
 import time
 
@@ -85,5 +86,5 @@ if __name__ == "__main__":
         save_dict['states'] = states
 
     print(f"Saving to {args.output}...")
-    np.savez_compressed(args.output, **save_dict)
+    np.savez_compressed(args.output, **cast(dict, save_dict))
     print("Done.")
