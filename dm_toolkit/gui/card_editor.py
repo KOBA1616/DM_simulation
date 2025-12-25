@@ -191,6 +191,11 @@ class CardEditor(QMainWindow):
         item = self.tree_widget.standard_model.itemFromIndex(idx)
         card_item = None
 
+        # Determine context for updates that modify hierarchy
+        if command == "REPLACE_WITH_COMMAND":
+            self.tree_widget.replace_item_with_command(idx, payload)
+            return
+
         item_type = item.data(Qt.ItemDataRole.UserRole + 1)
         if item_type == "CARD":
             card_item = item
