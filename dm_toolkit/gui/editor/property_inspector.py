@@ -31,6 +31,11 @@ class PropertyInspector(QWidget):
         super().__init__(parent)
         self.setup_ui()
 
+    def _on_structure_update(self, command: str, data: dict):
+        """Handle structure update requests from child forms."""
+        # Intermediate processing (logging/validation) can be added here
+        self.structure_update_requested.emit(command, data)
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         self.label = QLabel(tr("Property Inspector"))
@@ -51,15 +56,15 @@ class PropertyInspector(QWidget):
 
         self.card_form = CardEditForm()
         self.stack.addWidget(self.card_form)
-        self.card_form.structure_update_requested.connect(self.structure_update_requested.emit)
+        self.card_form.structure_update_requested.connect(self._on_structure_update)
 
         self.effect_form = EffectEditForm()
         self.stack.addWidget(self.effect_form)
-        self.effect_form.structure_update_requested.connect(self.structure_update_requested.emit)
+        self.effect_form.structure_update_requested.connect(self._on_structure_update)
 
         self.action_form = ActionEditForm()
         self.stack.addWidget(self.action_form)
-        self.action_form.structure_update_requested.connect(self.structure_update_requested.emit)
+        self.action_form.structure_update_requested.connect(self._on_structure_update)
 
         self.spell_side_form = SpellSideForm()
         self.stack.addWidget(self.spell_side_form)
@@ -69,11 +74,11 @@ class PropertyInspector(QWidget):
 
         self.command_form = CommandEditForm()
         self.stack.addWidget(self.command_form)
-        self.command_form.structure_update_requested.connect(self.structure_update_requested.emit)
+        self.command_form.structure_update_requested.connect(self._on_structure_update)
 
         self.keyword_form = KeywordEditForm()
         self.stack.addWidget(self.keyword_form)
-        self.keyword_form.structure_update_requested.connect(self.structure_update_requested.emit)
+        self.keyword_form.structure_update_requested.connect(self._on_structure_update)
 
         self.modifier_form = ModifierEditForm()
         self.stack.addWidget(self.modifier_form)
