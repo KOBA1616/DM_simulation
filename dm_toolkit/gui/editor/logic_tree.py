@@ -231,6 +231,7 @@ class LogicTreeWidget(QTreeView):
         # Deep copy to avoid reference issues
         import copy
         data_copy = copy.deepcopy(cmd_data)
+        if 'uid' in data_copy: del data_copy['uid']
 
         self.add_child_item(option_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
 
@@ -244,6 +245,7 @@ class LogicTreeWidget(QTreeView):
 
         import copy
         data_copy = copy.deepcopy(action_data)
+        if 'uid' in data_copy: del data_copy['uid']
 
         self.add_child_item(parent_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
 
@@ -260,6 +262,7 @@ class LogicTreeWidget(QTreeView):
         # Deep copy
         import copy
         data_copy = copy.deepcopy(cmd_data)
+        if 'uid' in data_copy: del data_copy['uid']
 
         self.add_child_item(effect_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
 
@@ -270,6 +273,7 @@ class LogicTreeWidget(QTreeView):
 
         import copy
         data_copy = copy.deepcopy(action_data)
+        if 'uid' in data_copy: del data_copy['uid']
 
         self.add_child_item(effect_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
 
@@ -280,6 +284,7 @@ class LogicTreeWidget(QTreeView):
 
         import copy
         data_copy = copy.deepcopy(action_data)
+        if 'uid' in data_copy: del data_copy['uid']
 
         self.add_child_item(option_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
 
@@ -341,6 +346,7 @@ class LogicTreeWidget(QTreeView):
 
         import copy
         data_copy = copy.deepcopy(cmd_data)
+        if 'uid' in data_copy: del data_copy['uid']
         self.add_child_item(branch_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
 
     def generate_branches_for_current(self):
@@ -422,10 +428,6 @@ class LogicTreeWidget(QTreeView):
         index = item.index()
         # Root index is invalid but we traverse its children
         if index.isValid() and self.isExpanded(index):
-            # Use a unique identifier if possible, e.g., the name + type path?
-            # Or rely on object structure. For cards, use ID.
-            # For children, using a path-like string might be safer.
-            # Here we use a path string: "0:0:1"
             path = self._get_item_path(item)
             expanded_ids.add(path)
 
@@ -448,11 +450,15 @@ class LogicTreeWidget(QTreeView):
             self._traverse_restore_expansion(item.child(i), expanded_ids)
 
     def _get_item_path(self, item):
-        """Generates a simple path string 'row:row:row'."""
+        """Generates a path string using UIDs if available, else row indices."""
         path = []
         curr = item
         while curr:
-            path.append(str(curr.row()))
+            data = curr.data(Qt.ItemDataRole.UserRole + 2)
+            if data and isinstance(data, dict) and 'uid' in data:
+                path.append(f"uid_{data['uid']}")
+            else:
+                path.append(f"row_{curr.row()}")
             curr = curr.parent()
         return ":".join(reversed(path))
 
