@@ -5,6 +5,7 @@ from dm_toolkit.gui.localization import tr
 import uuid
 import json
 import os
+import copy
 
 class CardDataManager:
     """
@@ -483,6 +484,9 @@ class CardDataManager:
         return item
 
     def _create_action_item(self, action):
+        # Prevent side effects on the source data
+        action = copy.deepcopy(action)
+
         if 'uid' not in action:
             action['uid'] = str(uuid.uuid4())
         act_type = action.get('type', 'NONE')
