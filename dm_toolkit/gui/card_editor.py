@@ -191,6 +191,11 @@ class CardEditor(QMainWindow):
         item = self.tree_widget.standard_model.itemFromIndex(idx)
         card_item = None
 
+        # Determine context for updates that modify hierarchy
+        if command == "REPLACE_WITH_COMMAND":
+            self.tree_widget.replace_item_with_command(idx, payload)
+            return
+
         item_type = item.data(Qt.ItemDataRole.UserRole + 1)
         if item_type == "CARD":
             card_item = item
@@ -241,11 +246,10 @@ class CardEditor(QMainWindow):
         elif command == "ADD_CHILD_ACTION":
             if item_type == "EFFECT":
                 self.tree_widget.add_action_to_effect(item.index())
+            elif item_type == "OPTION":
+                self.tree_widget.add_action_to_option(item.index())
             elif item_type == "ACTION":
-                 # If adding action to action, it usually means adding to an option or maybe insert after?
-                 # For now, let's assume it only works on EFFECT nodes or we redirect logic.
-                 # The user wants "Add Action" button.
-                 pass
+                self.tree_widget.add_action_sibling(item.index())
 
     def new_card(self):
         self.tree_widget.add_new_card()
