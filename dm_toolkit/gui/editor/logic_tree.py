@@ -210,6 +210,28 @@ class LogicTreeWidget(QTreeView):
 
         self.add_child_item(option_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
 
+    def add_action_to_effect(self, effect_index, action_data=None):
+        if not effect_index.isValid(): return
+        if action_data is None:
+             action_data = {"type": "MOVE_CARD", "from_zone": "DECK", "to_zone": "HAND"}
+        self.add_child_item(effect_index, "ACTION", action_data, f"{tr('Action')}: {tr('MOVE_CARD')}")
+
+    def add_action_to_option(self, option_index, action_data=None):
+        if not option_index.isValid(): return
+        if action_data is None:
+             action_data = {"type": "MOVE_CARD", "from_zone": "DECK", "to_zone": "HAND"}
+        self.add_child_item(option_index, "ACTION", action_data, f"{tr('Action')}: {tr('MOVE_CARD')}")
+
+    def add_action_sibling(self, action_index, action_data=None):
+        if not action_index.isValid(): return
+        parent_index = action_index.parent()
+        if not parent_index.isValid(): return
+
+        if action_data is None:
+             action_data = {"type": "MOVE_CARD", "from_zone": "DECK", "to_zone": "HAND"}
+
+        self.add_child_item(parent_index, "ACTION", action_data, f"{tr('Action')}: {tr('MOVE_CARD')}")
+
     def add_command_to_effect(self, effect_index, cmd_data=None):
         if not effect_index.isValid(): return
         if cmd_data is None:
@@ -225,6 +247,20 @@ class LogicTreeWidget(QTreeView):
         data_copy = copy.deepcopy(cmd_data)
 
         self.add_child_item(effect_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
+
+    def add_action_to_effect(self, effect_index, action_data=None):
+        if not effect_index.isValid(): return
+        if action_data is None:
+            action_data = {
+                "type": "DRAW_CARD",
+                "value": 1
+            }
+
+        # Deep copy
+        import copy
+        data_copy = copy.deepcopy(action_data)
+
+        self.add_child_item(effect_index, "ACTION", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
 
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""

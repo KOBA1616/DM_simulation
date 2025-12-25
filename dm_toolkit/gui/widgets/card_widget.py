@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QCursor
 
+from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
+
 class CardWidget(QFrame):
     clicked = pyqtSignal(int)  # Emits instance_id
     hovered = pyqtSignal(int)  # Emits card_id
@@ -154,27 +156,11 @@ class CardWidget(QFrame):
             layout.addWidget(self.power_label)
 
     def get_civ_color(self, civ):
-        colors_base = {
-            "LIGHT": "#DAA520",     # GoldenRod
-            "WATER": "#1E90FF",     # DodgerBlue
-            "DARKNESS": "#696969",  # DimGray
-            "FIRE": "#FF4500",      # OrangeRed
-            "NATURE": "#228B22",    # ForestGreen
-            "ZERO": "#A9A9A9"       # DarkGray
-        }
-        return colors_base.get(civ, "#A9A9A9")
+        return CIV_COLORS_FOREGROUND.get(civ, "#A9A9A9")
 
     def get_bg_civ_color(self, civ):
         # Lighter colors for card background
-        colors_base = {
-            "LIGHT": "#FFFACD",     # LemonChiffon
-            "WATER": "#E0FFFF",     # LightCyan
-            "DARKNESS": "#D3D3D3",  # LightGray
-            "FIRE": "#FFE4E1",      # MistyRose
-            "NATURE": "#90EE90",    # LightGreen
-            "ZERO": "#F5F5F5"       # WhiteSmoke
-        }
-        return colors_base.get(civ, "#FFFFFF")
+        return CIV_COLORS_BACKGROUND.get(civ, "#FFFFFF")
 
     def update_style(self):
         # 1. Update Cost Circle Style (Multicolor Split)

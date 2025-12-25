@@ -419,8 +419,8 @@ namespace dm::engine::systems {
              std::string target_zone = resolve_string(inst.args.value("target", ""));
              if (target_zone == "DECK") {
                  PlayerID pid = state.active_player_id;
-                 auto& deck = state.players[pid].deck;
-                 std::shuffle(deck.begin(), deck.end(), state.rng);
+                 auto cmd = std::make_unique<ShuffleCommand>(pid);
+                 execute_command(std::move(cmd), state);
              }
              return;
         }
