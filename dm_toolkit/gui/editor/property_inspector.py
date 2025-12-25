@@ -68,6 +68,7 @@ class PropertyInspector(QWidget):
 
         self.command_form = CommandEditForm()
         self.stack.addWidget(self.command_form)
+        self.command_form.structure_update_requested.connect(self.structure_update_requested.emit)
 
         self.keyword_form = KeywordEditForm()
         self.stack.addWidget(self.keyword_form)
