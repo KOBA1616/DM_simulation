@@ -5,6 +5,7 @@ from PyQt6.QtCore import Qt, QModelIndex
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
 import uuid
+import copy
 
 class LogicTreeWidget(QTreeView):
     def __init__(self, parent=None):
@@ -288,6 +289,80 @@ class LogicTreeWidget(QTreeView):
 
         return cmd_data
 
+    def convert_mekraid_node(self, index, data):
+        """
+        Replaces a node (legacy MEKRAID) with a FLOW sequence representing Mekraid logic.
+        Mekraid Logic:
+          1. QUERY: Reveal top N cards (Move to BUFFER)
+          2. CHOICE: Select 1 card from BUFFER matching Filter (Move to BATTLE_ZONE)
+          3. TRANSITION: Move remaining cards in BUFFER to DECK_BOTTOM
+        """
+        # 1. Parse amount (Mekraid N) and filter
+        # The ActionConverter puts the string param as "Legacy: MEKRAID..." but maybe we have value1
+        # Data passed here is likely the "Command" data which ActionConverter produced.
+        # But since ActionConverter produced NONE, we might need to rely on what was preserved?
+        # Actually ActionConverter.convert() DOES preserve 'amount' if it was in 'value1' or filter count.
+        # Let's check ActionConverter again. It does NOT explicitly preserve 'value1' for MEKRAID unless
+        # it hits a generic block. In `ActionConverter`, MEKRAID case does NOT set amount.
+        # BUT, the legacy data might still be there if we access the raw action?
+        # No, `data` here IS the converted command data.
+        # So we might need to default to Mekraid 3 if amount is 0.
+
+        amount = data.get('amount', 3)
+        if amount == 0: amount = 3
+
+        # Filter is tricky. ActionConverter copies it if present.
+        mekraid_filter = data.get('target_filter', {})
+
+        # 2. Construct FLOW Command
+        flow_cmd = {
+            "type": "FLOW",
+            "uid": str(uuid.uuid4()),
+            "str_param": "Mekraid Sequence",
+            "branches": [
+                # Branch 1 (TRUE): The Main Logic
+                {
+                    "condition": True, # Always execute
+                    "commands": [
+                        # Step 1: Reveal top N to Buffer
+                        {
+                            "type": "TRANSITION",
+                            "uid": str(uuid.uuid4()),
+                            "from_zone": "DECK",
+                            "to_zone": "EFFECT_BUFFER", # or HAND/BUFFER
+                            "amount": amount,
+                            "target_group": "PLAYER_SELF",
+                            "str_param": "Reveal Cards"
+                        },
+                        # Step 2: Choose 1 to Play
+                        {
+                            "type": "CHOICE",
+                            "uid": str(uuid.uuid4()),
+                            "from_zone": "EFFECT_BUFFER",
+                            "to_zone": "BATTLE_ZONE",
+                            "amount": 1,
+                            "target_group": "PLAYER_SELF",
+                            "target_filter": mekraid_filter,
+                            "optional": False, # Mekraid forces play if valid? usually yes.
+                            "str_param": "Play Card"
+                        },
+                        # Step 3: Return rest to Bottom
+                        {
+                            "type": "TRANSITION",
+                            "uid": str(uuid.uuid4()),
+                            "from_zone": "EFFECT_BUFFER",
+                            "to_zone": "DECK_BOTTOM",
+                            "target_group": "PLAYER_SELF",
+                            "str_param": "Return Rest"
+                        }
+                    ]
+                }
+            ]
+        }
+
+        self.replace_item_with_command(index, flow_cmd)
+        QMessageBox.information(self, tr("Conversion Info"), tr("Converted MEKRAID {} to Flow Sequence.").format(amount))
+
     def add_keywords(self, parent_index):
         if not parent_index.isValid(): return
         self.add_child_item(parent_index, "KEYWORDS", {}, tr("Keywords"))
@@ -351,7 +426,6 @@ class LogicTreeWidget(QTreeView):
             }
 
         # Deep copy to avoid reference issues
-        import copy
         data_copy = copy.deepcopy(cmd_data)
         if 'uid' in data_copy: del data_copy['uid']
 
@@ -366,7 +440,6 @@ class LogicTreeWidget(QTreeView):
         if action_data is None:
              action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
 
-        import copy
         data_copy = copy.deepcopy(action_data)
         if 'uid' in data_copy: del data_copy['uid']
 
@@ -384,7 +457,6 @@ class LogicTreeWidget(QTreeView):
             }
 
         # Deep copy
-        import copy
         data_copy = copy.deepcopy(cmd_data)
         if 'uid' in data_copy: del data_copy['uid']
 
@@ -396,7 +468,6 @@ class LogicTreeWidget(QTreeView):
         if action_data is None:
              action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
 
-        import copy
         data_copy = copy.deepcopy(action_data)
         if 'uid' in data_copy: del data_copy['uid']
 
@@ -408,7 +479,6 @@ class LogicTreeWidget(QTreeView):
         if action_data is None:
              action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
 
-        import copy
         data_copy = copy.deepcopy(action_data)
         if 'uid' in data_copy: del data_copy['uid']
 
@@ -471,7 +541,6 @@ class LogicTreeWidget(QTreeView):
                 "target_filter": {}
             }
 
-        import copy
         data_copy = copy.deepcopy(cmd_data)
         if 'uid' in data_copy: del data_copy['uid']
         self.add_child_item(branch_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
