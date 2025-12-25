@@ -39,22 +39,26 @@
     {
       "name": "Draw Card",
       "data": {
-        "type": "DRAW_CARD",
-        "filter": { "count": 1 }
+        "type": "TRANSITION",
+        "from_zone": "DECK",
+        "to_zone": "HAND",
+        "target_filter": { "count": 1 }
       }
     },
     {
       "name": "Destroy Card",
       "data": {
-        "type": "DESTROY",
-        "filter": { "count": 1, "zones": ["BATTLE_ZONE"] }
+        "type": "TRANSITION",
+        "to_zone": "GRAVEYARD",
+        "target_filter": { "count": 1, "zones": ["BATTLE_ZONE"] }
       }
     },
     {
       "name": "Mana Charge",
       "data": {
-        "type": "SEND_TO_MANA",
-        "filter": { "count": 1, "zones": ["HAND"] }
+        "type": "TRANSITION",
+        "to_zone": "MANA_ZONE",
+        "target_filter": { "count": 1, "zones": ["HAND"] }
       }
     }
   ]
