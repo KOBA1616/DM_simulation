@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from typing import Dict, List, Any, Optional
 
 # Define Category Metadata (Order and Labels)
 CATEGORY_METADATA = {
@@ -14,9 +15,9 @@ class ActionDef:
     Configuration class for an Action Type.
     Separates the definition logic from the generated configuration dictionary.
     """
-    def __init__(self, key, label, category, visible=None, labels=None,
-                 produces_output=False, can_be_optional=False,
-                 json_template=None, output_label=None):
+    def __init__(self, key: str, label: str, category: str, visible: Optional[List[str]] = None, labels: Optional[Dict[str, str]] = None,
+                 produces_output: bool = False, can_be_optional: bool = False,
+                 json_template: Optional[Dict[str, Any]] = None, output_label: Optional[str] = None):
         self.key = key
         self.label = label
         self.category = category
@@ -190,8 +191,8 @@ _definitions = [
 ]
 
 # Generate Dictionary Exports
-ACTION_CATEGORIES = {}
-ACTION_UI_CONFIG = {}
+ACTION_CATEGORIES: Dict[str, Dict[str, Any]] = {}
+ACTION_UI_CONFIG: Dict[str, Dict[str, Any]] = {}
 
 # Initialize Categories
 for cat_key, cat_label in CATEGORY_METADATA.items():
