@@ -28,13 +28,16 @@
             },
             "target_group": "PLAYER_SELF",
             "to_zone": "MANA_ZONE",
-            "type": "TRANSITION"
+            "type": "TRANSITION",
+            "uid": "20d76dfb-bddd-4b42-8324-882f26fdaad6"
           }
         ],
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "uid": "332cd305-64ca-4ec4-82a1-5c73acac954f"
       }
     ],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "uid": "877e158d-4a15-4a75-8759-a662491c0a6d"
   },
   {
     "civilizations": [
@@ -66,7 +69,8 @@
             "target_filter": {},
             "target_group": "PLAYER_SELF",
             "to_zone": "NONE",
-            "type": "QUERY"
+            "type": "QUERY",
+            "uid": "feca751b-0463-4bf3-a004-5ecb754fcc2c"
           },
           {
             "amount": 0,
@@ -80,7 +84,8 @@
             "target_filter": {},
             "target_group": "PLAYER_SELF",
             "to_zone": "NONE",
-            "type": "DRAW_CARD"
+            "type": "DRAW_CARD",
+            "uid": "fef8c199-4da9-44ce-b434-883c51f8c8cc"
           },
           {
             "amount": 0,
@@ -99,16 +104,19 @@
             },
             "target_group": "PLAYER_SELF",
             "to_zone": "DECK_BOTTOM",
-            "type": "TRANSITION"
+            "type": "TRANSITION",
+            "uid": "4210cbb9-bfef-4c35-96ad-7eb75822c20b"
           }
         ],
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "uid": "5792d67c-c93b-424b-8b00-23d99f5d1301"
       }
     ],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "uid": "cd2d835e-747e-47b6-a4a1-87c24c0173f2"
   },
   {
     "ai_importance_score": 0,
@@ -136,16 +144,19 @@
             "optional": true,
             "target_filter": {},
             "target_group": "PLAYER_SELF",
-            "type": "DRAW_CARD"
+            "type": "DRAW_CARD",
+            "uid": "1d89bc37-30a5-4522-99c4-78edabde7b20"
           }
         ],
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "uid": "c9f42834-24d4-4697-82d0-129306d90496"
       }
     ],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "uid": "02a23d1f-c8ca-4ef2-a400-61448f3b8757"
   },
   {
     "ai_importance_score": 0,
@@ -172,16 +183,19 @@
             "optional": false,
             "target_filter": {},
             "target_group": "PLAYER_SELF",
-            "type": "DRAW_CARD"
+            "type": "DRAW_CARD",
+            "uid": "33d6d14b-681e-48a6-bdd0-6e85fd949027"
           }
         ],
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "uid": "e666143c-f24d-4ef9-91b6-76dc5735540a"
       }
     ],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "uid": "974dcce5-5df3-4a43-b9f0-26b25d997cf5"
   },
   {
     "ai_importance_score": 0,
@@ -204,7 +218,6 @@
       "id": 13,
       "keywords": {},
       "name": "♪蛙の子遭えるの何処?好きと謂ひて",
-      "type": "SPELL",
       "triggers": [
         {
           "actions": [],
@@ -226,16 +239,20 @@
               },
               "target_group": "PLAYER_SELF",
               "to_zone": "HAND",
-              "type": "TRANSITION"
+              "type": "TRANSITION",
+              "uid": "a33720e4-cd4d-4dcd-b304-aaa413485c3a"
             }
           ],
           "condition": {
             "type": "NONE",
             "value": 0
           },
-          "trigger": "ON_CAST_SPELL"
+          "trigger": "ON_CAST_SPELL",
+          "uid": "aab7481d-1708-475c-849e-d307327e3a0b"
         }
-      ]
+      ],
+      "type": "SPELL",
+      "uid": "4c9e4d6f-c878-42bc-beb1-704823078973"
     },
     "static_abilities": [],
     "triggers": [
@@ -267,7 +284,8 @@
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "uid": "162e4602-0e73-4f7a-a1ef-f389d04a344c"
       },
       {
         "actions": [
@@ -292,17 +310,20 @@
             "target_filter": {},
             "target_group": "PLAYER_SELF",
             "to_zone": "HAND",
-            "type": "DRAW_CARD"
+            "type": "DRAW_CARD",
+            "uid": "bdf2dab1-8805-4d0f-84b3-81e90074fc07"
           }
         ],
         "condition": {
           "type": "OPPONENT_DRAW_COUNT",
           "value": 2
         },
-        "trigger": "ON_OPPONENT_DRAW"
+        "trigger": "ON_OPPONENT_DRAW",
+        "uid": "bbba7ff7-4745-4bf4-89b5-136e6ba24c4f"
       }
     ],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "uid": "daf19eaa-2cf4-47ba-9a77-c0922868f909"
   },
   {
     "ai_importance_score": 0,
@@ -354,7 +375,6 @@
       "id": 14,
       "keywords": {},
       "name": "聞かなきゃ殴り合い",
-      "type": "SPELL",
       "triggers": [
         {
           "actions": [],
@@ -376,16 +396,20 @@
               },
               "target_group": "PLAYER_OPPONENT",
               "to_zone": "GRAVEYARD",
-              "type": "TRANSITION"
+              "type": "TRANSITION",
+              "uid": "f81813e8-3941-4966-bb9c-d79cc1aa0431"
             }
           ],
           "condition": {
             "type": "NONE",
             "value": 0
           },
-          "trigger": "ON_CAST_SPELL"
+          "trigger": "ON_CAST_SPELL",
+          "uid": "936947aa-59f6-42e5-b877-5238bb609fc8"
         }
-      ]
+      ],
+      "type": "SPELL",
+      "uid": "ae11a026-0849-42e0-8744-f23848b2d9c0"
     },
     "static_abilities": [],
     "triggers": [
@@ -404,7 +428,8 @@
             "target_filter": {},
             "target_group": "PLAYER_SELF",
             "to_zone": "NONE",
-            "type": "DISCARD"
+            "type": "DISCARD",
+            "uid": "94483afa-d430-4d61-98ed-c83e1460fc23"
           },
           {
             "amount": 0,
@@ -418,7 +443,8 @@
             "target_filter": {},
             "target_group": "PLAYER_SELF",
             "to_zone": "NONE",
-            "type": "DRAW_CARD"
+            "type": "DRAW_CARD",
+            "uid": "4093a71c-8484-400b-815d-58cc32f63fe7"
           },
           {
             "amount": 1,
@@ -432,16 +458,19 @@
             "target_filter": {},
             "target_group": "PLAYER_SELF",
             "to_zone": "NONE",
-            "type": "DRAW_CARD"
+            "type": "DRAW_CARD",
+            "uid": "27328069-0163-4642-812b-37faedaedb62"
           }
         ],
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "uid": "ebcd55ce-5936-40b5-a153-5e30a7aac56c"
       }
     ],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "uid": "275f5946-7ef6-4748-a5a4-d30e85a642f6"
   },
   {
     "ai_importance_score": 0,
@@ -493,7 +522,8 @@
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_ATTACK_FROM_HAND"
+        "trigger": "ON_ATTACK_FROM_HAND",
+        "uid": "24f156a6-0885-4fd9-9180-06bc1dba0cb7"
       },
       {
         "actions": [
@@ -535,9 +565,52 @@
         "condition": {
           "type": "NONE"
         },
-        "trigger": "ON_PLAY"
+        "trigger": "ON_PLAY",
+        "uid": "9ec269f0-fb6e-47bc-9556-92e7e018cc8f"
       }
     ],
-    "type": "CREATURE"
+    "type": "CREATURE",
+    "uid": "40ef9d59-cd86-4e50-a419-5e3ce746631c"
+  },
+  {
+    "civilizations": [
+      "FIRE"
+    ],
+    "cost": 1,
+    "effects": [],
+    "id": 13,
+    "keywords": {
+      "double_breaker": true,
+      "revolution_change": true
+    },
+    "name": "New Card",
+    "power": 1000,
+    "races": [],
+    "reaction_abilities": [],
+    "static_abilities": [
+      {
+        "condition": {
+          "type": "NONE",
+          "value": 0
+        },
+        "filter": {
+          "races": [
+            "マジック"
+          ],
+          "types": [
+            "CREATURE"
+          ],
+          "zones": [
+            "BATTLE_ZONE"
+          ]
+        },
+        "str_val": "",
+        "type": "GRANT_KEYWORD",
+        "uid": "b48736fe-b96f-4738-a23b-aa133e7e5f4c",
+        "value": -1
+      }
+    ],
+    "type": "CREATURE",
+    "uid": "171aff13-8b1b-44e9-a71b-5ba14f3803af"
   }
 ]
