@@ -8,6 +8,7 @@ import os
 import copy
 from dm_toolkit.types import JSON
 from dm_toolkit.gui.editor import normalize
+from dm_toolkit.gui.editor.action_converter import ActionConverter
 
 class CardDataManager:
     """
@@ -170,8 +171,90 @@ class CardDataManager:
                 continue
             card_data = self.reconstruct_card_data(card_item)
             if card_data:
+                # Normalize and validate card for engine compatibility before returning
+                warnings = self._normalize_card_for_engine(card_data)
+                if warnings:
+                    # Attach editor warnings so callers/UI can display them
+                    card_data.setdefault('_editor_warnings', []).extend(warnings)
                 cards.append(card_data)
         return cards
+
+    def _normalize_card_for_engine(self, card: dict) -> list:
+        """Normalize card JSON to be engine-friendly and return list of warnings.
+
+        Fixes performed:
+        - Ensure UIDs on commands and nested entries
+        - Ensure command keys like 'options', 'if_true', 'if_false' are lists of dicts
+        - Mark commands with missing/unknown 'type' as legacy_warning
+        """
+        warnings = []
+        from dm_toolkit.consts import COMMAND_TYPES
+
+        def _ensure_uid(obj):
+            if isinstance(obj, dict) and 'uid' not in obj:
+                obj['uid'] = str(uuid.uuid4())
+
+        def _normalize_command(cmd, path):
+            w = []
+            if not isinstance(cmd, dict):
+                return None, [f"Invalid command at {path}: not an object"]
+            _ensure_uid(cmd)
+            ctype = cmd.get('type')
+            if not ctype or ctype not in COMMAND_TYPES:
+                cmd['legacy_warning'] = True
+                w.append(f"Unknown command type at {path}: {ctype}")
+
+            # Normalize branches and options
+            for key in ('if_true', 'if_false', 'options'):
+                if key in cmd:
+                    val = cmd.get(key)
+                    if not isinstance(val, list):
+                        w.append(f"Field '{key}' at {path} should be a list; fixing.")
+                        cmd[key] = []
+                        continue
+                    new_list = []
+                    for idx, sub in enumerate(val):
+                        if key == 'options':
+                            # options is a list of lists of commands
+                            if not isinstance(sub, list):
+                                w.append(f"Option entry at {path}.{key}[{idx}] not a list; skipping.")
+                                continue
+                            opt_cmds = []
+                            for jdx, ssub in enumerate(sub):
+                                normalized, subw = _normalize_command(ssub, f"{path}.{key}[{idx}][{jdx}]")
+                                if normalized is not None:
+                                    opt_cmds.append(normalized)
+                                w.extend(subw)
+                            new_list.append(opt_cmds)
+                        else:
+                            # branches: list of commands
+                            normalized, subw = _normalize_command(sub, f"{path}.{key}[{idx}]")
+                            if normalized is not None:
+                                new_list.append(normalized)
+                            w.extend(subw)
+                    cmd[key] = new_list
+            return cmd, w
+
+        # Process effects/triggers
+        effects_key = 'triggers' if 'triggers' in card else 'effects'
+        effects = card.get(effects_key, [])
+        for ei, eff in enumerate(effects):
+            eff_path = f"card.effects[{ei}]"
+            # Ensure lists
+            cmds = eff.get('commands', [])
+            if cmds and not isinstance(cmds, list):
+                warnings.append(f"'commands' in {eff_path} is not a list; clearing.")
+                eff['commands'] = []
+                cmds = []
+            new_cmds = []
+            for ci, cmd in enumerate(cmds):
+                normalized, w = _normalize_command(cmd, f"{eff_path}.commands[{ci}]")
+                if normalized is not None:
+                    new_cmds.append(normalized)
+                warnings.extend(w)
+            eff['commands'] = new_cmds
+
+        return warnings
 
     def reconstruct_card_data(self, card_item):
         """Reconstructs a single card's data from its tree item."""
@@ -307,6 +390,16 @@ class CardDataManager:
 
             if item_type == "ACTION":
                 act_data = self._reconstruct_action(item)
+                # Try to convert legacy Action to Command; prefer command where conversion succeeds
+                try:
+                    conv = ActionConverter.convert(act_data)
+                    if conv and conv.get('type') != 'NONE' and not conv.get('legacy_warning', False):
+                        new_commands.append(conv)
+                        continue
+                except Exception:
+                    # conversion failed; fall back to keeping as action
+                    pass
+
                 new_actions.append(act_data)
             elif item_type == "COMMAND":
                 cmd_data = self._reconstruct_command(item)
@@ -406,6 +499,21 @@ class CardDataManager:
         # Create Item
         if 'uid' not in data:
             data['uid'] = str(uuid.uuid4())
+
+        # If we're adding a legacy ACTION, attempt to convert it to COMMAND at creation time
+        if item_type == "ACTION":
+            try:
+                conv = ActionConverter.convert(data)
+                if conv and conv.get('type') != 'NONE' and not conv.get('legacy_warning', False):
+                    # Ensure UID propagation
+                    if 'uid' not in conv:
+                        conv['uid'] = data.get('uid')
+                    cmd_item = self.create_command_item(conv)
+                    target_item.appendRow(cmd_item)
+                    return cmd_item
+            except Exception:
+                # Fall back to legacy action creation below
+                pass
 
         new_item = QStandardItem(label)
         new_item.setData(item_type, Qt.ItemDataRole.UserRole + 1)
@@ -631,9 +739,24 @@ class CardDataManager:
         return label
 
     def _create_action_item(self, action):
+        # Ensure UID
         if 'uid' not in action:
             action['uid'] = str(uuid.uuid4())
 
+        # Try to convert legacy Action -> Command and prefer command representation
+        try:
+            conv = ActionConverter.convert(action)
+            if conv and conv.get('type') != 'NONE' and not conv.get('legacy_warning', False):
+                # Successful conversion: create and return a COMMAND item instead
+                # Ensure UID on converted data
+                if 'uid' not in conv:
+                    conv['uid'] = action.get('uid')
+                return self.create_command_item(conv)
+        except Exception:
+            # Conversion failed; fall back to creating an ACTION item
+            pass
+
+        # Fallback: keep as legacy ACTION node
         label = self.format_action_label(action)
         item = QStandardItem(label)
         item.setData("ACTION", Qt.ItemDataRole.UserRole + 1)
