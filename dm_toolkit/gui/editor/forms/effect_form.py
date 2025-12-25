@@ -213,20 +213,14 @@ class EffectEditForm(BaseEditForm):
 
         # Post-processing based on Mode
         if self.current_item:
-             if mode == "TRIGGERED":
-                 self.current_item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
-             else:
-                 self.current_item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
+             current_type_code = self.current_item.data(Qt.ItemDataRole.UserRole + 1)
+             target_type_code = "EFFECT" if mode == "TRIGGERED" else "MODIFIER"
 
-             # Check for Group Mismatch and Request Move
-             parent = self.current_item.parent()
-             if parent:
-                 parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
-                 # We use the item pointer itself to identify it
-                 if mode == "TRIGGERED" and parent_type == "GROUP_STATIC":
-                     self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": "TRIGGERED"})
-                 elif mode == "STATIC" and parent_type == "GROUP_TRIGGER":
-                     self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": "STATIC"})
+             # Update type if changed
+             if current_type_code != target_type_code:
+                 self.current_item.setData(target_type_code, Qt.ItemDataRole.UserRole + 1)
+                 # Emit MOVE_EFFECT to trigger UI/Label updates in the tree
+                 self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": mode})
 
         if mode == "TRIGGERED":
             # Clean Static/Legacy keys
