@@ -11,6 +11,11 @@ from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
 from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
 from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.editor.consts import (
+    STRUCT_CMD_ADD_CHILD_EFFECT, STRUCT_CMD_ADD_SPELL_SIDE, STRUCT_CMD_REMOVE_SPELL_SIDE,
+    STRUCT_CMD_ADD_REV_CHANGE, STRUCT_CMD_REMOVE_REV_CHANGE, STRUCT_CMD_GENERATE_BRANCHES,
+    STRUCT_CMD_GENERATE_OPTIONS, STRUCT_CMD_MOVE_EFFECT, STRUCT_CMD_ADD_CHILD_ACTION
+)
 
 class CardEditor(QMainWindow):
     data_saved = pyqtSignal()
@@ -191,6 +196,11 @@ class CardEditor(QMainWindow):
         item = self.tree_widget.standard_model.itemFromIndex(idx)
         card_item = None
 
+        # Determine context for updates that modify hierarchy
+        if command == "REPLACE_WITH_COMMAND":
+            self.tree_widget.replace_item_with_command(idx, payload)
+            return
+
         item_type = item.data(Qt.ItemDataRole.UserRole + 1)
         if item_type == "CARD":
             card_item = item
@@ -201,17 +211,17 @@ class CardEditor(QMainWindow):
 
         if not card_item: return
 
-        if command == "ADD_SPELL_SIDE":
+        if command == STRUCT_CMD_ADD_SPELL_SIDE:
             self.tree_widget.add_spell_side(card_item.index())
             self.tree_widget.expand(card_item.index())
-        elif command == "REMOVE_SPELL_SIDE":
+        elif command == STRUCT_CMD_REMOVE_SPELL_SIDE:
             self.tree_widget.remove_spell_side(card_item.index())
-        elif command == "ADD_REV_CHANGE":
+        elif command == STRUCT_CMD_ADD_REV_CHANGE:
             self.tree_widget.add_rev_change(card_item.index())
             self.tree_widget.expand(card_item.index())
-        elif command == "REMOVE_REV_CHANGE":
+        elif command == STRUCT_CMD_REMOVE_REV_CHANGE:
             self.tree_widget.remove_rev_change(card_item.index())
-        elif command == "GENERATE_OPTIONS":
+        elif command == STRUCT_CMD_GENERATE_OPTIONS:
             count = payload.get('count', 1)
             # Find the actual Action Item from the current selection
             action_item = None
@@ -221,14 +231,14 @@ class CardEditor(QMainWindow):
             if action_item:
                  self.tree_widget.data_manager.add_option_slots(action_item, count)
                  self.tree_widget.expand(action_item.index())
-        elif command == "GENERATE_BRANCHES":
+        elif command == STRUCT_CMD_GENERATE_BRANCHES:
             self.tree_widget.generate_branches_for_current()
-        elif command == "MOVE_EFFECT":
+        elif command == STRUCT_CMD_MOVE_EFFECT:
              item_obj = payload.get('item')
              target_type = payload.get('target_type')
              if item_obj and target_type:
                  self.tree_widget.move_effect_item(item_obj, target_type)
-        elif command == "ADD_CHILD_EFFECT":
+        elif command == STRUCT_CMD_ADD_CHILD_EFFECT:
             eff_type = payload.get('type')
             if eff_type == "KEYWORDS":
                 self.tree_widget.add_keywords(item.index())
@@ -238,14 +248,13 @@ class CardEditor(QMainWindow):
                 self.tree_widget.add_static(item.index())
             elif eff_type == "REACTION":
                 self.tree_widget.add_reaction(item.index())
-        elif command == "ADD_CHILD_ACTION":
+        elif command == STRUCT_CMD_ADD_CHILD_ACTION:
             if item_type == "EFFECT":
                 self.tree_widget.add_action_to_effect(item.index())
+            elif item_type == "OPTION":
+                self.tree_widget.add_action_to_option(item.index())
             elif item_type == "ACTION":
-                 # If adding action to action, it usually means adding to an option or maybe insert after?
-                 # For now, let's assume it only works on EFFECT nodes or we redirect logic.
-                 # The user wants "Add Action" button.
-                 pass
+                self.tree_widget.add_action_sibling(item.index())
 
     def new_card(self):
         self.tree_widget.add_new_card()
@@ -278,29 +287,10 @@ class CardEditor(QMainWindow):
         item = self.tree_widget.standard_model.itemFromIndex(idx)
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
 
-        # Delegate to LogicTreeWidget methods for consistency
-        if type_ == "EFFECT":
-            self.tree_widget.add_command_to_effect(idx)
-        elif type_ == "OPTION":
-            self.tree_widget.add_command_to_option(idx)
-        elif type_ == "COMMAND":
-            # Add sibling command
-            parent = item.parent()
-            if parent:
-                parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
-                if parent_type == "EFFECT":
-                    self.tree_widget.add_command_to_effect(parent.index())
-                elif parent_type == "OPTION":
-                    self.tree_widget.add_command_to_option(parent.index())
-        elif type_ == "ACTION":
-            # Legacy ACTION support, treat as sibling if parent is valid
-            parent = item.parent()
-            if parent:
-                parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
-                if parent_type == "EFFECT":
-                    self.tree_widget.add_command_to_effect(parent.index())
-                elif parent_type == "OPTION":
-                    self.tree_widget.add_command_to_option(parent.index())
+        # Centralized logic in LogicTreeWidget
+        valid_types = ["EFFECT", "OPTION", "COMMAND", "ACTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
+        if type_ in valid_types:
+            self.tree_widget.add_command_contextual()
         else:
             QMessageBox.warning(self, tr("Warning"), tr("Please select an Effect or Option to add a Command."))
 

@@ -44,6 +44,89 @@ namespace dm::ai {
 
         // 1. Transformer (Sequence) Path
         if (model_type_ == ModelType::TRANSFORMER) {
+#ifdef USE_ONNXRUNTIME
+            if (onnx_model_) {
+                try {
+                    // 1. Collect tokens and find max length
+                    std::vector<std::vector<int>> batch_tokens;
+                    batch_tokens.reserve(n);
+                    size_t max_len = 0;
+                    for (const auto& s : states) {
+                        if (!s) {
+                            batch_tokens.push_back({});
+                            continue;
+                        }
+                        auto tokens = dm::ai::encoders::TokenConverter::encode_state(*s, s->active_player_id);
+                        if (tokens.size() > max_len) max_len = tokens.size();
+                        batch_tokens.push_back(std::move(tokens));
+                    }
+
+                    // 2. Prepare flat input tensors (input_ids, mask)
+                    std::vector<int64_t> input_ids;
+                    std::vector<uint8_t> mask; // Use uint8_t instead of bool to ensure .data() exists and is contiguous
+                    input_ids.reserve(n * max_len);
+                    mask.reserve(n * max_len);
+
+                    for(const auto& tokens : batch_tokens) {
+                        // Pad to max_len
+                        for(size_t i=0; i<max_len; ++i) {
+                            if (i < tokens.size()) {
+                                input_ids.push_back(static_cast<int64_t>(tokens[i]));
+                                mask.push_back(1);
+                            } else {
+                                input_ids.push_back(static_cast<int64_t>(dm::ai::encoders::TokenConverter::TOKEN_PAD));
+                                mask.push_back(0);
+                            }
+                        }
+                    }
+
+                    // 3. Construct InputTensor list
+                    const auto& input_names = onnx_model_->get_input_names();
+                    std::string input_ids_name = "input_ids";
+                    std::string mask_name = "mask";
+
+                    // Try to match detected names if possible
+                    if (input_names.size() >= 2) {
+                        // Heuristic: usually first is input_ids, second is mask, or by name
+                        // For now we trust the export script names or standard names.
+                        // Ideally we should check input_names contains "mask" etc.
+                        for(const auto& name : input_names) {
+                            if (name.find("mask") != std::string::npos) mask_name = name;
+                            if (name.find("input") != std::string::npos || name.find("ids") != std::string::npos) input_ids_name = name;
+                        }
+                    }
+
+                    std::vector<dm::ai::inference::InputTensor> inputs;
+                    inputs.push_back({input_ids_name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, input_ids.data(), dm::ai::inference::TensorType::INT64});
+                    inputs.push_back({mask_name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, mask.data(), dm::ai::inference::TensorType::BOOL});
+
+                    // 4. Infer
+                    auto result = onnx_model_->infer(inputs, n);
+                    const auto& flat_policies = result.first;
+                    const auto& flat_values = result.second;
+
+                    // 5. Reshape Output
+                    std::vector<std::vector<float>> policies(n);
+                    std::vector<float> values = flat_values;
+
+                    size_t action_size = 0;
+                    if (n > 0 && !flat_policies.empty()) {
+                        action_size = flat_policies.size() / n;
+                    }
+
+                    for(size_t i=0; i<n; ++i) {
+                        policies[i].assign(flat_policies.begin() + i*action_size, flat_policies.begin() + (i+1)*action_size);
+                    }
+
+                    return {policies, values};
+
+                } catch (const std::exception& e) {
+                    std::cerr << "ONNX Inference Error (Transformer): " << e.what() << std::endl;
+                    // Fallthrough to python callback
+                }
+            }
+#endif
+
             if (dm::python::has_sequence_batch_callback()) {
                 dm::python::SequenceBatchInput batch_tokens;
                 batch_tokens.reserve(n);

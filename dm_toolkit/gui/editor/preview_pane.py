@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
 
 class ManaCostLabel(QLabel):
     def __init__(self, text="", parent=None):
@@ -21,15 +22,7 @@ class ManaCostLabel(QLabel):
         self.update() # Trigger repaint
 
     def get_civ_color(self, civ):
-        colors_base = {
-            "LIGHT": "#DAA520",     # GoldenRod
-            "WATER": "#1E90FF",     # DodgerBlue
-            "DARKNESS": "#696969",  # DimGray
-            "FIRE": "#FF4500",      # OrangeRed
-            "NATURE": "#228B22",    # ForestGreen
-            "ZERO": "#A9A9A9"       # DarkGray
-        }
-        return QColor(colors_base.get(civ, "#A9A9A9"))
+        return QColor(CIV_COLORS_FOREGROUND.get(civ, "#A9A9A9"))
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -83,10 +76,17 @@ class ManaCostLabel(QLabel):
         painter.setPen(pen)
         painter.drawEllipse(draw_rect)
 
-        painter.end()
+        # Draw Text (Number) - Manual drawing to ensure centering
+        font = self.font()
+        font.setBold(True)
+        # Adjust font size based on circle size (approx 55% of diameter)
+        font_size = max(8, int(d * 0.55))
+        font.setPixelSize(font_size)
+        painter.setFont(font)
+        painter.setPen(Qt.GlobalColor.white)
+        painter.drawText(draw_rect, Qt.AlignmentFlag.AlignCenter, self.text())
 
-        # Draw Text (Number)
-        super().paintEvent(event)
+        painter.end()
 
 class CardPreviewWidget(QWidget):
     """
@@ -322,6 +322,27 @@ class CardPreviewWidget(QWidget):
 
         self.apply_civ_style(civs)
 
+    def _should_show_power(self, data):
+        """
+        Consolidated logic to determine if power should be displayed.
+        """
+        power = data.get('power', 0)
+        if power <= 0:
+            return False
+
+        t = data.get('type', '').upper()
+        # Logic: Show power if > 0, but hide if it's strictly a Spell (and not a Creature).
+        # This handles cases where Spells might accidentally have power set,
+        # or where we want to strictly follow the type rule.
+        is_spell = 'SPELL' in t
+        is_creature = 'CREATURE' in t
+
+        # If it is a Spell and NOT a Creature, hide power.
+        if is_spell and not is_creature:
+            return False
+
+        return True
+
     def render_standard(self, data, civs):
         self.name_label.setText(data.get('name', '???'))
         self.cost_label.setText(str(data.get('cost', 0)))
@@ -335,12 +356,13 @@ class CardPreviewWidget(QWidget):
         type_str = CardTextGenerator.TYPE_MAP.get(data.get('type', 'CREATURE'), data.get('type', ''))
         self.type_label.setText(f"[{type_str}]")
 
-        body_text = CardTextGenerator.generate_body_text(data)
+        # Use new structure
+        body_lines = CardTextGenerator.generate_body_text_lines(data)
+        body_text = "\n".join(body_lines)
         self.text_body.setText(body_text)
 
-        power = data.get('power', 0)
-        if power > 0 and 'SPELL' not in data.get('type', ''):
-            self.power_label.setText(str(power))
+        if self._should_show_power(data):
+            self.power_label.setText(str(data.get('power', 0)))
             self.power_label.setVisible(True)
         else:
             self.power_label.setVisible(False)
@@ -355,11 +377,16 @@ class CardPreviewWidget(QWidget):
 
         races = " / ".join(data.get('races', []))
         self.tp_race_label.setText(races if races else "")
-        self.tp_power_label.setText(str(data.get('power', 0)))
+
+        if self._should_show_power(data):
+            self.tp_power_label.setText(str(data.get('power', 0)))
+            self.tp_power_label.setVisible(True)
+        else:
+            self.tp_power_label.setVisible(False)
 
         # Generate text for ONLY the creature part
-        creature_body = CardTextGenerator.generate_body_text(data)
-        self.tp_body_label.setText(creature_body)
+        creature_lines = CardTextGenerator.generate_body_text_lines(data)
+        self.tp_body_label.setText("\n".join(creature_lines))
 
         # Spell Side
         spell_data = data.get('spell_side', {})
@@ -372,8 +399,32 @@ class CardPreviewWidget(QWidget):
         # For spell text, we can use the generator on the spell data object
         if 'type' not in spell_data:
             spell_data['type'] = 'SPELL'
-        spell_body = CardTextGenerator.generate_body_text(spell_data)
-        self.tp_spell_body_label.setText(spell_body)
+
+        spell_lines = CardTextGenerator.generate_body_text_lines(spell_data)
+        self.tp_spell_body_label.setText("\n".join(spell_lines))
+
+    # Deprecated / Fallback
+    def extract_body_text(self, full_text):
+        lines = full_text.split('\n')
+        body_lines = []
+        skip_mode = True
+        for line in lines:
+            if line.startswith("■") or line.startswith("S・トリガー") or line.startswith("G・ストライク"):
+                skip_mode = False
+
+            # Additional heuristic: If line contains standard keywords
+            if any(k in line for k in ["ブロッカー", "W・ブレイカー", "T・ブレイカー", "スピードアタッカー"]):
+                skip_mode = False
+
+            if not skip_mode:
+                body_lines.append(line)
+            elif "--------------------" in line:
+                skip_mode = False
+
+        if not body_lines and len(lines) > 2:
+            return "\n".join(lines[2:]) # Skip header lines if heuristics fail
+
+        return "\n".join(body_lines)
 
     def apply_cost_circle_style(self, label, civs):
         # Delegate to ManaCostLabel if applicable
@@ -381,31 +432,10 @@ class CardPreviewWidget(QWidget):
             label.set_civs(civs)
             return
 
-        # Fallback for standard QLabel (if any)
-        # Note: We replaced all instances with ManaCostLabel, so this might not be hit.
-        style = "font-weight: bold; font-size: 16px; color: white; border: 2px solid black; border-radius: 12px; padding: 0px;"
-        if not civs:
-            bg_style = "background-color: #A9A9A9;"
-        elif len(civs) == 1:
-            # We don't have get_civ_color here anymore, need a local map or use a default
-            # Just fallback to gray if this path is ever hit (it shouldn't be)
-            bg_style = "background-color: #A9A9A9;"
-        else:
-            bg_style = "background-color: #A9A9A9;"
-
-        label.setStyleSheet(style + bg_style)
+        # Fallback implementation removed to ensure consistency.
+        # All cost labels should be ManaCostLabel instances.
 
     def apply_civ_style(self, civs):
-        # Updated mapping (Darker Gradients requested)
-        colors_base = {
-            "LIGHT": "#FFFACD",     # LemonChiffon
-            "WATER": "#E0FFFF",     # LightCyan
-            "DARKNESS": "#D3D3D3",  # LightGray
-            "FIRE": "#FFE4E1",      # MistyRose
-            "NATURE": "#90EE90",    # LightGreen
-            "ZERO": "#F5F5F5"       # WhiteSmoke
-        }
-
         # Requirement: "All borders should be thin black lines"
         border_color = "#000000"
 
@@ -413,13 +443,13 @@ class CardPreviewWidget(QWidget):
             bg_style = "background-color: #FFFFFF;"
         elif len(civs) == 1:
             c = civs[0]
-            c1 = colors_base.get(c, "#FFFFFF")
+            c1 = CIV_COLORS_BACKGROUND.get(c, "#FFFFFF")
             # Solid color as requested
             bg_style = f"background-color: {c1};"
         else:
             if len(civs) >= 2:
-                c1 = colors_base.get(civs[0], "#FFFFFF")
-                c2 = colors_base.get(civs[1], "#FFFFFF")
+                c1 = CIV_COLORS_BACKGROUND.get(civs[0], "#FFFFFF")
+                c2 = CIV_COLORS_BACKGROUND.get(civs[1], "#FFFFFF")
                 bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2});"
             else:
                 bg_style = "background-color: #E6E6FA;"

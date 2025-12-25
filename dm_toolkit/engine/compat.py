@@ -1,0 +1,190 @@
+# -*- coding: utf-8 -*-
+import sys
+import os
+
+try:
+    import dm_ai_module
+except ImportError:
+    dm_ai_module = None
+
+class EngineCompat:
+    """
+    Compatibility layer for dm_ai_module.
+    Handles missing functions, renamed attributes, and robust API calls.
+    """
+
+    @staticmethod
+    def is_available():
+        return dm_ai_module is not None
+
+    @staticmethod
+    def _check_module():
+        if not dm_ai_module:
+            raise ImportError("dm_ai_module is not loaded.")
+
+    # -------------------------------------------------------------------------
+    # GameState Attribute Wrappers
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def get_game_state_attribute(state, attr_name, default=None):
+        """Safely retrieve an attribute from GameState, checking aliases."""
+        val = getattr(state, attr_name, None)
+        if val is not None:
+            return val
+
+        # Define aliases or legacy names if any
+        aliases = {
+            'active_player_id': ['active_player'],
+            'current_phase': ['phase'],
+            'waiting_for_user_input': [], # Add known aliases if any
+            'pending_query': [],
+            'effect_buffer': [],
+            'command_history': [],
+            'turn_number': []
+        }
+
+        if attr_name in aliases:
+            for alias in aliases[attr_name]:
+                val = getattr(state, alias, None)
+                if val is not None:
+                    return val
+
+        return default
+
+    @staticmethod
+    def get_turn_number(state):
+        return EngineCompat.get_game_state_attribute(state, 'turn_number', '?')
+
+    @staticmethod
+    def get_current_phase(state):
+        return EngineCompat.get_game_state_attribute(state, 'current_phase', 'UNKNOWN')
+
+    @staticmethod
+    def get_active_player_id(state):
+        return EngineCompat.get_game_state_attribute(state, 'active_player_id', 0)
+
+    @staticmethod
+    def is_waiting_for_user_input(state):
+        return EngineCompat.get_game_state_attribute(state, 'waiting_for_user_input', False)
+
+    @staticmethod
+    def get_pending_query(state):
+        return EngineCompat.get_game_state_attribute(state, 'pending_query', None)
+
+    @staticmethod
+    def get_effect_buffer(state):
+        return EngineCompat.get_game_state_attribute(state, 'effect_buffer', [])
+
+    @staticmethod
+    def get_command_history(state):
+        return EngineCompat.get_game_state_attribute(state, 'command_history', [])
+
+    @staticmethod
+    def get_player(state, player_index):
+        players = getattr(state, 'players', None)
+        if players and len(players) > player_index:
+            return players[player_index]
+        # Fallback for older bindings that might expose player0/player1 directly
+        if player_index == 0:
+            return getattr(state, 'player0', None)
+        elif player_index == 1:
+            return getattr(state, 'player1', None)
+        return None
+
+    # -------------------------------------------------------------------------
+    # Action Object Wrappers
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def get_action_slot_index(action):
+        return getattr(action, 'slot_index', -1)
+
+    @staticmethod
+    def get_action_source_id(action):
+        return getattr(action, 'source_instance_id', -1)
+
+    # -------------------------------------------------------------------------
+    # API Call Wrappers
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def EffectResolver_resume(state, card_db, selection):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module.EffectResolver, 'resume'):
+            dm_ai_module.EffectResolver.resume(state, card_db, selection)
+        else:
+            print("Warning: dm_ai_module.EffectResolver.resume not found.")
+
+    @staticmethod
+    def EffectResolver_resolve_action(state, action, card_db):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
+            dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+        else:
+            print("Warning: dm_ai_module.EffectResolver.resolve_action not found.")
+
+    @staticmethod
+    def PhaseManager_next_phase(state, card_db):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module.PhaseManager, 'next_phase'):
+            dm_ai_module.PhaseManager.next_phase(state, card_db)
+        else:
+            print("Warning: dm_ai_module.PhaseManager.next_phase not found.")
+
+    @staticmethod
+    def PhaseManager_start_game(state, card_db):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module.PhaseManager, 'start_game'):
+            dm_ai_module.PhaseManager.start_game(state, card_db)
+        else:
+            print("Warning: dm_ai_module.PhaseManager.start_game not found.")
+
+    @staticmethod
+    def ActionGenerator_generate_legal_actions(state, card_db):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module.ActionGenerator, 'generate_legal_actions'):
+            return dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+        return []
+
+    @staticmethod
+    def JsonLoader_load_cards(filepath):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module, 'JsonLoader') and hasattr(dm_ai_module.JsonLoader, 'load_cards'):
+            return dm_ai_module.JsonLoader.load_cards(filepath)
+        return None
+
+    @staticmethod
+    def register_batch_inference_numpy(callback):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module, 'register_batch_inference_numpy'):
+            dm_ai_module.register_batch_inference_numpy(callback)
+        else:
+            print("Warning: dm_ai_module.register_batch_inference_numpy not found.")
+
+    @staticmethod
+    def TensorConverter_convert_to_tensor(state, player_id, card_db):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module, 'TensorConverter') and hasattr(dm_ai_module.TensorConverter, 'convert_to_tensor'):
+             return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, card_db)
+        return []
+
+    @staticmethod
+    def get_pending_effects_info(state):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module, 'get_pending_effects_info'):
+            return dm_ai_module.get_pending_effects_info(state)
+        return []
+
+    @staticmethod
+    def create_parallel_runner(card_db, sims, batch_size):
+        EngineCompat._check_module()
+        if hasattr(dm_ai_module, 'ParallelRunner'):
+            return dm_ai_module.ParallelRunner(card_db, sims, batch_size)
+        return None
+
+    @staticmethod
+    def ParallelRunner_play_games(runner, initial_states, evaluator_func, temperature, verbose, threads):
+        if runner and hasattr(runner, 'play_games'):
+            return runner.play_games(initial_states, evaluator_func, temperature, verbose, threads)
+        raise RuntimeError("ParallelRunner invalid or play_games not found")

@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_REV_CHANGE, STRUCT_CMD_REMOVE_REV_CHANGE
 
 class KeywordEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree (e.g. for Revolution Change)
@@ -80,9 +81,9 @@ class KeywordEditForm(BaseEditForm):
     def toggle_rev_change(self, state):
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
         if is_checked:
-            self.structure_update_requested.emit("ADD_REV_CHANGE", {})
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_REV_CHANGE, {})
         else:
-            self.structure_update_requested.emit("REMOVE_REV_CHANGE", {})
+            self.structure_update_requested.emit(STRUCT_CMD_REMOVE_REV_CHANGE, {})
         self.update_data() # Update the checkbox state in data too
 
     def _populate_ui(self, item):
