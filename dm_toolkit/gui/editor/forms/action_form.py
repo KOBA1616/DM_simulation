@@ -6,6 +6,7 @@ from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
+from dm_toolkit.gui.editor.utils import normalize_action_zone_keys
 from dm_toolkit.consts import EDITOR_ACTION_TYPES, ZONES_EXTENDED
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS, STRUCT_CMD_REPLACE_WITH_COMMAND
 from dm_toolkit.gui.editor.action_converter import ActionConverter
@@ -314,12 +315,8 @@ class ActionEditForm(BaseEditForm):
         elif ui_type == "COST_REFERENCE":
              self.set_combo_by_data(self.ref_mode_combo, str_val)
 
-        # Data might have old 'from_zone'/'to_zone' keys from old config templates
-        # We need to ensure we populate combos correctly even if old keys exist
-        if 'source_zone' not in data and 'from_zone' in data:
-             data['source_zone'] = data['from_zone']
-        if 'destination_zone' not in data and 'to_zone' in data:
-             data['destination_zone'] = data['to_zone']
+        # Normalize keys to ensure 'source_zone'/'destination_zone' are used
+        normalize_action_zone_keys(data)
 
         self._apply_bindings(data)
 
@@ -372,9 +369,8 @@ class ActionEditForm(BaseEditForm):
         if ui_type == "SELECT_OPTION":
              data['value2'] = 1 if self.allow_duplicates_check.isChecked() else 0
 
-        # Clean up old keys if they exist to prevent confusion
-        if 'from_zone' in data: del data['from_zone']
-        if 'to_zone' in data: del data['to_zone']
+        # Ensure we only save standardized keys
+        normalize_action_zone_keys(data)
 
     def _get_display_text(self, data):
         return f"{tr('Action')}: {tr(data.get('type', 'UNKNOWN'))}"
