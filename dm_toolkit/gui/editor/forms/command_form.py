@@ -46,6 +46,12 @@ class CommandEditForm(BaseEditForm):
     def setup_ui(self):
         layout = QFormLayout(self)
 
+        # Migration / Warning Label
+        self.warning_label = QLabel(tr("Warning: Imperfect Conversion"))
+        self.warning_label.setStyleSheet("color: red; font-weight: bold;")
+        self.warning_label.setVisible(False)
+        layout.addRow(self.warning_label)
+
         # Command Type
         self.type_combo = QComboBox()
         # Filter out MUTATE and FLOW from user selection
@@ -205,21 +211,6 @@ class CommandEditForm(BaseEditForm):
 
         # Query Mode
         is_query = (cmd_type == "QUERY")
-        if is_query:
-            config_query_mode = config.get("query_mode_visible", True) # Default true if query
-            # But wait, config logic in _get_ui_config doesn't return query_mode_visible.
-            # Let's add it.
-            pass
-
-        # We need to manually handle query mode visibility as it was tied to cmd_type check in legacy
-        # In new config, we can check visibility list for 'query_mode'.
-        # Let's assume my config has 'query_mode' in visible list for QUERY.
-        # But _get_ui_config doesn't map it. Let's fix that in next step if needed, or rely on hardcoded check.
-        # Actually, let's look at _get_ui_config implementation above.
-        # It maps specific keys. I didn't add "query_mode_visible".
-
-        # Let's verify _get_ui_config again.
-
         self.query_mode_label.setVisible(is_query)
         self.query_mode_combo.setVisible(is_query)
 
@@ -253,6 +244,15 @@ class CommandEditForm(BaseEditForm):
     def _populate_ui(self, item):
         self.link_widget.set_current_item(item)
         data = item.data(Qt.ItemDataRole.UserRole + 2)
+
+        # Check for Legacy Warning
+        legacy_warning = data.get('legacy_warning', False)
+        if legacy_warning:
+             orig = data.get('legacy_original_type', 'Unknown')
+             self.warning_label.setText(tr(f"Warning: Imperfect Conversion from {orig}"))
+             self.warning_label.setVisible(True)
+        else:
+             self.warning_label.setVisible(False)
 
         raw_type = data.get('type', 'NONE')
 
@@ -332,6 +332,14 @@ class CommandEditForm(BaseEditForm):
                   row = self.current_item.row()
                   out_key = f"var_{cmd_type}_{row}"
                   data['output_value_key'] = out_key
+
+        # Preserve legacy warning flags if present (read-only)
+        # Assuming we don't clear keys that are not in UI
+        # BaseEditForm._save_data might be needed if we want to be safe, but here we modify 'data' dict in place
+        # The 'data' dict passed to _save_data is usually the one attached to the item, or a fresh one?
+        # Standard implementation of BaseEditForm.save_data copies data from UI to the dict.
+        # So we don't need to explicitly save legacy flags unless we overwrite the whole dict.
+        pass
 
     def block_signals_all(self, block):
         self.type_combo.blockSignals(block)

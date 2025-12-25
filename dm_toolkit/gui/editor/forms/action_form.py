@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout
+from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QMessageBox
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
@@ -174,15 +174,23 @@ class ActionEditForm(BaseEditForm):
 
         # Check for children (OPTIONS) and warn user
         if self.current_item.hasChildren():
-             from PyQt6.QtWidgets import QMessageBox
              reply = QMessageBox.question(self, tr("Confirm Conversion"),
                                           tr("This action has child options. The conversion will attempt to migrate them to the Command structure, but verify the result. Continue?"),
                                           QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
              if reply == QMessageBox.StandardButton.No:
                  return
 
+        # Pre-check for problematic types
         # 1. Get current data
         act_data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
+        act_type = act_data.get('type', 'NONE')
+
+        if act_type in ["MEKRAID", "SHIELD_BURN"]:
+             reply = QMessageBox.question(self, tr("Conversion Warning"),
+                                          tr(f"The action type '{act_type}' cannot be perfectly converted. The result will require manual adjustment. Continue?"),
+                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+             if reply == QMessageBox.StandardButton.No:
+                 return
 
         # 2. Convert to Command (Base)
         cmd_data = ActionConverter.convert(act_data)
