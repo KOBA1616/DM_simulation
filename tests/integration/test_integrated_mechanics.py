@@ -1,6 +1,7 @@
 
 import pytest
 import dm_ai_module
+from typing import Any
 from dm_ai_module import (
     GameState, Player, CardData, CardDefinition, Civilization, Zone, Phase,
     ActionType, EffectType, EffectActionType, TriggerType, TargetScope,
@@ -187,6 +188,7 @@ def test_revolution_change_flow(game_state):
             rev_inst = c
             break
 
+    assert rev_inst is not None, "Revolution instance should be found in battle zone"
     assert rev_inst.is_tapped, "Revolution creature should be tapped (attacking)"
     # Note: The actual "attacking" state is maintained in the GameState flow (attacker_instance_id),
     # which EffectResolver updates.
@@ -227,7 +229,7 @@ def test_deck_search_logic(game_state):
     effect.actions = [act_def]
 
     # Context
-    ctx = {}
+    ctx: dict[str, Any] = {}
 
     # Create a dummy card definition for the source
     source_id = 999

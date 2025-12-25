@@ -2,11 +2,14 @@ import unittest
 import json
 import os
 import sys
+from types import ModuleType
 
 # Add bin/ to sys.path to import dm_ai_module
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
+dm_ai_module: ModuleType | None
 try:
-    import dm_ai_module
+    import dm_ai_module as _dm_ai_module  # type: ignore
+    dm_ai_module = _dm_ai_module
 except ImportError:
     print("Warning: dm_ai_module not found. Tests relying on C++ extension will fail.")
     dm_ai_module = None
@@ -80,7 +83,11 @@ class TestNewCardFeatures(unittest.TestCase):
             os.remove(self.test_json_path)
 
     def test_load_cards(self):
+        if not dm_ai_module:
+            self.skipTest("dm_ai_module not available")
+
         try:
+            assert dm_ai_module is not None
             cards = dm_ai_module.JsonLoader.load_cards(self.test_json_path)
             self.assertIn(9001, cards)
             self.assertIn(9002, cards)

@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.localization import tr
+from typing import Any, Dict
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 
 class ReactionEditForm(BaseEditForm):
@@ -113,11 +114,11 @@ class ReactionEditForm(BaseEditForm):
         data['cost'] = self.cost_spin.value()
         data['zone'] = self.zone_edit.currentText()
 
-        cond = {}
+        cond: Dict[str, Any] = {}
         cond['trigger_event'] = self.trigger_event_combo.currentText()
-        cond['civilization_match'] = self.civ_match_check.isChecked()
-        cond['same_civilization_shield'] = self.shield_civ_match_check.isChecked()
-        cond['mana_count_min'] = self.mana_min_spin.value()
+        cond['civilization_match'] = bool(self.civ_match_check.isChecked())
+        cond['same_civilization_shield'] = bool(self.shield_civ_match_check.isChecked())
+        cond['mana_count_min'] = int(self.mana_min_spin.value())
         data['condition'] = cond
 
     def _get_display_text(self, data):

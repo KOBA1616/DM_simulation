@@ -30,16 +30,18 @@ class StackViewWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.layout = QVBoxLayout(self)
+        self._layout = QVBoxLayout(self)
 
         header = QHBoxLayout()
         header.addWidget(QLabel(tr("Pending Effects (Stack)")))
-        self.layout.addLayout(header)
+        self._layout.addLayout(header)
 
         self.list_widget = QListWidget()
         self.list_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self.list_widget.model().rowsMoved.connect(self.on_rows_moved)
-        self.layout.addWidget(self.list_widget)
+        model = self.list_widget.model()
+        if model is not None:
+            model.rowsMoved.connect(self.on_rows_moved)
+        self._layout.addWidget(self.list_widget)
 
         btn_layout = QHBoxLayout()
         self.resolve_btn = QPushButton(tr("Resolve Selected"))
@@ -50,7 +52,7 @@ class StackViewWidget(QWidget):
         self.refresh_btn.clicked.connect(self.request_refresh) # Should be connected to parent update
         btn_layout.addWidget(self.refresh_btn)
 
-        self.layout.addLayout(btn_layout)
+        self._layout.addLayout(btn_layout)
 
         self.current_effects = []
 

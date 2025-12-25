@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Tuple
+from typing import Optional, Tuple, cast
 
 class LinearAttention(nn.Module):
     """
@@ -72,7 +72,7 @@ class LinearAttention(nn.Module):
         # out: (b, h, n, d) -> (b, n, h, d) -> (b, n, h*d)
         # out.shape[-1] is d. We need h*d.
         out = out.transpose(1, 2).reshape(out.shape[0], -1, h * out.shape[-1])
-        return self.to_out(out)
+        return cast(torch.Tensor, self.to_out(out))
 
 class NetworkV2(nn.Module):
     """

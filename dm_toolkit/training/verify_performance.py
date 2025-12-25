@@ -23,6 +23,7 @@ except ImportError:
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 from dm_toolkit.training.network_v2 import NetworkV2
+from typing import Any
 
 # Import SCENARIOS
 sys.path.append(os.path.dirname(__file__))
@@ -44,6 +45,7 @@ class PerformanceVerifier:
         self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
 
         # Initialize Network based on type
+        self.network: Any
         if self.model_type == "transformer":
             print("Initializing TRANSFORMER model (NetworkV2)...")
             self.vocab_size = dm_ai_module.TokenConverter.get_vocab_size()

@@ -2,9 +2,13 @@
 import sys
 import os
 from typing import Any, List, Optional, Callable, Dict, Union
+from types import ModuleType
 
+# dm_ai_module may be an optional compiled extension; annotate as Optional
+dm_ai_module: Optional[ModuleType] = None
 try:
-    import dm_ai_module
+    import dm_ai_module  # type: ignore
+    dm_ai_module = dm_ai_module
 except ImportError:
     dm_ai_module = None
 
@@ -114,6 +118,7 @@ class EngineCompat:
     @staticmethod
     def EffectResolver_resume(state: GameState, card_db: CardDB, selection: Union[int, List[int], Any]) -> None:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module.EffectResolver, 'resume'):
             dm_ai_module.EffectResolver.resume(state, card_db, selection)
         else:
@@ -122,6 +127,7 @@ class EngineCompat:
     @staticmethod
     def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
             dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
         else:
@@ -130,6 +136,7 @@ class EngineCompat:
     @staticmethod
     def PhaseManager_next_phase(state: GameState, card_db: CardDB) -> None:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module.PhaseManager, 'next_phase'):
             dm_ai_module.PhaseManager.next_phase(state, card_db)
         else:
@@ -138,6 +145,7 @@ class EngineCompat:
     @staticmethod
     def PhaseManager_start_game(state: GameState, card_db: CardDB) -> None:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module.PhaseManager, 'start_game'):
             dm_ai_module.PhaseManager.start_game(state, card_db)
         else:
@@ -146,6 +154,7 @@ class EngineCompat:
     @staticmethod
     def ActionGenerator_generate_legal_actions(state: GameState, card_db: CardDB) -> List[Action]:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module.ActionGenerator, 'generate_legal_actions'):
             return list(dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db))
         return []
@@ -153,6 +162,7 @@ class EngineCompat:
     @staticmethod
     def JsonLoader_load_cards(filepath: str) -> Optional[CardDB]:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module, 'JsonLoader') and hasattr(dm_ai_module.JsonLoader, 'load_cards'):
             res = dm_ai_module.JsonLoader.load_cards(filepath)
             if res is None:
@@ -163,6 +173,7 @@ class EngineCompat:
     @staticmethod
     def register_batch_inference_numpy(callback: Callable[[List[Any]], Any]) -> None:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module, 'register_batch_inference_numpy'):
             dm_ai_module.register_batch_inference_numpy(callback)
         else:
@@ -171,6 +182,7 @@ class EngineCompat:
     @staticmethod
     def TensorConverter_convert_to_tensor(state: GameState, player_id: int, card_db: CardDB) -> Union[List[float], Any]:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module, 'TensorConverter') and hasattr(dm_ai_module.TensorConverter, 'convert_to_tensor'):
              return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, card_db)
         return []
@@ -178,6 +190,7 @@ class EngineCompat:
     @staticmethod
     def get_pending_effects_info(state: GameState) -> List[Any]:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module, 'get_pending_effects_info'):
             return list(dm_ai_module.get_pending_effects_info(state))
         return []
@@ -185,6 +198,7 @@ class EngineCompat:
     @staticmethod
     def create_parallel_runner(card_db: CardDB, sims: int, batch_size: int) -> Any:
         EngineCompat._check_module()
+        assert dm_ai_module is not None
         if hasattr(dm_ai_module, 'ParallelRunner'):
             return dm_ai_module.ParallelRunner(card_db, sims, batch_size)
         return None

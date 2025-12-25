@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 # Localized Japanese text.
 from typing import Any, Dict, List, Optional, Union
+from types import ModuleType
+
+# dm_ai_module may be an optional compiled module; annotate as Optional[ModuleType]
+m: Optional[ModuleType] = None
 try:
-    import dm_ai_module as m
+    import dm_ai_module as m  # type: ignore
 except ImportError:
-    m = None
+    # leave m as None if module not available
+    pass
 
 # Base translations
 TRANSLATIONS: Dict[Any, str] = {

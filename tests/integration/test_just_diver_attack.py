@@ -96,6 +96,7 @@ def test_just_diver_attack():
 
     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+    assert play_action is not None, "Should be able to play Just Diver creature"
     dm_ai_module.EffectResolver.resolve_action(game, play_action, card_db)
 
     if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
@@ -110,8 +111,8 @@ def test_just_diver_attack():
     game.current_phase = dm_ai_module.Phase.ATTACK
     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
     att_action = next((a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER), None)
-    if att_action:
-        dm_ai_module.EffectResolver.resolve_action(game, att_action, card_db)
+    assert att_action is not None, "Should have ATTACK_PLAYER action"
+    dm_ai_module.EffectResolver.resolve_action(game, att_action, card_db)
 
     # Check tapped - using action generator state check implicitly later, or assume it worked.
     # Note: accessing .is_tapped on copy won't verify C++ state, but attacking should tap it.
@@ -147,8 +148,6 @@ def test_just_diver_attack():
     # Generate Actions
     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
 
-    # Expect: Attack Player (valid), Attack Creature (INVALID because Just Diver)
-
     can_attack_creature = False
     for a in actions:
         if a.type == dm_ai_module.ActionType.ATTACK_CREATURE:
@@ -180,7 +179,7 @@ def test_just_diver_attack():
         if a.type == dm_ai_module.ActionType.ATTACK_CREATURE:
             if a.target_instance_id == 100:
                 can_attack_creature_t2 = True
-
+        assert play_attacker is not None, "Should be able to play attacker"
     assert can_attack_creature_t2 == True, "Opponent SHOULD be able to attack Just Diver creature after expiry"
 
 if __name__ == "__main__":

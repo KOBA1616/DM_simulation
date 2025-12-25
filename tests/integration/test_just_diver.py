@@ -178,6 +178,7 @@ def test_just_diver():
     # Play
     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+    assert play_action is not None, "Should be able to play Just Diver creature in game2"
     dm_ai_module.EffectResolver.resolve_action(game2, play_action, card_db)
 
     if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
@@ -199,6 +200,7 @@ def test_just_diver():
 
     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
     play_act = next((a for a in actions if a.card_id == spell_id and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+    assert play_act is not None, "Should be able to play spell in game2"
     dm_ai_module.EffectResolver.resolve_action(game2, play_act, card_db)
 
     if play_act.type == dm_ai_module.ActionType.DECLARE_PLAY:
