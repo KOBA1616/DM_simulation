@@ -153,7 +153,7 @@ class CardTextGenerator:
         lines.extend(cls.generate_header_lines(data))
 
         # 2. Body (Keywords, Effects, etc.)
-        lines.extend(cls.generate_body_text_lines(data))
+        lines.append(cls.generate_body_text_lines(data, include_twinpact=False)) # Don't recurse here, handle manually
 
         # 4. Twinpact (Spell Side)
         spell_side = data.get("spell_side")
@@ -161,7 +161,7 @@ class CardTextGenerator:
             lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
             lines.append(cls.generate_text(spell_side))
 
-        return lines
+        return "\n".join(lines)
 
     @classmethod
     def generate_header_lines(cls, data: Dict[str, Any]) -> List[str]:
@@ -196,7 +196,7 @@ class CardTextGenerator:
         return lines
 
     @classmethod
-    def generate_body_text_lines(cls, data: Dict[str, Any], include_twinpact: bool = True) -> List[str]:
+    def generate_body_text_lines(cls, data: Dict[str, Any], include_twinpact: bool = True) -> str:
         """
         Generates just the body text (keywords, effects, etc.) without the header.
         """
