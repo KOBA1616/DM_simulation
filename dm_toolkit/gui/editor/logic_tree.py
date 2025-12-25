@@ -104,7 +104,7 @@ class LogicTreeWidget(QTreeView):
                  cmd_menu.addAction(warning)
 
                  add_cmd_action = QAction(tr("Transition (Default)"), self)
-                 add_cmd_action.triggered.connect(lambda: self.add_command_to_effect(index))
+                 add_cmd_action.triggered.connect(lambda checked: self.add_command_to_effect(index))
                  cmd_menu.addAction(add_cmd_action)
              else:
                  for tpl in templates:
@@ -147,7 +147,7 @@ class LogicTreeWidget(QTreeView):
                 cmd_menu.addAction(warning)
 
                 add_cmd_action = QAction(tr("Transition (Default)"), self)
-                add_cmd_action.triggered.connect(lambda: self.add_command_to_option(index))
+                add_cmd_action.triggered.connect(lambda checked: self.add_command_to_option(index))
                 cmd_menu.addAction(add_cmd_action)
             else:
                 for tpl in templates:
@@ -242,7 +242,13 @@ class LogicTreeWidget(QTreeView):
 
         # 3. Remove old Action
         if parent_item is None:
-            return
+            # If parent is None, it might be the root item (top-level item)
+            # index.parent() is invalid for top-level items.
+            if not index.parent().isValid():
+                parent_item = self.standard_model.invisibleRootItem()
+
+        if parent_item is None:
+             return
 
         parent_item.removeRow(row)
 
@@ -574,7 +580,9 @@ class LogicTreeWidget(QTreeView):
         """Generates a path string using UIDs if available, else row indices."""
         path = []
         curr = item
-        while curr:
+        # Stop if we hit the invisible root item to avoid including it in the path
+        root = self.standard_model.invisibleRootItem()
+        while curr and curr != root:
             data = curr.data(Qt.ItemDataRole.UserRole + 2)
             if data and isinstance(data, dict) and 'uid' in data:
                 path.append(f"uid_{data['uid']}")
