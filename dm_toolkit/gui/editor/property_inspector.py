@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel, QPushButton
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.editor.forms.card_form import CardEditForm
 from dm_toolkit.gui.editor.forms.effect_form import EffectEditForm
@@ -11,6 +11,17 @@ from dm_toolkit.gui.editor.forms.keyword_form import KeywordEditForm
 from dm_toolkit.gui.editor.forms.modifier_form import ModifierEditForm
 from dm_toolkit.gui.editor.forms.option_form import OptionForm
 from dm_toolkit.gui.localization import tr
+
+class OptionEditPage(QWidget):
+    structure_update_requested = pyqtSignal(str, dict)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(tr("Option selected. Add Actions to define behavior.")))
+        btn = QPushButton(tr("Add Action"))
+        btn.clicked.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_ACTION", {}))
+        layout.addWidget(btn)
+        layout.addStretch()
 
 class PropertyInspector(QWidget):
     # Forward signal from forms
@@ -58,6 +69,7 @@ class PropertyInspector(QWidget):
 
         self.command_form = CommandEditForm()
         self.stack.addWidget(self.command_form)
+        self.command_form.structure_update_requested.connect(self.structure_update_requested.emit)
 
         self.keyword_form = KeywordEditForm()
         self.stack.addWidget(self.keyword_form)
