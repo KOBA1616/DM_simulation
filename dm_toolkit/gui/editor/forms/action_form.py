@@ -38,6 +38,7 @@ class ActionEditForm(BaseEditForm):
             "val2_visible": vis("value2"),
             "str_visible": vis("str_val"),
             "filter_visible": vis("filter"),
+            "source_zone_visible": vis("source_zone"),
             "dest_zone_visible": vis("destination_zone"),
             "input_link_visible": vis("input_value_key") or raw.get("outputs", {}).get("output_value_key"),
             "can_be_optional": raw.get("can_be_optional", False),
@@ -86,9 +87,14 @@ class ActionEditForm(BaseEditForm):
         self.populate_combo(self.ref_mode_combo, ref_modes, data_func=lambda x: x, display_func=tr)
         self.ref_mode_label = self.add_field(tr("Ref Mode"), self.ref_mode_combo)
 
+        # Source Zone Combo
+        self.source_zone_combo = QComboBox()
+        zones = ZONES_EXTENDED
+        self.populate_combo(self.source_zone_combo, zones, data_func=lambda x: x, display_func=tr)
+        self.source_zone_label = self.add_field(tr("Source Zone"), self.source_zone_combo)
+
         # Destination Zone Combo (For MOVE_CARD)
         self.dest_zone_combo = QComboBox()
-        zones = ZONES_EXTENDED
         self.populate_combo(self.dest_zone_combo, zones, data_func=lambda x: x, display_func=tr)
         self.dest_zone_label = self.add_field(tr("Destination Zone"), self.dest_zone_combo)
 
@@ -138,6 +144,7 @@ class ActionEditForm(BaseEditForm):
         # Define bindings for automatic data transfer
         self.bindings = {
             'scope': self.scope_combo,
+            'source_zone': self.source_zone_combo,
             'destination_zone': self.dest_zone_combo,
             'filter': self.filter_widget,
             'value1': self.val1_spin,
@@ -153,6 +160,7 @@ class ActionEditForm(BaseEditForm):
         self.str_val_edit.textChanged.connect(self.update_data)
         self.measure_mode_combo.currentIndexChanged.connect(self.on_measure_mode_changed)
         self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
+        self.source_zone_combo.currentIndexChanged.connect(self.update_data)
         self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
         self.allow_duplicates_check.stateChanged.connect(self.update_data)
         self.arbitrary_check.stateChanged.connect(self.update_data)
@@ -242,6 +250,9 @@ class ActionEditForm(BaseEditForm):
         self.ref_mode_label.setVisible(is_ref)
         self.ref_mode_combo.setVisible(is_ref)
 
+        self.source_zone_label.setVisible(config.get("source_zone_visible", False))
+        self.source_zone_combo.setVisible(config.get("source_zone_visible", False))
+
         self.dest_zone_label.setVisible(config.get("dest_zone_visible", False))
         self.dest_zone_combo.setVisible(config.get("dest_zone_visible", False))
 
@@ -285,6 +296,13 @@ class ActionEditForm(BaseEditForm):
              self.set_combo_by_data(self.measure_mode_combo, val)
         elif ui_type == "COST_REFERENCE":
              self.set_combo_by_data(self.ref_mode_combo, str_val)
+
+        # Data might have old 'from_zone'/'to_zone' keys from old config templates
+        # We need to ensure we populate combos correctly even if old keys exist
+        if 'source_zone' not in data and 'from_zone' in data:
+             data['source_zone'] = data['from_zone']
+        if 'destination_zone' not in data and 'to_zone' in data:
+             data['destination_zone'] = data['to_zone']
 
         self._apply_bindings(data)
 
@@ -337,6 +355,10 @@ class ActionEditForm(BaseEditForm):
         if ui_type == "SELECT_OPTION":
              data['value2'] = 1 if self.allow_duplicates_check.isChecked() else 0
 
+        # Clean up old keys if they exist to prevent confusion
+        if 'from_zone' in data: del data['from_zone']
+        if 'to_zone' in data: del data['to_zone']
+
     def _get_display_text(self, data):
         return f"{tr('Action')}: {tr(data.get('type', 'UNKNOWN'))}"
 
@@ -346,5 +368,7 @@ class ActionEditForm(BaseEditForm):
         self.str_val_edit.blockSignals(block)
         self.measure_mode_combo.blockSignals(block)
         self.ref_mode_combo.blockSignals(block)
+        self.source_zone_combo.blockSignals(block)
+        self.dest_zone_combo.blockSignals(block)
         self.allow_duplicates_check.blockSignals(block)
         self.no_cost_check.blockSignals(block)

@@ -25,6 +25,12 @@ class ActionConverter:
             dest = action_data.get('destination_zone', 'NONE')
             src = action_data.get('source_zone', 'NONE')
 
+            # Handle possible legacy keys from bad config templates
+            if dest == 'NONE' and 'to_zone' in action_data:
+                 dest = action_data['to_zone']
+            if src == 'NONE' and 'from_zone' in action_data:
+                 src = action_data['from_zone']
+
             if dest == "GRAVEYARD":
                 if src == "HAND":
                     cmd['type'] = "DISCARD"
