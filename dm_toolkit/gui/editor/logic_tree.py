@@ -4,6 +4,7 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem, QAction
 from PyQt6.QtCore import Qt, QModelIndex
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
+import uuid
 
 class LogicTreeWidget(QTreeView):
     def __init__(self, parent=None):
@@ -39,12 +40,16 @@ class LogicTreeWidget(QTreeView):
                 self._expand_card_tree(index)
 
     def _expand_card_tree(self, card_index):
-        """Expands the card and its immediate children (Effects) to show Commands."""
+        """Recursively expands the card and all its descendants."""
         self.expand(card_index)
-        item = self.standard_model.itemFromIndex(card_index)
+        self._expand_children_recursive(card_index)
+
+    def _expand_children_recursive(self, parent_index):
+        item = self.standard_model.itemFromIndex(parent_index)
         for i in range(item.rowCount()):
             child_index = item.child(i).index()
             self.expand(child_index)
+            self._expand_children_recursive(child_index)
 
     def mousePressEvent(self, event):
         # Default behavior: Click selects, Arrow click toggles expansion.
@@ -92,7 +97,12 @@ class LogicTreeWidget(QTreeView):
         elif item_type == "EFFECT":
              cmd_menu = menu.addMenu(tr("Add Command"))
              templates = self.data_manager.templates.get("commands", [])
+
              if not templates:
+                 warning = QAction(tr("(No Templates Found)"), self)
+                 warning.setEnabled(False)
+                 cmd_menu.addAction(warning)
+
                  add_cmd_action = QAction(tr("Transition (Default)"), self)
                  add_cmd_action.triggered.connect(lambda: self.add_command_to_effect(index))
                  cmd_menu.addAction(add_cmd_action)
@@ -130,7 +140,12 @@ class LogicTreeWidget(QTreeView):
         elif item_type == "OPTION":
             cmd_menu = menu.addMenu(tr("Add Command"))
             templates = self.data_manager.templates.get("commands", [])
+
             if not templates:
+                warning = QAction(tr("(No Templates Found)"), self)
+                warning.setEnabled(False)
+                cmd_menu.addAction(warning)
+
                 add_cmd_action = QAction(tr("Transition (Default)"), self)
                 add_cmd_action.triggered.connect(lambda: self.add_command_to_option(index))
                 cmd_menu.addAction(add_cmd_action)
@@ -279,7 +294,7 @@ class LogicTreeWidget(QTreeView):
             "condition": {"type": "NONE"},
             "actions": []
         }
-        self.add_child_item(parent_index, "EFFECT", eff_data, f"{tr('Effect')}: ON_PLAY")
+        self.add_child_item(parent_index, "EFFECT", eff_data, f"{tr('Effect')}: {tr('ON_PLAY')}")
 
     def add_static(self, parent_index):
         if not parent_index.isValid(): return
@@ -313,7 +328,7 @@ class LogicTreeWidget(QTreeView):
 
         new_item = QStandardItem(f"{tr('Option')} {count}")
         new_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
-        new_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+        new_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
 
         parent_item.appendRow(new_item)
         self.expand(parent_index)
@@ -588,7 +603,25 @@ class LogicTreeWidget(QTreeView):
     def remove_current_item(self):
         idx = self.currentIndex()
         if not idx.isValid(): return
-        self.standard_model.removeRow(idx.row(), idx.parent())
+
+        row = idx.row()
+        parent = idx.parent()
+
+        self.standard_model.removeRow(row, parent)
+
+        # Try to select neighbor to prevent stale UI
+        if self.standard_model.rowCount(parent) > row:
+            # Select next item which is now at 'row'
+            new_idx = self.standard_model.index(row, 0, parent)
+            self.setCurrentIndex(new_idx)
+        elif self.standard_model.rowCount(parent) > 0:
+            # Select last item
+            new_idx = self.standard_model.index(self.standard_model.rowCount(parent) - 1, 0, parent)
+            self.setCurrentIndex(new_idx)
+        else:
+            # Select parent
+            if parent.isValid():
+                self.setCurrentIndex(parent)
 
     def add_spell_side(self, card_index):
         if not card_index.isValid(): return
