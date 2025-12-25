@@ -197,7 +197,12 @@ class ActionEditForm(BaseEditForm):
 
         # 3. Request Update from Parent (LogicTreeWidget handles recursive replacement)
         # We send a special signal to replace the current item with a new type
-        self.structure_update_requested.emit(STRUCT_CMD_REPLACE_WITH_COMMAND, cmd_data)
+        # Fix: Pass current_item to avoid race condition with selection changes
+        payload = {
+            'new_data': cmd_data,
+            'target_item': self.current_item
+        }
+        self.structure_update_requested.emit(STRUCT_CMD_REPLACE_WITH_COMMAND, payload)
 
     def on_type_changed(self):
         action_type = self.type_combo.currentData()
