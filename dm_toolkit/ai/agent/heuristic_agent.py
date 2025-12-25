@@ -1,16 +1,19 @@
 
-class HeuristicAgent:
-    def __init__(self, player_id):
-        self.player_id = player_id
+from typing import Any, List, Dict, Optional
 
-    def get_action(self, state, legal_actions, card_db):
+
+class HeuristicAgent:
+    def __init__(self, player_id: int) -> None:
+        self.player_id: int = player_id
+
+    def get_action(self, state: Any, legal_actions: List[Any], card_db: Dict[int, Any]) -> Optional[Any]:
         import dm_ai_module
         import random
 
         if not legal_actions:
             return None
 
-        def get_def(cid):
+        def get_def(cid: int) -> Optional[Any]:
             if cid in card_db:
                 return card_db[cid]
             return None
@@ -25,9 +28,9 @@ class HeuristicAgent:
         # 2. Play Card
         play_actions = [a for a in legal_actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
         if play_actions:
-            def get_cost(action):
+            def get_cost(action: Any) -> int:
                 cdef = get_def(action.card_id)
-                return cdef.cost if cdef else 0
+                return int(cdef.cost) if cdef and hasattr(cdef, 'cost') else 0
 
             play_actions.sort(key=get_cost, reverse=True)
             return play_actions[0]

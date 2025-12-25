@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from typing import Optional, Tuple
 from dm_toolkit.ai.agent.synergy import SynergyGraph
 
 class DuelTransformer(nn.Module):
@@ -21,7 +22,7 @@ class DuelTransformer(nn.Module):
     - Activation: GELU
     - Context Length: Dynamic (Max ~512)
     """
-    def __init__(self, vocab_size, action_dim, d_model=256, nhead=8, num_layers=6, dim_feedforward=1024, max_len=512, synergy_matrix_path=None):
+    def __init__(self, vocab_size: int, action_dim: int, d_model: int = 256, nhead: int = 8, num_layers: int = 6, dim_feedforward: int = 1024, max_len: int = 512, synergy_matrix_path: Optional[str] = None) -> None:
         super().__init__()
         self.d_model = d_model
         self.max_len = max_len
@@ -64,12 +65,12 @@ class DuelTransformer(nn.Module):
 
         self._init_weights()
 
-    def _init_weights(self):
+    def _init_weights(self) -> None:
         for p in self.parameters():
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, x, padding_mask=None):
+    def forward(self, x: torch.Tensor, padding_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             x: [Batch, SeqLen] (Integer Token IDs)

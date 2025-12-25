@@ -1,18 +1,20 @@
 import random
 import numpy as np
+from typing import Any, List, Tuple, Optional
+
 
 class ReplayBuffer:
-    def __init__(self, capacity=10000, golden_ratio=0.2):
-        self.capacity = capacity
-        self.golden_capacity = int(capacity * golden_ratio)
-        self.regular_capacity = capacity - self.golden_capacity
+    def __init__(self, capacity: int = 10000, golden_ratio: float = 0.2) -> None:
+        self.capacity: int = capacity
+        self.golden_capacity: int = int(capacity * golden_ratio)
+        self.regular_capacity: int = capacity - self.golden_capacity
+
+        self.regular_buffer: List[Tuple[Any, Any, Any]] = []
+        self.golden_buffer: List[Tuple[Any, Any, Any]] = []
+        self.regular_idx: int = 0
+        self.golden_idx: int = 0
         
-        self.regular_buffer = []
-        self.golden_buffer = []
-        self.regular_idx = 0
-        self.golden_idx = 0
-        
-    def push(self, game_data, is_golden=False):
+    def push(self, game_data: List[Tuple[Any, Any, Any]], is_golden: bool = False) -> None:
         """
         game_data: list of (state_tensor, policy_target, value_target)
         """
@@ -35,7 +37,7 @@ class ReplayBuffer:
             # Better: del target_buffer[:excess]
             del target_buffer[:excess]
             
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         total_len = len(self.regular_buffer) + len(self.golden_buffer)
         if total_len < batch_size:
             return None
@@ -74,5 +76,5 @@ class ReplayBuffer:
             np.array(value_batch)
         )
         
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.regular_buffer) + len(self.golden_buffer)

@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Tuple
 
 class AlphaZeroNetwork(nn.Module):
-    def __init__(self, input_size, action_size):
+    def __init__(self, input_size: int, action_size: int) -> None:
         super().__init__()
         self.fc1 = nn.Linear(input_size, 1024)
         self.fc2 = nn.Linear(1024, 1024)
@@ -17,7 +18,7 @@ class AlphaZeroNetwork(nn.Module):
         # Value Head
         self.value_head = nn.Linear(1024, 1)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))

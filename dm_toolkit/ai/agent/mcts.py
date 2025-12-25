@@ -2,40 +2,41 @@ import math
 import torch
 import numpy as np
 import dm_ai_module
+from typing import Any, Optional, List, Dict, Tuple
 
 
 class MCTSNode:
-    def __init__(self, state, parent=None, action=None):
-        self.state = state
-        self.parent = parent
-        self.action = action  # Action that led to this state
-        self.children = []
-        self.visit_count = 0
-        self.value_sum = 0.0
-        self.prior = 0.0
+    def __init__(self, state: Any, parent: Optional['MCTSNode'] = None, action: Any = None) -> None:
+        self.state: Any = state
+        self.parent: Optional['MCTSNode'] = parent
+        self.action: Any = action  # Action that led to this state
+        self.children: List['MCTSNode'] = []
+        self.visit_count: int = 0
+        self.value_sum: float = 0.0
+        self.prior: float = 0.0
 
-    def is_expanded(self):
+    def is_expanded(self) -> bool:
         return len(self.children) > 0
 
-    def value(self):
+    def value(self) -> float:
         if self.visit_count == 0:
             return 0.0
         return self.value_sum / self.visit_count
 
 
 class MCTS:
-    def __init__(self, network, card_db, simulations=100, c_puct=1.0, dirichlet_alpha=0.3, dirichlet_epsilon=0.25):
-        self.network = network
-        self.card_db = card_db
-        self.simulations = simulations
-        self.c_puct = c_puct
-        self.dirichlet_alpha = dirichlet_alpha
-        self.dirichlet_epsilon = dirichlet_epsilon
+    def __init__(self, network: Any, card_db: Dict[str, Any], simulations: int = 100, c_puct: float = 1.0, dirichlet_alpha: float = 0.3, dirichlet_epsilon: float = 0.25) -> None:
+        self.network: Any = network
+        self.card_db: Dict[str, Any] = card_db
+        self.simulations: int = simulations
+        self.c_puct: float = c_puct
+        self.dirichlet_alpha: float = dirichlet_alpha
+        self.dirichlet_epsilon: float = dirichlet_epsilon
 
-    def _fast_forward(self, state):
+    def _fast_forward(self, state: Any) -> None:
         dm_ai_module.PhaseManager.fast_forward(state, self.card_db)
 
-    def search(self, root_state, add_noise=False):
+    def search(self, root_state: Any, add_noise: bool = False) -> MCTSNode:
         root_state_clone = root_state.clone()
         self._fast_forward(root_state_clone)
         root = MCTSNode(root_state_clone)
@@ -67,7 +68,7 @@ class MCTS:
 
         return root
 
-    def _add_exploration_noise(self, node):
+    def _add_exploration_noise(self, node: MCTSNode) -> None:
         if not node.children:
             return
             
@@ -76,7 +77,7 @@ class MCTS:
         for i, child in enumerate(node.children):
             child.prior = child.prior * (1 - self.dirichlet_epsilon) + noise[i] * self.dirichlet_epsilon
 
-    def _select_child(self, node):
+    def _select_child(self, node: MCTSNode) -> Optional[MCTSNode]:
         best_score = -float('inf')
         best_child = None
 
@@ -110,7 +111,7 @@ class MCTS:
 
         return best_child
 
-    def _expand(self, node):
+    def _expand(self, node: MCTSNode) -> float:
         # Check game over
         is_over, result = dm_ai_module.PhaseManager.check_game_over(node.state)
         if is_over:
@@ -157,7 +158,7 @@ class MCTS:
             policy_logits, value = self.network(tensor_t)
 
         policy = torch.softmax(policy_logits, dim=1).squeeze(0).numpy()
-        value = value.item()
+        value = float(value.item())
 
         # Create children
         for action in actions:
@@ -190,7 +191,7 @@ class MCTS:
 
         return value
 
-    def _backpropagate(self, node, value):
+    def _backpropagate(self, node: Optional[MCTSNode], value: float) -> None:
         while node is not None:
             node.visit_count += 1
             node.value_sum += value
