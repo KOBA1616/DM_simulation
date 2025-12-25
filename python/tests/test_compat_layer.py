@@ -2,6 +2,7 @@
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
+from typing import Any, Dict
 
 # Mock dm_ai_module if it's not available in the environment
 try:
@@ -14,7 +15,7 @@ from dm_toolkit.engine.compat import EngineCompat
 
 class TestEngineCompat(unittest.TestCase):
 
-    def test_get_game_state_attribute_defaults(self):
+    def test_get_game_state_attribute_defaults(self) -> None:
         # Create a mock that raises AttributeError for any attribute access
         # so getattr(state, 'attr', default) returns default.
         class EmptyState:
@@ -30,9 +31,10 @@ class TestEngineCompat(unittest.TestCase):
         self.assertEqual(EngineCompat.get_effect_buffer(state), [])
         self.assertEqual(EngineCompat.get_command_history(state), [])
 
-    def test_get_game_state_attribute_aliases(self):
+    def test_get_game_state_attribute_aliases(self) -> None:
         class AliasState:
-            pass
+            active_player: int
+            phase: str
 
         state = AliasState()
 
@@ -44,7 +46,7 @@ class TestEngineCompat(unittest.TestCase):
         state.phase = "MAIN"
         self.assertEqual(EngineCompat.get_current_phase(state), "MAIN")
 
-    def test_get_player_aliases(self):
+    def test_get_player_aliases(self) -> None:
         state = MagicMock()
         p0 = MagicMock()
         p1 = MagicMock()
@@ -62,7 +64,10 @@ class TestEngineCompat(unittest.TestCase):
         del state.players
         # MagicMock will return a mock for players if accessed, so we need a cleaner object or explicit None
         class LegacyState:
-            def __init__(self):
+            player0: Any
+            player1: Any
+            players: Any
+            def __init__(self) -> None:
                 self.player0 = p0
                 self.player1 = p1
                 self.players = None
@@ -71,9 +76,10 @@ class TestEngineCompat(unittest.TestCase):
         self.assertEqual(EngineCompat.get_player(state_legacy, 0), p0)
         self.assertEqual(EngineCompat.get_player(state_legacy, 1), p1)
 
-    def test_action_attributes(self):
+    def test_action_attributes(self) -> None:
         class Action:
-            pass
+            slot_index: int
+            source_instance_id: int
 
         action = Action()
         action.slot_index = 5
@@ -89,18 +95,18 @@ class TestEngineCompat(unittest.TestCase):
         self.assertEqual(EngineCompat.get_action_source_id(action), -1)
 
     @patch('dm_ai_module.EffectResolver')
-    def test_api_wrappers(self, mock_effect_resolver):
+    def test_api_wrappers(self, mock_effect_resolver: Any) -> None:
         state = MagicMock()
-        card_db = {}
+        card_db: Dict[int, Any] = {}
         action = MagicMock()
 
         EngineCompat.EffectResolver_resolve_action(state, action, card_db)
         dm_ai_module.EffectResolver.resolve_action.assert_called_with(state, action, card_db)
 
     @patch('dm_ai_module.PhaseManager')
-    def test_phase_manager_wrappers(self, mock_phase_manager):
+    def test_phase_manager_wrappers(self, mock_phase_manager: Any) -> None:
         state = MagicMock()
-        card_db = {}
+        card_db: Dict[int, Any] = {}
 
         EngineCompat.PhaseManager_next_phase(state, card_db)
         dm_ai_module.PhaseManager.next_phase.assert_called_with(state, card_db)
