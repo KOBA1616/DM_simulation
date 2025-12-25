@@ -18,10 +18,11 @@ except ImportError:
     sys.exit(1)
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
+from dm_toolkit.types import CardDB, ResultsList
 
 class SelfPlayRunner:
-    def __init__(self, card_db, device=None):
-        self.card_db = card_db
+    def __init__(self, card_db: CardDB, device=None):
+        self.card_db: CardDB = card_db
         self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Initialize dimensions
@@ -205,8 +206,8 @@ class SelfPlayRunner:
                     states_p2.append(s)
 
             # Inference P1
-            results_p1_pol = []
-            results_p1_val = []
+            results_p1_pol: ResultsList = []
+            results_p1_val: ResultsList = []
             if states_p1:
                 tensors = [dm_ai_module.TensorConverter.convert_to_tensor(s, 0, self.card_db, True) for s in states_p1]
                 t_in = torch.tensor(np.array(tensors), dtype=torch.float32).to(self.device)
@@ -216,8 +217,8 @@ class SelfPlayRunner:
                     results_p1_val = vals.squeeze(1).cpu().numpy()
 
             # Inference P2
-            results_p2_pol = []
-            results_p2_val = []
+            results_p2_pol: ResultsList = []
+            results_p2_val: ResultsList = []
             if states_p2:
                 tensors = [dm_ai_module.TensorConverter.convert_to_tensor(s, 1, self.card_db, True) for s in states_p2]
                 t_in = torch.tensor(np.array(tensors), dtype=torch.float32).to(self.device)

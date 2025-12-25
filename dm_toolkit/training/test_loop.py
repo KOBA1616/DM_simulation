@@ -9,11 +9,12 @@ if bin_path not in sys.path:
     sys.path.append(bin_path)
 
 import dm_ai_module
+from dm_toolkit.types import CardDB
 
 class TestLoopDetection(unittest.TestCase):
     def setUp(self):
         # Dummy DB
-        self.card_db = {}
+        self.card_db: CardDB = {}
         # Create a simple game state
         self.instance = dm_ai_module.GameInstance(42, self.card_db)
         self.state = self.instance.state

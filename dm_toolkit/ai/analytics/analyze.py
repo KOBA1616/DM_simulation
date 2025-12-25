@@ -4,6 +4,7 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
+from typing import Dict
 
 
 class Analytics:
@@ -42,7 +43,7 @@ class Analytics:
             if total_decks == 0:
                 continue
 
-            counts = {}
+                counts: Dict[int, int] = {}
             for deck in gen['decks']:
                 for cid in deck:
                     counts[cid] = counts.get(cid, 0) + 1
@@ -97,7 +98,7 @@ class Analytics:
 
         for i, gen in enumerate(generations):
             html.append(f"<h3>Generation {i}</h3>")
-            counts = {}
+            counts: Dict[int, int] = {}
             for deck in gen['decks']:
                 for cid in deck:
                     counts[cid] = counts.get(cid, 0) + 1
