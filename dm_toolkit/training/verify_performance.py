@@ -23,7 +23,7 @@ except ImportError:
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 from dm_toolkit.training.network_v2 import NetworkV2
-from typing import Any
+from typing import Any, List, Tuple
 
 # Import SCENARIOS
 sys.path.append(os.path.dirname(__file__))
@@ -32,9 +32,9 @@ from scenario_definitions import SCENARIOS
 import torch
 
 class PerformanceVerifier:
-    def __init__(self, card_db, model_path=None, model_type="resnet"):
-        self.card_db = card_db
-        self.model_type = model_type.lower()
+    def __init__(self, card_db: Any, model_path: str | None = None, model_type: str = "resnet") -> None:
+        self.card_db: Any = card_db
+        self.model_type: str = model_type.lower()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
 
@@ -74,11 +74,11 @@ class PerformanceVerifier:
         # Register Batch Callback
         self._register_callback()
 
-    def _register_callback(self):
+    def _register_callback(self) -> None:
         """Registers the appropriate C++ callback for batch inference."""
 
         if self.model_type == "transformer":
-            def sequence_batch_inference(token_lists):
+            def sequence_batch_inference(token_lists: List[List[int]]) -> Tuple[List[List[float]], List[float]]:
                 # token_lists is List[List[int]] from C++
                 # Convert to padded tensor
                 # We need to manually pad here because C++ sends raw vectors
@@ -120,7 +120,7 @@ class PerformanceVerifier:
 
         else:
             # ResNet / Flat Tensor
-            def flat_batch_inference(input_array):
+            def flat_batch_inference(input_array: Any) -> Tuple[Any, Any]:
                 # Input is numpy array (Batch, InputSize) (via buffer protocol/copy in binding)
                 # But wait, the binding for set_flat_batch_callback passes a pointer/vector?
                 # The binding `dm::python::call_flat_batch_callback` converts C++ vector to numpy array.
@@ -147,7 +147,7 @@ class PerformanceVerifier:
                  print("Error: No batch callback registration function found in dm_ai_module.")
                  sys.exit(1)
 
-    def verify(self, scenario_name, episodes, mcts_sims=800, batch_size=32, num_threads=4):
+    def verify(self, scenario_name: str, episodes: int, mcts_sims: int = 800, batch_size: int = 32, num_threads: int = 4) -> float:
         print(f"Verifying performance for '{self.model_name}' on scenario '{scenario_name}'...")
         print(f"Settings: sims={mcts_sims}, batch_size={batch_size}, threads={num_threads}, mode={self.model_type}")
 

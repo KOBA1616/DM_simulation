@@ -164,6 +164,8 @@ class DeckEvolutionSystem:
                 meta_deck.name += "_Var"
 
     def run_evolution(self, generations: int = 5, matches_per_pair: int = 10):
+        # Runner can be either the C++ ParallelRunner or the local MockParallelRunner
+        runner: Any
         if HAS_MODULE:
             runner = dm_ai_module.ParallelRunner(self.card_db_obj, 1, 1) # Internal threads managed by play_matchup?
         else:
