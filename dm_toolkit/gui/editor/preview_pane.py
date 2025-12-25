@@ -271,33 +271,6 @@ class CardPreviewWidget(QWidget):
         layout.setStretch(0, 5) # Creature roughly 50-60%?
         layout.setStretch(1, 4) # Spell
 
-    def update_preview(self, item):
-        if not item:
-            self.clear_preview()
-            return
-
-        model = item.model()
-        parent = item
-        card_item = None
-
-        while parent:
-            type_ = parent.data(Qt.ItemDataRole.UserRole + 1)
-            if type_ == "CARD":
-                card_item = parent
-                break
-            parent = parent.parent()
-
-        if not card_item:
-            self.clear_preview()
-            return
-
-        data = card_item.data(Qt.ItemDataRole.UserRole + 2)
-        if not data:
-            return
-
-        self.current_data = data
-        self.render_card(data)
-
     def clear_preview(self):
         self.standard_widget.hide()
         self.twinpact_widget.hide()
