@@ -4,106 +4,266 @@ import os
 import random
 import json
 import time
+import math
+import copy
+from dataclasses import dataclass, field
+from typing import List, Dict, Any, Tuple
 
 # Ensure dm_ai_module is in path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
+
+# --- Mock / Import Handling ---
 try:
     import dm_ai_module
+    HAS_MODULE = True
 except ImportError:
-    print("Error: dm_ai_module not found. Please build the project first.")
-    sys.exit(1)
+    HAS_MODULE = False
+    print("Warning: dm_ai_module not found. Running in Mock/Simulation mode.")
 
-def load_card_db():
-    json_loader = dm_ai_module.JsonLoader()
-    card_db = json_loader.load_cards("data/cards.json")
-    return card_db
+    class MockParallelRunner:
+        def __init__(self, card_db, num_games, num_threads):
+            self.card_db = card_db
 
-def create_starter_decks(card_db, count=10):
-    all_ids = list(card_db.keys())
-    decks = []
+        def play_deck_matchup(self, deck1, deck2, num_games, num_threads):
+            # Return random results: [p1_wins, p2_wins, draws]
+            p1_wins = 0
+            p2_wins = 0
+            draws = 0
+            for _ in range(num_games):
+                r = random.random()
+                if r < 0.48: p1_wins += 1
+                elif r < 0.96: p2_wins += 1
+                else: draws += 1
+            return [p1_wins, p2_wins, draws]
 
-    # Simple heuristic
-    civ_groups = {
-        dm_ai_module.Civilization.FIRE: [],
-        dm_ai_module.Civilization.WATER: [],
-        dm_ai_module.Civilization.NATURE: [],
-        dm_ai_module.Civilization.LIGHT: [],
-        dm_ai_module.Civilization.DARKNESS: []
-    }
+# --- Data Structures ---
 
-    for cid in all_ids:
-        c = card_db[cid]
-        for civ in c.civilizations:
-            civ_groups[civ].append(cid)
+@dataclass
+class MetaDeck:
+    name: str
+    cards: List[int]
+    wins: int = 0
+    matches: int = 0
+    elo: float = 1200.0
+    generation: int = 0
 
-    for i in range(count):
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "cards": self.cards
+        }
+
+# --- Evolution System ---
+
+class DeckEvolutionSystem:
+    def __init__(self, card_db_path: str, meta_decks_path: str):
+        self.card_db_path = card_db_path
+        self.meta_decks_path = meta_decks_path
+        self.card_db = {}
+        self.valid_card_ids = []
+        self.population: List[MetaDeck] = []
+        self.meta_archetypes: List[Dict] = []
+
+        self.load_resources()
+
+    def load_resources(self):
+        # Load Card DB
+        if HAS_MODULE:
+            loader = dm_ai_module.JsonLoader()
+            # The C++ loader returns a map of objects, we might need to wrap or use it directly
+            # For mutation logic, we need python access to IDs.
+            # We'll also load via Python JSON for easier attribute access if needed
+            self.card_db_obj = loader.load_cards(self.card_db_path)
+            self.valid_card_ids = list(self.card_db_obj.keys())
+        else:
+            with open(self.card_db_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                # Handle list or dict format
+                if isinstance(data, list):
+                    for c in data:
+                        self.card_db[c['id']] = c
+                else:
+                    self.card_db = data
+            self.valid_card_ids = [int(k) for k in self.card_db.keys()]
+            self.card_db_obj = self.card_db # Use dict as obj in mock mode
+
+        # Load Meta Decks
+        if os.path.exists(self.meta_decks_path):
+            with open(self.meta_decks_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                self.meta_archetypes = data.get("decks", [])
+
+        print(f"Loaded {len(self.valid_card_ids)} cards and {len(self.meta_archetypes)} meta archetypes.")
+
+    def initialize_population(self, pop_size: int = 20):
+        self.population = []
+
+        # 1. Seed with Meta Archetypes
+        for arch in self.meta_archetypes:
+            self.population.append(MetaDeck(
+                name=arch.get("name", "Unknown"),
+                cards=arch.get("cards", []),
+                elo=1500.0, # Higher starting ELO for known meta
+                generation=0
+            ))
+
+        # 2. Fill rest with mutations of archetypes or random
+        while len(self.population) < pop_size:
+            if self.meta_archetypes:
+                parent = random.choice(self.meta_archetypes)
+                new_deck = MetaDeck(
+                    name=f"{parent.get('name')}_Var",
+                    cards=list(parent.get("cards", [])),
+                    elo=1200.0,
+                    generation=0
+                )
+                self.mutate_deck(new_deck, mutations=4)
+                self.population.append(new_deck)
+            else:
+                # Completely random if no meta
+                self.population.append(self.create_random_deck())
+
+        print(f"Population initialized with {len(self.population)} decks.")
+
+    def create_random_deck(self) -> MetaDeck:
+        # Simple random deck
         deck = []
-        civs = random.sample(list(civ_groups.keys()), k=random.randint(1, 2))
-        pool = []
-        for civ in civs:
-            pool.extend(civ_groups[civ])
-        if not pool: pool = all_ids
-
         while len(deck) < 40:
-            cid = random.choice(pool)
+            cid = random.choice(self.valid_card_ids)
             if deck.count(cid) < 4:
                 deck.append(cid)
-        decks.append(deck)
+        return MetaDeck("Random_Starter", deck)
 
-    return decks
+    def mutate_deck(self, meta_deck: MetaDeck, mutations: int = 2):
+        """Randomly swaps N cards in the deck with valid alternatives."""
+        deck = meta_deck.cards
+        changes = 0
+        attempts = 0
+        max_attempts = 100
 
-def run_evolution_loop(generations=1, matches_per_pair=1):
-    print("Loading Card DB...")
-    card_db = load_card_db()
+        while changes < mutations and attempts < max_attempts:
+            attempts += 1
 
-    print("Initializing MetaEnvironment...")
-    meta_env = dm_ai_module.MetaEnvironment(card_db)
+            # Remove a card
+            idx_to_remove = random.randint(0, len(deck) - 1)
+            removed_id = deck[idx_to_remove]
 
-    # Very small population for testing
-    pop_size = 4
-    print(f"Creating {pop_size} starter decks...")
-    initial_decks = create_starter_decks(card_db, count=pop_size)
-    meta_env.initialize_population(initial_decks)
+            # Pick a new card
+            new_id = random.choice(self.valid_card_ids)
 
-    # 4th arg is num_threads, not sims.
-    runner = dm_ai_module.ParallelRunner(card_db, 1, 1)
+            # Constraints
+            if new_id == removed_id: continue
+            if deck.count(new_id) >= 4: continue
 
-    all_card_ids = list(card_db.keys())
+            # Apply
+            deck[idx_to_remove] = new_id
+            changes += 1
 
-    for gen in range(generations):
-        print(f"\n--- Generation {gen} ---")
-        population = meta_env.get_population()
+            # Rename if not already variant
+            if "Var" not in meta_deck.name:
+                meta_deck.name += "_Var"
 
-        pairings = []
-        for i in range(len(population)):
-            opp_idx = (i + 1) % len(population)
-            pairings.append((i, opp_idx))
+    def run_evolution(self, generations: int = 5, matches_per_pair: int = 10):
+        if HAS_MODULE:
+            runner = dm_ai_module.ParallelRunner(self.card_db_obj, 1, 1) # Internal threads managed by play_matchup?
+        else:
+            runner = MockParallelRunner(self.card_db_obj, 1, 1)
 
-        print(f"Running {len(pairings)} matches...")
+        for gen in range(1, generations + 1):
+            print(f"\n=== Generation {gen} ===")
 
-        for i, (p1_idx, p2_idx) in enumerate(pairings):
-            deck1 = population[p1_idx].deck
-            deck2 = population[p2_idx].deck
+            # 1. Evaluate (Tournament)
+            # Simple approach: Each deck plays against N random opponents
+            matches_per_deck = 5
 
-            # play_deck_matchup(deck1, deck2, num_games, num_threads)
-            results = runner.play_deck_matchup(deck1, deck2, 1, 1)
-            winner = results[0]
+            for i, deck_agent in enumerate(self.population):
+                opponents = random.sample(self.population, k=matches_per_deck)
+                for opp in opponents:
+                    if deck_agent == opp: continue
 
-            meta_env.record_match(p1_idx, p2_idx, winner)
-            if (i+1) % 5 == 0:
-                print(f"  Processed {i+1}/{len(pairings)} matches")
+                    # Play Match
+                    results = runner.play_deck_matchup(deck_agent.cards, opp.cards, matches_per_pair, 1)
+                    p1_wins, p2_wins, draws = results
 
-        # Step Generation
-        print("Evolving next generation...")
-        meta_env.step_generation(all_card_ids)
+                    # Update Stats
+                    deck_agent.matches += matches_per_pair
+                    deck_agent.wins += p1_wins
+                    opp.matches += matches_per_pair
+                    opp.wins += p2_wins
 
-        population = meta_env.get_population()
-        sorted_pop = sorted(population, key=lambda a: a.elo_rating, reverse=True)
-        top = sorted_pop[0]
-        print(f"Best Deck (Gen {top.generation}, Elo {top.elo_rating:.1f}): Wins {top.wins}/{top.matches_played}")
+                    # Update Elo (Simple K-factor)
+                    k = 32
+                    expected_p1 = 1 / (1 + 10 ** ((opp.elo - deck_agent.elo) / 400))
+                    actual_p1 = (p1_wins + 0.5 * draws) / matches_per_pair
 
-    print("\nEvolution Complete.")
+                    deck_agent.elo += k * (actual_p1 - expected_p1)
+                    opp.elo -= k * (actual_p1 - expected_p1)
+
+            # 2. Sort & Report
+            self.population.sort(key=lambda d: d.elo, reverse=True)
+            top_deck = self.population[0]
+            print(f"Top Deck: {top_deck.name} (Elo: {top_deck.elo:.1f}, WinRate: {top_deck.wins/max(1, top_deck.matches):.2%})")
+
+            # 3. Selection (Keep top 50%)
+            cutoff = len(self.population) // 2
+            survivors = self.population[:cutoff]
+
+            # 4. Reproduction (Fill bottom 50% with mutated clones of survivors)
+            new_population = [copy.deepcopy(s) for s in survivors]
+
+            while len(new_population) < len(self.population):
+                parent = random.choice(survivors)
+                child = copy.deepcopy(parent)
+                child.generation = gen
+                child.matches = 0
+                child.wins = 0
+                # Reset Elo slightly towards mean? Or keep?
+                # Keeping Elo helps stability, but reset allows climbing
+                child.name = f"{parent.name}_Gen{gen}"
+                self.mutate_deck(child, mutations=random.randint(1, 4))
+                new_population.append(child)
+
+            self.population = new_population
+
+        # End of Evolution
+        self.save_meta_decks()
+
+    def save_meta_decks(self):
+        # Save top 5 unique decks to meta_decks.json
+        top_decks = self.population[:5]
+        output_data = {"decks": [d.to_dict() for d in top_decks]}
+
+        with open(self.meta_decks_path, 'w', encoding='utf-8') as f:
+            json.dump(output_data, f, indent=2, ensure_ascii=False)
+        print(f"Saved top {len(top_decks)} decks to {self.meta_decks_path}")
+
+# --- Entry Point ---
+
+def main():
+    base_dir = os.path.dirname(__file__)
+    # Path resolution relative to script location
+    # script is in python/training/
+    # data is in data/ (which is ../../data relative to script?)
+    # Wait, repo root is ../../
+
+    root_dir = os.path.abspath(os.path.join(base_dir, '../../'))
+    card_db_path = os.path.join(root_dir, 'data', 'cards.json')
+    meta_decks_path = os.path.join(root_dir, 'data', 'meta_decks.json')
+
+    if not os.path.exists(card_db_path):
+        # Fallback for running from root
+        card_db_path = 'data/cards.json'
+        meta_decks_path = 'data/meta_decks.json'
+
+    print(f"Starting Deck Evolution System...")
+    print(f"Cards: {card_db_path}")
+    print(f"Meta: {meta_decks_path}")
+
+    system = DeckEvolutionSystem(card_db_path, meta_decks_path)
+
+    # Run a short evolution
+    system.initialize_population(pop_size=8)
+    system.run_evolution(generations=2, matches_per_pair=2)
 
 if __name__ == "__main__":
-    # 1 generation, minimal config
-    run_evolution_loop(generations=1)
+    main()
