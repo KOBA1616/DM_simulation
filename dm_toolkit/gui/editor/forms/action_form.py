@@ -7,6 +7,8 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.consts import EDITOR_ACTION_TYPES, ZONES_EXTENDED
+from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
+from dm_toolkit.gui.editor.action_converter import ActionConverter
 
 class ActionEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -14,7 +16,6 @@ class ActionEditForm(BaseEditForm):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
-        # Removed enforce_readonly_mode
 
     def _get_ui_config(self, action_type):
         """Normalize raw UI config with safe defaults to avoid missing keys."""
@@ -38,23 +39,32 @@ class ActionEditForm(BaseEditForm):
             "str_visible": vis("str_val"),
             "filter_visible": vis("filter"),
             "dest_zone_visible": vis("destination_zone"),
-            "input_link_visible": vis("input_value_key") or raw.get("outputs", {}).get("output_value_key"), # Corrected logic
+            "input_link_visible": vis("input_value_key") or raw.get("outputs", {}).get("output_value_key"),
             "can_be_optional": raw.get("can_be_optional", False),
             "produces_output": raw.get("produces_output", False),
             "tooltip": raw.get("tooltip", ""),
             "allowed_filter_fields": raw.get("allowed_filter_fields", None)
-            # Removed deprecated flag
         }
 
     def setup_ui(self):
         self.form_layout = QFormLayout(self)
 
+        # Migration / Warning Label
+        self.warning_label = QLabel(tr("Legacy Action: Recommend converting to Command"))
+        self.warning_label.setStyleSheet("color: orange; font-weight: bold;")
+        self.warning_label.setVisible(False)
+        self.form_layout.addRow(self.warning_label)
+
+        self.convert_btn = QPushButton(tr("Convert to Command"))
+        self.convert_btn.setStyleSheet("background-color: #ffcc80; color: black;")
+        self.convert_btn.clicked.connect(self.on_convert_clicked)
+        self.convert_btn.setVisible(False)
+        self.form_layout.addRow(self.convert_btn)
+
         self.type_combo = QComboBox()
         self.known_types = EDITOR_ACTION_TYPES
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         self.add_field(tr("Action Type"), self.type_combo)
-
-        # Removed warning label
 
         self.scope_combo = QComboBox()
         scopes = ["PLAYER_SELF", "PLAYER_OPPONENT", "TARGET_SELECT", "ALL_PLAYERS", "RANDOM", "ALL_FILTERED", "NONE"]
@@ -110,7 +120,6 @@ class ActionEditForm(BaseEditForm):
         self.option_gen_layout.addWidget(self.generate_options_btn)
         self.option_count_label = self.add_field(tr("Options to Add"), self.option_gen_layout)
 
-
         self.no_cost_check = QCheckBox(tr("Play without paying cost"))
         self.add_field(None, self.no_cost_check)
 
@@ -136,7 +145,7 @@ class ActionEditForm(BaseEditForm):
             'optional': self.arbitrary_check,
         }
 
-        # Connect signals - Re-enabled
+        # Connect signals
         self.type_combo.currentIndexChanged.connect(self.on_type_changed)
         self.scope_combo.currentIndexChanged.connect(self.update_data)
         self.val1_spin.valueChanged.connect(self.update_data)
@@ -151,6 +160,19 @@ class ActionEditForm(BaseEditForm):
         self.no_cost_check.stateChanged.connect(self.on_no_cost_changed)
 
         self.update_ui_state(self.type_combo.currentData())
+
+    def on_convert_clicked(self):
+        if not self.current_item: return
+
+        # 1. Get current data
+        act_data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
+
+        # 2. Convert to Command
+        cmd_data = ActionConverter.convert(act_data)
+
+        # 3. Request Update from Parent (LogicTreeWidget handles replacement)
+        # We send a special signal to replace the current item with a new type
+        self.structure_update_requested.emit("REPLACE_WITH_COMMAND", cmd_data)
 
     def on_type_changed(self):
         action_type = self.type_combo.currentData()
@@ -168,7 +190,6 @@ class ActionEditForm(BaseEditForm):
         config = self._get_ui_config(action_type)
 
         is_no_cost = self.no_cost_check.isChecked()
-        # Hide Val1 if Smart Link is active OR Val1 is hidden by config
         self.val1_label.setVisible(config["val1_visible"] and not is_active and not is_no_cost)
         self.val1_spin.setVisible(config["val1_visible"] and not is_active and not is_no_cost)
 
@@ -184,8 +205,6 @@ class ActionEditForm(BaseEditForm):
         self.val2_label.setText(tr(config["val2_label"]))
         self.str_val_label.setText(tr(config["str_label"]))
 
-        # Enable input linking if Val1 is visible OR explicitly allowed (e.g. for count override)
-        # Note: input_link_visible logic in _get_ui_config might need adjustment based on config structure
         can_link_input = config["val1_visible"] or config.get("input_link_visible", False)
         self.link_widget.set_smart_link_enabled(can_link_input)
 
@@ -198,14 +217,12 @@ class ActionEditForm(BaseEditForm):
         self.val1_label.setVisible(config["val1_visible"] and not is_smart_linked and not is_no_cost)
         self.val1_spin.setVisible(config["val1_visible"] and not is_smart_linked and not is_no_cost)
 
-        # Sync filter widget state with link state
         if config["filter_visible"]:
              self.filter_widget.set_external_count_control(is_smart_linked)
 
         is_select_option = (action_type == "SELECT_OPTION")
         self.allow_duplicates_check.setVisible(is_select_option)
 
-        # Show Option Generator for SELECT_OPTION
         self.option_count_label.setVisible(is_select_option)
         self.option_count_spin.setVisible(is_select_option)
         self.generate_options_btn.setVisible(is_select_option)
@@ -213,7 +230,6 @@ class ActionEditForm(BaseEditForm):
         self.val2_label.setVisible(config["val2_visible"] and not is_select_option)
         self.val2_spin.setVisible(config["val2_visible"] and not is_select_option)
 
-        # Specific Widget Visibility
         is_measure = (action_type == "MEASURE_COUNT")
         is_ref = (action_type == "COST_REFERENCE")
 
@@ -229,10 +245,8 @@ class ActionEditForm(BaseEditForm):
         self.dest_zone_label.setVisible(config.get("dest_zone_visible", False))
         self.dest_zone_combo.setVisible(config.get("dest_zone_visible", False))
 
-        # Filter Visibility
         show_filter = config["filter_visible"]
         if is_measure:
-             # Hide filter if mode is Game Stat (not CARDS_MATCHING_FILTER)
              current_mode = self.measure_mode_combo.currentData()
              if current_mode != "CARDS_MATCHING_FILTER" and current_mode is not None:
                   show_filter = False
@@ -244,20 +258,21 @@ class ActionEditForm(BaseEditForm):
         self.type_combo.setToolTip(tr(config.get("tooltip", "")))
 
     def _populate_ui(self, item):
+        self.warning_label.setVisible(True)
+        self.convert_btn.setVisible(True)
+
         self.link_widget.set_current_item(item)
         data = item.data(Qt.ItemDataRole.UserRole + 2)
 
         raw_type = data.get('type', 'NONE')
         str_val = data.get('str_val', '')
 
-        # Map Internal Type -> UI Type
         ui_type = raw_type
         if raw_type == "COUNT_CARDS" or raw_type == "GET_GAME_STAT":
              ui_type = "MEASURE_COUNT"
         elif raw_type == "APPLY_MODIFIER" and str_val == "COST":
              ui_type = "COST_REDUCTION"
         elif raw_type in ["DESTROY", "RETURN_TO_HAND", "ADD_MANA", "DISCARD", "SEND_TO_DECK_BOTTOM", "SEND_SHIELD_TO_GRAVE", "SEND_TO_MANA"]:
-             # If legacy type is not in known_types, temporarily add it to combo
              if raw_type not in self.known_types:
                  idx = self.type_combo.findData(raw_type)
                  if idx == -1:
@@ -265,17 +280,14 @@ class ActionEditForm(BaseEditForm):
 
         self.set_combo_by_data(self.type_combo, ui_type)
 
-        # Map Values to Combos
         if ui_type == "MEASURE_COUNT":
              val = "CARDS_MATCHING_FILTER" if raw_type == "COUNT_CARDS" else str_val
              self.set_combo_by_data(self.measure_mode_combo, val)
         elif ui_type == "COST_REFERENCE":
              self.set_combo_by_data(self.ref_mode_combo, str_val)
 
-        # Use bindings for standard fields
         self._apply_bindings(data)
 
-        # Handle special cases
         self.update_ui_state(ui_type)
 
         val1 = data.get('value1', 0)
@@ -291,12 +303,11 @@ class ActionEditForm(BaseEditForm):
 
     def request_generate_options(self):
         count = self.option_count_spin.value()
-        self.structure_update_requested.emit("generate_options", {"count": count})
+        self.structure_update_requested.emit("GENERATE_OPTIONS", {"count": count})
 
     def _save_data(self, data):
         ui_type = self.type_combo.currentData()
 
-        # Default mapping
         raw_type = ui_type
         str_val = self.str_val_edit.text()
 
@@ -304,7 +315,6 @@ class ActionEditForm(BaseEditForm):
             mode = self.measure_mode_combo.currentData()
             if mode == "CARDS_MATCHING_FILTER":
                 raw_type = "COUNT_CARDS"
-                # Keep str_val as is or empty? Usually empty for COUNT_CARDS unless specified
                 str_val = ""
             else:
                 raw_type = "GET_GAME_STAT"
@@ -318,13 +328,9 @@ class ActionEditForm(BaseEditForm):
         data['type'] = raw_type
         data['str_val'] = str_val
 
-        # Collect bindings (value1, value2, scope, dest_zone, filter, optional)
         self._collect_bindings(data)
-
-        # Handle Link Widget
         self.link_widget.get_data(data)
 
-        # Special overrides
         if ui_type == "PLAY_FROM_ZONE" and self.no_cost_check.isChecked():
             data['value1'] = 999
 
@@ -336,7 +342,6 @@ class ActionEditForm(BaseEditForm):
 
     def block_signals_all(self, block):
         super().block_signals_all(block)
-        # Block signals for manual connections not in bindings
         self.type_combo.blockSignals(block)
         self.str_val_edit.blockSignals(block)
         self.measure_mode_combo.blockSignals(block)

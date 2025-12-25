@@ -13,6 +13,7 @@ namespace dm::ai {
     struct DeckEvolutionConfig {
         int target_deck_size = 40;
         float mutation_rate = 0.1f; // Probability of changing a card
+        float crossover_rate = 0.5f; // Fraction of genes from parent 1 (or mix ratio)
         float synergy_weight = 1.0f;
         float curve_weight = 0.5f;
     };
@@ -25,6 +26,11 @@ namespace dm::ai {
         std::vector<int> evolve_deck(const std::vector<int>& current_deck,
                                      const std::vector<int>& candidate_pool,
                                      const DeckEvolutionConfig& config = DeckEvolutionConfig());
+
+        // Crossover step: combines two decks into one
+        std::vector<int> crossover_decks(const std::vector<int>& deck1,
+                                         const std::vector<int>& deck2,
+                                         const DeckEvolutionConfig& config = DeckEvolutionConfig());
 
         // Calculate interaction/synergy score for a deck
         float calculate_interaction_score(const std::vector<int>& deck_ids);
@@ -41,6 +47,9 @@ namespace dm::ai {
 
         // Helper to calculate mana curve score (deviation from ideal)
         float calculate_curve_score(const std::vector<int>& deck_ids);
+
+        // Helper to enforce deck construction rules
+        void enforce_constraints(std::vector<int>& deck, const std::vector<int>& candidate_pool);
     };
 
 }

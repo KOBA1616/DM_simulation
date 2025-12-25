@@ -219,17 +219,8 @@ void bind_engine(py::module& m) {
         .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id) {
             try {
                 auto db = CardRegistry::get_all_definitions();
-                std::vector<Instruction> instructions;
                 std::map<std::string, int> ctx;
-                dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
-                if (!instructions.empty()) {
-                    dm::engine::systems::PipelineExecutor pipeline;
-                    pipeline.set_context_var("$source", source_id);
-                    int controller = 0;
-                    if ((size_t)source_id < state.card_owner_map.size()) controller = state.card_owner_map[source_id];
-                    pipeline.set_context_var("$controller", controller);
-                    pipeline.execute(instructions, state, db);
-                }
+                dm::engine::EffectSystem::instance().resolve_action(state, action, source_id, ctx, db);
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -275,32 +266,7 @@ void bind_engine(py::module& m) {
         })
         .def_static("resolve_action_with_context", [](GameState& state, int source_id, const ActionDef& action, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
             try {
-                std::vector<Instruction> instructions;
-                dm::engine::EffectSystem::instance().compile_action(state, action, source_id, ctx, db, instructions);
-                if (!instructions.empty()) {
-                    dm::engine::systems::PipelineExecutor pipeline;
-                    // Load context
-                    for (const auto& [k, v] : ctx) {
-                        pipeline.set_context_var("$" + k, v);
-                    }
-
-                    // Add default source/controller if missing
-                     pipeline.set_context_var("$source", source_id);
-                     int controller = 0;
-                     if ((size_t)source_id < state.card_owner_map.size()) controller = state.card_owner_map[source_id];
-                     pipeline.set_context_var("$controller", controller);
-
-                    pipeline.execute(instructions, state, db);
-
-                    // Extract context back
-                    for (const auto& [k, v] : pipeline.context) {
-                        if (std::holds_alternative<int>(v)) {
-                             std::string clean_key = k;
-                             if (clean_key.rfind("$", 0) == 0) clean_key = clean_key.substr(1);
-                             ctx[clean_key] = std::get<int>(v);
-                        }
-                    }
-                }
+                dm::engine::EffectSystem::instance().resolve_action(state, action, source_id, ctx, db);
                 return ctx;
             } catch (const py::error_already_set& e) {
                 throw;
@@ -312,6 +278,7 @@ void bind_engine(py::module& m) {
         });
 
     py::class_<JsonLoader>(m, "JsonLoader")
+        .def(py::init<>())
         .def_static("load_cards", &JsonLoader::load_cards);
 
     py::class_<DevTools>(m, "DevTools")
