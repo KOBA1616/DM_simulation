@@ -174,10 +174,13 @@ class LogicTreeWidget(QTreeView):
              cmd_data['options'] = preserved_options_data
 
         # 3. Remove old Action
+        if parent_item is None:
+            return
+
         parent_item.removeRow(row)
 
         # 4. Insert new Command at same position
-        cmd_item = self.data_manager._create_command_item(cmd_data)
+        cmd_item = self.data_manager.create_command_item(cmd_data)
         parent_item.insertRow(row, cmd_item)
 
         # Select the new item

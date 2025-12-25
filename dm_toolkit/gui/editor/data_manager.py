@@ -116,7 +116,7 @@ class CardDataManager:
 
         # Load Commands
         for cmd_idx, command in enumerate(effect_data.get('commands', [])):
-            cmd_item = self._create_command_item(command)
+            cmd_item = self.create_command_item(command)
             eff_item.appendRow(cmd_item)
 
     def get_full_data(self):
@@ -501,83 +501,6 @@ class CardDataManager:
         item.setData(reaction, Qt.ItemDataRole.UserRole + 2)
         return item
 
-    def _create_command_item(self, command):
-        if 'uid' not in command:
-            command['uid'] = str(uuid.uuid4())
-        cmd_type = command.get('type', 'NONE')
-        item = QStandardItem(f"{tr('Command')}: {tr(cmd_type)}")
-        item.setData("COMMAND", Qt.ItemDataRole.UserRole + 1)
-        item.setData(command, Qt.ItemDataRole.UserRole + 2)
-
-        # If True / If False
-        if 'if_true' in command and command['if_true']:
-            true_item = QStandardItem(tr("If True"))
-            true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
-            true_item.setData({}, Qt.ItemDataRole.UserRole + 2)
-            item.appendRow(true_item)
-            for child in command['if_true']:
-                true_item.appendRow(self._create_command_item(child))
-        if 'if_false' in command and command['if_false']:
-            false_item = QStandardItem(tr("If False"))
-            false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
-            false_item.setData({}, Qt.ItemDataRole.UserRole + 2)
-            item.appendRow(false_item)
-            for child in command['if_false']:
-                false_item.appendRow(self._create_command_item(child))
-
-        # Options (Choice)
-        if 'options' in command and command['options']:
-            for i, opt_cmds in enumerate(command['options']):
-                opt_item = QStandardItem(f"{tr('Option')} {i+1}")
-                opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
-                opt_item.setData({}, Qt.ItemDataRole.UserRole + 2)
-                item.appendRow(opt_item)
-                for sub_cmd in opt_cmds:
-                    opt_item.appendRow(self._create_command_item(sub_cmd))
-        return item
-
-    def _create_action_item(self, action):
-        # Prevent side effects on the source data
-        action = copy.deepcopy(action)
-
-        if 'uid' not in action:
-            action['uid'] = str(uuid.uuid4())
-        act_type = action.get('type', 'NONE')
-        display_type = tr(act_type)
-
-        if act_type == "GET_GAME_STAT":
-             display_type = f"{tr('Reference')} {tr(action.get('str_val',''))}"
-        elif act_type == "APPLY_MODIFIER" and action.get('str_val') == "COST":
-             display_type = tr("Reduce Cost by")
-             if action.get('input_value_key'):
-                 display_type += f" [{action.get('input_value_key')}]"
-             else:
-                 display_type += f" {action.get('value1', 0)}"
-        elif act_type == "COST_REFERENCE":
-             display_type = f"{tr('COST_REFERENCE')} ({tr(action.get('str_val',''))})"
-        elif act_type in ["SELECT_TARGET", "DESTROY", "RETURN_TO_HAND", "SEND_TO_MANA", "TAP"]:
-             count = action.get('filter', {}).get('count')
-             if count: display_type += f" (Count: {count})"
-        elif act_type == "MOVE_CARD":
-             dest = action.get('destination_zone', 'HAND')
-             source = action.get('source_zone', 'NONE')
-             display_type = tr(dest)
-             if dest == "MANA_ZONE": display_type = tr("SEND_TO_MANA")
-             elif dest == "GRAVEYARD":
-                 if source == "HAND": display_type = tr("DISCARD")
-                 elif source == "SHIELD_ZONE": display_type = tr("SHIELD_BURN")
-                 else: display_type = tr("DESTROY")
-             elif dest == "HAND": display_type = tr("RETURN_TO_HAND")
-             elif dest == "DECK_BOTTOM": display_type = tr("SEND_TO_DECK_BOTTOM")
-             elif dest == "SHIELD_ZONE": display_type = tr("ADD_SHIELD")
-             count = action.get('filter', {}).get('count')
-             if count: display_type += f" (Count: {count})"
-        elif act_type == "REVOLUTION_CHANGE":
-             display_type = tr("Revolution Change")
-        elif act_type == "SELECT_OPTION":
-             display_type = tr("Mode Selection")
-
-        return f"{tr('Action')}: {display_type}"
 
     def format_command_label(self, command):
         """Generates a human-readable label for a command."""
@@ -604,25 +527,40 @@ class CardDataManager:
                     opt_item.appendRow(sub_item)
         return item
 
-    def _create_command_item(self, command):
+    def create_command_item(self, command):
+        if 'uid' not in command:
+            command['uid'] = str(uuid.uuid4())
+
         label = self.format_command_label(command)
         item = QStandardItem(label)
         item.setData("COMMAND", Qt.ItemDataRole.UserRole + 1)
         item.setData(command, Qt.ItemDataRole.UserRole + 2)
+
         if 'if_true' in command and command['if_true']:
             true_item = QStandardItem(tr("If True"))
             true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
             true_item.setData({}, Qt.ItemDataRole.UserRole + 2)
             item.appendRow(true_item)
             for child in command['if_true']:
-                true_item.appendRow(self._create_command_item(child))
+                true_item.appendRow(self.create_command_item(child))
+
         if 'if_false' in command and command['if_false']:
             false_item = QStandardItem(tr("If False"))
             false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
             false_item.setData({}, Qt.ItemDataRole.UserRole + 2)
             item.appendRow(false_item)
             for child in command['if_false']:
-                false_item.appendRow(self._create_command_item(child))
+                false_item.appendRow(self.create_command_item(child))
+
+        # Options (Choice)
+        if 'options' in command and command['options']:
+            for i, opt_cmds in enumerate(command['options']):
+                opt_item = QStandardItem(f"{tr('Option')} {i+1}")
+                opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
+                opt_item.setData({}, Qt.ItemDataRole.UserRole + 2)
+                item.appendRow(opt_item)
+                for sub_cmd in opt_cmds:
+                    opt_item.appendRow(self.create_command_item(sub_cmd))
         return item
 
     def _generate_new_id(self):
