@@ -522,6 +522,22 @@ class CardTextGenerator:
         atype = action.get("type", "NONE")
         template = cls.ACTION_MAP.get(atype, "")
 
+        # Special-case: treat TRANSITION from DECK->HAND as DRAW_CARD for natural language
+        if atype == 'TRANSITION':
+            from_zone = action.get('from_zone') or action.get('fromZone') or ''
+            to_zone = action.get('to_zone') or action.get('toZone') or ''
+            amt = action.get('amount') or action.get('value1') or 0
+            # If transition represents drawing from deck to hand
+            if (from_zone == 'DECK' or from_zone == '') and to_zone == 'HAND':
+                if not amt and isinstance(action.get('target_filter'), dict):
+                    amt = action.get('target_filter', {}).get('count', 1)
+                return f"カードを{amt}枚引く。"
+            # If transition represents moving to mana zone, render as ADD_MANA
+            if to_zone == 'MANA_ZONE':
+                if not amt and isinstance(action.get('target_filter'), dict):
+                    amt = action.get('target_filter', {}).get('count', 1)
+                return f"自分の山札の上から{amt}枚をマナゾーンに置く。"
+
         # Determine verb form (standard or optional)
         optional = action.get("optional", False)
 
