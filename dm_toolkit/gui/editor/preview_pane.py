@@ -76,10 +76,17 @@ class ManaCostLabel(QLabel):
         painter.setPen(pen)
         painter.drawEllipse(draw_rect)
 
-        painter.end()
+        # Draw Text (Number) - Manual drawing to ensure centering
+        font = self.font()
+        font.setBold(True)
+        # Adjust font size based on circle size (approx 55% of diameter)
+        font_size = max(8, int(d * 0.55))
+        font.setPixelSize(font_size)
+        painter.setFont(font)
+        painter.setPen(Qt.GlobalColor.white)
+        painter.drawText(draw_rect, Qt.AlignmentFlag.AlignCenter, self.text())
 
-        # Draw Text (Number)
-        super().paintEvent(event)
+        painter.end()
 
 class CardPreviewWidget(QWidget):
     """
@@ -315,6 +322,27 @@ class CardPreviewWidget(QWidget):
 
         self.apply_civ_style(civs)
 
+    def _should_show_power(self, data):
+        """
+        Consolidated logic to determine if power should be displayed.
+        """
+        power = data.get('power', 0)
+        if power <= 0:
+            return False
+
+        t = data.get('type', '').upper()
+        # Logic: Show power if > 0, but hide if it's strictly a Spell (and not a Creature).
+        # This handles cases where Spells might accidentally have power set,
+        # or where we want to strictly follow the type rule.
+        is_spell = 'SPELL' in t
+        is_creature = 'CREATURE' in t
+
+        # If it is a Spell and NOT a Creature, hide power.
+        if is_spell and not is_creature:
+            return False
+
+        return True
+
     def render_standard(self, data, civs):
         self.name_label.setText(data.get('name', '???'))
         self.cost_label.setText(str(data.get('cost', 0)))
@@ -328,12 +356,13 @@ class CardPreviewWidget(QWidget):
         type_str = CardTextGenerator.TYPE_MAP.get(data.get('type', 'CREATURE'), data.get('type', ''))
         self.type_label.setText(f"[{type_str}]")
 
-        body_text = self.extract_body_text(CardTextGenerator.generate_text(data))
+        # Use new structure
+        body_lines = CardTextGenerator.generate_body_text_lines(data)
+        body_text = "\n".join(body_lines)
         self.text_body.setText(body_text)
 
-        power = data.get('power', 0)
-        if power > 0 and 'SPELL' not in data.get('type', ''):
-            self.power_label.setText(str(power))
+        if self._should_show_power(data):
+            self.power_label.setText(str(data.get('power', 0)))
             self.power_label.setVisible(True)
         else:
             self.power_label.setVisible(False)
@@ -348,11 +377,16 @@ class CardPreviewWidget(QWidget):
 
         races = " / ".join(data.get('races', []))
         self.tp_race_label.setText(races if races else "")
-        self.tp_power_label.setText(str(data.get('power', 0)))
+
+        if self._should_show_power(data):
+            self.tp_power_label.setText(str(data.get('power', 0)))
+            self.tp_power_label.setVisible(True)
+        else:
+            self.tp_power_label.setVisible(False)
 
         # Generate text for ONLY the creature part
-        creature_text = CardTextGenerator.generate_text(data, include_twinpact=False)
-        self.tp_body_label.setText(self.extract_body_text(creature_text))
+        creature_lines = CardTextGenerator.generate_body_text_lines(data)
+        self.tp_body_label.setText("\n".join(creature_lines))
 
         # Spell Side
         spell_data = data.get('spell_side', {})
@@ -365,9 +399,11 @@ class CardPreviewWidget(QWidget):
         # For spell text, we can use the generator on the spell data object
         if 'type' not in spell_data:
             spell_data['type'] = 'SPELL'
-        spell_text = CardTextGenerator.generate_text(spell_data)
-        self.tp_spell_body_label.setText(self.extract_body_text(spell_text))
 
+        spell_lines = CardTextGenerator.generate_body_text_lines(spell_data)
+        self.tp_spell_body_label.setText("\n".join(spell_lines))
+
+    # Deprecated / Fallback
     def extract_body_text(self, full_text):
         lines = full_text.split('\n')
         body_lines = []
