@@ -25,61 +25,79 @@
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
 現在、**Phase 1: Game Engine Reliability** および **Phase 6: Engine Overhaul** の実装が完了し、C++コア（`dm_ai_module`）のビルドは安定しています。
-AI領域では、探索ベースのリーサルソルバー（DFS）の実装が完了し、現在は進化型デッキ構築システム（Smart Evolution）と並列シミュレーション（ParallelRunner）の統合フェーズにあります。
+AI領域では、並列対戦環境の構築が完了し、次は不完全情報ゲームへの対応（Phase 2）とデッキ自動進化システム（Phase 3）の統合フェーズに移行します。
 
 ## 2. 現行システムステータス (Current Status)
 
 ### 2.1 コアエンジン (C++ / `src/engine`)
-*   [Status: Done] **Card Owner Refactor**: `CardInstance` 構造体に `owner` フィールドを追加し、外部マップ `card_owner_map` を廃止しました。
-*   [Status: Done] **EffectResolver Removal**: `EffectResolver` を削除し、`GameLogicSystem` へ完全移行しました。
-*   [Status: Done] **Action Generalization**: 全アクションハンドラーの `compile_action` 化が完了しました。
-*   [Status: Done] **Dynamic Cost Reduction**: `ModifierDef` および `CostModifier` に `value_reference` フィールドを追加し、動的な値（`CARDS_DRAWN_THIS_TURN` 等）に基づくコスト計算を実現。
-*   [Status: Done] **Revolution Change Logic**: 革命チェンジのロジックを実装し、攻撃時の入れ替え処理をサポートしました。
-*   [Status: Done] **Hyper Energy**: ハイパー化（Hyper Energy）のコスト軽減ロジックおよびUIフラグを実装しました。
+*   [Status: Done] **Card Owner Refactor**: `CardInstance` 構造体に `owner` フィールドを追加し、コントローラー判定をO(1)化。
+*   [Status: Done] **EffectResolver Removal**: モノリシックな `EffectResolver` を削除し、処理を `IActionHandler` と `GameLogicSystem` へ委譲完了。
+*   [Status: Done] **Action Generalization**: `GenericCardSystem` によるアクション処理の統一化完了。
+*   [Status: Done] **Revolution Change**: 革命チェンジ（`ON_ATTACK_FROM_HAND` トリガーおよび入替処理）の実装完了。
+*   [Status: Done] **Hyper Energy**: ハイパー化（コスト軽減およびクリーチャータップ）の実装完了。
+*   [Status: Done] **Just Diver**: 「ジャストダイバー」などのターン経過依存の耐性ロジック実装完了。
+*   [Status: Done] **Condition System**: `ConditionDef` および `ConditionSystem` による汎用的な発動条件判定の実装完了。
 
 ### 2.2 AI & ソルバー (`src/ai`)
-*   [Status: Done] **Lethal Solver (DFS)**: `LethalDFS` クラスによる深さ優先探索ベースの詰み判定を実装。攻撃者とブロッカーのビットマスク管理による高速化を実現しています（トリガー等は現状未考慮）。
-*   [Status: Done] **Parallel Runner**: OpenMPを用いた並列対戦実行環境 (`ParallelRunner`) を実装し、Pythonから制御可能にしました。
+*   [Status: Done] **Lethal Solver (DFS)**: 基本的な詰み判定（`LethalSolver`）の実装完了。ただし現在はヒューリスティックベースであり、厳密解ではない。
+*   [Status: Done] **Parallel Runner**: OpenMPを用いた並列対戦環境 (`ParallelRunner`) の実装完了。`verify_performance.py` によるバッチ推論との連携を確認済み。
+*   [Status: Done] **MCTS Implementation**: AlphaZero準拠のモンテカルロ木探索実装完了。
+*   [Status: WIP] **Inference System**: 相手の手札やシールド推論を行うシステムの設計段階（Phase 2）。
 
-### 2.3 カードエディタ & ツール (`dm_toolkit/gui`)
-*   [Status: Done] **Card Editor V2**: JSONベースのデータ駆動型エディタへの移行完了。
-*   [Status: Done] **Neo/G-Neo UI**: Neoクリーチャー/G-Neoクリーチャーの選択および自動キーワード設定機能を追加。
-*   [Status: Done] **Modifier Reference UI**: スタティックアビリティ編集画面にて「値参照（Value Reference）」の設定UIを追加。
-*   [Status: Done] **LogicTreeWidget Refactor**: `add_action_to_effect` / `add_action_to_option` の重複定義を解消し、アクション追加時の既定値（デフォルト動作）を安定化させました。
+### 2.3 カードエディタ & ツール (`dm_toolkit/gui` / `python/gui`)
+*   [Status: Done] **Card Editor V2**: データ構造をJSONツリーベースに刷新。
+*   [Status: Done] **Variable Linking**: アクション間で変数を共有する「変数リンク機能」の実装完了。
+*   [Status: Done] **Condition Editor**: GUI上で発動条件（Condition）を編集するフォームの実装完了。
+*   [Status: Done] **Simulation GUI**: GUIから並列シミュレーションを実行するダイアログの実装完了。
 
-### 2.4 学習基盤 (`dm_toolkit/training`)
-*   [Status: WIP] **Smart Evolution Ecosystem**: デッキ進化システム (`evolution_ecosystem.py`) のプロトタイプを作成。「使用頻度」「リソース貢献度」に基づくスコアリングロジックを検証中。
+### 2.4 学習基盤 (`python/training`)
+*   [Status: Done] **Training Loop**: `collect_training_data.py` -> `train_simple.py` の基本ループ構築完了。
+*   [Status: Done] **Scenario Runner**: `ScenarioExecutor` を用いた定石シミュレーション機能の実装完了。
 
 ## 3. ロードマップ (Roadmap)
 
-### 3.1 [Priority: Critical] AI Evolution & PBT (AI進化とPBT)
+### 3.1 [Priority: Critical] AI Evolution System (AI進化システム)
 [Status: WIP]
-単なる自己対戦だけでなく、Population Based Training (PBT) を用いた「メタゲーム進化」を実現します。
+Phase 3の中核となる「自筆進化エコシステム」を構築します。
 
-1.  [Status: Todo] **C++ Stats Integration**: `ParallelRunner` 内でカード使用統計（Win Contribution等）を直接集計し、Pythonへの転送コストを削減する。
-2.  [Status: Todo] **PBT Pipeline**: 複数のエージェント（デッキ）を並列で対戦させ、勝者を交叉・変異させるPBTループを実装する。
+1.  [Status: Todo] **Deck Evolution (PBT)**: `verify_deck_evolution.py` のプロトタイプを拡張し、Population Based Trainingによるデッキ自動更新システムを実装する。
+2.  [Status: Todo] **Meta-Game Integration**: 学習したモデルとデッキ情報を `meta_decks.json` に自動反映し、次世代の学習にフィードバックするループを構築する。
 
-### 3.2 [Priority: High] Search Solver Enhancement (探索ソルバーの高度化)
+### 3.2 [Priority: High] Model Architecture (モデルアーキテクチャ)
 [Status: Todo]
-現在の `LethalSolver` は純粋な盤面情報のみを使用していますが、不確定情報（シールドトリガー確率）を考慮したリスク評価を組み込みます。
+Phase 4の要件である高性能モデルへの移行を行います。
 
-1.  [Status: Todo] **Probabilistic Trigger Check**: 相手の公開デッキ情報からシールドトリガーの発動確率を計算し、期待値ベースで攻撃を判断するロジックを追加。
+1.  [Status: Todo] **Transformer Implementation**: 現在のResNet/MLPモデルから、Self-Attentionを用いたTransformerモデルへ移行し、盤面の文脈理解能力を向上させる。
 
-### 3.3 [Priority: Medium] GUI Advanced Features (GUI高度化)
+### 3.3 [Priority: Medium] Engine Robustness (エンジン堅牢化)
+[Status: Todo]
+エッジケースへの対応と安定性向上を図ります。
+
+1.  [Status: Todo] **Strict Lethal Solver**: 現在のヒューリスティック版から、ルールを完全に厳密にシミュレートするソルバーへ移行する。
+2.  [Status: Todo] **Memory Leak Fix**: `ParallelRunner` を長時間/大量スレッドで実行した際に発生する `std::bad_alloc` (メモリリーク) の調査と修正。
+
+### 3.4 [Priority: Low] GUI Expansion (GUI拡張)
 [Status: Deferred]
-エディタの機能拡充を行います。
 
-1.  [Status: Todo] **Reaction Ability Editor**: `Ninja Strike` や `Strike Back` などの `ReactionAbility` を編集するための専用フォームを実装する。
-2.  [Status: Todo] **Logic Mask System**: カードタイプや文明に基づき、矛盾する効果やアクションの組み合わせをUI上で禁止するバリデーション機能。
+1.  [Status: Todo] **Reaction Ability Editor**: ニンジャ・ストライク等の `ReactionAbility` 編集UIの実装。
+2.  [Status: Todo] **Logic Mask**: 矛盾する効果の組み合わせを防止するバリデーション機能。
 
-## 4. 今後の課題 (Future Tasks)
+## 4. 開発スケジュール・今後の予定 (Development Schedule)
 
-1.  [Status: Todo] **Transformer Architecture**: 現在の単純なResNet/MLPモデルから、自己注意機構（Self-Attention）を用いたTransformerモデルへの移行（Phase 4）。
-2.  [Status: Todo] **G-Neo Robustness**: G-Neoの置換効果をハードコードから汎用イベントシステムへ移行。
-3.  [Status: WIP] **Binding Restoration**: リファクタリングに伴い無効化された一部テストケースの復旧。
-4.  [Status: Todo] **Phase 7 Implementation**: 新JSONスキーマへの完全移行（古いCSV/JSON互換性の廃止）。
+1.  **直近の目標 (Phase 2-3 Integration)**:
+    *   不完全情報推論（Inference System）の実装開始。
+    *   デッキ進化システム（PBT）のパイプライン化。
+2.  **中期的目標 (Phase 4)**:
+    *   Transformerモデルの実装と学習。
+3.  **長期的目標 (Phase 5)**:
+    *   RNN/LSTMを用いた時系列データの活用と、PPOなどの強化学習アルゴリズムの導入。
 
-## 5. 運用ルール (Operational Rules)
-*   **テストコードの配置**: すべてのテストコード（Python）はプロジェクトルートの `tests/` ディレクトリに集約する。
-*   **CI遵守**: `PyQt6` 依存テストはスキップし、必ずCIがグリーンになる状態でマージする。
-*   **バインディング追従**: C++変更時は必ず `src/bindings/bindings.cpp` を更新する。
+## 5. 既知の問題 (Known Issues)
+
+*   [Known Issue] **ParallelRunner Memory Leak**: 大規模な並列シミュレーション時にメモリリークが発生する可能性がある。
+*   [Known Issue] **Inference Heuristic**: 現在の推論ロジックは単純な確率に基づいており、ブラフやメタゲームを考慮していない。
+
+## 6. 運用ルール (Operational Rules)
+*   **コミットメッセージ**: 日本語で記述する。
+*   **ソースコード**: コメントも含めShift-JISまたはUTF-8で統一する（現在の環境はShift-JIS推奨）。
+*   **テスト**: `python/tests/` 以下のpytestを実行し、CIを通過させること。
