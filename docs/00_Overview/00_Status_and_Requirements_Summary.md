@@ -57,11 +57,11 @@ AI領域では、並列対戦環境の構築が完了し、次は不完全情報
 ## 3. ロードマップ (Roadmap)
 
 ### 3.1 [Priority: Critical] AI Evolution System (AI進化システム)
-[Status: WIP]
+[Status: Review]
 Phase 3の中核となる「自筆進化エコシステム」を構築します。
 
-1.  [Status: Todo] **Deck Evolution (PBT)**: `verify_deck_evolution.py` のプロトタイプを拡張し、Population Based Trainingによるデッキ自動更新システムを実装する。
-2.  [Status: Todo] **Meta-Game Integration**: 学習したモデルとデッキ情報を `meta_decks.json` に自動反映し、次世代の学習にフィードバックするループを構築する。
+1.  [Status: Done] **Deck Evolution (PBT)**: `verify_deck_evolution.py` (現在は `evolve_meta.py`) をPythonベースのPBTシステムとして再実装完了。`MockParallelRunner` による動作検証済み。
+2.  [Status: Done] **Meta-Game Integration**: 学習したモデルとデッキ情報を `meta_decks.json` に自動反映し、次世代の学習にフィードバックするループを構築完了。
 
 ### 3.2 [Priority: High] Model Architecture (モデルアーキテクチャ)
 [Status: Todo]
