@@ -42,7 +42,7 @@ dm::core::GameState POMDPInference::sample_state(const dm::core::GameState& obse
     std::vector<dm::core::CardID> opponent_candidates = deck_inference_->sample_hidden_cards(observation, observer_id, seed);
 
     // 3. Generate determinized state
-    return dm::ai::inference::PIMCGenerator::generate_determinized_state(
+    return dm::ai::inference::PimcGenerator::generate_determinized_state(
         observation,
         card_db_,
         observer_id,
