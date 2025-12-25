@@ -58,6 +58,10 @@ class CardDataManager:
         self.model.setHorizontalHeaderLabels(["Logic Tree"])
 
         for card_idx, card in enumerate(cards_data):
+            # 0. Check for 'triggers' key presence (Meta-info for preservation)
+            if 'triggers' in card:
+                card['_meta_use_triggers'] = True
+
             card_item = self._create_card_item(card)
 
             # 1. Add Creature Effects (Triggers)
@@ -83,6 +87,10 @@ class CardDataManager:
             # 3. Add Spell Side if exists
             spell_side_data = card.get('spell_side')
             if spell_side_data:
+                # Check for 'triggers' in spell side
+                if 'triggers' in spell_side_data:
+                    spell_side_data['_meta_use_triggers'] = True
+
                 spell_item = self._create_spell_side_item(spell_side_data)
 
                 # Add Spell Effects
@@ -184,18 +192,32 @@ class CardDataManager:
                     elif sp_type == "MODIFIER":
                         spell_side_static.append(self._reconstruct_modifier(sp_child))
 
-                spell_side_data['effects'] = spell_side_effects
-                if 'triggers' in spell_side_data:
-                    del spell_side_data['triggers']
+                # Handle Triggers vs Effects based on meta-info
+                if spell_side_data.get('_meta_use_triggers'):
+                    spell_side_data['triggers'] = spell_side_effects
+                    if 'effects' in spell_side_data:
+                        del spell_side_data['effects']
+                    del spell_side_data['_meta_use_triggers']
+                else:
+                    spell_side_data['effects'] = spell_side_effects
+                    if 'triggers' in spell_side_data:
+                        del spell_side_data['triggers']
 
                 if spell_side_static:
                     spell_side_data['static_abilities'] = spell_side_static
 
                 spell_side_dict = spell_side_data
 
-        card_data['effects'] = new_effects
-        if 'triggers' in card_data:
-            del card_data['triggers']
+        # Handle Triggers vs Effects based on meta-info
+        if card_data.get('_meta_use_triggers'):
+            card_data['triggers'] = new_effects
+            if 'effects' in card_data:
+                del card_data['effects']
+            del card_data['_meta_use_triggers']
+        else:
+            card_data['effects'] = new_effects
+            if 'triggers' in card_data:
+                del card_data['triggers']
 
         card_data['static_abilities'] = new_static
         card_data['reaction_abilities'] = new_reactions
