@@ -66,7 +66,8 @@ class LogicTreeWidget(QTreeView):
         temp = index
         while temp.isValid():
             if temp.data(Qt.ItemDataRole.UserRole + 1) == "CARD":
-                cdata = temp.data(Qt.ItemDataRole.UserRole + 2)
+                # Null Safety Fix: Default to empty dict if data is missing
+                cdata = temp.data(Qt.ItemDataRole.UserRole + 2) or {}
                 card_type = cdata.get('type', 'CREATURE')
                 break
             temp = temp.parent()
@@ -107,7 +108,7 @@ class LogicTreeWidget(QTreeView):
              menu.addAction(remove_action)
 
         elif item_type == "ACTION":
-            act_data = index.data(Qt.ItemDataRole.UserRole + 2)
+            act_data = index.data(Qt.ItemDataRole.UserRole + 2) or {}
             if act_data.get('type') == "SELECT_OPTION":
                 add_opt_action = QAction(tr("Add Option"), self)
                 add_opt_action.triggered.connect(lambda: self.add_option(index))
@@ -141,6 +142,29 @@ class LogicTreeWidget(QTreeView):
 
         if not menu.isEmpty():
             menu.exec(self.viewport().mapToGlobal(pos))
+
+    def replace_item_with_command(self, index, cmd_data):
+        """Replaces a legacy Action item with a new Command item."""
+        if not index.isValid(): return
+
+        parent_item = self.standard_model.itemFromIndex(index.parent())
+        row = index.row()
+
+        # Remove old Action
+        parent_item.removeRow(row)
+
+        # Insert new Command at same position
+        # Using insertRow with new item
+
+        # We need to construct the command item hierarchy using data_manager
+        # data_manager doesn't have public insert, so we do it via model or add helper
+
+        # But wait, data_manager._create_command_item creates a QStandardItem
+        cmd_item = self.data_manager._create_command_item(cmd_data)
+        parent_item.insertRow(row, cmd_item)
+
+        # Select the new item
+        self.setCurrentIndex(cmd_item.index())
 
     def add_keywords(self, parent_index):
         if not parent_index.isValid(): return
@@ -209,6 +233,28 @@ class LogicTreeWidget(QTreeView):
         data_copy = copy.deepcopy(cmd_data)
 
         self.add_child_item(option_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
+
+    def add_action_to_effect(self, effect_index, action_data=None):
+        if not effect_index.isValid(): return
+        if action_data is None:
+             action_data = {"type": "MOVE_CARD", "from_zone": "DECK", "to_zone": "HAND"}
+        self.add_child_item(effect_index, "ACTION", action_data, f"{tr('Action')}: {tr('MOVE_CARD')}")
+
+    def add_action_to_option(self, option_index, action_data=None):
+        if not option_index.isValid(): return
+        if action_data is None:
+             action_data = {"type": "MOVE_CARD", "from_zone": "DECK", "to_zone": "HAND"}
+        self.add_child_item(option_index, "ACTION", action_data, f"{tr('Action')}: {tr('MOVE_CARD')}")
+
+    def add_action_sibling(self, action_index, action_data=None):
+        if not action_index.isValid(): return
+        parent_index = action_index.parent()
+        if not parent_index.isValid(): return
+
+        if action_data is None:
+             action_data = {"type": "MOVE_CARD", "from_zone": "DECK", "to_zone": "HAND"}
+
+        self.add_child_item(parent_index, "ACTION", action_data, f"{tr('Action')}: {tr('MOVE_CARD')}")
 
     def add_command_to_effect(self, effect_index, cmd_data=None):
         if not effect_index.isValid(): return
