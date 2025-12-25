@@ -161,6 +161,13 @@ class CommandEditForm(BaseEditForm):
         cmd_type = self.type_combo.currentData()
         self.update_ui_state(cmd_type)
 
+        # If the selected type is not a native CommandType, display a legacy warning
+        if cmd_type and cmd_type not in COMMAND_TYPES:
+          self.warning_label.setText(tr(f"This type '{cmd_type}' is only supported by the Legacy Action format."))
+          self.warning_label.setVisible(True)
+        else:
+          self.warning_label.setVisible(False)
+
         if self.current_item and not self._is_populating:
             config = self._get_ui_config(cmd_type)
             produces = config.get("produces_output", False)
@@ -360,6 +367,13 @@ class CommandEditForm(BaseEditForm):
       # The 'data' dict passed to _save_data is usually the one attached to the item, or a fresh one.
       # Standard implementation of BaseEditForm.save_data copies data from UI to the dict.
       # So we don't need to explicitly save legacy flags unless we overwrite the whole dict.
+      # Mark legacy selection so higher-level logic can persist it as an ActionDef
+      if cmd_type and cmd_type not in COMMAND_TYPES:
+        data['legacy_warning'] = True
+        data['legacy_original_type'] = cmd_type
+      else:
+        data.pop('legacy_warning', None)
+        data.pop('legacy_original_type', None)
     def block_signals_all(self, block):
         self.type_combo.blockSignals(block)
         self.target_group_combo.blockSignals(block)
