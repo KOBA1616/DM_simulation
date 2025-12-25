@@ -7,7 +7,7 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.utils import normalize_action_zone_keys
-from dm_toolkit.consts import EDITOR_ACTION_TYPES, ZONES_EXTENDED
+from dm_toolkit.consts import EDITOR_ACTION_TYPES, ZONES_EXTENDED, UNIFIED_ACTION_TYPES
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS, STRUCT_CMD_REPLACE_WITH_COMMAND
 from dm_toolkit.gui.editor.action_converter import ActionConverter
 
@@ -64,7 +64,8 @@ class ActionEditForm(BaseEditForm):
         self.form_layout.addRow(self.convert_btn)
 
         self.type_combo = QComboBox()
-        self.known_types = EDITOR_ACTION_TYPES
+        # Use unified list
+        self.known_types = UNIFIED_ACTION_TYPES
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         self.add_field(tr("Action Type"), self.type_combo)
 
