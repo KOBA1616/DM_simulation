@@ -98,14 +98,17 @@ class LogicTreeWidget(QTreeView):
              cmd_menu = menu.addMenu(tr("Add Command"))
              templates = self.data_manager.templates.get("commands", [])
 
+             # Always add Default Transition option
+             add_cmd_action = QAction(tr("Transition (Default)"), self)
+             add_cmd_action.triggered.connect(lambda checked: self.add_command_to_effect(index))
+             cmd_menu.addAction(add_cmd_action)
+
+             cmd_menu.addSeparator()
+
              if not templates:
                  warning = QAction(tr("(No Templates Found)"), self)
                  warning.setEnabled(False)
                  cmd_menu.addAction(warning)
-
-                 add_cmd_action = QAction(tr("Transition (Default)"), self)
-                 add_cmd_action.triggered.connect(lambda checked: self.add_command_to_effect(index))
-                 cmd_menu.addAction(add_cmd_action)
              else:
                  for tpl in templates:
                      action = QAction(tr(tpl['name']), self)
@@ -141,14 +144,17 @@ class LogicTreeWidget(QTreeView):
             cmd_menu = menu.addMenu(tr("Add Command"))
             templates = self.data_manager.templates.get("commands", [])
 
+            # Always add Default Transition option
+            add_cmd_action = QAction(tr("Transition (Default)"), self)
+            add_cmd_action.triggered.connect(lambda checked: self.add_command_to_option(index))
+            cmd_menu.addAction(add_cmd_action)
+
+            cmd_menu.addSeparator()
+
             if not templates:
                 warning = QAction(tr("(No Templates Found)"), self)
                 warning.setEnabled(False)
                 cmd_menu.addAction(warning)
-
-                add_cmd_action = QAction(tr("Transition (Default)"), self)
-                add_cmd_action.triggered.connect(lambda checked: self.add_command_to_option(index))
-                cmd_menu.addAction(add_cmd_action)
             else:
                 for tpl in templates:
                     action = QAction(tr(tpl['name']), self)
