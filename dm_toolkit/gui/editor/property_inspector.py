@@ -50,7 +50,7 @@ class PropertyInspector(QWidget):
         self.option_form = OptionForm()
         self.stack.addWidget(self.option_form)
 
-        self.cmd_branch_page = QLabel(tr("Branch selected. Add Commands to this branch."))
+        self.cmd_branch_page = QLabel(tr("Branch selected. Add Actions to this branch."))
         self.cmd_branch_page.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.stack.addWidget(self.cmd_branch_page)
 
