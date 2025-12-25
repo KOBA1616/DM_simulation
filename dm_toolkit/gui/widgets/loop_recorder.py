@@ -10,10 +10,10 @@ class LoopRecorderWidget(QWidget):
     def __init__(self, game_state_ref, parent=None):
         super().__init__(parent)
         self.gs_ref = game_state_ref # Reference to GameWindow's GS wrapper (or we pass it in update)
-        self.layout = QVBoxLayout(self)
+        self._layout = QVBoxLayout(self)
 
         self.status_label = QLabel("Ready")
-        self.layout.addWidget(self.status_label)
+        self._layout.addWidget(self.status_label)
 
         btn_layout = QHBoxLayout()
         self.start_btn = QPushButton("Start Recording")
@@ -25,11 +25,11 @@ class LoopRecorderWidget(QWidget):
         self.stop_btn.setEnabled(False)
         btn_layout.addWidget(self.stop_btn)
 
-        self.layout.addLayout(btn_layout)
+        self._layout.addLayout(btn_layout)
 
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.layout.addWidget(self.log_text)
+        self._layout.addWidget(self.log_text)
 
         self.recording = False
         self.start_hash = 0

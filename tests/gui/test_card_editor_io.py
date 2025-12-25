@@ -2,11 +2,12 @@ import json
 import unittest
 import os
 import shutil
+from typing import List, Dict, Any
 
 class TestCardEditorIO(unittest.TestCase):
     def setUp(self):
         self.test_file = "test_cards_io.json"
-        self.sample_data = [
+        self.sample_data: List[Dict[str, Any]] = [
             {
                 "id": 1,
                 "name": "Test Card",

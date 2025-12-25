@@ -1,7 +1,13 @@
 
 import pytest
 import dm_ai_module
+from typing import Any
 from dm_ai_module import GameState, CardDefinition, CardData, EffectActionType, ActionDef, EffectDef, FilterDef, TargetScope
+
+
+def _make_def(id, name, typ, cost=1, power=1000):
+    keywords = dm_ai_module.CardKeywords()
+    return dm_ai_module.CardDefinition(id, name, "FIRE", [], cost, power, keywords, [])
 
 @pytest.fixture
 def game_state():
@@ -91,16 +97,11 @@ def test_grant_blocker(game_state, card_db):
     # system = dm_ai_module.GenericCardSystem.instance()
 
     # Construct context
-    ctx_map = {}
-
-    def make_def(id, name, type, cost=1, power=1000):
-        # CardDefinition binding exists
-        keywords = dm_ai_module.CardKeywords()
-        return dm_ai_module.CardDefinition(id, name, "FIRE", [], cost, power, keywords, [])
+    ctx_map: dict[str, Any] = {}
 
     db_map = {
-        1: make_def(1, "Vanilla", "CREATURE"),
-        2: make_def(2, "Giver", "SPELL")
+        1: _make_def(1, "Vanilla", "CREATURE"),
+        2: _make_def(2, "Giver", "SPELL")
     }
 
     # Resolve the GRANT action
@@ -167,12 +168,7 @@ def test_grant_speed_attacker(game_state, card_db):
     game_state.add_test_card_to_battle(p1.id, 1, 10, False, True) # sick=True
 
     # DB
-    def make_def(id, name, type, cost=1, power=1000):
-        # CardDefinition binding exists
-        keywords = dm_ai_module.CardKeywords()
-        return dm_ai_module.CardDefinition(id, name, "FIRE", [], cost, power, keywords, [])
-
-    db_map = { 1: make_def(1, "Vanilla", "CREATURE") }
+    db_map = { 1: _make_def(1, "Vanilla", "CREATURE") }
 
     # Verify cannot attack
     game_state.active_player_id = 0
@@ -187,7 +183,7 @@ def test_grant_speed_attacker(game_state, card_db):
     # Apply Grant
     # system = dm_ai_module.GenericCardSystem.instance()
     # GenericCardSystem methods are static in bindings
-    ctx_map = {}
+    ctx_map: dict[str, Any] = {}
 
     # We need to manually construct db_map
     def make_def(id, name, type, cost=1, power=1000):

@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QAction, QKeySequence
+from PyQt6.QtGui import QAction, QKeySequence, QStandardItem
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
 from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
@@ -102,7 +102,9 @@ class CardEditor(QMainWindow):
         self.statusBar() # Ensure status bar is created
 
         # Signals
-        self.tree_widget.selectionModel().selectionChanged.connect(self.on_selection_changed)
+        sel = self.tree_widget.selectionModel()
+        if sel is not None:
+            sel.selectionChanged.connect(self.on_selection_changed)
 
         # Connect Data Changes from Inspector to Preview
         self.inspector.card_form.dataChanged.connect(self.on_data_changed)
@@ -133,7 +135,9 @@ class CardEditor(QMainWindow):
             with open(self.json_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             self.data_saved.emit()
-            self.statusBar().showMessage(tr("Cards saved successfully!"), 3000)
+            sb = self.statusBar()
+            if sb is not None:
+                sb.showMessage(tr("Cards saved successfully!"), 3000)
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
 
@@ -212,17 +216,26 @@ class CardEditor(QMainWindow):
 
         # Ensure we are operating on the Card Item
         item = self.tree_widget.standard_model.itemFromIndex(idx)
+        if item is None:
+            return
         card_item = None
 
         item_type = item.data(Qt.ItemDataRole.UserRole + 1)
         if item_type == "CARD":
             card_item = item
         elif item_type in ["EFFECT", "SPELL_SIDE"]:
-            card_item = item.parent()
+            parent = item.parent()
+            if parent is not None:
+                card_item = parent
         elif item_type == "ACTION":
-            card_item = item.parent().parent()
+            parent = item.parent()
+            if parent is not None:
+                grand = parent.parent()
+                if grand is not None:
+                    card_item = grand
 
-        if not card_item: return
+        if card_item is None:
+            return
 
         if command == STRUCT_CMD_ADD_SPELL_SIDE:
             self.tree_widget.add_spell_side(card_item.index())
@@ -277,18 +290,25 @@ class CardEditor(QMainWindow):
         if not idx.isValid(): return
         
         item = self.tree_widget.standard_model.itemFromIndex(idx)
-        
+        if item is None:
+            QMessageBox.warning(self, tr("Warning"), tr("Please select a Card or Effect group to add an Effect."))
+            return
+
         # Traverse up to find CARD or SPELL_SIDE
-        target_item = item
+        target_item: QStandardItem | None = item
         found = False
-        while target_item:
+        while target_item is not None:
             type_ = target_item.data(Qt.ItemDataRole.UserRole + 1)
             if type_ in ["CARD", "SPELL_SIDE"]:
                 found = True
                 break
-            target_item = target_item.parent()
-            
-        if found and target_item:
+            parent = target_item.parent()
+            if parent is None:
+                target_item = None
+            else:
+                target_item = parent
+
+        if found and target_item is not None:
             self.tree_widget.add_effect_interactive(target_item.index())
         else:
             QMessageBox.warning(self, tr("Warning"), tr("Please select a Card or Effect group to add an Effect."))
@@ -298,6 +318,9 @@ class CardEditor(QMainWindow):
         if not idx.isValid(): return
 
         item = self.tree_widget.standard_model.itemFromIndex(idx)
+        if item is None:
+            QMessageBox.warning(self, tr("Warning"), tr("Please select an Effect or Option to add a Command."))
+            return
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
 
         # Centralized logic in LogicTreeWidget

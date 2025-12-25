@@ -135,16 +135,20 @@ class CardEditForm(BaseEditForm):
         menu = QMenu(self)
 
         kw_act = menu.addAction(tr("Keyword Ability"))
-        kw_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "KEYWORDS"}))
+        if kw_act is not None:
+            kw_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "KEYWORDS"}))
 
         trig_act = menu.addAction(tr("Triggered Ability"))
-        trig_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "TRIGGERED"}))
+        if trig_act is not None:
+            trig_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "TRIGGERED"}))
 
         static_act = menu.addAction(tr("Static Ability"))
-        static_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "STATIC"}))
+        if static_act is not None:
+            static_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "STATIC"}))
 
         react_act = menu.addAction(tr("Reaction Ability"))
-        react_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "REACTION"}))
+        if react_act is not None:
+            react_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "REACTION"}))
 
         menu.exec(QCursor.pos())
 
@@ -156,13 +160,13 @@ class CardEditForm(BaseEditForm):
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_SPELL_SIDE, {})
 
     def _populate_ui(self, item):
-        data = item.data(Qt.ItemDataRole.UserRole + 2)
+        data = item.data(Qt.ItemDataRole.UserRole + 2) or {}
 
         # Apply standard bindings
         self._apply_bindings(data)
 
         # Custom population
-        civs = data.get('civilizations')
+        civs = data.get('civilizations') or []
         if not civs:
             civ_single = data.get('civilization')
             if civ_single: civs = [civ_single]
@@ -177,7 +181,10 @@ class CardEditForm(BaseEditForm):
         has_spell_side = False
         for i in range(item.rowCount()):
             child = item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
+            if child is None:
+                continue
+            child_type = child.data(Qt.ItemDataRole.UserRole + 1)
+            if child_type == "SPELL_SIDE":
                 has_spell_side = True
                 break
 

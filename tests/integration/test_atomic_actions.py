@@ -10,6 +10,7 @@ except ImportError:
     sys.exit(1)
 
 import pytest
+from typing import Any
 
 # Constants
 P1_ID = 0
@@ -66,6 +67,7 @@ def test_tap_untap():
         if c.instance_id == 302:
             card_302 = c
             break
+    assert card_302 is not None, "card_302 should be found in battle zone"
     assert card_302.is_tapped == False
 
     state.current_phase = dm_ai_module.Phase.ATTACK
@@ -89,6 +91,7 @@ def test_tap_untap():
         if c.instance_id == 301:
             card_301 = c
             break
+    assert card_301 is not None, "card_301 should be found in battle zone"
     assert card_301.is_tapped == True
 
 def test_break_shield():
@@ -213,7 +216,7 @@ def test_hyper_energy_cost_handler():
 
     card_db = {1: c1, 2: c2, 3: c3}
 
-    ctx = {}
+    ctx: dict[str, Any] = {}
     dm_ai_module.GenericCardSystem.resolve_effect_with_targets(state, eff, targets, 300, card_db, ctx)
     c401 = None
     c402 = None

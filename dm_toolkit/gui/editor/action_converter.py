@@ -162,9 +162,9 @@ class ActionConverter:
         # Final Check for Critical Missing Fields in standard types
         if not cmd['legacy_warning']:
              if cmd['type'] in ["TRANSITION", "DESTROY", "DISCARD", "RETURN_TO_HAND", "MANA_CHARGE"]:
-                  if cmd.get('target_group', 'NONE') == 'NONE':
+                   if cmd.get('target_group', 'NONE') == 'NONE':
                        cmd['legacy_warning'] = True
-                       cmd['str_param'] = (cmd.get('str_param', '') + " [Missing Target]").strip()
+                       cmd['str_param'] = (str(cmd.get('str_param') or '') + " [Missing Target]").strip()
 
         return cmd
 

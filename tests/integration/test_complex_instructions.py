@@ -1,11 +1,12 @@
 
 import dm_ai_module
+from typing import Any
 from dm_ai_module import GameState, EffectSystem, ActionDef, EffectActionType, InstructionOp
 
 def test_complex_branching():
     print("Setup Complex Branching Test")
     state = GameState(200)
-    card_db = {}
+    card_db: dict[int, Any] = {}
 
     # Populate DB so PipelineExecutor can find definitions
     for cid in [1]:
@@ -26,7 +27,7 @@ def test_complex_branching():
     action.value1 = 1
     action.filter = dm_ai_module.FilterDef() # All
 
-    ctx = {}
+    ctx: dict[str, Any] = {}
     print("Compiling Action...")
     insts = EffectSystem.compile_action(state, action, 100, card_db, ctx)
 

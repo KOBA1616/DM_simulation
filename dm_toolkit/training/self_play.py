@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import torch
 import time
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any
 
 # Ensure bin is in path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -206,8 +206,8 @@ class SelfPlayRunner:
                     states_p2.append(s)
 
             # Inference P1
-            results_p1_pol: ResultsList = []
-            results_p1_val: ResultsList = []
+            results_p1_pol: Any = []
+            results_p1_val: Any = []
             if states_p1:
                 tensors = [dm_ai_module.TensorConverter.convert_to_tensor(s, 0, self.card_db, True) for s in states_p1]
                 t_in = torch.tensor(np.array(tensors), dtype=torch.float32).to(self.device)
@@ -217,8 +217,8 @@ class SelfPlayRunner:
                     results_p1_val = vals.squeeze(1).cpu().numpy()
 
             # Inference P2
-            results_p2_pol: ResultsList = []
-            results_p2_val: ResultsList = []
+            results_p2_pol: Any = []
+            results_p2_val: Any = []
             if states_p2:
                 tensors = [dm_ai_module.TensorConverter.convert_to_tensor(s, 1, self.card_db, True) for s in states_p2]
                 t_in = torch.tensor(np.array(tensors), dtype=torch.float32).to(self.device)

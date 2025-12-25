@@ -24,7 +24,9 @@ class LogicTreeWidget(QTreeView):
         # Initialize Data Manager
         self.data_manager = CardDataManager(self.standard_model)
 
-        self.selectionModel().selectionChanged.connect(self.on_selection_changed)
+        sel = self.selectionModel()
+        if sel is not None:
+            sel.selectionChanged.connect(self.on_selection_changed)
 
     def on_selection_changed(self, selected, deselected):
         indexes = selected.indexes()
@@ -46,8 +48,13 @@ class LogicTreeWidget(QTreeView):
 
     def _expand_children_recursive(self, parent_index):
         item = self.standard_model.itemFromIndex(parent_index)
+        if item is None:
+            return
         for i in range(item.rowCount()):
-            child_index = item.child(i).index()
+            child = item.child(i)
+            if child is None:
+                continue
+            child_index = child.index()
             self.expand(child_index)
             self._expand_children_recursive(child_index)
 
@@ -101,20 +108,24 @@ class LogicTreeWidget(QTreeView):
              # Always add Default Transition option
              add_cmd_action = QAction(tr("Transition (Default)"), self)
              add_cmd_action.triggered.connect(lambda checked: self.add_command_to_effect(index))
-             cmd_menu.addAction(add_cmd_action)
+             if cmd_menu is not None:
+                 cmd_menu.addAction(add_cmd_action)
 
-             cmd_menu.addSeparator()
+             if cmd_menu is not None:
+                 cmd_menu.addSeparator()
 
              if not templates:
                  warning = QAction(tr("(No Templates Found)"), self)
                  warning.setEnabled(False)
-                 cmd_menu.addAction(warning)
+                 if cmd_menu is not None:
+                     cmd_menu.addAction(warning)
              else:
                  for tpl in templates:
                      action = QAction(tr(tpl['name']), self)
                      # Capture tpl['data'] in lambda default arg
                      action.triggered.connect(lambda checked, data=tpl['data']: self.add_command_to_effect(index, data))
-                     cmd_menu.addAction(action)
+                     if cmd_menu is not None:
+                         cmd_menu.addAction(action)
 
              remove_action = QAction(tr("Remove Item"), self)
              remove_action.triggered.connect(lambda: self.remove_current_item())
@@ -147,19 +158,23 @@ class LogicTreeWidget(QTreeView):
             # Always add Default Transition option
             add_cmd_action = QAction(tr("Transition (Default)"), self)
             add_cmd_action.triggered.connect(lambda checked: self.add_command_to_option(index))
-            cmd_menu.addAction(add_cmd_action)
+            if cmd_menu is not None:
+                cmd_menu.addAction(add_cmd_action)
 
-            cmd_menu.addSeparator()
+            if cmd_menu is not None:
+                cmd_menu.addSeparator()
 
             if not templates:
                 warning = QAction(tr("(No Templates Found)"), self)
                 warning.setEnabled(False)
-                cmd_menu.addAction(warning)
+                if cmd_menu is not None:
+                    cmd_menu.addAction(warning)
             else:
                 for tpl in templates:
                     action = QAction(tr(tpl['name']), self)
                     action.triggered.connect(lambda checked, data=tpl['data']: self.add_command_to_option(index, data))
-                    cmd_menu.addAction(action)
+                    if cmd_menu is not None:
+                        cmd_menu.addAction(action)
 
             remove_opt_action = QAction(tr("Remove Option"), self)
             remove_opt_action.triggered.connect(lambda: self.remove_current_item())
@@ -171,7 +186,9 @@ class LogicTreeWidget(QTreeView):
              menu.addAction(remove_cmd)
 
         if not menu.isEmpty():
-            menu.exec(self.viewport().mapToGlobal(pos))
+            vp = self.viewport()
+            if vp is not None:
+                menu.exec(vp.mapToGlobal(pos))
 
     def convert_all_legacy_actions_in_node(self, index):
         """Recursively converts all Actions to Commands starting from the given node."""
@@ -200,6 +217,8 @@ class LogicTreeWidget(QTreeView):
         # Iterate backwards to safely remove/insert rows
         for i in reversed(range(item.rowCount())):
             child = item.child(i)
+            if child is None:
+                continue
             child_type = child.data(Qt.ItemDataRole.UserRole + 1)
 
             if child_type == "ACTION":
@@ -238,28 +257,34 @@ class LogicTreeWidget(QTreeView):
 
         parent_item = self.standard_model.itemFromIndex(index.parent())
         old_item = self.standard_model.itemFromIndex(index)
+        if old_item is None:
+            return
         row = index.row()
 
         # 1. Capture old structure if it has children (OPTIONS)
         preserved_options_data = []
         if old_item.rowCount() > 0:
-             # Check if children are OPTIONS
-             for i in range(old_item.rowCount()):
-                  child = old_item.child(i)
-                  if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
-                      # Collect actions inside
-                      opt_actions_data = []
-                      for k in range(child.rowCount()):
-                          act_child = child.child(k)
-                          # We only care about ACTIONs to convert
-                          if act_child.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
-                               # Recursively capture and convert
-                               c_cmd = self._convert_action_tree_to_command(act_child)
-                               opt_actions_data.append(c_cmd)
-                          elif act_child.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
-                               # Already a command, preserve it
-                               opt_actions_data.append(act_child.data(Qt.ItemDataRole.UserRole + 2))
-                      preserved_options_data.append(opt_actions_data)
+            # Check if children are OPTIONS
+            for i in range(old_item.rowCount()):
+                child = old_item.child(i)
+                if child is None:
+                    continue
+                if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+                    # Collect actions inside
+                    opt_actions_data = []
+                    for k in range(child.rowCount()):
+                        act_child = child.child(k)
+                        if act_child is None:
+                            continue
+                        # We only care about ACTIONs to convert
+                        if act_child.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
+                            # Recursively capture and convert
+                            c_cmd = self._convert_action_tree_to_command(act_child)
+                            opt_actions_data.append(c_cmd)
+                        elif act_child.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                            # Already a command, preserve it
+                            opt_actions_data.append(act_child.data(Qt.ItemDataRole.UserRole + 2))
+                    preserved_options_data.append(opt_actions_data)
 
         # 2. Inject options into cmd_data if exists
         if preserved_options_data:
@@ -292,7 +317,7 @@ class LogicTreeWidget(QTreeView):
         """Recursively converts an Action Item and its children to Command Data."""
         from dm_toolkit.gui.editor.action_converter import ActionConverter
 
-        act_data = action_item.data(Qt.ItemDataRole.UserRole + 2)
+        act_data = action_item.data(Qt.ItemDataRole.UserRole + 2) or {}
         cmd_data = ActionConverter.convert(act_data)
 
         # Check for children (Options)
@@ -300,15 +325,21 @@ class LogicTreeWidget(QTreeView):
         if action_item.rowCount() > 0:
             for i in range(action_item.rowCount()):
                 child = action_item.child(i)
-                if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+                if child is None:
+                    continue
+                child_type = child.data(Qt.ItemDataRole.UserRole + 1)
+                if child_type == "OPTION":
                     opt_cmds = []
                     for k in range(child.rowCount()):
                         sub_item = child.child(k)
-                        if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
+                        if sub_item is None:
+                            continue
+                        sub_type = sub_item.data(Qt.ItemDataRole.UserRole + 1)
+                        if sub_type == "ACTION":
                             opt_cmds.append(self._convert_action_tree_to_command(sub_item))
-                        elif sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                        elif sub_type == "COMMAND":
                             # Preserve existing commands
-                            opt_cmds.append(sub_item.data(Qt.ItemDataRole.UserRole + 2))
+                            opt_cmds.append(sub_item.data(Qt.ItemDataRole.UserRole + 2) or {})
                     options_list.append(opt_cmds)
 
         if options_list:
@@ -358,6 +389,8 @@ class LogicTreeWidget(QTreeView):
     def add_option(self, parent_index):
         if not parent_index.isValid(): return
         parent_item = self.standard_model.itemFromIndex(parent_index)
+        if parent_item is None:
+            return
         count = parent_item.rowCount() + 1
 
         new_item = QStandardItem(f"{tr('Option')} {count}")
@@ -448,6 +481,8 @@ class LogicTreeWidget(QTreeView):
         if not idx.isValid(): return
 
         item = self.standard_model.itemFromIndex(idx)
+        if item is None:
+            return
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
 
         if type_ == "EFFECT":
@@ -473,6 +508,8 @@ class LogicTreeWidget(QTreeView):
         if not idx.isValid(): return
 
         item = self.standard_model.itemFromIndex(idx)
+        if item is None:
+            return
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
 
         if type_ == "EFFECT":
@@ -510,6 +547,8 @@ class LogicTreeWidget(QTreeView):
         if not index.isValid(): return
 
         item = self.standard_model.itemFromIndex(index)
+        if item is None:
+            return
         item_type = item.data(Qt.ItemDataRole.UserRole + 1)
 
         if item_type == "COMMAND":
@@ -520,6 +559,8 @@ class LogicTreeWidget(QTreeView):
         if not parent_index.isValid(): return
 
         parent_item = self.standard_model.itemFromIndex(parent_index)
+        if parent_item is None:
+            return
         role = parent_item.data(Qt.ItemDataRole.UserRole + 1)
         card_data = parent_item.data(Qt.ItemDataRole.UserRole + 2) or {}
 
@@ -574,7 +615,7 @@ class LogicTreeWidget(QTreeView):
 
     def _save_expansion_state(self):
         """Saves the IDs of expanded items."""
-        expanded_ids = set()
+        expanded_ids: set[str] = set()
         root = self.standard_model.invisibleRootItem()
         self._traverse_save_expansion(root, expanded_ids)
         return expanded_ids
@@ -585,9 +626,11 @@ class LogicTreeWidget(QTreeView):
         if index.isValid() and self.isExpanded(index):
             path = self._get_item_path(item)
             expanded_ids.add(path)
-
         for i in range(item.rowCount()):
-            self._traverse_save_expansion(item.child(i), expanded_ids)
+            child = item.child(i)
+            if child is None:
+                continue
+            self._traverse_save_expansion(child, expanded_ids)
 
     def _restore_expansion_state(self, expanded_ids):
         """Restores expansion state based on saved paths."""
@@ -600,9 +643,11 @@ class LogicTreeWidget(QTreeView):
             path = self._get_item_path(item)
             if path in expanded_ids:
                 self.setExpanded(index, True)
-
         for i in range(item.rowCount()):
-            self._traverse_restore_expansion(item.child(i), expanded_ids)
+            child = item.child(i)
+            if child is None:
+                continue
+            self._traverse_restore_expansion(child, expanded_ids)
 
     def _get_item_path(self, item):
         """Generates a path string using UIDs if available, else row indices."""

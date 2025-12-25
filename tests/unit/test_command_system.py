@@ -1,6 +1,7 @@
 
 import unittest
 import dm_ai_module
+from typing import Any
 from dm_ai_module import GameState, GameCommand, MutateCommand, FlowCommand, CommandType, TargetScope, FilterDef, Zone, CardDefinition, CardKeywords, ConditionDef, MutationType
 
 class TestCommandSystem(unittest.TestCase):
@@ -14,7 +15,7 @@ class TestCommandSystem(unittest.TestCase):
 
         # Create a CardDefinition for testing
         keywords = CardKeywords()
-        effects = []
+        effects: list[Any] = []
 
         card_data = dm_ai_module.CardData(
             self.card_id, "Test Creature", 1, "FIRE", 1000, "CREATURE", ["Dragon"], effects
