@@ -395,8 +395,21 @@ class LogicTreeWidget(QTreeView):
                 self.add_reaction(parent_index)
 
     def move_effect_item(self, item, target_type):
-        """No-op as we use a flat structure now."""
-        return
+        """Updates the item's visual state (Label) to match the new type."""
+        print(f"DEBUG: move_effect_item called with target {target_type}")
+        data = item.data(Qt.ItemDataRole.UserRole + 2) or {}
+        print(f"DEBUG: item data = {data}")
+
+        if target_type == "TRIGGERED":
+            item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
+            trigger = data.get('trigger', 'NONE')
+            item.setText(f"{tr('Effect')}: {tr(trigger)}")
+
+        elif target_type == "STATIC":
+            item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
+            mtype = data.get('type', data.get('layer_type', 'NONE'))
+            print(f"DEBUG: Setting text to Static: {mtype}")
+            item.setText(f"{tr('Static')}: {tr(mtype)}")
 
     def load_data(self, cards_data):
         # Save Expansion State
