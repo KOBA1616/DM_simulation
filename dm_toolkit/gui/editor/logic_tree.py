@@ -723,6 +723,13 @@ class LogicTreeWidget(QTreeView):
         card_item = self.standard_model.itemFromIndex(card_index)
         eff_item = self.data_manager.add_revolution_change_logic(card_item)
         if eff_item:
+            # After structural change, immediately reconstruct the card data and update the card_item's stored dict
+            try:
+                updated = self.data_manager.reconstruct_card_data(card_item)
+                if updated:
+                    card_item.setData(updated, Qt.ItemDataRole.UserRole + 2)
+            except Exception:
+                pass
             self.setCurrentIndex(eff_item.index())
             self.expand(card_index)
         return eff_item
@@ -731,3 +738,9 @@ class LogicTreeWidget(QTreeView):
         if not card_index.isValid(): return
         card_item = self.standard_model.itemFromIndex(card_index)
         self.data_manager.remove_revolution_change_logic(card_item)
+        try:
+            updated = self.data_manager.reconstruct_card_data(card_item)
+            if updated:
+                card_item.setData(updated, Qt.ItemDataRole.UserRole + 2)
+        except Exception:
+            pass
