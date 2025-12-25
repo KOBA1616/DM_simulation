@@ -99,14 +99,17 @@ class LogicTreeWidget(QTreeView):
              cmd_menu = menu.addMenu(tr("Add Command"))
              templates = self.data_manager.templates.get("commands", [])
 
+             # Always add Default Transition option
+             add_cmd_action = QAction(tr("Transition (Default)"), self)
+             add_cmd_action.triggered.connect(lambda checked: self.add_command_to_effect(index))
+             cmd_menu.addAction(add_cmd_action)
+
+             cmd_menu.addSeparator()
+
              if not templates:
                  warning = QAction(tr("(No Templates Found)"), self)
                  warning.setEnabled(False)
                  cmd_menu.addAction(warning)
-
-                 add_cmd_action = QAction(tr("Transition (Default)"), self)
-                 add_cmd_action.triggered.connect(lambda checked: self.add_command_to_effect(index))
-                 cmd_menu.addAction(add_cmd_action)
              else:
                  for tpl in templates:
                      action = QAction(tr(tpl['name']), self)
@@ -142,14 +145,17 @@ class LogicTreeWidget(QTreeView):
             cmd_menu = menu.addMenu(tr("Add Command"))
             templates = self.data_manager.templates.get("commands", [])
 
+            # Always add Default Transition option
+            add_cmd_action = QAction(tr("Transition (Default)"), self)
+            add_cmd_action.triggered.connect(lambda checked: self.add_command_to_option(index))
+            cmd_menu.addAction(add_cmd_action)
+
+            cmd_menu.addSeparator()
+
             if not templates:
                 warning = QAction(tr("(No Templates Found)"), self)
                 warning.setEnabled(False)
                 cmd_menu.addAction(warning)
-
-                add_cmd_action = QAction(tr("Transition (Default)"), self)
-                add_cmd_action.triggered.connect(lambda checked: self.add_command_to_option(index))
-                cmd_menu.addAction(add_cmd_action)
             else:
                 for tpl in templates:
                     action = QAction(tr(tpl['name']), self)
@@ -173,18 +179,25 @@ class LogicTreeWidget(QTreeView):
         if not index.isValid(): return
 
         item = self.standard_model.itemFromIndex(index)
-        count = self._recursive_convert_actions(item)
+        count, warnings = self._recursive_convert_actions(item)
         if count > 0:
-            QMessageBox.information(self, tr("Conversion Complete"), f"{tr('Converted')} {count} {tr('actions to commands.')}")
+            msg = f"{tr('Converted')} {count} {tr('actions to commands.')}"
+            if warnings > 0:
+                msg += f"\n\n{tr('Warnings')}: {warnings} {tr('items require attention.')}\n"
+                msg += tr("(Look for items marked with 'Legacy Warning')")
+                QMessageBox.warning(self, tr("Conversion Complete"), msg)
+            else:
+                QMessageBox.information(self, tr("Conversion Complete"), msg)
         else:
             QMessageBox.information(self, tr("Conversion Info"), tr("No legacy actions found to convert."))
 
     def _recursive_convert_actions(self, item):
         """
         Traverses the tree and converts ACTION items to COMMAND items.
-        Returns the number of converted actions.
+        Returns (converted_count, warning_count).
         """
-        count = 0
+        converted_count = 0
+        warning_count = 0
         # Iterate backwards to safely remove/insert rows
         for i in reversed(range(item.rowCount())):
             child = item.child(i)
@@ -193,14 +206,32 @@ class LogicTreeWidget(QTreeView):
             if child_type == "ACTION":
                 # Convert this Action (and its children)
                 cmd_data = self._convert_action_tree_to_command(child)
+
+                # Check for warnings in this conversion branch
+                w = self._scan_warnings_in_cmd(cmd_data)
+                warning_count += w
+
                 self.replace_item_with_command(child.index(), cmd_data)
-                count += 1
+                converted_count += 1
                 # Note: replace_item_with_command reconstructs the node, so we don't recurse into the old child.
                 # However, _convert_action_tree_to_command ALREADY handled the recursion for options.
             else:
                 # Recurse deeper
-                count += self._recursive_convert_actions(child)
-        return count
+                c, w = self._recursive_convert_actions(child)
+                converted_count += c
+                warning_count += w
+        return converted_count, warning_count
+
+    def _scan_warnings_in_cmd(self, cmd_data):
+        w = 0
+        if cmd_data.get('legacy_warning', False):
+            w += 1
+
+        if 'options' in cmd_data:
+            for opt_list in cmd_data['options']:
+                for sub_cmd in opt_list:
+                    w += self._scan_warnings_in_cmd(sub_cmd)
+        return w
 
     def replace_item_with_command(self, index, cmd_data):
         """Replaces a legacy Action item with a new Command item."""
@@ -232,14 +263,11 @@ class LogicTreeWidget(QTreeView):
                       preserved_options_data.append(opt_actions_data)
 
         # 2. Inject options into cmd_data if exists
-        # NOTE: _convert_action_tree_to_command already handles options conversion!
-        # If replace_item_with_command is called with the result of _convert..., cmd_data has 'options'.
-        # But if we collected existing COMMAND nodes (mixed model), we need to ensure structure matches.
-
-        # If cmd_data ALREADY has options (from conversion), we prefer that.
-        # But wait, mixed models might have COMMANDs inside ACTION options?
-        # _convert_action_tree_to_command recurses. If it finds COMMAND inside ACTION, it needs to handle it.
-        # Let's fix _convert_action_tree_to_command to handle mixed children.
+        if preserved_options_data:
+            # Merge preserved structure into cmd_data
+            # This ensures that any existing COMMAND items (mixed model) or converted children are kept,
+            # covering cases where cmd_data might not have them (e.g. external call) or to enforce tree state consistency.
+            cmd_data['options'] = preserved_options_data
 
         # 3. Remove old Action
         if parent_item is None:

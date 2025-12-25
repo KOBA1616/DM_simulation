@@ -41,3 +41,4 @@ model_v1.pth
 *.npz
 data/*.onnx
 data/*.onnx.data
+.mypy_cache/

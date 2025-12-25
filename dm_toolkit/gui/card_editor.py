@@ -191,6 +191,23 @@ class CardEditor(QMainWindow):
 
     def on_structure_update(self, command, payload):
         idx = self.tree_widget.currentIndex()
+
+        # Determine context for updates that modify hierarchy
+        if command == STRUCT_CMD_REPLACE_WITH_COMMAND:
+            target_data = payload
+            target_idx = idx
+
+            # Handle new payload structure with explicit target item
+            if 'target_item' in payload and 'new_data' in payload:
+                target_item = payload['target_item']
+                if target_item:
+                    target_idx = target_item.index()
+                target_data = payload['new_data']
+
+            if target_idx.isValid():
+                self.tree_widget.replace_item_with_command(target_idx, target_data)
+            return
+
         if not idx.isValid(): return
 
         # Ensure we are operating on the Card Item
