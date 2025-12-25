@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, QRect
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.gui.editor import normalize
 from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
 
 class ManaCostLabel(QLabel):
@@ -278,7 +279,30 @@ class CardPreviewWidget(QWidget):
 
     def render_card(self, data):
         full_text = CardTextGenerator.generate_text(data)
-        self.raw_text_preview.setText(full_text)
+        # Generate canonical summaries for preview (CIR) to help detect action/command mismatches
+        cir_lines = []
+        effects = data.get('effects', []) or data.get('triggers', []) or []
+        for ei, eff in enumerate(effects, start=1):
+            # summarize actions
+            for ai, act in enumerate(eff.get('actions', []), start=1):
+                cir = normalize.canonicalize(act)
+                kind = cir.get('kind')
+                atype = cir.get('type') or ''
+                opts = cir.get('options') or []
+                branches = cir.get('branches') or {}
+                opt_info = f" options={len(opts)}" if opts else ""
+                branch_info = ''
+                if branches:
+                    t = len(branches.get('if_true', []))
+                    f = len(branches.get('if_false', []))
+                    branch_info = f" branches=({t}/{f})"
+                cir_lines.append(f"Effect[{ei}] Action[{ai}]: {kind}/{atype}{opt_info}{branch_info}")
+
+        summary = "\n".join(cir_lines)
+        if summary:
+            self.raw_text_preview.setText(full_text + "\n\nCIR Summary:\n" + summary)
+        else:
+            self.raw_text_preview.setText(full_text)
 
         # Check Twinpact
         is_twinpact = 'spell_side' in data and data['spell_side'] is not None

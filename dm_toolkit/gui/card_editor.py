@@ -168,6 +168,16 @@ class CardEditor(QMainWindow):
     def on_data_changed(self):
         # Refresh preview based on current selection
         self.update_current_preview()
+        # Ensure internal canonical cache is updated for current selection
+        try:
+            idx = self.tree_widget.currentIndex()
+            if idx.isValid():
+                item = self.tree_widget.standard_model.itemFromIndex(idx)
+                if item is not None:
+                    # Propagate up to data_manager to refresh cached CIR
+                    self.tree_widget.data_manager._update_card_from_child(item)
+        except Exception:
+            pass
 
     def update_preview_manual(self):
         self.on_data_changed()
