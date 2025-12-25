@@ -52,6 +52,8 @@ namespace dm::ai::inference {
             int batch_size
         );
 
+        const std::vector<std::string>& get_input_names() const { return input_node_names_str_; }
+
     private:
         Ort::Env env_;
         std::unique_ptr<Ort::Session> session_;
@@ -78,6 +80,11 @@ namespace dm::ai::inference {
             int /*batch_size*/
         ) {
             return {{}, {}};
+        }
+
+        const std::vector<std::string>& get_input_names() const {
+            static std::vector<std::string> empty;
+            return empty;
         }
 #endif
     };

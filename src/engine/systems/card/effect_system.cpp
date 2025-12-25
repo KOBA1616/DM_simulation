@@ -103,24 +103,6 @@ namespace dm::engine {
             const auto& data = *def_ptr;
             active_effects.insert(active_effects.end(), data.effects.begin(), data.effects.end());
             active_effects.insert(active_effects.end(), data.metamorph_abilities.begin(), data.metamorph_abilities.end());
-
-            if (data.keywords.friend_burst && trigger == TriggerType::ON_PLAY) {
-                EffectDef fb_effect;
-                fb_effect.trigger = TriggerType::ON_PLAY;
-
-                ActionDef fb_action;
-                fb_action.type = EffectPrimitive::FRIEND_BURST;
-                fb_action.scope = TargetScope::TARGET_SELECT;
-                fb_action.optional = true;
-                fb_action.filter.owner = "SELF";
-                fb_action.filter.zones = {"BATTLE_ZONE"};
-                fb_action.filter.types = {"CREATURE"};
-                fb_action.filter.is_tapped = false;
-                fb_action.filter.count = 1;
-
-                fb_effect.actions.push_back(fb_action);
-                active_effects.push_back(fb_effect);
-            }
         }
 
         for (const auto& under : instance->underlying_cards) {
@@ -412,14 +394,6 @@ namespace dm::engine {
             return evaluator->evaluate(game_state, condition, source_instance_id, card_db, execution_context);
         }
 
-        PlayerID controller = get_controller(game_state, source_instance_id);
-        if (condition.type == "DURING_YOUR_TURN") {
-            return game_state.active_player_id == controller;
-        }
-        if (condition.type == "DURING_OPPONENT_TURN") {
-            return game_state.active_player_id != controller;
-        }
-
         return true;
     }
 
@@ -473,41 +447,6 @@ namespace dm::engine {
         *ctx.interrupted = true;
     }
 
-    void EffectSystem::check_mega_last_burst(dm::core::GameState& game_state, const dm::core::CardInstance& card, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
-         const CardDefinition* def_ptr = nullptr;
-         if (card_db.count(card.card_id)) {
-             def_ptr = &card_db.at(card.card_id);
-         } else if (CardRegistry::get_all_definitions().count(card.card_id)) {
-             def_ptr = &CardRegistry::get_all_definitions().at(card.card_id);
-         }
-
-         if (!def_ptr) return;
-         const auto& def = *def_ptr;
-
-         if (def.keywords.mega_last_burst && def.spell_side) {
-             PlayerID controller = get_controller(game_state, card.instance_id);
-
-             EffectDef eff;
-             eff.trigger = TriggerType::NONE;
-
-             ActionDef act;
-             act.type = EffectPrimitive::CAST_SPELL;
-             act.scope = TargetScope::TARGET_SELECT;
-             act.optional = true;
-             act.cast_spell_side = true;
-
-             eff.actions.push_back(act);
-
-             PendingEffect pending(EffectType::TRIGGER_ABILITY, card.instance_id, controller);
-             pending.resolve_type = ResolveType::TARGET_SELECT;
-             pending.target_instance_ids.push_back(card.instance_id);
-             pending.num_targets_needed = 1;
-             pending.effect_def = eff;
-             pending.optional = true;
-
-             game_state.pending_effects.push_back(pending);
-         }
-    }
 
     PlayerID EffectSystem::get_controller(const GameState& game_state, int instance_id) {
         const CardInstance* card = game_state.get_card_instance(instance_id);

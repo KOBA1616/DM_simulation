@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
 
 class ManaCostLabel(QLabel):
     def __init__(self, text="", parent=None):
@@ -21,15 +22,7 @@ class ManaCostLabel(QLabel):
         self.update() # Trigger repaint
 
     def get_civ_color(self, civ):
-        colors_base = {
-            "LIGHT": "#DAA520",     # GoldenRod
-            "WATER": "#1E90FF",     # DodgerBlue
-            "DARKNESS": "#696969",  # DimGray
-            "FIRE": "#FF4500",      # OrangeRed
-            "NATURE": "#228B22",    # ForestGreen
-            "ZERO": "#A9A9A9"       # DarkGray
-        }
-        return QColor(colors_base.get(civ, "#A9A9A9"))
+        return QColor(CIV_COLORS_FOREGROUND.get(civ, "#A9A9A9"))
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -335,7 +328,9 @@ class CardPreviewWidget(QWidget):
         type_str = CardTextGenerator.TYPE_MAP.get(data.get('type', 'CREATURE'), data.get('type', ''))
         self.type_label.setText(f"[{type_str}]")
 
-        body_text = self.extract_body_text(CardTextGenerator.generate_text(data))
+        # Use new structure
+        body_lines = CardTextGenerator.generate_body_text_lines(data)
+        body_text = "\n".join(body_lines)
         self.text_body.setText(body_text)
 
         power = data.get('power', 0)
@@ -358,8 +353,8 @@ class CardPreviewWidget(QWidget):
         self.tp_power_label.setText(str(data.get('power', 0)))
 
         # Generate text for ONLY the creature part
-        creature_text = CardTextGenerator.generate_text(data, include_twinpact=False)
-        self.tp_body_label.setText(self.extract_body_text(creature_text))
+        creature_lines = CardTextGenerator.generate_body_text_lines(data)
+        self.tp_body_label.setText("\n".join(creature_lines))
 
         # Spell Side
         spell_data = data.get('spell_side', {})
@@ -372,9 +367,11 @@ class CardPreviewWidget(QWidget):
         # For spell text, we can use the generator on the spell data object
         if 'type' not in spell_data:
             spell_data['type'] = 'SPELL'
-        spell_text = CardTextGenerator.generate_text(spell_data)
-        self.tp_spell_body_label.setText(self.extract_body_text(spell_text))
 
+        spell_lines = CardTextGenerator.generate_body_text_lines(spell_data)
+        self.tp_spell_body_label.setText("\n".join(spell_lines))
+
+    # Deprecated / Fallback
     def extract_body_text(self, full_text):
         lines = full_text.split('\n')
         body_lines = []
@@ -403,31 +400,10 @@ class CardPreviewWidget(QWidget):
             label.set_civs(civs)
             return
 
-        # Fallback for standard QLabel (if any)
-        # Note: We replaced all instances with ManaCostLabel, so this might not be hit.
-        style = "font-weight: bold; font-size: 16px; color: white; border: 2px solid black; border-radius: 12px; padding: 0px;"
-        if not civs:
-            bg_style = "background-color: #A9A9A9;"
-        elif len(civs) == 1:
-            # We don't have get_civ_color here anymore, need a local map or use a default
-            # Just fallback to gray if this path is ever hit (it shouldn't be)
-            bg_style = "background-color: #A9A9A9;"
-        else:
-            bg_style = "background-color: #A9A9A9;"
-
-        label.setStyleSheet(style + bg_style)
+        # Fallback implementation removed to ensure consistency.
+        # All cost labels should be ManaCostLabel instances.
 
     def apply_civ_style(self, civs):
-        # Updated mapping (Darker Gradients requested)
-        colors_base = {
-            "LIGHT": "#FFFACD",     # LemonChiffon
-            "WATER": "#E0FFFF",     # LightCyan
-            "DARKNESS": "#D3D3D3",  # LightGray
-            "FIRE": "#FFE4E1",      # MistyRose
-            "NATURE": "#90EE90",    # LightGreen
-            "ZERO": "#F5F5F5"       # WhiteSmoke
-        }
-
         # Requirement: "All borders should be thin black lines"
         border_color = "#000000"
 
@@ -435,13 +411,13 @@ class CardPreviewWidget(QWidget):
             bg_style = "background-color: #FFFFFF;"
         elif len(civs) == 1:
             c = civs[0]
-            c1 = colors_base.get(c, "#FFFFFF")
+            c1 = CIV_COLORS_BACKGROUND.get(c, "#FFFFFF")
             # Solid color as requested
             bg_style = f"background-color: {c1};"
         else:
             if len(civs) >= 2:
-                c1 = colors_base.get(civs[0], "#FFFFFF")
-                c2 = colors_base.get(civs[1], "#FFFFFF")
+                c1 = CIV_COLORS_BACKGROUND.get(civs[0], "#FFFFFF")
+                c2 = CIV_COLORS_BACKGROUND.get(civs[1], "#FFFFFF")
                 bg_style = f"background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2});"
             else:
                 bg_style = "background-color: #E6E6FA;"
