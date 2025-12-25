@@ -231,14 +231,11 @@ class LogicTreeWidget(QTreeView):
                       preserved_options_data.append(opt_actions_data)
 
         # 2. Inject options into cmd_data if exists
-        # NOTE: _convert_action_tree_to_command already handles options conversion!
-        # If replace_item_with_command is called with the result of _convert..., cmd_data has 'options'.
-        # But if we collected existing COMMAND nodes (mixed model), we need to ensure structure matches.
-
-        # If cmd_data ALREADY has options (from conversion), we prefer that.
-        # But wait, mixed models might have COMMANDs inside ACTION options?
-        # _convert_action_tree_to_command recurses. If it finds COMMAND inside ACTION, it needs to handle it.
-        # Let's fix _convert_action_tree_to_command to handle mixed children.
+        if preserved_options_data:
+            # Merge preserved structure into cmd_data
+            # This ensures that any existing COMMAND items (mixed model) or converted children are kept,
+            # covering cases where cmd_data might not have them (e.g. external call) or to enforce tree state consistency.
+            cmd_data['options'] = preserved_options_data
 
         # 3. Remove old Action
         if parent_item is None:
