@@ -179,7 +179,7 @@ TRANSLATIONS: Dict[Any, str] = {
     "Unknown Card": "不明なカード",
     "Card effects will appear here...": "カード効果がここに表示されます...",
     "Target Group": "対象グループ",
-    "Command Type": "コマンドタイプ",
+    "Command Type": "アクションタイプ",
     "Mutation Kind": "変異種別 (Mutation Kind)",
     "String Param": "文字列パラメータ",
     "Amount": "量/数値",
@@ -223,6 +223,10 @@ TRANSLATIONS: Dict[Any, str] = {
     "BREAK_SHIELD": "シールドブレイク",
     "SEARCH_DECK": "デッキ探索",
     "SHIELD_TRIGGER": "S・トリガー",
+
+    # Editor Actions (Legacy)
+    "COST_REDUCTION": "コスト軽減",
+    "MEASURE_COUNT": "カウント/計測",
 
     # Tooltips
     "Open the Deck Builder tool": "デッキビルダーを開きます",

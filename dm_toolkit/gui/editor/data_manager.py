@@ -624,7 +624,8 @@ class CardDataManager:
     def format_command_label(self, command):
         """Generates a human-readable label for a command."""
         cmd_type = command.get('type', 'NONE')
-        label = f"{tr('Command')}: {tr(cmd_type)}"
+        # Use 'Action' instead of 'Command' for UI consistency
+        label = f"{tr('Action')}: {tr(cmd_type)}"
         if command.get('legacy_warning'):
              label += " [WARNING: Incomplete Conversion]"
         return label

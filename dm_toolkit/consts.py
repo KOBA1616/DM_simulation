@@ -128,6 +128,17 @@ EDITOR_ACTION_TYPES = [
 ]
 
 # =============================================================================
+# Unified Action Types (Command + Action Fusion)
+# =============================================================================
+# This list combines CommandTypes and EditorActionTypes for the Unified UI.
+# We prioritize CommandTypes where overlap exists.
+UNIFIED_ACTION_TYPES = sorted(list(set(COMMAND_TYPES + EDITOR_ACTION_TYPES)))
+if "NONE" in UNIFIED_ACTION_TYPES:
+    UNIFIED_ACTION_TYPES.remove("NONE")
+    UNIFIED_ACTION_TYPES.insert(0, "NONE")
+
+
+# =============================================================================
 # Grantable Keywords
 # =============================================================================
 # Keywords that can be granted via ADD_KEYWORD / GRANT_KEYWORD

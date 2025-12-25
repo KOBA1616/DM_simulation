@@ -7,7 +7,7 @@ from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.utils import normalize_command_zone_keys
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
-from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED, GRANTABLE_KEYWORDS
+from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED, GRANTABLE_KEYWORDS, UNIFIED_ACTION_TYPES
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_BRANCHES
 
 
@@ -56,10 +56,10 @@ class CommandEditForm(BaseEditForm):
 
           # Command Type
         self.type_combo = QComboBox()
-          # Filter out MUTATE and FLOW from user selection
-        self.known_types = [t for t in COMMAND_TYPES if t not in ["MUTATE", "FLOW"]]
+          # Use Unified Action Types
+        self.known_types = [t for t in UNIFIED_ACTION_TYPES if t not in ["MUTATE", "FLOW"]]
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
-        layout.addRow(tr("Command Type"), self.type_combo)
+        layout.addRow(tr("Action Type"), self.type_combo)
 
           # Target Group (formerly Scope)
         self.target_group_combo = QComboBox()
