@@ -6,6 +6,7 @@ import uuid
 import json
 import os
 import copy
+from dm_toolkit.types import JSON
 
 class CardDataManager:
     """
@@ -15,7 +16,7 @@ class CardDataManager:
 
     def __init__(self, model: QStandardItemModel):
         self.model = model
-        self.templates = {"commands": [], "actions": []}
+        self.templates: JSON = {"commands": [], "actions": []}
         self.load_templates()
 
     def load_templates(self):
