@@ -336,9 +336,8 @@ class CardPreviewWidget(QWidget):
         type_str = CardTextGenerator.TYPE_MAP.get(data.get('type', 'CREATURE'), data.get('type', ''))
         self.type_label.setText(f"[{type_str}]")
 
-        # Use new structure
-        body_lines = CardTextGenerator.generate_body_text_lines(data)
-        body_text = "\n".join(body_lines)
+        # Use new structure (generator returns a string)
+        body_text = CardTextGenerator.generate_body_text_lines(data)
         self.text_body.setText(body_text)
 
         if self._should_show_power(data):
@@ -364,9 +363,9 @@ class CardPreviewWidget(QWidget):
         else:
             self.tp_power_label.setVisible(False)
 
-        # Generate text for ONLY the creature part
-        creature_lines = CardTextGenerator.generate_body_text_lines(data)
-        self.tp_body_label.setText("\n".join(creature_lines))
+        # Generate text for ONLY the creature part (generator returns a string)
+        creature_text = CardTextGenerator.generate_body_text_lines(data)
+        self.tp_body_label.setText(creature_text)
 
         # Spell Side
         spell_data = data.get('spell_side', {})
@@ -380,8 +379,8 @@ class CardPreviewWidget(QWidget):
         if 'type' not in spell_data:
             spell_data['type'] = 'SPELL'
 
-        spell_lines = CardTextGenerator.generate_body_text_lines(spell_data)
-        self.tp_spell_body_label.setText("\n".join(spell_lines))
+        spell_text = CardTextGenerator.generate_body_text_lines(spell_data)
+        self.tp_spell_body_label.setText(spell_text)
 
     # Deprecated / Fallback
     def extract_body_text(self, full_text):

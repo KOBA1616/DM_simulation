@@ -194,5 +194,5 @@ class VariableLinkWidget(QWidget):
         Usually this is called to enable/disable the 'feature'.
         If 'enabled' is False, it means this action does not support input linking or Val1 is hidden.
         """
-        self.setVisible(enabled)
-        pass
+        # Ensure we pass a boolean to setVisible — callers may pass None
+        self.setVisible(bool(enabled))

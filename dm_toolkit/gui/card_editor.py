@@ -20,7 +20,6 @@ from dm_toolkit.gui.editor.consts import (
 
 class CardEditor(QMainWindow):
     data_saved = pyqtSignal()
-
     def __init__(self, json_path):
         super().__init__()
         self.json_path = json_path
@@ -138,6 +137,12 @@ class CardEditor(QMainWindow):
             sb = self.statusBar()
             if sb is not None:
                 sb.showMessage(tr("Cards saved successfully!"), 3000)
+            # Also show a confirmation dialog so the user notices the save action
+            try:
+                QMessageBox.information(self, tr("Saved"), tr("Cards saved successfully!"))
+            except Exception:
+                # If running headless or dialogs fail, ignore
+                pass
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
 
