@@ -32,16 +32,16 @@ from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 from dm_toolkit.training.train_simple import Trainer
 
 class PBTAgent:
-    def __init__(self, agent_id: int, deck: List[int], name: str = "Agent"):
-        self.id = agent_id
-        self.deck = deck
-        self.name = name
-        self.score = 1200.0  # Elo rating
-        self.wins = 0
-        self.losses = 0
-        self.matches = 0
+    def __init__(self, agent_id: int, deck: List[int], name: str = "Agent") -> None:
+        self.id: int = agent_id
+        self.deck: List[int] = deck
+        self.name: str = name
+        self.score: float = 1200.0  # Elo rating
+        self.wins: int = 0
+        self.losses: int = 0
+        self.matches: int = 0
 
-    def update_elo(self, opponent_elo: float, result: float, k_factor: float = 32.0):
+    def update_elo(self, opponent_elo: float, result: float, k_factor: float = 32.0) -> None:
         expected = 1.0 / (1.0 + 10.0 ** ((opponent_elo - self.score) / 400.0))
         self.score += k_factor * (result - expected)
         self.matches += 1
@@ -49,8 +49,7 @@ class PBTAgent:
             self.wins += 1
         elif result == 0.0:
             self.losses += 1
-
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -61,8 +60,8 @@ class PBTAgent:
         }
 
 class PBTManager:
-    def __init__(self, card_db, population_size: int = 10, model_path: Optional[str] = None):
-        self.card_db = card_db
+    def __init__(self, card_db: Any, population_size: int = 10, model_path: Optional[str] = None) -> None:
+        self.card_db: Any = card_db
         self.population_size = population_size
         self.agents: List[PBTAgent] = []
         self.model_path = model_path
@@ -87,7 +86,7 @@ class PBTManager:
         # Initialize Population
         self.init_population()
 
-    def load_model(self):
+    def load_model(self) -> None:
         self.network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
         if self.model_path and os.path.exists(self.model_path):
             print(f"Loading model from {self.model_path}")
@@ -98,7 +97,7 @@ class PBTManager:
         if self.network:
             self.network.eval()
 
-    def init_population(self):
+    def init_population(self) -> None:
         # Try to load meta decks
         meta_decks_path = os.path.join(project_root, 'data', 'meta_decks.json')
         meta_decks = []
@@ -141,7 +140,7 @@ class PBTManager:
 
         print(f"Initialized population of {len(self.agents)} agents.")
 
-    def evaluate_network_callback(self, states: List[dm_ai_module.GameState], player_id: int):
+    def evaluate_network_callback(self, states: List[Any], player_id: int) -> Tuple[List[List[float]], List[float]]:
         """
         Callback for C++ ParallelRunner.
         Receives batch of GameStates, returns (policies, values).
@@ -174,7 +173,7 @@ class PBTManager:
             # Fallback
             return [], []
 
-    def run_generation(self, generation_id: int, matches_per_pair: int = 2):
+    def run_generation(self, generation_id: int, matches_per_pair: int = 2) -> None:
         print(f"--- Generation {generation_id} ---")
 
         # 1. Matchmaking (Round Robin or Random Pairs)
@@ -336,7 +335,7 @@ class PBTManager:
 
         print("Generation Complete.")
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="PBT Training for Duel Masters AI")
     parser.add_argument("--gens", type=int, default=10, help="Number of generations")
     parser.add_argument("--pop", type=int, default=10, help="Population size")
