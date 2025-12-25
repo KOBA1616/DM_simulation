@@ -1,0 +1,18 @@
+# -*- coding: utf-8 -*-
+"""
+Constants for the Card Editor GUI.
+This file defines command strings and internal event names to ensure consistency
+across the editor's forms and logic.
+"""
+
+# Structural Command Constants
+# Used for signaling structural changes from forms to the main editor
+STRUCT_CMD_ADD_CHILD_EFFECT = "ADD_CHILD_EFFECT"
+STRUCT_CMD_ADD_SPELL_SIDE = "ADD_SPELL_SIDE"
+STRUCT_CMD_REMOVE_SPELL_SIDE = "REMOVE_SPELL_SIDE"
+STRUCT_CMD_ADD_REV_CHANGE = "ADD_REV_CHANGE"
+STRUCT_CMD_REMOVE_REV_CHANGE = "REMOVE_REV_CHANGE"
+STRUCT_CMD_GENERATE_BRANCHES = "GENERATE_BRANCHES"
+STRUCT_CMD_GENERATE_OPTIONS = "GENERATE_OPTIONS"
+STRUCT_CMD_MOVE_EFFECT = "MOVE_EFFECT"
+STRUCT_CMD_ADD_CHILD_ACTION = "ADD_CHILD_ACTION"
