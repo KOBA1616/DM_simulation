@@ -102,7 +102,7 @@ class LogicTreeWidget(QTreeView):
             menu.addAction(convert_all_action)
 
         elif item_type == "EFFECT":
-             cmd_menu = menu.addMenu(tr("Add Command"))
+             cmd_menu = menu.addMenu(tr("Add Action"))
              templates = self.data_manager.templates.get("commands", [])
 
              # Always add Default Transition option
@@ -152,7 +152,7 @@ class LogicTreeWidget(QTreeView):
             menu.addAction(remove_action)
 
         elif item_type == "OPTION":
-            cmd_menu = menu.addMenu(tr("Add Command"))
+            cmd_menu = menu.addMenu(tr("Add Action"))
             templates = self.data_manager.templates.get("commands", [])
 
             # Always add Default Transition option
@@ -539,7 +539,7 @@ class LogicTreeWidget(QTreeView):
         import copy
         data_copy = copy.deepcopy(cmd_data)
         if 'uid' in data_copy: del data_copy['uid']
-        self.add_child_item(branch_index, "COMMAND", data_copy, f"{tr('Command')}: {tr(data_copy.get('type', 'NONE'))}")
+        self.add_child_item(branch_index, "COMMAND", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
 
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""
