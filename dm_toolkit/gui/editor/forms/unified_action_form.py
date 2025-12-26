@@ -16,6 +16,30 @@ from dm_toolkit.gui.editor.forms.unified_widgets import (
     make_scope_combo, make_value_spin, make_measure_mode_combo,
     make_ref_mode_combo, make_zone_combos, make_option_controls
 )
+from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+
+# Grouping of action types for UI: top-level category -> subtypes
+ACTION_GROUPS = {
+    'MOVE': [
+        'MOVE_CARD', 'SEND_TO_MANA', 'SEND_TO_DECK_BOTTOM', 'RETURN_TO_HAND', 'PUT_CREATURE', 'MOVE_TO_UNDER_CARD'
+    ],
+    'QUERY': [
+        'MEASURE_COUNT', 'COUNT_CARDS', 'GET_GAME_STAT'
+    ],
+    'DRAW_PLAY': [
+        'DRAW_CARD', 'PLAY_FROM_ZONE', 'CAST_SPELL', 'ADD_MANA'
+    ],
+    'GRANT': [
+        'GRANT_KEYWORD', 'APPLY_MODIFIER', 'REGISTER_DELAYED_EFFECT'
+    ],
+    'EFFECT': [
+        'DESTROY', 'TAP', 'UNTAP', 'MODIFY_POWER', 'BREAK_SHIELD', 'DISCARD'
+    ],
+    'CONTROL': [
+        'FLOW', 'TRANSITION', 'MUTATE', 'GAME_RESULT'
+    ],
+    'OTHER': []
+}
 
 
 class UnifiedActionForm(BaseEditForm):
@@ -34,6 +58,9 @@ class UnifiedActionForm(BaseEditForm):
         self.generate_options_btn = getattr(self, 'generate_options_btn', None)
         self.option_count_spin = getattr(self, 'option_count_spin', None)
         self.option_count_label = getattr(self, 'option_count_label', None)
+        self.stat_key_combo = getattr(self, 'stat_key_combo', None)
+        self.stat_key_label = getattr(self, 'stat_key_label', None)
+        self.stat_preset_btn = getattr(self, 'stat_preset_btn', None)
         self.structure_update_requested = getattr(self, 'structure_update_requested', None)
         try:
             self.setup_ui()
@@ -94,8 +121,18 @@ class UnifiedActionForm(BaseEditForm):
         layout.addRow(self.convert_btn)
 
         from PyQt6.QtWidgets import QComboBox
+        # Action Group (top-level) + Type (subtype)
+        self.action_group_combo = QComboBox()
+        groups = list(ACTION_GROUPS.keys())
+        # Put OTHER at the end if present
+        if 'OTHER' in groups:
+            groups = [g for g in groups if g != 'OTHER'] + ['OTHER']
+        self.populate_combo(self.action_group_combo, groups, data_func=lambda x: x, display_func=tr)
+        layout.addRow(tr("Action Group"), self.action_group_combo)
+
         self.type_combo = QComboBox()
         self.known_types = UNIFIED_ACTION_TYPES
+        # Initially populate with all known types; on group change we will filter
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Action Type"), self.type_combo)
 
@@ -111,6 +148,30 @@ class UnifiedActionForm(BaseEditForm):
         # Measure Mode (for COUNT/GET_STAT)
         self.measure_mode_combo = make_measure_mode_combo(self)
         layout.addRow(tr("Mode"), self.measure_mode_combo)
+
+        # Stat Key selector for GET_GAME_STAT
+        self.stat_key_combo = QComboBox()
+        # Populate with known stat keys and their JP labels
+        try:
+            stat_keys = list(CardTextGenerator.STAT_KEY_MAP.keys())
+            # display_func reads the Japanese label from STAT_KEY_MAP
+            self.populate_combo(self.stat_key_combo, stat_keys, data_func=lambda x: x,
+                                display_func=lambda k: CardTextGenerator.STAT_KEY_MAP.get(k, (k, ''))[0])
+        except Exception:
+            # Fallback: empty combo
+            pass
+        self.stat_key_label = QLabel(tr("Stat Key"))
+        # Place combo and a small preset button in one row
+        from PyQt6.QtWidgets import QWidget, QHBoxLayout
+        stat_row = QWidget()
+        stat_row_layout = QHBoxLayout(stat_row)
+        stat_row_layout.setContentsMargins(0, 0, 0, 0)
+        stat_row_layout.addWidget(self.stat_key_combo)
+        self.stat_preset_btn = QPushButton(tr("Preset: Mana Civs"))
+        self.stat_preset_btn.setToolTip(tr("Set stat key to MANA_CIVILIZATION_COUNT"))
+        self.stat_preset_btn.clicked.connect(lambda: self._preset_stat_key('MANA_CIVILIZATION_COUNT'))
+        stat_row_layout.addWidget(self.stat_preset_btn)
+        layout.addRow(self.stat_key_label, stat_row)
 
         # Ref Mode (for COST_REFERENCE)
         self.ref_mode_combo = make_ref_mode_combo(self)
@@ -158,17 +219,31 @@ class UnifiedActionForm(BaseEditForm):
         self.mutation_kind_edit = QLineEdit()
         self.mutation_kind_combo = QComboBox()
         self.populate_combo(self.mutation_kind_combo, GRANTABLE_KEYWORDS, data_func=lambda x: x, display_func=tr)
-        self.mutation_kind_label = QLabel(tr("Mutation Kind"))
-        layout.addRow(self.mutation_kind_label, self.mutation_kind_edit)
+            self.mutation_kind_label = QLabel(tr("Mutation Kind"))
+            # Use a stacked widget to host either edit or combo (allows switching based on type)
+            from PyQt6.QtWidgets import QStackedWidget
+            self.mutation_kind_container = QStackedWidget()
+            self.mutation_kind_container.addWidget(self.mutation_kind_edit)
+            self.mutation_kind_container.addWidget(self.mutation_kind_combo)
+            layout.addRow(self.mutation_kind_label, self.mutation_kind_container)
 
         # Variable link
         self.link_widget = VariableLinkWidget()
         self.link_widget.linkChanged.connect(self.update_data)
+        # Respond to smart-link changes to adjust UI (hide amount when linked)
+        if hasattr(self.link_widget, 'smartLinkStateChanged'):
+            try:
+                self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed)
+            except Exception:
+                pass
         layout.addRow(self.link_widget)
 
         # Signals
+        self.action_group_combo.currentIndexChanged.connect(self.on_group_changed)
         self.type_combo.currentIndexChanged.connect(self.on_type_changed)
         self.measure_mode_combo.currentIndexChanged.connect(self.on_measure_mode_changed)
+        self.stat_key_combo.currentIndexChanged.connect(self.on_stat_key_changed)
+        # preset button signal handled inline above
         self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
         self.generate_options_btn.clicked.connect(self.request_generate_options)
         self.no_cost_check.stateChanged.connect(self.update_data)
@@ -183,6 +258,27 @@ class UnifiedActionForm(BaseEditForm):
         self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
 
         self.update_ui_state(self.type_combo.currentData())
+
+    def on_group_changed(self):
+        """When a group is selected, populate the type combo with relevant subtypes."""
+        grp = self.action_group_combo.currentData()
+        types = ACTION_GROUPS.get(grp, [])
+        if not types:
+            # Fallback: show all known types
+            types = self.known_types
+        # repopulate type combo preserving selection if possible
+        prev = self.type_combo.currentData()
+        self.populate_combo(self.type_combo, types, data_func=lambda x: x, display_func=tr)
+        # restore if still present
+        if prev and prev in types:
+            self.set_combo_by_data(self.type_combo, prev)
+        else:
+            self.type_combo.setCurrentIndex(0)
+        # Propagate change to UI state
+        try:
+            self.update_ui_state(self.type_combo.currentData())
+        except Exception:
+            pass
 
     def on_type_changed(self):
         t = self.type_combo.currentData()
@@ -208,6 +304,45 @@ class UnifiedActionForm(BaseEditForm):
                 self.str_edit.setText(val)
         except Exception:
             pass
+        self.update_data()
+
+    def on_smart_link_changed(self, is_active: bool):
+        """Adjust UI when VariableLink smart-link toggles (hide amount, sync filter external count)."""
+        try:
+            cfg = self._get_ui_config(self.type_combo.currentData())
+            # Amount visibility respects whether smart link is active
+            amount_vis = cfg.get('amount_visible', False) and not is_active
+            self.val1_label.setVisible(amount_vis)
+            self.val1_spin.setVisible(amount_vis)
+            # If filter supports external count, inform it
+            if cfg.get('target_filter_visible', False) and hasattr(self.filter_widget, 'set_external_count_control'):
+                self.filter_widget.set_external_count_control(is_active)
+        except Exception:
+            pass
+        self.update_data()
+
+    def on_stat_key_changed(self):
+        """When a stat key is selected, mirror it into the string edit for consistency."""
+        try:
+            val = self.stat_key_combo.currentData()
+            if val:
+                # keep str_edit in sync so saving logic that prefers str_edit still works
+                self.str_edit.setText(val)
+        except Exception:
+            pass
+        self.update_data()
+
+    def _preset_stat_key(self, key: str):
+        try:
+            if self.stat_key_combo:
+                self.set_combo_by_data(self.stat_key_combo, key)
+                # keep str_edit synced
+                self.str_edit.setText(key)
+        except Exception:
+            try:
+                self.str_edit.setText(key)
+            except Exception:
+                pass
         self.update_data()
 
     def request_generate_options(self):
@@ -278,9 +413,10 @@ class UnifiedActionForm(BaseEditForm):
         if cfg.get('str_param_label'):
             self.str_label.setText(tr(cfg.get('str_param_label')))
 
-        # Mutation kind
+        # Mutation kind (use stacked container to switch between edit/combo)
         self.mutation_kind_label.setVisible(cfg.get('mutation_kind_visible', False))
-        self.mutation_kind_edit.setVisible(cfg.get('mutation_kind_visible', False))
+        if self.mutation_kind_container:
+            self.mutation_kind_container.setVisible(cfg.get('mutation_kind_visible', False))
         if cfg.get('mutation_kind_label'):
             self.mutation_kind_label.setText(tr(cfg.get('mutation_kind_label')))
 
@@ -300,6 +436,9 @@ class UnifiedActionForm(BaseEditForm):
 
         # Measure / Ref (special cases)
         self.measure_mode_combo.setVisible(t == 'MEASURE_COUNT' or t == 'COUNT_CARDS' or t == 'GET_GAME_STAT')
+        self.stat_key_label.setVisible(t == 'GET_GAME_STAT')
+        self.stat_key_combo.setVisible(t == 'GET_GAME_STAT')
+        self.stat_preset_btn.setVisible(t == 'GET_GAME_STAT')
         self.ref_mode_combo.setVisible(t == 'COST_REFERENCE')
 
         # Option-related visibility
@@ -317,6 +456,13 @@ class UnifiedActionForm(BaseEditForm):
 
         # Tooltip
         self.type_combo.setToolTip(tr(cfg.get('tooltip', '')))
+        # Mutation kind display mode
+        is_add_keyword = (t == 'ADD_KEYWORD')
+        try:
+            if self.mutation_kind_container:
+                self.mutation_kind_container.setCurrentIndex(1 if is_add_keyword else 0)
+        except Exception:
+            pass
 
     def _populate_ui(self, item):
         self.link_widget.set_current_item(item)
@@ -327,13 +473,35 @@ class UnifiedActionForm(BaseEditForm):
         normalize_command_zone_keys(data)
 
         ui_type = data.get('type', 'NONE')
+        # Set type combo and derive group selection
         self.set_combo_by_data(self.type_combo, ui_type)
+        # Determine group for this type
+        grp = None
+        for g, types in ACTION_GROUPS.items():
+            if ui_type in types:
+                grp = g
+                break
+        if grp is None:
+            grp = 'OTHER'
+        try:
+            self.set_combo_by_data(self.action_group_combo, grp)
+        except Exception:
+            pass
         self.set_combo_by_data(self.scope_combo, data.get('scope', data.get('target_group', 'NONE')))
         self.str_edit.setText(data.get('str_val', data.get('str_param', '')))
         # Mode mapping
         if ui_type == 'MEASURE_COUNT':
             val = 'CARDS_MATCHING_FILTER' if data.get('type') == 'COUNT_CARDS' else data.get('str_val', 'CARDS_MATCHING_FILTER')
             self.set_combo_by_data(self.measure_mode_combo, val)
+        if ui_type == 'GET_GAME_STAT':
+            # Set stat key combo from stored str_val if present
+            key = data.get('str_val', '')
+            if key:
+                try:
+                    self.set_combo_by_data(self.stat_key_combo, key)
+                except Exception:
+                    # fallback to set text
+                    self.str_edit.setText(key)
         if ui_type == 'COST_REFERENCE':
             self.set_combo_by_data(self.ref_mode_combo, data.get('str_val', ''))
         self.val1_spin.setValue(data.get('value1', data.get('amount', 0)))
@@ -342,6 +510,27 @@ class UnifiedActionForm(BaseEditForm):
         self.set_combo_by_data(self.dest_zone_combo, data.get('destination_zone', data.get('to_zone', 'NONE')))
         self.filter_widget.set_data(data.get('filter', data.get('target_filter', {})))
         self.link_widget.set_data(data)
+        # Mutation kind population
+        mutation_kind = data.get('mutation_kind', data.get('str_val', ''))
+        try:
+            # prefer combo when matching known keywords
+            if mutation_kind and mutation_kind in GRANTABLE_KEYWORDS:
+                self.set_combo_by_data(self.mutation_kind_combo, mutation_kind)
+            else:
+                self.mutation_kind_edit.setText(mutation_kind)
+        except Exception:
+            try:
+                self.mutation_kind_edit.setText(mutation_kind)
+            except Exception:
+                pass
+        # If type is ADD_KEYWORD, switch container
+        try:
+            if ui_type == 'ADD_KEYWORD' and self.mutation_kind_container:
+                self.mutation_kind_container.setCurrentIndex(1)
+            elif self.mutation_kind_container:
+                self.mutation_kind_container.setCurrentIndex(0)
+        except Exception:
+            pass
         self.update_ui_state(ui_type)
 
         # Option flags
@@ -351,6 +540,13 @@ class UnifiedActionForm(BaseEditForm):
 
     def _save_data(self, data):
         sel = self.type_combo.currentData()
+        # Persist selected group for clarity (editor-only metadata)
+        try:
+            grp = self.action_group_combo.currentData()
+            if grp:
+                data['group'] = grp
+        except Exception:
+            pass
         data['type'] = sel
         # If this type is a native Command, write command-shaped keys
         if sel in COMMAND_TYPES:
@@ -371,7 +567,14 @@ class UnifiedActionForm(BaseEditForm):
             cmd['from_zone'] = self.source_zone_combo.currentData()
             cmd['to_zone'] = self.dest_zone_combo.currentData()
 
-            # Variable links / outputs
+            # Variable links / outputs: ensure output key if needed, then collect
+            try:
+                cfg = self._get_ui_config(sel)
+                produces = cfg.get('produces_output', False)
+                if hasattr(self.link_widget, 'ensure_output_key'):
+                    self.link_widget.ensure_output_key(sel, produces)
+            except Exception:
+                pass
             self.link_widget.get_data(cmd)
 
             # option-specific
@@ -394,13 +597,28 @@ class UnifiedActionForm(BaseEditForm):
         # Non-command path: gather action-like fields
         data['format'] = 'action'
         data['scope'] = self.scope_combo.currentData()
-        data['str_val'] = self.str_edit.text()
+        # For GET_GAME_STAT prefer stat_key_combo if visible
+        try:
+            if sel == 'GET_GAME_STAT' and self.stat_key_combo and self.stat_key_combo.currentData():
+                data['str_val'] = self.stat_key_combo.currentData()
+            else:
+                data['str_val'] = self.str_edit.text()
+        except Exception:
+            data['str_val'] = self.str_edit.text()
         data['value1'] = self.val1_spin.value()
         data['value2'] = self.val2_spin.value()
         data['source_zone'] = self.source_zone_combo.currentData()
         data['destination_zone'] = self.dest_zone_combo.currentData()
         data['filter'] = self.filter_widget.get_data()
 
+        # Ensure output key if query/action produces output
+        try:
+            cfg = self._get_ui_config(sel)
+            produces = cfg.get('produces_output', False)
+            if hasattr(self.link_widget, 'ensure_output_key'):
+                self.link_widget.ensure_output_key(sel, produces)
+        except Exception:
+            pass
         self.link_widget.get_data(data)
 
         # Attempt to auto-convert action-like data to Command where possible
