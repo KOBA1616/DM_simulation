@@ -236,6 +236,11 @@ pybind11_add_module(dm_ai_module
 )
 target_link_libraries(dm_ai_module PRIVATE dm_core)
 
+# Output the extension module to the bin/ directory
+set_target_properties(dm_ai_module PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+)
+
 if(USE_LIBTORCH)
     target_link_libraries(dm_core PRIVATE ${TORCH_LIBRARIES})
     target_compile_definitions(dm_core PUBLIC USE_LIBTORCH)
