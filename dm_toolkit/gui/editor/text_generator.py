@@ -216,7 +216,7 @@ class CardTextGenerator:
         return "\n".join(lines)
 
     @classmethod
-    def generate_body_text(cls, data: Dict[str, Any]) -> str:
+    def generate_body_text(cls, data: Dict[str, Any], sample: List[Any] = None) -> str:
         """
         Generates only the body text (Keywords, Effects, Reactions) without headers.
         Useful for structured preview and Twinpact separation.
@@ -273,7 +273,7 @@ class CardTextGenerator:
         is_spell = data.get("type", "CREATURE") == "SPELL"
 
         for effect in effects:
-            text = cls._format_effect(effect, is_spell)
+            text = cls._format_effect(effect, is_spell, sample=sample)
             if text:
                 lines.append(f"■ {text}")
 
@@ -282,9 +282,9 @@ class CardTextGenerator:
         if metamorphs:
             lines.append("【追加能力】")
             for effect in metamorphs:
-                 text = cls._format_effect(effect, is_spell)
-                 if text:
-                     lines.append(f"■ {text}")
+                text = cls._format_effect(effect, is_spell, sample=sample)
+                if text:
+                    lines.append(f"■ {text}")
 
         return "\n".join(lines)
 
@@ -293,6 +293,39 @@ class CardTextGenerator:
         if not civs:
             return "無色"
         return "/".join([tr(c) for c in civs])
+
+    @classmethod
+    def _compute_stat_from_sample(cls, key: str, sample: List[Any]) -> Any:
+        """Compute a concrete example value for a given stat key from a sample list.
+
+        `sample` is typically a list of civilization strings or card dicts.
+        Returns an int or None if not computable.
+        """
+        if not sample:
+            return None
+
+        # Normalize sample to list of civ strings when possible
+        if key == "MANA_CIVILIZATION_COUNT":
+            civs = set()
+            for entry in sample:
+                if isinstance(entry, str):
+                    civs.add(entry)
+                elif isinstance(entry, dict):
+                    for c in entry.get('civilizations', []):
+                        civs.add(c)
+            return len(civs)
+
+        # For simple count-based stats, return the number of entries
+        count_stats = {
+            "MANA_COUNT", "CREATURE_COUNT", "SHIELD_COUNT", "HAND_COUNT",
+            "GRAVEYARD_COUNT", "BATTLE_ZONE_COUNT", "OPPONENT_MANA_COUNT",
+            "OPPONENT_CREATURE_COUNT", "OPPONENT_SHIELD_COUNT", "OPPONENT_HAND_COUNT",
+            "OPPONENT_GRAVEYARD_COUNT", "OPPONENT_BATTLE_ZONE_COUNT", "CARDS_DRAWN_THIS_TURN"
+        }
+        if key in count_stats:
+            return len(sample)
+
+        return None
 
     @classmethod
     def _describe_simple_filter(cls, filter_def: Dict[str, Any]) -> str:
@@ -349,7 +382,7 @@ class CardTextGenerator:
         return f"コスト軽減: {desc}"
 
     @classmethod
-    def _format_effect(cls, effect: Dict[str, Any], is_spell: bool = False) -> str:
+    def _format_effect(cls, effect: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
         trigger = effect.get("trigger", "NONE")
         condition = effect.get("condition", {})
         actions = effect.get("actions", [])
@@ -374,13 +407,13 @@ class CardTextGenerator:
         raw_items = []
         for action in actions:
             raw_items.append(action)
-            action_texts.append(cls._format_action(action, is_spell))
+            action_texts.append(cls._format_action(action, is_spell, sample=sample))
 
         commands = effect.get("commands", [])
         for command in commands:
             # For commands we only have formatted text (no richer merging for now)
             raw_items.append(command)
-            action_texts.append(cls._format_command(command, is_spell))
+            action_texts.append(cls._format_command(command, is_spell, sample=sample))
 
         # Try to merge common sequential patterns for more natural language
         full_action_text = cls._merge_action_texts(raw_items, action_texts)
@@ -421,7 +454,7 @@ class CardTextGenerator:
         return mapping.get(trigger, trigger)
 
     @classmethod
-    def _format_command(cls, command: Dict[str, Any], is_spell: bool = False) -> str:
+    def _format_command(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
         if not command:
             return ""
 
@@ -460,7 +493,7 @@ class CardTextGenerator:
         if original_cmd_type == "SHIELD_TRIGGER":
              return "S・トリガー"
 
-        return cls._format_action(action_proxy, is_spell)
+        return cls._format_action(action_proxy, is_spell, sample=sample)
 
     @classmethod
     def _format_condition(cls, condition: Dict[str, Any]) -> str:
@@ -521,7 +554,7 @@ class CardTextGenerator:
         return ""
 
     @classmethod
-    def _format_action(cls, action: Dict[str, Any], is_spell: bool = False) -> str:
+    def _format_action(cls, action: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
         if not action:
             return ""
 
@@ -779,9 +812,16 @@ class CardTextGenerator:
             key = action.get('str_val') or action.get('result') or ''
             stat_name, unit = cls.STAT_KEY_MAP.get(key, (None, None))
             if stat_name:
-                # Return a concise reference to the stat
+                # If a sample is provided, attempt to compute an example value
+                if sample is not None:
+                    try:
+                        val = cls._compute_stat_from_sample(key, sample)
+                        if val is not None:
+                            return f"{stat_name}（例: {val}{unit}）"
+                    except Exception:
+                        # Fall back to concise name on error
+                        pass
                 return f"{stat_name}"
-            # Fallback
             return f"（{tr(key)}を参照）"
 
         elif atype == "COUNT_CARDS":
