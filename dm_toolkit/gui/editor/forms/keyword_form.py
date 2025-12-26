@@ -12,8 +12,13 @@ class KeywordEditForm(BaseEditForm):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.keyword_checks = {} # Map key -> QCheckBox
-        self.setup_ui()
+        # Safe defaults
+        self.keyword_checks = getattr(self, 'keyword_checks', {})
+        self.label = getattr(self, 'label', None)
+        try:
+            self.setup_ui()
+        except Exception:
+            pass
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)

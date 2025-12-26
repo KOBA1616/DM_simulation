@@ -300,9 +300,18 @@ class CardPreviewWidget(QWidget):
 
         summary = "\n".join(cir_lines)
         if summary:
-            self.raw_text_preview.setText(full_text + "\n\nCIR Summary:\n" + summary)
+            # Prepend synthesized natural summaries for preview
+            synth = self._build_natural_summaries(data)
+            if synth:
+                self.raw_text_preview.setText(synth + "\n\n" + full_text + "\n\nCIR Summary:\n" + summary)
+            else:
+                self.raw_text_preview.setText(full_text + "\n\nCIR Summary:\n" + summary)
         else:
-            self.raw_text_preview.setText(full_text)
+            synth = self._build_natural_summaries(data)
+            if synth:
+                self.raw_text_preview.setText(synth + "\n\n" + full_text)
+            else:
+                self.raw_text_preview.setText(full_text)
 
         # Check Twinpact
         is_twinpact = 'spell_side' in data and data['spell_side'] is not None
@@ -405,6 +414,62 @@ class CardPreviewWidget(QWidget):
 
         spell_text = CardTextGenerator.generate_body_text_lines(spell_data)
         self.tp_spell_body_label.setText(spell_text)
+
+    def _build_natural_summaries(self, data):
+        """Scan effects/actions to create compact natural-language summary sentences
+        for common patterns (e.g., draw N then move N to deck bottom on enter).
+        """
+        lines = []
+        effects = data.get('effects', []) or data.get('triggers', []) or []
+        for eff in effects:
+            trig = eff.get('trigger', 'NONE')
+            trigger_text = CardTextGenerator.trigger_to_japanese(trig)
+
+            acts = eff.get('actions', []) or []
+            # Look for draw then deck-bottom pair
+            if len(acts) >= 2:
+                a0 = acts[0]
+                a1 = acts[1]
+                # detect draw (TRANSITION DECK->HAND or DRAW_CARD)
+                def is_draw(a):
+                    t = a.get('type', '')
+                    if t == 'DRAW_CARD':
+                        return True
+                    if t == 'TRANSITION':
+                        f = (a.get('from_zone') or a.get('fromZone') or '').upper()
+                        to = (a.get('to_zone') or a.get('toZone') or '').upper()
+                        if (f == '' or 'DECK' in f) and 'HAND' in to:
+                            return True
+                    return False
+
+                def is_deck_bottom_move(a):
+                    dest = (a.get('destination_zone') or a.get('to_zone') or a.get('toZone') or '').upper()
+                    if 'DECK_BOTTOM' in dest or 'DECKBOTTOM' in dest:
+                        return True
+                    t = (a.get('type') or '').upper()
+                    if 'DECK_BOTTOM' in t:
+                        return True
+                    return False
+
+                if is_draw(a0) and is_deck_bottom_move(a1):
+                    # Build natural sentence
+                    # If draw amount explicit, include it; otherwise describe condition if present
+                    amt = a0.get('amount') or a0.get('value1') or None
+                    if not amt:
+                        # Try to infer from target_filter.count or condition referencing mana civs
+                        tf = a0.get('target_filter') or {}
+                        amt = tf.get('count') or None
+
+                    if amt:
+                        draw_part = f"{trigger_text}、山札からカードを{amt}枚引く。"
+                    else:
+                        # fallback phrasing for dynamic count (e.g., based on マナ文明の数)
+                        draw_part = f"{trigger_text}、マナゾーンの文明と数と同じ枚数までカードを引く。"
+
+                    tail = "その後、引いた枚数と同じ枚数を山札の下に置く。"
+                    lines.append(draw_part + tail)
+
+        return "\n".join(lines)
 
     # Deprecated / Fallback
     def extract_body_text(self, full_text):

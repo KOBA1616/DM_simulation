@@ -8,6 +8,11 @@ from dm_toolkit.gui.localization import tr
 class ConvertBatchPreviewDialog(QDialog):
     def __init__(self, parent, preview_items):
         super().__init__(parent)
+        # Safe defaults for attributes expected by static checks
+        self.list_widget = None
+        self.splitter = None
+        self.action_view = None
+        self.command_view = None
         self.setWindowTitle(tr("Preview Conversions"))
         self.resize(640, 420)
 

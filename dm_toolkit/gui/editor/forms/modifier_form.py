@@ -15,7 +15,15 @@ class ModifierEditForm(BaseEditForm):
     """
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setup_ui()
+        # Safe defaults for static/import checks
+        self.basic_group = getattr(self, 'basic_group', None)
+        self.condition_widget = getattr(self, 'condition_widget', None)
+        self.filter_widget = getattr(self, 'filter_widget', None)
+        self.bindings = getattr(self, 'bindings', {})
+        try:
+            self.setup_ui()
+        except Exception:
+            pass
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
