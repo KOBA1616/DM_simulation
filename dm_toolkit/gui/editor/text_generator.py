@@ -734,6 +734,14 @@ class CardTextGenerator:
                  val1 = ""
 
         elif atype == "QUERY":
+             # If this is a stat query, prefer human-readable stat labels
+             # Accept several possible keys produced by converters: 'stat', 'str_param', 'str_val'
+             key = action.get('stat') or action.get('str_param') or action.get('str_val') or action.get('query_mode')
+             if key:
+                 stat_name, unit = cls.STAT_KEY_MAP.get(key, (None, None))
+                 if stat_name:
+                     # Return concise stat reference
+                     return f"{stat_name}{unit}を参照する。"
              mode = action.get("query_mode", "")
              return f"質問: {tr(mode)}"
 
@@ -767,7 +775,14 @@ class CardTextGenerator:
             str_val = tr(str_val)
 
         elif atype == "GET_GAME_STAT":
-            return ""
+            # str_val holds the stat key, e.g. MANA_CIVILIZATION_COUNT
+            key = action.get('str_val') or action.get('result') or ''
+            stat_name, unit = cls.STAT_KEY_MAP.get(key, (None, None))
+            if stat_name:
+                # Return a concise reference to the stat
+                return f"{stat_name}"
+            # Fallback
+            return f"（{tr(key)}を参照）"
 
         elif atype == "COUNT_CARDS":
             if not target_str or target_str == "カード":
