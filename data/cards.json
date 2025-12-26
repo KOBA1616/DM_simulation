@@ -50,12 +50,15 @@
         "commands": [
           {
             "amount": 0,
+            "format": "command",
             "input_value_key": "",
             "legacy_warning": false,
             "output_value_key": "var_COUNT_CARDS_0",
-            "target_group": "NONE",
+            "str_param": "MANA_CIVILIZATION_COUNT",
+            "target_filter": {},
+            "target_group": "TARGET_SELECT",
             "type": "QUERY",
-            "uid": "4f0fdee0-c54b-4ae9-af41-e5de56cd0ae9"
+            "uid": "4fc54296-87c8-4dc5-8539-37f414f0a4a4"
           },
           {
             "amount": 0,
@@ -109,6 +112,32 @@
       "WATER"
     ],
     "cost": 7,
+    "effects": [
+      {
+        "actions": [],
+        "commands": [
+          {
+            "amount": 3,
+            "format": "command",
+            "from_zone": "NONE",
+            "input_value_key": "",
+            "optional": false,
+            "output_value_key": "",
+            "str_param": "",
+            "target_filter": {},
+            "target_group": "PLAYER_SELF",
+            "to_zone": "HAND",
+            "type": "DRAW_CARD",
+            "uid": "a9c3b02d-5945-4f44-845e-1013a32ea67c"
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_PLAY",
+        "uid": "c9f42834-24d4-4697-82d0-129306d90496"
+      }
+    ],
     "id": 8,
     "is_key_card": false,
     "keywords": {
@@ -120,26 +149,6 @@
     "races": [],
     "reaction_abilities": [],
     "static_abilities": [],
-    "triggers": [
-      {
-        "actions": [],
-        "commands": [
-          {
-            "amount": 3,
-            "optional": true,
-            "target_filter": {},
-            "target_group": "PLAYER_SELF",
-            "type": "DRAW_CARD",
-            "uid": "1d89bc37-30a5-4522-99c4-78edabde7b20"
-          }
-        ],
-        "condition": {
-          "type": "NONE"
-        },
-        "trigger": "ON_PLAY",
-        "uid": "c9f42834-24d4-4697-82d0-129306d90496"
-      }
-    ],
     "type": "CREATURE",
     "uid": "02a23d1f-c8ca-4ef2-a400-61448f3b8757"
   },
@@ -149,6 +158,32 @@
       "WATER"
     ],
     "cost": 2,
+    "effects": [
+      {
+        "actions": [],
+        "commands": [
+          {
+            "amount": 1,
+            "format": "command",
+            "from_zone": "NONE",
+            "input_value_key": "",
+            "optional": false,
+            "output_value_key": "",
+            "str_param": "",
+            "target_filter": {},
+            "target_group": "PLAYER_SELF",
+            "to_zone": "HAND",
+            "type": "DRAW_CARD",
+            "uid": "cd129ca5-8e43-4f08-864f-09e2a1b91190"
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_PLAY",
+        "uid": "e666143c-f24d-4ef9-91b6-76dc5735540a"
+      }
+    ],
     "id": 9,
     "is_key_card": false,
     "keywords": {},
@@ -159,31 +194,13 @@
     ],
     "reaction_abilities": [],
     "static_abilities": [],
-    "triggers": [
-      {
-        "actions": [],
-        "commands": [
-          {
-            "amount": 1,
-            "optional": false,
-            "target_filter": {},
-            "target_group": "PLAYER_SELF",
-            "type": "DRAW_CARD",
-            "uid": "33d6d14b-681e-48a6-bdd0-6e85fd949027"
-          }
-        ],
-        "condition": {
-          "type": "NONE"
-        },
-        "trigger": "ON_PLAY",
-        "uid": "e666143c-f24d-4ef9-91b6-76dc5735540a"
-      }
-    ],
     "type": "CREATURE",
     "uid": "974dcce5-5df3-4a43-b9f0-26b25d997cf5"
   },
   {
     "_editor_warnings": [
+      "Unknown command type at card.effects[0].commands[0]: FRIEND_BURST",
+      "Unknown command type at card.effects[0].commands[0]: FRIEND_BURST",
       "Unknown command type at card.effects[0].commands[0]: FRIEND_BURST",
       "Unknown command type at card.effects[0].commands[0]: FRIEND_BURST"
     ],
@@ -460,6 +477,8 @@
   },
   {
     "_editor_warnings": [
+      "Unknown command type at card.effects[1].commands[1]: PLAY_FROM_ZONE",
+      "Unknown command type at card.effects[1].commands[1]: PLAY_FROM_ZONE",
       "Unknown command type at card.effects[1].commands[1]: PLAY_FROM_ZONE",
       "Unknown command type at card.effects[1].commands[1]: PLAY_FROM_ZONE"
     ],
