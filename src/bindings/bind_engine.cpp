@@ -241,6 +241,17 @@ void bind_engine(py::module& m) {
                 throw std::runtime_error("Unknown error in GenericCardSystem.resolve_effect");
              }
         })
+        .def_static("resolve_effect", [](GameState& state, const EffectDef& eff, int source_id, const std::map<CardID, CardDefinition>& db) {
+             try {
+                 dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
+             } catch (const py::error_already_set& e) {
+                throw;
+             } catch (const std::exception& e) {
+                throw std::runtime_error("Error in GenericCardSystem.resolve_effect (with db): " + std::string(e.what()));
+             } catch (...) {
+                throw std::runtime_error("Unknown error in GenericCardSystem.resolve_effect (with db)");
+             }
+        })
         .def_static("resolve_effect_with_db", [](GameState& state, const EffectDef& eff, int source_id, const std::map<CardID, CardDefinition>& db) {
              try {
                  dm::engine::EffectSystem::instance().resolve_effect(state, eff, source_id, db);
@@ -250,6 +261,18 @@ void bind_engine(py::module& m) {
                 throw std::runtime_error("Error in GenericCardSystem.resolve_effect_with_db: " + std::string(e.what()));
              } catch (...) {
                 throw std::runtime_error("Unknown error in GenericCardSystem.resolve_effect_with_db");
+             }
+        })
+        .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id, const std::map<CardID, CardDefinition>& db) {
+             try {
+                 std::map<std::string, int> ctx;
+                 dm::engine::EffectSystem::instance().resolve_action(state, action, source_id, ctx, db);
+             } catch (const py::error_already_set& e) {
+                throw;
+             } catch (const std::exception& e) {
+                throw std::runtime_error("Error in GenericCardSystem.resolve_action (with db): " + std::string(e.what()));
+             } catch (...) {
+                throw std::runtime_error("Unknown error in GenericCardSystem.resolve_action (with db)");
              }
         })
         .def_static("resolve_effect_with_targets", [](GameState& state, const EffectDef& eff, const std::vector<int>& targets, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {

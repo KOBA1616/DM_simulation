@@ -178,6 +178,9 @@ void bind_core(py::module& m) {
         .value("EFFECT_RESOLUTION", ResolveType::EFFECT_RESOLUTION)
         .export_values();
 
+    // Re-assert TARGET_SELECT to be TargetScope::TARGET_SELECT (resolving collision with ResolveType)
+    m.attr("TARGET_SELECT") = TargetScope::TARGET_SELECT;
+
     py::enum_<ModifierType>(m, "ModifierType")
         .value("NONE", ModifierType::NONE)
         .value("COST_MODIFIER", ModifierType::COST_MODIFIER)
