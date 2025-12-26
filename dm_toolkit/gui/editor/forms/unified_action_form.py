@@ -1,4 +1,74 @@
 # -*- coding: utf-8 -*-
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
+from PyQt6.QtCore import pyqtSignal
+from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
+
+
+class UnifiedActionForm(QWidget):
+    """Unified form for editing Actions and Commands.
+
+    This is an incremental, backwards-compatible implementation intended to
+    replace/merge existing Action/Command editor forms. Start here and extend
+    with stacked mutation widgets, text preview integration, and validation.
+    """
+
+    dataChanged = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.current_data = None
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+
+        header = QLabel(tr("Unified Action / Command Editor"))
+        layout.addWidget(header)
+
+        # Top controls placeholder
+        ctrl_row = QHBoxLayout()
+        self.preview_btn = QPushButton(tr("Preview"))
+        self.validate_btn = QPushButton(tr("Validate"))
+        ctrl_row.addWidget(self.preview_btn)
+        ctrl_row.addWidget(self.validate_btn)
+        layout.addLayout(ctrl_row)
+
+        # Reusable Variable link widget example
+        self.var_link = VariableLinkWidget()
+        layout.addWidget(self.var_link)
+
+        # Connect signals
+        self.var_link.linkChanged.connect(self._on_link_changed)
+
+    def load_data(self, item, data: dict):
+        """Load given action/command dict into the form for editing."""
+        self.current_data = data or {}
+        # Provide item context to child widgets for key generation
+        self.var_link.set_current_item(item)
+        self.var_link.set_data(self.current_data)
+
+    def get_data(self) -> dict:
+        """Return the edited data dictionary (in-place updated)."""
+        if self.current_data is None:
+            self.current_data = {}
+        self.var_link.get_data(self.current_data)
+        return self.current_data
+
+    def ensure_output_key_if_needed(self, action_type: str, produces_output: bool):
+        self.var_link.ensure_output_key(action_type, produces_output)
+
+    def validate(self) -> (bool, str):
+        """Run basic validation and return (is_valid, message)."""
+        # Minimal checks; to be extended
+        data = self.get_data()
+        if data.get('requires_output') and not data.get('output_value_key'):
+            return False, tr('出力キーが必要です。')
+        return True, ''
+
+    def _on_link_changed(self):
+        self.dataChanged.emit()
+# -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
