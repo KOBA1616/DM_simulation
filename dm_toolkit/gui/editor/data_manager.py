@@ -8,7 +8,8 @@ import os
 import copy
 from dm_toolkit.types import JSON
 from dm_toolkit.gui.editor import normalize
-from dm_toolkit.gui.editor.action_converter import ActionConverter
+from dm_toolkit.gui.editor.action_converter import ActionConverter, convert_action_to_objs
+from dm_toolkit.gui.editor.command_model import CommandDef, WarningCommand
 
 class CardDataManager:
     """
@@ -104,6 +105,42 @@ class CardDataManager:
                 triggers = card.get('effects', [])
 
             for eff_idx, effect in enumerate(triggers):
+                # Load-Lift: convert legacy `actions` into `commands` at load time.
+                # This hides the `Action` concept from the editor by materializing
+                # equivalent commands on the effect dict before the tree is built.
+                try:
+                    legacy_actions = effect.get('actions', [])
+                    if legacy_actions:
+                        converted_cmds = []
+                        for act in list(legacy_actions):
+                            try:
+                                objs = convert_action_to_objs(act)
+                                for o in objs:
+                                    # Convert CommandDef/WarningCommand to dict for storage
+                                    if hasattr(o, 'to_dict'):
+                                        converted_cmds.append(o.to_dict())
+                                    elif isinstance(o, dict):
+                                        converted_cmds.append(o)
+                                    else:
+                                        converted_cmds.append({
+                                            'type': 'NONE',
+                                            'legacy_warning': True,
+                                            'legacy_original_action': act
+                                        })
+                            except Exception:
+                                converted_cmds.append({
+                                    'type': 'NONE',
+                                    'legacy_warning': True,
+                                    'legacy_original_action': act
+                                })
+                        # Merge into any pre-existing commands list and remove actions
+                        effect['commands'] = effect.get('commands', []) + converted_cmds
+                        if 'actions' in effect:
+                            del effect['actions']
+                except Exception:
+                    # Non-fatal: if conversion fails, continue loading but preserve original actions
+                    pass
+
                 eff_item = self._create_effect_item(effect)
                 self._load_effect_children(eff_item, effect)
                 card_item.appendRow(eff_item)
@@ -147,6 +184,13 @@ class CardDataManager:
                 card_item.appendRow(spell_item)
 
             self.model.appendRow(card_item)
+            # After building the card node, normalize and attach editor warnings node if any
+            try:
+                updated = self._update_card_from_child(card_item)
+                if updated:
+                    self._sync_editor_warnings(card_item)
+            except Exception:
+                pass
 
     def _load_effect_children(self, eff_item, effect_data):
         # Load Legacy Actions
@@ -381,7 +425,9 @@ class CardDataManager:
 
     def _reconstruct_effect(self, eff_item):
         eff_data = eff_item.data(Qt.ItemDataRole.UserRole + 2)
-        new_actions = []
+
+        # New policy: when reconstructing, prefer emitting `commands` only.
+        # Convert any legacy ACTION nodes into command dicts (using ActionConverter).
         new_commands = []
 
         for k in range(eff_item.rowCount()):
@@ -390,27 +436,37 @@ class CardDataManager:
 
             if item_type == "ACTION":
                 act_data = self._reconstruct_action(item)
-                # Try to convert legacy Action to Command; prefer command where conversion succeeds
+                # Attempt conversion; always produce a command-like dict even on failure
                 try:
-                    conv = ActionConverter.convert(act_data)
-                    if conv and conv.get('type') != 'NONE' and not conv.get('legacy_warning', False):
-                        new_commands.append(conv)
-                        continue
+                    objs = convert_action_to_objs(act_data)
+                    for o in objs:
+                        if hasattr(o, 'to_dict'):
+                            new_commands.append(o.to_dict())
+                        elif isinstance(o, dict):
+                            new_commands.append(o)
+                        else:
+                            new_commands.append({
+                                'type': 'NONE',
+                                'legacy_warning': True,
+                                'legacy_original_action': act_data
+                            })
                 except Exception:
-                    # conversion failed; fall back to keeping as action
-                    pass
+                    new_commands.append({
+                        'type': 'NONE',
+                        'legacy_warning': True,
+                        'legacy_original_action': act_data
+                    })
 
-                new_actions.append(act_data)
             elif item_type == "COMMAND":
                 cmd_data = self._reconstruct_command(item)
                 new_commands.append(cmd_data)
 
-        eff_data['actions'] = new_actions
-
+        # Always output commands (if any). Do not emit legacy 'actions' in reconstructed JSON.
         if new_commands:
             eff_data['commands'] = new_commands
-        elif 'commands' in eff_data:
-            del eff_data['commands']
+        else:
+            if 'commands' in eff_data:
+                del eff_data['commands']
 
         return eff_data
 
@@ -503,13 +559,25 @@ class CardDataManager:
         # If we're adding a legacy ACTION, attempt to convert it to COMMAND at creation time
         if item_type == "ACTION":
             try:
-                conv = ActionConverter.convert(data)
-                if conv and conv.get('type') != 'NONE' and not conv.get('legacy_warning', False):
-                    # Ensure UID propagation
-                    if 'uid' not in conv:
-                        conv['uid'] = data.get('uid')
-                    cmd_item = self.create_command_item(conv)
+                objs = convert_action_to_objs(data)
+                # If any of the converted objects is a non-warning CommandDef, create COMMAND nodes
+                created = False
+                for o in objs:
+                    if isinstance(o, WarningCommand):
+                        continue
+                    # create command item from object dict
+                    if hasattr(o, 'to_dict'):
+                        cmd_dict = o.to_dict()
+                    elif isinstance(o, dict):
+                        cmd_dict = o
+                    else:
+                        continue
+                    if 'uid' not in cmd_dict:
+                        cmd_dict['uid'] = data.get('uid')
+                    cmd_item = self.create_command_item(cmd_dict)
                     target_item.appendRow(cmd_item)
+                    created = True
+                if created:
                     return cmd_item
             except Exception:
                 # Fall back to legacy action creation below
@@ -743,15 +811,23 @@ class CardDataManager:
         if 'uid' not in action:
             action['uid'] = str(uuid.uuid4())
 
-        # Try to convert legacy Action -> Command and prefer command representation
+        # Try to convert legacy Action -> Command via object adapter and prefer command representation
         try:
-            conv = ActionConverter.convert(action)
-            if conv and conv.get('type') != 'NONE' and not conv.get('legacy_warning', False):
-                # Successful conversion: create and return a COMMAND item instead
-                # Ensure UID on converted data
-                if 'uid' not in conv:
-                    conv['uid'] = action.get('uid')
-                return self.create_command_item(conv)
+            objs = convert_action_to_objs(action)
+            created = False
+            for o in objs:
+                if isinstance(o, WarningCommand):
+                    continue
+                if hasattr(o, 'to_dict'):
+                    cmd_dict = o.to_dict()
+                elif isinstance(o, dict):
+                    cmd_dict = o
+                else:
+                    continue
+                if 'uid' not in cmd_dict:
+                    cmd_dict['uid'] = action.get('uid')
+                # Return the first created command item (we could append multiple if needed)
+                return self.create_command_item(cmd_dict)
         except Exception:
             # Conversion failed; fall back to creating an ACTION item
             pass
@@ -881,3 +957,40 @@ class CardDataManager:
             if child.data(Qt.ItemDataRole.UserRole + 1) == role_string:
                 return child
         return None
+
+    def _sync_editor_warnings(self, card_item):
+        """Ensure an EDITOR_WARNINGS node exists under the card and populate warnings."""
+        card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
+        if not isinstance(card_data, dict):
+            return
+        warnings_list = card_data.get('_editor_warnings', [])
+
+        # Find or create WARNINGS container
+        warn_node = self._find_child_by_role(card_item, 'EDITOR_WARNINGS')
+        if not warnings_list:
+            # remove existing warnings node if present
+            if warn_node is not None:
+                for i in range(card_item.rowCount()):
+                    if card_item.child(i) is warn_node:
+                        card_item.removeRow(i)
+                        break
+            return
+
+        if warn_node is None:
+            warn_node = QStandardItem(tr("Warnings"))
+            warn_node.setData('EDITOR_WARNINGS', Qt.ItemDataRole.UserRole + 1)
+            warn_node.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
+            warn_node.setEditable(False)
+            card_item.insertRow(0, warn_node)
+        else:
+            # Clear previous children
+            for i in reversed(range(warn_node.rowCount())):
+                warn_node.removeRow(i)
+
+        # Populate warning entries
+        for w in warnings_list:
+            w_item = QStandardItem(str(w))
+            w_item.setData('EDITOR_WARNING', Qt.ItemDataRole.UserRole + 1)
+            w_item.setData({'uid': str(uuid.uuid4()), 'text': w}, Qt.ItemDataRole.UserRole + 2)
+            w_item.setEditable(False)
+            warn_node.appendRow(w_item)
