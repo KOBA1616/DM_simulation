@@ -44,33 +44,18 @@
       "WATER"
     ],
     "cost": 2,
-    "id": 7,
-    "keywords": {},
-    "name": "月光電人オボロカゲロウ",
-    "power": 1000,
-    "races": [
-      "グレートメカオー"
-    ],
-    "reaction_abilities": [],
-    "static_abilities": [],
-    "triggers": [
+    "effects": [
       {
         "actions": [],
         "commands": [
           {
             "amount": 0,
-            "condition": null,
-            "from_zone": "NONE",
             "input_value_key": "",
-            "mutation_kind": "GAME_STAT",
-            "optional": false,
+            "legacy_warning": false,
             "output_value_key": "var_COUNT_CARDS_0",
-            "str_param": "MANA_CIVILIZATION_COUNT",
-            "target_filter": {},
-            "target_group": "PLAYER_SELF",
-            "to_zone": "NONE",
+            "target_group": "NONE",
             "type": "QUERY",
-            "uid": "feca751b-0463-4bf3-a004-5ecb754fcc2c"
+            "uid": "4f0fdee0-c54b-4ae9-af41-e5de56cd0ae9"
           },
           {
             "amount": 0,
@@ -89,23 +74,14 @@
           },
           {
             "amount": 0,
-            "condition": null,
-            "from_zone": "HAND",
             "input_value_key": "var_COUNT_CARDS_0",
-            "mutation_kind": "",
-            "optional": false,
+            "legacy_original_type": "NONE",
+            "legacy_warning": true,
             "output_value_key": "var_SEND_TO_DECK_BOTTOM_2",
-            "str_param": "",
-            "target_filter": {
-              "count": 1,
-              "zones": [
-                "HAND"
-              ]
-            },
-            "target_group": "PLAYER_SELF",
-            "to_zone": "DECK_BOTTOM",
-            "type": "TRANSITION",
-            "uid": "4210cbb9-bfef-4c35-96ad-7eb75822c20b"
+            "str_param": "Legacy: NONE",
+            "target_group": "NONE",
+            "type": "NONE",
+            "uid": "abf66450-43d4-48c8-ae94-4afa4e4b5534"
           }
         ],
         "condition": {
@@ -115,6 +91,15 @@
         "uid": "5792d67c-c93b-424b-8b00-23d99f5d1301"
       }
     ],
+    "id": 7,
+    "keywords": {},
+    "name": "月光電人オボロカゲロウ",
+    "power": 1000,
+    "races": [
+      "グレートメカオー"
+    ],
+    "reaction_abilities": [],
+    "static_abilities": [],
     "type": "CREATURE",
     "uid": "cd2d835e-747e-47b6-a4a1-87c24c0173f2"
   },
@@ -198,6 +183,10 @@
     "uid": "974dcce5-5df3-4a43-b9f0-26b25d997cf5"
   },
   {
+    "_editor_warnings": [
+      "Unknown command type at card.effects[0].commands[0]: FRIEND_BURST",
+      "Unknown command type at card.effects[0].commands[0]: FRIEND_BURST"
+    ],
     "ai_importance_score": 0,
     "civilizations": [
       "WATER"
@@ -257,10 +246,14 @@
     "static_abilities": [],
     "triggers": [
       {
-        "actions": [
+        "actions": [],
+        "commands": [
           {
-            "destination_zone": "HAND",
-            "filter": {
+            "input_value_key": "",
+            "legacy_warning": true,
+            "output_value_key": "",
+            "str_val": "マジック",
+            "target_filter": {
               "count": 1,
               "is_tapped": false,
               "types": [
@@ -270,15 +263,10 @@
                 "BATTLE_ZONE"
               ]
             },
-            "input_value_key": "",
-            "optional": true,
-            "output_value_key": "",
-            "scope": "PLAYER_SELF",
-            "str_val": "マジック",
+            "target_group": "PLAYER_SELF",
             "type": "FRIEND_BURST",
-            "uid": "2775c474-46b4-4637-becf-53be39b93f1b",
-            "value1": 0,
-            "value2": 0
+            "uid": "43db9347-e64f-4955-8e5e-f0ef4f5bc0a0",
+            "value1": 0
           }
         ],
         "condition": {
@@ -288,22 +276,20 @@
         "uid": "162e4602-0e73-4f7a-a1ef-f389d04a344c"
       },
       {
-        "actions": [
-          {
-            "destination_zone": "HAND",
-            "filter": {},
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "var_DRAW_CARD_0",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "DRAW_CARD",
-            "uid": "5bbdd032-7634-49b4-a81b-b75a6ecd1a4c",
-            "value1": 1,
-            "value2": 0
-          }
-        ],
+        "actions": [],
         "commands": [
+          {
+            "amount": 1,
+            "from_zone": "DECK",
+            "input_value_key": "",
+            "legacy_warning": false,
+            "output_value_key": "var_DRAW_CARD_0",
+            "target_filter": {},
+            "target_group": "PLAYER_SELF",
+            "to_zone": "HAND",
+            "type": "TRANSITION",
+            "uid": "61dca895-76e6-4fb4-9b24-726cac298f22"
+          },
           {
             "amount": 1,
             "optional": false,
@@ -473,6 +459,10 @@
     "uid": "275f5946-7ef6-4748-a5a4-d30e85a642f6"
   },
   {
+    "_editor_warnings": [
+      "Unknown command type at card.effects[1].commands[1]: PLAY_FROM_ZONE",
+      "Unknown command type at card.effects[1].commands[1]: PLAY_FROM_ZONE"
+    ],
     "ai_importance_score": 0,
     "civilizations": [
       "WATER",
@@ -492,31 +482,26 @@
       "マジック"
     ],
     "reaction_abilities": [],
-    "revolution_change_condition": {
-      "races": [
-        "マジック"
-      ]
-    },
     "static_abilities": [],
     "triggers": [
       {
-        "actions": [
+        "actions": [],
+        "commands": [
           {
-            "destination_zone": "HAND",
-            "filter": {
+            "amount": 0,
+            "input_value_key": "",
+            "legacy_warning": false,
+            "mutation_kind": "REVOLUTION_CHANGE",
+            "output_value_key": "",
+            "str_param": "",
+            "target_filter": {
               "races": [
                 "マジック"
               ]
             },
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "",
-            "scope": "NONE",
-            "str_val": "",
-            "type": "REVOLUTION_CHANGE",
-            "uid": "9ebb41ea-c608-4263-a81b-75abf0d72ffb",
-            "value1": 0,
-            "value2": 0
+            "target_group": "TARGET_SELECT",
+            "type": "MUTATE",
+            "uid": "e73baa17-171e-4b40-8e2d-a610244e0cf5"
           }
         ],
         "condition": {
@@ -526,23 +511,27 @@
         "uid": "24f156a6-0885-4fd9-9180-06bc1dba0cb7"
       },
       {
-        "actions": [
+        "actions": [],
+        "commands": [
           {
-            "destination_zone": "HAND",
-            "filter": {},
+            "amount": 1,
+            "from_zone": "DECK",
             "input_value_key": "",
-            "optional": false,
+            "legacy_warning": false,
             "output_value_key": "var_DRAW_CARD_0",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
-            "type": "DRAW_CARD",
-            "uid": "e544ae75-9254-4a41-b120-f48f6f68ec87",
-            "value1": 1,
-            "value2": 0
+            "target_filter": {},
+            "target_group": "PLAYER_SELF",
+            "to_zone": "HAND",
+            "type": "TRANSITION",
+            "uid": "20c9e90d-323c-4520-bc6e-05798eb19311"
           },
           {
-            "destination_zone": "HAND",
-            "filter": {
+            "input_value_key": "",
+            "legacy_warning": true,
+            "max_cost": 0,
+            "output_value_key": "",
+            "str_param": "PLAY_FROM_ZONE_HINT",
+            "target_filter": {
               "max_cost": 3,
               "types": [
                 "SPELL"
@@ -551,15 +540,10 @@
                 "HAND"
               ]
             },
-            "input_value_key": "",
-            "optional": false,
-            "output_value_key": "",
-            "scope": "PLAYER_SELF",
-            "str_val": "",
+            "target_group": "PLAYER_SELF",
+            "to_zone": "HAND",
             "type": "PLAY_FROM_ZONE",
-            "uid": "8fe6b50c-09bf-49d7-8f42-3a742a53976f",
-            "value1": 0,
-            "value2": 0
+            "uid": "d814e23a-af99-473d-86ac-929c256c7460"
           }
         ],
         "condition": {

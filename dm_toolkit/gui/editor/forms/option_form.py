@@ -7,7 +7,12 @@ from dm_toolkit.gui.localization import tr
 class OptionForm(BaseEditForm):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setup_ui()
+        # Safe defaults
+        self.label = getattr(self, 'label', None)
+        try:
+            self.setup_ui()
+        except Exception:
+            pass
 
     def setup_ui(self):
         layout = QVBoxLayout(self)

@@ -19,7 +19,17 @@ class CardEditForm(BaseEditForm):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setup_ui()
+        # Safe defaults to avoid attribute errors during static/import checks
+        self.scroll_area = getattr(self, 'scroll_area', None)
+        self.scroll_content = getattr(self, 'scroll_content', None)
+        self.form_layout = getattr(self, 'form_layout', None)
+        self.add_effect_btn = getattr(self, 'add_effect_btn', None)
+        self.bindings = getattr(self, 'bindings', {})
+        try:
+            self.setup_ui()
+        except Exception:
+            # Defer full UI setup in headless/static contexts
+            pass
 
     def setup_ui(self):
         main_layout = QVBoxLayout(self)

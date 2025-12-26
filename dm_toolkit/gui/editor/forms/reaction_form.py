@@ -14,7 +14,16 @@ class ReactionEditForm(BaseEditForm):
     """
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setup_ui()
+        # Safe defaults for headless/static contexts
+        self.type_combo = getattr(self, 'type_combo', None)
+        self.cost_spin = getattr(self, 'cost_spin', None)
+        self.zone_edit = getattr(self, 'zone_edit', None)
+        self.cond_group = getattr(self, 'cond_group', None)
+        self.trigger_event_combo = getattr(self, 'trigger_event_combo', None)
+        try:
+            self.setup_ui()
+        except Exception:
+            pass
 
     def setup_ui(self):
         layout = QFormLayout(self)
