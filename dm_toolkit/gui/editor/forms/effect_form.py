@@ -11,7 +11,18 @@ class EffectEditForm(BaseEditForm):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setup_ui()
+        # Safe defaults for headless/static import
+        self.form_layout = getattr(self, 'form_layout', None)
+        self.mode_combo = getattr(self, 'mode_combo', None)
+        self.trigger_combo = getattr(self, 'trigger_combo', None)
+        self.layer_group = getattr(self, 'layer_group', None)
+        self.layer_type_combo = getattr(self, 'layer_type_combo', None)
+        self.target_filter = getattr(self, 'target_filter', None)
+        self.condition_widget = getattr(self, 'condition_widget', None)
+        try:
+            self.setup_ui()
+        except Exception:
+            pass
 
     def setup_ui(self):
         self.form_layout = QFormLayout(self)

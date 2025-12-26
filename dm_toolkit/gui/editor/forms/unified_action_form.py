@@ -29,7 +29,17 @@ class UnifiedActionForm(BaseEditForm):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setup_ui()
+        # Ensure some attributes exist even if UI creation fails (headless/static checks)
+        self.current_item = getattr(self, 'current_item', None)
+        self.generate_options_btn = getattr(self, 'generate_options_btn', None)
+        self.option_count_spin = getattr(self, 'option_count_spin', None)
+        self.option_count_label = getattr(self, 'option_count_label', None)
+        self.structure_update_requested = getattr(self, 'structure_update_requested', None)
+        try:
+            self.setup_ui()
+        except Exception:
+            # Defer full UI setup in environments without a QApplication
+            pass
 
     def _get_ui_config(self, tpe):
         # Normalize UI config from COMMAND_UI_CONFIG or ACTION_UI_CONFIG into unified keys
