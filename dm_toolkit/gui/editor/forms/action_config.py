@@ -208,3 +208,19 @@ for action in _definitions:
     # Populate Category List
     if action.category in ACTION_CATEGORIES:
         ACTION_CATEGORIES[action.category]["actions"].append(action.key)
+
+# Backfill a few legacy/engine action keys that may not have explicit
+# ActionDef entries but are referenced by the engine enums.
+_legacy_keys = [
+    'TRANSITION', 'ADD_MANA', 'RETURN_TO_HAND', 'BREAK_SHIELD',
+    'SEARCH_DECK_BOTTOM', 'PLAY_FROM_ZONE', 'SEND_SHIELD_TO_GRAVE', 'SEND_TO_DECK_BOTTOM'
+]
+for _k in _legacy_keys:
+    if _k not in ACTION_UI_CONFIG:
+        ACTION_UI_CONFIG[_k] = {
+            "label": _k,
+            "visible": [],
+            "produces_output": False,
+            "can_be_optional": False,
+            "json_template": {}
+        }
