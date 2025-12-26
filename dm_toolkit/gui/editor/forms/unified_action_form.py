@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout
+from PyQt6.QtWidgets import (
+    QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox,
+    QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QStackedWidget
+)
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
@@ -10,7 +13,7 @@ from dm_toolkit.consts import UNIFIED_ACTION_TYPES, COMMAND_TYPES, ZONES_EXTENDE
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
 from dm_toolkit.gui.editor.action_converter import ActionConverter
-from dm_toolkit.gui.editor.consts import STRUCT_CMD_REPLACE_WITH_COMMAND
+from dm_toolkit.gui.editor.consts import STRUCT_CMD_REPLACE_WITH_COMMAND, STRUCT_CMD_GENERATE_BRANCHES
 from dm_toolkit.gui.editor.forms.convert_preview_dialog import ConvertPreviewDialog
 from dm_toolkit.gui.editor.forms.unified_widgets import (
     make_scope_combo, make_value_spin, make_measure_mode_combo,
@@ -21,22 +24,23 @@ from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 # Grouping of action types for UI: top-level category -> subtypes
 ACTION_GROUPS = {
     'MOVE': [
-        'MOVE_CARD', 'SEND_TO_MANA', 'SEND_TO_DECK_BOTTOM', 'RETURN_TO_HAND', 'PUT_CREATURE', 'MOVE_TO_UNDER_CARD'
+        'MOVE_CARD', 'SEND_TO_MANA', 'SEND_TO_DECK_BOTTOM', 'RETURN_TO_HAND', 'PUT_CREATURE', 'MOVE_TO_UNDER_CARD',
+        'DISCARD', 'SEARCH_DECK'
     ],
     'QUERY': [
-        'MEASURE_COUNT', 'COUNT_CARDS', 'GET_GAME_STAT'
+        'MEASURE_COUNT', 'COUNT_CARDS', 'GET_GAME_STAT', 'QUERY'
     ],
     'DRAW_PLAY': [
         'DRAW_CARD', 'PLAY_FROM_ZONE', 'CAST_SPELL', 'ADD_MANA'
     ],
     'GRANT': [
-        'GRANT_KEYWORD', 'APPLY_MODIFIER', 'REGISTER_DELAYED_EFFECT'
+        'GRANT_KEYWORD', 'APPLY_MODIFIER', 'REGISTER_DELAYED_EFFECT', 'ADD_KEYWORD'
     ],
     'EFFECT': [
-        'DESTROY', 'TAP', 'UNTAP', 'MODIFY_POWER', 'BREAK_SHIELD', 'DISCARD'
+        'DESTROY', 'TAP', 'UNTAP', 'MODIFY_POWER', 'BREAK_SHIELD', 'POWER_MOD', 'MUTATE'
     ],
     'CONTROL': [
-        'FLOW', 'TRANSITION', 'MUTATE', 'GAME_RESULT'
+        'FLOW', 'TRANSITION', 'GAME_RESULT', 'SHIELD_TRIGGER'
     ],
     'OTHER': []
 }
@@ -45,9 +49,8 @@ ACTION_GROUPS = {
 class UnifiedActionForm(BaseEditForm):
     """Unified editor capable of editing either Command-like or Legacy Action-like defs.
 
-    This is a pragmatic skeleton: it exposes a unified type combo (UNIFIED_ACTION_TYPES)
-    and common fields. On save it marks the data with `format: 'command'|'action'`
-    so higher-level logic can serialize as CommandDef or ActionDef.
+    Integrates standard Action fields and Command-specific fields (Mutation, Flow)
+    using a seamless UI that adapts based on the selected Type.
     """
     structure_update_requested = pyqtSignal(str, dict)
 
@@ -55,13 +58,7 @@ class UnifiedActionForm(BaseEditForm):
         super().__init__(parent)
         # Ensure some attributes exist even if UI creation fails (headless/static checks)
         self.current_item = getattr(self, 'current_item', None)
-        self.generate_options_btn = getattr(self, 'generate_options_btn', None)
-        self.option_count_spin = getattr(self, 'option_count_spin', None)
-        self.option_count_label = getattr(self, 'option_count_label', None)
-        self.stat_key_combo = getattr(self, 'stat_key_combo', None)
-        self.stat_key_label = getattr(self, 'stat_key_label', None)
-        self.stat_preset_btn = getattr(self, 'stat_preset_btn', None)
-        self.structure_update_requested = getattr(self, 'structure_update_requested', None)
+        self._is_populating = False
         try:
             self.setup_ui()
         except Exception:
@@ -101,7 +98,9 @@ class UnifiedActionForm(BaseEditForm):
             'produces_output': cmd_cfg.get('produces_output', False) or act_cfg.get('produces_output', False),
             'tooltip': cmd_cfg.get('tooltip', act_cfg.get('label', '')),
             'allowed_filter_fields': cmd_cfg.get('allowed_filter_fields', None),
-            'can_be_optional': act_cfg.get('can_be_optional', False)
+            'can_be_optional': act_cfg.get('can_be_optional', False),
+            'query_mode_visible': ('query_mode' in cmd_vis),
+            'is_flow': (tpe == 'FLOW')
         }
 
     def setup_ui(self):
@@ -120,7 +119,6 @@ class UnifiedActionForm(BaseEditForm):
         self.convert_btn.setVisible(False)
         layout.addRow(self.convert_btn)
 
-        from PyQt6.QtWidgets import QComboBox
         # Action Group (top-level) + Type (subtype)
         self.action_group_combo = QComboBox()
         groups = list(ACTION_GROUPS.keys())
@@ -131,7 +129,9 @@ class UnifiedActionForm(BaseEditForm):
         layout.addRow(tr("Action Group"), self.action_group_combo)
 
         self.type_combo = QComboBox()
-        self.known_types = UNIFIED_ACTION_TYPES
+        # Merge types from both systems
+        self.known_types = sorted(list(set(UNIFIED_ACTION_TYPES + COMMAND_TYPES)))
+
         # Initially populate with all known types; on group change we will filter
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Action Type"), self.type_combo)
@@ -140,14 +140,15 @@ class UnifiedActionForm(BaseEditForm):
         self.scope_combo = make_scope_combo(self)
         layout.addRow(tr("Scope"), self.scope_combo)
 
-        # Common fields
+        # Common string field (String Val / String Param)
         self.str_edit = QLineEdit()
         self.str_label = QLabel(tr("String"))
         layout.addRow(self.str_label, self.str_edit)
 
-        # Measure Mode (for COUNT/GET_STAT)
+        # Measure Mode (for COUNT/GET_STAT) & Query Mode
         self.measure_mode_combo = make_measure_mode_combo(self)
-        layout.addRow(tr("Mode"), self.measure_mode_combo)
+        self.measure_mode_label = QLabel(tr("Mode"))
+        layout.addRow(self.measure_mode_label, self.measure_mode_combo)
 
         # Stat Key selector for GET_GAME_STAT
         self.stat_key_combo = QComboBox()
@@ -161,8 +162,8 @@ class UnifiedActionForm(BaseEditForm):
             # Fallback: empty combo
             pass
         self.stat_key_label = QLabel(tr("Stat Key"))
+
         # Place combo and a small preset button in one row
-        from PyQt6.QtWidgets import QWidget, QHBoxLayout
         stat_row = QWidget()
         stat_row_layout = QHBoxLayout(stat_row)
         stat_row_layout.setContentsMargins(0, 0, 0, 0)
@@ -177,10 +178,12 @@ class UnifiedActionForm(BaseEditForm):
         self.ref_mode_combo = make_ref_mode_combo(self)
         layout.addRow(tr("Ref Mode"), self.ref_mode_combo)
 
+        # Amount / Value 1
         self.val1_spin = make_value_spin(self)
         self.val1_label = QLabel(tr("Value 1"))
         layout.addRow(self.val1_label, self.val1_spin)
 
+        # Value 2
         self.val2_spin = make_value_spin(self)
         self.val2_label = QLabel(tr("Value 2"))
         layout.addRow(self.val2_label, self.val2_spin)
@@ -188,6 +191,12 @@ class UnifiedActionForm(BaseEditForm):
         # Option generation controls (for SELECT_OPTION)
         self.option_count_spin, self.generate_options_btn, self.option_count_label, self.option_gen_layout = make_option_controls(self)
         layout.addRow(self.option_count_label, self.option_gen_layout)
+
+        # Branch generation button (visible only for FLOW commands)
+        self.gen_branch_btn = QPushButton(tr("Generate Branches"))
+        self.gen_branch_btn.setVisible(False)
+        self.gen_branch_btn.clicked.connect(self.request_generate_branches)
+        layout.addRow(self.gen_branch_btn)
 
         # Play without cost / allow duplicates / arbitrary amount
         self.no_cost_check = QCheckBox(tr("Play without paying cost"))
@@ -219,13 +228,13 @@ class UnifiedActionForm(BaseEditForm):
         self.mutation_kind_edit = QLineEdit()
         self.mutation_kind_combo = QComboBox()
         self.populate_combo(self.mutation_kind_combo, GRANTABLE_KEYWORDS, data_func=lambda x: x, display_func=tr)
-            self.mutation_kind_label = QLabel(tr("Mutation Kind"))
-            # Use a stacked widget to host either edit or combo (allows switching based on type)
-            from PyQt6.QtWidgets import QStackedWidget
-            self.mutation_kind_container = QStackedWidget()
-            self.mutation_kind_container.addWidget(self.mutation_kind_edit)
-            self.mutation_kind_container.addWidget(self.mutation_kind_combo)
-            layout.addRow(self.mutation_kind_label, self.mutation_kind_container)
+        self.mutation_kind_label = QLabel(tr("Mutation Kind"))
+
+        # Use a stacked widget to host either edit or combo (allows switching based on type)
+        self.mutation_kind_container = QStackedWidget()
+        self.mutation_kind_container.addWidget(self.mutation_kind_edit)
+        self.mutation_kind_container.addWidget(self.mutation_kind_combo)
+        layout.addRow(self.mutation_kind_label, self.mutation_kind_container)
 
         # Variable link
         self.link_widget = VariableLinkWidget()
@@ -256,6 +265,8 @@ class UnifiedActionForm(BaseEditForm):
         self.val2_spin.valueChanged.connect(self.update_data)
         self.source_zone_combo.currentIndexChanged.connect(self.update_data)
         self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
+        self.mutation_kind_edit.textChanged.connect(self.update_data)
+        self.mutation_kind_combo.currentIndexChanged.connect(self.update_data)
 
         self.update_ui_state(self.type_combo.currentData())
 
@@ -266,6 +277,10 @@ class UnifiedActionForm(BaseEditForm):
         if not types:
             # Fallback: show all known types
             types = self.known_types
+        else:
+            # Ensure types in the group are actually known/available
+            types = [t for t in types if t in self.known_types]
+
         # repopulate type combo preserving selection if possible
         prev = self.type_combo.currentData()
         self.populate_combo(self.type_combo, types, data_func=lambda x: x, display_func=tr)
@@ -279,28 +294,46 @@ class UnifiedActionForm(BaseEditForm):
             self.update_ui_state(self.type_combo.currentData())
         except Exception:
             pass
+        # Only update data if we are not in population phase
+        if not self._is_populating:
+            self.update_data()
 
     def on_type_changed(self):
         t = self.type_combo.currentData()
         # Show guidance depending on whether it's natively Command or Action
+        # Note: In unified form we generally don't warn unless user specifically asks
+        # but for compatibility we might hide conversion button if already Command
         if t in COMMAND_TYPES:
-            self.warning_label.setText(tr("This type maps to a native Command. It will be saved as a Command."))
-            self.warning_label.setVisible(True)
+            self.warning_label.setText("")
+            self.warning_label.setVisible(False)
             self.convert_btn.setVisible(False)
         else:
             self.warning_label.setText("")
             self.warning_label.setVisible(False)
             # Allow user to attempt conversion from Action -> Command when legacy selected
             self.convert_btn.setVisible(True)
+
         self.update_ui_state(t)
-        self.update_data()
+
+        # Ensure output key if needed
+        if not self._is_populating:
+            cfg = self._get_ui_config(t)
+            if cfg.get('produces_output', False):
+                try:
+                    self.link_widget.ensure_output_key(t, True)
+                except Exception:
+                    pass
+            self.update_data()
 
     def on_measure_mode_changed(self):
         """Handle measure mode selection: update string field and propagate change."""
         try:
             val = self.measure_mode_combo.currentData()
+            # If we are in QUERY mode, we might update the measure_mode
+            t = self.type_combo.currentData()
             if val:
                 # store the selected mode into the string/value field used by converter
+                # For QUERY type, this maps to str_param often
                 self.str_edit.setText(val)
         except Exception:
             pass
@@ -345,12 +378,12 @@ class UnifiedActionForm(BaseEditForm):
                 pass
         self.update_data()
 
-    def request_generate_options(self):
-        """Generate placeholder option chains for `SELECT_OPTION` types.
+    def request_generate_branches(self):
+        """Request generation of Flow branches."""
+        self.structure_update_requested.emit(STRUCT_CMD_GENERATE_BRANCHES, {})
 
-        Creates `options` as a list of option-chains (each chain is a list of action dicts)
-        and writes it into the current item's data, then refreshes the UI.
-        """
+    def request_generate_options(self):
+        """Generate placeholder option chains for `SELECT_OPTION` types."""
         if not getattr(self, 'current_item', None):
             return
         try:
@@ -383,11 +416,15 @@ class UnifiedActionForm(BaseEditForm):
         act_data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
         new_cmd = ActionConverter.convert(act_data)
 
-        payload = {
-            'new_data': new_cmd,
-            'target_item': self.current_item
-        }
-        self.structure_update_requested.emit(STRUCT_CMD_REPLACE_WITH_COMMAND, payload)
+        # Prompt with preview
+        dialog = ConvertPreviewDialog(self, act_data, new_cmd)
+        res = dialog.exec()
+        if res == dialog.Accepted:
+            payload = {
+                'new_data': new_cmd,
+                'target_item': self.current_item
+            }
+            self.structure_update_requested.emit(STRUCT_CMD_REPLACE_WITH_COMMAND, payload)
 
     def update_ui_state(self, t):
         # Use UI config from whichever side defines it
@@ -435,7 +472,10 @@ class UnifiedActionForm(BaseEditForm):
         self.link_widget.set_output_hint(produces) if hasattr(self.link_widget, 'set_output_hint') else None
 
         # Measure / Ref (special cases)
-        self.measure_mode_combo.setVisible(t == 'MEASURE_COUNT' or t == 'COUNT_CARDS' or t == 'GET_GAME_STAT')
+        is_measure = (t == 'MEASURE_COUNT' or t == 'COUNT_CARDS' or t == 'GET_GAME_STAT' or t == 'QUERY')
+        self.measure_mode_combo.setVisible(is_measure)
+        self.measure_mode_label.setVisible(is_measure)
+
         self.stat_key_label.setVisible(t == 'GET_GAME_STAT')
         self.stat_key_combo.setVisible(t == 'GET_GAME_STAT')
         self.stat_preset_btn.setVisible(t == 'GET_GAME_STAT')
@@ -448,14 +488,18 @@ class UnifiedActionForm(BaseEditForm):
         self.allow_duplicates_label.setVisible(t == 'SELECT_OPTION')
         self.allow_duplicates_check.setVisible(t == 'SELECT_OPTION')
 
+        # Branch generation
+        self.gen_branch_btn.setVisible(cfg.get('is_flow', False))
+
         # No-cost / arbitrary
         self.no_cost_label.setVisible(t == 'PLAY_FROM_ZONE')
         self.no_cost_check.setVisible(t == 'PLAY_FROM_ZONE')
-        self.arbitrary_label.setVisible(cfg.get('can_be_optional', False))
-        self.arbitrary_check.setVisible(cfg.get('can_be_optional', False))
+        self.arbitrary_label.setVisible(cfg.get('can_be_optional', False) or cfg.get('optional_visible', False))
+        self.arbitrary_check.setVisible(cfg.get('can_be_optional', False) or cfg.get('optional_visible', False))
 
         # Tooltip
         self.type_combo.setToolTip(tr(cfg.get('tooltip', '')))
+
         # Mutation kind display mode
         is_add_keyword = (t == 'ADD_KEYWORD')
         try:
@@ -465,78 +509,99 @@ class UnifiedActionForm(BaseEditForm):
             pass
 
     def _populate_ui(self, item):
-        self.link_widget.set_current_item(item)
-        data = item.data(Qt.ItemDataRole.UserRole + 2)
-
-        # Normalize both action and command zone keys if present
-        normalize_action_zone_keys(data)
-        normalize_command_zone_keys(data)
-
-        ui_type = data.get('type', 'NONE')
-        # Set type combo and derive group selection
-        self.set_combo_by_data(self.type_combo, ui_type)
-        # Determine group for this type
-        grp = None
-        for g, types in ACTION_GROUPS.items():
-            if ui_type in types:
-                grp = g
-                break
-        if grp is None:
-            grp = 'OTHER'
+        self._is_populating = True
         try:
-            self.set_combo_by_data(self.action_group_combo, grp)
-        except Exception:
-            pass
-        self.set_combo_by_data(self.scope_combo, data.get('scope', data.get('target_group', 'NONE')))
-        self.str_edit.setText(data.get('str_val', data.get('str_param', '')))
-        # Mode mapping
-        if ui_type == 'MEASURE_COUNT':
-            val = 'CARDS_MATCHING_FILTER' if data.get('type') == 'COUNT_CARDS' else data.get('str_val', 'CARDS_MATCHING_FILTER')
-            self.set_combo_by_data(self.measure_mode_combo, val)
-        if ui_type == 'GET_GAME_STAT':
-            # Set stat key combo from stored str_val if present
-            key = data.get('str_val', '')
-            if key:
-                try:
-                    self.set_combo_by_data(self.stat_key_combo, key)
-                except Exception:
-                    # fallback to set text
-                    self.str_edit.setText(key)
-        if ui_type == 'COST_REFERENCE':
-            self.set_combo_by_data(self.ref_mode_combo, data.get('str_val', ''))
-        self.val1_spin.setValue(data.get('value1', data.get('amount', 0)))
-        self.val2_spin.setValue(data.get('value2', 0))
-        self.set_combo_by_data(self.source_zone_combo, data.get('source_zone', data.get('from_zone', 'NONE')))
-        self.set_combo_by_data(self.dest_zone_combo, data.get('destination_zone', data.get('to_zone', 'NONE')))
-        self.filter_widget.set_data(data.get('filter', data.get('target_filter', {})))
-        self.link_widget.set_data(data)
-        # Mutation kind population
-        mutation_kind = data.get('mutation_kind', data.get('str_val', ''))
-        try:
-            # prefer combo when matching known keywords
-            if mutation_kind and mutation_kind in GRANTABLE_KEYWORDS:
-                self.set_combo_by_data(self.mutation_kind_combo, mutation_kind)
-            else:
-                self.mutation_kind_edit.setText(mutation_kind)
-        except Exception:
+            self.link_widget.set_current_item(item)
+            data = item.data(Qt.ItemDataRole.UserRole + 2)
+
+            # Normalize both action and command zone keys if present
+            normalize_action_zone_keys(data)
+            normalize_command_zone_keys(data)
+
+            ui_type = data.get('type', 'NONE')
+            # Set type combo and derive group selection
+            self.set_combo_by_data(self.type_combo, ui_type)
+            # Determine group for this type
+            grp = None
+            for g, types in ACTION_GROUPS.items():
+                if ui_type in types:
+                    grp = g
+                    break
+            if grp is None:
+                grp = 'OTHER'
             try:
-                self.mutation_kind_edit.setText(mutation_kind)
+                self.set_combo_by_data(self.action_group_combo, grp)
             except Exception:
                 pass
-        # If type is ADD_KEYWORD, switch container
-        try:
-            if ui_type == 'ADD_KEYWORD' and self.mutation_kind_container:
-                self.mutation_kind_container.setCurrentIndex(1)
-            elif self.mutation_kind_container:
-                self.mutation_kind_container.setCurrentIndex(0)
-        except Exception:
-            pass
-        self.update_ui_state(ui_type)
 
-        # Option flags
-        if ui_type == 'SELECT_OPTION':
-            self.allow_duplicates_check.setChecked(data.get('value2', 0) == 1)
-            self.option_count_spin.setValue(data.get('value1', 1))
+            self.set_combo_by_data(self.scope_combo, data.get('scope', data.get('target_group', 'NONE')))
+
+            # String params
+            self.str_edit.setText(data.get('str_val', data.get('str_param', '')))
+
+            # Mode mapping
+            if ui_type == 'MEASURE_COUNT' or ui_type == 'QUERY':
+                val = data.get('str_param', data.get('str_val', 'CARDS_MATCHING_FILTER'))
+                if not val: val = 'CARDS_MATCHING_FILTER'
+                if ui_type == 'COUNT_CARDS' and not val: val = 'CARDS_MATCHING_FILTER'
+                self.set_combo_by_data(self.measure_mode_combo, val)
+
+            if ui_type == 'GET_GAME_STAT':
+                # Set stat key combo from stored str_val if present
+                key = data.get('str_val', '')
+                if key:
+                    try:
+                        self.set_combo_by_data(self.stat_key_combo, key)
+                    except Exception:
+                        # fallback to set text
+                        self.str_edit.setText(key)
+
+            if ui_type == 'COST_REFERENCE':
+                self.set_combo_by_data(self.ref_mode_combo, data.get('str_val', ''))
+
+            self.val1_spin.setValue(data.get('value1', data.get('amount', 0)))
+            self.val2_spin.setValue(data.get('value2', 0))
+
+            self.set_combo_by_data(self.source_zone_combo, data.get('source_zone', data.get('from_zone', 'NONE')))
+            self.set_combo_by_data(self.dest_zone_combo, data.get('destination_zone', data.get('to_zone', 'NONE')))
+
+            self.filter_widget.set_data(data.get('filter', data.get('target_filter', {})))
+            self.link_widget.set_data(data)
+
+            # Mutation kind population
+            mutation_kind = data.get('mutation_kind', data.get('str_val', ''))
+            try:
+                # prefer combo when matching known keywords
+                if mutation_kind and mutation_kind in GRANTABLE_KEYWORDS:
+                    self.set_combo_by_data(self.mutation_kind_combo, mutation_kind)
+                else:
+                    self.mutation_kind_edit.setText(mutation_kind)
+            except Exception:
+                try:
+                    self.mutation_kind_edit.setText(mutation_kind)
+                except Exception:
+                    pass
+            # If type is ADD_KEYWORD, switch container
+            try:
+                if ui_type == 'ADD_KEYWORD' and self.mutation_kind_container:
+                    self.mutation_kind_container.setCurrentIndex(1)
+                elif self.mutation_kind_container:
+                    self.mutation_kind_container.setCurrentIndex(0)
+            except Exception:
+                pass
+
+            self.update_ui_state(ui_type)
+
+            # Option flags
+            if ui_type == 'SELECT_OPTION':
+                self.allow_duplicates_check.setChecked(data.get('value2', 0) == 1)
+                self.option_count_spin.setValue(data.get('value1', 1))
+
+            # Optional / Arbitrary
+            self.arbitrary_check.setChecked(data.get('optional', False))
+
+        finally:
+            self._is_populating = False
 
     def _save_data(self, data):
         sel = self.type_combo.currentData()
@@ -548,6 +613,7 @@ class UnifiedActionForm(BaseEditForm):
         except Exception:
             pass
         data['type'] = sel
+
         # If this type is a native Command, write command-shaped keys
         if sel in COMMAND_TYPES:
             cmd = {}
@@ -560,7 +626,16 @@ class UnifiedActionForm(BaseEditForm):
             if sel == 'ADD_KEYWORD':
                 cmd['mutation_kind'] = self.mutation_kind_combo.currentData() or self.mutation_kind_edit.text()
             else:
-                # where applicable, use str_edit
+                cmd['mutation_kind'] = self.mutation_kind_edit.text()
+
+            # str param (some commands use this)
+            if sel == 'QUERY':
+                mode = self.measure_mode_combo.currentData()
+                if mode and mode != 'CARDS_MATCHING_FILTER':
+                    cmd['str_param'] = mode
+                else:
+                    cmd['str_param'] = self.str_edit.text()
+            else:
                 cmd['str_param'] = self.str_edit.text()
 
             # zones
@@ -576,12 +651,6 @@ class UnifiedActionForm(BaseEditForm):
             except Exception:
                 pass
             self.link_widget.get_data(cmd)
-
-            # option-specific
-            if sel == 'SELECT_OPTION':
-                cmd['amount'] = self.option_count_spin.value()
-                if self.allow_duplicates_check.isChecked():
-                    cmd.setdefault('flags', []).append('ALLOW_DUPLICATES')
 
             # Preserve legacy flags only if present
             if data.get('legacy_warning'):
@@ -605,6 +674,7 @@ class UnifiedActionForm(BaseEditForm):
                 data['str_val'] = self.str_edit.text()
         except Exception:
             data['str_val'] = self.str_edit.text()
+
         data['value1'] = self.val1_spin.value()
         data['value2'] = self.val2_spin.value()
         data['source_zone'] = self.source_zone_combo.currentData()
@@ -621,78 +691,6 @@ class UnifiedActionForm(BaseEditForm):
             pass
         self.link_widget.get_data(data)
 
-        # Attempt to auto-convert action-like data to Command where possible
-        try:
-            act_like = dict(data)
-            act_like['type'] = sel
-            conv = ActionConverter.convert(act_like)
-            # If conversion looks fully OK, adopt silently
-            if conv and conv.get('type') != 'NONE' and not conv.get('legacy_warning', False):
-                data.clear()
-                data.update(conv)
-                data['format'] = 'command'
-                return
-
-            # Otherwise show preview dialog so user can decide
-            dialog = ConvertPreviewDialog(self, act_like, conv or {})
-            res = dialog.exec()
-            if res == dialog.Accepted:
-                # User chose to use converted command (even if partial)
-                data.clear()
-                data.update(conv or {})
-                data['format'] = 'command'
-                # ensure legacy flags if present
-                if conv and conv.get('legacy_warning'):
-                    data['legacy_warning'] = True
-                    data['legacy_original_type'] = sel
-                return
-            elif res == dialog.Rejected:
-                # Keep as action; mark legacy if conv indicated problems
-                if conv and conv.get('legacy_warning'):
-                    data['legacy_warning'] = True
-                    data['legacy_original_type'] = sel
-                return
-            else:
-                # Cancel: raise to prevent save (leave data unchanged)
-                raise RuntimeError('User cancelled conversion')
-        except Exception:
-            # conversion failed or user cancelled; mark legacy and keep action
-            data['legacy_warning'] = True
-            data['legacy_original_type'] = sel
-
-        # Save option/duplicates flags
-        if sel == 'SELECT_OPTION':
-            data['value1'] = self.option_count_spin.value()
-            data['value2'] = 1 if self.allow_duplicates_check.isChecked() else 0
-
-        # No-cost handling
-        if sel == 'PLAY_FROM_ZONE' and self.no_cost_check.isChecked():
-            data['value1'] = 999
-
-        # If the selected type is legacy but can be converted, prefer storing as Command
-        if sel and sel not in COMMAND_TYPES:
-            # Build a minimal action-like dict from UI to feed converter
-            act_like = dict(data)  # start from current collected data
-            # Ensure keys ActionConverter expects
-            act_like['type'] = sel
-            # Try conversion
-            try:
-                conv = ActionConverter.convert(act_like)
-                # If conversion produced a usable command (not NONE or still legacy_warning), adopt it
-                if conv.get('type') != 'NONE' and not conv.get('legacy_warning', False):
-                    # Replace data contents with converted command
-                    data.clear()
-                    data.update(conv)
-                    data['format'] = 'command'
-                else:
-                    # Keep as action, but preserve legacy flags
-                    data['legacy_warning'] = True
-                    data['legacy_original_type'] = sel
-            except Exception:
-                # If conversion failed, leave as action and mark legacy
-                data['legacy_warning'] = True
-                data['legacy_original_type'] = sel
-
         # Legacy marker handling
         if sel and sel not in COMMAND_TYPES:
             data['legacy_warning'] = True
@@ -700,6 +698,15 @@ class UnifiedActionForm(BaseEditForm):
         else:
             data.pop('legacy_warning', None)
             data.pop('legacy_original_type', None)
+
+        # Option flags
+        if sel == 'SELECT_OPTION':
+            data['value1'] = self.option_count_spin.value()
+            data['value2'] = 1 if self.allow_duplicates_check.isChecked() else 0
+
+        # No-cost handling
+        if sel == 'PLAY_FROM_ZONE' and self.no_cost_check.isChecked():
+            data['value1'] = 999
 
     def _get_display_text(self, data):
         # Display as an Action-like label for the tree

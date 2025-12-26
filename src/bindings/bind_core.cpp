@@ -230,6 +230,27 @@ void bind_core(py::module& m) {
         .value("RESOLVE_BATTLE", EffectPrimitive::RESOLVE_BATTLE)
         .export_values();
 
+    // Bind Core CommandType (used in JSON)
+    py::enum_<dm::core::CommandType>(m, "CommandType")
+        .value("TRANSITION", dm::core::CommandType::TRANSITION)
+        .value("MUTATE", dm::core::CommandType::MUTATE)
+        .value("FLOW", dm::core::CommandType::FLOW)
+        .value("QUERY", dm::core::CommandType::QUERY)
+        .value("DRAW_CARD", dm::core::CommandType::DRAW_CARD)
+        .value("DISCARD", dm::core::CommandType::DISCARD)
+        .value("DESTROY", dm::core::CommandType::DESTROY)
+        .value("MANA_CHARGE", dm::core::CommandType::MANA_CHARGE)
+        .value("TAP", dm::core::CommandType::TAP)
+        .value("UNTAP", dm::core::CommandType::UNTAP)
+        .value("POWER_MOD", dm::core::CommandType::POWER_MOD)
+        .value("ADD_KEYWORD", dm::core::CommandType::ADD_KEYWORD)
+        .value("RETURN_TO_HAND", dm::core::CommandType::RETURN_TO_HAND)
+        .value("BREAK_SHIELD", dm::core::CommandType::BREAK_SHIELD)
+        .value("SEARCH_DECK", dm::core::CommandType::SEARCH_DECK)
+        .value("SHIELD_TRIGGER", dm::core::CommandType::SHIELD_TRIGGER)
+        .value("NONE", dm::core::CommandType::NONE)
+        .export_values();
+
     // Alias for backward compatibility
     m.attr("EffectActionType") = m.attr("EffectPrimitive");
 
@@ -340,11 +361,46 @@ void bind_core(py::module& m) {
         .def_readwrite("scope", &ActionDef::scope)
         .def_readwrite("cast_spell_side", &ActionDef::cast_spell_side);
 
+    py::class_<CommandDef>(m, "CommandDef")
+        .def(py::init<>())
+        .def_readwrite("type", &CommandDef::type)
+        .def_readwrite("target_group", &CommandDef::target_group)
+        .def_readwrite("target_filter", &CommandDef::target_filter)
+        .def_readwrite("amount", &CommandDef::amount)
+        .def_readwrite("str_param", &CommandDef::str_param)
+        .def_readwrite("optional", &CommandDef::optional)
+        .def_readwrite("from_zone", &CommandDef::from_zone)
+        .def_readwrite("to_zone", &CommandDef::to_zone)
+        .def_readwrite("mutation_kind", &CommandDef::mutation_kind)
+        .def_readwrite("condition", &CommandDef::condition)
+        .def_readwrite("if_true", &CommandDef::if_true)
+        .def_readwrite("if_false", &CommandDef::if_false)
+        .def_readwrite("input_value_key", &CommandDef::input_value_key)
+        .def_readwrite("output_value_key", &CommandDef::output_value_key);
+
+    py::class_<ReactionCondition>(m, "ReactionCondition")
+        .def(py::init<>())
+        .def_readwrite("trigger_event", &ReactionCondition::trigger_event)
+        .def_readwrite("civilization_match", &ReactionCondition::civilization_match)
+        .def_readwrite("mana_count_min", &ReactionCondition::mana_count_min)
+        .def_readwrite("same_civilization_shield", &ReactionCondition::same_civilization_shield);
+
+    py::class_<ReactionAbility>(m, "ReactionAbility")
+        .def(py::init<>())
+        .def_readwrite("type", &ReactionAbility::type)
+        .def_readwrite("cost", &ReactionAbility::cost)
+        .def_readwrite("zone", &ReactionAbility::zone)
+        .def_readwrite("condition", &ReactionAbility::condition);
+
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
         .def_readwrite("trigger", &EffectDef::trigger)
         .def_readwrite("condition", &EffectDef::condition)
-        .def_readwrite("actions", &EffectDef::actions);
+        .def_readwrite("actions", &EffectDef::actions)
+        .def_property("commands",
+            [](const EffectDef& e) { return e.commands; },
+            [](EffectDef& e, const std::vector<CommandDef>& v) { e.commands = v; }
+        );
 
     py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
         .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {

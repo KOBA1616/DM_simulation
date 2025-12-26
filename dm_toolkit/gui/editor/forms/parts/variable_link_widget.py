@@ -4,6 +4,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.constants import RESERVED_VARIABLES
 from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
+from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 
 class VariableLinkWidget(QWidget):
     """
@@ -50,10 +51,12 @@ class VariableLinkWidget(QWidget):
         action_data = item.data(Qt.ItemDataRole.UserRole + 2)
         if action_data:
             act_type = action_data.get('type')
-            config = ACTION_UI_CONFIG.get(act_type, {})
+            # Check both configs
+            config = ACTION_UI_CONFIG.get(act_type, {}) or COMMAND_UI_CONFIG.get(act_type, {})
             inputs = config.get('inputs', {})
-            if 'input_value_key' in inputs:
-                self.input_key_label.setText(f"{tr('Input Source')} ({tr(inputs['input_value_key'])})")
+            # Also check if it's a command with input_link visible
+            if 'input_value_key' in inputs or config.get('input_link_visible', False):
+                self.input_key_label.setText(f"{tr('Input Source')} ({tr(inputs.get('input_value_key', 'Value'))})")
             else:
                 self.input_key_label.setText(tr("Input Source"))
 
@@ -114,20 +117,19 @@ class VariableLinkWidget(QWidget):
         Generates output key if missing and required.
         Uses UUID if available, otherwise falls back to row (legacy).
         """
-        if produces_output and not self.output_key_edit.text() and self.current_item:
+        if produces_output and not self.output_key_edit.text():
              # Try to get UUID from item data
-             action_data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
-             uid = action_data.get('uid')
+             if self.current_item:
+                 action_data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
+                 uid = action_data.get('uid')
+             else:
+                 uid = None
 
              if uid:
-                 # Generate a shorter hash/segment for the key for readability, or use full UUID?
-                 # Full UUID is safe.
-                 # To keep it friendly, maybe last 8 chars? But collision risk exists.
-                 # Let's use `var_{uuid}`
                  new_key = f"var_{uid}"
              else:
                  # Fallback to row index if no UUID
-                 row = self.current_item.row()
+                 row = self.current_item.row() if self.current_item else 0
                  new_key = f"var_{action_type}_{row}"
 
              self.output_key_edit.setText(new_key)
@@ -162,7 +164,7 @@ class VariableLinkWidget(QWidget):
 
                 # Enhance label with Output Port Name if available
                 sib_type = sib_data.get('type')
-                sib_config = ACTION_UI_CONFIG.get(sib_type, {})
+                sib_config = ACTION_UI_CONFIG.get(sib_type, {}) or COMMAND_UI_CONFIG.get(sib_type, {})
                 outputs = sib_config.get('outputs', {})
                 port_name = outputs.get('output_value_key', '')
 
@@ -196,3 +198,8 @@ class VariableLinkWidget(QWidget):
         """
         # Ensure we pass a boolean to setVisible — callers may pass None
         self.setVisible(bool(enabled))
+
+    def set_output_hint(self, produces_output: bool):
+        """Show/Hide Output Key field based on whether this action produces output."""
+        self.output_key_label.setVisible(produces_output)
+        self.output_key_edit.setVisible(produces_output)

@@ -118,6 +118,9 @@ class CardTextGenerator:
         "MUTATE": "{target}の状態を変更する。", # Fallback
         "FLOW": "進行制御: {str_param}",
         "QUERY": "クエリ発行: {query_mode}",
+        "DECIDE": "選択決定: {value1}",
+        "DECLARE_REACTION": "反応宣言: {str_param}",
+        "STAT": "統計操作: {str_param}",
         "ATTACH": "{target}を{base_target}の下に重ねる。",
         "GAME_RESULT": "ゲームを終了する（{result}）。",
     }
@@ -762,6 +765,15 @@ class CardTextGenerator:
         elif atype == "GAME_RESULT":
              res = action.get("result", "")
              return f"ゲームを終了する（{tr(res)}）。"
+
+        elif atype == "DECIDE":
+             return "決定を下す。"
+
+        elif atype == "DECLARE_REACTION":
+             return "反応を宣言する。"
+
+        elif atype == "STAT":
+             return "統計を記録する。"
 
         elif atype == "ATTACH":
             # Resolving base target might be tricky without a full "base_target" definition in Action,

@@ -28,7 +28,7 @@ void bind_engine(py::module& m) {
         .def("get_type", &dm::engine::game_command::GameCommand::get_type)
         .def("invert", &dm::engine::game_command::GameCommand::invert);
 
-    py::enum_<dm::engine::game_command::CommandType>(m, "CommandType")
+    py::enum_<dm::engine::game_command::CommandType>(m, "EngineCommandType")
         .value("TRANSITION", dm::engine::game_command::CommandType::TRANSITION)
         .value("MUTATE", dm::engine::game_command::CommandType::MUTATE)
         .value("ATTACH", dm::engine::game_command::CommandType::ATTACH)
