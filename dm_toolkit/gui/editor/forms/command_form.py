@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.unified_action_form import UnifiedActionForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.utils import normalize_command_zone_keys
@@ -11,12 +12,18 @@ from dm_toolkit.consts import COMMAND_TYPES, ZONES_EXTENDED, GRANTABLE_KEYWORDS,
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_BRANCHES
 
 
-class CommandEditForm(BaseEditForm):
+class CommandEditForm(UnifiedActionForm):
     structure_update_requested = pyqtSignal(str, dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
+
+    # Provide safe default attributes that may be referenced before full setup
+    # This helps static import and headless checks where QWidget setup may be partial
+    current_item = None
+    _is_populating = False
+    gen_branch_btn = None
 
     def _get_ui_config(self, cmd_type):
         """
@@ -46,54 +53,96 @@ class CommandEditForm(BaseEditForm):
         }
 
     def setup_ui(self):
-        layout = QFormLayout(self)
+      # Initialize base UnifiedActionForm UI first (creates common widgets)
+      try:
+        super().setup_ui()
+      except Exception:
+        # During static import checks QApplication may not exist; ignore
+        pass
 
-          # Migration / Warning Label
+      # Use existing layout from super() when possible
+      layout = self.layout() if self.layout() else QFormLayout(self)
+
+      # Enhance/override warning label style for Command editor
+      try:
+        self.warning_label.setStyleSheet("color: red; font-weight: bold;")
+        self.warning_label.setVisible(False)
+      except Exception:
         self.warning_label = QLabel(tr("Warning: Imperfect Conversion"))
         self.warning_label.setStyleSheet("color: red; font-weight: bold;")
         self.warning_label.setVisible(False)
         layout.addRow(self.warning_label)
 
-          # Command Type
-        """
-        Legacy `CommandEditForm` implementation preserved for reference but deprecated.
-        The editor now uses `UnifiedActionForm` for both Command and Action editing.
-        This module provides a lightweight shim that delegates to `UnifiedActionForm`.
-        """
+      # Branch generation button (visible only for FLOW commands)
+      self.gen_branch_btn = QPushButton(tr("Generate Branches"))
+      self.gen_branch_btn.setVisible(False)
+      layout.addRow(self.gen_branch_btn)
+      self.gen_branch_btn.clicked.connect(self.request_generate_branches)
 
-        from dm_toolkit.gui.editor.forms.unified_action_form import UnifiedActionForm
-        from dm_toolkit.gui.localization import tr
-        import warnings
+      # Wire aliases so CommandEditForm can reference UnifiedActionForm widgets
+      # (preserve legacy API names expected elsewhere)
+      self.target_group_combo = getattr(self, 'scope_combo', None)
+      self.target_group_label = getattr(self, 'scope_combo', QLabel())
 
+      self.amount_spin = getattr(self, 'val1_spin', None)
+      self.amount_label = getattr(self, 'val1_label', QLabel())
 
-        class CommandEditForm(UnifiedActionForm):
-          def __init__(self, parent=None):
-            warnings.warn("CommandEditForm is deprecated: using UnifiedActionForm instead", DeprecationWarning)
-            super().__init__(parent)
+      # zone combo name aliases
+      self.from_zone_combo = getattr(self, 'source_zone_combo', None)
+      self.to_zone_combo = getattr(self, 'dest_zone_combo', None)
 
-          # Keep API surface compatible by inheriting UnifiedActionForm
-        self.gen_branch_btn.clicked.connect(self.request_generate_branches)
-        layout.addRow(self.gen_branch_btn)
+      # optional / param aliases
+      self.optional_check = getattr(self, 'arbitrary_check', None)
+      self.str_param_edit = getattr(self, 'str_edit', None)
+      self.query_mode_combo = getattr(self, 'measure_mode_combo', None)
+      self.query_mode_label = QLabel()
 
-          # Variable Linking
-        self.link_widget = VariableLinkWidget()
+      # Mutation kind container: present as stack of edit/combo
+      try:
+        self.mutation_kind_container = QStackedWidget()
+        self.mutation_kind_container.addWidget(self.mutation_kind_edit)
+        self.mutation_kind_container.addWidget(self.mutation_kind_combo)
+      except Exception:
+        # fallback if mutation widgets missing
+        self.mutation_kind_container = QStackedWidget()
+
+      # Ensure variable link widget signals are connected
+      try:
         self.link_widget.linkChanged.connect(self.update_data)
-        self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed)
-        layout.addRow(self.link_widget)
+        # Some VariableLinkWidget implementations provide smartLinkStateChanged
+        if hasattr(self.link_widget, 'smartLinkStateChanged'):
+          self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed)
+      except Exception:
+        pass
 
-          # Signals
+      # Connect UI change signals to update handler (guard with hasattr)
+      if hasattr(self, 'type_combo'):
         self.type_combo.currentIndexChanged.connect(self.on_type_changed)
+      if hasattr(self, 'target_group_combo') and self.target_group_combo is not None:
         self.target_group_combo.currentIndexChanged.connect(self.update_data)
+      if hasattr(self, 'mutation_kind_edit'):
         self.mutation_kind_edit.textChanged.connect(self.update_data)
+      if hasattr(self, 'mutation_kind_combo'):
         self.mutation_kind_combo.currentIndexChanged.connect(self.update_data)
+      if hasattr(self, 'str_param_edit') and self.str_param_edit is not None:
         self.str_param_edit.textChanged.connect(self.update_data)
+      if hasattr(self, 'amount_spin') and self.amount_spin is not None:
         self.amount_spin.valueChanged.connect(self.update_data)
+      if hasattr(self, 'optional_check') and self.optional_check is not None:
         self.optional_check.stateChanged.connect(self.update_data)
+      if hasattr(self, 'from_zone_combo') and self.from_zone_combo is not None:
         self.from_zone_combo.currentIndexChanged.connect(self.update_data)
+      if hasattr(self, 'to_zone_combo') and self.to_zone_combo is not None:
         self.to_zone_combo.currentIndexChanged.connect(self.update_data)
+      if hasattr(self, 'query_mode_combo') and self.query_mode_combo is not None:
         self.query_mode_combo.currentIndexChanged.connect(self.on_query_mode_changed)
 
-        self.update_ui_state(self.type_combo.currentData())
+      # Update UI state from current selection if available
+      if hasattr(self, 'type_combo'):
+        try:
+          self.update_ui_state(self.type_combo.currentData())
+        except Exception:
+          pass
 
     def on_type_changed(self):
         cmd_type = self.type_combo.currentData()

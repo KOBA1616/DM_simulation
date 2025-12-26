@@ -370,14 +370,20 @@ class CardTextGenerator:
                 cond_text = ""
 
         action_texts = []
+        # Keep parallel lists of raw and formatted for merging logic
+        raw_items = []
         for action in actions:
+            raw_items.append(action)
             action_texts.append(cls._format_action(action, is_spell))
 
         commands = effect.get("commands", [])
         for command in commands:
+            # For commands we only have formatted text (no richer merging for now)
+            raw_items.append(command)
             action_texts.append(cls._format_command(command, is_spell))
 
-        full_action_text = " ".join(action_texts).strip()
+        # Try to merge common sequential patterns for more natural language
+        full_action_text = cls._merge_action_texts(raw_items, action_texts)
 
         # If it's a Spell's main effect (ON_PLAY), we can often omit the trigger text "Played/Cast"
         if is_spell and trigger == "ON_PLAY":
@@ -1007,3 +1013,58 @@ class CardTextGenerator:
 
         if not target_desc: target_desc = "カード"
         return target_desc, unit
+
+    @classmethod
+    def _merge_action_texts(cls, raw_items: List[Dict[str, Any]], formatted_texts: List[str]) -> str:
+        """Post-process sequence of formatted action/command texts to produce
+        more natural combined sentences for common patterns.
+
+        Currently implements:
+        - Draw (DECK->HAND) followed by move to deck-bottom ->
+          "...カードをN枚引く。その後、引いた枚数と同じ枚数を山札の下に置く。"
+        """
+        if not formatted_texts:
+            return ""
+
+        # helper predicates
+        def is_draw_item(it):
+            if not isinstance(it, dict):
+                return False
+            t = it.get('type', '')
+            if t == 'DRAW_CARD':
+                return True
+            if t == 'TRANSITION':
+                from_z = (it.get('from_zone') or it.get('fromZone') or '').upper()
+                to_z = (it.get('to_zone') or it.get('toZone') or '').upper()
+                if (from_z == '' or 'DECK' in from_z) and 'HAND' in to_z:
+                    return True
+            return False
+
+        def is_deck_bottom_move(it):
+            if not isinstance(it, dict):
+                return False
+            # check common keys that indicate deck-bottom destination
+            dest = (it.get('destination_zone') or it.get('to_zone') or it.get('toZone') or '').upper()
+            if 'DECK_BOTTOM' in dest or 'DECKBOTTOM' in dest:
+                return True
+            # type names sometimes include DECK_BOTTOM
+            t = (it.get('type') or '').upper()
+            if 'DECK_BOTTOM' in t:
+                return True
+            return False
+
+        # Pattern: first item is draw, second is deck-bottom move
+        if len(raw_items) >= 2 and is_draw_item(raw_items[0]) and is_deck_bottom_move(raw_items[1]):
+            first = formatted_texts[0].rstrip('。')
+            # Compose merged sentence: keep first action, then reference drawn count
+            tail = 'その後、引いた枚数と同じ枚数を山札の下に置く。'
+            merged = f"{first}。{tail}"
+            # Append remaining formatted_texts after the first two, if any
+            if len(formatted_texts) > 2:
+                rest = ' '.join(formatted_texts[2:]).strip()
+                if rest:
+                    merged = merged.rstrip('。') + '、' + rest
+            return merged
+
+        # Default: join by space
+        return ' '.join([t for t in formatted_texts if t]).strip()
