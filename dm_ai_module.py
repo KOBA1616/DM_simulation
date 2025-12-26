@@ -19,13 +19,23 @@ import os
 import sys
 from types import ModuleType
 
-# Try to find a compiled extension in the same directory (Windows: .pyd, Unix: .so)
+# Try to find a compiled extension in the same directory or bin/ (Windows: .pyd, Unix: .so)
 _here = os.path.dirname(__file__)
 _candidates = [
     os.path.join(_here, "dm_ai_module.pyd"),
     os.path.join(_here, "dm_ai_module.so"),
-    os.path.join(_here, "dm_ai_module.dll")
+    os.path.join(_here, "dm_ai_module.dll"),
+    os.path.join(_here, "bin", "dm_ai_module.pyd"),
+    os.path.join(_here, "bin", "dm_ai_module.so"),
+    os.path.join(_here, "bin", "dm_ai_module.dll")
 ]
+
+# Add platform-specific suffixes
+import importlib.machinery
+for suffix in importlib.machinery.EXTENSION_SUFFIXES:
+    _candidates.insert(0, os.path.join(_here, "bin", "dm_ai_module" + suffix))
+    _candidates.insert(0, os.path.join(_here, "dm_ai_module" + suffix))
+
 _ext_path = None
 for p in _candidates:
     if os.path.exists(p):
@@ -246,10 +256,17 @@ if _compiled_module is None:
         PLAYER_SELF = 'PLAYER_SELF'
         PLAYER_OPPONENT = 'PLAYER_OPPONENT'
         TARGET_SELECT = 'TARGET_SELECT'
+        SELF = 'SELF'
+        ALL_PLAYERS = 'ALL_PLAYERS'
+        RANDOM = 'RANDOM'
+        ALL_FILTERED = 'ALL_FILTERED'
+
+    # Top-level aliases
+    TARGET_SELECT = TargetScope.TARGET_SELECT
 
     class GenericCardSystem:
         @staticmethod
-        def resolve_action(state: GameState, action_def, source_id: int = -1):
+        def resolve_action(state: GameState, action_def, source_id: int = -1, db=None, ctx=None):
             # Minimal resolver for test purposes: support DRAW_CARD semantics
             try:
                 if getattr(action_def, 'type', None) == EffectActionType.DRAW_CARD:
@@ -267,7 +284,7 @@ if _compiled_module is None:
                 pass
 
         @staticmethod
-        def resolve_effect(state: GameState, eff: EffectDef, source_id: int = -1):
+        def resolve_effect(state: GameState, eff: EffectDef, source_id: int = -1, db=None):
             """Resolve a simple EffectDef for tests.
 
             Supports GET_GAME_STAT with key 'MANA_CIVILIZATION_COUNT'.
@@ -291,6 +308,23 @@ if _compiled_module is None:
                 return None
             except Exception:
                 return None
+
+        @staticmethod
+        def resolve_action_with_context(state: GameState, source_id: int, action_def, db, ctx: Dict[str, int]):
+            GenericCardSystem.resolve_action(state, action_def, source_id, db, ctx)
+            # Simulate ctx update for test_mana_civ_count if needed (not strictly required by test_compat_layer)
+            # But verifying test_mana_civ_count relies on logic in pipeline.
+            return ctx
+
+    class EffectResolver:
+        @staticmethod
+        def resolve_action(state: GameState, action, db: Dict[int, Any]):
+            pass
+
+    class PhaseManager:
+        @staticmethod
+        def next_phase(state: GameState, db: Dict[int, Any]):
+            pass
 
     class TensorConverter:
         INPUT_SIZE = 16
