@@ -56,6 +56,7 @@ def convert_action_to_objs(action: dict) -> list:
         # detect legacy warning markers
         if conv.get('legacy_warning') or conv.get('type') in (None, 'NONE'):
             wc = WarningCommand(
+                uid=conv.get('uid', str(uuid.uuid4())),
                 type=conv.get('type', 'WARNING'),
                 warning=conv.get('str_param', conv.get('warning', 'Legacy conversion produced warning')),
                 original_action=conv.get('legacy_original_action') or action,
@@ -66,10 +67,25 @@ def convert_action_to_objs(action: dict) -> list:
             except Exception:
                 pass
         else:
-            params = {k: v for k, v in conv.items() if k not in ('type', 'uid', 'input_value_key', 'output_value_key', 'if_true', 'if_false', 'options')}
-            input_keys = [conv.get('input_value_key')] if conv.get('input_value_key') else []
-            output_keys = [conv.get('output_value_key')] if conv.get('output_value_key') else []
-            cd = CommandDef(type=conv.get('type', 'UNKNOWN'), params=params, input_keys=input_keys, output_keys=output_keys)
+            # Exclude known fields from params to avoid duplication
+            known_keys = (
+                'type', 'uid', 'id',
+                'input_value_key', 'output_value_key',
+                'if_true', 'if_false', 'options', 'on_error'
+            )
+            params = {k: v for k, v in conv.items() if k not in known_keys}
+
+            cd = CommandDef(
+                uid=conv.get('uid', str(uuid.uuid4())),
+                type=conv.get('type', 'UNKNOWN'),
+                input_value_key=conv.get('input_value_key'),
+                output_value_key=conv.get('output_value_key'),
+                if_true=conv.get('if_true'),
+                if_false=conv.get('if_false'),
+                options=conv.get('options'),
+                on_error=conv.get('on_error'),
+                params=params
+            )
             out.append(cd)
             try:
                 record_conversion(True, action_type=str(conv.get('type')))
