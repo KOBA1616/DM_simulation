@@ -26,6 +26,7 @@ class ActionToCommandMapper:
     def map_action(action_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Converts a legacy Action dictionary to a Command dictionary complying with the Schema.
+        Handles recursion for nested actions (e.g. options).
         """
         # Defensive copy
         try:
@@ -48,16 +49,6 @@ class ActionToCommandMapper:
                     "str_param": "Invalid action shape"
                 }
 
-        # Normalize keys (Action uses source_zone, Command uses from_zone in schema usually, but let's stick to Schema)
-        # Wait, the Schema says "from_zone (Opt), to_zone (Req)" for TRANSITION.
-        # But `normalize_action_zone_keys` converts `from_zone` -> `source_zone`.
-        # We need to handle this carefully. The Schema definition in action_command_mapping.md
-        # explicitly uses `from_zone` and `to_zone` for Commands.
-
-        # Let's manually normalize for the *Input* (Action) side first.
-        # We don't want to use `normalize_action_zone_keys` because it enforces 'source_zone'.
-        # We want to extract whatever is there.
-
         act_type = str(act_data.get('type', 'NONE'))
         # Handle enum objects
         if hasattr(act_type, 'name'):
@@ -76,6 +67,17 @@ class ActionToCommandMapper:
             cmd['output_value_key'] = act_data['output_value_key']
         if 'uid' in act_data:
              cmd['uid'] = act_data['uid']
+
+        # Recursive handling of options
+        if 'options' in act_data and isinstance(act_data['options'], list):
+            cmd['options'] = []
+            for opt in act_data['options']:
+                if isinstance(opt, list):
+                    # List of actions -> List of commands
+                    cmd['options'].append([ActionToCommandMapper.map_action(sub) for sub in opt])
+                else:
+                    # Single action (unlikely structure but safe handling)
+                    cmd['options'].append([ActionToCommandMapper.map_action(opt)])
 
         # Helper to get zone
         def get_zone(d, keys):
@@ -117,11 +119,8 @@ class ActionToCommandMapper:
             elif act_type == "SHIELD_BURN":
                  cmd['type'] = "SHIELD_BURN"
                  cmd['amount'] = act_data.get('value1', 1)
-                 # Or use TRANSITION to GRAVEYARD? Schema says SHIELD_BURN exists as separate type in Section B.
-                 # Let's stick to SHIELD_BURN as per Schema B.
             elif act_type == "DESTROY":
                 cmd['type'] = "DESTROY"
-                # cmd['to_zone'] = "GRAVEYARD" # Schema says DESTROY is alias, explicit fields not strictly required if type implies it, but good for clarity
             elif act_type == 'RETURN_TO_HAND':
                 cmd['type'] = 'RETURN_TO_HAND'
             elif act_type == 'DISCARD':
