@@ -88,6 +88,51 @@ class CardDataManager:
     def get_internal_by_uid(self, uid: str):
         return self._internal_cache.get(uid)
 
+    def _migrate_legacy_actions_in_effects(self, effects: list):
+        """Helper to process a list of effect dicts and migrate 'actions' to 'commands'."""
+        for eff in effects:
+            try:
+                legacy_actions = eff.get('actions', [])
+                if legacy_actions:
+                    converted_cmds = []
+                    for act in list(legacy_actions):
+                        try:
+                            objs = convert_action_to_objs(act)
+                            for o in objs:
+                                # Convert CommandDef/WarningCommand to dict for storage
+                                if hasattr(o, 'to_dict'):
+                                    converted_cmds.append(o.to_dict())
+                                elif isinstance(o, dict):
+                                    converted_cmds.append(o)
+                                else:
+                                    converted_cmds.append({
+                                        'type': 'NONE',
+                                        'legacy_warning': True,
+                                        'legacy_original_action': act
+                                    })
+                        except Exception:
+                            converted_cmds.append({
+                                'type': 'NONE',
+                                'legacy_warning': True,
+                                'legacy_original_action': act
+                            })
+                    # Merge into any pre-existing commands list
+                    eff['commands'] = eff.get('commands', []) + converted_cmds
+
+                # Ensure 'commands' key exists on the effect (empty list if none)
+                if 'commands' not in eff:
+                    eff['commands'] = []
+
+                # Remove legacy 'actions' to enforce Commands-only policy in-editor
+                if 'actions' in eff:
+                    try:
+                        del eff['actions']
+                    except Exception:
+                        pass
+            except Exception:
+                # Non-fatal: if conversion fails, continue loading but preserve original actions
+                pass
+
     def load_data(self, cards_data):
         self.model.clear()
         self.model.setHorizontalHeaderLabels(["Logic Tree"])
@@ -104,50 +149,10 @@ class CardDataManager:
             if not triggers:
                 triggers = card.get('effects', [])
 
-            for eff_idx, effect in enumerate(triggers):
-                # Load-Lift: convert legacy `actions` into `commands` at load time.
-                # This hides the `Action` concept from the editor by materializing
-                # equivalent commands on the effect dict before the tree is built.
-                try:
-                    legacy_actions = effect.get('actions', [])
-                    if legacy_actions:
-                        converted_cmds = []
-                        for act in list(legacy_actions):
-                            try:
-                                objs = convert_action_to_objs(act)
-                                for o in objs:
-                                    # Convert CommandDef/WarningCommand to dict for storage
-                                    if hasattr(o, 'to_dict'):
-                                        converted_cmds.append(o.to_dict())
-                                    elif isinstance(o, dict):
-                                        converted_cmds.append(o)
-                                    else:
-                                        converted_cmds.append({
-                                            'type': 'NONE',
-                                            'legacy_warning': True,
-                                            'legacy_original_action': act
-                                        })
-                            except Exception:
-                                converted_cmds.append({
-                                    'type': 'NONE',
-                                    'legacy_warning': True,
-                                    'legacy_original_action': act
-                                })
-                        # Merge into any pre-existing commands list and remove actions
-                        effect['commands'] = effect.get('commands', []) + converted_cmds
-                    # Ensure 'commands' key exists on the effect (empty list if conversion yielded none)
-                    if 'commands' not in effect:
-                        effect['commands'] = []
-                    # Remove legacy 'actions' to enforce Commands-only policy in-editor
-                    if 'actions' in effect:
-                        try:
-                            del effect['actions']
-                        except Exception:
-                            pass
-                except Exception:
-                    # Non-fatal: if conversion fails, continue loading but preserve original actions
-                    pass
+            # Apply Load-Lift Migration for main effects
+            self._migrate_legacy_actions_in_effects(triggers)
 
+            for eff_idx, effect in enumerate(triggers):
                 eff_item = self._create_effect_item(effect)
                 self._load_effect_children(eff_item, effect)
                 card_item.appendRow(eff_item)
@@ -178,6 +183,9 @@ class CardDataManager:
                 if not spell_triggers:
                     spell_triggers = spell_side_data.get('effects', [])
 
+                # Apply Load-Lift Migration for spell side effects
+                self._migrate_legacy_actions_in_effects(spell_triggers)
+
                 for eff_idx, effect in enumerate(spell_triggers):
                     eff_item = self._create_effect_item(effect)
                     self._load_effect_children(eff_item, effect)
@@ -200,7 +208,7 @@ class CardDataManager:
                 pass
 
     def _load_effect_children(self, eff_item, effect_data):
-        # Load Legacy Actions
+        # Load Legacy Actions (if any remained or were re-added)
         for act_idx, action in enumerate(effect_data.get('actions', [])):
             act_item = self._create_action_item(action)
             eff_item.appendRow(act_item)
