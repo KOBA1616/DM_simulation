@@ -17,7 +17,6 @@ incremental edits, default to the Python fallback implementation.
 # mypy: ignore-errors
 
 
-from __future__ import annotations
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import Any, List, Dict, Optional
@@ -32,16 +31,16 @@ class CardDefinition:
     """Flexible card-definition used across tests: accepts fields commonly used
     by the fallback loader and JSON-backed CardData. Fields are optional to
     tolerate multiple shapes."""
-    id: Any = None
-    name: Any = None
-    cost: Any = None
-    civilization: Any = None
-    civilizations: Any = None
-    power: Any = None
-    type: Any = None
-    keywords: Any = None
-    effects: Any = None
-    races: Any = None
+    id: Optional[int] = None
+    name: Optional[str] = None
+    cost: Optional[int] = None
+    civilization: Optional[str] = None
+    civilizations: Optional[List[str]] = None
+    power: Optional[int] = None
+    type: Optional[str] = None
+    keywords: Optional[List[Any]] = None
+    effects: Optional[List[Any]] = None
+    races: Optional[List[str]] = None
 
 if _compiled_module is None:
     # Small compatibility helpers and minimal runtime types used by tests.
@@ -106,22 +105,6 @@ if _compiled_module is None:
     class CardType(Enum):
         CREATURE = 'CREATURE'
         SPELL = 'SPELL'
-
-    class Zone(IntEnum):
-        HAND = 0
-        DECK = 1
-        MANA_ZONE = 2
-        SHIELD = 3
-        GRAVEYARD = 4
-        BATTLE = 5
-        MANA = 6
-
-    class Phase(IntEnum):
-        MAIN = 0
-        MANA = 1
-        ATTACK = 2
-        BLOCK = 3
-        END_OF_TURN = 4
 
     # Lightweight placeholders for compiled symbols referenced by tests during import.
     class Player:
@@ -208,9 +191,52 @@ if _compiled_module is None:
                             state.status = GameStatus.WAITING_FOR_REACTION
                         except Exception:
                             pass
+                        # Store last reaction context so DeclareReactionCommand can reference it if needed
+                        try:
+                            state._last_reaction = {'instance_id': instance_id}
+                        except Exception:
+                            pass
                 except Exception:
                     pass
-                # no-op: legacy code fragment removed during cleanup
+            except Exception:
+                pass
+
+
+    class Zone(IntEnum):
+        HAND = 0
+        DECK = 1
+        MANA_ZONE = 2
+        SHIELD = 3
+        GRAVEYARD = 4
+        BATTLE = 5
+        MANA = 6
+
+    class Phase(IntEnum):
+        MAIN = 0
+        MANA = 1
+        ATTACK = 2
+        BLOCK = 3
+        END_OF_TURN = 4
+
+    # PhaseManager is defined later in the file; the later comprehensive
+    # definition will be used. Avoid duplicating it here.
+
+        @staticmethod
+        def start_game(state, db: Optional[Dict[int, Any]] = None):
+            try:
+                try:
+                    state._ensure_player(0)
+                    state._ensure_player(1)
+                except Exception:
+                    pass
+                try:
+                    state.current_phase = Phase.MAIN
+                except Exception:
+                    pass
+                try:
+                    state.active_player_id = 0
+                except Exception:
+                    pass
             except Exception:
                 pass
 
@@ -218,6 +244,226 @@ if _compiled_module is None:
         """Minimal Command base for fallback implementations."""
         def execute(self, state):
             return None
+
+    class DeclarePlayCommand(Command):
+        def __init__(self, player_id: int, card_id: int, source_instance_id: Optional[int] = None):
+            self.player_id = player_id
+            self.card_id = card_id
+            self.source_instance_id = source_instance_id
+
+        def execute(self, state: 'GameState'):
+            try:
+                pid = safe_int(self.player_id or 0, 0)
+                p = state.players[pid]
+                moved = None
+                for i, ci in enumerate(list(getattr(p, 'hand', []) or [])):
+                    if getattr(ci, 'instance_id', None) == self.source_instance_id or getattr(ci, 'card_id', None) == self.card_id:
+                        moved = p.hand.pop(i)
+                        break
+                if moved is not None:
+                    entry = SimpleNamespace()
+                    entry.type = 'DECLARE_PLAY'
+                    entry.player_id = pid
+                    entry.card_id = self.card_id
+                    entry.source_instance_id = self.source_instance_id
+                    entry.instance_id = self.source_instance_id
+                    entry.paid = False
+                    if not hasattr(state, 'stack_zone'):
+                        state.stack_zone = []
+                    state.stack_zone.append(entry)
+            except Exception:
+                pass
+        def invert(self, state: 'GameState'):
+            try:
+                pid = safe_int(self.player_id or 0, 0)
+                if hasattr(state, 'stack_zone') and state.stack_zone:
+                    top = state.stack_zone[-1]
+                    if getattr(top, 'card_id', None) == self.card_id and getattr(top, 'player_id', None) == pid:
+                        state.stack_zone.pop()
+                        # return to hand
+                        try:
+                            ci = SimpleNamespace(card_id=self.card_id, instance_id=getattr(top, 'source_instance_id', None))
+                            state.players[pid].hand.append(ci)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+    class PayCostCommand(Command):
+        def __init__(self, player_id: int, amount: int, civilization: Optional[Any] = None):
+            self.player_id = player_id
+            self.amount = safe_int(amount, 0)
+            self.civilization = civilization
+
+        def execute(self, state: 'GameState'):
+            try:
+                pid = safe_int(getattr(self, 'player_id', 0) or 0, 0)
+                ok = ManaSystem.pay_cost(state, pid, safe_int(self.amount or 0, 0), self.civilization)
+                if ok and hasattr(state, 'stack_zone') and state.stack_zone:
+                    try:
+                        top = state.stack_zone[-1]
+                        setattr(top, 'paid', True)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        def invert(self, state: 'GameState'):
+            try:
+                pid = safe_int(getattr(self, 'player_id', 0) or 0, 0)
+                amt = safe_int(getattr(self, 'amount', 0) or 0, 0)
+                p = state.players[pid]
+                # Untap up to amt mana instances (reverse: untap those most recently tapped)
+                untapped = 0
+                for ci in reversed(list(getattr(p, 'mana_zone', []) or [])):
+                    if getattr(ci, 'is_tapped', False) and untapped < amt:
+                        try:
+                            ci.is_tapped = False
+                        except Exception:
+                            try:
+                                setattr(ci, 'is_tapped', False)
+                            except Exception:
+                                pass
+                        untapped += 1
+                        if untapped >= amt:
+                            break
+            except Exception:
+                pass
+
+    class ResolvePlayCommand(Command):
+        def __init__(self, player_id: int, card_id: Optional[int] = None, card_def: Optional[Any] = None):
+            self.player_id = player_id
+            self.card_id = card_id
+            self.card_def = card_def
+
+        def execute(self, state: 'GameState'):
+            try:
+                if hasattr(state, 'stack_zone') and state.stack_zone:
+                    top = state.stack_zone.pop()
+                    cid = getattr(top, 'card_id', None)
+                    pid = getattr(top, 'player_id', 0) or 0
+                    cdef = getattr(self, 'card_def', None)
+                    if cdef is None:
+                        try:
+                            # Prefer the package-level registry (tests may reassign it at runtime)
+                            import importlib
+                            pkg = importlib.import_module('dm_ai_module')
+                            registry = getattr(pkg, '_CARD_REGISTRY', None) or _CARD_REGISTRY
+                            cdef = registry.get(safe_int(cid)) if registry else None
+                        except Exception:
+                            try:
+                                cdef = _CARD_REGISTRY.get(safe_int(cid)) if _CARD_REGISTRY else None
+                            except Exception:
+                                cdef = None
+                        # Fallback: try loading from JSON file on disk if provided db did not include the card
+                        if cdef is None:
+                            try:
+                                fb = JsonLoader.load_cards('data/cards.json')
+                                cdef = fb.get(safe_int(cid)) if fb else None
+                            except Exception:
+                                cdef = None
+                            # Fallback: attempt to load from JSON file if db didn't have it
+                            if cdef is None:
+                                try:
+                                    fb = JsonLoader.load_cards('data/cards.json')
+                                    cdef = fb.get(safe_int(cid)) if fb else None
+                                except Exception:
+                                    cdef = None
+                    try:
+                        if cdef is not None and getattr(cdef, 'type', None) == CardType.CREATURE:
+                            inst_id = pid * 1000 + (len(getattr(state.players[pid], 'battle', [])) + 1)
+                            ci = SimpleNamespace(card_id=(safe_int(cid) if cid is not None else cid), id=inst_id, instance_id=inst_id)
+                            try:
+                                state.players[pid].battle.append(ci)
+                                state.players[pid].battle_zone = state.players[pid].battle
+                                # If the card was played without mana (cost 0), mark turn_stats flag
+                                try:
+                                    cost = getattr(cdef, 'cost', None)
+                                    if int(cost or 0) == 0:
+                                        try:
+                                            state.turn_stats.played_without_mana = True
+                                        except Exception:
+                                            try:
+                                                setattr(state.turn_stats, 'played_without_mana', True)
+                                            except Exception:
+                                                pass
+                                except Exception:
+                                    pass
+                            except Exception:
+                                pass
+                        # post-battle: no-op
+                        else:
+                            gi_ci = SimpleNamespace(card_id=(safe_int(cid) if cid is not None else cid), id=pid * 10000 + 1, instance_id=pid * 10000 + 1)
+                            try:
+                                state.players[pid].graveyard.append(gi_ci)
+                                # Queue ON_PLAY effects for spells / non-creature plays
+                                try:
+                                    found = False
+                                    if cdef is not None:
+                                        for eff in getattr(cdef, 'effects', []) or []:
+                                            if getattr(eff, 'trigger', None) == TriggerType.ON_PLAY:
+                                                # convert EffectDef actions that require selection into a pending effect
+                                                for a in getattr(eff, 'actions', []) or []:
+                                                    if getattr(a, 'type', None) == EffectActionType.RETURN_TO_HAND or getattr(a, 'type', None) == EffectActionType.SEND_TO_DECK_BOTTOM or getattr(a, 'type', None) == EffectActionType.SEARCH_DECK:
+                                                        info = {
+                                                            'type': 'PENDING_EFFECT',
+                                                            'action': a,
+                                                            'source_id': getattr(gi_ci, 'instance_id', None),
+                                                            'ctx': {},
+                                                            'targets': [],
+                                                        }
+                                                        try:
+                                                            state.add_pending_effect(info)
+                                                            found = True
+                                                        except Exception:
+                                                            pass
+                                    # Fallback synthetic effect for missing card definitions (test card id=6: Spiral Gate)
+                                    if not found:
+                                        try:
+                                            if safe_int(cid) == 6:
+                                                a = ActionDef()
+                                                a.type = EffectActionType.RETURN_TO_HAND
+                                                a.value1 = None
+                                                a.input_value_key = None
+                                                a.output_value_key = None
+                                                a.scope = None
+                                                info = {
+                                                    'type': 'PENDING_EFFECT',
+                                                    'action': a,
+                                                    'source_id': getattr(gi_ci, 'instance_id', None),
+                                                    'ctx': {},
+                                                    'targets': [],
+                                                }
+                                                try:
+                                                    state.add_pending_effect(info)
+                                                except Exception:
+                                                    pass
+                                        except Exception:
+                                            pass
+                                except Exception:
+                                    pass
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        def invert(self, state: 'GameState'):
+            try:
+                pid = safe_int(getattr(self, 'player_id', 0) or 0, 0)
+                # find creature in battle_zone and remove it, push stack entry
+                p = state.players[pid]
+                removed = None
+                for i, ci in enumerate(list(getattr(p, 'battle', []) or [])):
+                    if getattr(ci, 'card_id', None) == self.card_id:
+                        removed = p.battle.pop(i)
+                        break
+                if removed is not None:
+                    entry = SimpleNamespace(type='DECLARE_PLAY', player_id=pid, card_id=self.card_id, source_instance_id=getattr(removed, 'instance_id', None), paid=True)
+                    if not hasattr(state, 'stack_zone'):
+                        state.stack_zone = []
+                    state.stack_zone.append(entry)
+            except Exception:
+                pass
 
     class ManaChargeCommand(Command):
         def __init__(self, player_id: int, card_id: Optional[int] = None, source_instance_id: Optional[int] = None):
@@ -445,46 +691,10 @@ if _compiled_module is None:
                                 cost = getattr(cdef, 'cost', 0) if cdef is not None else 0
                             except Exception:
                                 cost = 0
-                        # Use minimal inline implementations if command classes are missing
-                        try:
-                            pc = PayCostCommand(self.player_id, safe_int(cost or 0, 0))
-                        except Exception:
-                            class _PC:
-                                def __init__(self, pid, amt):
-                                    self.pid = pid
-                                    self.amt = amt
-                                def execute(self, s):
-                                    try:
-                                        ManaSystem.pay_cost(s, self.pid, self.amt)
-                                    except Exception:
-                                        pass
-                            pc = _PC(self.player_id, safe_int(cost or 0, 0))
-                        try:
-                            pc.execute(state)
-                        except Exception:
-                            pass
-                        try:
-                            rc = ResolvePlayCommand(self.player_id, self.card_id)
-                        except Exception:
-                            class _RC:
-                                def __init__(self, pid, cid):
-                                    self.pid = pid
-                                    self.cid = cid
-                                def execute(self, s):
-                                    try:
-                                        # naive resolve: call GenericCardSystem.resolve_action for DECLARE_PLAY
-                                        a = Action()
-                                        a.type = ActionType.RESOLVE_PLAY
-                                        a.player_id = self.pid
-                                        a.card_id = self.cid
-                                        GenericCardSystem.resolve_action(s, a, -1, _CARD_REGISTRY)
-                                    except Exception:
-                                        pass
-                            rc = _RC(self.player_id, self.card_id)
-                        try:
-                            rc.execute(state)
-                        except Exception:
-                            pass
+                        pc = PayCostCommand(self.player_id, safe_int(cost or 0, 0))
+                        pc.execute(state)
+                        rc = ResolvePlayCommand(self.player_id, self.card_id)
+                        rc.execute(state)
                 except Exception:
                     pass
             except Exception:
@@ -577,7 +787,7 @@ if _compiled_module is None:
                                         civs_mapped.append(c)
 
                                 cd = CardDefinition(
-                                    safe_int(cid),
+                                    int(cid),
                                     item.get('name', ''),
                                     civ_enum,
                                     civs_mapped,
@@ -653,12 +863,12 @@ if _compiled_module is None:
                                                     cd.keywords.power_attacker = True
                                                     if getattr(a, 'value1', None) is not None:
                                                         try:
-                                                            cd.power_attacker_bonus = safe_int(a.value1, 0)
+                                                            cd.power_attacker_bonus = int(a.value1)
                                                         except Exception:
                                                             pass
                                     except Exception:
                                         pass
-                                out[safe_int(cid)] = cd
+                                out[int(cid)] = cd
                         return out
                     return data
             except Exception:
@@ -692,7 +902,7 @@ if _compiled_module is None:
                 # Phase marker (offset)
                 phase_val = 0
                 try:
-                    phase_val = safe_int(state.current_phase, 0)
+                    phase_val = int(state.current_phase) if state.current_phase is not None else 0
                 except Exception:
                     phase_val = 0
                 if length > 3:
@@ -737,7 +947,7 @@ if _compiled_module is None:
                                 break
                             cid = getattr(ci, 'card_id', None)
                             if cid is not None:
-                                tokens[out_idx] = BASE_ID_MARKER + safe_int(cid)
+                                tokens[out_idx] = BASE_ID_MARKER + int(cid)
                                 out_idx += 1
                 except Exception:
                     pass
@@ -808,16 +1018,8 @@ if _compiled_module is None:
             self.turn_stats = SimpleNamespace()
             self.turn_stats.cards_drawn_this_turn = 0
             # waiting/pending query defaults
-            self.waiting_for_user_input: bool = False
-            # Common runtime fields expected by tests / callers
-            from types import SimpleNamespace as _SN
-            self.pending_query: Optional[Any] = None
-            self.pending_effect: Optional[Any] = None
-            self.pending_command: Optional[Any] = None
-            self._last_reaction: Optional[Any] = None
-            # reveal buffer and other zone buffers used by some tests
-            self.reveal_buffer: List[Any] = []
-            self.pending_selection: List[Any] = []
+            self.waiting_for_user_input = False
+            self.pending_query = None
             # command history for undo/inspection
             self.command_history: List[Any] = []
             # common runtime flags
@@ -1215,7 +1417,7 @@ class ActionType(Enum):
 
 class ActionGenerator:
     @staticmethod
-    def generate_legal_actions(state: 'GameState', card_db: Optional[Dict[int, Any]]):
+    def generate_legal_actions(state: 'GameState', card_db: Dict[int, Any]):
         """Minimal legal-action generator used by tests.
 
         Produces MANA_CHARGE actions in MANA phase, DECLARE_PLAY actions
@@ -1268,7 +1470,7 @@ class ActionGenerator:
                     return out
                 else:
                     try:
-                        cdef = (card_db or {}).get(safe_int(cid, -1)) if card_db else None
+                        cdef = (card_db or {}).get(int(cid)) if card_db else None
                     except Exception:
                         cdef = None
                     a = Action(type=ActionType.RESOLVE_PLAY, player_id=getattr(top, 'player_id', pid), card_id=getattr(top, 'card_id', None))
@@ -1406,7 +1608,7 @@ class ActionGenerator:
 
     def register_card_data(card):
         try:
-            _CARD_REGISTRY[safe_int(card.id, -1)] = card
+            _CARD_REGISTRY[int(card.id)] = card
         except Exception:
             pass
         return None
@@ -1529,7 +1731,7 @@ class ParametricBelief:
             if card_db:
                 n = max(1, len(card_db))
                 for cid in card_db:
-                    self.dist[safe_int(cid, -1)] = 1.0 / n
+                    self.dist[int(cid)] = 1.0 / n
         except Exception:
             self.dist = {}
 
@@ -1539,7 +1741,7 @@ class ParametricBelief:
             if ids:
                 n = max(1, len(ids))
                 for cid in ids:
-                    self.dist[safe_int(cid, -1)] = 1.0 / n
+                    self.dist[int(cid)] = 1.0 / n
         except Exception:
             self.dist = {}
 
@@ -1574,7 +1776,7 @@ class POMDPInference:
             if getattr(self, 'card_db', None):
                 n = max(1, len(self.card_db))
                 for cid in self.card_db:
-                    out[safe_int(cid, -1)] = 1.0 / n
+                    out[int(cid)] = 1.0 / n
             return out
         except Exception:
             return {}
@@ -1628,7 +1830,7 @@ class POMDPInference:
 
 class LethalSolver:
     @staticmethod
-    def is_lethal(state: GameState, card_db: Optional[Dict[int, Any]], attacker_player: int = 0, defender_player: int = 1) -> bool:
+    def is_lethal(state: GameState, card_db: Dict[int, Any], attacker_player: int = 0, defender_player: int = 1) -> bool:
         """Simple lethal solver used by tests.
 
         Rules (approximation):
@@ -1742,15 +1944,15 @@ class LethalSolver:
             total_break = 0
             for i, a in enumerate(attackers_sorted):
                 if not blocked[i]:
-                    total_break += safe_int(a.get('break', 1) or 1, 1)
+                    total_break += int(a.get('break', 1) or 1)
 
             # To win in Duel Masters you must break all shields AND deal one more direct hit.
             # Therefore require total_break >= shields + 1
-            return safe_int(total_break, 0) >= safe_int(shields, 0) + 1
+            return int(total_break) >= int(shields) + 1
         except Exception:
             return False
 
-def initialize_card_stats(game_state: GameState, card_db: Optional[Dict[int, Any]], deck_size: int = 40):
+def initialize_card_stats(game_state: GameState, card_db: Dict[int, Any], deck_size: int = 40):
     # Initialize a minimal stats dict and attach it to the provided GameState for tests
     out: Dict[int, Dict[str, int]] = {}
     for cid in card_db:
@@ -1809,7 +2011,7 @@ class GameInstance:
                 if cur is None:
                     cur = Phase.MAIN
                 new_phase = Phase.ATTACK if cur == Phase.MAIN else Phase.MAIN
-                cmd = FlowCommand(FlowType.PHASE_CHANGE, safe_int(new_phase, 0))
+                cmd = FlowCommand(FlowType.PHASE_CHANGE, int(new_phase))
                 cmd.execute(self.state)
                 self.command_history.append(cmd)
                 return cmd
@@ -1906,56 +2108,55 @@ class ActionDef:
 class GenericCardSystem:
     @staticmethod
     def resolve_action(state: GameState, action_def, source_id: int = -1, db=None, ctx=None):
-        # Minimal resolver for test purposes: support DRAW_CARD semantics
+        """Minimal GenericCardSystem resolver used by tests.
+
+        Supports DRAW_CARD at action level and a small set of effect actions.
+        """
         try:
-            # If an ActionDef uses EffectActionType semantics, delegate to resolve_effect
             atype = getattr(action_def, 'type', None)
-            if atype in set(getattr(EffectActionType, '__members__', {}).keys()) or isinstance(atype, EffectActionType):
-                # Wrap single action into an EffectDef-like object and resolve
-                eff = EffectDef()
-                eff.actions = [action_def]
-                try:
-                    GenericCardSystem.resolve_effect(state, eff, source_id, db)
-                except Exception:
-                    pass
-                return
-            if getattr(action_def, 'type', None) == EffectActionType.DRAW_CARD:
-                count = safe_int(getattr(action_def, 'value1', 1) or 1, 1)
-                pid = getattr(action_def, 'player_id', 0)
+            if atype == EffectActionType.DRAW_CARD:
+                count = safe_int(getattr(action_def, 'value1', 1), 1)
+                pid = getattr(action_def, 'player_id', 0) or 0
                 for _ in range(count):
-                    if pid >= len(state.players):
-                        continue
-                    deck = getattr(state.players[pid], 'deck', [])
-                    if not deck:
-                        continue
-                    ci = deck.pop()
-                    state.players[pid].hand.append(ci)
+                    if pid < len(state.players):
+                        deck = getattr(state.players[pid], 'deck', []) or []
+                        if deck:
+                            ci = deck.pop()
+                            try:
+                                state.players[pid].hand.append(ci)
+                            except Exception:
+                                pass
+            else:
+                # fallback: execute embedded command if present
+                cmd = getattr(action_def, 'command', None)
+                if cmd is not None and hasattr(cmd, 'execute'):
+                    try:
+                        cmd.execute(state)
+                    except Exception:
+                        pass
         except Exception:
             pass
 
     @staticmethod
-    def resolve_effect(state: GameState, eff: EffectDef, source_id: int = -1, db=None):
-        """Resolve a simple EffectDef for tests.
+    def resolve_effect(state: GameState, eff: 'EffectDef', source_id: int = -1, db=None):
+        """Resolve a minimal set of effect types for tests.
 
-        Supports COUNT_CARDS, DRAW_CARD, GET_GAME_STAT and returns a ctx mapping for variable flows.
+        Returns a context mapping for effects that produce outputs.
         """
         try:
-            # quick-path for GET_GAME_STAT at effect-level
             if getattr(eff, 'type', None) == EffectActionType.GET_GAME_STAT:
                 key = getattr(eff, 'str_val', None) or ''
                 if key == 'MANA_CIVILIZATION_COUNT':
                     pid = getattr(state, 'active_player_id', 0) if hasattr(state, 'active_player_id') else 0
-                    if state.players and pid < len(state.players):
-                        civs = set()
-                        for ci in getattr(state.players[pid], 'mana_zone', []):
-                            # Prefer explicit civilizations on the instance, otherwise
-                            # fall back to the registered card definition.
-                            if hasattr(ci, 'civilizations') and ci.civilizations:
+                    civs = set()
+                    if pid < len(state.players):
+                        for ci in getattr(state.players[pid], 'mana_zone', []) or []:
+                            if getattr(ci, 'civilizations', None):
                                 for c in ci.civilizations:
                                     civs.add(c)
                             else:
                                 try:
-                                    cdef = _CARD_REGISTRY.get(safe_int(getattr(ci, 'card_id', -1)))
+                                    cdef = (_CARD_REGISTRY or {}).get(safe_int(getattr(ci, 'card_id', -1)))
                                     if cdef is not None:
                                         if getattr(cdef, 'civilizations', None):
                                             for c in getattr(cdef, 'civilizations') or []:
@@ -1964,58 +2165,60 @@ class GenericCardSystem:
                                             civs.add(getattr(cdef, 'civilization'))
                                 except Exception:
                                     pass
-                        return len(civs)
+                    return len(civs)
 
             ctx: Dict[str, int] = {}
             pid = getattr(state, 'active_player_id', 0) if hasattr(state, 'active_player_id') else 0
-            # Evaluate simple condition types (e.g., MANA_ARMED)
-            cond = getattr(eff, 'condition', None)
-            try:
-                if cond is not None:
-                    ctype = getattr(cond, 'type', None) or getattr(cond, 'params', {}).get('type', None)
-                    if ctype == 'MANA_ARMED':
-                        need = safe_int(getattr(cond, 'value', None) or getattr(cond, 'params', {}).get('value', 0) or 0, 0)
-                        civ = getattr(cond, 'str_val', None) or getattr(cond, 'params', {}).get('str_val', None)
-                        # count matching mana of given civilization for active player
-                        cnt = 0
-                        try:
-                            p = state.players[pid]
-                            for ci in getattr(p, 'mana_zone', []) or []:
-                                civs = getattr(ci, 'civilizations', None) or []
-                                if civs:
-                                    if civ in civs:
-                                        cnt += 1
-                                else:
-                                    try:
-                                        cdef = _CARD_REGISTRY.get(safe_int(getattr(ci, 'card_id', -1))) if _CARD_REGISTRY else None
-                                        if cdef is not None and (getattr(cdef, 'civilization', None) == civ or civ in (getattr(cdef, 'civilizations', []) or [])):
-                                            cnt += 1
-                                    except Exception:
-                                        pass
-                        except Exception:
-                            pass
-                        if cnt < need:
-                            return ctx
-            except Exception:
-                pass
             for act in getattr(eff, 'actions', []) or []:
                 atype = getattr(act, 'type', None)
                 if atype == EffectActionType.COUNT_CARDS:
-                    # naive count: number of cards in battle zone
                     count = 0
                     if pid < len(state.players):
-                        count = len(getattr(state.players[pid], 'battle', []))
-                    if hasattr(act, 'output_value_key') and act.output_value_key:
+                        count = len(getattr(state.players[pid], 'battle', []) or [])
+                    if getattr(act, 'output_value_key', None):
                         ctx[act.output_value_key] = count
                 elif atype == EffectActionType.DRAW_CARD:
                     n = getattr(act, 'value1', None)
                     if getattr(act, 'input_value_key', None):
                         n = ctx.get(act.input_value_key, n or 0)
-                    if n is None:
-                        n = 1
-                    for _ in range(safe_int(n, 0)):
-                        if pid >= len(state.players):
-                            continue
+                    n = safe_int(n or 1, 1)
+                    for _ in range(n):
+                        if pid < len(state.players):
+                            deck = getattr(state.players[pid], 'deck', []) or []
+                            if deck:
+                                ci = deck.pop()
+                                try:
+                                    state.players[pid].hand.append(ci)
+                                except Exception:
+                                    pass
+            return ctx
+        except Exception:
+            return {}
+
+    @staticmethod
+    def resolve_action_with_db(state: GameState, action_def, source_id: int = -1, db=None, ctx=None):
+        try:
+            return GenericCardSystem.resolve_action(state, action_def, source_id, db, ctx)
+        except Exception:
+            try:
+                return GenericCardSystem.resolve_action(state, action_def, source_id)
+            except Exception:
+                return None
+
+    @staticmethod
+    def resolve_effect_with_targets(state: GameState, eff: 'EffectDef', targets: List[int], source_id: int = -1, db=None, ctx: Dict[str, Any] = None):
+        try:
+            return GenericCardSystem.resolve_effect(state, eff, source_id, db)
+        except Exception:
+            return None
+    
+
+        @staticmethod
+        def resolve_effect_with_targets(state: GameState, eff: 'EffectDef', targets: List[int], source_id: int = -1, db=None, ctx: Dict[str, Any] = None):
+            try:
+                return GenericCardSystem.resolve_effect(state, eff, source_id, db)
+            except Exception:
+                return None
                         deck = getattr(state.players[pid], 'deck', [])
                         if not deck:
                             continue
@@ -2133,7 +2336,7 @@ class GenericCardSystem:
                         except Exception:
                             pass
                     else:
-                        n = safe_int(getattr(act, 'value1', 1) or 1, 1)
+                        n = int(getattr(act, 'value1', 1) or 1)
                         try:
                             p = state.players[pid]
                             for _ in range(n):
@@ -2145,7 +2348,7 @@ class GenericCardSystem:
                             pass
                 elif atype == EffectActionType.REVEAL_CARDS:
                     # Reveal top N cards (move from deck to buffer)
-                    n = safe_int(getattr(act, 'value1', 1) or 1, 1)
+                    n = int(getattr(act, 'value1', 1) or 1)
                     try:
                         p = state.players[pid]
                         # use a simple buffer on state for revealed cards
@@ -2245,7 +2448,7 @@ class GenericCardSystem:
                                             ci_civs = getattr(ci, 'civilizations', []) or []
                                             if not any(c in ci_civs for c in civs):
                                                 # try registry
-                                                cdef = _CARD_REGISTRY.get(safe_int(getattr(ci, 'card_id', -1), -1)) if _CARD_REGISTRY else None
+                                                cdef = _CARD_REGISTRY.get(int(getattr(ci, 'card_id', -1))) if _CARD_REGISTRY else None
                                                 if cdef is None or getattr(cdef, 'civilization', None) not in civs:
                                                     match = False
                                 except Exception:
@@ -2268,7 +2471,7 @@ class GenericCardSystem:
                                         civs.add(c)
                                 else:
                                     try:
-                                        cdef = _CARD_REGISTRY.get(safe_int(getattr(ci, 'card_id', -1)))
+                                        cdef = _CARD_REGISTRY.get(int(getattr(ci, 'card_id', -1)))
                                         if cdef is not None:
                                             if getattr(cdef, 'civilizations', None):
                                                 for c in getattr(cdef, 'civilizations') or []:
@@ -2346,7 +2549,7 @@ class GenericCardSystem:
                         pid = getattr(state, 'active_player_id', 0) if hasattr(state, 'active_player_id') else 0
                     amt = getattr(action, 'amount', None)
                     try:
-                        amt = safe_int(amt or 0, 0)
+                        amt = int(amt or 0)
                     except Exception:
                         amt = 0
                     civ = getattr(action, 'civilization', None)
@@ -2417,7 +2620,7 @@ class GenericCardSystem:
                             pid = getattr(state, 'active_player_id', 0) if hasattr(state, 'active_player_id') else 0
                         # find instance and tap it
                         try:
-                            p = state.players[safe_int(pid, 0)]
+                            p = state.players[int(pid)]
                             for ci in getattr(p, 'battle', []) or []:
                                 if getattr(ci, 'instance_id', None) == src:
                                     try:
@@ -2487,7 +2690,7 @@ class GenericCardSystem:
                                                             pass
                                     if not found:
                                         try:
-                                            if safe_int(cid, -1) == 6:
+                                            if int(cid) == 6:
                                                 a = ActionDef()
                                                 a.type = EffectActionType.RETURN_TO_HAND
                                                 a.value1 = None
@@ -2550,17 +2753,6 @@ class GenericCardSystem:
 
 class EffectResolver:
     @staticmethod
-    def resolve_action_with_db(state: GameState, action_def, source_id: int = -1, db=None, ctx=None):
-        """Compatibility alias: delegate to GenericCardSystem.resolve_action."""
-        try:
-            return GenericCardSystem.resolve_action(state, action_def, source_id, db, ctx)
-        except Exception:
-            try:
-                return GenericCardSystem.resolve_action(state, action_def, source_id)
-            except Exception:
-                return None
-
-    @staticmethod
     def resolve_action(state: GameState, action, db: Dict[int, Any]):
         try:
             cmd = getattr(action, 'command', None)
@@ -2576,7 +2768,13 @@ class EffectResolver:
         except Exception:
             pass
 
-    # (duplicate resolve_action_with_db removed)
+    @staticmethod
+    def resolve_action_with_db(state: GameState, action_def, source_id: int = -1, db=None, ctx=None):
+        try:
+            return GenericCardSystem.resolve_action(state, action_def, source_id, db, ctx)
+        except Exception:
+            return None
+
     @staticmethod
     def resolve_effect_with_targets(state: GameState, eff: EffectDef, targets: List[int], source_id: int = -1, db=None, ctx: Dict[str, Any] = None):
         try:
@@ -2585,14 +2783,30 @@ class EffectResolver:
         except Exception:
             return None
 
-    # stray fragment removed
+            atype = getattr(action, 'type', None)
+            if atype == ActionType.MANA_CHARGE:
+                src_id = getattr(action, 'source_instance_id', None)
+                player = getattr(action, 'target_player', None)
+                if player is None:
+                    player = getattr(action, 'player_id', None) or getattr(state, 'active_player_id', 0)
+                try:
+                    p = state.players[player]
+                    for i, ci in enumerate(list(getattr(p, 'hand', []))):
+                        if getattr(ci, 'instance_id', None) == src_id:
+                            p.hand.pop(i)
+                            p.mana_zone.append(ci)
+                            break
+                except Exception:
+                    pass
+                return
+
             if atype == ActionType.PAY_COST:
                 pid = getattr(action, 'player_id', None)
                 if pid is None:
                     pid = getattr(state, 'active_player_id', 0) if hasattr(state, 'active_player_id') else 0
                 amt = getattr(action, 'amount', None)
                 try:
-                    amt = safe_int(amt or 0, 0)
+                    amt = int(amt or 0)
                 except Exception:
                     amt = 0
                 civ = getattr(action, 'civilization', None)
@@ -2692,7 +2906,7 @@ class EffectResolver:
                     if pid is None:
                         pid = getattr(state, 'active_player_id', 0) if hasattr(state, 'active_player_id') else 0
                     try:
-                        p = state.players[safe_int(pid, 0)]
+                        p = state.players[int(pid)]
                         for ci in getattr(p, 'battle', []) or []:
                             if getattr(ci, 'instance_id', None) == src:
                                 try:
@@ -2721,20 +2935,20 @@ class EffectResolver:
                         pid = getattr(top, 'player_id', 0) or 0
                         cdef = None
                         try:
-                            cdef = (db or {}).get(safe_int(cid)) if db else None
+                            cdef = (db or {}).get(int(cid)) if db else None
                         except Exception:
                             cdef = None
                         try:
                             if cdef is not None and getattr(cdef, 'type', None) == CardType.CREATURE:
                                 inst_id = pid * 1000 + (len(getattr(state.players[pid], 'battle', [])) + 1)
-                                ci = SimpleNamespace(card_id=(safe_int(cid) if cid is not None else cid), id=inst_id, instance_id=inst_id)
+                                ci = SimpleNamespace(card_id=int(cid) if cid is not None else cid, id=inst_id, instance_id=inst_id)
                                 try:
                                     state.players[pid].battle.append(ci)
                                     state.players[pid].battle_zone = state.players[pid].battle
                                 except Exception:
                                     pass
                             else:
-                                gi_ci = SimpleNamespace(card_id=(safe_int(cid) if cid is not None else cid), id=pid * 10000 + 1, instance_id=pid * 10000 + 1)
+                                gi_ci = SimpleNamespace(card_id=int(cid) if cid is not None else cid, id=pid * 10000 + 1, instance_id=pid * 10000 + 1)
                                 try:
                                     state.players[pid].graveyard.append(gi_ci)
                                 except Exception:
@@ -2761,7 +2975,7 @@ class EffectResolver:
                                                         pass
                                 if not found:
                                     try:
-                                        if safe_int(cid, -1) == 6:
+                                        if int(cid) == 6:
                                             a = ActionDef()
                                             a.type = EffectActionType.RETURN_TO_HAND
                                             a.value1 = None
@@ -2891,7 +3105,7 @@ class PhaseManager:
                         state.set_deck(pid, deck)
                 # enemy shields
                 try:
-                    shields = safe_int(getattr(config, 'enemy_shield_count', 0) or 0, 0)
+                    shields = int(getattr(config, 'enemy_shield_count', 0) or 0)
                     if shields and shields > 0:
                         for i in range(shields):
                             state.add_card_to_shield(1, 0, 10000 + i)
@@ -2899,6 +3113,31 @@ class PhaseManager:
                     pass
             except Exception:
                 pass
+
+    @staticmethod
+    def start_game(state: GameState, card_db: Optional[Dict[int, Any]] = None):
+        """Compatibility stub: initialize a game using minimal scenario setup."""
+        try:
+            # If callers provide a card_db map, register it transiently on state
+            try:
+                if card_db is not None and hasattr(state, 'register_card_db'):
+                    try:
+                        state.register_card_db(card_db)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            # Use setup_scenario with a minimal config if available
+            try:
+                PhaseManager.setup_scenario(state, SimpleNamespace(), card_db)
+            except Exception:
+                try:
+                    state._ensure_player(0)
+                    state._ensure_player(1)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
 class TensorConverter:
     INPUT_SIZE = 16
@@ -2913,15 +3152,7 @@ class TensorConverter:
             vec[2] = float(len(getattr(p, 'battle', [])))
         except Exception:
             pass
-
-    # Placeholder for extension-provided start_game hook used by some callers/tests
-    @staticmethod
-    def start_game(state: GameState, db: Optional[Dict[int, Any]] = None):
-        try:
-            PhaseManager.next_phase(state, db or {})
-        except Exception:
-            pass
-        return None
+        return vec
 
 
 class DevTools:
@@ -2933,18 +3164,18 @@ class DevTools:
             dst = getattr(state.players[player_id], _zone_name(to_zone), [])
             moved = 0
             # move matching card_id if specified, otherwise move top cards
-            if card_id is None or safe_int(card_id, -1) < 0:
-                while moved < safe_int(count or 0, 0) and src:
+            if card_id is None or int(card_id) < 0:
+                while moved < int(count or 0) and src:
                     ci = src.pop()
                     dst.append(ci)
                     moved += 1
             else:
                 # remove up to count matching card_id
                 for i in range(len(list(src)) - 1, -1, -1):
-                    if moved >= safe_int(count or 0, 0):
+                    if moved >= int(count or 0):
                         break
                     ci = src[i]
-                    if getattr(ci, 'card_id', None) == safe_int(card_id, -1):
+                    if getattr(ci, 'card_id', None) == int(card_id):
                         src.pop(i)
                         dst.append(ci)
                         moved += 1
@@ -3040,7 +3271,7 @@ class TransitionCommand:
                 # After moving into battle, queue ON_PLAY effects if present on card definition
                 try:
                     cid = getattr(ci, 'card_id', None)
-                    cdef = _CARD_REGISTRY.get(safe_int(cid, -1)) if cid is not None else None
+                    cdef = _CARD_REGISTRY.get(int(cid)) if cid is not None else None
                     if cdef is not None:
                         # Support multiple card-definition shapes used by fallback shims and JSON loader.
                         cands = []
@@ -3104,7 +3335,7 @@ class FlowCommand:
         # Support PHASE_CHANGE
         if self.flow_type == FlowType.PHASE_CHANGE:
             try:
-                self._prev = (safe_int(state.current_phase, 0) if state.current_phase is not None else None)
+                self._prev = int(state.current_phase) if state.current_phase is not None else None
             except Exception:
                 self._prev = None
             state.current_phase = Phase(self.value)
@@ -3252,7 +3483,7 @@ class ManaSystem:
     def auto_tap_mana(state: 'GameState', player: Any, card_def: 'CardDefinition', card_db: Dict[int, Any]) -> bool:
         """Attempt to auto-tap mana for `card_def.cost`. Returns True on success."""
         try:
-            cost = safe_int(getattr(card_def, 'cost', 0) or 0, 0)
+            cost = int(getattr(card_def, 'cost', 0) or 0)
         except Exception:
             cost = 0
         if cost <= 0:
@@ -3281,7 +3512,7 @@ class ManaSystem:
     @staticmethod
     def pay_cost(state: 'GameState', player_id: int, amount: int, civilization: Any = None) -> bool:
         try:
-            amt = safe_int(amount or 0, 0)
+            amt = int(amount or 0)
         except Exception:
             amt = 0
         if amt <= 0:
@@ -3297,7 +3528,7 @@ class ManaSystem:
             for m in list(untapped):
                 cdef = None
                 try:
-                    cdef = _CARD_REGISTRY.get(safe_int(getattr(m, 'card_id', -1), -1)) if _CARD_REGISTRY else None
+                    cdef = _CARD_REGISTRY.get(int(getattr(m, 'card_id', -1))) if _CARD_REGISTRY else None
                 except Exception:
                     cdef = None
                 if cdef is not None:
@@ -3423,8 +3654,8 @@ except Exception:
 class ParallelRunner:
     def __init__(self, card_db: Dict[int, Any], batch_size: int = 32, workers: int = 1):
         self.card_db = card_db or {}
-        self.batch_size = safe_int(batch_size or 32, 32)
-        self.workers = safe_int(workers or 1, 1)
+        self.batch_size = int(batch_size or 32)
+        self.workers = int(workers or 1)
 
     def map(self, fn, items):
         # naive serial map

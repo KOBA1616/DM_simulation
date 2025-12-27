@@ -2,6 +2,7 @@ import math
 import torch
 import numpy as np
 import dm_ai_module
+from dm_toolkit import commands_new as commands_new
 from typing import Any, Optional, List, Dict, Tuple
 
 
@@ -132,20 +133,13 @@ class MCTS:
                 return 1.0 if current_player == 1 else -1.0
             return 0.0
 
-        # Generate legal actions
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(
-            node.state, self.card_db
-        )
-
+        # Generate legal actions (prefer Action objects; fallback to ICommand)
+        actions = dm_ai_module.ActionGenerator.generate_legal_actions(node.state, self.card_db)
+        commands = []
         if not actions:
-            # No actions (Pass or Auto-transition?)
-            # If empty, maybe we should just step phase?
-            # But ActionGenerator should return PASS if allowed.
-            # If truly empty, it's a bug or auto-step.
-            # Let's assume we step phase and continue expansion?
-            # Or treat as terminal?
-            # For now, return 0.
-            return 0.0
+            commands = commands_new.generate_legal_commands(node.state, self.card_db) or []
+            if not commands:
+                return 0.0
 
         # Evaluate with Network
         # Use Masked Tensor (mask_opponent_hand=True) during inference
@@ -161,31 +155,56 @@ class MCTS:
         value = float(value.item())
 
         # Create children
-        for action in actions:
-            # Map action to index
-            action_idx = dm_ai_module.ActionEncoder.action_to_index(action)
+        # Iterate over Action objects if present, otherwise over ICommand objects
+        iterable = actions if actions else commands
+        for item in iterable:
+            is_action = hasattr(item, 'type')
+
+            # Map action to index when possible
+            action_idx = -1
+            if is_action:
+                try:
+                    action_idx = dm_ai_module.ActionEncoder.action_to_index(item)
+                except Exception:
+                    action_idx = -1
 
             # Clone state
             next_state = node.state.clone()
-            # Apply action
-            dm_ai_module.EffectResolver.resolve_action(
-                next_state, action, self.card_db
-            )
-            # Check if phase changed?
-            # If action was PASS, phase changes.
-            if action.type == dm_ai_module.ActionType.PASS:
-                dm_ai_module.PhaseManager.next_phase(next_state, self.card_db)
+
+            # Apply action/command
+            try:
+                if is_action:
+                    dm_ai_module.EffectResolver.resolve_action(next_state, item, self.card_db)
+                else:
+                    # ICommand-like
+                    if hasattr(next_state, 'execute_command'):
+                        next_state.execute_command(item)
+                    elif hasattr(item, 'execute'):
+                        item.execute(next_state)
+            except Exception:
+                pass
+
+            # Check pass/phase-change for both kinds
+            try:
+                if is_action and getattr(item, 'type', None) == dm_ai_module.ActionType.PASS:
+                    dm_ai_module.PhaseManager.next_phase(next_state, self.card_db)
+                elif not is_action:
+                    payload = getattr(item, 'payload', {}) or {}
+                    if payload.get('pass') or payload.get('add_mana'):
+                        dm_ai_module.PhaseManager.next_phase(next_state, self.card_db)
+            except Exception:
+                pass
 
             # Fast forward through auto-phases
             self._fast_forward(next_state)
 
-            child = MCTSNode(next_state, parent=node, action=action)
+            child = MCTSNode(next_state, parent=node, action=item)
 
-            # Prior probability from policy
-            if action_idx >= 0 and action_idx < len(policy):
+            # Prior probability from policy (if we have an index)
+            if 0 <= action_idx < len(policy):
                 child.prior = float(policy[action_idx])
             else:
-                child.prior = 0.0  # Should not happen if valid
+                child.prior = 0.0
 
             node.children.append(child)
 

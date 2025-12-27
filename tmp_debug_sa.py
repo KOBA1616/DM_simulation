@@ -17,5 +17,14 @@ s.current_phase = dm_ai_module.Phase.ATTACK
 acts = dm_ai_module.ActionGenerator.generate_legal_actions(s, card_db)
 print('has attack actions:', any(a.type == dm_ai_module.ActionType.ATTACK_PLAYER for a in acts))
 print('actions count', len(acts))
+try:
+    from dm_toolkit.commands_new import generate_legal_commands
+except Exception:
+    generate_legal_commands = None
+if generate_legal_commands:
+    cmds = generate_legal_commands(s, card_db)
+    print('commands count', len(cmds))
+else:
+    cmds = []
 for a in acts:
     print('action', a.type, getattr(a,'source_instance_id', None))
