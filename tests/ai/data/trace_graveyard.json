@@ -1,0 +1,8 @@
+[
+  {
+    "players": [
+      { "hand": [], "graveyard": [], "deck": [] },
+      { "hand": [], "graveyard": [ { "card_id": 5, "instance_id": 201 } ], "deck": [] }
+    ]
+  }
+]

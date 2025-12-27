@@ -302,10 +302,13 @@ if m:
             'BLOCK': "ブロック",
             'USE_SHIELD_TRIGGER': "S・トリガー使用",
             'RESOLVE_EFFECT': "効果解決",
+            'RESOLVE_PLAY': "プレイ解決",
+            'DECLARE_PLAY': "プレイ宣言",
             'SELECT_TARGET': "対象選択",
             'USE_ABILITY': "能力使用",
             'DECLARE_REACTION': "リアクション宣言",
             'MANA_CHARGE': "マナチャージ",
+            'PAY_COST': "コスト支払い",
             'PASS': "パス",
         }
         for _name, _text in _action_map.items():
