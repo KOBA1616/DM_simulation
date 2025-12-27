@@ -17,17 +17,36 @@ print('initial hand:', [(getattr(c,'card_id',None), getattr(c,'instance_id',None
 print('initial mana:', [(getattr(c,'card_id',None), getattr(c,'instance_id',None)) for c in state.players[0].mana_zone])
 # declare
 declare = DeclarePlayCommand(player_id=0, card_id=1, source_instance_id=1)
-declare.execute(state)
+# Prefer using game.execute_command if available to use command pipeline
+try:
+    state.execute_command(declare)
+except Exception:
+    try:
+        declare.execute(state)
+    except Exception:
+        pass
 print('after declare hand:', [(getattr(c,'card_id',None), getattr(c,'instance_id',None)) for c in state.players[0].hand])
 print('stack_zone:', getattr(state,'stack_zone',None))
 # pay
 pay = PayCostCommand(player_id=0, amount=1)
-pay.execute(state)
+try:
+    state.execute_command(pay)
+except Exception:
+    try:
+        pay.execute(state)
+    except Exception:
+        pass
 print('after pay mana_zone:', [(getattr(c,'card_id',None), getattr(c,'instance_id',None), getattr(c,'is_tapped',None)) for c in state.players[0].mana_zone])
 print('stack top paid:', getattr(state,'stack_zone',None) and getattr(state.stack_zone[-1],'paid',None))
 # resolve
 resolve = ResolvePlayCommand(player_id=0, card_id=1, card_def=None)
-resolve.execute(state)
+try:
+    state.execute_command(resolve)
+except Exception:
+    try:
+        resolve.execute(state)
+    except Exception:
+        pass
 print('after resolve battle_zone:', [(getattr(c,'card_id',None), getattr(c,'instance_id',None)) for c in state.players[0].battle_zone])
 print('graveyard:', [(getattr(c,'card_id',None), getattr(c,'instance_id',None)) for c in state.players[0].graveyard])
 print('stack_zone now:', getattr(state,'stack_zone',None))

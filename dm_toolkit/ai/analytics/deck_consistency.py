@@ -88,18 +88,38 @@ class SolitaireRunner:
 
         # Let's perform ONE action here to respect the outer safety counter.
 
-        actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
-        if not actions:
-            # If no actions, we must pass phase manually?
+        actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db) or []
+        try:
+            from dm_toolkit.commands_new import generate_legal_commands
+        except Exception:
+            generate_legal_commands = None
+        cmds = generate_legal_commands(state, self.card_db) if generate_legal_commands else []
+
+        if not actions and not cmds:
             dm_ai_module.PhaseManager.next_phase(state, self.card_db)
             return
 
-        best_action: Any = self._choose_action(actions, state)
+        best_action: Any = self._choose_action(actions, state) if actions else None
+        best_cmd = cmds[0] if cmds else None
 
-        if best_action.type == dm_ai_module.ActionType.PASS:
-            dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+        # Prefer executing command when available
+        if best_cmd is not None:
+            try:
+                state.execute_command(best_cmd)
+            except Exception:
+                try:
+                    best_cmd.execute(state)
+                except Exception:
+                    if best_action is not None:
+                        dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
         else:
-            dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
+            if best_action is None:
+                dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+            else:
+                if best_action.type == dm_ai_module.ActionType.PASS:
+                    dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+                else:
+                    dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
 
     def _choose_action(self, actions: List[Any], state: Any) -> Any:
         # Prioritize:
