@@ -13,27 +13,26 @@ def check_file(filepath):
 
     fail_count = 0
 
-    def check_card(card, index_info=""):
-        if 'actions' in card:
-            print(f"FAILURE: 'actions' field found in {filepath} at {index_info} (ID: {card.get('id', 'Unknown')})")
-            return 1
-        return 0
+    def check_node(node, path="root"):
+        local_fails = 0
+        if isinstance(node, dict):
+            if 'actions' in node:
+                # Ignore empty actions list if allowed? No, strict migration implies removal of key.
+                print(f"FAILURE: 'actions' field found in {filepath} at {path}")
+                local_fails += 1
 
-    if isinstance(data, list):
-        for i, card in enumerate(data):
-            fail_count += check_card(card, f"item {i}")
-    elif isinstance(data, dict):
-        if 'cards' in data:
-             for i, card in enumerate(data['cards']):
-                 fail_count += check_card(card, f"cards[{i}]")
-        else:
-            if 'id' in data: # Single card
-                fail_count += check_card(data)
-            else:
-                 for k, v in data.items():
-                     if isinstance(v, dict):
-                         fail_count += check_card(v, f"key {k}")
+            # Recurse
+            for k, v in node.items():
+                if isinstance(v, (dict, list)):
+                    local_fails += check_node(v, f"{path}.{k}")
 
+        elif isinstance(node, list):
+            for i, item in enumerate(node):
+                local_fails += check_node(item, f"{path}[{i}]")
+
+        return local_fails
+
+    fail_count += check_node(data)
     return fail_count
 
 def main():
