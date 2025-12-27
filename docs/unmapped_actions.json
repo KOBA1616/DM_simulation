@@ -1,162 +1,242 @@
 [
   {
     "type": "BLOCK",
-    "priority": "High"
+    "category": "Engine",
+    "priority": "High",
+    "notes": "Engine-generated execution action. Needs explicit Command wrapper."
   },
   {
     "type": "BREAK_SHIELD",
-    "priority": "High"
+    "category": "Engine",
+    "priority": "High",
+    "notes": "Engine-generated execution action. Mapped to BreakShieldCommand."
   },
   {
     "type": "RESOLVE_BATTLE",
-    "priority": "High"
+    "category": "Engine",
+    "priority": "High",
+    "notes": "Engine-generated execution action. Needs explicit Command wrapper."
   },
   {
     "type": "RESOLVE_EFFECT",
-    "priority": "High"
+    "category": "Engine",
+    "priority": "High",
+    "notes": "Resolves pending effects. Needs explicit Command wrapper."
   },
   {
     "type": "USE_SHIELD_TRIGGER",
-    "priority": "High"
+    "category": "Engine",
+    "priority": "High",
+    "notes": "Engine-generated trigger action. Needs explicit Command wrapper."
   },
   {
     "type": "DESTROY",
-    "priority": "Medium"
+    "category": "Effect",
+    "priority": "Medium",
+    "notes": "Mapped to DESTROY command."
   },
   {
     "type": "DISCARD",
-    "priority": "Medium"
+    "category": "Effect",
+    "priority": "Medium",
+    "notes": "Mapped to DISCARD command."
   },
   {
     "type": "TAP",
-    "priority": "Medium"
+    "category": "Effect",
+    "priority": "Medium",
+    "notes": "Mapped to TAP command."
   },
   {
     "type": "UNTAP",
-    "priority": "Medium"
-  },
-  {
-    "type": "ADD_SHIELD",
-    "priority": "Low"
-  },
-  {
-    "type": "APPLY_MODIFIER",
-    "priority": "Low"
-  },
-  {
-    "type": "CAST_SPELL",
-    "priority": "Low"
-  },
-  {
-    "type": "COUNT_CARDS",
-    "priority": "Low"
-  },
-  {
-    "type": "FRIEND_BURST",
-    "priority": "Low"
-  },
-  {
-    "type": "GET_GAME_STAT",
-    "priority": "Low"
-  },
-  {
-    "type": "LOOK_AND_ADD",
-    "priority": "Low"
-  },
-  {
-    "type": "LOOK_TO_BUFFER",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Medium",
+    "notes": "Mapped to UNTAP command."
   },
   {
     "type": "MEKRAID",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Medium",
+    "notes": "Complex effect. Mapped to MEKRAID command."
   },
   {
-    "type": "MODIFY_POWER",
-    "priority": "Low"
-  },
-  {
-    "type": "MOVE_BUFFER_TO_ZONE",
-    "priority": "Low"
-  },
-  {
-    "type": "MOVE_CARD",
-    "priority": "Low"
-  },
-  {
-    "type": "MOVE_TO_UNDER_CARD",
-    "priority": "Low"
-  },
-  {
-    "type": "PLAY_FROM_BUFFER",
-    "priority": "Low"
-  },
-  {
-    "type": "PLAY_FROM_ZONE",
-    "priority": "Low"
-  },
-  {
-    "type": "PUT_CREATURE",
-    "priority": "Low"
-  },
-  {
-    "type": "REGISTER_DELAYED_EFFECT",
-    "priority": "Low"
-  },
-  {
-    "type": "RESET_INSTANCE",
-    "priority": "Low"
-  },
-  {
-    "type": "RESOLVE_PLAY",
-    "priority": "Low"
-  },
-  {
-    "type": "REVEAL_CARDS",
-    "priority": "Low"
+    "type": "LOOK_AND_ADD",
+    "category": "Effect",
+    "priority": "Medium",
+    "notes": "Complex effect. Mapped to LOOK_AND_ADD command."
   },
   {
     "type": "REVOLUTION_CHANGE",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Medium",
+    "notes": "Complex effect. Mapped to MUTATE(REVOLUTION_CHANGE) or dedicated command."
   },
   {
     "type": "SEARCH_DECK",
-    "priority": "Low"
-  },
-  {
-    "type": "SELECT_FROM_BUFFER",
-    "priority": "Low"
-  },
-  {
-    "type": "SELECT_NUMBER",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Medium",
+    "notes": "Mapped to SEARCH_DECK command."
   },
   {
     "type": "SELECT_OPTION",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Medium",
+    "notes": "Mapped to CHOICE command."
+  },
+  {
+    "type": "CAST_SPELL",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to CAST_SPELL command."
+  },
+  {
+    "type": "ADD_SHIELD",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Alias for TRANSITION to SHIELD_ZONE."
+  },
+  {
+    "type": "APPLY_MODIFIER",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to MUTATE."
+  },
+  {
+    "type": "COUNT_CARDS",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to QUERY."
+  },
+  {
+    "type": "FRIEND_BURST",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to FRIEND_BURST command."
+  },
+  {
+    "type": "GET_GAME_STAT",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to QUERY."
+  },
+  {
+    "type": "LOOK_TO_BUFFER",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to LOOK_TO_BUFFER command."
+  },
+  {
+    "type": "MODIFY_POWER",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to MUTATE(POWER_MOD)."
+  },
+  {
+    "type": "MOVE_BUFFER_TO_ZONE",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to TRANSITION(from=BUFFER)."
+  },
+  {
+    "type": "MOVE_CARD",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Generic move. Mapped to TRANSITION/DISCARD/DESTROY etc."
+  },
+  {
+    "type": "MOVE_TO_UNDER_CARD",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to ATTACH."
+  },
+  {
+    "type": "PLAY_FROM_BUFFER",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to PLAY_FROM_BUFFER."
+  },
+  {
+    "type": "PLAY_FROM_ZONE",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to PLAY_FROM_ZONE."
+  },
+  {
+    "type": "PUT_CREATURE",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to TRANSITION(to=BATTLE_ZONE)."
+  },
+  {
+    "type": "REGISTER_DELAYED_EFFECT",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to REGISTER_DELAYED_EFFECT."
+  },
+  {
+    "type": "RESET_INSTANCE",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to RESET_INSTANCE."
+  },
+  {
+    "type": "RESOLVE_PLAY",
+    "category": "Engine",
+    "priority": "Low",
+    "notes": "Engine internal."
+  },
+  {
+    "type": "REVEAL_CARDS",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to REVEAL_CARDS."
+  },
+  {
+    "type": "SELECT_FROM_BUFFER",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to SELECT_FROM_BUFFER."
+  },
+  {
+    "type": "SELECT_NUMBER",
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to SELECT_NUMBER."
   },
   {
     "type": "SEND_SHIELD_TO_GRAVE",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to TRANSITION(from=SHIELD_ZONE, to=GRAVEYARD)."
   },
   {
     "type": "SEND_TO_DECK_BOTTOM",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Alias for TRANSITION to DECK_BOTTOM."
   },
   {
     "type": "SEND_TO_MANA",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Alias for TRANSITION to MANA_ZONE."
   },
   {
     "type": "SHUFFLE_DECK",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to SHUFFLE_DECK."
   },
   {
     "type": "SUMMON_TOKEN",
-    "priority": "Low"
+    "category": "Effect",
+    "priority": "Low",
+    "notes": "Mapped to SUMMON_TOKEN."
   },
   {
     "type": "USE_ABILITY",
-    "priority": "Low"
+    "category": "Engine",
+    "priority": "Low",
+    "notes": "Engine internal action."
   }
 ]
