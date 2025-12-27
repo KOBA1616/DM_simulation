@@ -1,0 +1,162 @@
+[
+  {
+    "type": "BLOCK",
+    "priority": "High"
+  },
+  {
+    "type": "BREAK_SHIELD",
+    "priority": "High"
+  },
+  {
+    "type": "RESOLVE_BATTLE",
+    "priority": "High"
+  },
+  {
+    "type": "RESOLVE_EFFECT",
+    "priority": "High"
+  },
+  {
+    "type": "USE_SHIELD_TRIGGER",
+    "priority": "High"
+  },
+  {
+    "type": "DESTROY",
+    "priority": "Medium"
+  },
+  {
+    "type": "DISCARD",
+    "priority": "Medium"
+  },
+  {
+    "type": "TAP",
+    "priority": "Medium"
+  },
+  {
+    "type": "UNTAP",
+    "priority": "Medium"
+  },
+  {
+    "type": "ADD_SHIELD",
+    "priority": "Low"
+  },
+  {
+    "type": "APPLY_MODIFIER",
+    "priority": "Low"
+  },
+  {
+    "type": "CAST_SPELL",
+    "priority": "Low"
+  },
+  {
+    "type": "COUNT_CARDS",
+    "priority": "Low"
+  },
+  {
+    "type": "FRIEND_BURST",
+    "priority": "Low"
+  },
+  {
+    "type": "GET_GAME_STAT",
+    "priority": "Low"
+  },
+  {
+    "type": "LOOK_AND_ADD",
+    "priority": "Low"
+  },
+  {
+    "type": "LOOK_TO_BUFFER",
+    "priority": "Low"
+  },
+  {
+    "type": "MEKRAID",
+    "priority": "Low"
+  },
+  {
+    "type": "MODIFY_POWER",
+    "priority": "Low"
+  },
+  {
+    "type": "MOVE_BUFFER_TO_ZONE",
+    "priority": "Low"
+  },
+  {
+    "type": "MOVE_CARD",
+    "priority": "Low"
+  },
+  {
+    "type": "MOVE_TO_UNDER_CARD",
+    "priority": "Low"
+  },
+  {
+    "type": "PLAY_FROM_BUFFER",
+    "priority": "Low"
+  },
+  {
+    "type": "PLAY_FROM_ZONE",
+    "priority": "Low"
+  },
+  {
+    "type": "PUT_CREATURE",
+    "priority": "Low"
+  },
+  {
+    "type": "REGISTER_DELAYED_EFFECT",
+    "priority": "Low"
+  },
+  {
+    "type": "RESET_INSTANCE",
+    "priority": "Low"
+  },
+  {
+    "type": "RESOLVE_PLAY",
+    "priority": "Low"
+  },
+  {
+    "type": "REVEAL_CARDS",
+    "priority": "Low"
+  },
+  {
+    "type": "REVOLUTION_CHANGE",
+    "priority": "Low"
+  },
+  {
+    "type": "SEARCH_DECK",
+    "priority": "Low"
+  },
+  {
+    "type": "SELECT_FROM_BUFFER",
+    "priority": "Low"
+  },
+  {
+    "type": "SELECT_NUMBER",
+    "priority": "Low"
+  },
+  {
+    "type": "SELECT_OPTION",
+    "priority": "Low"
+  },
+  {
+    "type": "SEND_SHIELD_TO_GRAVE",
+    "priority": "Low"
+  },
+  {
+    "type": "SEND_TO_DECK_BOTTOM",
+    "priority": "Low"
+  },
+  {
+    "type": "SEND_TO_MANA",
+    "priority": "Low"
+  },
+  {
+    "type": "SHUFFLE_DECK",
+    "priority": "Low"
+  },
+  {
+    "type": "SUMMON_TOKEN",
+    "priority": "Low"
+  },
+  {
+    "type": "USE_ABILITY",
+    "priority": "Low"
+  }
+]
