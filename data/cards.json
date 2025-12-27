@@ -15,7 +15,6 @@
     "static_abilities": [],
     "triggers": [
       {
-        "actions": [],
         "commands": [
           {
             "amount": 1,
@@ -46,7 +45,6 @@
     "cost": 2,
     "effects": [
       {
-        "actions": [],
         "commands": [
           {
             "amount": 0,
@@ -89,7 +87,6 @@
     "cost": 2,
     "effects": [
       {
-        "actions": [],
         "commands": [
           {
             "amount": 0,
@@ -157,7 +154,6 @@
     "cost": 7,
     "effects": [
       {
-        "actions": [],
         "commands": [
           {
             "amount": 3,
@@ -203,7 +199,6 @@
     "cost": 2,
     "effects": [
       {
-        "actions": [],
         "commands": [
           {
             "amount": 1,
@@ -269,7 +264,6 @@
       "name": "♪蛙の子遭えるの何処?好きと謂ひて",
       "triggers": [
         {
-          "actions": [],
           "commands": [
             {
               "amount": 0,
@@ -306,7 +300,6 @@
     "static_abilities": [],
     "triggers": [
       {
-        "actions": [],
         "commands": [
           {
             "input_value_key": "",
@@ -336,7 +329,6 @@
         "uid": "162e4602-0e73-4f7a-a1ef-f389d04a344c"
       },
       {
-        "actions": [],
         "commands": [
           {
             "amount": 1,
@@ -423,7 +415,6 @@
       "name": "聞かなきゃ殴り合い",
       "triggers": [
         {
-          "actions": [],
           "commands": [
             {
               "amount": 0,
@@ -460,7 +451,6 @@
     "static_abilities": [],
     "triggers": [
       {
-        "actions": [],
         "commands": [
           {
             "amount": 2,
@@ -547,7 +537,6 @@
     "static_abilities": [],
     "triggers": [
       {
-        "actions": [],
         "commands": [
           {
             "amount": 0,
@@ -573,7 +562,6 @@
         "uid": "24f156a6-0885-4fd9-9180-06bc1dba0cb7"
       },
       {
-        "actions": [],
         "commands": [
           {
             "amount": 1,

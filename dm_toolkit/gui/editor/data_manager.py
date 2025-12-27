@@ -88,6 +88,54 @@ class CardDataManager:
     def get_internal_by_uid(self, uid: str):
         return self._internal_cache.get(uid)
 
+    def _lift_actions_to_commands(self, effect_data):
+        """
+        Helper to convert legacy 'actions' to 'commands' in-place.
+        This hides the `Action` concept from the editor by materializing
+        equivalent commands on the effect dict before the tree is built.
+        """
+        try:
+            legacy_actions = effect_data.get('actions', [])
+            if legacy_actions:
+                converted_cmds = []
+                for act in list(legacy_actions):
+                    try:
+                        objs = convert_action_to_objs(act)
+                        for o in objs:
+                            # Convert CommandDef/WarningCommand to dict for storage
+                            if hasattr(o, 'to_dict'):
+                                converted_cmds.append(o.to_dict())
+                            elif isinstance(o, dict):
+                                converted_cmds.append(o)
+                            else:
+                                converted_cmds.append({
+                                    'type': 'NONE',
+                                    'legacy_warning': True,
+                                    'legacy_original_action': act
+                                })
+                    except Exception:
+                        converted_cmds.append({
+                            'type': 'NONE',
+                            'legacy_warning': True,
+                            'legacy_original_action': act
+                        })
+                # Merge into any pre-existing commands list
+                effect_data['commands'] = effect_data.get('commands', []) + converted_cmds
+
+            # Ensure 'commands' key exists on the effect (empty list if conversion yielded none)
+            if 'commands' not in effect_data:
+                effect_data['commands'] = []
+
+            # Remove legacy 'actions' to enforce Commands-only policy in-editor
+            if 'actions' in effect_data:
+                try:
+                    del effect_data['actions']
+                except Exception:
+                    pass
+        except Exception:
+            # Non-fatal: if conversion fails, continue loading but preserve original actions
+            pass
+
     def load_data(self, cards_data):
         self.model.clear()
         self.model.setHorizontalHeaderLabels(["Logic Tree"])
@@ -105,48 +153,8 @@ class CardDataManager:
                 triggers = card.get('effects', [])
 
             for eff_idx, effect in enumerate(triggers):
-                # Load-Lift: convert legacy `actions` into `commands` at load time.
-                # This hides the `Action` concept from the editor by materializing
-                # equivalent commands on the effect dict before the tree is built.
-                try:
-                    legacy_actions = effect.get('actions', [])
-                    if legacy_actions:
-                        converted_cmds = []
-                        for act in list(legacy_actions):
-                            try:
-                                objs = convert_action_to_objs(act)
-                                for o in objs:
-                                    # Convert CommandDef/WarningCommand to dict for storage
-                                    if hasattr(o, 'to_dict'):
-                                        converted_cmds.append(o.to_dict())
-                                    elif isinstance(o, dict):
-                                        converted_cmds.append(o)
-                                    else:
-                                        converted_cmds.append({
-                                            'type': 'NONE',
-                                            'legacy_warning': True,
-                                            'legacy_original_action': act
-                                        })
-                            except Exception:
-                                converted_cmds.append({
-                                    'type': 'NONE',
-                                    'legacy_warning': True,
-                                    'legacy_original_action': act
-                                })
-                        # Merge into any pre-existing commands list and remove actions
-                        effect['commands'] = effect.get('commands', []) + converted_cmds
-                    # Ensure 'commands' key exists on the effect (empty list if conversion yielded none)
-                    if 'commands' not in effect:
-                        effect['commands'] = []
-                    # Remove legacy 'actions' to enforce Commands-only policy in-editor
-                    if 'actions' in effect:
-                        try:
-                            del effect['actions']
-                        except Exception:
-                            pass
-                except Exception:
-                    # Non-fatal: if conversion fails, continue loading but preserve original actions
-                    pass
+                # Load-Lift: convert legacy `actions` into `commands`
+                self._lift_actions_to_commands(effect)
 
                 eff_item = self._create_effect_item(effect)
                 self._load_effect_children(eff_item, effect)
@@ -157,11 +165,18 @@ class CardDataManager:
                  mod_item = self._create_modifier_item(modifier)
                  card_item.appendRow(mod_item)
 
-        # end load_data
-
             # 2. Add Reaction Abilities
             for ra_idx, ra in enumerate(card.get('reaction_abilities', [])):
                 ra_item = self._create_reaction_item(ra)
+                # Note: Reaction Abilities currently don't expose children in tree,
+                # but if they have 'actions', we should ideally lift them too.
+                # However, since they are stored as data blobs, we can lift them in place.
+                if isinstance(ra, dict):
+                     # If reaction has actions/commands structure similar to effect
+                     # We apply lift to it.
+                     self._lift_actions_to_commands(ra)
+                     ra_item.setData(ra, Qt.ItemDataRole.UserRole + 2)
+
                 card_item.appendRow(ra_item)
 
             # 3. Add Spell Side if exists
@@ -179,6 +194,9 @@ class CardDataManager:
                     spell_triggers = spell_side_data.get('effects', [])
 
                 for eff_idx, effect in enumerate(spell_triggers):
+                    # Load-Lift: convert legacy `actions` into `commands` for Spell Side too
+                    self._lift_actions_to_commands(effect)
+
                     eff_item = self._create_effect_item(effect)
                     self._load_effect_children(eff_item, effect)
                     spell_item.appendRow(eff_item)
@@ -200,7 +218,7 @@ class CardDataManager:
                 pass
 
     def _load_effect_children(self, eff_item, effect_data):
-        # Load Legacy Actions
+        # Load Legacy Actions (should be empty if lifted, but keep for safety)
         for act_idx, action in enumerate(effect_data.get('actions', [])):
             act_item = self._create_action_item(action)
             eff_item.appendRow(act_item)
