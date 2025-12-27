@@ -175,6 +175,78 @@ class EngineCompat:
         return []
 
     @staticmethod
+    def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Any]:
+        """Return a list of ICommand-like objects for the given state.
+
+        Prefer using the Python compatibility helper `dm_toolkit.commands_new.generate_legal_commands`
+        when available; otherwise fall back to wrapping Action objects returned by the engine.
+        """
+        EngineCompat._check_module()
+        assert dm_ai_module is not None
+        try:
+            # Prefer the Python helper
+            from dm_toolkit.commands_new import generate_legal_commands
+            cmds = generate_legal_commands(state, card_db) or []
+            return list(cmds)
+        except Exception:
+            pass
+
+        # Fallback: convert actions to command-like via attached `command` or identity
+        try:
+            actions = list(dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db))
+        except Exception:
+            actions = []
+
+        out = []
+        for a in actions:
+            cmd = getattr(a, 'command', None) or a
+            out.append(cmd)
+        return out
+
+    @staticmethod
+    def ExecuteCommand(state: GameState, cmd: Any, card_db: CardDB = None) -> None:
+        """Execute a command-like object on the provided GameState.
+
+        Tries `state.execute_command(cmd)` first, then `cmd.execute(state)`, and
+        finally falls back to resolving the underlying Action if the object appears
+        to be an Action.
+        """
+        EngineCompat._check_module()
+        assert dm_ai_module is not None
+        try:
+            if hasattr(state, 'execute_command'):
+                try:
+                    state.execute_command(cmd)
+                    return
+                except Exception:
+                    pass
+
+            if hasattr(cmd, 'execute') and callable(getattr(cmd, 'execute')):
+                try:
+                    # Some execute signatures accept (state, db)
+                    try:
+                        cmd.execute(state, card_db)
+                    except TypeError:
+                        cmd.execute(state)
+                    return
+                except Exception:
+                    pass
+
+            # If it's an Action-like object, use EffectResolver
+            if hasattr(cmd, 'type'):
+                if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
+                    dm_ai_module.EffectResolver.resolve_action(state, cmd, card_db)
+                    return
+        except Exception:
+            pass
+
+        # Last resort: no-op with warning
+        try:
+            print('Warning: ExecuteCommand could not execute given command/object:', cmd)
+        except Exception:
+            pass
+
+    @staticmethod
     def JsonLoader_load_cards(filepath: str) -> Optional[CardDB]:
         EngineCompat._check_module()
         assert dm_ai_module is not None

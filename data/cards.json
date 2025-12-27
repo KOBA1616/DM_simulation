@@ -53,6 +53,49 @@
             "format": "command",
             "input_value_key": "",
             "legacy_warning": false,
+            "output_value_key": "",
+            "str_param": "",
+            "target_filter": {
+              "count": 1,
+              "zones": [
+                "BATTLE_ZONE"
+              ]
+            },
+            "target_group": "TARGET_SELECT",
+            "to_zone": "HAND",
+            "type": "TRANSITION",
+            "uid": "11111111-1111-4111-8111-111111111111"
+          }
+        ],
+        "condition": {
+          "type": "NONE"
+        },
+        "trigger": "ON_PLAY",
+        "uid": "22222222-2222-4222-8222-222222222222"
+      }
+    ],
+    "id": 6,
+    "keywords": {},
+    "name": "Spiral Gate",
+    "reaction_abilities": [],
+    "static_abilities": [],
+    "type": "SPELL",
+    "uid": "33333333-3333-4333-8333-333333333333"
+  },
+  {
+    "civilizations": [
+      "WATER"
+    ],
+    "cost": 2,
+    "effects": [
+      {
+        "actions": [],
+        "commands": [
+          {
+            "amount": 0,
+            "format": "command",
+            "input_value_key": "",
+            "legacy_warning": false,
             "output_value_key": "var_COUNT_CARDS_0",
             "str_param": "MANA_CIVILIZATION_COUNT",
             "target_filter": {},

@@ -74,15 +74,35 @@ def run_stress_test(iterations=10000, max_steps=2000, verbose=False):
             state = gi.state
 
             while state.winner == -1 and step_count < max_steps:
-                actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+                try:
+                    from dm_toolkit.commands_new import generate_legal_commands
+                except Exception:
+                    generate_legal_commands = None
 
-                if not actions:
+                actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+                cmds = generate_legal_commands(state, card_db) if generate_legal_commands else []
+
+                if not actions and not cmds:
                     # Stalemate or bug
                     break
 
-                # Random action
-                action = random.choice(actions)
-                dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+                # Prefer executing random command when available
+                if cmds:
+                    cmd = random.choice(cmds)
+                    try:
+                        state.execute_command(cmd)
+                    except Exception:
+                        try:
+                            cmd.execute(state)
+                        except Exception:
+                            # Last resort: fallback to action path
+                            if actions:
+                                action = random.choice(actions)
+                                dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+                else:
+                    # Random action
+                    action = random.choice(actions)
+                    dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
                 step_count += 1
 
         except Exception as e:

@@ -2,6 +2,7 @@
 import math
 import random
 import dm_ai_module
+from dm_toolkit import commands_new as commands_new
 from PyQt6.QtWidgets import QApplication
 
 class Node:
@@ -36,28 +37,59 @@ class PythonMCTS:
 
     def search(self, root_state):
         self.root = Node(root_state.clone())
+        # Prefer Action list for heuristics but also generate ICommand wrappers for systems
         legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.root.state, self.card_db)
+        legal_commands = commands_new.generate_legal_commands(self.root.state, self.card_db)
+
+        def _is_pass(obj):
+            # Detect PASS for either Action or Command
+            try:
+                if hasattr(obj, 'type'):
+                    return getattr(obj, 'type') == dm_ai_module.ActionType.PASS
+            except Exception:
+                pass
+            try:
+                # command_new returns objects with to_dict or payload
+                if hasattr(obj, 'to_dict'):
+                    d = obj.to_dict() or {}
+                    if d.get('kind') == 'FlowCommand' and d.get('payload') is None:
+                        pass
+                # try payload attribute
+                payload = getattr(obj, 'payload', None)
+                if isinstance(payload, dict) and payload.get('pass'):
+                    return True
+            except Exception:
+                pass
+            return False
 
         # Rule: Always charge mana until turn 5
         if self.root.state.current_phase == dm_ai_module.Phase.MANA and self.root.state.turn_number <= 5:
-            has_charge = any(a.type == dm_ai_module.ActionType.MANA_CHARGE for a in legal_actions)
+            has_charge = any((getattr(a, 'type', None) == dm_ai_module.ActionType.MANA_CHARGE) for a in legal_actions) or any((getattr(c, 'payload', {}).get('add_mana') is not None) for c in legal_commands)
             if has_charge:
                 # Remove PASS action to force charge
-                legal_actions = [a for a in legal_actions if a.type != dm_ai_module.ActionType.PASS]
+                legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.ActionType.PASS)]
+                # also filter commands similarly by payload
+                legal_commands = [c for c in legal_commands if not (getattr(c, 'payload', {}).get('pass'))]
 
         # Rule: Prioritize playing cards in Main Phase (80% chance to force play if possible)
         elif self.root.state.current_phase == dm_ai_module.Phase.MAIN:
-            has_play = any(a.type == dm_ai_module.ActionType.PLAY_CARD for a in legal_actions)
+            has_play = any((getattr(a, 'type', None) == dm_ai_module.ActionType.PLAY_CARD) for a in legal_actions) or any((getattr(c, 'payload', {}).get('play')) for c in legal_commands)
             if has_play and random.random() < 0.8:
-                 legal_actions = [a for a in legal_actions if a.type != dm_ai_module.ActionType.PASS]
+                 legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.ActionType.PASS)]
+                 legal_commands = [c for c in legal_commands if not (getattr(c, 'payload', {}).get('pass'))]
 
         # Rule: Prioritize attacking in Attack Phase (80% chance to force attack if possible)
         elif self.root.state.current_phase == dm_ai_module.Phase.ATTACK:
-            has_attack = any(a.type in (dm_ai_module.ActionType.ATTACK_PLAYER, dm_ai_module.ActionType.ATTACK_CREATURE) for a in legal_actions)
+            has_attack = any((getattr(a, 'type', None) in (dm_ai_module.ActionType.ATTACK_PLAYER, dm_ai_module.ActionType.ATTACK_CREATURE)) for a in legal_actions) or any((getattr(c, 'payload', {}).get('attack')) for c in legal_commands)
             if has_attack and random.random() < 0.8:
-                 legal_actions = [a for a in legal_actions if a.type != dm_ai_module.ActionType.PASS]
+                 legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.ActionType.PASS)]
+                 legal_commands = [c for c in legal_commands if not (getattr(c, 'payload', {}).get('pass'))]
 
-        self.root.untried_actions = legal_actions
+        # Prefer to store Action objects (for EffectResolver compatibility); if absent, store command objects
+        if legal_actions:
+            self.root.untried_actions = legal_actions
+        else:
+            self.root.untried_actions = legal_commands
 
         # Check stop condition before starting
         if self.should_stop and self.should_stop():
@@ -97,16 +129,44 @@ class PythonMCTS:
     def _expand(self, node):
         action = node.untried_actions.pop()
         next_state = node.state.clone()
-        dm_ai_module.EffectResolver.resolve_action(next_state, action, self.card_db)
-        
-        # Check if phase changed, if so, handle auto-transitions until next decision or game over
-        # For simplicity, we assume resolve_action handles immediate effects.
-        # But we might need to handle phase transitions if the action was PASS.
-        if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
+        # Support both Action and ICommand objects
+        try:
+            if hasattr(action, 'type'):
+                dm_ai_module.EffectResolver.resolve_action(next_state, action, self.card_db)
+            else:
+                # ICommand-like
+                try:
+                    # Prefer GameState.execute_command
+                    if hasattr(next_state, 'execute_command'):
+                        next_state.execute_command(action)
+                    elif hasattr(action, 'execute'):
+                        action.execute(next_state)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # Check if phase changed; detect PASS/MANA_CHARGE both for Action and Command
+        is_pass_action = False
+        try:
+            if hasattr(action, 'type'):
+                is_pass_action = (getattr(action, 'type') == dm_ai_module.ActionType.PASS or getattr(action, 'type') == dm_ai_module.ActionType.MANA_CHARGE)
+            else:
+                payload = getattr(action, 'payload', {}) or {}
+                is_pass_action = bool(payload.get('pass') or payload.get('add_mana'))
+        except Exception:
+            is_pass_action = False
+
+        if is_pass_action:
              dm_ai_module.PhaseManager.next_phase(next_state, self.card_db)
 
         child_node = Node(next_state, parent=node, action=action)
-        child_node.untried_actions = dm_ai_module.ActionGenerator.generate_legal_actions(next_state, self.card_db)
+        # Populate untried actions for child (prefer Action list)
+        child_actions = dm_ai_module.ActionGenerator.generate_legal_actions(next_state, self.card_db)
+        if child_actions:
+            child_node.untried_actions = child_actions
+        else:
+            child_node.untried_actions = commands_new.generate_legal_commands(next_state, self.card_db)
         node.children.append(child_node)
         return child_node
 
