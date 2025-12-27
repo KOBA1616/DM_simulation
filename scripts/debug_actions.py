@@ -38,6 +38,18 @@ else:
 
 actions = ActionGenerator.generate_legal_actions(state, card_db)
 print('actions count', len(actions))
+try:
+    from dm_toolkit.commands_new import generate_legal_commands
+except Exception:
+    generate_legal_commands = None
+if generate_legal_commands:
+    try:
+        cmds = generate_legal_commands(state, card_db) or []
+        print('commands count', len(cmds))
+    except Exception:
+        cmds = []
+else:
+    cmds = []
 for i, a in enumerate(actions):
     print(i, getattr(a, 'type', None), getattr(a, 'card_id', None), getattr(a, 'command', None))
 import sys
@@ -216,6 +228,18 @@ else:
 print('hand len', len(state.players[0].hand), 'mana len', len(state.players[0].mana_zone))
 actions = ActionGenerator.generate_legal_actions(state, card_db)
 print('actions count', len(actions))
+try:
+    from dm_toolkit.commands_new import generate_legal_commands
+except Exception:
+    generate_legal_commands = None
+if generate_legal_commands:
+    try:
+        cmds = generate_legal_commands(state, card_db) or []
+        print('commands count', len(cmds))
+    except Exception:
+        cmds = []
+else:
+    cmds = []
 for i, a in enumerate(actions):
     print(i, getattr(a, 'type', None), getattr(a, 'card_id', None), getattr(a, 'command', None))
 import dm_ai_module

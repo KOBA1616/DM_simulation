@@ -1,6 +1,7 @@
 import dm_ai_module
 from dm_ai_module import GameState
 
+# Keep state setup; also attempt to show commands if available
 s = GameState(100)
 s.add_test_card_to_battle(0,1,10,False,True)
 ci = s.players[0].battle[0]
@@ -13,3 +14,11 @@ print('ci.speed_attacker:', getattr(ci,'speed_attacker', None))
 print("granted_keywords:", getattr(ci,'granted_keywords', None))
 cond = not (cdef and getattr(getattr(cdef, 'keywords', None), 'speed_attacker', False)) and not getattr(ci, 'speed_attacker', False) and not ('SPEED_ATTACKER' in getattr(ci, 'granted_keywords', set()))
 print('should continue?', cond)
+
+try:
+	from dm_toolkit.commands_new import generate_legal_commands
+except Exception:
+	generate_legal_commands = None
+if generate_legal_commands:
+	cmds = generate_legal_commands(s, card_db)
+	print('generated commands count:', len(cmds))

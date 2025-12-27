@@ -84,16 +84,44 @@ class DeckEvolution:
                 # For now let's stick to random for this script update
                 pass
 
-            # Random
-            actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db)
-            if not actions:
+            # Random (prefer commands when available)
+            try:
+                from dm_toolkit.commands_new import generate_legal_commands
+            except Exception:
+                generate_legal_commands = None
+
+            actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db) or []
+            cmds = generate_legal_commands(gs, self.card_db) if generate_legal_commands else []
+
+            if not actions and not cmds:
                 dm_ai_module.PhaseManager.next_phase(gs)
                 continue
-            action = random.choice(actions)
-                
-            dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
-            if action.type == dm_ai_module.ActionType.PASS:
-                dm_ai_module.PhaseManager.next_phase(gs)
+
+            if cmds:
+                cmd = random.choice(cmds)
+                try:
+                    gs.execute_command(cmd)
+                except Exception:
+                    try:
+                        cmd.execute(gs)
+                    except Exception:
+                        # fallback to action path
+                        if actions:
+                            action = random.choice(actions)
+                            dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                # best-effort phase advance check
+                try:
+                    if getattr(cmd, 'to_dict', None):
+                        d = cmd.to_dict()
+                        if d.get('kind') in ('PassCommand', 'ManaChargeCommand'):
+                            dm_ai_module.PhaseManager.next_phase(gs)
+                except Exception:
+                    pass
+            else:
+                action = random.choice(actions)
+                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                if action.type == dm_ai_module.ActionType.PASS:
+                    dm_ai_module.PhaseManager.next_phase(gs)
         
     def mutate(self, deck: List[Any]) -> List[Any]:
         # Swap 1-4 cards

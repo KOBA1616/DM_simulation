@@ -127,9 +127,14 @@ class EvolutionEcosystem:
                  if dm_ai_module.PhaseManager.check_game_over(instance.state, res):
                     break
 
-                 legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(instance.state, self.card_db)
+                 legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(instance.state, self.card_db) or []
+                 try:
+                     from dm_toolkit.commands_new import generate_legal_commands
+                 except Exception:
+                     generate_legal_commands = None
+                 cmds = generate_legal_commands(instance.state, self.card_db) if generate_legal_commands else []
 
-                 if not legal_actions:
+                 if not legal_actions and not cmds:
                      dm_ai_module.PhaseManager.next_phase(instance.state, self.card_db)
                      continue
 
@@ -145,7 +150,11 @@ class EvolutionEcosystem:
                  # To get meaningful stats, we want somewhat reasonable play.
                  # Let's use a very simple heuristic: prioritized actions.
 
-                 best_action = legal_actions[0]
+                 # Prefer an action that can be executed via command when available
+                 best_action = legal_actions[0] if legal_actions else None
+                 best_cmd = None
+                 if cmds:
+                     best_cmd = cmds[0]
 
                  # Improved simple heuristic for stat collection
                  # 1. Charge Mana (up to 7)
@@ -182,7 +191,18 @@ class EvolutionEcosystem:
                              found = True
                              break
 
-                 instance.resolve_action(best_action)
+                 # Execute command if available, otherwise fallback to action resolver
+                 if best_cmd is not None:
+                     try:
+                         instance.state.execute_command(best_cmd)
+                     except Exception:
+                         try:
+                             best_cmd.execute(instance.state)
+                         except Exception:
+                             if best_action is not None:
+                                 instance.resolve_action(best_action)
+                 else:
+                     instance.resolve_action(best_action)
                  steps += 1
 
             # Game finished (or max steps), collect stats
