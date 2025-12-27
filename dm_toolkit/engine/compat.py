@@ -128,6 +128,21 @@ class EngineCompat:
     def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
+        # Prefer action.execute (which will run attached Command when present)
+        try:
+            if hasattr(action, 'execute') and callable(getattr(action, 'execute')):
+                try:
+                    # Some action.execute accept (state, db) others only (state,)
+                    try:
+                        action.execute(state, card_db)
+                    except TypeError:
+                        action.execute(state)
+                    return
+                except Exception:
+                    # Fall through to resolver if wrapper fails
+                    pass
+        except Exception:
+            pass
         if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
             dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
         else:

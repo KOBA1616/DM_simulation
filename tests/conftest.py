@@ -59,16 +59,17 @@ class _ConditionDefShim:
         self.filter = {}
 
 class _EffectDefShim:
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        # Accept positional and keyword forms (trigger, condition, actions)
         self.filter = {}
         self.str_val = ""
         self.type = ""
-        self.value1 = 0
-        self.value2 = 0
-        self.trigger = None
-        self.condition = _ConditionDefShim()
-        self.actions = []
-        self.commands = []
+        self.value1 = kwargs.get('value1', 0)
+        self.value2 = kwargs.get('value2', 0)
+        self.trigger = kwargs.get('trigger', args[0] if len(args) >= 1 else None)
+        self.condition = kwargs.get('condition', args[1] if len(args) >= 2 else _ConditionDefShim())
+        self.actions = kwargs.get('actions', args[2] if len(args) >= 3 else [])
+        self.commands = kwargs.get('commands', [])
 
 # For tests we replace binding classes with lightweight shims to ensure
 # mutable attributes like `.condition` can be set and inspected from Python.

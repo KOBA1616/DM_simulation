@@ -289,13 +289,13 @@ class UnifiedActionForm(BaseEditForm):
         self.mutation_kind_edit = QLineEdit()
         self.mutation_kind_combo = QComboBox()
         self.populate_combo(self.mutation_kind_combo, GRANTABLE_KEYWORDS, data_func=lambda x: x, display_func=tr)
-            self.mutation_kind_label = QLabel(tr("Mutation Kind"))
-            # Use a stacked widget to host either edit or combo (allows switching based on type)
-            from PyQt6.QtWidgets import QStackedWidget
-            self.mutation_kind_container = QStackedWidget()
-            self.mutation_kind_container.addWidget(self.mutation_kind_edit)
-            self.mutation_kind_container.addWidget(self.mutation_kind_combo)
-            layout.addRow(self.mutation_kind_label, self.mutation_kind_container)
+        self.mutation_kind_label = QLabel(tr("Mutation Kind"))
+        # Use a stacked widget to host either edit or combo (allows switching based on type)
+        from PyQt6.QtWidgets import QStackedWidget
+        self.mutation_kind_container = QStackedWidget()
+        self.mutation_kind_container.addWidget(self.mutation_kind_edit)
+        self.mutation_kind_container.addWidget(self.mutation_kind_combo)
+        layout.addRow(self.mutation_kind_label, self.mutation_kind_container)
 
         # Variable link
         self.link_widget = VariableLinkWidget()
