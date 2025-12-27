@@ -168,6 +168,10 @@ class EngineCompat:
 
     @staticmethod
     def ActionGenerator_generate_legal_actions(state: GameState, card_db: CardDB) -> List[Action]:
+        """
+        Deprecated: Prefer ActionGenerator_generate_legal_commands for new code.
+        Returns raw Actions from the engine.
+        """
         EngineCompat._check_module()
         assert dm_ai_module is not None
         if hasattr(dm_ai_module.ActionGenerator, 'generate_legal_actions'):
@@ -178,30 +182,13 @@ class EngineCompat:
     def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Any]:
         """Return a list of ICommand-like objects for the given state.
 
-        Prefer using the Python compatibility helper `dm_toolkit.commands_new.generate_legal_commands`
-        when available; otherwise fall back to wrapping Action objects returned by the engine.
+        Uses the Python compatibility helper `dm_toolkit.commands_new.generate_legal_commands`
+        to wrap engine actions into ICommand interfaces.
         """
         EngineCompat._check_module()
         assert dm_ai_module is not None
-        try:
-            # Prefer the Python helper
-            from dm_toolkit.commands_new import generate_legal_commands
-            cmds = generate_legal_commands(state, card_db) or []
-            return list(cmds)
-        except Exception:
-            pass
-
-        # Fallback: convert actions to command-like via attached `command` or identity
-        try:
-            actions = list(dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db))
-        except Exception:
-            actions = []
-
-        out = []
-        for a in actions:
-            cmd = getattr(a, 'command', None) or a
-            out.append(cmd)
-        return out
+        from dm_toolkit.commands_new import generate_legal_commands
+        return generate_legal_commands(state, card_db)
 
     @staticmethod
     def ExecuteCommand(state: GameState, cmd: Any, card_db: CardDB = None) -> None:
