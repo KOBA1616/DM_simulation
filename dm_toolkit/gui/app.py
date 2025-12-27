@@ -585,9 +585,20 @@ class GameWindow(QMainWindow):
 
     def execute_action(self, action: Action) -> None:
         self.last_action = action
-        EngineCompat.EffectResolver_resolve_action(
-            self.gs, action, self.card_db
-        )
+        # Prefer action.execute (which will run attached Command if present),
+        # otherwise fall back to the engine compatibility resolver.
+        try:
+            if hasattr(action, 'execute') and callable(getattr(action, 'execute')):
+                try:
+                    action.execute(self.gs, self.card_db)
+                except TypeError:
+                    # Some Action implementations may accept only (state,), try that
+                    action.execute(self.gs)
+            else:
+                EngineCompat.EffectResolver_resolve_action(self.gs, action, self.card_db)
+        except Exception:
+            # In case of unexpected errors, fallback to compatibility layer
+            EngineCompat.EffectResolver_resolve_action(self.gs, action, self.card_db)
         # self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
         self.loop_recorder.record_action(action.to_string())
         self.scenario_tools.record_action(action.to_string())
@@ -811,9 +822,16 @@ class GameWindow(QMainWindow):
                 
                 if best_action:
                     self.last_action = best_action
-                    EngineCompat.EffectResolver_resolve_action(
-                        self.gs, best_action, self.card_db
-                    )
+                    try:
+                        if hasattr(best_action, 'execute') and callable(getattr(best_action, 'execute')):
+                            try:
+                                best_action.execute(self.gs, self.card_db)
+                            except TypeError:
+                                best_action.execute(self.gs)
+                        else:
+                            EngineCompat.EffectResolver_resolve_action(self.gs, best_action, self.card_db)
+                    except Exception:
+                        EngineCompat.EffectResolver_resolve_action(self.gs, best_action, self.card_db)
                     # self.log_list.addItem(f"P{active_pid} {tr('AI Action')}: {best_action.to_string()}")
                     self.loop_recorder.record_action(best_action.to_string())
                     self.scenario_tools.record_action(best_action.to_string())

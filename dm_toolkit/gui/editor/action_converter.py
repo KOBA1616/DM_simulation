@@ -84,8 +84,9 @@ class ActionConverter:
                  cmd['legacy_warning'] = True
                  cmd['legacy_original_type'] = "SHIELD_BURN"
             elif act_type == "DESTROY":
-                # Collapse DESTROY into a TRANSITION to GRAVEYARD
-                cmd['type'] = "TRANSITION"
+                # Preserve explicit DESTROY semantic (engine/tests expect DESTROY)
+                cmd['type'] = "DESTROY"
+                # Keep destination hint as GRAVEYARD for clarity
                 cmd['to_zone'] = "GRAVEYARD"
             else:
                 # DISCARD, RETURN_TO_HAND and other move semantics can be direct TRANSITION
@@ -320,20 +321,17 @@ class ActionConverter:
             else:
                 cmd['legacy_warning'] = True
 
-        # 8. REVOLUTION_CHANGE: mark as MUTATE that can be later promoted to keyword+condition
+        # 8. REVOLUTION_CHANGE: map to MUTATE with mutation_kind to preserve editor semantics
         elif act_type == "REVOLUTION_CHANGE":
-                cmd['type'] = "MUTATE"
-                # Use mutation_kind to carry semantic meaning; engine-side mapping can interpret
-                cmd['mutation_kind'] = "REVOLUTION_CHANGE"
-                # Propagate common fields where present
-                if 'filter' in act_data:
-                    cmd['target_filter'] = copy.deepcopy(act_data['filter'])
-                if 'value1' in act_data:
-                    # Some legacy REVOLUTION_CHANGE use value1 to indicate magnitude/direction
-                    cmd['amount'] = act_data.get('value1')
-                if 'str_val' in act_data:
-                    cmd['str_param'] = act_data.get('str_val')
-                # Consider this a reasonably safe conversion by default
+            cmd['type'] = "MUTATE"
+            cmd['mutation_kind'] = 'REVOLUTION_CHANGE'
+            # Preserve semantic hints for the editor/serializer
+            if 'filter' in act_data:
+                cmd['target_filter'] = copy.deepcopy(act_data['filter'])
+            if 'value1' in act_data:
+                cmd['amount'] = act_data.get('value1')
+            if 'str_val' in act_data:
+                cmd['str_param'] = act_data.get('str_val')
 
         # 9. PLAY_FROM_ZONE: play a card from a specific zone (no cost)
         elif act_type == "PLAY_FROM_ZONE":
