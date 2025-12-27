@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional, Protocol, runtime_checkable
-
+from dm_toolkit.action_mapper import ActionToCommandMapper
 
 @runtime_checkable
 class ICommand(Protocol):
@@ -23,15 +23,15 @@ class BaseCommand:
         return None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"kind": self.__class__.__name__}
+        return {"type": "UNKNOWN", "kind": self.__class__.__name__}
 
 
 def wrap_action(action: Any) -> Optional[ICommand]:
     """Return an `ICommand`-like object for the provided `action`.
 
     - If `action` already implements `execute`, return it.
-    - Otherwise, try to use the compatibility shim in `dm_ai_module.action_to_command`.
-    - Fallback to a thin wrapper delegating to `action.execute(state, db=None)` when possible.
+    - Otherwise, returns a wrapper that implements `execute` (via `dm_ai_module` or direct call)
+      and `to_dict` (via `ActionToCommandMapper`).
     """
     if action is None:
         return None
@@ -40,34 +40,39 @@ def wrap_action(action: Any) -> Optional[ICommand]:
     if hasattr(action, "execute") and callable(getattr(action, "execute")):
         return action  # type: ignore
 
-    # Try to delegate to dm_ai_module.action_to_command if available
-    try:
-        import dm_ai_module
-
-        if hasattr(dm_ai_module, "action_to_command"):
-            return dm_ai_module.action_to_command(action)
-    except Exception:
-        pass
-
     # Fallback wrapper
-    class _ActionFallback(BaseCommand):
+    class _ActionWrapper(BaseCommand):
         def __init__(self, a: Any):
             self._action = a
 
         def execute(self, state: Any) -> Optional[Any]:
-            # Some Action implementations expect (state, db) signature
-            try:
-                if getattr(self._action, "execute", None):
+            # Try to use action's own execute if available
+            if hasattr(self._action, "execute"):
+                try:
+                    return self._action.execute(state)
+                except TypeError:
                     try:
-                        return self._action.execute(state)
-                    except TypeError:
-                        # try (state, db)
-                        try:
-                            return self._action.execute(state, None)
-                        except Exception:
-                            return None
+                        return self._action.execute(state, None)
+                    except Exception:
+                        pass
+
+            # Use shim if available
+            try:
+                import dm_ai_module
+                if hasattr(dm_ai_module, "action_to_command"):
+                    cmd = dm_ai_module.action_to_command(self._action)
+                    if hasattr(cmd, 'execute'):
+                        return cmd.execute(state)
             except Exception:
-                return None
+                pass
+
+            # Use compat shim as last resort (legacy path)
+            try:
+                from dm_toolkit.compat import ExecuteCommand
+                return ExecuteCommand(state, self._action)
+            except Exception:
+                pass
+
             return None
 
         def invert(self, state: Any) -> Optional[Any]:
@@ -80,9 +85,10 @@ def wrap_action(action: Any) -> Optional[ICommand]:
             return None
 
         def to_dict(self) -> Dict[str, Any]:
-            return {"wrapped_action": str(getattr(self._action, "type", None))}
+            # Use the unified mapper
+            return ActionToCommandMapper.map_action(self._action)
 
-    return _ActionFallback(action)
+    return _ActionWrapper(action)
 
 
 def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
@@ -102,11 +108,18 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
 
         cmds = []
         for a in actions:
-            # Prefer explicit attached command
-            cmd_obj = getattr(a, 'command', None) or a
-            w = wrap_action(cmd_obj)
-            if w is not None:
-                cmds.append(w)
+            # Prefer explicit attached command if it follows protocol, otherwise wrap action
+            cmd_obj = getattr(a, 'command', None)
+            if cmd_obj and hasattr(cmd_obj, 'execute'):
+                 # Ensure it has to_dict compliant with our schema?
+                 # If it's a native C++ command, it might not have Python `to_dict` or might return generic dict.
+                 # For now, wrap even the command if it doesn't look like a Python ICommand,
+                 # or just wrap the action to be safe and let the wrapper handle execution delegation.
+                 # BUT, we want to use the native command logic if present.
+                 # Let's wrap the ACTION, because the wrapper prefers action.execute/command.execute but enforces to_dict.
+                 cmds.append(wrap_action(a))
+            else:
+                 cmds.append(wrap_action(a))
         return cmds
     except Exception:
         return []
