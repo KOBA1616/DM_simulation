@@ -135,8 +135,15 @@ class CardDataManager:
                                 })
                         # Merge into any pre-existing commands list and remove actions
                         effect['commands'] = effect.get('commands', []) + converted_cmds
-                        if 'actions' in effect:
+                    # Ensure 'commands' key exists on the effect (empty list if conversion yielded none)
+                    if 'commands' not in effect:
+                        effect['commands'] = []
+                    # Remove legacy 'actions' to enforce Commands-only policy in-editor
+                    if 'actions' in effect:
+                        try:
                             del effect['actions']
+                        except Exception:
+                            pass
                 except Exception:
                     # Non-fatal: if conversion fails, continue loading but preserve original actions
                     pass
@@ -303,10 +310,11 @@ class CardDataManager:
     def reconstruct_card_data(self, card_item):
         """Reconstructs a single card's data from its tree item."""
         card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
-        if not card_data: return None
+        if not card_data:
+            return None
 
-        new_effects = [] # Now strictly triggers
-        new_static = [] # New list for static abilities
+        new_effects = []
+        new_static = []
         new_reactions = []
         spell_side_dict = None
         keywords_dict = {}
@@ -319,6 +327,7 @@ class CardDataManager:
         for j in range(card_item.rowCount()):
             child_item = card_item.child(j)
             item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
+
             # Handle group containers (e.g., GROUP_TRIGGER holding EFFECT nodes)
             if isinstance(item_type, str) and item_type.startswith("GROUP_"):
                 for k in range(child_item.rowCount()):
@@ -328,8 +337,9 @@ class CardDataManager:
                     if grp_child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
                         eff_data = self._reconstruct_effect(grp_child)
                         new_effects.append(eff_data)
-                        for act in eff_data.get('actions', []):
-                            if act.get('type') == "REVOLUTION_CHANGE":
+                        # Detect revolution change in either legacy actions or new commands
+                        for act in (eff_data.get('actions', []) or []) + (eff_data.get('commands', []) or []):
+                            if isinstance(act, dict) and act.get('type') == "REVOLUTION_CHANGE":
                                 has_rev_change_action = True
                                 rev_change_filter = act.get('filter')
                 continue
@@ -342,10 +352,8 @@ class CardDataManager:
             elif item_type == "EFFECT":
                 eff_data = self._reconstruct_effect(child_item)
                 new_effects.append(eff_data)
-
-                # Check for Revolution Change Action
-                for act in eff_data.get('actions', []):
-                    if act.get('type') == "REVOLUTION_CHANGE":
+                for act in (eff_data.get('actions', []) or []) + (eff_data.get('commands', []) or []):
+                    if isinstance(act, dict) and act.get('type') == "REVOLUTION_CHANGE":
                         has_rev_change_action = True
                         rev_change_filter = act.get('filter')
 
@@ -429,6 +437,7 @@ class CardDataManager:
         # New policy: when reconstructing, prefer emitting `commands` only.
         # Convert any legacy ACTION nodes into command dicts (using ActionConverter).
         new_commands = []
+        legacy_actions = []
 
         for k in range(eff_item.rowCount()):
             item = eff_item.child(k)
@@ -436,6 +445,8 @@ class CardDataManager:
 
             if item_type == "ACTION":
                 act_data = self._reconstruct_action(item)
+                # preserve legacy action dict for backward compatibility
+                legacy_actions.append(act_data)
                 # Attempt conversion; always produce a command-like dict even on failure
                 try:
                     objs = convert_action_to_objs(act_data)
@@ -467,6 +478,13 @@ class CardDataManager:
         else:
             if 'commands' in eff_data:
                 del eff_data['commands']
+
+        # Preserve legacy 'actions' list when original ACTION nodes existed
+        if legacy_actions:
+            eff_data['actions'] = legacy_actions
+        else:
+            if 'actions' in eff_data:
+                del eff_data['actions']
 
         return eff_data
 
@@ -662,6 +680,17 @@ class CardDataManager:
         # Update reconstructed card data cache on change
         try:
             self._update_card_from_child(eff_item)
+        except Exception:
+            pass
+
+        # Ensure revolution_change keyword is reflected immediately in the CARD data
+        try:
+            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+            if 'keywords' not in card_data or not isinstance(card_data['keywords'], dict):
+                card_data['keywords'] = card_data.get('keywords', {}) or {}
+            card_data['keywords']['revolution_change'] = True
+            card_data['revolution_change_condition'] = act_data.get('filter')
+            card_item.setData(card_data, Qt.ItemDataRole.UserRole + 2)
         except Exception:
             pass
 

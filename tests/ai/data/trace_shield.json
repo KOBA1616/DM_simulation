@@ -1,0 +1,8 @@
+[
+  {
+    "players": [
+      { "hand": [], "shield_zone": [], "deck": [] },
+      { "hand": [], "shield_zone": [ { "card_id": 5, "instance_id": 301 } ], "deck": [] }
+    ]
+  }
+]

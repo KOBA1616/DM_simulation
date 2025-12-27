@@ -15,6 +15,8 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 if ($Build -or -not (Test-Path (Join-Path $buildDir "dm_ai_module*.pyd"))) {
     Write-Host "Building project before launching GUI..."
     & "$scriptDir/build.ps1" -Config $Config
+
+   
 }
 
 if (-not (Test-Path $buildDir)) {

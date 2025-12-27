@@ -105,6 +105,15 @@ _definitions = [
               visible=["scope", "filter", "str_val", "value2"], labels={"str_val": "Keyword (e.g. blocker)", "value2": "Duration (Turns)"},
               json_template={"type": "GRANT_KEYWORD"}),
 
+    # Explicit engine keys expected by the editor/tests
+    ActionDef("GRANT_KEYWORD", "Grant Keyword", "STATE_MUTATION",
+              visible=["scope", "filter", "str_val", "value2"], labels={"str_val": "Keyword (e.g. blocker)", "value2": "Duration (Turns)"},
+              json_template={"type": "ADD_KEYWORD"}),
+
+    ActionDef("COST_REFERENCE", "Cost Reference / Pay", "STATE_MUTATION",
+              visible=["value1", "str_val"], labels={"value1": "Amount", "str_val": "Reference"},
+              json_template={"type": "COST_REFERENCE"}),
+
     ActionDef("TAP", "Tap", "STATE_MUTATION",
               visible=["scope", "filter", "target_choice"],
               json_template={"type": "MUTATE", "str_val": "TAP"}),
