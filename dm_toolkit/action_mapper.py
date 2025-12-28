@@ -118,34 +118,36 @@ class ActionToCommandMapper:
             ActionToCommandMapper._transfer_common_move_fields(act_data, cmd)
 
         elif act_type in ["DESTROY", "DISCARD", "MANA_CHARGE", "RETURN_TO_HAND", "SEND_TO_MANA", "SEND_TO_DECK_BOTTOM", "ADD_SHIELD", "SHIELD_BURN"]:
-            if act_type == "SEND_TO_MANA":
-                cmd['type'] = "TRANSITION"
-                cmd['to_zone'] = "MANA_ZONE"
-            elif act_type == "SEND_TO_DECK_BOTTOM":
-                cmd['type'] = "TRANSITION"
-                cmd['to_zone'] = "DECK_BOTTOM"
-            elif act_type == "ADD_SHIELD":
-                cmd['type'] = "TRANSITION"
-                cmd['to_zone'] = "SHIELD_ZONE"
-            elif act_type == "SHIELD_BURN":
+            if act_type == "SHIELD_BURN":
                  cmd['type'] = "SHIELD_BURN" # Assuming this maps to C++
                  cmd['amount'] = act_data.get('value1', 1)
-            elif act_type == "DESTROY":
-                cmd['type'] = "DESTROY"
-            elif act_type == 'RETURN_TO_HAND':
-                cmd['type'] = 'RETURN_TO_HAND'
-            elif act_type == 'DISCARD':
-                cmd['type'] = 'DISCARD'
-            elif act_type == 'MANA_CHARGE':
-                cmd['type'] = 'MANA_CHARGE'
             else:
-                cmd['type'] = act_type
+                cmd['type'] = "TRANSITION"
+
+            if act_type == "SEND_TO_MANA" or act_type == "MANA_CHARGE":
+                cmd['to_zone'] = "MANA_ZONE"
+                if not src and act_type == "MANA_CHARGE": cmd['from_zone'] = "DECK" # Default for MANA_CHARGE
+                if src: cmd['from_zone'] = src
+            elif act_type == "SEND_TO_DECK_BOTTOM":
+                cmd['to_zone'] = "DECK_BOTTOM"
+            elif act_type == "ADD_SHIELD":
+                cmd['to_zone'] = "SHIELD_ZONE"
+                if not src: cmd['from_zone'] = "DECK"
+            elif act_type == "DESTROY":
+                cmd['to_zone'] = "GRAVEYARD"
+                if src: cmd['from_zone'] = src
+            elif act_type == 'RETURN_TO_HAND':
+                cmd['to_zone'] = "HAND"
+                # from_zone usually BATTLE, but could be MANA. Leave for deduction or set default if known.
+            elif act_type == 'DISCARD':
+                cmd['to_zone'] = "GRAVEYARD"
+                cmd['from_zone'] = "HAND"
 
             ActionToCommandMapper._transfer_common_move_fields(act_data, cmd)
 
         # 2. DRAW_CARD
         elif act_type == "DRAW_CARD":
-            cmd['type'] = "DRAW_CARD"
+            cmd['type'] = "TRANSITION"
             cmd['from_zone'] = src or 'DECK'
             cmd['to_zone'] = dest or 'HAND'
             if 'value1' in act_data:
