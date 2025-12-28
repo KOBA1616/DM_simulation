@@ -38,15 +38,24 @@ namespace dm::engine::systems {
         // Ensure defaults are loaded (singleton lazy init might need explicit call if not done elsewhere)
         ConditionSystem::instance().initialize_defaults();
 
+        // Primitives only. Legacy macros should be expanded at load time.
+        // However, if any slip through or if SHUFFLE_DECK is treated as primitive here:
         switch (cmd.type) {
             case core::CommandType::TRANSITION:
             case core::CommandType::MUTATE:
             case core::CommandType::FLOW:
             case core::CommandType::QUERY:
+            case core::CommandType::SHUFFLE_DECK:
                 execute_primitive(state, cmd, source_instance_id, player_id, execution_context);
                 break;
             default:
-                expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
+                // Legacy support removed/deprecated.
+                // If expansion happens at load time, this path is unreachable for valid cards.
+                // std::cerr << "Warning: Executing unexpanded command type: " << (int)cmd.type << std::endl;
+                // For now, we keep the call but it should be empty if we remove the method body.
+                // Or we keep it as a fallback during migration?
+                // The user requested removing it.
+                // expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
                 break;
         }
     }
