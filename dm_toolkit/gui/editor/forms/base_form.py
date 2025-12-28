@@ -46,6 +46,7 @@ class BaseEditForm(QWidget):
 
         if isinstance(label, str):
             lbl = QLabel(label)
+            lbl.setBuddy(widget)
             layout.addRow(lbl, widget)
             return lbl
         elif isinstance(label, QWidget):

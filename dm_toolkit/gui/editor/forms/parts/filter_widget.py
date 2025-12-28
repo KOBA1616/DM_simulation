@@ -138,6 +138,7 @@ class FilterEditorWidget(QWidget):
             c.addItem(tr("Yes (True)"), 1)
             c.addItem(tr("No (False)"), 0)
             c.currentIndexChanged.connect(self.filterChanged.emit)
+            l.setBuddy(c)
             return l, c
 
         lbl_tapped, self.tapped_combo = create_tristate("Is Tapped?")
