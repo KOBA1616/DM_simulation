@@ -3,10 +3,12 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include "core/card_def.hpp"
+#include "engine/utils/command_expander.hpp"
 
 namespace dm::engine {
 
     using namespace dm::core;
+    using namespace dm::engine::utils;
     using json = nlohmann::json;
 
     Civilization JsonLoader::parse_civilization(const std::string& civ_str) {
