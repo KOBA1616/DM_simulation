@@ -146,3 +146,39 @@
 ---
 
 作成日: 2025-12-27 (Updated)
+
+## 4. 統合方針と推奨統合（2025-12-28）
+
+この節は Action→Command 移行において実際に統合を進めるための明確な方針と、統合すべきコマンド群を示します。実装時は下記の設計を第一決定指針とし、互換性確保のためエイリアスを残すことを推奨します。
+
+### 推奨統合一覧
+- `TRANSITION` に統合: `DESTROY`, `DISCARD`, `RETURN_TO_HAND`, `SEND_TO_MANA`, `ADD_SHIELD`, `SEND_TO_DECK_BOTTOM`
+	- 理由: これらは本質的に「ゾーン間移動」であり、`from_zone`/`to_zone` と `reason`/`alias` で区別可能。内部的には `TRANSITION` をコアにし、短縮エイリアスを提供する。
+
+- `MUTATE` を汎用化: `APPLY_MODIFIER`, `COST_REDUCTION`, `HEAL`(一部), `POWER_MOD`, `POWER_SET`, `SHIELD_BURN`(必要に応じて)
+	- 理由: 状態変化は共通のフィールドで安全に表現可能。だが `TAP`/`UNTAP` や `ADD_KEYWORD` は意味論的に専用命令のまま保持することを推奨。
+
+- `QUERY` に統合: `COUNT_CARDS`, `GET_GAME_STAT`, `SELECT_TARGET`（選択の問い合わせ部分）
+	- 理由: 情報取得／選択は「問い合わせ→結果」を返す共通パターン。`query_kind` と `flags` で種類を分ける。
+
+- 探索系の整理: `SEARCH_DECK` と `LOOK_AND_ADD` を `SEARCH` 系サブタイプに整理（`LOOK`/`ADD`/`LOOK_AND_ADD`/`MEKRAID`）
+
+- `PLAY_FROM_ZONE` と `PLAY_FROM_BUFFER` は `PLAY` に統合（`from_zone` パラで区別）
+
+- `CHOICE` と `SELECT_NUMBER` の整理: `CHOICE` を汎用化して数値選択を含める（`choice_type`）
+
+### 実装上の注意点（要約）
+- `TRANSITION` をコアにした場合、`reason` と `to_zone` によってトリガやログを分岐させること。既存処理（破壊・破棄・マナ等）は内部フラグで扱う。
+- `MUTATE` は `mutation_kind` を明瞭に列挙し、`duration`/`stacking` などの付帯情報を持たせる。
+- `QUERY` は副作用を持たせない設計とし、結果の受け渡しは `output_value_key` を通して行う。
+- `PLAY` は `from_zone` を必須パラとして扱い、`buffer` は単に `from_zone=BUFFER` として扱うことで `PLAY_FROM_BUFFER` を不要にする。
+- 既存コードとの互換性のため、短期的にはエイリアスコマンド（例: `DESTROY`）を残し、内部で `TRANSITION` を呼ぶ実装を採る。
+
+### 期待効果
+- Command 辞書の種類が減ることで `ActionConverter` の変換ロジックが単純化される。
+- 共通処理（選択・フィルタ・ゾーン処理・ログ）が集約され、テストの表現が容易になる。
+
+---
+
+上記の統合方針をドキュメントに反映しました。実際のコード変更（`ActionConverter` の実装差し替え、既存呼び出し箇所のリファクタ等）を行う場合、別途パッチを作成できます。
+

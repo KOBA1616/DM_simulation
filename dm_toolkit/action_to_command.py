@@ -2,6 +2,7 @@
 import uuid
 import copy
 from typing import Any, Dict, List, Optional
+from dm_toolkit.compat_wrappers import add_aliases_to_command
 
 # Try to import dm_ai_module to get enums, otherwise define mocks/None.
 # Note: In some environments the compiled extension may be missing or fail to load.
@@ -126,7 +127,8 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         _handle_specific_moves(act_type, act_data, cmd, src)
 
     elif act_type == "DRAW_CARD":
-        cmd['type'] = "TRANSITION"
+        # Preserve legacy DRAW_CARD command type while keeping transition fields
+        cmd['type'] = "DRAW_CARD"
         cmd['from_zone'] = src or 'DECK'
         cmd['to_zone'] = dest or 'HAND'
         _transfer_common_move_fields(act_data, cmd)
@@ -137,7 +139,13 @@ def map_action(action_data: Any) -> Dict[str, Any]:
 
     elif act_type in ["COUNT_CARDS", "MEASURE_COUNT", "GET_GAME_STAT"]:
         cmd['type'] = "QUERY"
-        cmd['str_param'] = act_data.get('str_val', 'CARDS_MATCHING_FILTER' if 'COUNT' in act_type else '')
+        # Provide a structured query_kind for downstream handling
+        if 'COUNT' in act_type:
+            cmd['query_kind'] = 'COUNT_MATCHING'
+            cmd['str_param'] = act_data.get('str_val', 'CARDS_MATCHING_FILTER')
+        else:
+            cmd['query_kind'] = 'GET_GAME_STAT'
+            cmd['str_param'] = act_data.get('str_val', '')
         _transfer_targeting(act_data, cmd)
 
     elif act_type in ["APPLY_MODIFIER", "COST_REDUCTION", "GRANT_KEYWORD"]:
@@ -150,10 +158,37 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         _handle_selection(act_type, act_data, cmd)
 
     elif act_type in ["SEARCH_DECK", "SHUFFLE_DECK", "REVEAL_CARDS", "LOOK_AND_ADD", "MEKRAID", "REVOLUTION_CHANGE"]:
+        # Keep legacy command type for compatibility; handler may add unified fields
         _handle_complex(act_type, act_data, cmd, dest)
 
     elif act_type in ["PLAY_FROM_ZONE", "FRIEND_BURST", "REGISTER_DELAYED_EFFECT", "CAST_SPELL"]:
         _handle_play_flow(act_type, act_data, cmd, src, dest)
+
+    elif act_type == "SEND_SHIELD_TO_GRAVE":
+        # Explicit mapping for shield -> grave transitions
+        cmd['type'] = 'TRANSITION'
+        # Use legacy zone naming
+        cmd['from_zone'] = act_data.get('source_zone') or act_data.get('from_zone') or 'SHIELD_ZONE'
+        cmd['to_zone'] = act_data.get('destination_zone') or act_data.get('to_zone') or 'GRAVEYARD'
+        if 'value1' in act_data: cmd['amount'] = act_data['value1']
+        _transfer_common_move_fields(act_data, cmd)
+
+    elif act_type == 'PUT_CREATURE':
+        # Put creature directly into battle (not a normal play)
+        cmd['type'] = 'TRANSITION'
+        # Use legacy zone naming
+        cmd['to_zone'] = act_data.get('destination_zone') or act_data.get('to_zone') or 'BATTLE_ZONE'
+        if 'value1' in act_data: cmd['amount'] = act_data['value1']
+        if 'str_val' in act_data: cmd['str_param'] = act_data['str_val']
+        _transfer_common_move_fields(act_data, cmd)
+
+    elif act_type == 'COST_REFERENCE':
+        # Reference cost modifiers / markers
+        cmd['type'] = 'MUTATE'
+        cmd['mutation_kind'] = 'COST_REFERENCE'
+        if 'value1' in act_data: cmd['amount'] = act_data['value1']
+        if 'str_val' in act_data: cmd['str_param'] = act_data['str_val']
+        _transfer_targeting(act_data, cmd)
 
     elif act_type in ["ATTACK_PLAYER", "ATTACK_CREATURE", "BLOCK", "BREAK_SHIELD",
                       "RESOLVE_BATTLE", "RESOLVE_EFFECT", "USE_SHIELD_TRIGGER", "RESOLVE_PLAY"]:
@@ -175,6 +210,12 @@ def map_action(action_data: Any) -> Dict[str, Any]:
             cmd['legacy_original_type'] = act_type
             cmd['str_param'] = f"Legacy: {act_type}"
             _transfer_targeting(act_data, cmd)
+
+    # Annotate command with legacy alias info for short-term compatibility
+    try:
+        add_aliases_to_command(cmd, act_type)
+    except Exception:
+        pass
 
     _finalize_command(cmd, act_data)
     return cmd
@@ -204,6 +245,8 @@ def _handle_specific_moves(act_type, act, cmd, src):
          cmd['amount'] = act.get('value1', 1)
     else:
         cmd['type'] = "TRANSITION"
+        # Preserve original semantic intent as an alias/reason for compatibility
+        cmd['reason'] = act_type
 
     # NOTE: These strings should match dm_ai_module.Zone enum names if possible
     # to be picked up by compat.py correctly.
@@ -246,8 +289,9 @@ def _handle_modifiers(act_type, act, cmd):
 
 def _handle_mutate(act_type, act, cmd):
     sval = str(act.get('str_val') or '').upper()
+    # Consolidate POWER_MOD into generic MUTATE with mutation_kind
     if act_type == "POWER_MOD" or 'POWER' in sval:
-        cmd['type'] = 'POWER_MOD'
+        cmd['type'] = 'MUTATE'
         cmd['mutation_kind'] = 'POWER_MOD'
         if 'value1' in act: cmd['amount'] = act['value1']
         elif 'value2' in act: cmd['amount'] = act['value2']
@@ -279,20 +323,32 @@ def _handle_selection(act_type, act, cmd):
         cmd['amount'] = act.get('value1', 1)
         if act.get('value2', 0) == 1:
             cmd.setdefault('flags', []).append("ALLOW_DUPLICATES")
-    elif act_type == "SELECT_NUMBER":
-        cmd['type'] = "SELECT_NUMBER"
-        if 'value1' in act:
-            cmd['max'] = int(act.get('value1') or 0)
+    
     elif act_type == "SELECT_TARGET":
         cmd['type'] = "QUERY"
         cmd['str_param'] = "SELECT_TARGET"
         if cmd.get('target_group') == 'NONE' and 'target_group' not in act:
              cmd['target_group'] = 'TARGET_SELECT'
-    _transfer_targeting(act, cmd)
+    elif act_type == "SELECT_NUMBER":
+        # Preserve legacy SELECT_NUMBER command while providing numeric bounds
+        cmd['type'] = "SELECT_NUMBER"
+        if 'value1' in act:
+            cmd['max'] = int(act.get('value1') or 0)
+        if 'value2' in act:
+            cmd['min'] = int(act.get('value2') or 0)
+        # default amount is 1
+        cmd['amount'] = 1
+        _transfer_targeting(act, cmd)
+    else:
+        _transfer_targeting(act, cmd)
 
 def _handle_complex(act_type, act, cmd, dest):
+    # Map complex/deck effects while preserving legacy 'type' for tests and compat.
     if act_type == "SEARCH_DECK":
         cmd['type'] = "SEARCH_DECK"
+        # Unified representation
+        cmd['unified_type'] = 'SEARCH'
+        cmd['search_type'] = 'SEARCH_DECK'
         cmd['amount'] = act.get('value1', 1)
         if 'filter' in act:
             cmd['target_filter'] = copy.deepcopy(act['filter'])
@@ -303,6 +359,8 @@ def _handle_complex(act_type, act, cmd, dest):
         cmd['amount'] = act.get('value1', 1)
     elif act_type == "LOOK_AND_ADD":
         cmd['type'] = "LOOK_AND_ADD"
+        cmd['unified_type'] = 'SEARCH'
+        cmd['search_type'] = 'LOOK_AND_ADD'
         if 'value1' in act: cmd['look_count'] = int(act['value1'])
         elif 'filter' in act and 'count' in act['filter']: cmd['look_count'] = act['filter']['count']
         if 'value2' in act: cmd['add_count'] = int(act['value2'])
@@ -311,11 +369,16 @@ def _handle_complex(act_type, act, cmd, dest):
         elif 'destination_zone' in act: cmd['rest_zone'] = act['destination_zone']
     elif act_type == "MEKRAID":
         cmd['type'] = "MEKRAID"
+        cmd['unified_type'] = 'SEARCH'
+        cmd['search_type'] = 'MEKRAID'
         cmd['look_count'] = int(act.get('look_count') or act.get('value2') or 3)
         cmd['max_cost'] = act.get('value1', 0)
         cmd['select_count'] = 1
         cmd['play_for_free'] = True
         cmd['rest_zone'] = act.get('rest_zone') or 'DECK_BOTTOM'
+        # If minimal parameters are missing, mark as legacy-warning for manual review
+        if 'value1' not in act and 'look_count' not in act and 'filter' not in act:
+            cmd['legacy_warning'] = True
     elif act_type == "REVOLUTION_CHANGE":
         cmd['type'] = "MUTATE"
         cmd['mutation_kind'] = 'REVOLUTION_CHANGE'
@@ -325,11 +388,18 @@ def _handle_complex(act_type, act, cmd, dest):
 
 def _handle_play_flow(act_type, act, cmd, src, dest):
     if act_type == "PLAY_FROM_ZONE":
-        cmd['type'] = "PLAY_FROM_ZONE"
+        # Consolidate play commands to a single PLAY command with from_zone
+        cmd['type'] = "PLAY"
         if src: cmd['from_zone'] = src
         cmd['to_zone'] = dest or 'BATTLE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
         cmd['str_param'] = "PLAY_FROM_ZONE_HINT"
+        # propagate explicit play_for_free flag if present
+        if act.get('play_for_free') or act.get('play_free'):
+            cmd.setdefault('play_flags', []).append('PLAY_FOR_FREE')
+        # propagate put-into-play semantic if action explicitly requests it
+        if act.get('put_into_play') or act.get('force_put'):
+            cmd.setdefault('play_flags', []).append('PUT_IN_PLAY')
     elif act_type == "FRIEND_BURST":
         cmd['type'] = "FRIEND_BURST"
         cmd['str_val'] = act.get('str_val')
@@ -385,9 +455,12 @@ def _handle_buffer_ops(act_type, act, cmd, dest):
         cmd['amount'] = act.get('value1', 1)
         if act.get('value2', 0) == 1: cmd.setdefault('flags', []).append('ALLOW_DUPLICATES')
     elif act_type == "PLAY_FROM_BUFFER":
+        # Preserve legacy type while indicating unified PLAY semantics
         cmd['type'] = 'PLAY_FROM_BUFFER'
+        cmd['unified_type'] = 'PLAY'
         cmd['from_zone'] = 'BUFFER'
-        cmd['to_zone'] = dest or 'BATTLE'
+        # Prefer original action's destination_zone/key for legacy naming
+        cmd['to_zone'] = act.get('destination_zone') or act.get('to_zone') or 'BATTLE_ZONE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
     elif act_type == "MOVE_BUFFER_TO_ZONE":
         cmd['type'] = 'TRANSITION'
