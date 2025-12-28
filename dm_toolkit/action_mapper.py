@@ -99,17 +99,27 @@ class ActionToCommandMapper:
         # relying on the binding enum only if we need integer values (which we generally don't for JSON).
         # We align these strings with C++ NLOHMANN_JSON_SERIALIZE_ENUM
 
-        # 1. MOVE_CARD Logic
+        # 1. MOVE_CARD Logic and Normalization to TRANSITION
         if act_type == "MOVE_CARD":
             if dest == "GRAVEYARD":
                 if src == "HAND":
-                    cmd['type'] = "DISCARD"
+                    # Discard
+                    cmd['type'] = "TRANSITION"
+                    cmd['from_zone'] = "HAND"
+                    cmd['to_zone'] = "GRAVEYARD"
                 else:
-                    cmd['type'] = "DESTROY"
+                    # Destroy or just move to grave
+                    cmd['type'] = "TRANSITION"
+                    if src: cmd['from_zone'] = src
+                    cmd['to_zone'] = "GRAVEYARD"
             elif dest == "MANA_ZONE":
-                cmd['type'] = "MANA_CHARGE"
+                cmd['type'] = "TRANSITION"
+                if src: cmd['from_zone'] = src
+                cmd['to_zone'] = "MANA_ZONE"
             elif dest == "HAND":
-                cmd['type'] = "RETURN_TO_HAND"
+                cmd['type'] = "TRANSITION"
+                if src: cmd['from_zone'] = src
+                cmd['to_zone'] = "HAND"
             else:
                 cmd['type'] = "TRANSITION"
                 if dest: cmd['to_zone'] = dest
@@ -118,34 +128,49 @@ class ActionToCommandMapper:
             ActionToCommandMapper._transfer_common_move_fields(act_data, cmd)
 
         elif act_type in ["DESTROY", "DISCARD", "MANA_CHARGE", "RETURN_TO_HAND", "SEND_TO_MANA", "SEND_TO_DECK_BOTTOM", "ADD_SHIELD", "SHIELD_BURN"]:
-            if act_type == "SEND_TO_MANA":
-                cmd['type'] = "TRANSITION"
+            cmd['type'] = "TRANSITION" # Normalize to TRANSITION
+
+            if act_type == "SEND_TO_MANA" or act_type == "MANA_CHARGE":
                 cmd['to_zone'] = "MANA_ZONE"
+                if act_type == "MANA_CHARGE":
+                    cmd['from_zone'] = "DECK" # Implicit for MANA_CHARGE usually, unless target specified
+
             elif act_type == "SEND_TO_DECK_BOTTOM":
-                cmd['type'] = "TRANSITION"
-                cmd['to_zone'] = "DECK_BOTTOM"
+                cmd['to_zone'] = "DECK_BOTTOM" # Keep distinction for now if needed, or map to DECK with flag?
+                # C++ TransitionCommand supports DECK. Logic for bottom usually handled by insertion index.
+                # Use DECK for now, maybe add logic for 'BOTTOM'.
+                cmd['to_zone'] = "DECK"
+                # TODO: Signal bottom insertion?
+
             elif act_type == "ADD_SHIELD":
-                cmd['type'] = "TRANSITION"
                 cmd['to_zone'] = "SHIELD_ZONE"
+                # Usually from Deck
+                cmd['from_zone'] = "DECK"
+
             elif act_type == "SHIELD_BURN":
-                 cmd['type'] = "SHIELD_BURN" # Assuming this maps to C++
+                 # SHIELD_BURN is specific: Move shield to Grave.
+                 cmd['type'] = "TRANSITION" # Can we treat it as Transition?
+                 cmd['from_zone'] = "SHIELD_ZONE"
+                 cmd['to_zone'] = "GRAVEYARD"
                  cmd['amount'] = act_data.get('value1', 1)
+
             elif act_type == "DESTROY":
-                cmd['type'] = "DESTROY"
+                cmd['to_zone'] = "GRAVEYARD"
+                # from_zone inferred (usually Battle)
+
             elif act_type == 'RETURN_TO_HAND':
-                cmd['type'] = 'RETURN_TO_HAND'
+                cmd['to_zone'] = "HAND"
+                # from_zone inferred (usually Battle/Mana/Shield)
+
             elif act_type == 'DISCARD':
-                cmd['type'] = 'DISCARD'
-            elif act_type == 'MANA_CHARGE':
-                cmd['type'] = 'MANA_CHARGE'
-            else:
-                cmd['type'] = act_type
+                cmd['to_zone'] = "GRAVEYARD"
+                cmd['from_zone'] = "HAND"
 
             ActionToCommandMapper._transfer_common_move_fields(act_data, cmd)
 
         # 2. DRAW_CARD
         elif act_type == "DRAW_CARD":
-            cmd['type'] = "DRAW_CARD"
+            cmd['type'] = "TRANSITION"
             cmd['from_zone'] = src or 'DECK'
             cmd['to_zone'] = dest or 'HAND'
             if 'value1' in act_data:
@@ -156,10 +181,12 @@ class ActionToCommandMapper:
 
         # 3. TAP / UNTAP
         elif act_type == "TAP":
-            cmd['type'] = "TAP"
+            cmd['type'] = "MUTATE"
+            cmd['mutation_kind'] = "TAP"
             ActionToCommandMapper._transfer_targeting(act_data, cmd)
         elif act_type == "UNTAP":
-            cmd['type'] = "UNTAP"
+            cmd['type'] = "MUTATE"
+            cmd['mutation_kind'] = "UNTAP"
             ActionToCommandMapper._transfer_targeting(act_data, cmd)
 
         # 4. MEASURE (COUNT / GET_STAT)
@@ -178,7 +205,7 @@ class ActionToCommandMapper:
             val = act_data.get('str_val', '')
             if act_type == "COST_REDUCTION" or val == "COST":
                 cmd['type'] = "MUTATE"
-                cmd['mutation_kind'] = "COST"
+                cmd['mutation_kind'] = "ADD_COST_MODIFIER" # Normalized
                 cmd['amount'] = act_data.get('value1', 0)
             else:
                 cmd['type'] = "MUTATE"
@@ -186,8 +213,10 @@ class ActionToCommandMapper:
             ActionToCommandMapper._transfer_targeting(act_data, cmd)
 
         elif act_type == "GRANT_KEYWORD":
-            cmd['type'] = "ADD_KEYWORD"
-            cmd['mutation_kind'] = act_data.get('str_val', '')
+            cmd['type'] = "MUTATE" # Normalized
+            cmd['mutation_kind'] = "ADD_KEYWORD"
+            # cmd['mutation_kind'] = act_data.get('str_val', '') # Wait, ADD_KEYWORD is the kind, str_val is the keyword
+            cmd['str_param'] = act_data.get('str_val', '')
             cmd['amount'] = act_data.get('value1', 1)
             ActionToCommandMapper._transfer_targeting(act_data, cmd)
 
@@ -195,16 +224,19 @@ class ActionToCommandMapper:
         elif act_type == "MUTATE":
             sval = str(act_data.get('str_val') or '').upper()
             if sval in ("TAP", "UNTAP"):
-                cmd['type'] = sval
+                cmd['type'] = "MUTATE"
+                cmd['mutation_kind'] = sval
             elif sval == "SHIELD_BURN":
-                cmd['type'] = "SHIELD_BURN"
+                cmd['type'] = "TRANSITION"
+                cmd['from_zone'] = "SHIELD_ZONE"
+                cmd['to_zone'] = "GRAVEYARD"
                 if 'value1' in act_data: cmd['amount'] = act_data['value1']
             elif sval in ("SET_POWER", "POWER_SET"):
                 cmd['type'] = 'MUTATE'
                 cmd['mutation_kind'] = 'POWER_SET'
                 if 'value1' in act_data: cmd['amount'] = act_data['value1']
             elif 'POWER' in sval or 'POWER_MOD' in sval:
-                cmd['type'] = 'POWER_MOD' # Changed from MUTATE/POWER_MOD to direct POWER_MOD macro if supported
+                cmd['type'] = 'MUTATE'
                 cmd['mutation_kind'] = 'POWER_MOD'
                 if 'value1' in act_data: cmd['amount'] = act_data['value1']
                 elif 'value2' in act_data: cmd['amount'] = act_data['value2']
@@ -395,8 +427,9 @@ class ActionToCommandMapper:
             # Special case for "NONE" with str_val (Legacy Keywords)
             if act_type in ("NONE", "") and act_data.get('str_val'):
                  # Try to interpret as keyword grant
-                 cmd['type'] = 'ADD_KEYWORD'
-                 cmd['mutation_kind'] = str(act_data.get('str_val'))
+                 cmd['type'] = 'MUTATE'
+                 cmd['mutation_kind'] = "ADD_KEYWORD"
+                 cmd['str_param'] = str(act_data.get('str_val'))
                  cmd['amount'] = act_data.get('value1', 1)
                  ActionToCommandMapper._transfer_targeting(act_data, cmd)
             else:
