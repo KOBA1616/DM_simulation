@@ -78,9 +78,11 @@ class TestPhase4E2E(unittest.TestCase):
         phase = EngineCompat.get_current_phase(state)
         if str(phase) == "Phase.MANA":
             hand = player.hand
-            if len(hand) > 0:
+            hand_size = len(hand) if isinstance(hand, list) else hand.size()
+            if hand_size > 0:
                 card_to_charge = hand[0]
-                mana_size_before = len(player.mana_zone)
+                mana_zone_before = player.mana_zone
+                mana_size_before = len(mana_zone_before) if isinstance(mana_zone_before, list) else mana_zone_before.size()
 
                 charge_action = Action()
                 charge_action.type = "MANA_CHARGE"
@@ -97,7 +99,9 @@ class TestPhase4E2E(unittest.TestCase):
                 EngineCompat.ExecuteCommand(state, cmd_dict, self.card_db)
 
                 player = state.players[player_idx] # Refresh
-                self.assertEqual(len(player.mana_zone), mana_size_before + 1, "Mana charge failed")
+                mana_zone = player.mana_zone
+                mana_size = len(mana_zone) if isinstance(mana_zone, list) else mana_zone.size()
+                self.assertEqual(mana_size, mana_size_before + 1, "Mana charge should increase mana zone size")
 
         # Advance to MAIN Phase
         # Calling next_phase until MAIN

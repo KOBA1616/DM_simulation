@@ -174,6 +174,10 @@ class EngineCompat:
         """
         EngineCompat._check_module()
         assert dm_ai_module is not None
+                # 1. Try C++ CommandSystem for command-like inputs.
+                # Supports:
+                # - objects with `to_dict()` (ICommand-like)
+                # - raw dict command payloads (Phase 4 E2E / integration helpers)
         if hasattr(dm_ai_module.ActionGenerator, 'generate_legal_actions'):
             return list(dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db))
         return []
@@ -231,16 +235,34 @@ class EngineCompat:
                         if 'owner_id' in cmd_dict: cmd_def.owner_id = int(cmd_dict['owner_id'])
                         elif 'player_id' in cmd_dict: cmd_def.owner_id = int(cmd_dict['player_id'])
 
-                        # Map Zones: Need to convert string to Zone enum if binding requires it
+                        # Map Zones (best-effort): try Zone enum, otherwise fall back to string.
+                        fz = cmd_dict.get('from_zone')
+                        tz = cmd_dict.get('to_zone')
+
+                        zone_alias = {
+                            # Legacy / UI strings
+                            'MANA_ZONE': 'MANA',
+                            'BATTLE_ZONE': 'BATTLE',
+                            'SHIELD_ZONE': 'SHIELD',
+                        }
+                        fz_norm = zone_alias.get(str(fz), str(fz)) if fz is not None else ''
+                        tz_norm = zone_alias.get(str(tz), str(tz)) if tz is not None else ''
+
+                        assigned_from = False
+                        assigned_to = False
                         if hasattr(dm_ai_module, 'Zone'):
-                            fz = cmd_dict.get('from_zone')
-                            if fz and hasattr(dm_ai_module.Zone, fz): cmd_def.from_zone = getattr(dm_ai_module.Zone, fz)
-                            tz = cmd_dict.get('to_zone')
-                            if tz and hasattr(dm_ai_module.Zone, tz): cmd_def.to_zone = getattr(dm_ai_module.Zone, tz)
-                        else:
-                            # Fallback if Zone not exposed or string allowed
-                            cmd_def.from_zone = str(cmd_dict.get('from_zone', ''))
-                            cmd_def.to_zone = str(cmd_dict.get('to_zone', ''))
+                            if fz_norm and hasattr(dm_ai_module.Zone, fz_norm):
+                                cmd_def.from_zone = getattr(dm_ai_module.Zone, fz_norm)
+                                assigned_from = True
+                            if tz_norm and hasattr(dm_ai_module.Zone, tz_norm):
+                                cmd_def.to_zone = getattr(dm_ai_module.Zone, tz_norm)
+                                assigned_to = True
+
+                        # Fallback: bindings may accept raw strings
+                        if not assigned_from:
+                            cmd_def.from_zone = str(fz_norm or '')
+                        if not assigned_to:
+                            cmd_def.to_zone = str(tz_norm or '')
 
                         cmd_def.mutation_kind = str(cmd_dict.get('mutation_kind', ''))
                         cmd_def.input_value_key = str(cmd_dict.get('input_value_key', ''))
