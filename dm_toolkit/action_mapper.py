@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 import uuid
 import copy
-import warnings
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List
 
 # Try to import dm_ai_module to get CommandType enum, otherwise fallback
 try:
@@ -11,17 +10,13 @@ try:
 except ImportError:
     _CommandType = None
 
-try:
-    from dm_toolkit.gui.editor.utils import normalize_action_zone_keys
-except ImportError:
-    # Fallback for runtime environment if gui is not available
-    def normalize_action_zone_keys(data):
-        if not isinstance(data, dict): return data
-        if 'source_zone' not in data and 'from_zone' in data: data['source_zone'] = data['from_zone']
-        if 'destination_zone' not in data and 'to_zone' in data: data['destination_zone'] = data['to_zone']
-        if 'from_zone' in data: del data['from_zone']
-        if 'to_zone' in data: del data['to_zone']
-        return data
+def normalize_action_zone_keys(data):
+    if not isinstance(data, dict): return data
+    # Return a new dict to avoid side effects
+    new_data = data.copy()
+    if 'source_zone' not in new_data and 'from_zone' in new_data: new_data['source_zone'] = new_data['from_zone']
+    if 'destination_zone' not in new_data and 'to_zone' in new_data: new_data['destination_zone'] = new_data['to_zone']
+    return new_data
 
 class ActionToCommandMapper:
     """
@@ -35,31 +30,39 @@ class ActionToCommandMapper:
         Converts a legacy Action dictionary to a Command dictionary complying with the Schema.
         Handles recursion for nested actions (e.g. options).
         """
-        # Defensive copy
+        # Defensive deep copy to prevent any mutation of the original action object
         try:
-            act_data = action_data.copy() if hasattr(action_data, 'copy') else action_data
-        except Exception:
-            act_data = action_data
-
-        if not isinstance(act_data, dict):
-            # Try to convert object to dict if possible
-            if hasattr(act_data, 'to_dict'):
-                act_data = act_data.to_dict()
-            elif hasattr(act_data, '__dict__'):
-                act_data = act_data.__dict__
+            if hasattr(action_data, 'to_dict'):
+                act_data = action_data.to_dict()
+            elif hasattr(action_data, '__dict__'):
+                act_data = action_data.__dict__.copy()
+            elif isinstance(action_data, dict):
+                act_data = copy.deepcopy(action_data)
             else:
                 return {
                     "type": "NONE",
                     "uid": str(uuid.uuid4()),
                     "legacy_warning": True,
-                    "legacy_original_value": str(act_data),
+                    "legacy_original_value": str(action_data),
                     "str_param": "Invalid action shape"
                 }
+        except Exception:
+            # Fallback for uncopyable objects
+             return {
+                "type": "NONE",
+                "uid": str(uuid.uuid4()),
+                "legacy_warning": True,
+                "legacy_original_value": str(action_data),
+                "str_param": "Uncopyable action"
+            }
 
-        act_type = str(act_data.get('type', 'NONE'))
+        # Normalize keys for consistency
+        act_data = normalize_action_zone_keys(act_data)
+
+        act_type = str(act_data.get('type', 'NONE')).upper()
         # Handle enum objects
-        if hasattr(act_type, 'name'):
-            act_type = act_type.name
+        if hasattr(act_data.get('type'), 'name'):
+            act_type = act_data['type'].name.upper()
 
         cmd = {
             "type": "NONE",
@@ -95,10 +98,6 @@ class ActionToCommandMapper:
         src = get_zone(act_data, ['source_zone', 'from_zone', 'origin_zone'])
         dest = get_zone(act_data, ['destination_zone', 'to_zone', 'dest_zone'])
 
-        # Use strings for CommandTypes to ensure serialization compatibility,
-        # relying on the binding enum only if we need integer values (which we generally don't for JSON).
-        # We align these strings with C++ NLOHMANN_JSON_SERIALIZE_ENUM
-
         # 1. MOVE_CARD Logic
         if act_type == "MOVE_CARD":
             if dest == "GRAVEYARD":
@@ -112,21 +111,26 @@ class ActionToCommandMapper:
                 cmd['type'] = "RETURN_TO_HAND"
             else:
                 cmd['type'] = "TRANSITION"
-                if dest: cmd['to_zone'] = dest
-                if src: cmd['from_zone'] = src
+
+            if dest and 'to_zone' not in cmd: cmd['to_zone'] = dest
+            if src and 'from_zone' not in cmd: cmd['from_zone'] = src
+
+            # Ensure from_zone is set for Discard/Destroy if available
+            if src and 'from_zone' not in cmd: cmd['from_zone'] = src
 
             ActionToCommandMapper._transfer_common_move_fields(act_data, cmd)
 
         elif act_type in ["DESTROY", "DISCARD", "MANA_CHARGE", "RETURN_TO_HAND", "SEND_TO_MANA", "SEND_TO_DECK_BOTTOM", "ADD_SHIELD", "SHIELD_BURN"]:
             if act_type == "SHIELD_BURN":
-                 cmd['type'] = "SHIELD_BURN" # Assuming this maps to C++
+                 cmd['type'] = "SHIELD_BURN"
                  cmd['amount'] = act_data.get('value1', 1)
             else:
                 cmd['type'] = "TRANSITION"
 
             if act_type == "SEND_TO_MANA" or act_type == "MANA_CHARGE":
+                cmd['type'] = "MANA_CHARGE" # Specifically map these to MANA_CHARGE type if desired, or TRANSITION
                 cmd['to_zone'] = "MANA_ZONE"
-                if not src and act_type == "MANA_CHARGE": cmd['from_zone'] = "DECK" # Default for MANA_CHARGE
+                if not src and act_type == "MANA_CHARGE": cmd['from_zone'] = "DECK"
                 if src: cmd['from_zone'] = src
             elif act_type == "SEND_TO_DECK_BOTTOM":
                 cmd['to_zone'] = "DECK_BOTTOM"
@@ -134,12 +138,14 @@ class ActionToCommandMapper:
                 cmd['to_zone'] = "SHIELD_ZONE"
                 if not src: cmd['from_zone'] = "DECK"
             elif act_type == "DESTROY":
+                cmd['type'] = "DESTROY"
                 cmd['to_zone'] = "GRAVEYARD"
                 if src: cmd['from_zone'] = src
             elif act_type == 'RETURN_TO_HAND':
+                cmd['type'] = "RETURN_TO_HAND"
                 cmd['to_zone'] = "HAND"
-                # from_zone usually BATTLE, but could be MANA. Leave for deduction or set default if known.
             elif act_type == 'DISCARD':
+                cmd['type'] = "DISCARD"
                 cmd['to_zone'] = "GRAVEYARD"
                 cmd['from_zone'] = "HAND"
 
@@ -194,9 +200,14 @@ class ActionToCommandMapper:
             ActionToCommandMapper._transfer_targeting(act_data, cmd)
 
         # 6. MUTATE (Generic legacy)
-        elif act_type == "MUTATE":
+        elif act_type == "MUTATE" or act_type == "POWER_MOD":
             sval = str(act_data.get('str_val') or '').upper()
-            if sval in ("TAP", "UNTAP"):
+            if act_type == "POWER_MOD" or 'POWER' in sval or 'POWER_MOD' in sval:
+                cmd['type'] = 'POWER_MOD'
+                cmd['mutation_kind'] = 'POWER_MOD'
+                if 'value1' in act_data: cmd['amount'] = act_data['value1']
+                elif 'value2' in act_data: cmd['amount'] = act_data['value2']
+            elif sval in ("TAP", "UNTAP"):
                 cmd['type'] = sval
             elif sval == "SHIELD_BURN":
                 cmd['type'] = "SHIELD_BURN"
@@ -205,11 +216,6 @@ class ActionToCommandMapper:
                 cmd['type'] = 'MUTATE'
                 cmd['mutation_kind'] = 'POWER_SET'
                 if 'value1' in act_data: cmd['amount'] = act_data['value1']
-            elif 'POWER' in sval or 'POWER_MOD' in sval:
-                cmd['type'] = 'POWER_MOD' # Changed from MUTATE/POWER_MOD to direct POWER_MOD macro if supported
-                cmd['mutation_kind'] = 'POWER_MOD'
-                if 'value1' in act_data: cmd['amount'] = act_data['value1']
-                elif 'value2' in act_data: cmd['amount'] = act_data['value2']
             elif 'HEAL' in sval or 'RECOVER' in sval:
                 cmd['type'] = 'MUTATE'
                 cmd['mutation_kind'] = 'HEAL'
@@ -224,8 +230,7 @@ class ActionToCommandMapper:
 
         # 7. SELECTION / CHOICE
         elif act_type == "SELECT_OPTION":
-            cmd['type'] = "CHOICE" # Engine might not support CHOICE yet, fallback to QUERY?
-            # Or map to QUERY with options
+            cmd['type'] = "CHOICE"
             cmd['amount'] = act_data.get('value1', 1)
             if act_data.get('value2', 0) == 1:
                 cmd.setdefault('flags', []).append("ALLOW_DUPLICATES")
@@ -248,10 +253,10 @@ class ActionToCommandMapper:
             cmd['type'] = "SEARCH_DECK"
             cmd['amount'] = act_data.get('value1', 1)
             if 'filter' in act_data:
-                cmd['target_filter'] = act_data['filter']
+                cmd['target_filter'] = copy.deepcopy(act_data['filter'])
 
         elif act_type == "SHUFFLE_DECK":
-            cmd['type'] = "SHUFFLE_DECK" # Engine needs to support this or we assume SEARCH_DECK does it
+            cmd['type'] = "SHUFFLE_DECK"
             ActionToCommandMapper._transfer_targeting(act_data, cmd)
 
         elif act_type == "REVEAL_CARDS":
