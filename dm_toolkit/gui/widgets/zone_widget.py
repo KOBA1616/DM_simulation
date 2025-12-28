@@ -3,11 +3,12 @@ from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
 from PyQt6.QtCore import Qt, pyqtSignal
 from .card_widget import CardWidget
 from dm_toolkit.gui.localization import get_card_civilization
+from dm_toolkit.commands_new import wrap_action
 
 class ZoneWidget(QWidget):
     card_clicked = pyqtSignal(int, int) # card_id, instance_id
     card_hovered = pyqtSignal(int) # card_id
-    action_triggered = pyqtSignal(object) # Action object
+    action_triggered = pyqtSignal(object) # Action object (or Command)
 
     def __init__(self, title, parent=None):
         super().__init__(parent)
@@ -50,7 +51,7 @@ class ZoneWidget(QWidget):
         # If we want live updates without recreation:
         for widget in self.cards:
              if widget.instance_id != -1:
-                 relevant = [a for a in self.legal_actions if a.source_instance_id == widget.instance_id]
+                 relevant = [a for a in self.legal_actions if getattr(a, 'source_instance_id', -1) == widget.instance_id]
                  widget.update_legal_actions(relevant)
 
     def update_cards(self, card_data_list, card_db, civ_map=None, legal_actions=None):
@@ -96,7 +97,7 @@ class ZoneWidget(QWidget):
             # Filter actions for this card
             relevant_actions = []
             if instance_id != -1:
-                relevant_actions = [a for a in self.legal_actions if a.source_instance_id == instance_id]
+                relevant_actions = [a for a in self.legal_actions if getattr(a, 'source_instance_id', -1) == instance_id]
 
             if cid in card_db:
                 card_def = card_db[cid]
@@ -109,7 +110,7 @@ class ZoneWidget(QWidget):
                 )
                 widget.clicked.connect(lambda i_id, c_id=cid: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
-                widget.action_triggered.connect(self.action_triggered.emit)
+                widget.action_triggered.connect(self._handle_action_triggered)
                 self.card_layout.addWidget(widget)
                 self.cards.append(widget)
             else:
@@ -118,7 +119,7 @@ class ZoneWidget(QWidget):
                 widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id, None, True, legal_actions=relevant_actions)
                 widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
-                widget.action_triggered.connect(self.action_triggered.emit)
+                widget.action_triggered.connect(self._handle_action_triggered)
                 self.card_layout.addWidget(widget)
 
     def set_card_selected(self, instance_id, selected):
@@ -126,3 +127,19 @@ class ZoneWidget(QWidget):
             if widget.instance_id == instance_id:
                 widget.set_selected(selected)
                 return
+
+    def _handle_action_triggered(self, action):
+        """
+        Intercepts action triggered signal to potentially wrap it as a Command
+        before bubbling up.
+        """
+        # For now, we emit the wrapped command if possible, or just the action.
+        # But to be safe and ensure backward compatibility in the receiver (app.py),
+        # we might want to emit the ICommand interface which provides .to_dict() etc.
+        # But app.py likely expects the raw action object (Action struct from C++ or dict).
+
+        # Pilot Implementation:
+        # We wrap it, but ensure the receiver can handle it.
+        # Since this is a partial rollout, let's assume the receiver checks for 'execute'.
+        cmd = wrap_action(action)
+        self.action_triggered.emit(cmd)
