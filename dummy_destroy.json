@@ -1,0 +1,1 @@
+[{"id": 9998, "name": "Dummy Destroy", "type": "SPELL", "civilizations": ["DARKNESS"], "effects": [{"trigger": "ON_PLAY", "actions": [{"type": "DESTROY", "scope": "PLAYER_OPPONENT", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}]}]}]
