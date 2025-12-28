@@ -193,7 +193,6 @@ set(SRC_AI
     src/ai/encoders/action_encoder.cpp
     src/ai/mcts/mcts.cpp
     src/ai/evaluator/heuristic_evaluator.cpp
-    src/ai/evaluator/neural_evaluator.cpp
     src/ai/evaluator/beam_search_evaluator.cpp
     src/ai/self_play/self_play.cpp
     src/ai/self_play/parallel_runner.cpp
@@ -208,6 +207,7 @@ set(SRC_AI
     src/ai/inference/deck_inference.cpp
     src/ai/pomdp/pomdp.cpp
     # Optional neural evaluator / inference (guarded by USE_LIBTORCH / USE_ONNXRUNTIME)
+    $<$<OR:$<BOOL:${USE_LIBTORCH}>,$<BOOL:${USE_ONNXRUNTIME}>>:src/ai/evaluator/neural_evaluator.cpp>
     $<$<BOOL:${USE_LIBTORCH}>:src/ai/inference/torch_model.cpp>
     $<$<BOOL:${USE_ONNXRUNTIME}>:src/ai/inference/onnx_model.cpp>
 )

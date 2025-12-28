@@ -1,7 +1,9 @@
 #include "bindings/bindings.hpp"
 #include "ai/mcts/mcts.hpp"
 #include "ai/evaluator/heuristic_evaluator.hpp"
+#if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)
 #include "ai/evaluator/neural_evaluator.hpp"
+#endif
 #include "engine/utils/determinizer.hpp"
 #include "ai/self_play/parallel_runner.hpp"
 #include "ai/solver/lethal_solver.hpp"
@@ -64,7 +66,8 @@ void bind_ai(py::module& m) {
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def("evaluate", &HeuristicEvaluator::evaluate);
 
-    // Bind NeuralEvaluator and ModelType
+    // Bind NeuralEvaluator and ModelType only when an inference backend is enabled.
+#if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)
     py::enum_<ModelType>(m, "ModelType")
         .value("RESNET", ModelType::RESNET)
         .value("TRANSFORMER", ModelType::TRANSFORMER)
@@ -75,6 +78,7 @@ void bind_ai(py::module& m) {
         .def("load_model", &NeuralEvaluator::load_model)
         .def("set_model_type", &NeuralEvaluator::set_model_type)
         .def("evaluate", &NeuralEvaluator::evaluate);
+#endif
 
     // Batch Inference Callbacks
     m.def("set_batch_callback", &dm::python::set_batch_callback);
@@ -160,6 +164,8 @@ void bind_ai(py::module& m) {
         .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
         .def(py::init<int, int>())
         .def("play_games", &ParallelRunner::play_games, py::return_value_policy::move)
+        
+#if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)
         .def("play_games", [](ParallelRunner& self,
                               const std::vector<std::shared_ptr<dm::core::GameState>>& initial_states,
                               NeuralEvaluator& evaluator,
@@ -174,6 +180,7 @@ void bind_ai(py::module& m) {
                 },
                 temperature, add_noise, num_threads, alpha, collect_data);
         }, py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature")=1.0f, py::arg("add_noise")=true, py::arg("num_threads")=4, py::arg("alpha")=0.0f, py::arg("collect_data")=true, py::return_value_policy::move)
+#endif
         .def("play_scenario_match", &ParallelRunner::play_scenario_match)
         .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
 
