@@ -194,12 +194,75 @@ class EngineCompat:
     def ExecuteCommand(state: GameState, cmd: Any, card_db: CardDB = None) -> None:
         """Execute a command-like object on the provided GameState.
 
-        Tries `state.execute_command(cmd)` first, then `cmd.execute(state)`, and
-        finally falls back to resolving the underlying Action if the object appears
-        to be an Action.
+        Tries `dm_ai_module.CommandSystem.execute_command` if applicable,
+        then fallback to other methods.
         """
         EngineCompat._check_module()
         assert dm_ai_module is not None
+
+        # 1. Try C++ CommandSystem if it's a wrapped Command with `to_dict`
+        # and has a valid type for the engine.
+        if hasattr(cmd, 'to_dict'):
+            try:
+                cmd_dict = cmd.to_dict()
+                type_str = cmd_dict.get('type')
+
+                # STRICT VALIDATION: Only proceed if type exists in C++ CommandType
+                if type_str and hasattr(dm_ai_module.CommandType, type_str):
+                    if hasattr(dm_ai_module, 'CommandSystem') and hasattr(dm_ai_module.CommandSystem, 'execute_command'):
+                        # Map dict to CommandDef
+                        cmd_def = dm_ai_module.CommandDef()
+                        cmd_def.type = getattr(dm_ai_module.CommandType, type_str)
+
+                        # Common fields
+                        cmd_def.amount = int(cmd_dict.get('amount', 0))
+                        cmd_def.str_param = str(cmd_dict.get('str_param', ''))
+                        cmd_def.optional = bool(cmd_dict.get('optional', False))
+                        cmd_def.from_zone = str(cmd_dict.get('from_zone', ''))
+                        cmd_def.to_zone = str(cmd_dict.get('to_zone', ''))
+                        cmd_def.mutation_kind = str(cmd_dict.get('mutation_kind', ''))
+                        cmd_def.input_value_key = str(cmd_dict.get('input_value_key', ''))
+                        cmd_def.output_value_key = str(cmd_dict.get('output_value_key', ''))
+
+                        # Filter Mapping
+                        filter_dict = cmd_dict.get('target_filter')
+                        if filter_dict:
+                            f = dm_ai_module.FilterDef()
+                            if 'zones' in filter_dict: f.zones = filter_dict['zones']
+                            if 'types' in filter_dict: f.types = filter_dict['types']
+
+                            # Safe property assignment
+                            if 'owner' in filter_dict and hasattr(f, 'owner'): f.owner = filter_dict['owner']
+                            if 'count' in filter_dict and hasattr(f, 'count'): f.count = filter_dict['count']
+
+                            cmd_def.target_filter = f
+
+                        # Target Scope Mapping
+                        scope_str = cmd_dict.get('target_group')
+                        if scope_str and hasattr(dm_ai_module.TargetScope, scope_str):
+                            cmd_def.target_group = getattr(dm_ai_module.TargetScope, scope_str)
+
+                        # Execution Context
+                        source_id = -1
+                        player_id = state.active_player_id
+
+                        # Use legacy action context if available
+                        if hasattr(cmd, '_action'):
+                            act = cmd._action
+                            if hasattr(act, 'source_instance_id'):
+                                source_id = act.source_instance_id
+                            if hasattr(act, 'target_player') and act.target_player != 255:
+                                player_id = act.target_player
+
+                        # Execute
+                        ctx = {}
+                        dm_ai_module.CommandSystem.execute_command(state, cmd_def, source_id, player_id, ctx)
+                        return # Success: Return only if executed by CommandSystem
+            except Exception as e:
+                # Fallthrough on error to try legacy path
+                pass
+
+        # Fallback Logic (Legacy Path)
         try:
             if hasattr(state, 'execute_command'):
                 try:

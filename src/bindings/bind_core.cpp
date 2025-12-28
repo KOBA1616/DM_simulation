@@ -7,12 +7,14 @@
 #include "core/instruction.hpp"
 #include "core/action.hpp"
 #include "engine/game_command/commands.hpp"
+#include "engine/systems/command_system.hpp" // Added include for CommandSystem
 #include <pybind11/stl.h>
 
 using namespace dm;
 using namespace dm::core;
 
 void bind_core(py::module& m) {
+    // ... (Previous Enums and Classes) ...
     // GameEvent bindings
     py::enum_<dm::core::EventType>(m, "EventType")
         .value("NONE", dm::core::EventType::NONE)
@@ -236,6 +238,27 @@ void bind_core(py::module& m) {
     // Alias for backward compatibility
     m.attr("EffectActionType") = m.attr("EffectPrimitive");
 
+    // CommandType (New Enum from card_json_types.hpp)
+    py::enum_<CommandType>(m, "CommandType")
+        .value("TRANSITION", CommandType::TRANSITION)
+        .value("MUTATE", CommandType::MUTATE)
+        .value("FLOW", CommandType::FLOW)
+        .value("QUERY", CommandType::QUERY)
+        .value("DRAW_CARD", CommandType::DRAW_CARD)
+        .value("DISCARD", CommandType::DISCARD)
+        .value("DESTROY", CommandType::DESTROY)
+        .value("MANA_CHARGE", CommandType::MANA_CHARGE)
+        .value("TAP", CommandType::TAP)
+        .value("UNTAP", CommandType::UNTAP)
+        .value("POWER_MOD", CommandType::POWER_MOD)
+        .value("ADD_KEYWORD", CommandType::ADD_KEYWORD)
+        .value("RETURN_TO_HAND", CommandType::RETURN_TO_HAND)
+        .value("BREAK_SHIELD", CommandType::BREAK_SHIELD)
+        .value("SEARCH_DECK", CommandType::SEARCH_DECK)
+        .value("SHIELD_TRIGGER", CommandType::SHIELD_TRIGGER)
+        .value("NONE", CommandType::NONE)
+        .export_values();
+
     py::enum_<InstructionOp>(m, "InstructionOp")
         .value("NOOP", InstructionOp::NOOP)
         .value("IF", InstructionOp::IF)
@@ -343,11 +366,30 @@ void bind_core(py::module& m) {
         .def_readwrite("scope", &ActionDef::scope)
         .def_readwrite("cast_spell_side", &ActionDef::cast_spell_side);
 
+    // Bind CommandDef
+    py::class_<CommandDef>(m, "CommandDef")
+        .def(py::init<>())
+        .def_readwrite("type", &CommandDef::type)
+        .def_readwrite("target_group", &CommandDef::target_group)
+        .def_readwrite("target_filter", &CommandDef::target_filter)
+        .def_readwrite("amount", &CommandDef::amount)
+        .def_readwrite("str_param", &CommandDef::str_param)
+        .def_readwrite("optional", &CommandDef::optional)
+        .def_readwrite("from_zone", &CommandDef::from_zone)
+        .def_readwrite("to_zone", &CommandDef::to_zone)
+        .def_readwrite("mutation_kind", &CommandDef::mutation_kind)
+        .def_readwrite("condition", &CommandDef::condition)
+        .def_readwrite("if_true", &CommandDef::if_true)
+        .def_readwrite("if_false", &CommandDef::if_false)
+        .def_readwrite("input_value_key", &CommandDef::input_value_key)
+        .def_readwrite("output_value_key", &CommandDef::output_value_key);
+
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
         .def_readwrite("trigger", &EffectDef::trigger)
         .def_readwrite("condition", &EffectDef::condition)
-        .def_readwrite("actions", &EffectDef::actions);
+        .def_readwrite("actions", &EffectDef::actions)
+        .def_readwrite("commands", &EffectDef::commands); // Added commands field
 
     py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
         .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
@@ -483,6 +525,30 @@ void bind_core(py::module& m) {
         .def_readwrite("stack", &Player::stack)
         .def_readwrite("effect_buffer", &Player::effect_buffer);
 
+    // Bind CommandSystem helper struct to execute commands from Python
+    struct CommandSystemWrapper {
+        static void execute_command(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, py::dict py_ctx) {
+            std::map<std::string, int> ctx;
+            // Convert python dict to map
+            for (auto item : py_ctx) {
+                if (py::isinstance<py::str>(item.first) && py::isinstance<py::int_>(item.second)) {
+                    ctx[item.first.cast<std::string>()] = item.second.cast<int>();
+                }
+            }
+            dm::engine::systems::CommandSystem::execute_command(state, cmd, source_instance_id, player_id, ctx);
+
+            // Update python dict back? (pybind11 dict is reference, so modifying it in place might work if we wrapped map)
+            // But we created a temporary map.
+            // If the user wants output, they should pass a dict and we update it.
+            for (const auto& pair : ctx) {
+                py_ctx[py::str(pair.first)] = pair.second;
+            }
+        }
+    };
+
+    py::class_<CommandSystemWrapper>(m, "CommandSystem")
+        .def_static("execute_command", &CommandSystemWrapper::execute_command);
+
     py::class_<GameState, std::shared_ptr<GameState>>(m, "GameState")
         .def(py::init<int>())
         .def("setup_test_duel", &GameState::setup_test_duel)
@@ -498,6 +564,7 @@ void bind_core(py::module& m) {
         .def_readwrite("waiting_for_user_input", &GameState::waiting_for_user_input)
         .def_readwrite("pending_query", &GameState::pending_query)
         .def_readwrite("status", &GameState::status)
+        .def_property_readonly("command_system", [](GameState& s) { return CommandSystemWrapper(); }) // Expose helper
         .def("get_pending_effect_count", [](const GameState& s) { return s.pending_effects.size(); })
         .def("clone", &GameState::clone)
         .def("get_card_instance", [](GameState& s, int id) {
