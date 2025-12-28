@@ -1,3 +1,4 @@
+
 #include "command_system.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
@@ -6,6 +7,7 @@
 #include "engine/utils/zone_utils.hpp"
 #include <iostream>
 #include <algorithm>
+#include <random>
 
 namespace dm::engine::systems {
 
@@ -179,22 +181,7 @@ namespace dm::engine::systems {
                 break;
             }
             case core::CommandType::DISCARD: {
-                // DISCARD Macro
-                // Usually targets Hand.
-                // If specific targets provided by target_filter:
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
-
-                // If filter selects from hand, destroy them.
-                // If no specific targets (e.g. random), logic needs to be here.
-                // Currently resolve_targets handles logic.
-                // But DISCARD 'random' logic?
-                // TargetScope::RANDOM is handled by `resolve_targets`?
-                // `resolve_targets` code above does not seem to handle RANDOM.
-
-                // For MVP: We assume resolve_targets returns the correct cards (e.g. from Hand).
-                // If count was set in filter, resolve_targets respects it.
-                // If "All", resolve_targets respects it.
-
                 int discarded = 0;
                 for (int target_id : targets) {
                     CardInstance* inst = state.get_card_instance(target_id);
@@ -208,6 +195,119 @@ namespace dm::engine::systems {
                     execution_context[cmd.output_value_key] = discarded;
                 }
                 break;
+            }
+            case core::CommandType::TAP: {
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+                for (int target_id : targets) {
+                    MutateCommand mutate(target_id, MutateCommand::MutationType::TAP);
+                    mutate.execute(state);
+                }
+                break;
+            }
+            case core::CommandType::UNTAP: {
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+                for (int target_id : targets) {
+                    MutateCommand mutate(target_id, MutateCommand::MutationType::UNTAP);
+                    mutate.execute(state);
+                }
+                break;
+            }
+            case core::CommandType::RETURN_TO_HAND: {
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+                int returned = 0;
+                for (int target_id : targets) {
+                    CardInstance* inst = state.get_card_instance(target_id);
+                    if (inst) {
+                         // Determine current zone based on owner's containers?
+                         // Or try multiple. Actually TransitionCommand needs explicit from_zone.
+                         // We can try to infer or iterate.
+                         // For now, assume Battle Zone as it is the primary target for Return To Hand.
+                         // But it could be Mana/Shield (if specified).
+                         // If Filter specifies Zone, we can use that.
+                         // resolve_targets checks zones. But we lose which zone it came from in the list.
+                         // Improve: resolve_targets could return pair<id, zone>?
+                         // For now, iterate zones to find the card.
+
+                         Zone current_zone = Zone::BATTLE; // Default guess
+                         PlayerID owner = inst->owner;
+                         bool found = false;
+
+                         // Fast check
+                         for (const auto& c : state.players[owner].battle_zone) if (c.instance_id == target_id) { current_zone = Zone::BATTLE; found = true; break; }
+                         if (!found) for (const auto& c : state.players[owner].mana_zone) if (c.instance_id == target_id) { current_zone = Zone::MANA; found = true; break; }
+                         if (!found) for (const auto& c : state.players[owner].shield_zone) if (c.instance_id == target_id) { current_zone = Zone::SHIELD; found = true; break; }
+                         if (!found) for (const auto& c : state.players[owner].graveyard) if (c.instance_id == target_id) { current_zone = Zone::GRAVEYARD; found = true; break; }
+
+                         if (found) {
+                             TransitionCommand trans(target_id, current_zone, Zone::HAND, owner);
+                             trans.execute(state);
+                             returned++;
+                         }
+                    }
+                }
+                if (!cmd.output_value_key.empty()) {
+                    execution_context[cmd.output_value_key] = returned;
+                }
+                break;
+            }
+            case core::CommandType::BREAK_SHIELD: {
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+                int broken = 0;
+                for (int target_id : targets) {
+                    CardInstance* inst = state.get_card_instance(target_id);
+                    if (inst) {
+                         // Standard Break: Shield -> Hand
+                         TransitionCommand trans(target_id, Zone::SHIELD, Zone::HAND, inst->owner);
+                         trans.execute(state);
+                         broken++;
+
+                         // Note: This command implementation does NOT handle S-Triggers.
+                         // That requires EffectResolver flow. CommandSystem is low-level state mutation.
+                    }
+                }
+                break;
+            }
+            case core::CommandType::POWER_MOD: {
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+                int val = resolve_amount(cmd, execution_context);
+                for (int target_id : targets) {
+                    MutateCommand mutate(target_id, MutateCommand::MutationType::POWER_MOD, val);
+                    mutate.execute(state);
+                }
+                break;
+            }
+            case core::CommandType::ADD_KEYWORD: {
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+                for (int target_id : targets) {
+                    MutateCommand mutate(target_id, MutateCommand::MutationType::ADD_KEYWORD, 0, cmd.str_param);
+                    mutate.execute(state);
+                }
+                break;
+            }
+            case core::CommandType::SEARCH_DECK: {
+                 // 1. Resolve Targets (implies Query/Select done implicitly or via filter)
+                 // If TargetScope is TARGET_SELECT, this implies we need user input, but CommandSystem executes immediately.
+                 // If it's a test/AI scenario, we assume targets are chosen.
+                 // For now, we take `resolve_targets` as the "Selected Cards".
+                 // If no targets and Filter exists, we pick from Deck matching Filter (Deterministic/First valid).
+
+                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+
+                 // 2. Move to Hand (or Destination)
+                 Zone dest_zone = cmd.to_zone.empty() ? Zone::HAND : parse_zone_string(cmd.to_zone);
+
+                 for (int target_id : targets) {
+                     CardInstance* inst = state.get_card_instance(target_id);
+                     if (inst) {
+                         TransitionCommand trans(target_id, Zone::DECK, dest_zone, inst->owner);
+                         trans.execute(state);
+                     }
+                 }
+
+                 // 3. Shuffle
+                 ShuffleCommand shuffle(player_id);
+                 shuffle.execute(state);
+                 break;
             }
             default:
                 break;
@@ -279,6 +379,8 @@ namespace dm::engine::systems {
         if (filter.count.has_value()) {
             int n = filter.count.value();
             if (targets.size() > (size_t)n) {
+                // For now, naive truncation (first N).
+                // Ideally this should be random or selected, but CommandSystem executes outcome.
                 targets.resize(n);
             }
         }
