@@ -217,6 +217,36 @@ namespace dm::engine::systems {
              Zone dest = Zone::BATTLE;
              bool to_bottom = false;
 
+            // Check for play_flags provided by the instruction (migration: Python converter may add these)
+            bool play_for_free = false;
+            bool put_in_play = false;
+            if (inst.args.contains("play_flags")) {
+                const auto& pf = inst.args["play_flags"];
+                if (pf.is_string()) {
+                    std::string s = pf.get<std::string>();
+                    if (s == "PLAY_FOR_FREE") play_for_free = true;
+                    if (s == "PUT_IN_PLAY") put_in_play = true;
+                } else if (pf.is_array()) {
+                    for (const auto& x : pf) {
+                        if (!x.is_string()) continue;
+                        std::string s = x.get<std::string>();
+                        if (s == "PLAY_FOR_FREE") play_for_free = true;
+                        if (s == "PUT_IN_PLAY") put_in_play = true;
+                    }
+                }
+            }
+
+            // If this play is flagged as played-for-free, mark it in the flow so systems can observe it.
+            if (play_for_free) {
+                auto flow_cmd = std::make_unique<game_command::FlowCommand>(game_command::FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
+                state.execute_command(std::move(flow_cmd));
+            }
+
+            // If PUT_IN_PLAY is specified, force destination to Battle zone (even for spells)
+            if (put_in_play) {
+                dest = Zone::BATTLE;
+            }
+
              if (inst.args.contains("dest_override")) {
                  int override_val = exec.resolve_int(inst.args["dest_override"]);
                  if (override_val == 1) { // 1 = DECK_BOTTOM
