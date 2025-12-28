@@ -90,7 +90,7 @@ else()
 endif()
 
 # Optional: ONNX Runtime for C++ inference (Phase 4.2)
-option(USE_ONNXRUNTIME "Enable ONNX Runtime for C++ inference" ON) # Default ON for this task
+option(USE_ONNXRUNTIME "Enable ONNX Runtime for C++ inference" OFF)
 if(USE_ONNXRUNTIME)
     message(STATUS "ONNX Runtime enabled")
     include(FetchContent)

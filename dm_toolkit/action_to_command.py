@@ -37,6 +37,13 @@ def _transfer_targeting(act: Dict[str, Any], cmd: Dict[str, Any]):
 
 def _transfer_common_move_fields(act: Dict[str, Any], cmd: Dict[str, Any]):
     _transfer_targeting(act, cmd)
+    if 'source_instance_id' in act:
+        cmd['instance_id'] = act['source_instance_id']
+    elif 'instance_id' in act:
+        cmd['instance_id'] = act['instance_id']
+    elif 'card_id' in act:
+        cmd['instance_id'] = act['card_id']
+
     if 'filter' in act and isinstance(act['filter'], dict) and 'count' in act['filter']:
          cmd['amount'] = act['filter']['count']
     elif 'value1' in act:
@@ -327,6 +334,8 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
         cmd['type'] = "PLAY_FROM_ZONE"
         if src: cmd['from_zone'] = src
         cmd['to_zone'] = dest or 'BATTLE'
+        if 'source_instance_id' in act: cmd['instance_id'] = act['source_instance_id']
+        elif 'instance_id' in act: cmd['instance_id'] = act['instance_id']
         if 'value1' in act: cmd['max_cost'] = act['value1']
         cmd['str_param'] = "PLAY_FROM_ZONE_HINT"
     elif act_type == "FRIEND_BURST":
