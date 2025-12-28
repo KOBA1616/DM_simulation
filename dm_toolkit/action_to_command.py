@@ -101,6 +101,20 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     src = _get_zone(act_data, ['source_zone', 'from_zone', 'origin_zone'])
     dest = _get_zone(act_data, ['destination_zone', 'to_zone', 'dest_zone'])
 
+    # Phase 4.2: Normalize Zone Names to Enum
+    # Mappings from Legacy/Common strings to dm_ai_module.Zone Enum names
+    zone_map = {
+        "MANA_ZONE": "MANA",
+        "BATTLE_ZONE": "BATTLE",
+        "SHIELD_ZONE": "SHIELD",
+        "GRAVEYARD": "GRAVEYARD",
+        "HAND": "HAND",
+        "DECK": "DECK"
+    }
+
+    if src and src in zone_map: src = zone_map[src]
+    if dest and dest in zone_map: dest = zone_map[dest]
+
     # --- Logic Mapping ---
 
     if act_type == "MOVE_CARD":
@@ -181,10 +195,6 @@ def _handle_move_card(act, cmd, src, dest):
     if dest and 'to_zone' not in cmd: cmd['to_zone'] = dest
     if src and 'from_zone' not in cmd: cmd['from_zone'] = src
 
-    # Keep explicit types only if they are specialized operations beyond simple move
-    # But for strict engine validation, we default to TRANSITION + zones.
-    # Note: MANA_CHARGE is retained as TRANSITION to MANA_ZONE
-
     _transfer_common_move_fields(act, cmd)
 
 def _handle_specific_moves(act_type, act, cmd, src):
@@ -194,14 +204,16 @@ def _handle_specific_moves(act_type, act, cmd, src):
     else:
         cmd['type'] = "TRANSITION"
 
+    # NOTE: These strings should match dm_ai_module.Zone enum names if possible
+    # to be picked up by compat.py correctly.
     if act_type in ["SEND_TO_MANA", "MANA_CHARGE"]:
-        cmd['to_zone'] = "MANA_ZONE"
+        cmd['to_zone'] = "MANA"
         if not src and act_type == "MANA_CHARGE": cmd['from_zone'] = "DECK"
         if src: cmd['from_zone'] = src
     elif act_type == "SEND_TO_DECK_BOTTOM":
-        cmd['to_zone'] = "DECK_BOTTOM"
+        cmd['to_zone'] = "DECK_BOTTOM" # Special case, likely not an enum. compat.py needs to handle it or fallback.
     elif act_type == "ADD_SHIELD":
-        cmd['to_zone'] = "SHIELD_ZONE"
+        cmd['to_zone'] = "SHIELD"
         if not src: cmd['from_zone'] = "DECK"
     elif act_type == "DESTROY":
         cmd['to_zone'] = "GRAVEYARD"
@@ -314,7 +326,7 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
     if act_type == "PLAY_FROM_ZONE":
         cmd['type'] = "PLAY_FROM_ZONE"
         if src: cmd['from_zone'] = src
-        cmd['to_zone'] = dest or 'BATTLE_ZONE'
+        cmd['to_zone'] = dest or 'BATTLE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
         cmd['str_param'] = "PLAY_FROM_ZONE_HINT"
     elif act_type == "FRIEND_BURST":
@@ -374,7 +386,7 @@ def _handle_buffer_ops(act_type, act, cmd, dest):
     elif act_type == "PLAY_FROM_BUFFER":
         cmd['type'] = 'PLAY_FROM_BUFFER'
         cmd['from_zone'] = 'BUFFER'
-        cmd['to_zone'] = dest or 'BATTLE_ZONE'
+        cmd['to_zone'] = dest or 'BATTLE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
     elif act_type == "MOVE_BUFFER_TO_ZONE":
         cmd['type'] = 'TRANSITION'
