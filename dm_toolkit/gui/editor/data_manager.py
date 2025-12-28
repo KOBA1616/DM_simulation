@@ -357,9 +357,13 @@ class CardDataManager:
                         new_effects.append(eff_data)
                         # Detect revolution change in either legacy actions or new commands
                         for act in (eff_data.get('actions', []) or []) + (eff_data.get('commands', []) or []):
-                            if isinstance(act, dict) and act.get('type') == "REVOLUTION_CHANGE":
-                                has_rev_change_action = True
-                                rev_change_filter = act.get('filter')
+                            if isinstance(act, dict):
+                                if act.get('type') == "REVOLUTION_CHANGE":
+                                    has_rev_change_action = True
+                                    rev_change_filter = act.get('filter')
+                                elif act.get('type') == "MUTATE" and act.get('mutation_kind') == "REVOLUTION_CHANGE":
+                                    has_rev_change_action = True
+                                    rev_change_filter = act.get('target_filter')
                 continue
 
             if item_type == "KEYWORDS":
@@ -371,9 +375,13 @@ class CardDataManager:
                 eff_data = self._reconstruct_effect(child_item)
                 new_effects.append(eff_data)
                 for act in (eff_data.get('actions', []) or []) + (eff_data.get('commands', []) or []):
-                    if isinstance(act, dict) and act.get('type') == "REVOLUTION_CHANGE":
-                        has_rev_change_action = True
-                        rev_change_filter = act.get('filter')
+                    if isinstance(act, dict):
+                         if act.get('type') == "REVOLUTION_CHANGE":
+                            has_rev_change_action = True
+                            rev_change_filter = act.get('filter')
+                         elif act.get('type') == "MUTATE" and act.get('mutation_kind') == "REVOLUTION_CHANGE":
+                            has_rev_change_action = True
+                            rev_change_filter = act.get('target_filter')
 
             elif item_type == "MODIFIER":
                 new_static.append(self._reconstruct_modifier(child_item))
@@ -463,7 +471,7 @@ class CardDataManager:
 
             if item_type == "ACTION":
                 act_data = self._reconstruct_action(item)
-                # preserve legacy action dict for backward compatibility
+                # preserve legacy action dict for backward compatibility if enabled
                 legacy_actions.append(act_data)
                 # Attempt conversion; always produce a command-like dict even on failure
                 try:
@@ -497,8 +505,8 @@ class CardDataManager:
             if 'commands' in eff_data:
                 del eff_data['commands']
 
-        # Preserve legacy 'actions' list when original ACTION nodes existed
-        if legacy_actions:
+        # Only Output actions if Environment Variable is set (Rollback Plan)
+        if legacy_actions and os.environ.get('DM_ENABLE_LEGACY_SAVE'):
             eff_data['actions'] = legacy_actions
         else:
             if 'actions' in eff_data:
@@ -665,23 +673,32 @@ class CardDataManager:
             child = card_item.child(i)
             if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
                 eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                # Check legacy actions
                 for act in eff_data.get('actions', []):
                     if act.get('type') == 'REVOLUTION_CHANGE':
+                        return child
+                # Check commands
+                for cmd in eff_data.get('commands', []):
+                    if cmd.get('type') == 'MUTATE' and cmd.get('mutation_kind') == 'REVOLUTION_CHANGE':
                         return child
 
         eff_data = {
             "trigger": "ON_ATTACK_FROM_HAND",
             "condition": {"type": "NONE"},
-            "actions": []
+            "commands": []
         }
         eff_item = self._create_effect_item(eff_data)
 
-        act_data = {
-            "type": "REVOLUTION_CHANGE",
-            "filter": {"civilizations": ["FIRE"], "races": ["Dragon"], "min_cost": 5}
+        # Generate Command directly
+        cmd_data = {
+            "type": "MUTATE",
+            "mutation_kind": "REVOLUTION_CHANGE",
+            "target_filter": {"civilizations": ["FIRE"], "races": ["Dragon"], "min_cost": 5},
+            "target_group": "TARGET_SELECT",
+            "uid": str(uuid.uuid4())
         }
-        act_item = self._create_action_item(act_data)
-        eff_item.appendRow(act_item)
+        cmd_item = self.create_command_item(cmd_data)
+        eff_item.appendRow(cmd_item)
 
         # Prefer attaching to an existing GROUP_TRIGGER node if present
         attached = False
@@ -707,7 +724,7 @@ class CardDataManager:
             if 'keywords' not in card_data or not isinstance(card_data['keywords'], dict):
                 card_data['keywords'] = card_data.get('keywords', {}) or {}
             card_data['keywords']['revolution_change'] = True
-            card_data['revolution_change_condition'] = act_data.get('filter')
+            card_data['revolution_change_condition'] = cmd_data.get('target_filter')
             card_item.setData(card_data, Qt.ItemDataRole.UserRole + 2)
         except Exception:
             pass
@@ -720,10 +737,20 @@ class CardDataManager:
             child = card_item.child(i)
             if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
                 eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                # Check legacy actions
+                found = False
                 for act in eff_data.get('actions', []):
                     if act.get('type') == 'REVOLUTION_CHANGE':
-                        rows_to_remove.append(i)
+                        found = True
                         break
+                # Check commands
+                if not found:
+                    for cmd in eff_data.get('commands', []):
+                         if cmd.get('type') == 'MUTATE' and cmd.get('mutation_kind') == 'REVOLUTION_CHANGE':
+                             found = True
+                             break
+                if found:
+                    rows_to_remove.append(i)
 
         for i in reversed(rows_to_remove):
             card_item.removeRow(i)

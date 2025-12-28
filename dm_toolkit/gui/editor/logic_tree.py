@@ -102,6 +102,7 @@ class LogicTreeWidget(QTreeView):
             menu.addAction(convert_all_action)
 
         elif item_type == "EFFECT":
+             # Unified Command Addition (labeled as "Add Action" for user familiarity, but creates Commands)
              cmd_menu = menu.addMenu(tr("Add Action"))
              templates = self.data_manager.templates.get("commands", [])
 
@@ -396,11 +397,11 @@ class LogicTreeWidget(QTreeView):
 
     def add_trigger(self, parent_index):
         if not parent_index.isValid(): return
-        # Default Trigger Data
+        # Default Trigger Data with commands: []
         eff_data = {
             "trigger": "ON_PLAY",
             "condition": {"type": "NONE"},
-            "actions": []
+            "commands": []
         }
         self.add_child_item(parent_index, "EFFECT", eff_data, f"{tr('Effect')}: {tr('ON_PLAY')}")
 
@@ -463,6 +464,7 @@ class LogicTreeWidget(QTreeView):
         self.add_child_item(option_index, "COMMAND", data_copy, label)
 
     def add_action_sibling(self, action_index, action_data=None):
+        """Deprecated: kept for runtime compatibility but should no longer be used by UI."""
         if not action_index.isValid(): return
         parent_index = action_index.parent()
         if not parent_index.isValid(): return
@@ -496,6 +498,7 @@ class LogicTreeWidget(QTreeView):
         self.add_child_item(effect_index, "COMMAND", data_copy, label)
 
     def add_action_to_effect(self, effect_index, action_data=None):
+        """Deprecated: kept for runtime compatibility but should no longer be used by UI."""
         if not effect_index.isValid(): return
         if action_data is None:
              action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
@@ -508,6 +511,7 @@ class LogicTreeWidget(QTreeView):
         self.add_child_item(effect_index, "ACTION", data_copy, label)
 
     def add_action_to_option(self, option_index, action_data=None):
+        """Deprecated: kept for runtime compatibility but should no longer be used by UI."""
         if not option_index.isValid(): return
         if action_data is None:
              action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
@@ -621,7 +625,7 @@ class LogicTreeWidget(QTreeView):
         if ok and item:
             if item == tr("Triggered Ability"):
                 self.add_child_item(parent_index, "EFFECT",
-                                    {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "actions": []},
+                                    {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "commands": []},
                                     f"{tr('Effect')}: ON_PLAY")
             elif item == tr("Static Ability"):
                 self.add_child_item(parent_index, "MODIFIER",

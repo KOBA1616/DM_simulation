@@ -126,6 +126,7 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         _handle_specific_moves(act_type, act_data, cmd, src)
 
     elif act_type == "DRAW_CARD":
+        # DECISION: We unify DRAW into TRANSITION(DECK->HAND)
         cmd['type'] = "TRANSITION"
         cmd['from_zone'] = src or 'DECK'
         cmd['to_zone'] = dest or 'HAND'
