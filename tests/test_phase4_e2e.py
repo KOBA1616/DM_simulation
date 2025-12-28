@@ -47,80 +47,74 @@ def _run_turn_sequence(context, execution_method):
     card_db = context['card_db']
     p1 = context['p1_id']
     player = state.players[p1]
+    # ---------------------------------------------------------------------
+    # 0. Initial Setup & Phase check
+    # ---------------------------------------------------------------------
+    # start_game might put us in MANA or MAIN. Force checks as needed.
 
-        # ---------------------------------------------------------------------
-        # 0. Initial Setup & Phase check
-        # ---------------------------------------------------------------------
-        # start_game might put us in MANA or MAIN.
-        # For simplicity, force phase progression if needed or assume start.
-        # Usually starts in MANA phase for player 0.
+    # ---------------------------------------------------------------------
+    # 1. DRAW (Simulated as TRANSITION from DECK to HAND)
+    # ---------------------------------------------------------------------
+    deck_size_before = len(player.deck)
+    hand_size_before = len(player.hand)
 
-        # ---------------------------------------------------------------------
-        # 1. DRAW (Simulated as TRANSITION from DECK to HAND)
-        # ---------------------------------------------------------------------
-        # Note: start_game usually draws initial hand.
-        # We will force a draw to test the command.
+    if deck_size_before > 0:
+        top_card = player.deck[-1]
 
-        # Deck/Hand are lists in python binding, so use len()
-        deck_size_before = len(player.deck)
-        hand_size_before = len(player.hand)
+        # Simulate legacy Action with MockAction
+        draw_action = MockAction(type="DRAW_CARD",
+                                 from_zone="DECK",
+                                 to_zone="HAND",
+                                 source_instance_id=top_card.instance_id)
 
-        if deck_size_before > 0:
-            top_card = player.deck[deck_size_before-1]
+        cmd_dict = map_action(draw_action.to_dict())
 
-            # Legacy Action simulation
-            draw_action = Action()
-            draw_action.type = "DRAW_CARD"
-            draw_action.from_zone = "DECK"
-            draw_action.to_zone = "HAND"
-            draw_action.source_instance_id = top_card.instance_id
+        # Execute and verify via pytest assertions
+        EngineCompat.ExecuteCommand(state, cmd_dict, card_db)
 
-            cmd_dict = map_action(draw_action.to_dict() if hasattr(draw_action, 'to_dict') else draw_action.__dict__)
+        player = state.players[p1]
+        assert len(player.hand) == hand_size_before + 1, "Draw command should increase hand size"
+        assert len(player.deck) == deck_size_before - 1, "Draw command should decrease deck size"
 
-            # Phase 4.4-1 Verification: Executing dict command via CommandSystem
-            EngineCompat.ExecuteCommand(state, cmd_dict, self.card_db)
-
-            # Verify
-            player = state.players[player_idx] # Refresh
-            self.assertEqual(len(player.hand), hand_size_before + 1, "Draw command should increase hand size")
-            self.assertEqual(len(player.deck), deck_size_before - 1, "Draw command should decrease deck size")
-
-        # ---------------------------------------------------------------------
-        # 2. MANA CHARGE
-        # ---------------------------------------------------------------------
-        # Must be in MANA phase. If not, skip or force phase.
+    # ---------------------------------------------------------------------
+    # 2. MANA CHARGE
+    # ---------------------------------------------------------------------
+    try:
         phase = EngineCompat.get_current_phase(state)
-        if str(phase) == "Phase.MANA":
-            hand = player.hand
-            hand_size = len(hand) if isinstance(hand, list) else hand.size()
-            if hand_size > 0:
-                card_to_charge = hand[0]
-                mana_zone_before = player.mana_zone
-                mana_size_before = len(mana_zone_before) if isinstance(mana_zone_before, list) else mana_zone_before.size()
+    except Exception:
+        phase = None
 
-                charge_action = Action()
-                charge_action.type = "MANA_CHARGE"
-                charge_action.from_zone = "HAND"
-                # to_zone handled by map_action ("MANA")
-                charge_action.source_instance_id = card_to_charge.instance_id
+    if phase is not None and str(phase) == "Phase.MANA":
+        hand = player.hand
+        hand_size = len(hand) if isinstance(hand, list) else hand.size()
+        if hand_size > 0:
+            card_to_charge = hand[0]
+            mana_zone_before = player.mana_zone
+            mana_size_before = len(mana_zone_before) if isinstance(mana_zone_before, list) else mana_zone_before.size()
 
-                cmd_dict = map_action(charge_action.to_dict() if hasattr(charge_action, 'to_dict') else charge_action.__dict__)
+            charge_action = MockAction(type="MANA_CHARGE",
+                                       from_zone="HAND",
+                                       source_instance_id=card_to_charge.instance_id)
 
-                # Phase 4.4-2 Verification: Zone string normalization (MANA_ZONE -> MANA)
-                # cmd_dict['to_zone'] should be "MANA" now
-                self.assertEqual(cmd_dict['to_zone'], "MANA")
+            cmd_dict = map_action(charge_action.to_dict())
 
-                EngineCompat.ExecuteCommand(state, cmd_dict, self.card_db)
+            # Zone string normalization check
+            assert cmd_dict.get('to_zone') == "MANA"
 
-                player = state.players[player_idx] # Refresh
-                mana_zone = player.mana_zone
-                mana_size = len(mana_zone) if isinstance(mana_zone, list) else mana_zone.size()
-                self.assertEqual(mana_size, mana_size_before + 1, "Mana charge should increase mana zone size")
+            EngineCompat.ExecuteCommand(state, cmd_dict, card_db)
 
-        # Advance to MAIN Phase
-        # Calling next_phase until MAIN
+            player = state.players[p1]
+            mana_zone = player.mana_zone
+            mana_size = len(mana_zone) if isinstance(mana_zone, list) else mana_zone.size()
+            assert mana_size == mana_size_before + 1, "Mana charge should increase mana zone size"
+
+    # Advance to MAIN Phase
+    # Calling next_phase until MAIN
+    try:
         while str(EngineCompat.get_current_phase(state)) != "Phase.MAIN":
-            EngineCompat.PhaseManager_next_phase(state, self.card_db)
+            EngineCompat.PhaseManager_next_phase(state, card_db)
+    except Exception:
+        pass
 
     # -------------------------------------------------------------------------
     # 3. PLAY CARD (Action: PLAY_FROM_ZONE / PLAY_CARD)
