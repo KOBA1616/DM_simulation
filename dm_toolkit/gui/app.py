@@ -43,6 +43,10 @@ from dm_toolkit.gui.widgets.stack_view import StackViewWidget
 from dm_toolkit.gui.widgets.loop_recorder import LoopRecorderWidget
 from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 
+# Import Phase 7 requirements: Action Wrapper and Mapper
+from dm_toolkit.commands_new import wrap_action
+from dm_toolkit.action_to_command import map_action
+
 class GameWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -56,7 +60,7 @@ class GameWindow(QMainWindow):
         else:
             self.gs = cast(GameState, None)
 
-        # Load card database: prefer C++ JsonLoader if available, otherwise fallback to Python JSON
+        # Load card database
         self.card_db: CardDB = {}
         loaded_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
         if loaded_db:
@@ -69,14 +73,13 @@ class GameWindow(QMainWindow):
                 with open(json_path, 'r', encoding='utf-8') as _f:
                     self.card_db = json.load(_f)
             except Exception:
-                # Fallback to empty DB to allow UI to start; functionality will be limited
                 self.card_db = {}
         
         self.p0_deck_ids: Optional[List[int]] = None
         self.p1_deck_ids: Optional[List[int]] = None
         self.last_action: Optional[Action] = None
         self.selected_targets: List[int] = []
-        self.last_command_index: int = 0  # For incremental command logging
+        self.last_command_index: int = 0
 
         # Simulation Timer
         self.timer = QTimer()
@@ -84,41 +87,33 @@ class GameWindow(QMainWindow):
         self.is_running: bool = False
         self.is_processing: bool = False
 
-        # Toolbar Setup
+        # Toolbar
         self.toolbar = QToolBar(tr("Main Toolbar"), self)
         self.toolbar.setObjectName("MainToolbar")
         self.addToolBar(self.toolbar)
 
         deck_act = QAction(tr("Deck Builder"), self)
-        deck_act.setToolTip(tr("Open the Deck Builder tool"))
         deck_act.triggered.connect(self.open_deck_builder)
         self.toolbar.addAction(deck_act)
 
         card_act = QAction(tr("Card Editor"), self)
-        card_act.setToolTip(tr("Open the Card Editor tool"))
         card_act.triggered.connect(self.open_card_editor)
         self.toolbar.addAction(card_act)
 
         self.scen_act = QAction(tr("Scenario Mode"), self)
-        self.scen_act.setToolTip(tr("Toggle Scenario Mode for testing specific game states"))
         self.scen_act.setCheckable(True)
         self.scen_act.triggered.connect(self.toggle_scenario_mode)
         self.toolbar.addAction(self.scen_act)
 
         sim_act = QAction(tr("Batch Simulation"), self)
-        sim_act.setToolTip(tr("Run multiple games for statistical analysis"))
         sim_act.triggered.connect(self.open_simulation_dialog)
         self.toolbar.addAction(sim_act)
 
-        # AI Tools Button (MCTS)
         ai_act = QAction(tr("AI Analysis"), self)
-        ai_act.setToolTip(tr("Toggle the MCTS Analysis dock"))
         ai_act.triggered.connect(lambda: self.mcts_dock.setVisible(not self.mcts_dock.isVisible()))
         self.toolbar.addAction(ai_act)
 
-        # Loop Recorder Button
         loop_act = QAction(tr("Loop Recorder"), self)
-        loop_act.setToolTip(tr("Toggle the Loop Recorder dock"))
         loop_act.triggered.connect(lambda: self.loop_dock.setVisible(not self.loop_dock.isVisible()))
         self.toolbar.addAction(loop_act)
 
@@ -133,7 +128,7 @@ class GameWindow(QMainWindow):
         self.info_dock.setWidget(self.info_panel)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.info_dock)
 
-        # 1. Top Section
+        # Top Section
         self.top_section_group = QGroupBox(tr("Game Status & Operations"))
         top_layout = QVBoxLayout()
         
@@ -152,19 +147,16 @@ class GameWindow(QMainWindow):
         
         game_ctrl_layout = QHBoxLayout()
         self.start_btn = QPushButton(tr("Start Sim"))
-        self.start_btn.setToolTip(f"{tr('Start/Stop continuous simulation')} (F5)")
         self.start_btn.setShortcut("F5")
         self.start_btn.clicked.connect(self.toggle_simulation)
         game_ctrl_layout.addWidget(self.start_btn)
 
         self.step_button = QPushButton(tr("Step"))
-        self.step_button.setToolTip(f"{tr('Advance game by one step')} (Space)")
         self.step_button.setShortcut("Space")
         self.step_button.clicked.connect(self.step_phase)
         game_ctrl_layout.addWidget(self.step_button)
 
         self.confirm_btn = QPushButton(tr("Confirm Selection"))
-        self.confirm_btn.setToolTip(f"{tr('Confirm target selection')} (Enter)")
         self.confirm_btn.setShortcut("Return")
         self.confirm_btn.clicked.connect(self.confirm_selection)
         self.confirm_btn.setVisible(False)
@@ -172,7 +164,6 @@ class GameWindow(QMainWindow):
         game_ctrl_layout.addWidget(self.confirm_btn)
 
         self.reset_btn = QPushButton(tr("Reset"))
-        self.reset_btn.setToolTip(f"{tr('Reset the game state')} (Ctrl+R)")
         self.reset_btn.setShortcut("Ctrl+R")
         self.reset_btn.clicked.connect(self.reset_game)
         game_ctrl_layout.addWidget(self.reset_btn)
@@ -181,7 +172,7 @@ class GameWindow(QMainWindow):
         self.top_section_group.setLayout(top_layout)
         self.info_layout.addWidget(self.top_section_group)
 
-        # 2. Bottom Section
+        # Bottom Section
         self.bottom_section_group = QGroupBox(tr("AI & Tools"))
         bottom_layout = QVBoxLayout()
 
@@ -289,7 +280,7 @@ class GameWindow(QMainWindow):
         self.p0_graveyard = ZoneWidget("P0 墓地")
         self.p0_hand = ZoneWidget("P0 手札")
         
-        # Connect Context Menu Signals
+        # Connect
         self.p0_hand.action_triggered.connect(self.execute_action)
         self.p0_mana.action_triggered.connect(self.execute_action)
         self.p0_battle.action_triggered.connect(self.execute_action)
@@ -331,7 +322,7 @@ class GameWindow(QMainWindow):
         
         self.setCentralWidget(self.board_panel)
         
-        # 1. Pending Stack Dock (Right) - Created first to be top
+        # Docks
         self.stack_dock = QDockWidget(tr("Pending Effects"), self)
         self.stack_dock.setObjectName("StackDock")
         self.stack_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
@@ -340,7 +331,6 @@ class GameWindow(QMainWindow):
         self.stack_dock.setWidget(self.stack_view)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.stack_dock)
 
-        # 2. Log Dock (Right)
         self.log_dock = QDockWidget(tr("Logs"), self)
         self.log_dock.setObjectName("LogDock")
         self.log_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
@@ -348,10 +338,8 @@ class GameWindow(QMainWindow):
         self.log_dock.setWidget(self.log_list)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.log_dock)
         
-        # Stack above Log
         self.splitDockWidget(self.stack_dock, self.log_dock, Qt.Orientation.Vertical)
 
-        # 3. MCTS Dock (Right) - Default Hidden
         self.mcts_dock: QDockWidget = QDockWidget(tr("MCTS Analysis"), self)
         self.mcts_dock.setObjectName("MCTSDock")
         self.mcts_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
@@ -360,7 +348,6 @@ class GameWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.mcts_dock)
         self.mcts_dock.hide()
 
-        # 4. Loop Recorder Dock (Left) - Default Hidden
         self.loop_dock: QDockWidget = QDockWidget(tr("Loop Recorder"), self)
         self.loop_dock.setObjectName("LoopDock")
         self.loop_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
@@ -369,7 +356,6 @@ class GameWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.loop_dock)
         self.loop_dock.hide()
 
-        # 5. Scenario Tools Dock (Bottom/Right) - Default Hidden
         self.scenario_tools = ScenarioToolsDock(self, self.gs, self.card_db)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.scenario_tools)
         self.scenario_tools.hide()
@@ -387,17 +373,15 @@ class GameWindow(QMainWindow):
         self.card_editor.show()
 
     def open_scenario_editor(self) -> None:
-        """Open the Scenario Editor if available; otherwise show info."""
         try:
             from dm_toolkit.gui.editor import scenario_editor
-            # Expect ScenarioEditor to be a dialog/class taking card_db
             if hasattr(scenario_editor, 'ScenarioEditor'):
                 self.scenario_editor = scenario_editor.ScenarioEditor(self.card_db, parent=self)
                 self.scenario_editor.show()
                 return
         except Exception:
             pass
-        QMessageBox.information(self, tr("Scenario Editor"), tr("Scenario Editor not available in this environment."))
+        QMessageBox.information(self, tr("Scenario Editor"), tr("Scenario Editor not available."))
 
     def reload_card_data(self) -> None:
         try:
@@ -405,27 +389,20 @@ class GameWindow(QMainWindow):
             if loaded is not None:
                 self.card_db = loaded
             self.civ_map = self.build_civ_map()
-
-            # Refresh Deck Builder if open
             if hasattr(self, 'deck_builder') and self.deck_builder.isVisible():
                 self.deck_builder.reload_database()
-
-            # Update Scenario Tools DB
             self.scenario_tools.set_game_state(self.gs, self.card_db)
-
             self.log_list.addItem(tr("Card Data Reloaded from Editor Save"))
         except Exception as e:
             self.log_list.addItem(f"{tr('Error reloading cards')}: {e}")
 
     def build_civ_map(self) -> Dict[str, Any]:
-        # Dummy implementation since method was referenced but missing in original
         return {}
 
     def toggle_scenario_mode(self, checked: bool) -> None:
         if checked:
             self.scenario_tools.show()
             self.log_list.addItem(tr("Scenario Mode Enabled"))
-            # Stop any simulation
             if self.is_running:
                 self.toggle_simulation()
         else:
@@ -438,13 +415,10 @@ class GameWindow(QMainWindow):
 
     def load_deck_p0(self) -> None:
         os.makedirs("data/decks", exist_ok=True)
-        fname, _ = QFileDialog.getOpenFileName(
-            self, tr("Load Deck P0"), "data/decks", "JSON Files (*.json)"
-        )
+        fname, _ = QFileDialog.getOpenFileName(self, tr("Load Deck P0"), "data/decks", "JSON Files (*.json)")
         if fname:
             try:
-                with open(fname, 'r') as f:
-                    deck_ids = json.load(f)
+                with open(fname, 'r') as f: deck_ids = json.load(f)
                 if len(deck_ids) != 40:
                     QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return
@@ -456,13 +430,10 @@ class GameWindow(QMainWindow):
 
     def load_deck_p1(self) -> None:
         os.makedirs("data/decks", exist_ok=True)
-        fname, _ = QFileDialog.getOpenFileName(
-            self, tr("Load Deck P1"), "data/decks", "JSON Files (*.json)"
-        )
+        fname, _ = QFileDialog.getOpenFileName(self, tr("Load Deck P1"), "data/decks", "JSON Files (*.json)")
         if fname:
             try:
-                with open(fname, 'r') as f:
-                    deck_ids = json.load(f)
+                with open(fname, 'r') as f: deck_ids = json.load(f)
                 if len(deck_ids) != 40:
                     QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return
@@ -504,49 +475,36 @@ class GameWindow(QMainWindow):
 
             if dm_ai_module and hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
                 dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
-            else:
-                self.log_list.addItem(tr("Warning: PhaseManager.start_game not available"))
 
             self.scenario_tools.set_game_state(self.gs, self.card_db)
             self.log_list.clear()
             self.log_list.addItem(tr("Game Reset"))
-            self.last_command_index = 0 # Reset command index
+            self.last_command_index = 0
             self.update_ui()
 
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), f"{tr('Failed to reset game')}: {e}")
-            self.log_list.addItem(f"{tr('Reset Error')}: {e}")
 
     def confirm_selection(self) -> None:
         if not EngineCompat.is_waiting_for_user_input(self.gs): return
-
         query = EngineCompat.get_pending_query(self.gs)
         min_targets = query.params.get('min', 1)
-
         if len(self.selected_targets) < min_targets:
             QMessageBox.warning(self, "Invalid Selection", f"Please select at least {min_targets} target(s).")
             return
-
         targets = list(self.selected_targets)
         self.selected_targets = []
         self.confirm_btn.setVisible(False)
-
         EngineCompat.EffectResolver_resume(self.gs, self.card_db, targets)
         self.step_phase()
 
     def on_card_clicked(self, card_id: int, instance_id: int) -> None:
-        if EngineCompat.get_active_player_id(self.gs) != 0 or not self.p0_human_radio.isChecked():
-            return
+        if EngineCompat.get_active_player_id(self.gs) != 0 or not self.p0_human_radio.isChecked(): return
 
         if EngineCompat.is_waiting_for_user_input(self.gs):
              pending = EngineCompat.get_pending_query(self.gs)
              if pending.query_type == "SELECT_TARGET":
                  valid_targets = pending.valid_targets
-
-                 # Check if we need to show a popup (Searching from Buffer/Stack)
-                 # If valid_targets are in BUFFER or STACK, usually they aren't clickable on board widgets
-                 # UNLESS the board widget (e.g. StackView) emits this signal.
-
                  if instance_id in valid_targets:
                      if instance_id in self.selected_targets:
                          self.selected_targets.remove(instance_id)
@@ -555,68 +513,70 @@ class GameWindow(QMainWindow):
                          if len(self.selected_targets) < query_max:
                              self.selected_targets.append(instance_id)
                          else:
-                             # self.log_list.addItem(f"Max targets reached ({query_max})")
                              return
                      self.update_ui()
-                 else:
-                     pass # self.log_list.addItem("Invalid target selected.")
              return
 
-        actions = EngineCompat.ActionGenerator_generate_legal_actions(
-            self.gs, self.card_db
-        )
+        actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
         relevant_actions = [a for a in actions if EngineCompat.get_action_source_id(a) == instance_id]
 
-        if not relevant_actions:
-            # self.log_list.addItem(f"{tr('No actions for card')} {card_id} (Inst: {instance_id})")
-            return
-
-        if len(relevant_actions) == 1:
-            self.execute_action(relevant_actions[0])
-        else:
-            # self.log_list.addItem(tr("Multiple actions found. Executing first."))
-            self.execute_action(relevant_actions[0])
+        if not relevant_actions: return
+        self.execute_action(relevant_actions[0])
 
     def on_card_hovered(self, card_id: int) -> None:
         if card_id >= 0:
             card_data = self.card_db.get(card_id)
-            if card_data:
-                self.card_detail_panel.update_card(card_data)
+            if card_data: self.card_detail_panel.update_card(card_data)
 
-    def execute_action(self, action: Action) -> None:
+    def execute_action(self, action: Any) -> None:
+        """
+        Phase 7.1: Receiver Input Normalization
+        Accepts Action, CommandDict, or ICommand and unifies execution.
+        """
         self.last_action = action
-        # Prefer action.execute (which will run attached Command if present),
-        # otherwise fall back to the engine compatibility resolver.
-        try:
-            EngineCompat.ExecuteCommand(self.gs, action, self.card_db)
-        except Exception:
-            # In case of unexpected errors, fallback to compatibility resolver
-            EngineCompat.EffectResolver_resolve_action(self.gs, action, self.card_db)
-        # self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
-        self.loop_recorder.record_action(action.to_string())
-        self.scenario_tools.record_action(action.to_string())
         
-        if self.check_and_handle_input_wait():
-            return
+        # 1. Wrap into ICommand (Phase 7 Requirement: "execute_action ... wraps to cmd_dict")
+        command = wrap_action(action)
+        if command:
+            try:
+                # 2. Execute via Command interface (delegates to EngineCompat if needed)
+                command.execute(self.gs)
 
-        # Refactored phase logic: Check pending effects
+                # 3. Log using Command Dict (Phase 7.2)
+                cmd_dict = command.to_dict()
+                log_str = f"P0 {tr('Action')}: {cmd_dict.get('type', 'UNKNOWN')}"
+                if 'to_zone' in cmd_dict:
+                    log_str += f" -> {cmd_dict['to_zone']}"
+                self.log_list.addItem(log_str)
+
+                self.loop_recorder.record_action(str(cmd_dict))
+                self.scenario_tools.record_action(str(cmd_dict))
+            except Exception as e:
+                self.log_list.addItem(f"Execution Error: {e}")
+                # Fallback?
+                try:
+                    EngineCompat.EffectResolver_resolve_action(self.gs, action, self.card_db)
+                except:
+                    pass
+        else:
+            # Fallback legacy path
+            try:
+                 EngineCompat.ExecuteCommand(self.gs, action, self.card_db)
+            except:
+                 pass
+
+        if self.check_and_handle_input_wait(): return
+
         if dm_ai_module:
             pending_count = self.gs.get_pending_effect_count()
-            if (action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
+            # Basic checks for auto-pass
+            act_type = getattr(action, 'type', None)
+            if (act_type == dm_ai_module.ActionType.PASS or act_type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
             
         self.update_ui()
 
     def on_resolve_effect_from_stack(self, index: int) -> None:
-        # Generate actions and find RESOLVE_EFFECT with matching slot index?
-        # OR usually RESOLVE_EFFECT doesn't expose slot_index in ActionGenerator if it only generates ONE action (resolve top).
-        # We need to check if we can arbitrarily resolve.
-        # If PendingEffect list is exposed, we can assume we want to resolve the one at 'index'.
-
-        # NOTE: C++ engine might strict about resolving TOP effect (LIFO).
-        # But for simultaneous triggers, we can choose order.
-        # If we are in a state where we can choose, ActionGenerator should return multiple RESOLVE_EFFECT actions.
-
         actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
         resolve_actions = []
         if dm_ai_module:
@@ -624,48 +584,24 @@ class GameWindow(QMainWindow):
 
         target_action = None
         for a in resolve_actions:
-            # Check if action corresponds to our index.
-            # Assuming slot_index holds the index in pending_effects vector.
             if EngineCompat.get_action_slot_index(a) == index:
                 target_action = a
                 break
-
-        if target_action:
-            self.execute_action(target_action)
-        else:
-             # If exact index match fail, maybe it's implicitly the only one available?
-             if len(resolve_actions) == 1:
-                  self.execute_action(resolve_actions[0])
-             else:
-                  pass # self.log_list.addItem(f"Cannot resolve effect at index {index}. (Not in legal actions)")
+        if target_action: self.execute_action(target_action)
+        elif len(resolve_actions) == 1: self.execute_action(resolve_actions[0])
 
     def check_and_handle_input_wait(self) -> bool:
-        """
-        Checks if the game engine is waiting for input.
-        If so, stops simulation, updates UI controls, and triggers specific input handlers if applicable.
-        Returns True if waiting for input.
-        """
-        if not self.gs.waiting_for_user_input:
-            return False
-
-        # Stop Simulation if running
+        if not self.gs.waiting_for_user_input: return False
         if self.is_running:
             self.timer.stop()
             self.is_running = False
             self.start_btn.setText(tr("Start Sim"))
-            # self.log_list.addItem(tr("Simulation paused for user input"))
-
-        # Trigger appropriate handler
         self.handle_user_input_request()
-
-        # Ensure UI is updated
         self.update_ui()
-
         return True
 
     def handle_user_input_request(self) -> None:
         query = EngineCompat.get_pending_query(self.gs)
-
         if query.query_type == "SELECT_OPTION":
              options = query.options
              item, ok = QInputDialog.getItem(self, "Select Option", "Choose an option:", options, 0, False)
@@ -673,69 +609,40 @@ class GameWindow(QMainWindow):
                  idx = options.index(item)
                  EngineCompat.EffectResolver_resume(self.gs, self.card_db, idx)
                  self.step_phase()
-
         elif query.query_type == "SELECT_TARGET":
-             # CHECK FOR BUFFER/STACK SELECTION (POPUP REQUIRED)
              valid_targets = query.valid_targets
-             if not valid_targets:
-                 # Should not happen, but safe guard
-                 return
-
-             # Inspect first target to guess location
+             if not valid_targets: return
              first_target_id = valid_targets[0]
-             # We need to know if this card is in Buffer/Stack.
-             # Use GameState helper or check effect_buffer.
-
-             # Check if targets are in effect buffer
              in_buffer = False
              buffer_cards = EngineCompat.get_effect_buffer(self.gs)
              for c in buffer_cards:
                  if c.instance_id == first_target_id:
                      in_buffer = True
                      break
-
              if in_buffer:
-                 # Show Popup
                  items = []
                  for tid in valid_targets:
-                     # Find card in buffer
                      found = next((c for c in buffer_cards if c.instance_id == tid), None)
-                     if found:
-                         items.append(found) # CardInstance object (has card_id)
-
+                     if found: items.append(found)
                  min_sel = query.params.get('min', 1)
                  max_sel = query.params.get('max', 99)
-
                  dialog = CardSelectionDialog("Select Cards", "Please select cards:", items, min_sel, max_sel, self, self.card_db)
                  if dialog.exec():
                      indices = dialog.get_selected_indices()
                      selected_instance_ids = [items[i].instance_id for i in indices]
-                     # Passing a list of ints to resume might fail if it expects int.
-                     # But CardSelectionDialog suggests multiple selections.
-                     # We might need an overload or helper in EngineCompat.
-                     # For now passing the whole list (Any)
                      EngineCompat.EffectResolver_resume(self.gs, self.card_db, cast(Any, selected_instance_ids))
                      self.step_phase()
                  return
 
-             # Otherwise, standard UI selection (Hand/Battle/Mana)
-             # self.log_list.addItem(f"Please select {query.params['min']} target(s).")
-             # self.update_ui() # Handled by caller or centralized handler
-
     def step_phase(self) -> None:
         if self.is_processing: return
         self.is_processing = True
-        
         try:
-            if self.check_and_handle_input_wait():
-                return
-
+            if self.check_and_handle_input_wait(): return
             if self.gs.game_over:
                 self.timer.stop()
                 self.is_running = False
                 self.start_btn.setText(tr("Start Sim"))
-                winner = self.gs.winner
-                # self.log_list.addItem(f"{tr('Game Over! Winner')}: P{winner}")
                 return
 
             active_pid = EngineCompat.get_active_player_id(self.gs)
@@ -743,101 +650,53 @@ class GameWindow(QMainWindow):
                        (active_pid == 1 and self.p1_human_radio.isChecked())
 
             if is_human:
-                actions = EngineCompat.ActionGenerator_generate_legal_actions(
-                    self.gs, self.card_db
-                )
-
-                # CHECK FOR TRIGGER SELECTION (Multiple RESOLVE_EFFECT)
+                actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
                 resolve_actions = []
                 if dm_ai_module:
                     resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
 
                 if len(resolve_actions) > 1:
-                    # Show Popup for Trigger Order/Selection
-                    # We need details about pending effects.
-                    # Use get_pending_effects_info(state) -> list of (type, source_id, controller)
-                    # This might not map 1:1 if multiple effects are from same source?
-                    # But RESOLVE_EFFECT usually maps to the top of stack OR specific index if implemented.
-
-                    # Assuming we can match actions to pending effects via slot_index
                     pending_info = EngineCompat.get_pending_effects_info(self.gs)
-
-                    # Map actions to descriptions
                     items = []
                     valid_actions = []
-
                     for act in resolve_actions:
                         idx = EngineCompat.get_action_slot_index(act)
                         if 0 <= idx < len(pending_info):
                             p_type, p_source, p_ctrl = pending_info[idx]
-                            c_def = self.card_db.get(p_source, None) # p_source is instance_id? No, usually card_id or we need look up.
-                            # Memory says: "get_pending_effects_info(state) returns a list of tuples (type, source_instance_id, controller)"
-
-                            source_name = "Unknown"
-                            if c_def: # If it was card_id
-                                source_name = c_def.name
-                            else:
-                                # Try to look up instance
-                                try:
-                                    inst = self.gs.get_card_instance(p_source)
-                                    c_def = self.card_db.get(inst.card_id)
-                                    source_name = c_def.name if c_def else "Unknown"
-                                except:
-                                    source_name = f"Instance {p_source}"
-
+                            inst = None
+                            try:
+                                inst = self.gs.get_card_instance(p_source)
+                                c_def = self.card_db.get(inst.card_id)
+                                source_name = c_def.name if c_def else "Unknown"
+                            except:
+                                source_name = f"Instance {p_source}"
                             desc = f"Trigger: {p_type} (Controller: P{p_ctrl})"
-                            items.append({'source_name': source_name, 'description': desc, 'card_id': inst.card_id if 'inst' in locals() else -1})
+                            items.append({'source_name': source_name, 'description': desc, 'card_id': inst.card_id if inst else -1})
                             valid_actions.append(act)
-
                     if items:
                          dialog = CardSelectionDialog("Select Trigger", "Select effect to resolve:", items, 1, 1, self, self.card_db)
                          if dialog.exec():
                              indices = dialog.get_selected_indices()
                              if indices:
                                  self.execute_action(valid_actions[indices[0]])
-                                 return # Action executed, loop will continue
-
+                                 return
                 if not actions:
                     EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
-                    # self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
                     self.update_ui()
                 return
 
-            actions = EngineCompat.ActionGenerator_generate_legal_actions(
-                self.gs, self.card_db
-            )
-
+            actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
             if not actions:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
-                # self.log_list.addItem(f"P{active_pid} {tr('Auto-Pass')}")
             else:
-                best_action = actions[0] # Fallback
-                
+                best_action = actions[0]
                 if best_action:
-                    self.last_action = best_action
-                    try:
-                        EngineCompat.ExecuteCommand(self.gs, best_action, self.card_db)
-                    except Exception:
-                        EngineCompat.EffectResolver_resolve_action(self.gs, best_action, self.card_db)
-                    # self.log_list.addItem(f"P{active_pid} {tr('AI Action')}: {best_action.to_string()}")
-                    self.loop_recorder.record_action(best_action.to_string())
-                    self.scenario_tools.record_action(best_action.to_string())
-
-                    if self.check_and_handle_input_wait():
-                         return
-
-                    # Refactored Phase Logic
-                    if dm_ai_module:
-                        pending_count = self.gs.get_pending_effect_count()
-                        if (best_action.type == dm_ai_module.ActionType.PASS or best_action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
-                            EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
-
+                    self.execute_action(best_action)
             self.update_ui()
         finally:
             self.is_processing = False
         
     def update_ui(self) -> None:
-        # Guard attributes on GameState that may not exist in minimal dm_ai_module builds
         turn_number = EngineCompat.get_turn_number(self.gs)
         current_phase = EngineCompat.get_current_phase(self.gs)
         active_pid = EngineCompat.get_active_player_id(self.gs)
@@ -845,34 +704,22 @@ class GameWindow(QMainWindow):
         self.phase_label.setText(f"{tr('Phase')}: {current_phase}")
         self.active_label.setText(f"{tr('Active')}: P{active_pid}")
         
-        # Update Stack View
         self.stack_view.update_state(self.gs, self.card_db)
 
-        # ---------------------------------------------------------------------
-        # COMMAND LOG UPDATE (safe: GameState may not expose command_history)
-        # ---------------------------------------------------------------------
         history = EngineCompat.get_command_history(self.gs)
-        try:
-            current_len = len(history)
-        except Exception:
-            current_len = 0
+        try: current_len = len(history)
+        except: current_len = 0
         if current_len > self.last_command_index:
             for i in range(self.last_command_index, current_len):
                 cmd = history[i]
                 try:
                     desc = describe_command(cmd, self.gs, self.card_db)
-                except Exception as e:
-                    # Fallback: Try JSON dump or raw string
-                    try:
-                        raw = str(cmd)
-                        desc = f"[RAW] {raw} (Parse Error: {e})"
-                    except:
-                        desc = f"[Unknown Command Format] (Error: {e})"
+                except:
+                    desc = str(cmd)
                 self.log_list.addItem(desc)
             self.log_list.scrollToBottom()
             self.last_command_index = current_len
 
-        # Use EngineCompat to get players or fallback
         class _P:
              hand: List[Any] = []
              mana_zone: List[Any] = []
@@ -884,20 +731,15 @@ class GameWindow(QMainWindow):
         p0 = EngineCompat.get_player(self.gs, 0) or _P()
         p1 = EngineCompat.get_player(self.gs, 1) or _P()
         
-        # Calculate legal actions for context menus
-        # active_pid may have been determined earlier from turn labels
-        active_pid = active_pid if 'active_pid' in locals() else EngineCompat.get_active_player_id(self.gs)
         legal_actions = []
         if active_pid == 0 and self.p0_human_radio.isChecked():
              legal_actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
 
         def convert_zone(zone_cards: List[Any], hide: bool=False) -> List[Dict[str, Any]]:
-            if hide:
-                return [{'id': -1, 'tapped': getattr(c, 'is_tapped', False), 'instance_id': getattr(c, 'instance_id', -1)} for c in zone_cards]
+            if hide: return [{'id': -1, 'tapped': getattr(c, 'is_tapped', False), 'instance_id': getattr(c, 'instance_id', -1)} for c in zone_cards]
             return [{'id': getattr(c, 'card_id', -1), 'tapped': getattr(c, 'is_tapped', False), 'instance_id': getattr(c, 'instance_id', -1)} for c in zone_cards]
             
         god_view = self.god_view_check.isChecked()
-        
         self.p0_hand.update_cards(convert_zone(p0.hand), self.card_db, legal_actions=legal_actions)
         self.p0_mana.update_cards(convert_zone(p0.mana_zone), self.card_db, legal_actions=legal_actions)
         self.p0_battle.update_cards(convert_zone(p0.battle_zone), self.card_db, legal_actions=legal_actions)
@@ -912,26 +754,18 @@ class GameWindow(QMainWindow):
         self.p1_graveyard.update_cards(convert_zone(p1.graveyard), self.card_db)
         self.p1_deck_zone.update_cards(convert_zone(p1.deck, hide=True), self.card_db)
 
-        # Pending user input may not exist on all GameState builds
         pending = EngineCompat.get_pending_query(self.gs)
         if EngineCompat.is_waiting_for_user_input(self.gs) and pending is not None and getattr(pending, 'query_type', '') == "SELECT_TARGET":
             valid_targets = getattr(pending, 'valid_targets', [])
             params = getattr(pending, 'params', {})
-            min_targets = 1
-            if hasattr(params, 'get'):
-                min_targets = params.get('min', 1)
+            min_targets = params.get('min', 1) if hasattr(params, 'get') else 1
+            max_targets = params.get('max', 99) if hasattr(params, 'get') else 99
 
-            max_targets = 99
-            if hasattr(params, 'get'):
-                max_targets = params.get('max', 99)
-
-            # Update button text with count
             current = len(self.selected_targets)
             self.confirm_btn.setText(f"{tr('Confirm')} ({current}/{min_targets}-{max_targets})")
             self.confirm_btn.setVisible(True)
             self.confirm_btn.setEnabled(current >= min_targets)
 
-            # Apply selections visually
             zones = [
                 self.p0_hand, self.p0_mana, self.p0_battle, self.p0_shield, self.p0_graveyard,
                 self.p1_hand, self.p1_mana, self.p1_battle, self.p1_shield, self.p1_graveyard
@@ -949,7 +783,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = GameWindow()
     window.show()
-    
     try:
         sys.exit(app.exec())
     except KeyboardInterrupt:
