@@ -55,8 +55,26 @@ ZONES = [
     "DECK"
 ]
 
+# Command System Normalized Zones (for from_zone / to_zone in Commands)
+# These align with C++ Zone Enum and dm_ai_module.Zone
+COMMAND_ZONES = [
+    "BATTLE",
+    "MANA",
+    "HAND",
+    "GRAVEYARD",
+    "SHIELD",
+    "DECK"
+]
+
 # Extended Zone options for UI (Destinations, etc.)
-ZONES_EXTENDED = ZONES + ["DECK_BOTTOM", "DECK_TOP", "NONE"]
+ZONES_EXTENDED = COMMAND_ZONES + ["DECK_BOTTOM", "DECK_TOP", "NONE"]
+
+# Legacy Map for compatibility
+LEGACY_ZONE_MAP = {
+    "BATTLE_ZONE": "BATTLE",
+    "MANA_ZONE": "MANA",
+    "SHIELD_ZONE": "SHIELD"
+}
 
 # =============================================================================
 # Civilizations
