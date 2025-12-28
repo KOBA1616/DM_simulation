@@ -1,4 +1,21 @@
-import dm_ai_module
+import os
+import sys
+import importlib
+
+# Ensure the compiled extension module (built to ./bin) is importable.
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+_BIN_DIR = os.path.join(_PROJECT_ROOT, 'bin')
+if os.path.isdir(_BIN_DIR):
+    # Ensure bin/ takes precedence over any other installed dm_ai_module.
+    if _BIN_DIR in sys.path:
+        sys.path.remove(_BIN_DIR)
+    sys.path.insert(0, _BIN_DIR)
+
+# Force a clean import so the extension module wins.
+if 'dm_ai_module' in sys.modules:
+    del sys.modules['dm_ai_module']
+
+dm_ai_module = importlib.import_module('dm_ai_module')
 
 # Compatibility shims for older tests that expect helper methods on GameState
 def _add_card_to_mana(self, player_id, card_id, instance_id=None):
@@ -77,9 +94,17 @@ dm_ai_module.ConditionDef = _ConditionDefShim
 dm_ai_module.EffectDef = _EffectDefShim
 
 # Provide missing enum aliases expected by legacy tests
-if not hasattr(dm_ai_module.TargetScope, 'TARGET_SELECT'):
-    try:
-        dm_ai_module.TargetScope.TARGET_SELECT = getattr(dm_ai_module.TargetScope, 'PLAYER_SELF')
-    except Exception:
-        # Fallback: set to 0
-        dm_ai_module.TargetScope.TARGET_SELECT = 0
+if hasattr(dm_ai_module, 'TargetScope'):
+    if not hasattr(dm_ai_module.TargetScope, 'TARGET_SELECT'):
+        try:
+            dm_ai_module.TargetScope.TARGET_SELECT = getattr(dm_ai_module.TargetScope, 'PLAYER_SELF')
+        except Exception:
+            # Fallback: set to 0
+            dm_ai_module.TargetScope.TARGET_SELECT = 0
+else:
+    class _TargetScopeShim:
+        PLAYER_SELF = 0
+        PLAYER_OPPONENT = 1
+        TARGET_SELECT = 0
+
+    dm_ai_module.TargetScope = _TargetScopeShim

@@ -3,14 +3,15 @@ import uuid
 import copy
 from typing import Any, Dict, List, Optional
 
-# Try to import dm_ai_module to get enums, otherwise define mocks/None
+# Try to import dm_ai_module to get enums, otherwise define mocks/None.
+# Note: In some environments the compiled extension may be missing or fail to load.
 try:
-    import dm_ai_module
-    _CommandType = dm_ai_module.CommandType
-    _Zone = dm_ai_module.Zone
-except ImportError:
-    _CommandType = None
-    _Zone = None
+    import dm_ai_module  # type: ignore
+except Exception:
+    dm_ai_module = None  # type: ignore
+
+_CommandType = getattr(dm_ai_module, 'CommandType', None) if dm_ai_module is not None else None
+_Zone = getattr(dm_ai_module, 'Zone', None) if dm_ai_module is not None else None
 
 def normalize_action_zone_keys(data: Dict[str, Any]) -> Dict[str, Any]:
     """Ensures action dictionary has consistent zone keys."""

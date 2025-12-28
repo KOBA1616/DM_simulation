@@ -17,8 +17,8 @@ class TestActionToCommand(unittest.TestCase):
             "value1": 1
         }
         cmd = map_action(act)
-        self.assertEqual(cmd['type'], "MANA_CHARGE")
-        self.assertEqual(cmd['to_zone'], "MANA_ZONE")
+        self.assertEqual(cmd['type'], "TRANSITION")
+        self.assertEqual(cmd['to_zone'], "MANA")
         self.assertEqual(cmd['from_zone'], "HAND")
         self.assertEqual(cmd['amount'], 1)
 
@@ -28,9 +28,9 @@ class TestActionToCommand(unittest.TestCase):
             "source_zone": "BATTLE_ZONE"
         }
         cmd = map_action(act)
-        self.assertEqual(cmd['type'], "DESTROY")
+        self.assertEqual(cmd['type'], "TRANSITION")
         self.assertEqual(cmd['to_zone'], "GRAVEYARD")
-        self.assertEqual(cmd['from_zone'], "BATTLE_ZONE")
+        self.assertEqual(cmd['from_zone'], "BATTLE")
 
     def test_draw_card(self):
         act = {
@@ -87,7 +87,8 @@ class TestActionToCommand(unittest.TestCase):
         self.assertEqual(opt1['to_zone'], "HAND")
 
         opt2 = cmd['options'][1][0]
-        self.assertEqual(opt2['type'], "MANA_CHARGE")
+        self.assertEqual(opt2['type'], "TRANSITION")
+        self.assertEqual(opt2['to_zone'], "MANA")
 
     def test_attack_player(self):
         act = {
