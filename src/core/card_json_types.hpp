@@ -130,6 +130,30 @@ namespace dm::core {
         SEARCH_DECK,
         SHIELD_TRIGGER,
 
+        // Expanded Set
+        ATTACK_PLAYER,
+        ATTACK_CREATURE,
+        BLOCK,
+        RESOLVE_BATTLE,
+        RESOLVE_PLAY,
+        RESOLVE_EFFECT,
+        SHUFFLE_DECK,
+        LOOK_AND_ADD,
+        MEKRAID,
+        REVEAL_CARDS,
+        PLAY_FROM_ZONE,
+        CAST_SPELL,
+        SUMMON_TOKEN,
+        SHIELD_BURN,
+        SELECT_NUMBER,
+        CHOICE,
+        LOOK_TO_BUFFER,
+        SELECT_FROM_BUFFER,
+        PLAY_FROM_BUFFER,
+        MOVE_BUFFER_TO_ZONE,
+        FRIEND_BURST,
+        REGISTER_DELAYED_EFFECT,
+
         NONE
     };
 
@@ -420,7 +444,31 @@ namespace dm::core {
         {CommandType::RETURN_TO_HAND, "RETURN_TO_HAND"},
         {CommandType::BREAK_SHIELD, "BREAK_SHIELD"},
         {CommandType::SEARCH_DECK, "SEARCH_DECK"},
-        {CommandType::SHIELD_TRIGGER, "SHIELD_TRIGGER"}
+        {CommandType::SHIELD_TRIGGER, "SHIELD_TRIGGER"},
+
+        // Expanded Set
+        {CommandType::ATTACK_PLAYER, "ATTACK_PLAYER"},
+        {CommandType::ATTACK_CREATURE, "ATTACK_CREATURE"},
+        {CommandType::BLOCK, "BLOCK"},
+        {CommandType::RESOLVE_BATTLE, "RESOLVE_BATTLE"},
+        {CommandType::RESOLVE_PLAY, "RESOLVE_PLAY"},
+        {CommandType::RESOLVE_EFFECT, "RESOLVE_EFFECT"},
+        {CommandType::SHUFFLE_DECK, "SHUFFLE_DECK"},
+        {CommandType::LOOK_AND_ADD, "LOOK_AND_ADD"},
+        {CommandType::MEKRAID, "MEKRAID"},
+        {CommandType::REVEAL_CARDS, "REVEAL_CARDS"},
+        {CommandType::PLAY_FROM_ZONE, "PLAY_FROM_ZONE"},
+        {CommandType::CAST_SPELL, "CAST_SPELL"},
+        {CommandType::SUMMON_TOKEN, "SUMMON_TOKEN"},
+        {CommandType::SHIELD_BURN, "SHIELD_BURN"},
+        {CommandType::SELECT_NUMBER, "SELECT_NUMBER"},
+        {CommandType::CHOICE, "CHOICE"},
+        {CommandType::LOOK_TO_BUFFER, "LOOK_TO_BUFFER"},
+        {CommandType::SELECT_FROM_BUFFER, "SELECT_FROM_BUFFER"},
+        {CommandType::PLAY_FROM_BUFFER, "PLAY_FROM_BUFFER"},
+        {CommandType::MOVE_BUFFER_TO_ZONE, "MOVE_BUFFER_TO_ZONE"},
+        {CommandType::FRIEND_BURST, "FRIEND_BURST"},
+        {CommandType::REGISTER_DELAYED_EFFECT, "REGISTER_DELAYED_EFFECT"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {
