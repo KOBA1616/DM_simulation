@@ -102,7 +102,7 @@ class LogicTreeWidget(QTreeView):
             menu.addAction(convert_all_action)
 
         elif item_type == "EFFECT":
-             cmd_menu = menu.addMenu(tr("Add Action"))
+             cmd_menu = menu.addMenu(tr("Add Command"))
              templates = self.data_manager.templates.get("commands", [])
 
              # Always add Default Transition option
@@ -152,29 +152,37 @@ class LogicTreeWidget(QTreeView):
             menu.addAction(remove_action)
 
         elif item_type == "OPTION":
-            cmd_menu = menu.addMenu(tr("Add Action"))
-            templates = self.data_manager.templates.get("commands", [])
+            # Only allow adding commands if parent is not a legacy Action
+            parent = index.parent()
+            parent_type = parent.data(Qt.ItemDataRole.UserRole + 1) if parent.isValid() else None
 
-            # Always add Default Transition option
-            add_cmd_action = QAction(tr("Transition (Default)"), self)
-            add_cmd_action.triggered.connect(lambda checked: self.add_command_to_option(index))
-            if cmd_menu is not None:
-                cmd_menu.addAction(add_cmd_action)
-
-            if cmd_menu is not None:
-                cmd_menu.addSeparator()
-
-            if not templates:
-                warning = QAction(tr("(No Templates Found)"), self)
-                warning.setEnabled(False)
-                if cmd_menu is not None:
-                    cmd_menu.addAction(warning)
+            if parent_type == "ACTION":
+                 # Legacy Action Option: Restrict adding new content
+                 pass
             else:
-                for tpl in templates:
-                    action = QAction(tr(tpl['name']), self)
-                    action.triggered.connect(lambda checked, data=tpl['data']: self.add_command_to_option(index, data))
-                    if cmd_menu is not None:
-                        cmd_menu.addAction(action)
+                 cmd_menu = menu.addMenu(tr("Add Command"))
+                 templates = self.data_manager.templates.get("commands", [])
+
+                 # Always add Default Transition option
+                 add_cmd_action = QAction(tr("Transition (Default)"), self)
+                 add_cmd_action.triggered.connect(lambda checked: self.add_command_to_option(index))
+                 if cmd_menu is not None:
+                     cmd_menu.addAction(add_cmd_action)
+
+                 if cmd_menu is not None:
+                     cmd_menu.addSeparator()
+
+                 if not templates:
+                     warning = QAction(tr("(No Templates Found)"), self)
+                     warning.setEnabled(False)
+                     if cmd_menu is not None:
+                         cmd_menu.addAction(warning)
+                 else:
+                     for tpl in templates:
+                         action = QAction(tr(tpl['name']), self)
+                         action.triggered.connect(lambda checked, data=tpl['data']: self.add_command_to_option(index, data))
+                         if cmd_menu is not None:
+                             cmd_menu.addAction(action)
 
             remove_opt_action = QAction(tr("Remove Option"), self)
             remove_opt_action.triggered.connect(lambda: self.remove_current_item())
@@ -400,7 +408,7 @@ class LogicTreeWidget(QTreeView):
         eff_data = {
             "trigger": "ON_PLAY",
             "condition": {"type": "NONE"},
-            "actions": []
+            "commands": []
         }
         self.add_child_item(parent_index, "EFFECT", eff_data, f"{tr('Effect')}: {tr('ON_PLAY')}")
 
@@ -462,21 +470,6 @@ class LogicTreeWidget(QTreeView):
         label = self.data_manager.format_command_label(data_copy)
         self.add_child_item(option_index, "COMMAND", data_copy, label)
 
-    def add_action_sibling(self, action_index, action_data=None):
-        if not action_index.isValid(): return
-        parent_index = action_index.parent()
-        if not parent_index.isValid(): return
-
-        if action_data is None:
-             action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
-
-        import copy
-        data_copy = copy.deepcopy(action_data)
-        if 'uid' in data_copy: del data_copy['uid']
-
-        label = self.data_manager.format_action_label(data_copy)
-        self.add_child_item(parent_index, "ACTION", data_copy, label)
-
     def add_command_to_effect(self, effect_index, cmd_data=None):
         if not effect_index.isValid(): return
         if cmd_data is None:
@@ -494,30 +487,6 @@ class LogicTreeWidget(QTreeView):
 
         label = self.data_manager.format_command_label(data_copy)
         self.add_child_item(effect_index, "COMMAND", data_copy, label)
-
-    def add_action_to_effect(self, effect_index, action_data=None):
-        if not effect_index.isValid(): return
-        if action_data is None:
-             action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
-
-        import copy
-        data_copy = copy.deepcopy(action_data)
-        if 'uid' in data_copy: del data_copy['uid']
-
-        label = self.data_manager.format_action_label(data_copy)
-        self.add_child_item(effect_index, "ACTION", data_copy, label)
-
-    def add_action_to_option(self, option_index, action_data=None):
-        if not option_index.isValid(): return
-        if action_data is None:
-             action_data = {"type": "SELECT_TARGET", "filter": {"zones": ["BATTLE_ZONE"], "count": 1}}
-
-        import copy
-        data_copy = copy.deepcopy(action_data)
-        if 'uid' in data_copy: del data_copy['uid']
-
-        label = self.data_manager.format_action_label(data_copy)
-        self.add_child_item(option_index, "ACTION", data_copy, label)
 
     def add_command_contextual(self, cmd_data=None):
         idx = self.currentIndex()
@@ -545,29 +514,6 @@ class LogicTreeWidget(QTreeView):
                      self._add_command_to_branch(parent.index(), cmd_data)
         elif type_ in ["CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
              self._add_command_to_branch(idx, cmd_data)
-
-    def add_action_contextual(self, action_data=None):
-        idx = self.currentIndex()
-        if not idx.isValid(): return
-
-        item = self.standard_model.itemFromIndex(idx)
-        if item is None:
-            return
-        type_ = item.data(Qt.ItemDataRole.UserRole + 1)
-
-        if type_ == "EFFECT":
-            self.add_action_to_effect(idx, action_data)
-        elif type_ == "OPTION":
-            self.add_action_to_option(idx, action_data)
-        elif type_ in ["COMMAND", "ACTION"]:
-             # Sibling
-             parent = item.parent()
-             if parent:
-                 parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
-                 if parent_type == "EFFECT":
-                     self.add_action_to_effect(parent.index(), action_data)
-                 elif parent_type == "OPTION":
-                     self.add_action_to_option(parent.index(), action_data)
 
     def _add_command_to_branch(self, branch_index, cmd_data=None):
         if not branch_index.isValid(): return

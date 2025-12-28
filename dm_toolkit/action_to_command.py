@@ -33,6 +33,17 @@ def _transfer_targeting(act: Dict[str, Any], cmd: Dict[str, Any]):
     cmd['target_group'] = scope
     if 'filter' in act:
         cmd['target_filter'] = copy.deepcopy(act['filter'])
+        # Normalize zones in target_filter if present
+        if 'zones' in cmd['target_filter']:
+            zones = cmd['target_filter']['zones']
+            if isinstance(zones, list):
+                zone_map = {
+                    "MANA_ZONE": "MANA", "BATTLE_ZONE": "BATTLE",
+                    "SHIELD_ZONE": "SHIELD", "GRAVEYARD": "GRAVEYARD",
+                    "HAND": "HAND", "DECK": "DECK"
+                }
+                cmd['target_filter']['zones'] = [zone_map.get(z, z) for z in zones]
+
     if act.get('optional', False):
         cmd.setdefault('flags', []).append('OPTIONAL')
 

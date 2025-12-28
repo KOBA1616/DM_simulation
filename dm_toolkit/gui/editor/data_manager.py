@@ -497,12 +497,9 @@ class CardDataManager:
             if 'commands' in eff_data:
                 del eff_data['commands']
 
-        # Preserve legacy 'actions' list when original ACTION nodes existed
-        if legacy_actions:
-            eff_data['actions'] = legacy_actions
-        else:
-            if 'actions' in eff_data:
-                del eff_data['actions']
+        # Commands-only policy: Do not save legacy 'actions'
+        if 'actions' in eff_data:
+            del eff_data['actions']
 
         return eff_data
 
@@ -665,6 +662,11 @@ class CardDataManager:
             child = card_item.child(i)
             if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
                 eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                # Check commands for revolution change
+                for cmd in eff_data.get('commands', []):
+                    if cmd.get('mutation_kind') == 'REVOLUTION_CHANGE':
+                        return child
+                # Fallback check for legacy actions
                 for act in eff_data.get('actions', []):
                     if act.get('type') == 'REVOLUTION_CHANGE':
                         return child
@@ -672,16 +674,19 @@ class CardDataManager:
         eff_data = {
             "trigger": "ON_ATTACK_FROM_HAND",
             "condition": {"type": "NONE"},
-            "actions": []
+            "commands": []
         }
         eff_item = self._create_effect_item(eff_data)
 
-        act_data = {
-            "type": "REVOLUTION_CHANGE",
-            "filter": {"civilizations": ["FIRE"], "races": ["Dragon"], "min_cost": 5}
+        # Create Command directly
+        cmd_data = {
+            "type": "MUTATE",
+            "mutation_kind": "REVOLUTION_CHANGE",
+            "target_group": "TARGET_SELECT",
+            "target_filter": {"civilizations": ["FIRE"], "races": ["Dragon"], "min_cost": 5}
         }
-        act_item = self._create_action_item(act_data)
-        eff_item.appendRow(act_item)
+        cmd_item = self.create_command_item(cmd_data)
+        eff_item.appendRow(cmd_item)
 
         # Prefer attaching to an existing GROUP_TRIGGER node if present
         attached = False
@@ -720,10 +725,18 @@ class CardDataManager:
             child = card_item.child(i)
             if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
                 eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
-                for act in eff_data.get('actions', []):
-                    if act.get('type') == 'REVOLUTION_CHANGE':
-                        rows_to_remove.append(i)
+                found = False
+                for cmd in eff_data.get('commands', []):
+                    if cmd.get('mutation_kind') == 'REVOLUTION_CHANGE':
+                        found = True
                         break
+                if not found:
+                    for act in eff_data.get('actions', []):
+                        if act.get('type') == 'REVOLUTION_CHANGE':
+                            found = True
+                            break
+                if found:
+                    rows_to_remove.append(i)
 
         for i in reversed(rows_to_remove):
             card_item.removeRow(i)
