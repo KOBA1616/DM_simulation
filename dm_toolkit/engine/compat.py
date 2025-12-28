@@ -225,22 +225,25 @@ class EngineCompat:
                         cmd_def.str_param = str(cmd_dict.get('str_param', ''))
                         cmd_def.optional = bool(cmd_dict.get('optional', False))
 
-                        # Populate instance_id / target_instance_id / owner_id
-                        if 'instance_id' in cmd_dict: cmd_def.instance_id = int(cmd_dict['instance_id'])
-                        if 'target_instance' in cmd_dict: cmd_def.target_instance = int(cmd_dict['target_instance'])
-                        if 'owner_id' in cmd_dict: cmd_def.owner_id = int(cmd_dict['owner_id'])
-                        elif 'player_id' in cmd_dict: cmd_def.owner_id = int(cmd_dict['player_id'])
+                        # Execution Context Defaults
+                        source_id = -1
+                        player_id = state.active_player_id
 
-                        # Map Zones: Need to convert string to Zone enum if binding requires it
-                        if hasattr(dm_ai_module, 'Zone'):
-                            fz = cmd_dict.get('from_zone')
-                            if fz and hasattr(dm_ai_module.Zone, fz): cmd_def.from_zone = getattr(dm_ai_module.Zone, fz)
-                            tz = cmd_dict.get('to_zone')
-                            if tz and hasattr(dm_ai_module.Zone, tz): cmd_def.to_zone = getattr(dm_ai_module.Zone, tz)
-                        else:
-                            # Fallback if Zone not exposed or string allowed
-                            cmd_def.from_zone = str(cmd_dict.get('from_zone', ''))
-                            cmd_def.to_zone = str(cmd_dict.get('to_zone', ''))
+                        # Populate instance_id / target_instance_id / owner_id
+                        # Note: instance_id/target_instance/owner_id are NOT in CommandDef binding yet.
+                        # We use them to populate arguments for execute_command.
+
+                        if source_id == -1 and 'instance_id' in cmd_dict:
+                            source_id = int(cmd_dict['instance_id'])
+
+                        if 'owner_id' in cmd_dict:
+                            player_id = int(cmd_dict['owner_id'])
+                        elif 'player_id' in cmd_dict:
+                            player_id = int(cmd_dict['player_id'])
+
+                        # Map Zones: CommandDef uses string zones in C++
+                        cmd_def.from_zone = str(cmd_dict.get('from_zone', ''))
+                        cmd_def.to_zone = str(cmd_dict.get('to_zone', ''))
 
                         cmd_def.mutation_kind = str(cmd_dict.get('mutation_kind', ''))
                         cmd_def.input_value_key = str(cmd_dict.get('input_value_key', ''))
@@ -264,22 +267,13 @@ class EngineCompat:
                         if scope_str and hasattr(dm_ai_module.TargetScope, scope_str):
                             cmd_def.target_group = getattr(dm_ai_module.TargetScope, scope_str)
 
-                        # Execution Context
-                        source_id = -1
-                        player_id = state.active_player_id
-
                         # Use legacy action context if available
                         if hasattr(cmd, '_action'):
                             act = cmd._action
-                            if hasattr(act, 'source_instance_id'):
+                            if hasattr(act, 'source_instance_id') and act.source_instance_id != -1:
                                 source_id = act.source_instance_id
                             if hasattr(act, 'target_player') and act.target_player != 255:
                                 player_id = act.target_player
-
-                        # Phase 4.3: Ensure required fields are present for CommandSystem
-                        # If cmd_def has instance_id, use it for source_id if source_id is -1
-                        if source_id == -1 and cmd_def.instance_id > 0:
-                            source_id = cmd_def.instance_id
 
                         # Execute
                         ctx = {}
@@ -287,6 +281,7 @@ class EngineCompat:
                         return # Success: Return only if executed by CommandSystem
             except Exception as e:
                 # Fallthrough on error to try legacy path
+                print(f"CommandSystem execution failed: {e}")
                 pass
 
         # Fallback Logic (Legacy Path)

@@ -42,6 +42,13 @@ def _transfer_common_move_fields(act: Dict[str, Any], cmd: Dict[str, Any]):
     elif 'value1' in act:
          cmd['amount'] = act['value1']
 
+    if 'instance_id' not in cmd:
+        inst = act.get('source_instance_id') or act.get('card_id') or act.get('instance_id')
+        if inst is not None:
+            cmd['instance_id'] = inst
+            if cmd.get('target_group', 'NONE') == 'NONE':
+                cmd['target_group'] = 'SELF'
+
 def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
     if 'uid' not in cmd:
         cmd['uid'] = str(uuid.uuid4())
@@ -128,6 +135,7 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         cmd['type'] = "TRANSITION"
         cmd['from_zone'] = src or 'DECK'
         cmd['to_zone'] = dest or 'HAND'
+        if 'amount' not in cmd: cmd['amount'] = act_data.get('value1', 1)
         _transfer_common_move_fields(act_data, cmd)
 
     elif act_type in ["TAP", "UNTAP"]:
@@ -324,11 +332,15 @@ def _handle_complex(act_type, act, cmd, dest):
 
 def _handle_play_flow(act_type, act, cmd, src, dest):
     if act_type == "PLAY_FROM_ZONE":
-        cmd['type'] = "PLAY_FROM_ZONE"
-        if src: cmd['from_zone'] = src
+        # Phase 5: Map to TRANSITION for CommandSystem execution
+        cmd['type'] = "TRANSITION"
+        cmd['from_zone'] = src or 'HAND'
         cmd['to_zone'] = dest or 'BATTLE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
         cmd['str_param'] = "PLAY_FROM_ZONE_HINT"
+        # Ensure target targeting (SELF) is set so CommandSystem finds the card
+        if cmd.get('target_group', 'NONE') == 'NONE':
+             cmd['target_group'] = 'SELF'
     elif act_type == "FRIEND_BURST":
         cmd['type'] = "FRIEND_BURST"
         cmd['str_val'] = act.get('str_val')
