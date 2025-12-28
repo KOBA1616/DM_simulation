@@ -176,17 +176,14 @@ def _create_error_command(orig_val: str, msg: str) -> Dict[str, Any]:
     }
 
 def _handle_move_card(act, cmd, src, dest):
-    if dest == "GRAVEYARD":
-        cmd['type'] = "DISCARD" if src == "HAND" else "DESTROY"
-    elif dest == "MANA_ZONE":
-        cmd['type'] = "MANA_CHARGE"
-    elif dest == "HAND":
-        cmd['type'] = "RETURN_TO_HAND"
-    else:
-        cmd['type'] = "TRANSITION"
-
+    # Phase 4.2 Normalization: Prefer TRANSITION for all standard moves
+    cmd['type'] = "TRANSITION"
     if dest and 'to_zone' not in cmd: cmd['to_zone'] = dest
     if src and 'from_zone' not in cmd: cmd['from_zone'] = src
+
+    # Keep explicit types only if they are specialized operations beyond simple move
+    # But for strict engine validation, we default to TRANSITION + zones.
+    # Note: MANA_CHARGE is retained as TRANSITION to MANA_ZONE
 
     _transfer_common_move_fields(act, cmd)
 
@@ -198,7 +195,6 @@ def _handle_specific_moves(act_type, act, cmd, src):
         cmd['type'] = "TRANSITION"
 
     if act_type in ["SEND_TO_MANA", "MANA_CHARGE"]:
-        cmd['type'] = "MANA_CHARGE"
         cmd['to_zone'] = "MANA_ZONE"
         if not src and act_type == "MANA_CHARGE": cmd['from_zone'] = "DECK"
         if src: cmd['from_zone'] = src
@@ -208,14 +204,12 @@ def _handle_specific_moves(act_type, act, cmd, src):
         cmd['to_zone'] = "SHIELD_ZONE"
         if not src: cmd['from_zone'] = "DECK"
     elif act_type == "DESTROY":
-        cmd['type'] = "DESTROY"
         cmd['to_zone'] = "GRAVEYARD"
         if src: cmd['from_zone'] = src
     elif act_type == 'RETURN_TO_HAND':
-        cmd['type'] = "RETURN_TO_HAND"
         cmd['to_zone'] = "HAND"
+        if src: cmd['from_zone'] = src
     elif act_type == 'DISCARD':
-        cmd['type'] = "DISCARD"
         cmd['to_zone'] = "GRAVEYARD"
         cmd['from_zone'] = "HAND"
 
