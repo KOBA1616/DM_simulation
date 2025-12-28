@@ -36,6 +36,8 @@ def make_ref_mode_combo(parent=None):
 
 
 def make_zone_combos(parent=None):
+    # Uses ZONES_EXTENDED which now favors COMMAND_ZONES (BATTLE, MANA, etc)
+    # but also includes extended options like DECK_BOTTOM
     src = QComboBox(parent)
     dst = QComboBox(parent)
     for z in ZONES_EXTENDED:
