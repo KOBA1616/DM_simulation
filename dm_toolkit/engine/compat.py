@@ -200,11 +200,18 @@ class EngineCompat:
         EngineCompat._check_module()
         assert dm_ai_module is not None
 
-        # 1. Try C++ CommandSystem if it's a wrapped Command with `to_dict`
-        # and has a valid type for the engine.
-        if hasattr(cmd, 'to_dict'):
+        # Prepare cmd_dict if input is dict or has to_dict
+        cmd_dict = None
+        if isinstance(cmd, dict):
+            cmd_dict = cmd
+        elif hasattr(cmd, 'to_dict'):
             try:
                 cmd_dict = cmd.to_dict()
+            except Exception:
+                pass
+
+        if cmd_dict:
+            try:
                 type_str = cmd_dict.get('type')
 
                 # STRICT VALIDATION: Only proceed if type exists in C++ CommandType
@@ -226,9 +233,6 @@ class EngineCompat:
                         elif 'player_id' in cmd_dict: cmd_def.owner_id = int(cmd_dict['player_id'])
 
                         # Map Zones: Need to convert string to Zone enum if binding requires it
-                        # Assuming binding accepts strings or enum. If strict C++, likely needs enum.
-                        # However, current binding might be loose. But 'cmd_def.from_zone' likely expects int or enum if it is a C++ struct.
-                        # Let's try to map string to Zone enum if possible.
                         if hasattr(dm_ai_module, 'Zone'):
                             fz = cmd_dict.get('from_zone')
                             if fz and hasattr(dm_ai_module.Zone, fz): cmd_def.from_zone = getattr(dm_ai_module.Zone, fz)

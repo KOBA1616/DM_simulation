@@ -583,18 +583,44 @@ class GameWindow(QMainWindow):
             if card_data:
                 self.card_detail_panel.update_card(card_data)
 
-    def execute_action(self, action: Action) -> None:
+    def execute_action(self, action: Any) -> None:
         self.last_action = action
+
+        # Safe string representation for logs
+        action_str = ""
+        if hasattr(action, 'to_string'):
+            action_str = action.to_string()
+        elif isinstance(action, dict):
+            # Shortened dict repr
+            action_str = json.dumps(action, default=str)[:100]
+        else:
+            action_str = str(action)
+
+        # Helper to get type safely
+        action_type = None
+        if hasattr(action, 'type'):
+             action_type = action.type
+        elif isinstance(action, dict):
+             action_type = action.get('type')
+
         # Prefer action.execute (which will run attached Command if present),
         # otherwise fall back to the engine compatibility resolver.
         try:
             EngineCompat.ExecuteCommand(self.gs, action, self.card_db)
         except Exception:
             # In case of unexpected errors, fallback to compatibility resolver
-            EngineCompat.EffectResolver_resolve_action(self.gs, action, self.card_db)
-        # self.log_list.addItem(f"P0 {tr('Action')}: {action.to_string()}")
-        self.loop_recorder.record_action(action.to_string())
-        self.scenario_tools.record_action(action.to_string())
+            # Note: EffectResolver might not accept dicts, but ExecuteCommand handles them now.
+            # If ExecuteCommand fails, we try legacy, but if action is dict, legacy resolver might fail too.
+            # However, EngineCompat.ExecuteCommand already contains the fallback logic.
+            # So this except block is redundant/fallback for truly unexpected errors.
+            try:
+                EngineCompat.EffectResolver_resolve_action(self.gs, action, self.card_db)
+            except:
+                pass
+
+        # self.log_list.addItem(f"P0 {tr('Action')}: {action_str}")
+        self.loop_recorder.record_action(action_str)
+        self.scenario_tools.record_action(action_str)
         
         if self.check_and_handle_input_wait():
             return
@@ -602,7 +628,23 @@ class GameWindow(QMainWindow):
         # Refactored phase logic: Check pending effects
         if dm_ai_module:
             pending_count = self.gs.get_pending_effect_count()
-            if (action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
+
+            is_pass = False
+            is_charge = False
+
+            # Check PASS
+            if hasattr(dm_ai_module.ActionType, 'PASS') and action_type == dm_ai_module.ActionType.PASS:
+                is_pass = True
+            elif str(action_type) == 'PASS':
+                is_pass = True
+
+            # Check MANA_CHARGE
+            if hasattr(dm_ai_module.ActionType, 'MANA_CHARGE') and action_type == dm_ai_module.ActionType.MANA_CHARGE:
+                 is_charge = True
+            elif str(action_type) == 'MANA_CHARGE':
+                 is_charge = True
+
+            if (is_pass or is_charge) and pending_count == 0:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
             
         self.update_ui()
