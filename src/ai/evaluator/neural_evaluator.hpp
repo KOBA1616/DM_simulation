@@ -33,7 +33,9 @@ namespace dm::ai {
 
     private:
         std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
+#ifdef USE_ONNXRUNTIME
         std::unique_ptr<dm::ai::inference::OnnxModel> onnx_model_;
+#endif
         ModelType model_type_ = ModelType::RESNET;
     };
 

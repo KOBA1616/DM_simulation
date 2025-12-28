@@ -1,38 +1,52 @@
-
-import unittest
+import pytest
 import dm_ai_module
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.action_to_command import map_action
-try:
-    from dm_ai_module import Action, Zone
-except ImportError:
-    class Action:
-        def to_dict(self):
-            return self.__dict__
-    Zone = None
 
-class TestPhase4E2E(unittest.TestCase):
-    def setUp(self):
-        # Create a game state with 1000 cards
-        self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-        self.state = dm_ai_module.GameState(1000)
-        dm_ai_module.PhaseManager.start_game(self.state, self.card_db)
+# Mock Action class if not available
+class MockAction:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+    def to_dict(self):
+        return self.__dict__
 
-        # Helper to get valid commands
-        self.p1 = self.state.active_player_id
+@pytest.fixture
+def game_context():
+    # Load Cards
+    card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+    if not card_db:
+        pytest.fail("Failed to load card DB")
 
-    def _execute_phase_loop(self):
-        # Helper to ensure engine transitions if needed
-        # In this environment, we might need to manually trigger next_phase if actions don't auto-trigger.
-        pass
+    # Initialize State
+    state = dm_ai_module.GameState(1000)
+    dm_ai_module.PhaseManager.start_game(state, card_db)
 
-    def test_simple_turn_flow(self):
-        """
-        Verify: Draw -> Mana -> Play -> Attack -> End Turn using CommandSystem.
-        """
-        state = self.state
-        player_idx = self.p1
-        player = state.players[player_idx]
+    # Ensure P1 is active
+    p1_id = state.active_player_id
+
+    return {
+        'state': state,
+        'card_db': card_db,
+        'p1_id': p1_id,
+        'p2_id': 1 - p1_id
+    }
+
+def execute_via_map_action(state, card_db, action_dict):
+    """Path 1: Action -> map_action -> ExecuteCommand"""
+    cmd = map_action(action_dict)
+    # Ensure it's executed via CommandSystem
+    EngineCompat.ExecuteCommand(state, cmd, card_db)
+    return cmd
+
+def execute_via_direct_command(state, card_db, cmd_dict):
+    """Path 2: Direct Command Dict -> ExecuteCommand"""
+    EngineCompat.ExecuteCommand(state, cmd_dict, card_db)
+
+def _run_turn_sequence(context, execution_method):
+    state = context['state']
+    card_db = context['card_db']
+    p1 = context['p1_id']
+    player = state.players[p1]
 
         # ---------------------------------------------------------------------
         # 0. Initial Setup & Phase check
@@ -108,73 +122,75 @@ class TestPhase4E2E(unittest.TestCase):
         while str(EngineCompat.get_current_phase(state)) != "Phase.MAIN":
             EngineCompat.PhaseManager_next_phase(state, self.card_db)
 
-        # ---------------------------------------------------------------------
-        # 3. PLAY CARD
-        # ---------------------------------------------------------------------
-        # We need a playable card.
+    # -------------------------------------------------------------------------
+    # 3. PLAY CARD (Action: PLAY_FROM_ZONE / PLAY_CARD)
+    # -------------------------------------------------------------------------
+    # Ramp Mana using CommandSystem logic directly (TRANSITION command)
+    # This avoids relying on internal shims that might be guarded/mocked.
+    ramp_cmd = {
+        'type': 'TRANSITION',
+        'from_zone': 'DECK',
+        'to_zone': 'MANA',
+        'amount': 5, # Move 5 cards
+        'owner_id': p1
+    }
+    try:
+        EngineCompat.ExecuteCommand(state, ramp_cmd, card_db)
+    except Exception as e:
+        print(f"Setup ramp warning: {e}")
 
-        # Let's try to PLAY the first card in hand.
-        player = state.players[player_idx] # Refresh
-        if len(player.hand) > 0:
-            card_to_play = player.hand[0]
+    # Now Play
+    if len(player.hand) > 0:
+        card_to_play = player.hand[0]
 
-            # Use PLAY_FROM_ZONE (Phase 4.4-3 requirement)
-            play_action = Action()
-            play_action.type = "PLAY_FROM_ZONE" # or RESOLVE_PLAY if atomic
-            play_action.from_zone = "HAND"
-            play_action.to_zone = "BATTLE"
-            play_action.source_instance_id = card_to_play.instance_id
+        action = {
+            'type': 'PLAY_FROM_ZONE',
+            'source_instance_id': card_to_play.instance_id,
+            'from_zone': 'HAND',
+            'to_zone': 'BATTLE',
+            'value1': 999 # Max cost, or cheat cost payment?
+            # Note: Engine checks logic. If logic fails, it's fine for this test
+            # as long as CommandSystem was invoked.
+        }
 
-            cmd_dict = map_action(play_action.to_dict() if hasattr(play_action, 'to_dict') else play_action.__dict__)
+        execution_method(state, card_db, action if execution_method == execute_via_map_action else map_action(action))
 
-            # Execute
-            # Note: This might fail logic check (Cost), but should hit CommandSystem.
-            # We can catch potential error or check logs.
-            try:
-                EngineCompat.ExecuteCommand(state, cmd_dict, self.card_db)
-            except Exception as e:
-                print(f"Play command execution logic error (expected if cost not met): {e}")
+    # -------------------------------------------------------------------------
+    # 4. ATTACK (Action: ATTACK_PLAYER)
+    # -------------------------------------------------------------------------
+    # Setup: Need a creature in Battle Zone.
+    # Transition one from Deck to Battle
+    setup_attacker_cmd = {
+        'type': 'TRANSITION',
+        'from_zone': 'DECK',
+        'to_zone': 'BATTLE',
+        'amount': 1,
+        'owner_id': p1
+    }
+    EngineCompat.ExecuteCommand(state, setup_attacker_cmd, card_db)
 
-        # ---------------------------------------------------------------------
-        # 4. ATTACK (Transition to ATTACK phase)
-        # ---------------------------------------------------------------------
+    # Get that creature
+    player = state.players[p1]
+    if len(player.battle_zone) > 0:
+        attacker = player.battle_zone[-1]
+
         # Move to Attack Phase
         while str(EngineCompat.get_current_phase(state)) != "Phase.ATTACK":
-             EngineCompat.PhaseManager_next_phase(state, self.card_db)
+             EngineCompat.PhaseManager_next_phase(state, card_db)
 
-        # Need a creature in Battle Zone to attack.
-        # Cheat: Move a card from deck to battle zone directly.
-        player = state.players[player_idx] # Refresh
-        if len(player.deck) > 0:
-            cheat_card = player.deck[0]
-            # Use direct engine method to place card for setup
-            # But wait, we want to test CommandSystem.
-            # Let's use a TRANSITION command to put it there first.
-            setup_cmd = {
-                'type': 'TRANSITION',
-                'from_zone': 'DECK',
-                'to_zone': 'BATTLE',
-                'instance_id': cheat_card.instance_id,
-                'owner_id': player_idx
-            }
-            EngineCompat.ExecuteCommand(state, setup_cmd, self.card_db)
+        action = {
+            'type': 'ATTACK_PLAYER',
+            'source_instance_id': attacker.instance_id,
+            'target_player': 1 - p1
+        }
 
-            # Now Attack Player
+        execution_method(state, card_db, action if execution_method == execute_via_map_action else map_action(action))
 
-            attack_action = Action()
-            attack_action.type = "ATTACK_PLAYER"
-            attack_action.source_instance_id = cheat_card.instance_id
-            attack_action.target_player = 1 - player_idx # Opponent
 
-            cmd_dict = map_action(attack_action.to_dict() if hasattr(attack_action, 'to_dict') else attack_action.__dict__)
+def test_e2e_via_map_action(game_context):
+    """Phase 5.3 Path 1: Action Dict -> map_action -> ExecuteCommand"""
+    _run_turn_sequence(game_context, execute_via_map_action)
 
-            # Let's try executing.
-            EngineCompat.ExecuteCommand(state, cmd_dict, self.card_db)
-
-        # ---------------------------------------------------------------------
-        # 5. END TURN
-        # ---------------------------------------------------------------------
-        pass
-
-if __name__ == '__main__':
-    unittest.main()
+def test_e2e_via_direct_command(game_context):
+    """Phase 5.3 Path 2: Command Dict -> ExecuteCommand"""
+    _run_turn_sequence(game_context, execute_via_direct_command)
