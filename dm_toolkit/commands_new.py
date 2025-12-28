@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional, Protocol, runtime_checkable
-from dm_toolkit.action_mapper import ActionToCommandMapper
+from dm_toolkit.action_to_command import map_action
 
 @runtime_checkable
 class ICommand(Protocol):
@@ -31,7 +31,7 @@ def wrap_action(action: Any) -> Optional[ICommand]:
 
     - If `action` already implements `execute`, return it.
     - Otherwise, returns a wrapper that implements `execute` (via `dm_ai_module` or direct call)
-      and `to_dict` (via `ActionToCommandMapper`).
+      and `to_dict` (via `map_action` from `action_to_command`).
     """
     if action is None:
         return None
@@ -86,7 +86,7 @@ def wrap_action(action: Any) -> Optional[ICommand]:
 
         def to_dict(self) -> Dict[str, Any]:
             # Use the unified mapper
-            return ActionToCommandMapper.map_action(self._action)
+            return map_action(self._action)
 
     return _ActionWrapper(action)
 
