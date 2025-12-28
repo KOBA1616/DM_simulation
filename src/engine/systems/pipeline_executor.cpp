@@ -331,6 +331,21 @@ namespace dm::engine::systems {
             }
         }
 
+        // Support input_value_key as an alternative way to pass targets from previous Query/Select
+        if (targets.empty() && inst.args.contains("input_value_key")) {
+            auto iv = inst.args["input_value_key"];
+            if (iv.is_string()) {
+                std::string key = iv.get<std::string>();
+                if (key.empty() == false) {
+                    // Context keys are stored with a leading '$' in the pipeline
+                    std::string ctx_key = key.rfind("$", 0) == 0 ? key : ("$" + key);
+                    auto v = get_context_var(ctx_key);
+                    if (std::holds_alternative<std::vector<int>>(v)) targets = std::get<std::vector<int>>(v);
+                    else if (std::holds_alternative<int>(v)) targets.push_back(std::get<int>(v));
+                }
+            }
+        }
+
         std::string to_zone_str = resolve_string(inst.args.value("to", ""));
         Zone to_zone = Zone::GRAVEYARD;
         if (to_zone_str == "HAND") to_zone = Zone::HAND;

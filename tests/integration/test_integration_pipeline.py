@@ -8,11 +8,11 @@ def register_card(card_id, actions):
     # actions is a list of ActionDef dictionaries
     effects = []
     if actions:
-        ed = EffectDef()
+        ed = dm_ai_module.EffectDef()
         ed.trigger = TriggerType.ON_PLAY
         action_list = []
         for a in actions:
-            ad = ActionDef()
+            ad = dm_ai_module.ActionDef()
             ad.type = a.get("type")
             if "scope" in a: ad.scope = a["scope"]
             if "value1" in a: ad.value1 = a["value1"]
@@ -32,7 +32,7 @@ def register_card(card_id, actions):
         effects.append(ed)
 
     # Use CardData for registration
-    cd = CardData(card_id, "TestCard", 1, "FIRE", 1000, "CREATURE", [], effects)
+    cd = dm_ai_module.CardData(card_id, "TestCard", 1, "FIRE", 1000, "CREATURE", [], effects)
     dm_ai_module.register_card_data(cd)
     return cd
 
@@ -54,8 +54,8 @@ class TestIntegrationPipeline:
         }]
         register_card(cid, actions)
 
-        ed = EffectDef()
-        ad = ActionDef()
+        ed = dm_ai_module.EffectDef()
+        ad = dm_ai_module.ActionDef()
         ad.type = EffectActionType.ADD_MANA
         ad.value1 = 2
 
@@ -78,16 +78,16 @@ class TestIntegrationPipeline:
         # Register target cards to ensure they are found by SEARCH
         target_id = 2000
         fodder_id = 2001
-        dm_ai_module.register_card_data(CardData(target_id, "Target", 1, "WATER", 1000, "CREATURE", [], []))
-        dm_ai_module.register_card_data(CardData(fodder_id, "Fodder", 1, "FIRE", 1000, "CREATURE", [], []))
+        dm_ai_module.register_card_data(dm_ai_module.CardData(target_id, "Target", 1, "WATER", 1000, "CREATURE", [], []))
+        dm_ai_module.register_card_data(dm_ai_module.CardData(fodder_id, "Fodder", 1, "FIRE", 1000, "CREATURE", [], []))
 
         cid = 1002
-        ed = EffectDef()
+        ed = dm_ai_module.EffectDef()
 
         # Action 1: Search Water Card (Target)
         # We use specific filter to ensure only 1 match, allowing auto-select optimization to kick in
         # (count 1 >= valid 1) -> No Pause
-        ad1 = ActionDef()
+        ad1 = dm_ai_module.ActionDef()
         ad1.type = EffectActionType.SEARCH_DECK
         ad1.scope = TargetScope.TARGET_SELECT
         fd = FilterDef()
@@ -96,7 +96,7 @@ class TestIntegrationPipeline:
         ad1.filter = fd
 
         # Action 2: Count Hand
-        ad2 = ActionDef()
+        ad2 = dm_ai_module.ActionDef()
         ad2.type = EffectActionType.COUNT_CARDS
         fd2 = FilterDef()
         fd2.zones = ["HAND"]
@@ -104,7 +104,7 @@ class TestIntegrationPipeline:
         ad2.output_value_key = "hand_count"
 
         # Action 3: Add Mana (equal to hand count)
-        ad3 = ActionDef()
+        ad3 = dm_ai_module.ActionDef()
         ad3.type = EffectActionType.ADD_MANA
         ad3.input_value_key = "hand_count"
 
@@ -131,8 +131,8 @@ class TestIntegrationPipeline:
         # Test DestroyHandler migration
         # Effect: Destroy all creatures.
 
-        ed = EffectDef()
-        ad = ActionDef()
+        ed = dm_ai_module.EffectDef()
+        ad = dm_ai_module.ActionDef()
         ad.type = EffectActionType.DESTROY
         fd = FilterDef()
         fd.zones = ["BATTLE_ZONE"]
@@ -158,8 +158,8 @@ class TestIntegrationPipeline:
         # Test RevealHandler
         # Effect: Reveal top 1 card (moves to Buffer).
 
-        ed = EffectDef()
-        ad = ActionDef()
+        ed = dm_ai_module.EffectDef()
+        ad = dm_ai_module.ActionDef()
         ad.type = EffectActionType.REVEAL_CARDS
         ad.value1 = 1
 
