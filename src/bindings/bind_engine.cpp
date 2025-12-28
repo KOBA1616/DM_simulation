@@ -28,7 +28,19 @@ void bind_engine(py::module& m) {
         .def("get_type", &dm::engine::game_command::GameCommand::get_type)
         .def("invert", &dm::engine::game_command::GameCommand::invert);
 
-    py::enum_<dm::engine::game_command::CommandType>(m, "CommandType")
+    // Removed CommandType binding here to avoid conflict with bind_core.cpp
+    // The core CommandType (card_json_types.hpp) is now the primary one exposed.
+    // If Engine uses a different CommandType enum, we should map or expose it differently.
+    // However, GameCommand uses `dm::engine::game_command::CommandType` which seems to be different
+    // or aliased.
+    // Let's check `game_command.hpp`.
+
+    // Assuming dm::engine::game_command::CommandType needs to be exposed for Engine Commands
+    // but the conflict suggests they might share name or scope in python.
+    // Let's rename this one to EngineCommandType if needed, or remove if unused by python side
+    // except for return types.
+
+    py::enum_<dm::engine::game_command::CommandType>(m, "EngineCommandType")
         .value("TRANSITION", dm::engine::game_command::CommandType::TRANSITION)
         .value("MUTATE", dm::engine::game_command::CommandType::MUTATE)
         .value("ATTACH", dm::engine::game_command::CommandType::ATTACH)

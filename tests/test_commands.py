@@ -3,7 +3,7 @@ from dm_toolkit.commands import wrap_action
 
 
 def test_wrap_and_execute_pass():
-    gs = dm_ai_module.GameState()
+    gs = dm_ai_module.GameState(40)
     gs.setup_test_duel()
     # ensure starting phase MAIN
     try:
@@ -11,7 +11,9 @@ def test_wrap_and_execute_pass():
     except Exception:
         pass
 
-    a = dm_ai_module.Action(type=dm_ai_module.ActionType.PASS, player_id=0)
+    a = dm_ai_module.Action()
+    a.type = dm_ai_module.ActionType.PASS
+    a.target_player = 0
     cmd = wrap_action(a)
     assert cmd is not None
     cmd.execute(gs)
