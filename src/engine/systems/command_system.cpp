@@ -74,11 +74,53 @@ namespace dm::engine::systems {
             Zone from_z = parse_zone_string(cmd.from_zone);
             Zone to_z = parse_zone_string(cmd.to_zone);
 
+            // Special Handling for DRAW_CARD style transitions (Top of Deck / Implicit Selection)
+            if (targets.empty() && cmd.amount > 0 && from_z != Zone::GRAVEYARD) { // Use GRAVEYARD as 'unknown' sentinel from parse_zone_string
+                // If specific zone is requested but no specific targets (e.g. DRAW 2 from DECK)
+                int count = resolve_amount(cmd, execution_context);
+
+                // Determine container
+                // Usually operates on 'player_id' (self) or specified target player
+                // cmd.target_group handles target player selection?
+                // resolve_targets logic checks target_group. If it returned empty, maybe we default to self/player_id?
+                // For simplicity, TRANSITION usually implies the player who is executing the command (player_id) unless target_group specifies otherwise?
+                // Actually, if targets are empty, we might need to iterate.
+
+                // Simplification: If from_zone is DECK and targets empty -> Take top N.
+                if (from_z == Zone::DECK) {
+                     const auto& deck = state.players[player_id].deck;
+                     int available = std::min((int)deck.size(), count);
+                     for (int i = 0; i < available; ++i) {
+                         // Deck is stack, back is top.
+                         // We need the N-th from top.
+                         // Iterating: take back(), move it. Next loop takes new back().
+                         // So we just take deck.back() 'available' times.
+                         if (!state.players[player_id].deck.empty()) {
+                            int cid = state.players[player_id].deck.back().instance_id;
+                            TransitionCommand trans(cid, from_z, to_z, player_id);
+                            trans.execute(state);
+                         }
+                     }
+                }
+            }
+
+            // Normal Target-based Transition
             int moved_count = 0;
             for (int target_id : targets) {
                 CardInstance* inst = state.get_card_instance(target_id);
                 if (inst) {
-                    TransitionCommand trans(target_id, from_z, to_z, inst->owner);
+                    Zone actual_from = from_z;
+                    // Auto-detect source zone if unknown (GRAVEYARD is default/error return from parse)
+                    if (actual_from == Zone::GRAVEYARD && cmd.from_zone != "GRAVEYARD") {
+                        // Check common zones
+                        if (ZoneUtils::card_in_zone(state.players[inst->owner].battle_zone, target_id)) actual_from = Zone::BATTLE;
+                        else if (ZoneUtils::card_in_zone(state.players[inst->owner].mana_zone, target_id)) actual_from = Zone::MANA;
+                        else if (ZoneUtils::card_in_zone(state.players[inst->owner].shield_zone, target_id)) actual_from = Zone::SHIELD;
+                        else if (ZoneUtils::card_in_zone(state.players[inst->owner].hand, target_id)) actual_from = Zone::HAND;
+                        // Else keep as is (likely fail or Grave->Grave)
+                    }
+
+                    TransitionCommand trans(target_id, actual_from, to_z, inst->owner);
                     trans.execute(state);
                     moved_count++;
                 }

@@ -18,6 +18,12 @@ namespace dm::engine {
             return false;
         }
 
+        // Helper to check if card is in zone
+        static bool card_in_zone(const std::vector<dm::core::CardInstance>& zone, int instance_id) {
+            auto it = std::find_if(zone.begin(), zone.end(), [&](const dm::core::CardInstance& c){ return c.instance_id == instance_id; });
+            return it != zone.end();
+        }
+
         // Handle cleanup when a card leaves the battle zone.
         static void on_leave_battle_zone(dm::core::GameState& game_state, dm::core::CardInstance& card) {
             using namespace dm::core;
