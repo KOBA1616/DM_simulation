@@ -115,7 +115,7 @@ GUIの「表示はアクション、内部はコマンド」を維持したま�
 
 1.  [Status: Done] **Load-Lift (読み込み時変換)**: 読み込み時に `effects[].actions` を `effects[].commands` に変換し、エディタ内部では `actions` を保持しない。
 2.  [Status: Done] **Save Commands-only (保存時コマンドのみ出力)**: 保存・再構築時に `commands` のみを書き出し、`actions` は出力しない（互換が必要なら「エクスポート専用」に限定）。
-3.  [Status: WIP] **GUI 表示・プレビューの commands-first 化**: プレビュー/自然文生成は `commands` を一次ソースにし、`actions` は fallback のみにする。
+3.  [Status: Done] **GUI 表示・プレビューの commands-first 化**: プレビュー/自然文生成は `commands` を一次ソースにし、`actions` は fallback のみにする。
 4.  [Status: Todo] **テスト整流**: `actions` を期待しているGUI/統合テストを `commands` 期待へ移行し、方針とテストの整合を取る。
 5.  [Status: Todo] **CI ガード**: `data/` 配下のカードJSONに `actions` フィールドが残っていないことを検査し、差し戻しを防ぐ。
 6.  [Status: Todo] **未対応アクションの棚卸しと優先対応**: 未対応 `Action type` をノイズ無しで集計し、(1) Engine生成系 → (2) 頻出カード効果 → (3) 低頻度/別名 の順で変換対応を進める。
@@ -155,7 +155,7 @@ GUIの「表示はアクション、内部はコマンド」を維持したま�
     *   Transformer移行は、上記が安定してから本格着手する（学習基盤・データ品質の前提が揃うため）。
 
 ### 5.2 直近のチェックポイント
-*   [Test: Pending] `commands` のみでGUIプレビュー/テキスト生成が破綻しない。
+*   [Test: Pass] `commands` のみでGUIプレビュー/テキスト生成が破綻しない（`actions` があれば Fallback し、両方ある場合は `commands` を優先する）。
 *   [Test: Pending] `data/` 配下に `actions` が残っていたらCIで失敗する。
 
 ## 6. 既知の問題 (Known Issues)

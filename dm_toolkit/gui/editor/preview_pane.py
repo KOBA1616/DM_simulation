@@ -283,20 +283,41 @@ class CardPreviewWidget(QWidget):
         cir_lines = []
         effects = data.get('effects', []) or data.get('triggers', []) or []
         for ei, eff in enumerate(effects, start=1):
-            # summarize actions
-            for ai, act in enumerate(eff.get('actions', []), start=1):
-                cir = normalize.canonicalize(act)
-                kind = cir.get('kind')
-                atype = cir.get('type') or ''
-                opts = cir.get('options') or []
-                branches = cir.get('branches') or {}
-                opt_info = f" options={len(opts)}" if opts else ""
-                branch_info = ''
-                if branches:
-                    t = len(branches.get('if_true', []))
-                    f = len(branches.get('if_false', []))
-                    branch_info = f" branches=({t}/{f})"
-                cir_lines.append(f"Effect[{ei}] Action[{ai}]: {kind}/{atype}{opt_info}{branch_info}")
+            # Commands-First Policy (Migration Phase 4.3)
+            # Prioritize 'commands' for CIR Summary.
+            # If commands are present, summarize them. Fallback to actions only if commands missing.
+            commands = eff.get('commands', [])
+            if commands:
+                for ci, cmd in enumerate(commands, start=1):
+                    # Normalize command to standard CIR form (it likely already is close)
+                    # Use canonicalize to handle nested structures uniformly
+                    cir = normalize.canonicalize(cmd)
+                    kind = cir.get('kind')
+                    ctype = cir.get('type') or ''
+                    opts = cir.get('options') or []
+                    branches = cir.get('branches') or {}
+                    opt_info = f" options={len(opts)}" if opts else ""
+                    branch_info = ''
+                    if branches:
+                        t = len(branches.get('if_true', []))
+                        f = len(branches.get('if_false', []))
+                        branch_info = f" branches=({t}/{f})"
+                    cir_lines.append(f"Effect[{ei}] Command[{ci}]: {kind}/{ctype}{opt_info}{branch_info}")
+            else:
+                # Fallback to legacy actions
+                for ai, act in enumerate(eff.get('actions', []), start=1):
+                    cir = normalize.canonicalize(act)
+                    kind = cir.get('kind')
+                    atype = cir.get('type') or ''
+                    opts = cir.get('options') or []
+                    branches = cir.get('branches') or {}
+                    opt_info = f" options={len(opts)}" if opts else ""
+                    branch_info = ''
+                    if branches:
+                        t = len(branches.get('if_true', []))
+                        f = len(branches.get('if_false', []))
+                        branch_info = f" branches=({t}/{f})"
+                    cir_lines.append(f"Effect[{ei}] Action[{ai}] (Legacy): {kind}/{atype}{opt_info}{branch_info}")
 
         summary = "\n".join(cir_lines)
         if summary:
@@ -425,11 +446,15 @@ class CardPreviewWidget(QWidget):
             trig = eff.get('trigger', 'NONE')
             trigger_text = CardTextGenerator.trigger_to_japanese(trig)
 
-            acts = eff.get('actions', []) or []
+            # Commands-First Policy
+            raw_ops = eff.get('commands', [])
+            if not raw_ops:
+                raw_ops = eff.get('actions', []) or []
+
             # Look for draw then deck-bottom pair
-            if len(acts) >= 2:
-                a0 = acts[0]
-                a1 = acts[1]
+            if len(raw_ops) >= 2:
+                a0 = raw_ops[0]
+                a1 = raw_ops[1]
                 # detect draw (TRANSITION DECK->HAND or DRAW_CARD)
                 def is_draw(a):
                     t = a.get('type', '')
