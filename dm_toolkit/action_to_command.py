@@ -243,6 +243,14 @@ def _handle_specific_moves(act_type, act, cmd, src):
     if act_type == "SHIELD_BURN":
          cmd['type'] = "SHIELD_BURN"
          cmd['amount'] = act.get('value1', 1)
+    elif act_type == "DESTROY":
+        cmd['type'] = "DESTROY"
+    elif act_type == "DISCARD":
+        cmd['type'] = "DISCARD"
+    elif act_type == "MANA_CHARGE":
+        cmd['type'] = "MANA_CHARGE"
+    elif act_type == "RETURN_TO_HAND":
+        cmd['type'] = "RETURN_TO_HAND"
     else:
         cmd['type'] = "TRANSITION"
         # Preserve original semantic intent as an alias/reason for compatibility
@@ -389,7 +397,7 @@ def _handle_complex(act_type, act, cmd, dest):
 def _handle_play_flow(act_type, act, cmd, src, dest):
     if act_type == "PLAY_FROM_ZONE":
         # Consolidate play commands to a single PLAY command with from_zone
-        cmd['type'] = "PLAY"
+        cmd['type'] = "PLAY_FROM_ZONE"
         if src: cmd['from_zone'] = src
         cmd['to_zone'] = dest or 'BATTLE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
