@@ -246,6 +246,7 @@ class SimulationDialog(QDialog):
         self.episodes_spin.setRange(1, 10000)
         self.episodes_spin.setValue(100)
         self.episodes_spin.setToolTip(tr("Total number of games to simulate"))
+        self.episodes_spin.valueChanged.connect(self.check_memory_risk)
         lbl_episodes.setBuddy(self.episodes_spin)
         h_params.addWidget(lbl_episodes)
         h_params.addWidget(self.episodes_spin)
@@ -264,6 +265,7 @@ class SimulationDialog(QDialog):
         self.sims_spin.setRange(10, 5000)
         self.sims_spin.setValue(800)
         self.sims_spin.setToolTip(tr("Monte Carlo Tree Search simulations per move"))
+        self.sims_spin.valueChanged.connect(self.check_memory_risk)
         lbl_sims.setBuddy(self.sims_spin)
         h_params.addWidget(lbl_sims)
         h_params.addWidget(self.sims_spin)
@@ -272,9 +274,12 @@ class SimulationDialog(QDialog):
         layout.addWidget(group)
 
         # Warning label for memory leak
-        leak_warning = QLabel(tr("Note: High simulation counts may cause memory issues (std::bad_alloc)."))
-        leak_warning.setStyleSheet("color: orange; font-style: italic;")
-        layout.addWidget(leak_warning)
+        self.leak_warning = QLabel(tr("Note: High simulation counts may cause memory issues."))
+        self.leak_warning.setWordWrap(True)
+        layout.addWidget(self.leak_warning)
+
+        # Initialize warning state
+        self.check_memory_risk()
 
         # Action Buttons
         btn_layout = QHBoxLayout()
@@ -299,6 +304,16 @@ class SimulationDialog(QDialog):
         self.log_text.setReadOnly(True)
         layout.addWidget(self.log_text)
 
+    def check_memory_risk(self):
+        total_load = self.episodes_spin.value() * self.sims_spin.value()
+        # Heuristic threshold: 200,000 seems like a safe upper bound for "Normal" usage
+        if total_load > 200000:
+            self.leak_warning.setText(tr("Warning: High load! High risk of memory crash (std::bad_alloc)."))
+            self.leak_warning.setStyleSheet("color: red; font-weight: bold;")
+        else:
+            self.leak_warning.setText(tr("Note: High simulation counts may cause memory issues."))
+            self.leak_warning.setStyleSheet("color: gray; font-style: italic;")
+
     def start_simulation(self):
         scenario = self.scenario_combo.currentText()
         evaluator = self.eval_combo.currentText()
@@ -315,7 +330,11 @@ class SimulationDialog(QDialog):
                 return
 
         self.log_text.append(f"{tr('Starting simulation')}: {scenario}, {evaluator}, {episodes} games...")
+
+        # UX Feedback
+        self.run_btn.setText(tr("Running..."))
         self.run_btn.setEnabled(False)
+        self.setCursor(Qt.CursorShape.WaitCursor)
         self.progress.setValue(0)
 
         self.worker = SimulationWorker(self.card_db, scenario, episodes, threads, sims, evaluator, model_path)
@@ -331,5 +350,10 @@ class SimulationDialog(QDialog):
         self.progress.setValue(100)
         self.log_text.append("=== " + tr("Completed") + " ===")
         self.log_text.append(summary)
+
+        # Restore UX
+        self.run_btn.setText(tr("Run Simulation"))
         self.run_btn.setEnabled(True)
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+
         self.worker = None
