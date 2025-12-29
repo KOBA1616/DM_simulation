@@ -7,6 +7,23 @@
 
 namespace dm::engine::game_command {
 
+    // --- HistoryCommand ---
+
+    void HistoryCommand::execute(core::GameState& state) {
+        state.played_cards_history_this_game[player_id].push_back({card_id, turn_played});
+        // Note: Global stats updates from on_card_play are not reversible here and are assumed
+        // to be analytical only, or handled separately.
+        // Turn stats should be handled by StatCommand if needed, but on_card_play does it too.
+        // For now, we only sync the history vector which is part of state.
+    }
+
+    void HistoryCommand::invert(core::GameState& state) {
+        auto& history = state.played_cards_history_this_game[player_id];
+        if (!history.empty()) {
+            history.pop_back();
+        }
+    }
+
     // --- TransitionCommand ---
 
     void TransitionCommand::execute(core::GameState& state) {
