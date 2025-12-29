@@ -389,7 +389,7 @@ def _handle_complex(act_type, act, cmd, dest):
 def _handle_play_flow(act_type, act, cmd, src, dest):
     if act_type == "PLAY_FROM_ZONE":
         # Consolidate play commands to a single PLAY command with from_zone
-        cmd['type'] = "PLAY"
+        cmd['type'] = "PLAY_FROM_ZONE"
         if src: cmd['from_zone'] = src
         cmd['to_zone'] = dest or 'BATTLE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
@@ -424,8 +424,7 @@ def _handle_engine_execution(act_type, act, cmd):
         cmd['instance_id'] = act.get('source_instance') or act.get('source_instance_id') or act.get('attacker_id')
         cmd['target_instance'] = act.get('target_instance') or act.get('target_instance_id') or act.get('target_id')
     elif act_type == "BLOCK":
-        cmd['type'] = "FLOW"
-        cmd['flow_type'] = "BLOCK"
+        cmd['type'] = "BLOCK"
         cmd['instance_id'] = act.get('blocker_id') or act.get('source_instance_id')
         cmd['target_instance'] = act.get('attacker_id') or act.get('target_instance_id')
     elif act_type == "BREAK_SHIELD":
@@ -440,7 +439,7 @@ def _handle_engine_execution(act_type, act, cmd):
         cmd['type'] = "RESOLVE_EFFECT"
         if 'effect_id' in act: cmd['effect_id'] = act['effect_id']
     elif act_type == "USE_SHIELD_TRIGGER":
-        cmd['type'] = "USE_SHIELD_TRIGGER"
+        cmd['type'] = "SHIELD_TRIGGER"
         cmd['instance_id'] = act.get('card_id') or act.get('source_instance_id')
     elif act_type == "RESOLVE_PLAY":
         cmd['type'] = "RESOLVE_PLAY"

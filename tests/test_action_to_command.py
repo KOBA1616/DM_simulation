@@ -38,10 +38,25 @@ class TestActionToCommand(unittest.TestCase):
             "value1": 2
         }
         cmd = map_action(act)
-        self.assertEqual(cmd['type'], "TRANSITION")
+        # Updated Expectation: DRAW_CARD maps to DRAW_CARD command type
+        self.assertEqual(cmd['type'], "DRAW_CARD")
         self.assertEqual(cmd['from_zone'], "DECK")
         self.assertEqual(cmd['to_zone'], "HAND")
         self.assertEqual(cmd['amount'], 2)
+
+    def test_play_from_zone(self):
+        act = {
+            "type": "PLAY_FROM_ZONE",
+            "source_zone": "HAND",
+            "destination_zone": "BATTLE_ZONE",
+            "value1": 5
+        }
+        cmd = map_action(act)
+        # Updated Expectation: PLAY_FROM_ZONE maps to PLAY_FROM_ZONE command type
+        self.assertEqual(cmd['type'], "PLAY_FROM_ZONE")
+        self.assertEqual(cmd['from_zone'], "HAND")
+        self.assertEqual(cmd['to_zone'], "BATTLE")
+        self.assertEqual(cmd['max_cost'], 5)
 
     def test_tap(self):
         act = {
@@ -61,12 +76,6 @@ class TestActionToCommand(unittest.TestCase):
         cmd = map_action(act)
         self.assertEqual(cmd['type'], "MUTATE")
         self.assertEqual(cmd['str_param'], "POWER_MOD")
-        # value1 is not automatically mapped to amount for generic MUTATE in the mapper logic unless specific cases
-        # Wait, the mapper logic says:
-        # else: cmd['type']="MUTATE"; cmd['str_param']=val; _transfer_targeting(act, cmd)
-        # _transfer_targeting calls _transfer_common_move_fields only if explicitly called? No.
-        # _transfer_targeting does NOT map amount.
-        # But _finalize_command maps 'value1' to 'amount' if missing.
         self.assertEqual(cmd['amount'], 1000)
 
     def test_nested_options(self):
@@ -83,7 +92,8 @@ class TestActionToCommand(unittest.TestCase):
         self.assertEqual(len(cmd['options']), 2)
 
         opt1 = cmd['options'][0][0] # options is list of lists of commands
-        self.assertEqual(opt1['type'], "TRANSITION")
+        # Updated Expectation: DRAW_CARD maps to DRAW_CARD command type
+        self.assertEqual(opt1['type'], "DRAW_CARD")
         self.assertEqual(opt1['to_zone'], "HAND")
 
         opt2 = cmd['options'][1][0]
@@ -100,6 +110,26 @@ class TestActionToCommand(unittest.TestCase):
         self.assertEqual(cmd['type'], "ATTACK_PLAYER")
         self.assertEqual(cmd['instance_id'], 100)
         self.assertEqual(cmd['target_player'], 1)
+
+    def test_block(self):
+        act = {
+            "type": "BLOCK",
+            "blocker_id": 101,
+            "attacker_id": 102
+        }
+        cmd = map_action(act)
+        self.assertEqual(cmd['type'], "BLOCK")
+        self.assertEqual(cmd['instance_id'], 101)
+        self.assertEqual(cmd['target_instance'], 102)
+
+    def test_shield_trigger(self):
+        act = {
+            "type": "USE_SHIELD_TRIGGER",
+            "card_id": 200
+        }
+        cmd = map_action(act)
+        self.assertEqual(cmd['type'], "SHIELD_TRIGGER")
+        self.assertEqual(cmd['instance_id'], 200)
 
     def test_legacy_keyword_fallback(self):
         act = {
