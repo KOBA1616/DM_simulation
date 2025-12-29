@@ -55,7 +55,7 @@ namespace dm::engine::systems {
                 // For now, we keep the call but it should be empty if we remove the method body.
                 // Or we keep it as a fallback during migration?
                 // The user requested removing it.
-                // expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
+                expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
                 break;
         }
     }
@@ -106,8 +106,8 @@ namespace dm::engine::systems {
                          // So we just take deck.back() 'available' times.
                          if (!state.players[player_id].deck.empty()) {
                             int cid = state.players[player_id].deck.back().instance_id;
-                            TransitionCommand trans(cid, from_z, to_z, player_id);
-                            trans.execute(state);
+                            auto trans = std::make_shared<TransitionCommand>(cid, from_z, to_z, player_id);
+                            state.execute_command(trans);
                          }
                      }
                 }
@@ -129,8 +129,8 @@ namespace dm::engine::systems {
                         // Else keep as is (likely fail or Grave->Grave)
                     }
 
-                    TransitionCommand trans(target_id, actual_from, to_z, inst->owner);
-                    trans.execute(state);
+                    auto trans = std::make_shared<TransitionCommand>(target_id, actual_from, to_z, inst->owner);
+                    state.execute_command(trans);
                     moved_count++;
                 }
             }
@@ -146,8 +146,8 @@ namespace dm::engine::systems {
              std::map<std::string, int> params;
              params["amount"] = resolve_amount(cmd, execution_context);
 
-             QueryCommand query(query_type, targets, params);
-             query.execute(state);
+             auto query = std::make_shared<QueryCommand>(query_type, targets, params);
+             state.execute_command(query);
 
         } else if (cmd.type == core::CommandType::MUTATE) {
             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
@@ -170,8 +170,8 @@ namespace dm::engine::systems {
 
             if (valid_mutation) {
                 for (int target_id : targets) {
-                    MutateCommand mutate(target_id, m_type, val, cmd.str_param);
-                    mutate.execute(state);
+                    auto mutate = std::make_shared<MutateCommand>(target_id, m_type, val, cmd.str_param);
+                    state.execute_command(mutate);
                 }
             } else {
                 std::cerr << "Warning: Unknown mutation kind: " << cmd.mutation_kind << std::endl;
@@ -189,8 +189,8 @@ namespace dm::engine::systems {
                      const auto& deck = state.players[player_id].deck;
                      if (!deck.empty()) {
                          int card_inst_id = deck.back().instance_id;
-                         TransitionCommand trans(card_inst_id, Zone::DECK, Zone::HAND, player_id);
-                         trans.execute(state);
+                         auto trans = std::make_shared<TransitionCommand>(card_inst_id, Zone::DECK, Zone::HAND, player_id);
+                         state.execute_command(trans);
                          drawn++;
                      }
                 }
@@ -205,8 +205,8 @@ namespace dm::engine::systems {
                      const auto& deck = state.players[player_id].deck;
                      if (!deck.empty()) {
                          int card_inst_id = deck.back().instance_id;
-                         TransitionCommand trans(card_inst_id, Zone::DECK, Zone::MANA, player_id);
-                         trans.execute(state);
+                         auto trans = std::make_shared<TransitionCommand>(card_inst_id, Zone::DECK, Zone::MANA, player_id);
+                         state.execute_command(trans);
                          charged++;
                      }
                 }
@@ -221,8 +221,8 @@ namespace dm::engine::systems {
                 for (int target_id : targets) {
                     CardInstance* inst = state.get_card_instance(target_id);
                     if (inst) {
-                         TransitionCommand trans(target_id, Zone::BATTLE, Zone::GRAVEYARD, inst->owner);
-                         trans.execute(state);
+                         auto trans = std::make_shared<TransitionCommand>(target_id, Zone::BATTLE, Zone::GRAVEYARD, inst->owner);
+                         state.execute_command(trans);
                          destroyed++;
                     }
                 }
@@ -237,8 +237,8 @@ namespace dm::engine::systems {
                 for (int target_id : targets) {
                     CardInstance* inst = state.get_card_instance(target_id);
                     if (inst) {
-                        TransitionCommand trans(target_id, Zone::HAND, Zone::GRAVEYARD, inst->owner);
-                        trans.execute(state);
+                        auto trans = std::make_shared<TransitionCommand>(target_id, Zone::HAND, Zone::GRAVEYARD, inst->owner);
+                        state.execute_command(trans);
                         discarded++;
                     }
                 }
@@ -250,16 +250,16 @@ namespace dm::engine::systems {
             case core::CommandType::TAP: {
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
                 for (int target_id : targets) {
-                    MutateCommand mutate(target_id, MutateCommand::MutationType::TAP);
-                    mutate.execute(state);
+                    auto mutate = std::make_shared<MutateCommand>(target_id, MutateCommand::MutationType::TAP);
+                    state.execute_command(mutate);
                 }
                 break;
             }
             case core::CommandType::UNTAP: {
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
                 for (int target_id : targets) {
-                    MutateCommand mutate(target_id, MutateCommand::MutationType::UNTAP);
-                    mutate.execute(state);
+                    auto mutate = std::make_shared<MutateCommand>(target_id, MutateCommand::MutationType::UNTAP);
+                    state.execute_command(mutate);
                 }
                 break;
             }
@@ -290,8 +290,8 @@ namespace dm::engine::systems {
                          if (!found) for (const auto& c : state.players[owner].graveyard) if (c.instance_id == target_id) { current_zone = Zone::GRAVEYARD; found = true; break; }
 
                          if (found) {
-                             TransitionCommand trans(target_id, current_zone, Zone::HAND, owner);
-                             trans.execute(state);
+                             auto trans = std::make_shared<TransitionCommand>(target_id, current_zone, Zone::HAND, owner);
+                             state.execute_command(trans);
                              returned++;
                          }
                     }
@@ -308,8 +308,8 @@ namespace dm::engine::systems {
                     CardInstance* inst = state.get_card_instance(target_id);
                     if (inst) {
                          // Standard Break: Shield -> Hand
-                         TransitionCommand trans(target_id, Zone::SHIELD, Zone::HAND, inst->owner);
-                         trans.execute(state);
+                         auto trans = std::make_shared<TransitionCommand>(target_id, Zone::SHIELD, Zone::HAND, inst->owner);
+                         state.execute_command(trans);
                          broken++;
 
                          // Note: This command implementation does NOT handle S-Triggers.
@@ -322,16 +322,16 @@ namespace dm::engine::systems {
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
                 int val = resolve_amount(cmd, execution_context);
                 for (int target_id : targets) {
-                    MutateCommand mutate(target_id, MutateCommand::MutationType::POWER_MOD, val);
-                    mutate.execute(state);
+                    auto mutate = std::make_shared<MutateCommand>(target_id, MutateCommand::MutationType::POWER_MOD, val);
+                    state.execute_command(mutate);
                 }
                 break;
             }
             case core::CommandType::ADD_KEYWORD: {
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
                 for (int target_id : targets) {
-                    MutateCommand mutate(target_id, MutateCommand::MutationType::ADD_KEYWORD, 0, cmd.str_param);
-                    mutate.execute(state);
+                    auto mutate = std::make_shared<MutateCommand>(target_id, MutateCommand::MutationType::ADD_KEYWORD, 0, cmd.str_param);
+                    state.execute_command(mutate);
                 }
                 break;
             }
@@ -350,14 +350,14 @@ namespace dm::engine::systems {
                  for (int target_id : targets) {
                      CardInstance* inst = state.get_card_instance(target_id);
                      if (inst) {
-                         TransitionCommand trans(target_id, Zone::DECK, dest_zone, inst->owner);
-                         trans.execute(state);
+                         auto trans = std::make_shared<TransitionCommand>(target_id, Zone::DECK, dest_zone, inst->owner);
+                         state.execute_command(trans);
                      }
                  }
 
                  // 3. Shuffle
-                 ShuffleCommand shuffle(player_id);
-                 shuffle.execute(state);
+                 auto shuffle = std::make_shared<ShuffleCommand>(player_id);
+                 state.execute_command(shuffle);
                  break;
             }
             default:

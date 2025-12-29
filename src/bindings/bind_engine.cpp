@@ -135,6 +135,10 @@ void bind_engine(py::module& m) {
         .def(py::init<GameResult>())
         .def_readwrite("result", &dm::engine::game_command::GameResultCommand::result);
 
+    py::class_<dm::engine::game_command::ShuffleCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::ShuffleCommand>>(m, "ShuffleCommand")
+        .def(py::init<PlayerID>())
+        .def_readwrite("player_id", &dm::engine::game_command::ShuffleCommand::player_id);
+
     py::class_<dm::engine::systems::PipelineExecutor, std::shared_ptr<dm::engine::systems::PipelineExecutor>>(m, "PipelineExecutor")
         .def(py::init<>())
         .def("set_context_var", &dm::engine::systems::PipelineExecutor::set_context_var)
