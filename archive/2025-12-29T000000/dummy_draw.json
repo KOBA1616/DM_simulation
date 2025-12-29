@@ -1,0 +1,1 @@
+[{"id": 9999, "name": "Dummy Draw", "type": "SPELL", "civilizations": ["FIRE"], "effects": [{"trigger": "ON_PLAY", "actions": [{"type": "DRAW_CARD", "value1": 2}]}]}]
