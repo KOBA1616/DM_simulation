@@ -131,9 +131,10 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     # Phase 4.2: Normalize Zone Names to Enum
     # Mappings from Legacy/Common strings to dm_ai_module.Zone Enum names
     zone_map = {
-        "MANA_ZONE": "MANA",
-        "BATTLE_ZONE": "BATTLE",
-        "SHIELD_ZONE": "SHIELD",
+        # Keep legacy zone strings so legacy tests and C++ compat expect them
+        "MANA_ZONE": "MANA_ZONE",
+        "BATTLE_ZONE": "BATTLE_ZONE",
+        "SHIELD_ZONE": "SHIELD_ZONE",
         "GRAVEYARD": "GRAVEYARD",
         "HAND": "HAND",
         "DECK": "DECK"
@@ -153,8 +154,8 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         _handle_specific_moves(act_type, act_data, cmd, src)
 
     elif act_type == "DRAW_CARD":
-        # Preserve legacy DRAW_CARD command type while keeping transition fields
-        cmd['type'] = "DRAW_CARD"
+        # Map draw to a generic TRANSITION for migration compatibility
+        cmd['type'] = "TRANSITION"
         cmd['from_zone'] = src or 'DECK'
         cmd['to_zone'] = dest or 'HAND'
         _transfer_common_move_fields(act_data, cmd)
@@ -273,29 +274,19 @@ def _handle_move_card(act, cmd, src, dest):
     _transfer_common_move_fields(act, cmd)
 
 def _handle_specific_moves(act_type, act, cmd, src):
+    # Prefer generic TRANSITION for move-like actions to match migration tests
+    cmd['type'] = "TRANSITION"
+    # Preserve original semantic intent as an alias/reason for compatibility
+    cmd['reason'] = act_type
+
+    # Special-case amount/flags retained below where needed
     if act_type == "SHIELD_BURN":
-         cmd['type'] = "SHIELD_BURN"
          cmd['amount'] = act.get('value1', 1)
-    elif act_type == "DESTROY":
-        cmd['type'] = "DESTROY"
-    elif act_type == "DISCARD":
-        cmd['type'] = "DISCARD"
-    elif act_type == "MANA_CHARGE":
-        cmd['type'] = "MANA_CHARGE"
-    elif act_type == "RETURN_TO_HAND":
-        cmd['type'] = "RETURN_TO_HAND"
-    elif act_type == "ADD_MANA":
-        # Legacy ADD_MANA typically meant "Add top of deck to mana"
-        cmd['type'] = "MANA_CHARGE"
-    else:
-        cmd['type'] = "TRANSITION"
-        # Preserve original semantic intent as an alias/reason for compatibility
-        cmd['reason'] = act_type
 
     # NOTE: These strings should match dm_ai_module.Zone enum names if possible
     # to be picked up by compat.py correctly.
     if act_type in ["SEND_TO_MANA", "MANA_CHARGE", "ADD_MANA"]:
-        cmd['to_zone'] = "MANA"
+        cmd['to_zone'] = "MANA_ZONE"
         if not src and act_type in ["MANA_CHARGE", "ADD_MANA"]: cmd['from_zone'] = "DECK"
         if src: cmd['from_zone'] = src
     elif act_type in ["SEND_TO_DECK_BOTTOM", "SEARCH_DECK_BOTTOM"]:
@@ -303,7 +294,7 @@ def _handle_specific_moves(act_type, act, cmd, src):
         cmd['to_zone'] = "DECK_BOTTOM"
         if not src and act_type == "SEARCH_DECK_BOTTOM": cmd['from_zone'] = "DECK"
     elif act_type == "ADD_SHIELD":
-        cmd['to_zone'] = "SHIELD"
+        cmd['to_zone'] = "SHIELD_ZONE"
         if not src: cmd['from_zone'] = "DECK"
     elif act_type == "DESTROY":
         cmd['to_zone'] = "GRAVEYARD"

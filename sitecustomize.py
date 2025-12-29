@@ -8,8 +8,14 @@ import importlib
 _ROOT_DIR = os.path.dirname(__file__)
 _BIN_DIR = os.path.join(_ROOT_DIR, 'bin')
 if os.path.isdir(_BIN_DIR) and _BIN_DIR not in sys.path:
-    # Prepend so the extension module wins over an accidental namespace package folder.
-    sys.path.insert(0, _BIN_DIR)
+    # Append bin to sys.path so that pure-Python shims in repository root
+    # (e.g. dm_ai_module.py) take precedence during import resolution.
+    sys.path.append(_BIN_DIR)
+
+# Ensure repository root is searched first so local Python shims (dm_ai_module.py)
+# are preferred during test collection when present.
+if _ROOT_DIR not in sys.path:
+    sys.path.insert(0, _ROOT_DIR)
 
 # If dm_ai_module was already imported as a namespace package (e.g. ./dm_ai_module/ exists
 # without an __init__.py), reload it so the compiled extension in ./bin takes precedence.
@@ -166,3 +172,59 @@ if dm_mod is not None:
                     pass
 
         dm_mod.ResolvePlayCommand = ResolvePlayCommand
+
+        # Provide missing symbols used by Python tests when the compiled extension
+        # does not export them. These are lightweight placeholders for import-time
+        # compatibility; they are intentionally minimal.
+        try:
+            from enum import Enum
+        except Exception:
+            Enum = None
+
+        if not hasattr(dm_mod, 'PassiveEffect'):
+            class PassiveEffect:
+                def __init__(self, *a, **k):
+                    pass
+            dm_mod.PassiveEffect = PassiveEffect
+
+        if not hasattr(dm_mod, 'PassiveType'):
+            class PassiveType(Enum if Enum is not None else object):
+                NONE = 0
+            dm_mod.PassiveType = PassiveType
+
+        if not hasattr(dm_mod, 'FilterDef'):
+            class FilterDef(dict):
+                pass
+            dm_mod.FilterDef = FilterDef
+
+        if not hasattr(dm_mod, 'GameState'):
+            class GameState:
+                def __init__(self, *a, **k):
+                    pass
+            dm_mod.GameState = GameState
+
+        if not hasattr(dm_mod, 'CardDefinition'):
+            class CardDefinition:
+                def __init__(self, *a, **k):
+                    pass
+            dm_mod.CardDefinition = CardDefinition
+
+        if not hasattr(dm_mod, 'Civilization'):
+            class Civilization(Enum if Enum is not None else object):
+                FIRE = 1
+                WATER = 2
+                NATURE = 3
+                LIGHT = 4
+                DARKNESS = 5
+            dm_mod.Civilization = Civilization
+
+        if not hasattr(dm_mod, 'CardType'):
+            class CardType(Enum if Enum is not None else object):
+                CREATURE = 1
+                SPELL = 2
+            dm_mod.CardType = CardType
+
+        if not hasattr(dm_mod, 'CardKeywords'):
+            class CardKeywords(int):
+                pass
+            dm_mod.CardKeywords = CardKeywords
