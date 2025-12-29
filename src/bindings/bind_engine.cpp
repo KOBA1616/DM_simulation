@@ -50,6 +50,8 @@ void bind_engine(py::module& m) {
         .value("DECLARE_REACTION", dm::engine::game_command::CommandType::DECLARE_REACTION)
         .value("STAT", dm::engine::game_command::CommandType::STAT)
         .value("GAME_RESULT", dm::engine::game_command::CommandType::GAME_RESULT)
+        .value("SHUFFLE", dm::engine::game_command::CommandType::SHUFFLE)
+        .value("ADD_CARD", dm::engine::game_command::CommandType::ADD_CARD)
         .export_values();
 
     py::class_<dm::engine::game_command::TransitionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::TransitionCommand>>(m, "TransitionCommand")
@@ -134,6 +136,10 @@ void bind_engine(py::module& m) {
     py::class_<dm::engine::game_command::GameResultCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameResultCommand>>(m, "GameResultCommand")
         .def(py::init<GameResult>())
         .def_readwrite("result", &dm::engine::game_command::GameResultCommand::result);
+
+    py::class_<dm::engine::game_command::ShuffleCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::ShuffleCommand>>(m, "ShuffleCommand")
+        .def(py::init<PlayerID>())
+        .def_readwrite("player_id", &dm::engine::game_command::ShuffleCommand::player_id);
 
     py::class_<dm::engine::systems::PipelineExecutor, std::shared_ptr<dm::engine::systems::PipelineExecutor>>(m, "PipelineExecutor")
         .def(py::init<>())
