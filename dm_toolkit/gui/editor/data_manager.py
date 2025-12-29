@@ -127,11 +127,13 @@ class CardDataManager:
                 effect_data['commands'] = []
 
             # Remove legacy 'actions' to enforce Commands-only policy in-editor
-            if 'actions' in effect_data:
-                try:
-                    del effect_data['actions']
-                except Exception:
-                    pass
+            # UNLESS legacy save mode is forced (Phase D: Rollback switch)
+            if not os.environ.get('EDITOR_LEGACY_SAVE'):
+                if 'actions' in effect_data:
+                    try:
+                        del effect_data['actions']
+                    except Exception:
+                        pass
         except Exception:
             # Non-fatal: if conversion fails, continue loading but preserve original actions
             pass
@@ -168,9 +170,7 @@ class CardDataManager:
             # 2. Add Reaction Abilities
             for ra_idx, ra in enumerate(card.get('reaction_abilities', [])):
                 ra_item = self._create_reaction_item(ra)
-                # Note: Reaction Abilities currently don't expose children in tree,
-                # but if they have 'actions', we should ideally lift them too.
-                # However, since they are stored as data blobs, we can lift them in place.
+                # Phase D: Lift reaction abilities too if they have actions
                 if isinstance(ra, dict):
                      # If reaction has actions/commands structure similar to effect
                      # We apply lift to it.
@@ -219,6 +219,7 @@ class CardDataManager:
 
     def _load_effect_children(self, eff_item, effect_data):
         # Load Legacy Actions (should be empty if lifted, but keep for safety)
+        # Only render them if explicitly present (e.g. EDITOR_LEGACY_SAVE active or lift failed)
         for act_idx, action in enumerate(effect_data.get('actions', [])):
             act_item = self._create_action_item(action)
             eff_item.appendRow(act_item)
@@ -422,6 +423,17 @@ class CardDataManager:
 
                 spell_side_dict = spell_side_data
 
+                card_item.appendRow(spell_item)
+
+            self.model.appendRow(card_item)
+            # After building the card node, normalize and attach editor warnings node if any
+            try:
+                updated = self._update_card_from_child(card_item)
+                if updated:
+                    self._sync_editor_warnings(card_item)
+            except Exception:
+                pass
+
         # Handle Triggers vs Effects based on meta-info
         if card_data.get('_meta_use_triggers'):
             card_data['triggers'] = new_effects
@@ -463,7 +475,9 @@ class CardDataManager:
         # New policy: when reconstructing, prefer emitting `commands` only.
         # Convert any legacy ACTION nodes into command dicts (using ActionConverter).
         new_commands = []
-        # legacy_actions = [] # Phase 0/2: Do not collect legacy actions
+        legacy_actions = []
+        # Phase D: Check for EDITOR_LEGACY_SAVE override
+        legacy_save_mode = os.environ.get('EDITOR_LEGACY_SAVE') == '1'
 
         for k in range(eff_item.rowCount()):
             item = eff_item.child(k)
@@ -471,41 +485,47 @@ class CardDataManager:
 
             if item_type == "ACTION":
                 act_data = self._reconstruct_action(item)
-                # Attempt conversion; always produce a command-like dict even on failure
-                try:
-                    objs = convert_action_to_objs(act_data)
-                    for o in objs:
-                        if hasattr(o, 'to_dict'):
-                            new_commands.append(o.to_dict())
-                        elif isinstance(o, dict):
-                            new_commands.append(o)
-                        else:
-                            new_commands.append({
-                                'type': 'NONE',
-                                'legacy_warning': True,
-                                'legacy_original_action': act_data
-                            })
-                except Exception:
-                    new_commands.append({
-                        'type': 'NONE',
-                        'legacy_warning': True,
-                        'legacy_original_action': act_data
-                    })
+                if legacy_save_mode:
+                    legacy_actions.append(act_data)
+                else:
+                    # Attempt conversion; always produce a command-like dict even on failure
+                    try:
+                        objs = convert_action_to_objs(act_data)
+                        for o in objs:
+                            if hasattr(o, 'to_dict'):
+                                new_commands.append(o.to_dict())
+                            elif isinstance(o, dict):
+                                new_commands.append(o)
+                            else:
+                                new_commands.append({
+                                    'type': 'NONE',
+                                    'legacy_warning': True,
+                                    'legacy_original_action': act_data
+                                })
+                    except Exception:
+                        new_commands.append({
+                            'type': 'NONE',
+                            'legacy_warning': True,
+                            'legacy_original_action': act_data
+                        })
 
             elif item_type == "COMMAND":
                 cmd_data = self._reconstruct_command(item)
                 new_commands.append(cmd_data)
 
-        # Always output commands (if any). Do not emit legacy 'actions' in reconstructed JSON.
+        # Emit commands if present or if not in legacy save mode
         if new_commands:
             eff_data['commands'] = new_commands
         else:
             if 'commands' in eff_data:
                 del eff_data['commands']
 
-        # Remove 'actions' from effect data to ensure clean save
-        if 'actions' in eff_data:
-            del eff_data['actions']
+        # Handle legacy actions field
+        if legacy_save_mode and legacy_actions:
+            eff_data['actions'] = legacy_actions
+        else:
+            if 'actions' in eff_data:
+                del eff_data['actions']
 
         return eff_data
 
@@ -596,7 +616,9 @@ class CardDataManager:
             data['uid'] = str(uuid.uuid4())
 
         # Force conversion of ACTION items to COMMAND items at creation time
-        if item_type == "ACTION":
+        # UNLESS legacy save mode is enabled, then allow creating ACTIONs
+        legacy_save_mode = os.environ.get('EDITOR_LEGACY_SAVE') == '1'
+        if item_type == "ACTION" and not legacy_save_mode:
             try:
                 objs = convert_action_to_objs(data)
                 # If any of the converted objects is a non-warning CommandDef, create COMMAND nodes
@@ -866,25 +888,28 @@ class CardDataManager:
             action['uid'] = str(uuid.uuid4())
 
         # Try to convert legacy Action -> Command via object adapter and prefer command representation
-        try:
-            objs = convert_action_to_objs(action)
-            created = False
-            for o in objs:
-                if isinstance(o, WarningCommand):
-                    continue
-                if hasattr(o, 'to_dict'):
-                    cmd_dict = o.to_dict()
-                elif isinstance(o, dict):
-                    cmd_dict = o
-                else:
-                    continue
-                if 'uid' not in cmd_dict:
-                    cmd_dict['uid'] = action.get('uid')
-                # Return the first created command item (we could append multiple if needed)
-                return self.create_command_item(cmd_dict)
-        except Exception:
-            # Conversion failed; fall back to creating an ACTION item
-            pass
+        # UNLESS legacy save mode is forced (Phase D: Rollback switch)
+        legacy_save_mode = os.environ.get('EDITOR_LEGACY_SAVE') == '1'
+        if not legacy_save_mode:
+            try:
+                objs = convert_action_to_objs(action)
+                created = False
+                for o in objs:
+                    if isinstance(o, WarningCommand):
+                        continue
+                    if hasattr(o, 'to_dict'):
+                        cmd_dict = o.to_dict()
+                    elif isinstance(o, dict):
+                        cmd_dict = o
+                    else:
+                        continue
+                    if 'uid' not in cmd_dict:
+                        cmd_dict['uid'] = action.get('uid')
+                    # Return the first created command item (we could append multiple if needed)
+                    return self.create_command_item(cmd_dict)
+            except Exception:
+                # Conversion failed; fall back to creating an ACTION item
+                pass
 
         # Fallback: keep as legacy ACTION node
         label = self.format_action_label(action)

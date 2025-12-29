@@ -7,11 +7,12 @@ class TestPhase6Schema:
     def test_zone_normalization(self):
         """Phase 6.1: Verify zone names are normalized to short enum forms."""
 
-        # Test Case 1: MANA_ZONE -> MANA
+        # Test Case 1: MANA_CHARGE
+        # Current policy: Keep specific CommandType for robustness (Phase A decision)
         action = {'type': 'MANA_CHARGE', 'from_zone': 'HAND', 'to_zone': 'MANA_ZONE', 'source_instance_id': 1}
         cmd = map_action(action)
 
-        assert cmd['type'] == 'TRANSITION', "MANA_CHARGE should map to TRANSITION"
+        assert cmd['type'] == 'MANA_CHARGE', "MANA_CHARGE should preserve its type for engine compatibility"
         assert cmd['to_zone'] == 'MANA', "MANA_ZONE should be normalized to MANA"
         assert cmd['from_zone'] == 'HAND', "HAND should remain HAND"
 
@@ -26,24 +27,24 @@ class TestPhase6Schema:
         assert cmd['to_zone'] == 'SHIELD', "SHIELD_ZONE should be normalized to SHIELD"
 
     def test_command_type_normalization(self):
-        """Phase 6.2: Verify command types are normalized."""
+        """Phase 6.2: Verify command types match implementation stability (Specific Types)."""
 
-        # MANA_CHARGE -> TRANSITION
+        # MANA_CHARGE
         action = {'type': 'MANA_CHARGE', 'from_zone': 'HAND', 'source_instance_id': 1}
         cmd = map_action(action)
-        assert cmd['type'] == 'TRANSITION'
+        assert cmd['type'] == 'MANA_CHARGE'
         assert cmd['to_zone'] == 'MANA'
 
-        # DESTROY -> TRANSITION (to GRAVEYARD)
+        # DESTROY
         action = {'type': 'DESTROY', 'source_instance_id': 1, 'from_zone': 'BATTLE'}
         cmd = map_action(action)
-        assert cmd['type'] == 'TRANSITION'
+        assert cmd['type'] == 'DESTROY'
         assert cmd['to_zone'] == 'GRAVEYARD'
 
-        # DRAW_CARD -> TRANSITION (DECK to HAND)
+        # DRAW_CARD
         action = {'type': 'DRAW_CARD', 'source_instance_id': 1}
         cmd = map_action(action)
-        assert cmd['type'] == 'TRANSITION'
+        assert cmd['type'] == 'DRAW_CARD'
         assert cmd['from_zone'] == 'DECK'
         assert cmd['to_zone'] == 'HAND'
 
