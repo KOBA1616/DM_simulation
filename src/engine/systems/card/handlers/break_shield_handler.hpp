@@ -62,21 +62,18 @@ namespace dm::engine {
                     int to_break = std::min(count, (int)valid_in_player.size());
                     // Break from top (highest index) usually? Or logic defines specific order?
                     // Implementation used end -> begin.
-                    for (int i = 0; i < to_break; ++i) {
-                         target_shield_ids.push_back(valid_in_player[valid_in_player.size() - 1 - i]);
-                    }
+                            for (int i = 0; i < to_break; ++i) {
+                                target_shield_ids.push_back(valid_in_player[valid_in_player.size() - 1 - i]);
+                            }
                 }
             }
 
-            // 3. Generate Instructions
-            for (int shield_id : target_shield_ids) {
+            // 3. Generate Instructions (emit a single BREAK_SHIELD with shields array)
+            if (!target_shield_ids.empty()) {
                 nlohmann::json args;
                 args["type"] = "BREAK_SHIELD";
                 args["source_id"] = ctx.source_instance_id;
-                args["target_id"] = shield_id;
-                // Target player is implicit from shield_id usually, but GameLogicSystem uses it for direct attack.
-                // For shield break, it finds the shield.
-
+                args["shields"] = target_shield_ids;
                 ctx.instruction_buffer->emplace_back(InstructionOp::GAME_ACTION, args);
             }
         }
