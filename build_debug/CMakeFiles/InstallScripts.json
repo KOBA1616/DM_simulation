@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/ichirou/DM_simulation/build_debug/cmake_install.cmake",
+		"C:/Users/ichirou/DM_simulation/build_debug/_deps/pybind11-build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

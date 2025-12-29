@@ -1,0 +1,11 @@
+# Hashes of file build rules.
+b7b6fd7fd80b451e335ddf2e4ebd2d38 CMakeFiles/onnxruntime_pkg-populate
+ef1d0b8e3ef32c7f59568dfa754d53bf CMakeFiles/onnxruntime_pkg-populate-complete
+8c8fa79767a73d84a896c756f00ebe69 onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/onnxruntime_pkg-populate-build
+6c0e2716a050d9a6ebd1400cb5e0c0e4 onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/onnxruntime_pkg-populate-configure
+112621c5eff62c84dfe5f8037960dea9 onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/onnxruntime_pkg-populate-download
+951e689c0e82fe6c60578edf7694797f onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/onnxruntime_pkg-populate-install
+60a1c773a55cb72f6239920080079664 onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/onnxruntime_pkg-populate-mkdir
+832bed0c05b85e861b2a0ab74cde2707 onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/onnxruntime_pkg-populate-patch
+5727834f18a3a509c6173fca7304acf3 onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/onnxruntime_pkg-populate-test
+9dac737176ad4bdbff839d4d78ac6723 onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/onnxruntime_pkg-populate-update

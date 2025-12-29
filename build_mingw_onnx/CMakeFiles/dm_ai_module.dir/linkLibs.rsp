@@ -1,0 +1,1 @@
+  -L"C:/Users/ichirou/DM_simulation/build_mingw_onnx/onnxruntime-1.18.0/onnxruntime-win-x64-1.18.0/lib"  -lonnxruntime C:/Users/ichirou/AppData/Local/Programs/Python/Python312/libs/python312.lib -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32 
