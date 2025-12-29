@@ -147,7 +147,8 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         _handle_move_card(act_data, cmd, src, dest)
 
     elif act_type in ["DESTROY", "DISCARD", "MANA_CHARGE", "RETURN_TO_HAND",
-                      "SEND_TO_MANA", "SEND_TO_DECK_BOTTOM", "ADD_SHIELD", "SHIELD_BURN"]:
+                      "SEND_TO_MANA", "SEND_TO_DECK_BOTTOM", "ADD_SHIELD", "SHIELD_BURN",
+                      "ADD_MANA", "SEARCH_DECK_BOTTOM", "MOVE_TO_UNDER_CARD"]:
         _handle_specific_moves(act_type, act_data, cmd, src)
 
     elif act_type == "DRAW_CARD":
@@ -175,7 +176,7 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     elif act_type in ["APPLY_MODIFIER", "COST_REDUCTION", "GRANT_KEYWORD"]:
         _handle_modifiers(act_type, act_data, cmd)
 
-    elif act_type in ["MUTATE", "POWER_MOD"]:
+    elif act_type in ["MUTATE", "POWER_MOD", "MODIFY_POWER"]:
         _handle_mutate(act_type, act_data, cmd)
 
     elif act_type in ["SELECT_OPTION", "SELECT_NUMBER", "SELECT_TARGET"]:
@@ -187,6 +188,11 @@ def map_action(action_data: Any) -> Dict[str, Any]:
 
     elif act_type in ["PLAY_FROM_ZONE", "FRIEND_BURST", "REGISTER_DELAYED_EFFECT", "CAST_SPELL"]:
         _handle_play_flow(act_type, act_data, cmd, src, dest)
+
+    elif act_type == "RESET_INSTANCE":
+        cmd['type'] = "MUTATE"
+        cmd['mutation_kind'] = "RESET_INSTANCE"
+        _transfer_targeting(act_data, cmd)
 
     elif act_type == "SEND_SHIELD_TO_GRAVE":
         # Explicit mapping for shield -> grave transitions
@@ -276,6 +282,9 @@ def _handle_specific_moves(act_type, act, cmd, src):
         cmd['type'] = "MANA_CHARGE"
     elif act_type == "RETURN_TO_HAND":
         cmd['type'] = "RETURN_TO_HAND"
+    elif act_type == "ADD_MANA":
+        # Legacy ADD_MANA typically meant "Add top of deck to mana"
+        cmd['type'] = "MANA_CHARGE"
     else:
         cmd['type'] = "TRANSITION"
         # Preserve original semantic intent as an alias/reason for compatibility
@@ -283,12 +292,14 @@ def _handle_specific_moves(act_type, act, cmd, src):
 
     # NOTE: These strings should match dm_ai_module.Zone enum names if possible
     # to be picked up by compat.py correctly.
-    if act_type in ["SEND_TO_MANA", "MANA_CHARGE"]:
+    if act_type in ["SEND_TO_MANA", "MANA_CHARGE", "ADD_MANA"]:
         cmd['to_zone'] = "MANA"
-        if not src and act_type == "MANA_CHARGE": cmd['from_zone'] = "DECK"
+        if not src and act_type in ["MANA_CHARGE", "ADD_MANA"]: cmd['from_zone'] = "DECK"
         if src: cmd['from_zone'] = src
-    elif act_type == "SEND_TO_DECK_BOTTOM":
-        cmd['to_zone'] = "DECK_BOTTOM" # Special case, likely not an enum. compat.py needs to handle it or fallback.
+    elif act_type in ["SEND_TO_DECK_BOTTOM", "SEARCH_DECK_BOTTOM"]:
+        # SEARCH_DECK_BOTTOM also implies moving card to deck bottom (often from deck top or hand)
+        cmd['to_zone'] = "DECK_BOTTOM"
+        if not src and act_type == "SEARCH_DECK_BOTTOM": cmd['from_zone'] = "DECK"
     elif act_type == "ADD_SHIELD":
         cmd['to_zone'] = "SHIELD"
         if not src: cmd['from_zone'] = "DECK"
@@ -301,6 +312,12 @@ def _handle_specific_moves(act_type, act, cmd, src):
     elif act_type == 'DISCARD':
         cmd['to_zone'] = "GRAVEYARD"
         cmd['from_zone'] = "HAND"
+    elif act_type == "MOVE_TO_UNDER_CARD":
+        # Simplified handling: treat as a transition to a special zone or state
+        # In reality, this requires target_instance, but for simple mapping TRANSITION is closest.
+        cmd['type'] = "TRANSITION"
+        cmd['to_zone'] = "UNDER_CARD"
+        if src: cmd['from_zone'] = src
 
     _transfer_common_move_fields(act, cmd)
 
@@ -323,7 +340,7 @@ def _handle_modifiers(act_type, act, cmd):
 def _handle_mutate(act_type, act, cmd):
     sval = str(act.get('str_val') or '').upper()
     # Consolidate POWER_MOD into generic MUTATE with mutation_kind
-    if act_type == "POWER_MOD" or 'POWER' in sval:
+    if act_type in ["POWER_MOD", "MODIFY_POWER"] or 'POWER' in sval:
         cmd['type'] = 'MUTATE'
         cmd['mutation_kind'] = 'POWER_MOD'
         if 'value1' in act: cmd['amount'] = act['value1']
