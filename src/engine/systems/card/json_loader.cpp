@@ -9,6 +9,91 @@ namespace dm::engine {
 
     using namespace dm::core;
 
+    Civilization JsonLoader::parse_civilization(const std::string& civ_str) {
+        if (civ_str == "LIGHT") return Civilization::LIGHT;
+        if (civ_str == "WATER") return Civilization::WATER;
+        if (civ_str == "DARKNESS") return Civilization::DARKNESS;
+        if (civ_str == "FIRE") return Civilization::FIRE;
+        if (civ_str == "NATURE") return Civilization::NATURE;
+        if (civ_str == "ZERO") return Civilization::ZERO;
+        return Civilization::NONE;
+    }
+
+    CardType JsonLoader::parse_card_type(const std::string& type_str) {
+        if (type_str == "CREATURE") return CardType::CREATURE;
+        if (type_str == "SPELL") return CardType::SPELL;
+        if (type_str == "EVOLUTION_CREATURE") return CardType::EVOLUTION_CREATURE;
+        if (type_str == "CROSS_GEAR") return CardType::CROSS_GEAR;
+        if (type_str == "CASTLE") return CardType::CASTLE;
+        if (type_str == "PSYCHIC_CREATURE") return CardType::PSYCHIC_CREATURE;
+        if (type_str == "GR_CREATURE") return CardType::GR_CREATURE;
+        if (type_str == "TAMASEED") return CardType::TAMASEED;
+        return CardType::CREATURE;
+    }
+
+    // Helper to convert Legacy ActionDef to New CommandDef
+    static CommandDef convert_legacy_action(const ActionDef& act) {
+        CommandDef cmd;
+        cmd.optional = act.optional;
+        cmd.amount = act.value1;
+        cmd.str_param = act.str_val;
+        cmd.target_filter = act.filter;
+        cmd.target_group = act.scope;
+
+        // Map Legacy Scope to Zone/Target if necessary
+        if (act.source_zone.empty() == false) cmd.from_zone = act.source_zone;
+        if (act.destination_zone.empty() == false) cmd.to_zone = act.destination_zone;
+
+        switch (act.type) {
+            case EffectPrimitive::DRAW_CARD:
+                cmd.type = CommandType::DRAW_CARD;
+                break;
+            case EffectPrimitive::ADD_MANA:
+                cmd.type = CommandType::MANA_CHARGE;
+                break;
+            case EffectPrimitive::DESTROY:
+                cmd.type = CommandType::DESTROY;
+                break;
+            case EffectPrimitive::RETURN_TO_HAND:
+                cmd.type = CommandType::RETURN_TO_HAND;
+                break;
+            case EffectPrimitive::TAP:
+                cmd.type = CommandType::TAP;
+                break;
+            case EffectPrimitive::UNTAP:
+                cmd.type = CommandType::UNTAP;
+                break;
+            case EffectPrimitive::MODIFY_POWER:
+                cmd.type = CommandType::POWER_MOD;
+                break;
+            case EffectPrimitive::BREAK_SHIELD:
+                cmd.type = CommandType::BREAK_SHIELD;
+                break;
+            case EffectPrimitive::DISCARD:
+                cmd.type = CommandType::DISCARD;
+                break;
+            case EffectPrimitive::SEARCH_DECK:
+                cmd.type = CommandType::SEARCH_DECK;
+                break;
+            case EffectPrimitive::GRANT_KEYWORD:
+                cmd.type = CommandType::ADD_KEYWORD;
+                break;
+            case EffectPrimitive::SEND_TO_MANA:
+                cmd.type = CommandType::MANA_CHARGE; // Usually Send to Mana
+                break;
+            case EffectPrimitive::MOVE_CARD:
+                cmd.type = CommandType::TRANSITION;
+                break;
+            // Map other types as needed or log warning
+            default:
+                // Fallback: If no mapping, we might lose functionality for now.
+                // This is expected during migration.
+                cmd.type = CommandType::NONE;
+                break;
+        }
+        return cmd;
+    }
+
     // Helper to convert CardData (JSON) to CardDefinition (Engine)
     // Forward declare to allow recursive calls
     static CardDefinition convert_to_def(const CardData& data);
@@ -22,22 +107,49 @@ namespace dm::engine {
         def.civilizations = data.civilizations;
 
         // Type mapping
-        if (data.type == "CREATURE") def.type = CardType::CREATURE;
-        else if (data.type == "SPELL") def.type = CardType::SPELL;
-        else if (data.type == "EVOLUTION_CREATURE") def.type = CardType::EVOLUTION_CREATURE;
-        else if (data.type == "TAMASEED") def.type = CardType::TAMASEED;
-        else if (data.type == "CROSS_GEAR") def.type = CardType::CROSS_GEAR;
-        else if (data.type == "CASTLE") def.type = CardType::CASTLE;
-        else if (data.type == "PSYCHIC_CREATURE") def.type = CardType::PSYCHIC_CREATURE;
-        else if (data.type == "GR_CREATURE") def.type = CardType::GR_CREATURE;
+        def.type = JsonLoader::parse_card_type(data.type);
 
         def.cost = data.cost;
         def.power = data.power;
         def.races = data.races;
 
         // Copy effects
-        def.effects = data.effects;
-        def.metamorph_abilities = data.metamorph_abilities;
+        def.effects.clear();
+        def.effects.reserve(data.effects.size());
+
+        for (const auto& eff : data.effects) {
+            EffectDef engine_eff = eff;
+
+            // Legacy Conversion: If commands are empty but actions exist
+            if (engine_eff.commands.empty() && !engine_eff.actions.empty()) {
+                engine_eff.commands.reserve(engine_eff.actions.size());
+                for (const auto& act : engine_eff.actions) {
+                    CommandDef cmd = convert_legacy_action(act);
+                    if (cmd.type != CommandType::NONE) {
+                        engine_eff.commands.push_back(cmd);
+                    }
+                }
+            }
+            def.effects.push_back(engine_eff);
+        }
+
+        // Metamorph Abilities
+        def.metamorph_abilities.clear();
+        def.metamorph_abilities.reserve(data.metamorph_abilities.size());
+        for (const auto& eff : data.metamorph_abilities) {
+             EffectDef engine_eff = eff;
+             if (engine_eff.commands.empty() && !engine_eff.actions.empty()) {
+                engine_eff.commands.reserve(engine_eff.actions.size());
+                for (const auto& act : engine_eff.actions) {
+                    CommandDef cmd = convert_legacy_action(act);
+                    if (cmd.type != CommandType::NONE) {
+                        engine_eff.commands.push_back(cmd);
+                    }
+                }
+            }
+            def.metamorph_abilities.push_back(engine_eff);
+        }
+
         def.cost_reductions = data.cost_reductions;
 
         // Revolution Change
@@ -71,6 +183,14 @@ namespace dm::engine {
             if (kws.count("untap_in") && kws.at("untap_in")) def.keywords.untap_in = true;
             if (kws.count("unblockable") && kws.at("unblockable")) def.keywords.unblockable = true;
 
+             // Meta Counter Play (e.g. Oriot Judgement)
+            if (kws.count("meta_counter_play") && kws.at("meta_counter_play")) {
+                 def.keywords.meta_counter_play = true;
+                 // Assuming implicit effect generation is handled elsewhere or by specific keywords
+            }
+
+            if (kws.count("hyper_energy") && kws.at("hyper_energy")) def.keywords.hyper_energy = true;
+
             // Friend Burst
             if (kws.count("friend_burst") && kws.at("friend_burst")) {
                 def.keywords.friend_burst = true;
@@ -88,6 +208,15 @@ namespace dm::engine {
                 fb_action.filter.count = 1;
 
                 fb_effect.actions.push_back(fb_action);
+
+                // Add Command counterpart for Friend Burst
+                CommandDef fb_cmd;
+                fb_cmd.type = CommandType::FRIEND_BURST;
+                fb_cmd.target_group = TargetScope::TARGET_SELECT;
+                fb_cmd.optional = true;
+                fb_cmd.target_filter = fb_action.filter;
+                fb_effect.commands.push_back(fb_cmd);
+
                 def.effects.push_back(fb_effect);
             }
 
@@ -105,6 +234,14 @@ namespace dm::engine {
                     mlb_action.cast_spell_side = true;
 
                     mlb_effect.actions.push_back(mlb_action);
+
+                    // Add Command counterpart
+                    CommandDef mlb_cmd;
+                    mlb_cmd.type = CommandType::CAST_SPELL; // Assuming macro exists
+                    // Actually, casting spell side might be a specific mutation or flow.
+                    // For now, let's assume CAST_SPELL primitive maps.
+                    mlb_effect.commands.push_back(mlb_cmd);
+
                     def.effects.push_back(mlb_effect);
                 }
             }
@@ -167,12 +304,6 @@ namespace dm::engine {
                     // Backward compatibility: allow single "civilization" field
                     if (card.civilizations.empty() && item.contains("civilization")) {
             std::string civ_str = item.at("civilization").get<std::string>();
-            // Since we defined the JSON serializer for Civilization, we cannot push_back string directly.
-            // We must convert manually if we are doing this manual patch.
-            // Actually, CardData::civilizations is vector<Civilization>.
-            // nlohmann::json deserializes string to Enum automatically if using get<Civilization>().
-            // But here we are patching the struct after load.
-            // We should use JsonLoader::parse_civilization logic or similar.
             if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
             else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
             else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);

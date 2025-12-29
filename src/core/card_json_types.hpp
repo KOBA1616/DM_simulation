@@ -490,7 +490,26 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition, options, cast_spell_side)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, output_value_key)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions, commands)
+
+    // Manual to_json for EffectDef to exclude actions
+    inline void to_json(nlohmann::json& j, const EffectDef& e) {
+        j = nlohmann::json{
+            {"trigger", e.trigger},
+            {"condition", e.condition},
+            {"commands", e.commands}
+            // Explicitly excluding "actions" from output
+        };
+    }
+
+    inline void from_json(const nlohmann::json& j, EffectDef& e) {
+        if (j.contains("trigger")) j.at("trigger").get_to(e.trigger);
+        if (j.contains("condition")) j.at("condition").get_to(e.condition);
+        if (j.contains("commands")) j.at("commands").get_to(e.commands);
+        if (j.contains("actions")) j.at("actions").get_to(e.actions);
+    }
+
+    // NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions, commands) -- REPLACED BY MANUAL IMPL ABOVE
+
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
 
