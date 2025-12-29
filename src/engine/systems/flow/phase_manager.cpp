@@ -201,7 +201,11 @@ namespace dm::engine {
             if (card_db.count(card.card_id)) {
                 const auto& def = card_db.at(card.card_id);
                 if (def.keywords.at_start_of_turn) {
-                    game_state.pending_effects.emplace_back(EffectType::AT_START_OF_TURN, card.instance_id, active_player.id);
+                    // Use Command
+                    PendingEffect pe(EffectType::AT_START_OF_TURN, card.instance_id, active_player.id);
+                    auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
+                    cmd->pending_effect = pe;
+                    game_state.execute_command(std::move(cmd));
                 }
             }
         }
@@ -356,7 +360,10 @@ namespace dm::engine {
 
                         if (def.keywords.meta_counter_play) {
                             if (game_state.turn_stats.played_without_mana) {
-                                game_state.pending_effects.emplace_back(EffectType::META_COUNTER, card.instance_id, opponent.id);
+                                PendingEffect pe(EffectType::META_COUNTER, card.instance_id, opponent.id);
+                                auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
+                                cmd->pending_effect = pe;
+                                game_state.execute_command(std::move(cmd));
                             }
                         }
 
@@ -367,7 +374,10 @@ namespace dm::engine {
                             }
 
                             if (condition_met) {
-                                 game_state.pending_effects.emplace_back(EffectType::META_COUNTER, card.instance_id, opponent.id);
+                                 PendingEffect pe(EffectType::META_COUNTER, card.instance_id, opponent.id);
+                                 auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
+                                 cmd->pending_effect = pe;
+                                 game_state.execute_command(std::move(cmd));
                             }
                         }
                     }
@@ -381,7 +391,10 @@ namespace dm::engine {
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
                         if (def.keywords.at_end_of_turn) {
-                            game_state.pending_effects.emplace_back(EffectType::AT_END_OF_TURN, card.instance_id, active_player.id);
+                            PendingEffect pe(EffectType::AT_END_OF_TURN, card.instance_id, active_player.id);
+                            auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
+                            cmd->pending_effect = pe;
+                            game_state.execute_command(std::move(cmd));
                         }
                     }
                 }

@@ -9,6 +9,20 @@
 
 namespace dm::engine::game_command {
 
+    class HistoryCommand : public GameCommand {
+    public:
+        core::CardID card_id;
+        int turn_played;
+        core::PlayerID player_id;
+
+        HistoryCommand(core::CardID cid, int turn, core::PlayerID pid)
+            : card_id(cid), turn_played(turn), player_id(pid) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::STAT; }
+    };
+
     class TransitionCommand : public GameCommand {
     public:
         int card_instance_id;
