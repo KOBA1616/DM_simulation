@@ -107,7 +107,8 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     cmd = {
         "type": "NONE",
         "uid": str(uuid.uuid4()),
-        "legacy_warning": False
+        "legacy_warning": False,
+        "legacy_original_type": act_type  # Phase C: Track original type for metrics
     }
 
     # Common Fields
@@ -237,6 +238,7 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         else:
             cmd['type'] = "NONE"
             cmd['legacy_warning'] = True
+            # legacy_original_type is already set at init, but re-asserting logic here
             cmd['legacy_original_type'] = act_type
             cmd['str_param'] = f"Legacy: {act_type}"
             _transfer_targeting(act_data, cmd)
