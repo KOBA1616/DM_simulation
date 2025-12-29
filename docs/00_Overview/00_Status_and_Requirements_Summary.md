@@ -134,7 +134,7 @@ GUIの「表示はアクション、内部はコマンド」を維持したま�
 [Status: Todo]
 エッジケースへの対応と安定性向上を図ります（4.3のゲート通過後に着手しやすい）。
 
-1.  [Status: Todo] **Strict Lethal Solver**: 現在のヒューリスティック版から、ルールを完全に厳密にシミュレートするソルバーへ移行する。
+1.  [Status: Done] **Strict Lethal Solver**: 現在のヒューリスティック版から、ルールを完全に厳密にシミュレートするソルバーへ移行完了。`TargetUtils` に `can_be_blocked_by` ロジックを追加し、パッシブ効果（CANNOT_BLOCK等）やUNBLOCKABLEキーワードを考慮するよう改善。
 2.  [Status: Todo] **Memory Leak Fix**: `ParallelRunner` を長時間/大量スレッドで実行した際に発生する `std::bad_alloc` (メモリリーク) の調査と修正。
 
 ### 4.5 [Priority: Low] GUI Expansion (GUI拡張)

@@ -42,12 +42,13 @@ namespace dm::ai {
     class LethalDFS {
         const std::vector<SimAttacker>& attackers;
         const std::vector<SimBlocker>& blockers;
+        const std::vector<uint64_t>& blocking_matrix; // Matrix[att_index] = bitmask of valid blockers
         std::map<SearchState, bool> memo;
         int initial_shields;
 
     public:
-        LethalDFS(const std::vector<SimAttacker>& a, const std::vector<SimBlocker>& b, int shields)
-            : attackers(a), blockers(b), initial_shields(shields) {}
+        LethalDFS(const std::vector<SimAttacker>& a, const std::vector<SimBlocker>& b, const std::vector<uint64_t>& matrix, int shields)
+            : attackers(a), blockers(b), blocking_matrix(matrix), initial_shields(shields) {}
 
         bool solve(SearchState state) {
             // Check memoization
@@ -114,11 +115,11 @@ namespace dm::ai {
             if (att.unblockable) return true;
 
             // 2. Path: Block with eligible blocker
-            for (const auto& blk : blockers) {
-                if (!((state.blocker_mask >> blk.index) & 1)) continue;
+            uint64_t valid_blockers = blocking_matrix[att.index] & state.blocker_mask;
 
-                // Assumption: Filter logic already verified this blocker can block.
-                // In future, check "can block this specific creature" here.
+            // Loop through bits in valid_blockers
+            for (const auto& blk : blockers) {
+                if (!((valid_blockers >> blk.index) & 1)) continue;
 
                 SearchState next_state = state;
                 next_state.attacker_mask &= ~(1ULL << att.index); // Attacker taps
@@ -149,6 +150,7 @@ namespace dm::ai {
 
         // 1. Gather Attackers
         std::vector<SimAttacker> attackers;
+        std::vector<const CardInstance*> attacker_instances; // To keep reference for checking against blockers
         int att_index = 0;
 
         for (const auto& card : active_player.battle_zone) {
@@ -178,11 +180,13 @@ namespace dm::ai {
             info.unblockable = def.keywords.unblockable;
 
             attackers.push_back(info);
+            attacker_instances.push_back(&card);
             if (att_index >= 64) break; // Safety limit
         }
 
         // 2. Gather Blockers
         std::vector<SimBlocker> blockers;
+        std::vector<const CardInstance*> blocker_instances;
         int blk_index = 0;
 
         for (const auto& card : opponent.battle_zone) {
@@ -194,8 +198,24 @@ namespace dm::ai {
                         info.index = blk_index++;
                         info.power = def.power;
                         blockers.push_back(info);
+                        blocker_instances.push_back(&card);
                         if (blk_index >= 64) break;
                     }
+                }
+            }
+        }
+
+        // 2.5 Build Blocking Matrix
+        std::vector<uint64_t> blocking_matrix(attackers.size(), 0);
+        for (size_t i = 0; i < attackers.size(); ++i) {
+            for (size_t j = 0; j < blockers.size(); ++j) {
+                const auto* att_card = attacker_instances[i];
+                const auto* blk_card = blocker_instances[j];
+                const auto& att_def = card_db.at(att_card->card_id);
+                const auto& blk_def = card_db.at(blk_card->card_id);
+
+                if (TargetUtils::can_be_blocked_by(*att_card, att_def, *blk_card, blk_def, game_state)) {
+                    blocking_matrix[i] |= (1ULL << blockers[j].index);
                 }
             }
         }
@@ -208,7 +228,7 @@ namespace dm::ai {
         initial_state.blocker_mask = (blockers.size() == 64) ? ~0ULL : ((1ULL << blockers.size()) - 1);
         initial_state.shields = opponent_shields;
 
-        LethalDFS dfs(attackers, blockers, opponent_shields);
+        LethalDFS dfs(attackers, blockers, blocking_matrix, opponent_shields);
         return dfs.solve(initial_state);
     }
 
