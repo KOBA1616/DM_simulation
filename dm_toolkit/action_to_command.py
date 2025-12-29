@@ -14,6 +14,13 @@ except Exception:
 _CommandType = getattr(dm_ai_module, 'CommandType', None) if dm_ai_module is not None else None
 _Zone = getattr(dm_ai_module, 'Zone', None) if dm_ai_module is not None else None
 
+def set_command_type_enum(enum_cls):
+    """
+    Helper to inject a CommandType enum for testing or manual setup.
+    """
+    global _CommandType
+    _CommandType = enum_cls
+
 def normalize_action_zone_keys(data: Dict[str, Any]) -> Dict[str, Any]:
     """Ensures action dictionary has consistent zone keys."""
     if not isinstance(data, dict): return data
@@ -54,6 +61,23 @@ def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
             cmd['amount'] = int(act.get('amount') or act.get('value1') or 0)
         except Exception:
              pass # Ignore if not convertible
+
+def _validate_command_type(cmd: Dict[str, Any]):
+    """
+    Phase 2: Strict Type Enforcement.
+    If dm_ai_module is available, ensures cmd['type'] exists in CommandType.
+    """
+    if _CommandType is None:
+        return
+
+    ctype = cmd.get('type', 'NONE')
+    # Check if ctype is a valid member of _CommandType enum
+    if not hasattr(_CommandType, ctype):
+         cmd['legacy_warning'] = True
+         if 'legacy_original_type' not in cmd:
+             cmd['legacy_original_type'] = ctype
+         cmd['str_param'] = f"Invalid CommandType: {ctype}"
+         cmd['type'] = "NONE"
 
 def map_action(action_data: Any) -> Dict[str, Any]:
     """
@@ -218,6 +242,7 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         pass
 
     _finalize_command(cmd, act_data)
+    _validate_command_type(cmd)
     return cmd
 
 # --- Sub-handlers ---
@@ -243,6 +268,14 @@ def _handle_specific_moves(act_type, act, cmd, src):
     if act_type == "SHIELD_BURN":
          cmd['type'] = "SHIELD_BURN"
          cmd['amount'] = act.get('value1', 1)
+    elif act_type == "DESTROY":
+        cmd['type'] = "DESTROY"
+    elif act_type == "DISCARD":
+        cmd['type'] = "DISCARD"
+    elif act_type == "MANA_CHARGE":
+        cmd['type'] = "MANA_CHARGE"
+    elif act_type == "RETURN_TO_HAND":
+        cmd['type'] = "RETURN_TO_HAND"
     else:
         cmd['type'] = "TRANSITION"
         # Preserve original semantic intent as an alias/reason for compatibility
@@ -389,7 +422,7 @@ def _handle_complex(act_type, act, cmd, dest):
 def _handle_play_flow(act_type, act, cmd, src, dest):
     if act_type == "PLAY_FROM_ZONE":
         # Consolidate play commands to a single PLAY command with from_zone
-        cmd['type'] = "PLAY"
+        cmd['type'] = "PLAY_FROM_ZONE"
         if src: cmd['from_zone'] = src
         cmd['to_zone'] = dest or 'BATTLE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
