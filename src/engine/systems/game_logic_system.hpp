@@ -38,6 +38,7 @@ namespace dm::engine::systems {
 
         // Misc Actions
         static void handle_mana_charge(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst);
+        static void handle_apply_buffer_move(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_resolve_reaction(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_use_ability(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_select_target(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst);

@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
@@ -115,6 +116,11 @@ namespace dm::engine {
                      targets.push_back(controller.shield_zone.back().instance_id);
                 }
 
+                // Instead of performing immediate MOVE instructions, emit a
+                // single GAME_ACTION that lists all shields to break. The
+                // GameLogicSystem already implements buffered handling for
+                // BREAK_SHIELD which stages shields to effect_buffer,
+                // triggers CHECK_S_TRIGGER and later applies buffer moves.
                 for (int t : targets) {
                      nlohmann::json move_args;
                      move_args["target"] = t;

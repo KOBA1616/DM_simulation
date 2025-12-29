@@ -108,6 +108,10 @@ namespace dm::engine::systems {
                     GameLogicSystem::handle_resolve_battle(*this, state, inst, card_db);
                 } else if (type == "BREAK_SHIELD") {
                     GameLogicSystem::handle_break_shield(*this, state, inst, card_db);
+                } else if (type == "CHECK_S_TRIGGER") {
+                    GameLogicSystem::handle_check_s_trigger(*this, state, inst, card_db);
+                } else if (type == "APPLY_BUFFER_MOVE") {
+                    GameLogicSystem::handle_apply_buffer_move(*this, state, inst, card_db);
                 } else if (type == "MANA_CHARGE") {
                     GameLogicSystem::handle_mana_charge(*this, state, inst);
                 } else if (type == "RESOLVE_REACTION") {
@@ -420,6 +424,10 @@ namespace dm::engine::systems {
              if (!found) continue;
 
              int dest_idx = to_bottom ? 0 : -1;
+             // Debug trace: report planned transition
+             try {
+                 std::cout << "[PIPELINE TRACE] MOVE id=" << id << " from=" << (int)from_zone << " to=" << (int)to_zone << " owner=" << (int)owner << " dest_idx=" << dest_idx << std::endl;
+             } catch (...) {}
              auto cmd = std::make_unique<TransitionCommand>(id, from_zone, to_zone, owner, dest_idx);
              execute_command(std::move(cmd), state);
         }
