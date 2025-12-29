@@ -405,15 +405,20 @@ class CardTextGenerator:
         action_texts = []
         # Keep parallel lists of raw and formatted for merging logic
         raw_items = []
-        for action in actions:
-            raw_items.append(action)
-            action_texts.append(cls._format_action(action, is_spell, sample=sample))
 
+        # Commands-First Policy (Migration Phase 4.3):
+        # If 'commands' exist, they are the source of truth. Ignore 'actions'.
+        # Only fallback to 'actions' if 'commands' is empty.
         commands = effect.get("commands", [])
-        for command in commands:
-            # For commands we only have formatted text (no richer merging for now)
-            raw_items.append(command)
-            action_texts.append(cls._format_command(command, is_spell, sample=sample))
+        if commands:
+            for command in commands:
+                raw_items.append(command)
+                action_texts.append(cls._format_command(command, is_spell, sample=sample))
+        else:
+            # Fallback for legacy data
+            for action in actions:
+                raw_items.append(action)
+                action_texts.append(cls._format_action(action, is_spell, sample=sample))
 
         # Try to merge common sequential patterns for more natural language
         full_action_text = cls._merge_action_texts(raw_items, action_texts)
