@@ -198,6 +198,39 @@ namespace dm::engine {
             }
             return true;
         }
+
+        // Check if `blocker` can block `attacker`
+        template<typename CardDefType>
+        static bool can_be_blocked_by(const dm::core::CardInstance& attacker,
+                                      const CardDefType& attacker_def,
+                                      const dm::core::CardInstance& blocker,
+                                      const CardDefType& blocker_def,
+                                      const dm::core::GameState& game_state) {
+
+            // 1. Basic Unblockable check
+            if (has_keyword_simple(game_state, attacker, attacker_def, "UNBLOCKABLE")) {
+                return false;
+            }
+
+            // 2. Passive Restrictions
+            for (const auto& passive : game_state.passive_effects) {
+                if (passive.type == dm::core::PassiveType::CANNOT_BLOCK) {
+                    dm::core::PlayerID blocker_owner = 0;
+                     if (blocker.instance_id < (int)game_state.card_owner_map.size())
+                         blocker_owner = game_state.card_owner_map[blocker.instance_id];
+
+                    if (is_valid_target(blocker, blocker_def, passive.target_filter, game_state, passive.controller, blocker_owner, true, nullptr)) {
+                        return false;
+                    }
+                }
+
+                // Case B: Passive on Attacker says "Cannot be blocked by Power X" (Not implemented in standard passives yet?)
+                // Usually implemented as "Target creature cannot block this creature".
+                // If the passive type is "CANNOT_BLOCK" but specifically targeted at "blockers of this creature"... complex.
+            }
+
+            return true;
+        }
     };
 
     // Specializations
@@ -240,7 +273,8 @@ namespace dm::engine {
             if (k == "SLAYER") return c.keywords.slayer;
             if (k == "POWER_ATTACKER") return c.keywords.power_attacker;
             if (k == "MACH_FIGHTER") return c.keywords.mach_fighter;
-            if (k == "SHIELD_TRIGGER") return c.keywords.shield_trigger; // Added
+            if (k == "SHIELD_TRIGGER") return c.keywords.shield_trigger;
+            if (k == "UNBLOCKABLE") return c.keywords.unblockable;
             return false;
         }
     };

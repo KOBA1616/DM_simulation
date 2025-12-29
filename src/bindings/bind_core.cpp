@@ -153,6 +153,33 @@ void bind_core(py::module& m) {
         .value("NONE", TriggerType::NONE)
         .export_values();
 
+    py::enum_<PassiveType>(m, "PassiveType")
+        .value("POWER_MODIFIER", PassiveType::POWER_MODIFIER)
+        .value("KEYWORD_GRANT", PassiveType::KEYWORD_GRANT)
+        .value("COST_REDUCTION", PassiveType::COST_REDUCTION)
+        .value("BLOCKER_GRANT", PassiveType::BLOCKER_GRANT)
+        .value("SPEED_ATTACKER_GRANT", PassiveType::SPEED_ATTACKER_GRANT)
+        .value("SLAYER_GRANT", PassiveType::SLAYER_GRANT)
+        .value("CANNOT_ATTACK", PassiveType::CANNOT_ATTACK)
+        .value("CANNOT_BLOCK", PassiveType::CANNOT_BLOCK)
+        .value("CANNOT_USE_SPELLS", PassiveType::CANNOT_USE_SPELLS)
+        .value("LOCK_SPELL_BY_COST", PassiveType::LOCK_SPELL_BY_COST)
+        .value("CANNOT_SUMMON", PassiveType::CANNOT_SUMMON)
+        .export_values();
+
+    py::class_<PassiveEffect>(m, "PassiveEffect")
+        .def(py::init<>())
+        .def_readwrite("type", &PassiveEffect::type)
+        .def_readwrite("value", &PassiveEffect::value)
+        .def_readwrite("str_value", &PassiveEffect::str_value)
+        .def_readwrite("target_filter", &PassiveEffect::target_filter)
+        .def_readwrite("specific_targets", &PassiveEffect::specific_targets)
+        .def_readwrite("condition", &PassiveEffect::condition)
+        .def_readwrite("source_instance_id", &PassiveEffect::source_instance_id)
+        .def_readwrite("controller", &PassiveEffect::controller)
+        .def_readwrite("turns_remaining", &PassiveEffect::turns_remaining)
+        .def_readwrite("is_source_static", &PassiveEffect::is_source_static);
+
     py::enum_<EffectType>(m, "EffectType")
         .value("NONE", EffectType::NONE)
         .value("CIP", EffectType::CIP)
@@ -583,6 +610,8 @@ void bind_core(py::module& m) {
         .def_readwrite("players", &GameState::players)
         .def_readwrite("game_over", &GameState::game_over)
         .def_readwrite("winner", &GameState::winner)
+        .def_readwrite("active_modifiers", &GameState::active_modifiers)
+        .def_readwrite("passive_effects", &GameState::passive_effects)
         .def_readwrite("turn_stats", &GameState::turn_stats)
         .def_readwrite("waiting_for_user_input", &GameState::waiting_for_user_input)
         .def_readwrite("pending_query", &GameState::pending_query)
@@ -716,6 +745,9 @@ void bind_core(py::module& m) {
             } catch (...) {
                 throw std::runtime_error("Unknown error in get_pending_effects_info");
             }
+        })
+        .def("add_passive_effect", [](GameState& s, const PassiveEffect& p) {
+            s.passive_effects.push_back(p);
         });
 
     m.def("get_card_stats", [](const GameState& state) {
