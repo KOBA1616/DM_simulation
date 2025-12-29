@@ -91,7 +91,24 @@ Phase 4の要件である高性能モデルへの移行を行います。
 [Status: Todo]
 エッジケースへの対応と安定性向上を図ります。
 
-1.  [Status: Todo] **Legacy Action Migration**: GUIの統合完了に伴い、内部データ構造の `Legacy Action` を保存時に自動的に `Command` 構造へ変換するロジックを実装し、完全な移行を目指す。
+1.  [Status: WIP] **Action→Command 完全移行 (Legacy Action Migration)**: GUIの「表示はアクション、内部はコマンド」を維持したまま、保存形式・テスト・周辺ツールを `commands` 正本へ統一し、`actions` は互換入力としてのみ扱う。
+    *   [Status: Done] **Load-Lift (読み込み時変換)**: 読み込み時に `effects[].actions` を `effects[].commands` に変換し、エディタ内部では `actions` を保持しない。
+    *   [Status: Done] **Save Commands-only (保存時コマンドのみ出力)**: 保存・再構築時に `commands` のみを書き出し、`actions` は出力しない（過渡期の互換出力は「エクスポート専用」に限定する）。
+    *   [Status: WIP] **GUI 表示・プレビューの commands-first 化**: プレビュー/自然文生成が `actions` 参照で落ちないよう、`commands` を一次ソースとして扱い、`actions` は fallback のみにする。
+    *   [Status: Todo] **テスト整流 (commands-only 方針への追従)**: `actions` を期待しているGUI/統合テストを `commands` 期待へ移行し、方針とテストの整合を取る。
+    *   [Status: Todo] **CI ガード**: `data/` 配下のカードJSONに `actions` フィールドが残っていないことを検査し、差し戻しを防ぐ。
+    *   [Status: Todo] **未対応アクションの棚卸しと優先度付け**: 未対応 `Action type` をノイズ無しで集計し、(1) Engine生成系 → (2) 頻出カード効果 → (3) 低頻度/別名 の順で変換対応を進める。
+    *   [Status: Todo] **実行経路の一本化**: AI/GUI/スクリプトのどの入口からも「実行できるCommand」として扱えるよう、`wrap_action`/ネイティブコマンド/辞書表現の責務を整理する。
+
+    **受け入れ基準 (Acceptance Criteria)**
+    *   `data/` 配下のカードJSONに `actions` キーが存在しない（互換用途の `editor_templates` などは例外扱いを明記）。
+    *   GUIエディタでカードを開いた場合、Effectは `commands` のみを持ち、変換不能は `legacy_warning` / Warning 表示で可視化される。
+    *   保存時に `commands` のみが出力され、スキーマ最低条件（type/必須フィールド/枝・optionsの形）が満たされる。
+    *   プレビュー/カードテキスト生成は `commands` だけでも破綻しない（`actions` が無いカードでも表示できる）。
+	
+    **テスト方針 (Test Policy)**
+    *   [Test: Pending] Load-Lift の単体テストに加え、GUI保存I/Oが `commands` を出力する統合テストを追加する。
+    *   [Test: Pending] `data/` スキーマ検証（必須キー、ネスト構造）と `actions` 排除チェックをCIで常時実行する。
 2.  [Status: Todo] **Strict Lethal Solver**: 現在のヒューリスティック版から、ルールを完全に厳密にシミュレートするソルバーへ移行する。
 3.  [Status: Todo] **Memory Leak Fix**: `ParallelRunner` を長時間/大量スレッドで実行した際に発生する `std::bad_alloc` (メモリリーク) の調査と修正。
 
