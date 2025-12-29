@@ -99,6 +99,8 @@ class TestEngineCompat(unittest.TestCase):
         state = MagicMock()
         card_db: Dict[int, Any] = {}
         action = MagicMock()
+        # Ensure action does not look like an executable command, forcing fallback to EffectResolver
+        del action.execute
 
         EngineCompat.EffectResolver_resolve_action(state, action, card_db)
         dm_ai_module.EffectResolver.resolve_action.assert_called_with(state, action, card_db)
