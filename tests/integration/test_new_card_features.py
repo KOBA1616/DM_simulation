@@ -34,7 +34,7 @@ class TestNewCardFeatures(unittest.TestCase):
                     {
                         "trigger": "ON_PLAY",
                         "condition": {"type": "NONE"},
-                        "actions": [
+                        "commands": [
                             {
                                 "type": "DISCARD",
                                 "scope": "TARGET_SELECT",
@@ -58,7 +58,7 @@ class TestNewCardFeatures(unittest.TestCase):
                     {
                         "trigger": "ON_PLAY",
                         "condition": {"type": "NONE"},
-                        "actions": [
+                        "commands": [
                             {
                                 "type": "PLAY_FROM_ZONE",
                                 "scope": "TARGET_SELECT",

@@ -21,7 +21,7 @@ def test_mega_last_burst_effect_generation():
             "effects": [
                 {
                     "trigger": "NONE",
-                    "actions": [
+                    "commands": [
                         {
                             "type": "ADD_MANA",
                             "value1": 1

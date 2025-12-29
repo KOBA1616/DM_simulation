@@ -182,7 +182,9 @@ class TestGuiJsonIntegration(unittest.TestCase):
         assert saved_card["name"] == "GUI Test Dragon"
         assert saved_card["keywords"]["speed_attacker"] is True
         assert len(saved_card["effects"]) == 1
-        assert saved_card["effects"][0]["actions"][0]["type"] == "DRAW_CARD"
+        # Expect 'commands' to be prioritized over 'actions' in newer implementation
+        actions_list = saved_card["effects"][0].get("commands") or saved_card["effects"][0].get("actions")
+        assert actions_list[0]["type"] == "DRAW_CARD"
 
         # 3. Write to JSON file
         with open(self.temp_file, "w") as f:

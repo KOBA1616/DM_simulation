@@ -75,7 +75,7 @@ class TestCardEditorV2(unittest.TestCase):
             "id": 1, "name": "Twinpact Creature", "type": "CREATURE",
             "spell_side": {
                 "name": "Spell Side", "type": "SPELL", "cost": 3,
-                "effects": [{"trigger": "ON_PLAY", "actions": []}]
+                "effects": [{"trigger": "ON_PLAY", "commands": []}]
             }
         }]
 
@@ -156,7 +156,9 @@ class TestCardEditorV2(unittest.TestCase):
         self.assertEqual(eff_item.rowCount(), 1)
         act_item = eff_item.child(0)
         act_data = act_item.data(256 + 2)
-        self.assertEqual(act_data['type'], "REVOLUTION_CHANGE")
+        # add_revolution_change_logic uses 'MUTATE' command with 'mutation_kind': 'REVOLUTION_CHANGE'
+        self.assertEqual(act_data['type'], "MUTATE")
+        self.assertEqual(act_data['mutation_kind'], "REVOLUTION_CHANGE")
 
         # Verify Get Full Data sets keyword
         output_data = self.manager.get_full_data()

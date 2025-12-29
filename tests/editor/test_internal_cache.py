@@ -11,7 +11,7 @@ def test_add_option_slots_updates_internal_cache():
     card_item = dm.add_new_card()
 
     # create an effect and action under card
-    eff = dm._create_effect_item({"trigger": "ON_PLAY", "actions": []})
+    eff = dm._create_effect_item({"trigger": "ON_PLAY", "commands": []})
     card_item.appendRow(eff)
 
     act = dm._create_action_item({"type": "DRAW_CARD", "value1": 1})

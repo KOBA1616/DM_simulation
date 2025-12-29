@@ -19,7 +19,7 @@ def test_trigger_stack_behavior():
         "effects": [
             {
                 "trigger": "ON_PLAY",
-                "actions": [
+                "commands": [
                     {
                         "type": "DRAW_CARD",
                         "value1": 1
