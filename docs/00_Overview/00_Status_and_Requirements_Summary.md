@@ -110,14 +110,14 @@ Phase 4の要件である高性能モデルへの移行を行います。
 1.  [Status: Todo] **Transformer Implementation**: 現在のResNet/MLPモデルから、Self-Attentionを用いたTransformerモデルへ移行し、盤面の文脈理解能力を向上させる。
 
 ### 4.3 [Priority: High] Action→Command 完全移行 (Migration Gate)
-[Status: WIP]
+[Status: Review]
 GUIの「表示はアクション、内部はコマンド」を維持したまま、保存形式・テスト・周辺ツールを `commands` 正本へ統一し、`actions` は互換入力としてのみ扱う（**ロードマップ全体のゲート**）。
 
 1.  [Status: Done] **Load-Lift (読み込み時変換)**: 読み込み時に `effects[].actions` を `effects[].commands` に変換し、エディタ内部では `actions` を保持しない。
 2.  [Status: Done] **Save Commands-only (保存時コマンドのみ出力)**: 保存・再構築時に `commands` のみを書き出し、`actions` は出力しない（互換が必要なら「エクスポート専用」に限定）。
 3.  [Status: Done] **GUI 表示・プレビューの commands-first 化**: プレビュー/自然文生成は `commands` を一次ソースにし、`actions` は fallback のみにする。
-4.  [Status: Todo] **テスト整流**: `actions` を期待しているGUI/統合テストを `commands` 期待へ移行し、方針とテストの整合を取る。
-5.  [Status: Todo] **CI ガード**: `data/` 配下のカードJSONに `actions` フィールドが残っていないことを検査し、差し戻しを防ぐ。
+4.  [Status: Done] **テスト整流**: `actions` を期待しているGUI/統合テストを `commands` 期待へ移行し、方針とテストの整合を取る。
+5.  [Status: Done] **CI ガード**: `data/` 配下のカードJSONに `actions` フィールドが残っていないことを検査し、差し戻しを防ぐ。
 6.  [Status: Todo] **未対応アクションの棚卸しと優先対応**: 未対応 `Action type` をノイズ無しで集計し、(1) Engine生成系 → (2) 頻出カード効果 → (3) 低頻度/別名 の順で変換対応を進める。
 7.  [Status: Todo] **実行経路の一本化**: AI/GUI/スクリプトのどの入口からも「実行できるCommand」として扱えるよう、`wrap_action`/ネイティブコマンド/辞書表現の責務を整理する。
 
@@ -156,7 +156,7 @@ GUIの「表示はアクション、内部はコマンド」を維持したま�
 
 ### 5.2 直近のチェックポイント
 *   [Test: Pass] `commands` のみでGUIプレビュー/テキスト生成が破綻しない（`actions` があれば Fallback し、両方ある場合は `commands` を優先する）。
-*   [Test: Pending] `data/` 配下に `actions` が残っていたらCIで失敗する。
+*   [Test: Pass] `data/` 配下に `actions` が残っていたらCIで失敗する。
 
 ## 6. 既知の問題 (Known Issues)
 

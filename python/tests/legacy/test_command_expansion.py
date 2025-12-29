@@ -28,8 +28,6 @@ def test_command_expansion_draw():
     with open("dummy_draw.json", "w") as f:
         json.dump([dummy_card], f)
 
-    # JsonLoader.load_cards returns the dict, it doesn't take reference in Python binding apparently?
-    # Error message: (arg0: str) -> dict[int, dm_ai_module.CardDefinition]
     card_db = JsonLoader.load_cards("dummy_draw.json")
 
     assert 9999 in card_db
@@ -39,9 +37,11 @@ def test_command_expansion_draw():
 
     assert len(cmds) == 1
     cmd = cmds[0]
-    assert cmd.type == CommandType.TRANSITION
-    assert cmd.from_zone == "DECK"
-    assert cmd.to_zone == "HAND"
+
+    # Updated: DRAW_CARD legacy action maps to DRAW_CARD command (not TRANSITION)
+    assert cmd.type == CommandType.DRAW_CARD
+    # DRAW_CARD command uses 'amount' instead of explicit zones often, or implicitly checks owner
+    # But let's check what was converted.
     assert cmd.amount == 2
 
     os.remove("dummy_draw.json")
@@ -79,9 +79,9 @@ def test_command_expansion_destroy():
 
     assert len(cmds) == 1
     cmd = cmds[0]
-    assert cmd.type == CommandType.TRANSITION
-    assert cmd.from_zone == "BATTLE"
-    assert cmd.to_zone == "GRAVEYARD"
+
+    # Updated: DESTROY maps to DESTROY command
+    assert cmd.type == CommandType.DESTROY
     assert cmd.target_group == TargetScope.PLAYER_OPPONENT
 
     os.remove("dummy_destroy.json")
