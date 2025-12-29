@@ -42,3 +42,23 @@ model_v1.pth
 data/*.onnx
 data/*.onnx.data
 .mypy_cache/
+
+# Local CMake/third-party build directories
+build_debug/
+build_msvc/
+_deps/
+build_*/
+
+# ONNX / onnxruntime artifacts
+onnxruntime*.pdb
+onnxruntime*.lib
+onnxruntime*.zip
+
+# pybind11 / subprojects
+_deps/pybind11*/
+
+# Temporary cmake/packaging
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
