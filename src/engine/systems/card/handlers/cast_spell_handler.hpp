@@ -48,6 +48,11 @@ namespace dm::engine {
             }
         }
 
+        void resolve_with_targets(const ResolutionContext& ctx) override {
+            // If targets were provided through resolve_with_targets, treat as a normal resolve.
+            resolve(ctx);
+        }
+
         void resolve(const ResolutionContext& ctx) override {
             std::vector<dm::core::Instruction> instructions;
             ResolutionContext compile_ctx = ctx;
@@ -59,6 +64,18 @@ namespace dm::engine {
 
             dm::engine::systems::PipelineExecutor pipeline;
             pipeline.execute(instructions, ctx.game_state, ctx.card_db);
+            // After moving to STACK, attempt to immediately resolve any stacked plays
+            if (ctx.targets && !ctx.targets->empty()) {
+                for (int tid : *ctx.targets) {
+                    // Determine controller for this instance
+                    dm::core::PlayerID controller = ctx.game_state.active_player_id;
+                    if (tid >= 0 && (size_t)tid < ctx.game_state.card_owner_map.size()) {
+                        controller = (dm::core::PlayerID)ctx.game_state.card_owner_map[tid];
+                    }
+                    // Resolve play from stack for this instance
+                    dm::engine::systems::GameLogicSystem::resolve_play_from_stack(ctx.game_state, tid, 0, dm::core::SpawnSource::HAND_SUMMON, controller, ctx.card_db);
+                }
+            }
         }
     };
 }

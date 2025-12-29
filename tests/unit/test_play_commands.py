@@ -1,5 +1,6 @@
 import pytest
-from dm_ai_module import GameState, DeclarePlayCommand, PayCostCommand, ResolvePlayCommand, CardDefinition, CardType
+from dm_ai_module import GameState, CardDefinition, CardType
+from tests.shims.play_commands_shim import DeclarePlayCommand, PayCostCommand, ResolvePlayCommand
 
 
 def setup_simple_state():
@@ -8,7 +9,7 @@ def setup_simple_state():
     state._ensure_player(0)
     state._ensure_player(1)
     # create a simple creature card in hand with instance id 1
-    state.add_card_to_hand(0, card_id=1, instance_id=1)
+    state.add_card_to_hand(0, 1, 1)
     # register card definition so ResolvePlayCommand treats it as a creature
     try:
         if not hasattr(globals().get('dm_ai_module', None), '_CARD_REGISTRY'):
@@ -20,7 +21,7 @@ def setup_simple_state():
     except Exception:
         pass
     # give player 0 one untapped mana source (instance id 100)
-    state.add_card_to_mana(0, card_id=200, instance_id=100)
+    state.add_card_to_mana(0, 200, 100)
     return state, state.players[0].hand[0]
 
 
