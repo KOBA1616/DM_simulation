@@ -1,0 +1,48 @@
+# General
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Logs & Data
+*.log
+data/analytics/
+data/generations/
+data/logs/
+
+# Models
+models/*.pth
+
+# Build
+bin/
+build/
+*.pyd
+*.so
+*.dll
+*.exe
+*.obj
+model_v1.pth
+*.pth
+*.npz
+data/*.onnx
+data/*.onnx.data
+.mypy_cache/
+build_debug/
+build_msvc/
+build/
+bin/*.pyd
