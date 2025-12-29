@@ -1,0 +1,2691 @@
+Report generated for project root: C:\Users\ichirou\DM_simulation
+Files with matches: 91
+
+FILE: C:\Users\ichirou\DM_simulation\CMakeLists.txt (matches: 4)
+  160: # Engine (Phase 2)
+  161: set(SRC_ENGINE
+  162:     src/engine/actions/intent_generator.cpp
+  163:     src/engine/actions/strategies/pending_strategy.cpp
+  164:     src/engine/actions/strategies/stack_strategy.cpp
+  161: set(SRC_ENGINE
+  162:     src/engine/actions/intent_generator.cpp
+  163:     src/engine/actions/strategies/pending_strategy.cpp
+  164:     src/engine/actions/strategies/stack_strategy.cpp
+  165:     src/engine/actions/strategies/phase_strategies.cpp
+  162:     src/engine/actions/intent_generator.cpp
+  163:     src/engine/actions/strategies/pending_strategy.cpp
+  164:     src/engine/actions/strategies/stack_strategy.cpp
+  165:     src/engine/actions/strategies/phase_strategies.cpp
+  166:     src/engine/systems/flow/phase_manager.cpp
+  163:     src/engine/actions/strategies/pending_strategy.cpp
+  164:     src/engine/actions/strategies/stack_strategy.cpp
+  165:     src/engine/actions/strategies/phase_strategies.cpp
+  166:     src/engine/systems/flow/phase_manager.cpp
+  167:     src/engine/systems/mana/mana_system.cpp
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_ai_action_command_shim.py (matches: 1)
+   73:         return FlowCommand({"pass": True})
+   74: 
+   75:     # Fallback: return a generic CompatCommand with action_type for unknown actions
+   76:     return CompatCommand('generic', {'action_type': t})
+   77: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_ai_module.py (matches: 7)
+  207: 
+  208: class Effect:
+  209:     def __init__(self, actions):
+  210:         # commands will be filled by JsonLoader
+  211:         self.actions = actions
+  209:     def __init__(self, actions):
+  210:         # commands will be filled by JsonLoader
+  211:         self.actions = actions
+  212:         self.commands = []
+  213: 
+  228:             effects = []
+  229:             for eff in item.get('effects', []):
+  230:                 actions = eff.get('actions', [])
+  231:                 effect = Effect(actions)
+  232:                 # convert actions to commands
+  229:             for eff in item.get('effects', []):
+  230:                 actions = eff.get('actions', [])
+  231:                 effect = Effect(actions)
+  232:                 # convert actions to commands
+  233:                 for a in actions:
+  230:                 actions = eff.get('actions', [])
+  231:                 effect = Effect(actions)
+  232:                 # convert actions to commands
+  233:                 for a in actions:
+  234:                     cmdd = map_action(a)
+  231:                 effect = Effect(actions)
+  232:                 # convert actions to commands
+  233:                 for a in actions:
+  234:                     cmdd = map_action(a)
+  235:                     # Normalize target_group strings to TargetScope enum where possible
+  276:                         ss_effects = []
+  277:                         for eff in ss.get('effects', []):
+  278:                             ss_effects.append(Effect(eff.get('actions', []) ))
+  279:                         self.spell_side = CD(raw['spell_side'], ss_effects)
+  280:                     else:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tmp_debug_event.py (matches: 1)
+   10: action_def = dm_ai_module.ActionDef()
+   11: action_def.type = dm_ai_module.EffectActionType.DRAW_CARD
+   12: effect_def.actions = [action_def]
+   13: 
+   14: cdata = dm_ai_module.CardData(
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tmp_debug_jsonloader.py (matches: 2)
+    1: import json
+    2: from dm_ai_module import JsonLoader
+    3: sample = [{"id":9999,"effects":[{"trigger":"ON_PLAY","actions":[{"type":"DRAW_CARD","value1":2}]}]}]
+    4: open('tmp_dummy.json','w', encoding='utf-8').write(json.dumps(sample))
+    5: cards=JsonLoader.load_cards('tmp_dummy.json')
+    7: cd=cards.get(9999)
+    8: print('effects len', len(cd.effects))
+    9: print('first effect actions', cd.effects[0].actions)
+   10: print('first effect commands', cd.effects[0].commands)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tmp_debug_sa.py (matches: 2)
+   16: s.current_phase = dm_ai_module.Phase.ATTACK
+   17: acts = dm_ai_module.ActionGenerator.generate_legal_actions(s, card_db)
+   18: print('has attack actions:', any(a.type == dm_ai_module.ActionType.ATTACK_PLAYER for a in acts))
+   19: print('actions count', len(acts))
+   20: try:
+   17: acts = dm_ai_module.ActionGenerator.generate_legal_actions(s, card_db)
+   18: print('has attack actions:', any(a.type == dm_ai_module.ActionType.ATTACK_PLAYER for a in acts))
+   19: print('actions count', len(acts))
+   20: try:
+   21:     from dm_toolkit.commands_new import generate_legal_commands
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tmp_debug_spell.py (matches: 1)
+    6: if getattr(card_db.get(6), 'effects', None):
+    7: 	for e in card_db[6].effects:
+    8: 		print(' effect trigger=', getattr(e,'trigger',None), 'actions=', [(getattr(a,'type',None), getattr(a,'scope',None)) for a in getattr(e,'actions',[])])
+    9: gs = dm_ai_module.GameState(2)
+   10: gs.setup_test_duel()
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\.github\workflows\ci-windows-msvc.yml (matches: 3)
+   13:     steps:
+   14:       - name: Checkout
+   15:         uses: actions/checkout@v4
+   16: 
+   17:       - name: Setup Python
+   16: 
+   17:       - name: Setup Python
+   18:         uses: actions/setup-python@v4
+   19:         with:
+   20:           python-version: '3.11'
+   42:       - name: Upload build artifacts (debug symbols)
+   43:         if: always()
+   44:         uses: actions/upload-artifact@v4
+   45:         with:
+   46:           name: windows-build-debug
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\.github\workflows\ci.yml (matches: 4)
+   13:     steps:
+   14:       - name: Checkout repository
+   15:         uses: actions/checkout@v4
+   16: 
+   17:       - name: Setup Python
+   16: 
+   17:       - name: Setup Python
+   18:         uses: actions/setup-python@v4
+   19:         with:
+   20:           python-version: '3.11'
+   49:     steps:
+   50:       - name: Checkout repository
+   51:         uses: actions/checkout@v4
+   52: 
+   53:       - name: Setup Python
+   52: 
+   53:       - name: Setup Python
+   54:         uses: actions/setup-python@v4
+   55:         with:
+   56:           python-version: '3.11'
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\.github\workflows\mypy.yml (matches: 3)
+   12:     runs-on: ubuntu-latest
+   13:     steps:
+   14:       - uses: actions/checkout@v4
+   15: 
+   16:       - name: Set up Python
+   15: 
+   16:       - name: Set up Python
+   17:         uses: actions/setup-python@v4
+   18:         with:
+   19:           python-version: '3.12'
+   20: 
+   21:       - name: Install dependencies
+   22:         uses: actions/cache@v4
+   23:         with:
+   24:           path: ~/.cache/pip
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\.github\workflows\windows-build.yml (matches: 2)
+   10:     steps:
+   11:       - name: Checkout
+   12:         uses: actions/checkout@v4
+   13: 
+   14:       - name: Setup Python 3.12
+   13: 
+   14:       - name: Setup Python 3.12
+   15:         uses: actions/setup-python@v4
+   16:         with:
+   17:           python-version: '3.12'
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\commands_new.py (matches: 5)
+  104: 
+  105: def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
+  106:     """Compatibility helper: generate legal actions and return wrapped commands.
+  107: 
+  108:     Calls `dm_ai_module.ActionGenerator.generate_legal_actions` and maps each
+  112:         import dm_ai_module
+  113: 
+  114:         actions = []
+  115:         try:
+  116:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+  114:         actions = []
+  115:         try:
+  116:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+  117:         except Exception:
+  118:             actions = []
+  116:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+  117:         except Exception:
+  118:             actions = []
+  119: 
+  120:         cmds = []
+  119: 
+  120:         cmds = []
+  121:         for a in actions:
+  122:             # Prefer explicit attached command if it follows protocol, otherwise wrap action
+  123:             cmd_obj = getattr(a, 'command', None)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\ai\agent\mcts.py (matches: 4)
+  134:             return 0.0
+  135: 
+  136:         # Generate legal actions (prefer Action objects; fallback to ICommand)
+  137:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(node.state, self.card_db)
+  138:         commands = []
+  135: 
+  136:         # Generate legal actions (prefer Action objects; fallback to ICommand)
+  137:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(node.state, self.card_db)
+  138:         commands = []
+  139:         if not actions:
+  137:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(node.state, self.card_db)
+  138:         commands = []
+  139:         if not actions:
+  140:             commands = commands_new.generate_legal_commands(node.state, self.card_db) or []
+  141:             if not commands:
+  157:         # Create children
+  158:         # Iterate over Action objects if present, otherwise over ICommand objects
+  159:         iterable = actions if actions else commands
+  160:         for item in iterable:
+  161:             is_action = hasattr(item, 'type')
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\ai\analytics\deck_consistency.py (matches: 15)
+   53:                 turn_action_count += 1
+   54:                 if turn_action_count > MAX_ACTIONS:
+   55:                     print(f"WARNING: Max actions reached for turn {current_turn}. Breaking.")
+   56:                     break
+   57: 
+   75:         # No, the main loop calls this, so this function should return after making progress.
+   76:         # But wait, the main loop checks 'active_player_id'.
+   77:         # So this function should perform actions until active_player_id changes OR return control to check limits.
+   78: 
+   79:         # Actually, let's make this function perform ONE step,
+   89:         # Let's perform ONE action here to respect the outer safety counter.
+   90: 
+   91:         actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db) or []
+   92:         try:
+   93:             from dm_toolkit.commands_new import generate_legal_commands
+   96:         cmds = generate_legal_commands(state, self.card_db) if generate_legal_commands else []
+   97: 
+   98:         if not actions and not cmds:
+   99:             dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+  100:             return
+  100:             return
+  101: 
+  102:         best_action: Any = self._choose_action(actions, state) if actions else None
+  103:         best_cmd = cmds[0] if cmds else None
+  104: 
+  122:                     dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
+  123: 
+  124:     def _choose_action(self, actions: List[Any], state: Any) -> Any:
+  125:         # Prioritize:
+  126:         # 1. Mana Charge (if not done)
+  129:         # 4. Pass
+  130: 
+  131:         charge_actions = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
+  132:         play_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
+  133:         attack_actions = [a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER or a.type == dm_ai_module.ActionType.ATTACK_CREATURE]
+  130: 
+  131:         charge_actions = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
+  132:         play_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
+  133:         attack_actions = [a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER or a.type == dm_ai_module.ActionType.ATTACK_CREATURE]
+  134:         pass_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PASS]
+  131:         charge_actions = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
+  132:         play_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
+  133:         attack_actions = [a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER or a.type == dm_ai_module.ActionType.ATTACK_CREATURE]
+  134:         pass_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PASS]
+  135: 
+  132:         play_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
+  133:         attack_actions = [a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER or a.type == dm_ai_module.ActionType.ATTACK_CREATURE]
+  134:         pass_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PASS]
+  135: 
+  136:         if charge_actions:
+  146:             return pass_actions[0]
+  147: 
+  148:         return actions[0] # Fallback
+  149: 
+  150:     def _pass_turn(self, state: Any) -> None:
+  151:         """Pass through opponent turn."""
+  152:         # Perform one step for opponent
+  153:         actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  154:         if not actions:
+  155:              dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+  152:         # Perform one step for opponent
+  153:         actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  154:         if not actions:
+  155:              dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+  156:              return
+  156:              return
+  157: 
+  158:         pass_action: Any = next((a for a in actions if a.type == dm_ai_module.ActionType.PASS), None)
+  159: 
+  160:         if pass_action:
+  162:         else:
+  163:             # Must perform mandatory action (e.g. resolve effect)
+  164:              dm_ai_module.EffectResolver.resolve_action(state, actions[0], self.card_db)
+  165: 
+  166:     def _scan_accessed_cards(self, state: Any, player_id: int, seen_cards: SeenCards) -> None:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\ai\analytics\vector_analyzer.py (matches: 3)
+   69:         vectors = []
+   70: 
+   71:         # Handle 'actions' (New style)
+   72:         if "actions" in effect:
+   73:             for action in effect["actions"]:
+   70: 
+   71:         # Handle 'actions' (New style)
+   72:         if "actions" in effect:
+   73:             for action in effect["actions"]:
+   74:                 vectors.extend(self._analyze_action(action))
+   71:         # Handle 'actions' (New style)
+   72:         if "actions" in effect:
+   73:             for action in effect["actions"]:
+   74:                 vectors.extend(self._analyze_action(action))
+   75: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\ai\ga\evolve.py (matches: 5)
+   91:                 generate_legal_commands = None
+   92: 
+   93:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db) or []
+   94:             cmds = generate_legal_commands(gs, self.card_db) if generate_legal_commands else []
+   95: 
+   94:             cmds = generate_legal_commands(gs, self.card_db) if generate_legal_commands else []
+   95: 
+   96:             if not actions and not cmds:
+   97:                 dm_ai_module.PhaseManager.next_phase(gs)
+   98:                 continue
+  107:                     except Exception:
+  108:                         # fallback to action path
+  109:                         if actions:
+  110:                             action = random.choice(actions)
+  111:                             dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+  108:                         # fallback to action path
+  109:                         if actions:
+  110:                             action = random.choice(actions)
+  111:                             dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+  112:                 # best-effort phase advance check
+  119:                     pass
+  120:             else:
+  121:                 action = random.choice(actions)
+  122:                 dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+  123:                 if action.type == dm_ai_module.ActionType.PASS:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\engine\compat.py (matches: 1)
+  188: 
+  189:         Uses the Python compatibility helper `dm_toolkit.commands_new.generate_legal_commands`
+  190:         to wrap engine actions into ICommand interfaces.
+  191:         """
+  192:         EngineCompat._check_module()
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\app.py (matches: 10)
+  518:              return
+  519: 
+  520:         actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
+  521:         relevant_actions = [a for a in actions if EngineCompat.get_action_source_id(a) == instance_id]
+  522: 
+  519: 
+  520:         actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
+  521:         relevant_actions = [a for a in actions if EngineCompat.get_action_source_id(a) == instance_id]
+  522: 
+  523:         if not relevant_actions: return
+  578: 
+  579:     def on_resolve_effect_from_stack(self, index: int) -> None:
+  580:         actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
+  581:         resolve_actions = []
+  582:         if dm_ai_module:
+  581:         resolve_actions = []
+  582:         if dm_ai_module:
+  583:             resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
+  584: 
+  585:         target_action = None
+  651: 
+  652:             if is_human:
+  653:                 actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
+  654:                 resolve_actions = []
+  655:                 if dm_ai_module:
+  654:                 resolve_actions = []
+  655:                 if dm_ai_module:
+  656:                     resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
+  657: 
+  658:                 if len(resolve_actions) > 1:
+  681:                                  self.execute_action(valid_actions[indices[0]])
+  682:                                  return
+  683:                 if not actions:
+  684:                     EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
+  685:                     self.update_ui()
+  686:                 return
+  687: 
+  688:             actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
+  689:             if not actions:
+  690:                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
+  687: 
+  688:             actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
+  689:             if not actions:
+  690:                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
+  691:             else:
+  690:                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
+  691:             else:
+  692:                 best_action = actions[0]
+  693:                 if best_action:
+  694:                     self.execute_action(best_action)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\card_editor.py (matches: 1)
+  201: 
+  202:         if card_item:
+  203:             # Reconstruct data to ensure structure (effects/actions) is up to date
+  204:             fresh_data = self.tree_widget.data_manager.reconstruct_card_data(card_item)
+  205:             if fresh_data:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\localization.py (matches: 2)
+  158:     "Loaded Deck for P1": "P1のデッキを読み込みました",
+  159:     "Game Reset": "ゲームリセット",
+  160:     "No actions for card": "このカードで実行できるアクションはありません",
+  161:     "Multiple actions found. Executing first.": "複数のアクションが見つかりました。最初のアクションを実行します。",
+  162:     "Game Over! Result": "ゲームオーバー! 結果",
+  159:     "Game Reset": "ゲームリセット",
+  160:     "No actions for card": "このカードで実行できるアクションはありません",
+  161:     "Multiple actions found. Executing first.": "複数のアクションが見つかりました。最初のアクションを実行します。",
+  162:     "Game Over! Result": "ゲームオーバー! 結果",
+  163:     "Auto-Pass": "自動パス",
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\ai\mcts_python.py (matches: 9)
+  121:             else:
+  122:                 if not node.children:
+  123:                     # Node is fully expanded (no untried actions) but has no children.
+  124:                     # This means there were no legal actions at all in this state.
+  125:                     return node
+  122:                 if not node.children:
+  123:                     # Node is fully expanded (no untried actions) but has no children.
+  124:                     # This means there were no legal actions at all in this state.
+  125:                     return node
+  126:                 node = node.best_child()
+  162: 
+  163:         child_node = Node(next_state, parent=node, action=action)
+  164:         # Populate untried actions for child (prefer Action list)
+  165:         child_actions = dm_ai_module.ActionGenerator.generate_legal_actions(next_state, self.card_db)
+  166:         if child_actions:
+  190:                     return 0.0
+  191:             
+  192:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(current_state, self.card_db)
+  193:             if not actions:
+  194:                 dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
+  191:             
+  192:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(current_state, self.card_db)
+  193:             if not actions:
+  194:                 dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
+  195:             else:
+  197:                 
+  198:                 # 1. Mana Charge (Turn <= 3)
+  199:                 mana_charges = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
+  200:                 should_charge = False
+  201:                 if mana_charges:
+  209:                 else:
+  210:                     # 2. Play Card (Main Phase)
+  211:                     play_cards = [a for a in actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
+  212:                     if play_cards and random.random() < 0.8: # 80% chance to play card
+  213:                         action = random.choice(play_cards)
+  214:                     else:
+  215:                         # 3. Attack (Attack Phase)
+  216:                         attacks = [a for a in actions if a.type in (dm_ai_module.ActionType.ATTACK_PLAYER, dm_ai_module.ActionType.ATTACK_CREATURE)]
+  217:                         if attacks and random.random() < 0.8: # 80% chance to attack
+  218:                             action = random.choice(attacks)
+  219:                         else:
+  220:                             # Fallback to random (includes PASS)
+  221:                             action = random.choice(actions)
+  222:                 
+  223:                 dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\dialogs\selection_dialog.py (matches: 1)
+    9: class CardSelectionDialog(QDialog):
+   10:     """
+   11:     A generic dialog for selecting cards or actions.
+   12:     Supports single or multiple selection.
+   13:     """
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\editor\action_converter.py (matches: 1)
+   30: def convert_action_to_objs(action: Any) -> List[dict]:
+   31:     """Return a list of command-like objects for compatibility with editor.
+   32:     Most actions map to a single command; wrap result in a list.
+   33:     """
+   34:     cmd = map_action(action)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\editor\command_model.py (matches: 1)
+  105: @dataclass
+  106: class WarningCommand(CommandDef):
+  107:     """Special node for unconverted legacy actions.
+  108: 
+  109:     The GUI displays this as a warning.
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\editor\data_manager.py (matches: 18)
+   20:     def __init__(self, model: QStandardItemModel):
+   21:         self.model = model
+   22:         self.templates: JSON = {"commands": [], "actions": []}
+   23:         self.load_templates()
+   24:         # cache can hold internal representations keyed by uid for editor-only use
+   54:             except Exception as e:
+   55:                 print(f"Error loading templates: {e}")
+   56:                 self.templates = {"commands": [], "actions": []}
+   57:         else:
+   58:             print("Warning: editor_templates.json not found.")
+   91:     def _lift_actions_to_commands(self, effect_data):
+   92:         """
+   93:         Helper to convert legacy 'actions' to 'commands' in-place.
+   94:         This hides the `Action` concept from the editor by materializing
+   95:         equivalent commands on the effect dict before the tree is built.
+   96:         """
+   97:         try:
+   98:             legacy_actions = effect_data.get('actions', [])
+   99:             if legacy_actions:
+  100:                 converted_cmds = []
+  127:                 effect_data['commands'] = []
+  128: 
+  129:             # Remove legacy 'actions' to enforce Commands-only policy in-editor
+  130:             # UNLESS legacy save mode is forced (Phase D: Rollback switch)
+  131:             if not os.environ.get('EDITOR_LEGACY_SAVE'):
+  130:             # UNLESS legacy save mode is forced (Phase D: Rollback switch)
+  131:             if not os.environ.get('EDITOR_LEGACY_SAVE'):
+  132:                 if 'actions' in effect_data:
+  133:                     try:
+  134:                         del effect_data['actions']
+  132:                 if 'actions' in effect_data:
+  133:                     try:
+  134:                         del effect_data['actions']
+  135:                     except Exception:
+  136:                         pass
+  136:                         pass
+  137:         except Exception:
+  138:             # Non-fatal: if conversion fails, continue loading but preserve original actions
+  139:             pass
+  140: 
+  156: 
+  157:             for eff_idx, effect in enumerate(triggers):
+  158:                 # Load-Lift: convert legacy `actions` into `commands`
+  159:                 self._lift_actions_to_commands(effect)
+  160: 
+  171:             for ra_idx, ra in enumerate(card.get('reaction_abilities', [])):
+  172:                 ra_item = self._create_reaction_item(ra)
+  173:                 # Phase D: Lift reaction abilities too if they have actions
+  174:                 if isinstance(ra, dict):
+  175:                      # If reaction has actions/commands structure similar to effect
+  173:                 # Phase D: Lift reaction abilities too if they have actions
+  174:                 if isinstance(ra, dict):
+  175:                      # If reaction has actions/commands structure similar to effect
+  176:                      # We apply lift to it.
+  177:                      self._lift_actions_to_commands(ra)
+  195: 
+  196:                 for eff_idx, effect in enumerate(spell_triggers):
+  197:                     # Load-Lift: convert legacy `actions` into `commands` for Spell Side too
+  198:                     self._lift_actions_to_commands(effect)
+  199: 
+  221:         # Load Legacy Actions (should be empty if lifted, but keep for safety)
+  222:         # Only render them if explicitly present (e.g. EDITOR_LEGACY_SAVE active or lift failed)
+  223:         for act_idx, action in enumerate(effect_data.get('actions', [])):
+  224:             act_item = self._create_action_item(action)
+  225:             eff_item.appendRow(act_item)
+  357:                         eff_data = self._reconstruct_effect(grp_child)
+  358:                         new_effects.append(eff_data)
+  359:                         # Detect revolution change in either legacy actions or new commands
+  360:                         # Note: _reconstruct_effect now only emits commands, so check commands.
+  361:                         for act in eff_data.get('commands', []) or []:
+  521:                 del eff_data['commands']
+  522: 
+  523:         # Handle legacy actions field
+  524:         if legacy_save_mode and legacy_actions:
+  525:             eff_data['actions'] = legacy_actions
+  523:         # Handle legacy actions field
+  524:         if legacy_save_mode and legacy_actions:
+  525:             eff_data['actions'] = legacy_actions
+  526:         else:
+  527:             if 'actions' in eff_data:
+  525:             eff_data['actions'] = legacy_actions
+  526:         else:
+  527:             if 'actions' in eff_data:
+  528:                 del eff_data['actions']
+  529: 
+  526:         else:
+  527:             if 'actions' in eff_data:
+  528:                 del eff_data['actions']
+  529: 
+  530:         return eff_data
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\editor\logic_tree.py (matches: 5)
+  138: 
+  139:         elif item_type == "ACTION":
+  140:             # Keep legacy actions context menu for now to allow removal/conversion
+  141:             # But DO NOT offer "Add Option" or new creation paths that make actions.
+  142: 
+  139:         elif item_type == "ACTION":
+  140:             # Keep legacy actions context menu for now to allow removal/conversion
+  141:             # But DO NOT offer "Add Option" or new creation paths that make actions.
+  142: 
+  143:             replace_cmd_action = QAction(tr("Convert to Command"), self)
+  202: 
+  203:         if not preview_items:
+  204:             QMessageBox.information(self, tr("Conversion Info"), tr("No legacy actions found to convert."))
+  205:             return
+  206: 
+  212:             count, warnings = self._recursive_convert_actions(item)
+  213:             if count > 0:
+  214:                 msg = f"{tr('Converted')} {count} {tr('actions to commands.')}"
+  215:                 if warnings > 0:
+  216:                     msg += f"\n\n{tr('Warnings')}: {warnings} {tr('items require attention.')}\n"
+  317:                     continue
+  318:                 if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+  319:                     # Collect actions inside
+  320:                     opt_actions_data = []
+  321:                     for k in range(child.rowCount()):
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\editor\preview_pane.py (matches: 5)
+  286:             # Commands-First Policy (Migration Phase 4.3)
+  287:             # Prioritize 'commands' for CIR Summary.
+  288:             # If commands are present, summarize them. Fallback to actions only if commands missing.
+  289:             commands = eff.get('commands', [])
+  290:             if commands:
+  305:                     cir_lines.append(f"Effect[{ei}] Command[{ci}]: {kind}/{ctype}{opt_info}{branch_info}")
+  306:             else:
+  307:                 # Fallback to legacy actions
+  308:                 for ai, act in enumerate(eff.get('actions', []), start=1):
+  309:                     cir = normalize.canonicalize(act)
+  306:             else:
+  307:                 # Fallback to legacy actions
+  308:                 for ai, act in enumerate(eff.get('actions', []), start=1):
+  309:                     cir = normalize.canonicalize(act)
+  310:                     kind = cir.get('kind')
+  438: 
+  439:     def _build_natural_summaries(self, data):
+  440:         """Scan effects/actions to create compact natural-language summary sentences
+  441:         for common patterns (e.g., draw N then move N to deck bottom on enter).
+  442:         """
+  450:             raw_ops = eff.get('commands', [])
+  451:             if not raw_ops:
+  452:                 raw_ops = eff.get('actions', []) or []
+  453: 
+  454:             # Look for draw then deck-bottom pair
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\editor\text_generator.py (matches: 5)
+  386:         trigger = effect.get("trigger", "NONE")
+  387:         condition = effect.get("condition", {})
+  388:         actions = effect.get("actions", [])
+  389: 
+  390:         trigger_text = cls.trigger_to_japanese(trigger, is_spell)
+  408: 
+  409:         # Commands-First Policy (Migration Phase 4.3):
+  410:         # If 'commands' exist, they are the source of truth. Ignore 'actions'.
+  411:         # Only fallback to 'actions' if 'commands' is empty.
+  412:         commands = effect.get("commands", [])
+  409:         # Commands-First Policy (Migration Phase 4.3):
+  410:         # If 'commands' exist, they are the source of truth. Ignore 'actions'.
+  411:         # Only fallback to 'actions' if 'commands' is empty.
+  412:         commands = effect.get("commands", [])
+  413:         if commands:
+  417:         else:
+  418:             # Fallback for legacy data
+  419:             for action in actions:
+  420:                 raw_items.append(action)
+  421:                 action_texts.append(cls._format_action(action, is_spell, sample=sample))
+  696:                  return f"{target_str}に効果（{str_val}）を与える。"
+  697: 
+  698:         # --- Enhanced Command-like actions ---
+  699:         elif atype == "TRANSITION":
+  700:              from_z = action.get("from_zone", "").split('.')[-1]
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\editor\forms\convert_batch_preview_dialog.py (matches: 1)
+   18: 
+   19:         layout = QVBoxLayout(self)
+   20:         layout.addWidget(QLabel(tr("The following actions will be converted to Commands. Review warnings before applying.")))
+   21: 
+   22:         self.list_widget = QListWidget(self)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\widgets\card_widget.py (matches: 6)
+   18:         civ: Can be a single string (e.g. "FIRE")
+   19:         or a list of strings (e.g. ["FIRE", "NATURE"]).
+   20:         legal_actions: List of actions available for this card.
+   21:         """
+   22:         super().__init__(parent)
+   62:         self.update_style()
+   63: 
+   64:     def update_legal_actions(self, actions):
+   65:         self.legal_actions = actions
+   66: 
+   63: 
+   64:     def update_legal_actions(self, actions):
+   65:         self.legal_actions = actions
+   66: 
+   67:     def enterEvent(self, event):
+   76:         menu = QMenu(self)
+   77: 
+   78:         # Categorize actions
+   79:         # Simplified categorization logic
+   80:         added_types = set()
+   93:             elif "Use Ability" in action_str: label = "Use Ability"
+   94: 
+   95:             # De-duplicate identical labels if multiple similar actions exist (e.g. attack different shields)
+   96:             # For simplicity, if we have multiple Attack Player (different shields), we might want to just show one "Attack Player"
+   97:             # and let the engine resolve/ask target, BUT the engine usually generates distinct actions.
+   95:             # De-duplicate identical labels if multiple similar actions exist (e.g. attack different shields)
+   96:             # For simplicity, if we have multiple Attack Player (different shields), we might want to just show one "Attack Player"
+   97:             # and let the engine resolve/ask target, BUT the engine usually generates distinct actions.
+   98:             # For now, list them all but try to be descriptive.
+   99: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\widgets\scenario_tools.py (matches: 1)
+  449:             self.is_recording = False
+  450:             self.btn_record.setText(tr("Start Recording"))
+  451:             self.lbl_record_status.setText(f"{tr('Status: Stopped')} ({len(self.recorded_actions)} actions)")
+  452: 
+  453:     def record_action(self, action_str):
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\gui\widgets\zone_widget.py (matches: 4)
+   46:         main_layout.addWidget(self.scroll_area)
+   47: 
+   48:     def set_legal_actions(self, actions):
+   49:         self.legal_actions = actions
+   50:         # Update existing widgets if possible, but usually update_cards handles recreation
+   47: 
+   48:     def set_legal_actions(self, actions):
+   49:         self.legal_actions = actions
+   50:         # Update existing widgets if possible, but usually update_cards handles recreation
+   51:         # If we want live updates without recreation:
+   56: 
+   57:     def update_cards(self, card_data_list, card_db, civ_map=None, legal_actions=None):
+   58:         # Update cached legal actions if provided
+   59:         if legal_actions is not None:
+   60:             self.legal_actions = legal_actions
+   95:             instance_id = c_data.get('instance_id', -1)
+   96:             
+   97:             # Filter actions for this card
+   98:             relevant_actions = []
+   99:             if instance_id != -1:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\dm_toolkit\training\evolution_ecosystem.py (matches: 1)
+  149:                  # Or better, just pick first action (often PASS if available, or first card).
+  150:                  # To get meaningful stats, we want somewhat reasonable play.
+  151:                  # Let's use a very simple heuristic: prioritized actions.
+  152: 
+  153:                  # Prefer an action that can be executed via command when available
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\docs\command_pipeline_migration.md (matches: 2)
+    4: 
+    5: ## 概要
+    6: - このフェーズでは主に「Load-Lift Strategy」を実装し、カードの読み込み時に全ての `actions` を `commands` に変換してメモリ上で展開します。
+    7: - エディタは `Action` ノードを直接表示せず、`COMMAND` ノードのみを生成します。
+    8: - 保存時は原則 `commands` フィールドのみを書き出します（互換モードは開発フラグで制御）。
+   16: 
+   17: ## 受け入れ基準
+   18: - エディタでカードを開くと `actions` ノードが表示されないこと（`commands` のみ）。
+   19: - 主要ユースケース（ドロー、プレイ、バッファ操作、MEKRAID 等）が既存の動作と一致することを示す自動テスト群が成功すること。
+   20: - 変換不能な legacy action は `WarningCommand`（保存時は `legacy_warning` マーカー）として明確に一覧され、ユーザーがGUI上で修正可能であること。
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\docs\00_Overview\20_Revised_Roadmap.md (matches: 1)
+   42: 
+   43: ### Task 7.1: ハイブリッドスキーマの確立 (Hybrid Schema) [Done]
+   44: *   JSONデータ構造において、旧来の `actions` リストと新しい `commands` リストの共存を許容するスキーマ変更。
+   45: *   `LegacyJsonAdapter` の完全廃止（アダプター開発工数の削減）。
+   46: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\docs\02_Planned_Specs\09_Card_Generator_Architecture.md (matches: 2)
+   41:       "trigger": "ON_PLAY",
+   42:       "condition": { "type": "NONE" },
+   43:       "actions": [
+   44:         {
+   45:           "type": "DESTROY",
+   83:             if (!check_condition(effect.condition, ctx.game_state)) continue;
+   84: 
+   85:             for (const auto& action : effect.actions) {
+   86:                 resolve_action(action, ctx.game_state);
+   87:             }
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\docs\02_Planned_Specs\Command_API_Spec.md (matches: 3)
+    3: ## Overview
+    4: 
+    5: This document defines the schema and protocol for the new `Command` system, which replaces the legacy `Action` dictionary structure. The goal is to provide a strongly-typed, consistent, and serializable representation of game actions.
+    6: 
+    7: ## ICommand Protocol
+   21:         """
+   22:         Returns an inverse command or executes the inverse operation, if applicable.
+   23:         Used for undoing actions in search trees or debugging.
+   24:         """
+   25:         ...
+   83: 1.  **Zone Normalization**: Keys like `source_zone`, `origin_zone` mapped to `from_zone`. `destination_zone`, `dest_zone` mapped to `to_zone`.
+   84: 2.  **Type Mapping**: Legacy types like `MANA_CHARGE` are mapped to `TRANSITION` (or specific `MANA_CHARGE` type if supported) with `to_zone="MANA_ZONE"`.
+   85: 3.  **Recursion**: `options` containing lists of actions are recursively mapped to lists of commands.
+   86: 
+   87: ## C++ Interop
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\docs\02_Planned_Specs\command_pipeline_migration.md (matches: 1)
+    5: 
+    6: ## 概要
+    7: - このフェーズでは主に「Load-Lift Strategy」を実装し、カードの読み込み時に全ての `actions` を `commands` に変換してメモリ上で展開します。
+    8: - エディタは `Action` ノードを直接表示せず、`COMMAND` ノードのみを生成します。
+    9: - 保存時は原則 `commands` フィールドのみを書き出します（互換モードは開発フラグで制御）。
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\docs\99_Archived\POMDP_Implementation_Plan.md (matches: 1)
+   43:    - CI updates will run the test suite (no build-system changes needed for header-only initial work).
+   44: 
+   45: Next immediate actions (what I'll do now)
+   46: ---------------------------------------
+   47: - Add a short design doc (this file) — completed.
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\docs\api\command_spec.md (matches: 1)
+   67: ## Mapping Rules (Legacy Action -> Command)
+   68: 
+   69: To ensure Strict Validation in `CommandSystem`, actions are normalized as follows:
+   70: 
+   71: 1.  **Destruction**: `DESTROY` (Type: `DESTROY`, to: `GRAVEYARD`) or `TRANSITION` (to `GRAVEYARD`).
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\python\tests\test_keyword_commands.py (matches: 2)
+   63:                         has_mlb_effect = True
+   64: 
+   65:         # However, JsonLoader converts actions to commands on load.
+   66:         # Let's check CardTextGenerator or where MLB effect is added.
+   67:         # If MLB effect is added by C++ logic (e.g. CardSystem), it might not appear in `CardDefinition.effects` loaded from JSON directly unless added there.
+   72:         # It does NOT add an effect to `def.effects`.
+   73: 
+   74:         # So how did the previous test verify `eff.actions`?
+   75:         # `test_keyword_effects.py` :
+   76:         # `if eff.trigger == dm_ai_module.TriggerType.ON_DESTROY:`
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\python\tests\ci\test_ci_guard_json_format.py (matches: 6)
+   17: def test_json_no_actions_key(filepath):
+   18:     """
+   19:     CI Guard: Ensure that JSON files in data/ do not contain the legacy 'actions' key.
+   20:     The system should use 'commands' instead.
+   21:     """
+   21:     """
+   22: 
+   23:     # Exceptions: List files that are allowed to have 'actions' (e.g., legacy test data)
+   24:     # Adjust this list as needed.
+   25:     EXCEPTIONS = [
+   35:     # Also ignore hidden files or stats files that are not card definitions
+   36:     if filename.startswith(".") or "stats" in filename or "scenarios" in filename or "decks" in filename:
+   37:         # Assuming stats/scenarios/decks don't use 'actions' in a way that conflicts, or have different schema.
+   38:         # But 'scenarios.json' might embed card overrides?
+   39:         # Let's check card structure specifically.
+   48:     def check_object(obj, path=""):
+   49:         if isinstance(obj, dict):
+   50:             # Check for 'actions' key
+   51:             if "actions" in obj:
+   52:                 # Confirm context: is it inside an effect?
+   49:         if isinstance(obj, dict):
+   50:             # Check for 'actions' key
+   51:             if "actions" in obj:
+   52:                 # Confirm context: is it inside an effect?
+   53:                 # Heuristic: if 'trigger' is present or it's inside 'effects' list
+   52:                 # Confirm context: is it inside an effect?
+   53:                 # Heuristic: if 'trigger' is present or it's inside 'effects' list
+   54:                 pytest.fail(f"Found 'actions' key in {filepath} at {path}. Legacy actions are forbidden.")
+   55: 
+   56:             for k, v in obj.items():
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\python\tests\legacy\test_command_expansion.py (matches: 2)
+   16:             {
+   17:                 "trigger": "ON_PLAY",
+   18:                 "actions": [
+   19:                     {
+   20:                         "type": "DRAW_CARD",
+   59:             {
+   60:                 "trigger": "ON_PLAY",
+   61:                 "actions": [
+   62:                     {
+   63:                         "type": "DESTROY",
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\python\tests\legacy\test_keyword_effects.py (matches: 6)
+   23:                 {
+   24:                     "trigger": "NONE",
+   25:                     "actions": [
+   26:                         {
+   27:                             "type": "ADD_MANA",
+   51:         # In current Engine, keywords might imply effects internally without listing them in 'effects' vector immediately on load,
+   52:         # OR they might be generated.
+   53:         # However, checking 'actions' directly is legacy. We should check 'commands'.
+   54:         # If the engine hasn't fully migrated the generator to produce commands in the def,
+   55:         # we might need to rely on the fact that 'mega_last_burst' keyword is set.
+   55:         # we might need to rely on the fact that 'mega_last_burst' keyword is set.
+   56: 
+   57:         # If the original test passed, it means `eff.actions` WAS populated.
+   58:         # If so, my previous overwrite of `JsonLoader` should have converted it to `commands` IF it was loaded from JSON.
+   59:         # But here, `mega_last_burst` is a keyword. The effect is implicit.
+   59:         # But here, `mega_last_burst` is a keyword. The effect is implicit.
+   60:         # If `JsonLoader` or `CardRegistry` expands keywords into effects during load, then they should be there.
+   61:         # If not, the previous test might have been testing a scenario where `actions` were explicitly written?
+   62:         # No, the JSON snippet above DOES NOT have explicit MLB effects.
+   63: 
+   92:                         if cmd.type == CommandType.CAST_SPELL: # or equivalent
+   93:                              has_mlb_effect = True
+   94:                     # Fallback check actions if conversion failed (shouldn't happen with new loader)
+   95:                     for act in eff.actions:
+   96:                          if act.type == dm_ai_module.EffectPrimitive.CAST_SPELL:
+   93:                              has_mlb_effect = True
+   94:                     # Fallback check actions if conversion failed (shouldn't happen with new loader)
+   95:                     for act in eff.actions:
+   96:                          if act.type == dm_ai_module.EffectPrimitive.CAST_SPELL:
+   97:                              has_mlb_effect = True
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\backup_and_migrate.py (matches: 6)
+   20:         except Exception:
+   21:             continue
+   22:         if '"actions"' in s or "'actions'" in s:
+   23:             matched.append(path)
+   24:             dest = os.path.join(backup_dir, os.path.relpath(path, ROOT))
+   26:             shutil.copy2(path, dest)
+   27: 
+   28: print(f'Found {len(matched)} files containing "actions". Backed up copies created.')
+   29: for p in matched:
+   30:     print('-', p)
+   30:     print('-', p)
+   31: 
+   32: # Run migration script over repository root to convert actions->commands in JSON files
+   33: migrate_script = os.path.join(ROOT, 'scripts', 'migrate_actions_to_commands.py')
+   34: if not os.path.exists(migrate_script):
+   39: print('Migration exit code:', proc.returncode)
+   40: 
+   41: # Report remaining files still containing 'actions' after migration
+   42: remaining = []
+   43: for root, dirs, files in os.walk(ROOT):
+   51:         except Exception:
+   52:             continue
+   53:         if '"actions"' in s or "'actions'" in s:
+   54:             remaining.append(path)
+   55: 
+   54:             remaining.append(path)
+   55: 
+   56: print(f'\nRemaining files containing "actions": {len(remaining)}')
+   57: for p in remaining:
+   58:     print('-', p)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\check_no_legacy_actions.py (matches: 5)
+   17:         local_fails = 0
+   18:         if isinstance(node, dict):
+   19:             if 'actions' in node:
+   20:                 # Ignore empty actions list if allowed? No, strict migration implies removal of key.
+   21:                 print(f"FAILURE: 'actions' field found in {filepath} at {path}")
+   18:         if isinstance(node, dict):
+   19:             if 'actions' in node:
+   20:                 # Ignore empty actions list if allowed? No, strict migration implies removal of key.
+   21:                 print(f"FAILURE: 'actions' field found in {filepath} at {path}")
+   22:                 local_fails += 1
+   19:             if 'actions' in node:
+   20:                 # Ignore empty actions list if allowed? No, strict migration implies removal of key.
+   21:                 print(f"FAILURE: 'actions' field found in {filepath} at {path}")
+   22:                 local_fails += 1
+   23: 
+   49: 
+   50:     if total_fails > 0:
+   51:         print(f"FAILED: Found {total_fails} instances of legacy 'actions' usage.")
+   52:         sys.exit(1)
+   53:     else:
+   52:         sys.exit(1)
+   53:     else:
+   54:         print("SUCCESS: No legacy 'actions' fields found.")
+   55:         sys.exit(0)
+   56: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\debug_actions.py (matches: 6)
+   37:         pass
+   38: 
+   39: actions = ActionGenerator.generate_legal_actions(state, card_db)
+   40: print('actions count', len(actions))
+   41: try:
+   38: 
+   39: actions = ActionGenerator.generate_legal_actions(state, card_db)
+   40: print('actions count', len(actions))
+   41: try:
+   42:     from dm_toolkit.commands_new import generate_legal_commands
+   51: else:
+   52:     cmds = []
+   53: for i, a in enumerate(actions):
+   54:     print(i, getattr(a, 'type', None), getattr(a, 'card_id', None), getattr(a, 'command', None))
+   55: import sys
+  227:             pass
+  228: print('hand len', len(state.players[0].hand), 'mana len', len(state.players[0].mana_zone))
+  229: actions = ActionGenerator.generate_legal_actions(state, card_db)
+  230: print('actions count', len(actions))
+  231: try:
+  228: print('hand len', len(state.players[0].hand), 'mana len', len(state.players[0].mana_zone))
+  229: actions = ActionGenerator.generate_legal_actions(state, card_db)
+  230: print('actions count', len(actions))
+  231: try:
+  232:     from dm_toolkit.commands_new import generate_legal_commands
+  241: else:
+  242:     cmds = []
+  243: for i, a in enumerate(actions):
+  244:     print(i, getattr(a, 'type', None), getattr(a, 'card_id', None), getattr(a, 'command', None))
+  245: import dm_ai_module
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\debug_actions_run.py (matches: 3)
+  176:             pass
+  177: 
+  178:     actions = ActionGenerator.generate_legal_actions(state, card_db)
+  179:     print('actions count', len(actions))
+  180:     try:
+  177: 
+  178:     actions = ActionGenerator.generate_legal_actions(state, card_db)
+  179:     print('actions count', len(actions))
+  180:     try:
+  181:         from dm_toolkit.commands_new import generate_legal_commands
+  190:     else:
+  191:         cmds = []
+  192:     for i, a in enumerate(actions):
+  193:         print(i, getattr(a, 'type', None), getattr(a, 'card_id', None), getattr(a, 'command', None))
+  194: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\debug_on_play.py (matches: 1)
+    9:     ad = dm_ai_module.ActionDef()
+   10:     ad.type = dm_ai_module.EffectActionType.DRAW_CARD
+   11:     eff.actions = [ad]
+   12:     # create card data
+   13:     cdata = dm_ai_module.CardData(card_id, 'Test', 3, 'WATER', 2000, 'CREATURE', ['Cyber Lord'], [eff])
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\debug_transition.py (matches: 1)
+    6: ad = dm.ActionDef()
+    7: ad.type = dm.EffectActionType.DRAW_CARD
+    8: ed.actions = [ad]
+    9: cd = dm.CardData(9999, 'Test CIP', 3, 'WATER', 2000, 'CREATURE', ['Cyber Lord'], [ed])
+   10: dm.register_card_data(cd)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\find_and_report_actions.py (matches: 1)
+    4: EXCLUDE = {'.venv', 'venv', 'archive', 'build', 'build_debug', 'build_ci_test', '.mypy_cache', '.git', 'third_party', 'tmp_pr'}
+    5: EXTS = {'.py', '.json', '.md', '.yaml', '.yml', '.txt'}
+    6: pattern = re.compile(r"(?P<quote>['\"])actions(?P=quote)|\bactions\b")
+    7: report = []
+    8: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\legacy_conversion_report.json (matches: 19)
+    5:       4
+    6:     ],
+    7:     "location": "triggers[0].actions",
+    8:     "trigger_index": 0,
+    9:     "index": 0,
+   57:       4
+   58:     ],
+   59:     "location": "triggers[1].actions",
+   60:     "trigger_index": 1,
+   61:     "index": 0,
+   94:       0
+   95:     ],
+   96:     "location": "actions",
+   97:     "index": 0,
+   98:     "original": {
+  147:       1
+  148:     ],
+  149:     "location": "actions",
+  150:     "index": 0,
+  151:     "original": {
+  181:       6
+  182:     ],
+  183:     "location": "triggers[0].actions",
+  184:     "trigger_index": 0,
+  185:     "index": 0,
+  224:       6
+  225:     ],
+  226:     "location": "triggers[1].actions",
+  227:     "trigger_index": 1,
+  228:     "index": 0,
+  259:       6
+  260:     ],
+  261:     "location": "triggers[1].actions",
+  262:     "trigger_index": 1,
+  263:     "index": 1,
+  312:       0
+  313:     ],
+  314:     "location": "actions",
+  315:     "index": 0,
+  316:     "original": {
+  356:       1
+  357:     ],
+  358:     "location": "actions",
+  359:     "index": 0,
+  360:     "original": {
+  392:       1
+  393:     ],
+  394:     "location": "actions",
+  395:     "index": 1,
+  396:     "original": {
+  490:       "C:\\Users\\ichirou\\DM_simulation\\data\\editor_templates.json"
+  491:     ],
+  492:     "location": "actions",
+  493:     "index": 0,
+  494:     "original": {
+  517:       "C:\\Users\\ichirou\\DM_simulation\\data\\editor_templates.json"
+  518:     ],
+  519:     "location": "actions",
+  520:     "index": 1,
+  521:     "original": {
+  546:       "C:\\Users\\ichirou\\DM_simulation\\data\\editor_templates.json"
+  547:     ],
+  548:     "location": "actions",
+  549:     "index": 2,
+  550:     "original": {
+  578:       3
+  579:     ],
+  580:     "location": "actions",
+  581:     "index": 0,
+  582:     "original": {
+  601:       3
+  602:     ],
+  603:     "location": "actions",
+  604:     "index": 1,
+  605:     "original": {
+  624:       3
+  625:     ],
+  626:     "location": "actions",
+  627:     "index": 2,
+  628:     "original": {
+  647:       3
+  648:     ],
+  649:     "location": "actions",
+  650:     "index": 3,
+  651:     "original": {
+  670:       3
+  671:     ],
+  672:     "location": "actions",
+  673:     "index": 4,
+  674:     "original": {
+  693:       3
+  694:     ],
+  695:     "location": "actions",
+  696:     "index": 5,
+  697:     "original": {
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\migrate_actions_to_commands.py (matches: 15)
+   23:         nonlocal modified
+   24:         if isinstance(node, dict):
+   25:             # 1. Migrate actions -> commands
+   26:             if 'actions' in node:
+   27:                 actions = node.get('actions')
+   24:         if isinstance(node, dict):
+   25:             # 1. Migrate actions -> commands
+   26:             if 'actions' in node:
+   27:                 actions = node.get('actions')
+   28:                 # SPECIAL CHECK: editor_templates.json uses actions as list of {name, data}
+   25:             # 1. Migrate actions -> commands
+   26:             if 'actions' in node:
+   27:                 actions = node.get('actions')
+   28:                 # SPECIAL CHECK: editor_templates.json uses actions as list of {name, data}
+   29:                 # Check if elements are wrappers or raw actions
+   26:             if 'actions' in node:
+   27:                 actions = node.get('actions')
+   28:                 # SPECIAL CHECK: editor_templates.json uses actions as list of {name, data}
+   29:                 # Check if elements are wrappers or raw actions
+   30:                 is_template_wrapper = False
+   27:                 actions = node.get('actions')
+   28:                 # SPECIAL CHECK: editor_templates.json uses actions as list of {name, data}
+   29:                 # Check if elements are wrappers or raw actions
+   30:                 is_template_wrapper = False
+   31:                 if isinstance(actions, list) and len(actions) > 0:
+   29:                 # Check if elements are wrappers or raw actions
+   30:                 is_template_wrapper = False
+   31:                 if isinstance(actions, list) and len(actions) > 0:
+   32:                     first = actions[0]
+   33:                     if isinstance(first, dict) and 'name' in first and 'data' in first:
+   30:                 is_template_wrapper = False
+   31:                 if isinstance(actions, list) and len(actions) > 0:
+   32:                     first = actions[0]
+   33:                     if isinstance(first, dict) and 'name' in first and 'data' in first:
+   34:                         is_template_wrapper = True
+   37:                     # For templates, we migrate the 'data' inside each wrapper
+   38:                     # But we also want to rename the root list to 'commands' if we want unified storage?
+   39:                     # Or keep 'actions' for legacy templates?
+   40:                     # The goal is "Load-Lift". If we change template storage to 'commands',
+   41:                     # the editor needs to know to look there.
+   40:                     # The goal is "Load-Lift". If we change template storage to 'commands',
+   41:                     # the editor needs to know to look there.
+   42:                     # Current CardDataManager.load_templates loads "commands" and "actions".
+   43:                     # Let's migrate the content of 'actions' and move them to 'commands' list in the file.
+   44: 
+   41:                     # the editor needs to know to look there.
+   42:                     # Current CardDataManager.load_templates loads "commands" and "actions".
+   43:                     # Let's migrate the content of 'actions' and move them to 'commands' list in the file.
+   44: 
+   45:                     commands = node.get('commands', [])
+   44: 
+   45:                     commands = node.get('commands', [])
+   46:                     for wrapper in actions:
+   47:                         act_data = wrapper.get('data')
+   48:                         cmd_data = ActionToCommandMapper.map_action(act_data)
+   52:                         })
+   53:                     node['commands'] = commands
+   54:                     del node['actions']
+   55:                     modified = True
+   56:                 else:
+   56:                 else:
+   57:                     # Standard migration
+   58:                     if isinstance(actions, list):
+   59:                         commands = node.get('commands', [])
+   60:                         for act in actions:
+   58:                     if isinstance(actions, list):
+   59:                         commands = node.get('commands', [])
+   60:                         for act in actions:
+   61:                             if isinstance(act, dict):
+   62:                                 cmd = ActionToCommandMapper.map_action(act)
+   63:                                 commands.append(cmd)
+   64:                         node['commands'] = commands
+   65:                         del node['actions']
+   66:                         modified = True
+   67: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\propose_action_to_command_batch.py (matches: 7)
+   11: def convert_actions_in_obj(obj, context):
+   12:     if isinstance(obj, dict):
+   13:         # actions array
+   14:         if 'actions' in obj and isinstance(obj['actions'], list):
+   15:             for idx, act in enumerate(obj['actions']):
+   12:     if isinstance(obj, dict):
+   13:         # actions array
+   14:         if 'actions' in obj and isinstance(obj['actions'], list):
+   15:             for idx, act in enumerate(obj['actions']):
+   16:                 if isinstance(act, dict):
+   13:         # actions array
+   14:         if 'actions' in obj and isinstance(obj['actions'], list):
+   15:             for idx, act in enumerate(obj['actions']):
+   16:                 if isinstance(act, dict):
+   17:                     cmd = ActionConverter.convert(act)
+   22:                     report.append({
+   23:                         'context': context,
+   24:                         'location': 'actions',
+   25:                         'index': idx,
+   26:                         'original': act,
+   44:         if 'triggers' in obj and isinstance(obj['triggers'], list):
+   45:             for tidx, trig in enumerate(obj['triggers']):
+   46:                 if isinstance(trig, dict) and 'actions' in trig:
+   47:                     for aidx, act in enumerate(trig['actions']):
+   48:                         if isinstance(act, dict):
+   45:             for tidx, trig in enumerate(obj['triggers']):
+   46:                 if isinstance(trig, dict) and 'actions' in trig:
+   47:                     for aidx, act in enumerate(trig['actions']):
+   48:                         if isinstance(act, dict):
+   49:                             cmd = ActionConverter.convert(act)
+   50:                             report.append({
+   51:                                 'context': context,
+   52:                                 'location': f'triggers[{tidx}].actions',
+   53:                                 'trigger_index': tidx,
+   54:                                 'index': aidx,
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\remove_actions_from_json.py (matches: 2)
+   14:     changed = False
+   15:     if isinstance(obj, dict):
+   16:         if 'actions' in obj:
+   17:             del obj['actions']
+   18:             changed = True
+   15:     if isinstance(obj, dict):
+   16:         if 'actions' in obj:
+   17:             del obj['actions']
+   18:             changed = True
+   19:         for k, v in list(obj.items()):
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\report_legacy_actions.py (matches: 8)
+   30: 
+   31:     results = []
+   32:     # Walk looking for 'actions', 'static_abilities', 'triggers', 'reaction_abilities'
+   33:     def walk(obj, context):
+   34:         if isinstance(obj, dict):
+   39:             if 'name' in obj:
+   40:                 meta['name'] = obj.get('name')
+   41:             # actions array
+   42:             if 'actions' in obj and isinstance(obj['actions'], list):
+   43:                 for idx, act in enumerate(obj['actions']):
+   40:                 meta['name'] = obj.get('name')
+   41:             # actions array
+   42:             if 'actions' in obj and isinstance(obj['actions'], list):
+   43:                 for idx, act in enumerate(obj['actions']):
+   44:                     if isinstance(act, dict):
+   41:             # actions array
+   42:             if 'actions' in obj and isinstance(obj['actions'], list):
+   43:                 for idx, act in enumerate(obj['actions']):
+   44:                     if isinstance(act, dict):
+   45:                         t = act.get('type','NONE')
+   44:                     if isinstance(act, dict):
+   45:                         t = act.get('type','NONE')
+   46:                         # consider legacy when actions contain non-command types or when type==NONE+str_val
+   47:                         if t in ['DRAW_CARD','DESTROY','SEND_TO_MANA','FRIEND_BURST','REVOLUTION_CHANGE','PLAY_FROM_ZONE','GRANT_KEYWORD','NINJA_STRIKE','NONE','OPPONENT_DRAW_COUNT','QUERY','BRANCH']:
+   48:                             results.append({'file': str(fp), 'context': context, 'meta': meta, 'action_index': idx, 'action_type': t, 'action': act})
+   58:                 for tidx, trig in enumerate(obj['triggers']):
+   59:                     if isinstance(trig, dict):
+   60:                         if 'actions' in trig and isinstance(trig['actions'], list):
+   61:                             for aidx, act in enumerate(trig['actions']):
+   62:                                 if isinstance(act, dict):
+   59:                     if isinstance(trig, dict):
+   60:                         if 'actions' in trig and isinstance(trig['actions'], list):
+   61:                             for aidx, act in enumerate(trig['actions']):
+   62:                                 if isinstance(act, dict):
+   63:                                     t = act.get('type','NONE')
+   83:     # Print summarized report
+   84:     if not out:
+   85:         print('No legacy-looking actions found.')
+   86:         return
+   87:     for e in out:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\run_meta_demo.py (matches: 9)
+   31: game.add_card_to_mana(0, 99, 3)
+   32: # Generate action and play
+   33: actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   34: print('actions:', [(a.type, a.card_id) for a in actions])
+   35: if generate_legal_commands:
+   32: # Generate action and play
+   33: actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   34: print('actions:', [(a.type, a.card_id) for a in actions])
+   35: if generate_legal_commands:
+   36: 	cmds = generate_legal_commands(game, card_db)
+   42: 	cmds = []
+   43: 
+   44: play_action = next((a for a in actions if a.type == dm_ai_module.ActionType.DECLARE_PLAY and a.card_id == 99), None)
+   45: print('play_action', play_action)
+   46: # Prefer command execution when available
+   68: 	dm_ai_module.EffectResolver.resolve_action(game, play_action, card_db)
+   69: # pay cost
+   70: actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   71: print('after declare, actions:', [(a.type, a.card_id) for a in actions])
+   72: pay = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+   69: # pay cost
+   70: actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   71: print('after declare, actions:', [(a.type, a.card_id) for a in actions])
+   72: pay = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+   73: print('pay', pay)
+   70: actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   71: print('after declare, actions:', [(a.type, a.card_id) for a in actions])
+   72: pay = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+   73: print('pay', pay)
+   74: pay_cmd = getattr(pay, 'command', None) if pay is not None else None
+   84: 	dm_ai_module.EffectResolver.resolve_action(game, pay, card_db)
+   85: # resolve
+   86: actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   87: print('before resolve, actions:', [(a.type, a.card_id) for a in actions])
+   88: res = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+   85: # resolve
+   86: actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   87: print('before resolve, actions:', [(a.type, a.card_id) for a in actions])
+   88: res = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+   89: print('resolve', res)
+   86: actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   87: print('before resolve, actions:', [(a.type, a.card_id) for a in actions])
+   88: res = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+   89: print('resolve', res)
+   90: res_cmd = getattr(res, 'command', None) if res is not None else None
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\tmp_debug_resolve.py (matches: 1)
+   17: act2 = m.ActionDef(); act2.type = m.EffectActionType.DRAW_CARD; act2.input_value_key='civ_count'
+   18: act3 = m.ActionDef(); act3.type = m.EffectActionType.SEND_TO_DECK_BOTTOM; act3.scope = m.TargetScope.TARGET_SELECT; act3.filter = m.FilterDef(); act3.filter.zones=['HAND']; act3.input_value_key='civ_count'
+   19: effect.actions = [act1, act2, act3]
+   20: for i in range(10): state.add_card_to_deck(0,10,300+i)
+   21: print('before hand', len(state.players[0].hand))
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\python\cli_target_selector.py (matches: 4)
+   53: print('Selected targets:', chosen)
+   54: 
+   55: # Create an output action sequence that can be consumed by engine (format is simple JSON list of SELECT_TARGET actions)
+   56: actions = []
+   57: slot_index = sel
+   54: 
+   55: # Create an output action sequence that can be consumed by engine (format is simple JSON list of SELECT_TARGET actions)
+   56: actions = []
+   57: slot_index = sel
+   58: for t in chosen:
+   57: slot_index = sel
+   58: for t in chosen:
+   59:     actions.append({
+   60:         'type': 'SELECT_TARGET',
+   61:         'slot_index': slot_index,
+   65: outp = Path('scripts/selected_targets.json')
+   66: with outp.open('w', encoding='utf-8') as f:
+   67:     json.dump(actions, f, indent=2)
+   68: 
+   69: print('Wrote', outp)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\python\migrate_actions.py (matches: 4)
+   74:         nonlocal migrated_count
+   75:         for effect in effects:
+   76:             if "actions" in effect and effect["actions"] and ("commands" not in effect or not effect["commands"]):
+   77:                 new_commands = []
+   78:                 all_convertible = True
+   78:                 all_convertible = True
+   79: 
+   80:                 for action in effect["actions"]:
+   81:                     cmd = convert_legacy_action(action)
+   82:                     if cmd:
+   89:                 if new_commands and all_convertible:
+   90:                      effect["commands"] = new_commands
+   91:                      del effect["actions"]
+   92:                      migrated_count += 1
+   93:                 # elif new_commands and not all_convertible:
+   92:                      migrated_count += 1
+   93:                 # elif new_commands and not all_convertible:
+   94:                     # print(f"Card {card_id}: Partial migration not supported. Keeping legacy actions.")
+   95: 
+   96:     for card in cards:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\python\repair_cards.py (matches: 4)
+    8: 
+    9:     for card in cards:
+   10:         # Repair ID 11 (Napoleon Vibes) - Revert to legacy actions
+   11:         if card["id"] == 11:
+   12:             if "effects" in card and len(card["effects"]) > 0:
+   12:             if "effects" in card and len(card["effects"]) > 0:
+   13:                 eff = card["effects"][0]
+   14:                 # If it has commands and no actions (or we just want to force overwrite)
+   15:                 # We restore actions
+   16:                 eff["actions"] = [
+   13:                 eff = card["effects"][0]
+   14:                 # If it has commands and no actions (or we just want to force overwrite)
+   15:                 # We restore actions
+   16:                 eff["actions"] = [
+   17:                     {
+   14:                 # If it has commands and no actions (or we just want to force overwrite)
+   15:                 # We restore actions
+   16:                 eff["actions"] = [
+   17:                     {
+   18:                         "destination_zone": "HAND",
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\scripts\python\stress_test.py (matches: 6)
+   17: def run_stress_test(iterations=10000, max_steps=2000, verbose=False):
+   18:     """
+   19:     Runs a stress test with random actions.
+   20:     """
+   21:     print(f"Starting Stress Test: {iterations} iterations, Max Steps: {max_steps}")
+   80:                     generate_legal_commands = None
+   81: 
+   82:                 actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+   83:                 cmds = generate_legal_commands(state, card_db) if generate_legal_commands else []
+   84: 
+   83:                 cmds = generate_legal_commands(state, card_db) if generate_legal_commands else []
+   84: 
+   85:                 if not actions and not cmds:
+   86:                     # Stalemate or bug
+   87:                     break
+   97:                         except Exception:
+   98:                             # Last resort: fallback to action path
+   99:                             if actions:
+  100:                                 action = random.choice(actions)
+  101:                                 dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+   98:                             # Last resort: fallback to action path
+   99:                             if actions:
+  100:                                 action = random.choice(actions)
+  101:                                 dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+  102:                 else:
+  102:                 else:
+  103:                     # Random action
+  104:                     action = random.choice(actions)
+  105:                     dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+  106:                 step_count += 1
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\conftest.py (matches: 7)
+  365: 
+  366: def _effectdef_factory(*args, **kwargs):
+  367:     # Accept either (trigger, condition, actions) or no-arg form, and return native instance
+  368:     inst = _orig_EffectDef()
+  369:     try:
+  375:             except Exception: pass
+  376:         if len(args) >= 3:
+  377:             try: inst.actions = args[2]
+  378:             except Exception: pass
+  379:         # kwargs
+  489:                 # If it's already an EffectDef, pass through. Otherwise wrap single ActionDef.
+  490:                 try:
+  491:                     # Try to detect EffectDef by presence of 'actions'
+  492:                     if hasattr(action_or_effect, 'actions'):
+  493:                         eff = action_or_effect
+  490:                 try:
+  491:                     # Try to detect EffectDef by presence of 'actions'
+  492:                     if hasattr(action_or_effect, 'actions'):
+  493:                         eff = action_or_effect
+  494:                     else:
+  495:                         eff = _orig_EffectDef()
+  496:                         try:
+  497:                             eff.actions = [action_or_effect]
+  498:                         except Exception:
+  499:                             pass
+  501:                     eff = _orig_EffectDef()
+  502:                     try:
+  503:                         eff.actions = [action_or_effect]
+  504:                     except Exception:
+  505:                         pass
+  857:         eff = _orig_EffectDef()
+  858:         try:
+  859:             eff.actions = [action]
+  860:         except Exception:
+  861:             pass
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\test_unmapped_actions.py (matches: 2)
+   11: class TestUnmappedActions(unittest.TestCase):
+   12:     def test_high_priority_mappings(self):
+   13:         """Verify High Priority Engine actions map to correct Command types."""
+   14: 
+   15:         # BLOCK
+   53: 
+   54:     def test_medium_priority_mappings(self):
+   55:         """Verify Medium Priority Effect actions."""
+   56: 
+   57:         # DESTROY
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\ci\test_saved_json_schema.py (matches: 4)
+   70:             if not isinstance(eff, dict):
+   71:                 continue
+   72:             # effect may have actions or commands
+   73:             actions = eff.get("actions") or eff.get("commands") or []
+   74:             if not isinstance(actions, list):
+   71:                 continue
+   72:             # effect may have actions or commands
+   73:             actions = eff.get("actions") or eff.get("commands") or []
+   74:             if not isinstance(actions, list):
+   75:                 continue
+   72:             # effect may have actions or commands
+   73:             actions = eff.get("actions") or eff.get("commands") or []
+   74:             if not isinstance(actions, list):
+   75:                 continue
+   76:             for a in actions:
+   74:             if not isinstance(actions, list):
+   75:                 continue
+   76:             for a in actions:
+   77:                 if isinstance(a, dict):
+   78:                     yield a
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\editor\test_internal_cache.py (matches: 1)
+   12: 
+   13:     # create an effect and action under card
+   14:     eff = dm._create_effect_item({"trigger": "ON_PLAY", "actions": []})
+   15:     card_item.appendRow(eff)
+   16: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\gui\test_card_editor_io.py (matches: 3)
+   21:                         "trigger": "ON_PLAY",
+   22:                         "condition": {"type": "NONE", "value": 0, "str_val": ""},
+   23:                         "actions": []
+   24:                     }
+   25:                 ]
+   56:             "trigger": "PASSIVE_CONST",
+   57:             "condition": {"type": "NONE", "value": 0, "str_val": ""},
+   58:             "actions": [{"str_val": "BLOCKER"}]
+   59:         }
+   60:         data['effects'].append(new_eff)
+   70:         self.assertEqual(reloaded[0]['name'], "Modified Name")
+   71:         self.assertEqual(len(reloaded[0]['effects']), 2)
+   72:         self.assertEqual(reloaded[0]['effects'][1]['actions'][0]['str_val'], "BLOCKER")
+   73: 
+   74: if __name__ == '__main__':
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\gui\test_card_editor_v2.py (matches: 1)
+   76:             "spell_side": {
+   77:                 "name": "Spell Side", "type": "SPELL", "cost": 3,
+   78:                 "effects": [{"trigger": "ON_PLAY", "actions": []}]
+   79:             }
+   80:         }]
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\gui\test_gui_json_integration.py (matches: 2)
+  147:             "trigger": "ON_PLAY",
+  148:             "condition": {"type": "NONE"},
+  149:             "actions": []
+  150:         }
+  151:         eff_item = MockQStandardItem("Effect: ON_PLAY")
+  183:         assert saved_card["keywords"]["speed_attacker"] is True
+  184:         assert len(saved_card["effects"]) == 1
+  185:         assert saved_card["effects"][0]["actions"][0]["type"] == "DRAW_CARD"
+  186: 
+  187:         # 3. Write to JSON file
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_atomic_actions.py (matches: 3)
+  129:     eff.trigger = TriggerType.NONE
+  130:     eff.condition = cond
+  131:     eff.actions = [act]
+  132:     state.add_card_to_deck(0, 1, 9001)
+  133:     state.add_card_to_hand(0, 1000, 100)
+  165:     eff.trigger = TriggerType.NONE
+  166:     eff.condition = cond
+  167:     eff.actions = [act]
+  168: 
+  169:     # 301, 302 are Fire (201). 303 is Water (203).
+  202:     eff = EffectDef()
+  203:     eff.trigger = TriggerType.NONE
+  204:     eff.actions = [act]
+  205: 
+  206:     # Use different cards with different costs to satisfy "different costs" requirement
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_engine_basics.py (matches: 12)
+   51:         assert len(p0.hand) == 1
+   52: 
+   53:         # Generate legal actions
+   54:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+   55: 
+   52: 
+   53:         # Generate legal actions
+   54:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+   55: 
+   56:         # Find mana charge action
+   56:         # Find mana charge action
+   57:         charge_action = None
+   58:         for action in actions:
+   59:             # We updated the engine to use MOVE_CARD for mana charging in Phase.MANA
+   60:             if action.type == dm_ai_module.ActionType.MANA_CHARGE or action.type == dm_ai_module.ActionType.MOVE_CARD:
+   99: 
+  100:         # Ensure mana is sufficient
+  101:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  102:         play_action = None
+  103:         for action in actions:
+  101:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  102:         play_action = None
+  103:         for action in actions:
+  104:             if (action.type == dm_ai_module.ActionType.PLAY_CARD or action.type == dm_ai_module.ActionType.DECLARE_PLAY) and action.card_id == creature_id:
+  105:                 play_action = action
+  122:         if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  123:             # Step 2: PAY_COST
+  124:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  125:             pay_action = None
+  126:             for action in actions:
+  124:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  125:             pay_action = None
+  126:             for action in actions:
+  127:                 if action.type == dm_ai_module.ActionType.PAY_COST:
+  128:                     pay_action = action
+  132: 
+  133:             # Step 3: RESOLVE_PLAY
+  134:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  135:             resolve_action = None
+  136:             for action in actions:
+  134:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  135:             resolve_action = None
+  136:             for action in actions:
+  137:                 if action.type == dm_ai_module.ActionType.RESOLVE_PLAY:
+  138:                     resolve_action = action
+  178:         p1 = state.players[1]
+  179: 
+  180:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  181:         attack_action = None
+  182:         for action in actions:
+  180:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  181:         attack_action = None
+  182:         for action in actions:
+  183:             if action.type == dm_ai_module.ActionType.ATTACK_PLAYER:
+  184:                 attack_action = action
+  192:         assert state.current_phase == dm_ai_module.Phase.BLOCK
+  193: 
+  194:         # Generate actions for BLOCK phase (should be PASS if no blockers)
+  195:         block_actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
+  196:         pass_action = None
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_grant_keyword.py (matches: 7)
+   55: 
+   56:     eff_grant = EffectDef()
+   57:     eff_grant.actions = [action_grant]
+   58: 
+   59:     c2_data = CardData(
+   76: 
+   77:     # Verify Vanilla is NOT a blocker initially
+   78:     # We can check by generating actions for P2 attack. If P1 can block, it's a blocker.
+   79:     # Setup P2 attacker
+   80:     game_state.add_test_card_to_battle(p2.id, 1, 2, False, False) # instance 2
+   84:     game_state.current_phase = dm_ai_module.Phase.BLOCK
+   85: 
+   86:     # Check legal actions for P1 (Defender)
+   87:     # Since we can't easily jump to Block phase without an attack,
+   88:     # let's just use the engine's ActionGenerator.
+  174:     game_state.active_player_id = 0
+  175:     game_state.current_phase = dm_ai_module.Phase.ATTACK
+  176:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, db_map)
+  177: 
+  178:     # Should only be PASS (or empty? usually PASS is always there)
+  178:     # Should only be PASS (or empty? usually PASS is always there)
+  179:     # Check if ATTACK_PLAYER is present
+  180:     has_attack = any(a.type == dm_ai_module.ActionType.ATTACK_PLAYER for a in actions)
+  181:     assert not has_attack, "Should not be able to attack with summoning sickness"
+  182: 
+  196: 
+  197:     # Verify CAN attack
+  198:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, db_map)
+  199:     has_attack = any(a.type == dm_ai_module.ActionType.ATTACK_PLAYER for a in actions)
+  200: 
+  197:     # Verify CAN attack
+  198:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, db_map)
+  199:     has_attack = any(a.type == dm_ai_module.ActionType.ATTACK_PLAYER for a in actions)
+  200: 
+  201:     assert has_attack, "Should be able to attack after being granted Speed Attacker"
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_graveyard.py (matches: 7)
+   51: 
+   52:         # Let's use ActionGenerator to find the action to be safe
+   53:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+   54:         attack_action = None
+   55:         for a in actions:
+   53:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+   54:         attack_action = None
+   55:         for a in actions:
+   56:             if a.type == dm_ai_module.ActionType.ATTACK_CREATURE and a.source_instance_id == 100 and a.target_instance_id == 101:
+   57:                 attack_action = a
+   64:             # We already set it to False in add_test_card_to_battle
+   65: 
+   66:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+   67:             for a in actions:
+   68:                 if a.type == dm_ai_module.ActionType.ATTACK_CREATURE and a.source_instance_id == 100 and a.target_instance_id == 101:
+   65: 
+   66:             actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+   67:             for a in actions:
+   68:                 if a.type == dm_ai_module.ActionType.ATTACK_CREATURE and a.source_instance_id == 100 and a.target_instance_id == 101:
+   69:                     attack_action = a
+   96:                      # Actually if we passed, the engine might have queued RESOLVE_BATTLE.
+   97:                      # We need to execute it.
+   98:                      actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+   99:                      if actions and actions[0].type == dm_ai_module.ActionType.RESOLVE_BATTLE:
+  100:                           dm_ai_module.EffectResolver.resolve_action(gs, actions[0], card_db)
+   97:                      # We need to execute it.
+   98:                      actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+   99:                      if actions and actions[0].type == dm_ai_module.ActionType.RESOLVE_BATTLE:
+  100:                           dm_ai_module.EffectResolver.resolve_action(gs, actions[0], card_db)
+  101: 
+   98:                      actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+   99:                      if actions and actions[0].type == dm_ai_module.ActionType.RESOLVE_BATTLE:
+  100:                           dm_ai_module.EffectResolver.resolve_action(gs, actions[0], card_db)
+  101: 
+  102:             # Refresh snapshots
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_integrated_mechanics.py (matches: 8)
+   83:     game_state.current_phase = dm_ai_module.Phase.MAIN
+   84: 
+   85:     # Generate actions
+   86:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, card_db)
+   87: 
+   84: 
+   85:     # Generate actions
+   86:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, card_db)
+   87: 
+   88:     hyper_actions = [
+   87: 
+   88:     hyper_actions = [
+   89:         a for a in actions
+   90:         if (a.type == ActionType.PLAY_CARD or a.type == ActionType.DECLARE_PLAY) and a.card_id == hyper_card_id
+   91:     ]
+   91:     ]
+   92: 
+   93:     assert len(hyper_actions) > 0, "Should generate Play actions for Hyper Energy card"
+   94: 
+   95:     # Check for the action tapping 2 creatures
+  211:     # we can simulate the `EffectActionType.SEARCH_DECK` resolution.
+  212: 
+  213:     # But `EffectResolver` usually resolves generic actions.
+  214:     # Let's try to resolve the atomic action directly if possible,
+  215:     # or create a pending effect.
+  219: 
+  220:     effect = EffectDef()
+  221:     # We need to construct an EffectDef with actions.
+  222:     # But in Python binding, `EffectDef.actions` is a list of `ActionDef`.
+  223: 
+  220:     effect = EffectDef()
+  221:     # We need to construct an EffectDef with actions.
+  222:     # But in Python binding, `EffectDef.actions` is a list of `ActionDef`.
+  223: 
+  224:     act_def = ActionDef()
+  227:     act_def.filter.count = 1
+  228: 
+  229:     effect.actions = [act_def]
+  230: 
+  231:     # Context
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_integration_pipeline.py (matches: 19)
+    5: 
+    6: # Helper to register test cards
+    7: def register_card(card_id, actions):
+    8:     # actions is a list of ActionDef dictionaries
+    9:     effects = []
+    6: # Helper to register test cards
+    7: def register_card(card_id, actions):
+    8:     # actions is a list of ActionDef dictionaries
+    9:     effects = []
+   10:     if actions:
+    8:     # actions is a list of ActionDef dictionaries
+    9:     effects = []
+   10:     if actions:
+   11:         ed = dm_ai_module.EffectDef()
+   12:         ed.trigger = TriggerType.ON_PLAY
+   12:         ed.trigger = TriggerType.ON_PLAY
+   13:         action_list = []
+   14:         for a in actions:
+   15:             ad = dm_ai_module.ActionDef()
+   16:             ad.type = a.get("type")
+   28:             action_list.append(ad)
+   29: 
+   30:         # FIX: Assign list to ed.actions
+   31:         ed.actions = action_list
+   32:         # Avoid passing Python-side shim EffectDef into CardData (pybind type mismatch).
+   29: 
+   30:         # FIX: Assign list to ed.actions
+   31:         ed.actions = action_list
+   32:         # Avoid passing Python-side shim EffectDef into CardData (pybind type mismatch).
+   33:         # We register the card with an empty effects list for registry purposes.
+   51: 
+   52:         cid = 1001
+   53:         actions = [{
+   54:             "type": EffectActionType.ADD_MANA,
+   55:             "value1": 2 # Count
+   55:             "value1": 2 # Count
+   56:         }]
+   57:         register_card(cid, actions)
+   58: 
+   59:         ed = dm_ai_module.EffectDef()
+   63: 
+   64:         # FIX: Use assignment instead of append
+   65:         ed.actions = [ad]
+   66: 
+   67:         p = self.state.players[self.state.active_player_id]
+   70:         initial_mana = len(p.mana_zone)
+   71: 
+   72:         # Execute actions directly via resolve_action to avoid shim->binding mismatch
+   73:         for a in ed.actions:
+   74:             dm_ai_module.GenericCardSystem.resolve_action(self.state, a, -1)
+   71: 
+   72:         # Execute actions directly via resolve_action to avoid shim->binding mismatch
+   73:         for a in ed.actions:
+   74:             dm_ai_module.GenericCardSystem.resolve_action(self.state, a, -1)
+   75: 
+  113: 
+  114:         # FIX: Use assignment
+  115:         ed.actions = [ad1, ad2, ad3]
+  116: 
+  117:         p = self.state.players[self.state.active_player_id]
+  125:         # ADD_MANA will move 1 (Fodder) from Deck Top to Mana.
+  126: 
+  127:         # Execute actions directly via resolve_action to avoid shim->binding mismatch
+  128:         for a in ed.actions:
+  129:             dm_ai_module.GenericCardSystem.resolve_action(self.state, a, -1)
+  126: 
+  127:         # Execute actions directly via resolve_action to avoid shim->binding mismatch
+  128:         for a in ed.actions:
+  129:             dm_ai_module.GenericCardSystem.resolve_action(self.state, a, -1)
+  130: 
+  142:         fd.zones = ["BATTLE_ZONE"]
+  143:         ad.filter = fd
+  144:         ed.actions.append(ad)
+  145: 
+  146:         # FIX: Use assignment
+  145: 
+  146:         # FIX: Use assignment
+  147:         ed.actions = [ad]
+  148: 
+  149:         # Setup with dummy cards (ID 0) to avoid registry requirement for targets
+  154:         assert len(p.battle_zone) == 2
+  155: 
+  156:         for a in ed.actions:
+  157:             dm_ai_module.GenericCardSystem.resolve_action(self.state, a, -1)
+  158: 
+  170: 
+  171:         # FIX: Use assignment
+  172:         ed.actions = [ad]
+  173: 
+  174:         self.state.add_card_to_deck(self.state.active_player_id, 0, 200)
+  175:         p = self.state.players[self.state.active_player_id]
+  176: 
+  177:         for a in ed.actions:
+  178:             dm_ai_module.GenericCardSystem.resolve_action(self.state, a, -1)
+  179: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_just_diver.py (matches: 31)
+   60: 
+   61:     # Generate PLAY action (DECLARE_PLAY)
+   62:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   63:     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+   64: 
+   61:     # Generate PLAY action (DECLARE_PLAY)
+   62:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   63:     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+   64: 
+   65:     assert play_action is not None, "Should be able to play Just Diver creature"
+   70:     if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
+   71:         # PAY_COST
+   72:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   73:         pay_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+   74:         if pay_action:
+   71:         # PAY_COST
+   72:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   73:         pay_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+   74:         if pay_action:
+   75:             dm_ai_module.EffectResolver.resolve_action(game, pay_action, card_db)
+   76: 
+   77:         # RESOLVE_PLAY
+   78:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   79:         resolve_action = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+   80:         if resolve_action:
+   77:         # RESOLVE_PLAY
+   78:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   79:         resolve_action = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+   80:         if resolve_action:
+   81:             dm_ai_module.EffectResolver.resolve_action(game, resolve_action, card_db)
+  107:     action_def.filter = f_select
+  108: 
+  109:     effect_def.actions = [action_def]
+  110: 
+  111:     # Register the spell card
+  125: 
+  126:     # Play flow for spell
+  127:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  128:     play_act = next((a for a in actions if a.card_id == spell_id and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+  129: 
+  126:     # Play flow for spell
+  127:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  128:     play_act = next((a for a in actions if a.card_id == spell_id and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+  129: 
+  130:     assert play_act is not None
+  133:     if play_act.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  134:         # PAY_COST
+  135:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  136:         pay_act = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  137:         if pay_act:
+  134:         # PAY_COST
+  135:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  136:         pay_act = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  137:         if pay_act:
+  138:              dm_ai_module.EffectResolver.resolve_action(game, pay_act, card_db)
+  139: 
+  140:         # RESOLVE_PLAY (triggers effect)
+  141:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  142:         res_act = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  143:         if res_act:
+  140:         # RESOLVE_PLAY (triggers effect)
+  141:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  142:         res_act = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  143:         if res_act:
+  144:              dm_ai_module.EffectResolver.resolve_action(game, res_act, card_db)
+  144:              dm_ai_module.EffectResolver.resolve_action(game, res_act, card_db)
+  145: 
+  146:     # Now check legal actions. We expect SELECT_TARGET actions.
+  147:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  148: 
+  145: 
+  146:     # Now check legal actions. We expect SELECT_TARGET actions.
+  147:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  148: 
+  149:     # We expect NO actions that target the JD creature (Instance 100).
+  147:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  148: 
+  149:     # We expect NO actions that target the JD creature (Instance 100).
+  150:     targets_jd = False
+  151:     for a in actions:
+  149:     # We expect NO actions that target the JD creature (Instance 100).
+  150:     targets_jd = False
+  151:     for a in actions:
+  152:         if a.type == dm_ai_module.ActionType.SELECT_TARGET:
+  153:             if a.target_instance_id == 100:
+  177: 
+  178:     # Play
+  179:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  180:     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+  181:     assert play_action is not None, "Should be able to play Just Diver creature in game2"
+  178:     # Play
+  179:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  180:     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+  181:     assert play_action is not None, "Should be able to play Just Diver creature in game2"
+  182:     dm_ai_module.EffectResolver.resolve_action(game2, play_action, card_db)
+  183: 
+  184:     if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  185:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  186:         pay_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  187:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game2, pay_action, card_db)
+  184:     if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  185:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  186:         pay_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  187:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game2, pay_action, card_db)
+  188: 
+  187:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game2, pay_action, card_db)
+  188: 
+  189:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  190:         res_action = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  191:         if res_action: dm_ai_module.EffectResolver.resolve_action(game2, res_action, card_db)
+  188: 
+  189:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  190:         res_action = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  191:         if res_action: dm_ai_module.EffectResolver.resolve_action(game2, res_action, card_db)
+  192: 
+  199:     for i in range(3): game2.add_card_to_mana(1, spell_id, 910+i)
+  200: 
+  201:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  202:     play_act = next((a for a in actions if a.card_id == spell_id and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+  203:     assert play_act is not None, "Should be able to play spell in game2"
+  200: 
+  201:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  202:     play_act = next((a for a in actions if a.card_id == spell_id and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+  203:     assert play_act is not None, "Should be able to play spell in game2"
+  204:     dm_ai_module.EffectResolver.resolve_action(game2, play_act, card_db)
+  205: 
+  206:     if play_act.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  207:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  208:         pay_act = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  209:         if pay_act: dm_ai_module.EffectResolver.resolve_action(game2, pay_act, card_db)
+  206:     if play_act.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  207:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  208:         pay_act = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  209:         if pay_act: dm_ai_module.EffectResolver.resolve_action(game2, pay_act, card_db)
+  210: 
+  209:         if pay_act: dm_ai_module.EffectResolver.resolve_action(game2, pay_act, card_db)
+  210: 
+  211:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  212:         res_act = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  213:         if res_act: dm_ai_module.EffectResolver.resolve_action(game2, res_act, card_db)
+  210: 
+  211:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  212:         res_act = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  213:         if res_act: dm_ai_module.EffectResolver.resolve_action(game2, res_act, card_db)
+  214: 
+  214: 
+  215:     # Now check targets
+  216:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game2, card_db)
+  217: 
+  218:     targets_jd_t2 = False
+  217: 
+  218:     targets_jd_t2 = False
+  219:     for a in actions:
+  220:         if a.type == dm_ai_module.ActionType.SELECT_TARGET:
+  221:             if a.target_instance_id == 100:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_just_diver_attack.py (matches: 22)
+   57: 
+   58:     # Play Flow
+   59:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   60:     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+   61: 
+   58:     # Play Flow
+   59:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   60:     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+   61: 
+   62:     assert play_action is not None
+   64: 
+   65:     if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
+   66:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   67:         pay_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+   68:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game, pay_action, card_db)
+   65:     if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
+   66:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   67:         pay_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+   68:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game, pay_action, card_db)
+   69: 
+   68:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game, pay_action, card_db)
+   69: 
+   70:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   71:         res_action = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+   72:         if res_action: dm_ai_module.EffectResolver.resolve_action(game, res_action, card_db)
+   69: 
+   70:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   71:         res_action = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+   72:         if res_action: dm_ai_module.EffectResolver.resolve_action(game, res_action, card_db)
+   73: 
+   95:     game.add_card_to_mana(0, 1, 902)
+   96: 
+   97:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   98:     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+   99:     assert play_action is not None, "Should be able to play Just Diver creature"
+   96: 
+   97:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+   98:     play_action = next((a for a in actions if a.card_id == 1 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+   99:     assert play_action is not None, "Should be able to play Just Diver creature"
+  100:     dm_ai_module.EffectResolver.resolve_action(game, play_action, card_db)
+  101: 
+  102:     if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  103:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  104:         pay_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  105:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game, pay_action, card_db)
+  102:     if play_action.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  103:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  104:         pay_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  105:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game, pay_action, card_db)
+  106:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  104:         pay_action = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  105:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game, pay_action, card_db)
+  106:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  107:         res_action = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  108:         if res_action: dm_ai_module.EffectResolver.resolve_action(game, res_action, card_db)
+  105:         if pay_action: dm_ai_module.EffectResolver.resolve_action(game, pay_action, card_db)
+  106:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  107:         res_action = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  108:         if res_action: dm_ai_module.EffectResolver.resolve_action(game, res_action, card_db)
+  109: 
+  110:     # Attack with JD creature to tap it
+  111:     game.current_phase = dm_ai_module.Phase.ATTACK
+  112:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  113:     att_action = next((a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER), None)
+  114:     assert att_action is not None, "Should have ATTACK_PLAYER action"
+  111:     game.current_phase = dm_ai_module.Phase.ATTACK
+  112:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  113:     att_action = next((a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER), None)
+  114:     assert att_action is not None, "Should have ATTACK_PLAYER action"
+  115:     dm_ai_module.EffectResolver.resolve_action(game, att_action, card_db)
+  129: 
+  130:     # Play Attacker
+  131:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  132:     play_attacker = next((a for a in actions if a.card_id == 2 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+  133: 
+  130:     # Play Attacker
+  131:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  132:     play_attacker = next((a for a in actions if a.card_id == 2 and (a.type == dm_ai_module.ActionType.DECLARE_PLAY or a.type == dm_ai_module.ActionType.PLAY_CARD)), None)
+  133: 
+  134:     assert play_attacker is not None
+  136: 
+  137:     if play_attacker.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  138:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  139:         pay_act = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  140:         if pay_act: dm_ai_module.EffectResolver.resolve_action(game, pay_act, card_db)
+  137:     if play_attacker.type == dm_ai_module.ActionType.DECLARE_PLAY:
+  138:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  139:         pay_act = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  140:         if pay_act: dm_ai_module.EffectResolver.resolve_action(game, pay_act, card_db)
+  141:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  139:         pay_act = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+  140:         if pay_act: dm_ai_module.EffectResolver.resolve_action(game, pay_act, card_db)
+  141:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  142:         res_act = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  143:         if res_act: dm_ai_module.EffectResolver.resolve_action(game, res_act, card_db)
+  140:         if pay_act: dm_ai_module.EffectResolver.resolve_action(game, pay_act, card_db)
+  141:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  142:         res_act = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+  143:         if res_act: dm_ai_module.EffectResolver.resolve_action(game, res_act, card_db)
+  144: 
+  147: 
+  148:     # Generate Actions
+  149:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+  150: 
+  151:     can_attack_creature = False
+  150: 
+  151:     can_attack_creature = False
+  152:     for a in actions:
+  153:         if a.type == dm_ai_module.ActionType.ATTACK_CREATURE:
+  154:             if a.target_instance_id == 100:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_lift_actions_to_commands.py (matches: 8)
+   11: 
+   12:     def test_lift_actions_removes_actions_and_adds_commands(self):
+   13:         # Prepare an effect with a representative set of legacy actions
+   14:         actions = [
+   15:             {"type": "MOVE_CARD", "from_zone": "HAND", "to_zone": "MANA_ZONE", "value1": 1},
+   12:     def test_lift_actions_removes_actions_and_adds_commands(self):
+   13:         # Prepare an effect with a representative set of legacy actions
+   14:         actions = [
+   15:             {"type": "MOVE_CARD", "from_zone": "HAND", "to_zone": "MANA_ZONE", "value1": 1},
+   16:             {"type": "DESTROY", "source_zone": "BATTLE_ZONE"},
+   26:         ]
+   27: 
+   28:         effect = {"actions": actions.copy()}
+   29: 
+   30:         # Call internalizer to lift actions to commands
+   28:         effect = {"actions": actions.copy()}
+   29: 
+   30:         # Call internalizer to lift actions to commands
+   31:         self.manager._lift_actions_to_commands(effect)
+   32: 
+   31:         self.manager._lift_actions_to_commands(effect)
+   32: 
+   33:         # After lifting, actions should be removed (unless legacy save forced)
+   34:         self.assertIn('commands', effect)
+   35:         self.assertNotIn('actions', effect)
+   33:         # After lifting, actions should be removed (unless legacy save forced)
+   34:         self.assertIn('commands', effect)
+   35:         self.assertNotIn('actions', effect)
+   36: 
+   37:         cmds = effect['commands']
+   36: 
+   37:         cmds = effect['commands']
+   38:         # There should be at least as many commands as actions
+   39:         self.assertGreaterEqual(len(cmds), len(actions))
+   40: 
+   37:         cmds = effect['commands']
+   38:         # There should be at least as many commands as actions
+   39:         self.assertGreaterEqual(len(cmds), len(actions))
+   40: 
+   41:         # Each command should be a dict with a 'type' and 'uid'
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_meta_counter.py (matches: 13)
+   71: 
+   72:         # 3. Player 0 plays 0-cost card
+   73:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+   74:         play_action = next((a for a in actions if a.type == ActionType.DECLARE_PLAY and a.card_id == self.zero_card_id), None)
+   75: 
+   72:         # 3. Player 0 plays 0-cost card
+   73:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+   74:         play_action = next((a for a in actions if a.type == ActionType.DECLARE_PLAY and a.card_id == self.zero_card_id), None)
+   75: 
+   76:         # Let's add a mana of Light just in case.
+   79:              p0.mana_zone[0].is_tapped = False
+   80: 
+   81:         # Re-generate actions
+   82:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+   83:         play_action = next((a for a in actions if a.type == ActionType.DECLARE_PLAY and a.card_id == self.zero_card_id), None)
+   80: 
+   81:         # Re-generate actions
+   82:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+   83:         play_action = next((a for a in actions if a.type == ActionType.DECLARE_PLAY and a.card_id == self.zero_card_id), None)
+   84:         self.assertIsNotNone(play_action, "Should be able to play 0 cost card")
+   81:         # Re-generate actions
+   82:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+   83:         play_action = next((a for a in actions if a.type == ActionType.DECLARE_PLAY and a.card_id == self.zero_card_id), None)
+   84:         self.assertIsNotNone(play_action, "Should be able to play 0 cost card")
+   85: 
+   91: 
+   92:         # PAY_COST
+   93:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+   94:         pay_action = next((a for a in actions if a.type == ActionType.PAY_COST), None)
+   95:         self.assertIsNotNone(pay_action)
+   92:         # PAY_COST
+   93:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+   94:         pay_action = next((a for a in actions if a.type == ActionType.PAY_COST), None)
+   95:         self.assertIsNotNone(pay_action)
+   96:         EffectResolver.resolve_action(self.game, pay_action, self.card_db)
+   97: 
+   98:         # RESOLVE_PLAY
+   99:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+  100:         resolve_action = next((a for a in actions if a.type == ActionType.RESOLVE_PLAY), None)
+  101:         self.assertIsNotNone(resolve_action)
+   98:         # RESOLVE_PLAY
+   99:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+  100:         resolve_action = next((a for a in actions if a.type == ActionType.RESOLVE_PLAY), None)
+  101:         self.assertIsNotNone(resolve_action)
+  102:         EffectResolver.resolve_action(self.game, resolve_action, self.card_db)
+  119: 
+  120:         # 7. Generate Actions -> Should have DECLARE_PLAY for meta counter
+  121:         actions = ActionGenerator.generate_legal_actions(self.game, self.card_db)
+  122:         # Look for PLAY_CARD (or DECLARE_PLAY) for meta card (ID 100)
+  123:         # Meta Counter usually generates PLAY_CARD directly or INTERNAL_PLAY?
+  122:         # Look for PLAY_CARD (or DECLARE_PLAY) for meta card (ID 100)
+  123:         # Meta Counter usually generates PLAY_CARD directly or INTERNAL_PLAY?
+  124:         # The logic says it generates actions based on PendingEffect.
+  125:         # If it's a Hand Trigger (Meta Counter), it allows playing the card.
+  126: 
+  130: 
+  131:         print("Actions generated:")
+  132:         for a in actions:
+  133:             print(f"Type: {a.type}, CardID: {a.card_id}, SourceInst: {a.source_instance_id}")
+  134: 
+  133:             print(f"Type: {a.type}, CardID: {a.card_id}, SourceInst: {a.source_instance_id}")
+  134: 
+  135:         meta_action = next((a for a in actions if a.card_id == self.meta_card_id), None)
+  136:         # The action type depends on implementation (likely PLAY_CARD or USE_ABILITY)
+  137:         self.assertIsNotNone(meta_action)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_new_card_features.py (matches: 2)
+   35:                         "trigger": "ON_PLAY",
+   36:                         "condition": {"type": "NONE"},
+   37:                         "actions": [
+   38:                             {
+   39:                                 "type": "DISCARD",
+   59:                         "trigger": "ON_PLAY",
+   60:                         "condition": {"type": "NONE"},
+   61:                         "actions": [
+   62:                             {
+   63:                                 "type": "PLAY_FROM_ZONE",
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_ninja_strike.py (matches: 4)
+   93:     # 4. Generate Attack Action
+   94:     # P1 attacks P2
+   95:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, card_db)
+   96:     attack_action = None
+   97:     for a in actions:
+   95:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, card_db)
+   96:     attack_action = None
+   97:     for a in actions:
+   98:         if a.type == dm_ai_module.ActionType.ATTACK_PLAYER:
+   99:             attack_action = a
+  111: 
+  112:     # 7. Generate Actions (Should see DECLARE_REACTION)
+  113:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, card_db)
+  114:     ninja_action = None
+  115:     for a in actions:
+  113:     actions = dm_ai_module.ActionGenerator.generate_legal_actions(game_state, card_db)
+  114:     ninja_action = None
+  115:     for a in actions:
+  116:         print(f"Action: {a.type}, Source: {a.source_instance_id}")
+  117:         if a.type == dm_ai_module.ActionType.DECLARE_REACTION:
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_search_shield.py (matches: 1)
+   80:             "trigger": "ON_PLAY",
+   81:             "condition": {},
+   82:             "actions": [
+   83:                 {
+   84:                     "type": "SEARCH_DECK_BOTTOM",
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_templates_e2e.py (matches: 7)
+   10: class TestEditorTemplatesE2E(unittest.TestCase):
+   11:     def test_templates_load_and_lift_actions(self):
+   12:         # Create a temporary editor_templates.json with an effect that contains actions
+   13:         tmp = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
+   14:         try:
+   14:         try:
+   15:             sample = {
+   16:                 "actions": [
+   17:                     {
+   18:                         "uid": "tmpl1",
+   17:                     {
+   18:                         "uid": "tmpl1",
+   19:                         "actions": [
+   20:                             {"type": "MOVE_CARD", "from_zone": "HAND", "to_zone": "MANA_ZONE", "value1": 1},
+   21:                             {"type": "DRAW_CARD", "value1": 2}
+   35: 
+   36:             # Ensure templates loaded
+   37:             self.assertIn('actions', manager.templates)
+   38: 
+   39:             # Lift actions for each template entry and verify conversion
+   37:             self.assertIn('actions', manager.templates)
+   38: 
+   39:             # Lift actions for each template entry and verify conversion
+   40:             for eff in manager.templates.get('actions', []):
+   41:                 manager._lift_actions_to_commands(eff)
+   38: 
+   39:             # Lift actions for each template entry and verify conversion
+   40:             for eff in manager.templates.get('actions', []):
+   41:                 manager._lift_actions_to_commands(eff)
+   42:                 self.assertIn('commands', eff)
+   41:                 manager._lift_actions_to_commands(eff)
+   42:                 self.assertIn('commands', eff)
+   43:                 self.assertNotIn('actions', eff)
+   44:                 for c in eff['commands']:
+   45:                     self.assertIsInstance(c, dict)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\integration\test_trigger_stack.py (matches: 1)
+   20:             {
+   21:                 "trigger": "ON_PLAY",
+   22:                 "actions": [
+   23:                     {
+   24:                         "type": "DRAW_CARD",
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\scenarios\test_fuzzing.py (matches: 3)
+   48:             while state.game_over == False and state.turn_number < MAX_TURNS:
+   49:                 # Generate Actions
+   50:                 actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+   51: 
+   52:                 if not actions:
+   50:                 actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+   51: 
+   52:                 if not actions:
+   53:                     # Check if game really over? Or assume pass/stuck
+   54:                     # If start of turn, might need to start phase?
+   59: 
+   60:                 # Pick Random
+   61:                 action = random.choice(actions)
+   62: 
+   63:                 # Resolve
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\scenarios\test_puzzle_lethal_easy.py (matches: 7)
+   92:     steps = 0
+   93:     while (state.stack_zone or state.pending_effects) and steps < max_steps:
+   94:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+   95:         if not actions:
+   96:             break
+   93:     while (state.stack_zone or state.pending_effects) and steps < max_steps:
+   94:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+   95:         if not actions:
+   96:             break
+   97: 
+   99:         # For Napoleon Vibes: Discard 2 optional.
+  100:         # If optional, we might need to choose.
+  101:         # If it generates SELECT_TARGET/DISCARD actions, we pick one.
+  102:         action = actions[0]
+  103:         dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+  100:         # If optional, we might need to choose.
+  101:         # If it generates SELECT_TARGET/DISCARD actions, we pick one.
+  102:         action = actions[0]
+  103:         dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+  104:         steps += 1
+  129:     steps = 0
+  130:     while (state.pending_effects or state.stack_zone) and steps < max_steps:
+  131:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+  132:         if not actions:
+  133:             break
+  130:     while (state.pending_effects or state.stack_zone) and steps < max_steps:
+  131:         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+  132:         if not actions:
+  133:             break
+  134:         action = actions[0]
+  132:         if not actions:
+  133:             break
+  134:         action = actions[0]
+  135:         dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+  136:         steps += 1
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\unit\test_card_stats.py (matches: 20)
+   65: 
+   66:     # Generate play action
+   67:     actions = ActionGenerator.generate_legal_actions(state, card_db)
+   68:     play_action = None
+   69:     for action in actions:
+   67:     actions = ActionGenerator.generate_legal_actions(state, card_db)
+   68:     play_action = None
+   69:     for action in actions:
+   70:         if (action.type == ActionType.PLAY_CARD or action.type == ActionType.DECLARE_PLAY) and action.card_id == 1:
+   71:             play_action = action
+   79:     if play_action.type == ActionType.DECLARE_PLAY:
+   80:         # Step 2: PAY_COST
+   81:         actions = ActionGenerator.generate_legal_actions(state, card_db)
+   82:         pay_action = next((a for a in actions if a.type == ActionType.PAY_COST), None)
+   83:         if pay_action:
+   80:         # Step 2: PAY_COST
+   81:         actions = ActionGenerator.generate_legal_actions(state, card_db)
+   82:         pay_action = next((a for a in actions if a.type == ActionType.PAY_COST), None)
+   83:         if pay_action:
+   84:              dm_ai_module.EffectResolver.resolve_action(state, pay_action, card_db)
+   85: 
+   86:         # Step 3: RESOLVE_PLAY
+   87:         actions = ActionGenerator.generate_legal_actions(state, card_db)
+   88:         resolve_action = next((a for a in actions if a.type == ActionType.RESOLVE_PLAY), None)
+   89:         if resolve_action:
+   86:         # Step 3: RESOLVE_PLAY
+   87:         actions = ActionGenerator.generate_legal_actions(state, card_db)
+   88:         resolve_action = next((a for a in actions if a.type == ActionType.RESOLVE_PLAY), None)
+   89:         if resolve_action:
+   90:              dm_ai_module.EffectResolver.resolve_action(state, resolve_action, card_db)
+  131:     # Play Aqua Hulcus (Card 2)
+  132:     state.current_phase = dm_ai_module.Phase.MAIN
+  133:     actions = ActionGenerator.generate_legal_actions(state, card_db)
+  134:     play_action = [a for a in actions if (a.type == ActionType.PLAY_CARD or a.type == ActionType.DECLARE_PLAY) and a.card_id == 2][0]
+  135:     dm_ai_module.EffectResolver.resolve_action(state, play_action, card_db)
+  132:     state.current_phase = dm_ai_module.Phase.MAIN
+  133:     actions = ActionGenerator.generate_legal_actions(state, card_db)
+  134:     play_action = [a for a in actions if (a.type == ActionType.PLAY_CARD or a.type == ActionType.DECLARE_PLAY) and a.card_id == 2][0]
+  135:     dm_ai_module.EffectResolver.resolve_action(state, play_action, card_db)
+  136: 
+  137:     if play_action.type == ActionType.DECLARE_PLAY:
+  138:         # Pay Cost
+  139:         actions = ActionGenerator.generate_legal_actions(state, card_db)
+  140:         pay_action = [a for a in actions if a.type == ActionType.PAY_COST][0]
+  141:         dm_ai_module.EffectResolver.resolve_action(state, pay_action, card_db)
+  138:         # Pay Cost
+  139:         actions = ActionGenerator.generate_legal_actions(state, card_db)
+  140:         pay_action = [a for a in actions if a.type == ActionType.PAY_COST][0]
+  141:         dm_ai_module.EffectResolver.resolve_action(state, pay_action, card_db)
+  142:         # Resolve Play
+  141:         dm_ai_module.EffectResolver.resolve_action(state, pay_action, card_db)
+  142:         # Resolve Play
+  143:         actions = ActionGenerator.generate_legal_actions(state, card_db)
+  144:         resolve_action = [a for a in actions if a.type == ActionType.RESOLVE_PLAY][0]
+  145:         dm_ai_module.EffectResolver.resolve_action(state, resolve_action, card_db)
+  142:         # Resolve Play
+  143:         actions = ActionGenerator.generate_legal_actions(state, card_db)
+  144:         resolve_action = [a for a in actions if a.type == ActionType.RESOLVE_PLAY][0]
+  145:         dm_ai_module.EffectResolver.resolve_action(state, resolve_action, card_db)
+  146: 
+  150: 
+  151:     # Attack Player with Card 1
+  152:     actions = ActionGenerator.generate_legal_actions(state, card_db)
+  153:     attack_action = None
+  154:     for a in actions:
+  152:     actions = ActionGenerator.generate_legal_actions(state, card_db)
+  153:     attack_action = None
+  154:     for a in actions:
+  155:         if a.type == ActionType.ATTACK_PLAYER:
+  156:             attack_action = a
+  166:     limit = 10
+  167:     while limit > 0 and state.winner == dm_ai_module.GameResult.NONE:
+  168:          actions = ActionGenerator.generate_legal_actions(state, card_db)
+  169:          if not actions:
+  170:              print("No actions generated!")
+  167:     while limit > 0 and state.winner == dm_ai_module.GameResult.NONE:
+  168:          actions = ActionGenerator.generate_legal_actions(state, card_db)
+  169:          if not actions:
+  170:              print("No actions generated!")
+  171:              break
+  168:          actions = ActionGenerator.generate_legal_actions(state, card_db)
+  169:          if not actions:
+  170:              print("No actions generated!")
+  171:              break
+  172: 
+  171:              break
+  172: 
+  173:          # Prioritize resolution actions
+  174:          res_act = next((a for a in actions if a.type in [ActionType.RESOLVE_BATTLE, ActionType.BREAK_SHIELD, ActionType.RESOLVE_EFFECT]), None)
+  175:          if res_act:
+  172: 
+  173:          # Prioritize resolution actions
+  174:          res_act = next((a for a in actions if a.type in [ActionType.RESOLVE_BATTLE, ActionType.BREAK_SHIELD, ActionType.RESOLVE_EFFECT]), None)
+  175:          if res_act:
+  176:              dm_ai_module.EffectResolver.resolve_action(state, res_act, card_db)
+  176:              dm_ai_module.EffectResolver.resolve_action(state, res_act, card_db)
+  177:          else:
+  178:              dm_ai_module.EffectResolver.resolve_action(state, actions[0], card_db)
+  179:          limit -= 1
+  180: 
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\unit\test_event_dispatch.py (matches: 1)
+   28:             action_def = dm_ai_module.ActionDef()
+   29:             action_def.type = dm_ai_module.EffectActionType.DRAW_CARD
+   30:             effect_def.actions = [action_def]
+   31: 
+   32:             cdata = dm_ai_module.CardData(
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\unit\test_load_lift_migration.py (matches: 3)
+   12:             {
+   13:                 "trigger": "ON_PLAY",
+   14:                 "actions": [
+   15:                     {"type": "DRAW_CARD", "value1": 2}
+   16:                 ]
+   35:     card = out[0]
+   36: 
+   37:     # Ensure effects exist and have 'commands' not 'actions'
+   38:     effects_key = 'triggers' if 'triggers' in card else 'effects'
+   39:     effects = card.get(effects_key, [])
+   40:     assert len(effects) == 1
+   41:     eff = effects[0]
+   42:     assert 'actions' not in eff
+   43:     assert 'commands' in eff
+   44:     assert isinstance(eff['commands'], list)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\unit\test_tokenization.py (matches: 1)
+   56:     state = dm_ai_module.GameState(100)
+   57:     # We can't easily push commands from python binding unless exposed.
+   58:     # Assuming command_history is populated by engine actions.
+   59:     # For now, just check it doesn't crash on empty history.
+   60:     tokens = dm_ai_module.TokenConverter.encode_state(state, 0, 64)
+
+------------------------------------------------------------
+
+FILE: C:\Users\ichirou\DM_simulation\tests\unit\test_variable_system.py (matches: 2)
+   43:     act2.input_value_key = "my_creatures"
+   44: 
+   45:     effect.actions = [act1, act2]
+   46: 
+   47:     spell_def = dm_ai_module.CardData(2, "Variable Spell", 1, "WATER", 0, "SPELL", [], [effect])
+  119:     act3.input_value_key = "civ_count" # Select 3
+  120: 
+  121:     effect.actions = [act1, act2, act3]
+  122: 
+  123:     # Add cards to deck for drawing
+
+------------------------------------------------------------
+

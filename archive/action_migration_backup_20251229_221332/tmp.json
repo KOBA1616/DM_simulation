@@ -7,7 +7,7 @@
         "commands": [
           {
             "type": "DRAW_CARD",
-            "uid": "02fd1925-ecdd-4cc3-b0fc-afef07d597d0",
+            "uid": "b71f1067-4f87-48d3-bd9d-538e8e1f33eb",
             "legacy_warning": false,
             "legacy_original_type": "DRAW_CARD",
             "from_zone": "DECK",

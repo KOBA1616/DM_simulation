@@ -1,0 +1,345 @@
+C:\Program Files\Git\mingw64
+C:\Program Files\Git\mingw64\bin
+C:\Program Files\Git\mingw64\doc
+C:\Program Files\Git\mingw64\etc
+C:\Program Files\Git\mingw64\lib
+C:\Program Files\Git\mingw64\libexec
+C:\Program Files\Git\mingw64\share
+C:\Program Files\Git\mingw64\doc\git-credential-manager
+C:\Program Files\Git\mingw64\etc\pkcs11
+C:\Program Files\Git\mingw64\etc\pki
+C:\Program Files\Git\mingw64\etc\ssl
+C:\Program Files\Git\mingw64\etc\pki\ca-trust
+C:\Program Files\Git\mingw64\etc\ssl\certs
+C:\Program Files\Git\mingw64\etc\ssl\misc
+C:\Program Files\Git\mingw64\lib\engines-3
+C:\Program Files\Git\mingw64\lib\ossl-modules
+C:\Program Files\Git\mingw64\lib\p11-kit
+C:\Program Files\Git\mingw64\lib\pkcs11
+C:\Program Files\Git\mingw64\lib\reg1.3
+C:\Program Files\Git\mingw64\lib\tcl8
+C:\Program Files\Git\mingw64\lib\tcl8.6
+C:\Program Files\Git\mingw64\lib\thread2.8.8
+C:\Program Files\Git\mingw64\lib\tk8.6
+C:\Program Files\Git\mingw64\lib\tcl8\8.4
+C:\Program Files\Git\mingw64\lib\tcl8\8.5
+C:\Program Files\Git\mingw64\lib\tcl8\8.6
+C:\Program Files\Git\mingw64\lib\tcl8.6\encoding
+C:\Program Files\Git\mingw64\lib\tcl8.6\http1.0
+C:\Program Files\Git\mingw64\lib\tcl8.6\msgs
+C:\Program Files\Git\mingw64\lib\tcl8.6\opt0.4
+C:\Program Files\Git\mingw64\lib\tcl8.6\tzdata
+C:\Program Files\Git\mingw64\lib\tk8.6\demos
+C:\Program Files\Git\mingw64\lib\tk8.6\images
+C:\Program Files\Git\mingw64\lib\tk8.6\msgs
+C:\Program Files\Git\mingw64\lib\tk8.6\ttk
+C:\Program Files\Git\mingw64\libexec\git-core
+C:\Program Files\Git\mingw64\libexec\p11-kit
+C:\Program Files\Git\mingw64\libexec\git-core\mergetools
+C:\Program Files\Git\mingw64\share\antiword
+C:\Program Files\Git\mingw64\share\doc
+C:\Program Files\Git\mingw64\share\git
+C:\Program Files\Git\mingw64\share\git-core
+C:\Program Files\Git\mingw64\share\git-gui
+C:\Program Files\Git\mingw64\share\licenses
+C:\Program Files\Git\mingw64\share\p11-kit
+C:\Program Files\Git\mingw64\share\perl5
+C:\Program Files\Git\mingw64\share\pki
+C:\Program Files\Git\mingw64\share\doc\connect
+C:\Program Files\Git\mingw64\share\doc\expat
+C:\Program Files\Git\mingw64\share\doc\git-doc
+C:\Program Files\Git\mingw64\share\doc\git-lfs
+C:\Program Files\Git\mingw64\share\doc\gnutls
+C:\Program Files\Git\mingw64\share\doc\nghttp2
+C:\Program Files\Git\mingw64\share\doc\xz
+C:\Program Files\Git\mingw64\share\git\completion
+C:\Program Files\Git\mingw64\share\git-core\templates
+C:\Program Files\Git\mingw64\share\git-gui\lib
+C:\Program Files\Git\mingw64\share\licenses\brotli
+C:\Program Files\Git\mingw64\share\licenses\bzip2
+C:\Program Files\Git\mingw64\share\licenses\c-ares
+C:\Program Files\Git\mingw64\share\licenses\curl
+C:\Program Files\Git\mingw64\share\licenses\expat
+C:\Program Files\Git\mingw64\share\licenses\gcc-libs
+C:\Program Files\Git\mingw64\share\licenses\gettext-runtime
+C:\Program Files\Git\mingw64\share\licenses\libffi
+C:\Program Files\Git\mingw64\share\licenses\libiconv
+C:\Program Files\Git\mingw64\share\licenses\libpsl
+C:\Program Files\Git\mingw64\share\licenses\libssh2
+C:\Program Files\Git\mingw64\share\licenses\libsystre
+C:\Program Files\Git\mingw64\share\licenses\libtasn1
+C:\Program Files\Git\mingw64\share\licenses\libtre
+C:\Program Files\Git\mingw64\share\licenses\libunistring
+C:\Program Files\Git\mingw64\share\licenses\libwinpthread
+C:\Program Files\Git\mingw64\share\licenses\libzip
+C:\Program Files\Git\mingw64\share\licenses\nghttp2
+C:\Program Files\Git\mingw64\share\licenses\openssl
+C:\Program Files\Git\mingw64\share\licenses\pcre2
+C:\Program Files\Git\mingw64\share\licenses\wineditline
+C:\Program Files\Git\mingw64\share\licenses\xz
+C:\Program Files\Git\mingw64\share\licenses\zlib
+C:\Program Files\Git\mingw64\share\licenses\zstd
+C:\Program Files\Git\mingw64\share\p11-kit\modules
+C:\Program Files\Git\mingw64\share\perl5\FromCPAN
+C:\Program Files\Git\mingw64\share\perl5\Git
+C:\Program Files\Git\mingw64\share\pki\ca-trust-legacy
+C:\Program Files\Git\mingw64\share\pki\ca-trust-source
+C:\Program Files\Git\usr\share\cygwin
+C:\Program Files\Git\usr\share\licenses\gcc-libs
+C:\Program Files (x86)\mingw64
+C:\Program Files (x86)\mingw64\bin
+C:\Program Files (x86)\mingw64\etc
+C:\Program Files (x86)\mingw64\include
+C:\Program Files (x86)\mingw64\lib
+C:\Program Files (x86)\mingw64\libexec
+C:\Program Files (x86)\mingw64\licenses
+C:\Program Files (x86)\mingw64\opt
+C:\Program Files (x86)\mingw64\share
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32
+C:\Program Files (x86)\mingw64\include\gdb
+C:\Program Files (x86)\mingw64\include\libiberty
+C:\Program Files (x86)\mingw64\include\sim
+C:\Program Files (x86)\mingw64\lib\bfd-plugins
+C:\Program Files (x86)\mingw64\lib\gcc
+C:\Program Files (x86)\mingw64\lib\gcc\x86_64-w64-mingw32
+C:\Program Files (x86)\mingw64\lib\gcc\x86_64-w64-mingw32\13.2.0
+C:\Program Files (x86)\mingw64\lib\gcc\x86_64-w64-mingw32\lib
+C:\Program Files (x86)\mingw64\libexec\gcc
+C:\Program Files (x86)\mingw64\libexec\gcc\x86_64-w64-mingw32
+C:\Program Files (x86)\mingw64\libexec\gcc\x86_64-w64-mingw32\13.2.0
+C:\Program Files (x86)\mingw64\licenses\binutils
+C:\Program Files (x86)\mingw64\licenses\bzip2
+C:\Program Files (x86)\mingw64\licenses\cloog
+C:\Program Files (x86)\mingw64\licenses\expat
+C:\Program Files (x86)\mingw64\licenses\gcc
+C:\Program Files (x86)\mingw64\licenses\gdb
+C:\Program Files (x86)\mingw64\licenses\gmp
+C:\Program Files (x86)\mingw64\licenses\isl
+C:\Program Files (x86)\mingw64\licenses\libffi
+C:\Program Files (x86)\mingw64\licenses\libiconv
+C:\Program Files (x86)\mingw64\licenses\make
+C:\Program Files (x86)\mingw64\licenses\mingw-libgnurx
+C:\Program Files (x86)\mingw64\licenses\mingw-w64
+C:\Program Files (x86)\mingw64\licenses\mpc
+C:\Program Files (x86)\mingw64\licenses\mpfr
+C:\Program Files (x86)\mingw64\licenses\ncurses
+C:\Program Files (x86)\mingw64\licenses\openssl
+C:\Program Files (x86)\mingw64\licenses\ppl
+C:\Program Files (x86)\mingw64\licenses\python
+C:\Program Files (x86)\mingw64\licenses\readline
+C:\Program Files (x86)\mingw64\licenses\sqlite
+C:\Program Files (x86)\mingw64\licenses\tcl
+C:\Program Files (x86)\mingw64\licenses\tk
+C:\Program Files (x86)\mingw64\licenses\winpthreads
+C:\Program Files (x86)\mingw64\licenses\xz
+C:\Program Files (x86)\mingw64\licenses\zlib
+C:\Program Files (x86)\mingw64\opt\bin
+C:\Program Files (x86)\mingw64\opt\include
+C:\Program Files (x86)\mingw64\opt\info
+C:\Program Files (x86)\mingw64\opt\lib
+C:\Program Files (x86)\mingw64\opt\share
+C:\Program Files (x86)\mingw64\opt\ssl
+C:\Program Files (x86)\mingw64\opt\include\lzma
+C:\Program Files (x86)\mingw64\opt\include\ncursesw
+C:\Program Files (x86)\mingw64\opt\include\openssl
+C:\Program Files (x86)\mingw64\opt\include\python3.9
+C:\Program Files (x86)\mingw64\opt\include\readline
+C:\Program Files (x86)\mingw64\opt\include\tcl-private
+C:\Program Files (x86)\mingw64\opt\include\tk-private
+C:\Program Files (x86)\mingw64\opt\include\X11
+C:\Program Files (x86)\mingw64\opt\include\python3.9\cpython
+C:\Program Files (x86)\mingw64\opt\include\python3.9\internal
+C:\Program Files (x86)\mingw64\opt\include\tcl-private\generic
+C:\Program Files (x86)\mingw64\opt\include\tcl-private\win
+C:\Program Files (x86)\mingw64\opt\include\tk-private\generic
+C:\Program Files (x86)\mingw64\opt\include\tk-private\win
+C:\Program Files (x86)\mingw64\opt\lib\cmake
+C:\Program Files (x86)\mingw64\opt\lib\dde1.4
+C:\Program Files (x86)\mingw64\opt\lib\engines-3
+C:\Program Files (x86)\mingw64\opt\lib\itcl4.2.1
+C:\Program Files (x86)\mingw64\opt\lib\libffi-3.2.1
+C:\Program Files (x86)\mingw64\opt\lib\ossl-modules
+C:\Program Files (x86)\mingw64\opt\lib\python3.9
+C:\Program Files (x86)\mingw64\opt\lib\reg1.3
+C:\Program Files (x86)\mingw64\opt\lib\sqlite3.34.0
+C:\Program Files (x86)\mingw64\opt\lib\tcl8
+C:\Program Files (x86)\mingw64\opt\lib\tcl8.6
+C:\Program Files (x86)\mingw64\opt\lib\tdbc1.1.2
+C:\Program Files (x86)\mingw64\opt\lib\tdbcmysql1.1.2
+C:\Program Files (x86)\mingw64\opt\lib\tdbcodbc1.1.2
+C:\Program Files (x86)\mingw64\opt\lib\tdbcpostgres1.1.2
+C:\Program Files (x86)\mingw64\opt\lib\terminfo
+C:\Program Files (x86)\mingw64\opt\lib\thread2.8.6
+C:\Program Files (x86)\mingw64\opt\lib\tk8.6
+C:\Program Files (x86)\mingw64\opt\lib\cmake\expat-2.5.0
+C:\Program Files (x86)\mingw64\opt\lib\libffi-3.2.1\include
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\__pycache__
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\asyncio
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\collections
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\concurrent
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\config-3.9
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\ctypes
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\curses
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\dbm
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\distutils
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\email
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\encodings
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\ensurepip
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\html
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\http
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\idlelib
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\importlib
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\json
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\lib-dynload
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\lib2to3
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\logging
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\msilib
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\multiprocessing
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\pydoc_data
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\site-packages
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\sqlite3
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\tkinter
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\turtledemo
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\unittest
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\urllib
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\venv
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\wsgiref
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\xml
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\xmlrpc
+C:\Program Files (x86)\mingw64\opt\lib\python3.9\zoneinfo
+C:\Program Files (x86)\mingw64\opt\lib\tcl8\8.4
+C:\Program Files (x86)\mingw64\opt\lib\tcl8\8.5
+C:\Program Files (x86)\mingw64\opt\lib\tcl8\8.6
+C:\Program Files (x86)\mingw64\opt\lib\tcl8.6\encoding
+C:\Program Files (x86)\mingw64\opt\lib\tcl8.6\http1.0
+C:\Program Files (x86)\mingw64\opt\lib\tcl8.6\msgs
+C:\Program Files (x86)\mingw64\opt\lib\tcl8.6\opt0.4
+C:\Program Files (x86)\mingw64\opt\lib\tcl8.6\tzdata
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\31
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\32
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\33
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\34
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\35
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\36
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\37
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\38
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\39
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\41
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\45
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\4c
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\4d
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\4e
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\50
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\51
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\58
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\61
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\62
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\63
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\64
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\65
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\66
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\67
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\68
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\69
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\6a
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\6b
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\6c
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\6d
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\6e
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\6f
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\70
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\71
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\72
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\73
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\74
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\75
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\76
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\77
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\78
+C:\Program Files (x86)\mingw64\opt\lib\terminfo\7a
+C:\Program Files (x86)\mingw64\opt\lib\tk8.6\demos
+C:\Program Files (x86)\mingw64\opt\lib\tk8.6\images
+C:\Program Files (x86)\mingw64\opt\lib\tk8.6\msgs
+C:\Program Files (x86)\mingw64\opt\lib\tk8.6\ttk
+C:\Program Files (x86)\mingw64\opt\share\doc
+C:\Program Files (x86)\mingw64\opt\share\tabset
+C:\Program Files (x86)\mingw64\opt\share\terminfo
+C:\Program Files (x86)\mingw64\opt\share\doc\expat
+C:\Program Files (x86)\mingw64\opt\share\doc\readline
+C:\Program Files (x86)\mingw64\opt\share\doc\xz
+C:\Program Files (x86)\mingw64\opt\share\terminfo\31
+C:\Program Files (x86)\mingw64\opt\share\terminfo\32
+C:\Program Files (x86)\mingw64\opt\share\terminfo\33
+C:\Program Files (x86)\mingw64\opt\share\terminfo\34
+C:\Program Files (x86)\mingw64\opt\share\terminfo\35
+C:\Program Files (x86)\mingw64\opt\share\terminfo\36
+C:\Program Files (x86)\mingw64\opt\share\terminfo\37
+C:\Program Files (x86)\mingw64\opt\share\terminfo\38
+C:\Program Files (x86)\mingw64\opt\share\terminfo\39
+C:\Program Files (x86)\mingw64\opt\share\terminfo\41
+C:\Program Files (x86)\mingw64\opt\share\terminfo\45
+C:\Program Files (x86)\mingw64\opt\share\terminfo\4c
+C:\Program Files (x86)\mingw64\opt\share\terminfo\4d
+C:\Program Files (x86)\mingw64\opt\share\terminfo\4e
+C:\Program Files (x86)\mingw64\opt\share\terminfo\50
+C:\Program Files (x86)\mingw64\opt\share\terminfo\51
+C:\Program Files (x86)\mingw64\opt\share\terminfo\58
+C:\Program Files (x86)\mingw64\opt\share\terminfo\61
+C:\Program Files (x86)\mingw64\opt\share\terminfo\62
+C:\Program Files (x86)\mingw64\opt\share\terminfo\63
+C:\Program Files (x86)\mingw64\opt\share\terminfo\64
+C:\Program Files (x86)\mingw64\opt\share\terminfo\65
+C:\Program Files (x86)\mingw64\opt\share\terminfo\66
+C:\Program Files (x86)\mingw64\opt\share\terminfo\67
+C:\Program Files (x86)\mingw64\opt\share\terminfo\68
+C:\Program Files (x86)\mingw64\opt\share\terminfo\69
+C:\Program Files (x86)\mingw64\opt\share\terminfo\6a
+C:\Program Files (x86)\mingw64\opt\share\terminfo\6b
+C:\Program Files (x86)\mingw64\opt\share\terminfo\6c
+C:\Program Files (x86)\mingw64\opt\share\terminfo\6d
+C:\Program Files (x86)\mingw64\opt\share\terminfo\6e
+C:\Program Files (x86)\mingw64\opt\share\terminfo\6f
+C:\Program Files (x86)\mingw64\opt\share\terminfo\70
+C:\Program Files (x86)\mingw64\opt\share\terminfo\71
+C:\Program Files (x86)\mingw64\opt\share\terminfo\72
+C:\Program Files (x86)\mingw64\opt\share\terminfo\73
+C:\Program Files (x86)\mingw64\opt\share\terminfo\74
+C:\Program Files (x86)\mingw64\opt\share\terminfo\75
+C:\Program Files (x86)\mingw64\opt\share\terminfo\76
+C:\Program Files (x86)\mingw64\opt\share\terminfo\77
+C:\Program Files (x86)\mingw64\opt\share\terminfo\78
+C:\Program Files (x86)\mingw64\opt\share\terminfo\7a
+C:\Program Files (x86)\mingw64\opt\ssl\certs
+C:\Program Files (x86)\mingw64\opt\ssl\misc
+C:\Program Files (x86)\mingw64\opt\ssl\private
+C:\Program Files (x86)\mingw64\share\gcc-13.2.0
+C:\Program Files (x86)\mingw64\share\gdb
+C:\Program Files (x86)\mingw64\share\gcc-13.2.0\python
+C:\Program Files (x86)\mingw64\share\gcc-13.2.0\python\libstdcxx
+C:\Program Files (x86)\mingw64\share\gdb\python
+C:\Program Files (x86)\mingw64\share\gdb\syscalls
+C:\Program Files (x86)\mingw64\share\gdb\system-gdbinit
+C:\Program Files (x86)\mingw64\share\gdb\python\gdb
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\bin
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\lib
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\ddk
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\gdiplus
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\GL
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\KHR
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\psdk_inc
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\sdks
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\sec_api
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\sys
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\wrl
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\sec_api\sys
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\include\wrl\wrappers
+C:\Program Files (x86)\mingw64\x86_64-w64-mingw32\lib\ldscripts
+C:\Users\ichirou\AppData\Local\Arduino15\packages\arduino\tools\arm-none-eabi-gcc
+C:\Users\ichirou\AppData\Local\Arduino15\packages\arduino\tools\avr-gcc
+C:\Users\ichirou\AppData\Local\Arduino15\packages\rp2040\tools\pqt-gcc
+C:\Users\ichirou\AppData\Local\Arduino15\packages\rp2040\tools\pqt-gcc-riscv
+C:\Users\ichirou\AppData\Local\Programs\Microsoft VS Code\resources\app\extensions\make
+C:\Users\ichirou\.vscode\extensions\ms-vscode.cpptools-1.29.3-win32-x64\LLVM
+C:\Users\ichirou\.vscode\extensions\ms-vscode.cpptools-1.29.3-win32-x64\LLVM\bin
+C:\Users\ichirou\.vscode\extensions\oderwat.indent-rainbow-8.3.1\node_modules\make-dir

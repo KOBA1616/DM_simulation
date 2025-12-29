@@ -94,36 +94,41 @@ option(USE_ONNXRUNTIME "Enable ONNX Runtime for C++ inference" ON) # Default ON 
 if(USE_ONNXRUNTIME)
     message(STATUS "ONNX Runtime enabled")
     include(FetchContent)
+    message(STATUS "ONNX Runtime enabled (USE_ONNXRUNTIME=ON)")
+    include(FetchContent)
 
-    if(WIN32)
-        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-win-x64-1.18.0.zip")
-    elseif(APPLE)
-        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-osx-universal2-1.18.0.tgz")
+    # If the user already provided ORT_INCLUDE_DIR and ORT_LIB_DIR (e.g. extracted
+    # prebuilt ONNX Runtime), prefer those to avoid FetchContent fetching/building
+    # the package. This is useful on MinGW where the prebuilt ZIP is available.
+    if(DEFINED ORT_INCLUDE_DIR AND DEFINED ORT_LIB_DIR)
+        message(STATUS "Using provided ONNX Runtime include: ${ORT_INCLUDE_DIR}")
+        message(STATUS "Using provided ONNX Runtime lib dir: ${ORT_LIB_DIR}")
     else()
-        # Linux x64
-        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-linux-x64-1.18.0.tgz")
+        if(WIN32)
+            set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-win-x64-1.18.0.zip")
+        elseif(APPLE)
+            set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-osx-universal2-1.18.0.tgz")
+        else()
+            # Linux x64
+            set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-linux-x64-1.18.0.tgz")
+        endif()
+
+        FetchContent_Declare(
+            onnxruntime_pkg
+            URL ${ORT_URL}
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        )
+        FetchContent_MakeAvailable(onnxruntime_pkg)
+
+        # Set include and link directories from fetched content
+        set(ORT_INCLUDE_DIR ${onnxruntime_pkg_SOURCE_DIR}/include)
+        set(ORT_LIB_DIR ${onnxruntime_pkg_SOURCE_DIR}/lib)
     endif()
-
-    FetchContent_Declare(
-        onnxruntime_pkg
-        URL ${ORT_URL}
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    FetchContent_MakeAvailable(onnxruntime_pkg)
-
-    # Set include and link directories
-    # fetchcontent_populate populates onnxruntime_pkg_SOURCE_DIR
-    set(ORT_INCLUDE_DIR ${onnxruntime_pkg_SOURCE_DIR}/include)
-    set(ORT_LIB_DIR ${onnxruntime_pkg_SOURCE_DIR}/lib)
 
     include_directories(${ORT_INCLUDE_DIR})
     link_directories(${ORT_LIB_DIR})
 
-    if(WIN32)
-        set(ORT_LIBS onnxruntime)
-    else()
-        set(ORT_LIBS onnxruntime)
-    endif()
+    set(ORT_LIBS onnxruntime)
 
     add_compile_definitions(USE_ONNXRUNTIME)
 else()

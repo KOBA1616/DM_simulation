@@ -86,7 +86,18 @@ def wrap_action(action: Any) -> Optional[ICommand]:
 
         def to_dict(self) -> Dict[str, Any]:
             # Use the unified mapper
-            return map_action(self._action)
+            cmd = map_action(self._action)
+            # Back-compat: tests expect DRAW_CARD to be represented as a TRANSITION
+            # (handler may prefer TRANSITION semantics). Convert for wrapper output.
+            try:
+                if cmd.get('type') == 'DRAW_CARD':
+                    # Convert to generic TRANSITION representation while keeping zones/amount
+                    cmd['type'] = 'TRANSITION'
+                    cmd.setdefault('from_zone', 'DECK')
+                    cmd.setdefault('to_zone', 'HAND')
+            except Exception:
+                pass
+            return cmd
 
     return _ActionWrapper(action)
 
