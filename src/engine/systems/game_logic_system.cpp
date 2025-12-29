@@ -717,12 +717,19 @@ namespace dm::engine::systems {
         std::string type = exec.resolve_string(inst.args.value("type", ""));
         int player = exec.resolve_int(inst.args.value("player", 0));
 
+        GameResult res = GameResult::NONE;
+
         if (type == "WIN_GAME") {
-            if (player == 0) state.winner = GameResult::P1_WIN;
-            else state.winner = GameResult::P2_WIN;
+            if (player == 0) res = GameResult::P1_WIN;
+            else res = GameResult::P2_WIN;
         } else if (type == "LOSE_GAME") {
-            if (player == 0) state.winner = GameResult::P2_WIN;
-            else state.winner = GameResult::P1_WIN;
+            if (player == 0) res = GameResult::P2_WIN;
+            else res = GameResult::P1_WIN;
+        }
+
+        if (res != GameResult::NONE) {
+            auto cmd = std::make_unique<GameResultCommand>(res);
+            state.execute_command(std::move(cmd));
         }
 
         exec.call_stack.clear();
