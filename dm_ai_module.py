@@ -1,22 +1,74 @@
-# Top-level shim to ensure tests can import dm_ai_module in environments
-# where the compiled extension is incomplete. This intentionally lives at
-# repository root so it takes precedence on sys.path during test collection.
+"""
+Compatibility shim loader: prefer compiled extension in `bin/` when present.
+
+This file used to be a pure-Python fallback that shadowed the compiled
+extension. That prevented tests from using the real native module. Now
+we try to load the built extension from `./bin` first; if not found,
+fall back to a lightweight Python shim for tests.
+"""
+from __future__ import annotations
+import importlib.machinery
+import importlib.util
+import sys
+import os
 from enum import Enum
-print(f"[dm_ai_module shim] import path={__file__}")
 
-class Civilization(Enum):
-    FIRE = 1
-    WATER = 2
-    NATURE = 3
-    LIGHT = 4
-    DARKNESS = 5
+_root = os.path.dirname(__file__)
+_bin = os.path.join(_root, 'bin')
 
-class CardType(Enum):
-    CREATURE = 1
-    SPELL = 2
+def _load_compiled():
+    # Known filename pattern produced by CMake / pybind11: dm_ai_module*.pyd
+    if os.environ.get('DM_FORCE_PY_SHIM') == '1':
+        print('[dm_ai_module shim] DM_FORCE_PY_SHIM=1 -> skipping compiled extension')
+        return None
+    if not os.path.isdir(_bin):
+        return None
+    for name in os.listdir(_bin):
+        if name.startswith('dm_ai_module') and name.endswith('.pyd'):
+            path = os.path.join(_bin, name)
+            loader = importlib.machinery.ExtensionFileLoader('dm_ai_module', path)
+            spec = importlib.util.spec_from_loader('dm_ai_module', loader)
+            if spec is None:
+                continue
+            module = importlib.util.module_from_spec(spec)
+            try:
+                loader.exec_module(module)
+            except Exception as e:
+                # If loading the compiled extension fails (e.g., ORT ABI mismatch),
+                # ignore and fall back to the Python shim.
+                print(f"[dm_ai_module shim] failed to load compiled extension {path}: {e}")
+                continue
+            sys.modules['dm_ai_module'] = module
+            return module
+    return None
 
-class CardKeywords(int):
-    pass
+
+# Try to load compiled extension first
+_compiled = _load_compiled()
+if _compiled is not None:
+    # Re-export everything from compiled module
+    globals().update({k: getattr(_compiled, k) for k in dir(_compiled) if not k.startswith('__')})
+    # leave module as loaded
+else:
+    # Minimal fallback shim (keeps tests runnable when extension absent)
+    from enum import Enum
+
+    class Civilization(Enum):
+        FIRE = 1
+        WATER = 2
+        NATURE = 3
+        LIGHT = 4
+        DARKNESS = 5
+
+    class CardType(Enum):
+        CREATURE = 1
+        SPELL = 2
+
+    class CardKeywords(int):
+        pass
+
+    # ... keep the rest of the previous lightweight shim if needed by tests.
+    # For brevity we only provide the minimal symbols required by tests.
 
 class PassiveType(Enum):
     NONE = 0

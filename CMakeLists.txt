@@ -231,6 +231,11 @@ add_library(dm_core OBJECT
 # We set properties directly.
 set_target_properties(dm_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# Ensure dm_core can include pybind11 headers (pybind11 target provides include dirs)
+if(TARGET pybind11::module)
+    target_link_libraries(dm_core PRIVATE pybind11::module)
+endif()
+
 
 # Python Module (Phase 3)
 pybind11_add_module(dm_ai_module

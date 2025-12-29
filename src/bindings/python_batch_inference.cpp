@@ -1,6 +1,7 @@
 #include "python_batch_inference.hpp"
 #include <mutex>
 #include <stdexcept>
+#include <pybind11/pybind11.h>
 
 namespace dm::python {
 
@@ -30,6 +31,7 @@ namespace dm::python {
         if (!cb_copy) {
             throw std::runtime_error("No batch inference callback registered");
         }
+        pybind11::gil_scoped_acquire acquire;
         return cb_copy(input);
     }
 
@@ -62,6 +64,7 @@ namespace dm::python {
         if (!cb_copy) {
             throw std::runtime_error("No flat batch inference callback registered");
         }
+        pybind11::gil_scoped_acquire acquire;
         return cb_copy(flat, n, stride);
     }
 
@@ -89,6 +92,7 @@ namespace dm::python {
         if (!cb_copy) {
             throw std::runtime_error("No sequence batch inference callback registered");
         }
+        pybind11::gil_scoped_acquire acquire;
         return cb_copy(input);
     }
 
