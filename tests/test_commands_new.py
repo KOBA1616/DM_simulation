@@ -1,3 +1,6 @@
+import pytest
+pytest.skip("duplicate root-level test file; use tests/unit/test_commands_new.py", allow_module_level=True)
+
 import dm_ai_module
 from dm_toolkit.commands_new import wrap_action
 

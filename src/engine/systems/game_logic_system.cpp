@@ -171,8 +171,24 @@ namespace dm::engine::systems {
     }
 
     void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, int dest_override) {
-        // Implementation stub for linker
-        (void)game_state; (void)stack_instance_id; (void)cost_reduction; (void)spawn_source; (void)controller; (void)card_db; (void)evo_source_id; (void)dest_override;
+        // Resolve a play that is currently on the stack: invoke resolution logic
+        // by constructing a PipelineExecutor, delegating to handle_resolve_play and
+        // running the pipeline so compiled effects (and final MOVE to GRAVE) execute.
+        (void)cost_reduction; (void)spawn_source; (void)evo_source_id; (void)dest_override;
+
+        // Create pipeline and push resolve-play block
+        dm::engine::systems::PipelineExecutor pipeline;
+        // Construct an instruction that represents resolving the play
+        nlohmann::json args;
+        args["card"] = stack_instance_id;
+        Instruction inst(InstructionOp::GAME_ACTION, args);
+        inst.args["type"] = "RESOLVE_PLAY";
+
+        // Let handle_resolve_play populate pipeline.call_stack
+        handle_resolve_play(pipeline, game_state, inst, card_db);
+
+        // Execute the pipeline to process effects and final move to graveyard
+        pipeline.execute(nullptr, game_state, card_db);
     }
 
     void GameLogicSystem::handle_play_card(PipelineExecutor& exec, GameState& state, const Instruction& inst,
@@ -285,6 +301,64 @@ namespace dm::engine::systems {
         if (!generated.empty()) {
              auto block = std::make_shared<std::vector<Instruction>>(generated);
              exec.call_stack.push_back({block, 0, LoopContext{}});
+        }
+    }
+
+    void GameLogicSystem::handle_apply_buffer_move(PipelineExecutor& exec, GameState& state, const Instruction& inst,
+                                                  const std::map<core::CardID, core::CardDefinition>& card_db) {
+        // Expect inst.args["shields"] = [id...]
+        std::vector<int> shield_ids;
+        if (inst.args.find("shields") != inst.args.end()) {
+            try {
+                for (auto &v : inst.args["shields"]) shield_ids.push_back((int)v);
+            } catch (...) {}
+        }
+        if (shield_ids.empty()) return;
+
+        std::vector<Instruction> generated;
+
+        // For each shield id, find it in players' effect_buffer, move to hand.
+        for (int shield_id : shield_ids) {
+            bool moved = false;
+            for (auto pid = 0u; pid < state.players.size(); ++pid) {
+                auto &buf = state.players[pid].effect_buffer;
+                auto it = std::find_if(buf.begin(), buf.end(), [shield_id](const core::CardInstance& c){ return c.instance_id == shield_id; });
+                if (it != buf.end()) {
+                    core::CardInstance card = *it;
+                    buf.erase(it);
+                    // Move to hand (use add_card_to_zone if available)
+                    state.add_card_to_zone(card, core::Zone::HAND, (core::PlayerID)pid);
+                    moved = true;
+                    // Check if player chose to trigger (context variable $strigger_<shield_id>)
+                    std::string key = "$strigger_" + std::to_string(shield_id);
+                    auto cv = exec.get_context_var(key);
+                    // If shield trigger declared, auto-play. Other declarations
+                    // (guard/strikeback) set context flags for later handling.
+                    if (std::holds_alternative<int>(cv) && std::get<int>(cv) == 1) {
+                        Instruction play_inst(InstructionOp::PLAY);
+                        play_inst.args["card"] = shield_id;
+                        generated.push_back(play_inst);
+                    } else {
+                        // Check guard/strikeback flags and preserve them in context
+                        std::string gk = "$guard_" + std::to_string(shield_id);
+                        std::string sk = "$sback_" + std::to_string(shield_id);
+                        auto gv = exec.get_context_var(gk);
+                        auto sv = exec.get_context_var(sk);
+                        if (std::holds_alternative<int>(gv) && std::get<int>(gv) == 1) {
+                            // Guard chosen — other systems can inspect $guard_<id>
+                        }
+                        if (std::holds_alternative<int>(sv) && std::get<int>(sv) == 1) {
+                            // StrikeBack chosen — other systems can inspect $sback_<id>
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (!generated.empty()) {
+            auto block = std::make_shared<std::vector<Instruction>>(generated);
+            exec.call_stack.push_back({block, 0, LoopContext{}});
         }
     }
 
@@ -416,12 +490,24 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_break_shield(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                               const std::map<core::CardID, core::CardDefinition>& card_db) {
-        int shield_id = exec.resolve_int(inst.args.value("shield", -1));
-        if (shield_id == -1) return;
+        // Support either single shield ("shield") or batch ("shields")
+        std::vector<int> shield_ids;
+        if (inst.args.find("shields") != inst.args.end()) {
+            try {
+                for (auto &v : inst.args["shields"]) shield_ids.push_back((int)v);
+            } catch (...) { }
+        } else {
+            int single = exec.resolve_int(inst.args.value("shield", -1));
+            if (single != -1) shield_ids.push_back(single);
+        }
+
+        if (shield_ids.empty()) return;
+
+        // (debug prints removed)
 
         std::vector<Instruction> generated;
 
-        // 0. Check Before Break Triggers
+        // 0. Check Before Break Triggers (once per action)
         int source_id = exec.resolve_int(inst.args.value("source_id", -1));
         if (source_id != -1) {
              const CardInstance* source = state.get_card_instance(source_id);
@@ -437,23 +523,45 @@ namespace dm::engine::systems {
                  }
              }
         }
-
-        // 1. Move Shield to Hand
-        Instruction move(InstructionOp::MOVE);
-        move.args["to"] = "HAND";
-        move.args["target"] = shield_id;
-        generated.push_back(move);
-
-        // 2. Check S-Trigger
-        const auto* card = state.get_card_instance(shield_id);
-        if (card && card_db.count(card->card_id)) {
-            const auto& def = card_db.at(card->card_id);
-            if (def.keywords.shield_trigger) {
-                Instruction check(InstructionOp::GAME_ACTION);
-                check.args["type"] = "CHECK_S_TRIGGER";
-                check.args["card"] = shield_id;
-                generated.push_back(check);
+        // 1. For each shield id: remove from shield_zone into player's effect_buffer, and generate S-trigger checks as needed
+        std::vector<int> to_apply_list;
+        for (int shield_id : shield_ids) {
+            bool found = false;
+            // Find which player owns this shield and remove it into effect_buffer
+            for (auto pid = 0u; pid < state.players.size(); ++pid) {
+                auto &vec = state.players[pid].shield_zone;
+                auto it = std::find_if(vec.begin(), vec.end(), [shield_id](const CardInstance& c){ return c.instance_id == shield_id; });
+                if (it != vec.end()) {
+                    CardInstance ci = *it;
+                    vec.erase(it);
+                    state.players[pid].effect_buffer.push_back(ci);
+                    found = true;
+                    break;
+                }
             }
+            if (!found) continue;
+
+            // Always record for later apply
+            to_apply_list.push_back(shield_id);
+
+            const auto* card = state.get_card_instance(shield_id);
+            if (card && card_db.count(card->card_id)) {
+                const auto& def = card_db.at(card->card_id);
+                if (def.keywords.shield_trigger) {
+                    Instruction check(InstructionOp::GAME_ACTION);
+                    check.args["type"] = "CHECK_S_TRIGGER";
+                    check.args["card"] = shield_id;
+                    generated.push_back(check);
+                }
+            }
+        }
+
+        // After all checks, add APPLY_BUFFER_MOVE instruction which will move buffered shields to hand and auto-play as needed
+        if (!to_apply_list.empty()) {
+            nlohmann::json apply_args;
+            apply_args["type"] = "APPLY_BUFFER_MOVE";
+            apply_args["shields"] = to_apply_list;
+            generated.emplace_back(InstructionOp::GAME_ACTION, apply_args);
         }
 
         if (!generated.empty()) {
@@ -462,46 +570,62 @@ namespace dm::engine::systems {
         }
     }
 
-    // Helper for CHECK_S_TRIGGER
-    void handle_check_s_trigger(PipelineExecutor& exec, GameState& state, const Instruction& inst,
-                                const std::map<core::CardID, core::CardDefinition>& card_db) {
-        int card_id = exec.resolve_int(inst.args.value("card", -1));
+        // Helper for CHECK_S_TRIGGER (static method implementation)
+        void GameLogicSystem::handle_check_s_trigger(PipelineExecutor& exec, GameState& state, const Instruction& inst,
+                              const std::map<core::CardID, core::CardDefinition>& card_db) {
+           int card_id = exec.resolve_int(inst.args.value("card", -1));
 
-        std::string decision_key = "$strigger_" + std::to_string(card_id);
-        ContextValue val = exec.get_context_var(decision_key);
+           std::string decision_key = "$strigger_" + std::to_string(card_id);
+           ContextValue val = exec.get_context_var(decision_key);
 
-        bool use = false;
-        bool decided = false;
+           bool use = false;
+           bool decided = false;
 
-        if (std::holds_alternative<int>(val)) {
-             use = std::get<int>(val) == 1;
-             decided = true;
+           if (std::holds_alternative<int>(val)) {
+               use = std::get<int>(val) == 1;
+               decided = true;
+           }
+
+           if (!decided) {
+               exec.execution_paused = true;
+               exec.waiting_for_key = decision_key;
+
+               // Offer multiple declaration options: No / Shield Trigger / Guard Strike / Strike Back
+               std::vector<std::string> opts = {"No", "Shield Trigger", "Guard Strike", "Strike Back"};
+               auto cmd = std::make_unique<QueryCommand>("SELECT_OPTION", std::vector<int>{}, std::map<std::string, int>{}, opts);
+               state.execute_command(std::move(cmd));
+               return;
+           }
+
+           // Map selected option index (expected to be int) to specific flags
+           if (std::holds_alternative<int>(val)) {
+               int sel = std::get<int>(val);
+               // 0 = No, 1 = Shield Trigger, 2 = Guard Strike, 3 = Strike Back
+               if (sel == 1) {
+                   exec.set_context_var(decision_key, 1);
+               } else if (sel == 2) {
+                   std::string k = "$guard_" + std::to_string(card_id);
+                   exec.set_context_var(k, 1);
+               } else if (sel == 3) {
+                   std::string k = "$sback_" + std::to_string(card_id);
+                   exec.set_context_var(k, 1);
+               } else {
+                   exec.set_context_var(decision_key, 0);
+               }
+           }
+
+           // If Shield Trigger selected, auto-play as before
+           ContextValue post = exec.get_context_var(decision_key);
+           if (std::holds_alternative<int>(post) && std::get<int>(post) == 1) {
+               (void)card_db;
+               Instruction play_inst(InstructionOp::PLAY);
+               play_inst.args["card"] = card_id;
+
+               auto block = std::make_shared<std::vector<Instruction>>();
+               block->push_back(play_inst);
+               exec.call_stack.push_back({block, 0, LoopContext{}});
+           }
         }
-
-        if (!decided) {
-             exec.execution_paused = true;
-             exec.waiting_for_key = decision_key;
-
-             // Use Command System for Query
-             auto cmd = std::make_unique<QueryCommand>("SELECT_OPTION", std::vector<int>{}, std::map<std::string, int>{}, std::vector<std::string>{"No", "Yes"});
-             state.execute_command(std::move(cmd));
-             return;
-        }
-
-        if (use) {
-             // Silence unused warning for card_db if not used below
-             // Actually card_db might be needed for verification logic, but simple play doesn't use it here explicitly
-             (void)card_db;
-             // const auto& def = card_db.at(state.get_card_instance(card_id)->card_id);
-
-             Instruction play_inst(InstructionOp::PLAY);
-             play_inst.args["card"] = card_id;
-
-             auto block = std::make_shared<std::vector<Instruction>>();
-             block->push_back(play_inst);
-             exec.call_stack.push_back({block, 0, LoopContext{}});
-        }
-    }
 
     void GameLogicSystem::handle_mana_charge(PipelineExecutor& exec, GameState& state, const Instruction& inst) {
          int card_id = exec.resolve_int(inst.args.value("card", 0));
