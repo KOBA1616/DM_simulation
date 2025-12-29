@@ -2,7 +2,7 @@
 
 このドキュメントはプロジェクトの現在のステータス、実装済み機能、および次のステップの要件をまとめたマスタードキュメントです。
 
-更新日: 2025-12-29
+更新日: 2025-05-24
 
 本要件定義書はUTF-8で記述することを前提とします。
 また、GUI上で表示する文字は基本的に日本語で表記できるようにしてください。
@@ -38,9 +38,8 @@
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
 
 現在、**Phase 1: Game Engine Reliability** および **Phase 6: Engine Overhaul** の実装が完了し、C++コア（`dm_ai_module`）のビルドは安定しています。
-AI領域では、並列対戦環境の構築が完了し、次は不完全情報ゲームへの対応（Phase 2）とデッキ自動進化システム（Phase 3）の統合フェーズに移行します。
-
-GUIエディタに関しては、ユーザー体験の向上と内部構造の刷新（ActionからCommandへの移行）を進めています。
+カードエディタのVer 2.0化も完了し、GUIからのデータドリブンな開発体制が整いました。
+次の主要目標は、不完全情報ゲームへの対応（Phase 2）と、自己対戦を通じたデッキ・メタゲームの自動進化システム（Phase 3）の確立です。
 
 ## 2. 現行システムステータス (Current Status)
 
@@ -86,7 +85,7 @@ GUIエディタに関しては、ユーザー体験の向上と内部構造の�
 *   **`actions` は互換入力のみ**: 読み込み時に `actions` を `commands` へ変換（Load-Lift）し、エディタ内部では `actions` を保持しません。
 *   **互換出力が必要な場合**: 二重管理を避けるため、原則として「エクスポート専用」パスでのみ `actions` を生成します（通常の保存は常に `commands`）。
 
-### 3.2 AI開発上の注意点 (Note for AI Development)
+### 3.3 AI開発上の注意点 (Note for AI Development)
 *   **用語の乖離**: GUI上の「アクション」は、コード上の `ActionDef` (旧) と `CommandDef` (新) の両方を指す包括的な用語として扱います。
 *   **プロンプト指示**: AIに対してコード生成や修正を指示する際は、「GUI上のアクションは、内部的にはCommandパターン（またはLegacy Action）で実装されている」というマッピングルールを前提としてください。
 
@@ -113,7 +112,7 @@ Phase 4の要件である高性能モデルへの移行を行います。
 [Status: WIP]
 GUIの「表示はアクション、内部はコマンド」を維持したまま、保存形式・テスト・周辺ツールを `commands` 正本へ統一し、`actions` は互換入力としてのみ扱う（**ロードマップ全体のゲート**）。
 
-1.  [Status: Done] **Load-Lift (読み込み時変換)**: 読み込み時に `effects[].actions` を `effects[].commands` に変換し、エディタ内部では `actions` を保持しない。
+1.  [Status: Done] **Load-Lift (読み込み時変換)**: 読み込み時に `effects[].actions` を `effects[].commands` に変換し、エディタ内部では `actions` を保持しません。
 2.  [Status: Done] **Save Commands-only (保存時コマンドのみ出力)**: 保存・再構築時に `commands` のみを書き出し、`actions` は出力しない（互換が必要なら「エクスポート専用」に限定）。
 3.  [Status: WIP] **GUI 表示・プレビューの commands-first 化**: プレビュー/自然文生成は `commands` を一次ソースにし、`actions` は fallback のみにする。
 4.  [Status: Todo] **テスト整流**: `actions` を期待しているGUI/統合テストを `commands` 期待へ移行し、方針とテストの整合を取る。
