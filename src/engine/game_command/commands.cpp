@@ -581,10 +581,12 @@ namespace dm::engine::game_command {
             if (candidate.type == dm::engine::systems::ReactionType::SHIELD_TRIGGER) {
                  core::PendingEffect eff(core::EffectType::TRIGGER_ABILITY, candidate.instance_id, candidate.player_id);
                  state.pending_effects.push_back(eff);
+                 effect_added = true;
             }
             else if (candidate.type == dm::engine::systems::ReactionType::REVOLUTION_CHANGE) {
                 core::PendingEffect eff(core::EffectType::TRIGGER_ABILITY, candidate.instance_id, candidate.player_id);
                 state.pending_effects.push_back(eff);
+                effect_added = true;
             }
         }
 
@@ -597,6 +599,9 @@ namespace dm::engine::game_command {
     }
 
     void DeclareReactionCommand::invert(core::GameState& state) {
+        if (effect_added && !state.pending_effects.empty()) {
+            state.pending_effects.pop_back();
+        }
         state.status = previous_status;
         state.reaction_stack = previous_stack;
     }

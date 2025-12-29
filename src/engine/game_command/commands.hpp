@@ -185,9 +185,10 @@ namespace dm::engine::game_command {
         // Removed previous_status as it is not defined in GameState
         core::GameState::Status previous_status;
         std::vector<dm::engine::systems::ReactionWindow> previous_stack;
+        bool effect_added = false;
 
         DeclareReactionCommand(core::PlayerID pid, bool is_pass, int idx = -1)
-            : pass(is_pass), reaction_index(idx), player_id(pid), was_waiting(false) {}
+            : pass(is_pass), reaction_index(idx), player_id(pid), was_waiting(false), effect_added(false) {}
 
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;

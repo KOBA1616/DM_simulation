@@ -1,6 +1,7 @@
 #include "trigger_manager.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/card/effect_system.hpp" // For resolve_trigger (temporary linkage) or just common logic
+#include "engine/game_command/commands.hpp"
 #include "core/card_def.hpp"
 #include <iostream>
 
@@ -127,7 +128,12 @@ namespace dm::engine::systems {
                             pending.optional = true;
                             pending.chain_depth = state.turn_stats.current_chain_depth + 1;
 
-                            state.pending_effects.push_back(pending);
+                            auto cmd = std::make_shared<dm::engine::game_command::MutateCommand>(
+                                instance_id,
+                                dm::engine::game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT
+                            );
+                            cmd->pending_effect = pending;
+                            state.execute_command(cmd);
                         }
                         // "Another" triggers logic would go here (check filter vs event.instance_id)
                     }

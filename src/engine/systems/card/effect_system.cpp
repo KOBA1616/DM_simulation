@@ -29,6 +29,7 @@
 #include "handlers/modify_power_handler.hpp"
 #include "handlers/resolve_battle_handler.hpp"
 #include "engine/systems/command_system.hpp"
+#include "engine/game_command/commands.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include <algorithm>
 #include <iostream>
@@ -124,7 +125,13 @@ namespace dm::engine {
                 pending.effect_def = effect;
                 pending.optional = true;
                 pending.chain_depth = game_state.turn_stats.current_chain_depth + 1;
-                game_state.pending_effects.push_back(pending);
+
+                auto cmd = std::make_shared<dm::engine::game_command::MutateCommand>(
+                    source_instance_id,
+                    dm::engine::game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT
+                );
+                cmd->pending_effect = pending;
+                game_state.execute_command(cmd);
             }
         }
     }
@@ -500,7 +507,12 @@ namespace dm::engine {
         pending.effect_def = continuation;
         pending.execution_context = execution_context;
 
-        game_state.pending_effects.push_back(pending);
+        auto cmd = std::make_shared<dm::engine::game_command::MutateCommand>(
+            source_instance_id,
+            dm::engine::game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT
+        );
+        cmd->pending_effect = pending;
+        game_state.execute_command(cmd);
 
         return {};
     }
