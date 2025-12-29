@@ -118,8 +118,11 @@ GUIの「表示はアクション、内部はコマンド」を維持したま�
 3.  [Status: Done] **GUI 表示・プレビューの commands-first 化**: プレビュー/自然文生成は `commands` を一次ソースにし、`actions` は fallback のみにする。
 4.  [Status: Done] **テスト整流**: `actions` を期待しているGUI/統合テストを `commands` 期待へ移行し、方針とテストの整合を取る。
 5.  [Status: Done] **CI ガード**: `data/` 配下のカードJSONに `actions` フィールドが残っていないことを検査し、差し戻しを防ぐ。
-6.  [Status: Todo] **未対応アクションの棚卸しと優先対応**: 未対応 `Action type` をノイズ無しで集計し、(1) Engine生成系 → (2) 頻出カード効果 → (3) 低頻度/別名 の順で変換対応を進める。
-7.  [Status: Todo] **実行経路の一本化**: AI/GUI/スクリプトのどの入口からも「実行できるCommand」として扱えるよう、`wrap_action`/ネイティブコマンド/辞書表現の責務を整理する。
+6.  [Status: Done] **未対応アクションの棚卸しと優先対応**: 未対応 `Action type` をノイズ無しで集計し、(1) Engine生成系 → (2) 頻出カード効果 → (3) 低頻度/別名 の順で変換対応を進める。
+    *   `ADD_MANA`, `MODIFY_POWER`, `RESET_INSTANCE`, `MOVE_TO_UNDER_CARD`, `SEARCH_DECK_BOTTOM` の変換処理を追加完了。
+    *   `python/tests/test_action_migration_coverage.py` にて全 ActionType の変換を検証済み。
+7.  [Status: Review] **実行経路の一本化**: AI/GUI/スクリプトのどの入口からも「実行できるCommand」として扱えるよう、`wrap_action`/ネイティブコマンド/辞書表現の責務を整理する。
+    *   `dm_toolkit/unified_execution.py` (`ensure_executable_command`) を作成し、統一エントリーポイントを提供。
 
 **受け入れ基準 (Acceptance Criteria)**
 *   `data/` 配下のカードJSONに `actions` キーが存在しない（互換用途のテンプレート等は例外を明記）。
