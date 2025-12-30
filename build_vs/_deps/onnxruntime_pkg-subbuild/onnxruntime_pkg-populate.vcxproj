@@ -1,0 +1,302 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{00C46FB1-53DC-3289-80B4-89F81860A325}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>onnxruntime_pkg-populate</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\efa0ac387d92b66c4d9300b1aeed7f4c\onnxruntime_pkg-populate-mkdir.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Creating directories for 'onnxruntime_pkg-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -Dcfgdir=/Debug -P C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/tmp/onnxruntime_pkg-populate-mkdirs.cmake
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/Debug/onnxruntime_pkg-populate-mkdir
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-mkdir</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\efa0ac387d92b66c4d9300b1aeed7f4c\onnxruntime_pkg-populate-download.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Performing download step (download, verify and extract) for 'onnxruntime_pkg-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd C:\Users\ichirou\DM_simulation\build_vs\_deps
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/download-onnxruntime_pkg-populate.cmake
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/verify-onnxruntime_pkg-populate.cmake
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE -P C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/extract-onnxruntime_pkg-populate.cmake
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/Debug/onnxruntime_pkg-populate-download
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\download-onnxruntime_pkg-populate.cmake;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\onnxruntime_pkg-populate-urlinfo.txt;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-mkdir;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-download</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\efa0ac387d92b66c4d9300b1aeed7f4c\onnxruntime_pkg-populate-update.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No update step for 'onnxruntime_pkg-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/Debug/onnxruntime_pkg-populate-update
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\onnxruntime_pkg-populate-update-info.txt;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-download;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-update</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\efa0ac387d92b66c4d9300b1aeed7f4c\onnxruntime_pkg-populate-patch.rule">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No patch step for 'onnxruntime_pkg-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/Debug/onnxruntime_pkg-populate-patch
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\onnxruntime_pkg-populate-patch-info.txt;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-update;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-patch</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\efa0ac387d92b66c4d9300b1aeed7f4c\onnxruntime_pkg-populate-configure.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No configure step for 'onnxruntime_pkg-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/Debug/onnxruntime_pkg-populate-configure
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\tmp\onnxruntime_pkg-populate-cfgcmd.txt;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-patch;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-configure</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\efa0ac387d92b66c4d9300b1aeed7f4c\onnxruntime_pkg-populate-build.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No build step for 'onnxruntime_pkg-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/Debug/onnxruntime_pkg-populate-build
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-configure;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-build</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\efa0ac387d92b66c4d9300b1aeed7f4c\onnxruntime_pkg-populate-install.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No install step for 'onnxruntime_pkg-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/Debug/onnxruntime_pkg-populate-install
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-build;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-install</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\efa0ac387d92b66c4d9300b1aeed7f4c\onnxruntime_pkg-populate-test.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No test step for 'onnxruntime_pkg-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+cd C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-build
+if %errorlevel% neq 0 goto :cmEnd
+C:
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E echo_append
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/Debug/onnxruntime_pkg-populate-test
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-install;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-test</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\656c4741ddf611d5aeb2def54050e6af\onnxruntime_pkg-populate-complete.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Completed 'onnxruntime_pkg-populate'</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E make_directory C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/CMakeFiles/Debug
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/CMakeFiles/Debug/onnxruntime_pkg-populate-complete
+if %errorlevel% neq 0 goto :cmEnd
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -E touch C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate-prefix/src/onnxruntime_pkg-populate-stamp/Debug/onnxruntime_pkg-populate-done
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-install;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-mkdir;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-download;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-update;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-patch;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-configure;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-build;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\src\onnxruntime_pkg-populate-stamp\Debug\onnxruntime_pkg-populate-test;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\Debug\onnxruntime_pkg-populate-complete</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\518294299dd39cc150b51328ad585ed6\onnxruntime_pkg-populate.rule">
+      <BuildInParallel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</BuildInParallel>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'"></Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\Debug\onnxruntime_pkg-populate-complete;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\onnxruntime_pkg-populate</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+      <VerifyInputsAndOutputsExist Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</VerifyInputsAndOutputsExist>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeLists.txt">
+      <UseUtf8Encoding>Always</UseUtf8Encoding>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/CMakeLists.txt</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -SC:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild -BC:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild --check-stamp-file C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\4.2.0\CMakeSystem.cmake;C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\onnxruntime_pkg-populate-prefix\tmp\onnxruntime_pkg-populate-mkdirs.cmake;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\CMakeGenericSystem.cmake;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\CMakeInitializeConfigs.cmake;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\CMakeSystemSpecificInformation.cmake;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\CMakeSystemSpecificInitialize.cmake;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\ExternalProject.cmake;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\ExternalProject\PatchInfo.txt.in;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\ExternalProject\RepositoryInfo.txt.in;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\ExternalProject\UpdateInfo.txt.in;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\ExternalProject\cfgcmd.txt.in;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\ExternalProject\download.cmake.in;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\ExternalProject\extractfile.cmake.in;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\ExternalProject\mkdirs.cmake.in;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\ExternalProject\shared_internal_commands.cmake;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\Platform\Windows-Initialize.cmake;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\Platform\Windows.cmake;C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\share\cmake-4.2\Modules\Platform\WindowsPaths.cmake;%(AdditionalInputs)</AdditionalInputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\generate.stamp</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\CMakeFiles\onnxruntime_pkg-populate">
+    </None>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="C:\Users\ichirou\DM_simulation\build_vs\_deps\onnxruntime_pkg-subbuild\ZERO_CHECK.vcxproj">
+      <Project>{0B37B7B3-94D4-3379-80B5-3438E77BBEAD}</Project>
+      <Name>ZERO_CHECK</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

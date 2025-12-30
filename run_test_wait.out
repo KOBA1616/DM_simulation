@@ -1,0 +1,44 @@
+PID=20976
+Sleeping 10s to allow debugger/procdump attach...
+Running: C:\Users\ichirou\DM_simulation\.venv\Scripts\python.exe -u -m pytest tests/ai/test_batch_inference.py::test_batch_inference_basic -q -s
+[dm_ai_module shim] import path=C:\Users\ichirou\DM_simulation\dm_ai_module.py
+[conftest] loaded dm_ai_module shim from C:\Users\ichirou\DM_simulation\dm_ai_module.py
+registering sample model
+registered? True
+Windows fatal exception: access violation
+
+Current thread 0x000004a4 (most recent call first):
+  File "C:\Users\ichirou\DM_simulation\tests\ai\test_batch_inference.py", line 25 in test_batch_inference_basic
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\python.py", line 166 in pytest_pyfunc_call
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\python.py", line 1720 in runtest
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\runner.py", line 179 in pytest_runtest_call
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\runner.py", line 245 in <lambda>
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\runner.py", line 353 in from_call
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\runner.py", line 244 in call_and_report
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\runner.py", line 137 in runtestprotocol
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\runner.py", line 118 in pytest_runtest_protocol
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\main.py", line 396 in pytest_runtestloop
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\main.py", line 372 in _main
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\main.py", line 318 in wrap_session
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\main.py", line 365 in pytest_cmdline_main
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_callers.py", line 121 in _multicall
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_manager.py", line 120 in _hookexec
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pluggy\_hooks.py", line 512 in __call__
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\config\__init__.py", line 199 in main
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\_pytest\config\__init__.py", line 223 in console_main
+  File "C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\pytest\__main__.py", line 9 in <module>
+  File "<frozen runpy>", line 88 in _run_code
+  File "<frozen runpy>", line 198 in _run_module_as_main
+pytest exit 3221225477

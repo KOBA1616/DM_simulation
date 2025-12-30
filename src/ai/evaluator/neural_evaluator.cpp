@@ -4,6 +4,10 @@
 #include "bindings/python_batch_inference.hpp"
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
+#include <chrono>
+#include <sstream>
+#include <iomanip>
 
 #ifdef USE_ONNXRUNTIME
 #include "ai/inference/onnx_model.hpp"
@@ -38,6 +42,8 @@ namespace dm::ai {
     std::pair<std::vector<std::vector<float>>, std::vector<float>> NeuralEvaluator::evaluate(const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
         using BatchInput = dm::python::BatchInput;
         using BatchOutput = dm::python::BatchOutput;
+
+        try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator::evaluate enter, states.size=" << states.size() << "\n"; } catch(...) {}
 
         if (states.empty()) return {{}, {}};
         size_t n = states.size();
@@ -100,7 +106,25 @@ namespace dm::ai {
                     inputs.push_back({input_ids_name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, input_ids.data(), dm::ai::inference::TensorType::INT64});
                     inputs.push_back({mask_name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, mask.data(), dm::ai::inference::TensorType::BOOL});
 
+                    try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: prepared inputs, n=" << n << " max_len=" << max_len << "\n"; } catch(...) {}
+
                     // 4. Infer
+                    try {
+                        // log before ONNX infer
+                        try {
+                            std::ofstream f("crash_diag.log", std::ios::app);
+                            auto now = std::chrono::system_clock::now();
+                            auto t = std::chrono::system_clock::to_time_t(now);
+                            std::tm tm;
+#ifdef _MSC_VER
+                            localtime_s(&tm, &t);
+#else
+                            localtime_r(&t, &tm);
+#endif
+                            std::ostringstream ss; ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << " - NeuralEvaluator: about to call onnx infer (n=" << n << ")\n";
+                            f << ss.str();
+                        } catch(...) {}
+                    } catch(...) {}
                     auto result = onnx_model_->infer(inputs, n);
                     const auto& flat_policies = result.first;
                     const auto& flat_values = result.second;
@@ -140,9 +164,12 @@ namespace dm::ai {
                 }
 
                 try {
+                    std::ofstream f("crash_diag.log", std::ios::app);
+                    f << "NeuralEvaluator: calling sequence callback, batch size=" << batch_tokens.size() << "\n";
                     return dm::python::call_sequence_batch_callback(batch_tokens);
                 } catch (const std::exception& e) {
                     std::cerr << "NeuralEvaluator: Sequence callback failed: " << e.what() << std::endl;
+                    try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: sequence callback threw: " << e.what() << "\n"; } catch(...) {}
                     // Fallback to zeros
                 }
             } else {
@@ -159,7 +186,9 @@ namespace dm::ai {
 
         // Convert states to flat feature vectors using TensorConverter
         const int stride = dm::ai::TensorConverter::INPUT_SIZE;
+        try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: before convert_batch_flat\n"; } catch(...) {}
         std::vector<float> flat = dm::ai::TensorConverter::convert_batch_flat(states, card_db_);
+        try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: after convert_batch_flat, flat.size=" << flat.size() << "\n"; } catch(...) {}
 
         if (flat.size() != n * (size_t)stride) {
             // Fallback: return zeros
@@ -171,6 +200,7 @@ namespace dm::ai {
 #ifdef USE_ONNXRUNTIME
         if (onnx_model_) {
             try {
+                try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: calling flat onnx infer?\n"; } catch(...) {}
                 auto result = onnx_model_->infer_batch(flat, n, stride);
                 const auto& flat_policies = result.first;
                 const auto& flat_values = result.second;
@@ -201,9 +231,15 @@ namespace dm::ai {
                 #ifdef AI_DEBUG
                 fprintf(stderr, "NeuralEvaluator: calling flat batch callback (n=%zu, stride=%d)\n", n, stride);
                 #endif
+                #ifdef AI_DEBUG
+                fprintf(stderr, "NeuralEvaluator: calling flat batch callback (n=%zu, stride=%d)\n", n, stride);
+                #endif
+                try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: calling flat callback, flat.size=" << flat.size() << " n=" << n << " stride=" << stride << "\n"; } catch(...) {}
                 BatchOutput out = dm::python::call_flat_batch_callback(flat, n, stride);
+                try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: flat callback returned\n"; } catch(...) {}
                 return out;
             } catch (const std::exception& e) {
+                try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: flat callback threw: " << e.what() << "\n"; } catch(...) {}
                 // fall through to fallback below
             }
         }
@@ -223,7 +259,9 @@ namespace dm::ai {
         }
 
         try {
+            try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: calling batch callback, batch_in.size=" << batch_in.size() << "\n"; } catch(...) {}
             BatchOutput out = dm::python::call_batch_callback(batch_in);
+            try { std::ofstream f("crash_diag.log", std::ios::app); f << "NeuralEvaluator: batch callback returned\n"; } catch(...) {}
             return out;
         } catch (const std::exception& e) {
             // On error, fallback

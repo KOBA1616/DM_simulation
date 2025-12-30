@@ -1,0 +1,10 @@
+^C:\USERS\ICHIROU\DM_SIMULATION\BUILD_VS\_DEPS\ONNXRUNTIME_PKG-SUBBUILD\CMAKEFILES\518294299DD39CC150B51328AD585ED6\GENERATE.STAMP.RULE
+setlocal
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -SC:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild -BC:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/ichirou/DM_simulation/build_vs/_deps/onnxruntime_pkg-subbuild/onnxruntime_pkg-populate.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

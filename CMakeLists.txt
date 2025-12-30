@@ -42,6 +42,15 @@ if(NOT pybind11_FOUND)
     )
     FetchContent_MakeAvailable(pybind11)
 endif()
+
+# Ensure Python development headers are available for native components that call
+# into the Python C API (e.g. GIL handling in python_batch_inference.cpp).
+find_package(Python COMPONENTS Interpreter Development QUIET)
+if(Python_FOUND)
+    include_directories(${Python_INCLUDE_DIRS})
+else()
+    message(STATUS "Python development headers not found via find_package(Python). pybind11 will still provide Python interop for the module target.")
+endif()
 if(NOT pybind11_FOUND)
     # If FetchContent made pybind11 available, mark it as found so downstream
     # commands (e.g., pybind11_add_module) can use the targets. If not found,

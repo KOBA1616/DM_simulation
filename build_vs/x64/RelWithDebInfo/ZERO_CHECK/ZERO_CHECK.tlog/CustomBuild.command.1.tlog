@@ -1,0 +1,10 @@
+^C:\USERS\ICHIROU\DM_SIMULATION\BUILD_VS\CMAKEFILES\16C829FE667ABF031FBF88085ADF4DFB\GENERATE.STAMP.RULE
+setlocal
+C:\Users\ichirou\Desktop\HW_CAM-main\.venv\Lib\site-packages\cmake\data\bin\cmake.exe -SC:/Users/ichirou/DM_simulation -BC:/Users/ichirou/DM_simulation/build_vs --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/ichirou/DM_simulation/build_vs/DM_AI_Simulator.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

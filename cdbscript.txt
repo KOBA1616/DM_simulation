@@ -1,0 +1,3 @@
+kv
+.dump /ma C:\Users\ichirou\DM_simulation\crash.dmp
+q

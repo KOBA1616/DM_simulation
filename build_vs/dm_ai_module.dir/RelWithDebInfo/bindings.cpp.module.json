@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "dm_ai_module.dir\\RelWithDebInfo\\bindings.obj",
+            "outputs": [
+                "C:\\Users\\ichirou\\DM_simulation\\build_vs\\dm_ai_module.dir\\RelWithDebInfo\\vc143.pdb",
+                "dm_ai_module.dir\\RelWithDebInfo\\"
+            ],
+            "requires": []
+        }
+    ]
+}
