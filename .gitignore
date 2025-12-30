@@ -42,3 +42,13 @@ model_v1.pth
 data/*.onnx
 data/*.onnx.data
 .mypy_cache/
+
+# Build artifacts to ignore
+build_vs/
+build_debug/
+build_mingw/
+build_*/
+*.lib
+*.pdb
+*.ilk
+*.zip

@@ -1,3 +1,15 @@
+*.pdb filter=lfs diff=lfs merge=lfs -text
+*.lib filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.ilk filter=lfs diff=lfs merge=lfs -text
+build_vs/** filter=lfs diff=lfs merge=lfs -text
+build_debug/** filter=lfs diff=lfs merge=lfs -text
+build_mingw/** filter=lfs diff=lfs merge=lfs -text
+build_*/** filter=lfs diff=lfs merge=lfs -text
+
+# Ensure models stay tracked by normal git (they may be kept in repo intentionally)
+# Uncomment if you want models in LFS instead:
+# *.pth filter=lfs diff=lfs merge=lfs -text
 build_vs/dm_core.dir/Debug/dm_core.lib filter=lfs diff=lfs merge=lfs -text
 build_debug/_deps/onnxruntime_pkg-src/lib/onnxruntime.pdb filter=lfs diff=lfs merge=lfs -text
 build_vs/dm_core.dir/RelWithDebInfo/dm_core.lib filter=lfs diff=lfs merge=lfs -text
