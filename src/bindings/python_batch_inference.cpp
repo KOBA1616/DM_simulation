@@ -39,15 +39,18 @@ namespace dm::python {
         PyGILState_STATE _gstate = PyGILState_Ensure();
         try {
             auto out = cb_copy(input);
+            cb_copy = nullptr; // Ensure python object is released while holding GIL
             PyGILState_Release(_gstate);
             return out;
         
         } catch (const std::exception &e) {
             if (PyErr_Occurred()) PyErr_Print();
+            cb_copy = nullptr; // Ensure python object is released while holding GIL
             PyGILState_Release(_gstate);
             throw;
         } catch(...) {
             if (PyErr_Occurred()) PyErr_Print();
+            cb_copy = nullptr; // Ensure python object is released while holding GIL
             PyGILState_Release(_gstate);
             throw;
         }
@@ -85,15 +88,18 @@ namespace dm::python {
         PyGILState_STATE _gstate = PyGILState_Ensure();
         try {
             auto out = cb_copy(flat, n, stride);
+            cb_copy = nullptr; // Ensure python object is released while holding GIL
             PyGILState_Release(_gstate);
             return out;
 
         } catch (const std::exception &e) {
             if (PyErr_Occurred()) PyErr_Print();
+            cb_copy = nullptr; // Ensure python object is released while holding GIL
             PyGILState_Release(_gstate);
             throw;
         } catch(...) {
             if (PyErr_Occurred()) PyErr_Print();
+            cb_copy = nullptr; // Ensure python object is released while holding GIL
             PyGILState_Release(_gstate);
             throw;
         }
@@ -126,15 +132,18 @@ namespace dm::python {
         PyGILState_STATE _gstate = PyGILState_Ensure();
         try {
             auto out = cb_copy(input);
+            cb_copy = nullptr; // Ensure python object is released while holding GIL
             PyGILState_Release(_gstate);
             return out;
 
         } catch (const std::exception &e) {
             if (PyErr_Occurred()) PyErr_Print();
+            cb_copy = nullptr; // Ensure python object is released while holding GIL
             PyGILState_Release(_gstate);
             throw;
         } catch(...) {
             if (PyErr_Occurred()) PyErr_Print();
+            cb_copy = nullptr; // Ensure python object is released while holding GIL
             PyGILState_Release(_gstate);
             throw;
         }
