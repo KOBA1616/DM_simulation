@@ -137,6 +137,10 @@ class FilterEditorWidget(QWidget):
             c.addItem(tr("Ignore"), -1)
             c.addItem(tr("Yes (True)"), 1)
             c.addItem(tr("No (False)"), 0)
+            # Add tooltips for clarity
+            c.setItemData(0, tr("Filter does not check this property"), Qt.ItemDataRole.ToolTipRole)
+            c.setItemData(1, tr("Must be True"), Qt.ItemDataRole.ToolTipRole)
+            c.setItemData(2, tr("Must be False"), Qt.ItemDataRole.ToolTipRole)
             c.currentIndexChanged.connect(self.filterChanged.emit)
             return l, c
 
