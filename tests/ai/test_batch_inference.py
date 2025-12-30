@@ -1,11 +1,11 @@
 import dm_ai_module
-
+import pytest
 
 def sample_model(batch):
     # batch: list[list[float]]
     action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
-    policies = [[0.0] * action_size for _ in batch]
-    values = [0.0 for _ in batch]
+    policies = [[0.1] * action_size for _ in batch]
+    values = [0.5 for _ in batch]
     return policies, values
 
 
@@ -29,6 +29,10 @@ def test_batch_inference_basic():
 
         assert len(values) == 1
         assert len(policies) == 1
+
+        assert values[0] == pytest.approx(0.5)
+        assert policies[0][0] == pytest.approx(0.1)
+
     finally:
         dm_ai_module.clear_batch_callback()
 
