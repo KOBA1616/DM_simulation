@@ -6,7 +6,6 @@
 #include <chrono>
 #include <sstream>
 #include <iomanip>
-// No SEH usage here; we log around the callback and handle C++ exceptions.
 
 namespace dm::python {
 
@@ -28,17 +27,25 @@ namespace dm::python {
     }
 
     BatchOutput call_batch_callback(const BatchInput& input) {
-        BatchCallback cb_copy;
-        {
-            std::lock_guard<std::mutex> lk(g_cb_mutex);
-            cb_copy = g_callback;
-        }
-        if (!cb_copy) {
-            throw std::runtime_error("No batch inference callback registered");
-        }
+        // Acquire GIL immediately to ensure safe manipulation of Python objects (std::function copy/destruct)
         PyGILState_STATE _gstate = PyGILState_Ensure();
         try {
+            BatchCallback cb_copy;
+            {
+                std::lock_guard<std::mutex> lk(g_cb_mutex);
+                cb_copy = g_callback;
+            }
+            if (!cb_copy) {
+                // cb_copy will be destroyed when we leave scope or throw.
+                // Since GIL is held, destruction is safe.
+                throw std::runtime_error("No batch inference callback registered");
+            }
+
             auto out = cb_copy(input);
+
+            // Explicitly destroy the callback copy while holding GIL to ensure safe Py_DECREF
+            cb_copy = nullptr;
+
             PyGILState_Release(_gstate);
             return out;
         
@@ -74,17 +81,21 @@ namespace dm::python {
     }
 
     BatchOutput call_flat_batch_callback(const std::vector<float>& flat, size_t n, size_t stride) {
-        FlatBatchCallback cb_copy;
-        {
-            std::lock_guard<std::mutex> lk(g_flat_cb_mutex);
-            cb_copy = g_flat_callback;
-        }
-        if (!cb_copy) {
-            throw std::runtime_error("No flat batch inference callback registered");
-        }
         PyGILState_STATE _gstate = PyGILState_Ensure();
         try {
+            FlatBatchCallback cb_copy;
+            {
+                std::lock_guard<std::mutex> lk(g_flat_cb_mutex);
+                cb_copy = g_flat_callback;
+            }
+            if (!cb_copy) {
+                throw std::runtime_error("No flat batch inference callback registered");
+            }
+
             auto out = cb_copy(flat, n, stride);
+
+            cb_copy = nullptr;
+
             PyGILState_Release(_gstate);
             return out;
 
@@ -115,17 +126,21 @@ namespace dm::python {
     }
 
     BatchOutput call_sequence_batch_callback(const SequenceBatchInput& input) {
-        SequenceBatchCallback cb_copy;
-        {
-            std::lock_guard<std::mutex> lk(g_seq_cb_mutex);
-            cb_copy = g_seq_callback;
-        }
-        if (!cb_copy) {
-            throw std::runtime_error("No sequence batch inference callback registered");
-        }
         PyGILState_STATE _gstate = PyGILState_Ensure();
         try {
+            SequenceBatchCallback cb_copy;
+            {
+                std::lock_guard<std::mutex> lk(g_seq_cb_mutex);
+                cb_copy = g_seq_callback;
+            }
+            if (!cb_copy) {
+                throw std::runtime_error("No sequence batch inference callback registered");
+            }
+
             auto out = cb_copy(input);
+
+            cb_copy = nullptr;
+
             PyGILState_Release(_gstate);
             return out;
 
