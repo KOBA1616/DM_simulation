@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"C:/Users/ichirou/DM_simulation/build_debug/_deps/onnxruntime_pkg-subbuild/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

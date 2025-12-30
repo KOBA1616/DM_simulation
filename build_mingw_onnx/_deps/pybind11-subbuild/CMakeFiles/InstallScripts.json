@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"C:/Users/ichirou/DM_simulation/build_mingw_onnx/_deps/pybind11-subbuild/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
