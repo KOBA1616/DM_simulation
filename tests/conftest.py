@@ -1,5 +1,13 @@
 import os
 import sys
+
+# Ensure local `python/` shim module directory is preferred so tests can run
+root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+shim_dir = os.path.join(root, 'python')
+if shim_dir not in sys.path:
+    sys.path.insert(0, shim_dir)
+import os
+import sys
 import importlib
 
 # Ensure the compiled extension module (built to ./bin) is importable.

@@ -44,10 +44,16 @@ data/*.onnx.data
 .mypy_cache/
 
 # Build artifacts to ignore
-build_vs/
-build_debug/
-build_mingw/
+# Visual Studio / MSVC artifacts (do not commit generated files)
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.suo
+build/
 build_*/
+Debug/
+Release/
 *.lib
 *.pdb
 *.ilk

@@ -29,7 +29,29 @@ dm_simulation/
 
 ## Getting Started
 
-See [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md) for setup and development instructions.
+Preferred build system: CMake (use Ninja or your preferred generator). Avoid using Visual Studio solution files or MSVC project files checked into the repository — this project standardizes on CMake.
+
+Quick start (Windows, recommended with Ninja):
+
+```powershell
+# Configure (use Ninja if available)
+cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+# Build
+cmake --build build --config Release -- -j
+# Run tests
+C:/Users/ichirou/DM_simulation/.venv/Scripts/python.exe -m pytest -q
+```
+
+If you must use Visual Studio to inspect the native code, prefer generating project files from CMake instead of checking generated `.sln`/`.vcxproj` files into source control:
+
+```powershell
+# Generate Visual Studio solution (only for interactive debugging, do not commit generated files)
+cmake -S . -B build-vs -G "Visual Studio 17 2022" -A x64
+```
+
+To remove legacy Visual Studio / MSVC artifacts from your working tree, use `scripts\clean_msvc.ps1` (it will prompt before deleting).
+
+See [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md) for more setup and development instructions.
 
 ## Documentation
 

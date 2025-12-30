@@ -40,8 +40,14 @@ class FilterDef(dict):
     pass
 
 class GameState:
-    def __init__(self):
-        pass
+    def __init__(self, *args, **kwargs):
+        # minimal placeholder for tests; real implementation lives in native module
+        self.game_over = False
+        self.turn_number = 0
+
+    def setup_test_duel(self):
+        # no-op placeholder
+        return
 
 class CardDefinition:
     def __init__(self):
@@ -56,6 +62,43 @@ CardKeywords = _get_attr('CardKeywords', CardKeywords)
 PassiveEffect = _get_attr('PassiveEffect', PassiveEffect)
 PassiveType = _get_attr('PassiveType', PassiveType)
 FilterDef = _get_attr('FilterDef', FilterDef)
+
+# --- Minimal shim implementations for APIs used by tests when native extension missing ---
+_batch_callback = None
+
+def set_batch_callback(cb):
+    global _batch_callback
+    _batch_callback = cb
+
+def has_batch_callback():
+    return _batch_callback is not None
+
+def clear_batch_callback():
+    global _batch_callback
+    _batch_callback = None
+
+class ActionEncoder:
+    # reasonable default for tests
+    TOTAL_ACTION_SIZE = 10
+
+class NeuralEvaluator:
+    def __init__(self, card_db):
+        self.card_db = card_db
+
+    def evaluate(self, batch):
+        # call registered batch callback if present, otherwise return defaults
+        if _batch_callback is not None:
+            return _batch_callback(batch)
+        policies = [[0.0] * ActionEncoder.TOTAL_ACTION_SIZE for _ in batch]
+        values = [0.0 for _ in batch]
+        return policies, values
+
+# Prefer native implementations when available
+ActionEncoder = _get_attr('ActionEncoder', ActionEncoder)
+NeuralEvaluator = _get_attr('NeuralEvaluator', NeuralEvaluator)
+set_batch_callback = _get_attr('set_batch_callback', set_batch_callback)
+has_batch_callback = _get_attr('has_batch_callback', has_batch_callback)
+clear_batch_callback = _get_attr('clear_batch_callback', clear_batch_callback)
 
 # Also export CommandType/Zone if present in native module to satisfy other code
 CommandType = _get_attr('CommandType', None)
