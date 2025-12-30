@@ -158,6 +158,9 @@ class VariableLinkWidget(QWidget):
         # Reserved Constants
         for key, desc in RESERVED_VARIABLES.items():
             self.input_key_combo.addItem(f"{key} ({tr(desc)})", key)
+            # Add tooltip showing the raw key
+            idx = self.input_key_combo.count() - 1
+            self.input_key_combo.setItemData(idx, f"Variable: {key}", Qt.ItemDataRole.ToolTipRole)
 
         if not self.current_item: return
 
@@ -187,6 +190,9 @@ class VariableLinkWidget(QWidget):
                     label = f"Step {i}: {type_disp}"
 
                 self.input_key_combo.addItem(label, out_key)
+                # Add tooltip showing the raw output key
+                idx = self.input_key_combo.count() - 1
+                self.input_key_combo.setItemData(idx, f"Variable: {out_key}", Qt.ItemDataRole.ToolTipRole)
 
         # Try to restore selection if possible
         if current_data is not None:
