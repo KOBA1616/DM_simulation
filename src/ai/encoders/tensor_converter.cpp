@@ -120,6 +120,12 @@ namespace dm::ai {
         std::vector<float> batch_tensor;
         batch_tensor.reserve(states.size() * INPUT_SIZE);
         for (const auto& state_ptr : states) {
+            if (!state_ptr) {
+                // If state pointer is null (e.g. pybind11 casting issue), pad with zeros
+                // to maintain batch alignment and prevent crash.
+                batch_tensor.insert(batch_tensor.end(), INPUT_SIZE, 0.0f);
+                continue;
+            }
             const auto& state = *state_ptr;
             std::vector<float> t = convert_to_tensor(state, state.active_player_id, card_db, mask_opponent_hand);
             batch_tensor.insert(batch_tensor.end(), t.begin(), t.end());
