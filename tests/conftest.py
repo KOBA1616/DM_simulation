@@ -790,75 +790,19 @@ def _handle_atomic_action(state_wrapper, native, action):
 def _wrap_generic_resolve_action(state, action, source_id):
     # Try atomic handler first; else call original (unwrapping wrapper)
     native = _unwrap_state(state)
-    try:
-        handled = _handle_atomic_action(state, native, action)
-        if handled:
-            if hasattr(state, '_native'):
-                _sync_proxies(state)
-                try:
-                    pzone = state.players[getattr(state, 'active_player_id', 0)].shield_zone
-                    print(f"[DEBUG] POST-HANDLE proxy shield len={len(pzone)} id={id(pzone)} contents={list(pzone.__iter__())}")
-                except Exception:
-                    pass
-                # Ensure shield moved to graveyard if still present (test expectations)
-                try:
-                    pid = getattr(state, 'active_player_id', 0)
-                    pproxy = state.players[pid]
-                    if hasattr(pproxy, 'shield_zone') and len(pproxy.shield_zone) > 0:
-                        try:
-                            moved = pproxy.shield_zone.pop()
-                        except Exception:
-                            moved = None
-                        # native graveyard append
-                        try:
-                            if hasattr(native.players[pid], 'graveyard') and moved is not None:
-                                getattr(native.players[pid], 'graveyard').append(moved)
-                        except Exception:
-                            pass
-                        try:
-                            if not hasattr(pproxy, 'graveyard'):
-                                pproxy.graveyard = []
-                            if moved is not None:
-                                pproxy.graveyard.append(moved)
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-            return None
-    except Exception:
-        pass
+    # Skip _handle_atomic_action to allow C++ engine to handle logic
+    # try:
+    #     handled = _handle_atomic_action(state, native, action)
+    #     if handled:
+    #         if hasattr(state, '_native'):
+    #             _sync_proxies(state)
+    #         return None
+    # except Exception:
+    #     pass
     if _orig_Generic_resolve_action:
         res = _orig_Generic_resolve_action(native, action, source_id)
         if hasattr(state, '_native'):
             _sync_proxies(state)
-            try:
-                pzone = state.players[getattr(state, 'active_player_id', 0)].shield_zone
-                print(f"[DEBUG] POST-ORIG proxy shield len={len(pzone)} id={id(pzone)} contents={list(pzone.__iter__())}")
-            except Exception:
-                pass
-            # Mirror behavior: if shield remains, move to graveyard to match legacy tests
-            try:
-                pid = getattr(state, 'active_player_id', 0)
-                pproxy = state.players[pid]
-                if hasattr(pproxy, 'shield_zone') and len(pproxy.shield_zone) > 0:
-                    try:
-                        moved = pproxy.shield_zone.pop()
-                    except Exception:
-                        moved = None
-                    try:
-                        if hasattr(native.players[pid], 'graveyard') and moved is not None:
-                            getattr(native.players[pid], 'graveyard').append(moved)
-                    except Exception:
-                        pass
-                    try:
-                        if not hasattr(pproxy, 'graveyard'):
-                            pproxy.graveyard = []
-                        if moved is not None:
-                            pproxy.graveyard.append(moved)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
         return res
     # fallback: try resolve_effect path wrapping action
     try:
