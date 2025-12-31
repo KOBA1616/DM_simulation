@@ -69,11 +69,14 @@ namespace dm::engine::game_command {
             TAP,
             UNTAP,
             POWER_MOD,
+            POWER_SET,
             ADD_KEYWORD,
             REMOVE_KEYWORD,
             ADD_PASSIVE_EFFECT,
             ADD_COST_MODIFIER,
             ADD_PENDING_EFFECT,
+            RESET_INSTANCE,
+            HEAL,
             SET_SUMMONING_SICKNESS // int_value used as bool (1=true, 0=false)
         };
 
