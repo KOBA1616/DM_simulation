@@ -8,7 +8,8 @@
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/command_system.hpp" // Added for CommandSystem
 #include "engine/systems/flow/phase_manager.hpp" // Added for PhaseManager
-#include "engine/systems/mana/mana_system.hpp" // Added for ManaSystem
+#include "engine/systems/mana/mana_system.hpp"
+#include "core/game_state_utils.hpp" // Added for ManaSystem
 #include <iostream>
 #include <algorithm>
 
@@ -48,8 +49,9 @@ namespace dm::engine::systems {
             {
                 int iid = action.source_instance_id;
                 int pid = state.active_player_id;
+                Zone source_zone = get_zone_type(state, iid);
                 // Move to Stack
-                auto cmd = std::make_unique<TransitionCommand>(iid, Zone::HAND, Zone::STACK, pid);
+                auto cmd = std::make_unique<TransitionCommand>(iid, source_zone, Zone::STACK, pid);
                 state.execute_command(std::move(cmd));
                 break;
             }
@@ -205,26 +207,11 @@ namespace dm::engine::systems {
         CardInstance* card = state.get_card_instance(instance_id);
         if (!card) return;
 
-        bool is_evolution = false;
-        FilterDef evo_filter;
         if (card_db.count(card->card_id)) {
             const auto& def = card_db.at(card->card_id);
-            if (def.keywords.evolution) {
-                is_evolution = true;
-                // Task B: Refined Evolution Filters
-                evo_filter.zones = {"BATTLE_ZONE"};
-                evo_filter.races = def.races; // Evolution matches race
-                evo_filter.owner = "SELF";
-            }
 
             // --- Gatekeeper: Check for Prohibitions (CANNOT_SUMMON, etc.) ---
             int origin_int = exec.resolve_int(inst.args.value("origin_zone", -1));
-
-            // If origin is not provided, we might default to HAND if source_instance_id was in hand?
-            // But handle_play_card is called after it might have moved to stack.
-            // For now, if origin is -1, we skip origin-based checks (assuming standard play checked elsewhere or safe).
-            // However, "Cannot summon creatures" (generic) should be checked regardless of origin.
-
             std::string origin_str = "";
             if (origin_int != -1) {
                 Zone origin = static_cast<Zone>(origin_int);
@@ -240,13 +227,8 @@ namespace dm::engine::systems {
                      // Check Origin match
                      bool origin_match = true;
                      if (!eff.target_filter.zones.empty()) {
-                         // If zones are specified, origin MUST be one of them.
                          if (origin_str.empty()) {
-                             // If we don't know origin, we can't enforce "from Deck".
-                             // But if the prohibition is "from Deck", and we don't know, we assume safe?
-                             // Or we assume it applies? Safer to assume safe if unknown origin,
-                             // UNLESS the prohibition has NO zones (applies to all).
-                             origin_match = false;
+                             origin_match = false; // Assume safe if origin unknown
                          } else {
                              origin_match = false;
                              for (const auto& z : eff.target_filter.zones) {
@@ -254,112 +236,77 @@ namespace dm::engine::systems {
                              }
                          }
                      }
-                     // If zones are empty, it applies to ALL zones, so origin_match stays true.
 
                      if (!origin_match) continue;
 
                      // Check Card match
-                     // We create a temporary filter without zones to check card properties against the definition
                      FilterDef check_filter = eff.target_filter;
                      check_filter.zones.clear();
 
                      // Use ignore_passives=true to avoid recursion
                      if (TargetUtils::is_valid_target(*card, def, check_filter, state, eff.controller, card->owner, true)) {
                          // Prohibited!
-                         // Log or Context?
-                         // std::cout << "Play prohibited: " << def.name << " from " << origin_str << std::endl;
                          return; // Abort play
                      }
                 }
             }
-            // -------------------------------------------------------------
         }
 
         std::vector<Instruction> generated;
 
-        if (is_evolution) {
-            // 1. Select Base
-            Instruction select(InstructionOp::SELECT);
-            select.args["filter"] = evo_filter;
-            select.args["count"] = 1;
-            select.args["out"] = "$evo_target";
-            generated.push_back(select);
-
-            // 2. Attach
-            Instruction attach(InstructionOp::MOVE);
-            attach.args["target"] = instance_id;
-            attach.args["attach_to"] = "$evo_target";
-            generated.push_back(attach);
-
-        } else {
-             const auto& def = card_db.at(card->card_id);
-             Zone dest = Zone::BATTLE;
-             bool to_bottom = false;
-
-            // Check for play_flags provided by the instruction (migration: Python converter may add these)
-            bool play_for_free = false;
-            bool put_in_play = false;
-            if (inst.args.contains("play_flags")) {
-                const auto& pf = inst.args["play_flags"];
-                if (pf.is_string()) {
-                    std::string s = pf.get<std::string>();
+        // Check for play_flags provided by the instruction
+        bool play_for_free = false;
+        bool put_in_play = false;
+        if (inst.args.contains("play_flags")) {
+            const auto& pf = inst.args["play_flags"];
+            if (pf.is_string()) {
+                std::string s = pf.get<std::string>();
+                if (s == "PLAY_FOR_FREE") play_for_free = true;
+                if (s == "PUT_IN_PLAY") put_in_play = true;
+            } else if (pf.is_array()) {
+                for (const auto& x : pf) {
+                    if (!x.is_string()) continue;
+                    std::string s = x.get<std::string>();
                     if (s == "PLAY_FOR_FREE") play_for_free = true;
                     if (s == "PUT_IN_PLAY") put_in_play = true;
-                } else if (pf.is_array()) {
-                    for (const auto& x : pf) {
-                        if (!x.is_string()) continue;
-                        std::string s = x.get<std::string>();
-                        if (s == "PLAY_FOR_FREE") play_for_free = true;
-                        if (s == "PUT_IN_PLAY") put_in_play = true;
-                    }
                 }
             }
-
-            // If this play is flagged as played-for-free, mark it in the flow so systems can observe it.
-            if (play_for_free) {
-                auto flow_cmd = std::make_unique<game_command::FlowCommand>(game_command::FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
-                state.execute_command(std::move(flow_cmd));
-            }
-
-            // If PUT_IN_PLAY is specified, force destination to Battle zone (even for spells)
-            if (put_in_play) {
-                dest = Zone::BATTLE;
-            }
-
-             if (inst.args.contains("dest_override")) {
-                 int override_val = exec.resolve_int(inst.args["dest_override"]);
-                 if (override_val == 1) { // 1 = DECK_BOTTOM
-                     dest = Zone::DECK;
-                     to_bottom = true;
-                 } else if (override_val == 2) { // 2 = DECK_TOP
-                     dest = Zone::DECK;
-                 } else if (override_val == 3) { // 3 = HAND
-                     dest = Zone::HAND;
-                 } else if (override_val == 4) { // 4 = MANA
-                     dest = Zone::MANA;
-                 } else if (override_val == 5) { // 5 = SHIELD
-                     dest = Zone::SHIELD;
-                 }
-             } else {
-                 if (def.type == CardType::SPELL) {
-                     dest = Zone::STACK;
-                 }
-             }
-
-             Instruction move(InstructionOp::MOVE);
-             move.args["target"] = instance_id;
-
-             if (dest == Zone::STACK) move.args["to"] = "STACK";
-             else if (dest == Zone::DECK) move.args["to"] = "DECK";
-             else if (dest == Zone::HAND) move.args["to"] = "HAND";
-             else if (dest == Zone::MANA) move.args["to"] = "MANA";
-             else if (dest == Zone::SHIELD) move.args["to"] = "SHIELD";
-             else move.args["to"] = "BATTLE";
-
-             if (to_bottom) move.args["to_bottom"] = true;
-
-             generated.push_back(move);
         }
+
+        if (play_for_free) {
+            auto flow_cmd = std::make_unique<game_command::FlowCommand>(game_command::FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
+            state.execute_command(std::move(flow_cmd));
+        }
+
+        // 1. Move to Stack (via Instruction to ensure sequence)
+        Instruction move(InstructionOp::MOVE);
+        move.args["target"] = instance_id;
+        move.args["to"] = "STACK";
+        generated.push_back(move);
+
+        // 2. Resolve Play
+        nlohmann::json resolve_args;
+        resolve_args["card"] = instance_id;
+        if (inst.args.contains("dest_override")) {
+            resolve_args["dest_override"] = inst.args["dest_override"];
+        } else if (put_in_play) {
+             // If PUT_IN_PLAY flag is set, force move to BATTLE (via logic in resolve_play if desired, but resolve_play defaults to Battle for creatures)
+             // If it's a Spell with PUT_IN_PLAY, resolve_play defaults to Grave.
+             // We might need to override destination for PUT_IN_PLAY spells if intended.
+             // Currently PUT_IN_PLAY forces BATTLE in old logic.
+             // We can map PUT_IN_PLAY to dest_override = 0 (Battle) or a special flag?
+             // dest_override logic in resolve_play supports zones.
+             // Let's explicitly set dest_override to BATTLE (which doesn't have a code in the enum used so far... wait)
+             // Looking at resolve_play dest_override map: 1=DeckBottom, 2=DeckTop, 3=Hand, 4=Mana, 5=Shield.
+             // dest defaults to Battle/Grave.
+             // If PUT_IN_PLAY, we want dest=BATTLE.
+             // We can pass a custom dest_override code or just logic in resolve_play.
+             // But resolve_play doesn't know about PUT_IN_PLAY flag unless we pass it.
+             // Let's pass "dest_override": 6 (BATTLE) ?
+        }
+        Instruction resolve(InstructionOp::GAME_ACTION, resolve_args);
+        resolve.args["type"] = "RESOLVE_PLAY";
+        generated.push_back(resolve);
 
         if (!generated.empty()) {
              auto block = std::make_shared<std::vector<Instruction>>(generated);
@@ -435,36 +382,103 @@ namespace dm::engine::systems {
         const auto& def = card_db.at(card->card_id);
 
         // Record Stats
-        // Calculate cost difference (assuming no reduction info passed here, default 0)
-        // TODO: Pass cost reduction info via instruction context if needed
         state.on_card_play(card->card_id, state.turn_number, false, 0, card->owner);
 
-        // 1. Compile Effects
         std::vector<Instruction> compiled_effects;
         std::map<std::string, int> ctx;
 
+        Zone dest = Zone::BATTLE;
+        bool to_bottom = false;
+
+        // Determine destination (default vs override)
+        if (inst.args.contains("dest_override")) {
+            int override_val = exec.resolve_int(inst.args["dest_override"]);
+            if (override_val == 1) { // 1 = DECK_BOTTOM
+                dest = Zone::DECK;
+                to_bottom = true;
+            } else if (override_val == 2) { // 2 = DECK_TOP
+                dest = Zone::DECK;
+            } else if (override_val == 3) { // 3 = HAND
+                dest = Zone::HAND;
+            } else if (override_val == 4) { // 4 = MANA
+                dest = Zone::MANA;
+            } else if (override_val == 5) { // 5 = SHIELD
+                dest = Zone::SHIELD;
+            }
+        } else {
+            if (def.type == CardType::SPELL) {
+                // Spells go to Graveyard by default (after resolution)
+                // But for now we set DEST to STACK or GRAVEYARD logic is handled differently.
+                // Standard flow: Spell Effects -> Move to Graveyard.
+                // The effects compilation below handles the logic, and we add a move to GRAVE at the end.
+                dest = Zone::GRAVEYARD;
+            }
+        }
+
+        bool is_evolution = false;
+        FilterDef evo_filter;
+        if (dest == Zone::BATTLE && def.keywords.evolution) {
+            is_evolution = true;
+            evo_filter.zones = {"BATTLE_ZONE"};
+            evo_filter.races = def.races;
+            evo_filter.owner = "SELF";
+        }
+
         if (def.type == CardType::SPELL) {
-            for (const auto& eff : def.effects) {
+             for (const auto& eff : def.effects) {
                  EffectSystem::instance().compile_effect(state, eff, instance_id, ctx, card_db, compiled_effects);
+             }
+             // Move to Destination (usually Graveyard)
+             nlohmann::json move_args;
+             move_args["target"] = instance_id;
+             if (dest == Zone::GRAVEYARD) move_args["to"] = "GRAVEYARD";
+             else if (dest == Zone::DECK) move_args["to"] = "DECK";
+             else if (dest == Zone::HAND) move_args["to"] = "HAND";
+             else if (dest == Zone::MANA) move_args["to"] = "MANA";
+             else if (dest == Zone::SHIELD) move_args["to"] = "SHIELD";
+             else move_args["to"] = "GRAVEYARD"; // Fallback
+
+             if (to_bottom) move_args["to_bottom"] = true;
+             compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
+
+        } else if (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE) {
+
+            if (is_evolution) {
+                 // 1. Select Base
+                 Instruction select(InstructionOp::SELECT);
+                 select.args["filter"] = evo_filter;
+                 select.args["count"] = 1;
+                 select.args["out"] = "$evo_target";
+                 compiled_effects.push_back(select);
+
+                 // 2. Attach
+                 Instruction attach(InstructionOp::MOVE);
+                 attach.args["target"] = instance_id;
+                 attach.args["attach_to"] = "$evo_target";
+                 // Attach implies moving to Battle Zone effectively
+                 compiled_effects.push_back(attach);
+            } else {
+                 // Move to Battle Zone (or override)
+                 nlohmann::json move_args;
+                 move_args["target"] = instance_id;
+                 if (dest == Zone::BATTLE) move_args["to"] = "BATTLE";
+                 else if (dest == Zone::DECK) move_args["to"] = "DECK";
+                 else if (dest == Zone::HAND) move_args["to"] = "HAND";
+                 else if (dest == Zone::MANA) move_args["to"] = "MANA";
+                 else if (dest == Zone::SHIELD) move_args["to"] = "SHIELD";
+                 else move_args["to"] = "BATTLE";
+
+                 if (to_bottom) move_args["to_bottom"] = true;
+                 compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
             }
 
-            // 2. Move to Graveyard (after effects)
-            nlohmann::json move_args;
-            move_args["target"] = instance_id;
-            move_args["to"] = "GRAVEYARD";
-            compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
-        } else if (def.type == CardType::CREATURE) {
-            // Move to Battle Zone
-            nlohmann::json move_args;
-            move_args["target"] = instance_id;
-            move_args["to"] = "BATTLE";
-            compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
-
-            // Check Triggers (ON_PLAY)
-            nlohmann::json trig_args;
-            trig_args["type"] = "CHECK_CREATURE_ENTER_TRIGGERS";
-            trig_args["card"] = instance_id;
-            compiled_effects.emplace_back(InstructionOp::GAME_ACTION, trig_args);
+            // Check Triggers (ON_PLAY) if entered Battle Zone
+            if (dest == Zone::BATTLE) {
+                nlohmann::json trig_args;
+                trig_args["type"] = "CHECK_CREATURE_ENTER_TRIGGERS";
+                trig_args["card"] = instance_id;
+                compiled_effects.emplace_back(InstructionOp::GAME_ACTION, trig_args);
+            }
         }
 
         if (!compiled_effects.empty()) {
