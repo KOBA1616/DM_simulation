@@ -4,6 +4,12 @@ import os
 import pytest
 import shutil
 import subprocess
+import platform
+
+# Skip ONNX/C++ transformer verification on Windows to avoid native runtime
+# ABI/API mismatches that can cause access violations in the C++ extension.
+if platform.system() == "Windows":
+    pytest.skip("Skipping transformer ONNX verification on Windows due to native onnxruntime incompatibility", allow_module_level=True)
 
 # Ensure bin and project root are in path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))

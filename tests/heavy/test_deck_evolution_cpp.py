@@ -1,16 +1,13 @@
-
 import sys
 import os
 import pytest
 from typing import Any
 import random
 import json
-import threading
-import time
-import traceback
 
 # Add bin directory to path to import dm_ai_module
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
+
 # Skip test automatically if C++ extension `dm_ai_module` is not available
 pytest.importorskip("dm_ai_module", reason="dm_ai_module (C++ extension) not available; skipping heavy integration tests")
 
@@ -54,7 +51,21 @@ class TestDeckEvolutionCpp:
         db[5] = create_mock_card(5, "Little Dragon", Civilization.FIRE, ["Armored Dragon"], 3, 3000)
         return db
 
-    # test_evolve_deck_structure removed due to instability in CI (native extension subprocess issues)
+    def test_evolve_deck_structure(self, card_db):
+        evolver = DeckEvolution(card_db)
+        config = DeckEvolutionConfig()
+        config.target_deck_size = 40
+        config.mutation_rate = 0.5 # Force some mutations
+
+        current_deck = [1] * 40
+        candidate_pool = [2, 3, 4]
+
+        new_deck = evolver.evolve_deck(current_deck, candidate_pool, config)
+
+        assert len(new_deck) == 40
+        assert any(c in candidate_pool for c in new_deck)
+        # Should still contain some original cards
+        assert any(c == 1 for c in new_deck)
 
     def test_interaction_score_synergy(self, card_db):
         evolver = DeckEvolution(card_db)

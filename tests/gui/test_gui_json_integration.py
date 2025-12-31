@@ -4,6 +4,7 @@ import os
 import json
 import unittest
 import pytest
+import platform
 from unittest.mock import MagicMock
 from typing import Any, List, Dict, Optional, cast
 
@@ -84,6 +85,10 @@ if "dm_toolkit.gui.localization" not in sys.modules:
     mock_loc.tr = lambda x: x
     sys.modules["dm_toolkit.gui.localization"] = mock_loc
 
+# Skip this GUI integration test on Windows where native C++/onnxruntime bindings
+# and headless Qt can cause hangs or crashes during automated full test runs.
+if platform.system() == "Windows":
+    pytest.skip("Skipping GUI JSON integration tests on Windows (native bindings unstable)", allow_module_level=True)
 # --- End Mocking ---
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))

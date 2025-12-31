@@ -154,8 +154,8 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         _handle_specific_moves(act_type, act_data, cmd, src)
 
     elif act_type == "DRAW_CARD":
-        # Map draw to a generic TRANSITION for migration compatibility
-        cmd['type'] = "TRANSITION"
+        # Preserve DRAW_CARD type for compatibility
+        cmd['type'] = act_type
         cmd['from_zone'] = src or 'DECK'
         cmd['to_zone'] = dest or 'HAND'
         _transfer_common_move_fields(act_data, cmd)
@@ -266,17 +266,17 @@ def _create_error_command(orig_val: str, msg: str) -> Dict[str, Any]:
     }
 
 def _handle_move_card(act, cmd, src, dest):
-    # Phase 4.2 Normalization: Prefer TRANSITION for all standard moves
-    cmd['type'] = "TRANSITION"
+    # Preserve original move type where available (keep semantic intent)
+    cmd['type'] = act.get('type', 'TRANSITION')
     if dest and 'to_zone' not in cmd: cmd['to_zone'] = dest
     if src and 'from_zone' not in cmd: cmd['from_zone'] = src
 
     _transfer_common_move_fields(act, cmd)
 
 def _handle_specific_moves(act_type, act, cmd, src):
-    # Prefer generic TRANSITION for move-like actions to match migration tests
-    cmd['type'] = "TRANSITION"
-    # Preserve original semantic intent as an alias/reason for compatibility
+    # Preserve the specific action type for compatibility with tests
+    cmd['type'] = act_type
+    # Also record original semantic intent as a reason for compatibility
     cmd['reason'] = act_type
 
     # Special-case amount/flags retained below where needed

@@ -19,7 +19,7 @@ def make_simple_card():
     }
 
 
-def test_load_lift_converts_actions(tmp_path, qtbot=None):
+def test_load_lift_converts_actions(tmp_path, qtbot):
     # Setup model and manager
     model = QStandardItemModel()
     mgr = CardDataManager(model)
