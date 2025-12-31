@@ -38,24 +38,27 @@ namespace dm::engine::systems {
         // Ensure defaults are loaded (singleton lazy init might need explicit call if not done elsewhere)
         ConditionSystem::instance().initialize_defaults();
 
-        // Primitives only. Legacy macros should be expanded at load time.
-        // However, if any slip through or if SHUFFLE_DECK is treated as primitive here:
+        // Support both primitives and formerly "macro" commands as direct execution paths
         switch (cmd.type) {
             case core::CommandType::TRANSITION:
             case core::CommandType::MUTATE:
             case core::CommandType::FLOW:
             case core::CommandType::QUERY:
             case core::CommandType::SHUFFLE_DECK:
+            case core::CommandType::DRAW_CARD:
+            case core::CommandType::MANA_CHARGE:
+            case core::CommandType::DESTROY:
+            case core::CommandType::DISCARD:
+            case core::CommandType::TAP:
+            case core::CommandType::UNTAP:
+            case core::CommandType::RETURN_TO_HAND:
+            case core::CommandType::BREAK_SHIELD:
+            case core::CommandType::POWER_MOD:
+            case core::CommandType::ADD_KEYWORD:
+            case core::CommandType::SEARCH_DECK:
                 execute_primitive(state, cmd, source_instance_id, player_id, execution_context);
                 break;
             default:
-                // Legacy support removed/deprecated.
-                // If expansion happens at load time, this path is unreachable for valid cards.
-                // std::cerr << "Warning: Executing unexpanded command type: " << (int)cmd.type << std::endl;
-                // For now, we keep the call but it should be empty if we remove the method body.
-                // Or we keep it as a fallback during migration?
-                // The user requested removing it.
-                // expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
                 break;
         }
     }
@@ -84,26 +87,14 @@ namespace dm::engine::systems {
             Zone to_z = parse_zone_string(cmd.to_zone);
 
             // Special Handling for DRAW_CARD style transitions (Top of Deck / Implicit Selection)
-            if (targets.empty() && cmd.amount > 0 && from_z != Zone::GRAVEYARD) { // Use GRAVEYARD as 'unknown' sentinel from parse_zone_string
+            if (targets.empty() && cmd.amount > 0 && from_z != Zone::GRAVEYARD) {
                 // If specific zone is requested but no specific targets (e.g. DRAW 2 from DECK)
                 int count = resolve_amount(cmd, execution_context);
 
-                // Determine container
-                // Usually operates on 'player_id' (self) or specified target player
-                // cmd.target_group handles target player selection?
-                // resolve_targets logic checks target_group. If it returned empty, maybe we default to self/player_id?
-                // For simplicity, TRANSITION usually implies the player who is executing the command (player_id) unless target_group specifies otherwise?
-                // Actually, if targets are empty, we might need to iterate.
-
                 // Simplification: If from_zone is DECK and targets empty -> Take top N.
                 if (from_z == Zone::DECK) {
-                     const auto& deck = state.players[player_id].deck;
-                     int available = std::min((int)deck.size(), count);
+                     int available = std::min((int)state.players[player_id].deck.size(), count);
                      for (int i = 0; i < available; ++i) {
-                         // Deck is stack, back is top.
-                         // We need the N-th from top.
-                         // Iterating: take back(), move it. Next loop takes new back().
-                         // So we just take deck.back() 'available' times.
                          if (!state.players[player_id].deck.empty()) {
                             int cid = state.players[player_id].deck.back().instance_id;
                             TransitionCommand trans(cid, from_z, to_z, player_id);
@@ -126,7 +117,6 @@ namespace dm::engine::systems {
                         else if (ZoneUtils::card_in_zone(state.players[inst->owner].mana_zone, target_id)) actual_from = Zone::MANA;
                         else if (ZoneUtils::card_in_zone(state.players[inst->owner].shield_zone, target_id)) actual_from = Zone::SHIELD;
                         else if (ZoneUtils::card_in_zone(state.players[inst->owner].hand, target_id)) actual_from = Zone::HAND;
-                        // Else keep as is (likely fail or Grave->Grave)
                     }
 
                     TransitionCommand trans(target_id, actual_from, to_z, inst->owner);
@@ -153,8 +143,6 @@ namespace dm::engine::systems {
             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
             int val = resolve_amount(cmd, execution_context);
 
-            // Design Intent: Map string-based JSON commands to internal efficient Enums.
-            // Invalid strings are ignored to prevent undefined behavior or unintended effects.
             bool valid_mutation = true;
             MutateCommand::MutationType m_type = MutateCommand::MutationType::TAP; // Default init
 
@@ -166,6 +154,9 @@ namespace dm::engine::systems {
             else if (cmd.mutation_kind == "ADD_PASSIVE_EFFECT") m_type = MutateCommand::MutationType::ADD_PASSIVE_EFFECT;
             else if (cmd.mutation_kind == "ADD_COST_MODIFIER") m_type = MutateCommand::MutationType::ADD_COST_MODIFIER;
             else if (cmd.mutation_kind == "ADD_PENDING_EFFECT") m_type = MutateCommand::MutationType::ADD_PENDING_EFFECT;
+            else if (cmd.mutation_kind == "RESET_INSTANCE") m_type = MutateCommand::MutationType::RESET_INSTANCE;
+            else if (cmd.mutation_kind == "POWER_SET") m_type = MutateCommand::MutationType::POWER_SET;
+            else if (cmd.mutation_kind == "HEAL") m_type = MutateCommand::MutationType::HEAL;
             else valid_mutation = false;
 
             if (valid_mutation) {
@@ -176,6 +167,132 @@ namespace dm::engine::systems {
             } else {
                 std::cerr << "Warning: Unknown mutation kind: " << cmd.mutation_kind << std::endl;
             }
+
+        // --- Former Macros / Primitives ---
+
+        } else if (cmd.type == core::CommandType::TAP) {
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            for (int target_id : targets) {
+                MutateCommand mutate(target_id, MutateCommand::MutationType::TAP);
+                mutate.execute(state);
+            }
+        } else if (cmd.type == core::CommandType::UNTAP) {
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            for (int target_id : targets) {
+                MutateCommand mutate(target_id, MutateCommand::MutationType::UNTAP);
+                mutate.execute(state);
+            }
+        } else if (cmd.type == core::CommandType::RETURN_TO_HAND) {
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            int returned = 0;
+            for (int target_id : targets) {
+                CardInstance* inst = state.get_card_instance(target_id);
+                if (inst) {
+                        Zone current_zone = Zone::BATTLE; // Default guess
+                        PlayerID owner = inst->owner;
+                        bool found = false;
+
+                        // Optimized: Check zones if filter zones provided, otherwise standard search
+                        if (ZoneUtils::card_in_zone(state.players[owner].battle_zone, target_id)) { current_zone = Zone::BATTLE; found = true; }
+                        else if (ZoneUtils::card_in_zone(state.players[owner].mana_zone, target_id)) { current_zone = Zone::MANA; found = true; }
+                        else if (ZoneUtils::card_in_zone(state.players[owner].shield_zone, target_id)) { current_zone = Zone::SHIELD; found = true; }
+                        else if (ZoneUtils::card_in_zone(state.players[owner].graveyard, target_id)) { current_zone = Zone::GRAVEYARD; found = true; }
+
+                        if (found) {
+                            TransitionCommand trans(target_id, current_zone, Zone::HAND, owner);
+                            trans.execute(state);
+                            returned++;
+                        }
+                }
+            }
+            if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = returned;
+
+        } else if (cmd.type == core::CommandType::DRAW_CARD) {
+            int count = resolve_amount(cmd, execution_context);
+            int drawn = 0;
+            for (int i = 0; i < count; ++i) {
+                if (!state.players[player_id].deck.empty()) {
+                    int card_inst_id = state.players[player_id].deck.back().instance_id;
+                    TransitionCommand trans(card_inst_id, Zone::DECK, Zone::HAND, player_id);
+                    trans.execute(state);
+                    drawn++;
+                }
+            }
+            if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = drawn;
+
+        } else if (cmd.type == core::CommandType::MANA_CHARGE) {
+            int count = resolve_amount(cmd, execution_context);
+            int charged = 0;
+            for (int i = 0; i < count; ++i) {
+                if (!state.players[player_id].deck.empty()) {
+                    int card_inst_id = state.players[player_id].deck.back().instance_id;
+                    TransitionCommand trans(card_inst_id, Zone::DECK, Zone::MANA, player_id);
+                    trans.execute(state);
+                    charged++;
+                }
+            }
+            if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = charged;
+
+        } else if (cmd.type == core::CommandType::DESTROY) {
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            int destroyed = 0;
+            for (int target_id : targets) {
+                CardInstance* inst = state.get_card_instance(target_id);
+                if (inst) {
+                    TransitionCommand trans(target_id, Zone::BATTLE, Zone::GRAVEYARD, inst->owner);
+                    trans.execute(state);
+                    destroyed++;
+                }
+            }
+            if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = destroyed;
+
+        } else if (cmd.type == core::CommandType::DISCARD) {
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            int discarded = 0;
+            for (int target_id : targets) {
+                CardInstance* inst = state.get_card_instance(target_id);
+                if (inst) {
+                    TransitionCommand trans(target_id, Zone::HAND, Zone::GRAVEYARD, inst->owner);
+                    trans.execute(state);
+                    discarded++;
+                }
+            }
+            if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = discarded;
+
+        } else if (cmd.type == core::CommandType::BREAK_SHIELD) {
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            for (int target_id : targets) {
+                CardInstance* inst = state.get_card_instance(target_id);
+                if (inst) {
+                    TransitionCommand trans(target_id, Zone::SHIELD, Zone::HAND, inst->owner);
+                    trans.execute(state);
+                }
+            }
+        } else if (cmd.type == core::CommandType::POWER_MOD) {
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            int val = resolve_amount(cmd, execution_context);
+            for (int target_id : targets) {
+                MutateCommand mutate(target_id, MutateCommand::MutationType::POWER_MOD, val);
+                mutate.execute(state);
+            }
+        } else if (cmd.type == core::CommandType::ADD_KEYWORD) {
+            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            for (int target_id : targets) {
+                MutateCommand mutate(target_id, MutateCommand::MutationType::ADD_KEYWORD, 0, cmd.str_param);
+                mutate.execute(state);
+            }
+        } else if (cmd.type == core::CommandType::SEARCH_DECK) {
+             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+             Zone dest_zone = cmd.to_zone.empty() ? Zone::HAND : parse_zone_string(cmd.to_zone);
+             for (int target_id : targets) {
+                 CardInstance* inst = state.get_card_instance(target_id);
+                 if (inst) {
+                     TransitionCommand trans(target_id, Zone::DECK, dest_zone, inst->owner);
+                     trans.execute(state);
+                 }
+             }
+             ShuffleCommand shuffle(player_id);
+             shuffle.execute(state);
         }
     }
 
