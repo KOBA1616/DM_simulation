@@ -154,14 +154,15 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         _handle_specific_moves(act_type, act_data, cmd, src)
 
     elif act_type == "DRAW_CARD":
-        # Preserve DRAW_CARD type for compatibility
-        cmd['type'] = act_type
+        # Map to TRANSITION for C++ engine compatibility
+        cmd['type'] = "TRANSITION"
         cmd['from_zone'] = src or 'DECK'
         cmd['to_zone'] = dest or 'HAND'
         _transfer_common_move_fields(act_data, cmd)
 
     elif act_type in ["TAP", "UNTAP"]:
-        cmd['type'] = act_type
+        cmd['type'] = "MUTATE"
+        cmd['mutation_kind'] = act_type
         _transfer_targeting(act_data, cmd)
 
     elif act_type in ["COUNT_CARDS", "MEASURE_COUNT", "GET_GAME_STAT"]:
@@ -266,22 +267,24 @@ def _create_error_command(orig_val: str, msg: str) -> Dict[str, Any]:
     }
 
 def _handle_move_card(act, cmd, src, dest):
-    # Preserve original move type where available (keep semantic intent)
-    cmd['type'] = act.get('type', 'TRANSITION')
+    # Map to TRANSITION explicitly
+    cmd['type'] = "TRANSITION"
     if dest and 'to_zone' not in cmd: cmd['to_zone'] = dest
     if src and 'from_zone' not in cmd: cmd['from_zone'] = src
 
     _transfer_common_move_fields(act, cmd)
 
 def _handle_specific_moves(act_type, act, cmd, src):
-    # Preserve the specific action type for compatibility with tests
-    cmd['type'] = act_type
+    # Map specific move actions to TRANSITION
+    cmd['type'] = "TRANSITION"
     # Also record original semantic intent as a reason for compatibility
     cmd['reason'] = act_type
 
     # Special-case amount/flags retained below where needed
     if act_type == "SHIELD_BURN":
          cmd['amount'] = act.get('value1', 1)
+         cmd['from_zone'] = "SHIELD_ZONE"
+         cmd['to_zone'] = "GRAVEYARD"
 
     # NOTE: These strings should match dm_ai_module.Zone enum names if possible
     # to be picked up by compat.py correctly.
@@ -307,7 +310,6 @@ def _handle_specific_moves(act_type, act, cmd, src):
         cmd['from_zone'] = "HAND"
     elif act_type == "MOVE_TO_UNDER_CARD":
         # Simplified handling: treat as a transition to a special zone or state
-        # In reality, this requires target_instance, but for simple mapping TRANSITION is closest.
         cmd['type'] = "TRANSITION"
         cmd['to_zone'] = "UNDER_CARD"
         if src: cmd['from_zone'] = src
@@ -321,8 +323,9 @@ def _handle_modifiers(act_type, act, cmd):
         cmd['mutation_kind'] = "COST"
         cmd['amount'] = act.get('value1', 0)
     elif act_type == "GRANT_KEYWORD":
-        cmd['type'] = "ADD_KEYWORD"
-        cmd['mutation_kind'] = act.get('str_val', '')
+        cmd['type'] = "MUTATE"
+        cmd['mutation_kind'] = "ADD_KEYWORD"
+        cmd['str_param'] = act.get('str_val', '')
         cmd['amount'] = act.get('value1', 1)
     else:
         cmd['type'] = "MUTATE"
@@ -339,9 +342,14 @@ def _handle_mutate(act_type, act, cmd):
         if 'value1' in act: cmd['amount'] = act['value1']
         elif 'value2' in act: cmd['amount'] = act['value2']
     elif sval in ("TAP", "UNTAP"):
-        cmd['type'] = sval
+        cmd['type'] = 'MUTATE'
+        cmd['mutation_kind'] = sval
     elif sval == "SHIELD_BURN":
-        cmd['type'] = "SHIELD_BURN"
+        # Handled in _handle_specific_moves if act_type matches, else here.
+        # If it reaches here via str_val="SHIELD_BURN" in a MUTATE action:
+        cmd['type'] = "TRANSITION"
+        cmd['from_zone'] = "SHIELD_ZONE"
+        cmd['to_zone'] = "GRAVEYARD"
         if 'value1' in act: cmd['amount'] = act['value1']
     elif sval in ("SET_POWER", "POWER_SET"):
         cmd['type'] = 'MUTATE'
