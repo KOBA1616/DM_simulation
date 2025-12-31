@@ -58,6 +58,19 @@ namespace dm::engine::systems {
             case core::CommandType::SEARCH_DECK:
                 execute_primitive(state, cmd, source_instance_id, player_id, execution_context);
                 break;
+            case core::CommandType::TAP:
+            case core::CommandType::UNTAP:
+            case core::CommandType::DESTROY:
+            case core::CommandType::DISCARD:
+            case core::CommandType::RETURN_TO_HAND:
+            case core::CommandType::MANA_CHARGE:
+            case core::CommandType::DRAW_CARD:
+            case core::CommandType::BREAK_SHIELD:
+            case core::CommandType::POWER_MOD:
+            case core::CommandType::ADD_KEYWORD:
+            case core::CommandType::SEARCH_DECK:
+                 expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
+                 break;
             default:
                 break;
         }
@@ -383,31 +396,28 @@ namespace dm::engine::systems {
             case core::CommandType::RETURN_TO_HAND: {
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
                 int returned = 0;
+                Zone from_z = cmd.from_zone.empty() ? Zone::GRAVEYARD : parse_zone_string(cmd.from_zone); // GRAVEYARD as sentinel for unknown
+
                 for (int target_id : targets) {
                     CardInstance* inst = state.get_card_instance(target_id);
                     if (inst) {
-                         // Determine current zone based on owner's containers?
-                         // Or try multiple. Actually TransitionCommand needs explicit from_zone.
-                         // We can try to infer or iterate.
-                         // For now, assume Battle Zone as it is the primary target for Return To Hand.
-                         // But it could be Mana/Shield (if specified).
-                         // If Filter specifies Zone, we can use that.
-                         // resolve_targets checks zones. But we lose which zone it came from in the list.
-                         // Improve: resolve_targets could return pair<id, zone>?
-                         // For now, iterate zones to find the card.
-
                          Zone current_zone = Zone::BATTLE; // Default guess
-                         PlayerID owner = inst->owner;
                          bool found = false;
 
-                         // Fast check
-                         for (const auto& c : state.players[owner].battle_zone) if (c.instance_id == target_id) { current_zone = Zone::BATTLE; found = true; break; }
-                         if (!found) for (const auto& c : state.players[owner].mana_zone) if (c.instance_id == target_id) { current_zone = Zone::MANA; found = true; break; }
-                         if (!found) for (const auto& c : state.players[owner].shield_zone) if (c.instance_id == target_id) { current_zone = Zone::SHIELD; found = true; break; }
-                         if (!found) for (const auto& c : state.players[owner].graveyard) if (c.instance_id == target_id) { current_zone = Zone::GRAVEYARD; found = true; break; }
+                         if (from_z != Zone::GRAVEYARD) {
+                             current_zone = from_z;
+                             found = true;
+                         } else {
+                             PlayerID owner = inst->owner;
+                             // Fast check
+                             if (ZoneUtils::card_in_zone(state.players[owner].battle_zone, target_id)) { current_zone = Zone::BATTLE; found = true; }
+                             else if (ZoneUtils::card_in_zone(state.players[owner].mana_zone, target_id)) { current_zone = Zone::MANA; found = true; }
+                             else if (ZoneUtils::card_in_zone(state.players[owner].shield_zone, target_id)) { current_zone = Zone::SHIELD; found = true; }
+                             else if (ZoneUtils::card_in_zone(state.players[owner].graveyard, target_id)) { current_zone = Zone::GRAVEYARD; found = true; }
+                         }
 
                          if (found) {
-                             TransitionCommand trans(target_id, current_zone, Zone::HAND, owner);
+                             TransitionCommand trans(target_id, current_zone, Zone::HAND, inst->owner);
                              trans.execute(state);
                              returned++;
                          }

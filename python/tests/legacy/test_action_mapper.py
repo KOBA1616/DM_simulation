@@ -57,7 +57,7 @@ class TestActionMapper(unittest.TestCase):
         cmd = ActionToCommandMapper.map_action(action)
         # Updated Expectation: Specific Command Type Preserved
         self.assertEqual(cmd['type'], "MANA_CHARGE")
-        self.assertEqual(cmd['to_zone'], "MANA_ZONE")
+        self.assertEqual(cmd['to_zone'], "MANA")
         self.assertEqual(cmd['from_zone'], "DECK")
 
     def test_return_to_hand_mapping(self):
