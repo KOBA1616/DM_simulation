@@ -222,7 +222,8 @@ for action in _definitions:
 # ActionDef entries but are referenced by the engine enums.
 _legacy_keys = [
     'TRANSITION', 'ADD_MANA', 'RETURN_TO_HAND', 'BREAK_SHIELD',
-    'SEARCH_DECK_BOTTOM', 'PLAY_FROM_ZONE', 'SEND_SHIELD_TO_GRAVE', 'SEND_TO_DECK_BOTTOM'
+    'SEARCH_DECK_BOTTOM', 'PLAY_FROM_ZONE', 'SEND_SHIELD_TO_GRAVE', 'SEND_TO_DECK_BOTTOM',
+    'MANA_CHARGE'
 ]
 for _k in _legacy_keys:
     if _k not in ACTION_UI_CONFIG:
