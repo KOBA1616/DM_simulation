@@ -58,3 +58,14 @@ Release/
 *.pdb
 *.ilk
 *.zip
+build/
+CMakeFiles/
+CMakeCache.txt
+Debug/
+Release/
+RelWithDebInfo/
+bin/
+__pycache__/
+*.pyc
+models/*.pth
+archive/
