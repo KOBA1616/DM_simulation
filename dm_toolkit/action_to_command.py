@@ -71,6 +71,10 @@ def _validate_command_type(cmd: Dict[str, Any]):
         return
 
     ctype = cmd.get('type', 'NONE')
+    # If the command originated as the same legacy type, allow it through
+    if cmd.get('legacy_original_type') == ctype:
+        return
+
     # Check if ctype is a valid member of _CommandType enum
     if not hasattr(_CommandType, ctype):
          cmd['legacy_warning'] = True
@@ -281,9 +285,9 @@ def _handle_move_card(act, cmd, src, dest):
     mapped_type = 'TRANSITION'
 
     # Try to infer specific command from destination if generic MOVE_CARD
-    if dest == "MANA":
-        mapped_type = "MANA_CHARGE"
-    elif dest == "GRAVEYARD" and src == "BATTLE":
+    # NOTE: Avoid implicitly mapping MOVE_CARD->MANA_CHARGE based solely on destination.
+    # Keep default as TRANSITION unless the incoming action explicitly names a specific move.
+    if dest == "GRAVEYARD" and src == "BATTLE":
         mapped_type = "DESTROY"
     elif dest == "GRAVEYARD" and src == "HAND":
         mapped_type = "DISCARD"
@@ -323,7 +327,7 @@ def _handle_specific_moves(act_type, act, cmd, src):
         cmd['to_zone'] = "DECK_BOTTOM"
         if not src and act_type == "SEARCH_DECK_BOTTOM": cmd['from_zone'] = "DECK"
     elif act_type == "ADD_SHIELD":
-        cmd['to_zone'] = "SHIELD_ZONE"
+        cmd['to_zone'] = "SHIELD"
         if not src: cmd['from_zone'] = "DECK"
     elif act_type == "DESTROY":
         cmd['to_zone'] = "GRAVEYARD"

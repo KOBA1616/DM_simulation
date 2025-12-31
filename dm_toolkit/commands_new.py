@@ -86,7 +86,25 @@ def wrap_action(action: Any) -> Optional[ICommand]:
 
         def to_dict(self) -> Dict[str, Any]:
             # Use the unified mapper
-            return map_action(self._action)
+            cmd = map_action(self._action)
+            # Legacy wrapper: when wrapping an Action object representing a DRAW_CARD,
+            # some callers expect it to be represented as a TRANSITION for compatibility.
+            try:
+                # Determine original type from the action object if available
+                orig_type = None
+                if hasattr(self._action, 'type'):
+                    orig_type = str(getattr(self._action, 'type')).upper()
+                elif isinstance(self._action, dict):
+                    orig_type = str(self._action.get('type', '')).upper()
+
+                if orig_type == 'DRAW_CARD' and cmd.get('type') == 'DRAW_CARD':
+                    cmd['type'] = 'TRANSITION'
+                    if 'amount' not in cmd and 'value1' in cmd:
+                        cmd['amount'] = cmd.get('value1')
+            except Exception:
+                pass
+
+            return cmd
 
     return _ActionWrapper(action)
 

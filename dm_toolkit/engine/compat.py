@@ -304,7 +304,46 @@ class EngineCompat:
                             source_id = cmd_def.instance_id
 
                         # Execute
+                        # If a target_filter is present but instance_id wasn't assigned,
+                        # attempt a Python-side target resolution as a fallback.
                         ctx = {}
+                        filter_dict = cmd_dict.get('target_filter') or {}
+                        assigned_any = False
+
+                        def _resolve_zone_instances(zname: str):
+                            # Normalize common legacy names
+                            if zname in ('BATTLE_ZONE', 'BATTLE'):
+                                return getattr(state.players[player_id], 'battle_zone', [])
+                            if zname in ('HAND',):
+                                return getattr(state.players[player_id], 'hand', [])
+                            if zname in ('MANA_ZONE', 'MANA'):
+                                return getattr(state.players[player_id], 'mana_zone', [])
+                            if zname in ('SHIELD_ZONE', 'SHIELD'):
+                                return getattr(state.players[player_id], 'shield_zone', [])
+                            if zname in ('DECK',):
+                                return getattr(state.players[player_id], 'deck', [])
+                            return []
+
+                        if filter_dict and not getattr(cmd_def, 'instance_id', 0):
+                            zones = filter_dict.get('zones') or []
+                            instances = []
+                            for z in zones:
+                                for inst in _resolve_zone_instances(str(z)):
+                                    instances.append(inst)
+
+                            # If instances found, call CommandSystem per-instance
+                            if instances:
+                                for inst in instances:
+                                    try:
+                                        cmd_def.instance_id = int(getattr(inst, 'instance_id', getattr(inst, 'id', 0) or 0))
+                                        dm_ai_module.CommandSystem.execute_command(state, cmd_def, cmd_def.instance_id or source_id, player_id, ctx)
+                                        assigned_any = True
+                                    except Exception:
+                                        pass
+                                if assigned_any:
+                                    return
+
+                        # Default single-shot execute if no per-instance fallback
                         dm_ai_module.CommandSystem.execute_command(state, cmd_def, source_id, player_id, ctx)
                         return # Success: Return only if executed by CommandSystem
             except Exception as e:
