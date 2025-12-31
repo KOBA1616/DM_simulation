@@ -58,19 +58,20 @@ namespace dm::engine::systems {
             case core::CommandType::SEARCH_DECK:
                 execute_primitive(state, cmd, source_instance_id, player_id, execution_context);
                 break;
-            case core::CommandType::TAP:
-            case core::CommandType::UNTAP:
-            case core::CommandType::DESTROY:
-            case core::CommandType::DISCARD:
-            case core::CommandType::RETURN_TO_HAND:
-            case core::CommandType::MANA_CHARGE:
-            case core::CommandType::DRAW_CARD:
-            case core::CommandType::BREAK_SHIELD:
-            case core::CommandType::POWER_MOD:
-            case core::CommandType::ADD_KEYWORD:
-            case core::CommandType::SEARCH_DECK:
-                 expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
-                 break;
+            // Macros are handled via fallback or unification.
+            // In legacy code, they were duplicates. We remove the duplicate cases here
+            // because they are already handled in the first block if execute_primitive
+            // calls expand_and_execute_macro for them, OR if we want to route them there.
+
+            // To restore original behavior while fixing duplicate case error:
+            // We need to check if execute_primitive handles them.
+            // Looking at execute_primitive above, it handles TRANSITION, MUTATE, QUERY...
+            // It does NOT handle TAP, DESTROY, etc directly as Primitives in the if/else chain.
+            // Wait, looking at the code I read earlier:
+            // execute_primitive had else-ifs for TAP, UNTAP, DESTROY etc.
+            // So they ARE handled in execute_primitive block in the *restored* file.
+
+            // So I should remove the second block of cases.
             default:
                 break;
         }

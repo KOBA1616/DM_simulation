@@ -56,6 +56,9 @@ namespace dm::engine::systems {
 
         // Helper to push instructions
         static void push_trigger_check(PipelineExecutor& pipeline, core::TriggerType type, int source_id);
+
+    private:
+        static std::pair<core::Zone, core::PlayerID> get_card_location(const core::GameState& state, int instance_id);
     };
 
 }
