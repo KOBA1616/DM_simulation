@@ -279,6 +279,17 @@ def _handle_move_card(act, cmd, src, dest):
     # Default mapping for a generic MOVE_CARD should be a TRANSITION
     # Specific move types should be preserved if the incoming action explicitly names them.
     mapped_type = 'TRANSITION'
+
+    # Try to infer specific command from destination if generic MOVE_CARD
+    if dest == "MANA":
+        mapped_type = "MANA_CHARGE"
+    elif dest == "GRAVEYARD" and src == "BATTLE":
+        mapped_type = "DESTROY"
+    elif dest == "GRAVEYARD" and src == "HAND":
+        mapped_type = "DISCARD"
+    elif dest == "HAND" and src in ["BATTLE", "MANA", "SHIELD"]:
+        mapped_type = "RETURN_TO_HAND"
+
     act_type = str(act.get('type', '')).upper()
     if act_type in ("MANA_CHARGE", "RETURN_TO_HAND", "DESTROY", "DISCARD"):
         mapped_type = act_type
