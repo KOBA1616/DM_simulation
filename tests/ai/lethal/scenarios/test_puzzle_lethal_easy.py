@@ -90,7 +90,7 @@ def test_lethal_puzzle_easy_integration():
     # Loop until stable
     max_steps = 20
     steps = 0
-    while (state.stack_zone or state.pending_effects) and steps < max_steps:
+    while steps < max_steps:
         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
         if not actions:
             break
@@ -127,7 +127,7 @@ def test_lethal_puzzle_easy_integration():
     # Usually requires resolving pending effects.
 
     steps = 0
-    while (state.pending_effects or state.stack_zone) and steps < max_steps:
+    while (state.get_pending_effect_count() > 0) and steps < max_steps:
         actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
         if not actions:
             break
