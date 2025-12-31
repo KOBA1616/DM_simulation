@@ -93,27 +93,33 @@ class GameWindow(QMainWindow):
         self.addToolBar(self.toolbar)
 
         deck_act = QAction(tr("Deck Builder"), self)
+        deck_act.setToolTip(tr("Open the Deck Builder tool to create or edit decks"))
         deck_act.triggered.connect(self.open_deck_builder)
         self.toolbar.addAction(deck_act)
 
         card_act = QAction(tr("Card Editor"), self)
+        card_act.setToolTip(tr("Open the Card Editor to create or modify card data"))
         card_act.triggered.connect(self.open_card_editor)
         self.toolbar.addAction(card_act)
 
         self.scen_act = QAction(tr("Scenario Mode"), self)
         self.scen_act.setCheckable(True)
+        self.scen_act.setToolTip(tr("Toggle Scenario Mode for testing specific game states"))
         self.scen_act.triggered.connect(self.toggle_scenario_mode)
         self.toolbar.addAction(self.scen_act)
 
         sim_act = QAction(tr("Batch Simulation"), self)
+        sim_act.setToolTip(tr("Run multiple game simulations for data collection"))
         sim_act.triggered.connect(self.open_simulation_dialog)
         self.toolbar.addAction(sim_act)
 
         ai_act = QAction(tr("AI Analysis"), self)
+        ai_act.setToolTip(tr("Toggle the AI Analysis view (MCTS)"))
         ai_act.triggered.connect(lambda: self.mcts_dock.setVisible(not self.mcts_dock.isVisible()))
         self.toolbar.addAction(ai_act)
 
         loop_act = QAction(tr("Loop Recorder"), self)
+        loop_act.setToolTip(tr("Toggle the Loop Recorder to capture game actions"))
         loop_act.triggered.connect(lambda: self.loop_dock.setVisible(not self.loop_dock.isVisible()))
         self.toolbar.addAction(loop_act)
 
@@ -148,16 +154,19 @@ class GameWindow(QMainWindow):
         game_ctrl_layout = QHBoxLayout()
         self.start_btn = QPushButton(tr("Start Sim"))
         self.start_btn.setShortcut("F5")
+        self.start_btn.setToolTip(tr("Start or Stop the continuous simulation (F5)"))
         self.start_btn.clicked.connect(self.toggle_simulation)
         game_ctrl_layout.addWidget(self.start_btn)
 
         self.step_button = QPushButton(tr("Step"))
         self.step_button.setShortcut("Space")
+        self.step_button.setToolTip(tr("Advance the simulation by one step (Space)"))
         self.step_button.clicked.connect(self.step_phase)
         game_ctrl_layout.addWidget(self.step_button)
 
         self.confirm_btn = QPushButton(tr("Confirm Selection"))
         self.confirm_btn.setShortcut("Return")
+        self.confirm_btn.setToolTip(tr("Confirm the current selection (Enter)"))
         self.confirm_btn.clicked.connect(self.confirm_selection)
         self.confirm_btn.setVisible(False)
         self.confirm_btn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
@@ -165,6 +174,7 @@ class GameWindow(QMainWindow):
 
         self.reset_btn = QPushButton(tr("Reset"))
         self.reset_btn.setShortcut("Ctrl+R")
+        self.reset_btn.setToolTip(tr("Reset the game state (Ctrl+R)"))
         self.reset_btn.clicked.connect(self.reset_game)
         game_ctrl_layout.addWidget(self.reset_btn)
         top_layout.addLayout(game_ctrl_layout)
@@ -232,6 +242,7 @@ class GameWindow(QMainWindow):
         bottom_layout.addWidget(deck_group)
         
         self.god_view_check = QCheckBox(tr("God View"))
+        self.god_view_check.setToolTip(tr("Reveal all zones including enemy hand and shields"))
         self.god_view_check.setChecked(False)
         self.god_view_check.stateChanged.connect(self.update_ui)
         bottom_layout.addWidget(self.god_view_check)

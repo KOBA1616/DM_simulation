@@ -30,6 +30,8 @@ class DeckBuilder(QWidget):
         left_panel = QVBoxLayout()
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText(tr("Search..."))
+        self.search_bar.setToolTip(tr("Filter cards by name"))
+        self.search_bar.setClearButtonEnabled(True)
         self.search_bar.textChanged.connect(self.filter_cards)
         left_panel.addWidget(self.search_bar)
 
