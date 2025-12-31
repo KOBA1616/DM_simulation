@@ -121,6 +121,12 @@ namespace dm::engine::systems {
                 // Lookup pending effect to determine destination if needed
                 if (action.slot_index >= 0 && action.slot_index < (int)state.pending_effects.size()) {
                     const auto& eff = state.pending_effects[action.slot_index];
+
+                    // Propagate Origin
+                    if (eff.execution_context.count("$origin")) {
+                        inst.args["origin_zone"] = eff.execution_context.at("$origin");
+                    }
+
                     if (eff.effect_def.has_value()) {
                         for (const auto& act : eff.effect_def->actions) {
                             // Map all relevant destination zones to override flags
@@ -210,6 +216,63 @@ namespace dm::engine::systems {
                 evo_filter.races = def.races; // Evolution matches race
                 evo_filter.owner = "SELF";
             }
+
+            // --- Gatekeeper: Check for Prohibitions (CANNOT_SUMMON, etc.) ---
+            int origin_int = exec.resolve_int(inst.args.value("origin_zone", -1));
+
+            // If origin is not provided, we might default to HAND if source_instance_id was in hand?
+            // But handle_play_card is called after it might have moved to stack.
+            // For now, if origin is -1, we skip origin-based checks (assuming standard play checked elsewhere or safe).
+            // However, "Cannot summon creatures" (generic) should be checked regardless of origin.
+
+            std::string origin_str = "";
+            if (origin_int != -1) {
+                Zone origin = static_cast<Zone>(origin_int);
+                if (origin == Zone::DECK) origin_str = "DECK";
+                else if (origin == Zone::HAND) origin_str = "HAND";
+                else if (origin == Zone::MANA) origin_str = "MANA_ZONE";
+                else if (origin == Zone::GRAVEYARD) origin_str = "GRAVEYARD";
+                else if (origin == Zone::SHIELD) origin_str = "SHIELD_ZONE";
+            }
+
+            for (const auto& eff : state.passive_effects) {
+                if (eff.type == PassiveType::CANNOT_SUMMON && (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE)) {
+                     // Check Origin match
+                     bool origin_match = true;
+                     if (!eff.target_filter.zones.empty()) {
+                         // If zones are specified, origin MUST be one of them.
+                         if (origin_str.empty()) {
+                             // If we don't know origin, we can't enforce "from Deck".
+                             // But if the prohibition is "from Deck", and we don't know, we assume safe?
+                             // Or we assume it applies? Safer to assume safe if unknown origin,
+                             // UNLESS the prohibition has NO zones (applies to all).
+                             origin_match = false;
+                         } else {
+                             origin_match = false;
+                             for (const auto& z : eff.target_filter.zones) {
+                                 if (z == origin_str) { origin_match = true; break; }
+                             }
+                         }
+                     }
+                     // If zones are empty, it applies to ALL zones, so origin_match stays true.
+
+                     if (!origin_match) continue;
+
+                     // Check Card match
+                     // We create a temporary filter without zones to check card properties against the definition
+                     FilterDef check_filter = eff.target_filter;
+                     check_filter.zones.clear();
+
+                     // Use ignore_passives=true to avoid recursion
+                     if (TargetUtils::is_valid_target(*card, def, check_filter, state, eff.controller, card->owner, true)) {
+                         // Prohibited!
+                         // Log or Context?
+                         // std::cout << "Play prohibited: " << def.name << " from " << origin_str << std::endl;
+                         return; // Abort play
+                     }
+                }
+            }
+            // -------------------------------------------------------------
         }
 
         std::vector<Instruction> generated;
@@ -396,6 +459,12 @@ namespace dm::engine::systems {
             move_args["target"] = instance_id;
             move_args["to"] = "BATTLE";
             compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
+
+            // Check Triggers (ON_PLAY)
+            nlohmann::json trig_args;
+            trig_args["type"] = "CHECK_CREATURE_ENTER_TRIGGERS";
+            trig_args["card"] = instance_id;
+            compiled_effects.emplace_back(InstructionOp::GAME_ACTION, trig_args);
         }
 
         if (!compiled_effects.empty()) {
@@ -711,6 +780,12 @@ namespace dm::engine::systems {
          } catch (const std::exception& e) {
              std::cerr << "[Pipeline] Failed to execute command: " << e.what() << std::endl;
          }
+    }
+
+    void GameLogicSystem::handle_check_creature_enter_triggers(PipelineExecutor& exec, GameState& state, const Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        int card_id = exec.resolve_int(inst.args.value("card", 0));
+        EffectSystem::instance().resolve_trigger(state, TriggerType::ON_PLAY, card_id, card_db);
+        EffectSystem::instance().resolve_trigger(state, TriggerType::ON_OTHER_ENTER, card_id, card_db);
     }
 
     void GameLogicSystem::handle_game_result(PipelineExecutor& exec, GameState& state, const Instruction& inst) {

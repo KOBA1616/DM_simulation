@@ -47,6 +47,8 @@ namespace dm::engine {
                     CardInstance card = looked[chosen_idx];
                     controller.effect_buffer.push_back(card);
                     ctx.game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, card.instance_id, controller.id);
+                    // Set origin to DECK for interference checks
+                    ctx.game_state.pending_effects.back().execution_context["$origin"] = (int)Zone::DECK;
                 }
 
                 for (int i = 0; i < (int)looked.size(); ++i) {
@@ -98,15 +100,16 @@ namespace dm::engine {
              if (!ctx.targets) return;
 
              // Logic: PLAY_FROM_BUFFER with specific targets.
-             // We need to know which buffer they are in.
-             // Usually, they are in the buffer of the player who "looked" or "searched".
-             // Context doesn't explicitly store which buffer was used in previous step unless we infer it.
-             // However, EffectSystem::instance().select_targets creates PendingEffect with filter targeting specific buffer.
-             // But here we have targets (IDs).
-             // We can search both buffers.
-
              if (ctx.action.type == EffectPrimitive::PLAY_FROM_BUFFER) {
                  Player& active = ctx.game_state.players[ctx.game_state.active_player_id];
+
+                 // Determine origin from action definition if available
+                 int origin_zone = -1;
+                 if (ctx.action.source_zone == "DECK") origin_zone = (int)Zone::DECK;
+                 else if (ctx.action.source_zone == "HAND") origin_zone = (int)Zone::HAND;
+                 else if (ctx.action.source_zone == "GRAVEYARD") origin_zone = (int)Zone::GRAVEYARD;
+                 else if (ctx.action.source_zone == "MANA_ZONE") origin_zone = (int)Zone::MANA;
+
                  for (int tid : *ctx.targets) {
                       // Check P0
                       auto it0 = std::find_if(ctx.game_state.players[0].effect_buffer.begin(), ctx.game_state.players[0].effect_buffer.end(),
@@ -114,6 +117,9 @@ namespace dm::engine {
 
                       if (it0 != ctx.game_state.players[0].effect_buffer.end()) {
                           ctx.game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, tid, active.id);
+                          if (origin_zone != -1) {
+                              ctx.game_state.pending_effects.back().execution_context["$origin"] = origin_zone;
+                          }
                           continue;
                       }
 
@@ -123,6 +129,9 @@ namespace dm::engine {
 
                       if (it1 != ctx.game_state.players[1].effect_buffer.end()) {
                           ctx.game_state.pending_effects.emplace_back(EffectType::INTERNAL_PLAY, tid, active.id);
+                          if (origin_zone != -1) {
+                              ctx.game_state.pending_effects.back().execution_context["$origin"] = origin_zone;
+                          }
                       }
                  }
              }
