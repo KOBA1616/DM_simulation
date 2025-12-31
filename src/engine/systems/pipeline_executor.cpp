@@ -124,6 +124,8 @@ namespace dm::engine::systems {
                     GameLogicSystem::handle_execute_command(*this, state, inst);
                 } else if (type == "PLAY_CARD_INTERNAL") {
                     GameLogicSystem::handle_play_card(*this, state, inst, card_db);
+                } else if (type == "CHECK_CREATURE_ENTER_TRIGGERS") {
+                    GameLogicSystem::handle_check_creature_enter_triggers(*this, state, inst, card_db);
                 }
                 break;
             }

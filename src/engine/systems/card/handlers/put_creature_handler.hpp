@@ -20,7 +20,46 @@ namespace dm::engine {
 
             if (!ctx.targets || ctx.targets->empty()) return;
 
+            // Determine origin string from action definition
+            std::string origin_str = ctx.action.source_zone;
+            // Normalize MANA vs MANA_ZONE
+            if (origin_str == "MANA") origin_str = "MANA_ZONE";
+            if (origin_str == "SHIELD") origin_str = "SHIELD_ZONE";
+            if (origin_str == "BATTLE") origin_str = "BATTLE_ZONE";
+
             for (int target_id : *ctx.targets) {
+
+                // Pre-check for Prohibitions (CANNOT_SUMMON)
+                const CardInstance* existing_card = ctx.game_state.get_card_instance(target_id);
+                if (existing_card && ctx.card_db.count(existing_card->card_id)) {
+                    const auto& def = ctx.card_db.at(existing_card->card_id);
+
+                    bool prohibited = false;
+                    for (const auto& eff : ctx.game_state.passive_effects) {
+                        if (eff.type == PassiveType::CANNOT_SUMMON && (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE)) {
+                            bool origin_match = true;
+                            if (!eff.target_filter.zones.empty()) {
+                                origin_match = false;
+                                if (!origin_str.empty()) {
+                                    for (const auto& z : eff.target_filter.zones) {
+                                        if (z == origin_str) { origin_match = true; break; }
+                                    }
+                                }
+                            }
+
+                            if (!origin_match) continue;
+
+                            FilterDef check_filter = eff.target_filter;
+                            check_filter.zones.clear();
+
+                            if (TargetUtils::is_valid_target(*existing_card, def, check_filter, ctx.game_state, eff.controller, existing_card->owner, true)) {
+                                prohibited = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (prohibited) continue; // Skip putting this creature into play
+                }
 
                 // Use find_and_remove instead of manual scan
                 std::optional<CardInstance> removed_opt = ZoneUtils::find_and_remove(ctx.game_state, target_id);
