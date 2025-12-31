@@ -1,0 +1,99 @@
+PS C:\Users\ichirou\DM_simulation> 
+        # Remaining V, V break 2 shields. No direct attack.
+        # Not Lethal.
+
+        state.clear_zone(1, dm_ai_module.Zone.SHIELD)
+        state.add_test_card_to_shield(1, 0, 0)
+        state.add_test_card_to_shield(1, 0, 1)
+        state.add_test_card_to_battle(1, 4, 200, False, False) # Blocker
+
+        state.add_test_card_to_battle(0, 2, 100, False, False) # DB
+        state.add_test_card_to_battle(0, 1, 101, False, False) # Vanilla
+        state.add_test_card_to_battle(0, 1, 102, False, False) # Vanilla
+
+>       assert dm_ai_module.LethalSolver.is_lethal(state, card_db) == False
+E       AssertionError: assert True == False
+E        +  where True = <function _lethal_unwrap at 0x000001FFFA7FFF60>(<conftest.GameStateWrapper object at 0x000001FF9A4900E0>, {1: <dm_ai_module.CardDefinition obje
+ct at 0x000001FF9A497B70>, 2: <dm_ai_module.CardDefinition object at 0x000001FF9A496070>, 3: <dm_ai_module.CardDefinition object at 0x000001FF9A496CB0>, 4: <dm_ai_module.CardDefinition object at 0x000001FF9A496730>})                                                                                                                        E        +    where <function _lethal_unwrap at 0x000001FFFA7FFF60> = <class 'dm_ai_module.LethalSolver'>.is_lethal
+E        +      where <class 'dm_ai_module.LethalSolver'> = dm_ai_module.LethalSolver
+
+card_db    = {1: <dm_ai_module.CardDefinition object at 0x000001FF9A497B70>, 2: <dm_ai_module.CardDefinition object at 0x000001FF9A496070>, 3: <dm_ai_module.CardDefinition object at 0x000001FF9A496CB0>, 4: <dm_ai_module.CardDefinition object at 0x000001FF9A496730>}                                                                                   self       = <test_lethal_solver_advanced.TestLethalSolverAdvanced object at 0x000001FF9220DC70>
+setup_game = <conftest.GameStateWrapper object at 0x000001FF9A4900E0>
+state      = <conftest.GameStateWrapper object at 0x000001FF9A4900E0>
+
+tests\integration\test_lethal_solver_advanced.py:69: AssertionError
+__________________________________________________________ TestLethalSolverAdvanced.test_unblockable_lethal ___________________________________________________________ 
+
+self = <test_lethal_solver_advanced.TestLethalSolverAdvanced object at 0x000001FF922124E0>, setup_game = <conftest.GameStateWrapper object at 0x000001FF9A492870>       
+card_db = {1: <dm_ai_module.CardDefinition object at 0x000001FF9A472EF0>, 2: <dm_ai_module.CardDefinition object at 0x000001FF9A471F70>, 3: <dm_ai_module.CardDefinition object at 0x000001FF9A473330>, 4: <dm_ai_module.CardDefinition object at 0x000001FF9A471EB0>}                                                                                      
+    def test_unblockable_lethal(self, setup_game, card_db):
+        state = setup_game
+        # Scenario: 1 Shield, 1 Blocker.
+        # Player has 1 Unblockable, 1 Vanilla.
+        # Defender blocks Vanilla.
+        # Unblockable breaks shield. No direct attack. Not Lethal.
+
+        state.clear_zone(1, dm_ai_module.Zone.SHIELD)
+        state.add_test_card_to_shield(1, 0, 0)
+        state.add_test_card_to_battle(1, 4, 200, False, False) # Blocker
+
+        state.add_test_card_to_battle(0, 3, 100, False, False) # Unblockable
+        state.add_test_card_to_battle(0, 1, 101, False, False) # Vanilla
+
+>       assert dm_ai_module.LethalSolver.is_lethal(state, card_db) == False
+E       AssertionError: assert True == False
+E        +  where True = <function _lethal_unwrap at 0x000001FFFA7FFF60>(<conftest.GameStateWrapper object at 0x000001FF9A492870>, {1: <dm_ai_module.CardDefinition obje
+ct at 0x000001FF9A472EF0>, 2: <dm_ai_module.CardDefinition object at 0x000001FF9A471F70>, 3: <dm_ai_module.CardDefinition object at 0x000001FF9A473330>, 4: <dm_ai_module.CardDefinition object at 0x000001FF9A471EB0>})                                                                                                                        E        +    where <function _lethal_unwrap at 0x000001FFFA7FFF60> = <class 'dm_ai_module.LethalSolver'>.is_lethal
+E        +      where <class 'dm_ai_module.LethalSolver'> = dm_ai_module.LethalSolver
+
+card_db    = {1: <dm_ai_module.CardDefinition object at 0x000001FF9A472EF0>, 2: <dm_ai_module.CardDefinition object at 0x000001FF9A471F70>, 3: <dm_ai_module.CardDefinition object at 0x000001FF9A473330>, 4: <dm_ai_module.CardDefinition object at 0x000001FF9A471EB0>}                                                                                   self       = <test_lethal_solver_advanced.TestLethalSolverAdvanced object at 0x000001FF922124E0>
+setup_game = <conftest.GameStateWrapper object at 0x000001FF9A492870>
+state      = <conftest.GameStateWrapper object at 0x000001FF9A492870>
+
+tests\integration\test_lethal_solver_advanced.py:104: AssertionError
+... (output truncated)
+
+======================================================================= short test summary info =======================================================================
+FAILED tests/ai/test_pomdp_bindings.py::test_pomdp_basic - TypeError: initialize(): incompatible function arguments. The following argument types are supported:        
+FAILED tests/ai/test_pomdp_deck_vs_hand.py::test_deck_vs_hand_penalty - AttributeError: 'dm_ai_module.ParametricBelief' object has no attribute 'initialize_ids'. Did yo
+u mean: 'initialize'?                                                                                                                                                   FAILED tests/ai/test_pomdp_integration.py::test_parametric_belief_integration - AttributeError: 'dm_ai_module.ParametricBelief' object has no attribute 'initialize_ids'
+. Did you mean: 'initialize'?                                                                                                                                           FAILED tests/ai/test_pomdp_trace_battle.py::test_battle_trace_reduces_prob - AttributeError: 'dm_ai_module.ParametricBelief' object has no attribute 'initialize_ids'. D
+id you mean: 'initialize'?                                                                                                                                              FAILED tests/ai/test_pomdp_trace_graveyard.py::test_graveyard_trace_reduces_prob - AttributeError: 'dm_ai_module.ParametricBelief' object has no attribute 'initialize_i
+ds'. Did you mean: 'initialize'?                                                                                                                                        FAILED tests/ai/test_pomdp_trace_integration.py::test_trace_monotonic_penalty - AttributeError: 'dm_ai_module.ParametricBelief' object has no attribute 'initialize_ids'
+. Did you mean: 'initialize'?                                                                                                                                           FAILED tests/ai/test_pomdp_trace_shield.py::test_shield_trace_reduces_prob - AttributeError: 'dm_ai_module.ParametricBelief' object has no attribute 'initialize_ids'. D
+id you mean: 'initialize'?                                                                                                                                              FAILED tests/ai/test_pomdp_transition.py::test_transition_reveal_penalty - AttributeError: 'dm_ai_module.ParametricBelief' object has no attribute 'initialize_ids'. Did
+ you mean: 'initialize'?                                                                                                                                                FAILED tests/ai/test_pomdp_weights.py::test_weights_make_hand_stronger_than_deck - AttributeError: 'dm_ai_module.ParametricBelief' object has no attribute 'initialize_i
+ds'. Did you mean: 'initialize'?                                                                                                                                        FAILED tests/ai/test_verify_transformer_support.py::test_neural_evaluator_transformer_mode - assert 0 > 0
+FAILED tests/gui/test_card_editor_v2.py::TestCardEditorV2::test_add_revolution_change - AssertionError: 'MUTATE' != 'REVOLUTION_CHANGE'
+FAILED tests/integration/test_atomic_actions.py::test_draw_card - assert 2 == (2 - 1)
+FAILED tests/integration/test_atomic_actions.py::test_break_shield - assert 1 == 0
+FAILED tests/integration/test_atomic_actions.py::test_condition_system - assert 3 == 2
+FAILED tests/integration/test_cip_and_spell.py::test_spell_return_to_hand - IndexError: list index out of range
+FAILED tests/integration/test_engine_basics.py::TestEngineBasics::test_mana_charge - AssertionError: Mana charge action should be available (MOVE_CARD or MANA_CHARGE)  
+FAILED tests/integration/test_engine_basics.py::TestEngineBasics::test_attack_player - AssertionError: Should be able to attack player
+FAILED tests/integration/test_grant_keyword.py::test_grant_speed_attacker - AssertionError: Should be able to attack after being granted Speed Attacker
+FAILED tests/integration/test_integrated_mechanics.py::test_revolution_change_flow - AttributeError: 'dm_ai_module.CardInstance' object has no attribute 'id'
+FAILED tests/integration/test_integrated_mechanics.py::test_deck_search_logic - AttributeError: 'dm_ai_module.CardInstance' object has no attribute 'id'
+FAILED tests/integration/test_integrated_mechanics.py::test_multi_civilization_mana - AssertionError: Should be able to pay with Fire + Nature mana
+FAILED tests/integration/test_just_diver.py::test_just_diver - AssertionError: Should be able to play Just Diver creature
+FAILED tests/integration/test_just_diver_attack.py::test_just_diver_attack - assert None is not None
+FAILED tests/integration/test_lethal_solver_advanced.py::TestLethalSolverAdvanced::test_blocker_optimal_play - AssertionError: assert True == False
+FAILED tests/integration/test_lethal_solver_advanced.py::TestLethalSolverAdvanced::test_unblockable_lethal - AssertionError: assert True == False
+FAILED tests/integration/test_ninja_strike.py::test_ninja_strike_flow - AttributeError: 'dm_ai_module.CardDefinition' object has no attribute 'reaction_abilities'. Did 
+you mean: 'static_abilities'?                                                                                                                                           FAILED tests/integration/test_search_shield.py::test_search_deck_bottom - AssertionError: Expected 202 in hand, got []
+FAILED tests/scenarios/test_puzzle_lethal_easy.py::test_lethal_puzzle_easy_integration - AttributeError: 'dm_ai_module.GameState' object has no attribute 'stack_zone'  
+FAILED tests/test_phase1_commands.py::TestCommandExecution::test_return_to_hand_command - AssertionError: False is not true : Card should be in Hand
+FAILED tests/test_phase1_commands.py::TestCommandExecution::test_tap_command - AssertionError: False is not true : Card should be tapped after TAP command
+FAILED tests/test_phase1_commands.py::TestCommandExecution::test_untap_command - AssertionError: True is not false : Card should be untapped after UNTAP command
+FAILED tests/test_phase2_integration.py::TestPhase2Integration::test_legacy_tap_action_flow - AssertionError: False is not true : Card should be tapped via legacy actio
+n flow                                                                                                                                                                  FAILED tests/unit/test_action_converter_advanced.py::test_advanced_mutate_power - AssertionError: assert 'POWER_MOD' == 'MUTATE'
+FAILED tests/unit/test_card_stats.py::test_card_stats_win_contribution - AssertionError: assert <GameResult.NONE: 0> == <GameResult.P1_WIN: 1>
+FAILED tests/unit/test_card_stats_bindings.py::test_initialize_and_vectorize_defaults - AttributeError: module 'dm_ai_module' has no attribute 'initialize_card_stats'  
+FAILED tests/unit/test_effect_compiler.py::test_search_handler_execution - assert 0 == 1
+FAILED tests/unit/test_enum_consistency.py::test_effect_action_type_consistency - AssertionError: Missing UI configurations for EffectActionType: ['LOOK_TO_BUFFER', 'SE
+LECT_FROM_BUFFER', 'PLAY_FROM_BUFFER', 'MOVE_BUFFER_TO_ZONE', 'APPLY_MODIFIER', 'REGISTER_DELAYED_EFFECT', 'MOVE_TO_UNDER_CARD', 'MOVE_CARD']                                                                                        FAILED tests/unit/test_enum_consistency.py::test_trigger_type_consistency - AssertionError: Missing translations for TriggerType: ['BEFORE_BREAK_SHIELD']
+FAILED tests/unit/test_game_command.py::test_flow_command - assert <Phase.MAIN: 3> == <Phase.ATTACK: 4>
+FAILED tests/unit/test_json_keywords.py::TestJsonKeywords::test_load_json_keywords - AssertionError: TRIPLE_BREAKER keyword missing
+FAILED tests/unit/test_variable_system.py::test_variable_linking_count_cards - AssertionError: Expected 3 cards drawn, got 0
+FAILED tests/unit/test_variable_system.py::test_variable_linking_get_stat - assert 0 == 3
+======================================================= 42 failed, 163 passed, 11 skipped, 1 xfailed in 12.02s ======================================================== 
