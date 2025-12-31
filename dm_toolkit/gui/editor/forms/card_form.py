@@ -82,6 +82,8 @@ class CardEditForm(BaseEditForm):
 
         # Races
         self.races_edit = QLineEdit()
+        self.races_edit.setPlaceholderText(tr("e.g. Human, Dragon"))
+        self.races_edit.setToolTip(tr("Enter races separated by commas"))
         self.lbl_races = self.add_field(tr("Races"), self.races_edit)
 
         # Evolution Condition (Hidden by default, shown for Evolution types)

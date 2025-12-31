@@ -156,7 +156,7 @@ class TestCardEditorV2(unittest.TestCase):
         self.assertEqual(eff_item.rowCount(), 1)
         act_item = eff_item.child(0)
         act_data = act_item.data(256 + 2)
-        self.assertEqual(act_data['type'], "REVOLUTION_CHANGE")
+        self.assertEqual(act_data['mutation_kind'], "REVOLUTION_CHANGE")
 
         # Verify Get Full Data sets keyword
         output_data = self.manager.get_full_data()
