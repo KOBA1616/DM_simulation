@@ -130,6 +130,14 @@ namespace dm::core {
         SEARCH_DECK,
         SHIELD_TRIGGER,
 
+        // New Primitives (Phase 2 Strict Enforcement)
+        MOVE_CARD,
+        ADD_MANA,
+        SEND_TO_MANA,
+        SEARCH_DECK_BOTTOM,
+        ADD_SHIELD,
+        SEND_TO_DECK_BOTTOM,
+
         // Expanded Set
         ATTACK_PLAYER,
         ATTACK_CREATURE,
@@ -445,6 +453,14 @@ namespace dm::core {
         {CommandType::BREAK_SHIELD, "BREAK_SHIELD"},
         {CommandType::SEARCH_DECK, "SEARCH_DECK"},
         {CommandType::SHIELD_TRIGGER, "SHIELD_TRIGGER"},
+
+        // New Primitives (Phase 2 Strict Enforcement)
+        {CommandType::MOVE_CARD, "MOVE_CARD"},
+        {CommandType::ADD_MANA, "ADD_MANA"},
+        {CommandType::SEND_TO_MANA, "SEND_TO_MANA"},
+        {CommandType::SEARCH_DECK_BOTTOM, "SEARCH_DECK_BOTTOM"},
+        {CommandType::ADD_SHIELD, "ADD_SHIELD"},
+        {CommandType::SEND_TO_DECK_BOTTOM, "SEND_TO_DECK_BOTTOM"},
 
         // Expanded Set
         {CommandType::ATTACK_PLAYER, "ATTACK_PLAYER"},

@@ -283,6 +283,15 @@ void bind_core(py::module& m) {
         .value("BREAK_SHIELD", CommandType::BREAK_SHIELD)
         .value("SEARCH_DECK", CommandType::SEARCH_DECK)
         .value("SHIELD_TRIGGER", CommandType::SHIELD_TRIGGER)
+
+        // New Primitives (Phase 2 Strict Enforcement)
+        .value("MOVE_CARD", CommandType::MOVE_CARD)
+        .value("ADD_MANA", CommandType::ADD_MANA)
+        .value("SEND_TO_MANA", CommandType::SEND_TO_MANA)
+        .value("SEARCH_DECK_BOTTOM", CommandType::SEARCH_DECK_BOTTOM)
+        .value("ADD_SHIELD", CommandType::ADD_SHIELD)
+        .value("SEND_TO_DECK_BOTTOM", CommandType::SEND_TO_DECK_BOTTOM)
+
         // Expanded Set
         .value("ATTACK_PLAYER", CommandType::ATTACK_PLAYER)
         .value("ATTACK_CREATURE", CommandType::ATTACK_CREATURE)
