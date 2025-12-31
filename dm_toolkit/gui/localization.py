@@ -321,6 +321,7 @@ if m:
         _trigger_map = {
             'ON_PLAY': "出た時 (CIP)",
             'ON_ATTACK': "攻撃する時",
+            'ON_BLOCK': "ブロック時",
             'ON_DESTROY': "破壊された時",
             'ON_OPPONENT_DRAW': "相手がドローした時",
             'S_TRIGGER': "S・トリガー",

@@ -150,6 +150,7 @@ void bind_core(py::module& m) {
         .value("TURN_START", TriggerType::TURN_START)
         .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
         .value("BEFORE_BREAK_SHIELD", TriggerType::BEFORE_BREAK_SHIELD)
+        .value("ON_BLOCK", TriggerType::ON_BLOCK)
         .value("NONE", TriggerType::NONE)
         .export_values();
 
@@ -758,6 +759,10 @@ void bind_core(py::module& m) {
         .def("add_passive_effect", [](GameState& s, const PassiveEffect& p) {
             s.passive_effects.push_back(p);
         });
+
+    m.def("initialize_card_stats", [](GameState& state, const std::map<dm::core::CardID, CardDefinition>& db, int count) {
+         state.initialize_card_stats(db, count);
+    });
 
     m.def("get_card_stats", [](const GameState& state) {
         try {
