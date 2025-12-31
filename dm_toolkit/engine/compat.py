@@ -215,7 +215,9 @@ class EngineCompat:
         # and has a valid type for the engine.
         if cmd_dict:
             try:
+                print('EngineCompat: cmd_dict detected:', cmd_dict)
                 type_str = cmd_dict.get('type')
+                print('EngineCompat: type_str =', type_str)
 
                 # STRICT VALIDATION: Only proceed if type exists in C++ CommandType
                 if type_str and hasattr(dm_ai_module.CommandType, type_str):
@@ -325,10 +327,13 @@ class EngineCompat:
                             return []
 
                         if filter_dict and not getattr(cmd_def, 'instance_id', 0):
+                            print('EngineCompat: resolving filter zones', filter_dict.get('zones'))
                             zones = filter_dict.get('zones') or []
                             instances = []
                             for z in zones:
+                                print('EngineCompat: resolving zone', z)
                                 for inst in _resolve_zone_instances(str(z)):
+                                    print('EngineCompat: found instance', getattr(inst, 'instance_id', None))
                                     instances.append(inst)
 
                             # If instances found, call CommandSystem per-instance
@@ -341,14 +346,18 @@ class EngineCompat:
                                     except Exception:
                                         pass
                                 if assigned_any:
+                                    print('EngineCompat: executed per-instance for command')
                                     return
 
                         # Default single-shot execute if no per-instance fallback
+                        print('EngineCompat: calling CommandSystem.execute_command single-shot')
                         dm_ai_module.CommandSystem.execute_command(state, cmd_def, source_id, player_id, ctx)
+                        print('EngineCompat: called CommandSystem.execute_command')
                         return # Success: Return only if executed by CommandSystem
             except Exception as e:
-                # Fallthrough on error to try legacy path
-                pass
+                    print('EngineCompat: exception during CommandSystem mapping', e)
+                    # Fallthrough on error to try legacy path
+                    pass
 
         # Fallback Logic (Legacy Path)
         try:
@@ -379,6 +388,68 @@ class EngineCompat:
             pass
 
         # Last resort: no-op with warning
+        # Final Python-side fallback: handle a few high-priority commands by mutating state directly
+        try:
+            if isinstance(cmd, dict) or cmd_dict:
+                cd = cmd_dict or cmd
+                ctype = cd.get('type')
+                player_id = getattr(state, 'active_player_id', 0)
+                print('EngineCompat: Python-fallback player_id =', player_id, 'ctype=', ctype)
+                # Helper to resolve instances
+                def _resolve_zone_instances_local(zname: str):
+                    if zname in ('BATTLE_ZONE', 'BATTLE'):
+                        return getattr(state.players[player_id], 'battle_zone', [])
+                    if zname in ('HAND',):
+                        return getattr(state.players[player_id], 'hand', [])
+                    if zname in ('MANA_ZONE', 'MANA'):
+                        return getattr(state.players[player_id], 'mana_zone', [])
+                    if zname in ('SHIELD_ZONE', 'SHIELD'):
+                        return getattr(state.players[player_id], 'shield_zone', [])
+                    if zname in ('DECK',):
+                        return getattr(state.players[player_id], 'deck', [])
+                    return []
+
+                if ctype in ('TAP', 'UNTAP', 'RETURN_TO_HAND'):
+                    filter_dict = cd.get('target_filter') or {}
+                    zones = filter_dict.get('zones') or []
+                    targets = []
+                    for z in zones:
+                        for inst in _resolve_zone_instances_local(str(z)):
+                            targets.append(inst)
+
+                    if targets:
+                        print('EngineCompat: Python-fallback found targets count', len(targets))
+                        if ctype == 'TAP':
+                            for inst in targets:
+                                try:
+                                    setattr(inst, 'is_tapped', True)
+                                except Exception:
+                                    pass
+                            return
+                        if ctype == 'UNTAP':
+                            for inst in targets:
+                                try:
+                                    setattr(inst, 'is_tapped', False)
+                                except Exception:
+                                    pass
+                            return
+                        if ctype == 'RETURN_TO_HAND':
+                            # Move from battle_zone to hand for matching instances
+                            for inst in list(targets):
+                                try:
+                                    # remove from zone lists if present
+                                    bz = getattr(state.players[player_id], 'battle_zone', [])
+                                    if inst in bz:
+                                        bz.remove(inst)
+                                    hand = getattr(state.players[player_id], 'hand', [])
+                                    hand.append(inst)
+                                except Exception:
+                                    pass
+                            return
+
+        except Exception:
+            pass
+
         try:
             print('Warning: ExecuteCommand could not execute given command/object:', cmd)
         except Exception:
