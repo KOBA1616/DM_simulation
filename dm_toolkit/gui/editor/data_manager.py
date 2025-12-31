@@ -423,17 +423,6 @@ class CardDataManager:
 
                 spell_side_dict = spell_side_data
 
-                card_item.appendRow(spell_item)
-
-            self.model.appendRow(card_item)
-            # After building the card node, normalize and attach editor warnings node if any
-            try:
-                updated = self._update_card_from_child(card_item)
-                if updated:
-                    self._sync_editor_warnings(card_item)
-            except Exception:
-                pass
-
         # Handle Triggers vs Effects based on meta-info
         if card_data.get('_meta_use_triggers'):
             card_data['triggers'] = new_effects

@@ -130,18 +130,26 @@ def map_action(action_data: Any) -> Dict[str, Any]:
 
     # Phase 4.2: Normalize Zone Names to Enum
     # Mappings from Legacy/Common strings to dm_ai_module.Zone Enum names
+    # Normalize various legacy zone names to short canonical forms used by tests/engine
     zone_map = {
-        # Keep legacy zone strings so legacy tests and C++ compat expect them
-        "MANA_ZONE": "MANA_ZONE",
-        "BATTLE_ZONE": "BATTLE_ZONE",
-        "SHIELD_ZONE": "SHIELD_ZONE",
+        "MANA_ZONE": "MANA",
+        "MANA": "MANA",
+        "BATTLE_ZONE": "BATTLE",
+        "BATTLE": "BATTLE",
+        "SHIELD_ZONE": "SHIELD",
+        "SHIELD": "SHIELD",
         "GRAVEYARD": "GRAVEYARD",
         "HAND": "HAND",
-        "DECK": "DECK"
+        "DECK": "DECK",
+        "DECK_BOTTOM": "DECK_BOTTOM",
+        "BUFFER": "BUFFER",
+        "UNDER_CARD": "UNDER_CARD",
     }
 
-    if src and src in zone_map: src = zone_map[src]
-    if dest and dest in zone_map: dest = zone_map[dest]
+    if src and src in zone_map:
+        src = zone_map[src]
+    if dest and dest in zone_map:
+        dest = zone_map[dest]
 
     # --- Logic Mapping ---
 
@@ -266,10 +274,20 @@ def _create_error_command(orig_val: str, msg: str) -> Dict[str, Any]:
     }
 
 def _handle_move_card(act, cmd, src, dest):
-    # Preserve original move type where available (keep semantic intent)
-    cmd['type'] = act.get('type', 'TRANSITION')
-    if dest and 'to_zone' not in cmd: cmd['to_zone'] = dest
-    if src and 'from_zone' not in cmd: cmd['from_zone'] = src
+    # Map generic MOVE_CARD to a more specific command when destination implies it.
+    # Default to TRANSITION when no clearer mapping exists.
+    # Default mapping for a generic MOVE_CARD should be a TRANSITION
+    # Specific move types should be preserved if the incoming action explicitly names them.
+    mapped_type = 'TRANSITION'
+    act_type = str(act.get('type', '')).upper()
+    if act_type in ("MANA_CHARGE", "RETURN_TO_HAND", "DESTROY", "DISCARD"):
+        mapped_type = act_type
+
+    cmd['type'] = mapped_type
+    if dest and 'to_zone' not in cmd:
+        cmd['to_zone'] = dest
+    if src and 'from_zone' not in cmd:
+        cmd['from_zone'] = src
 
     _transfer_common_move_fields(act, cmd)
 
@@ -286,7 +304,7 @@ def _handle_specific_moves(act_type, act, cmd, src):
     # NOTE: These strings should match dm_ai_module.Zone enum names if possible
     # to be picked up by compat.py correctly.
     if act_type in ["SEND_TO_MANA", "MANA_CHARGE", "ADD_MANA"]:
-        cmd['to_zone'] = "MANA_ZONE"
+        cmd['to_zone'] = "MANA"
         if not src and act_type in ["MANA_CHARGE", "ADD_MANA"]: cmd['from_zone'] = "DECK"
         if src: cmd['from_zone'] = src
     elif act_type in ["SEND_TO_DECK_BOTTOM", "SEARCH_DECK_BOTTOM"]:
