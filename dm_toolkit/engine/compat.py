@@ -253,21 +253,14 @@ class EngineCompat:
                         fz_norm = zone_alias.get(str(fz), str(fz)) if fz is not None else ''
                         tz_norm = zone_alias.get(str(tz), str(tz)) if tz is not None else ''
 
-                        assigned_from = False
-                        assigned_to = False
-                        if hasattr(dm_ai_module, 'Zone'):
-                            if fz_norm and hasattr(dm_ai_module.Zone, fz_norm):
-                                cmd_def.from_zone = getattr(dm_ai_module.Zone, fz_norm)
-                                assigned_from = True
-                            if tz_norm and hasattr(dm_ai_module.Zone, tz_norm):
-                                cmd_def.to_zone = getattr(dm_ai_module.Zone, tz_norm)
-                                assigned_to = True
+                        # Ensure we always assign strings if CommandDef expects strings,
+                        # or enums if it expects enums.
+                        # Based on pybind11 errors "arg0: str", CommandDef.from_zone is a string.
+                        # So we should pass the normalized string name of the zone.
 
-                        # Fallback: bindings may accept raw strings
-                        if not assigned_from:
-                            cmd_def.from_zone = str(fz_norm or '')
-                        if not assigned_to:
-                            cmd_def.to_zone = str(tz_norm or '')
+                        # We use the normalized strings (MANA, HAND, etc.)
+                        cmd_def.from_zone = str(fz_norm or '')
+                        cmd_def.to_zone = str(tz_norm or '')
 
                         cmd_def.mutation_kind = str(cmd_dict.get('mutation_kind', ''))
                         cmd_def.input_value_key = str(cmd_dict.get('input_value_key', ''))
