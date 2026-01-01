@@ -101,7 +101,7 @@ namespace dm::core {
         bool waiting_for_user_input = false;
         QueryContext pending_query;
 
-        std::shared_ptr<void> active_pipeline; // Can store PipelineExecutor generic pointer
+        std::shared_ptr<dm::engine::systems::PipelineExecutor> active_pipeline;
 
         // Event Dispatcher callback
         std::function<void(const GameEvent&)> event_dispatcher;
