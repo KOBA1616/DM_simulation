@@ -11,21 +11,6 @@ namespace dm::engine {
 
     using namespace dm::core;
 
-    GameInstance::GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db)
-        : state(seed), card_db(std::make_shared<std::map<core::CardID, core::CardDefinition>>(db)) {
-        trigger_manager = std::make_shared<systems::TriggerManager>();
-        pipeline = std::make_shared<systems::PipelineExecutor>();
-
-        // Wire up GameState's event dispatcher to TriggerManager
-        state.event_dispatcher = [this](const core::GameEvent& event) {
-            trigger_manager->dispatch(event, state);
-            if (card_db) {
-                trigger_manager->check_triggers(event, state, *card_db);
-                trigger_manager->check_reactions(event, state, *card_db);
-            }
-        };
-    }
-
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
         : state(seed), card_db(db) {
         trigger_manager = std::make_shared<systems::TriggerManager>();

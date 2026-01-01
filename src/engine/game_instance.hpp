@@ -34,11 +34,9 @@ namespace dm::engine {
         std::shared_ptr<systems::TriggerManager> trigger_manager;
 
         // Constructor
-        // 1. With explicit DB reference (Legacy/Compat) - Avoid using if possible from Python
-        GameInstance(uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db);
-        // 2. With shared pointer (Recommended)
+        // 1. With shared pointer (Recommended)
         GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db);
-        // 3. Default (Uses CardRegistry Singleton)
+        // 2. Default (Uses CardRegistry Singleton)
         GameInstance(uint32_t seed);
 
         // Core API
