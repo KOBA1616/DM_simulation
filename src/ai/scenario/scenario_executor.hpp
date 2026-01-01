@@ -15,9 +15,14 @@ namespace dm::ai {
         // Use shared_ptr to share ownership
         std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db;
 
+        // Preferred: Shared Pointer constructor
+        explicit ScenarioExecutor(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> db);
+
+        // Deprecated: Reference constructor (forces copy)
         ScenarioExecutor(const std::map<dm::core::CardID, dm::core::CardDefinition>& db);
-        ScenarioExecutor(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> db);
-        ScenarioExecutor(); // Default using Registry
+
+        // Default using Registry
+        ScenarioExecutor();
 
         GameResultInfo run_scenario(const dm::core::ScenarioConfig& config, int max_steps = 1000);
     };

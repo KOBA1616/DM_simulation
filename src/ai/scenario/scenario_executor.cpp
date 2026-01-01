@@ -13,11 +13,11 @@ namespace dm::ai {
     using namespace dm::engine;
     using namespace dm::engine::systems;
 
-    ScenarioExecutor::ScenarioExecutor(const std::map<CardID, CardDefinition>& db)
-        : card_db(std::make_shared<std::map<CardID, CardDefinition>>(db)) {}
-
     ScenarioExecutor::ScenarioExecutor(std::shared_ptr<const std::map<CardID, CardDefinition>> db)
         : card_db(db) {}
+
+    ScenarioExecutor::ScenarioExecutor(const std::map<CardID, CardDefinition>& db)
+        : card_db(std::make_shared<std::map<CardID, CardDefinition>>(db)) {}
 
     ScenarioExecutor::ScenarioExecutor()
         : card_db(CardRegistry::get_all_definitions_ptr()) {}
@@ -64,8 +64,6 @@ namespace dm::ai {
         GameResultInfo info;
         info.result = result;
         info.turn_count = instance.state.turn_number;
-        // info.states.push_back(instance.state); // Copy deleted. Use clone if we were storing history.
-        // But here we just return result info.
         return info;
     }
 

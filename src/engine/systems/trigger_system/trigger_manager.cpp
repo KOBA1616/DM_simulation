@@ -48,49 +48,21 @@ namespace dm::engine::systems {
             return TriggerType::AT_BREAK_SHIELD;
         }
         if (event.type == EventType::PLAY_CARD) {
-             // Context check for spell?
-             // If we dispatch PLAY_CARD for both creatures and spells, we need to distinguish.
-             // Usually ON_PLAY is for Creatures entering Battle Zone.
-             // ON_CAST is for Spells.
-             // We can check the card definition in check_triggers or here if we have context.
-             // For now, let's assume PLAY_CARD maps to ON_CAST_SPELL if it's a spell, but map_event_to_trigger returns one type.
-             // We'll handle dual mapping or context checks in check_triggers logic more robustly.
-             // But for simple mapping:
              if (event.context.count("is_spell") && event.context.at("is_spell") == 1) {
                  return TriggerType::ON_CAST_SPELL;
              }
-             // Creatures use ZONE_ENTER (Stack -> Battle) for ON_PLAY usually.
         }
         return TriggerType::NONE;
     }
 
     void TriggerManager::check_triggers(const GameEvent& event, GameState& state,
                                         const std::map<CardID, CardDefinition>& card_db) {
-        // Phase 6 Engine Overhaul: Event-Driven Trigger System
-        // This replaces the scattered logic in EffectResolver/GenericCardSystem.
-
         TriggerType trigger_type = map_event_to_trigger(event);
         if (trigger_type == TriggerType::NONE) return;
 
-        // Determine which cards to check.
-        // For standard triggers (ON_PLAY, ON_ATTACK, ON_DESTROY), the source is usually the event source itself.
-        // But some effects are "Whenever ANOTHER creature..." (Passive/Triggered hybrid).
-        // For MVP Phase 6 Step 1, we focus on "Self-Triggered" abilities.
-
-        // However, generic triggers usually require scanning the board.
-        // E.g. "Whenever a creature attacks" -> TriggerType::ON_ATTACK on non-active creatures?
-        // Current JSON data primarily uses ON_ATTACK for the attacker itself.
-        // Let's assume Self-Trigger for now, as that covers 90% of cases.
-        // For "Whenever another...", that is usually handled by `GenericCardSystem` iterating ALL cards.
-
-        // We replicate GenericCardSystem's iteration logic here to be the single source of truth.
-
+        // Standard self-trigger logic + iteration over active cards
         // Zones to check for potential listeners
-        // Usually effects trigger from Battle Zone.
-        // Some (Ninja Strike) trigger from Hand, but that is a Reaction, handled in check_reactions.
         std::vector<Zone> zones_to_check = {Zone::BATTLE};
-
-        // Also check Effect Buffer? (e.g. for temporary effects) - Usually not needed for standard triggers.
 
         for (PlayerID pid : {state.active_player_id, static_cast<PlayerID>(1 - state.active_player_id)}) {
             const auto& battle_zone = state.get_zone(pid, Zone::BATTLE);
@@ -109,17 +81,12 @@ namespace dm::engine::systems {
                 // Collect effects
                 std::vector<EffectDef> active_effects;
                 active_effects.insert(active_effects.end(), def->effects.begin(), def->effects.end());
-                // Add metamorph/other conditional effects logic here if needed (GenericCardSystem handles this)
-                // For direct access, we might miss dynamically granted effects.
-                // Ideally, CardInstance should store granted triggers.
 
                 for (const auto& effect : active_effects) {
                     if (effect.trigger == trigger_type) {
                         // Condition: Is this card the source of the event?
-                        // "Self" triggers
                         if (event.instance_id == instance_id) {
                             // Match!
-                            // Add to Pending Effects
                             PlayerID controller = state.card_owner_map[instance_id];
                             PendingEffect pending(EffectType::TRIGGER_ABILITY, instance_id, controller);
                             pending.resolve_type = ResolveType::EFFECT_RESOLUTION;
@@ -129,7 +96,6 @@ namespace dm::engine::systems {
 
                             state.pending_effects.push_back(pending);
                         }
-                        // "Another" triggers logic would go here (check filter vs event.instance_id)
                     }
                 }
             }
@@ -203,6 +169,23 @@ namespace dm::engine::systems {
 
     void TriggerManager::clear() {
         listeners.clear();
+    }
+
+    void TriggerManager::setup_event_handling(core::GameState& state,
+                                              std::shared_ptr<TriggerManager> trigger_manager,
+                                              std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> card_db) {
+        // Capture &state by pointer to allow mutable access inside lambda
+        core::GameState* state_ptr = &state;
+
+        state.event_dispatcher = [trigger_manager, card_db, state_ptr](const core::GameEvent& event) {
+            if (!state_ptr) return; // Should not happen if lifecycle is managed correctly
+
+            trigger_manager->dispatch(event, *state_ptr);
+            if (card_db) {
+                trigger_manager->check_triggers(event, *state_ptr, *card_db);
+                trigger_manager->check_reactions(event, *state_ptr, *card_db);
+            }
+        };
     }
 
 }

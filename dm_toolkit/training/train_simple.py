@@ -108,7 +108,7 @@ class Trainer:
     Automatically detects input data format (Tokens vs State Vector) and initializes
     the appropriate network architecture (NetworkV2 vs AlphaZeroNetwork).
     """
-    def __init__(self, data_files: List[str], model_path: Optional[str] = None, save_path: str = "model.pth"):
+    def __init__(self, data_files: List[str], model_path: Optional[str] = None, save_path: str = "model.pth", force_network_type: Optional[str] = None):
         self.save_path = save_path
 
         # Load multiple data files
@@ -128,7 +128,6 @@ class Trainer:
 
                 # Check for tokens first (Phase 4/8 Transformer)
                 if 'tokens' in data:
-                    self.use_transformer = True
                     # tokens is likely an object array of numpy arrays (jagged)
                     raw_tokens = data['tokens']
                     # Handle jagged array robustly
@@ -148,7 +147,7 @@ class Trainer:
                     s = data['states_masked']
                     all_states.append(s)
 
-                if not self.use_transformer and not all_states:
+                if not all_tokens and not all_states:
                     print(f"Skipping {f}: no valid data found")
                     continue
 
@@ -191,11 +190,23 @@ class Trainer:
         self.action_size = self.policies.shape[1]
 
         # Mode Selection
-        # Prioritize Transformer if tokens are present, UNLESS we specifically want ResNet (need arg?)
-        # For now, auto-detect: if tokens exist, use Transformer.
+        if force_network_type:
+            if force_network_type.lower() == 'transformer':
+                self.use_transformer = True
+            elif force_network_type.lower() == 'resnet':
+                self.use_transformer = False
+            else:
+                print(f"Unknown network type {force_network_type}, using auto-detection.")
+                self.use_transformer = len(all_tokens) > 0
+        else:
+            # Auto-detect: if tokens exist, use Transformer.
+            self.use_transformer = len(all_tokens) > 0
 
         self.network: Any
         if self.use_transformer:
+            if not all_tokens:
+                raise ValueError("Transformer mode selected but no token data found.")
+
             print("Mode: TRANSFORMER (Tokenized Data) - NetworkV2")
             self.tokens = all_tokens
 
@@ -226,6 +237,9 @@ class Trainer:
             self.dataset = DuelDataset(self.tokens, None, self.policies, self.values, self.masks)
 
         else:
+            if not all_states:
+                 raise ValueError("ResNet mode selected but no state vector data found.")
+
             print("Mode: RESNET/MLP (State Vector)")
             self.states = torch.tensor(np.concatenate(all_states), dtype=torch.float32)
             self.input_size = self.states.shape[1]
@@ -353,8 +367,8 @@ class Trainer:
         except Exception as e:
             print(f"Failed to export to ONNX: {e}")
 
-def train_pipeline(data_files: List[str], input_model: Optional[str], output_model: str, epochs: int = 10) -> None:
-    trainer = Trainer(data_files, input_model, output_model)
+def train_pipeline(data_files: List[str], input_model: Optional[str], output_model: str, epochs: int = 10, network_type: Optional[str] = None) -> None:
+    trainer = Trainer(data_files, input_model, output_model, force_network_type=network_type)
     trainer.train(epochs=epochs)
 
 if __name__ == "__main__":
@@ -364,6 +378,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default=None, help="Initial model path")
     parser.add_argument("--save", type=str, default="model_v1.pth", help="Save model path")
     parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--network_type", type=str, choices=['resnet', 'transformer'], help="Force network architecture")
     args = parser.parse_args()
 
     files = []
@@ -377,4 +392,4 @@ if __name__ == "__main__":
         print("No data files provided.")
         sys.exit(1)
 
-    train_pipeline(files, args.model, args.save, args.epochs)
+    train_pipeline(files, args.model, args.save, args.epochs, args.network_type)

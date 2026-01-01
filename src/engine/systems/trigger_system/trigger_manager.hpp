@@ -1,6 +1,7 @@
 #pragma once
 #include "core/game_event.hpp"
 #include "core/game_state.hpp"
+#include "core/card_def.hpp"
 #include <functional>
 #include <vector>
 #include <map>
@@ -16,30 +17,29 @@ namespace dm::engine::systems {
         TriggerManager() = default;
 
         // Subscribe to a specific event type
-        // Returns a subscription ID (optional, for unsubscription later - skipped for now)
         void subscribe(core::EventType type, EventCallback callback);
 
         // Dispatch an event to all subscribers
         void dispatch(const core::GameEvent& event, core::GameState& state);
 
-        // Central trigger check logic (Phase 6 Requirement)
-        // Checks Passive -> Triggered -> Interceptors
+        // Central trigger check logic
         void check_triggers(const core::GameEvent& event, core::GameState& state,
                             const std::map<core::CardID, core::CardDefinition>& card_db);
 
-        // Phase 6 Step 2: Reaction Check Logic
-        // Returns true if a reaction window was opened
+        // Reaction Check Logic
         bool check_reactions(const core::GameEvent& event, core::GameState& state,
                              const std::map<core::CardID, core::CardDefinition>& card_db);
 
-        // Clear all listeners (useful for reset)
+        // Clear all listeners
         void clear();
+
+        // Static setup to wire GameState to TriggerManager
+        static void setup_event_handling(core::GameState& state,
+                                         std::shared_ptr<TriggerManager> trigger_manager,
+                                         std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> card_db);
 
     private:
         std::map<core::EventType, std::vector<EventCallback>> listeners;
-
-        // Helper to map generic trigger strings to event types
-        // (Will be implemented in cpp or via config)
     };
 
 }
