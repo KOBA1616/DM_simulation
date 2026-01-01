@@ -430,6 +430,9 @@ void bind_core(py::module& m) {
     py::class_<CommandDef>(m, "CommandDef")
         .def(py::init<>())
         .def_readwrite("type", &CommandDef::type)
+        .def_readwrite("instance_id", &CommandDef::instance_id) // Exposed to Python
+        .def_readwrite("target_instance", &CommandDef::target_instance) // Exposed to Python
+        .def_readwrite("owner_id", &CommandDef::owner_id) // Exposed to Python
         .def_readwrite("target_group", &CommandDef::target_group)
         .def_readwrite("target_filter", &CommandDef::target_filter)
         .def_readwrite("amount", &CommandDef::amount)

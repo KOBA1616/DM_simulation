@@ -262,6 +262,9 @@ namespace dm::core {
 
     struct CommandDef {
         CommandType type = CommandType::NONE;
+        int instance_id = 0;
+        int target_instance = 0;
+        int owner_id = 0;
         TargetScope target_group = TargetScope::NONE;
         FilterDef target_filter;
         int amount = 0;
@@ -505,7 +508,7 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition, options, cast_spell_side)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, output_value_key)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, output_value_key)
 
     // Manual to_json for EffectDef to exclude actions
     inline void to_json(nlohmann::json& j, const EffectDef& e) {
