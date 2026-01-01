@@ -4,14 +4,16 @@ import sys
 import os
 
 # Add relevant paths
-sys.path.append(os.path.join(os.getcwd(), 'python'))
 sys.path.append(os.path.join(os.getcwd(), 'bin'))
 
 try:
-    import dm_ai_module
+    from dm_toolkit import dm_ai_module
 except ImportError:
-    print("dm_ai_module not found. Skipping tests requiring engine.")
-    sys.exit(0)
+    try:
+        import dm_ai_module
+    except ImportError:
+        print("dm_ai_module not found. Skipping tests requiring engine.")
+        sys.exit(0)
 
 # Helper to convert dict to CommandDef since implicit conversion might not be enabled for pybind11 structs
 def dict_to_command_def(d):
@@ -42,6 +44,9 @@ def dict_to_command_def(d):
 
 class TestTransitionCommands(unittest.TestCase):
     def setUp(self):
+        # Skip if running with shim (CommandSystem is defined in Python shim)
+        if getattr(dm_ai_module.CommandSystem, '__module__', '') == 'dm_toolkit.dm_ai_module':
+             self.skipTest("Skipping transition tests because native dm_ai_module is not available (using shim)")
         self.state = dm_ai_module.GameState(100)
         self.card_db = {}
         # Register dummy card data for ID 1

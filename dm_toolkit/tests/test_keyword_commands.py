@@ -1,7 +1,10 @@
 
 import pytest
-import dm_ai_module
-from dm_ai_module import CardDefinition, CommandType, CommandDef, TargetScope
+try:
+    from dm_toolkit import dm_ai_module
+except ImportError:
+    import dm_ai_module
+from dm_toolkit.dm_ai_module import CardDefinition, CommandType, CommandDef, TargetScope
 
 # This test replaces test_keyword_effects.py by verifying "Command" generation instead of "Action" generation.
 # This aligns with the "Test Rectification" requirement.

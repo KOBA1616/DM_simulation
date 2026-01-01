@@ -6,10 +6,13 @@ from typing import Any, Dict
 
 # Mock dm_ai_module if it's not available in the environment
 try:
-    import dm_ai_module
+    from dm_toolkit import dm_ai_module
 except ImportError:
-    sys.modules['dm_ai_module'] = MagicMock()
-    import dm_ai_module
+    try:
+        import dm_ai_module
+    except ImportError:
+        sys.modules['dm_ai_module'] = MagicMock()
+        import dm_ai_module
 
 from dm_toolkit.engine.compat import EngineCompat
 
@@ -94,7 +97,7 @@ class TestEngineCompat(unittest.TestCase):
         self.assertEqual(EngineCompat.get_action_slot_index(action), -1)
         self.assertEqual(EngineCompat.get_action_source_id(action), -1)
 
-    @patch('dm_ai_module.EffectResolver')
+    @patch('dm_toolkit.dm_ai_module.EffectResolver')
     def test_api_wrappers(self, mock_effect_resolver: Any) -> None:
         state = MagicMock()
         card_db: Dict[int, Any] = {}
@@ -105,7 +108,7 @@ class TestEngineCompat(unittest.TestCase):
         EngineCompat.EffectResolver_resolve_action(state, action, card_db)
         dm_ai_module.EffectResolver.resolve_action.assert_called_with(state, action, card_db)
 
-    @patch('dm_ai_module.PhaseManager')
+    @patch('dm_toolkit.dm_ai_module.PhaseManager')
     def test_phase_manager_wrappers(self, mock_phase_manager: Any) -> None:
         state = MagicMock()
         card_db: Dict[int, Any] = {}
