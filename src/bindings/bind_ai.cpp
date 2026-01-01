@@ -19,6 +19,7 @@
 #include "bindings/python_batch_inference.hpp"
 #include "ai/evolution/deck_evolution.hpp"
 #include "ai/evolution/meta_environment.hpp"
+#include "ai/neural_net/self_attention.hpp" // Added
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
 
@@ -224,4 +225,16 @@ void bind_ai(py::module& m) {
         .def(py::init<>())
         .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic,
              py::arg("episodes"), py::arg("collect_tokens") = false, py::arg("collect_tensors") = true);
+
+    // New: SelfAttention binding
+    py::class_<dm::ai::neural_net::Tensor2D>(m, "Tensor2D")
+        .def(py::init<int, int>())
+        .def_readwrite("data", &dm::ai::neural_net::Tensor2D::data)
+        .def_readwrite("rows", &dm::ai::neural_net::Tensor2D::rows)
+        .def_readwrite("cols", &dm::ai::neural_net::Tensor2D::cols);
+
+    py::class_<dm::ai::neural_net::SelfAttention>(m, "SelfAttention")
+        .def(py::init<int, int>())
+        .def("forward", &dm::ai::neural_net::SelfAttention::forward)
+        .def("initialize_weights", &dm::ai::neural_net::SelfAttention::initialize_weights);
 }

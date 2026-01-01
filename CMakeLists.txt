@@ -215,6 +215,7 @@ set(SRC_AI
     src/ai/inference/pimc_generator.cpp
     src/ai/inference/deck_inference.cpp
     src/ai/pomdp/pomdp.cpp
+    src/ai/neural_net/self_attention.cpp # Added
     # Optional neural evaluator / inference (guarded by USE_LIBTORCH / USE_ONNXRUNTIME)
     $<$<OR:$<BOOL:${USE_LIBTORCH}>,$<BOOL:${USE_ONNXRUNTIME}>>:src/ai/evaluator/neural_evaluator.cpp>
     $<$<BOOL:${USE_LIBTORCH}>:src/ai/inference/torch_model.cpp>
