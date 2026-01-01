@@ -13,7 +13,7 @@ namespace dm::ai {
     using namespace dm::engine;
     using namespace dm::engine::systems;
 
-    BeamSearchEvaluator::BeamSearchEvaluator(const std::map<CardID, CardDefinition>& card_db, int beam_width, int max_depth)
+    BeamSearchEvaluator::BeamSearchEvaluator(std::shared_ptr<const std::map<CardID, CardDefinition>> card_db, int beam_width, int max_depth)
         : card_db_(card_db), beam_width_(beam_width), max_depth_(max_depth) {}
 
     std::pair<std::vector<float>, float> BeamSearchEvaluator::evaluate(const GameState& state) {
@@ -43,19 +43,20 @@ namespace dm::ai {
         std::vector<BeamNode> current_beam;
 
         // Generate actions from root to initialize first step policy
-        auto root_actions = IntentGenerator::generate_legal_actions(root_state, card_db_);
+        // Dereference shared_ptr
+        auto root_actions = IntentGenerator::generate_legal_actions(root_state, *card_db_);
         if (root_actions.empty()) {
             return -1.0f; // Loss (No moves)
         }
 
         // Initialize beam with root children
         for (const auto& action : root_actions) {
-            GameState next_state = root_state.clone(); // Use clone() instead of copy
-            GameLogicSystem::resolve_action(next_state, action, card_db_);
+            GameState next_state = root_state.clone();
+            GameLogicSystem::resolve_action(next_state, action, *card_db_);
             if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
-                PhaseManager::next_phase(next_state, card_db_);
+                PhaseManager::next_phase(next_state, *card_db_);
             }
-            PhaseManager::fast_forward(next_state, card_db_);
+            PhaseManager::fast_forward(next_state, *card_db_);
 
             float score = evaluate_state_heuristic(next_state, root_player);
 
@@ -69,9 +70,6 @@ namespace dm::ai {
         });
 
         if (current_beam.size() > (size_t)beam_width_) {
-            // Cannot use resize because it might require default ctor or copy/move assignment that vector likes
-            // But we have move assignment.
-            // Erase elements from end.
             current_beam.erase(current_beam.begin() + beam_width_, current_beam.end());
         }
 
@@ -80,7 +78,6 @@ namespace dm::ai {
         for (const auto& node : current_beam) {
             int idx = ActionEncoder::action_to_index(node.first_action);
             if (idx >= 0 && idx < (int)policy_logits.size()) {
-                // Heuristic mapping to logit
                 policy_logits[idx] = (node.score - min_score) * 10.0f + 1.0f;
             }
         }
@@ -90,46 +87,22 @@ namespace dm::ai {
             std::vector<BeamNode> next_candidates;
 
             for (const auto& node : current_beam) {
-                // Check win/loss on cloned state (PhaseManager::check_game_over modifies state?)
-                // check_game_over signature is non-const but usually logic is const.
-                // Assuming it's safe or we accept side effects on this node.
                 GameResult res;
-                // Note: We can't easily copy `node.state` because copy ctor is deleted.
-                // We MUST use clone().
-                // And check_game_over probably doesn't need to modify state if implemented well.
-                // But PhaseManager::check_game_over(GameState& state) ...
-
-                // Workaround: clone to check game over? Expensive.
-                // Or assume node.state is mutable (it is) and we can just pass it?
-                // But `node` is const ref in loop `for (const auto& node : current_beam)`.
-                // We need a non-const copy or clone.
-
-                // Let's iterate non-const if possible?
-                // `current_beam` is local.
-                // But resizing and vector reassignment complicates using references.
-
-                // For generation, we need to clone anyway for each child.
-
-                // So:
                 GameState base_state = node.state.clone();
                 if (PhaseManager::check_game_over(base_state, res)) {
-                    // This path ends. Add to next_candidates?
-                    // If we add it, we stop expanding.
-                    // Score is already calculated in parent step.
-                    // We can carry it over.
                     next_candidates.emplace_back(std::move(base_state), node.score);
                     next_candidates.back().first_action = node.first_action;
                     continue;
                 }
 
-                auto actions = IntentGenerator::generate_legal_actions(base_state, card_db_);
+                auto actions = IntentGenerator::generate_legal_actions(base_state, *card_db_);
                 for (const auto& action : actions) {
                     GameState next_state = base_state.clone();
-                    GameLogicSystem::resolve_action(next_state, action, card_db_);
+                    GameLogicSystem::resolve_action(next_state, action, *card_db_);
                     if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
-                        PhaseManager::next_phase(next_state, card_db_);
+                        PhaseManager::next_phase(next_state, *card_db_);
                     }
-                    PhaseManager::fast_forward(next_state, card_db_);
+                    PhaseManager::fast_forward(next_state, *card_db_);
 
                     float score = evaluate_state_heuristic(next_state, root_player);
 
@@ -149,20 +122,16 @@ namespace dm::ai {
                 next_candidates.erase(next_candidates.begin() + beam_width_, next_candidates.end());
             }
 
-            // Move next_candidates to current_beam
-            // BeamNode has move assignment
             current_beam = std::move(next_candidates);
         }
 
-        // Return best score found
         if (current_beam.empty()) return -1.0f;
         return current_beam[0].score;
     }
 
     float BeamSearchEvaluator::evaluate_state_heuristic(const GameState& state, PlayerID perspective) {
-        // 1. Check Win/Loss
         GameResult res;
-        GameState check_state = state.clone(); // Clone for safety
+        GameState check_state = state.clone();
         if (PhaseManager::check_game_over(check_state, res)) {
             if (res == GameResult::DRAW) return 0.0f;
             if (res == GameResult::P1_WIN) return (perspective == 0) ? 1000.0f : -1000.0f;
@@ -170,16 +139,9 @@ namespace dm::ai {
         }
 
         float score = 0.0f;
-
-        // 2. Resource Advantage
         score += calculate_resource_advantage(state, perspective);
-
-        // 3. Opponent Danger (Negative score)
         score -= calculate_opponent_danger(state, perspective);
-
-        // 4. Trigger Risk (Negative score)
         score -= calculate_trigger_risk(state, perspective);
-
         return score;
     }
 
@@ -188,19 +150,10 @@ namespace dm::ai {
         const Player& opp = state.players[1 - perspective];
 
         float score = 0.0f;
-
-        // Mana
         score += (me.mana_zone.size() - opp.mana_zone.size()) * 0.5f;
-
-        // Hand
         score += (me.hand.size() - opp.hand.size()) * 1.0f;
-
-        // Battle Zone (Count + Power)
         score += (me.battle_zone.size() - opp.battle_zone.size()) * 2.0f;
-
-        // Shields (More is better)
         score += (me.shield_zone.size() - opp.shield_zone.size()) * 5.0f;
-
         return score;
     }
 
@@ -212,8 +165,8 @@ namespace dm::ai {
 
         auto scan_zone = [&](const std::vector<CardInstance>& zone, float multiplier) {
             for (const auto& card : zone) {
-                if (card_db_.find(card.card_id) != card_db_.end()) {
-                    const auto& def = card_db_.at(card.card_id);
+                if (card_db_->find(card.card_id) != card_db_->end()) {
+                    const auto& def = card_db_->at(card.card_id);
                     if (def.is_key_card) {
                         float imp = (float)def.ai_importance_score;
                         if (imp == 0) imp = 50.0f;
@@ -240,8 +193,8 @@ namespace dm::ai {
         if (total_shields == 0) return 0.0f;
 
         for (const auto& card : opp.shield_zone) {
-            if (card_db_.find(card.card_id) != card_db_.end()) {
-                const auto& def = card_db_.at(card.card_id);
+            if (card_db_->find(card.card_id) != card_db_->end()) {
+                const auto& def = card_db_->at(card.card_id);
                 if (def.keywords.shield_trigger) {
                     trigger_count++;
                 }

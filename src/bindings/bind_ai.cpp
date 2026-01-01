@@ -1,6 +1,7 @@
 #include "bindings/bindings.hpp"
 #include "ai/mcts/mcts.hpp"
 #include "ai/evaluator/heuristic_evaluator.hpp"
+#include "ai/evaluator/beam_search_evaluator.hpp"
 #if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)
 #include "ai/evaluator/neural_evaluator.hpp"
 #endif
@@ -66,6 +67,21 @@ void bind_ai(py::module& m) {
     py::class_<HeuristicEvaluator>(m, "HeuristicEvaluator")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def("evaluate", &HeuristicEvaluator::evaluate);
+
+    py::class_<BeamSearchEvaluator>(m, "BeamSearchEvaluator")
+        .def(py::init([](const std::map<CardID, CardDefinition>& card_db, int beam_width, int max_depth) {
+            // Helper to copy the map into a shared_ptr for the C++ class
+            auto shared_db = std::make_shared<std::map<CardID, CardDefinition>>(card_db);
+            return std::make_unique<BeamSearchEvaluator>(shared_db, beam_width, max_depth);
+        }), py::arg("card_db"), py::arg("beam_width")=7, py::arg("max_depth")=3)
+        .def("evaluate", &BeamSearchEvaluator::evaluate);
+        // Evaluate batch requires copying GameStates which is deleted, or passing by pointer.
+        // Python list of objects -> std::vector<GameState> requires copy.
+        // We cannot accept std::vector<GameState> by value/ref if copy is deleted and pybind needs to construct it.
+        // We accept std::vector<std::shared_ptr<GameState>> which is easier?
+        // Or we can manually iterate.
+        // For now, disabling evaluate_batch binding as it requires deep copy handling in pybind11 for deleted-copy types.
+        // .def("evaluate_batch", &BeamSearchEvaluator::evaluate_batch);
 
     // Bind NeuralEvaluator and ModelType only when an inference backend is enabled.
 #if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)
