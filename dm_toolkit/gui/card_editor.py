@@ -3,7 +3,7 @@ import json
 import os
 from PyQt6.QtWidgets import (
     QMainWindow, QSplitter, QVBoxLayout, QWidget, QMessageBox, QToolBar, QFileDialog,
-    QSizePolicy
+    QSizePolicy, QStyle
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence, QStandardItem
@@ -31,21 +31,35 @@ class CardEditor(QMainWindow):
         self.load_data()
 
     def init_ui(self):
+        # Menu Bar
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu(tr("File"))
+
         # Toolbar
         toolbar = QToolBar(tr("Main Toolbar"))
         self.addToolBar(toolbar)
 
-        new_act = QAction(tr("New Card"), self)
+        new_act = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon), tr("New Card"), self)
         new_act.triggered.connect(self.new_card)
         new_act.setShortcut(QKeySequence.StandardKey.New)
         new_act.setStatusTip(tr("Create a new card"))
         toolbar.addAction(new_act)
+        file_menu.addAction(new_act)
 
-        save_act = QAction(tr("Save JSON"), self)
+        save_act = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton), tr("Save JSON"), self)
         save_act.triggered.connect(self.save_data)
         save_act.setShortcut(QKeySequence.StandardKey.Save)
         save_act.setStatusTip(tr("Save all changes to JSON"))
         toolbar.addAction(save_act)
+        file_menu.addAction(save_act)
+
+        file_menu.addSeparator()
+
+        exit_act = QAction(tr("Exit"), self)
+        exit_act.setShortcut("Ctrl+Q")
+        exit_act.setStatusTip(tr("Exit application"))
+        exit_act.triggered.connect(self.close)
+        file_menu.addAction(exit_act)
 
         add_eff_act = QAction(tr("Add Effect"), self)
         add_eff_act.triggered.connect(self.add_effect)
@@ -59,7 +73,7 @@ class CardEditor(QMainWindow):
         add_act_act.setStatusTip(tr("Add a command to the selected effect"))
         toolbar.addAction(add_act_act)
 
-        del_act = QAction(tr("Delete Item"), self)
+        del_act = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogDiscardButton), tr("Delete Item"), self)
         del_act.triggered.connect(self.delete_item)
         del_act.setShortcut(QKeySequence.StandardKey.Delete)
         del_act.setStatusTip(tr("Delete the selected item"))
@@ -70,7 +84,7 @@ class CardEditor(QMainWindow):
         empty.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         toolbar.addWidget(empty)
 
-        update_preview_act = QAction(tr("Update Preview"), self)
+        update_preview_act = QAction(self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserReload), tr("Update Preview"), self)
         update_preview_act.triggered.connect(self.update_preview_manual)
         update_preview_act.setShortcut(QKeySequence.StandardKey.Refresh)
         update_preview_act.setStatusTip(tr("Force update the card preview"))
@@ -78,6 +92,15 @@ class CardEditor(QMainWindow):
 
         # Splitter Layout (3 Panes)
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.setHandleWidth(8)
+        self.splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #cccccc;
+            }
+            QSplitter::handle:hover {
+                background-color: #aaaaaa;
+            }
+        """)
 
         # Pane 1: Logic Tree
         self.tree_widget = LogicTreeWidget()
@@ -138,12 +161,7 @@ class CardEditor(QMainWindow):
             sb = self.statusBar()
             if sb is not None:
                 sb.showMessage(tr("Cards saved successfully!"), 3000)
-            # Also show a confirmation dialog so the user notices the save action
-            try:
-                QMessageBox.information(self, tr("Saved"), tr("Cards saved successfully!"))
-            except Exception:
-                # If running headless or dialogs fail, ignore
-                pass
+            # Removed blocking confirmation dialog to improve flow
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
 
