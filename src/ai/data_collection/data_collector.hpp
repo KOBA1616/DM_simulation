@@ -27,9 +27,14 @@ namespace dm::ai {
 
     class DataCollector {
     public:
+        // Preferred: Shared Pointer constructor
+        explicit DataCollector(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db);
+
+        // Deprecated: Reference constructor (forces copy)
         DataCollector(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
-        DataCollector(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db);
-        DataCollector(); // Default using Registry
+
+        // Default using Registry
+        DataCollector();
 
         // Run self-play episodes and collect data (Heuristic vs Heuristic)
         CollectedBatch collect_data_batch(int episodes);

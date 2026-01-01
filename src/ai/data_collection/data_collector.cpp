@@ -15,11 +15,11 @@ namespace dm::ai {
 
     using namespace dm::engine::systems;
 
-    DataCollector::DataCollector(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db)
-        : card_db_(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db)) {}
-
     DataCollector::DataCollector(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db)
         : card_db_(card_db) {}
+
+    DataCollector::DataCollector(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db)
+        : card_db_(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db)) {}
 
     DataCollector::DataCollector()
         : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()) {}
@@ -36,7 +36,7 @@ namespace dm::ai {
         HeuristicAgent agent1(0, *card_db_);
         HeuristicAgent agent2(1, *card_db_);
 
-        // Pre-calculate decks (using a simple strategy if none provided, but here we assume all cards are available)
+        // Pre-calculate decks
         std::vector<dm::core::CardID> deck1, deck2;
         if (card_db_ && !card_db_->empty()) {
             std::vector<dm::core::CardID> available_ids;
@@ -54,8 +54,8 @@ namespace dm::ai {
 
         for (int i = 0; i < episodes; ++i) {
             // Setup game
-            // Use random seed based on time/iteration
             uint32_t seed = static_cast<uint32_t>(i) + std::chrono::system_clock::now().time_since_epoch().count();
+            // Use shared_ptr constructor here
             dm::engine::GameInstance game(seed, card_db_);
 
             // Manually setup decks
@@ -109,15 +109,12 @@ namespace dm::ai {
                 }
 
                 // Record data
-
-                // 1. Tokens (Transformer)
                 if (collect_tokens) {
                     std::vector<int> tokens_int = encoders::TokenConverter::encode_state(game.state, active_player, 0);
                     std::vector<long> state_seq(tokens_int.begin(), tokens_int.end());
                     game_tokens.push_back(state_seq);
                 }
 
-                // 2. Tensors (ResNet/MLP)
                 if (collect_tensors) {
                     std::vector<float> tensor = TensorConverter::convert_to_tensor(game.state, active_player, *card_db_);
                     game_tensors.push_back(tensor);

@@ -19,7 +19,7 @@
 #include "bindings/python_batch_inference.hpp"
 #include "ai/evolution/deck_evolution.hpp"
 #include "ai/evolution/meta_environment.hpp"
-#include "ai/neural_net/self_attention.hpp" // Added
+#include "ai/neural_net/self_attention.hpp"
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
 
@@ -140,7 +140,6 @@ void bind_ai(py::module& m) {
 
     py::class_<dm::ai::inference::PimcGenerator>(m, "PimcGenerator")
         .def(py::init([](const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
-            // Create shared_ptr by copying the map
             return std::make_unique<dm::ai::inference::PimcGenerator>(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db));
         }))
         .def("set_inference_model", &dm::ai::inference::PimcGenerator::set_inference_model)
@@ -221,6 +220,8 @@ void bind_ai(py::module& m) {
         .def_readwrite("values", &CollectedBatch::values);
 
     py::class_<DataCollector>(m, "DataCollector")
+        // Exposed shared_ptr based constructor for Python if we ever bind shared_ptr<map>
+        // Currently keeping reference constructor as primary for Python
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def(py::init<>())
         .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic,

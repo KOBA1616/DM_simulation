@@ -16,14 +16,8 @@ namespace dm::engine {
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
-        // Wire up GameState's event dispatcher to TriggerManager
-        state.event_dispatcher = [this](const core::GameEvent& event) {
-            trigger_manager->dispatch(event, state);
-            if (card_db) {
-                trigger_manager->check_triggers(event, state, *card_db);
-                trigger_manager->check_reactions(event, state, *card_db);
-            }
-        };
+        // Refactored: Use TriggerManager to setup event handling logic
+        systems::TriggerManager::setup_event_handling(state, trigger_manager, card_db);
     }
 
     GameInstance::GameInstance(uint32_t seed)
@@ -31,14 +25,8 @@ namespace dm::engine {
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
-        // Wire up GameState's event dispatcher to TriggerManager
-        state.event_dispatcher = [this](const core::GameEvent& event) {
-            trigger_manager->dispatch(event, state);
-            if (card_db) {
-                trigger_manager->check_triggers(event, state, *card_db);
-                trigger_manager->check_reactions(event, state, *card_db);
-            }
-        };
+        // Refactored: Use TriggerManager to setup event handling logic
+        systems::TriggerManager::setup_event_handling(state, trigger_manager, card_db);
     }
 
     void GameInstance::start_game() {
@@ -64,15 +52,8 @@ namespace dm::engine {
     void GameInstance::undo() {
         if (state.command_history.empty()) return;
 
-        // Get the last command (ref to shared_ptr)
-        // Using auto& to avoid copying shared_ptr, though copy is cheap.
-        // It points to shared_ptr<GameCommand>.
         auto& cmd = state.command_history.back();
-
-        // Execute invert logic
         cmd->invert(state);
-
-        // Remove from history
         state.command_history.pop_back();
     }
 
@@ -83,6 +64,7 @@ namespace dm::engine {
     }
 
     void GameInstance::reset_with_scenario(const ScenarioConfig& config) {
+        // [Existing implementation remains unchanged]
         // 1. Reset Game State
         state.turn_number = 5;
         state.active_player_id = 0;
@@ -185,7 +167,6 @@ namespace dm::engine {
         // Initialize Owner Map [Phase A]
         state.card_owner_map.resize(instance_id_counter);
 
-        // Populate owner map
         auto populate_owner = [&](const Player& p) {
             auto register_cards = [&](const std::vector<CardInstance>& cards) {
                 for (const auto& c : cards) {
