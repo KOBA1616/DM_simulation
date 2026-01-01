@@ -10,7 +10,10 @@ try:
     import dm_ai_module  # type: ignore
     dm_ai_module = dm_ai_module
 except ImportError:
-    dm_ai_module = None
+    try:
+        from dm_toolkit import dm_ai_module
+    except ImportError:
+        dm_ai_module = None
 
 from dm_toolkit.types import GameState, CardDB, Action, PlayerID, Tensor, NPArray
 

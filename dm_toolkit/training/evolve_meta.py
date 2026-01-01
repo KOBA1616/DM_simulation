@@ -14,27 +14,36 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
 
 # --- Mock / Import Handling ---
 try:
-    import dm_ai_module
-    HAS_MODULE = True
+    try:
+        from dm_toolkit import dm_ai_module
+    except ImportError:
+        import dm_ai_module
+    # Check if we have the native module capabilities required
+    if not hasattr(dm_ai_module, 'JsonLoader') or not hasattr(dm_ai_module, 'ParallelRunner'):
+        HAS_MODULE = False
+        print("Warning: dm_ai_module native components (JsonLoader/ParallelRunner) not found.")
+    else:
+        HAS_MODULE = True
 except ImportError:
     HAS_MODULE = False
     print("Warning: dm_ai_module not found. Running in Mock/Simulation mode.")
 
-    class MockParallelRunner:
-        def __init__(self, card_db, num_games, num_threads):
-            self.card_db = card_db
 
-        def play_deck_matchup(self, deck1, deck2, num_games, num_threads):
-            # Return random results: [p1_wins, p2_wins, draws]
-            p1_wins = 0
-            p2_wins = 0
-            draws = 0
-            for _ in range(num_games):
-                r = random.random()
-                if r < 0.48: p1_wins += 1
-                elif r < 0.96: p2_wins += 1
-                else: draws += 1
-            return [p1_wins, p2_wins, draws]
+class MockParallelRunner:
+    def __init__(self, card_db, num_games, num_threads):
+        self.card_db = card_db
+
+    def play_deck_matchup(self, deck1, deck2, num_games, num_threads):
+        # Return random results: [p1_wins, p2_wins, draws]
+        p1_wins = 0
+        p2_wins = 0
+        draws = 0
+        for _ in range(num_games):
+            r = random.random()
+            if r < 0.48: p1_wins += 1
+            elif r < 0.96: p2_wins += 1
+            else: draws += 1
+        return [p1_wins, p2_wins, draws]
 
 # --- Data Structures ---
 
