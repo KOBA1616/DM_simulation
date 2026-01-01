@@ -14,7 +14,7 @@ namespace dm::ai {
     using namespace dm::engine::systems;
 
     BeamSearchEvaluator::BeamSearchEvaluator(const std::map<CardID, CardDefinition>& card_db, int beam_width, int max_depth)
-        : card_db_(card_db), beam_width_(beam_width), max_depth_(max_depth) {}
+        : card_db_(&card_db), beam_width_(beam_width), max_depth_(max_depth) {}
 
     std::pair<std::vector<float>, float> BeamSearchEvaluator::evaluate(const GameState& state) {
         std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f); // Logits (or probs)

@@ -19,7 +19,7 @@ namespace dm::ai {
         std::pair<std::vector<std::vector<float>>, std::vector<float>> evaluate_batch(const std::vector<dm::core::GameState>& states);
 
     private:
-        std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
+        const std::map<dm::core::CardID, dm::core::CardDefinition>* card_db_;
         int beam_width_;
         int max_depth_;
 
