@@ -91,7 +91,7 @@ namespace dm::engine {
         state.pending_effects.clear();
         state.current_attack = AttackState(); // Reset attack context
 
-        // Clear all zones for both players
+        // Clear all zones for both players using GameState method if possible or just clear
         for (auto& p : state.players) {
             p.hand.clear();
             p.battle_zone.clear();
@@ -100,112 +100,61 @@ namespace dm::engine {
             p.shield_zone.clear();
             p.deck.clear();
         }
+        state.card_owner_map.clear();
 
         // Instance ID counter
         int instance_id_counter = 0;
 
+        auto add_cards = [&](PlayerID pid, const std::vector<int>& cards, Zone zone, bool tapped = false, bool sick = true) {
+             for (int cid : cards) {
+                  CardInstance c((CardID)cid, instance_id_counter++, pid);
+                  c.is_tapped = tapped;
+                  c.summoning_sickness = sick;
+                  state.add_card_to_zone(c, zone, pid);
+             }
+        };
+
         // Fill decks
         // Player 0 (Me)
         if (!config.my_deck.empty()) {
-             for (int cid : config.my_deck) {
-                  state.players[0].deck.emplace_back((CardID)cid, instance_id_counter++, (PlayerID)0);
-             }
+             add_cards(0, config.my_deck, Zone::DECK);
         } else {
              // Fallback to dummy deck
-             for(int i=0; i<30; ++i) {
-                  state.players[0].deck.emplace_back((CardID)1, instance_id_counter++, (PlayerID)0);
-             }
+             std::vector<int> dummy(30, 1);
+             add_cards(0, dummy, Zone::DECK);
         }
 
         // Player 1 (Enemy)
         if (!config.enemy_deck.empty()) {
-             for (int cid : config.enemy_deck) {
-                  state.players[1].deck.emplace_back((CardID)cid, instance_id_counter++, (PlayerID)1);
-             }
+             add_cards(1, config.enemy_deck, Zone::DECK);
         } else {
              // Fallback to dummy deck
-             for(int i=0; i<30; ++i) {
-                  state.players[1].deck.emplace_back((CardID)1, instance_id_counter++, (PlayerID)1);
-             }
+             std::vector<int> dummy(30, 1);
+             add_cards(1, dummy, Zone::DECK);
         }
 
         // 2. Setup My Resources (Player 0)
-        Player& me = state.players[0];
+        add_cards(0, config.my_hand_cards, Zone::HAND);
+        add_cards(0, config.my_battle_zone, Zone::BATTLE, false, false); // Untapped, no sickness
+        add_cards(0, config.my_mana_zone, Zone::MANA, false); // Untapped
 
-        // Hand
-        for (int cid : config.my_hand_cards) {
-            me.hand.emplace_back((CardID)cid, instance_id_counter++, me.id);
-        }
-
-        // Battle Zone
-        for (int cid : config.my_battle_zone) {
-            CardInstance c((CardID)cid, instance_id_counter++, me.id);
-            c.summoning_sickness = false; // Assume creatures on board are ready
-            me.battle_zone.push_back(c);
-        }
-
-        // Mana Zone
-        for (int cid : config.my_mana_zone) {
-            CardInstance c((CardID)cid, instance_id_counter++, me.id);
-            c.is_tapped = false;
-            me.mana_zone.push_back(c);
-        }
-
+        // Handle raw mana count if zone is empty
         if (config.my_mana_zone.empty() && config.my_mana > 0) {
-            for (int i = 0; i < config.my_mana; ++i) {
-                me.mana_zone.emplace_back(1, instance_id_counter++, me.id);
-            }
+             std::vector<int> dummy_mana(config.my_mana, 1);
+             add_cards(0, dummy_mana, Zone::MANA, false);
         }
 
-        // Graveyard
-        for (int cid : config.my_grave_yard) {
-            me.graveyard.emplace_back((CardID)cid, instance_id_counter++, me.id);
-        }
-
-        // My Shields (Player 0)
-        for (int cid : config.my_shields) {
-             me.shield_zone.emplace_back((CardID)cid, instance_id_counter++, me.id);
-        }
+        add_cards(0, config.my_grave_yard, Zone::GRAVEYARD);
+        add_cards(0, config.my_shields, Zone::SHIELD);
 
         // 3. Setup Enemy Resources (Player 1)
-        Player& enemy = state.players[1];
+        add_cards(1, config.enemy_battle_zone, Zone::BATTLE, false, false); // Untapped, no sickness
 
-        // Enemy Battle Zone
-        for (int cid : config.enemy_battle_zone) {
-            CardInstance c((CardID)cid, instance_id_counter++, enemy.id);
-            c.summoning_sickness = false;
-            enemy.battle_zone.push_back(c);
+        // Enemy Shields (count only)
+        if (config.enemy_shield_count > 0) {
+             std::vector<int> dummy_shields(config.enemy_shield_count, 1);
+             add_cards(1, dummy_shields, Zone::SHIELD);
         }
-
-        // Enemy Shields
-        for (int i = 0; i < config.enemy_shield_count; ++i) {
-             enemy.shield_zone.emplace_back(1, instance_id_counter++, enemy.id);
-        }
-
-        // Initialize Owner Map [Phase A]
-        state.card_owner_map.resize(instance_id_counter);
-
-        // Populate owner map
-        auto populate_owner = [&](const Player& p) {
-            auto register_cards = [&](const std::vector<CardInstance>& cards) {
-                for (const auto& c : cards) {
-                    if (c.instance_id >= 0 && c.instance_id < (int)state.card_owner_map.size()) {
-                        state.card_owner_map[c.instance_id] = p.id;
-                    }
-                }
-            };
-            register_cards(p.hand);
-            register_cards(p.battle_zone);
-            register_cards(p.mana_zone);
-            register_cards(p.graveyard);
-            register_cards(p.shield_zone);
-            register_cards(p.deck);
-            register_cards(p.hyper_spatial_zone);
-            register_cards(p.gr_deck);
-        };
-
-        populate_owner(state.players[0]);
-        populate_owner(state.players[1]);
     }
 
 }
