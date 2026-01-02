@@ -10,6 +10,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')
 bin_path = os.path.join(project_root, 'bin')
 if bin_path not in sys.path:
     sys.path.append(bin_path)
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 try:
     import dm_ai_module
@@ -17,31 +19,14 @@ except ImportError:
     print(f"Error: Could not import dm_ai_module. Make sure it is built and in {bin_path}")
     sys.exit(1)
 
-from dm_toolkit.ai.agent.network import AlphaZeroNetwork
-from dm_toolkit.types import CardDB, ResultsList
+from dm_toolkit.types import CardDB
+from training.game_runner import GameRunner
 
 class SelfPlayRunner:
     def __init__(self, card_db: CardDB, device: Optional[Any] = None) -> None:
-        self.card_db: CardDB = card_db
-        self.device: Any = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        # Initialize dimensions
-        # GameInstance not exposed, using GameState directly
-        dummy_state = dm_ai_module.GameState(len(self.card_db))
-        # Note: instance.state returns a copy, but checking dimensions is fine
-        dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_state, 0, self.card_db)
-        self.input_size = len(dummy_vec)
-        self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
-
-    def load_model(self, model_path: Optional[str]) -> Any:
-        network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
-        if model_path and os.path.exists(model_path):
-            print(f"Loading model: {model_path}")
-            network.load_state_dict(torch.load(model_path, map_location=self.device))
-        else:
-            print("Warning: Model path not found or None, using random initialization.")
-        network.eval()
-        return network
+        self.card_db = card_db
+        self.device = device
+        self.runner = GameRunner(card_db, device=device)
 
     def _prepare_initial_states(self, num_games: int, deck_card_id: int) -> List[Any]:
         states = []
@@ -51,36 +36,15 @@ class SelfPlayRunner:
 
         print(f"Constructing decks using CardID: {deck_card_id}")
 
-        for i in range(num_games):
-            # Create GameInstance just to get a seeded state logic if needed,
-            # but we can also just create GameState directly.
-            # GameInstance initializes RNG seed.
-            # instance = dm_ai_module.GameInstance(int(time.time() * 1000 + i) % 1000000, self.card_db)
-            state = dm_ai_module.GameState(len(self.card_db))
-
-            # Capture the COPY of the state
-            # state = instance.state
-
-            # Setup decks using helper method (direct list modification won't work due to copy)
-            deck_list = [deck_card_id] * 40
-            state.set_deck(0, deck_list)
-            state.set_deck(1, deck_list)
-
-            # Initialize card stats
-            state.initialize_card_stats(self.card_db, 40)
-
-            # Start the game (modifies 'state')
-            dm_ai_module.PhaseManager.start_game(state, self.card_db)
-
-            # Verify game is not over immediately
-            if state.winner != dm_ai_module.GameResult.NONE:
-                 print("Warning: Game started in finished state!")
-
+        deck_list = [deck_card_id] * 40
+        for _ in range(num_games):
+            state = self.runner.prepare_state(deck_list, deck_list)
             states.append(state)
         return states
 
     def collect_data(self, model_path: Optional[str], output_path: str, episodes: int = 10, sims: int = 800, batch_size: int = 32, threads: int = 4) -> None:
-        network = self.load_model(model_path)
+        # Update model in runner
+        self.runner.load_model(model_path)
 
         # Find a valid creature for dummy deck
         valid_cid = 0
@@ -94,35 +58,14 @@ class SelfPlayRunner:
              print("Failed to prepare initial states.")
              return
 
-        runner = dm_ai_module.ParallelRunner(self.card_db, sims, batch_size)
-
-        # Evaluator callback
-        def evaluator(states: List[Any]) -> Tuple[Any, Any]:
-            tensors = []
-            for s in states:
-                # Assuming s.active_player_id is valid
-                t = dm_ai_module.TensorConverter.convert_to_tensor(s, s.active_player_id, self.card_db, True)
-                tensors.append(t)
-
-            if not tensors:
-                 return [], []
-
-            input_tensor = torch.tensor(np.array(tensors), dtype=torch.float32).to(self.device)
-
-            with torch.no_grad():
-                policy_logits, values = network(input_tensor)
-                policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
-                vals = values.squeeze(1).cpu().numpy()
-
-            return policies, vals
-
         print(f"Starting collection: {episodes} episodes, {sims} sims, {threads} threads")
         start_time = time.time()
 
         try:
-            results = runner.play_games(initial_states, evaluator, 1.0, True, threads)
+            # We want data collection enabled for self-play
+            results = self.runner.run_games(initial_states, sims, batch_size, threads, temperature=1.0, add_noise=True, collect_data=True)
         except Exception as e:
-            print(f"ParallelRunner failed: {e}")
+            print(f"GameRunner execution failed: {e}")
             return
 
         duration = time.time() - start_time
@@ -177,9 +120,32 @@ class SelfPlayRunner:
             print(f"Saved to {output_path}")
 
     def evaluate_matchup(self, model1_path: Optional[str], model2_path: Optional[str], episodes: int = 10, sims: int = 800, batch_size: int = 32, threads: int = 4) -> float:
-        # Model 1 plays as P1 (Player 0), Model 2 as P2 (Player 1)
-        net1 = self.load_model(model1_path)
-        net2 = self.load_model(model2_path)
+        # Note: GameRunner currently supports only ONE model (Self-Play).
+        # Evaluating two DIFFERENT models (Asymmetric) requires custom callback logic not yet in standard GameRunner.
+        # For now, this method will raise NotImplementedError or needs logic in GameRunner to handle 2 networks.
+        # Given the "Code Duplication" task, moving the Symmetric logic is the priority.
+        # I will leave the original implementation for evaluate_matchup here OR implement DualModel support in GameRunner.
+        # Implementing DualModel support in GameRunner complicates it.
+        # I will retain the custom logic here for asymmetric evaluation but use GameRunner helper for symmetrical parts if possible.
+
+        # However, reusing GameRunner for this is tricky because the callback is bound to self.network.
+        # So I will keep the custom evaluator here for now, but maybe GameRunner can accept a custom callback?
+        # Yes, but GameRunner wraps ParallelRunner execution.
+
+        # Let's re-implement evaluate_matchup using the original logic but adapted slightly if needed.
+        # Or just keep it as is? But I want to remove duplication.
+        # The duplication was mainly in self-play collection.
+        # I'll keep the asymmetric logic separate for now as it's distinct.
+
+        # Copied from original file, but cleaning up imports
+
+        net1 = AlphaZeroNetwork(self.runner.input_size, self.runner.action_size).to(self.device)
+        if model1_path: net1.load_state_dict(torch.load(model1_path, map_location=self.device))
+        net1.eval()
+
+        net2 = AlphaZeroNetwork(self.runner.input_size, self.runner.action_size).to(self.device)
+        if model2_path: net2.load_state_dict(torch.load(model2_path, map_location=self.device))
+        net2.eval()
 
         valid_cid = 0
         for cid, defn in self.card_db.items():
@@ -189,6 +155,8 @@ class SelfPlayRunner:
 
         initial_states = self._prepare_initial_states(episodes, valid_cid)
         runner = dm_ai_module.ParallelRunner(self.card_db, sims, batch_size)
+
+        from dm_toolkit.ai.agent.network import AlphaZeroNetwork # Re-import if needed or rely on top level
 
         def evaluator(states: List[Any]) -> Tuple[Any, Any]:
             # Split by active player
@@ -253,9 +221,8 @@ class SelfPlayRunner:
         return win_rate
 
 if __name__ == "__main__":
-    # Test script
     cards_path = os.path.join(project_root, 'data', 'cards.json')
-    db = dm_ai_module.JsonLoader.load_cards(cards_path)
-    sp = SelfPlayRunner(db)
-
-    # sp.collect_data(None, "test_data.npz", episodes=2, sims=50)
+    if os.path.exists(cards_path):
+        db = dm_ai_module.JsonLoader.load_cards(cards_path)
+        sp = SelfPlayRunner(db)
+        # sp.collect_data(None, "test_data.npz", episodes=2, sims=50)
