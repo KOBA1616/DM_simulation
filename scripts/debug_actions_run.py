@@ -178,7 +178,7 @@ def main():
     actions = ActionGenerator.generate_legal_actions(state, card_db)
     print('actions count', len(actions))
     try:
-        from dm_toolkit.commands_new import generate_legal_commands
+        from dm_toolkit.commands import generate_legal_commands
     except Exception:
         generate_legal_commands = None
     if generate_legal_commands:
