@@ -504,4 +504,92 @@ namespace dm::ai {
         return results;
     }
 
+    std::map<dm::core::CardID, dm::core::CardStats> ParallelRunner::play_deck_matchup_with_stats(
+            const std::vector<dm::core::CardID>& deck1,
+            const std::vector<dm::core::CardID>& deck2,
+            int num_games,
+            int num_threads
+    ) {
+        (void)num_threads;
+        std::map<dm::core::CardID, dm::core::CardStats> aggregated_stats;
+        std::mutex stats_mutex;
+
+        #pragma omp parallel for
+        for (int i = 0; i < num_games; ++i) {
+            std::random_device rd;
+            uint32_t seed = rd() + i;
+
+            dm::engine::GameInstance instance(seed, card_db_);
+
+            int instance_counter = 0;
+            auto setup_deck = [&](dm::core::Player& p, const std::vector<dm::core::CardID>& deck_list) {
+                p.deck.clear();
+                for(auto cid : deck_list) {
+                    p.deck.emplace_back(cid, instance_counter++, p.id);
+                }
+                std::mt19937 rng(seed + p.id);
+                std::shuffle(p.deck.begin(), p.deck.end(), rng);
+            };
+
+            setup_deck(instance.state.players[0], deck1);
+            setup_deck(instance.state.players[1], deck2);
+
+            dm::engine::PhaseManager::start_game(instance.state, *card_db_);
+
+            HeuristicAgent agent0(0, *card_db_);
+            HeuristicAgent agent1(1, *card_db_);
+
+            int steps = 0;
+            int max_steps = 1000;
+
+            while (steps < max_steps) {
+                 if(instance.state.winner != dm::core::GameResult::NONE) break;
+
+                 dm::core::GameResult res;
+                 if(dm::engine::PhaseManager::check_game_over(instance.state, res)) break;
+
+                 auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(instance.state, *card_db_);
+                 if (legal_actions.empty()) {
+                     dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
+                     continue;
+                 }
+
+                 dm::core::Action action;
+                 if (instance.state.active_player_id == 0) {
+                     action = agent0.get_action(instance.state, legal_actions);
+                 } else {
+                     action = agent1.get_action(instance.state, legal_actions);
+                 }
+
+                 GameLogicSystem::resolve_action(instance.state, action, *card_db_);
+                 steps++;
+            }
+
+            // Trigger stats finalization (e.g. tracking mana usage)
+            dm::core::GameResult final_res = instance.state.winner;
+            if (final_res == dm::core::GameResult::NONE) {
+                 dm::engine::PhaseManager::check_game_over(instance.state, final_res);
+            }
+            // Explicitly call on_game_finished to ensure mana usage and win stats are recorded
+            instance.state.on_game_finished(final_res); // This will update mana usage stats
+
+            // Merge stats into aggregated_stats
+            {
+                std::lock_guard<std::mutex> lock(stats_mutex);
+                for (const auto& [cid, stats] : instance.state.global_card_stats) {
+                    auto& agg = aggregated_stats[cid];
+                    agg.play_count += stats.play_count;
+                    agg.win_count += stats.win_count;
+                    agg.sum_cost_discount += stats.sum_cost_discount;
+                    agg.sum_early_usage += stats.sum_early_usage;
+                    agg.sum_late_usage += stats.sum_late_usage;
+                    agg.mana_usage_count += stats.mana_usage_count;
+                    agg.sum_win_contribution += stats.sum_win_contribution;
+                }
+            }
+        }
+
+        return aggregated_stats;
+    }
+
 }

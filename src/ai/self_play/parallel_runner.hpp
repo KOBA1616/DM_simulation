@@ -72,6 +72,14 @@ namespace dm::ai {
             int num_threads
         );
 
+        // Runs games and returns aggregated card stats for analysis
+        std::map<dm::core::CardID, dm::core::CardStats> play_deck_matchup_with_stats(
+            const std::vector<dm::core::CardID>& deck1,
+            const std::vector<dm::core::CardID>& deck2,
+            int num_games,
+            int num_threads
+        );
+
         // Run Deck vs Deck matches in parallel (Heuristic vs Heuristic)
         // Returns vector of winner IDs (0=Draw, 1=P1, 2=P2)
         std::vector<int> play_deck_matchup(

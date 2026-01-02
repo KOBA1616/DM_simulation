@@ -15,6 +15,7 @@ namespace dm::core {
         int sum_cost_discount = 0; // Sum of cost reduction used
         int sum_early_usage = 0;   // Sum of (turn played < cost)
         int sum_late_usage = 0;
+        int mana_usage_count = 0;  // Count of times used as mana resource
         float sum_win_contribution = 0.0f; // AI Heuristic sum
 
         // Extended stats for AI analysis
@@ -42,7 +43,7 @@ namespace dm::core {
         std::vector<float> to_vector() const {
              return {
                  (float)play_count, (float)win_count, (float)sum_cost_discount,
-                 (float)sum_early_usage, (float)sum_late_usage, sum_win_contribution,
+                 (float)sum_early_usage, (float)sum_late_usage, (float)mana_usage_count, sum_win_contribution,
                  sum_trigger_rate, sum_hand_adv, sum_board_adv, sum_mana_adv,
                  sum_shield_dmg, sum_hand_var, sum_board_var, sum_survival_rate,
                  sum_effect_death, sum_comeback_win, sum_finish_blow, sum_deck_consumption
