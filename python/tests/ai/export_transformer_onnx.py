@@ -10,7 +10,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 try:
-    from dm_toolkit.training.network_v2 import NetworkV2
+    from dm_toolkit.ai.agent.transformer_network import NetworkV2
 except ImportError:
     print("Could not import NetworkV2")
     sys.exit(1)

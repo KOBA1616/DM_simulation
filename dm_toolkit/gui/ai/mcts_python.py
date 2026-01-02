@@ -2,7 +2,7 @@
 import math
 import random
 import dm_ai_module
-from dm_toolkit import commands_new as commands_new
+from dm_toolkit import commands as commands
 from PyQt6.QtWidgets import QApplication
 
 class Node:
@@ -39,7 +39,7 @@ class PythonMCTS:
         self.root = Node(root_state.clone())
         # Prefer Action list for heuristics but also generate ICommand wrappers for systems
         legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.root.state, self.card_db)
-        legal_commands = commands_new.generate_legal_commands(self.root.state, self.card_db)
+        legal_commands = commands.generate_legal_commands(self.root.state, self.card_db)
 
         def _is_pass(obj):
             # Detect PASS for either Action or Command
@@ -166,7 +166,7 @@ class PythonMCTS:
         if child_actions:
             child_node.untried_actions = child_actions
         else:
-            child_node.untried_actions = commands_new.generate_legal_commands(next_state, self.card_db)
+            child_node.untried_actions = commands.generate_legal_commands(next_state, self.card_db)
         node.children.append(child_node)
         return child_node
 

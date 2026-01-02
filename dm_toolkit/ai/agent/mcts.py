@@ -2,7 +2,7 @@ import math
 import torch
 import numpy as np
 import dm_ai_module
-from dm_toolkit import commands_new as commands_new
+from dm_toolkit import commands
 from typing import Any, Optional, List, Dict, Tuple
 
 
@@ -135,10 +135,11 @@ class MCTS:
 
         # Generate legal actions (prefer Action objects; fallback to ICommand)
         actions = dm_ai_module.ActionGenerator.generate_legal_actions(node.state, self.card_db)
-        commands = []
+        # commands = [] # Removed shadowing
+        cmd_list = [] # Use distinct name
         if not actions:
-            commands = commands_new.generate_legal_commands(node.state, self.card_db) or []
-            if not commands:
+            cmd_list = commands.generate_legal_commands(node.state, self.card_db) or []
+            if not cmd_list:
                 return 0.0
 
         # Evaluate with Network
@@ -156,7 +157,7 @@ class MCTS:
 
         # Create children
         # Iterate over Action objects if present, otherwise over ICommand objects
-        iterable = actions if actions else commands
+        iterable = actions if actions else cmd_list
         for item in iterable:
             is_action = hasattr(item, 'type')
 
@@ -216,4 +217,3 @@ class MCTS:
             node.value_sum += value
             value = -value  # Flip for opponent
             node = node.parent
-
