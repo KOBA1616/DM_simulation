@@ -10,7 +10,9 @@ namespace dm::ai {
 
     class BeamSearchEvaluator {
     public:
-        BeamSearchEvaluator(const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, int beam_width = 7, int max_depth = 3);
+        // Use shared_ptr to share ownership of the potentially large card database
+        // and ensure lifetime safety when called from Python
+        BeamSearchEvaluator(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db, int beam_width = 7, int max_depth = 3);
 
         // Single state evaluation
         std::pair<std::vector<float>, float> evaluate(const dm::core::GameState& state);
@@ -19,7 +21,7 @@ namespace dm::ai {
         std::pair<std::vector<std::vector<float>>, std::vector<float>> evaluate_batch(const std::vector<dm::core::GameState>& states);
 
     private:
-        std::map<dm::core::CardID, dm::core::CardDefinition> card_db_;
+        std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;
         int beam_width_;
         int max_depth_;
 
