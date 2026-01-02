@@ -32,10 +32,10 @@ namespace dm::core {
 
     struct Action {
         PlayerIntent type;
-        CardID card_id; // For PLAY_CARD, MANA_CHARGE
-        int source_instance_id; // For ATTACK, BLOCK (instance ID of the creature)
-        int target_instance_id; // For ATTACK_CREATURE, SELECT_TARGET
-        PlayerID target_player; // For ATTACK_PLAYER
+        CardID card_id = 0; // For PLAY_CARD, MANA_CHARGE
+        int source_instance_id = -1; // For ATTACK, BLOCK (instance ID of the creature)
+        int target_instance_id = -1; // For ATTACK_CREATURE, SELECT_TARGET
+        PlayerID target_player = 0; // For ATTACK_PLAYER
         
         // ML Helper
         int slot_index = -1; // Index in Hand/BattleZone for source

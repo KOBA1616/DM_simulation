@@ -312,6 +312,53 @@ namespace dm::engine {
                 break;
             case Phase::BLOCK:
                 next_p = Phase::ATTACK;
+
+                // Transitioning from BLOCK to ATTACK means we resolve the battle.
+                if (game_state.current_attack.source_instance_id != -1) {
+                    bool blocked = game_state.current_attack.blocked;
+                    int target_id = game_state.current_attack.target_instance_id;
+
+                    if (blocked) {
+                        // If blocked, it's a battle between Attacker and Blocker
+                        PendingEffect pe(EffectType::RESOLVE_BATTLE, game_state.current_attack.source_instance_id, game_state.active_player_id);
+                        pe.execution_context["attacker"] = game_state.current_attack.source_instance_id;
+                        pe.execution_context["defender"] = game_state.current_attack.blocking_creature_id;
+
+                        auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
+                        cmd->pending_effect = pe;
+                        game_state.execute_command(std::move(cmd));
+
+                    } else {
+                        // Not blocked
+                        if (target_id != -1) {
+                            // Creature vs Creature
+                            PendingEffect pe(EffectType::RESOLVE_BATTLE, game_state.current_attack.source_instance_id, game_state.active_player_id);
+                            pe.execution_context["attacker"] = game_state.current_attack.source_instance_id;
+                            pe.execution_context["defender"] = target_id;
+
+                            auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
+                            cmd->pending_effect = pe;
+                            game_state.execute_command(std::move(cmd));
+                        } else {
+                            // Creature vs Player
+                            const Player& opponent = game_state.players[1 - game_state.active_player_id];
+                            if (opponent.shield_zone.empty()) {
+                                // Direct Attack -> WIN
+                                auto win_cmd = std::make_unique<GameResultCommand>(
+                                    game_state.active_player_id == 0 ? GameResult::P1_WIN : GameResult::P2_WIN
+                                );
+                                game_state.execute_command(std::move(win_cmd));
+                            } else {
+                                // Shield Break
+                                PendingEffect pe(EffectType::BREAK_SHIELD, game_state.current_attack.source_instance_id, game_state.active_player_id);
+
+                                auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
+                                cmd->pending_effect = pe;
+                                game_state.execute_command(std::move(cmd));
+                            }
+                        }
+                    }
+                }
                 break;
             case Phase::END_OF_TURN:
                 // Cleanup Step

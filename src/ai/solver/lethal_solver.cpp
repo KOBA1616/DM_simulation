@@ -3,233 +3,159 @@
 #include <vector>
 #include <map>
 #include <cmath>
-#include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/passive_effect_system.hpp"
+#include <iostream>
+#include "engine/systems/game_logic_system.hpp"
+#include "engine/actions/intent_generator.hpp"
+#include "core/action.hpp"
 
 namespace dm::ai {
 
     using namespace dm::core;
     using namespace dm::engine;
+    using namespace dm::engine::systems;
 
-    // Search Structures
-    struct SimAttacker {
-        int index; // Bit index in mask
-        int power;
-        int breaker; // 999 for World Breaker
-        bool unblockable;
-        // Future: bool slayer, bool untaps_after_win, etc.
-    };
+    // Helper to check if an action is relevant for lethal
+    static bool is_aggressive_action(const Action& action, const GameState& state, const std::map<CardID, CardDefinition>& card_db) {
+        switch (action.type) {
+            case PlayerIntent::ATTACK_PLAYER:
+                return true;
+            case PlayerIntent::ATTACK_CREATURE:
+                // Removing blockers is good
+                return true;
+            case PlayerIntent::BREAK_SHIELD:
+                return true;
 
-    struct SimBlocker {
-        int index; // Bit index in mask
-        int power;
-        // Future: bool slayer, bool blocks_multiple, etc.
-    };
+            case PlayerIntent::PLAY_CARD:
+            case PlayerIntent::DECLARE_PLAY: // Atomic start of Play
+                if (card_db.count(action.card_id)) {
+                     const auto& def = card_db.at(action.card_id);
+                     if (def.type == CardType::CREATURE) {
+                         if (def.keywords.speed_attacker) return true;
+                         if (def.keywords.evolution) return true;
+                     }
+                     if (def.type == CardType::SPELL) return true;
+                }
+                return false;
 
-    // State key for memoization
-    struct SearchState {
-        uint64_t attacker_mask;
-        uint64_t blocker_mask;
-        int shields;
+            case PlayerIntent::USE_ABILITY:
+                return true;
 
-        bool operator<(const SearchState& other) const {
-            if (attacker_mask != other.attacker_mask) return attacker_mask < other.attacker_mask;
-            if (blocker_mask != other.blocker_mask) return blocker_mask < other.blocker_mask;
-            return shields < other.shields;
+            // Intermediate / Atomic
+            case PlayerIntent::RESOLVE_BATTLE:
+            case PlayerIntent::RESOLVE_PLAY:
+            case PlayerIntent::PAY_COST:
+            case PlayerIntent::PLAY_CARD_INTERNAL:
+            case PlayerIntent::USE_SHIELD_TRIGGER:
+            case PlayerIntent::SELECT_TARGET:
+            case PlayerIntent::RESOLVE_EFFECT:
+            case PlayerIntent::DECLARE_REACTION:
+            case PlayerIntent::SELECT_OPTION:
+            case PlayerIntent::SELECT_NUMBER:
+                return true;
+
+            case PlayerIntent::BLOCK:
+                return true;
+
+            case PlayerIntent::PASS:
+                if (state.current_phase == Phase::MAIN) return true;
+                if (state.current_phase == Phase::BLOCK) return true; // Opponent passing block -> Good
+
+                return false;
+
+            default:
+                return false;
         }
-    };
+    }
 
-    class LethalDFS {
-        const std::vector<SimAttacker>& attackers;
-        const std::vector<SimBlocker>& blockers;
-        const std::vector<uint64_t>& blocking_matrix; // Matrix[att_index] = bitmask of valid blockers
-        std::map<SearchState, bool> memo;
-        int initial_shields;
+    class LethalSearch {
+        const std::map<CardID, CardDefinition>& card_db;
+        PlayerID root_player;
+        int max_depth;
 
     public:
-        LethalDFS(const std::vector<SimAttacker>& a, const std::vector<SimBlocker>& b, const std::vector<uint64_t>& matrix, int shields)
-            : attackers(a), blockers(b), blocking_matrix(matrix), initial_shields(shields) {}
+        LethalSearch(const std::map<CardID, CardDefinition>& db, PlayerID player, int depth)
+            : card_db(db), root_player(player), max_depth(depth) {}
 
-        bool solve(SearchState state) {
-            // Check memoization
-            auto it = memo.find(state);
-            if (it != memo.end()) return it->second;
+        bool search(GameState state, int depth) {
+            if (state.winner != GameResult::NONE) {
+                return state.winner == static_cast<GameResult>(root_player + 1);
+            }
 
-            // Base case: No attackers left
-            if (state.attacker_mask == 0) {
-                // If we haven't won yet (shields <= 0 checked at transition), we lose this branch
+            if (depth >= max_depth) return false;
+
+            std::vector<Action> actions = IntentGenerator::generate_legal_actions(state, card_db);
+
+            if (actions.empty()) {
                 return false;
             }
 
-            // Max Node (Attacker Choice)
-            // We want to find AT LEAST ONE attack that guarantees a win.
-
-            bool can_force_win = false;
-
-            for (const auto& att : attackers) {
-                if (!((state.attacker_mask >> att.index) & 1)) continue;
-
-                if (simulate_attack(att, state)) {
-                    can_force_win = true;
-                    break; // Pruning: Found a winning move
-                }
+            // Determine who is making the decision
+            // If Phase is BLOCK, the decision maker is the Defender (1 - active_player_id)
+            // But GameState.active_player_id points to Turn Player.
+            // So if active_player is ROOT, then in BLOCK phase, decision is OPPONENT.
+            PlayerID acting_player = state.active_player_id;
+            if (state.current_phase == Phase::BLOCK) {
+                acting_player = 1 - state.active_player_id;
             }
 
-            memo[state] = can_force_win;
-            return can_force_win;
-        }
+            bool is_root_decision = (acting_player == root_player);
+            bool opponent_can_survive = false;
 
-        bool simulate_attack(const SimAttacker& att, SearchState state) {
-            // Min Node (Opponent Choice)
-            // Opponent wants to find AT LEAST ONE response that prevents our win.
-            // If they find a survival path, this attack fails (return false).
-            // If ALL responses lead to our win, return true.
+            for (const auto& action : actions) {
+                if (is_root_decision) {
+                    if (action.type == PlayerIntent::MANA_CHARGE) continue;
 
-            // 1. Path: No Block
-            {
-                // Check direct attack condition
-                if (state.shields <= 0) {
-                    // Direct attack successful -> WIN
-                    // This path leads to Win.
-                    // Opponent cannot choose this to survive.
-                    // So we treat this as "Opponent cannot survive via No Block".
-                    // (Proceed to check Block)
+                    // Allow DECLARE_PLAY explicitly with check
+                    if (action.type == PlayerIntent::DECLARE_PLAY) {
+                         if (card_db.count(action.card_id)) {
+                             const auto& def = card_db.at(action.card_id);
+                             bool aggro = false;
+                             if (def.type == CardType::CREATURE) {
+                                 if (def.keywords.speed_attacker) aggro = true;
+                                 if (def.keywords.evolution) aggro = true;
+                             } else if (def.type == CardType::SPELL) {
+                                 aggro = true;
+                             }
+                             if (!aggro) {
+                                 continue;
+                             }
+                         }
+                    } else if (!is_aggressive_action(action, state, card_db)) {
+                        continue;
+                    }
+                }
+
+                GameState next_state = state.clone();
+                GameLogicSystem::resolve_action(next_state, action, card_db);
+
+                bool result = search(std::move(next_state), depth + 1);
+
+                if (is_root_decision) {
+                    if (result) return true; // Max Node: Found a win
                 } else {
-                    // Shield Break
-                    SearchState next_state = state;
-                    next_state.attacker_mask &= ~(1ULL << att.index); // Attacker taps/used
-
-                    int damage = att.breaker;
-                    if (damage >= 999) next_state.shields = 0; // World Breaker
-                    else next_state.shields = std::max(0, state.shields - damage);
-
-                    // Recursively check if we can win from the post-break state
-                    if (!solve(next_state)) {
-                        return false; // Opponent survives by taking the hit
+                    if (!result) {
+                        opponent_can_survive = true;
+                        // Optimization: If it's opponent's turn and they found a way to survive,
+                        // then this branch (the move leading to this state) is failed for ROOT.
+                        // We need ALL opponent moves to lead to ROOT win.
+                        return false;
                     }
                 }
             }
 
-            // If unblockable, No Block is the only option.
-            // Since we passed the check above (didn't return false), it means No Block leads to Win.
-            if (att.unblockable) return true;
+            if (is_root_decision) return false; // Tried all moves, none won.
 
-            // 2. Path: Block with eligible blocker
-            uint64_t valid_blockers = blocking_matrix[att.index] & state.blocker_mask;
-
-            // Loop through bits in valid_blockers
-            for (const auto& blk : blockers) {
-                if (!((valid_blockers >> blk.index) & 1)) continue;
-
-                SearchState next_state = state;
-                next_state.attacker_mask &= ~(1ULL << att.index); // Attacker taps
-                next_state.blocker_mask &= ~(1ULL << blk.index);  // Blocker taps
-
-                // Combat Logic (Who dies?)
-                // Currently, death implies removal from mask for NEXT turns.
-                // But taps also imply removal from mask.
-                // So effectively both are removed from the available pool for this turn.
-                // (Unless "Untap" abilities exist).
-                // For this implementation, removing from mask is correct.
-
-                if (!solve(next_state)) {
-                    return false; // Opponent survives by blocking with 'blk'
-                }
-            }
-
-            // If we get here, it means Opponent cannot survive via No Block AND cannot survive via any Block.
+            // If Opponent Decision (Min Node):
+            // We only reach here if loop finished without returning false.
+            // Means ALL opponent moves led to result=true (Win).
             return true;
         }
     };
 
-    bool LethalSolver::is_lethal(const GameState& game_state,
-                                 const std::map<CardID, CardDefinition>& card_db) {
-
-        const Player& active_player = game_state.players[game_state.active_player_id];
-        const Player& opponent = game_state.players[1 - game_state.active_player_id];
-
-        // 1. Gather Attackers
-        std::vector<SimAttacker> attackers;
-        std::vector<const CardInstance*> attacker_instances; // To keep reference for checking against blockers
-        int att_index = 0;
-
-        for (const auto& card : active_player.battle_zone) {
-            if (!card_db.count(card.card_id)) continue;
-            const auto& def = card_db.at(card.card_id);
-
-            bool can_attack = TargetUtils::can_attack_player(card, def, game_state, card_db);
-
-            // Manual Passive Check
-            if (can_attack) {
-                if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_ATTACK, card_db)) {
-                    can_attack = false;
-                }
-            }
-
-            if (!can_attack) continue;
-
-            SimAttacker info;
-            info.index = att_index++;
-            info.power = def.power;
-
-            info.breaker = 1;
-            if (def.keywords.world_breaker) info.breaker = 999;
-            else if (def.keywords.triple_breaker) info.breaker = 3;
-            else if (def.keywords.double_breaker) info.breaker = 2;
-
-            info.unblockable = def.keywords.unblockable;
-
-            attackers.push_back(info);
-            attacker_instances.push_back(&card);
-            if (att_index >= 64) break; // Safety limit
-        }
-
-        // 2. Gather Blockers
-        std::vector<SimBlocker> blockers;
-        std::vector<const CardInstance*> blocker_instances;
-        int blk_index = 0;
-
-        for (const auto& card : opponent.battle_zone) {
-            if (!card.is_tapped) {
-                if (card_db.count(card.card_id)) {
-                    const auto& def = card_db.at(card.card_id);
-                    if (def.keywords.blocker) {
-                        SimBlocker info;
-                        info.index = blk_index++;
-                        info.power = def.power;
-                        blockers.push_back(info);
-                        blocker_instances.push_back(&card);
-                        if (blk_index >= 64) break;
-                    }
-                }
-            }
-        }
-
-        // 2.5 Build Blocking Matrix
-        std::vector<uint64_t> blocking_matrix(attackers.size(), 0);
-        for (size_t i = 0; i < attackers.size(); ++i) {
-            for (size_t j = 0; j < blockers.size(); ++j) {
-                const auto* att_card = attacker_instances[i];
-                const auto* blk_card = blocker_instances[j];
-                const auto& att_def = card_db.at(att_card->card_id);
-                const auto& blk_def = card_db.at(blk_card->card_id);
-
-                if (TargetUtils::can_be_blocked_by(*att_card, att_def, *blk_card, blk_def, game_state)) {
-                    blocking_matrix[i] |= (1ULL << blockers[j].index);
-                }
-            }
-        }
-
-        int opponent_shields = opponent.shield_zone.size();
-
-        // 3. Run Search
-        SearchState initial_state;
-        initial_state.attacker_mask = (attackers.size() == 64) ? ~0ULL : ((1ULL << attackers.size()) - 1);
-        initial_state.blocker_mask = (blockers.size() == 64) ? ~0ULL : ((1ULL << blockers.size()) - 1);
-        initial_state.shields = opponent_shields;
-
-        LethalDFS dfs(attackers, blockers, blocking_matrix, opponent_shields);
-        return dfs.solve(initial_state);
+    bool LethalSolver::is_lethal(const GameState& initial_state, const std::map<CardID, CardDefinition>& card_db) {
+        if (initial_state.winner != GameResult::NONE) return false;
+        LethalSearch solver(card_db, initial_state.active_player_id, 20);
+        return solver.search(initial_state.clone(), 0);
     }
 
 }

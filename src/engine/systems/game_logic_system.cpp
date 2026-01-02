@@ -122,6 +122,55 @@ namespace dm::engine::systems {
                 Instruction inst(InstructionOp::GAME_ACTION, args);
                 inst.args["type"] = "RESOLVE_BATTLE";
                 handle_resolve_battle(pipeline, state, inst, card_db);
+
+                // Cleanup Pending Effect
+                if (action.slot_index >= 0 && action.slot_index < (int)state.pending_effects.size()) {
+                    // Safety check: Ensure type matches
+                    if (state.pending_effects[action.slot_index].type == EffectType::RESOLVE_BATTLE) {
+                        state.pending_effects.erase(state.pending_effects.begin() + action.slot_index);
+                    }
+                }
+                break;
+            }
+            case PlayerIntent::BREAK_SHIELD:
+            {
+                nlohmann::json args;
+                args["source_id"] = action.source_instance_id;
+
+                if (action.slot_index >= 0 && action.slot_index < (int)state.pending_effects.size()) {
+                     const auto& pe = state.pending_effects[action.slot_index];
+                     if (!pe.target_instance_ids.empty()) {
+                         args["shields"] = pe.target_instance_ids;
+                     } else {
+                         // Auto-select shields if not provided
+                         const CardInstance* source = state.get_card_instance(action.source_instance_id);
+                         if (source) {
+                             int breaker_count = get_breaker_count(*source, card_db);
+                             // Identify opponent
+                             PlayerID opp = 1 - state.active_player_id; // Assume attack is active player
+                             const auto& shields = state.players[opp].shield_zone;
+                             std::vector<int> targets;
+                             int count = std::min(breaker_count, (int)shields.size());
+                             if (breaker_count >= 999) count = (int)shields.size(); // World Breaker
+
+                             for (int i = 0; i < count; ++i) {
+                                 targets.push_back(shields[i].instance_id);
+                             }
+                             args["shields"] = targets;
+                         }
+                     }
+                }
+
+                Instruction inst(InstructionOp::GAME_ACTION, args);
+                inst.args["type"] = "BREAK_SHIELD";
+                handle_break_shield(pipeline, state, inst, card_db);
+
+                // Cleanup Pending Effect
+                if (action.slot_index >= 0 && action.slot_index < (int)state.pending_effects.size()) {
+                    if (state.pending_effects[action.slot_index].type == EffectType::BREAK_SHIELD) {
+                        state.pending_effects.erase(state.pending_effects.begin() + action.slot_index);
+                    }
+                }
                 break;
             }
             case PlayerIntent::PASS:
@@ -603,6 +652,22 @@ namespace dm::engine::systems {
     void GameLogicSystem::handle_attack(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                         const std::map<core::CardID, core::CardDefinition>& card_db) {
          int instance_id = exec.resolve_int(inst.args.value("source", 0));
+         int target_id = exec.resolve_int(inst.args.value("target", -1));
+
+         // 1. Update Attack State
+         state.current_attack.source_instance_id = instance_id;
+         state.current_attack.target_instance_id = target_id;
+         state.current_attack.blocked = false;
+         state.current_attack.blocking_creature_id = -1;
+
+         // Infer target player if target_id is -1 (Player Attack)
+         // Assuming default target is opponent
+         if (target_id == -1) {
+             state.current_attack.target_player_id = 1 - state.active_player_id;
+         } else {
+             state.current_attack.target_player_id = -1; // Creature attack
+         }
+
          auto cmd = std::make_unique<MutateCommand>(instance_id, MutateCommand::MutationType::TAP);
          state.execute_command(std::move(cmd));
 
@@ -682,6 +747,17 @@ namespace dm::engine::systems {
              // Logic for checking power modifier would go here
         }
         return power;
+    }
+
+    int GameLogicSystem::get_breaker_count(const core::CardInstance& creature, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        if (!card_db.count(creature.card_id)) return 1;
+        const auto& def = card_db.at(creature.card_id);
+
+        if (def.keywords.world_breaker) return 999;
+        if (def.keywords.triple_breaker) return 3;
+        if (def.keywords.double_breaker) return 2;
+
+        return 1;
     }
 
     void GameLogicSystem::handle_break_shield(PipelineExecutor& exec, GameState& state, const Instruction& inst,
