@@ -1,5 +1,12 @@
+import pytest
+
+pytest.skip(
+    "duplicate root-level test file; use tests/unit/test_commands_new.py",
+    allow_module_level=True,
+)
+
 import dm_ai_module
-from dm_toolkit.commands import wrap_action
+from dm_toolkit.commands_new import wrap_action
 
 
 def test_wrap_and_execute_pass():
@@ -19,4 +26,4 @@ def test_wrap_and_execute_pass():
     cmd.execute(gs)
     # PASS toggles MAIN <-> ATTACK in GameInstance.resolve_action fallback; in GameState shim,
     # FlowCommand sets to MAIN/ATTACK elsewhere; accept either non-None change
-    assert getattr(gs, 'current_phase', None) is not None
+    assert getattr(gs, "current_phase", None) is not None
