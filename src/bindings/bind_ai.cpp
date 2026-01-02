@@ -198,7 +198,8 @@ void bind_ai(py::module& m) {
         }, py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature")=1.0f, py::arg("add_noise")=true, py::arg("num_threads")=4, py::arg("alpha")=0.0f, py::arg("collect_data")=true, py::return_value_policy::move)
 #endif
         .def("play_scenario_match", &ParallelRunner::play_scenario_match)
-        .def("play_deck_matchup", &ParallelRunner::play_deck_matchup);
+        .def("play_deck_matchup", &ParallelRunner::play_deck_matchup)
+        .def("play_deck_matchup_with_stats", &ParallelRunner::play_deck_matchup_with_stats);
 
     py::class_<ScenarioConfig>(m, "ScenarioConfig")
         .def(py::init<>())
