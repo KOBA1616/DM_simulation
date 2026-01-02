@@ -222,56 +222,16 @@ namespace dm::engine::systems {
             if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = returned;
 
         } else if (cmd.type == core::CommandType::DRAW_CARD) {
-            int count = resolve_amount(cmd, execution_context);
-            int drawn = 0;
-            for (int i = 0; i < count; ++i) {
-                if (!state.players[player_id].deck.empty()) {
-                    int card_inst_id = state.players[player_id].deck.back().instance_id;
-                    TransitionCommand trans(card_inst_id, Zone::DECK, Zone::HAND, player_id);
-                    trans.execute(state);
-                    drawn++;
-                }
-            }
-            if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = drawn;
+            expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
 
         } else if (cmd.type == core::CommandType::MANA_CHARGE) {
-            int count = resolve_amount(cmd, execution_context);
-            int charged = 0;
-            for (int i = 0; i < count; ++i) {
-                if (!state.players[player_id].deck.empty()) {
-                    int card_inst_id = state.players[player_id].deck.back().instance_id;
-                    TransitionCommand trans(card_inst_id, Zone::DECK, Zone::MANA, player_id);
-                    trans.execute(state);
-                    charged++;
-                }
-            }
-            if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = charged;
+            expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
 
         } else if (cmd.type == core::CommandType::DESTROY) {
-            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
-            int destroyed = 0;
-            for (int target_id : targets) {
-                CardInstance* inst = state.get_card_instance(target_id);
-                if (inst) {
-                    TransitionCommand trans(target_id, Zone::BATTLE, Zone::GRAVEYARD, inst->owner);
-                    trans.execute(state);
-                    destroyed++;
-                }
-            }
-            if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = destroyed;
+            expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
 
         } else if (cmd.type == core::CommandType::DISCARD) {
-            std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
-            int discarded = 0;
-            for (int target_id : targets) {
-                CardInstance* inst = state.get_card_instance(target_id);
-                if (inst) {
-                    TransitionCommand trans(target_id, Zone::HAND, Zone::GRAVEYARD, inst->owner);
-                    trans.execute(state);
-                    discarded++;
-                }
-            }
-            if (!cmd.output_value_key.empty()) execution_context[cmd.output_value_key] = discarded;
+            expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
 
         } else if (cmd.type == core::CommandType::BREAK_SHIELD) {
             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
