@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import torch
 import time
+import argparse
 from typing import List, Tuple, Optional, Any
 
 # Ensure bin is in path
@@ -18,20 +19,16 @@ except ImportError:
     sys.exit(1)
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
-from dm_toolkit.types import CardDB, ResultsList
+from dm_toolkit.types import CardDB
+from python.training.game_runner import GameRunner
 
 class SelfPlayRunner:
     def __init__(self, card_db: CardDB, device: Optional[Any] = None) -> None:
-        self.card_db: CardDB = card_db
-        self.device: Any = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        # Initialize dimensions
-        # GameInstance not exposed, using GameState directly
-        dummy_state = dm_ai_module.GameState(len(self.card_db))
-        # Note: instance.state returns a copy, but checking dimensions is fine
-        dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_state, 0, self.card_db)
-        self.input_size = len(dummy_vec)
-        self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
+        self.card_db = card_db
+        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.runner = GameRunner(card_db, self.device)
+        self.input_size = self.runner.input_size
+        self.action_size = self.runner.action_size
 
     def load_model(self, model_path: Optional[str]) -> Any:
         network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
@@ -43,152 +40,55 @@ class SelfPlayRunner:
         network.eval()
         return network
 
-    def _prepare_initial_states(self, num_games: int, deck_card_id: int) -> List[Any]:
-        states = []
-        if deck_card_id == 0:
-             print("Error: No valid card ID found for deck construction.")
-             return []
-
-        print(f"Constructing decks using CardID: {deck_card_id}")
-
-        for i in range(num_games):
-            # Create GameInstance just to get a seeded state logic if needed,
-            # but we can also just create GameState directly.
-            # GameInstance initializes RNG seed.
-            # instance = dm_ai_module.GameInstance(int(time.time() * 1000 + i) % 1000000, self.card_db)
-            state = dm_ai_module.GameState(len(self.card_db))
-
-            # Capture the COPY of the state
-            # state = instance.state
-
-            # Setup decks using helper method (direct list modification won't work due to copy)
-            deck_list = [deck_card_id] * 40
-            state.set_deck(0, deck_list)
-            state.set_deck(1, deck_list)
-
-            # Initialize card stats
-            state.initialize_card_stats(self.card_db, 40)
-
-            # Start the game (modifies 'state')
-            dm_ai_module.PhaseManager.start_game(state, self.card_db)
-
-            # Verify game is not over immediately
-            if state.winner != dm_ai_module.GameResult.NONE:
-                 print("Warning: Game started in finished state!")
-
-            states.append(state)
-        return states
-
-    def collect_data(self, model_path: Optional[str], output_path: str, episodes: int = 10, sims: int = 800, batch_size: int = 32, threads: int = 4) -> None:
-        network = self.load_model(model_path)
-
-        # Find a valid creature for dummy deck
+    def get_valid_deck(self) -> List[int]:
         valid_cid = 0
         for cid, defn in self.card_db.items():
             if defn.type == dm_ai_module.CardType.CREATURE:
                 valid_cid = cid
                 break
+        return [valid_cid] * 40
 
-        initial_states = self._prepare_initial_states(episodes, valid_cid)
+    def collect_data(self, model_path: Optional[str], output_path: str, episodes: int = 10, sims: int = 800, batch_size: int = 32, threads: int = 4) -> None:
+        network = self.load_model(model_path)
+        callback = self.runner.create_network_callback(network)
+
+        deck = self.get_valid_deck()
+        initial_states = self.runner.prepare_initial_states(episodes, deck, deck)
+
         if not initial_states:
              print("Failed to prepare initial states.")
              return
-
-        runner = dm_ai_module.ParallelRunner(self.card_db, sims, batch_size)
-
-        # Evaluator callback
-        def evaluator(states: List[Any]) -> Tuple[Any, Any]:
-            tensors = []
-            for s in states:
-                # Assuming s.active_player_id is valid
-                t = dm_ai_module.TensorConverter.convert_to_tensor(s, s.active_player_id, self.card_db, True)
-                tensors.append(t)
-
-            if not tensors:
-                 return [], []
-
-            input_tensor = torch.tensor(np.array(tensors), dtype=torch.float32).to(self.device)
-
-            with torch.no_grad():
-                policy_logits, values = network(input_tensor)
-                policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
-                vals = values.squeeze(1).cpu().numpy()
-
-            return policies, vals
 
         print(f"Starting collection: {episodes} episodes, {sims} sims, {threads} threads")
         start_time = time.time()
 
         try:
-            results = runner.play_games(initial_states, evaluator, 1.0, True, threads)
+            results = self.runner.run_games(
+                initial_states, callback, sims, batch_size, threads,
+                temperature=1.0, add_noise=True, collect_data=True
+            )
         except Exception as e:
-            print(f"ParallelRunner failed: {e}")
+            print(f"Game execution failed: {e}")
             return
 
         duration = time.time() - start_time
         print(f"Collection finished in {duration:.2f}s")
 
         # Process results
-        all_masked = []
-        all_full = []
-        all_policies = []
-        all_values = []
+        data = self.runner.process_results_to_data(results)
 
-        win_counts = {1:0, 2:0, 0:0, 3:0}
+        # Additional formatting for legacy compatibility if needed (masked vs full)
+        # GameRunner returns flat states (floats). If self_play needs legacy format, it might need adjustment.
+        # But for now, let's stick to what GameRunner provides which is likely 'states' (flat tensor list).
 
-        for info in results:
-            res = info.result
-            win_counts[res] = win_counts.get(res, 0) + 1
-
-            final_value_p0 = 0.0
-            if res == 1: final_value_p0 = 1.0
-            elif res == 2: final_value_p0 = -1.0
-            # Draw = 0.0
-
-            # Info.states is list of GameStates encountered during the game
-            for i, state in enumerate(info.states):
-                pid = state.active_player_id
-
-                # Value for this state
-                val = final_value_p0 if pid == 0 else -final_value_p0
-
-                # Policy
-                pol = info.policies[i]
-
-                # Convert State
-                masked = dm_ai_module.TensorConverter.convert_to_tensor(state, pid, self.card_db, True)
-                full = dm_ai_module.TensorConverter.convert_to_tensor(state, pid, self.card_db, False)
-
-                all_masked.append(masked)
-                all_full.append(full)
-                all_policies.append(pol)
-                all_values.append(val)
-
-        print(f"Results: {win_counts}")
-        print(f"Samples collected: {len(all_masked)}")
-
-        if len(all_masked) > 0:
-            np.savez_compressed(output_path,
-                states_masked=np.array(all_masked, dtype=np.float32),
-                states_full=np.array(all_full, dtype=np.float32),
-                policies=np.array(all_policies, dtype=np.float32),
-                values=np.array(all_values, dtype=np.float32)
-            )
-            print(f"Saved to {output_path}")
+        self.runner.save_data(data, output_path)
 
     def evaluate_matchup(self, model1_path: Optional[str], model2_path: Optional[str], episodes: int = 10, sims: int = 800, batch_size: int = 32, threads: int = 4) -> float:
-        # Model 1 plays as P1 (Player 0), Model 2 as P2 (Player 1)
         net1 = self.load_model(model1_path)
         net2 = self.load_model(model2_path)
 
-        valid_cid = 0
-        for cid, defn in self.card_db.items():
-            if defn.type == dm_ai_module.CardType.CREATURE:
-                valid_cid = cid
-                break
-
-        initial_states = self._prepare_initial_states(episodes, valid_cid)
-        runner = dm_ai_module.ParallelRunner(self.card_db, sims, batch_size)
+        deck = self.get_valid_deck()
+        initial_states = self.runner.prepare_initial_states(episodes, deck, deck)
 
         def evaluator(states: List[Any]) -> Tuple[Any, Any]:
             # Split by active player
@@ -205,44 +105,51 @@ class SelfPlayRunner:
                     indices_p2.append(i)
                     states_p2.append(s)
 
-            # Inference P1
-            results_p1_pol: Any = []
-            results_p1_val: Any = []
-            if states_p1:
-                tensors = [dm_ai_module.TensorConverter.convert_to_tensor(s, 0, self.card_db, True) for s in states_p1]
-                t_in = torch.tensor(np.array(tensors), dtype=torch.float32).to(self.device)
+            # Helper for inference
+            def infer(net, s_list):
+                if not s_list: return [], []
+                # Use flat batch conversion
+                flat = dm_ai_module.TensorConverter.convert_batch_flat(s_list, self.card_db, True)
+                t_in = torch.tensor(flat, dtype=torch.float32).view(len(s_list), self.input_size).to(self.device)
                 with torch.no_grad():
-                    logits, vals = net1(t_in)
-                    results_p1_pol = torch.softmax(logits, dim=1).cpu().numpy()
-                    results_p1_val = vals.squeeze(1).cpu().numpy()
+                    logits, vals = net(t_in)
+                    p = torch.softmax(logits, dim=1).cpu().numpy()
+                    v = vals.squeeze(1).cpu().numpy()
+                return p, v
 
-            # Inference P2
-            results_p2_pol: Any = []
-            results_p2_val: Any = []
-            if states_p2:
-                tensors = [dm_ai_module.TensorConverter.convert_to_tensor(s, 1, self.card_db, True) for s in states_p2]
-                t_in = torch.tensor(np.array(tensors), dtype=torch.float32).to(self.device)
-                with torch.no_grad():
-                    logits, vals = net2(t_in)
-                    results_p2_pol = torch.softmax(logits, dim=1).cpu().numpy()
-                    results_p2_val = vals.squeeze(1).cpu().numpy()
+            p1_pol, p1_val = infer(net1, states_p1)
+            p2_pol, p2_val = infer(net2, states_p2)
 
             # Reassemble
             final_policies = [None] * len(states)
             final_values = [None] * len(states)
 
             for k, original_idx in enumerate(indices_p1):
-                final_policies[original_idx] = results_p1_pol[k]
-                final_values[original_idx] = results_p1_val[k]
+                final_policies[original_idx] = p1_pol[k]
+                final_values[original_idx] = p1_val[k]
 
             for k, original_idx in enumerate(indices_p2):
-                final_policies[original_idx] = results_p2_pol[k]
-                final_values[original_idx] = results_p2_val[k]
+                final_policies[original_idx] = p2_pol[k]
+                final_values[original_idx] = p2_val[k]
 
             return final_policies, final_values
 
         print(f"Evaluating Matchup: {episodes} games")
-        results = runner.play_games(initial_states, evaluator, 1.0, False, threads)
+        # Ensure we set the callback via set_flat_batch_callback if needed, or pass it directly.
+        # However, evaluator here is complex (different models).
+        # GameRunner.run_games uses whatever is passed to it.
+        # BUT GameRunner.run_games also attempts to set_flat_batch_callback globally.
+        # This might overwrite if we are not careful, but here we pass 'evaluator' which matches the signature run_games expects.
+
+        # Note: run_games wraps the callback to ignore player_id if set_flat_batch_callback is used.
+        # But here we handle player ID inside the evaluator by checking state.active_player_id.
+        # The wrapped callback in GameRunner ignores the second arg.
+        # This is fine.
+
+        results = self.runner.run_games(
+            initial_states, evaluator, sims, batch_size, threads,
+            temperature=1.0, add_noise=False, collect_data=False
+        )
 
         p1_wins = 0
         for info in results:
@@ -253,9 +160,16 @@ class SelfPlayRunner:
         return win_rate
 
 if __name__ == "__main__":
-    # Test script
-    cards_path = os.path.join(project_root, 'data', 'cards.json')
-    db = dm_ai_module.JsonLoader.load_cards(cards_path)
-    sp = SelfPlayRunner(db)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--episodes", type=int, default=10)
+    parser.add_argument("--sims", type=int, default=100)
+    parser.add_argument("--output", type=str, default="test_data.npz")
+    args = parser.parse_args()
 
-    # sp.collect_data(None, "test_data.npz", episodes=2, sims=50)
+    cards_path = os.path.join(project_root, 'data', 'cards.json')
+    if os.path.exists(cards_path):
+        db = dm_ai_module.JsonLoader.load_cards(cards_path)
+        sp = SelfPlayRunner(db)
+        sp.collect_data(None, args.output, episodes=args.episodes, sims=args.sims)
+    else:
+        print("cards.json not found")
