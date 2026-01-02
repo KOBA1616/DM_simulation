@@ -206,6 +206,13 @@ class UnifiedActionForm(BaseEditForm):
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
         layout.addRow(tr("Action Type"), self.type_combo)
 
+        # Helper text for Action Type
+        self.type_desc_label = QLabel("")
+        self.type_desc_label.setStyleSheet("color: gray; font-style: italic; margin-left: 10px;")
+        self.type_desc_label.setWordWrap(True)
+        self.type_desc_label.setVisible(False)
+        layout.addRow("", self.type_desc_label)
+
         # Scope / Target Group
         self.scope_combo = make_scope_combo(self)
         layout.addRow(tr("Scope"), self.scope_combo)
@@ -525,7 +532,17 @@ class UnifiedActionForm(BaseEditForm):
         self.arbitrary_check.setVisible(cfg.get('can_be_optional', False))
 
         # Tooltip
-        self.type_combo.setToolTip(tr(cfg.get('tooltip', '')))
+        tooltip_text = tr(cfg.get('tooltip', ''))
+        self.type_combo.setToolTip(tooltip_text)
+
+        # Show description label if tooltip is different from the label (meaning it's a real explanation)
+        label_text = tr(cfg.get('label', ''))
+        if tooltip_text and tooltip_text != label_text:
+             self.type_desc_label.setText(tooltip_text)
+             self.type_desc_label.setVisible(True)
+        else:
+             self.type_desc_label.setVisible(False)
+
         # Mutation kind display mode
         is_add_keyword = (t == 'ADD_KEYWORD')
         try:
