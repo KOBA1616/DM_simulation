@@ -1,8 +1,0 @@
-[
-  {
-    "players": [
-      { "hand": [], "battle_zone": [], "deck": [] },
-      { "hand": [], "battle_zone": [ { "card_id": 5, "instance_id": 101 } ], "deck": [] }
-    ]
-  }
-]
