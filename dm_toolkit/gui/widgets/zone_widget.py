@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
 from PyQt6.QtCore import Qt, pyqtSignal
 from .card_widget import CardWidget
 from dm_toolkit.gui.localization import get_card_civilization
-from dm_toolkit.commands_new import wrap_action
+from dm_toolkit.commands import wrap_action
 
 class ZoneWidget(QWidget):
     card_clicked = pyqtSignal(int, int) # card_id, instance_id

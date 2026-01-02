@@ -75,7 +75,7 @@ def run_stress_test(iterations=10000, max_steps=2000, verbose=False):
 
             while state.winner == -1 and step_count < max_steps:
                 try:
-                    from dm_toolkit.commands_new import generate_legal_commands
+                    from dm_toolkit.commands import generate_legal_commands
                 except Exception:
                     generate_legal_commands = None
 

@@ -2,7 +2,7 @@ import sys, os
 sys.path.insert(0, os.getcwd())
 import dm_ai_module
 try:
-	from dm_toolkit.commands_new import generate_legal_commands
+	from dm_toolkit.commands import generate_legal_commands
 except Exception:
 	generate_legal_commands = None
 
