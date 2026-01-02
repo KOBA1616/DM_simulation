@@ -30,6 +30,7 @@ except ImportError:
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 from dm_toolkit.training.train_simple import Trainer
+from python.training.game_runner import GameRunner
 
 class PBTAgent:
     def __init__(self, agent_id: int, deck: List[int], name: str = "Agent") -> None:
@@ -49,6 +50,7 @@ class PBTAgent:
             self.wins += 1
         elif result == 0.0:
             self.losses += 1
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -65,40 +67,35 @@ class PBTManager:
         self.population_size = population_size
         self.agents: List[PBTAgent] = []
         self.model_path = model_path
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.network: Optional[AlphaZeroNetwork] = None
-        self.input_size = dm_ai_module.TensorConverter.INPUT_SIZE
-        self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
+
+        # GameRunner handles parallel execution details
+        self.game_runner = GameRunner(card_db)
 
         # Evolution Config
         self.evo_config = dm_ai_module.DeckEvolutionConfig()
         self.evo_config.target_deck_size = 40
-        self.evo_config.mutation_rate = 0.2  # 20% mutation chance per card swap
+        self.evo_config.mutation_rate = 0.2
         self.evolver = dm_ai_module.DeckEvolution(self.card_db)
 
-        # Runner
-        # Use positional arguments for C++ constructor
-        self.runner = dm_ai_module.ParallelRunner(self.card_db, 50, 32)
-
         # Load Model
+        self.network = None
         self.load_model()
 
         # Initialize Population
         self.init_population()
 
     def load_model(self) -> None:
-        self.network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)
+        self.network = AlphaZeroNetwork(self.game_runner.input_size, self.game_runner.action_size).to(self.game_runner.device)
         if self.model_path and os.path.exists(self.model_path):
             print(f"Loading model from {self.model_path}")
             try:
-                self.network.load_state_dict(torch.load(self.model_path, map_location=self.device))
+                self.network.load_state_dict(torch.load(self.model_path, map_location=self.game_runner.device))
             except Exception as e:
                 print(f"Failed to load model: {e}. Starting fresh.")
         if self.network:
             self.network.eval()
 
     def init_population(self) -> None:
-        # Try to load meta decks
         meta_decks_path = os.path.join(project_root, 'data', 'meta_decks.json')
         meta_decks = []
         if os.path.exists(meta_decks_path):
@@ -109,29 +106,25 @@ class PBTManager:
                 except Exception as e:
                     print(f"Error loading meta_decks.json: {e}")
 
-        # Collect all valid card IDs for random generation
         valid_ids = []
         for cid, defn in self.card_db.items():
-            # Basic filter: Only creatures and spells, cost <= 10 (heuristic)
             if defn.cost <= 10:
                 valid_ids.append(cid)
 
         if not valid_ids:
              print("Warning: No valid cards found for deck generation.")
-             valid_ids = [1] # Dummy
+             valid_ids = [1]
 
         for i in range(self.population_size):
             if i < len(meta_decks):
                 deck = meta_decks[i]["cards"]
                 name = meta_decks[i]["name"]
             else:
-                # Random deck
                 deck = []
                 for _ in range(40):
                     deck.append(random.choice(valid_ids))
                 name = f"Random_Deck_{i}"
 
-            # Ensure deck is valid (40 cards)
             while len(deck) < 40:
                 deck.append(valid_ids[0])
             deck = deck[:40]
@@ -140,50 +133,16 @@ class PBTManager:
 
         print(f"Initialized population of {len(self.agents)} agents.")
 
-    def evaluate_network_callback(self, states: List[Any], player_id: int) -> Tuple[List[List[float]], List[float]]:
-        """
-        Callback for C++ ParallelRunner.
-        Receives batch of GameStates, returns (policies, values).
-        """
-        if not states:
-            return [], []
-
-        try:
-            # Flatten batch tensor [B, InputSize]
-            batch_tensor_list = dm_ai_module.TensorConverter.convert_batch_flat(states, self.card_db, True)
-
-            # Convert to Torch
-            # batch_tensor_list is a list of floats (flattened batch)
-            input_data = torch.tensor(batch_tensor_list, dtype=torch.float32).view(len(states), self.input_size).to(self.device)
-
-            if self.network is None:
-                return [], []
-
-            with torch.no_grad():
-                policies, values = self.network(input_data)
-
-            # Convert back to lists
-            policies_list = policies.cpu().numpy().tolist()
-            values_list = values.cpu().numpy().flatten().tolist()
-
-            return policies_list, values_list
-
-        except Exception as e:
-            print(f"Error in callback: {e}")
-            # Fallback
-            return [], []
-
     def run_generation(self, generation_id: int, matches_per_pair: int = 2) -> None:
         print(f"--- Generation {generation_id} ---")
 
-        # 1. Matchmaking (Round Robin or Random Pairs)
+        # 1. Matchmaking
         pairs = []
         if self.population_size <= 10:
             for i in range(len(self.agents)):
                 for j in range(i + 1, len(self.agents)):
                     pairs.append((self.agents[i], self.agents[j]))
         else:
-            # Random pairing (N matches)
             pool = self.agents[:]
             random.shuffle(pool)
             for i in range(0, len(pool), 2):
@@ -192,23 +151,17 @@ class PBTManager:
 
         print(f"Running {len(pairs)} matchups ({matches_per_pair} games each)...")
 
-        # 2. Execution
+        # 2. Execution Setup
         initial_states = []
-        metadata = [] # stores (agent1_idx, agent2_idx) for each game
+        metadata = []
 
         for p1, p2 in pairs:
+            # We use GameRunner.prepare_initial_states for logic, but need custom pairing here
+            # Since prepare_initial_states creates N identical matchups, we iterate manually or batch them
+            batch = self.game_runner.prepare_initial_states(matches_per_pair, p1.deck, p2.deck)
+            initial_states.extend(batch)
             for _ in range(matches_per_pair):
-                state = dm_ai_module.GameState(1000)
-                # Set decks
-                state.set_deck(0, p1.deck)
-                state.set_deck(1, p2.deck)
-
-                # Setup
-                state.initialize_card_stats(self.card_db, 1000)
-                dm_ai_module.PhaseManager.start_game(state, self.card_db)
-
-                initial_states.append(state)
-                metadata.append((p1, p2)) # 0 vs 1
+                metadata.append((p1, p2))
 
         print(f"Total games queued: {len(initial_states)}")
 
@@ -216,27 +169,22 @@ class PBTManager:
             print("No games to play.")
             return
 
+        # Create Callback
+        callback = self.game_runner.create_network_callback(self.network)
+
         # Run Games
-        # Set the global callback
-        dm_ai_module.set_flat_batch_callback(self.evaluate_network_callback)
-
-        # Call play_games (positional args)
-        # play_games(initial_states, evaluator, temp, noise, threads, alpha, collect_data)
-        results = self.runner.play_games(
-            initial_states,
-            self.evaluate_network_callback,
-            1.0, # temperature
-            True, # add_noise
-            4, # threads
-            0.5, # alpha
-            True # collect_data
+        results = self.game_runner.run_games(
+            initial_states, callback,
+            sims=50, batch_size=32, threads=4,
+            temperature=1.0, add_noise=True, collect_data=True
         )
-
-        dm_ai_module.clear_flat_batch_callback()
 
         print("Games finished.")
 
-        # 3. Process Results & Training Data
+        # 3. Process Results & Update Elo
+        # We can't reuse process_results_to_data entirely because we need to link results back to specific agents (metadata)
+        # However, we can extract the training data separately or manualy.
+
         training_data_batch: Dict[str, List[Any]] = {
             'states': [],
             'policies': [],
@@ -245,9 +193,7 @@ class PBTManager:
 
         for idx, res in enumerate(results):
             p1, p2 = metadata[idx]
-
-            # Update Elo
-            winner = res.result # 0=NONE, 1=P1, 2=P2, 3=DRAW
+            winner = res.result
 
             if winner == dm_ai_module.GameResult.P1_WIN:
                 s1, s2 = 1.0, 0.0
@@ -276,56 +222,39 @@ class PBTManager:
 
                 training_data_batch['values'].extend(step_values)
 
-        # Save Training Data
+        # Save Training Data via GameRunner helper (need to match dict keys)
         data_path = f"pbt_gen_{generation_id}_data.npz"
-        np.savez_compressed(
-            data_path,
-            states=np.array(training_data_batch['states'], dtype=np.float32),
-            policies=np.array(training_data_batch['policies'], dtype=np.float32),
-            values=np.array(training_data_batch['values'], dtype=np.float32)
-        )
-        print(f"Saved {len(training_data_batch['states'])} samples to {data_path}")
+        self.game_runner.save_data(training_data_batch, data_path)
 
-        # 4. Train Model (Incremental)
+        # 4. Train Model
         if len(training_data_batch['states']) > 0:
             print("Training model...")
             trainer = Trainer([data_path], self.model_path, self.model_path or "model_v1.pth")
             trainer.train(epochs=1, batch_size=64)
-
-            # Reload model
             self.load_model()
         else:
             print("No data collected, skipping training.")
 
-        # 5. Evolution (Selection & Mutation)
+        # 5. Evolution
         self.agents.sort(key=lambda a: a.score, reverse=True)
-
         print("\nLeaderboard:")
         for i, a in enumerate(self.agents[:5]):
             print(f"{i+1}. {a.name} (ID: {a.id}): {a.score:.1f} ({a.wins}W-{a.losses}L)")
 
-        # Bottom 20% are replaced by mutated top 20%
         cutoff = int(self.population_size * 0.2)
         if cutoff > 0 and self.population_size >= 2:
             top_agents = self.agents[:cutoff]
             bottom_agents = self.agents[-cutoff:]
-
-            # Create candidate pool (all cards in existence or subset)
             candidate_pool = []
             for cid in self.card_db.keys():
                  if self.card_db[cid].type in [dm_ai_module.CardType.CREATURE, dm_ai_module.CardType.SPELL]:
                      candidate_pool.append(cid)
 
             for i, victim in enumerate(bottom_agents):
-                # Ensure we have top agents to copy from
-                if not top_agents:
-                    break
-
+                if not top_agents: break
                 parent = random.choice(top_agents)
                 print(f"Evolving Agent {victim.id} (Score {victim.score:.1f}) -> Child of {parent.name}")
-
                 new_deck = self.evolver.evolve_deck(parent.deck, candidate_pool, self.evo_config)
-
                 victim.deck = new_deck
                 victim.score = parent.score
                 victim.wins = 0
@@ -349,7 +278,6 @@ def main() -> None:
         sys.exit(1)
 
     card_db = dm_ai_module.JsonLoader.load_cards(cards_path)
-
     manager = PBTManager(card_db, population_size=args.pop, model_path=args.model)
 
     for g in range(args.gens):
