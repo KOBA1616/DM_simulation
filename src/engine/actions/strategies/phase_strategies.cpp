@@ -159,6 +159,7 @@ namespace dm::engine {
                     Action attack_player;
                     attack_player.type = PlayerIntent::ATTACK_PLAYER;
                     attack_player.source_instance_id = card.instance_id;
+                    attack_player.target_instance_id = -1; // Explicitly mark as Player Attack
                     attack_player.slot_index = static_cast<int>(i);
                     attack_player.target_player = opponent.id;
                     actions.push_back(attack_player);
