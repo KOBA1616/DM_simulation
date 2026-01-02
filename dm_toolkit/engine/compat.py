@@ -189,12 +189,12 @@ class EngineCompat:
     def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Any]:
         """Return a list of ICommand-like objects for the given state.
 
-        Uses the Python compatibility helper `dm_toolkit.commands_new.generate_legal_commands`
+        Uses the Python compatibility helper `dm_toolkit.commands.generate_legal_commands`
         to wrap engine actions into ICommand interfaces.
         """
         EngineCompat._check_module()
         assert dm_ai_module is not None
-        from dm_toolkit.commands_new import generate_legal_commands
+        from dm_toolkit.commands import generate_legal_commands
         return generate_legal_commands(state, card_db)
 
     @staticmethod

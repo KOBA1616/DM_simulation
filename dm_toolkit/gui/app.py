@@ -44,7 +44,7 @@ from dm_toolkit.gui.widgets.loop_recorder import LoopRecorderWidget
 from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 
 # Import Phase 7 requirements: Action Wrapper and Mapper
-from dm_toolkit.commands_new import wrap_action
+from dm_toolkit.commands import wrap_action
 from dm_toolkit.action_to_command import map_action
 
 class GameWindow(QMainWindow):

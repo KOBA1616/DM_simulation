@@ -90,7 +90,7 @@ class SolitaireRunner:
 
         actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db) or []
         try:
-            from dm_toolkit.commands_new import generate_legal_commands
+            from dm_toolkit.commands import generate_legal_commands
         except Exception:
             generate_legal_commands = None
         cmds = generate_legal_commands(state, self.card_db) if generate_legal_commands else []

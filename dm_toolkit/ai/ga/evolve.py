@@ -86,7 +86,7 @@ class DeckEvolution:
 
             # Random (prefer commands when available)
             try:
-                from dm_toolkit.commands_new import generate_legal_commands
+                from dm_toolkit.commands import generate_legal_commands
             except Exception:
                 generate_legal_commands = None
 
