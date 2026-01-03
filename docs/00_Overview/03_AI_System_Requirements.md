@@ -15,7 +15,7 @@
 *   **Evaluator (評価層)**: 盤面の価値（勝率）とポリシー（次手の確率分布）を出力。
     *   `NeuralEvaluator`: 深層学習モデルによる推論。
     *   `BeamSearchEvaluator`: 短期的な探索とヒューリスティックによる評価。
-*   **Inference (推論層)**: PyTorch / ONNX Runtimeを用いたバッチ推論エンジン。
+*   **Inference (推論層)**: `DeckInference` および `PimcGenerator` による不完全情報推論エンジン。
 *   **Solver (解析層)**: 必勝手順を探索する特化型ソルバー (`LethalSolver`)。
 
 ## 3. データ構造
@@ -23,10 +23,10 @@
 ### 3.1 状態表現 (State Representation)
 ゲームの状態 (`GameState`) は、ニューラルネットワークへの入力として以下の**フラットなTensor (ベクトル)** に変換される。
 
-*   **入力サイズ**: 226次元 (固定)
+*   **入力サイズ**: 226次元 (固定 / MLP用)
     *   **グローバル特徴 (10次元)**: ターン数、現在のフェーズ、アクティブプレイヤーID等。
     *   **プレイヤー特徴 (108次元 × 2)**: 自分と相手の各ゾーン（マナ、手札、盤面、シールド、墓地）の状態。
-        *   各カードはIDやメタデータ（コスト、パワー、文明）としてエンコードされるのではなく、存在や特定の属性フラグとして抽象化される場合がある（実装バージョンに依存）。現状は `TensorConverter` により数値化。
+        *   各カードはIDやメタデータ（コスト、パワー、文明）としてエンコードされるのではなく、存在や特定の属性フラグとして抽象化される場合がある。
 
 ### 3.2 行動空間 (Action Space)
 可能な全ての行動は、固定長のベクトルインデックスにマッピングされる。
@@ -52,53 +52,39 @@
 ### 4.1 MCTS (Monte Carlo Tree Search)
 AlphaZeroアルゴリズムに準拠した探索を行う。
 *   **選択 (Selection)**: PUCT (Polynomial Upper Confidence Trees) アルゴリズムを用いて、探索と活用のバランスを取る。
-    *   ルートノードではDirichletノイズを加算し、探索の多様性を確保する。
 *   **展開 (Expansion)**: 未到達の局面でニューラルネットワーク（またはEvaluator）を呼び出し、価値(V)とポリシー(P)を取得する。
 *   **バックプロパゲーション (Backpropagation)**: 葉ノードの価値をルートまで伝播させる。
-    *   **リスク認識 (Risk-Aware)**: 単純な勝率平均だけでなく、相手のS・トリガー等による逆転リスク（分散）をペナルティとして加味するロジックが含まれる（`BeamSearchEvaluator`等で顕著）。
-*   **Fast Forward**: 選択肢が1つしかない場合や自明な処理（効果解決の途中など）は、分岐を作らずに即座に状態を進める。
+    *   **Risk-Aware**: 相手のS・トリガー等による逆転リスクをペナルティとして加味するロジックが含まれる。
 
-### 4.2 AlphaZero Network
+### 4.2 AlphaZero Network (Current)
 *   **構造**: 5層 全結合層 (Fully Connected Layers, MLP)。
     *   各層 1024 ユニット、ReLU活性化関数。
 *   **Head**:
     *   **Policy Head**: 行動確率を出力 (Softmax)。
     *   **Value Head**: 勝率予測を出力 (Tanh, Range [-1, 1])。
-*   **特徴**: 現在はCNNやTransformerではなく、軽量なMLPを採用している（盤面の空間的特徴よりも、カードの組み合わせ情報の比重が高いため）。
 
 ### 4.3 Lethal Solver (リーサルソルバー)
 終盤において、不確定要素（S・トリガー）を考慮しつつ、確定的な勝利（ダイレクトアタック成功）が可能かを判定する。
-*   **アルゴリズム**: DFS (深さ優先探索) + メモ化再帰。
-*   **状態ハッシュ**: 攻撃可能クリーチャー、ブロッカー、シールド枚数の組み合わせをキーとして計算結果をキャッシュする。
-*   **目的**: MCTSでは読みきれない深い詰みを「必勝」として検知し、探索を打ち切る。
+*   **現状**: ヒューリスティックベースの判定（攻撃数 vs ブロッカー+シールド）。
+*   **Future**: DFS (深さ優先探索) ベースの完全探索への移行を予定。
 
 ### 4.4 Beam Search Evaluator
 MCTSのロールアウト（ランダムプレイ）の代わりに、浅い探索を行って局面の静的評価値を算出する。
 *   **ビーム幅**: 7 (デフォルト)
-*   **深さ**: 3手先まで読む。
-*   **評価関数**:
-    *   リソース優位性（マナ、手札差）。
-    *   盤面アドバンテージ（パワーライン）。
-    *   **Trigger Risk**: 相手シールド内のトリガー確率（ゴッドビュー視点または確率的推論）に基づくリスクペナルティ。
+*   **評価関数**: リソース優位性、盤面アドバンテージ、Trigger Risk。
 
 ## 5. 学習・検証パイプライン
 
 ### 5.1 データ収集 (Data Collection)
-*   C++側の `DataCollector` クラスにより、MCTSを用いた自己対戦を並列実行。
+*   C++側の `DataCollector` および `ParallelRunner` により、MCTSを用いた自己対戦を並列実行。
 *   生成データ: `(StateTensor, PolicyVector, Value)` のタプル。
-*   フォーマット: `.npz` (NumPy Zip) 形式で保存。
 
 ### 5.2 学習 (Training)
 *   Python (`train_simple.py`) にてPyTorchを使用。
-*   損失関数:
-    *   Policy: CrossEntropyLoss
-    *   Value: MSELoss (Mean Squared Error)
-*   オプティマイザ: AdamW
 
 ### 5.3 検証 (Verification)
 *   `ParallelRunner` を用いて、新モデル vs 旧モデル、あるいは新モデル vs ヒューリスティックの対戦を行う。
-*   **Parallel Execution**: C++の `std::thread` とPythonのバッチ推論を組み合わせ、CPUリソースを最大限活用して高速に対戦を回す。
 
 ## 6. 今後の拡張性 (Future Scope)
-*   **Transformerモデル**: `TensorConverter` は既にトークン列への変換 (`convert_to_sequence`) をサポートしており、将来的にGPTライクなモデルへの移行を想定している。
-*   **不完全情報対応 (POMDP)**: 現在は一部「ゴッドビュー（完全情報）」を利用したリスク計算を行っているが、相手手札の推論モジュール（Inference System）の統合が計画されている（Phase 2）。
+*   **Transformerモデル (Phase 4)**: `TensorConverter` (C++) は既にトークン列への変換 (`convert_to_sequence`) をサポートしており、Python側でのモデル実装待ちである。
+*   **不完全情報対応 (Phase 2)**: C++で実装された `DeckInference` をPython学習ループに統合する。
