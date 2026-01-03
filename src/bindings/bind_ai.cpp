@@ -75,15 +75,7 @@ void bind_ai(py::module& m) {
             return std::make_unique<BeamSearchEvaluator>(shared_db, beam_width, max_depth);
         }), py::arg("card_db"), py::arg("beam_width")=7, py::arg("max_depth")=3)
         .def("evaluate", &BeamSearchEvaluator::evaluate);
-        // Evaluate batch requires copying GameStates which is deleted, or passing by pointer.
-        // Python list of objects -> std::vector<GameState> requires copy.
-        // We cannot accept std::vector<GameState> by value/ref if copy is deleted and pybind needs to construct it.
-        // We accept std::vector<std::shared_ptr<GameState>> which is easier?
-        // Or we can manually iterate.
-        // For now, disabling evaluate_batch binding as it requires deep copy handling in pybind11 for deleted-copy types.
-        // .def("evaluate_batch", &BeamSearchEvaluator::evaluate_batch);
 
-    // Bind NeuralEvaluator and ModelType only when an inference backend is enabled.
 #if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)
     py::enum_<ModelType>(m, "ModelType")
         .value("RESNET", ModelType::RESNET)
@@ -177,6 +169,11 @@ void bind_ai(py::module& m) {
         .def_readwrite("active_players", &GameResultInfo::active_players);
 
     py::class_<ParallelRunner>(m, "ParallelRunner")
+        // Constructor accepting shared_ptr to ensure memory safety
+        .def(py::init([](std::shared_ptr<const std::map<CardID, CardDefinition>> card_db, int mcts_simulations, int batch_size) {
+             return std::make_unique<ParallelRunner>(card_db, mcts_simulations, batch_size);
+        }), py::arg("card_db"), py::arg("mcts_simulations"), py::arg("batch_size"))
+        // Legacy/Copy constructor support (less safe but existing code might rely on it implicitly via conversions)
         .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
         .def(py::init<int, int>())
         .def("play_games", &ParallelRunner::play_games, py::return_value_policy::move)
@@ -237,14 +234,11 @@ void bind_ai(py::module& m) {
         .def_readwrite("values", &CollectedBatch::values);
 
     py::class_<DataCollector>(m, "DataCollector")
-        // Exposed shared_ptr based constructor for Python if we ever bind shared_ptr<map>
-        // Currently keeping reference constructor as primary for Python
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def(py::init<>())
         .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic,
              py::arg("episodes"), py::arg("collect_tokens") = false, py::arg("collect_tensors") = true);
 
-    // New: SelfAttention binding
     py::class_<dm::ai::neural_net::Tensor2D>(m, "Tensor2D")
         .def(py::init<int, int>())
         .def_readwrite("data", &dm::ai::neural_net::Tensor2D::data)

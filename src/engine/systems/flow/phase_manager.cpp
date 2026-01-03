@@ -277,6 +277,7 @@ namespace dm::engine {
         }
 
         if (is_over) {
+            // std::cerr << "Game Over. Result: " << (int)result << ". Turn: " << game_state.turn_number << std::endl;
             if (!game_state.stats_recorded) {
                 game_state.on_game_finished(result);
                 game_state.stats_recorded = true;

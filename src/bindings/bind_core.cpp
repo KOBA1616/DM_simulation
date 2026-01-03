@@ -578,6 +578,19 @@ void bind_core(py::module& m) {
     py::class_<TurnStats>(m, "TurnStats")
          .def_readwrite("cards_drawn_this_turn", &TurnStats::cards_drawn_this_turn);
 
+    // Added CardStats binding
+    py::class_<dm::core::CardStats>(m, "CardStats")
+        .def(py::init<>())
+        .def_readwrite("play_count", &dm::core::CardStats::play_count)
+        .def_readwrite("win_count", &dm::core::CardStats::win_count)
+        .def_readwrite("sum_cost_discount", &dm::core::CardStats::sum_cost_discount)
+        .def_readwrite("sum_early_usage", &dm::core::CardStats::sum_early_usage)
+        .def_readwrite("sum_late_usage", &dm::core::CardStats::sum_late_usage)
+        .def_readwrite("mana_usage_count", &dm::core::CardStats::mana_usage_count)
+        .def_readwrite("shield_trigger_count", &dm::core::CardStats::shield_trigger_count)
+        .def_readwrite("hand_play_count", &dm::core::CardStats::hand_play_count)
+        .def_readwrite("sum_win_contribution", &dm::core::CardStats::sum_win_contribution);
+
     py::class_<Player>(m, "Player")
         .def_readwrite("hand", &Player::hand)
         .def_readwrite("mana_zone", &Player::mana_zone)

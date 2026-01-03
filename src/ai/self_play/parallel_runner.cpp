@@ -46,8 +46,6 @@ namespace dm::ai {
         std::lock_guard<std::mutex> lock(pool_mutex_);
         if ((int)pool_.size() >= num_threads && !pool_.empty()) return;
 
-        // If pool is too small or empty, expand it
-        // Note: we don't shrink the pool
         int current_size = pool_.size();
         for (int i = current_size; i < num_threads; ++i) {
             pool_.emplace_back([this]() {
@@ -70,7 +68,6 @@ namespace dm::ai {
                         try {
                             task();
                         } catch (...) {
-                            // Task threw exception, ignore to keep worker alive
                         }
                     }
                 }
@@ -100,10 +97,8 @@ namespace dm::ai {
         std::atomic<int> games_completed = 0;
         int total_games = initial_states.size();
 
-        // Worker Lambda
         auto worker_func = [&](int game_idx) {
             try {
-                // Use shared_ptr constructor to avoid deep copying the CardDB
                 SelfPlay sp(card_db_, mcts_simulations_, batch_size_);
 
                 BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
@@ -125,32 +120,18 @@ namespace dm::ai {
 
                 results[game_idx] = sp.play_game(*initial_states[game_idx], worker_cb, temperature, add_noise, alpha, collect_data);
             } catch (...) {
-                // Catch potential exceptions to avoid thread termination issues
             }
             games_completed++;
             inf_queue.cv.notify_one();
         };
 
-        // Initialize Thread Pool
         ensure_thread_pool(num_threads);
 
         std::atomic<int> next_game_idx = 0;
         std::atomic<bool> stop_loop = false;
 
-        // Use a barrier-like mechanism to wait for completion
-        // But since we use a shared pool, we can't just join().
-        // We will wait on games_completed instead.
-
-        // We submit 'num_threads' long-running tasks that pull game indices.
-        // This is better than submitting 'total_games' small tasks because it avoids contention on the task queue for large N.
-
-        // Since the pool threads are reused, we need to know when *this specific batch* is done.
-
         std::vector<std::future<void>> futures;
         for (int i = 0; i < num_threads; ++i) {
-            // We use std::packaged_task or similar? No, submit_task takes void().
-            // We need to wait for these tasks to finish.
-
             auto task = std::make_shared<std::packaged_task<void()>>([&]() {
                 while (!stop_loop) {
                     int idx = next_game_idx.fetch_add(1);
@@ -217,11 +198,9 @@ namespace dm::ai {
             inf_queue.cv.notify_all();
         }
 
-        // Ensure tasks stop
         stop_loop = true;
         inf_queue.cv.notify_all();
 
-        // Wait for all submitted tasks to complete
         for (auto& fut : futures) {
             fut.wait();
         }
@@ -365,7 +344,6 @@ namespace dm::ai {
         return aggregated_policy;
     }
 
-    // play_scenario_match and play_deck_matchup remain unchanged (using OpenMP)
     std::vector<int> ParallelRunner::play_scenario_match(
         const dm::core::ScenarioConfig& config,
         int num_games,
@@ -454,6 +432,17 @@ namespace dm::ai {
             setup_deck(instance.state.players[0], deck1);
             setup_deck(instance.state.players[1], deck2);
 
+            // Initialize card_owner_map logic
+            instance.state.card_owner_map.assign(instance_counter, 0); // Resize and init
+            for (const auto& card : instance.state.players[0].deck) {
+                if (card.instance_id >= 0 && card.instance_id < instance_counter)
+                    instance.state.card_owner_map[card.instance_id] = 0;
+            }
+            for (const auto& card : instance.state.players[1].deck) {
+                if (card.instance_id >= 0 && card.instance_id < instance_counter)
+                    instance.state.card_owner_map[card.instance_id] = 1;
+            }
+
             dm::engine::PhaseManager::start_game(instance.state, *card_db_);
 
             HeuristicAgent agent0(0, *card_db_);
@@ -534,6 +523,17 @@ namespace dm::ai {
             setup_deck(instance.state.players[0], deck1);
             setup_deck(instance.state.players[1], deck2);
 
+            // Initialize card_owner_map logic
+            instance.state.card_owner_map.assign(instance_counter, 0); // Resize and init
+            for (const auto& card : instance.state.players[0].deck) {
+                if (card.instance_id >= 0 && card.instance_id < instance_counter)
+                    instance.state.card_owner_map[card.instance_id] = 0;
+            }
+            for (const auto& card : instance.state.players[1].deck) {
+                if (card.instance_id >= 0 && card.instance_id < instance_counter)
+                    instance.state.card_owner_map[card.instance_id] = 1;
+            }
+
             dm::engine::PhaseManager::start_game(instance.state, *card_db_);
 
             HeuristicAgent agent0(0, *card_db_);
@@ -541,6 +541,7 @@ namespace dm::ai {
 
             int steps = 0;
             int max_steps = 1000;
+            dm::core::GameResult final_res = dm::core::GameResult::NONE;
 
             while (steps < max_steps) {
                  if(instance.state.winner != dm::core::GameResult::NONE) break;
@@ -566,12 +567,12 @@ namespace dm::ai {
             }
 
             // Trigger stats finalization (e.g. tracking mana usage)
-            dm::core::GameResult final_res = instance.state.winner;
-            if (final_res == dm::core::GameResult::NONE) {
-                 dm::engine::PhaseManager::check_game_over(instance.state, final_res);
+            dm::core::GameResult final_res_val = instance.state.winner;
+            if (final_res_val == dm::core::GameResult::NONE) {
+                 dm::engine::PhaseManager::check_game_over(instance.state, final_res_val);
             }
             // Explicitly call on_game_finished to ensure mana usage and win stats are recorded
-            instance.state.on_game_finished(final_res); // This will update mana usage stats
+            instance.state.on_game_finished(final_res_val);
 
             // Merge stats into aggregated_stats
             {
@@ -585,6 +586,10 @@ namespace dm::ai {
                     agg.sum_late_usage += stats.sum_late_usage;
                     agg.mana_usage_count += stats.mana_usage_count;
                     agg.sum_win_contribution += stats.sum_win_contribution;
+
+                    // Added new fields merging
+                    agg.shield_trigger_count += stats.shield_trigger_count;
+                    agg.hand_play_count += stats.hand_play_count;
                 }
             }
         }
