@@ -1,4 +1,3 @@
-
 import os
 import sys
 import torch
@@ -6,7 +5,7 @@ import numpy as np
 
 # Setup paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, '..'))
+project_root = os.path.abspath(os.path.join(current_dir, '../../../'))
 bin_path = os.path.join(project_root, 'bin')
 python_path = os.path.join(project_root, 'python')
 
@@ -37,8 +36,8 @@ def verify_transformer_integration():
     # 1. Initialize Game State
     print("Initializing GameState...")
     # Initialize JSON loader for card DB
-    dm_ai_module.JsonLoader.load_cards("data/cards.json")
-    card_db = dm_ai_module.JsonLoader.get_card_database()
+    # JsonLoader.load_cards returns the card_db (shared_ptr) directly now
+    card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
 
     # Create game
     game_state = dm_ai_module.GameState(1000)
