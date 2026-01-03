@@ -629,6 +629,8 @@ void bind_core(py::module& m) {
         .def(py::init<int>())
         .def("setup_test_duel", &GameState::setup_test_duel)
         .def("execute_command", &GameState::execute_command)
+        .def("add_card_to_zone", &GameState::add_card_to_zone)
+        .def("register_card_instance", &GameState::register_card_instance)
         .def("undo", &GameState::undo)
         .def_readonly("command_history", &GameState::command_history)
         .def_readwrite("turn_number", &GameState::turn_number)

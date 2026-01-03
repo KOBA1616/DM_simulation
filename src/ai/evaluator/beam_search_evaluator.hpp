@@ -14,6 +14,9 @@ namespace dm::ai {
         // and ensure lifetime safety when called from Python
         BeamSearchEvaluator(std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db, int beam_width = 7, int max_depth = 3);
 
+        // Constructor using the singleton CardRegistry (Recommended for memory efficiency)
+        BeamSearchEvaluator(int beam_width = 7, int max_depth = 3);
+
         // Single state evaluation
         std::pair<std::vector<float>, float> evaluate(const dm::core::GameState& state);
 

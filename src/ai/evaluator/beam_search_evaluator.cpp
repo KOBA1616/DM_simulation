@@ -3,6 +3,7 @@
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/mana/mana_system.hpp"
+#include "engine/systems/card/card_registry.hpp"
 #include <cmath>
 #include <algorithm>
 #include <iostream>
@@ -15,6 +16,9 @@ namespace dm::ai {
 
     BeamSearchEvaluator::BeamSearchEvaluator(std::shared_ptr<const std::map<CardID, CardDefinition>> card_db, int beam_width, int max_depth)
         : card_db_(card_db), beam_width_(beam_width), max_depth_(max_depth) {}
+
+    BeamSearchEvaluator::BeamSearchEvaluator(int beam_width, int max_depth)
+        : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()), beam_width_(beam_width), max_depth_(max_depth) {}
 
     std::pair<std::vector<float>, float> BeamSearchEvaluator::evaluate(const GameState& state) {
         std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f); // Logits (or probs)
