@@ -34,8 +34,8 @@ C++コア（`dm_ai_module`）は `GameCommand` ベースの堅牢な設計とな
 *   [Status: Done] **Parallel Runner**: OpenMPを用いた並列対戦環境の実装完了。
 *   [Status: Done] **Lethal Solver**: ヒューリスティックベースの詰み判定 (`LethalSolver`) 実装完了。
 *   [Status: Done] **MCTS & Evaluator**: AlphaZero準拠のMCTSおよび `BeamSearchEvaluator` の実装完了。
-*   [Status: Done] **Inference Core (Phase 2)**: 相手手札推論を行う `PimcGenerator`, `DeckInference` のC++実装完了。
-*   [Status: Todo] **Transformer Model (Phase 4)**: C++側 (`TensorConverter`) の準備は完了しているが、Python側のモデル実装および学習スクリプトは未実装。
+*   [Status: Done] **Inference Core (Phase 2)**: `PimcGenerator`, `DeckInference` のC++実装およびPythonバインディングが完了。
+*   [Status: WIP] **Transformer Model (Phase 4)**: `dm_toolkit` パッケージを作成済み。`train_transformer.py` は存在するが、実体となる学習ロジックとモデル定義が未実装。
 
 ### 2.3 カードエディタ & ツール (`python/gui`)
 *   [Status: Done] **Card Editor V2**: JSONツリー編集、変数リンク (Variable Linking)、Condition編集機能の実装完了。
@@ -44,7 +44,7 @@ C++コア（`dm_ai_module`）は `GameCommand` ベースの堅牢な設計とな
 
 ### 2.4 学習基盤 (`python/training`)
 *   [Status: Done] **Training Pipeline**: `collect_training_data.py` -> `train_simple.py` の基本ループ稼働中。
-*   [Status: WIP] **Evolution Ecosystem (Phase 3)**: デッキ自動進化 (`verify_deck_evolution.py` 等) のパイプライン統合が進行中。
+*   [Status: WIP] **Evolution Ecosystem (Phase 3)**: `evolution_ecosystem.py` が実装され、`verify_deck_evolution.py` による検証が可能。完全なPBTパイプラインへの拡張作業中。
 
 ## 3. ロードマップ (Roadmap)
 
@@ -52,17 +52,18 @@ C++コア（`dm_ai_module`）は `GameCommand` ベースの堅牢な設計とな
 エンジン刷新が完了したため、AIの「賢さ」と「メタゲーム適応」に焦点を戻します。
 
 1.  **Deck Evolution (Phase 3)**:
-    *   `verify_deck_evolution.py` をベースに、PBT (Population Based Training) によるデッキ最適化ループを完全自動化する。
-    *   `meta_decks.json` を動的に更新するシステムを構築する。
+    *   現在の `verify_deck_evolution.py` (検証用スタブ) と `evolution_ecosystem.py` を統合・拡張する。
+    *   PBT (Population Based Training) を用いて、対戦結果に基づき `meta_decks.json` を自律的に更新・強化するパイプラインを完成させる。
 
 2.  **Inference Integration (Phase 2)**:
-    *   C++で実装された `DeckInference` をPythonの学習ループおよび対戦エージェントに組み込み、不完全情報ゲームとしての強さを向上させる。
+    *   C++で実装・バインド済みの `DeckInference` クラスを、Python側のAIエージェント (Agent) ロジックに統合する。
+    *   不完全情報（相手の手札）を確率的に推論し、探索に反映させる仕組みを実戦投入する。
 
 ### 3.2 [Priority: Medium] Advanced AI Architecture - Phase 4
 Transformerモデルへの移行を進めます。
 
-1.  **Python Implementation**: `TensorConverter` (C++) が出力するシーケンスデータに対応したPyTorchモデル (`TransformerEvaluator`) を実装する。
-2.  **Training Update**: 学習スクリプトをTransformer対応に更新する。
+1.  **dm_toolkit Implementation**: `dm_toolkit` パッケージ内に、Transformerモデルの定義と学習ロジックを実装する。
+2.  **Training Script**: `python/training/train_transformer.py` が `dm_toolkit` の実装を正しく呼び出し、C++の `TensorConverter` が生成したデータで学習できるようにする。
 
 ### 3.3 [Priority: Low] Engine Refinement
 1.  **Strict Lethal Solver**: ヒューリスティックではない、完全探索によるLethal Solverへの昇華。
