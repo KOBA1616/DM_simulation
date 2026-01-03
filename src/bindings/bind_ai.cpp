@@ -150,7 +150,7 @@ void bind_ai(py::module& m) {
         .def("infer_probabilities", &dm::ai::inference::DeckInference::infer_probabilities)
         .def("sample_hidden_cards", &dm::ai::inference::DeckInference::sample_hidden_cards);
 
-    py::class_<dm::ai::inference::PimcGenerator>(m, "PimcGenerator")
+    py::class_<dm::ai::inference::PimcGenerator, std::shared_ptr<dm::ai::inference::PimcGenerator>>(m, "PimcGenerator")
         .def(py::init([](const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             return std::make_unique<dm::ai::inference::PimcGenerator>(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db));
         }))
@@ -180,6 +180,8 @@ void bind_ai(py::module& m) {
         // Legacy/Copy constructor support (less safe but existing code might rely on it implicitly via conversions)
         .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
         .def(py::init<int, int>())
+        .def("enable_pimc", &ParallelRunner::enable_pimc)
+        .def("load_meta_decks", &ParallelRunner::load_meta_decks)
         .def("play_games", &ParallelRunner::play_games, py::return_value_policy::move)
         
 #if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)
