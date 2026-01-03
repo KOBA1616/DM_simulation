@@ -163,6 +163,7 @@ set(SRC_CORE
     src/core/game_state_tracking.cpp
     src/core/game_state_hash.cpp
     src/core/game_state_loop.cpp
+    src/core/game_state_observer.cpp # Added missing file
     src/core/action.hpp
 )
 
