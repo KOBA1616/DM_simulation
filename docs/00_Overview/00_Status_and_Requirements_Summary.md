@@ -39,6 +39,7 @@ GUIエディタに関しては、ユーザー体験の向上と内部構造の�
 *   [Status: Done] **Hyper Energy**: ハイパー化（コスト軽減およびクリーチャータップ）の実装完了。
 *   [Status: Done] **Just Diver**: 「ジャストダイバー」などのターン経過依存の耐性ロジック実装完了。
 *   [Status: Done] **Condition System**: `ConditionDef` および `ConditionSystem` による汎用的な発動条件判定の実装完了。
+*   [Status: Done] **Redundancy Cleanup (ActionType)**: `DESTROY_CARD` は削除・統合済み。`MANA_CHARGE` はAIモデル及びEngine Dispatchとの依存関係のため、現状では維持（Active）とする方針で確定。
 
 ### 2.2 AI & ソルバー (`src/ai`)
 *   [Status: Done] **Lethal Solver (DFS)**: 基本的な詰み判定（`LethalSolver`）の実装完了。ただし現在はヒューリスティックベースであり、厳密解ではない。
@@ -56,6 +57,7 @@ GUIエディタに関しては、ユーザー体験の向上と内部構造の�
 ### 2.4 学習基盤 (`python/training`)
 *   [Status: Done] **Training Loop**: `collect_training_data.py` -> `train_simple.py` の基本ループ構築完了。
 *   [Status: Done] **Scenario Runner**: `ScenarioExecutor` を用いた定石シミュレーション機能の実装完了。
+*   [Status: Done] **Script Cleanup**: 旧ファイル（`collect_data.py`, `train.py`等）の整理・削除完了。現行のスクリプト群（`collect_training_data.py`, `self_play.py`, `automation_loop.py`）は全て最新のC++ `ParallelRunner` アーキテクチャに準拠済み。
 
 ## 3. UI/UX方針と内部構造の乖離 (UI/UX Strategy & Internal Divergence)
 
