@@ -69,9 +69,9 @@ namespace dm::ai::encoders {
         for(size_t i=0; i<opp.deck.size(); ++i) tokens.push_back(TOKEN_UNK);
 
 
-        // 4. Command History (Last N commands)
+        // 4. Command History (Increased context window to 30)
         tokens.push_back(TOKEN_SEP);
-        append_command_history(tokens, state, 10);
+        append_command_history(tokens, state, 30);
 
         // Padding
         if (max_len > 0) {
