@@ -16,7 +16,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 try:
-    from dm_toolkit.training.train_simple import train_pipeline
+    from dm_toolkit.training.training_pipeline import train_pipeline
 except ImportError as e:
     print(f"Error importing dm_toolkit: {e}")
     print(f"sys.path: {sys.path}")

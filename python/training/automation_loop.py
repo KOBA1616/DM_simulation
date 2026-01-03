@@ -18,7 +18,7 @@ except ImportError:
 
 from dm_toolkit.training.generation_manager import GenerationManager
 from dm_toolkit.training.self_play import SelfPlayRunner
-from dm_toolkit.training.train_simple import train_pipeline
+from dm_toolkit.training.training_pipeline import train_pipeline
 from typing import Any, Dict, List
 from dm_toolkit.types import CardDB
 
