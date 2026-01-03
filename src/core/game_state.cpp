@@ -79,6 +79,14 @@ namespace dm::core {
         execute_command(cmd);
     }
 
+    void GameState::register_card_instance(const CardInstance& card) {
+        if (card.instance_id < 0) return;
+        if (card.instance_id >= (int)card_owner_map.size()) {
+            card_owner_map.resize(card.instance_id + 100, 0); // Proactively resize
+        }
+        card_owner_map[card.instance_id] = card.owner;
+    }
+
     CardInstance* GameState::get_card_instance(int instance_id) {
         if(instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
         PlayerID pid = card_owner_map[instance_id];

@@ -70,6 +70,9 @@ void bind_ai(py::module& m) {
         .def("evaluate", &HeuristicEvaluator::evaluate);
 
     py::class_<BeamSearchEvaluator>(m, "BeamSearchEvaluator")
+        // Primary efficient constructor using CardRegistry
+        .def(py::init<int, int>(), py::arg("beam_width")=7, py::arg("max_depth")=3)
+        // Legacy/Copy constructor support
         .def(py::init([](const std::map<CardID, CardDefinition>& card_db, int beam_width, int max_depth) {
             // Helper to copy the map into a shared_ptr for the C++ class
             auto shared_db = std::make_shared<std::map<CardID, CardDefinition>>(card_db);
