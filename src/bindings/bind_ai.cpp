@@ -1,4 +1,6 @@
 #include "bindings/bindings.hpp"
+#include "bindings/types.hpp"
+#include <pybind11/stl_bind.h>
 #include "ai/mcts/mcts.hpp"
 #include "ai/evaluator/heuristic_evaluator.hpp"
 #include "ai/evaluator/beam_search_evaluator.hpp"
@@ -218,7 +220,7 @@ void bind_ai(py::module& m) {
         .def_readwrite("loop_proof_mode", &ScenarioConfig::loop_proof_mode);
 
     py::class_<ScenarioExecutor>(m, "ScenarioExecutor")
-        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def(py::init<std::shared_ptr<const CardDatabase>>())
         .def(py::init<>())
         .def("run_scenario", &ScenarioExecutor::run_scenario);
 
@@ -238,7 +240,9 @@ void bind_ai(py::module& m) {
         .def_readwrite("values", &CollectedBatch::values);
 
     py::class_<DataCollector>(m, "DataCollector")
-        .def(py::init<const std::map<CardID, CardDefinition>&>())
+        .def(py::init([](std::shared_ptr<const CardDatabase> db) {
+            return std::make_unique<DataCollector>(db);
+        }))
         .def(py::init<>())
         .def("collect_data_batch_heuristic", &DataCollector::collect_data_batch_heuristic,
              py::arg("episodes"), py::arg("collect_tokens") = false, py::arg("collect_tensors") = true);

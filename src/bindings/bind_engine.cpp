@@ -1,6 +1,8 @@
 #include "bindings/bindings.hpp"
 #include "bindings/bindings_helper.hpp"
+#include "bindings/types.hpp"
 #include "engine/game_instance.hpp"
+#include <pybind11/stl_bind.h>
 #include "engine/actions/intent_generator.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/game_logic_system.hpp"
@@ -320,7 +322,11 @@ void bind_engine(py::module& m) {
 
     py::class_<JsonLoader>(m, "JsonLoader")
         .def(py::init<>())
-        .def_static("load_cards", &JsonLoader::load_cards);
+        .def_static("load_cards", [](const std::string& filepath) {
+            auto map_val = JsonLoader::load_cards(filepath);
+            // Move into shared pointer to prevent copy when returning to Python
+            return std::make_shared<CardDatabase>(std::move(map_val));
+        });
 
     py::class_<DevTools>(m, "DevTools")
         .def_static("move_cards", &DevTools::move_cards)
@@ -342,8 +348,8 @@ void bind_engine(py::module& m) {
     });
 
     py::class_<GameInstance>(m, "GameInstance")
-        .def(py::init([](uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db) {
-            return std::make_unique<GameInstance>(seed, std::make_shared<const std::map<core::CardID, core::CardDefinition>>(db));
+        .def(py::init([](uint32_t seed, std::shared_ptr<const CardDatabase> db) {
+            return std::make_unique<GameInstance>(seed, db);
         }))
         .def(py::init<uint32_t>())
         .def_readonly("state", &GameInstance::state)
