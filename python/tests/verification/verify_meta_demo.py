@@ -30,7 +30,7 @@ game.add_card_to_hand(1, 100, 2)
 # add mana and play 0 cost card
 game.add_card_to_mana(0, 99, 3)
 # Generate action and play
-actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+actions = dm_ai_module.IntentGenerator.generate_legal_actions(game, card_db)
 print('actions:', [(a.type, a.card_id) for a in actions])
 if generate_legal_commands:
 	cmds = generate_legal_commands(game, card_db)
@@ -63,11 +63,11 @@ if play_cmd is not None:
 		try:
 			play_cmd.execute(game)
 		except Exception:
-			dm_ai_module.EffectResolver.resolve_action(game, play_action, card_db)
+			dm_ai_module.GameLogicSystem.resolve_action(game, play_action, card_db)
 else:
-	dm_ai_module.EffectResolver.resolve_action(game, play_action, card_db)
+	dm_ai_module.GameLogicSystem.resolve_action(game, play_action, card_db)
 # pay cost
-actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+actions = dm_ai_module.IntentGenerator.generate_legal_actions(game, card_db)
 print('after declare, actions:', [(a.type, a.card_id) for a in actions])
 pay = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
 print('pay', pay)
@@ -79,11 +79,11 @@ if pay_cmd is not None:
 		try:
 			pay_cmd.execute(game)
 		except Exception:
-			dm_ai_module.EffectResolver.resolve_action(game, pay, card_db)
+			dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
 else:
-	dm_ai_module.EffectResolver.resolve_action(game, pay, card_db)
+	dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
 # resolve
-actions = dm_ai_module.ActionGenerator.generate_legal_actions(game, card_db)
+actions = dm_ai_module.IntentGenerator.generate_legal_actions(game, card_db)
 print('before resolve, actions:', [(a.type, a.card_id) for a in actions])
 res = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
 print('resolve', res)
@@ -95,9 +95,9 @@ if res_cmd is not None:
 		try:
 			res_cmd.execute(game)
 		except Exception:
-			dm_ai_module.EffectResolver.resolve_action(game, res, card_db)
+			dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
 else:
-	dm_ai_module.EffectResolver.resolve_action(game, res, card_db)
+	dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
 print('turn_stats played_without_mana:', getattr(game.turn_stats, 'played_without_mana', None))
 # advance phases
 game.current_phase = dm_ai_module.Phase.ATTACK
