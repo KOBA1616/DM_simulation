@@ -43,7 +43,63 @@ namespace dm::ai {
     MCTS::MCTS(std::shared_ptr<const std::map<CardID, CardDefinition>> card_db, float c_puct, float dirichlet_alpha, float dirichlet_epsilon, int batch_size, float alpha)
         : card_db_(card_db), c_puct_(c_puct), dirichlet_alpha_(dirichlet_alpha), dirichlet_epsilon_(dirichlet_epsilon), batch_size_(batch_size), alpha_(alpha) {}
 
+    void MCTS::set_pimc_generator(std::shared_ptr<dm::ai::inference::PimcGenerator> pimc) {
+        pimc_generator_ = pimc;
+    }
+
     std::vector<float> MCTS::search(const GameState& root_state, int simulations, BatchEvaluatorCallback evaluator, bool add_noise, float temperature) {
+        // PIMC Check: Does the root state have hidden information (ID=0)?
+        // We check opponent's hand/shield/deck.
+        bool has_hidden_info = false;
+        if (pimc_generator_) {
+             PlayerID opp_id = 1 - root_state.active_player_id;
+             const auto& opp = root_state.players[opp_id];
+             // Simple heuristic: if any card in hand is 0, we assume hidden info mode
+             if (!opp.hand.empty() && opp.hand[0].card_id == 0) has_hidden_info = true;
+             else if (!opp.shield_zone.empty() && opp.shield_zone[0].card_id == 0) has_hidden_info = true;
+        }
+
+        if (has_hidden_info) {
+             // PIMC Root Parallelization Logic
+             std::vector<float> aggregated_policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+             int samples = std::max(1, pimc_samples_);
+             int sims_per_sample = std::max(1, simulations / samples);
+
+             // We need to accumulate policies from different roots
+             // Since MCTS::search is stateful (last_root_), we need to be careful.
+             // We'll perform multiple searches and aggregate the results.
+
+             std::vector<float> total_policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+
+             for (int i = 0; i < samples; ++i) {
+                 // 1. Determinize
+                 GameState det_state = pimc_generator_->generate_determinized_state(root_state, root_state.active_player_id, i); // Use loop index as seed offset
+
+                 // 2. Run MCTS on this determinized state
+                 // Note: This recursively calls search, but now on a state without hidden info.
+                 // However, calling search() overwrites last_root_, which is fine as we only care about the policy return.
+                 // WARNING: We must ensure the recursive call doesn't trigger PIMC loop again.
+                 // Since det_state has filled IDs, has_hidden_info will be false next time.
+
+                 // Disable PIMC generator temporarily for recursive call?
+                 // Or rely on the check. The check verifies ID=0. det_state has IDs filled.
+
+                 std::vector<float> pol = this->search(det_state, sims_per_sample, evaluator, add_noise, temperature);
+
+                 for(size_t k=0; k<pol.size(); ++k) {
+                     total_policy[k] += pol[k];
+                 }
+             }
+
+             // Normalize
+             for(auto& p : total_policy) {
+                 p /= samples;
+             }
+             return total_policy;
+        }
+
+        // Standard MCTS (Perfect Information)
+
         // 1. Clone and Fast Forward Root
         GameState root_gs = root_state.clone(); // Copy
         PhaseManager::fast_forward(root_gs, *card_db_);

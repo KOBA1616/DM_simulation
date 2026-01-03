@@ -61,6 +61,7 @@ void bind_ai(py::module& m) {
 
     py::class_<MCTS>(m, "MCTS")
         .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int, float>())
+        .def("set_pimc_generator", &MCTS::set_pimc_generator)
         .def("search", &MCTS::search)
         .def("get_last_root", &MCTS::get_last_root);
 
