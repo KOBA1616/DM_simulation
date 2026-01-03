@@ -182,7 +182,7 @@ set(SRC_ENGINE
     src/engine/systems/card/condition_system.cpp
     src/engine/systems/card/json_loader.cpp
     src/engine/game_instance.cpp
-    src/engine/cost_payment_system.cpp
+    src/engine/systems/mana/cost_payment_system.cpp
     src/engine/systems/trigger_system/trigger_manager.cpp
     src/engine/game_command/commands.cpp
     src/engine/systems/pipeline_executor.cpp
