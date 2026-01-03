@@ -135,6 +135,10 @@ namespace dm::core {
 
         void add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid);
 
+        // Create a view of the game state from the perspective of observer_id.
+        // Hidden information (opponent's hand, deck, shields) will be masked (ID=0).
+        GameState create_observer_view(PlayerID observer_id) const;
+
         // Declarations for methods implemented in other files
         void update_loop_check();
         void initialize_card_stats(const std::map<CardID, CardDefinition>& card_db, int deck_size);

@@ -2,6 +2,7 @@
 
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
+#include "ai/inference/pimc_generator.hpp"
 #include <vector>
 #include <memory>
 #include <map>
@@ -67,6 +68,8 @@ namespace dm::ai {
              int batch_size = 1,
              float alpha = 0.0f);
 
+        void set_pimc_generator(std::shared_ptr<dm::ai::inference::PimcGenerator> pimc);
+
         std::vector<float> search(const dm::core::GameState& root_state,
                                   int simulations,
                                   BatchEvaluatorCallback evaluator,
@@ -85,12 +88,16 @@ namespace dm::ai {
         void add_exploration_noise(MCTSNode* node);
 
         std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;
+        std::shared_ptr<dm::ai::inference::PimcGenerator> pimc_generator_;
         float c_puct_;
         float dirichlet_alpha_;
         float dirichlet_epsilon_;
         int batch_size_;
         float alpha_; // Risk aversion coefficient
         std::unique_ptr<MCTSNode> last_root_;
+
+        // PIMC parameters
+        int pimc_samples_ = 4;
     };
 
 }

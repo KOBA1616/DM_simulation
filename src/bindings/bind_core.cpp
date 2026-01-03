@@ -644,6 +644,7 @@ void bind_core(py::module& m) {
         .def_readwrite("status", &GameState::status)
         .def_property_readonly("command_system", [](GameState& s) { return CommandSystemWrapper(); }) // Expose helper
         .def("get_pending_effect_count", [](const GameState& s) { return s.pending_effects.size(); })
+        .def("create_observer_view", &GameState::create_observer_view)
         .def("clone", &GameState::clone)
         .def("get_card_instance", [](GameState& s, int id) {
             try {
