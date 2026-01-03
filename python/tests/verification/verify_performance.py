@@ -29,8 +29,7 @@ from dm_toolkit.ai.agent.transformer_network import NetworkV2
 from typing import Any, List, Tuple, Optional
 
 # Import SCENARIOS
-sys.path.append(os.path.dirname(__file__))
-from scenario_definitions import SCENARIOS
+from training.scenario_definitions import SCENARIOS
 
 import torch
 
@@ -262,8 +261,11 @@ if __name__ == "__main__":
 
     cards_path = os.path.join(project_root, 'data', 'cards.json')
     if not os.path.exists(cards_path):
-        print("Error: cards.json not found")
-        sys.exit(1)
+        # Try finding it relative to current working directory if project_root logic fails or is different
+        cards_path = os.path.abspath('data/cards.json')
+        if not os.path.exists(cards_path):
+            print(f"Error: cards.json not found at {cards_path}")
+            sys.exit(1)
 
     card_db = dm_ai_module.JsonLoader.load_cards(cards_path)
 
