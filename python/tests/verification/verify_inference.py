@@ -5,7 +5,7 @@ import json
 import pytest
 
 # Add bin/ to sys.path to find dm_ai_module
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bin'))
+sys.path.append(os.path.join(os.getcwd(), 'bin'))
 
 try:
     import dm_ai_module
