@@ -7,14 +7,18 @@
 #include "core/instruction.hpp"
 #include "core/action.hpp"
 #include "engine/game_command/commands.hpp"
-#include "engine/systems/command_system.hpp" // Added include for CommandSystem
+#include "engine/systems/command_system.hpp"
 #include <pybind11/stl.h>
 
 using namespace dm;
 using namespace dm::core;
 
 void bind_core(py::module& m) {
-    // ... (Previous Enums and Classes) ...
+    // ... (Existing bindings remain) ...
+    // Note: I will only show the changes or the full file if it's cleaner.
+    // Since I'm overwriting, I must include EVERYTHING.
+    // I will try to keep existing parts and just update CardStats and GameState bindings.
+
     // GameEvent bindings
     py::enum_<dm::core::EventType>(m, "EventType")
         .value("NONE", dm::core::EventType::NONE)
@@ -284,16 +288,12 @@ void bind_core(py::module& m) {
         .value("BREAK_SHIELD", CommandType::BREAK_SHIELD)
         .value("SEARCH_DECK", CommandType::SEARCH_DECK)
         .value("SHIELD_TRIGGER", CommandType::SHIELD_TRIGGER)
-
-        // New Primitives (Phase 2 Strict Enforcement)
         .value("MOVE_CARD", CommandType::MOVE_CARD)
         .value("ADD_MANA", CommandType::ADD_MANA)
         .value("SEND_TO_MANA", CommandType::SEND_TO_MANA)
         .value("SEARCH_DECK_BOTTOM", CommandType::SEARCH_DECK_BOTTOM)
         .value("ADD_SHIELD", CommandType::ADD_SHIELD)
         .value("SEND_TO_DECK_BOTTOM", CommandType::SEND_TO_DECK_BOTTOM)
-
-        // Expanded Set
         .value("ATTACK_PLAYER", CommandType::ATTACK_PLAYER)
         .value("ATTACK_CREATURE", CommandType::ATTACK_CREATURE)
         .value("BLOCK", CommandType::BLOCK)
@@ -430,9 +430,9 @@ void bind_core(py::module& m) {
     py::class_<CommandDef>(m, "CommandDef")
         .def(py::init<>())
         .def_readwrite("type", &CommandDef::type)
-        .def_readwrite("instance_id", &CommandDef::instance_id) // Exposed to Python
-        .def_readwrite("target_instance", &CommandDef::target_instance) // Exposed to Python
-        .def_readwrite("owner_id", &CommandDef::owner_id) // Exposed to Python
+        .def_readwrite("instance_id", &CommandDef::instance_id)
+        .def_readwrite("target_instance", &CommandDef::target_instance)
+        .def_readwrite("owner_id", &CommandDef::owner_id)
         .def_readwrite("target_group", &CommandDef::target_group)
         .def_readwrite("target_filter", &CommandDef::target_filter)
         .def_readwrite("amount", &CommandDef::amount)
@@ -452,7 +452,7 @@ void bind_core(py::module& m) {
         .def_readwrite("trigger", &EffectDef::trigger)
         .def_readwrite("condition", &EffectDef::condition)
         .def_readwrite("actions", &EffectDef::actions)
-        .def_readwrite("commands", &EffectDef::commands); // Added commands field
+        .def_readwrite("commands", &EffectDef::commands);
 
     py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
         .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
@@ -575,6 +575,18 @@ void bind_core(py::module& m) {
         .def_readwrite("valid_targets", &GameState::QueryContext::valid_targets)
         .def_readwrite("options", &GameState::QueryContext::options);
 
+    py::class_<CardStats>(m, "CardStats")
+        .def_readwrite("play_count", &CardStats::play_count)
+        .def_readwrite("win_count", &CardStats::win_count)
+        .def_readwrite("sum_cost_discount", &CardStats::sum_cost_discount)
+        .def_readwrite("sum_early_usage", &CardStats::sum_early_usage)
+        .def_readwrite("sum_late_usage", &CardStats::sum_late_usage)
+        .def_readwrite("mana_usage_count", &CardStats::mana_usage_count)
+        .def_readwrite("shield_trigger_count", &CardStats::shield_trigger_count)
+        .def_readwrite("played_from_hand_count", &CardStats::played_from_hand_count)
+        .def_readwrite("sum_win_contribution", &CardStats::sum_win_contribution)
+        .def("to_vector", &CardStats::to_vector);
+
     py::class_<TurnStats>(m, "TurnStats")
          .def_readwrite("cards_drawn_this_turn", &TurnStats::cards_drawn_this_turn);
 
@@ -588,21 +600,15 @@ void bind_core(py::module& m) {
         .def_readwrite("stack", &Player::stack)
         .def_readwrite("effect_buffer", &Player::effect_buffer);
 
-    // Bind CommandSystem helper struct to execute commands from Python
     struct CommandSystemWrapper {
         static void execute_command(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, py::dict py_ctx) {
             std::map<std::string, int> ctx;
-            // Convert python dict to map
             for (auto item : py_ctx) {
                 if (py::isinstance<py::str>(item.first) && py::isinstance<py::int_>(item.second)) {
                     ctx[item.first.cast<std::string>()] = item.second.cast<int>();
                 }
             }
             dm::engine::systems::CommandSystem::execute_command(state, cmd, source_instance_id, player_id, ctx);
-
-            // Update python dict back? (pybind11 dict is reference, so modifying it in place might work if we wrapped map)
-            // But we created a temporary map.
-            // If the user wants output, they should pass a dict and we update it.
             for (const auto& pair : ctx) {
                 py_ctx[py::str(pair.first)] = pair.second;
             }
@@ -663,7 +669,6 @@ void bind_core(py::module& m) {
                  c.is_tapped = tapped;
                  c.summoning_sickness = sick;
                  s.players[pid].battle_zone.push_back(c);
-                 // Update owner map
                  if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 100, 0);
                  s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
@@ -678,7 +683,6 @@ void bind_core(py::module& m) {
             try {
                  CardInstance c(cid, iid, pid);
                  s.players[pid].hand.push_back(c);
-                 // Update owner map to allow lookup
                  if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 100, 0);
                  s.card_owner_map[iid] = pid;
             } catch (const py::error_already_set& e) {
@@ -777,6 +781,11 @@ void bind_core(py::module& m) {
                 s["sum_cost_discount"] = stats.sum_cost_discount;
                 s["sum_early_usage"] = stats.sum_early_usage;
                 s["sum_win_contribution"] = stats.sum_win_contribution;
+                // Added new stats
+                s["mana_usage_count"] = stats.mana_usage_count;
+                s["shield_trigger_count"] = stats.shield_trigger_count;
+                s["played_from_hand_count"] = stats.played_from_hand_count;
+
                 result[py::int_(cid)] = s;
             }
             return result;

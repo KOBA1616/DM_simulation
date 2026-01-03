@@ -16,6 +16,9 @@ namespace dm::core {
         int sum_early_usage = 0;   // Sum of (turn played < cost)
         int sum_late_usage = 0;
         int mana_usage_count = 0;  // Count of times used as mana resource
+        int shield_trigger_count = 0; // Count of times used as shield trigger
+        int played_from_hand_count = 0; // Count of times played from hand (non-trigger)
+
         float sum_win_contribution = 0.0f; // AI Heuristic sum
 
         // Extended stats for AI analysis
@@ -36,7 +39,12 @@ namespace dm::core {
             (void)turn;
             play_count++;
             if (cost_diff > 0) sum_cost_discount += cost_diff;
-            if (is_trigger) sum_trigger_rate += 1.0f;
+            if (is_trigger) {
+                sum_trigger_rate += 1.0f;
+                shield_trigger_count++;
+            } else {
+                played_from_hand_count++;
+            }
             // Simplified logic for now
         }
 
