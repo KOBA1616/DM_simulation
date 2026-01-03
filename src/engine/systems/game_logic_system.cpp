@@ -654,22 +654,27 @@ namespace dm::engine::systems {
          int instance_id = exec.resolve_int(inst.args.value("source", 0));
          int target_id = exec.resolve_int(inst.args.value("target", -1));
 
-         // 1. Update Attack State
-         state.current_attack.source_instance_id = instance_id;
-         state.current_attack.target_instance_id = target_id;
-         state.current_attack.blocked = false;
-         state.current_attack.blocking_creature_id = -1;
+         // 1. Update Attack State using Commands
+         auto cmd_src = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_SOURCE, instance_id);
+         state.execute_command(std::move(cmd_src));
+
+         auto cmd_tgt = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_TARGET, target_id);
+         state.execute_command(std::move(cmd_tgt));
+
+         // Reset blocking state implicitly by clearing blocker (if any from previous? should be new attack)
+         auto cmd_blk = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_BLOCKING_CREATURE, -1);
+         state.execute_command(std::move(cmd_blk));
 
          // Infer target player if target_id is -1 (Player Attack)
-         // Assuming default target is opponent
+         int target_player = -1;
          if (target_id == -1) {
-             state.current_attack.target_player_id = 1 - state.active_player_id;
-         } else {
-             state.current_attack.target_player_id = -1; // Creature attack
+             target_player = 1 - state.active_player_id;
          }
+         auto cmd_plyr = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_PLAYER, target_player);
+         state.execute_command(std::move(cmd_plyr));
 
-         auto cmd = std::make_unique<MutateCommand>(instance_id, MutateCommand::MutationType::TAP);
-         state.execute_command(std::move(cmd));
+         auto cmd_tap = std::make_unique<MutateCommand>(instance_id, MutateCommand::MutationType::TAP);
+         state.execute_command(std::move(cmd_tap));
 
          auto phase_cmd = std::make_unique<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(Phase::BLOCK));
          state.execute_command(std::move(phase_cmd));
@@ -679,8 +684,43 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_block(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                        const std::map<core::CardID, core::CardDefinition>& card_db) {
-        // ...
-        (void)exec; (void)state; (void)inst; (void)card_db;
+        int blocker_id = exec.resolve_int(inst.args.value("blocker", -1));
+        if (blocker_id == -1) return;
+
+        // 1. Tap Blocker
+        auto cmd_tap = std::make_unique<MutateCommand>(blocker_id, MutateCommand::MutationType::TAP);
+        state.execute_command(std::move(cmd_tap));
+
+        // 2. Update Attack State
+        auto cmd_blk = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_BLOCKING_CREATURE, blocker_id);
+        state.execute_command(std::move(cmd_blk));
+
+        // 3. Trigger ON_BLOCK
+        // Need access to Card Definition
+        const CardInstance* blocker = state.get_card_instance(blocker_id);
+        if (blocker && card_db.count(blocker->card_id)) {
+             // Logic to queue triggers (if any)
+             // Using EffectSystem directly
+             EffectSystem::instance().resolve_trigger(state, TriggerType::ON_BLOCK, blocker_id, card_db);
+        }
+
+        // 4. Queue RESOLVE_BATTLE?
+        // Attack/Block sequence usually:
+        // Attack -> Block Phase -> (Player actions) -> Block Declared -> Battle
+        // If Block is declared, we move to Battle.
+        // Or if Block is optional step?
+        // Usually after Block, we proceed to battle immediately unless there are triggers.
+        // We can queue RESOLVE_BATTLE pending effect.
+
+        PendingEffect pe(EffectType::RESOLVE_BATTLE, state.current_attack.source_instance_id, state.active_player_id);
+        // Target is blocker
+        pe.target_instance_ids = {blocker_id};
+
+        auto cmd_pe = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PENDING_EFFECT);
+        cmd_pe->pending_effect = pe;
+        state.execute_command(std::move(cmd_pe));
+
+        (void)exec;
     }
 
     void GameLogicSystem::handle_resolve_battle(PipelineExecutor& exec, GameState& state, const Instruction& inst,
