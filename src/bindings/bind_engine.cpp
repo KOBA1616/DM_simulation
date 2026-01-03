@@ -342,7 +342,9 @@ void bind_engine(py::module& m) {
     });
 
     py::class_<GameInstance>(m, "GameInstance")
-        .def(py::init<uint32_t, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>>>())
+        .def(py::init([](uint32_t seed, const std::map<core::CardID, core::CardDefinition>& db) {
+            return std::make_unique<GameInstance>(seed, std::make_shared<const std::map<core::CardID, core::CardDefinition>>(db));
+        }))
         .def(py::init<uint32_t>())
         .def_readonly("state", &GameInstance::state)
         .def("start_game", &GameInstance::start_game)

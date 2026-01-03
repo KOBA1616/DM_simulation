@@ -40,8 +40,14 @@ class PerformanceVerifier:
 
         # Determine input size dynamically for ResNet
         dummy_instance = dm_ai_module.GameInstance(42, self.card_db)
-        dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_instance.state, 0, self.card_db)
-        self.input_size = len(dummy_vec)
+        # Note: TensorConverter might require specific bindings, ensuring robust access
+        if hasattr(dm_ai_module.TensorConverter, "convert_to_tensor"):
+            dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_instance.state, 0, self.card_db)
+            self.input_size = len(dummy_vec)
+        else:
+            self.input_size = 205 # Fallback if direct access fails
+
+        # Initialize Network based on type
         self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
 
         # Initialize Network based on type

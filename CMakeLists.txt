@@ -158,11 +158,12 @@ set(SRC_CORE
     src/core/constants.hpp
     src/core/card_def.hpp
     src/core/game_state.hpp
-    src/core/game_state.cpp # Added
+    src/core/game_state.cpp
     src/core/game_state_stats.cpp
     src/core/game_state_tracking.cpp
     src/core/game_state_hash.cpp
     src/core/game_state_loop.cpp
+    src/core/game_state_observer.cpp # Added
     src/core/action.hpp
 )
 
