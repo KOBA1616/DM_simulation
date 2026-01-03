@@ -320,7 +320,10 @@ void bind_engine(py::module& m) {
 
     py::class_<JsonLoader>(m, "JsonLoader")
         .def(py::init<>())
-        .def_static("load_cards", &JsonLoader::load_cards);
+        .def_static("load_cards", &JsonLoader::load_cards)
+        .def_static("get_card_database", []() {
+             return CardRegistry::get_all_definitions();
+        });
 
     py::class_<DevTools>(m, "DevTools")
         .def_static("move_cards", &DevTools::move_cards)
