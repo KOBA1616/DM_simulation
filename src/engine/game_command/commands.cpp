@@ -503,6 +503,14 @@ namespace dm::engine::game_command {
                 previous_value = state.turn_stats.played_without_mana;
                 state.turn_stats.played_without_mana = new_value;
                 break;
+            case FlowType::SET_BLOCKING_CREATURE:
+                previous_value = state.current_attack.blocking_creature_id;
+                previous_bool_value = state.current_attack.blocked;
+                state.current_attack.blocking_creature_id = new_value;
+
+                if (new_value != -1) state.current_attack.blocked = true;
+                else state.current_attack.blocked = false;
+                break;
             default: break;
         }
     }
@@ -529,6 +537,10 @@ namespace dm::engine::game_command {
                 break;
             case FlowType::SET_PLAYED_WITHOUT_MANA:
                 state.turn_stats.played_without_mana = previous_value;
+                break;
+            case FlowType::SET_BLOCKING_CREATURE:
+                state.current_attack.blocking_creature_id = previous_value;
+                state.current_attack.blocked = previous_bool_value;
                 break;
             default: break;
         }
