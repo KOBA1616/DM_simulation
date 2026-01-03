@@ -426,10 +426,6 @@ namespace dm::engine::systems {
              if (!found) continue;
 
              int dest_idx = to_bottom ? 0 : -1;
-             // Debug trace: report planned transition
-             try {
-                 std::cout << "[PIPELINE TRACE] MOVE id=" << id << " from=" << (int)from_zone << " to=" << (int)to_zone << " owner=" << (int)owner << " dest_idx=" << dest_idx << std::endl;
-             } catch (...) {}
              auto cmd = std::make_unique<TransitionCommand>(id, from_zone, to_zone, owner, dest_idx);
              execute_command(std::move(cmd), state);
         }

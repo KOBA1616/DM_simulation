@@ -16,10 +16,14 @@ namespace dm::core {
         int sum_early_usage = 0;   // Sum of (turn played < cost)
         int sum_late_usage = 0;
         int mana_usage_count = 0;  // Count of times used as mana resource
+
+        int shield_trigger_count = 0; // Played via Shield Trigger
+        int hand_play_count = 0;      // Played from Hand normally
+
         float sum_win_contribution = 0.0f; // AI Heuristic sum
 
         // Extended stats for AI analysis
-        float sum_trigger_rate = 0.0f;
+        float sum_trigger_rate = 0.0f; // Deprecated or auxiliary
         float sum_hand_adv = 0.0f;
         float sum_board_adv = 0.0f;
         float sum_mana_adv = 0.0f;
@@ -32,18 +36,25 @@ namespace dm::core {
         float sum_finish_blow = 0.0f;
         float sum_deck_consumption = 0.0f;
 
-        void record_usage(int turn, bool is_trigger, int cost_diff) {
+        void record_usage(int turn, bool is_trigger, int cost_diff, bool from_hand) {
             (void)turn;
             play_count++;
             if (cost_diff > 0) sum_cost_discount += cost_diff;
-            if (is_trigger) sum_trigger_rate += 1.0f;
-            // Simplified logic for now
+            if (is_trigger) {
+                sum_trigger_rate += 1.0f;
+                shield_trigger_count++;
+            }
+            if (from_hand && !is_trigger) {
+                hand_play_count++;
+            }
         }
 
         std::vector<float> to_vector() const {
              return {
                  (float)play_count, (float)win_count, (float)sum_cost_discount,
-                 (float)sum_early_usage, (float)sum_late_usage, (float)mana_usage_count, sum_win_contribution,
+                 (float)sum_early_usage, (float)sum_late_usage, (float)mana_usage_count,
+                 (float)shield_trigger_count, (float)hand_play_count,
+                 sum_win_contribution,
                  sum_trigger_rate, sum_hand_adv, sum_board_adv, sum_mana_adv,
                  sum_shield_dmg, sum_hand_var, sum_board_var, sum_survival_rate,
                  sum_effect_death, sum_comeback_win, sum_finish_blow, sum_deck_consumption
@@ -58,7 +69,6 @@ namespace dm::core {
         int creatures_played_this_turn = 0;
         int spells_cast_this_turn = 0;
         int current_chain_depth = 0;
-        // ...
     };
 
 }
