@@ -124,7 +124,10 @@ namespace dm::engine {
                 pending.effect_def = effect;
                 pending.optional = true;
                 pending.chain_depth = game_state.turn_stats.current_chain_depth + 1;
-                game_state.pending_effects.push_back(pending);
+
+                auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
+                cmd->pending_effect = pending;
+                game_state.execute_command(std::move(cmd));
             }
         }
     }

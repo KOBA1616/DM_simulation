@@ -134,6 +134,7 @@ namespace dm::core {
         size_t calculate_hash() const;
 
         void add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid);
+        void undo();
 
         // Create a view of the game state from the perspective of observer_id.
         // Hidden information (opponent's hand, deck, shields) will be masked (ID=0).

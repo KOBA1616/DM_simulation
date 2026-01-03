@@ -154,4 +154,11 @@ namespace dm::core {
         command_history.push_back(std::move(cmd));
     }
 
+    void GameState::undo() {
+        if (command_history.empty()) return;
+        auto& cmd = command_history.back();
+        cmd->invert(*this);
+        command_history.pop_back();
+    }
+
 }

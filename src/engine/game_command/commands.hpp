@@ -135,6 +135,7 @@ namespace dm::engine::game_command {
             SET_ATTACK_SOURCE,
             SET_ATTACK_TARGET,
             SET_ATTACK_PLAYER,
+            SET_BLOCKING_CREATURE, // New: Set blocking creature
             SET_ACTIVE_PLAYER,
             CLEANUP_STEP, // Remove expired modifiers/passives
             RESET_TURN_STATS, // Reset turn statistics
@@ -146,12 +147,13 @@ namespace dm::engine::game_command {
 
         // Undo context
         int previous_value;
+        bool previous_bool_value; // Added for flags (e.g. blocked)
         core::TurnStats previous_turn_stats;
         std::vector<core::CostModifier> removed_modifiers;
         std::vector<core::PassiveEffect> removed_passives;
 
         FlowCommand(FlowType type, int val)
-            : flow_type(type), new_value(val), previous_value(0) {}
+            : flow_type(type), new_value(val), previous_value(0), previous_bool_value(false) {}
 
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
