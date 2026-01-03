@@ -2,7 +2,7 @@
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
-#include "engine/cost_payment_system.hpp"
+#include "engine/systems/mana/cost_payment_system.hpp"
 
 namespace dm::engine {
 
