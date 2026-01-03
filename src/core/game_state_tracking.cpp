@@ -45,9 +45,21 @@ namespace dm::core {
                     }
                 }
             }
-            // Optional: Track loss stats or differential?
-            // Currently sum_win_contribution accumulates 1.0 for wins, 0.0 for losses (implicit by not adding).
-            // So avg = sum_win_contribution / play_count will be the win rate.
+        }
+
+        // Collect Resource Usage Stats
+        // Scan both players' mana zones
+        for (const auto& player : players) {
+            for (const auto& card : player.mana_zone) {
+                auto it = global_card_stats.find(card.card_id);
+                if (it != global_card_stats.end()) {
+                     it->second.mana_usage_count++;
+                } else {
+                     CardStats cs;
+                     cs.mana_usage_count = 1;
+                     global_card_stats[card.card_id] = cs;
+                }
+            }
         }
     }
 }

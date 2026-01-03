@@ -521,6 +521,9 @@ namespace dm::ai {
 
             dm::engine::GameInstance instance(seed, card_db_);
 
+            // Ensure stats are initialized for the deck size
+            instance.initialize_card_stats(std::max((int)deck1.size(), (int)deck2.size()));
+
             int instance_counter = 0;
             auto setup_deck = [&](dm::core::Player& p, const std::vector<dm::core::CardID>& deck_list) {
                 p.deck.clear();
@@ -584,6 +587,8 @@ namespace dm::ai {
                     agg.sum_early_usage += stats.sum_early_usage;
                     agg.sum_late_usage += stats.sum_late_usage;
                     agg.mana_usage_count += stats.mana_usage_count;
+                    agg.shield_trigger_count += stats.shield_trigger_count;
+                    agg.played_from_hand_count += stats.played_from_hand_count;
                     agg.sum_win_contribution += stats.sum_win_contribution;
                 }
             }
