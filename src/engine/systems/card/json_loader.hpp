@@ -1,21 +1,39 @@
 #pragma once
-#include "core/card_def.hpp"
+
 #include <string>
-#include <map>
 #include <vector>
+#include <map>
+#include <iostream>
+#include <fstream>
+#include "../../../core/card_def.hpp"
+#include "../../../core/card_json_types.hpp"
+#include <nlohmann/json.hpp>
 
-namespace dm::engine {
-    class JsonLoader {
-    public:
-        // Reads a JSON file containing an array of card definitions
-        // and returns a map compatible with CsvLoader (CardID -> CardDefinition)
-        // Note: This bridges the new JSON "CardData" to the old "CardDefinition" struct
-        // used by the engine, or we might need to update the engine to use CardData.
-        // For now, let's assume we populate CardRegistry (CardData) AND return CardDefinition map.
-        static std::map<dm::core::CardID, dm::core::CardDefinition> load_cards(const std::string& filepath);
+namespace dm {
+namespace engine {
 
-        // Helper methods for internal use or testing
-        static dm::core::Civilization parse_civilization(const std::string& civ_str);
-        static dm::core::CardType parse_card_type(const std::string& type_str);
-    };
-}
+/**
+ * @brief Loads card definitions from a JSON file.
+ */
+class JsonLoader {
+public:
+    // Loads cards from a JSON file (array of CardData objects)
+    // and returns a map (CardID -> CardDefinition)
+    static std::map<core::CardID, core::CardDefinition> load_cards(const std::string& filepath);
+
+    // Helper to parse Civilization from string
+    static core::Civilization parse_civilization(const std::string& civ_str);
+
+    // Helper to parse CardType from string
+    static core::CardType parse_card_type(const std::string& type_str);
+
+    // Parses a single CardData object into a CardDefinition (implementation should match convert_to_def)
+    // Note: implementation currently relies on static helper convert_to_def in cpp,
+    // if this is needed publicly it should be implemented.
+    // For now I'll keep the declaration if it was there, but it seems missing in cpp.
+    // However, to fix the build errors for parse_civilization/type, I add those above.
+    static core::CardDefinition parse_card_def(const core::CardData& card_data);
+};
+
+} // namespace engine
+} // namespace dm
