@@ -503,17 +503,13 @@ void bind_core(py::module& m) {
         .def_readwrite("civilizations", &CardDefinition::civilizations);
 
     py::class_<CardData>(m, "CardData")
-        .def(py::init([](CardID id, std::string name, int cost, std::string civilization, int power, std::string type, std::vector<std::string> races, std::vector<EffectDef> effects) {
+        .def(py::init([](CardID id, std::string name, int cost, Civilization civilization, int power, CardType type, std::vector<std::string> races, std::vector<EffectDef> effects) {
             try {
                 CardData c;
                 c.id = id;
                 c.name = name;
                 c.cost = cost;
-                if (civilization == "FIRE") c.civilizations.push_back(Civilization::FIRE);
-                else if (civilization == "WATER") c.civilizations.push_back(Civilization::WATER);
-                else if (civilization == "NATURE") c.civilizations.push_back(Civilization::NATURE);
-                else if (civilization == "LIGHT") c.civilizations.push_back(Civilization::LIGHT);
-                else if (civilization == "DARKNESS") c.civilizations.push_back(Civilization::DARKNESS);
+                c.civilizations.push_back(civilization);
                 c.power = power;
                 c.type = type;
                 c.races = races;

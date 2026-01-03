@@ -63,6 +63,17 @@ namespace dm::core {
         {Civilization::ZERO, "ZERO"}
     })
 
+    NLOHMANN_JSON_SERIALIZE_ENUM(CardType, {
+        {CardType::CREATURE, "CREATURE"},
+        {CardType::SPELL, "SPELL"},
+        {CardType::EVOLUTION_CREATURE, "EVOLUTION_CREATURE"},
+        {CardType::CROSS_GEAR, "CROSS_GEAR"},
+        {CardType::CASTLE, "CASTLE"},
+        {CardType::PSYCHIC_CREATURE, "PSYCHIC_CREATURE"},
+        {CardType::GR_CREATURE, "GR_CREATURE"},
+        {CardType::TAMASEED, "TAMASEED"}
+    })
+
     enum class EffectPrimitive {
         DRAW_CARD,
         ADD_MANA,
@@ -307,7 +318,7 @@ namespace dm::core {
         int cost;
         std::vector<Civilization> civilizations;
         int power;
-        std::string type;
+        CardType type; // Changed from std::string to CardType
         std::vector<std::string> races;
         std::vector<EffectDef> effects;
         std::vector<ModifierDef> static_abilities; // Added
@@ -567,7 +578,7 @@ namespace dm::core {
         c.cost = j.value("cost", 0);
         if (j.contains("civilizations")) j.at("civilizations").get_to(c.civilizations); else c.civilizations = {};
         c.power = j.value("power", 0);
-        c.type = j.value("type", std::string("CREATURE"));
+        c.type = j.value("type", CardType::CREATURE); // Default to CREATURE
         if (j.contains("races")) j.at("races").get_to(c.races); else c.races = {};
 
         // Support both "triggers" and "effects"
