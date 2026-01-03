@@ -42,6 +42,28 @@ namespace dm::ai {
         }
     }
 
+    void ParallelRunner::enable_pimc(bool enabled) {
+        pimc_enabled_ = enabled;
+        if (pimc_enabled_) {
+            if (!pimc_generator_) {
+                pimc_generator_ = std::make_shared<dm::ai::inference::PimcGenerator>(card_db_);
+            }
+            if (deck_inference_) {
+                pimc_generator_->set_inference_model(deck_inference_);
+            }
+        }
+    }
+
+    void ParallelRunner::load_meta_decks(const std::string& json_path) {
+        if (!deck_inference_) {
+            deck_inference_ = std::make_shared<dm::ai::inference::DeckInference>();
+        }
+        deck_inference_->load_decks(json_path);
+        if (pimc_generator_) {
+            pimc_generator_->set_inference_model(deck_inference_);
+        }
+    }
+
     void ParallelRunner::ensure_thread_pool(int num_threads) {
         std::lock_guard<std::mutex> lock(pool_mutex_);
         if ((int)pool_.size() >= num_threads && !pool_.empty()) return;
@@ -97,9 +119,21 @@ namespace dm::ai {
         std::atomic<int> games_completed = 0;
         int total_games = initial_states.size();
 
+        // Prepare PIMC Generator (shared)
+        if (pimc_enabled_ && !pimc_generator_) {
+            pimc_generator_ = std::make_shared<dm::ai::inference::PimcGenerator>(card_db_);
+            if (deck_inference_) {
+                pimc_generator_->set_inference_model(deck_inference_);
+            }
+        }
+
         auto worker_func = [&](int game_idx) {
             try {
                 SelfPlay sp(card_db_, mcts_simulations_, batch_size_);
+
+                if (pimc_enabled_) {
+                    sp.set_pimc_generator(pimc_generator_);
+                }
 
                 BatchEvaluatorCallback worker_cb = [&](const std::vector<std::shared_ptr<dm::core::GameState>>& states) {
                     auto req = std::make_shared<InferenceRequest>();

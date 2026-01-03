@@ -4,6 +4,8 @@
 #include "core/card_def.hpp"
 #include "core/scenario_config.hpp"
 #include "self_play.hpp"
+#include "ai/inference/pimc_generator.hpp"
+#include "ai/inference/deck_inference.hpp"
 #include <vector>
 #include <map>
 #include <thread>
@@ -41,6 +43,10 @@ namespace dm::ai {
         ParallelRunner(int mcts_simulations, int batch_size); // Default
 
         ~ParallelRunner();
+
+        // Configure PIMC
+        void enable_pimc(bool enabled);
+        void load_meta_decks(const std::string& json_path);
 
         // Run self-play games in parallel using MCTS and Python evaluator
         std::vector<GameResultInfo> play_games(
@@ -93,6 +99,11 @@ namespace dm::ai {
         std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;
         int mcts_simulations_;
         int batch_size_;
+
+        // PIMC Configuration
+        bool pimc_enabled_ = false;
+        std::shared_ptr<dm::ai::inference::DeckInference> deck_inference_;
+        std::shared_ptr<dm::ai::inference::PimcGenerator> pimc_generator_;
 
         // Thread Pool
         std::vector<std::thread> pool_;

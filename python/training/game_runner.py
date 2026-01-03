@@ -83,12 +83,19 @@ class GameRunner:
         threads: int = 4,
         temperature: float = 1.0,
         add_noise: bool = True,
-        collect_data: bool = False
+        collect_data: bool = False,
+        pimc: bool = False,
+        meta_decks_path: Optional[str] = None
     ) -> List[Any]: # Returns List[GameResultInfo]
         """
         Runs games using ParallelRunner.
         """
         runner = dm_ai_module.ParallelRunner(self.card_db, sims, batch_size)
+
+        if pimc:
+            runner.enable_pimc(True)
+            if meta_decks_path:
+                runner.load_meta_decks(meta_decks_path)
 
         # Set global callback if using the flat batch one
         if hasattr(dm_ai_module, 'set_flat_batch_callback'):

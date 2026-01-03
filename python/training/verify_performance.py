@@ -23,7 +23,7 @@ except ImportError:
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 from dm_toolkit.ai.agent.transformer_network import NetworkV2
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Optional
 
 # Import SCENARIOS
 sys.path.append(os.path.dirname(__file__))
@@ -32,7 +32,7 @@ from scenario_definitions import SCENARIOS
 import torch
 
 class PerformanceVerifier:
-    def __init__(self, card_db: Any, model_path: str | None = None, model_type: str = "resnet") -> None:
+    def __init__(self, card_db: Any, model_path: Optional[str] = None, model_type: str = "resnet") -> None:
         self.card_db: Any = card_db
         self.model_type: str = model_type.lower()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -153,9 +153,10 @@ class PerformanceVerifier:
                  print("Error: No batch callback registration function found in dm_ai_module.")
                  sys.exit(1)
 
-    def verify(self, scenario_name: str, episodes: int, mcts_sims: int = 800, batch_size: int = 32, num_threads: int = 4) -> float:
+    def verify(self, scenario_name: str, episodes: int, mcts_sims: int = 800, batch_size: int = 32, num_threads: int = 4,
+               pimc: bool = False, meta_decks_path: Optional[str] = None) -> float:
         print(f"Verifying performance for '{self.model_name}' on scenario '{scenario_name}'...")
-        print(f"Settings: sims={mcts_sims}, batch_size={batch_size}, threads={num_threads}, mode={self.model_type}")
+        print(f"Settings: sims={mcts_sims}, batch_size={batch_size}, threads={num_threads}, mode={self.model_type}, pimc={pimc}")
 
         if scenario_name not in SCENARIOS:
             raise ValueError(f"Unknown scenario: {scenario_name}")
@@ -184,6 +185,13 @@ class PerformanceVerifier:
 
         # Setup ParallelRunner
         runner = dm_ai_module.ParallelRunner(self.card_db, mcts_sims, batch_size)
+
+        if pimc:
+            runner.enable_pimc(True)
+            if meta_decks_path:
+                 runner.load_meta_decks(meta_decks_path)
+                 print(f"Loaded meta decks from {meta_decks_path}")
+
         neural_evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
 
         # IMPORTANT: Set the model type on the C++ evaluator
@@ -243,6 +251,8 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--sims", type=int, default=800)
     parser.add_argument("--model_type", type=str, default="resnet", choices=["resnet", "transformer"], help="Model architecture type")
+    parser.add_argument("--pimc", action="store_true", help="Enable PIMC (Perfect Information Monte Carlo)")
+    parser.add_argument("--meta_decks", type=str, default="data/meta_decks.json", help="Path to meta decks JSON for PIMC")
 
     args = parser.parse_args()
 
@@ -255,7 +265,8 @@ if __name__ == "__main__":
 
     verifier = PerformanceVerifier(card_db, args.model, model_type=args.model_type)
     try:
-        verifier.verify(args.scenario, args.episodes, mcts_sims=args.sims, batch_size=args.batch_size, num_threads=args.threads)
+        verifier.verify(args.scenario, args.episodes, mcts_sims=args.sims, batch_size=args.batch_size, num_threads=args.threads,
+                        pimc=args.pimc, meta_decks_path=args.meta_decks)
     finally:
         # Cleanup to avoid Segfaults
         if hasattr(dm_ai_module, "clear_flat_batch_callback"):
