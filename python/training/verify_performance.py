@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import argparse
+import json
 import numpy as np
 
 # Ensure bin is in path
@@ -14,6 +15,8 @@ if bin_path not in sys.path:
     sys.path.append(bin_path)
 if python_path not in sys.path:
     sys.path.append(python_path)
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 try:
     import dm_ai_module
@@ -244,6 +247,7 @@ class PerformanceVerifier:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--result_file", type=str, help="Path to save JSON result")
     parser.add_argument("--scenario", type=str, default="lethal_puzzle_easy")
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--model", type=str, default=None)
@@ -265,8 +269,13 @@ if __name__ == "__main__":
 
     verifier = PerformanceVerifier(card_db, args.model, model_type=args.model_type)
     try:
-        verifier.verify(args.scenario, args.episodes, mcts_sims=args.sims, batch_size=args.batch_size, num_threads=args.threads,
+        win_rate = verifier.verify(args.scenario, args.episodes, mcts_sims=args.sims, batch_size=args.batch_size, num_threads=args.threads,
                         pimc=args.pimc, meta_decks_path=args.meta_decks)
+
+        if args.result_file:
+            with open(args.result_file, 'w') as f:
+                json.dump({"win_rate": win_rate}, f)
+            print(f"Result saved to {args.result_file}")
     finally:
         # Cleanup to avoid Segfaults
         if hasattr(dm_ai_module, "clear_flat_batch_callback"):
