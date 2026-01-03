@@ -57,13 +57,8 @@ namespace dm::engine {
                     dm::core::CardData card = item.get<dm::core::CardData>();
                     // Backward compatibility: allow single "civilization" field
                     if (card.civilizations.empty() && item.contains("civilization")) {
-                        std::string civ_str = item.at("civilization").get<std::string>();
-                        if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
-                        else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
-                        else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);
-                        else if (civ_str == "FIRE") card.civilizations.push_back(Civilization::FIRE);
-                        else if (civ_str == "NATURE") card.civilizations.push_back(Civilization::NATURE);
-                        else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
+                        // Use automatic enum conversion via JSON library
+                        card.civilizations.push_back(item.at("civilization").get<Civilization>());
                     }
                     cards[card.id] = card;
                     (*new_defs)[static_cast<CardID>(card.id)] = convert_to_def(card);
@@ -72,13 +67,8 @@ namespace dm::engine {
                 // Single object
                 dm::core::CardData card = j.get<dm::core::CardData>();
                 if (card.civilizations.empty() && j.contains("civilization")) {
-                    std::string civ_str = j.at("civilization").get<std::string>();
-                    if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
-                    else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
-                    else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);
-                    else if (civ_str == "FIRE") card.civilizations.push_back(Civilization::FIRE);
-                    else if (civ_str == "NATURE") card.civilizations.push_back(Civilization::NATURE);
-                    else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
+                    // Use automatic enum conversion via JSON library
+                    card.civilizations.push_back(j.at("civilization").get<Civilization>());
                 }
                 cards[card.id] = card;
                 (*new_defs)[static_cast<CardID>(card.id)] = convert_to_def(card);
@@ -132,14 +122,7 @@ namespace dm::engine {
         def.civilizations = data.civilizations;
 
         // Type mapping
-        if (data.type == "CREATURE") def.type = CardType::CREATURE;
-        else if (data.type == "SPELL") def.type = CardType::SPELL;
-        else if (data.type == "EVOLUTION_CREATURE") def.type = CardType::EVOLUTION_CREATURE;
-        else if (data.type == "TAMASEED") def.type = CardType::TAMASEED;
-        else if (data.type == "CROSS_GEAR") def.type = CardType::CROSS_GEAR;
-        else if (data.type == "CASTLE") def.type = CardType::CASTLE;
-        else if (data.type == "PSYCHIC_CREATURE") def.type = CardType::PSYCHIC_CREATURE;
-        else if (data.type == "GR_CREATURE") def.type = CardType::GR_CREATURE;
+        def.type = data.type; // Use Enum directly
 
         def.cost = data.cost;
         def.power = data.power;

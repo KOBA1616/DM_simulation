@@ -47,6 +47,13 @@ namespace dm::core {
         bool friend_burst : 1;    // Friend Burst (New Requirement)
         bool ex_life : 1;         // Ex-Life
         bool mega_last_burst : 1; // Mega Last Burst
+
+        CardKeywords() : g_zero(0), revolution_change(0), mach_fighter(0), g_strike(0), speed_attacker(0),
+            blocker(0), slayer(0), double_breaker(0), triple_breaker(0), world_breaker(0), power_attacker(0),
+            shield_trigger(0), evolution(0), neo(0), g_neo(0), cip(0), at_attack(0), at_block(0),
+            at_start_of_turn(0), at_end_of_turn(0), destruction(0), before_break_shield(0), just_diver(0),
+            hyper_energy(0), meta_counter_play(0), shield_burn(0), untap_in(0), unblockable(0), friend_burst(0),
+            ex_life(0), mega_last_burst(0) {}
     };
 
     // Mode Selection: ModalEffectGroup stores selectable modes [Q71]
