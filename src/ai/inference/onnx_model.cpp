@@ -106,8 +106,10 @@ namespace dm::ai::inference {
                     inp.shape.size()
                 ));
             } else if (inp.type == TensorType::BOOL) {
-                // Assuming bool is 1 byte and compatible with C++ bool
-                // ONNX Runtime usually treats BOOL as bool or uint8_t
+                // Ensure bool size safety
+                static_assert(sizeof(bool) == 1, "bool must be 1 byte for direct cast from uint8_t");
+
+                // Assuming inp.data points to uint8_t array
                 input_tensors.push_back(Ort::Value::CreateTensor<bool>(
                     memory_info,
                     const_cast<bool*>(static_cast<const bool*>(inp.data)),
@@ -133,6 +135,11 @@ namespace dm::ai::inference {
         // Extract outputs
         // Assuming Output 0 is Policy and Output 1 is Value based on AlphaZero standard
         // This part is specific to the RL usecase, but the input part is now generic.
+
+        // Safety check
+        if (output_tensors.size() < 2) {
+             throw std::runtime_error("Model did not return enough outputs (expected policy and value)");
+        }
 
         float* policy_arr = output_tensors[0].GetTensorMutableData<float>();
         size_t policy_count = output_tensors[0].GetTensorTypeAndShapeInfo().GetElementCount();

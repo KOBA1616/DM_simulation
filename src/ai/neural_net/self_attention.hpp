@@ -23,12 +23,15 @@ namespace dm::ai::neural_net {
         const float& at(int r, int c) const { return data[r * cols + c]; }
     };
 
+    /**
+     * Implements Linear Attention (O(N) complexity) to match Python implementation.
+     * Reference: "Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention"
+     */
     class SelfAttention {
     public:
         SelfAttention(int embed_dim, int num_heads);
 
-        // Forward pass: Input [Batch, SeqLen, EmbedDim] -> Output [Batch, SeqLen, EmbedDim]
-        // Currently simplifying to single sample processing: [SeqLen, EmbedDim] -> [SeqLen, EmbedDim]
+        // Forward pass: Input [SeqLen, EmbedDim] -> Output [SeqLen, EmbedDim]
         Tensor2D forward(const Tensor2D& input, const std::vector<bool>& mask);
 
         // Parameter initialization (random for now, or loadable)
@@ -47,10 +50,9 @@ namespace dm::ai::neural_net {
 
         // Helper for matrix multiplication
         Tensor2D matmul(const Tensor2D& A, const Tensor2D& B);
-        Tensor2D matmul_transpose_b(const Tensor2D& A, const Tensor2D& B); // A * B^T
 
-        // Helper for softmax
-        void softmax_row(std::vector<float>& row);
+        // ELU + 1 activation function for feature map
+        float elu_plus_one(float x) const;
     };
 
 } // namespace dm::ai::neural_net

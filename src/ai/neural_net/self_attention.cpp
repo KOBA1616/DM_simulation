@@ -2,6 +2,7 @@
 #include <cmath>
 #include <random>
 #include <stdexcept>
+#include <numeric>
 
 namespace dm::ai::neural_net {
 
@@ -44,33 +45,11 @@ namespace dm::ai::neural_net {
         return C;
     }
 
-    Tensor2D SelfAttention::matmul_transpose_b(const Tensor2D& A, const Tensor2D& B) {
-        if (A.cols != B.cols) {
-            throw std::invalid_argument("Matrix dimension mismatch in matmul_transpose_b");
-        }
-        Tensor2D C(A.rows, B.rows);
-        for (int i = 0; i < A.rows; ++i) {
-            for (int j = 0; j < B.rows; ++j) {
-                float sum = 0.0f;
-                for (int k = 0; k < A.cols; ++k) {
-                    sum += A.at(i, k) * B.at(j, k);
-                }
-                C.at(i, j) = sum;
-            }
-        }
-        return C;
-    }
-
-    void SelfAttention::softmax_row(std::vector<float>& row) {
-        float max_val = -1e9;
-        for (float v : row) if (v > max_val) max_val = v;
-
-        float sum = 0.0f;
-        for (float& v : row) {
-            v = std::exp(v - max_val);
-            sum += v;
-        }
-        for (float& v : row) v /= sum;
+    float SelfAttention::elu_plus_one(float x) const {
+        // ELU(x) = x if x > 0 else alpha * (exp(x) - 1)
+        // PyTorch default alpha = 1.0
+        float elu = (x > 0) ? x : (std::exp(x) - 1.0f);
+        return elu + 1.0f;
     }
 
     Tensor2D SelfAttention::forward(const Tensor2D& input, const std::vector<bool>& mask) {
@@ -80,57 +59,87 @@ namespace dm::ai::neural_net {
         }
 
         // 1. Linear projections
-        Tensor2D Q = matmul(input, W_q_);
-        Tensor2D K = matmul(input, W_k_);
-        Tensor2D V = matmul(input, W_v_);
+        Tensor2D Q_proj = matmul(input, W_q_);
+        Tensor2D K_proj = matmul(input, W_k_);
+        Tensor2D V_proj = matmul(input, W_v_);
 
         Tensor2D output(seq_len, embed_dim_);
 
-        // Multi-head attention
+        // Multi-head Linear Attention processing
+        // We iterate heads and then compute the linear attention formula:
+        // Out_i = (Sum_j (Q_i * K_j * V_j)) / (Sum_j (Q_i * K_j))
+        // where Q, K are mapped by phi(x) = elu(x) + 1
+
         for (int h = 0; h < num_heads_; ++h) {
-            // Extract Q, K, V for this head
-            // In a real optimized implementation, this is done by reshaping/striding
-            // Here we do it explicitly for clarity/simplicity in this stub
+            // Extract and map Q, K, V for this head
+            // Dimensions: [seq_len, head_dim]
 
-            // Scaled Dot-Product Attention
-            // Attention(Q, K, V) = softmax(QK^T / sqrt(d_k))V
+            // We can accumulate KV and K sums directly to avoid storing full matrices if memory constrained,
+            // but for clarity we'll compute transient values.
 
-            // Compute scores = QK^T
-            // Q_h: [seq_len, head_dim], K_h: [seq_len, head_dim]
-            // scores: [seq_len, seq_len]
+            // KV accumulator: [head_dim, head_dim] -> sum(K^T * V)
+            std::vector<float> KV_sum(head_dim_ * head_dim_, 0.0f);
 
-            for (int i = 0; i < seq_len; ++i) {
-                // Check mask for query position (if needed, usually we attend FROM valid positions)
-                // But typically masking is done on keys (to ignore padding)
+            // K sum accumulator: [head_dim] -> sum(K)
+            std::vector<float> K_sum(head_dim_, 0.0f);
 
-                std::vector<float> attention_scores(seq_len);
+            // Temporary Q buffer for this head: [seq_len, head_dim]
+            std::vector<float> Q_head(seq_len * head_dim_);
 
-                for (int j = 0; j < seq_len; ++j) {
-                    float dot = 0.0f;
-                    for (int d = 0; d < head_dim_; ++d) {
-                         // Indexing: row i, col (h * head_dim + d)
-                         float q_val = Q.at(i, h * head_dim_ + d);
-                         float k_val = K.at(j, h * head_dim_ + d);
-                         dot += q_val * k_val;
-                    }
-                    attention_scores[j] = dot / std::sqrt((float)head_dim_);
+            // First pass: Compute K, V, update accumulators
+            for (int j = 0; j < seq_len; ++j) {
+                bool is_valid = (j < (int)mask.size()) ? mask[j] : true;
+                if (!is_valid) continue; // Skip masked tokens
 
-                    // Apply mask (mask[j] == false means padding/invalid)
-                    if (j < (int)mask.size() && !mask[j]) {
-                        attention_scores[j] = -1e9;
-                    }
+                // Pointers to K, V rows for this head at step j
+                // K_proj row j, start index h*head_dim
+                const float* k_ptr = &K_proj.data[j * embed_dim_ + h * head_dim_];
+                const float* v_ptr = &V_proj.data[j * embed_dim_ + h * head_dim_];
+
+                // Map K values: phi(K) = elu(K) + 1
+                std::vector<float> k_mapped(head_dim_);
+                for(int d=0; d<head_dim_; ++d) {
+                    k_mapped[d] = elu_plus_one(k_ptr[d]);
+                    K_sum[d] += k_mapped[d];
                 }
 
-                softmax_row(attention_scores);
-
-                // Weighted sum of V
-                for (int d = 0; d < head_dim_; ++d) {
-                    float val = 0.0f;
-                    for (int j = 0; j < seq_len; ++j) {
-                        val += attention_scores[j] * V.at(j, h * head_dim_ + d);
+                // Update KV_sum += k_mapped^T * v
+                for(int r=0; r<head_dim_; ++r) {
+                    for(int c=0; c<head_dim_; ++c) {
+                        KV_sum[r * head_dim_ + c] += k_mapped[r] * v_ptr[c];
                     }
-                    // Write to output (concatenated implicitly)
-                    output.at(i, h * head_dim_ + d) = val;
+                }
+            }
+
+            // Second pass: Compute Q, calculate output
+            for (int i = 0; i < seq_len; ++i) {
+                // Prepare Q mapped
+                const float* q_ptr = &Q_proj.data[i * embed_dim_ + h * head_dim_];
+                std::vector<float> q_mapped(head_dim_);
+                for(int d=0; d<head_dim_; ++d) {
+                    q_mapped[d] = elu_plus_one(q_ptr[d]);
+                }
+
+                // Numerator: Q * KV_sum -> [1, head_dim] * [head_dim, head_dim] -> [1, head_dim]
+                std::vector<float> num(head_dim_, 0.0f);
+                for(int d=0; d<head_dim_; ++d) { // output dim (cols of KV)
+                    float sum = 0.0f;
+                    for(int k=0; k<head_dim_; ++k) { // reduction dim (rows of KV, cols of Q)
+                         sum += q_mapped[k] * KV_sum[k * head_dim_ + d];
+                    }
+                    num[d] = sum;
+                }
+
+                // Denominator: Q * K_sum -> [1, head_dim] * [head_dim, 1] -> scalar
+                float den = 0.0f;
+                for(int d=0; d<head_dim_; ++d) {
+                    den += q_mapped[d] * K_sum[d];
+                }
+                den += 1e-6f; // Epsilon
+
+                // Result for this head: num / den
+                for(int d=0; d<head_dim_; ++d) {
+                    output.at(i, h * head_dim_ + d) = num[d] / den;
                 }
             }
         }
