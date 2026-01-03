@@ -5,8 +5,9 @@ import random
 
 # Ensure proper path for running inside the repo
 # We must add the path BEFORE importing the module
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../src'))
+# From python/tests/verification/, we need to go up 3 levels to reach root, then to bin
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../bin'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../src'))
 
 try:
     import dm_ai_module
@@ -18,7 +19,12 @@ def verify_deck_evolution_logic() -> None:
     print("Verifying Deck Evolution Logic (C++ Module)...")
 
     # 1. Load Real Card Data
+    # Assume running from repo root
     json_path = "data/cards.json"
+    if not os.path.exists(json_path):
+        # Fallback if running from script directory
+        json_path = os.path.join(os.path.dirname(__file__), '../../../data/cards.json')
+
     if not os.path.exists(json_path):
         print(f"Error: {json_path} not found.")
         return
@@ -33,12 +39,7 @@ def verify_deck_evolution_logic() -> None:
 
     # 2. Setup Configuration
     config = dm_ai_module.DeckEvolutionConfig()
-
-    # Adjust target deck size based on available cards (max 4 copies per card)
-    max_possible_deck_size = len(card_db) * 4
-    config.target_deck_size = min(40, max_possible_deck_size)
-    print(f"Target Deck Size set to: {config.target_deck_size}")
-
+    config.target_deck_size = 40
     config.mutation_rate = 0.5  # High rate to ensure change
 
     # 3. Instantiate C++ DeckEvolution
@@ -48,9 +49,9 @@ def verify_deck_evolution_logic() -> None:
     # Get available IDs
     available_ids = list(card_db.keys())
 
-    # Create initial deck (random selection of target size)
+    # Create initial deck (random selection of 40)
     current_deck = []
-    for _ in range(config.target_deck_size):
+    for _ in range(40):
         current_deck.append(random.choice(available_ids))
 
     # Create candidate pool (all available cards repeated)
@@ -68,7 +69,7 @@ def verify_deck_evolution_logic() -> None:
     print(f"New Deck Size: {len(new_deck)}")
 
     # Verify deck size
-    assert len(new_deck) == config.target_deck_size, f"Expected deck size {config.target_deck_size}, got {len(new_deck)}"
+    assert len(new_deck) == 40, f"Expected deck size 40, got {len(new_deck)}"
 
     # Verify deck changed
     if current_deck != new_deck:
@@ -85,35 +86,20 @@ def verify_deck_evolution_logic() -> None:
     # Find a civilization that exists in the DB
     test_civ = dm_ai_module.Civilization.FIRE
 
-    # Check if FIRE exists in DB
-    fire_exists = False
-    for cid, cdef in card_db.items():
-        if cdef.civilization == test_civ: # Using property
-            fire_exists = True
-            break
-
-    if not fire_exists:
-        # Try WATER
-        test_civ = dm_ai_module.Civilization.WATER
-        print("Switching to WATER for verification as FIRE not found.")
-
-    print(f"Fetching candidates for civilization {test_civ}...")
-    candidates = evolver.get_candidates_by_civ(candidate_pool, test_civ)
-    print(f"Found {len(candidates)} candidates.")
+    print("Fetching candidates for Fire civilization...")
+    fire_candidates = evolver.get_candidates_by_civ(candidate_pool, test_civ)
+    print(f"Found {len(fire_candidates)} Fire candidates.")
 
     # Verify filters work
-    for cid in candidates:
+    for cid in fire_candidates:
         # Check if the card has the civ
-        cdef = card_db[cid]
-        # Depending on binding, civilization might be property or list
-        # We exposed 'civilization' property (singular) and 'civilizations' (list)
-        # cdef.civilization returns the first one.
-        has_civ = (cdef.civilization == test_civ)
-        # Also check list if available
-        if not has_civ and hasattr(cdef, "civilizations"):
-             has_civ = (test_civ in cdef.civilizations)
-
-        assert has_civ, f"Card {cid} was returned but does not have required civilization."
+        # Note: card_db[cid].civilizations is a list of enums
+        has_civ = False
+        for c in card_db[cid].civilizations:
+            if c == test_civ:
+                has_civ = True
+                break
+        assert has_civ, f"Card {cid} was returned but does not have Fire civilization."
 
     print("Deck Evolution C++ Integration Verification Passed.")
 
