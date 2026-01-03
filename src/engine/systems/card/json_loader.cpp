@@ -9,28 +9,6 @@ namespace dm::engine {
 
     using namespace dm::core;
 
-    Civilization JsonLoader::parse_civilization(const std::string& civ_str) {
-        if (civ_str == "LIGHT") return Civilization::LIGHT;
-        if (civ_str == "WATER") return Civilization::WATER;
-        if (civ_str == "DARKNESS") return Civilization::DARKNESS;
-        if (civ_str == "FIRE") return Civilization::FIRE;
-        if (civ_str == "NATURE") return Civilization::NATURE;
-        if (civ_str == "ZERO") return Civilization::ZERO;
-        return Civilization::NONE;
-    }
-
-    CardType JsonLoader::parse_card_type(const std::string& type_str) {
-        if (type_str == "CREATURE") return CardType::CREATURE;
-        if (type_str == "SPELL") return CardType::SPELL;
-        if (type_str == "EVOLUTION_CREATURE") return CardType::EVOLUTION_CREATURE;
-        if (type_str == "CROSS_GEAR") return CardType::CROSS_GEAR;
-        if (type_str == "CASTLE") return CardType::CASTLE;
-        if (type_str == "PSYCHIC_CREATURE") return CardType::PSYCHIC_CREATURE;
-        if (type_str == "GR_CREATURE") return CardType::GR_CREATURE;
-        if (type_str == "TAMASEED") return CardType::TAMASEED;
-        return CardType::CREATURE;
-    }
-
     // Helper to convert Legacy ActionDef to New CommandDef
     static CommandDef convert_legacy_action(const ActionDef& act) {
         CommandDef cmd;
@@ -107,7 +85,7 @@ namespace dm::engine {
         def.civilizations = data.civilizations;
 
         // Type mapping
-        def.type = JsonLoader::parse_card_type(data.type);
+        def.type = data.type; // Direct assignment, now Enum
 
         def.cost = data.cost;
         def.power = data.power;
@@ -303,13 +281,8 @@ namespace dm::engine {
                     CardData card = item.get<CardData>();
                     // Backward compatibility: allow single "civilization" field
                     if (card.civilizations.empty() && item.contains("civilization")) {
-            std::string civ_str = item.at("civilization").get<std::string>();
-            if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
-            else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
-            else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);
-            else if (civ_str == "FIRE") card.civilizations.push_back(Civilization::FIRE);
-            else if (civ_str == "NATURE") card.civilizations.push_back(Civilization::NATURE);
-            else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
+                         // Use enum parsing via JSON library for consistent mapping
+                         card.civilizations.push_back(item.at("civilization").get<Civilization>());
                     }
                     // 1. Add to Registry (New System)
                     CardRegistry::load_from_json(item.dump());
@@ -320,13 +293,8 @@ namespace dm::engine {
             } else {
                 CardData card = j.get<CardData>();
                 if (card.civilizations.empty() && j.contains("civilization")) {
-            std::string civ_str = j.at("civilization").get<std::string>();
-            if (civ_str == "LIGHT") card.civilizations.push_back(Civilization::LIGHT);
-            else if (civ_str == "WATER") card.civilizations.push_back(Civilization::WATER);
-            else if (civ_str == "DARKNESS") card.civilizations.push_back(Civilization::DARKNESS);
-            else if (civ_str == "FIRE") card.civilizations.push_back(Civilization::FIRE);
-            else if (civ_str == "NATURE") card.civilizations.push_back(Civilization::NATURE);
-            else if (civ_str == "ZERO") card.civilizations.push_back(Civilization::ZERO);
+                     // Use enum parsing via JSON library for consistent mapping
+                     card.civilizations.push_back(j.at("civilization").get<Civilization>());
                 }
                 CardRegistry::load_from_json(j.dump());
                 result[static_cast<CardID>(card.id)] = convert_to_def(card);

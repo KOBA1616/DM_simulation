@@ -259,6 +259,11 @@ namespace dm::engine {
             if (type_str == "TAMASEED") return c.type == CardType::TAMASEED;
             if (type_str == "CREATURE") return c.type == CardType::CREATURE || c.type == CardType::EVOLUTION_CREATURE;
             if (type_str == "SPELL") return c.type == CardType::SPELL;
+            if (type_str == "EVOLUTION_CREATURE") return c.type == CardType::EVOLUTION_CREATURE;
+            if (type_str == "CROSS_GEAR") return c.type == CardType::CROSS_GEAR;
+            if (type_str == "CASTLE") return c.type == CardType::CASTLE;
+            if (type_str == "PSYCHIC_CREATURE") return c.type == CardType::PSYCHIC_CREATURE;
+            if (type_str == "GR_CREATURE") return c.type == CardType::GR_CREATURE;
             return false;
         }
         static bool is_evolution(const dm::core::CardDefinition& c) {
@@ -291,21 +296,28 @@ namespace dm::engine {
              return std::find(c.civilizations.begin(), c.civilizations.end(), target_civ) != c.civilizations.end();
         }
         static bool match_type(const dm::core::CardData& c, const std::string& type_str) {
+            using namespace dm::core;
             if (type_str == "CARD") return true;
             if (type_str == "ELEMENT") {
-                return c.type == "CREATURE" ||
-                       c.type == "EVOLUTION_CREATURE" ||
-                       c.type == "CROSS_GEAR" ||
-                       c.type == "TAMASEED" ||
-                       c.type == "PSYCHIC_CREATURE" ||
-                       c.type == "GR_CREATURE";
+                return c.type == CardType::CREATURE ||
+                       c.type == CardType::EVOLUTION_CREATURE ||
+                       c.type == CardType::CROSS_GEAR ||
+                       c.type == CardType::TAMASEED ||
+                       c.type == CardType::PSYCHIC_CREATURE ||
+                       c.type == CardType::GR_CREATURE;
             }
-            if (type_str == "TAMASEED") return c.type == "TAMASEED";
-            if (type_str == "CREATURE") return c.type == "CREATURE" || c.type == "EVOLUTION_CREATURE";
-            return c.type == type_str;
+            if (type_str == "TAMASEED") return c.type == CardType::TAMASEED;
+            if (type_str == "CREATURE") return c.type == CardType::CREATURE || c.type == CardType::EVOLUTION_CREATURE;
+            if (type_str == "SPELL") return c.type == CardType::SPELL;
+            if (type_str == "EVOLUTION_CREATURE") return c.type == CardType::EVOLUTION_CREATURE;
+            if (type_str == "CROSS_GEAR") return c.type == CardType::CROSS_GEAR;
+            if (type_str == "CASTLE") return c.type == CardType::CASTLE;
+            if (type_str == "PSYCHIC_CREATURE") return c.type == CardType::PSYCHIC_CREATURE;
+            if (type_str == "GR_CREATURE") return c.type == CardType::GR_CREATURE;
+            return false;
         }
         static bool is_evolution(const dm::core::CardData& c) {
-            return c.type == "EVOLUTION_CREATURE";
+            return c.type == dm::core::CardType::EVOLUTION_CREATURE;
         }
         static bool is_blocker(const dm::core::CardData& /*c*/) {
             return false;

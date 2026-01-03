@@ -40,10 +40,30 @@ void bind_ai(py::module& m) {
 
     py::class_<dm::ai::TensorConverter>(m, "TensorConverter")
         .def_readonly_static("INPUT_SIZE", &dm::ai::TensorConverter::INPUT_SIZE)
+        .def_readonly_static("VOCAB_SIZE", &dm::ai::TensorConverter::VOCAB_SIZE)
+        .def_readonly_static("MAX_SEQ_LEN", &dm::ai::TensorConverter::MAX_SEQ_LEN)
         .def_static("convert_to_tensor", &dm::ai::TensorConverter::convert_to_tensor,
              py::arg("game_state"), py::arg("player_view"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
         .def_static("convert_batch_flat", static_cast<std::vector<float> (*)(const std::vector<std::shared_ptr<dm::core::GameState>>&, const std::map<dm::core::CardID, dm::core::CardDefinition>&, bool)>(&dm::ai::TensorConverter::convert_batch_flat),
-             py::arg("states"), py::arg("card_db"), py::arg("mask_opponent_hand") = true);
+             py::arg("states"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
+        .def_static("convert_to_sequence", &dm::ai::TensorConverter::convert_to_sequence,
+             py::arg("game_state"), py::arg("player_view"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
+        // Helper wrapper to accept vector of pointers for batch sequence
+        // Needed because GameState is not copyable, preventing direct std::vector<GameState> binding
+        .def_static("convert_batch_sequence", [](const std::vector<std::shared_ptr<dm::core::GameState>>& states, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, bool mask_opponent_hand) {
+            std::vector<long> batch_seq;
+            batch_seq.reserve(states.size() * dm::ai::TensorConverter::MAX_SEQ_LEN);
+            for (const auto& state_ptr : states) {
+                if (state_ptr) {
+                    std::vector<long> s = dm::ai::TensorConverter::convert_to_sequence(*state_ptr, state_ptr->active_player_id, card_db, mask_opponent_hand);
+                    batch_seq.insert(batch_seq.end(), s.begin(), s.end());
+                } else {
+                    // Pad if null to maintain batch alignment
+                    for(int i=0; i<dm::ai::TensorConverter::MAX_SEQ_LEN; ++i) batch_seq.push_back(0);
+                }
+            }
+            return batch_seq;
+        }, py::arg("states"), py::arg("card_db"), py::arg("mask_opponent_hand") = true);
 
     py::class_<ActionEncoder>(m, "ActionEncoder")
         .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
@@ -152,7 +172,7 @@ void bind_ai(py::module& m) {
         .def("infer_probabilities", &dm::ai::inference::DeckInference::infer_probabilities)
         .def("sample_hidden_cards", &dm::ai::inference::DeckInference::sample_hidden_cards);
 
-    py::class_<dm::ai::inference::PimcGenerator>(m, "PimcGenerator")
+    py::class_<dm::ai::inference::PimcGenerator, std::shared_ptr<dm::ai::inference::PimcGenerator>>(m, "PimcGenerator")
         .def(py::init([](const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             return std::make_unique<dm::ai::inference::PimcGenerator>(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db));
         }))
@@ -182,6 +202,8 @@ void bind_ai(py::module& m) {
         // Legacy/Copy constructor support (less safe but existing code might rely on it implicitly via conversions)
         .def(py::init<const std::map<CardID, CardDefinition>&, int, int>())
         .def(py::init<int, int>())
+        .def("enable_pimc", &ParallelRunner::enable_pimc)
+        .def("load_meta_decks", &ParallelRunner::load_meta_decks)
         .def("play_games", &ParallelRunner::play_games, py::return_value_policy::move)
         
 #if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)

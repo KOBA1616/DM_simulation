@@ -21,18 +21,8 @@ public:
     // and returns a map (CardID -> CardDefinition)
     static std::map<core::CardID, core::CardDefinition> load_cards(const std::string& filepath);
 
-    // Helper to parse Civilization from string
-    static core::Civilization parse_civilization(const std::string& civ_str);
+    // Helper methods for parsing are removed in favor of direct JSON-Enum mapping via NLOHMANN_JSON_SERIALIZE_ENUM
 
-    // Helper to parse CardType from string
-    static core::CardType parse_card_type(const std::string& type_str);
-
-    // Parses a single CardData object into a CardDefinition (implementation should match convert_to_def)
-    // Note: implementation currently relies on static helper convert_to_def in cpp,
-    // if this is needed publicly it should be implemented.
-    // For now I'll keep the declaration if it was there, but it seems missing in cpp.
-    // However, to fix the build errors for parse_civilization/type, I add those above.
-    static core::CardDefinition parse_card_def(const core::CardData& card_data);
 };
 
 } // namespace engine

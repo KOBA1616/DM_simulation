@@ -20,6 +20,10 @@ namespace dm::ai {
     SelfPlay::SelfPlay(std::shared_ptr<const std::map<CardID, CardDefinition>> card_db, int mcts_simulations, int batch_size)
         : card_db_(card_db), mcts_simulations_(mcts_simulations), batch_size_(batch_size) {}
 
+    void SelfPlay::set_pimc_generator(std::shared_ptr<dm::ai::inference::PimcGenerator> pimc_generator) {
+        pimc_generator_ = pimc_generator;
+    }
+
     GameResultInfo SelfPlay::play_game(const GameState& initial_state, BatchEvaluatorCallback evaluator, float temperature, bool add_noise, float alpha, bool collect_data) {
         GameResultInfo info;
         // GameState state = initial_state; // Copy -> Deleted
@@ -28,6 +32,10 @@ namespace dm::ai {
         // MCTS instance with risk aversion coefficient alpha
         // Now MCTS accepts shared_ptr
         MCTS mcts(card_db_, 1.0f, 0.3f, 0.25f, batch_size_, alpha);
+
+        if (pimc_generator_) {
+            mcts.set_pimc_generator(pimc_generator_);
+        }
 
         // Game Loop
         while (true) {
@@ -39,9 +47,15 @@ namespace dm::ai {
                 break;
             }
 
-            // GameState search_state = state; // Copy -> Deleted
+            // GameState search_state = state.clone();
             GameState search_state = state.clone();
-            Determinizer::determinize(search_state, state.active_player_id);
+
+            // If PIMC is NOT enabled, we must determinize the state (hidden information handling)
+            // before passing it to MCTS, assuming perfect information search (Open Loop).
+            // If PIMC IS enabled, MCTS handles the determinization/sampling internally via PimcGenerator.
+            if (!pimc_generator_) {
+                 Determinizer::determinize(search_state, state.active_player_id);
+            }
 
             std::vector<float> policy = mcts.search(search_state, mcts_simulations_, evaluator, add_noise, temperature);
 

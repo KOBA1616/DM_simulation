@@ -2,6 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "ai/mcts/mcts.hpp"
+#include "ai/inference/pimc_generator.hpp"
 #include <vector>
 #include <map>
 #include <memory>
@@ -27,6 +28,8 @@ namespace dm::ai {
                  int mcts_simulations = 50,
                  int batch_size = 1);
 
+        void set_pimc_generator(std::shared_ptr<dm::ai::inference::PimcGenerator> pimc_generator);
+
         // Play a single game from start to finish
         // Changed to pass by reference to avoid copy constructor issue
         GameResultInfo play_game(
@@ -40,6 +43,7 @@ namespace dm::ai {
 
     private:
         std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>> card_db_;
+        std::shared_ptr<dm::ai::inference::PimcGenerator> pimc_generator_;
         int mcts_simulations_;
         int batch_size_;
     };
