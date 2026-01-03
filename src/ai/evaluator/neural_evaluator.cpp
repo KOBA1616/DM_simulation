@@ -1,6 +1,7 @@
 #include "neural_evaluator.hpp"
 #include "ai/encoders/tensor_converter.hpp"
 #include "ai/encoders/token_converter.hpp"
+#include "ai/neural_net/transformer.hpp"
 #include "bindings/python_batch_inference.hpp"
 #include <stdexcept>
 #include <iostream>
@@ -21,6 +22,39 @@ namespace dm::ai {
     NeuralEvaluator::~NeuralEvaluator() = default;
 
     void NeuralEvaluator::load_model(const std::string& path) {
+        // Simple heuristic to detect model type
+        if (path.ends_with(".bin")) {
+            // Load native C++ Transformer
+            // Default params matching Python NetworkV2: dim=256, depth=6, heads=8
+            // Vocab size might need to be dynamic or fixed (2000 is safe usually)
+            int vocab_size = dm::ai::encoders::TokenConverter::get_vocab_size();
+            // TODO: Pass params from config or infer
+            cpp_transformer_ = std::make_unique<dm::ai::neural_net::TransformerModel>(
+                256, 6, 8, vocab_size, 200, 600
+            );
+
+            std::ifstream f(path, std::ios::binary | std::ios::ate);
+            if (!f) {
+                 std::cerr << "Failed to open weights file: " << path << std::endl;
+                 return;
+            }
+            std::streamsize size = f.tellg();
+            f.seekg(0, std::ios::beg);
+
+            std::vector<float> weights(size / sizeof(float));
+            if (f.read(reinterpret_cast<char*>(weights.data()), size)) {
+                 if (cpp_transformer_->load_weights(weights)) {
+                     std::cout << "Loaded C++ Transformer weights from " << path << std::endl;
+                     set_model_type(ModelType::TRANSFORMER);
+                     return;
+                 } else {
+                     std::cerr << "Weights size mismatch for C++ Transformer" << std::endl;
+                 }
+            }
+            cpp_transformer_.reset();
+            return;
+        }
+
 #ifdef USE_ONNXRUNTIME
         try {
             onnx_model_ = std::make_unique<dm::ai::inference::OnnxModel>(path);
@@ -50,6 +84,33 @@ namespace dm::ai {
 
         // 1. Transformer (Sequence) Path
         if (model_type_ == ModelType::TRANSFORMER) {
+            // 1.1 Native C++ Transformer
+            if (cpp_transformer_) {
+                std::vector<std::vector<float>> policies(n);
+                std::vector<float> values(n);
+
+                for (size_t i = 0; i < n; ++i) {
+                    if (!states[i]) {
+                        policies[i] = {};
+                        values[i] = 0.0f;
+                        continue;
+                    }
+                    auto tokens = dm::ai::encoders::TokenConverter::encode_state(*states[i], states[i]->active_player_id);
+                    std::vector<int> mask(tokens.size(), 1); // Full valid for now
+                    // TODO: Pad? The model implementation handles slicing to max_seq_len.
+                    // If less than max_seq_len, mask handles it if needed.
+                    // But our encode_state returns variable length.
+                    // The forward pass expects [Seq] and [Seq] mask.
+                    // It slices if > max_len.
+                    // It does not pad if < max_len (it runs on exact size).
+
+                    auto result = cpp_transformer_->forward(tokens, mask);
+                    policies[i] = std::move(result.first);
+                    values[i] = result.second;
+                }
+                return {policies, values};
+            }
+
 #ifdef USE_ONNXRUNTIME
             if (onnx_model_) {
                 try {
