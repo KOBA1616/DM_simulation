@@ -20,10 +20,8 @@ class ReactionEditForm(BaseEditForm):
         self.zone_edit = getattr(self, 'zone_edit', None)
         self.cond_group = getattr(self, 'cond_group', None)
         self.trigger_event_combo = getattr(self, 'trigger_event_combo', None)
-        try:
-            self.setup_ui()
-        except Exception:
-            pass
+
+        self.setup_ui()
 
     def setup_ui(self):
         layout = QFormLayout(self)
