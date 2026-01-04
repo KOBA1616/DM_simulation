@@ -17,6 +17,10 @@ gs = dm_ai_module.GameState(123)
 print(f"Turn: {gs.turn_number}")
 
 # Test Tensor Converter (provide empty card_db mapping)
-tensor = dm_ai_module.TensorConverter.convert_to_tensor(gs, 0, {})
+# Must unwrap the GameStateWrapper before passing to C++ binding
+native_gs = getattr(gs, '_native', gs)
+# The binding expects a CardDatabase object, not a dict
+card_db = dm_ai_module.CardDatabase()
+tensor = dm_ai_module.TensorConverter.convert_to_tensor(native_gs, 0, card_db)
 print(f"Tensor size: {len(tensor)}")
 print(f"Expected size: {dm_ai_module.TensorConverter.INPUT_SIZE}")
