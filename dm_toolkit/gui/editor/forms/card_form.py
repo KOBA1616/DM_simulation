@@ -169,39 +169,38 @@ class CardEditForm(BaseEditForm):
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_SPELL_SIDE, {})
 
-    def _populate_ui(self, item):
-        data = item.data(Qt.ItemDataRole.UserRole + 2) or {}
-
+    def _load_ui_from_data(self, data, item):
         # Apply standard bindings
         self._apply_bindings(data)
 
-        # Custom population
         civs = data.get('civilizations') or []
         if not civs:
             civ_single = data.get('civilization')
             if civ_single: civs = [civ_single]
         self.civ_selector.set_selected_civs(civs)
-
-        current_type = data.get('type', 'CREATURE')
-        self.update_type_visibility(current_type)
-
         self.races_edit.setText(", ".join(data.get('races', [])))
 
-        # Check for Spell Side child node to toggle Twinpact checkbox
+        # Structural check for Twinpact
         has_spell_side = False
-        for i in range(item.rowCount()):
-            child = item.child(i)
-            if child is None:
-                continue
-            child_type = child.data(Qt.ItemDataRole.UserRole + 1)
-            if child_type == "SPELL_SIDE":
-                has_spell_side = True
-                break
+        if item:
+            for i in range(item.rowCount()):
+                child = item.child(i)
+                if child is None: continue
+                child_type = child.data(Qt.ItemDataRole.UserRole + 1)
+                if child_type == "SPELL_SIDE":
+                    has_spell_side = True
+                    break
 
         self.twinpact_check.blockSignals(True)
         self.twinpact_check.setChecked(has_spell_side)
         self.twinpact_check.blockSignals(False)
 
+    def _update_ui_state(self, data):
+        """
+        Hook to update visibility based on data.
+        """
+        current_type = data.get('type', 'CREATURE')
+        self.update_type_visibility(current_type)
 
     def update_type_visibility(self, type_str):
         # Hide Power if Spell
@@ -215,7 +214,10 @@ class CardEditForm(BaseEditForm):
         self.evolution_condition_edit.setEnabled(is_evolution)
         self.lbl_evolution_condition.setVisible(is_evolution)
 
-    def _save_data(self, data):
+    def _save_ui_to_data(self, data):
+        """
+        Hook to save UI values back into data.
+        """
         # Apply bindings (collects into data)
         self._collect_bindings(data)
 
@@ -225,7 +227,6 @@ class CardEditForm(BaseEditForm):
             del data['civilization']
 
         type_str = self.type_combo.currentData()
-        self.update_type_visibility(type_str)
 
         # Force power to 0 if Spell, regardless of hidden spinner value
         if type_str == "SPELL":
@@ -238,11 +239,6 @@ class CardEditForm(BaseEditForm):
         if not (type_str == "EVOLUTION_CREATURE" or type_str == "NEO_CREATURE" or type_str == "G_NEO_CREATURE"):
              if 'evolution_condition' in data:
                  del data['evolution_condition']
-
-        # Keywords are now handled by KeywordEditForm, but we must ensure we don't accidentally wipe them?
-        # No, update_data reads from UI and writes to 'data' dict reference.
-        # Since Keyword form is separate, we only touch non-keyword data here.
-        # EXCEPT for auto-setting evolution keyword?
 
         current_keywords = data.get('keywords', {})
 
@@ -262,6 +258,9 @@ class CardEditForm(BaseEditForm):
             current_keywords['g_neo'] = True
 
         data['keywords'] = current_keywords
+
+        # Trigger visibility update immediately (good practice)
+        self.update_type_visibility(type_str)
 
     def _get_display_text(self, data):
         return f"{data.get('id', 0)} - {data.get('name', '')}"

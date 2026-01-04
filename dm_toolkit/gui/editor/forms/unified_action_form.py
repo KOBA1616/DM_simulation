@@ -1,74 +1,4 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
-from PyQt6.QtCore import pyqtSignal
-from dm_toolkit.gui.localization import tr
-from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
-
-
-class UnifiedActionForm(QWidget):
-    """Unified form for editing Actions and Commands.
-
-    This is an incremental, backwards-compatible implementation intended to
-    replace/merge existing Action/Command editor forms. Start here and extend
-    with stacked mutation widgets, text preview integration, and validation.
-    """
-
-    dataChanged = pyqtSignal()
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.current_data = None
-        self.setup_ui()
-
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
-
-        header = QLabel(tr("Unified Action / Command Editor"))
-        layout.addWidget(header)
-
-        # Top controls placeholder
-        ctrl_row = QHBoxLayout()
-        self.preview_btn = QPushButton(tr("Preview"))
-        self.validate_btn = QPushButton(tr("Validate"))
-        ctrl_row.addWidget(self.preview_btn)
-        ctrl_row.addWidget(self.validate_btn)
-        layout.addLayout(ctrl_row)
-
-        # Reusable Variable link widget example
-        self.var_link = VariableLinkWidget()
-        layout.addWidget(self.var_link)
-
-        # Connect signals
-        self.var_link.linkChanged.connect(self._on_link_changed)
-
-    def load_data(self, item, data: dict):
-        """Load given action/command dict into the form for editing."""
-        self.current_data = data or {}
-        # Provide item context to child widgets for key generation
-        self.var_link.set_current_item(item)
-        self.var_link.set_data(self.current_data)
-
-    def get_data(self) -> dict:
-        """Return the edited data dictionary (in-place updated)."""
-        if self.current_data is None:
-            self.current_data = {}
-        self.var_link.get_data(self.current_data)
-        return self.current_data
-
-    def ensure_output_key_if_needed(self, action_type: str, produces_output: bool):
-        self.var_link.ensure_output_key(action_type, produces_output)
-
-    def validate(self) -> (bool, str):
-        """Run basic validation and return (is_valid, message)."""
-        # Minimal checks; to be extended
-        data = self.get_data()
-        if data.get('requires_output') and not data.get('output_value_key'):
-            return False, tr('出力キーが必要です。')
-        return True, ''
-
-    def _on_link_changed(self):
-        self.dataChanged.emit()
-# -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
@@ -114,10 +44,6 @@ ACTION_GROUPS = {
 
 class UnifiedActionForm(BaseEditForm):
     """Unified editor capable of editing either Command-like or Legacy Action-like defs.
-
-    This is a pragmatic skeleton: it exposes a unified type combo (UNIFIED_ACTION_TYPES)
-    and common fields. On save it marks the data with `format: 'command'|'action'`
-    so higher-level logic can serialize as CommandDef or ActionDef.
     """
     structure_update_requested = pyqtSignal(str, dict)
 
@@ -441,7 +367,7 @@ class UnifiedActionForm(BaseEditForm):
         self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
         # Re-populate UI to reflect changes
         try:
-            self.set_data(self.current_item)
+            self.load_data(self.current_item)
         except Exception:
             # Fallback: emit dataChanged so outer logic updates
             self.dataChanged.emit()
@@ -534,9 +460,16 @@ class UnifiedActionForm(BaseEditForm):
         except Exception:
             pass
 
-    def _populate_ui(self, item):
-        self.link_widget.set_current_item(item)
-        data = item.data(Qt.ItemDataRole.UserRole + 2)
+    def _update_ui_state(self, data):
+        """Hook to update UI state based on data."""
+        ui_type = data.get('type', 'NONE')
+        self.update_ui_state(ui_type)
+
+    def _load_ui_from_data(self, data, item):
+        """Hook to populate UI from data."""
+        # Note: UnifiedActionForm needs access to 'item' for variable linking
+        if item:
+            self.link_widget.set_current_item(item)
 
         # Normalize both action and command zone keys if present
         normalize_action_zone_keys(data)
@@ -601,14 +534,14 @@ class UnifiedActionForm(BaseEditForm):
                 self.mutation_kind_container.setCurrentIndex(0)
         except Exception:
             pass
-        self.update_ui_state(ui_type)
 
         # Option flags
         if ui_type == 'SELECT_OPTION':
             self.allow_duplicates_check.setChecked(data.get('value2', 0) == 1)
             self.option_count_spin.setValue(data.get('value1', 1))
 
-    def _save_data(self, data):
+    def _save_ui_to_data(self, data):
+        """Hook to save UI to data."""
         sel = self.type_combo.currentData()
         # Persist selected group for clarity (editor-only metadata)
         try:
@@ -704,6 +637,8 @@ class UnifiedActionForm(BaseEditForm):
                 return
 
             # Otherwise show preview dialog so user can decide
+            # Note: Dialog popup within save flow is problematic for non-interactive updates.
+            # But update_data() is usually user-triggered.
             dialog = ConvertPreviewDialog(self, act_like, conv or {})
             res = dialog.exec()
             if res == dialog.Accepted:
