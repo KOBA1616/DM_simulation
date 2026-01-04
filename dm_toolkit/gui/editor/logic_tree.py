@@ -35,11 +35,9 @@ class LogicTreeWidget(QTreeView):
         index = indexes[0]
 
         # Auto-expand if CARD is selected
-        item = self.standard_model.itemFromIndex(index)
-        if item:
-            item_type = item.data(Qt.ItemDataRole.UserRole + 1)
-            if item_type == "CARD":
-                self._expand_card_tree(index)
+        item_type = self.data_manager.get_item_type(index)
+        if item_type == "CARD":
+            self._expand_card_tree(index)
 
     def _expand_card_tree(self, card_index):
         """Recursively expands the card and all its descendants."""
@@ -69,21 +67,11 @@ class LogicTreeWidget(QTreeView):
         if not index.isValid():
             return
 
-        item_type = index.data(Qt.ItemDataRole.UserRole + 1)
+        item_type = self.data_manager.get_item_type(index)
         menu = QMenu(self)
 
         # Logic Mask: Get Card Type to filter options
-        card_type = "CREATURE" # Default
-        # Traverse up to find CARD
-        temp = index
-        while temp.isValid():
-            if temp.data(Qt.ItemDataRole.UserRole + 1) == "CARD":
-                # Null Safety Fix: Default to empty dict if data is missing
-                cdata = temp.data(Qt.ItemDataRole.UserRole + 2) or {}
-                card_type = cdata.get('type', 'CREATURE')
-                break
-            temp = temp.parent()
-
+        card_type = self.data_manager.get_card_context_type(index)
         is_spell = (card_type == "SPELL")
 
         if item_type == "CARD" or item_type == "SPELL_SIDE":
@@ -231,7 +219,7 @@ class LogicTreeWidget(QTreeView):
             child = item.child(i)
             if child is None:
                 continue
-            child_type = child.data(Qt.ItemDataRole.UserRole + 1)
+            child_type = self.data_manager.get_item_type(child)
 
             if child_type == "ACTION":
                 # Convert this Action (and its children)
@@ -275,7 +263,7 @@ class LogicTreeWidget(QTreeView):
                 child = cur_item.child(i)
                 if child is None:
                     continue
-                child_type = child.data(Qt.ItemDataRole.UserRole + 1)
+                child_type = self.data_manager.get_item_type(child)
                 if child_type == 'ACTION':
                     cmd_data = self._convert_action_tree_to_command(child)
                     warn = bool(cmd_data.get('legacy_warning', False))
@@ -288,7 +276,7 @@ class LogicTreeWidget(QTreeView):
                     # Also traverse OPTION children to collect nested ACTIONs
                     for j in range(child.rowCount()):
                         opt = child.child(j)
-                        if opt and opt.data(Qt.ItemDataRole.UserRole + 1) == 'OPTION':
+                        if opt and self.data_manager.get_item_type(opt) == 'OPTION':
                             _recurse(opt)
                 else:
                     # Recurse deeper
@@ -315,7 +303,7 @@ class LogicTreeWidget(QTreeView):
                 child = old_item.child(i)
                 if child is None:
                     continue
-                if child.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+                if self.data_manager.get_item_type(child) == "OPTION":
                     # Collect actions inside
                     opt_actions_data = []
                     for k in range(child.rowCount()):
@@ -323,13 +311,14 @@ class LogicTreeWidget(QTreeView):
                         if act_child is None:
                             continue
                         # We only care about ACTIONs to convert
-                        if act_child.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
+                        act_type = self.data_manager.get_item_type(act_child)
+                        if act_type == "ACTION":
                             # Recursively capture and convert
                             c_cmd = self._convert_action_tree_to_command(act_child)
                             opt_actions_data.append(c_cmd)
-                        elif act_child.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                        elif act_type == "COMMAND":
                             # Already a command, preserve it
-                            opt_actions_data.append(act_child.data(Qt.ItemDataRole.UserRole + 2))
+                            opt_actions_data.append(self.data_manager.get_item_data(act_child))
                     preserved_options_data.append(opt_actions_data)
 
         # 2. Inject options into cmd_data if exists
@@ -363,7 +352,7 @@ class LogicTreeWidget(QTreeView):
         """Recursively converts an Action Item and its children to Command Data."""
         from dm_toolkit.gui.editor.action_converter import ActionConverter
 
-        act_data = action_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+        act_data = self.data_manager.get_item_data(action_item)
         cmd_data = ActionConverter.convert(act_data)
 
         # Check for children (Options)
@@ -373,19 +362,19 @@ class LogicTreeWidget(QTreeView):
                 child = action_item.child(i)
                 if child is None:
                     continue
-                child_type = child.data(Qt.ItemDataRole.UserRole + 1)
+                child_type = self.data_manager.get_item_type(child)
                 if child_type == "OPTION":
                     opt_cmds = []
                     for k in range(child.rowCount()):
                         sub_item = child.child(k)
                         if sub_item is None:
                             continue
-                        sub_type = sub_item.data(Qt.ItemDataRole.UserRole + 1)
+                        sub_type = self.data_manager.get_item_type(sub_item)
                         if sub_type == "ACTION":
                             opt_cmds.append(self._convert_action_tree_to_command(sub_item))
                         elif sub_type == "COMMAND":
                             # Preserve existing commands
-                            opt_cmds.append(sub_item.data(Qt.ItemDataRole.UserRole + 2) or {})
+                            opt_cmds.append(self.data_manager.get_item_data(sub_item))
                     options_list.append(opt_cmds)
 
         if options_list:
@@ -399,37 +388,17 @@ class LogicTreeWidget(QTreeView):
 
     def add_trigger(self, parent_index):
         if not parent_index.isValid(): return
-        # Default Trigger Data
-        eff_data = {
-            "trigger": "ON_PLAY",
-            "condition": {"type": "NONE"},
-            "commands": [] # Initialized with commands list, empty by default
-        }
+        eff_data = self.data_manager.create_default_trigger_data()
         self.add_child_item(parent_index, "EFFECT", eff_data, f"{tr('Effect')}: {tr('ON_PLAY')}")
 
     def add_static(self, parent_index):
         if not parent_index.isValid(): return
-        # Default Static Data
-        mod_data = {
-            "type": "COST_MODIFIER",
-            "value": -1,
-            "condition": {"type": "NONE"}
-        }
+        mod_data = self.data_manager.create_default_static_data()
         self.add_child_item(parent_index, "MODIFIER", mod_data, f"{tr('Static')}: COST_MODIFIER")
 
     def add_reaction(self, parent_index):
         if not parent_index.isValid(): return
-        # Default Reaction Data
-        ra_data = {
-            "type": "NINJA_STRIKE",
-            "cost": 4,
-            "zone": "HAND",
-            "condition": {
-                "trigger_event": "ON_BLOCK_OR_ATTACK",
-                "civilization_match": True,
-                "mana_count_min": 0
-            }
-        }
+        ra_data = self.data_manager.create_default_reaction_data()
         self.add_child_item(parent_index, "REACTION_ABILITY", ra_data, f"{tr('Reaction Ability')}: NINJA_STRIKE")
 
     def add_option(self, parent_index):
@@ -451,19 +420,7 @@ class LogicTreeWidget(QTreeView):
 
     def add_command_to_option(self, option_index, cmd_data=None):
         if not option_index.isValid(): return
-        if cmd_data is None:
-            cmd_data = {
-                "type": "TRANSITION",
-                "target_group": "NONE",
-                "to_zone": "HAND",
-                "target_filter": {}
-            }
-
-        # Deep copy to avoid reference issues
-        import copy
-        data_copy = copy.deepcopy(cmd_data)
-        if 'uid' in data_copy: del data_copy['uid']
-
+        data_copy = self.data_manager.create_default_command_data(cmd_data)
         label = self.data_manager.format_command_label(data_copy)
         self.add_child_item(option_index, "COMMAND", data_copy, label)
 
@@ -473,19 +430,7 @@ class LogicTreeWidget(QTreeView):
 
     def add_command_to_effect(self, effect_index, cmd_data=None):
         if not effect_index.isValid(): return
-        if cmd_data is None:
-            cmd_data = {
-                "type": "TRANSITION",
-                "target_group": "NONE",
-                "to_zone": "HAND",
-                "target_filter": {}
-            }
-
-        # Deep copy
-        import copy
-        data_copy = copy.deepcopy(cmd_data)
-        if 'uid' in data_copy: del data_copy['uid']
-
+        data_copy = self.data_manager.create_default_command_data(cmd_data)
         label = self.data_manager.format_command_label(data_copy)
         self.add_child_item(effect_index, "COMMAND", data_copy, label)
 
@@ -524,7 +469,7 @@ class LogicTreeWidget(QTreeView):
         item = self.standard_model.itemFromIndex(idx)
         if item is None:
             return
-        type_ = item.data(Qt.ItemDataRole.UserRole + 1)
+        type_ = self.data_manager.get_item_type(item)
 
         if type_ == "EFFECT":
             self.add_command_to_effect(idx, cmd_data)
@@ -534,7 +479,7 @@ class LogicTreeWidget(QTreeView):
              # Sibling or Branch
              parent = item.parent()
              if parent:
-                 parent_type = parent.data(Qt.ItemDataRole.UserRole + 1)
+                 parent_type = self.data_manager.get_item_type(parent)
                  if parent_type == "EFFECT":
                      self.add_command_to_effect(parent.index(), cmd_data)
                  elif parent_type == "OPTION":
@@ -550,17 +495,7 @@ class LogicTreeWidget(QTreeView):
 
     def _add_command_to_branch(self, branch_index, cmd_data=None):
         if not branch_index.isValid(): return
-        if cmd_data is None:
-            cmd_data = {
-                "type": "TRANSITION",
-                "target_group": "NONE",
-                "to_zone": "HAND",
-                "target_filter": {}
-            }
-
-        import copy
-        data_copy = copy.deepcopy(cmd_data)
-        if 'uid' in data_copy: del data_copy['uid']
+        data_copy = self.data_manager.create_default_command_data(cmd_data)
         self.add_child_item(branch_index, "COMMAND", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
 
     def generate_branches_for_current(self):
@@ -571,7 +506,7 @@ class LogicTreeWidget(QTreeView):
         item = self.standard_model.itemFromIndex(index)
         if item is None:
             return
-        item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+        item_type = self.data_manager.get_item_type(item)
 
         if item_type == "COMMAND":
             self.data_manager.add_command_branches(item)
@@ -583,15 +518,14 @@ class LogicTreeWidget(QTreeView):
         parent_item = self.standard_model.itemFromIndex(parent_index)
         if parent_item is None:
             return
-        role = parent_item.data(Qt.ItemDataRole.UserRole + 1)
-        card_data = parent_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+        role = self.data_manager.get_item_type(parent_item)
 
         items = [tr("Triggered Ability"), tr("Static Ability")]
 
         # Check if we can add Reaction Ability
         # Only for CARD (not SPELL_SIDE) and type is not SPELL
         if role == "CARD":
-             card_type = card_data.get('type', 'CREATURE')
+             card_type = self.data_manager.get_card_context_type(parent_item)
              if card_type != "SPELL":
                   items.append(tr("Reaction Ability"))
 
@@ -599,30 +533,17 @@ class LogicTreeWidget(QTreeView):
 
         if ok and item:
             if item == tr("Triggered Ability"):
-                self.add_child_item(parent_index, "EFFECT",
-                                    {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "commands": []},
-                                    f"{tr('Effect')}: ON_PLAY")
+                eff_data = self.data_manager.create_default_trigger_data()
+                self.add_child_item(parent_index, "EFFECT", eff_data, f"{tr('Effect')}: ON_PLAY")
             elif item == tr("Static Ability"):
-                self.add_child_item(parent_index, "MODIFIER",
-                                    {"type": "COST_MODIFIER", "value": -1, "condition": {"type": "NONE"}},
-                                    f"{tr('Static')}: COST_MODIFIER")
+                mod_data = self.data_manager.create_default_static_data()
+                self.add_child_item(parent_index, "MODIFIER", mod_data, f"{tr('Static')}: COST_MODIFIER")
             elif item == tr("Reaction Ability"):
                 self.add_reaction(parent_index)
 
     def move_effect_item(self, item, target_type):
         """Updates the item's visual state (Label) to match the new type."""
-        # print(f"DEBUG: move_effect_item called with target {target_type}")
-        data = item.data(Qt.ItemDataRole.UserRole + 2) or {}
-
-        if target_type == "TRIGGERED":
-            item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
-            trigger = data.get('trigger', 'NONE')
-            item.setText(f"{tr('Effect')}: {tr(trigger)}")
-
-        elif target_type == "STATIC":
-            item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
-            mtype = data.get('type', data.get('layer_type', 'NONE'))
-            item.setText(f"{tr('Static')}: {tr(mtype)}")
+        self.data_manager.update_effect_type(item, target_type)
 
     def load_data(self, cards_data):
         # Save Expansion State
@@ -676,8 +597,8 @@ class LogicTreeWidget(QTreeView):
         # Stop if we hit the invisible root item to avoid including it in the path
         root = self.standard_model.invisibleRootItem()
         while curr and curr != root:
-            data = curr.data(Qt.ItemDataRole.UserRole + 2)
-            if data and isinstance(data, dict) and 'uid' in data:
+            data = self.data_manager.get_item_data(curr)
+            if data and 'uid' in data:
                 path.append(f"uid_{data['uid']}")
             else:
                 path.append(f"row_{curr.row()}")
@@ -747,7 +668,7 @@ class LogicTreeWidget(QTreeView):
             try:
                 updated = self.data_manager.reconstruct_card_data(card_item)
                 if updated:
-                    card_item.setData(updated, Qt.ItemDataRole.UserRole + 2)
+                    self.data_manager.set_item_data(card_item, updated)
             except Exception:
                 pass
             self.setCurrentIndex(eff_item.index())
@@ -761,6 +682,6 @@ class LogicTreeWidget(QTreeView):
         try:
             updated = self.data_manager.reconstruct_card_data(card_item)
             if updated:
-                card_item.setData(updated, Qt.ItemDataRole.UserRole + 2)
+                self.data_manager.set_item_data(card_item, updated)
         except Exception:
             pass
