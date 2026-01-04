@@ -24,7 +24,7 @@ namespace dm::engine::systems {
         }
 
         // Static helper to replace EffectResolver::resolve_play_from_stack
-        static void resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id = -1, int dest_override = 0);
+        static void resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id = -1, core::ZoneDestination dest_override = core::ZoneDestination::NONE);
 
         // Main handlers for High-Level Game Actions
         static void handle_play_card(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
