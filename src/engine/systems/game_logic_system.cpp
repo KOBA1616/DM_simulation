@@ -761,9 +761,7 @@ namespace dm::engine::systems {
         // Target is blocker
         pe.target_instance_ids = {blocker_id};
 
-        auto cmd_pe = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PENDING_EFFECT);
-        cmd_pe->pending_effect = pe;
-        state.execute_command(std::move(cmd_pe));
+        TriggerSystem::instance().add_pending_effect(state, pe);
 
         (void)exec;
     }

@@ -50,11 +50,15 @@ namespace dm::engine::systems {
                 pending.optional = true;
                 pending.chain_depth = game_state.turn_stats.current_chain_depth + 1;
 
-                auto cmd = std::make_unique<dm::engine::game_command::MutateCommand>(-1, dm::engine::game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
-                cmd->pending_effect = pending;
-                game_state.execute_command(std::move(cmd));
+                add_pending_effect(game_state, pending);
             }
         }
+    }
+
+    void TriggerSystem::add_pending_effect(core::GameState& game_state, const core::PendingEffect& pending_effect) {
+        auto cmd = std::make_unique<dm::engine::game_command::MutateCommand>(-1, dm::engine::game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
+        cmd->pending_effect = pending_effect;
+        game_state.execute_command(std::move(cmd));
     }
 
     PlayerID TriggerSystem::get_controller(const GameState& game_state, int instance_id) {

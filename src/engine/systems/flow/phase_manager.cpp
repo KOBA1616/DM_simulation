@@ -3,6 +3,7 @@
 #include "engine/actions/intent_generator.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/continuous_effect_system.hpp"
+#include "engine/systems/trigger_system/trigger_system.hpp"
 #include "core/constants.hpp"
 #include <iostream>
 #include <algorithm>
@@ -203,9 +204,7 @@ namespace dm::engine {
                 if (def.keywords.at_start_of_turn) {
                     // Use Command
                     PendingEffect pe(EffectType::AT_START_OF_TURN, card.instance_id, active_player.id);
-                    auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
-                    cmd->pending_effect = pe;
-                    game_state.execute_command(std::move(cmd));
+                    systems::TriggerSystem::instance().add_pending_effect(game_state, pe);
                 }
             }
         }
@@ -325,9 +324,7 @@ namespace dm::engine {
                         pe.execution_context["attacker"] = game_state.current_attack.source_instance_id;
                         pe.execution_context["defender"] = game_state.current_attack.blocking_creature_id;
 
-                        auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
-                        cmd->pending_effect = pe;
-                        game_state.execute_command(std::move(cmd));
+                        systems::TriggerSystem::instance().add_pending_effect(game_state, pe);
 
                     } else {
                         // Not blocked
@@ -337,9 +334,7 @@ namespace dm::engine {
                             pe.execution_context["attacker"] = game_state.current_attack.source_instance_id;
                             pe.execution_context["defender"] = target_id;
 
-                            auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
-                            cmd->pending_effect = pe;
-                            game_state.execute_command(std::move(cmd));
+                            systems::TriggerSystem::instance().add_pending_effect(game_state, pe);
                         } else {
                             // Creature vs Player
                             const Player& opponent = game_state.players[1 - game_state.active_player_id];
@@ -353,9 +348,7 @@ namespace dm::engine {
                                 // Shield Break
                                 PendingEffect pe(EffectType::BREAK_SHIELD, game_state.current_attack.source_instance_id, game_state.active_player_id);
 
-                                auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
-                                cmd->pending_effect = pe;
-                                game_state.execute_command(std::move(cmd));
+                                systems::TriggerSystem::instance().add_pending_effect(game_state, pe);
                             }
                         }
                     }
@@ -409,9 +402,7 @@ namespace dm::engine {
                         if (def.keywords.meta_counter_play) {
                             if (game_state.turn_stats.played_without_mana) {
                                 PendingEffect pe(EffectType::META_COUNTER, card.instance_id, opponent.id);
-                                auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
-                                cmd->pending_effect = pe;
-                                game_state.execute_command(std::move(cmd));
+                                systems::TriggerSystem::instance().add_pending_effect(game_state, pe);
                             }
                         }
 
@@ -423,9 +414,7 @@ namespace dm::engine {
 
                             if (condition_met) {
                                  PendingEffect pe(EffectType::META_COUNTER, card.instance_id, opponent.id);
-                                 auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
-                                 cmd->pending_effect = pe;
-                                 game_state.execute_command(std::move(cmd));
+                                 systems::TriggerSystem::instance().add_pending_effect(game_state, pe);
                             }
                         }
                     }
@@ -440,9 +429,7 @@ namespace dm::engine {
                         const auto& def = card_db.at(card.card_id);
                         if (def.keywords.at_end_of_turn) {
                             PendingEffect pe(EffectType::AT_END_OF_TURN, card.instance_id, active_player.id);
-                            auto cmd = std::make_unique<game_command::MutateCommand>(-1, game_command::MutateCommand::MutationType::ADD_PENDING_EFFECT);
-                            cmd->pending_effect = pe;
-                            game_state.execute_command(std::move(cmd));
+                            systems::TriggerSystem::instance().add_pending_effect(game_state, pe);
                         }
                     }
                 }
