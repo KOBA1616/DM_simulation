@@ -99,7 +99,56 @@ _definitions = [
                produces_output=True, output_label="Found Cards"),
 
     CommandDef("SHIELD_TRIGGER",
-               visible=["target_group"])
+               visible=["target_group"]),
+
+    # --- New / Mapped Commands ---
+    CommandDef("LOOK_AND_ADD",
+               visible=["target_filter", "amount", "output_link"],
+               labels={"amount": "Look Count"},
+               produces_output=True, output_label="Added Cards"),
+
+    CommandDef("MEKRAID",
+               visible=["target_filter", "amount", "output_link"],
+               labels={"amount": "Level"},
+               produces_output=True, output_label="Played Card"),
+
+    CommandDef("REVEAL_CARDS",
+               visible=["target_group", "target_filter", "amount"],
+               labels={"amount": "Count"}),
+
+    CommandDef("SHUFFLE_DECK",
+               visible=["target_group"]),
+
+    CommandDef("PLAY_FROM_ZONE",
+               visible=["from_zone", "to_zone", "amount", "str_param"],
+               labels={"amount": "Max Cost", "str_param": "Hint"}),
+
+    CommandDef("SUMMON_TOKEN",
+               visible=["amount", "str_param"],
+               labels={"amount": "Count", "str_param": "Token ID"}),
+
+    CommandDef("SELECT_NUMBER",
+               visible=["amount", "output_link"],
+               labels={"amount": "Max"},
+               produces_output=True, output_label="Selected Number"),
+
+    CommandDef("SELECT_OPTION",
+               visible=["amount", "str_param"], # str_param might be used for titles?
+               labels={"amount": "Count"}),
+
+    CommandDef("CAST_SPELL",
+               visible=["target_group", "target_filter"]),
+
+    CommandDef("FRIEND_BURST",
+               visible=["target_filter"]),
+
+    CommandDef("REGISTER_DELAYED_EFFECT",
+               visible=["str_param", "amount"],
+               labels={"str_param": "Effect ID", "amount": "Duration"}),
+
+    CommandDef("CHOICE", # Mapped from SELECT_OPTION in action_to_command
+               visible=["amount"],
+               labels={"amount": "Count"})
 ]
 
 # Generate Dictionary Export
