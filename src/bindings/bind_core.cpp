@@ -753,6 +753,8 @@ void bind_core(py::module& m) {
             }
         })
         .def("initialize_card_stats", &GameState::initialize_card_stats)
+        .def("on_card_play", &GameState::on_card_play)
+        .def("vectorize_card_stats", &GameState::vectorize_card_stats)
         .def("calculate_hash", &GameState::calculate_hash)
         .def("get_pending_effects_info", [](const GameState& s) {
             try {

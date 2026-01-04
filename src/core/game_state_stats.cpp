@@ -5,20 +5,17 @@
 namespace dm::core {
 
     void GameState::initialize_card_stats(const std::map<CardID, CardDefinition>& card_db, int deck_size) {
-        // Ensure an entry exists for every card in the DB
-        for (const auto &p : card_db) {
-            CardID cid = p.first;
-            if (global_card_stats.find(cid) == global_card_stats.end()) {
-                global_card_stats.emplace(cid, CardStats{});
-            }
-        }
+        // Optimized: DO NOT iterate entire card_db to populate global_card_stats.
+        // This prevents massive memory bloat when cloning GameState during MCTS.
+        // global_card_stats now only tracks *local* changes (Copy-On-Write logic via get_mutable_card_stats).
+        // Historical stats should be loaded via load_card_stats_from_json into historical_card_stats.
 
         // Set deck size and reset visible aggregates
         initial_deck_count = deck_size;
         visible_card_count = 0;
         visible_stats_sum = CardStats{};
 
-        // initial_deck_stats_sum remains zero until historical stats are loaded
+        // initial_deck_stats_sum remains zero until historical stats are loaded and compute_initial_deck_sums is called
         initial_deck_stats_sum = CardStats{};
     }
 
@@ -35,6 +32,8 @@ namespace dm::core {
 
         // Expect an array of objects
         if (!j.is_array()) return false;
+
+        auto loaded_stats = std::make_shared<std::map<CardID, CardStats>>();
 
         for (const auto &item : j) {
             if (!item.contains("id")) continue;
@@ -92,8 +91,14 @@ namespace dm::core {
                 }
             }
 
-            global_card_stats[cid] = cs;
+            (*loaded_stats)[cid] = cs;
         }
+
+        // Assign to shared pointer for read-only sharing
+        historical_card_stats = loaded_stats;
+
+        // Clear local stats as we start fresh from history
+        global_card_stats.clear();
 
         return true;
     }
@@ -104,10 +109,12 @@ namespace dm::core {
         initial_deck_count = static_cast<int>(deck_list.size());
 
         for (CardID cid : deck_list) {
-            auto it = global_card_stats.find(cid);
-            if (it == global_card_stats.end()) continue;
-            const CardStats &cs = it->second;
-            double denom = cs.play_count > 0 ? static_cast<double>(cs.play_count) : 1.0;
+            CardStats cs = get_card_stats(cid);
+
+            // Only aggregate if we have valid historical play data
+            if (cs.play_count <= 0) continue;
+
+            double denom = static_cast<double>(cs.play_count);
 
             initial_deck_stats_sum.sum_early_usage += (cs.sum_early_usage / denom);
             initial_deck_stats_sum.sum_late_usage += (cs.sum_late_usage / denom);
@@ -133,11 +140,7 @@ namespace dm::core {
 
 
     void GameState::on_card_reveal(CardID cid) {
-        auto it = global_card_stats.find(cid);
-        // If we have no stats for this card, nothing to add
-        if (it == global_card_stats.end()) return;
-
-        const CardStats &cs = it->second;
+        CardStats cs = get_card_stats(cid);
         // If play_count is zero, treat averages as zero
         double denom = cs.play_count > 0 ? static_cast<double>(cs.play_count) : 1.0;
 
@@ -166,9 +169,7 @@ namespace dm::core {
     }
 
     std::vector<float> GameState::vectorize_card_stats(CardID cid) const {
-        auto it = global_card_stats.find(cid);
-        if (it != global_card_stats.end()) return it->second.to_vector();
-        return std::vector<float>(16, 0.0f);
+        return get_card_stats(cid).to_vector();
     }
 
     std::vector<float> GameState::get_library_potential() const {

@@ -107,6 +107,7 @@ namespace dm::core {
         std::function<void(const GameEvent&)> event_dispatcher;
 
         // Stats members needed for compilation
+        std::shared_ptr<const std::map<CardID, CardStats>> historical_card_stats;
         std::map<CardID, CardStats> global_card_stats;
         CardStats initial_deck_stats_sum;
         CardStats visible_stats_sum;
@@ -154,6 +155,10 @@ namespace dm::core {
         void on_game_finished(GameResult result);
         std::vector<float> vectorize_card_stats(CardID cid) const;
         std::vector<float> get_library_potential() const;
+
+        // Stats access helpers
+        CardStats get_card_stats(CardID cid) const;
+        CardStats& get_mutable_card_stats(CardID cid);
     };
 
 }
