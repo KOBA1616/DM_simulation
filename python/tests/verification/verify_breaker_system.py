@@ -3,8 +3,9 @@ import sys
 import os
 
 # Add bin directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../bin'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../python'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../bin'))
+# Add python directory to path (for other python modules if needed)
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 
 import dm_ai_module as dm
 from dm_ai_module import GameState, CardDefinition, CardType, Civilization, ActionType, EffectType, TriggerType, FilterDef, InstructionOp, CardKeywords, PassiveType, PassiveEffect, EffectResolver, CardDatabase
