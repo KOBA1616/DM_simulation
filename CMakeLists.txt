@@ -179,6 +179,7 @@ set(SRC_ENGINE
     src/engine/utils/dev_tools.cpp
     src/engine/systems/card/card_registry.cpp
     src/engine/systems/card/effect_system.cpp
+    src/engine/systems/card/selection_system.cpp
     src/engine/systems/card/condition_system.cpp
     src/engine/systems/card/json_loader.cpp
     src/engine/game_instance.cpp

@@ -1,7 +1,9 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/card/selection_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/card/selection_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/pipeline_executor.hpp"
@@ -82,7 +84,7 @@ namespace dm::engine {
              if (ctx.action.scope == dm::core::TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                  dm::core::EffectDef ed;
                  ed.actions = { ctx.action };
-                 EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
 

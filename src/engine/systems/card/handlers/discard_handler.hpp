@@ -4,6 +4,7 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/pipeline_executor.hpp"
+#include "engine/systems/card/selection_system.hpp"
 #include <algorithm>
 #include <random>
 
@@ -90,7 +91,7 @@ namespace dm::engine {
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
             if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
-                 EffectSystem::instance().delegate_selection(ctx);
+                 SelectionSystem::instance().delegate_selection(ctx);
                  return;
             }
 
