@@ -636,6 +636,7 @@ void bind_core(py::module& m) {
         .def("add_card_to_zone", &GameState::add_card_to_zone)
         .def("register_card_instance", &GameState::register_card_instance)
         .def("undo", &GameState::undo)
+        .def("add_passive_effect", &GameState::add_passive_effect)
         .def_readonly("command_history", &GameState::command_history)
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("active_player_id", &GameState::active_player_id)

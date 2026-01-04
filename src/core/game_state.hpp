@@ -134,12 +134,12 @@ namespace dm::core {
         std::vector<int> get_zone(PlayerID pid, Zone zone) const;
 
         void execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd);
-        // Removed ambiguous overload for unique_ptr. Callers using std::move(unique_ptr) will implicitly convert to shared_ptr.
 
         GameState clone() const;
         size_t calculate_hash() const;
 
         void add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid);
+        void add_passive_effect(const PassiveEffect& effect);
 
         // Helper to register a manually created card instance into the owner map (For Unit Tests)
         void register_card_instance(const CardInstance& card);
