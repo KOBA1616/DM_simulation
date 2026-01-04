@@ -776,7 +776,7 @@ class GameWindow(QMainWindow):
         else:
             self.confirm_btn.setVisible(False)
 
-if __name__ == "__main__":
+def main():
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
@@ -788,3 +788,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nApplication interrupted by user.")
         sys.exit(0)
+
+if __name__ == "__main__":
+    main()
