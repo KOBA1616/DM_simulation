@@ -21,7 +21,8 @@ def test_game_state_init():
 
 def test_stats_vectorization():
     gs = dm_ai_module.GameState(42)
-    card_db: dict[int, Any] = {}
+    # Use the exposed CardDatabase type
+    card_db = dm_ai_module.CardDatabase()
     # Fixed: initialize_card_stats is an instance method
     gs.initialize_card_stats(card_db, 40)
 
