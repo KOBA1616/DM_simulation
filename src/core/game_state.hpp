@@ -134,7 +134,7 @@ namespace dm::core {
         std::vector<int> get_zone(PlayerID pid, Zone zone) const;
 
         void execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd);
-        void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd); // Overload for unique_ptr convenience
+        // Removed ambiguous overload for unique_ptr. Callers should move to shared_ptr or explicit cast.
 
         GameState clone() const;
         size_t calculate_hash() const;

@@ -167,9 +167,7 @@ namespace dm::core {
         }
     }
 
-    void GameState::execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd) {
-        execute_command(std::shared_ptr<dm::engine::game_command::GameCommand>(std::move(cmd)));
-    }
+    // Removed unique_ptr overload implementation
 
     void GameState::undo() {
         if (command_history.empty()) return;
