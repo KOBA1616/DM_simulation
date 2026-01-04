@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dm_toolkit"
+version = "0.1.0"
+description = "Duel Masters AI Toolkit"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "torch",
+    "PyQt6",
+    "onnx",
+    "onnxruntime",
+]
+
+[project.scripts]
+dm-gui = "dm_toolkit.gui.app:main"
+dm-card-editor = "dm_toolkit.gui.card_editor:main"
+
+[tool.setuptools.packages.find]
+include = ["dm_toolkit*"]
