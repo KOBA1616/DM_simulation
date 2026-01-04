@@ -2,10 +2,7 @@
 
 このドキュメントはプロジェクトの現在のステータス、実装済み機能、および次のステップの要件をまとめたマスタードキュメントです。
 
-本要件定義書はUTF-8で記述することを前提とします。
-また、GUI上で表示する文字は基本的に日本語で表記できるようにしてください。
-
-## ステータス定義 (Status Definitions)
+## ステータス定義
 *   `[Status: Todo]` : 未着手。
 *   `[Status: WIP]` : 作業中。
 *   `[Status: Review]` : 実装完了、レビュー待ち。
@@ -15,61 +12,48 @@
 
 ## 1. 概要 (Overview)
 
-Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroベースのAI学習環境を統合したプロジェクトです。
+Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroおよびTransformerベースのAI学習環境を統合したプロジェクトです。
 
-現在、**Phase 1 (Engine Base)**, **Phase 6 (Command Architecture)**, **Phase 7 (Hybrid Engine)** の実装が完了し、エンジンの刷新が終了しました。
-これに伴い、**Phase 2 (Inference)** および **Phase 3 (Evolution)** のAI開発フェーズを再開しています。
-C++コア（`dm_ai_module`）は `GameCommand` ベースの堅牢な設計となり、並列対戦環境 (`ParallelRunner`) も稼働しています。
+現在、**Core Engine (C++)** の実装はほぼ完了しており、以下のフェーズに焦点を移しています。
+1.  **AI Evolution (Phase 2 & 3)**: PBTを用いたメタゲーム進化と推論システム。
+2.  **Transformer Architecture (Phase 4)**: `dm_toolkit` によるシーケンスモデルの導入。
+3.  **Editor Refinement**: カードエディタの完成度向上（Logic Mask等）。
 
 ## 2. 現行システムステータス (Current Status)
 
-### 2.1 コアエンジン (C++ / `src/engine`)
-*   [Status: Done] **GameCommand Architecture (Phase 6)**: `Action` を `GameCommand` (Transition, Mutate, Flow, etc.) に分解し、イベント駆動型アーキテクチャへ移行完了。
-*   [Status: Done] **GenericCardSystem**: `EffectResolver` を代替し、`IActionHandler` によるモジュラーな処理系を確立。
-*   [Status: Done] **Card Owner Refactor**: `CardInstance` に `owner` フィールドを追加し、コントローラー判定をO(1)化。
-*   [Status: Done] **Multi-Civilization**: 多色カード（`std::vector<Civilization>`）のサポートおよび厳密なマナ支払いロジックの実装完了。
-*   [Status: Done] **Advanced Mechanics**: 革命チェンジ、ハイパー化 (Hyper Energy)、ジャストダイバー、Condition Systemの実装完了。
+### 2.1 ゲームエンジン (`src/core`, `src/engine`)
+*   [Status: Done] **Action/Command Architecture**: `GameCommand` ベースのイベント駆動モデル。
+*   [Status: Done] **Advanced Mechanics**: 革命チェンジ (Revolution Change), ハイパー化 (Hyper Energy), ジャストダイバー等の実装完了。
+*   [Status: Done] **Multi-Civilization**: 多色マナ支払いロジックの実装完了。
+*   [Status: Done] **Stats/Logs**: `TurnStats` や `GameResult` の収集基盤。
 
-### 2.2 AI & ソルバー (`src/ai`)
-*   [Status: Done] **Parallel Runner**: OpenMPを用いた並列対戦環境の実装完了。
-*   [Status: Done] **Lethal Solver**: ヒューリスティックベースの詰み判定 (`LethalSolver`) 実装完了。
-*   [Status: Done] **MCTS & Evaluator**: AlphaZero準拠のMCTSおよび `BeamSearchEvaluator` の実装完了。
-*   [Status: Done] **Inference Core (Phase 2)**: `PimcGenerator`, `DeckInference` のC++実装およびPythonバインディングが完了。
-*   [Status: WIP] **Transformer Model (Phase 4)**: `dm_toolkit` パッケージを作成済み。`train_transformer.py` は存在するが、実体となる学習ロジックとモデル定義が未実装。
+### 2.2 AI システム (`src/ai`, `python/training`, `dm_toolkit`)
+*   [Status: Done] **Parallel Runner**: OpenMP + C++ MCTS による高速並列対戦。
+*   [Status: Done] **AlphaZero Logic**: MLPベースのAlphaZero学習ループ (`train_simple.py`).
+*   [Status: WIP] **Transformer Model**: `DuelTransformer` (Linear Attention, Synergy Matrix) のクラス定義実装済み。学習パイプラインへの統合待ち。
+*   [Status: WIP] **Meta-Game Evolution**: `evolution_ecosystem.py` によるデッキ自動更新ロジックの実装中。
+*   [Status: Done] **Inference Core**: C++ `DeckInference` クラスおよびPythonバインディング実装済み。
 
-### 2.3 カードエディタ & ツール (`python/gui`)
-*   [Status: Done] **Card Editor V2**: JSONツリー編集、変数リンク (Variable Linking)、Condition編集機能の実装完了。
-*   [Status: Done] **Visualization**: シミュレーション実行ダイアログ、日本語ローカライズ完了。
-*   [Status: WIP] **Logic Mask**: ルール矛盾（呪文のパワー設定など）を防ぐバリデーション機能の実装中。
+### 2.3 開発ツール (`python/gui`)
+*   [Status: Done] **Card Editor V2**: JSONツリー編集、変数リンク、Condition設定機能。
+*   [Status: Done] **Simulation UI**: 対戦シミュレーション実行・可視化ダイアログ。
+*   [Status: Todo] **Logic Mask**: カードデータ入力時の矛盾防止機能。
 
-### 2.4 学習基盤 (`python/training`)
-*   [Status: Done] **Training Pipeline**: `collect_training_data.py` -> `train_simple.py` の基本ループ稼働中。
-*   [Status: WIP] **Evolution Ecosystem (Phase 3)**: `evolution_ecosystem.py` が実装され、`verify_deck_evolution.py` による検証が可能。完全なPBTパイプラインへの拡張作業中。
+## 3. 次のステップ (Next Steps)
 
-## 3. ロードマップ (Roadmap)
+### 3.1 AI Implementation (Phase 3 & 4)
+*   **Transformer Training Loop**: `dm_toolkit.ai.agent.transformer_model.DuelTransformer` を使用した学習スクリプト `train_transformer.py` の完成。
+*   **Evolution Pipeline Integration**: `verify_deck_evolution.py` のロジックを本番の `evolution_ecosystem.py` に統合し、継続的な自己対戦環境を構築する。
 
-### 3.1 [Priority: High] AI Evolution (AI進化) - Phase 2 & 3
-エンジン刷新が完了したため、AIの「賢さ」と「メタゲーム適応」に焦点を戻します。
+### 3.2 Engine Maintenance
+*   **Test Coverage**: 新機能（革命チェンジ、ハイパー化）に対するカバレッジの向上。
+*   **Refactoring**: `src/engine` 内の古いロジックの清掃。
 
-1.  **Deck Evolution (Phase 3)**:
-    *   現在の `verify_deck_evolution.py` (検証用スタブ) と `evolution_ecosystem.py` を統合・拡張する。
-    *   PBT (Population Based Training) を用いて、対戦結果に基づき `meta_decks.json` を自律的に更新・強化するパイプラインを完成させる。
+### 3.3 Documentation
+*   **Update Specs**: 実装と乖離した古い要件定義書の更新（本タスクにて実施中）。
 
-2.  **Inference Integration (Phase 2)**:
-    *   C++で実装・バインド済みの `DeckInference` クラスを、Python側のAIエージェント (Agent) ロジックに統合する。
-    *   不完全情報（相手の手札）を確率的に推論し、探索に反映させる仕組みを実戦投入する。
-
-### 3.2 [Priority: Medium] Advanced AI Architecture - Phase 4
-Transformerモデルへの移行を進めます。
-
-1.  **dm_toolkit Implementation**: `dm_toolkit` パッケージ内に、Transformerモデルの定義と学習ロジックを実装する。
-2.  **Training Script**: `python/training/train_transformer.py` が `dm_toolkit` の実装を正しく呼び出し、C++の `TensorConverter` が生成したデータで学習できるようにする。
-
-### 3.3 [Priority: Low] Engine Refinement
-1.  **Strict Lethal Solver**: ヒューリスティックではない、完全探索によるLethal Solverへの昇華。
-2.  **Reaction Ability Editor**: ニンジャ・ストライク等のリアクション編集UIの実装。
-
-## 4. 運用ルール (Operational Rules)
-*   **コミットメッセージ**: 日本語で記述する。
-*   **コード規約**: PythonはPEP8準拠、C++はGoogle Style準拠。
-*   **テスト**: 機能追加時は必ず `python/tests/` に単体テストを追加し、`pytest` をパスさせること。
+## 4. ドキュメント構成
+*   `docs/01_Game_Engine_Specs.md`: ゲームエンジンの詳細仕様。
+*   `docs/02_AI_System_Specs.md`: AIモデル、学習パイプライン、推論システムの仕様。
+*   `docs/03_Card_Editor_Specs.md`: カードエディタの機能要件。
+*   `docs/00_Overview/archive/`: 過去の計画書や完了済みタスクのログ。
