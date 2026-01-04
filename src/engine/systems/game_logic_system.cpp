@@ -5,6 +5,7 @@
 #include "engine/systems/card/effect_system.hpp" // Added include for EffectSystem
 #include "engine/systems/trigger_system/trigger_system.hpp" // Added for TriggerSystem
 #include "engine/systems/card/passive_effect_system.hpp" // Added for PassiveEffectSystem
+#include "engine/systems/restriction_system.hpp" // Added for RestrictionSystem
 #include "core/game_state.hpp"
 #include "core/action.hpp"
 #include "engine/game_command/commands.hpp"
@@ -332,55 +333,11 @@ namespace dm::engine::systems {
             else if (origin == Zone::MANA) origin_str = "MANA_ZONE";
             else if (origin == Zone::GRAVEYARD) origin_str = "GRAVEYARD";
             else if (origin == Zone::SHIELD) origin_str = "SHIELD_ZONE";
-        } else {
-             // Fallback: If not specified, we can try to look it up, but handle_play_card is often called *after* move to Stack.
-             // So we rely on caller to pass origin_zone if important.
-             // If implicit, we might skip zone checks or assume safe?
-             // For "Cannot Summon", usually applies globally or from specific zones.
         }
 
         const auto& def = card_db.at(card->card_id);
 
-        // --- Gatekeeper: Strict Validation ---
-
-        // 1. Spell Restrictions
-        if (def.type == CardType::SPELL) {
-             if (PassiveEffectSystem::instance().check_restriction(state, *card, PassiveType::CANNOT_USE_SPELLS, card_db)) return;
-             if (PassiveEffectSystem::instance().check_restriction(state, *card, PassiveType::LOCK_SPELL_BY_COST, card_db)) return;
-        }
-
-        // 2. Summon Restrictions (CANNOT_SUMMON)
-        for (const auto& eff : state.passive_effects) {
-            if (eff.type == PassiveType::CANNOT_SUMMON && (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE)) {
-                 // Check Origin match
-                 bool origin_match = true;
-                 if (!eff.target_filter.zones.empty()) {
-                     if (origin_str.empty()) {
-                         // If unknown origin, we can't strictly enforce zone-based prohibition?
-                         // Or we enforce if the prohibition is generic?
-                         origin_match = false;
-                     } else {
-                         origin_match = false;
-                         for (const auto& z : eff.target_filter.zones) {
-                             if (z == origin_str) { origin_match = true; break; }
-                         }
-                     }
-                 }
-                 // If zones empty, applies to all -> origin_match true
-
-                 if (!origin_match) continue;
-
-                 // Check Card match
-                 FilterDef check_filter = eff.target_filter;
-                 check_filter.zones.clear(); // Already checked
-
-                 if (TargetUtils::is_valid_target(*card, def, check_filter, state, eff.controller, card->owner, true)) {
-                     // Prohibited
-                     return;
-                 }
-            }
-        }
-        // -------------------------------------------------------------
+        if (RestrictionSystem::instance().is_play_forbidden(state, *card, def, origin_str, card_db)) return;
 
         // Note: Evolution logic moved to handle_resolve_play
 
@@ -532,14 +489,6 @@ namespace dm::engine::systems {
         if (!card) return;
 
         // --- Gatekeeper: Prohibition Check (Point of No Return) ---
-        // We check here as well to catch cases where handle_play_card was bypassed (e.g. standard stack play)
-        // We attempt to infer origin. If coming from Stack, we check if it was previously in Hand/Mana etc.
-        // For simplicity in this fix, we assume 'Hand' if unknown for creature summons, or rely on caller to filter.
-        // However, precise prohibition requires knowing the source zone.
-        // If we can't determine it easily, we might skip, but that risks the regression.
-        // Let's assume standard plays (from Hand) are the concern.
-
-        // Actually, we can check the 'origin_zone' arg if passed in instruction.
         int origin_int = exec.resolve_int(inst.args.value("origin_zone", -1));
         std::string origin_str = "";
         if (origin_int != -1) {
@@ -551,44 +500,10 @@ namespace dm::engine::systems {
              else if (origin == Zone::SHIELD) origin_str = "SHIELD_ZONE";
         }
 
-        // Loop through passives to check CANNOT_SUMMON
         if (card_db.count(card->card_id)) {
             const auto& def = card_db.at(card->card_id);
-            for (const auto& eff : state.passive_effects) {
-                if (eff.type == PassiveType::CANNOT_SUMMON && (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE)) {
-                     bool origin_match = true;
-                     if (!eff.target_filter.zones.empty()) {
-                         if (origin_str.empty()) {
-                             // If origin unknown, we can't strictly prohibit if zone-dependent.
-                             // But most "Cannot Summon" are global or from specific zones.
-                             // Safest is to assume Hand if empty? Or skip?
-                             // To fix the regression, we must catch the "Cannot Summon" (usually global).
-                             // If zones are specified, we need to match.
-                             origin_match = false;
-                         } else {
-                             origin_match = false;
-                             for (const auto& z : eff.target_filter.zones) {
-                                 if (z == origin_str) { origin_match = true; break; }
-                             }
-                         }
-                     }
-
-                     if (origin_match) {
-                         // Check Card match
-                         FilterDef check_filter = eff.target_filter;
-                         check_filter.zones.clear();
-                         if (TargetUtils::is_valid_target(*card, def, check_filter, state, eff.controller, card->owner, true)) {
-                             // Prohibited: Abort resolution
-                             // Should we move it to Graveyard? Or keep in Stack?
-                             // Rules: If play is illegal/impossible, it usually stays or goes to grave.
-                             // Here we just return, effectively fizzling it in Stack (or wherever it is).
-                             return;
-                         }
-                     }
-                }
-            }
+            if (RestrictionSystem::instance().is_play_forbidden(state, *card, def, origin_str, card_db)) return;
         }
-        // -------------------------------------------------------------
 
         if (!card_db.count(card->card_id)) return;
         const auto& def = card_db.at(card->card_id);
@@ -671,24 +586,7 @@ namespace dm::engine::systems {
          const auto& def = card_db.at(card->card_id);
 
          // --- Gatekeeper: Strict Attack Validation ---
-         bool is_player_attack = (target_id == -1);
-         if (is_player_attack) {
-             if (!TargetUtils::can_attack_player(*card, def, state, card_db)) return;
-         } else {
-             if (!TargetUtils::can_attack_creature(*card, def, state, card_db)) return;
-
-             // Check if target is valid (Standard Rule: Must be tapped)
-             const CardInstance* target_card = state.get_card_instance(target_id);
-             // Note: Some effects might allow attacking untapped creatures, but we enforce standard rules for now
-             // unless we have a specific "CAN_ATTACK_UNTAPPED" check in TargetUtils.
-             if (target_card && !target_card->is_tapped) {
-                 // TODO: Check for "can attack untapped creatures" effects
-                 return;
-             }
-         }
-
-         if (PassiveEffectSystem::instance().check_restriction(state, *card, PassiveType::CANNOT_ATTACK, card_db)) return;
-         // -------------------------------------------------------------
+         if (RestrictionSystem::instance().is_attack_forbidden(state, *card, def, target_id, card_db)) return;
 
          // 1. Update Attack State using Commands
          auto cmd_src = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_SOURCE, instance_id);
@@ -728,10 +626,7 @@ namespace dm::engine::systems {
         const auto& def = card_db.at(blocker->card_id);
 
         // --- Gatekeeper: Strict Block Validation ---
-        if (!TargetUtils::has_keyword_simple(state, *blocker, def, "BLOCKER")) return;
-        if (blocker->is_tapped) return;
-        if (PassiveEffectSystem::instance().check_restriction(state, *blocker, PassiveType::CANNOT_BLOCK, card_db)) return;
-        // -------------------------------------------------------------
+        if (RestrictionSystem::instance().is_block_forbidden(state, *blocker, def, card_db)) return;
 
         // 1. Tap Blocker
         auto cmd_tap = std::make_unique<MutateCommand>(blocker_id, MutateCommand::MutationType::TAP);

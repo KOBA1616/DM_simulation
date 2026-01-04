@@ -375,6 +375,12 @@ void bind_engine(py::module& m) {
              }
         })
         .def_static("load_from_json", &CardRegistry::load_from_json)
+        .def_static("get_all_cards", []() {
+             // Return a copy of the static map as CardDatabase (shared ptr probably better but copied for safety/simplicity)
+             // But CardDatabase is std::map<CardID, CardDefinition>.
+             // CardRegistry has get_all_definitions()
+             return CardRegistry::get_all_definitions();
+        })
         .def_static("clear", &CardRegistry::clear);
 
     py::class_<PhaseManager>(m, "PhaseManager")
