@@ -52,6 +52,13 @@ namespace dm::engine::systems {
         // Map PlayerIntent to handler
         // Simplified mapping for now
 
+        // NOTE: Architecture Transition (Action/Command Conversion)
+        // The conversion from Action to Instruction here is a transitional implementation.
+        // In the future, the architecture will migrate to one where AI and GUI directly generate Commands,
+        // allowing this conversion layer to be removed.
+        // Action/Command変換: src/engine/systems/game_logic_system.cpp の dispatch_action で行われている Action から Instruction への変換は過渡的な実装です。
+        // 将来的にAIやGUIが直接 Command を生成するアーキテクチャへ完全移行することで、この層を削除できます。
+
         switch (action.type) {
             case PlayerIntent::PLAY_CARD:
             {
