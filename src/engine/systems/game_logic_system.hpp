@@ -52,7 +52,7 @@ namespace dm::engine::systems {
 
         // Exposed Utils
         static int get_creature_power(const core::CardInstance& creature, const core::GameState& game_state, const std::map<core::CardID, core::CardDefinition>& card_db);
-        static int get_breaker_count(const core::CardInstance& creature, const std::map<core::CardID, core::CardDefinition>& card_db);
+        static int get_breaker_count(const core::GameState& state, const core::CardInstance& creature, const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Helper to push instructions
         static void push_trigger_check(PipelineExecutor& pipeline, core::TriggerType type, int source_id);

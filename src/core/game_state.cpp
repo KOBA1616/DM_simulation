@@ -80,6 +80,10 @@ namespace dm::core {
         execute_command(cmd);
     }
 
+    void GameState::add_passive_effect(const PassiveEffect& effect) {
+        passive_effects.push_back(effect);
+    }
+
     void GameState::register_card_instance(const CardInstance& card) {
         if (card.instance_id < 0) return;
         if (card.instance_id >= (int)card_owner_map.size()) {

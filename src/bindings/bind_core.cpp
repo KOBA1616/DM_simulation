@@ -636,6 +636,7 @@ void bind_core(py::module& m) {
         .def("add_card_to_zone", &GameState::add_card_to_zone)
         .def("register_card_instance", &GameState::register_card_instance)
         .def("undo", &GameState::undo)
+        .def("add_passive_effect", &GameState::add_passive_effect)
         .def_readonly("command_history", &GameState::command_history)
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("active_player_id", &GameState::active_player_id)
@@ -816,6 +817,9 @@ void bind_core(py::module& m) {
         })
         .def("add_passive_effect", [](GameState& s, const PassiveEffect& p) {
             s.passive_effects.push_back(p);
+        })
+        .def("get_passive_effect_count", [](const GameState& s) {
+            return s.passive_effects.size();
         });
 
     m.def("initialize_card_stats", [](GameState& state, const std::map<dm::core::CardID, CardDefinition>& db, int count) {

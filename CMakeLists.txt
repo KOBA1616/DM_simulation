@@ -191,6 +191,7 @@ set(SRC_ENGINE
     src/engine/systems/pipeline_executor.cpp
     src/engine/systems/command_system.cpp
     src/engine/systems/game_logic_system.cpp
+    src/engine/systems/restriction_system.cpp
     src/engine/systems/continuous_effect_system.cpp
 )
 

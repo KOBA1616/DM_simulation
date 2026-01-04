@@ -190,6 +190,9 @@ void bind_engine(py::module& m) {
 
     auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
     effect_resolver
+        .def_static("get_breaker_count", [](GameState& state, const CardInstance& card, const std::map<CardID, CardDefinition>& db) {
+            return dm::engine::systems::GameLogicSystem::get_breaker_count(state, card, db);
+        })
         .def_static("resolve_action", [](GameState& state, const Action& action, const std::map<CardID, CardDefinition>& db){
             try {
                 dm::engine::systems::GameLogicSystem::resolve_action(state, action, db);
@@ -375,6 +378,12 @@ void bind_engine(py::module& m) {
              }
         })
         .def_static("load_from_json", &CardRegistry::load_from_json)
+        .def_static("get_all_cards", []() {
+             // Return a copy of the static map as CardDatabase (shared ptr probably better but copied for safety/simplicity)
+             // But CardDatabase is std::map<CardID, CardDefinition>.
+             // CardRegistry has get_all_definitions()
+             return CardRegistry::get_all_definitions();
+        })
         .def_static("clear", &CardRegistry::clear);
 
     py::class_<PhaseManager>(m, "PhaseManager")
