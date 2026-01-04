@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QModelIndex
 from dm_toolkit.gui.localization import tr
 import uuid
 import json
@@ -56,6 +56,101 @@ class CardDataManager:
                 self.templates = {"commands": [], "actions": []}
         else:
             print("Warning: editor_templates.json not found.")
+
+    def get_item_type(self, index_or_item):
+        """Safe accessor for item type (UserRole+1)."""
+        item = self._ensure_item(index_or_item)
+        if item:
+            return item.data(Qt.ItemDataRole.UserRole + 1)
+        return None
+
+    def get_item_data(self, index_or_item):
+        """Safe accessor for item data (UserRole+2). Returns empty dict if None."""
+        item = self._ensure_item(index_or_item)
+        if item:
+            return item.data(Qt.ItemDataRole.UserRole + 2) or {}
+        return {}
+
+    def set_item_data(self, index_or_item, data):
+        """Safe setter for item data (UserRole+2)."""
+        item = self._ensure_item(index_or_item)
+        if item:
+            item.setData(data, Qt.ItemDataRole.UserRole + 2)
+
+    def _ensure_item(self, index_or_item):
+        if isinstance(index_or_item, QModelIndex):
+            return self.model.itemFromIndex(index_or_item)
+        return index_or_item
+
+    def get_card_context_type(self, index_or_item):
+        """Traverses up to find the CARD node and returns its type ('CREATURE' or 'SPELL')."""
+        item = self._ensure_item(index_or_item)
+        card_item = self._find_card_root(item)
+        if card_item:
+            cdata = self.get_item_data(card_item)
+            return cdata.get('type', 'CREATURE')
+        return 'CREATURE'
+
+    def create_default_trigger_data(self):
+        return {
+            "trigger": "ON_PLAY",
+            "condition": {"type": "NONE"},
+            "commands": []
+        }
+
+    def create_default_static_data(self):
+        return {
+            "type": "COST_MODIFIER",
+            "value": -1,
+            "condition": {"type": "NONE"}
+        }
+
+    def create_default_reaction_data(self):
+        return {
+            "type": "NINJA_STRIKE",
+            "cost": 4,
+            "zone": "HAND",
+            "condition": {
+                "trigger_event": "ON_BLOCK_OR_ATTACK",
+                "civilization_match": True,
+                "mana_count_min": 0
+            }
+        }
+
+    def create_default_command_data(self, template=None):
+        if template:
+            # If template has 'data', use it (deep copy)
+            if 'data' in template:
+                 import copy
+                 data = copy.deepcopy(template['data'])
+                 if 'uid' in data: del data['uid']
+                 return data
+            # If template is just a dict (legacy/direct usage)
+            import copy
+            data = copy.deepcopy(template)
+            if 'uid' in data: del data['uid']
+            return data
+
+        return {
+            "type": "TRANSITION",
+            "target_group": "NONE",
+            "to_zone": "HAND",
+            "target_filter": {}
+        }
+
+    def update_effect_type(self, item, target_type):
+        """Updates the item's visual state (Label) and Type to match the new effect type."""
+        data = self.get_item_data(item)
+
+        if target_type == "TRIGGERED":
+            item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
+            trigger = data.get('trigger', 'NONE')
+            item.setText(f"{tr('Effect')}: {tr(trigger)}")
+
+        elif target_type == "STATIC":
+            item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
+            mtype = data.get('type', data.get('layer_type', 'NONE'))
+            item.setText(f"{tr('Static')}: {tr(mtype)}")
 
     def _ensure_uid(self, obj: dict):
         """Ensure a UID exists on the given dict object."""
