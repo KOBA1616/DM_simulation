@@ -94,6 +94,10 @@ namespace dm::core {
         // Modes
         std::vector<ModalEffectGroup> modes;
 
+        // Evolution Condition (Data-driven)
+        // If has_value(), this filter applies to the evolution source.
+        std::optional<FilterDef> evolution_condition;
+
         // Revolution Change Condition (Data-driven)
         // If has_value(), this filter applies to the attacking creature.
         std::optional<FilterDef> revolution_change_condition;

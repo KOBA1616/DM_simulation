@@ -493,6 +493,7 @@ void bind_core(py::module& m) {
         .def_readwrite("keywords", &CardDefinition::keywords)
         .def_readwrite("effects", &CardDefinition::effects)
         .def_readwrite("static_abilities", &CardDefinition::static_abilities)
+        .def_readwrite("evolution_condition", &CardDefinition::evolution_condition)
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
         .def_readwrite("is_key_card", &CardDefinition::is_key_card)
         .def_readwrite("ai_importance_score", &CardDefinition::ai_importance_score)
@@ -531,6 +532,7 @@ void bind_core(py::module& m) {
         .def_readwrite("races", &CardData::races)
         .def_readwrite("effects", &CardData::effects)
         .def_readwrite("static_abilities", &CardData::static_abilities)
+        .def_readwrite("evolution_condition", &CardData::evolution_condition)
         .def_readwrite("keywords", &CardData::keywords);
 
     py::class_<CardInstance>(m, "CardInstance")
