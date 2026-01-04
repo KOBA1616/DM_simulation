@@ -87,8 +87,15 @@ class VariableLinkWidget(QWidget):
         # If not found and not empty, it might be a custom key from JSON
         # If it's manual (empty), index 0 is already Manual
         if not found and input_key:
+             # Try to recover label from metadata
+             saved_label = data.get('_input_value_label', '')
+             if saved_label:
+                 label = f"{saved_label} ({tr('Missing')})"
+             else:
+                 label = f"{input_key} ({tr('Unknown')})"
+
              # Add it temporarily so we don't lose data
-             self.input_key_combo.addItem(f"{input_key} (Unknown)", input_key)
+             self.input_key_combo.addItem(label, input_key)
              self.input_key_combo.setCurrentIndex(self.input_key_combo.count()-1)
         elif not found and not input_key:
              self.input_key_combo.setCurrentIndex(0) # Manual Input
@@ -109,6 +116,10 @@ class VariableLinkWidget(QWidget):
              if val is None: val = "" # Safety
 
         data['input_value_key'] = val
+
+        # Save friendly label if valid link
+        if val and val in getattr(self, 'valid_keys', set()):
+             data['_input_value_label'] = self.input_key_combo.currentText()
 
         # Output Key
         data['output_value_key'] = self.output_key_edit.text()
@@ -134,12 +145,14 @@ class VariableLinkWidget(QWidget):
     def populate_input_keys(self):
         current_data = self.input_key_combo.currentData()
         self.input_key_combo.clear()
+        self.valid_keys = set() # New set to track valid keys
 
         # Use Manager to get variables
         variables = VariableLinkManager.get_available_variables(self.current_item)
 
         for label, key in variables:
             self.input_key_combo.addItem(label, key)
+            self.valid_keys.add(key)
 
         # Try to restore selection if possible
         if current_data is not None:
