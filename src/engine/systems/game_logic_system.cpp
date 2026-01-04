@@ -11,6 +11,7 @@
 #include "engine/systems/command_system.hpp" // Added for CommandSystem
 #include "engine/systems/flow/phase_manager.hpp" // Added for PhaseManager
 #include "engine/systems/mana/mana_system.hpp" // Added for ManaSystem
+#include "engine/systems/breaker/breaker_system.hpp" // Added for BreakerSystem
 #include "engine/utils/action_primitive_utils.hpp"
 #include <iostream>
 #include <algorithm>
@@ -155,7 +156,7 @@ namespace dm::engine::systems {
                          // Auto-select shields if not provided
                          const CardInstance* source = state.get_card_instance(action.source_instance_id);
                          if (source) {
-                             int breaker_count = get_breaker_count(*source, card_db);
+                             int breaker_count = get_breaker_count(state, *source, card_db);
                              // Identify opponent
                              PlayerID opp = 1 - state.active_player_id; // Assume attack is active player
                              const auto& shields = state.players[opp].shield_zone;
@@ -839,15 +840,10 @@ namespace dm::engine::systems {
         return power;
     }
 
-    int GameLogicSystem::get_breaker_count(const core::CardInstance& creature, const std::map<core::CardID, core::CardDefinition>& card_db) {
+    int GameLogicSystem::get_breaker_count(const core::GameState& state, const core::CardInstance& creature, const std::map<core::CardID, core::CardDefinition>& card_db) {
         if (!card_db.count(creature.card_id)) return 1;
         const auto& def = card_db.at(creature.card_id);
-
-        if (def.keywords.world_breaker) return 999;
-        if (def.keywords.triple_breaker) return 3;
-        if (def.keywords.double_breaker) return 2;
-
-        return 1;
+        return BreakerSystem::get_breaker_count(state, creature, def);
     }
 
     void GameLogicSystem::handle_break_shield(PipelineExecutor& exec, GameState& state, const Instruction& inst,
