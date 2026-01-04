@@ -3,6 +3,7 @@
 #include "core/game_state.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/game_command/commands.hpp"
+#include "engine/systems/trigger_system/trigger_system.hpp"
 
 namespace dm::engine {
 
@@ -62,7 +63,7 @@ namespace dm::engine {
                 // We must iterate over opponent's Battle Zone to trigger effects like "Whenever your opponent draws a card..."
                 // Since this is inside the loop, it triggers per card drawn.
                 for (const auto& card : opponent.battle_zone) {
-                    EffectSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_OPPONENT_DRAW, card.instance_id, ctx.card_db);
+                    systems::TriggerSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_OPPONENT_DRAW, card.instance_id, ctx.card_db);
                 }
              }
 

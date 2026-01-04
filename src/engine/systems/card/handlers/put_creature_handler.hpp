@@ -6,6 +6,7 @@
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 // #include "engine/effects/effect_resolver.hpp" // Removed
+#include "engine/systems/trigger_system/trigger_system.hpp"
 
 namespace dm::engine {
 
@@ -92,8 +93,8 @@ namespace dm::engine {
                 ctx.game_state.card_owner_map[target_id] = controller;
 
                 // Trigger ON_PLAY / ON_OTHER_ENTER
-                EffectSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_PLAY, target_id, ctx.card_db);
-                EffectSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_OTHER_ENTER, target_id, ctx.card_db);
+                systems::TriggerSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_PLAY, target_id, ctx.card_db);
+                systems::TriggerSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_OTHER_ENTER, target_id, ctx.card_db);
             }
         }
     };
