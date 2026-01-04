@@ -197,7 +197,7 @@ namespace dm::engine::systems {
                 Instruction inst(InstructionOp::GAME_ACTION, args);
                 inst.args["type"] = "PLAY_CARD_INTERNAL";
 
-                int dest_override = 0;
+                ZoneDestination dest_override = ZoneDestination::NONE;
 
                 // Lookup pending effect to determine destination if needed
                 if (action.slot_index >= 0 && action.slot_index < (int)state.pending_effects.size()) {
@@ -213,24 +213,24 @@ namespace dm::engine::systems {
                             // Map all relevant destination zones to override flags
                             if (!act.destination_zone.empty()) {
                                 if (act.destination_zone == "DECK_BOTTOM") {
-                                    inst.args["dest_override"] = 1; // 1 = Deck Bottom
-                                    dest_override = 1;
+                                    inst.args["dest_override"] = static_cast<int>(ZoneDestination::DECK_BOTTOM);
+                                    dest_override = ZoneDestination::DECK_BOTTOM;
                                     break;
                                 } else if (act.destination_zone == "DECK" || act.destination_zone == "DECK_TOP") {
-                                    inst.args["dest_override"] = 2; // 2 = Deck Top (if needed)
-                                    dest_override = 2;
+                                    inst.args["dest_override"] = static_cast<int>(ZoneDestination::DECK_TOP);
+                                    dest_override = ZoneDestination::DECK_TOP;
                                     break;
                                 } else if (act.destination_zone == "HAND") {
-                                    inst.args["dest_override"] = 3;
-                                    dest_override = 3;
+                                    inst.args["dest_override"] = static_cast<int>(ZoneDestination::HAND);
+                                    dest_override = ZoneDestination::HAND;
                                     break;
                                 } else if (act.destination_zone == "MANA_ZONE") {
-                                    inst.args["dest_override"] = 4;
-                                    dest_override = 4;
+                                    inst.args["dest_override"] = static_cast<int>(ZoneDestination::MANA_ZONE);
+                                    dest_override = ZoneDestination::MANA_ZONE;
                                     break;
                                 } else if (act.destination_zone == "SHIELD_ZONE") {
-                                    inst.args["dest_override"] = 5;
-                                    dest_override = 5;
+                                    inst.args["dest_override"] = static_cast<int>(ZoneDestination::SHIELD_ZONE);
+                                    dest_override = ZoneDestination::SHIELD_ZONE;
                                     break;
                                 }
                             }
@@ -239,7 +239,7 @@ namespace dm::engine::systems {
                 }
 
                 // New logic: Use Stack Lifecycle if no override (or standard play override)
-                if (dest_override == 0) {
+                if (dest_override == ZoneDestination::NONE) {
                      // 1. Declare Play (Move to Stack)
                      int iid = action.source_instance_id;
                      auto loc = get_card_location(state, iid);
@@ -288,7 +288,7 @@ namespace dm::engine::systems {
         pipeline.execute(nullptr, state, card_db); // Run the pipeline
     }
 
-    void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, int dest_override) {
+    void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, core::ZoneDestination dest_override) {
         // Resolve a play that is currently on the stack: invoke resolution logic
         // by constructing a PipelineExecutor, delegating to handle_resolve_play and
         // running the pipeline so compiled effects (and final MOVE to GRAVE) execute.
@@ -424,17 +424,17 @@ namespace dm::engine::systems {
         }
 
         if (inst.args.contains("dest_override")) {
-             int override_val = exec.resolve_int(inst.args["dest_override"]);
-             if (override_val == 1) { // 1 = DECK_BOTTOM
+             ZoneDestination override_val = static_cast<ZoneDestination>(exec.resolve_int(inst.args["dest_override"]));
+             if (override_val == ZoneDestination::DECK_BOTTOM) {
                  dest = Zone::DECK;
                  to_bottom = true;
-             } else if (override_val == 2) { // 2 = DECK_TOP
+             } else if (override_val == ZoneDestination::DECK_TOP) {
                  dest = Zone::DECK;
-             } else if (override_val == 3) { // 3 = HAND
+             } else if (override_val == ZoneDestination::HAND) {
                  dest = Zone::HAND;
-             } else if (override_val == 4) { // 4 = MANA
+             } else if (override_val == ZoneDestination::MANA_ZONE) {
                  dest = Zone::MANA;
-             } else if (override_val == 5) { // 5 = SHIELD
+             } else if (override_val == ZoneDestination::SHIELD_ZONE) {
                  dest = Zone::SHIELD;
              }
         } else {

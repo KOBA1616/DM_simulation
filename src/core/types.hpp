@@ -52,6 +52,16 @@ namespace dm::core {
         BUFFER   // Added for Effect Buffer support
     };
 
+    // Explicit override for destination when playing/moving cards
+    enum class ZoneDestination : uint8_t {
+        NONE = 0,
+        DECK_BOTTOM = 1,
+        DECK_TOP = 2,
+        HAND = 3,
+        MANA_ZONE = 4,
+        SHIELD_ZONE = 5
+    };
+
     enum class Phase : uint8_t {
         START_OF_TURN,
         DRAW,
