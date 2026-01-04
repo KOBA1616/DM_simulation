@@ -50,6 +50,7 @@ class CardEditForm(BaseEditForm):
 
         # Name
         self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText(tr("Enter card name..."))
         self.add_field(tr("Name"), self.name_edit)
 
         # Twinpact Checkbox
@@ -65,6 +66,7 @@ class CardEditForm(BaseEditForm):
 
         # Type
         self.type_combo = QComboBox()
+        self.type_combo.setToolTip(tr("Card type (Creature, Spell, etc.)"))
         types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE", "TAMASEED", "CASTLE", "NEO_CREATURE", "G_NEO_CREATURE"]
         self.populate_combo(self.type_combo, types, data_func=lambda x: x)
         self.add_field(tr("Type"), self.type_combo)
@@ -72,16 +74,20 @@ class CardEditForm(BaseEditForm):
         # Cost
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
+        self.cost_spin.setToolTip(tr("Mana cost of the card"))
         self.add_field(tr("Cost"), self.cost_spin)
 
         # Power
         self.power_spin = QSpinBox()
         self.power_spin.setRange(0, 99999)
         self.power_spin.setSingleStep(500)
+        self.power_spin.setToolTip(tr("Creature power (ignored for Spells)"))
         self.lbl_power = self.add_field(tr("Power"), self.power_spin)
 
         # Races
         self.races_edit = QLineEdit()
+        self.races_edit.setPlaceholderText(tr("Dragon, Fire Bird"))
+        self.races_edit.setToolTip(tr("Comma-separated list of races (e.g. 'Dragon, Fire Bird')"))
         self.lbl_races = self.add_field(tr("Races"), self.races_edit)
 
         # Evolution Condition (Hidden by default, shown for Evolution types)
@@ -94,11 +100,13 @@ class CardEditForm(BaseEditForm):
         ai_layout = QFormLayout(ai_group)
 
         self.is_key_card_check = QCheckBox(tr("Is Key Card / Combo Piece"))
+        self.is_key_card_check.setToolTip(tr("Mark this card as critical for the deck's strategy."))
         self.is_key_card_check.stateChanged.connect(self.update_data)
         self.add_field(None, self.is_key_card_check, layout=ai_layout)
 
         self.ai_importance_spin = QSpinBox()
         self.ai_importance_spin.setRange(0, 1000)
+        self.ai_importance_spin.setToolTip(tr("Higher values (0-1000) prioritize this card for AI protection and targeting."))
         self.ai_importance_spin.valueChanged.connect(self.update_data)
         self.add_field(tr("AI Importance Score"), self.ai_importance_spin, layout=ai_layout)
 
