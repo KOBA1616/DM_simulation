@@ -76,18 +76,26 @@ namespace dm::engine {
                         // Check validity
                         bool valid = false;
 
-                        // 1. Race Match (Standard)
-                        // If the evolution creature specifies a race to evolve from...
-                        // But CardDefinition doesn't explicitly say "Evolves from X".
-                        // It just has "Races".
-                        // For MVP, we assume "Evolves from SAME Race" or "Matches Civilization"?
-                        // Let's use `TargetUtils` if we had a filter.
-                        // Without explicit filter, we'll be permissive or strict based on race intersection.
-
-                        for (const auto& r : card_def.races) {
-                            if (TargetUtils::CardProperties<CardDefinition>::has_race(source_def, r)) {
+                        if (card_def.evolution_condition.has_value()) {
+                            // Use the explicit evolution condition filter
+                            // We check if 'source' is a valid target for the evolution filter
+                            if (TargetUtils::is_valid_target(source, source_def, *card_def.evolution_condition, state, player.id, player.id, false)) {
                                 valid = true;
-                                break;
+                            }
+                        } else {
+                            // 1. Race Match (Standard Fallback)
+                            // If the evolution creature specifies a race to evolve from...
+                            // But CardDefinition doesn't explicitly say "Evolves from X".
+                            // It just has "Races".
+                            // For MVP, we assume "Evolves from SAME Race" or "Matches Civilization"?
+                            // Let's use `TargetUtils` if we had a filter.
+                            // Without explicit filter, we'll be permissive or strict based on race intersection.
+
+                            for (const auto& r : card_def.races) {
+                                if (TargetUtils::CardProperties<CardDefinition>::has_race(source_def, r)) {
+                                    valid = true;
+                                    break;
+                                }
                             }
                         }
 

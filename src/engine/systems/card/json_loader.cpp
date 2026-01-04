@@ -130,6 +130,11 @@ namespace dm::engine {
 
         def.cost_reductions = data.cost_reductions;
 
+        // Evolution Condition
+        if (data.evolution_condition.has_value()) {
+            def.evolution_condition = data.evolution_condition;
+        }
+
         // Revolution Change
         if (data.revolution_change_condition.has_value()) {
             def.revolution_change_condition = data.revolution_change_condition;

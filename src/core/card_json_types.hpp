@@ -323,6 +323,7 @@ namespace dm::core {
         std::vector<EffectDef> effects;
         std::vector<ModifierDef> static_abilities; // Added
         std::vector<EffectDef> metamorph_abilities;
+        std::optional<FilterDef> evolution_condition;
         std::optional<FilterDef> revolution_change_condition;
         std::optional<std::map<std::string, bool>> keywords;
         std::vector<ReactionAbility> reaction_abilities;
@@ -558,6 +559,7 @@ namespace dm::core {
             {"triggers", c.effects}, // Mapped to triggers in JSON
             {"static_abilities", c.static_abilities}, // Added
             {"metamorph_abilities", c.metamorph_abilities},
+            {"evolution_condition", c.evolution_condition},
             {"revolution_change_condition", c.revolution_change_condition},
             {"keywords", c.keywords},
             {"reaction_abilities", c.reaction_abilities},
@@ -600,6 +602,10 @@ namespace dm::core {
             j.at("metamorph_abilities").get_to(c.metamorph_abilities);
         } else {
             c.metamorph_abilities = {};
+        }
+
+        if (j.contains("evolution_condition")) {
+             j.at("evolution_condition").get_to(c.evolution_condition);
         }
 
         if (j.contains("revolution_change_condition")) {
