@@ -72,4 +72,4 @@ Transformerモデルへの移行を進めます。
 ## 4. 運用ルール (Operational Rules)
 *   **コミットメッセージ**: 日本語で記述する。
 *   **コード規約**: PythonはPEP8準拠、C++はGoogle Style準拠。
-*   **テスト**: 機能追加時は必ず `python/tests/` に単体テストを追加し、`pytest` をパスさせること。
+*   **テスト**: 機能追加時は必ず `tests/` に単体テストを追加し、`pytest` をパスさせること。
