@@ -3,6 +3,7 @@
 #include "engine/systems/card/condition_system.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "engine/systems/card/effect_system.hpp" // Added include for EffectSystem
+#include "engine/systems/trigger_system/trigger_system.hpp" // Added for TriggerSystem
 #include "engine/systems/card/passive_effect_system.hpp" // Added for PassiveEffectSystem
 #include "core/game_state.hpp"
 #include "core/action.hpp"
@@ -743,8 +744,8 @@ namespace dm::engine::systems {
         // Need access to Card Definition
         if (blocker && card_db.count(blocker->card_id)) {
              // Logic to queue triggers (if any)
-             // Using EffectSystem directly
-             EffectSystem::instance().resolve_trigger(state, TriggerType::ON_BLOCK, blocker_id, card_db);
+             // Using TriggerSystem directly
+             TriggerSystem::instance().resolve_trigger(state, TriggerType::ON_BLOCK, blocker_id, card_db);
         }
 
         // 4. Queue RESOLVE_BATTLE?
@@ -1070,8 +1071,8 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_check_creature_enter_triggers(PipelineExecutor& exec, GameState& state, const Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db) {
         int card_id = exec.resolve_int(inst.args.value("card", 0));
-        EffectSystem::instance().resolve_trigger(state, TriggerType::ON_PLAY, card_id, card_db);
-        EffectSystem::instance().resolve_trigger(state, TriggerType::ON_OTHER_ENTER, card_id, card_db);
+        TriggerSystem::instance().resolve_trigger(state, TriggerType::ON_PLAY, card_id, card_db);
+        TriggerSystem::instance().resolve_trigger(state, TriggerType::ON_OTHER_ENTER, card_id, card_db);
     }
 
     void GameLogicSystem::handle_game_result(PipelineExecutor& exec, GameState& state, const Instruction& inst) {
