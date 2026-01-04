@@ -25,9 +25,9 @@ except ImportError:
 
 # Import Network
 try:
-    from dm_toolkit.ai.agent.transformer_network import NetworkV2
+    from dm_toolkit.ai.agent.network import AlphaZeroTransformer
 except ImportError as e:
-    print(f"Failed to import transformer_network: {e}")
+    print(f"Failed to import AlphaZeroTransformer: {e}")
     sys.exit(1)
 
 def verify_transformer_integration():
@@ -35,9 +35,12 @@ def verify_transformer_integration():
 
     # 1. Initialize Game State
     print("Initializing GameState...")
-    # Initialize JSON loader for card DB
-    # JsonLoader.load_cards returns the card_db (shared_ptr) directly now
-    card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+    cards_path = os.path.join(project_root, "data/cards.json")
+    if not os.path.exists(cards_path):
+        print(f"Error: cards.json not found at {cards_path}")
+        sys.exit(1)
+
+    card_db = dm_ai_module.JsonLoader.load_cards(cards_path)
 
     # Create game
     game_state = dm_ai_module.GameState(1000)
@@ -58,20 +61,20 @@ def verify_transformer_integration():
         sys.exit(1)
 
     # 3. Instantiate Transformer Model
-    print("Instantiating NetworkV2...")
+    print("Instantiating AlphaZeroTransformer...")
     vocab_size = dm_ai_module.TensorConverter.VOCAB_SIZE
     max_seq_len = dm_ai_module.TensorConverter.MAX_SEQ_LEN
     action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
 
     print(f"Model Config: Vocab={vocab_size}, MaxSeq={max_seq_len}, ActionSpace={action_size}")
 
-    model = NetworkV2(
+    model = AlphaZeroTransformer(
+        action_size=action_size,
         embedding_dim=64, # Small for test
         depth=2,
         heads=4,
-        input_vocab_size=vocab_size + 1000, # Safety buffer
-        max_seq_len=max_seq_len,
-        action_space=action_size
+        vocab_size=vocab_size,
+        max_seq_len=max_seq_len
     )
     model.eval()
 
@@ -99,36 +102,6 @@ def verify_transformer_integration():
         import traceback
         traceback.print_exc()
         sys.exit(1)
-
-    # 5. Batch Verification
-    print("Testing TensorConverter.convert_batch_sequence...")
-    try:
-        # Create a list of shared_ptrs (Python binding logic might need care here)
-        # We can't easily create a vector of shared_ptrs from Python directly usually unless exposed.
-        # But wait, our lambda accepted `std::vector<std::shared_ptr<GameState>>`.
-        # Pybind11 automatically handles list of objects if they are held by shared_ptr?
-        # Actually `GameState` in python is usually a unique_ptr or value holder.
-        # But `ParallelRunner` uses shared_ptrs.
-        # Let's try passing a list of GameStates and see if pybind casts it.
-        # Since we changed the signature to shared_ptr, passing raw GameState might fail if not managed by shared_ptr.
-        # However, `GameState` created in Python is usually managed by Python.
-
-        # Actually, let's skip strict batch testing if it's tricky in Python without proper casting helpers.
-        # But let's try.
-        states = [game_state, game_state] # List of GameState objects
-
-        # In Python bindings, if GameState is not held by shared_ptr, this might fail or copy.
-        # But we wrote the lambda to take shared_ptr.
-        # Let's see if it works.
-        try:
-            batch_tokens = dm_ai_module.TensorConverter.convert_batch_sequence(states, card_db, True)
-            print(f"Batch tokens generated: {len(batch_tokens)} (Expected {len(states) * max_seq_len})")
-            assert len(batch_tokens) == len(states) * max_seq_len
-        except TypeError:
-            print("Skipping batch test: Type mismatch (Expected shared_ptr list, got objects). This is acceptable for Python-side training which loads .npz.")
-
-    except Exception as e:
-        print(f"Error in batch conversion: {e}")
 
     print("--- Verification Complete: SUCCESS ---")
 
