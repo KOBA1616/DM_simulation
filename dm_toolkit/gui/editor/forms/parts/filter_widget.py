@@ -134,7 +134,7 @@ class FilterEditorWidget(QWidget):
         def create_tristate(label):
             l = QLabel(tr(label))
             c = QComboBox()
-            c.addItem(tr("Ignore"), -1)
+            c.addItem(tr("Any"), -1)
             c.addItem(tr("Yes (True)"), 1)
             c.addItem(tr("No (False)"), 0)
             c.currentIndexChanged.connect(self.filterChanged.emit)
@@ -272,7 +272,7 @@ class FilterEditorWidget(QWidget):
 
         # Flags
         def set_tristate(combo, val):
-            if val is None: combo.setCurrentIndex(0) # Ignore
+            if val is None: combo.setCurrentIndex(0) # Any
             elif val is True: combo.setCurrentIndex(1) # Yes
             else: combo.setCurrentIndex(2) # No
 
