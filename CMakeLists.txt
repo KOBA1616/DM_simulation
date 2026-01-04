@@ -187,6 +187,7 @@ set(SRC_ENGINE
     src/engine/systems/trigger_system/trigger_manager.cpp
     src/engine/systems/trigger_system/trigger_system.cpp
     src/engine/game_command/commands.cpp
+    src/engine/game_command/action_commands.cpp # Added
     src/engine/systems/pipeline_executor.cpp
     src/engine/systems/command_system.cpp
     src/engine/systems/game_logic_system.cpp

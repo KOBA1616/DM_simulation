@@ -7,7 +7,7 @@ namespace dm::engine::game_command {
     enum class CommandType {
         TRANSITION,
         MUTATE,
-        ATTACH, // Added ATTACH
+        ATTACH,
         FLOW,
         QUERY,
         DECIDE,
@@ -15,7 +15,15 @@ namespace dm::engine::game_command {
         STAT,
         GAME_RESULT,
         ADD_CARD,
-        SHUFFLE
+        SHUFFLE,
+        // High-level Action Commands
+        PLAY_CARD,
+        ATTACK,
+        BLOCK,
+        USE_ABILITY,
+        MANA_CHARGE,
+        RESOLVE_PENDING_EFFECT,
+        PASS_TURN // or just PASS
     };
 
     class GameCommand {
