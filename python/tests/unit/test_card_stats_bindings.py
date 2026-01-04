@@ -15,8 +15,16 @@ import dm_ai_module as dm
 
 def test_initialize_and_vectorize_defaults():
     # Load card DB
-    card_db = dm.JsonLoader.load_cards('data/cards.json')
-    assert isinstance(card_db, dict)
+    # JsonLoader.load_cards now returns shared_ptr<CardDatabase> (opaque type) if updated,
+    # or dict if not.
+    # The failing test log showed it returned a dict.
+    # "Invoked with: ... {1: ...}"
+    card_db_dict = dm.JsonLoader.load_cards('data/cards.json')
+
+    # Manually convert to CardDatabase
+    card_db = dm.CardDatabase()
+    for k, v in card_db_dict.items():
+        card_db[k] = v
 
     gs = dm.GameState(42)
     # Initialize stats map

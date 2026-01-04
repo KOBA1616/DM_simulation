@@ -20,7 +20,7 @@ def test_batch_inference_basic():
         s.setup_test_duel()
 
         # Instantiate NeuralEvaluator with empty card DB
-        ne = dm_ai_module.NeuralEvaluator({})
+        ne = dm_ai_module.NeuralEvaluator(dm_ai_module.CardDatabase())
 
         policies, values = ne.evaluate([s])
         print('policies_len=', len(policies), 'values_len=', len(values))

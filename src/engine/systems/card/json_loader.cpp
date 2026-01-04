@@ -62,6 +62,90 @@ namespace dm::engine {
             case EffectPrimitive::MOVE_CARD:
                 cmd.type = CommandType::TRANSITION;
                 break;
+            case EffectPrimitive::LOOK_AND_ADD:
+                cmd.type = CommandType::LOOK_AND_ADD;
+                break;
+            case EffectPrimitive::SUMMON_TOKEN:
+                cmd.type = CommandType::SUMMON_TOKEN;
+                break;
+            case EffectPrimitive::SEARCH_DECK_BOTTOM:
+                cmd.type = CommandType::SEARCH_DECK_BOTTOM;
+                break;
+            case EffectPrimitive::MEKRAID:
+                cmd.type = CommandType::MEKRAID;
+                break;
+            case EffectPrimitive::PLAY_FROM_ZONE:
+                cmd.type = CommandType::PLAY_FROM_ZONE;
+                break;
+            case EffectPrimitive::COST_REFERENCE:
+                cmd.type = CommandType::QUERY;
+                break;
+            case EffectPrimitive::LOOK_TO_BUFFER:
+                cmd.type = CommandType::LOOK_TO_BUFFER;
+                break;
+            case EffectPrimitive::SELECT_FROM_BUFFER:
+                cmd.type = CommandType::SELECT_FROM_BUFFER;
+                break;
+            case EffectPrimitive::PLAY_FROM_BUFFER:
+                cmd.type = CommandType::PLAY_FROM_BUFFER;
+                break;
+            case EffectPrimitive::MOVE_BUFFER_TO_ZONE:
+                cmd.type = CommandType::MOVE_BUFFER_TO_ZONE;
+                break;
+            case EffectPrimitive::REVOLUTION_CHANGE:
+                cmd.type = CommandType::MUTATE;
+                break;
+            case EffectPrimitive::COUNT_CARDS:
+                cmd.type = CommandType::QUERY;
+                break;
+            case EffectPrimitive::GET_GAME_STAT:
+                cmd.type = CommandType::QUERY;
+                break;
+            case EffectPrimitive::APPLY_MODIFIER:
+                cmd.type = CommandType::MUTATE;
+                break;
+            case EffectPrimitive::REVEAL_CARDS:
+                cmd.type = CommandType::REVEAL_CARDS;
+                break;
+            case EffectPrimitive::REGISTER_DELAYED_EFFECT:
+                cmd.type = CommandType::REGISTER_DELAYED_EFFECT;
+                break;
+            case EffectPrimitive::RESET_INSTANCE:
+                cmd.type = CommandType::MUTATE;
+                break;
+            case EffectPrimitive::SHUFFLE_DECK:
+                cmd.type = CommandType::SHUFFLE_DECK;
+                break;
+            case EffectPrimitive::ADD_SHIELD:
+                cmd.type = CommandType::ADD_SHIELD;
+                break;
+            case EffectPrimitive::SEND_SHIELD_TO_GRAVE:
+                cmd.type = CommandType::SHIELD_BURN;
+                break;
+            case EffectPrimitive::SEND_TO_DECK_BOTTOM:
+                cmd.type = CommandType::SEND_TO_DECK_BOTTOM;
+                break;
+            case EffectPrimitive::MOVE_TO_UNDER_CARD:
+                cmd.type = CommandType::TRANSITION;
+                break;
+            case EffectPrimitive::SELECT_NUMBER:
+                cmd.type = CommandType::SELECT_NUMBER;
+                break;
+            case EffectPrimitive::FRIEND_BURST:
+                cmd.type = CommandType::FRIEND_BURST;
+                break;
+            case EffectPrimitive::CAST_SPELL:
+                cmd.type = CommandType::CAST_SPELL;
+                break;
+            case EffectPrimitive::PUT_CREATURE:
+                cmd.type = CommandType::PLAY_FROM_ZONE;
+                break;
+            case EffectPrimitive::SELECT_OPTION:
+                cmd.type = CommandType::CHOICE;
+                break;
+            case EffectPrimitive::RESOLVE_BATTLE:
+                cmd.type = CommandType::RESOLVE_BATTLE;
+                break;
             // Map other types as needed or log warning
             default:
                 // Fallback: If no mapping, we might lose functionality for now.
