@@ -24,12 +24,20 @@ except ImportError:
     print(f"Error: Could not import dm_ai_module. Make sure it is built and in {bin_path}")
     sys.exit(1)
 
-from dm_toolkit.ai.agent.network import AlphaZeroNetwork
-from dm_toolkit.ai.agent.transformer_network import NetworkV2
+from dm_toolkit.ai.agent.network import AlphaZeroNetwork, AlphaZeroTransformer
 from typing import Any, List, Tuple, Optional
 
 # Import SCENARIOS
-from training.scenario_definitions import SCENARIOS
+try:
+    from dm_toolkit.training.scenario_definitions import SCENARIOS
+except ImportError:
+    # Fallback or try adding python path if running directly
+    sys.path.append(os.path.join(project_root, 'python'))
+    try:
+        from training.scenario_definitions import SCENARIOS
+    except ImportError:
+         # Try dm_toolkit directly
+         from dm_toolkit.training.scenario_definitions import SCENARIOS
 
 import torch
 
@@ -55,12 +63,12 @@ class PerformanceVerifier:
         # Initialize Network based on type
         self.network: Any
         if self.model_type == "transformer":
-            print("Initializing TRANSFORMER model (NetworkV2)...")
+            print("Initializing TRANSFORMER model (AlphaZeroTransformer)...")
             self.vocab_size = dm_ai_module.TokenConverter.get_vocab_size()
             self.max_seq_len = 200 # Should match training
-            self.network = NetworkV2(input_vocab_size=self.vocab_size,
-                                     action_space=self.action_size,
-                                     max_seq_len=self.max_seq_len).to(self.device)
+            self.network = AlphaZeroTransformer(action_size=self.action_size,
+                                                vocab_size=self.vocab_size,
+                                                max_seq_len=self.max_seq_len).to(self.device)
         else:
             print("Initializing RESNET model (AlphaZeroNetwork)...")
             self.network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)

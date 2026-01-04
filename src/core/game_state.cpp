@@ -171,6 +171,8 @@ namespace dm::core {
         }
     }
 
+    // Removed unique_ptr overload implementation
+
     void GameState::undo() {
         if (command_history.empty()) return;
         auto& cmd = command_history.back();
