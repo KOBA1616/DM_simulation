@@ -175,6 +175,7 @@ set(SRC_ENGINE
     src/engine/actions/strategies/phase_strategies.cpp
     src/engine/systems/flow/phase_manager.cpp
     src/engine/systems/mana/mana_system.cpp
+    src/engine/systems/breaker/breaker_system.cpp # Added
     src/engine/utils/determinizer.cpp
     src/engine/utils/dev_tools.cpp
     src/engine/systems/card/card_registry.cpp
