@@ -62,7 +62,8 @@ namespace dm::core {
         }
 
         // Stats
-        new_state.global_card_stats = global_card_stats;
+        new_state.historical_card_stats = historical_card_stats; // Share
+        new_state.global_card_stats = global_card_stats; // Copy (now small)
         new_state.initial_deck_stats_sum = initial_deck_stats_sum;
         new_state.visible_stats_sum = visible_stats_sum;
         new_state.initial_deck_count = initial_deck_count;
@@ -167,6 +168,39 @@ namespace dm::core {
         auto& cmd = command_history.back();
         cmd->invert(*this);
         command_history.pop_back();
+    }
+
+    CardStats GameState::get_card_stats(CardID cid) const {
+        // Priority: Local > Historical > Empty
+        auto it = global_card_stats.find(cid);
+        if (it != global_card_stats.end()) {
+            return it->second;
+        }
+        if (historical_card_stats) {
+            auto it_hist = historical_card_stats->find(cid);
+            if (it_hist != historical_card_stats->end()) {
+                return it_hist->second;
+            }
+        }
+        return CardStats{};
+    }
+
+    CardStats& GameState::get_mutable_card_stats(CardID cid) {
+        // If present locally, return it.
+        // If not, copy from historical (if exists) or create new, insert into local, return it.
+        auto it = global_card_stats.find(cid);
+        if (it == global_card_stats.end()) {
+            CardStats cs;
+            if (historical_card_stats) {
+                auto it_hist = historical_card_stats->find(cid);
+                if (it_hist != historical_card_stats->end()) {
+                    cs = it_hist->second;
+                }
+            }
+            // Insert and get iterator
+            it = global_card_stats.emplace(cid, cs).first;
+        }
+        return it->second;
     }
 
 }
