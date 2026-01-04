@@ -84,11 +84,6 @@ class EffectEditForm(BaseEditForm):
 
         # Define bindings
         # Note: 'trigger', 'condition', 'type', 'value', 'str_val' are context dependent
-        # We can bind the widgets, but need to be careful with saving when mode switches.
-        # But _apply_bindings sets widgets, _collect_bindings gathers.
-        # Since triggers are hidden in static mode, gathering them doesn't matter much if we clear them in _save_data override.
-        # However, due to logic structure, we might want to keep manual saving for conditional parts.
-        # Let's bind what is straightforward or 1:1.
         self.bindings = {
             'trigger': self.trigger_combo,
             # For static/modifier
@@ -129,25 +124,28 @@ class EffectEditForm(BaseEditForm):
     def on_add_action_clicked(self):
         self.structure_update_requested.emit("ADD_CHILD_ACTION", {})
 
-    def _populate_ui(self, item):
-        data = item.data(Qt.ItemDataRole.UserRole + 2)
-        item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+    def _load_ui_from_data(self, data, item):
+        """
+        Populate UI from data (Hook).
+        """
+        item_type = "EFFECT"
+        if item:
+            item_type = item.data(Qt.ItemDataRole.UserRole + 1)
 
-        # Logic Mask: Filter triggers based on Card Type
-        # Traverse up to find Card or Spell Side to determine type
-        card_type = "CREATURE"
-        parent = item.parent() # Group
-        if parent:
-            grandparent = parent.parent() # Card or Spell Side
-            if grandparent:
-                role = grandparent.data(Qt.ItemDataRole.UserRole + 1)
-                if role == "SPELL_SIDE":
-                    card_type = "SPELL"
-                elif role == "CARD":
-                     cdata = grandparent.data(Qt.ItemDataRole.UserRole + 2)
-                     card_type = cdata.get('type', 'CREATURE')
+            # Logic Mask: Filter triggers based on Card Type
+            card_type = "CREATURE"
+            parent = item.parent() # Group
+            if parent:
+                grandparent = parent.parent() # Card or Spell Side
+                if grandparent:
+                    role = grandparent.data(Qt.ItemDataRole.UserRole + 1)
+                    if role == "SPELL_SIDE":
+                        card_type = "SPELL"
+                    elif role == "CARD":
+                         cdata = grandparent.data(Qt.ItemDataRole.UserRole + 2)
+                         card_type = cdata.get('type', 'CREATURE')
 
-        self.update_trigger_options(card_type)
+            self.update_trigger_options(card_type)
 
         # Determine Mode
         mode = "TRIGGERED"
@@ -158,6 +156,7 @@ class EffectEditForm(BaseEditForm):
             mode = "STATIC"
 
         self.set_combo_by_data(self.mode_combo, mode)
+        # Trigger visibility update immediately
         self.on_mode_changed()
 
         if mode == "TRIGGERED":
@@ -166,7 +165,6 @@ class EffectEditForm(BaseEditForm):
                  data['condition'] = data['trigger_condition']
         else:
             # STATIC (ModifierDef) - Normalize for bindings
-            # Map legacy/variant keys to standard keys matching bindings
             if 'layer_type' in data: data['type'] = data['layer_type']
             if 'layer_value' in data: data['value'] = data['layer_value']
             if 'layer_str' in data: data['str_val'] = data['layer_str']
@@ -179,7 +177,6 @@ class EffectEditForm(BaseEditForm):
         # Ensure fallback for condition if missing
         if not data.get('condition'):
              self.condition_widget.set_data({})
-
 
     def update_trigger_options(self, card_type):
         is_spell = (card_type == "SPELL")
@@ -216,7 +213,10 @@ class EffectEditForm(BaseEditForm):
 
         self.trigger_combo.blockSignals(False)
 
-    def _save_data(self, data):
+    def _save_ui_to_data(self, data):
+        """
+        Save UI to data (Hook).
+        """
         mode = self.mode_combo.currentData()
 
         # Apply bindings (collects into data)

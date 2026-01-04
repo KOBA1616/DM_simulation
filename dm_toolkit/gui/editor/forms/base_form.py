@@ -8,7 +8,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 class BaseEditForm(QWidget):
     """
     Base class for all edit forms in the Card Editor.
-    Handles common logic like data binding, signal blocking, and UI population.
+    Implements the Template Method pattern for the load -> update -> save flow.
     """
 
     # Signal emitted when data is changed by the user
@@ -23,15 +23,6 @@ class BaseEditForm(QWidget):
     def add_field(self, label, widget, layout=None):
         """
         Helper method to add a labeled field to a form layout.
-
-        Args:
-            label (str or QWidget): The label text or widget.
-            widget (QWidget): The input widget.
-            layout (QFormLayout, optional): The layout to add to.
-                                            Defaults to self.form_layout if available.
-
-        Returns:
-            QLabel or QWidget: The label widget created or passed.
         """
         if layout is None:
             layout = getattr(self, 'form_layout', None)
@@ -41,7 +32,6 @@ class BaseEditForm(QWidget):
 
         if layout is None:
             # If no layout found, we can't add.
-            # In a strict scenario, we might raise an error, but here we'll just return.
             return None
 
         if isinstance(label, str):
@@ -56,55 +46,95 @@ class BaseEditForm(QWidget):
             layout.addRow(widget)
             return None
 
-    def set_data(self, item):
+    # --- Template Methods ---
+
+    def load_data(self, item):
         """
-        Sets the current item to edit and populates the UI.
+        Template method to load data from an item into the UI.
+        Steps:
+        1. Pre-load setup (block signals).
+        2. Get data from item.
+        3. _load_ui_from_data (Hook) - passed data AND item context.
+        4. _update_ui_state (Hook).
+        5. Post-load cleanup (unblock signals).
         """
-        self.current_item = None # Prevent update_data from triggering during population
+        self.current_item = None # Prevent save_data from triggering during population
         self._is_populating = True
 
         try:
             self.block_signals_all(True)
-            self._populate_ui(item)
+
+            data = item.data(Qt.ItemDataRole.UserRole + 2)
+            if data is None:
+                data = {}
+
+            self._load_ui_from_data(data, item)
+            self._update_ui_state(data)
+
         finally:
             self.block_signals_all(False)
             self._is_populating = False
             self.current_item = item
 
-    def update_data(self):
+    def save_data(self):
         """
-        Updates the underlying data model from UI values.
-        Should be connected to widget signals (valueChanged, textChanged, etc).
+        Template method to save data from UI back to the item.
+        Steps:
+        1. Validation check (current_item exists, not populating).
+        2. Get existing data (or create new).
+        3. _save_ui_to_data (Hook).
+        4. Update item data and display text.
+        5. Emit change signal.
         """
         if not self.current_item or self._is_populating:
             return
 
         data = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
         if data is None:
-            # Should not happen if item is valid
-            return
+            # Should not happen if item is valid, but handle gracefully
+            data = {}
 
-        self._save_data(data)
+        self._save_ui_to_data(data)
 
         self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
         self.current_item.setText(self._get_display_text(data))
 
         self.dataChanged.emit()
 
-    def _populate_ui(self, item):
+    # --- Aliases for Backward Compatibility ---
+
+    def set_data(self, item):
+        self.load_data(item)
+
+    def update_data(self):
+        self.save_data()
+
+    # --- Hooks (Override these in subclasses) ---
+
+    def _load_ui_from_data(self, data, item):
         """
-        Override this to populate UI widgets from item data.
+        Hook to populate UI widgets from data.
+        Override to implement custom loading logic.
+        Uses bindings by default.
         """
-        # Default implementation uses bindings
-        data = item.data(Qt.ItemDataRole.UserRole + 2)
         self._apply_bindings(data)
 
-    def _save_data(self, data):
+    def _save_ui_to_data(self, data):
         """
-        Override this to save UI values back into the data dictionary.
+        Hook to save UI values back into the data dictionary.
+        Override to implement custom saving logic.
+        Uses bindings by default.
         """
-        # Default implementation uses bindings
         self._collect_bindings(data)
+
+    def _update_ui_state(self, data):
+        """
+        Hook to update UI visibility or enabled state based on loaded data.
+        Default implementation does nothing.
+        """
+        pass
+
+    # --- Common Helpers ---
 
     def _apply_bindings(self, data):
         """
@@ -119,15 +149,13 @@ class BaseEditForm(QWidget):
                 if val is None: val = default_val
             else:
                 widget_obj = widget
-                # If val is None, we might want a default based on widget type,
-                # but usually data.get(key) returning None means key missing.
 
             if val is None:
                  # Try to deduce default from widget type
                  if isinstance(widget_obj, (QSpinBox, QDoubleSpinBox)): val = 0
                  elif isinstance(widget_obj, QCheckBox): val = False
                  elif isinstance(widget_obj, QLineEdit): val = ""
-                 elif isinstance(widget_obj, QComboBox): val = None # Combo handling handles None usually
+                 elif isinstance(widget_obj, QComboBox): val = None
 
             # Apply to widget
             if hasattr(widget_obj, 'set_data'):
@@ -151,23 +179,10 @@ class BaseEditForm(QWidget):
                 widget_obj = widget[0]
 
             if hasattr(widget_obj, 'get_data'):
-                # Special handling for VariableLinkWidget which updates data in-place usually,
-                # but assuming get_data returns the value or updates the dict
-                # The existing VariableLinkWidget.get_data(data) updates in place.
-                # FilterWidget.get_data() returns a dict.
-                # We need to distinguish based on signature or convention.
-                # In ActionForm: filter_widget.get_data() returns dict. link_widget.get_data(data) modifies data.
-                # This is inconsistent. We should standardize or handle exception.
-
-                # Hacky check for now, or just assume assignment for those returning value
-                # Check method signature? No.
-
-                # Let's look at FilterEditorWidget. It returns a dict.
-                # VariableLinkWidget updates passed data.
-
-                # Ideally, we standardize. But for now:
+                # Handle widgets with get_data()
+                # Special check for VariableLinkWidget which acts in-place
                 if widget_obj.__class__.__name__ == 'VariableLinkWidget':
-                     widget_obj.get_data(data) # Updates in place, returns nothing
+                     widget_obj.get_data(data)
                 else:
                      data[key] = widget_obj.get_data()
 
@@ -195,14 +210,9 @@ class BaseEditForm(QWidget):
             w = widget[0] if isinstance(widget, tuple) else widget
             w.blockSignals(block)
 
-    # Helper methods
     def populate_combo(self, combo: QComboBox, items: list, data_func=None, display_func=None, clear=True):
         """
         Populates a QComboBox with items.
-        items: List of strings or tuples (label, data).
-        data_func: Optional function to extract data from an item if needed.
-        display_func: Optional function to format the display label.
-        clear: Whether to clear existing items (default True).
         """
         if clear:
             combo.clear()
@@ -214,7 +224,6 @@ class BaseEditForm(QWidget):
                     label = display_func(label)
                 combo.addItem(str(label), user_data)
             else:
-                # If just string, use it as both label and data
                 label = str(item)
                 if display_func:
                     label = display_func(item)
@@ -229,6 +238,3 @@ class BaseEditForm(QWidget):
         idx = combo.findData(value)
         if idx >= 0:
             combo.setCurrentIndex(idx)
-        else:
-            # Optional: Select first or nothing?
-            pass
