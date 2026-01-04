@@ -130,7 +130,11 @@ class LogicTreeWidget(QTreeView):
             # But DO NOT offer "Add Option" or new creation paths that make actions.
 
             replace_cmd_action = QAction(tr("Convert to Command"), self)
-            replace_cmd_action.triggered.connect(lambda: self.replace_item_with_command(index, self._convert_action_tree_to_command(self.standard_model.itemFromIndex(index))))
+            # Use data_manager helper to get the data
+            replace_cmd_action.triggered.connect(lambda: self.replace_item_with_command(
+                index,
+                self.data_manager.convert_action_tree_to_command(self.standard_model.itemFromIndex(index))
+            ))
             menu.addAction(replace_cmd_action)
 
             remove_action = QAction(tr("Remove Action"), self)
@@ -187,7 +191,8 @@ class LogicTreeWidget(QTreeView):
         if not index.isValid(): return
 
         item = self.standard_model.itemFromIndex(index)
-        preview_items = self._collect_conversion_preview(item)
+        # Delegate collection to data manager
+        preview_items = self.data_manager.collect_conversion_preview(item)
 
         if not preview_items:
             QMessageBox.information(self, tr("Conversion Info"), tr("No legacy actions found to convert."))
@@ -198,7 +203,8 @@ class LogicTreeWidget(QTreeView):
         dlg = ConvertBatchPreviewDialog(self, preview_items)
         res = dlg.exec()
         if res == dlg.Accepted:
-            count, warnings = self._recursive_convert_actions(item)
+            # Delegate conversion to data manager
+            count, warnings = self.data_manager.batch_convert_actions_recursive(item)
             if count > 0:
                 msg = f"{tr('Converted')} {count} {tr('actions to commands.')}"
                 if warnings > 0:
@@ -208,180 +214,13 @@ class LogicTreeWidget(QTreeView):
                 else:
                     QMessageBox.information(self, tr("Conversion Complete"), msg)
 
-    def _recursive_convert_actions(self, item):
-        """
-        Traverses the tree and converts ACTION items to COMMAND items.
-        Returns (converted_count, warning_count).
-        """
-        converted_count = 0
-        warning_count = 0
-        # Iterate backwards to safely remove/insert rows
-        for i in reversed(range(item.rowCount())):
-            child = item.child(i)
-            if child is None:
-                continue
-            child_type = self.data_manager.get_item_type(child)
-
-            if child_type == "ACTION":
-                # Convert this Action (and its children)
-                cmd_data = self._convert_action_tree_to_command(child)
-
-                # Check for warnings in this conversion branch
-                w = self._scan_warnings_in_cmd(cmd_data)
-                warning_count += w
-
-                self.replace_item_with_command(child.index(), cmd_data)
-                converted_count += 1
-                # Note: replace_item_with_command reconstructs the node, so we don't recurse into the old child.
-                # However, _convert_action_tree_to_command ALREADY handled the recursion for options.
-            else:
-                # Recurse deeper
-                c, w = self._recursive_convert_actions(child)
-                converted_count += c
-                warning_count += w
-        return converted_count, warning_count
-
-    def _scan_warnings_in_cmd(self, cmd_data):
-        w = 0
-        if cmd_data.get('legacy_warning', False):
-            w += 1
-
-        if 'options' in cmd_data:
-            for opt_list in cmd_data['options']:
-                for sub_cmd in opt_list:
-                    w += self._scan_warnings_in_cmd(sub_cmd)
-        return w
-
-    def _collect_conversion_preview(self, item):
-        """Return a flat list of preview dicts for ACTION items under `item` without modifying tree.
-
-        Each preview dict: { 'path': str, 'label': str, 'warning': bool, 'cmd_data': dict }
-        """
-        previews = []
-
-        def _recurse(cur_item):
-            for i in range(cur_item.rowCount()):
-                child = cur_item.child(i)
-                if child is None:
-                    continue
-                child_type = self.data_manager.get_item_type(child)
-                if child_type == 'ACTION':
-                    cmd_data = self._convert_action_tree_to_command(child)
-                    warn = bool(cmd_data.get('legacy_warning', False))
-                    previews.append({
-                        'path': self._get_item_path(child),
-                        'label': child.text(),
-                        'warning': warn,
-                        'cmd_data': cmd_data
-                    })
-                    # Also traverse OPTION children to collect nested ACTIONs
-                    for j in range(child.rowCount()):
-                        opt = child.child(j)
-                        if opt and self.data_manager.get_item_type(opt) == 'OPTION':
-                            _recurse(opt)
-                else:
-                    # Recurse deeper
-                    _recurse(child)
-
-        _recurse(item)
-        return previews
-
     def replace_item_with_command(self, index, cmd_data):
-        """Replaces a legacy Action item with a new Command item."""
-        if not index.isValid(): return
-
-        parent_item = self.standard_model.itemFromIndex(index.parent())
-        old_item = self.standard_model.itemFromIndex(index)
-        if old_item is None:
-            return
-        row = index.row()
-
-        # 1. Capture old structure if it has children (OPTIONS)
-        preserved_options_data = []
-        if old_item.rowCount() > 0:
-            # Check if children are OPTIONS
-            for i in range(old_item.rowCount()):
-                child = old_item.child(i)
-                if child is None:
-                    continue
-                if self.data_manager.get_item_type(child) == "OPTION":
-                    # Collect actions inside
-                    opt_actions_data = []
-                    for k in range(child.rowCount()):
-                        act_child = child.child(k)
-                        if act_child is None:
-                            continue
-                        # We only care about ACTIONs to convert
-                        act_type = self.data_manager.get_item_type(act_child)
-                        if act_type == "ACTION":
-                            # Recursively capture and convert
-                            c_cmd = self._convert_action_tree_to_command(act_child)
-                            opt_actions_data.append(c_cmd)
-                        elif act_type == "COMMAND":
-                            # Already a command, preserve it
-                            opt_actions_data.append(self.data_manager.get_item_data(act_child))
-                    preserved_options_data.append(opt_actions_data)
-
-        # 2. Inject options into cmd_data if exists
-        if preserved_options_data:
-            # Merge preserved structure into cmd_data
-            # This ensures that any existing COMMAND items (mixed model) or converted children are kept,
-            # covering cases where cmd_data might not have them (e.g. external call) or to enforce tree state consistency.
-            cmd_data['options'] = preserved_options_data
-
-        # 3. Remove old Action
-        if parent_item is None:
-            # If parent is None, it might be the root item (top-level item)
-            # index.parent() is invalid for top-level items.
-            if not index.parent().isValid():
-                parent_item = self.standard_model.invisibleRootItem()
-
-        if parent_item is None:
-             return
-
-        parent_item.removeRow(row)
-
-        # 4. Insert new Command at same position
-        cmd_item = self.data_manager.create_command_item(cmd_data)
-        parent_item.insertRow(row, cmd_item)
-
-        # Select the new item
-        self.setCurrentIndex(cmd_item.index())
-        self.expand(cmd_item.index()) # Expand to show preserved children
-
-    def _convert_action_tree_to_command(self, action_item):
-        """Recursively converts an Action Item and its children to Command Data."""
-        from dm_toolkit.gui.editor.action_converter import ActionConverter
-
-        act_data = self.data_manager.get_item_data(action_item)
-        cmd_data = ActionConverter.convert(act_data)
-
-        # Check for children (Options)
-        options_list = []
-        if action_item.rowCount() > 0:
-            for i in range(action_item.rowCount()):
-                child = action_item.child(i)
-                if child is None:
-                    continue
-                child_type = self.data_manager.get_item_type(child)
-                if child_type == "OPTION":
-                    opt_cmds = []
-                    for k in range(child.rowCount()):
-                        sub_item = child.child(k)
-                        if sub_item is None:
-                            continue
-                        sub_type = self.data_manager.get_item_type(sub_item)
-                        if sub_type == "ACTION":
-                            opt_cmds.append(self._convert_action_tree_to_command(sub_item))
-                        elif sub_type == "COMMAND":
-                            # Preserve existing commands
-                            opt_cmds.append(self.data_manager.get_item_data(sub_item))
-                    options_list.append(opt_cmds)
-
-        if options_list:
-            cmd_data['options'] = options_list
-
-        return cmd_data
+        """UI wrapper to replace a legacy Action item with a new Command item via DataManager."""
+        cmd_item = self.data_manager.replace_action_with_command(index, cmd_data)
+        if cmd_item:
+            # Update Selection and Expansion
+            self.setCurrentIndex(cmd_item.index())
+            self.expand(cmd_item.index()) # Expand to show preserved children
 
     def add_keywords(self, parent_index):
         if not parent_index.isValid(): return
@@ -543,7 +382,7 @@ class LogicTreeWidget(QTreeView):
                 self.add_reaction(parent_index)
 
     def move_effect_item(self, item, target_type):
-        """Updates the item's visual state (Label) to match the new type."""
+        """Updates the item's visual state (Label) and Type to match the new effect type."""
         self.data_manager.update_effect_type(item, target_type)
 
     def load_data(self, cards_data):
@@ -566,7 +405,8 @@ class LogicTreeWidget(QTreeView):
         index = item.index()
         # Root index is invalid but we traverse its children
         if index.isValid() and self.isExpanded(index):
-            path = self._get_item_path(item)
+            # Use data_manager helper
+            path = self.data_manager.get_item_path(item)
             expanded_ids.add(path)
         for i in range(item.rowCount()):
             child = item.child(i)
@@ -582,7 +422,8 @@ class LogicTreeWidget(QTreeView):
     def _traverse_restore_expansion(self, item, expanded_ids):
         index = item.index()
         if index.isValid():
-            path = self._get_item_path(item)
+            # Use data_manager helper
+            path = self.data_manager.get_item_path(item)
             if path in expanded_ids:
                 self.setExpanded(index, True)
         for i in range(item.rowCount()):
@@ -590,21 +431,6 @@ class LogicTreeWidget(QTreeView):
             if child is None:
                 continue
             self._traverse_restore_expansion(child, expanded_ids)
-
-    def _get_item_path(self, item):
-        """Generates a path string using UIDs if available, else row indices."""
-        path = []
-        curr = item
-        # Stop if we hit the invisible root item to avoid including it in the path
-        root = self.standard_model.invisibleRootItem()
-        while curr and curr != root:
-            data = self.data_manager.get_item_data(curr)
-            if data and 'uid' in data:
-                path.append(f"uid_{data['uid']}")
-            else:
-                path.append(f"row_{curr.row()}")
-            curr = curr.parent()
-        return ":".join(reversed(path))
 
     def get_full_data_from_model(self):
         return self.data_manager.get_full_data()

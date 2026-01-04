@@ -193,6 +193,7 @@ set(SRC_ENGINE
     src/engine/systems/game_logic_system.cpp
     src/engine/systems/restriction_system.cpp
     src/engine/systems/continuous_effect_system.cpp
+    src/engine/systems/breaker/breaker_system.cpp
 )
 
 # Utils (Phase 1)
