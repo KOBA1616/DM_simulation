@@ -1,7 +1,9 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/card/selection_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/card/selection_system.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/card/target_utils.hpp"
@@ -17,7 +19,7 @@ namespace dm::engine {
              dm::core::EffectDef continuation;
              continuation.actions.push_back(ctx.action); // The same action, but next time it will have targets
 
-             EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, continuation, ctx.execution_vars);
+             SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, continuation, ctx.execution_vars);
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {

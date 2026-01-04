@@ -1,5 +1,6 @@
 #pragma once
 #include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/card/selection_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/game_logic_system.hpp"
@@ -20,7 +21,7 @@ namespace dm::engine {
                          ed.trigger = TriggerType::NONE;
                          ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                          ed.actions = { ctx.action };
-                         EffectSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                         SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                      }
                 }
             }

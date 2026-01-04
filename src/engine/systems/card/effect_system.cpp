@@ -161,20 +161,6 @@ namespace dm::engine {
 
         if (!check_condition(game_state, effect.condition, source_instance_id, card_db, execution_context)) return;
 
-        // Note: For target handling, we might need to inject targets into the pipeline context
-        // Currently resolve_effect_with_targets is primarily used for handling selected targets.
-        // We can inject them as $selection or similar.
-
-        // This method is often called AFTER select_targets returns.
-        // If we switch to full pipeline, the selection logic should ideally be inside the pipeline via SELECT instruction.
-        // However, existing code flow (PendingEffect -> Target Selection -> resolve_effect_with_targets) persists.
-
-        // Strategy: Pre-populate context with targets, then run pipeline.
-        // But compile_effect generates target selection instructions if action has scope.
-        // If we already selected targets, we shouldn't re-select.
-        // The calling code (PendingEffectStrategy) usually clears the scope in the effect passed here?
-        // Or we set a flag.
-
         // Legacy: Just iterate actions.
         for (size_t i = 0; i < effect.actions.size(); ++i) {
             const auto& action = effect.actions[i];
@@ -192,24 +178,7 @@ namespace dm::engine {
     void EffectSystem::resolve_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, bool* interrupted, const std::vector<ActionDef>* remaining_actions) {
          initialize();
 
-         if (action.condition.has_value()) {
-            bool condition_met = false;
-            if (action.condition->type == "COMPARE_STAT" && execution_context.count(action.condition->stat_key)) {
-                int val = execution_context[action.condition->stat_key];
-                int target = action.condition->value;
-                std::string op = action.condition->op;
-                if (op == ">") condition_met = val > target;
-                else if (op == ">=") condition_met = val >= target;
-                else if (op == "<") condition_met = val < target;
-                else if (op == "<=") condition_met = val <= target;
-                else if (op == "=" || op == "==") condition_met = val == target;
-                else if (op == "!=") condition_met = val != target;
-            } else {
-                 condition_met = check_condition(game_state, *action.condition, source_instance_id, card_db, execution_context);
-            }
-
-            if (!condition_met) return;
-        }
+         // Condition check removed: now handled via compile_action (IF instruction) or check_condition
 
         // Updated Flow: Always attempt pipeline compilation first
         std::vector<Instruction> pipeline_instructions;
@@ -220,6 +189,18 @@ namespace dm::engine {
              execute_pipeline(ctx, pipeline_instructions);
         }
         else {
+             // Check condition manually only if we fallback to handler that relies on it (legacy check)
+             // However, strictly speaking, handler->resolve should handle it?
+             // Or we rely on check_condition here if pipeline compilation failed?
+             // If compilation fails, it means we don't have instructions.
+             // If we fallback to `handler->resolve`, we should check condition first if handler doesn't check it.
+             // But existing handlers mostly don't check condition inside resolve.
+             if (action.condition.has_value()) {
+                 if (!check_condition(game_state, *action.condition, source_instance_id, card_db, execution_context)) {
+                     return;
+                 }
+             }
+
              // Fallback to resolve/resolve_with_targets (which might implement their own pipeline)
              if (IActionHandler* handler = get_handler(action.type)) {
                 ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, interrupted, remaining_actions);
@@ -247,11 +228,10 @@ namespace dm::engine {
                  compile_action(game_state, action, source_instance_id, execution_context, card_db, then_block);
              }
 
-             // Compile Commands (Fix: Actually generate EXECUTE_COMMAND instructions)
+             // Compile Commands
              for (const auto& cmd : effect.commands) {
                  nlohmann::json args;
                  args["type"] = "EXECUTE_COMMAND";
-                 // Serialize CommandDef to JSON
                  nlohmann::json cmd_json;
                  dm::core::to_json(cmd_json, cmd);
                  args["cmd"] = cmd_json;
@@ -280,6 +260,16 @@ namespace dm::engine {
     void EffectSystem::compile_action(GameState& game_state, const ActionDef& action, int source_instance_id, std::map<std::string, int>& execution_context, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::vector<dm::core::Instruction>& out_instructions) {
         initialize();
 
+        // 0. Handle Action Condition via IF instruction wrapper
+        std::vector<dm::core::Instruction> inner_instructions;
+        std::vector<dm::core::Instruction>* target_instructions = &out_instructions;
+
+        bool has_condition = action.condition.has_value() && action.condition->type != "NONE";
+
+        if (has_condition) {
+            target_instructions = &inner_instructions;
+        }
+
         std::string selection_var_name;
 
         // 1. Target Selection Scope
@@ -290,20 +280,36 @@ namespace dm::engine {
              select_inst.args["filter"] = action.filter;
              select_inst.args["count"] = action.filter.count.value_or(1);
 
-             std::string out_key = "$selection_" + std::to_string(out_instructions.size());
+             std::string out_key = "$selection_" + std::to_string(target_instructions->size());
              if (!action.output_value_key.empty()) {
                  out_key = action.output_value_key;
              }
              select_inst.args["out"] = out_key;
 
-             out_instructions.push_back(select_inst);
+             target_instructions->push_back(select_inst);
              selection_var_name = out_key;
         }
 
         if (IActionHandler* handler = get_handler(action.type)) {
             // Pass selection_var_name to handler via ResolutionContext
-            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, nullptr, nullptr, &out_instructions, selection_var_name);
+            ResolutionContext ctx(game_state, action, source_instance_id, execution_context, card_db, nullptr, nullptr, nullptr, target_instructions, selection_var_name);
             handler->compile_action(ctx);
+        }
+
+        if (has_condition) {
+             if (!inner_instructions.empty()) {
+                 Instruction if_inst;
+                 if_inst.op = InstructionOp::IF;
+                 nlohmann::json cond_json;
+                 cond_json["type"] = action.condition->type;
+                 cond_json["value"] = action.condition->value;
+                 cond_json["str_val"] = action.condition->str_val;
+                 cond_json["stat_key"] = action.condition->stat_key;
+                 cond_json["op"] = action.condition->op;
+                 if_inst.args["cond"] = cond_json;
+                 if_inst.then_block = inner_instructions;
+                 out_instructions.push_back(if_inst);
+             }
         }
     }
 
@@ -399,130 +405,6 @@ namespace dm::engine {
 
         return true;
     }
-
-    std::vector<int> EffectSystem::select_targets(GameState& game_state, const ActionDef& action, int source_instance_id, const EffectDef& continuation, std::map<std::string, int>& execution_context) {
-        PlayerID controller = get_controller(game_state, source_instance_id);
-
-        // First, attempt auto-selection optimization: collect valid targets and
-        // if the requested count >= available targets, resolve immediately.
-        std::vector<int> valid_targets;
-        FilterDef filter = action.filter;
-        std::vector<Zone> zones;
-        if (filter.zones.empty()) {
-            zones = {Zone::BATTLE, Zone::HAND, Zone::MANA, Zone::SHIELD};
-        } else {
-            for (const auto& z_str : filter.zones) {
-                if (z_str == "BATTLE_ZONE") zones.push_back(Zone::BATTLE);
-                else if (z_str == "HAND") zones.push_back(Zone::HAND);
-                else if (z_str == "MANA_ZONE") zones.push_back(Zone::MANA);
-                else if (z_str == "SHIELD_ZONE") zones.push_back(Zone::SHIELD);
-                else if (z_str == "GRAVEYARD") zones.push_back(Zone::GRAVEYARD);
-                else if (z_str == "DECK") zones.push_back(Zone::DECK);
-                else if (z_str == "EFFECT_BUFFER") zones.push_back(Zone::BUFFER);
-            }
-        }
-
-        const auto& card_db = CardRegistry::get_all_definitions();
-
-        for (PlayerID pid : {controller, static_cast<PlayerID>(1 - controller)}) {
-            for (Zone z : zones) {
-                std::vector<int> zone_indices;
-                if (z == Zone::BUFFER) {
-                    for (const auto& c : game_state.players[pid].effect_buffer) zone_indices.push_back(c.instance_id);
-                } else {
-                    zone_indices = game_state.get_zone(pid, z);
-                }
-
-                for (int instance_id : zone_indices) {
-                    if (instance_id < 0) continue;
-                    const auto* card_ptr = game_state.get_card_instance(instance_id);
-                    if (!card_ptr && z == Zone::BUFFER) {
-                        const auto& buf = game_state.players[pid].effect_buffer;
-                        auto it = std::find_if(buf.begin(), buf.end(), [instance_id](const CardInstance& c){ return c.instance_id == instance_id; });
-                        if (it != buf.end()) card_ptr = &(*it);
-                    }
-                    if (!card_ptr) continue;
-                    const auto& card = *card_ptr;
-
-                    if (card_db.count(card.card_id)) {
-                        const auto& def = card_db.at(card.card_id);
-                        if (TargetUtils::is_valid_target(card, def, filter, game_state, controller, pid)) {
-                            valid_targets.push_back(instance_id);
-                        }
-                    } else if (card.card_id == 0) {
-                        // allow generic dummy cards
-                        if (TargetUtils::is_valid_target(card, CardDefinition(), filter, game_state, controller, pid)) {
-                            valid_targets.push_back(instance_id);
-                        }
-                    }
-                }
-            }
-        }
-
-        int num_needed = 1;
-        if (action.filter.count.has_value()) num_needed = action.filter.count.value();
-        if (!action.input_value_key.empty() && execution_context.count(action.input_value_key)) {
-            num_needed = execution_context[action.input_value_key];
-        }
-
-        if ((int)valid_targets.size() <= 0) {
-            // No valid targets: nothing to do
-            return {};
-        }
-
-        if (num_needed >= (int)valid_targets.size()) {
-            // Auto-resolve: select all valid targets (or as many as available)
-            resolve_effect_with_targets(game_state, continuation, valid_targets, source_instance_id, card_db, execution_context);
-            return valid_targets;
-        }
-
-        PendingEffect pending(EffectType::NONE, source_instance_id, controller);
-        pending.resolve_type = ResolveType::TARGET_SELECT;
-        pending.filter = action.filter;
-
-        if (pending.filter.zones.empty()) {
-             if (action.target_choice == "ALL_ENEMY") {
-                 pending.filter.owner = "OPPONENT";
-                 pending.filter.zones = {"BATTLE_ZONE"};
-             }
-        }
-
-        if (action.filter.count.has_value()) {
-            pending.num_targets_needed = action.filter.count.value();
-        } else {
-            pending.num_targets_needed = 1;
-        }
-
-        if (!action.input_value_key.empty()) {
-            if (execution_context.count(action.input_value_key)) {
-                pending.num_targets_needed = execution_context[action.input_value_key];
-            }
-        }
-
-        pending.optional = action.optional;
-        pending.effect_def = continuation;
-        pending.execution_context = execution_context;
-
-        game_state.pending_effects.push_back(pending);
-
-        return {};
-    }
-
-    void EffectSystem::delegate_selection(const ResolutionContext& ctx) {
-        if (!ctx.interrupted) return;
-
-        dm::core::EffectDef ed;
-        ed.trigger = dm::core::TriggerType::NONE;
-        ed.condition = dm::core::ConditionDef{"NONE", 0, "", "", "", std::nullopt};
-        ed.actions = { ctx.action };
-        if (ctx.remaining_actions) {
-            ed.actions.insert(ed.actions.end(), ctx.remaining_actions->begin(), ctx.remaining_actions->end());
-        }
-
-        instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
-        *ctx.interrupted = true;
-    }
-
 
     PlayerID EffectSystem::get_controller(const GameState& game_state, int instance_id) {
         const CardInstance* card = game_state.get_card_instance(instance_id);

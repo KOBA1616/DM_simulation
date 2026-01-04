@@ -84,8 +84,6 @@ namespace dm::engine {
         void execute_pipeline(const ResolutionContext& ctx, const std::vector<dm::core::Instruction>& instructions);
 
         bool check_condition(dm::core::GameState& game_state, const dm::core::ConditionDef& condition, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, const std::map<std::string, int>& execution_context = {});
-        std::vector<int> select_targets(dm::core::GameState& game_state, const dm::core::ActionDef& action, int source_instance_id, const dm::core::EffectDef& continuation, std::map<std::string, int>& execution_context);
-        void delegate_selection(const ResolutionContext& ctx);
 
         static dm::core::PlayerID get_controller(const dm::core::GameState& game_state, int instance_id);
 
