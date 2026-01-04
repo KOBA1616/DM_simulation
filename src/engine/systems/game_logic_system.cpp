@@ -10,6 +10,7 @@
 #include "engine/systems/command_system.hpp" // Added for CommandSystem
 #include "engine/systems/flow/phase_manager.hpp" // Added for PhaseManager
 #include "engine/systems/mana/mana_system.hpp" // Added for ManaSystem
+#include "engine/utils/action_primitive_utils.hpp"
 #include <iostream>
 #include <algorithm>
 
@@ -986,9 +987,7 @@ namespace dm::engine::systems {
          int card_id = exec.resolve_int(inst.args.value("card", 0));
          if (card_id < 0) return;
 
-         Instruction move(InstructionOp::MOVE);
-         move.args["target"] = card_id;
-         move.args["to"] = "MANA";
+         Instruction move = utils::ActionPrimitiveUtils::create_mana_charge_instruction(card_id);
 
          auto block = std::make_shared<std::vector<Instruction>>();
          block->push_back(move);
