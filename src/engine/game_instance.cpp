@@ -1,6 +1,8 @@
 #include "game_instance.hpp"
 #include "systems/flow/phase_manager.hpp"
 #include "engine/game_command/game_command.hpp"
+#include "engine/game_command/action_commands.hpp" // Added
+#include "engine/game_command/commands.hpp" // Added for DeclareReactionCommand
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/continuous_effect_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
@@ -10,6 +12,7 @@
 namespace dm::engine {
 
     using namespace dm::core;
+    using namespace dm::engine::game_command; // Added
 
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
         : state(seed), card_db(db) {
@@ -45,7 +48,65 @@ namespace dm::engine {
              return;
         }
         state.active_pipeline = pipeline;
-        systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
+
+        // --- Migration to GameCommand ---
+        // Instead of dispatching directly via GameLogicSystem, we convert to Command if possible
+        // to ensure Undo/Redo consistency (treating Action as a single reversible unit).
+
+        std::unique_ptr<GameCommand> cmd = nullptr;
+
+        switch (action.type) {
+            case PlayerIntent::PLAY_CARD:
+            case PlayerIntent::PLAY_CARD_INTERNAL:
+                {
+                    auto p_cmd = std::make_unique<PlayCardCommand>(action.source_instance_id);
+                    p_cmd->is_spell_side = action.is_spell_side;
+                    p_cmd->spawn_source = action.spawn_source;
+                    p_cmd->target_slot_index = action.target_slot_index;
+                    cmd = std::move(p_cmd);
+                }
+                break;
+            case PlayerIntent::ATTACK_CREATURE:
+                cmd = std::make_unique<AttackCommand>(action.source_instance_id, action.target_instance_id);
+                break;
+            case PlayerIntent::ATTACK_PLAYER:
+                cmd = std::make_unique<AttackCommand>(action.source_instance_id, -1, action.target_player);
+                break;
+            case PlayerIntent::BLOCK:
+                cmd = std::make_unique<BlockCommand>(action.source_instance_id);
+                break;
+            case PlayerIntent::MANA_CHARGE:
+                cmd = std::make_unique<ManaChargeCommand>(action.source_instance_id);
+                break;
+            case PlayerIntent::PASS:
+                cmd = std::make_unique<PassCommand>();
+                break;
+            case PlayerIntent::USE_ABILITY:
+                cmd = std::make_unique<UseAbilityCommand>(action.source_instance_id, action.target_instance_id);
+                break;
+            case PlayerIntent::DECLARE_REACTION:
+                {
+                   int idx = action.slot_index;
+                   bool is_pass = (idx == -1);
+                   cmd = std::make_unique<DeclareReactionCommand>(state.active_player_id, is_pass, idx);
+                }
+                break;
+            case PlayerIntent::SELECT_OPTION:
+                break;
+            default:
+                // Fallback for atomic actions (PAY_COST, RESOLVE_PLAY) or legacy
+                systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
+                systems::ContinuousEffectSystem::recalculate(state, *card_db);
+                return;
+        }
+
+        if (cmd) {
+            state.execute_command(std::move(cmd));
+        } else {
+             // If cmd was not created (e.g. unmapped intent), fallback
+             systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
+        }
+
         systems::ContinuousEffectSystem::recalculate(state, *card_db);
     }
 
@@ -56,6 +117,8 @@ namespace dm::engine {
         cmd->invert(state);
         state.command_history.pop_back();
     }
+
+    // ... [rest of file unchanged]
 
     void GameInstance::initialize_card_stats(int deck_size) {
         if (card_db) {
@@ -187,6 +250,23 @@ namespace dm::engine {
 
         populate_owner(state.players[0]);
         populate_owner(state.players[1]);
+    }
+
+    // A. Interactive Processing implementation
+    void GameInstance::resume_processing(const std::vector<int>& inputs) {
+         if (pipeline && pipeline->execution_paused) {
+             // Basic support for single integer input for now (common case)
+             dm::engine::systems::ContextValue val;
+             if (inputs.empty()) {
+                  // No input?
+             } else if (inputs.size() == 1) {
+                  val = inputs[0];
+             } else {
+                  val = inputs;
+             }
+             pipeline->resume(state, *card_db, val);
+             systems::ContinuousEffectSystem::recalculate(state, *card_db);
+         }
     }
 
 }

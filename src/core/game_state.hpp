@@ -7,7 +7,7 @@
 #include "card_stats.hpp"
 #include "pending_effect.hpp"
 #include "modifiers.hpp"
-#include "game_event.hpp" // Added and removed struct GameEvent def
+#include "game_event.hpp"
 #include "engine/systems/trigger_system/reaction_window.hpp"
 #include <vector>
 #include <map>
@@ -90,6 +90,9 @@ namespace dm::core {
         // Requires full definition of GameCommand in .cpp for deletion
         std::vector<std::shared_ptr<dm::engine::game_command::GameCommand>> command_history;
 
+        // Command recording support
+        std::vector<std::shared_ptr<dm::engine::game_command::GameCommand>>* command_redirect_target = nullptr;
+
         struct QueryContext {
             int query_id = 0;
             std::string query_type;
@@ -129,7 +132,9 @@ namespace dm::core {
         CardInstance* get_card_instance(int instance_id);
         const CardInstance* get_card_instance(int instance_id) const;
         std::vector<int> get_zone(PlayerID pid, Zone zone) const;
+
         void execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd);
+        void execute_command(std::unique_ptr<dm::engine::game_command::GameCommand> cmd); // Overload for unique_ptr convenience
 
         GameState clone() const;
         size_t calculate_hash() const;
