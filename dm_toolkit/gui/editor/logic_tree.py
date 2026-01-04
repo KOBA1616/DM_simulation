@@ -79,7 +79,8 @@ class LogicTreeWidget(QTreeView):
             add_eff_action.triggered.connect(lambda: self.add_effect_interactive(index))
             menu.addAction(add_eff_action)
 
-            if not is_spell and item_type != "SPELL_SIDE":
+            # Removed restriction on Spells, as some (e.g. Strike Back) can apply to Spells.
+            if item_type != "SPELL_SIDE":
                  add_reaction_action = QAction(tr("Add Reaction Ability"), self)
                  add_reaction_action.triggered.connect(lambda: self.add_reaction(index))
                  menu.addAction(add_reaction_action)
@@ -523,7 +524,7 @@ class LogicTreeWidget(QTreeView):
         items = [tr("Triggered Ability"), tr("Static Ability")]
 
         # Check if we can add Reaction Ability
-        # Only for CARD (not SPELL_SIDE) and type is not SPELL
+        # Only for CARD (not SPELL_SIDE)
         if role == "CARD":
              card_type = self.data_manager.get_card_context_type(parent_item)
              if card_type != "SPELL":
