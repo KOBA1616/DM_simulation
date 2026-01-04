@@ -15,6 +15,9 @@ namespace dm::engine::systems {
         // Queues pending effects for the specified trigger on the source card
         void resolve_trigger(core::GameState& game_state, core::TriggerType trigger, int source_instance_id, const std::map<core::CardID, core::CardDefinition>& card_db);
 
+        // Helper to queue a generic pending effect
+        void add_pending_effect(core::GameState& game_state, const core::PendingEffect& pending_effect);
+
     private:
         TriggerSystem() = default;
         TriggerSystem(const TriggerSystem&) = delete;

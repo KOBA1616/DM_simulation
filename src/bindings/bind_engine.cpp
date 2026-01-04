@@ -380,6 +380,7 @@ void bind_engine(py::module& m) {
     py::class_<PhaseManager>(m, "PhaseManager")
         .def_static("start_game", &PhaseManager::start_game)
         .def_static("setup_scenario", &PhaseManager::setup_scenario)
+        .def_static("start_turn", &PhaseManager::start_turn)
         .def_static("next_phase", &PhaseManager::next_phase)
         .def_static("check_game_over", &PhaseManager::check_game_over);
 }

@@ -843,6 +843,15 @@ try:
 except Exception:
     pass
 
+try:
+    _orig_start_turn = dm_ai_module.PhaseManager.start_turn
+    def _start_turn_unwrap(state, card_db):
+        native = _unwrap_state(state)
+        return _orig_start_turn(native, card_db)
+    dm_ai_module.PhaseManager.start_turn = staticmethod(_start_turn_unwrap)
+except Exception:
+    pass
+
 # Compatibility shims for older tests that expect helper methods on GameState
 def _add_card_to_mana(self, player_id, card_id, instance_id=None):
     """Append a lightweight CardInstance-like object into player's mana_zone.
