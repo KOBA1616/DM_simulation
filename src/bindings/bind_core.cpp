@@ -1,7 +1,8 @@
-#include "bindings/bindings.hpp"
-#include "bindings/bindings_helper.hpp"
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
+#include "bindings/types.hpp"      // Must be included before bindings.hpp/stl.h for opaque types to work
+#include "bindings/bindings.hpp"
+#include "bindings/bindings_helper.hpp"
 #include "core/card_json_types.hpp"
 #include "core/card_stats.hpp"
 #include "core/instruction.hpp"
@@ -9,11 +10,16 @@
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/command_system.hpp" // Added include for CommandSystem
 #include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
 
 using namespace dm;
 using namespace dm::core;
 
 void bind_core(py::module& m) {
+    // Bind opaque vectors
+    py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
+    py::bind_vector<std::vector<dm::core::Civilization>>(m, "CivilizationList");
+
     // ... (Previous Enums and Classes) ...
     // GameEvent bindings
     py::enum_<dm::core::EventType>(m, "EventType")
@@ -751,6 +757,38 @@ void bind_core(py::module& m) {
             } catch (...) {
                 throw std::runtime_error("Unknown error in add_card_to_graveyard");
             }
+        })
+        .def("remove_card_from_zone", [](GameState& s, PlayerID pid, Zone zone, int instance_id) {
+             try {
+                 auto& player = s.players.at(pid);
+                 std::vector<CardInstance>* target_zone = nullptr;
+                 switch(zone) {
+                     case Zone::HAND: target_zone = &player.hand; break;
+                     case Zone::MANA: target_zone = &player.mana_zone; break;
+                     case Zone::BATTLE: target_zone = &player.battle_zone; break;
+                     case Zone::SHIELD: target_zone = &player.shield_zone; break;
+                     case Zone::GRAVEYARD: target_zone = &player.graveyard; break;
+                     case Zone::DECK: target_zone = &player.deck; break;
+                     case Zone::STACK: target_zone = &player.stack; break;
+                     case Zone::BUFFER: target_zone = &player.effect_buffer; break;
+                     default: break;
+                 }
+                 if (target_zone) {
+                     auto it = std::remove_if(target_zone->begin(), target_zone->end(),
+                        [instance_id](const CardInstance& c){ return c.instance_id == instance_id; });
+                     if (it != target_zone->end()) {
+                         target_zone->erase(it, target_zone->end());
+                         return true;
+                     }
+                 }
+                 return false;
+             } catch (const py::error_already_set& e) {
+                throw;
+             } catch (const std::exception& e) {
+                throw std::runtime_error("Error in remove_card_from_zone: " + std::string(e.what()));
+             } catch (...) {
+                throw std::runtime_error("Unknown error in remove_card_from_zone");
+             }
         })
         .def("initialize_card_stats", &GameState::initialize_card_stats)
         .def("on_card_play", &GameState::on_card_play)
