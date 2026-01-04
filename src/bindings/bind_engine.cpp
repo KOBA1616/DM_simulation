@@ -190,6 +190,9 @@ void bind_engine(py::module& m) {
 
     auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
     effect_resolver
+        .def_static("get_breaker_count", [](GameState& state, const CardInstance& card, const std::map<CardID, CardDefinition>& db) {
+            return dm::engine::systems::GameLogicSystem::get_breaker_count(state, card, db);
+        })
         .def_static("resolve_action", [](GameState& state, const Action& action, const std::map<CardID, CardDefinition>& db){
             try {
                 dm::engine::systems::GameLogicSystem::resolve_action(state, action, db);

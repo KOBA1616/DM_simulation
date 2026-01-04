@@ -817,6 +817,9 @@ void bind_core(py::module& m) {
         })
         .def("add_passive_effect", [](GameState& s, const PassiveEffect& p) {
             s.passive_effects.push_back(p);
+        })
+        .def("get_passive_effect_count", [](const GameState& s) {
+            return s.passive_effects.size();
         });
 
     m.def("initialize_card_stats", [](GameState& state, const std::map<dm::core::CardID, CardDefinition>& db, int count) {
