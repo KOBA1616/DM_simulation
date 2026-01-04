@@ -2,7 +2,7 @@
 import unittest
 import dm_ai_module
 from typing import Any
-from dm_ai_module import GameState, GameCommand, MutateCommand, FlowCommand, CommandType, TargetScope, FilterDef, Zone, CardDefinition, CardKeywords, ConditionDef, MutationType
+from dm_ai_module import GameState, GameCommand, MutateCommand, FlowCommand, CommandType, TargetScope, FilterDef, Zone, CardDefinition, CardKeywords, ConditionDef, MutationType, Civilization, CardType
 
 class TestCommandSystem(unittest.TestCase):
     def setUp(self):
@@ -18,7 +18,7 @@ class TestCommandSystem(unittest.TestCase):
         effects: list[Any] = []
 
         card_data = dm_ai_module.CardData(
-            self.card_id, "Test Creature", 1, "FIRE", 1000, "CREATURE", ["Dragon"], effects
+            self.card_id, "Test Creature", 1, Civilization.FIRE, 1000, CardType.CREATURE, ["Dragon"], effects
         )
         dm_ai_module.register_card_data(card_data)
 
