@@ -121,6 +121,12 @@ namespace dm::engine {
         }
     };
 
+    nlohmann::json ConditionSystem::compile_condition(const dm::core::ConditionDef& condition) {
+        nlohmann::json j;
+        dm::core::to_json(j, condition);
+        return j;
+    }
+
     void ConditionSystem::initialize_defaults() {
         register_evaluator("DURING_YOUR_TURN", std::make_unique<TurnEvaluator>());
         register_evaluator("DURING_OPPONENT_TURN", std::make_unique<TurnEvaluator>());

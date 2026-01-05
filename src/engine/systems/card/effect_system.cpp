@@ -164,11 +164,7 @@ namespace dm::engine {
          if (effect.condition.type != "NONE") {
              Instruction if_inst;
              if_inst.op = InstructionOp::IF;
-             nlohmann::json cond_json;
-             cond_json["type"] = effect.condition.type;
-             cond_json["value"] = effect.condition.value;
-             cond_json["str_val"] = effect.condition.str_val;
-             if_inst.args["cond"] = cond_json;
+             if_inst.args["cond"] = ConditionSystem::instance().compile_condition(effect.condition);
 
              std::vector<Instruction> then_block;
 
@@ -249,13 +245,7 @@ namespace dm::engine {
              if (!inner_instructions.empty()) {
                  Instruction if_inst;
                  if_inst.op = InstructionOp::IF;
-                 nlohmann::json cond_json;
-                 cond_json["type"] = action.condition->type;
-                 cond_json["value"] = action.condition->value;
-                 cond_json["str_val"] = action.condition->str_val;
-                 cond_json["stat_key"] = action.condition->stat_key;
-                 cond_json["op"] = action.condition->op;
-                 if_inst.args["cond"] = cond_json;
+                 if_inst.args["cond"] = ConditionSystem::instance().compile_condition(*action.condition);
                  if_inst.then_block = inner_instructions;
                  out_instructions.push_back(if_inst);
              }

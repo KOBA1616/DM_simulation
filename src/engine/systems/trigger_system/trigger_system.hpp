@@ -12,6 +12,9 @@ namespace dm::engine::systems {
             return instance;
         }
 
+        // Returns all effect definitions matching the trigger for the source card
+        std::vector<core::EffectDef> get_trigger_effects(core::GameState& game_state, core::TriggerType trigger, int source_instance_id, const std::map<core::CardID, core::CardDefinition>& card_db);
+
         // Queues pending effects for the specified trigger on the source card
         void resolve_trigger(core::GameState& game_state, core::TriggerType trigger, int source_instance_id, const std::map<core::CardID, core::CardDefinition>& card_db);
 

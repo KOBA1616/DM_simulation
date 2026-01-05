@@ -37,6 +37,8 @@ namespace dm::engine {
             return false;
         }
 
+        nlohmann::json compile_condition(const dm::core::ConditionDef& condition);
+
         void initialize_defaults();
 
     private:
