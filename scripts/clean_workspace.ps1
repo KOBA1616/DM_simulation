@@ -16,7 +16,9 @@ param(
     [switch]$CleanBuild,
     [switch]$CleanCaches,
     [switch]$MoveRootLogs,
-    [switch]$IncludeVenvCaches
+    [switch]$MoveRootBinaries,
+    [switch]$IncludeVenvCaches,
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,7 +27,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $projectRoot = Split-Path -Parent $scriptDir
 Set-Location $projectRoot
 
-if (-not ($CleanBuild -or $CleanCaches -or $MoveRootLogs)) {
+if (-not ($CleanBuild -or $CleanCaches -or $MoveRootLogs -or $MoveRootBinaries)) {
     # Default behavior: clean caches only.
     $CleanCaches = $true
 }
@@ -93,6 +95,24 @@ if ($MoveRootLogs) {
     }
 }
 
+# --- Root binary artifacts (opt-in) ---
+# These are often produced by local experiments or dependency extraction.
+# Moving them can affect runtime DLL discovery on Windows, so keep it explicit.
+if ($MoveRootBinaries) {
+    $binaryPatterns = @(
+        "onnxruntime*.dll",
+        "onnxruntime*.pyd"
+    )
+    foreach ($pat in $binaryPatterns) {
+        try {
+            Get-ChildItem -Path $projectRoot -File -Filter $pat -ErrorAction SilentlyContinue |
+                ForEach-Object { Add-Candidate $candidatesMove $_.FullName }
+        } catch {
+            # ignore
+        }
+    }
+}
+
 if ($candidatesDelete.Count -eq 0 -and $candidatesMove.Count -eq 0) {
     Write-Host "Nothing to clean." -ForegroundColor Green
     exit 0
@@ -106,6 +126,11 @@ if ($candidatesDelete.Count -gt 0) {
 if ($candidatesMove.Count -gt 0) {
     Write-Host "\n[Move]" -ForegroundColor Yellow
     $candidatesMove | Sort-Object | ForEach-Object { Write-Host " - $_" }
+}
+
+if ($DryRun) {
+    Write-Host "DryRun enabled. No changes were made." -ForegroundColor DarkYellow
+    exit 0
 }
 
 if (-not $Force) {

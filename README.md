@@ -42,6 +42,15 @@ cmake --build build --config Release -- -j
 C:/Users/ichirou/DM_simulation/.venv/Scripts/python.exe -m pytest -q
 ```
 
+Workspace cleanup (optional):
+
+```powershell
+# Preview what would be deleted/moved
+./scripts/clean_workspace.ps1 -CleanCaches -MoveRootLogs -DryRun
+# Clean caches and move root logs into dumps/logs/workspace/<timestamp>
+./scripts/clean_workspace.ps1 -CleanCaches -MoveRootLogs -Force
+```
+
 If you must use Visual Studio to inspect the native code, prefer generating project files from CMake instead of checking generated `.sln`/`.vcxproj` files into source control:
 
 ```powershell
