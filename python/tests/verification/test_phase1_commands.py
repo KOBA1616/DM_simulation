@@ -22,7 +22,7 @@ class TestCommandExecution(unittest.TestCase):
         # Note: CardData constructor signature might vary based on bindings
         # Using the one from bind_core.cpp: id, name, cost, civ, power, type, races, effects
         card_data = dm_ai_module.CardData(
-             self.card_id, "TestCard", 1, "FIRE", 1000, "CREATURE", ["Human"], []
+             self.card_id, "TestCard", 1, dm_ai_module.Civilization.FIRE, 1000, dm_ai_module.CardType.CREATURE, ["Human"], []
         )
         dm_ai_module.register_card_data(card_data)
 

@@ -13,9 +13,13 @@ class MockAction:
 @pytest.fixture
 def game_context():
     # Load Cards
-    card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-    if not card_db:
+    card_db_dict = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+    if not card_db_dict:
         pytest.fail("Failed to load card DB")
+
+    card_db = dm_ai_module.CardDatabase()
+    for k, v in card_db_dict.items():
+        card_db[k] = v
 
     # Initialize State
     state = dm_ai_module.GameState(1000)

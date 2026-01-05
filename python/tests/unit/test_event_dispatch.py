@@ -33,9 +33,9 @@ class TestEventDispatch:
                 card_id,
                 "Test CIP Creature",
                 3,
-                "WATER",
+                dm_ai_module.Civilization.WATER,
                 2000,
-                "CREATURE",
+                dm_ai_module.CardType.CREATURE,
                 ["Cyber Lord"],
                 [effect_def]
             )

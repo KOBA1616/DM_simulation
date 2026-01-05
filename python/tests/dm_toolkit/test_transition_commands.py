@@ -51,7 +51,7 @@ class TestTransitionCommands(unittest.TestCase):
         self.card_db = {}
         # Register dummy card data for ID 1
         # CardData(id, name, cost, civ, power, type, races, effects)
-        cdata = dm_ai_module.CardData(1, "TestCard", 1, "FIRE", 1000, "CREATURE", [], [])
+        cdata = dm_ai_module.CardData(1, "TestCard", 1, dm_ai_module.Civilization.FIRE, 1000, dm_ai_module.CardType.CREATURE, [], [])
         dm_ai_module.register_card_data(cdata)
 
     def test_draw_card_transition(self):

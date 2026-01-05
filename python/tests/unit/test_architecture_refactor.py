@@ -20,9 +20,10 @@ class TestTriggerManager:
     def test_data_collector_constructors(self):
         """Verify new constructors for DataCollector and ScenarioExecutor"""
         # We need correct types for the map. Key is int (uint16), Value is CardDefinition.
-        db = {1: dm_ai_module.CardDefinition()}
+        db = dm_ai_module.CardDatabase()
+        db[1] = dm_ai_module.CardDefinition()
 
-        # Test Reference-like constructor (passed as dict)
+        # Test Reference-like constructor
         dc = dm_ai_module.DataCollector(db)
         assert dc is not None
 
