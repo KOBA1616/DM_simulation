@@ -14,6 +14,20 @@ namespace dm::ai {
     using namespace dm::engine;
     using namespace dm::engine::systems;
 
+    static bool is_useful_creature(const CardDefinition& def) {
+        if (def.keywords.speed_attacker) return true;
+        if (def.keywords.evolution) return true;
+        if (def.keywords.g_zero) return true;
+        if (def.keywords.revolution_change) return true;
+        if (def.keywords.cip) return true;
+
+        // Scan effects for ON_PLAY
+        for (const auto& eff : def.effects) {
+            if (eff.trigger == TriggerType::ON_PLAY) return true;
+        }
+        return false;
+    }
+
     // Helper to check if an action is relevant for lethal
     static bool is_aggressive_action(const Action& action, const GameState& state, const std::map<CardID, CardDefinition>& card_db) {
         switch (action.type) {
@@ -30,8 +44,7 @@ namespace dm::ai {
                 if (card_db.count(action.card_id)) {
                      const auto& def = card_db.at(action.card_id);
                      if (def.type == CardType::CREATURE) {
-                         if (def.keywords.speed_attacker) return true;
-                         if (def.keywords.evolution) return true;
+                         if (is_useful_creature(def)) return true;
                      }
                      if (def.type == CardType::SPELL) return true;
                 }
@@ -111,8 +124,7 @@ namespace dm::ai {
                              const auto& def = card_db.at(action.card_id);
                              bool aggro = false;
                              if (def.type == CardType::CREATURE) {
-                                 if (def.keywords.speed_attacker) aggro = true;
-                                 if (def.keywords.evolution) aggro = true;
+                                 if (is_useful_creature(def)) aggro = true;
                              } else if (def.type == CardType::SPELL) {
                                  aggro = true;
                              }
