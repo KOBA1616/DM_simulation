@@ -1,6 +1,11 @@
 import os
 import sys
 
+# POLICY: SOURCE LOADER PRIORITY & TESTING
+# ----------------------------------------
+# Tests must prefer the local source tree for `dm_ai_module.py` (the loader shim),
+# while ensuring the compiled extension in `bin/` is importable when needed.
+
 # Ensure local `python/` shim module directory is preferred so tests can run
 root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 shim_dir = os.path.join(root, 'python')

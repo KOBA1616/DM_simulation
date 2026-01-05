@@ -1,16 +1,13 @@
 """Project-local dm_ai_module loader.
 
-This repository builds a native extension module named `dm_ai_module`.
-On Windows the built artifact is typically a `.pyd` under `bin/` or a CMake
-build output directory (e.g. `build*/Release/`).
+POLICY: SOURCE LOADER PRIORITY
+------------------------------
+This file acts as the CANONICAL import target for `dm_ai_module`.
+It prioritizes loading the native extension if available (checking `bin/` and build dirs).
+If the native extension is absent, it falls back to a Python stub.
 
-To keep imports consistent across GUI / scripts / tests, this file acts as the
-canonical import target for `import dm_ai_module`.
-
-- If a native extension is found, it is loaded in-place as the `dm_ai_module`
-  module (so its init symbol name matches).
-- If not found, we fall back to a lightweight pure-Python stub implementation
-  sufficient for running unit tests and type-checking.
+Native modules are NOT mandatory for all tests. Tests that strictly require
+the native C++ engine must explicitly verify its presence (e.g. check for `_native`).
 """
 
 from __future__ import annotations

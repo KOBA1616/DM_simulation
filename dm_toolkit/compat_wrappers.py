@@ -1,6 +1,12 @@
 """
 Compatibility wrapper helpers for legacy action/command aliases.
 
+POLICY: MINIMIZE DISPERSION OF COMPATIBILITY LOGIC
+--------------------------------------------------
+This module is part of the designated location for compatibility and
+post-processing logic (along with unified_execution.py and action_mapper.py).
+Do not spread compatibility hacks across the codebase. Centralize them here.
+
 Provides functions to annotate converted Command dicts with legacy aliases
 or original action type hints to support short-term compatibility while the
 codebase migrates to unified command types.

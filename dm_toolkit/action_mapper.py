@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+"""
+POLICY: COMPATIBILITY LOGIC
+---------------------------
+This module provides a class-based wrapper around `action_to_command`.
+It includes specific post-processing rules to maintain backward compatibility
+with legacy test expectations.
+
+This file is part of the designated dispersion minimization zone for compatibility logic.
+"""
+
 from typing import Any, Dict
 from dm_toolkit.action_to_command import map_action as _map_action
 

@@ -1,4 +1,15 @@
 # -*- coding: utf-8 -*-
+"""
+POLICY: COMMAND NORMALIZATION ENTRY POINT
+-----------------------------------------
+This module is the formally designated entry point for Action-to-Command normalization.
+All conversion logic from legacy `Action` dicts/objects to unified `Command` dicts
+MUST go through `map_action`.
+
+Do not bypass this module by implementing ad-hoc normalization elsewhere.
+Future refactoring to enforce strict typing (Phase 2) will center on this file.
+"""
+
 import uuid
 import copy
 from typing import Any, Dict, List, Optional
