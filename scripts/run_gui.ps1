@@ -69,12 +69,7 @@ if (-not [string]::IsNullOrWhiteSpace($mingwBin) -and (Test-Path $mingwBin)) {
     }
 }
 
-$dmDir = Find-DmAiModuleDir -Root $projectRoot
-if ($dmDir) {
-    $env:PYTHONPATH = "$dmDir;$buildDir;$projectRoot;$env:PYTHONPATH"
-} else {
-    $env:PYTHONPATH = "$buildDir;$projectRoot;$env:PYTHONPATH"
-}
+$env:PYTHONPATH = "$projectRoot;$env:PYTHONPATH"
 
 Write-Host "Starting GUI..."
 & $pythonExe "$projectRoot/dm_toolkit/gui/app.py"

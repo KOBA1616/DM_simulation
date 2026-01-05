@@ -171,6 +171,71 @@ else:
         pass
 
 
+    class EffectDef:
+        def __init__(self, *args: Any, **kwargs: Any):
+            pass
+
+
+    class ActionDef:
+        def __init__(self, *args: Any, **kwargs: Any):
+            pass
+
+
+    class Action:
+        def __init__(self, *args: Any, **kwargs: Any):
+            self.type = None
+            self.target_player = 0
+            self.source_instance_id = 0
+            self.card_id = 0
+            self.slot_index = 0
+            self.value1 = 0
+
+
+    class ActionType(Enum):
+        PLAY_CARD = 1
+        ATTACK_PLAYER = 2
+        ATTACK_CREATURE = 3
+        BLOCK_CREATURE = 4
+        PASS = 5
+        USE_SHIELD_TRIGGER = 6
+        MANA_CHARGE = 7
+        RESOLVE_EFFECT = 8
+        SELECT_TARGET = 9
+
+
+    class ConditionDef:
+        def __init__(self, *args: Any, **kwargs: Any):
+            pass
+
+
+    class EffectActionType(Enum):
+        DRAW_CARD = 1
+        SEND_SHIELD_TO_GRAVE = 2
+        SEARCH_DECK_BOTTOM = 3
+        CAST_SPELL = 4
+        PUT_CREATURE = 5
+        TAP_CREATURE = 6
+        DESTROY_CREATURE = 7
+        HAND_DISCARD = 8
+        MANA_CHARGE = 9
+        MOVE_CARD = 10
+        SELECT_TARGET = 11
+        RESOLVE_EFFECT = 12
+        BREAK_SHIELD = 13
+
+
+    class JsonLoader:
+        @staticmethod
+        def load_cards(path: str) -> dict[int, Any]:
+            return {}
+
+
+    class LethalSolver:
+        @staticmethod
+        def is_lethal(state: Any, card_db: Any) -> bool:
+            return False
+
+
     class PlayerStub:
         def __init__(self) -> None:
             self.hand: list[Any] = []
@@ -235,6 +300,35 @@ else:
             pass
 
 
+    class GameCommand:
+        def __init__(self, *args: Any, **kwargs: Any):
+            pass
+
+        def execute(self, state: Any) -> None:
+            pass
+
+
+    class MutateCommand:
+        def __init__(self, *args: Any, **kwargs: Any):
+            pass
+
+        def execute(self, state: Any) -> None:
+            pass
+
+
+    class FlowCommand:
+        def __init__(self, *args: Any, **kwargs: Any):
+            pass
+
+        def execute(self, state: Any) -> None:
+            pass
+
+
+    class MutationType(Enum):
+        ADD_MODIFIER = 1
+        ADD_PASSIVE = 2
+
+
     class CardData:
         def __init__(self, *args: Any, **kwargs: Any):
             pass
@@ -260,6 +354,30 @@ else:
 
     def register_card_data(data: Any) -> None:
         return
+
+
+    class CardRegistry:
+        @staticmethod
+        def get_all_cards() -> dict[int, Any]:
+            return {}
+
+        @staticmethod
+        def get_all_definitions() -> dict[int, Any]:
+            return {}
+
+        @staticmethod
+        def get_card_data(card_id: int) -> Any:
+            return None
+
+
+    class GenericCardSystem:
+        @staticmethod
+        def resolve_action_with_db(state: Any, action: Any, source_id: int, card_db: Any, ctx: Any = None) -> Any:
+            return None
+
+        @staticmethod
+        def resolve_effect_with_db(state: Any, eff: Any, source_id: int, card_db: Any) -> None:
+            return
 
 
     class CommandType(Enum):
