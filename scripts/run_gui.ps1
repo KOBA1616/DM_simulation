@@ -48,8 +48,7 @@ if (-not [string]::IsNullOrWhiteSpace($mingwBin) -and (Test-Path $mingwBin)) {
     }
 }
 
-# PYTHONPATH: Only add project root (and build dir for safety of other imports), do NOT search for pyd.
-$env:PYTHONPATH = "$buildDir;$projectRoot;$env:PYTHONPATH"
+$env:PYTHONPATH = "$projectRoot;$env:PYTHONPATH"
 
 Write-Host "Starting GUI..."
 & $pythonExe "$projectRoot/dm_toolkit/gui/app.py"
