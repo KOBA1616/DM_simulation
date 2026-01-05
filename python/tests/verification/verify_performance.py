@@ -7,7 +7,7 @@ import json
 import numpy as np
 
 # Ensure bin is in path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
 bin_path = os.path.join(project_root, 'bin')
 python_path = os.path.join(project_root, 'python')
 

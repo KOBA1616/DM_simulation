@@ -71,7 +71,16 @@ class TransformerDataset(Dataset):
 
         if self.mode == 'tokens':
             seq = self.sequences[idx]
-            # Convert to tensor
+            # Convert to tensor. If seq is object array, ensure it is list/array of ints
+            if isinstance(seq, np.ndarray) and seq.dtype == object:
+                # Should not happen if saved correctly as object array of arrays
+                # But if it is, extract it
+                pass
+
+            # Ensure native list or array of valid type
+            if isinstance(seq, np.ndarray):
+                seq = seq.astype(np.int64)
+
             seq_tensor = torch.tensor(seq, dtype=torch.long)
             return seq_tensor, policy, value
         else:
