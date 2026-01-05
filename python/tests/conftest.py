@@ -593,6 +593,43 @@ def _sync_proxies(gs_wrapper):
 def _unwrap_state(gs):
     return getattr(gs, '_native', gs)
 
+# TensorConverter: accept GameStateWrapper and legacy dict card_db
+try:
+    _orig_TensorConverter_convert_to_tensor = dm_ai_module.TensorConverter.convert_to_tensor
+
+    def _tensorconverter_convert_to_tensor(game_state, player_view, card_db, mask_opponent_hand=True):
+        native_state = _unwrap_state(game_state)
+
+        # Legacy tests sometimes pass a plain dict. Convert to CardDatabase when possible.
+        if card_db is None:
+            try:
+                card_db = dm_ai_module.CardDatabase()
+            except Exception:
+                pass
+        elif isinstance(card_db, dict):
+            try:
+                db = dm_ai_module.CardDatabase()
+                for k, v in card_db.items():
+                    try:
+                        db[k] = v
+                    except Exception:
+                        pass
+                card_db = db
+            except Exception:
+                try:
+                    card_db = dm_ai_module.CardDatabase()
+                except Exception:
+                    pass
+
+        return _orig_TensorConverter_convert_to_tensor(native_state, player_view, card_db, mask_opponent_hand)
+
+    try:
+        dm_ai_module.TensorConverter.convert_to_tensor = staticmethod(_tensorconverter_convert_to_tensor)
+    except Exception:
+        dm_ai_module.TensorConverter.convert_to_tensor = _tensorconverter_convert_to_tensor
+except Exception:
+    pass
+
 def _wrap_resolve_effect(state, eff, source_id):
     native = _unwrap_state(state)
     if _orig_Generic_resolve_effect:

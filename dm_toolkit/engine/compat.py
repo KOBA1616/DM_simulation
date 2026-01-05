@@ -4,14 +4,16 @@ import os
 from typing import Any, List, Optional, Callable, Dict, Union
 from types import ModuleType
 
-# dm_ai_module may be an optional compiled extension; annotate as Optional
+# dm_ai_module may be an optional compiled extension; annotate as Optional.
+# Prefer the dm_toolkit shim module so unit tests can patch it reliably.
 dm_ai_module: Optional[ModuleType] = None
 try:
-    import dm_ai_module  # type: ignore
-    dm_ai_module = dm_ai_module
+    from dm_toolkit import dm_ai_module as _shim_dm_ai_module  # type: ignore
+    dm_ai_module = _shim_dm_ai_module
 except ImportError:
     try:
-        from dm_toolkit import dm_ai_module
+        import dm_ai_module as _native_dm_ai_module  # type: ignore
+        dm_ai_module = _native_dm_ai_module
     except ImportError:
         dm_ai_module = None
 

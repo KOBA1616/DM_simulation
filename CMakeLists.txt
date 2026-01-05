@@ -259,6 +259,35 @@ set_target_properties(dm_ai_module PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
 )
 
+# --- Testing (CTest) ---
+# This repo's primary automated tests currently live in Python.
+# Register them with CTest so `ctest` works out of the box.
+include(CTest)
+
+if(BUILD_TESTING)
+    # Prefer local venv interpreter so pytest is available.
+    set(_PYTEST_PYTHON "")
+    if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe")
+        set(_PYTEST_PYTHON "${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe")
+    elseif(EXISTS "${CMAKE_SOURCE_DIR}/.venv/bin/python")
+        set(_PYTEST_PYTHON "${CMAKE_SOURCE_DIR}/.venv/bin/python")
+    elseif(Python_FOUND)
+        set(_PYTEST_PYTHON "${Python_EXECUTABLE}")
+    endif()
+
+    if(_PYTEST_PYTHON)
+        add_test(
+            NAME python_pytest
+            COMMAND ${_PYTEST_PYTHON} -m pytest -q
+        )
+        set_tests_properties(python_pytest PROPERTIES
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        )
+    else()
+        message(WARNING "BUILD_TESTING is ON but no suitable Python interpreter was found (venv or system); no CTest tests will be registered.")
+    endif()
+endif()
+
 if(USE_LIBTORCH)
     target_link_libraries(dm_core PRIVATE ${TORCH_LIBRARIES})
     target_compile_definitions(dm_core PUBLIC USE_LIBTORCH)

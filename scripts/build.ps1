@@ -22,6 +22,7 @@ if ($Clean -and (Test-Path $buildDir)) {
 }
 
 if (-not (Test-Path $buildDir)) {
+    
     New-Item -ItemType Directory -Path $buildDir | Out-Null
 }
 

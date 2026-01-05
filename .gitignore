@@ -22,6 +22,7 @@ env/
 
 # Logs & Data
 *.log
+test_results*.txt
 data/analytics/
 data/generations/
 data/logs/
