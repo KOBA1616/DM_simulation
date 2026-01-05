@@ -103,6 +103,7 @@ class UnifiedActionForm(BaseEditForm):
         if 'OTHER' in groups:
             groups = [g for g in groups if g != 'OTHER'] + ['OTHER']
         self.populate_combo(self.action_group_combo, groups, data_func=lambda x: x, display_func=tr)
+        self.register_widget(self.action_group_combo)
         layout.addRow(tr("Command Group"), self.action_group_combo)
 
         self.type_combo = QComboBox()
@@ -114,23 +115,28 @@ class UnifiedActionForm(BaseEditForm):
             self.known_types.insert(0, "NONE")
 
         self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
+        self.register_widget(self.type_combo)
         layout.addRow(tr("Command Type"), self.type_combo)
 
         # Scope / Target Group
         self.scope_combo = make_scope_combo(self)
+        self.register_widget(self.scope_combo)
         layout.addRow(tr("Scope"), self.scope_combo)
 
         # Common fields
         self.str_edit = QLineEdit()
+        self.register_widget(self.str_edit)
         self.str_label = QLabel(tr("String"))
         layout.addRow(self.str_label, self.str_edit)
 
         # Measure Mode (for QUERY)
         self.measure_mode_combo = make_measure_mode_combo(self)
+        self.register_widget(self.measure_mode_combo)
         layout.addRow(tr("Query Mode"), self.measure_mode_combo)
 
         # Stat Key selector for QUERY (GET_GAME_STAT)
         self.stat_key_combo = QComboBox()
+        self.register_widget(self.stat_key_combo)
         try:
             stat_keys = list(CardTextGenerator.STAT_KEY_MAP.keys())
             self.populate_combo(self.stat_key_combo, stat_keys, data_func=lambda x: x,
@@ -152,33 +158,43 @@ class UnifiedActionForm(BaseEditForm):
 
         # Ref Mode (for COST_REFERENCE -> MUTATE)
         self.ref_mode_combo = make_ref_mode_combo(self)
+        self.register_widget(self.ref_mode_combo)
         layout.addRow(tr("Ref Mode"), self.ref_mode_combo)
 
         self.val1_spin = make_value_spin(self)
+        self.register_widget(self.val1_spin)
         self.val1_label = QLabel(tr("Amount"))
         layout.addRow(self.val1_label, self.val1_spin)
 
         self.val2_spin = make_value_spin(self)
+        self.register_widget(self.val2_spin)
         self.val2_label = QLabel(tr("Value 2"))
         layout.addRow(self.val2_label, self.val2_spin)
 
         # Option generation controls (for CHOICE/SELECT_OPTION)
         self.option_count_spin, self.generate_options_btn, self.option_count_label, self.option_gen_layout = make_option_controls(self)
+        # Assuming make_option_controls returns widgets. Register them.
+        self.register_widget(self.option_count_spin)
         layout.addRow(self.option_count_label, self.option_gen_layout)
 
         # Flags
         self.no_cost_check = QCheckBox(tr("Play without paying cost"))
+        self.register_widget(self.no_cost_check)
         self.no_cost_label = QLabel("")
         layout.addRow(self.no_cost_label, self.no_cost_check)
         self.allow_duplicates_check = QCheckBox(tr("Allow Duplicates"))
+        self.register_widget(self.allow_duplicates_check)
         self.allow_duplicates_label = QLabel("")
         layout.addRow(self.allow_duplicates_label, self.allow_duplicates_check)
         self.arbitrary_check = QCheckBox(tr("Optional / Arbitrary Amount"))
+        self.register_widget(self.arbitrary_check)
         self.arbitrary_label = QLabel("")
         layout.addRow(self.arbitrary_label, self.arbitrary_check)
 
         # Zones
         self.source_zone_combo, self.dest_zone_combo = make_zone_combos(self)
+        self.register_widget(self.source_zone_combo)
+        self.register_widget(self.dest_zone_combo)
         self.source_zone_label = QLabel(tr("Source Zone"))
         self.dest_zone_label = QLabel(tr("Destination Zone"))
         layout.addRow(self.source_zone_label, self.source_zone_combo)
@@ -187,6 +203,7 @@ class UnifiedActionForm(BaseEditForm):
         # Filter
         self.filter_group = QGroupBox(tr("Filter"))
         self.filter_widget = FilterEditorWidget()
+        self.register_widget(self.filter_widget)
         fg_layout = QVBoxLayout(self.filter_group)
         fg_layout.addWidget(self.filter_widget)
         self.filter_widget.filterChanged.connect(self.update_data)
@@ -194,7 +211,9 @@ class UnifiedActionForm(BaseEditForm):
 
         # Mutation kind (keywords)
         self.mutation_kind_edit = QLineEdit()
+        self.register_widget(self.mutation_kind_edit)
         self.mutation_kind_combo = QComboBox()
+        self.register_widget(self.mutation_kind_combo)
         self.populate_combo(self.mutation_kind_combo, GRANTABLE_KEYWORDS, data_func=lambda x: x, display_func=tr)
         self.mutation_kind_label = QLabel(tr("Mutation Kind"))
 
@@ -206,6 +225,7 @@ class UnifiedActionForm(BaseEditForm):
 
         # Variable link
         self.link_widget = VariableLinkWidget()
+        self.register_widget(self.link_widget)
         self.link_widget.linkChanged.connect(self.update_data)
         if hasattr(self.link_widget, 'smartLinkStateChanged'):
             try:
@@ -557,23 +577,3 @@ class UnifiedActionForm(BaseEditForm):
 
     def _get_display_text(self, data):
         return f"{tr('Command')}: {tr(data.get('type', 'UNKNOWN'))}"
-
-    def block_signals_all(self, block):
-        self.type_combo.blockSignals(block)
-        self.scope_combo.blockSignals(block)
-        self.str_edit.blockSignals(block)
-        self.val1_spin.blockSignals(block)
-        self.val2_spin.blockSignals(block)
-        self.source_zone_combo.blockSignals(block)
-        self.dest_zone_combo.blockSignals(block)
-        self.filter_widget.blockSignals(block)
-        self.link_widget.blockSignals(block)
-        self.action_group_combo.blockSignals(block)
-        self.measure_mode_combo.blockSignals(block)
-        self.stat_key_combo.blockSignals(block)
-        self.ref_mode_combo.blockSignals(block)
-        self.no_cost_check.blockSignals(block)
-        self.allow_duplicates_check.blockSignals(block)
-        self.arbitrary_check.blockSignals(block)
-        self.mutation_kind_combo.blockSignals(block)
-        self.mutation_kind_edit.blockSignals(block)
