@@ -1157,3 +1157,182 @@ class CardDataManager:
             w_item.setData({'uid': str(uuid.uuid4()), 'text': w}, Qt.ItemDataRole.UserRole + 2)
             w_item.setEditable(False)
             warn_node.appendRow(w_item)
+
+    def get_item_path(self, item):
+        """Generates a path string using UIDs if available, else row indices."""
+        path = []
+        curr = item
+        # Stop if we hit the invisible root item to avoid including it in the path
+        root = self.model.invisibleRootItem()
+        while curr and curr != root:
+            data = self.get_item_data(curr)
+            if data and 'uid' in data:
+                path.append(f"uid_{data['uid']}")
+            else:
+                path.append(f"row_{curr.row()}")
+            curr = curr.parent()
+        return ":".join(reversed(path))
+
+    def convert_action_tree_to_command(self, action_item):
+        """Recursively converts an Action Item and its children to Command Data."""
+        from dm_toolkit.gui.editor.action_converter import ActionConverter
+
+        act_data = self.get_item_data(action_item)
+        cmd_data = ActionConverter.convert(act_data)
+
+        # Check for children (Options)
+        options_list = []
+        if action_item.rowCount() > 0:
+            for i in range(action_item.rowCount()):
+                child = action_item.child(i)
+                if child is None:
+                    continue
+                child_type = self.get_item_type(child)
+                if child_type == "OPTION":
+                    opt_cmds = []
+                    for k in range(child.rowCount()):
+                        sub_item = child.child(k)
+                        if sub_item is None:
+                            continue
+                        sub_type = self.get_item_type(sub_item)
+                        if sub_type == "ACTION":
+                            opt_cmds.append(self.convert_action_tree_to_command(sub_item))
+                        elif sub_type == "COMMAND":
+                            # Preserve existing commands
+                            opt_cmds.append(self.get_item_data(sub_item))
+                    options_list.append(opt_cmds)
+
+        if options_list:
+            cmd_data['options'] = options_list
+
+        return cmd_data
+
+    def replace_action_with_command(self, index, cmd_data):
+        """Replaces a legacy Action item with a new Command item."""
+        if not index.isValid(): return None
+
+        parent_item = self.model.itemFromIndex(index.parent())
+        old_item = self.model.itemFromIndex(index)
+        if old_item is None:
+            return None
+        row = index.row()
+
+        # 1. Capture old structure if it has children (OPTIONS)
+        preserved_options_data = []
+        if old_item.rowCount() > 0:
+            # Check if children are OPTIONS
+            for i in range(old_item.rowCount()):
+                child = old_item.child(i)
+                if child is None:
+                    continue
+                if self.get_item_type(child) == "OPTION":
+                    # Collect actions inside
+                    opt_actions_data = []
+                    for k in range(child.rowCount()):
+                        act_child = child.child(k)
+                        if act_child is None:
+                            continue
+                        # We only care about ACTIONs to convert
+                        act_type = self.get_item_type(act_child)
+                        if act_type == "ACTION":
+                            # Recursively capture and convert
+                            c_cmd = self.convert_action_tree_to_command(act_child)
+                            opt_actions_data.append(c_cmd)
+                        elif act_type == "COMMAND":
+                            # Already a command, preserve it
+                            opt_actions_data.append(self.get_item_data(act_child))
+                    preserved_options_data.append(opt_actions_data)
+
+        # 2. Inject options into cmd_data if exists
+        if preserved_options_data:
+            cmd_data['options'] = preserved_options_data
+
+        # 3. Remove old Action
+        if parent_item is None:
+            if not index.parent().isValid():
+                parent_item = self.model.invisibleRootItem()
+
+        if parent_item is None:
+             return None
+
+        parent_item.removeRow(row)
+
+        # 4. Insert new Command at same position
+        cmd_item = self.create_command_item(cmd_data)
+        parent_item.insertRow(row, cmd_item)
+
+        return cmd_item
+
+    def collect_conversion_preview(self, item):
+        """Return a flat list of preview dicts for ACTION items under `item` without modifying tree."""
+        previews = []
+
+        def _recurse(cur_item):
+            for i in range(cur_item.rowCount()):
+                child = cur_item.child(i)
+                if child is None:
+                    continue
+                child_type = self.get_item_type(child)
+                if child_type == 'ACTION':
+                    cmd_data = self.convert_action_tree_to_command(child)
+                    warn = bool(cmd_data.get('legacy_warning', False))
+                    previews.append({
+                        'path': self.get_item_path(child),
+                        'label': child.text(),
+                        'warning': warn,
+                        'cmd_data': cmd_data
+                    })
+                    # Also traverse OPTION children to collect nested ACTIONs
+                    for j in range(child.rowCount()):
+                        opt = child.child(j)
+                        if opt and self.get_item_type(opt) == 'OPTION':
+                            _recurse(opt)
+                else:
+                    # Recurse deeper
+                    _recurse(child)
+
+        _recurse(item)
+        return previews
+
+    def scan_warnings_in_cmd(self, cmd_data):
+        w = 0
+        if cmd_data.get('legacy_warning', False):
+            w += 1
+
+        if 'options' in cmd_data:
+            for opt_list in cmd_data['options']:
+                for sub_cmd in opt_list:
+                    w += self.scan_warnings_in_cmd(sub_cmd)
+        return w
+
+    def batch_convert_actions_recursive(self, item):
+        """
+        Traverses the tree and converts ACTION items to COMMAND items.
+        Returns (converted_count, warning_count).
+        """
+        converted_count = 0
+        warning_count = 0
+        # Iterate backwards to safely remove/insert rows
+        for i in reversed(range(item.rowCount())):
+            child = item.child(i)
+            if child is None:
+                continue
+            child_type = self.get_item_type(child)
+
+            if child_type == "ACTION":
+                # Convert this Action (and its children)
+                cmd_data = self.convert_action_tree_to_command(child)
+
+                # Check for warnings in this conversion branch
+                w = self.scan_warnings_in_cmd(cmd_data)
+                warning_count += w
+
+                # replace_action_with_command returns the new item, but we don't need it here since we are recursing or done
+                self.replace_action_with_command(child.index(), cmd_data)
+                converted_count += 1
+            else:
+                # Recurse deeper
+                c, w = self.batch_convert_actions_recursive(child)
+                converted_count += c
+                warning_count += w
+        return converted_count, warning_count
