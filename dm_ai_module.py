@@ -382,6 +382,22 @@ else:
 
     class CommandType(Enum):
         TRANSITION = 1
+        MUTATE = 2
+        FLOW = 3
+        QUERY = 4
+        DRAW_CARD = 5
+        DISCARD = 6
+        DESTROY = 7
+        MANA_CHARGE = 8
+        TAP = 9
+        UNTAP = 10
+        POWER_MOD = 11
+        ADD_KEYWORD = 12
+        RETURN_TO_HAND = 13
+        BREAK_SHIELD = 14
+        SEARCH_DECK = 15
+        SHIELD_TRIGGER = 16
+        NONE = 17
 
 
     class TargetScope(Enum):
