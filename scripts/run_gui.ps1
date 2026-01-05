@@ -23,38 +23,17 @@ if (-not (Test-Path $pythonExe)) {
     $pythonExe = "python"
 }
 
-function Find-DmAiModuleDir {
-    param([Parameter(Mandatory)][string]$Root)
-
-    $candidates = @(
-        (Join-Path $Root "bin"),
-        (Join-Path $Root "build-msvc"),
-        (Join-Path $Root "build-mingw"),
-        (Join-Path $Root "build")
-    ) | Where-Object { Test-Path $_ }
-
-    foreach ($dir in $candidates) {
-        $pyd = Get-ChildItem -Path $dir -Recurse -File -Filter "dm_ai_module*.pyd" -ErrorAction SilentlyContinue |
-            Sort-Object FullName |
-            Select-Object -First 1
-        if ($pyd) {
-            return (Split-Path -Parent $pyd.FullName)
-        }
-    }
-    return $null
-}
-
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
-if ($Build -or -not (Find-DmAiModuleDir -Root $projectRoot)) {
+if ($Build) {
     Write-Host "Building project before launching GUI..."
     & "$scriptDir/build.ps1" -Config $Config -Toolchain $Toolchain
-
-   
 }
 
 if (-not (Test-Path $buildDir)) {
-    throw "Build directory not found at $buildDir"
+    # If build dir missing, we might still have a pyd elsewhere, but it's safer to warn or rely on dm_ai_module.py to fail.
+    # However, for consistency with 'Build on demand', we rely on user passing -Build or valid existing.
+    Write-Host "Warning: Build directory not found at $buildDir. Assuming native module exists in standard location or irrelevant."
 }
 
 # Optional: ensure MinGW DLLs are present (only when explicitly configured)
@@ -69,12 +48,8 @@ if (-not [string]::IsNullOrWhiteSpace($mingwBin) -and (Test-Path $mingwBin)) {
     }
 }
 
-$dmDir = Find-DmAiModuleDir -Root $projectRoot
-if ($dmDir) {
-    $env:PYTHONPATH = "$dmDir;$buildDir;$projectRoot;$env:PYTHONPATH"
-} else {
-    $env:PYTHONPATH = "$buildDir;$projectRoot;$env:PYTHONPATH"
-}
+# PYTHONPATH: Only add project root (and build dir for safety of other imports), do NOT search for pyd.
+$env:PYTHONPATH = "$buildDir;$projectRoot;$env:PYTHONPATH"
 
 Write-Host "Starting GUI..."
 & $pythonExe "$projectRoot/dm_toolkit/gui/app.py"
