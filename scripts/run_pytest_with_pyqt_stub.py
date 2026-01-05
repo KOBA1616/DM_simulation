@@ -1,3 +1,11 @@
+"""
+POLICY: HEADLESS TEST EXECUTION
+-------------------------------
+This script is the OFFICIAL route for running pytest with headless stub injection.
+Tests that require GUI components but must run in a headless environment (CI/CD)
+MUST use this entry point.
+"""
+
 import sys, types, importlib, importlib.machinery
 m = types.ModuleType('PyQt6')
 m.__spec__ = importlib.machinery.ModuleSpec('PyQt6', None)
@@ -44,5 +52,6 @@ sys.modules['PyQt6.QtGui'].QStandardItemModel = _QStandardItemModel
 sys.modules['PyQt6.QtCore'].Qt = _Qt
 
 import pytest
-args = sys.argv[1:] if len(sys.argv) > 1 else ['-q', 'tests/gui', '-q']
+# If no arguments provided, default to tests/gui (relative to repo root)
+args = sys.argv[1:] if len(sys.argv) > 1 else ['-q', 'python/tests/gui', '-q']
 sys.exit(pytest.main(args))

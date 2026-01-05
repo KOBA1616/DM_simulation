@@ -1,7 +1,14 @@
 import sys
 import os
 
-# Ensure repository root is searched first.
+# POLICY: SOURCE LOADER PRIORITY
+# ------------------------------
+# We prioritize the local repository root (source) over installed packages.
+# This ensures that `import dm_ai_module` (which maps to dm_ai_module.py) is
+# picked up from the source tree rather than site-packages.
+#
+# This file is automatically executed by Python when the site module is imported.
+
 _ROOT_DIR = os.path.dirname(__file__)
 
 if _ROOT_DIR not in sys.path:

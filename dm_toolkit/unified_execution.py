@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+"""
+POLICY: UNIFIED EXECUTION & DISPERSION MINIMIZATION
+---------------------------------------------------
+This module serves as the primary gateway for executing Actions/Commands.
+It integrates with `action_to_command` to ensure all inputs are normalized.
+
+To minimize dispersion of post-processing logic, all high-level execution
+wrappers and safety checks should reside here or in `compat_wrappers.py`.
+"""
+
 from typing import Any, Dict, List, Union, Optional
 import copy
 import json
