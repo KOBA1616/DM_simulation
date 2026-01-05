@@ -19,6 +19,7 @@ void bind_core(py::module& m) {
     // Bind opaque vectors
     py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
     py::bind_vector<std::vector<dm::core::Civilization>>(m, "CivilizationList");
+    py::bind_vector<std::vector<dm::core::Player>>(m, "PlayerList");
 
     // ... (Previous Enums and Classes) ...
     // GameEvent bindings
