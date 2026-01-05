@@ -19,11 +19,25 @@ class BaseEditForm(QWidget):
         self.current_item = None
         self._is_populating = False
         self.bindings = {} # key: widget
+        self.input_widgets = set() # Set of widgets to block signals for
 
-    def add_field(self, label, widget, layout=None):
+    def register_widget(self, widget, key=None):
+        """
+        Registers a widget for signal blocking and optional data binding.
+        """
+        self.input_widgets.add(widget)
+        if key:
+            self.bindings[key] = widget
+        return widget
+
+    def add_field(self, label, widget, key=None, layout=None):
         """
         Helper method to add a labeled field to a form layout.
+        Also registers the widget for signal blocking and binding.
         """
+        # Register the widget
+        self.register_widget(widget, key)
+
         if layout is None:
             layout = getattr(self, 'form_layout', None)
 
@@ -31,7 +45,7 @@ class BaseEditForm(QWidget):
             layout = self.layout()
 
         if layout is None:
-            # If no layout found, we can't add.
+            # If no layout found, we just return the label/widget but can't add to layout
             return None
 
         if isinstance(label, str):
@@ -204,11 +218,12 @@ class BaseEditForm(QWidget):
     def block_signals_all(self, block):
         """
         Override to block signals for all input widgets.
-        Default implementation blocks signals for widgets in bindings.
+        Default implementation blocks signals for widgets in bindings and registered input_widgets.
         """
-        for widget in self.bindings.values():
+        for widget in self.input_widgets:
             w = widget[0] if isinstance(widget, tuple) else widget
-            w.blockSignals(block)
+            if hasattr(w, 'blockSignals'):
+                w.blockSignals(block)
 
     def populate_combo(self, combo: QComboBox, items: list, data_func=None, display_func=None, clear=True):
         """

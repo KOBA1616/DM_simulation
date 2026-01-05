@@ -23,17 +23,18 @@ class SpellSideForm(BaseEditForm):
 
         # Name
         self.name_edit = QLineEdit()
-        self.form_layout.addRow(tr("Name"), self.name_edit)
+        self.add_field(tr("Name"), self.name_edit, 'name')
 
         # Civilization
         self.civ_selector = CivilizationSelector()
         self.civ_selector.changed.connect(self.update_data)
-        self.form_layout.addRow(tr("Civilization"), self.civ_selector)
+        self.register_widget(self.civ_selector)
+        self.add_field(tr("Civilization"), self.civ_selector)
 
         # Cost
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
-        self.form_layout.addRow(tr("Cost"), self.cost_spin)
+        self.add_field(tr("Cost"), self.cost_spin, 'cost')
 
         # Connect signals
         self.name_edit.textChanged.connect(self.update_data)
@@ -41,11 +42,9 @@ class SpellSideForm(BaseEditForm):
 
         main_layout.addStretch()
 
-    def _populate_ui(self, item):
-        data = item.data(Qt.ItemDataRole.UserRole + 2)
-        if not data: data = {}
-
-        self.name_edit.setText(data.get('name', ''))
+    def _load_ui_from_data(self, data, item):
+        # Apply standard bindings
+        self._apply_bindings(data)
 
         civs = data.get('civilizations')
         if not civs:
@@ -54,20 +53,12 @@ class SpellSideForm(BaseEditForm):
                 civs = [civ_single]
         self.civ_selector.set_selected_civs(civs)
 
-        self.cost_spin.setValue(data.get('cost', 0))
-
-    def _save_data(self, data):
-        data['name'] = self.name_edit.text()
+    def _save_ui_to_data(self, data):
+        self._collect_bindings(data)
         data['civilizations'] = self.civ_selector.get_selected_civs()
         if 'civilization' in data:
             del data['civilization']
-        data['cost'] = self.cost_spin.value()
         data['type'] = 'SPELL' # Always SPELL for spell side
 
     def _get_display_text(self, data):
         return f"{tr('Spell Side')}: {data.get('name', '')}"
-
-    def block_signals_all(self, block):
-        self.name_edit.blockSignals(block)
-        self.civ_selector.blockSignals(block)
-        self.cost_spin.blockSignals(block)

@@ -46,22 +46,25 @@ class CardEditForm(BaseEditForm):
         self.id_spin = QSpinBox()
         self.id_spin.setRange(0, 9999)
         self.id_spin.setVisible(False)
-        # self.add_field(tr("ID"), self.id_spin)
+        self.add_field(tr("ID"), self.id_spin, 'id')
 
         # Name
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText(tr("Enter card name..."))
-        self.add_field(tr("Name"), self.name_edit)
+        self.add_field(tr("Name"), self.name_edit, 'name')
 
         # Twinpact Checkbox
         self.twinpact_check = QCheckBox(tr("Is Twinpact?"))
         self.twinpact_check.setToolTip(tr("Enable to generate a Spell Side node in the logic tree."))
         self.twinpact_check.stateChanged.connect(self.toggle_twinpact)
+        self.register_widget(self.twinpact_check) # Register for signal blocking
         self.add_field(tr("Twinpact"), self.twinpact_check)
 
         # Civilization
         self.civ_selector = CivilizationSelector()
         self.civ_selector.changed.connect(self.update_data)
+        # Manually handled for data loading/saving, but registered for signal blocking
+        self.register_widget(self.civ_selector)
         self.add_field(tr("Civilization"), self.civ_selector)
 
         # Type
@@ -69,31 +72,33 @@ class CardEditForm(BaseEditForm):
         self.type_combo.setToolTip(tr("Card type (Creature, Spell, etc.)"))
         types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE", "TAMASEED", "CASTLE", "NEO_CREATURE", "G_NEO_CREATURE"]
         self.populate_combo(self.type_combo, types, data_func=lambda x: x)
-        self.add_field(tr("Type"), self.type_combo)
+        self.add_field(tr("Type"), self.type_combo, 'type')
 
         # Cost
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
         self.cost_spin.setToolTip(tr("Mana cost of the card"))
-        self.add_field(tr("Cost"), self.cost_spin)
+        self.add_field(tr("Cost"), self.cost_spin, 'cost')
 
         # Power
         self.power_spin = QSpinBox()
         self.power_spin.setRange(0, 99999)
         self.power_spin.setSingleStep(500)
         self.power_spin.setToolTip(tr("Creature power (ignored for Spells)"))
-        self.lbl_power = self.add_field(tr("Power"), self.power_spin)
+        self.lbl_power = self.add_field(tr("Power"), self.power_spin, 'power')
 
         # Races
         self.races_edit = QLineEdit()
         self.races_edit.setPlaceholderText(tr("Dragon, Fire Bird"))
         self.races_edit.setToolTip(tr("Comma-separated list of races (e.g. 'Dragon, Fire Bird')"))
+        # Races handled manually due to list/string conversion
+        self.register_widget(self.races_edit)
         self.lbl_races = self.add_field(tr("Races"), self.races_edit)
 
         # Evolution Condition (Hidden by default, shown for Evolution types)
         self.evolution_condition_edit = QLineEdit()
         self.evolution_condition_edit.setPlaceholderText(tr("e.g. Fire Bird"))
-        self.lbl_evolution_condition = self.add_field(tr("Evolution Condition"), self.evolution_condition_edit)
+        self.lbl_evolution_condition = self.add_field(tr("Evolution Condition"), self.evolution_condition_edit, 'evolution_condition')
 
         # AI Configuration Section
         ai_group = QGroupBox(tr("AI Configuration"))
@@ -102,13 +107,16 @@ class CardEditForm(BaseEditForm):
         self.is_key_card_check = QCheckBox(tr("Is Key Card / Combo Piece"))
         self.is_key_card_check.setToolTip(tr("Mark this card as critical for the deck's strategy."))
         self.is_key_card_check.stateChanged.connect(self.update_data)
-        self.add_field(None, self.is_key_card_check, layout=ai_layout)
+        # We manually add it to layout to use ai_layout, so add_field helper needs to be careful
+        # add_field uses form_layout or passed layout.
+        # But add_field also adds label. Here label is None.
+        self.add_field(None, self.is_key_card_check, key='is_key_card', layout=ai_layout)
 
         self.ai_importance_spin = QSpinBox()
         self.ai_importance_spin.setRange(0, 1000)
         self.ai_importance_spin.setToolTip(tr("Higher values (0-1000) prioritize this card for AI protection and targeting."))
         self.ai_importance_spin.valueChanged.connect(self.update_data)
-        self.add_field(tr("AI Importance Score"), self.ai_importance_spin, layout=ai_layout)
+        self.add_field(tr("AI Importance Score"), self.ai_importance_spin, key='ai_importance_score', layout=ai_layout)
 
         self.add_field(None, ai_group)
 
@@ -121,21 +129,6 @@ class CardEditForm(BaseEditForm):
         actions_layout.addWidget(self.add_effect_btn)
 
         self.add_field(None, actions_group)
-
-        # Define bindings
-        self.bindings = {
-            'id': self.id_spin,
-            'name': self.name_edit,
-            'type': self.type_combo,
-            'cost': self.cost_spin,
-            'power': self.power_spin,
-            'evolution_condition': self.evolution_condition_edit,
-            'is_key_card': self.is_key_card_check,
-            'ai_importance_score': self.ai_importance_spin
-            # 'civilizations': self.civ_selector, # Custom widget, handled manually or via duck typing set_data/get_data?
-            # CivilizationSelector has set_selected_civs and get_selected_civs. Not standard.
-            # 'races': handled manually (list vs string)
-        }
 
         # Connect signals
         self.id_spin.valueChanged.connect(self.update_data)
@@ -272,9 +265,3 @@ class CardEditForm(BaseEditForm):
 
     def _get_display_text(self, data):
         return f"{data.get('id', 0)} - {data.get('name', '')}"
-
-    def block_signals_all(self, block):
-        self.civ_selector.blockSignals(block)
-        self.races_edit.blockSignals(block)
-        self.twinpact_check.blockSignals(block)
-        super().block_signals_all(block)

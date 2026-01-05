@@ -31,6 +31,7 @@ class EffectEditForm(BaseEditForm):
         self.mode_combo = QComboBox()
         self.mode_combo.addItem(tr("TRIGGERED"), "TRIGGERED")
         self.mode_combo.addItem(tr("STATIC"), "STATIC")
+        self.register_widget(self.mode_combo)
         self.add_field(tr("Ability Mode"), self.mode_combo)
 
         # Trigger Definition
@@ -41,7 +42,7 @@ class EffectEditForm(BaseEditForm):
             "ON_ATTACK_FROM_HAND", "AT_BREAK_SHIELD", "ON_CAST_SPELL", "ON_OPPONENT_DRAW"
         ]
         self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
-        self.lbl_trigger = self.add_field(tr("Trigger"), self.trigger_combo)
+        self.lbl_trigger = self.add_field(tr("Trigger"), self.trigger_combo, 'trigger')
 
         # Layer Definition (Static)
         self.layer_group = QGroupBox(tr("Layer Definition"))
@@ -50,11 +51,14 @@ class EffectEditForm(BaseEditForm):
         self.layer_type_combo = QComboBox()
         layers = ["COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
         self.populate_combo(self.layer_type_combo, layers, display_func=tr, data_func=lambda x: x)
+        self.register_widget(self.layer_type_combo, 'type')
 
         self.layer_val_spin = QSpinBox()
         self.layer_val_spin.setRange(-9999, 9999)
+        self.register_widget(self.layer_val_spin, 'value')
 
         self.layer_str_edit = QLineEdit()
+        self.register_widget(self.layer_str_edit, 'str_val')
 
         l_layout.addWidget(QLabel(tr("Layer Type")), 0, 0)
         l_layout.addWidget(self.layer_type_combo, 0, 1)
@@ -67,6 +71,7 @@ class EffectEditForm(BaseEditForm):
         self.target_filter = FilterEditorWidget()
         self.target_filter.filterChanged.connect(self.update_data)
         self.target_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
+        self.register_widget(self.target_filter, 'filter')
         l_layout.addWidget(QLabel(tr("Target Filter")), 3, 0)
         l_layout.addWidget(self.target_filter, 3, 1)
 
@@ -75,24 +80,12 @@ class EffectEditForm(BaseEditForm):
         # Condition (Shared)
         self.condition_widget = ConditionEditorWidget()
         self.condition_widget.dataChanged.connect(self.update_data)
-        self.add_field(None, self.condition_widget)
+        self.add_field(None, self.condition_widget, 'condition')
 
         # Actions Section
         self.add_action_btn = QPushButton(tr("Add Command"))
         self.add_action_btn.clicked.connect(self.on_add_action_clicked)
         self.add_field(None, self.add_action_btn)
-
-        # Define bindings
-        # Note: 'trigger', 'condition', 'type', 'value', 'str_val' are context dependent
-        self.bindings = {
-            'trigger': self.trigger_combo,
-            # For static/modifier
-            'type': self.layer_type_combo,
-            'value': self.layer_val_spin,
-            'str_val': self.layer_str_edit,
-            'filter': self.target_filter,
-            'condition': self.condition_widget
-        }
 
         # Connect signals
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
@@ -255,7 +248,3 @@ class EffectEditForm(BaseEditForm):
              return f"{tr('Static')}: {tr(t)}"
         else:
              return tr("Unknown Effect")
-
-    def block_signals_all(self, block):
-        self.mode_combo.blockSignals(block)
-        super().block_signals_all(block)
