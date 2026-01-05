@@ -2,7 +2,7 @@
 #define DM_BINDINGS_TYPES_HPP
 
 #include "core/card_def.hpp"
-#include "core/game_state.hpp" // Needed for CardInstance
+#include "core/game_state.hpp" // Needed for CardInstance and Player
 #include <map>
 #include <vector>
 #include <memory>
@@ -17,5 +17,6 @@ namespace dm {
 PYBIND11_MAKE_OPAQUE(dm::CardDatabase);
 PYBIND11_MAKE_OPAQUE(std::vector<dm::core::CardInstance>);
 PYBIND11_MAKE_OPAQUE(std::vector<dm::core::Civilization>);
+PYBIND11_MAKE_OPAQUE(std::vector<dm::core::Player>);
 
 #endif // DM_BINDINGS_TYPES_HPP
