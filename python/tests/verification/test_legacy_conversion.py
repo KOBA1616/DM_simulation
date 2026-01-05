@@ -1,21 +1,10 @@
-
-import sys
-import os
+import pytest
 import json
+import dm_ai_module
 
-# Add bin path to find dm_ai_module
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'bin'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'build'))
-
-try:
-    import dm_ai_module
-except ImportError:
-    print("Error: Could not import dm_ai_module. Make sure it is built.")
-    sys.exit(1)
-
-def verify_conversion():
-    # Helper to get all EffectPrimitive values
-    primitives = [
+@pytest.fixture
+def primitives_to_test():
+    return [
         dm_ai_module.EffectPrimitive.DRAW_CARD,
         dm_ai_module.EffectPrimitive.ADD_MANA,
         dm_ai_module.EffectPrimitive.DESTROY,
@@ -59,18 +48,13 @@ def verify_conversion():
         dm_ai_module.EffectPrimitive.RESOLVE_BATTLE
     ]
 
-    # We will use JsonLoader to load a dummy card for each primitive
-    # and check if the command type is set correctly (not NONE)
-
-    missing_conversions = []
-
-    # Use IDs within uint16_t range (0-65535)
+def test_verify_legacy_conversion(primitives_to_test, tmp_path):
     base_id = 30000
+    card_list = []
 
-    for prim in primitives:
-        # Create a dummy JSON for a card with this primitive
-        prim_str = str(prim).split('.')[-1] # e.g. EffectPrimitive.DRAW_CARD -> DRAW_CARD
-
+    # Generate all card definitions
+    for prim in primitives_to_test:
+        prim_str = str(prim).split('.')[-1]
         current_id = base_id + int(prim)
 
         card_json = {
@@ -93,48 +77,45 @@ def verify_conversion():
                 }
             ]
         }
+        card_list.append(card_json)
 
-        # Save to temp file
-        filename = f"temp_card_{prim_str}.json"
-        with open(filename, 'w') as f:
-            json.dump([card_json], f)
+    # Save to a single temp file
+    filename = tmp_path / "legacy_conversion_test_cards.json"
+    filename.write_text(json.dumps(card_list))
 
-        try:
-            # Load
-            card_map = dm_ai_module.JsonLoader.load_cards(filename)
+    # Load cards
+    card_map = dm_ai_module.JsonLoader.load_cards(str(filename))
 
-            # Retrieve using correct ID
-            # Ensure ID is treated as int for binding
-            card_def = card_map[int(current_id)]
+    missing_conversions = []
 
-            # Check commands
-            if len(card_def.effects) > 0:
-                effect = card_def.effects[0]
-                if len(effect.commands) == 0:
-                     missing_conversions.append(prim_str)
-                else:
-                    cmd = effect.commands[0]
-                    if cmd.type == dm_ai_module.CommandType.NONE:
-                        missing_conversions.append(f"{prim_str} (Mapped to NONE)")
-            else:
-                missing_conversions.append(f"{prim_str} (No Effect Loaded)")
+    for prim in primitives_to_test:
+        prim_str = str(prim).split('.')[-1]
+        current_id = base_id + int(prim)
 
-        except Exception as e:
-            print(f"Error checking {prim_str}: {e}")
-            import traceback
-            traceback.print_exc()
-        finally:
-            if os.path.exists(filename):
-                os.remove(filename)
+        if current_id not in card_map:
+            missing_conversions.append(f"{prim_str} (ID {current_id} not found)")
+            continue
 
-    if missing_conversions:
-        print("Missing Conversions detected:")
-        for m in missing_conversions:
-            print(f" - {m}")
-        sys.exit(1)
-    else:
-        print("All legacy primitives converted successfully!")
-        sys.exit(0)
+        card_def = card_map[current_id]
 
-if __name__ == "__main__":
-    verify_conversion()
+        if len(card_def.effects) > 0:
+            effect = card_def.effects[0]
+            has_valid_conversion = False
+
+            # Check legacy commands (deprecated but still used for some atomic actions)
+            if len(effect.commands) > 0:
+                 if effect.commands[0].type != dm_ai_module.CommandType.NONE:
+                     has_valid_conversion = True
+
+            # Check new ActionDef system (preferred)
+            if not has_valid_conversion and hasattr(effect, 'actions'):
+                if len(effect.actions) > 0:
+                    # If actions are populated, it means the primitive was successfully mapped to an ActionDef
+                    has_valid_conversion = True
+
+            if not has_valid_conversion:
+                missing_conversions.append(prim_str)
+        else:
+            missing_conversions.append(f"{prim_str} (No Effect Loaded)")
+
+    assert not missing_conversions, f"Missing Conversions (Neither Command nor Action generated): {missing_conversions}"
