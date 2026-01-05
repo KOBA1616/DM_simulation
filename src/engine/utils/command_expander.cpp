@@ -33,11 +33,9 @@ namespace dm::engine::utils {
                 result.push_back(trans);
                 break;
             }
-            case CommandType::MANA_CHARGE: {
-                // MANA_CHARGE(N) -> TRANSITION(DECK->MANA, N) if from deck? Or from Hand?
-                // Usually "Charge Mana" implies "Put top card of deck into mana" or "Put card from hand".
-                // Legacy macro in CommandSystem treated MANA_CHARGE as "Top of Deck -> Mana" loop.
-                // If filter/target is specified, it respects that.
+            case CommandType::BOOST_MANA: {
+                // BOOST_MANA(N) -> TRANSITION(DECK->MANA, N)
+                // "Charge Mana" implies "Put top card of deck into mana".
                 CommandDef trans;
                 trans.type = CommandType::TRANSITION;
                 trans.from_zone = cmd.from_zone.empty() ? "DECK" : cmd.from_zone;
