@@ -25,7 +25,7 @@ namespace dm::engine {
 
         switch (act.type) {
             case EffectPrimitive::DRAW_CARD: cmd.type = CommandType::DRAW_CARD; break;
-            case EffectPrimitive::ADD_MANA: cmd.type = CommandType::MANA_CHARGE; break;
+            case EffectPrimitive::ADD_MANA: cmd.type = CommandType::BOOST_MANA; break;
             case EffectPrimitive::DESTROY: cmd.type = CommandType::DESTROY; break;
             case EffectPrimitive::RETURN_TO_HAND: cmd.type = CommandType::RETURN_TO_HAND; break;
             case EffectPrimitive::TAP: cmd.type = CommandType::TAP; break;
@@ -35,7 +35,7 @@ namespace dm::engine {
             case EffectPrimitive::DISCARD: cmd.type = CommandType::DISCARD; break;
             case EffectPrimitive::SEARCH_DECK: cmd.type = CommandType::SEARCH_DECK; break;
             case EffectPrimitive::GRANT_KEYWORD: cmd.type = CommandType::ADD_KEYWORD; break;
-            case EffectPrimitive::SEND_TO_MANA: cmd.type = CommandType::MANA_CHARGE; break;
+            case EffectPrimitive::SEND_TO_MANA: cmd.type = CommandType::SEND_TO_MANA; break;
             case EffectPrimitive::MOVE_CARD: cmd.type = CommandType::TRANSITION; break;
             default: cmd.type = CommandType::NONE; break;
         }

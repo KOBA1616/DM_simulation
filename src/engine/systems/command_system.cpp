@@ -50,7 +50,8 @@ namespace dm::engine::systems {
 
             // Macro Commands
             case core::CommandType::DRAW_CARD:
-            case core::CommandType::MANA_CHARGE:
+            case core::CommandType::BOOST_MANA:
+            case core::CommandType::ADD_MANA: // Alias to BOOST_MANA for simple count
             case core::CommandType::DESTROY:
             case core::CommandType::DISCARD:
             case core::CommandType::TAP:
@@ -60,6 +61,7 @@ namespace dm::engine::systems {
             case core::CommandType::POWER_MOD:
             case core::CommandType::ADD_KEYWORD:
             case core::CommandType::SEARCH_DECK:
+            case core::CommandType::SEND_TO_MANA: // Handled as macro/transition
                 expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
                 break;
 
@@ -198,7 +200,8 @@ namespace dm::engine::systems {
                 }
                 break;
             }
-            case core::CommandType::MANA_CHARGE: {
+            case core::CommandType::BOOST_MANA:
+            case core::CommandType::ADD_MANA: {
                  int charged = 0;
                  for (int i = 0; i < count; ++i) {
                      const auto& deck = state.players[player_id].deck;
@@ -211,6 +214,35 @@ namespace dm::engine::systems {
                 }
                 if (!cmd.output_value_key.empty()) {
                     execution_context[cmd.output_value_key] = charged;
+                }
+                break;
+            }
+            case core::CommandType::SEND_TO_MANA: {
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+                int moved = 0;
+                for (int target_id : targets) {
+                    CardInstance* inst = state.get_card_instance(target_id);
+                    if (inst) {
+                         // Move to Mana Zone
+                         TransitionCommand trans(target_id, Zone::BATTLE, Zone::MANA, inst->owner);
+                         // Note: TransitionCommand will update from_zone internally if it's different
+                         // But we should try to infer. Currently TransitionCommand expects explicit from.
+                         // But for generic SEND_TO_MANA, from_zone might be implicit.
+
+                         // Better: Use CommandType::TRANSITION logic helper or just infer here:
+                         Zone from_z = Zone::BATTLE;
+                         if (ZoneUtils::card_in_zone(state.players[inst->owner].battle_zone, target_id)) from_z = Zone::BATTLE;
+                         else if (ZoneUtils::card_in_zone(state.players[inst->owner].hand, target_id)) from_z = Zone::HAND;
+                         else if (ZoneUtils::card_in_zone(state.players[inst->owner].graveyard, target_id)) from_z = Zone::GRAVEYARD;
+                         else if (ZoneUtils::card_in_zone(state.players[inst->owner].shield_zone, target_id)) from_z = Zone::SHIELD;
+
+                         TransitionCommand real_trans(target_id, from_z, Zone::MANA, inst->owner);
+                         real_trans.execute(state);
+                         moved++;
+                    }
+                }
+                if (!cmd.output_value_key.empty()) {
+                    execution_context[cmd.output_value_key] = moved;
                 }
                 break;
             }

@@ -28,7 +28,7 @@ namespace dm::engine {
                 cmd.type = CommandType::DRAW_CARD;
                 break;
             case EffectPrimitive::ADD_MANA:
-                cmd.type = CommandType::MANA_CHARGE;
+                cmd.type = CommandType::BOOST_MANA;
                 break;
             case EffectPrimitive::DESTROY:
                 cmd.type = CommandType::DESTROY;
@@ -58,7 +58,7 @@ namespace dm::engine {
                 cmd.type = CommandType::ADD_KEYWORD;
                 break;
             case EffectPrimitive::SEND_TO_MANA:
-                cmd.type = CommandType::MANA_CHARGE; // Usually Send to Mana
+                cmd.type = CommandType::SEND_TO_MANA;
                 break;
             case EffectPrimitive::MOVE_CARD:
                 cmd.type = CommandType::TRANSITION;
