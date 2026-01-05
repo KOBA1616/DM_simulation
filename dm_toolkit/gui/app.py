@@ -781,6 +781,12 @@ def main():
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = QApplication(sys.argv)
+
+    if dm_ai_module is None:
+        QMessageBox.critical(None, tr("Error"),
+            tr("dm_ai_module not found. Please build the C++ extension."))
+        sys.exit(1)
+
     window = GameWindow()
     window.show()
     try:

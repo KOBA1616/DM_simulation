@@ -53,16 +53,3 @@ try:
                     pass
 except Exception:
     pass
-
-
-
-        if not hasattr(dm_mod, 'CardType'):
-            class CardType(Enum if Enum is not None else object):
-                CREATURE = 1
-                SPELL = 2
-            dm_mod.CardType = CardType
-
-        if not hasattr(dm_mod, 'CardKeywords'):
-            class CardKeywords(int):
-                pass
-            dm_mod.CardKeywords = CardKeywords
