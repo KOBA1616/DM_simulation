@@ -3,6 +3,7 @@
 #include "core/card_json_types.hpp"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <nlohmann/json.hpp>
 
 namespace dm::engine {
@@ -361,36 +362,40 @@ namespace dm::engine {
             return result;
         }
 
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string json_str = buffer.str();
+
+        // 1. Load into Registry (Single Source of Truth)
+        CardRegistry::load_from_json(json_str);
+
+        // 2. Parse locally to identify which cards were loaded and retrieve them from Registry
         try {
-            nlohmann::json j;
-            file >> j;
+            auto j = nlohmann::json::parse(json_str);
+            const auto& registry_defs = CardRegistry::get_all_definitions();
+
+            auto process_item = [&](const nlohmann::json& item) {
+                // We only need the ID to fetch from registry
+                if (item.contains("id")) {
+                    int id = item["id"].get<int>();
+                    CardID card_id = static_cast<CardID>(id);
+
+                    if (registry_defs.count(card_id)) {
+                        result[card_id] = registry_defs.at(card_id);
+                    }
+                }
+            };
 
             if (j.is_array()) {
                 for (const auto& item : j) {
-                    CardData card = item.get<CardData>();
-                    // Backward compatibility: allow single "civilization" field
-                    if (card.civilizations.empty() && item.contains("civilization")) {
-                         // Use enum parsing via JSON library for consistent mapping
-                         card.civilizations.push_back(item.at("civilization").get<Civilization>());
-                    }
-                    // 1. Add to Registry (New System)
-                    CardRegistry::load_from_json(item.dump());
-
-                    // 2. Convert to Old Def (Old System compatibility)
-                    result[static_cast<CardID>(card.id)] = convert_to_def(card);
+                    process_item(item);
                 }
             } else {
-                CardData card = j.get<CardData>();
-                if (card.civilizations.empty() && j.contains("civilization")) {
-                     // Use enum parsing via JSON library for consistent mapping
-                     card.civilizations.push_back(j.at("civilization").get<Civilization>());
-                }
-                CardRegistry::load_from_json(j.dump());
-                result[static_cast<CardID>(card.id)] = convert_to_def(card);
+                process_item(j);
             }
 
         } catch (const std::exception& e) {
-            std::cerr << "JSON Parsing Error: " << e.what() << std::endl;
+            std::cerr << "JsonLoader Error: " << e.what() << std::endl;
         }
 
         return result;
