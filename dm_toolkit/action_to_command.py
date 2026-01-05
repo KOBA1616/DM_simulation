@@ -549,3 +549,6 @@ def _handle_buffer_ops(act_type, act, cmd, dest):
         if 'str_val' in act: cmd['token_id'] = act['str_val']
 
     _transfer_targeting(act, cmd)
+
+# Unified Entry Point Alias
+action_to_command = map_action
