@@ -35,9 +35,9 @@ Quick start (Windows, recommended with Ninja):
 
 ```powershell
 # Configure (use Ninja if available)
-cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build-msvc -G "Ninja" -DCMAKE_BUILD_TYPE=Release
 # Build
-cmake --build build --config Release -- -j
+cmake --build build-msvc --config Release -- -j
 # Run tests
 C:/Users/ichirou/DM_simulation/.venv/Scripts/python.exe -m pytest -q
 ```

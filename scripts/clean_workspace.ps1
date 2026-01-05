@@ -50,6 +50,8 @@ $candidatesMove = New-Object 'System.Collections.Generic.List[string]'
 # --- Build outputs (top-level only) ---
 if ($CleanBuild) {
     Add-Candidate $candidatesDelete (Join-Path $projectRoot "build")
+    Add-Candidate $candidatesDelete (Join-Path $projectRoot "build-msvc")
+    Add-Candidate $candidatesDelete (Join-Path $projectRoot "build-mingw")
     Add-Candidate $candidatesDelete (Join-Path $projectRoot "bin")
 }
 

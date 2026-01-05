@@ -48,6 +48,7 @@ function Invoke-Step {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$buildDir = 'build-msvc'
 $pythonExe = Join-Path $repoRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path $pythonExe)) {
   $pythonExe = 'python'
@@ -81,22 +82,22 @@ try {
 
     # Configure+build only if build dir missing or CMakeCache missing
     Invoke-Step -Name 'Configure CMake' -LogFile $logFile -StepLogFile (Join-Path $runDir '20_cmake_configure.log') -Script {
-      if (-not (Test-Path 'build\CMakeCache.txt')) {
-        cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=$Configuration
+      if (-not (Test-Path "$buildDir\CMakeCache.txt")) {
+        cmake -S . -B $buildDir -A x64 -DCMAKE_BUILD_TYPE=$Configuration
       } else {
-        Write-Host 'CMake already configured: build/CMakeCache.txt exists'
+        Write-Host "CMake already configured: $buildDir/CMakeCache.txt exists"
       }
     }
 
     Invoke-Step -Name 'Build (CMake)' -LogFile $logFile -StepLogFile (Join-Path $runDir '30_cmake_build.log') -Script {
-      cmake --build build --config $Configuration -- /m
+      cmake --build $buildDir --config $Configuration -- /m
     }
   }
 
   if (-not $SkipCTest) {
     Invoke-Step -Name 'Run C++ tests (ctest)' -LogFile $logFile -StepLogFile (Join-Path $runDir '40_ctest.log') -Script {
-      if (Test-Path 'build\CTestTestfile.cmake') {
-        Push-Location build
+      if (Test-Path "$buildDir\CTestTestfile.cmake") {
+        Push-Location $buildDir
         try { ctest -V } finally { Pop-Location }
       } else {
         Write-Host 'No CTest file; skipping ctest'
@@ -106,8 +107,8 @@ try {
 
   if (-not $SkipPytest) {
     Invoke-Step -Name 'Run Python tests (pytest)' -LogFile $logFile -StepLogFile (Join-Path $runDir '50_pytest.log') -Script {
-      if (Test-Path 'build\Release') { $env:PYTHONPATH = "$env:PYTHONPATH;$(Resolve-Path 'build\Release')" }
-      if (Test-Path 'build') { $env:PYTHONPATH = "$env:PYTHONPATH;$(Resolve-Path 'build')" }
+      if (Test-Path "$buildDir\Release") { $env:PYTHONPATH = "$env:PYTHONPATH;$(Resolve-Path "$buildDir\Release")" }
+      if (Test-Path $buildDir) { $env:PYTHONPATH = "$env:PYTHONPATH;$(Resolve-Path $buildDir)" }
       & $pythonExe -m pytest -q
     }
   }

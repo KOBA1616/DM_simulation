@@ -1,6 +1,8 @@
 param(
+    [ValidateSet('msvc','mingw')]
+    [string]$Toolchain = 'msvc',
     [string]$Config = "Release",
-    [string]$Generator = "MinGW Makefiles",
+    [string]$Generator = "",
     [switch]$Clean,
     [switch]$UseLibTorch = $false
 )
@@ -9,7 +11,8 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $projectRoot = Split-Path -Parent $scriptDir
-$buildDir = Join-Path $projectRoot "build"
+$buildDirName = if ($Toolchain -eq 'mingw') { 'build-mingw' } else { 'build-msvc' }
+$buildDir = Join-Path $projectRoot $buildDirName
 
 # Ensure UTF-8 for console output
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -26,7 +29,23 @@ if (-not (Test-Path $buildDir)) {
     New-Item -ItemType Directory -Path $buildDir | Out-Null
 }
 
-$cmakeArgs = @("-S", $projectRoot, "-B", $buildDir, "-G", $Generator, "-DCMAKE_BUILD_TYPE=$Config")
+$cmakeArgs = @("-S", $projectRoot, "-B", $buildDir, "-DCMAKE_BUILD_TYPE=$Config")
+
+if ([string]::IsNullOrWhiteSpace($Generator)) {
+    if ($Toolchain -eq 'mingw') {
+        $Generator = 'MinGW Makefiles'
+    } else {
+        $Generator = 'Visual Studio 17 2022'
+    }
+}
+
+if (-not [string]::IsNullOrWhiteSpace($Generator)) {
+    $cmakeArgs += @("-G", $Generator)
+}
+
+if ($Toolchain -eq 'msvc') {
+    $cmakeArgs += @('-A', 'x64')
+}
 
 if ($UseLibTorch) {
     Write-Host "Detecting LibTorch path from Python..."
