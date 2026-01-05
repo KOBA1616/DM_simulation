@@ -763,16 +763,11 @@ namespace dm::engine::systems {
         // 0. Check Before Break Triggers (once per action)
         int source_id = exec.resolve_int(inst.args.value("source_id", -1));
         if (source_id != -1) {
-             const CardInstance* source = state.get_card_instance(source_id);
-             if (source && card_db.count(source->card_id)) {
-                 const auto& def = card_db.at(source->card_id);
-                 if (def.keywords.before_break_shield) {
-                     std::map<std::string, int> ctx;
-                     for (const auto& eff : def.effects) {
-                         if (eff.trigger == TriggerType::BEFORE_BREAK_SHIELD) {
-                             EffectSystem::instance().compile_effect(state, eff, source_id, ctx, card_db, generated);
-                         }
-                     }
+             auto effects = TriggerSystem::instance().get_trigger_effects(state, TriggerType::BEFORE_BREAK_SHIELD, source_id, card_db);
+             if (!effects.empty()) {
+                 std::map<std::string, int> ctx;
+                 for (const auto& eff : effects) {
+                     EffectSystem::instance().compile_effect(state, eff, source_id, ctx, card_db, generated);
                  }
              }
         }

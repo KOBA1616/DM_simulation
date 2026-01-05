@@ -8,10 +8,11 @@ namespace dm::engine::systems {
 
     using namespace core;
 
-    void TriggerSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id, const std::map<CardID, CardDefinition>& card_db) {
+    std::vector<EffectDef> TriggerSystem::get_trigger_effects(GameState& game_state, TriggerType trigger, int source_instance_id, const std::map<CardID, CardDefinition>& card_db) {
+        std::vector<EffectDef> matching_effects;
         CardInstance* instance = game_state.get_card_instance(source_instance_id);
         if (!instance) {
-            return;
+            return matching_effects;
         }
 
         std::vector<EffectDef> active_effects;
@@ -40,18 +41,26 @@ namespace dm::engine::systems {
             }
         }
 
-        PlayerID controller = get_controller(game_state, source_instance_id);
-
         for (const auto& effect : active_effects) {
             if (effect.trigger == trigger) {
-                PendingEffect pending(EffectType::TRIGGER_ABILITY, source_instance_id, controller);
-                pending.resolve_type = ResolveType::EFFECT_RESOLUTION;
-                pending.effect_def = effect;
-                pending.optional = true;
-                pending.chain_depth = game_state.turn_stats.current_chain_depth + 1;
-
-                add_pending_effect(game_state, pending);
+                matching_effects.push_back(effect);
             }
+        }
+        return matching_effects;
+    }
+
+    void TriggerSystem::resolve_trigger(GameState& game_state, TriggerType trigger, int source_instance_id, const std::map<CardID, CardDefinition>& card_db) {
+        auto effects = get_trigger_effects(game_state, trigger, source_instance_id, card_db);
+        PlayerID controller = get_controller(game_state, source_instance_id);
+
+        for (const auto& effect : effects) {
+            PendingEffect pending(EffectType::TRIGGER_ABILITY, source_instance_id, controller);
+            pending.resolve_type = ResolveType::EFFECT_RESOLUTION;
+            pending.effect_def = effect;
+            pending.optional = true;
+            pending.chain_depth = game_state.turn_stats.current_chain_depth + 1;
+
+            add_pending_effect(game_state, pending);
         }
     }
 
