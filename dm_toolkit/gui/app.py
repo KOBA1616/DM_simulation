@@ -7,12 +7,6 @@ import csv
 from typing import Any, List, Optional, Dict, cast
 from types import ModuleType
 
-# Ensure bin is in path for dm_ai_module
-current_dir = os.path.dirname(os.path.abspath(__file__))
-bin_dir = os.path.join(current_dir, "../../../bin")
-if os.path.exists(bin_dir):
-    sys.path.append(bin_dir)
-
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QListWidget, QFileDialog, QMessageBox, QSplitter,
