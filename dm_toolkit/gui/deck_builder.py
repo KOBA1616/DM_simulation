@@ -199,8 +199,8 @@ class DeckBuilder(QWidget):
             self, tr("Save Deck"), "data/decks", "JSON Files (*.json)"
         )
         if fname:
-            with open(fname, 'w') as f:
-                json.dump(self.current_deck, f)
+            with open(fname, 'w', encoding='utf-8') as f:
+                json.dump(self.current_deck, f, ensure_ascii=False)
             QMessageBox.information(self, tr("Success"), tr("Deck saved!"))
 
     def load_deck(self):
@@ -210,7 +210,7 @@ class DeckBuilder(QWidget):
         )
         if fname:
             try:
-                with open(fname, 'r') as f:
+                with open(fname, 'r', encoding='utf-8') as f:
                     self.current_deck = json.load(f)
                 self.update_deck_list()
             except Exception as e:

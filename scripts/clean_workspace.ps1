@@ -93,6 +93,17 @@ if ($MoveRootLogs) {
             Add-Candidate $candidatesMove $p
         }
     }
+
+    # Also move transient script logs that sometimes end up under scripts/
+    try {
+        $scriptsDir = Join-Path $projectRoot "scripts"
+        if (Test-Path -LiteralPath $scriptsDir -PathType Container) {
+            Get-ChildItem -Path $scriptsDir -File -Filter "cmake_config_*.log" -ErrorAction SilentlyContinue |
+                ForEach-Object { Add-Candidate $candidatesMove $_.FullName }
+        }
+    } catch {
+        # ignore
+    }
 }
 
 # --- Root binary artifacts (opt-in) ---

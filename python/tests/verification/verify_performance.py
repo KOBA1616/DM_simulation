@@ -283,8 +283,8 @@ if __name__ == "__main__":
                         pimc=args.pimc, meta_decks_path=args.meta_decks)
 
         if args.result_file:
-            with open(args.result_file, 'w') as f:
-                json.dump({"win_rate": win_rate}, f)
+            with open(args.result_file, 'w', encoding='utf-8') as f:
+                json.dump({"win_rate": win_rate}, f, ensure_ascii=False)
             print(f"Result saved to {args.result_file}")
     finally:
         # Cleanup to avoid Segfaults

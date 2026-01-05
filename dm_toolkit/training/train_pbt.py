@@ -102,7 +102,7 @@ class PBTManager:
         meta_decks_path = os.path.join(project_root, 'data', 'meta_decks.json')
         meta_decks = []
         if os.path.exists(meta_decks_path):
-            with open(meta_decks_path, 'r') as f:
+            with open(meta_decks_path, 'r', encoding='utf-8') as f:
                 try:
                     data = json.load(f)
                     meta_decks = data.get("decks", [])

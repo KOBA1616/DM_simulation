@@ -1,0 +1,11 @@
+root = true
+
+[*]
+charset = utf-8
+
+[*.ps1]
+# Windows PowerShell 5.1互換も考えるならBOM付きが無難
+charset = utf-8-bom
+
+[*.{py,pyi,md,txt,json,yml,yaml,toml,ini,cfg,cmake,cpp,c,hpp,h}]
+charset = utf-8

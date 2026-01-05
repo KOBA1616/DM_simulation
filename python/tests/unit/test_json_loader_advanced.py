@@ -56,8 +56,8 @@ class TestJsonLoaderAdvanced(unittest.TestCase):
         if not os.path.exists("data"):
             os.makedirs("data", exist_ok=True)
 
-        with open(filepath, "w") as f:
-            json.dump(card_data, f)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(card_data, f, ensure_ascii=False)
 
         try:
             cards = dm_ai_module.JsonLoader.load_cards(filepath)

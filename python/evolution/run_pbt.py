@@ -91,7 +91,7 @@ class PBTRunner:
         # Check result
         win_rate = 0.0
         if os.path.exists(result_file):
-            with open(result_file, 'r') as f:
+            with open(result_file, 'r', encoding='utf-8') as f:
                 res = json.load(f)
                 win_rate = res.get("win_rate", 0.0)
         print(f"Generation {gen} Win Rate: {win_rate}%")
@@ -110,12 +110,12 @@ class PBTRunner:
 
             # If successful, add to meta_decks.json
             if os.path.exists(new_deck_file):
-                with open(new_deck_file, 'r') as f:
+                with open(new_deck_file, 'r', encoding='utf-8') as f:
                     new_deck = json.load(f)
 
                 meta_decks = []
                 if os.path.exists(self.config.meta_deck_path):
-                    with open(self.config.meta_deck_path, 'r') as f:
+                    with open(self.config.meta_deck_path, 'r', encoding='utf-8') as f:
                         try:
                             meta_decks = json.load(f)
                         except: pass
@@ -126,8 +126,8 @@ class PBTRunner:
                 if len(meta_decks) > 10:
                     meta_decks.pop(0)
 
-                with open(self.config.meta_deck_path, 'w') as f:
-                    json.dump(meta_decks, f)
+                with open(self.config.meta_deck_path, 'w', encoding='utf-8') as f:
+                    json.dump(meta_decks, f, ensure_ascii=False)
                 print(f"Updated Meta Decks. Count: {len(meta_decks)}")
 
         except Exception as e:

@@ -28,8 +28,8 @@ class TestInference(unittest.TestCase):
                 }
             ]
         }
-        with open(self.test_decks_path, 'w') as f:
-            json.dump(self.decks_data, f)
+        with open(self.test_decks_path, 'w', encoding='utf-8') as f:
+            json.dump(self.decks_data, f, ensure_ascii=False)
 
     def tearDown(self):
         if os.path.exists(self.test_decks_path):

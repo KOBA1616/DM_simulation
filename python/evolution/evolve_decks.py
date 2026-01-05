@@ -37,7 +37,7 @@ def evolve_decks_cli(meta_deck_path: str, new_deck_path: str, card_db_path: str)
     # Load Meta Decks
     meta_decks = []
     if os.path.exists(meta_deck_path):
-        with open(meta_deck_path, 'r') as f:
+        with open(meta_deck_path, 'r', encoding='utf-8') as f:
             try:
                 data = json.load(f)
                 if isinstance(data, list):
@@ -81,8 +81,8 @@ def evolve_decks_cli(meta_deck_path: str, new_deck_path: str, card_db_path: str)
     new_deck_cards = evolver.evolve_deck(base_deck, candidate_pool, config)
 
     # Save
-    with open(new_deck_path, 'w') as f:
-        json.dump(new_deck_cards, f)
+    with open(new_deck_path, 'w', encoding='utf-8') as f:
+        json.dump(new_deck_cards, f, ensure_ascii=False)
 
     print(f"Evolved deck saved to {new_deck_path}")
 

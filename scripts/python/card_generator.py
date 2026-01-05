@@ -2,7 +2,7 @@ import json
 import os
 
 def generate_cpp(json_path, output_path):
-    with open(json_path, 'r') as f:
+    with open(json_path, 'r', encoding='utf-8') as f:
         cards = json.load(f)
 
     code = """#pragma once
@@ -98,7 +98,7 @@ namespace dm::engine {
 }
 """
 
-    with open(output_path, 'w') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write(code)
     print(f"Generated {output_path}")
 

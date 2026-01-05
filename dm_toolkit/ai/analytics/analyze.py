@@ -78,7 +78,7 @@ class Analytics:
     def generate_report(self, output_path: str = "data/analytics/report.html") -> None:
         generations = self.load_generations()
         if not generations:
-            with open(output_path, 'w') as f:
+            with open(output_path, 'w', encoding='utf-8') as f:
                 f.write("<h1>No Data</h1>")
             return
 
@@ -133,7 +133,7 @@ if __name__ == "__main__":
                     for _ in range(10)
                 ]
             }
-            with open(f"data/generations/gen_{i:03d}.json", 'w') as f:
+            with open(f"data/generations/gen_{i:03d}.json", 'w', encoding='utf-8') as f:
                 json.dump(data, f)
 
     analytics = Analytics()

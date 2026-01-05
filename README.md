@@ -42,6 +42,41 @@ cmake --build build --config Release -- -j
 C:/Users/ichirou/DM_simulation/.venv/Scripts/python.exe -m pytest -q
 ```
 
+## Local CI (Windows)
+
+CI相当のビルド/テスト/mypyをローカルでまとめて実行し、ログを `dumps/logs` に保存します。
+
+- Run: `pwsh -File scripts/run_ci_local.ps1`
+- Log dir: `dumps/logs/ci_local_YYYYMMDD_HHMMSS/`
+
+必要に応じてスキップ可能です。
+
+- Skip build: `pwsh -File scripts/run_ci_local.ps1 -SkipBuild -SkipCTest`
+- Skip mypy: `pwsh -File scripts/run_ci_local.ps1 -SkipMypy`
+
+## Text Encoding
+
+このリポジトリのテキストファイル（Python/C++/PowerShell/JSON/YAML/Markdownなど）は **UTF-8** で記述します。
+
+- PythonでファイルI/Oをする場合は、Windowsの既定コードページ(cp932)に依存しないよう `encoding='utf-8'` を明示してください。
+- PowerShellは `.editorconfig` により `.ps1` を `utf-8-bom` としています（Windows PowerShell 5.1互換のため）。
+
+### 外部ファイル（Shift-JIS/CP932）の扱い
+
+外部から持ち込まれた JSON/CSV/テキスト等が Shift-JIS（cp932 / windows-31j）だった場合、**リポジトリにはUTF-8へ変換してから追加**してください（Shift-JISのままコミットしない）。
+
+- 変換（PowerShell / pwsh推奨）
+
+```powershell
+# 例: cp932 -> UTF-8
+$src = "path\\to\\input.txt"
+$dst = "path\\to\\input.utf8.txt"
+[System.IO.File]::WriteAllText($dst, [System.IO.File]::ReadAllText($src, [Text.Encoding]::GetEncoding(932)), [Text.Encoding]::UTF8)
+```
+
+- 変換後に、アプリ/スクリプト側の読み込みは基本 `encoding='utf-8'` のままにします。
+	- 「Shift-JISも自動で読める」挙動は、意図しない文字化けや環境差分（Windowsロケール依存）の原因になりやすいため、原則入れません。
+
 Workspace cleanup (optional):
 
 ```powershell

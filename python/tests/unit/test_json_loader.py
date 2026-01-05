@@ -22,7 +22,7 @@ class TestJsonLoader(unittest.TestCase):
         # Note: The JSON structure must match what src/core/card_json_types.hpp expects.
         if not os.path.exists(filepath):
             os.makedirs("data", exist_ok=True)
-            with open(filepath, "w") as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.write("""
                 [
                     {

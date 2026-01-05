@@ -418,7 +418,7 @@ class GameWindow(QMainWindow):
         fname, _ = QFileDialog.getOpenFileName(self, tr("Load Deck P0"), "data/decks", "JSON Files (*.json)")
         if fname:
             try:
-                with open(fname, 'r') as f: deck_ids = json.load(f)
+                with open(fname, 'r', encoding='utf-8') as f: deck_ids = json.load(f)
                 if len(deck_ids) != 40:
                     QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return
@@ -433,7 +433,7 @@ class GameWindow(QMainWindow):
         fname, _ = QFileDialog.getOpenFileName(self, tr("Load Deck P1"), "data/decks", "JSON Files (*.json)")
         if fname:
             try:
-                with open(fname, 'r') as f: deck_ids = json.load(f)
+                with open(fname, 'r', encoding='utf-8') as f: deck_ids = json.load(f)
                 if len(deck_ids) != 40:
                     QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return

@@ -28,8 +28,8 @@ class TestInference:
                 }
             ]
         }
-        with open(self.meta_decks_path, 'w') as f:
-            json.dump(self.decks_data, f)
+        with open(self.meta_decks_path, 'w', encoding='utf-8') as f:
+            json.dump(self.decks_data, f, ensure_ascii=False)
 
         # Create dummy card DB
         # We can't pass a raw python dict to a function expecting std::map<CardID, CardDefinition> unless exposed

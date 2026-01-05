@@ -81,7 +81,7 @@ def test_verify_legacy_conversion(primitives_to_test, tmp_path):
 
     # Save to a single temp file
     filename = tmp_path / "legacy_conversion_test_cards.json"
-    filename.write_text(json.dumps(card_list))
+    filename.write_text(json.dumps(card_list, ensure_ascii=False), encoding="utf-8")
 
     # Load cards
     card_map = dm_ai_module.JsonLoader.load_cards(str(filename))

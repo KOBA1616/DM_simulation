@@ -10,6 +10,9 @@ jobs:
   mypy:
     name: Run mypy
     runs-on: ubuntu-latest
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
     steps:
       - uses: actions/checkout@v4
 
