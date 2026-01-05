@@ -28,11 +28,22 @@
 *   **Deck Evolution**: 対戦結果に基づきデッキレシピを進化させる `evolution_ecosystem.py`。
 *   **Meta-Game**: 複数のデッキアーキタイプ (`meta_decks.json`) を保持し、メタ環境の変遷をシミュレートする。
 
-## 3. 今後の要件 (Requirements)
+## 3. 今後の課題と優先度 (Future Tasks & Priorities)
 
-### 3.1 Transformer Training
+### 3.1 Unification and Refactoring (High Priority)
+1.  **Loader Unification (ローダ一本化)**:
+    *   モジュール読み込みやパス設定を `sitecustomize.py` やランチャースクリプトに一元化し、個々のスクリプトでの重複処理を削除する。
+2.  **Conversion Pipeline Unification (変換パイプライン統一)**:
+    *   `dm_toolkit/unified_execution.py` を Action -> Command 変換の正規入口 (Canonical Entry Point) とし、`action_mapper.py` 等のレガシーラッパーを廃止・統合する。
+3.  **Constants Policy (定数・翻訳・テンプレ方針統一)**:
+    *   Python側の定数定義を `dm_toolkit/consts.py` に集約し、可能な限りC++ (`dm_ai_module`) から値を取得する。
+    *   翻訳は `localization.py`、テンプレートは `data/*.json` と責務を明確にする。
+4.  **Stub Policy (スタブ方針統一)**:
+    *   `dm_ai_module.py` の純Pythonフォールバッククラスをテストや開発環境の標準スタブとして維持・強化する。
+
+### 3.2 Transformer Training
 *   **Task**: `train_simple.py` を拡張（または `train_transformer.py` を作成）し、`DuelTransformer` を用いた学習を可能にする。
 *   **Data Format**: Token Sequence 形式へのデータ変換処理の実装。
 
-### 3.2 PBT (Population Based Training)
+### 3.3 PBT (Population Based Training)
 *   **Task**: 多数のエージェント（モデル＋デッキのペア）を並列で対戦させ、勝率の低い個体を淘汰・変異させる完全なPBTパイプラインの構築。

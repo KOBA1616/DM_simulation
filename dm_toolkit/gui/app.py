@@ -39,27 +39,28 @@ from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 
 # Import Phase 7 requirements: Action Wrapper and Mapper
 from dm_toolkit.commands import wrap_action
-from dm_toolkit.action_to_command import map_action
+# USE UNIFIED EXECUTION PIPELINE (also exposes deprecated action_mapper for backward compatibility if needed)
+from dm_toolkit.unified_execution import ensure_executable_command
+# Restore legacy mapper import if needed or use unified
+# from dm_toolkit.action_to_command import map_action  <-- REPLACED BY unified pipeline
+
+# Import GameController
+from dm_toolkit.gui.game_controller import GameController
 
 class GameWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("DM AI Simulator")
         self.resize(1600, 900)
-        
-        # Game State
-        if dm_ai_module:
-            self.gs: GameState = dm_ai_module.GameState(42)
-            self.gs.setup_test_duel()
-        else:
-            self.gs = cast(GameState, None)
+
+        # Initialize GameController
+        self.controller = GameController(self.update_ui, self.log_message)
 
         # Load card database
         self.card_db: CardDB = {}
         loaded_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
         if loaded_db:
              self.card_db = loaded_db
-             EngineCompat.PhaseManager_start_game(self.gs, self.card_db)
         else:
             try:
                 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -69,6 +70,10 @@ class GameWindow(QMainWindow):
             except Exception:
                 self.card_db = {}
         
+        # Initialize Game via Controller
+        self.controller.initialize_game(self.card_db)
+        self.gs = self.controller.gs  # Link for UI binding
+
         self.p0_deck_ids: Optional[List[int]] = None
         self.p1_deck_ids: Optional[List[int]] = None
         self.last_action: Optional[Action] = None
@@ -357,6 +362,10 @@ class GameWindow(QMainWindow):
         self.update_ui()
         self.showMaximized()
         
+    def log_message(self, msg: str) -> None:
+        self.log_list.addItem(msg)
+        self.log_list.scrollToBottom()
+
     def open_deck_builder(self) -> None:
         self.deck_builder = DeckBuilder(self.card_db)
         self.deck_builder.show()
@@ -456,28 +465,15 @@ class GameWindow(QMainWindow):
         self.selected_targets = []
         self.confirm_btn.setVisible(False)
         self.start_btn.setText(tr("Start Sim"))
+        self.log_list.clear()
 
-        try:
-            if dm_ai_module:
-                 self.gs = dm_ai_module.GameState(random.randint(0, 10000))
-                 self.gs.setup_test_duel()
-            else:
-                 self.gs = cast(GameState, None)
+        # Delegate logic to controller
+        self.controller.reset_game(self.p0_deck_ids, self.p1_deck_ids)
+        self.gs = self.controller.gs # Sync back reference
 
-            if self.p0_deck_ids and self.gs: self.gs.set_deck(0, self.p0_deck_ids)
-            if self.p1_deck_ids and self.gs: self.gs.set_deck(1, self.p1_deck_ids)
-
-            if dm_ai_module and hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
-                dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
-
-            self.scenario_tools.set_game_state(self.gs, self.card_db)
-            self.log_list.clear()
-            self.log_list.addItem(tr("Game Reset"))
-            self.last_command_index = 0
-            self.update_ui()
-
-        except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"{tr('Failed to reset game')}: {e}")
+        self.scenario_tools.set_game_state(self.gs, self.card_db)
+        self.last_command_index = 0
+        self.update_ui()
 
     def confirm_selection(self) -> None:
         if not EngineCompat.is_waiting_for_user_input(self.gs): return
@@ -530,21 +526,32 @@ class GameWindow(QMainWindow):
         self.last_action = action
         
         # 1. Wrap into ICommand (Phase 7 Requirement: "execute_action ... wraps to cmd_dict")
-        command = wrap_action(action)
+        # Ensure conversion to dict using unified pipeline first
+        try:
+             cmd_dict = ensure_executable_command(action)
+        except:
+             cmd_dict = None
+
+        if cmd_dict:
+            command = wrap_action(cmd_dict)
+        else:
+            # Fallback for raw action objects if ensure_executable_command didn't handle them
+            command = wrap_action(action)
+
         if command:
             try:
                 # 2. Execute via Command interface (delegates to EngineCompat if needed)
                 command.execute(self.gs)
 
                 # 3. Log using Command Dict (Phase 7.2)
-                cmd_dict = command.to_dict()
-                log_str = f"P0 {tr('Action')}: {cmd_dict.get('type', 'UNKNOWN')}"
-                if 'to_zone' in cmd_dict:
-                    log_str += f" -> {cmd_dict['to_zone']}"
+                final_dict = command.to_dict()
+                log_str = f"P0 {tr('Action')}: {final_dict.get('type', 'UNKNOWN')}"
+                if 'to_zone' in final_dict:
+                    log_str += f" -> {final_dict['to_zone']}"
                 self.log_list.addItem(log_str)
 
-                self.loop_recorder.record_action(str(cmd_dict))
-                self.scenario_tools.record_action(str(cmd_dict))
+                self.loop_recorder.record_action(str(final_dict))
+                self.scenario_tools.record_action(str(final_dict))
             except Exception as e:
                 self.log_list.addItem(f"Execution Error: {e}")
                 # Fallback?
