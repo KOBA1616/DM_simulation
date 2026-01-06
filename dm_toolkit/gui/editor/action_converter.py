@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import uuid
 import warnings
-from dm_toolkit.action_mapper import ActionToCommandMapper
+from dm_toolkit.action_to_command import map_action
 from dm_toolkit.gui.editor.utils import normalize_action_zone_keys
 
 class ActionConverter:
@@ -9,9 +9,9 @@ class ActionConverter:
     def convert(action_data):
         """
         Converts a legacy Action dictionary to a Command dictionary.
-        Delegates to the shared ActionToCommandMapper to ensure consistency.
+        Delegates to the shared map_action to ensure consistency.
         """
-        return ActionToCommandMapper.map_action(action_data)
+        return map_action(action_data)
 
     @staticmethod
     def convert_to_objs(action_data):
@@ -100,27 +100,3 @@ def convert_action_to_objs(action: dict) -> list:
 
 
 __all__ = ["convert_action_to_objs"]
-
-# Opt-in: if environment requests native object outputs, make convert return
-# dictionary-compatible values while still using object conversion internally.
-try:
-    if os.environ.get('DM_ACTION_CONVERTER_NATIVE', '0') == '1':
-        def _convert_compat(data):
-            objs = ActionConverter.convert_to_objs(data)
-            # objs is a list of CommandDef/WarningCommand or dicts
-            dicts = []
-            for o in objs:
-                if hasattr(o, 'to_dict'):
-                    dicts.append(o.to_dict())
-                elif isinstance(o, dict):
-                    dicts.append(o)
-                else:
-                    dicts.append({'type': 'NONE', 'legacy_warning': True, 'legacy_original_action': data})
-            # Preserve legacy single-dict return when possible
-            if len(dicts) == 1:
-                return dicts[0]
-            return dicts
-
-        ActionConverter.convert = staticmethod(_convert_compat)
-except Exception:
-    pass

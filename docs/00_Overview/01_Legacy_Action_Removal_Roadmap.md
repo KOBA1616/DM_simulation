@@ -80,27 +80,27 @@
 
 ---
 
-### Phase 4: 互換スイッチ撤去・実行経路の整理 (Compat Removal)
+### Phase 4: 互換スイッチ撤去・実行経路の整理 (Compat Removal) [Status: Done]
 **目的**: ロールバック/互換を無くして、Commandパイプラインのみで実行できるようにする。
 
 - 変更内容
-  - `EDITOR_LEGACY_SAVE` を撤去
-  - `DM_ACTION_CONVERTER_NATIVE` など移行中の互換フラグを整理し、最終的に撤去
-  - `dm_toolkit.commands.wrap_action` の legacy 依存を縮退（Command オブジェクト/辞書を主経路へ）
+  - [x] `EDITOR_LEGACY_SAVE` を撤去
+  - [x] `DM_ACTION_CONVERTER_NATIVE` など移行中の互換フラグを整理し、最終的に撤去
+  - [x] `dm_toolkit.commands.wrap_action` の legacy 依存を縮退（Command オブジェクト/辞書を主経路へ）
 
 - 完了条件
   - Python側で `actions` を扱う互換分岐が残っていない（grepで0に近づける）
 
 ---
 
-### Phase 5: デッドコード削除 (Delete)
+### Phase 5: デッドコード削除 (Delete) [Status: Done]
 **目的**: legacy Action 関連モジュール/テスト/ドキュメントを削除して維持コストを0にする。
 
 - 対象例（最終判断）
-  - `dm_toolkit/action_mapper.py`（deprecated）
-  - `dm_toolkit/gui/editor/action_converter.py`（Command直結に置換後）
-  - `dm_toolkit/gui/editor/forms/action_config.py`（Action UI撤去後）
-  - `python/scripts/migrate_actions.py`（将来的に不要なら archive へ。ただし再移行需要があるなら残す）
+  - [x] `dm_toolkit/action_mapper.py`（deprecated）
+  - [x] `dm_toolkit/gui/editor/action_converter.py`（Command直結に置換後）
+  - [x] `dm_toolkit/gui/editor/forms/action_config.py`（Action UI撤去後）
+  - [x] `python/scripts/migrate_actions.py`（将来的に不要なら archive へ。ただし再移行需要があるなら残す）
 
 - 完了条件
   - `actions` を前提にしたモジュールが存在しない
