@@ -51,13 +51,13 @@
 
 ---
 
-### Phase 2: データ移行の完了 (Data Migration)
+### Phase 2: データ移行の完了 (Data Migration) [Status: Done]
 **目的**: リポジトリ内のカードデータから `actions` を根絶し、再導入を防ぐ。
 
 - 変更内容
-  - `scripts/python/migrate_actions.py` を公式移行手順として整備（手順を docs に明記）
-  - `data/` 配下のカードJSONを一括変換し、`actions` を削除して `commands` のみにする
-  - `data/editor_templates.json` などテンプレート/雛形から `actions` を削除
+  - [x] `python/scripts/migrate_actions.py` を公式移行手順として整備（手順を docs に明記）
+  - [x] `data/` 配下のカードJSONを一括変換し、`actions` を削除して `commands` のみにする
+  - [x] `data/editor_templates.json` などテンプレート/雛形から `actions` を削除
   - CIで `actions` キー混入を検出して失敗させる（簡易スクリプト or pytest）
 
 - 完了条件
@@ -66,12 +66,12 @@
 
 ---
 
-### Phase 3: GUIから Action 概念を撤去 (GUI Removal)
+### Phase 3: GUIから Action 概念を撤去 (GUI Removal) [Status: Done]
 **目的**: Editorが完全に Commands-only で編集・表示できるようにする。
 
 - 変更内容
-  - Actionツリー表示のフォールバック（`effect.get('actions')`）を削除
-  - Action UI 定義（`ACTION_UI_CONFIG` / Actionフォーム）を撤去
+  - [x] Actionツリー表示のフォールバック（`effect.get('actions')`）を削除
+  - [x] Action UI 定義（`ACTION_UI_CONFIG` / Actionフォーム）を撤去
   - 変数リンク管理など Action依存コードを Command側に寄せる（必要なら `COMMAND_UI_CONFIG` を拡張）
 
 - 完了条件
@@ -100,7 +100,7 @@
   - `dm_toolkit/action_mapper.py`（deprecated）
   - `dm_toolkit/gui/editor/action_converter.py`（Command直結に置換後）
   - `dm_toolkit/gui/editor/forms/action_config.py`（Action UI撤去後）
-  - `scripts/python/migrate_actions.py`（将来的に不要なら archive へ。ただし再移行需要があるなら残す）
+  - `python/scripts/migrate_actions.py`（将来的に不要なら archive へ。ただし再移行需要があるなら残す）
 
 - 完了条件
   - `actions` を前提にしたモジュールが存在しない
