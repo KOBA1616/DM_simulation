@@ -79,4 +79,40 @@ namespace dm::engine::game_command {
         CommandType get_type() const override { return CommandType::PASS_TURN; }
     };
 
+    class SearchDeckCommand : public GameCommand {
+    public:
+        int player_id;
+        std::string filter_str; // Simplified for now, or use FilterDef
+        int count;
+
+        SearchDeckCommand(int pid, std::string filter, int c) : player_id(pid), filter_str(filter), count(c) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::SEARCH_DECK; }
+    };
+
+    class ShieldTriggerCommand : public GameCommand {
+    public:
+        int card_id;
+
+        ShieldTriggerCommand(int cid) : card_id(cid) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::SHIELD_TRIGGER; }
+    };
+
+    class ResolveBattleCommand : public GameCommand {
+    public:
+        int attacker_id;
+        int defender_id;
+
+        ResolveBattleCommand(int atk, int def) : attacker_id(atk), defender_id(def) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::RESOLVE_BATTLE; }
+    };
+
 }
