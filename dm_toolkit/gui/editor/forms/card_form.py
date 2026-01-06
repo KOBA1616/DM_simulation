@@ -51,6 +51,7 @@ class CardEditForm(BaseEditForm):
         # Name
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText(tr("Enter card name..."))
+        self.name_edit.setClearButtonEnabled(True)
         self.add_field(tr("Name"), self.name_edit, 'name')
 
         # Twinpact Checkbox
@@ -91,6 +92,7 @@ class CardEditForm(BaseEditForm):
         self.races_edit = QLineEdit()
         self.races_edit.setPlaceholderText(tr("Dragon, Fire Bird"))
         self.races_edit.setToolTip(tr("Comma-separated list of races (e.g. 'Dragon, Fire Bird')"))
+        self.races_edit.setClearButtonEnabled(True)
         # Races handled manually due to list/string conversion
         self.register_widget(self.races_edit)
         self.lbl_races = self.add_field(tr("Races"), self.races_edit)
@@ -98,6 +100,7 @@ class CardEditForm(BaseEditForm):
         # Evolution Condition (Hidden by default, shown for Evolution types)
         self.evolution_condition_edit = QLineEdit()
         self.evolution_condition_edit.setPlaceholderText(tr("e.g. Fire Bird"))
+        self.evolution_condition_edit.setClearButtonEnabled(True)
         self.lbl_evolution_condition = self.add_field(tr("Evolution Condition"), self.evolution_condition_edit, 'evolution_condition')
 
         # AI Configuration Section
@@ -125,6 +128,7 @@ class CardEditForm(BaseEditForm):
         actions_layout = QVBoxLayout(actions_group)
 
         self.add_effect_btn = QPushButton(tr("Add Effect"))
+        self.add_effect_btn.setToolTip(tr("Add a new ability or effect to the card"))
         self.add_effect_btn.clicked.connect(self.on_add_effect_clicked)
         actions_layout.addWidget(self.add_effect_btn)
 
