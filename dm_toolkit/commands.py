@@ -66,13 +66,6 @@ def wrap_action(action: Any) -> Optional[ICommand]:
             except Exception:
                 pass
 
-            # Use compat shim as last resort (legacy path)
-            try:
-                from dm_toolkit.compat import ExecuteCommand
-                return ExecuteCommand(state, self._action)
-            except Exception:
-                pass
-
             return None
 
         def invert(self, state: Any) -> Optional[Any]:
