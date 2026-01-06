@@ -57,9 +57,6 @@ class LogicTreeWidget(QTreeView):
             self._expand_children_recursive(child_index)
 
     def mousePressEvent(self, event):
-        # Default behavior: Click selects, Arrow click toggles expansion.
-        # We removed the forced toggle on row click to prevent accidental collapsing
-        # when trying to select an item.
         super().mousePressEvent(event)
 
     def show_context_menu(self, pos):
@@ -85,11 +82,6 @@ class LogicTreeWidget(QTreeView):
                  add_reaction_action.triggered.connect(lambda: self.add_reaction(index))
                  menu.addAction(add_reaction_action)
 
-            # Bulk Conversion Action (Still useful for migrating old cards loaded from disk)
-            convert_all_action = QAction(tr("Convert All Legacy Actions to Commands"), self)
-            convert_all_action.triggered.connect(lambda: self.convert_all_legacy_actions_in_node(index))
-            menu.addAction(convert_all_action)
-
         elif item_type == "EFFECT":
              cmd_menu = menu.addMenu(tr("Add Command"))
              templates = self.data_manager.templates.get("commands", [])
@@ -111,7 +103,6 @@ class LogicTreeWidget(QTreeView):
              else:
                  for tpl in templates:
                      action = QAction(tr(tpl['name']), self)
-                     # Capture tpl['data'] in lambda default arg
                      action.triggered.connect(lambda checked, data=tpl['data']: self.add_command_to_effect(index, data))
                      if cmd_menu is not None:
                          cmd_menu.addAction(action)
@@ -124,22 +115,6 @@ class LogicTreeWidget(QTreeView):
              remove_action = QAction(tr("Remove Item"), self)
              remove_action.triggered.connect(lambda: self.remove_current_item())
              menu.addAction(remove_action)
-
-        elif item_type == "ACTION":
-            # Keep legacy actions context menu for now to allow removal/conversion
-            # But DO NOT offer "Add Option" or new creation paths that make actions.
-
-            replace_cmd_action = QAction(tr("Convert to Command"), self)
-            # Use data_manager helper to get the data
-            replace_cmd_action.triggered.connect(lambda: self.replace_item_with_command(
-                index,
-                self.data_manager.convert_action_tree_to_command(self.standard_model.itemFromIndex(index))
-            ))
-            menu.addAction(replace_cmd_action)
-
-            remove_action = QAction(tr("Remove Action"), self)
-            remove_action.triggered.connect(lambda: self.remove_current_item())
-            menu.addAction(remove_action)
 
         elif item_type == "OPTION":
             cmd_menu = menu.addMenu(tr("Add Command"))
@@ -265,7 +240,6 @@ class LogicTreeWidget(QTreeView):
         self.add_child_item(option_index, "COMMAND", data_copy, label)
 
     def add_action_sibling(self, action_index, action_data=None):
-        # DEPRECATED: Do not use for new logic.
         pass
 
     def add_command_to_effect(self, effect_index, cmd_data=None):
@@ -275,23 +249,19 @@ class LogicTreeWidget(QTreeView):
         self.add_child_item(effect_index, "COMMAND", data_copy, label)
 
     def add_action_to_effect(self, effect_index, action_data=None):
-        # DEPRECATED: Redirect to add_command_to_effect with default or convert
+        # Redirect to add_command_to_effect with default
         if action_data is None:
-             # Default command instead of action
              self.add_command_to_effect(effect_index)
              return
-
         # If data provided, try to convert on fly
         try:
              from dm_toolkit.gui.editor.action_converter import ActionConverter
              cmd_data = ActionConverter.convert(action_data)
              self.add_command_to_effect(effect_index, cmd_data)
         except Exception:
-             # Fallback (should typically not happen given UI removal)
              pass
 
     def add_action_to_option(self, option_index, action_data=None):
-        # DEPRECATED
         if action_data is None:
              self.add_command_to_option(option_index)
              return
@@ -330,7 +300,6 @@ class LogicTreeWidget(QTreeView):
              self._add_command_to_branch(idx, cmd_data)
 
     def add_action_contextual(self, action_data=None):
-        # Redirect to command contextual
         self.add_command_contextual(action_data)
 
     def _add_command_to_branch(self, branch_index, cmd_data=None):
