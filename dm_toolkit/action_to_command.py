@@ -339,11 +339,15 @@ def _handle_specific_moves(act_type, act, cmd, src):
         cmd['to_zone'] = "GRAVEYARD"
         cmd['from_zone'] = "HAND"
     elif act_type == "MOVE_TO_UNDER_CARD":
-        # Simplified handling: treat as a transition to a special zone or state
-        # In reality, this requires target_instance, but for simple mapping TRANSITION is closest.
+        # Consistently use TRANSITION for movement to UNDER_CARD.
+        # Legacy mapper used ATTACH, but unification prefers TRANSITION with 'to_zone'.
+        # Note: The engine must support 'UNDER_CARD' as a destination zone or handle base_target.
         cmd['type'] = "TRANSITION"
         cmd['to_zone'] = "UNDER_CARD"
         if src: cmd['from_zone'] = src
+        # Preserve base_target if present
+        if 'base_target' in act:
+            cmd['base_target'] = act['base_target']
 
     _transfer_common_move_fields(act, cmd)
 
@@ -395,7 +399,11 @@ def _handle_mutate(act_type, act, cmd):
 
 def _handle_selection(act_type, act, cmd):
     if act_type == "SELECT_OPTION":
-        cmd['type'] = "CHOICE"
+        # Fallback to QUERY or similar if CHOICE is not in Enum, but ideally CHOICE
+        cmd['type'] = "CHOICE" if hasattr(_CommandType, 'CHOICE') else "QUERY"
+        if cmd['type'] == 'QUERY':
+            cmd['query_kind'] = 'CHOICE'
+
         cmd['amount'] = act.get('value1', 1)
         if act.get('value2', 0) == 1:
             cmd.setdefault('flags', []).append("ALLOW_DUPLICATES")

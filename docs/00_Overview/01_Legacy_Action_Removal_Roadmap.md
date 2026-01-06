@@ -38,16 +38,16 @@
 
 ---
 
-### Phase 1: 入口の一本化・互換の局所化 (Normalization)
+### Phase 1: 入口の一本化・互換の局所化 (Normalization) [Status: Done]
 **目的**: 変換ロジックの分散を止め、削除に向けて依存を寄せる。
 
 - 変更内容
-  - Action→Command 変換は必ず `dm_toolkit.action_to_command.action_to_command` を経由
-  - `dm_toolkit.action_mapper` / GUI の `ActionConverter` の役割を縮退（薄い委譲のみ）
-  - `legacy_mode` 的な分岐は `dm_toolkit.compat_wrappers` / `dm_toolkit.unified_execution` に集約
+  - [x] Action→Command 変換は必ず `dm_toolkit.action_to_command.action_to_command` を経由
+  - [x] `dm_toolkit.action_mapper` のロジックを `action_to_command` に統合し、`action_mapper` 自体は薄い委譲ラッパーとする
+  - [x] `legacy_mode` 的な分岐は `dm_toolkit.compat_wrappers` / `dm_toolkit.unified_execution` に集約
 
 - 完了条件
-  - 主要な呼び出し元が `action_to_command` を参照（grep で `map_action` 直叩きが限定される）
+  - 主要な呼び出し元が `action_to_command` を参照、または `action_mapper` 経由でも実質的に同一のロジックが実行される
 
 ---
 
