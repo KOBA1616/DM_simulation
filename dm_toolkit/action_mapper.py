@@ -9,6 +9,8 @@ This module provides legacy mapping logic that is being phased out in favor of
 the Unified Execution Pipeline.
 """
 
+import warnings
+
 class ActionToCommandMapper:
     """
     Central logic for converting Action dictionaries to Command dictionaries.
@@ -20,6 +22,11 @@ class ActionToCommandMapper:
         """
         Converts a legacy Action dictionary to a Command dictionary.
         """
+        warnings.warn(
+            "ActionToCommandMapper is deprecated. Use dm_toolkit.action_to_command.map_action directly.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         # Use the canonical mapper first
         cmd = _map_action(action_data)
 

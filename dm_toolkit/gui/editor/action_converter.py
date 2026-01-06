@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 import uuid
 import warnings
-from dm_toolkit.action_mapper import ActionToCommandMapper
-from dm_toolkit.gui.editor.utils import normalize_action_zone_keys
+# Use unified pipeline instead of legacy mapper
+from dm_toolkit.action_to_command import map_action as _map_action
 
 class ActionConverter:
     @staticmethod
     def convert(action_data):
         """
         Converts a legacy Action dictionary to a Command dictionary.
-        Delegates to the shared ActionToCommandMapper to ensure consistency.
+        Uses the new action_to_command pipeline directly, bypassing legacy fixups.
         """
-        return ActionToCommandMapper.map_action(action_data)
+        return _map_action(action_data)
 
     @staticmethod
     def convert_to_objs(action_data):
