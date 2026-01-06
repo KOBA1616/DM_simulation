@@ -262,6 +262,27 @@ namespace dm::engine::game_command {
         CommandType get_type() const override { return CommandType::SHUFFLE; }
     };
 
+    class SearchDeckCommand : public GameCommand {
+    public:
+        core::PlayerID player_id;
+        std::vector<int> target_card_ids; // Cards selected to be moved (e.g. to Hand)
+        core::Zone destination_zone;
+
+        // Undo context
+        std::vector<int> original_locations; // Indices in deck for revert (not fully safe if shuffle happens)
+        // Since Search usually implies Shuffle afterwards, exact revert of Deck state requires restoring order.
+        // If SearchDeckCommand includes Shuffle, invert must restore order.
+        // If SearchDeckCommand is just "Move from Deck + Shuffle", we can delegate to ShuffleCommand logic for the shuffle part.
+        // But for "Move from Deck", we use TransitionCommand internally?
+
+        SearchDeckCommand(core::PlayerID pid, const std::vector<int>& targets, core::Zone dest = core::Zone::HAND)
+            : player_id(pid), target_card_ids(targets), destination_zone(dest) {}
+
+        void execute(core::GameState& state) override;
+        void invert(core::GameState& state) override;
+        CommandType get_type() const override { return CommandType::SEARCH_DECK; }
+    };
+
 }
 
 #endif // DM_ENGINE_GAME_COMMAND_COMMANDS_HPP
