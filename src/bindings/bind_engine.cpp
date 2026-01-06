@@ -30,6 +30,18 @@ void bind_engine(py::module& m) {
         .def("get_type", &dm::engine::game_command::GameCommand::get_type)
         .def("invert", &dm::engine::game_command::GameCommand::invert);
 
+    // Removed CommandType binding here to avoid conflict with bind_core.cpp
+    // The core CommandType (card_json_types.hpp) is now the primary one exposed.
+    // If Engine uses a different CommandType enum, we should map or expose it differently.
+    // However, GameCommand uses `dm::engine::game_command::CommandType` which seems to be different
+    // or aliased.
+    // Let's check `game_command.hpp`.
+
+    // Assuming dm::engine::game_command::CommandType needs to be exposed for Engine Commands
+    // but the conflict suggests they might share name or scope in python.
+    // Let's rename this one to EngineCommandType if needed, or remove if unused by python side
+    // except for return types.
+
     py::enum_<dm::engine::game_command::CommandType>(m, "EngineCommandType")
         .value("TRANSITION", dm::engine::game_command::CommandType::TRANSITION)
         .value("MUTATE", dm::engine::game_command::CommandType::MUTATE)
@@ -42,7 +54,6 @@ void bind_engine(py::module& m) {
         .value("GAME_RESULT", dm::engine::game_command::CommandType::GAME_RESULT)
         .value("SHUFFLE", dm::engine::game_command::CommandType::SHUFFLE)
         .value("ADD_CARD", dm::engine::game_command::CommandType::ADD_CARD)
-        .value("SEARCH_DECK", dm::engine::game_command::CommandType::SEARCH_DECK)
         .export_values();
 
     py::class_<dm::engine::game_command::TransitionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::TransitionCommand>>(m, "TransitionCommand")
@@ -132,13 +143,6 @@ void bind_engine(py::module& m) {
         .def(py::init<PlayerID>())
         .def_readwrite("player_id", &dm::engine::game_command::ShuffleCommand::player_id);
 
-    py::class_<dm::engine::game_command::SearchDeckCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::SearchDeckCommand>>(m, "SearchDeckCommand")
-        .def(py::init<PlayerID, std::vector<int>, Zone>(),
-             py::arg("player_id"), py::arg("targets"), py::arg("dest") = Zone::HAND)
-        .def_readwrite("player_id", &dm::engine::game_command::SearchDeckCommand::player_id)
-        .def_readwrite("target_card_ids", &dm::engine::game_command::SearchDeckCommand::target_card_ids)
-        .def_readwrite("destination_zone", &dm::engine::game_command::SearchDeckCommand::destination_zone);
-
     py::class_<dm::engine::systems::PipelineExecutor, std::shared_ptr<dm::engine::systems::PipelineExecutor>>(m, "PipelineExecutor")
         .def(py::init<>())
         .def("set_context_var", &dm::engine::systems::PipelineExecutor::set_context_var)
@@ -172,6 +176,7 @@ void bind_engine(py::module& m) {
             try {
                 std::vector<Instruction> instructions;
                 std::map<std::string, int> execution_context;
+                // Note: py_ctx extraction logic deferred/omitted as in original bindings.cpp
                 dm::engine::EffectSystem::instance().compile_action(state, action, source_id, execution_context, db, instructions);
                 return instructions;
             } catch (const py::error_already_set& e) {
@@ -374,6 +379,9 @@ void bind_engine(py::module& m) {
         })
         .def_static("load_from_json", &CardRegistry::load_from_json)
         .def_static("get_all_cards", []() {
+             // Return a copy of the static map as CardDatabase (shared ptr probably better but copied for safety/simplicity)
+             // But CardDatabase is std::map<CardID, CardDefinition>.
+             // CardRegistry has get_all_definitions()
              return CardRegistry::get_all_definitions();
         })
         .def_static("clear", &CardRegistry::clear);

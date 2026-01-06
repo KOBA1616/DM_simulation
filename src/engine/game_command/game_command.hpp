@@ -16,7 +16,6 @@ namespace dm::engine::game_command {
         GAME_RESULT,
         ADD_CARD,
         SHUFFLE,
-        SEARCH_DECK, // Added for Phase 1
         // High-level Action Commands
         PLAY_CARD,
         ATTACK,
