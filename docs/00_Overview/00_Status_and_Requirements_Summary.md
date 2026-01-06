@@ -52,6 +52,11 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ### 3.3 Documentation
 *   **Update Specs**: 実装と乖離した古い要件定義書の更新（本タスクにて実施中）。
 
+### 3.4 Command Pipeline / Legacy Action Removal
+*   [Status: Todo] **旧Action完全削除ロードマップの遂行**: カードJSONの `actions` と関連する互換コード/UIを段階的に撤去し、`commands` を唯一の表現に統一する。
+	*   ロードマップ: [docs/00_Overview/01_Legacy_Action_Removal_Roadmap.md](01_Legacy_Action_Removal_Roadmap.md)
+	*   前提: `dm_toolkit.action_to_command.action_to_command` を唯一の Action→Command 入口にする（AGENTSポリシー準拠）。
+
 ## 4. ドキュメント構成
 *   `docs/01_Game_Engine_Specs.md`: ゲームエンジンの詳細仕様。
 *   `docs/02_AI_System_Specs.md`: AIモデル、学習パイプライン、推論システムの仕様。
