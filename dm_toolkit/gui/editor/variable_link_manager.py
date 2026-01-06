@@ -2,11 +2,11 @@
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.constants import RESERVED_VARIABLES
-from dm_toolkit.gui.editor.forms.action_config import ACTION_UI_CONFIG
+from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 
 class VariableLinkManager:
     """
-    Helper class to manage variable linking logic for actions.
+    Helper class to manage variable linking logic for commands.
     Separates data retrieval and key generation from UI components.
     """
 
@@ -41,11 +41,12 @@ class VariableLinkManager:
 
             out_key = sib_data.get('output_value_key')
             if out_key:
-                type_disp = tr(sib_data.get('type'))
-
-                # Enhance label with Output Port Name if available
+                # The type stored in data is the command type (e.g. DRAW_CARD)
                 sib_type = sib_data.get('type')
-                sib_config = ACTION_UI_CONFIG.get(sib_type, {})
+                type_disp = tr(sib_type)
+
+                # Enhance label with Output Port Name if available in COMMAND_UI_CONFIG
+                sib_config = COMMAND_UI_CONFIG.get(sib_type, {})
                 outputs = sib_config.get('outputs', {})
                 port_name = outputs.get('output_value_key', '')
 
@@ -59,7 +60,7 @@ class VariableLinkManager:
         return variables
 
     @staticmethod
-    def generate_output_key(current_item, action_type):
+    def generate_output_key(current_item, command_type):
         """
         Generates a unique output key for the current item.
         Uses UUID from item data if available, otherwise falls back to row index.
@@ -67,8 +68,8 @@ class VariableLinkManager:
         if not current_item:
             return ""
 
-        action_data = current_item.data(Qt.ItemDataRole.UserRole + 2)
-        uid = action_data.get('uid')
+        command_data = current_item.data(Qt.ItemDataRole.UserRole + 2)
+        uid = command_data.get('uid')
 
         if uid:
             # Use UUID to ensure uniqueness
@@ -76,16 +77,17 @@ class VariableLinkManager:
         else:
             # Fallback to row index if no UUID
             row = current_item.row()
-            return f"var_{action_type}_{row}"
+            return f"var_{command_type}_{row}"
 
     @staticmethod
-    def get_input_label(action_type):
+    def get_input_label(command_type):
         """
-        Returns the localized label for the input source field based on the action type.
+        Returns the localized label for the input source field based on the command type.
         """
-        config = ACTION_UI_CONFIG.get(action_type, {})
-        inputs = config.get('inputs', {})
-        if 'input_value_key' in inputs:
-            return f"{tr('Input Source')} ({tr(inputs['input_value_key'])})"
-        else:
-            return tr("Input Source")
+        # Note: COMMAND_UI_CONFIG does not currently have explicit 'inputs' config like ACTION_UI_CONFIG did,
+        # but we can look for 'input_link' in 'visible' to determine relevance,
+        # or just return a generic label.
+        # If we want specific labels, we should add 'input_label' to CommandDef in command_config.py
+
+        # For now, return generic label
+        return tr("Input Source")
