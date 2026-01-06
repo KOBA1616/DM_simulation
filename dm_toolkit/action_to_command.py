@@ -395,7 +395,8 @@ def _handle_mutate(act_type, act, cmd):
 
 def _handle_selection(act_type, act, cmd):
     if act_type == "SELECT_OPTION":
-        cmd['type'] = "CHOICE"
+        # Keep legacy type for now to pass validation until CHOICE/DECIDE is fully adopted
+        cmd['type'] = "SELECT_OPTION"
         cmd['amount'] = act.get('value1', 1)
         if act.get('value2', 0) == 1:
             cmd.setdefault('flags', []).append("ALLOW_DUPLICATES")

@@ -38,7 +38,7 @@
 
 ---
 
-### Phase 1: 入口の一本化・互換の局所化 (Normalization)
+### Phase 1: 入口の一本化・互換の局所化 (Normalization) [Status: Done]
 **目的**: 変換ロジックの分散を止め、削除に向けて依存を寄せる。
 
 - 変更内容
