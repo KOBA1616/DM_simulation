@@ -5,10 +5,8 @@
 
 $env:DM_MIGRATION_TELEMETRY = "1"
 $env:DM_MIGRATION_METRICS_PATH = "$(Resolve-Path .)\migration_metrics_canary.jsonl"
-$env:DM_ACTION_CONVERTER_NATIVE = "1"
 
 Write-Host "DM_MIGRATION_TELEMETRY=$env:DM_MIGRATION_TELEMETRY"
-Write-Host "DM_ACTION_CONVERTER_NATIVE=$env:DM_ACTION_CONVERTER_NATIVE"
 Write-Host "Metrics path: $env:DM_MIGRATION_METRICS_PATH"
 
 # Run a focused set of tests that exercise conversion and load/save behavior
