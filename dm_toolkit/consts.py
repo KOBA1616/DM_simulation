@@ -2,6 +2,19 @@
 import sys
 import os
 
+"""
+Central Constants Definition.
+
+Policy:
+This file serves as the Single Source of Truth for Python-side constants,
+enumerations, and configuration lists that mirror C++ engine values or
+define UI behavior.
+
+1.  **Mirroring C++**: Where possible, values are dynamically loaded from `dm_ai_module`.
+2.  **UI Definitions**: Lists like `EDITOR_ACTION_TYPES` define the available options in the GUI.
+3.  **Translations**: Translations should be handled by `dm_toolkit.gui.localization`, not here.
+"""
+
 # Try to import dm_ai_module
 try:
     # If strictly needed, we could append bin/ to path here, but usually app handles it.

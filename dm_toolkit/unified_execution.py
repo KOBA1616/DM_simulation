@@ -4,6 +4,20 @@ import copy
 import json
 from dm_toolkit.action_to_command import map_action
 
+"""
+Unified Execution Pipeline Entry Point.
+
+This module serves as the canonical entry point for converting Action-like objects
+(dictionaries, ActionDef, CommandDef) into a unified Command dictionary format
+ready for execution by the game engine.
+
+Usage:
+    from dm_toolkit.unified_execution import ensure_executable_command
+    cmd = ensure_executable_command(action_or_command)
+
+Note: `action_mapper.py` is deprecated; use this module instead.
+"""
+
 try:
     from dm_ai_module import ActionDef, CommandDef
 except ImportError:

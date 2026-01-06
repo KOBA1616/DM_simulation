@@ -2,6 +2,13 @@
 from typing import Any, Dict
 from dm_toolkit.action_to_command import map_action as _map_action
 
+"""
+DEPRECATED: Use dm_toolkit.unified_execution instead.
+
+This module provides legacy mapping logic that is being phased out in favor of
+the Unified Execution Pipeline.
+"""
+
 class ActionToCommandMapper:
     """
     Central logic for converting Action dictionaries to Command dictionaries.
