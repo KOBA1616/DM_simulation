@@ -12,6 +12,7 @@
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/trigger_system/trigger_manager.hpp"
 #include "engine/game_command/commands.hpp"
+#include "engine/game_command/action_commands.hpp" // Added include for Action Commands
 #include "engine/utils/dev_tools.hpp"
 #include <pybind11/stl.h>
 
@@ -30,18 +31,6 @@ void bind_engine(py::module& m) {
         .def("get_type", &dm::engine::game_command::GameCommand::get_type)
         .def("invert", &dm::engine::game_command::GameCommand::invert);
 
-    // Removed CommandType binding here to avoid conflict with bind_core.cpp
-    // The core CommandType (card_json_types.hpp) is now the primary one exposed.
-    // If Engine uses a different CommandType enum, we should map or expose it differently.
-    // However, GameCommand uses `dm::engine::game_command::CommandType` which seems to be different
-    // or aliased.
-    // Let's check `game_command.hpp`.
-
-    // Assuming dm::engine::game_command::CommandType needs to be exposed for Engine Commands
-    // but the conflict suggests they might share name or scope in python.
-    // Let's rename this one to EngineCommandType if needed, or remove if unused by python side
-    // except for return types.
-
     py::enum_<dm::engine::game_command::CommandType>(m, "EngineCommandType")
         .value("TRANSITION", dm::engine::game_command::CommandType::TRANSITION)
         .value("MUTATE", dm::engine::game_command::CommandType::MUTATE)
@@ -54,6 +43,16 @@ void bind_engine(py::module& m) {
         .value("GAME_RESULT", dm::engine::game_command::CommandType::GAME_RESULT)
         .value("SHUFFLE", dm::engine::game_command::CommandType::SHUFFLE)
         .value("ADD_CARD", dm::engine::game_command::CommandType::ADD_CARD)
+        .value("SEARCH_DECK", dm::engine::game_command::CommandType::SEARCH_DECK)
+        .value("PLAY_CARD", dm::engine::game_command::CommandType::PLAY_CARD)
+        .value("ATTACK", dm::engine::game_command::CommandType::ATTACK)
+        .value("BLOCK", dm::engine::game_command::CommandType::BLOCK)
+        .value("USE_ABILITY", dm::engine::game_command::CommandType::USE_ABILITY)
+        .value("MANA_CHARGE", dm::engine::game_command::CommandType::MANA_CHARGE)
+        .value("RESOLVE_PENDING_EFFECT", dm::engine::game_command::CommandType::RESOLVE_PENDING_EFFECT)
+        .value("PASS_TURN", dm::engine::game_command::CommandType::PASS_TURN)
+        .value("SHIELD_TRIGGER", dm::engine::game_command::CommandType::SHIELD_TRIGGER)
+        .value("RESOLVE_BATTLE", dm::engine::game_command::CommandType::RESOLVE_BATTLE)
         .export_values();
 
     py::class_<dm::engine::game_command::TransitionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::TransitionCommand>>(m, "TransitionCommand")
@@ -142,6 +141,21 @@ void bind_engine(py::module& m) {
     py::class_<dm::engine::game_command::ShuffleCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::ShuffleCommand>>(m, "ShuffleCommand")
         .def(py::init<PlayerID>())
         .def_readwrite("player_id", &dm::engine::game_command::ShuffleCommand::player_id);
+
+    py::class_<dm::engine::game_command::SearchDeckCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::SearchDeckCommand>>(m, "SearchDeckCommand")
+        .def(py::init<int, std::string, int>())
+        .def_readwrite("player_id", &dm::engine::game_command::SearchDeckCommand::player_id)
+        .def_readwrite("filter_str", &dm::engine::game_command::SearchDeckCommand::filter_str)
+        .def_readwrite("count", &dm::engine::game_command::SearchDeckCommand::count);
+
+    py::class_<dm::engine::game_command::ResolveBattleCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::ResolveBattleCommand>>(m, "ResolveBattleCommand")
+        .def(py::init<int, int>())
+        .def_readwrite("attacker_id", &dm::engine::game_command::ResolveBattleCommand::attacker_id)
+        .def_readwrite("defender_id", &dm::engine::game_command::ResolveBattleCommand::defender_id);
+
+    py::class_<dm::engine::game_command::ShieldTriggerCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::ShieldTriggerCommand>>(m, "ShieldTriggerCommand")
+        .def(py::init<int>())
+        .def_readwrite("card_id", &dm::engine::game_command::ShieldTriggerCommand::card_id);
 
     py::class_<dm::engine::systems::PipelineExecutor, std::shared_ptr<dm::engine::systems::PipelineExecutor>>(m, "PipelineExecutor")
         .def(py::init<>())

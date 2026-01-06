@@ -290,6 +290,7 @@ namespace dm::engine::game_command {
         state.pending_query.query_type = query_type;
         state.pending_query.valid_targets = valid_targets;
         state.pending_query.params = params;
+        state.pending_query.options = options;
     }
     void QueryCommand::invert(GameState& state) {
         state.waiting_for_user_input = false;
@@ -325,6 +326,43 @@ namespace dm::engine::game_command {
     void GameResultCommand::invert(GameState& state) {
         state.winner = previous_result;
         state.game_over = false;
+    }
+
+    // --- ShuffleCommand ---
+    void ShuffleCommand::execute(GameState& state) {
+        if (player_id >= state.players.size()) return;
+        Player& p = state.players[player_id];
+
+        // Store original order for undo
+        original_deck_order.clear();
+        original_deck_order.reserve(p.deck.size());
+        for (const auto& card : p.deck) {
+            original_deck_order.push_back(card.instance_id);
+        }
+
+        // Shuffle
+        std::shuffle(p.deck.begin(), p.deck.end(), state.rng);
+    }
+
+    void ShuffleCommand::invert(GameState& state) {
+        if (player_id >= state.players.size()) return;
+        Player& p = state.players[player_id];
+
+        std::vector<CardInstance> restored_deck;
+        restored_deck.reserve(original_deck_order.size());
+
+        std::map<int, CardInstance> temp_map;
+        for (const auto& c : p.deck) {
+            temp_map.insert({c.instance_id, c});
+        }
+
+        for (int id : original_deck_order) {
+            if (temp_map.count(id)) {
+                restored_deck.push_back(temp_map.at(id));
+            }
+        }
+
+        p.deck = std::move(restored_deck);
     }
 
 }
