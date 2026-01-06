@@ -37,33 +37,26 @@
     {
       "name": "Draw Card",
       "data": {
-        "type": "NONE",
-        "uid": "cb6ff2fa-4e0d-49a5-a06a-fb9ab6ba0b6a",
-        "legacy_warning": true,
-        "legacy_original_type": "TRANSITION",
-        "str_param": "Legacy: TRANSITION",
-        "target_group": "NONE"
+        "type": "TRANSITION",
+        "from_zone": "DECK",
+        "to_zone": "HAND",
+        "target_group": "NONE",
+        "amount": 1
       }
     },
     {
       "name": "Destroy Card",
       "data": {
-        "type": "NONE",
-        "uid": "78e32e75-8556-4d2a-9e69-aab77de3a291",
-        "legacy_warning": true,
-        "legacy_original_type": "TRANSITION",
-        "str_param": "Legacy: TRANSITION",
+        "type": "TRANSITION",
+        "to_zone": "GRAVEYARD",
         "target_group": "NONE"
       }
     },
     {
       "name": "Mana Charge",
       "data": {
-        "type": "NONE",
-        "uid": "9c854f65-b4c2-4dea-8639-2bff6880af16",
-        "legacy_warning": true,
-        "legacy_original_type": "TRANSITION",
-        "str_param": "Legacy: TRANSITION",
+        "type": "TRANSITION",
+        "to_zone": "MANA",
         "target_group": "NONE"
       }
     }
