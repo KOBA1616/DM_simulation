@@ -31,6 +31,21 @@ dm_simulation/
 
 Preferred build system: CMake (use Ninja or your preferred generator). Avoid using Visual Studio solution files or MSVC project files checked into the repository — this project standardizes on CMake.
 
+### Clone distribution (Windows)
+
+このリポジトリは「GitHubでクローンしてもらい、セットアップスクリプトで相手PCの環境を確認してから構築する」運用を想定できます。
+
+```powershell
+git clone <YOUR_REPO_URL>
+cd DM_simulation
+pwsh -File .\scripts\setup_clone_windows.ps1
+```
+
+セットアップが通ったら、必要に応じて次を実行します。
+
+- GUI起動: `pwsh -File .\scripts\run_gui.ps1`
+- CI相当まとめ実行: `pwsh -File .\scripts\run_ci_local.ps1`
+
 Quick start (Windows, recommended with Ninja):
 
 ```powershell
@@ -39,7 +54,7 @@ cmake -S . -B build-msvc -G "Ninja" -DCMAKE_BUILD_TYPE=Release
 # Build
 cmake --build build-msvc --config Release -- -j
 # Run tests
-C:/Users/ichirou/DM_simulation/.venv/Scripts/python.exe -m pytest -q
+python -m pytest -q
 ```
 
 ## Local CI (Windows)
