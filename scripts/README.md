@@ -16,6 +16,7 @@
 - GUI
   - `run_gui.ps1`
   - `run_gui_with_real_pyqt.ps1`
+  - `run_gui_review.ps1`（GUIレビュー用途: カードエディタを素早く起動。事前に setup_gui_review_windows.ps1 実行）
 
 - メンテ/クリーン
   - `clean_workspace.ps1`

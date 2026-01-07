@@ -65,11 +65,13 @@ function Enable-MsvcDevEnvironment {
     }
 
     Info "Loading MSVC dev environment from: $vsDevCmd"
-    $cmd = "\"$vsDevCmd\" -no_logo -arch=x64 -host_arch=x64 && set"
+    # Use PowerShell's escape character (`) for embedded quotes.
+    $cmd = "`"$vsDevCmd`" -no_logo -arch=x64 -host_arch=x64 && set"
     $lines = & cmd.exe /c $cmd
     foreach ($line in $lines) {
       if ($line -match '^(?<k>[^=]+)=(?<v>.*)$') {
-        $env:${matches.k} = $matches.v
+        # Set environment variables dynamically.
+        Set-Item -Path ("Env:{0}" -f $matches.k) -Value $matches.v
       }
     }
     return $true
@@ -78,7 +80,7 @@ function Enable-MsvcDevEnvironment {
   }
 }
 
-function Ensure-BuildToolchain {
+function Test-BuildToolchain {
   param([string]$toolchain)
 
   if ($toolchain -eq 'msvc') {
@@ -214,7 +216,7 @@ try {
 
   # --- Build native module ---
   if (-not $SkipBuild) {
-    Ensure-BuildToolchain -toolchain $Toolchain
+    Test-BuildToolchain -toolchain $Toolchain
     Info "Building native components via scripts/build.ps1 (Toolchain=$Toolchain, Configuration=$Configuration)"
     & (Join-Path $scriptDir 'build.ps1') -Toolchain $Toolchain -Config $Configuration
   } else {

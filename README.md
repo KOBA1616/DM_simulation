@@ -52,6 +52,7 @@ pwsh -File .\scripts\setup_clone_windows.ps1
 - **GUI表示レビューだけ行う（ネイティブ不要の範囲に限定）**
 	- カードエディタ単体はネイティブ無しで起動できます:
 		- `pwsh -File .\scripts\setup_gui_review_windows.ps1`
+		- 2回目以降の起動は: `pwsh -File .\scripts\run_gui_review.ps1`
 
 セットアップが通ったら、必要に応じて次を実行します。
 
