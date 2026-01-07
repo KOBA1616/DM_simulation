@@ -355,19 +355,19 @@ class CardDataManager:
         def _normalize_command(cmd, path):
             w = []
             if not isinstance(cmd, dict):
-                return None, [f"Invalid command at {path}: not an object"]
+                return None, [f"無効なコマンド: {path}（オブジェクトではありません）"]
             _ensure_uid(cmd)
             ctype = cmd.get('type')
             if not ctype or ctype not in COMMAND_TYPES:
                 cmd['legacy_warning'] = True
-                w.append(f"Unknown command type at {path}: {ctype}")
+                w.append(f"不明なコマンド種別: {path}: {ctype}")
 
             # Normalize branches and options
             for key in ('if_true', 'if_false', 'options'):
                 if key in cmd:
                     val = cmd.get(key)
                     if not isinstance(val, list):
-                        w.append(f"Field '{key}' at {path} should be a list; fixing.")
+                        w.append(f"フィールド '{key}' はリストである必要があります: {path}（自動修正しました）")
                         cmd[key] = []
                         continue
                     new_list = []
@@ -375,7 +375,7 @@ class CardDataManager:
                         if key == 'options':
                             # options is a list of lists of commands
                             if not isinstance(sub, list):
-                                w.append(f"Option entry at {path}.{key}[{idx}] not a list; skipping.")
+                                w.append(f"選択肢 {path}.{key}[{idx}] がリストではありません（スキップしました）")
                                 continue
                             opt_cmds = []
                             for jdx, ssub in enumerate(sub):

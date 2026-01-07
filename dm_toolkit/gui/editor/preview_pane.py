@@ -302,7 +302,7 @@ class CardPreviewWidget(QWidget):
                         t = len(branches.get('if_true', []))
                         f = len(branches.get('if_false', []))
                         branch_info = f" branches=({t}/{f})"
-                    cir_lines.append(f"Effect[{ei}] Command[{ci}]: {kind}/{ctype}{opt_info}{branch_info}")
+                    cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Command')}[{ci}]: {kind}/{ctype}{opt_info}{branch_info}")
             else:
                 # Fallback to legacy actions
                 for ai, act in enumerate(eff.get('actions', []), start=1):
@@ -317,16 +317,16 @@ class CardPreviewWidget(QWidget):
                         t = len(branches.get('if_true', []))
                         f = len(branches.get('if_false', []))
                         branch_info = f" branches=({t}/{f})"
-                    cir_lines.append(f"Effect[{ei}] Action[{ai}] (Legacy): {kind}/{atype}{opt_info}{branch_info}")
+                    cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Legacy')}): {kind}/{atype}{opt_info}{branch_info}")
 
         summary = "\n".join(cir_lines)
         if summary:
             # Prepend synthesized natural summaries for preview
             synth = self._build_natural_summaries(data)
             if synth:
-                self.raw_text_preview.setText(synth + "\n\n" + full_text + "\n\nCIR Summary:\n" + summary)
+                self.raw_text_preview.setText(synth + "\n\n" + full_text + "\n\n" + tr("CIR Summary:") + "\n" + summary)
             else:
-                self.raw_text_preview.setText(full_text + "\n\nCIR Summary:\n" + summary)
+                self.raw_text_preview.setText(full_text + "\n\n" + tr("CIR Summary:") + "\n" + summary)
         else:
             synth = self._build_natural_summaries(data)
             if synth:

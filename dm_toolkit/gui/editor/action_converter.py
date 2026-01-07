@@ -25,7 +25,7 @@ class ActionConverter:
             return convert_action_to_objs(action_data)
         except Exception:
             from dm_toolkit.gui.editor.command_model import WarningCommand
-            return [WarningCommand(type="LEGACY_WARNING", warning="Conversion adapter failed", original_action=action_data)]
+            return [WarningCommand(type="LEGACY_WARNING", warning="変換アダプタでエラーが発生しました", original_action=action_data)]
 
 
 # Adapter helpers: map legacy-converter dict output -> CommandDef / WarningCommand objects
@@ -48,7 +48,7 @@ def convert_action_to_objs(action: dict) -> list:
     try:
         conv = ActionConverter.convert(action)
     except Exception:
-        wc = WarningCommand(type="LEGACY_WARNING", warning="Conversion failed", original_action=action)
+        wc = WarningCommand(type="LEGACY_WARNING", warning="変換に失敗しました", original_action=action)
         return [wc]
 
     # conv may be a dict representing a command or a legacy-warning object
@@ -58,7 +58,7 @@ def convert_action_to_objs(action: dict) -> list:
             wc = WarningCommand(
                 uid=conv.get('uid', str(uuid.uuid4())),
                 type=conv.get('type', 'WARNING'),
-                warning=conv.get('str_param', conv.get('warning', 'Legacy conversion produced warning')),
+                warning=conv.get('str_param', conv.get('warning', 'レガシー変換で警告が発生しました')),
                 original_action=conv.get('legacy_original_action') or action,
             )
             out.append(wc)
@@ -93,7 +93,7 @@ def convert_action_to_objs(action: dict) -> list:
                 pass
     else:
         # Unknown shape -> warning
-        wc = WarningCommand(type='LEGACY_WARNING', warning='Unsupported converter output', original_action=action)
+        wc = WarningCommand(type='LEGACY_WARNING', warning='未対応の変換出力形式です', original_action=action)
         out.append(wc)
 
     return out

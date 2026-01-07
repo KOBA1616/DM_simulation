@@ -166,7 +166,7 @@ class CardTextGenerator:
     @classmethod
     def generate_header_lines(cls, data: Dict[str, Any]) -> List[str]:
         lines = []
-        name = data.get("name", "Unknown")
+        name = data.get("name") or tr("Unknown")
         cost = data.get("cost", 0)
 
         # Handle both list and string formats for civilization
@@ -457,7 +457,8 @@ class CardTextGenerator:
             "ON_OPPONENT_DRAW": "相手がカードを引いた時",
             "NONE": ""
         }
-        return mapping.get(trigger, trigger)
+        # Fallback: try localization table before leaking raw enum-like tokens
+        return mapping.get(trigger, tr(trigger))
 
     @classmethod
     def _format_command(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
@@ -766,7 +767,7 @@ class CardTextGenerator:
              elif mkind == "ADD_COST_MODIFIER":
                  return f"{target_str}にコスト修正を追加する。"
              else:
-                 template = f"状態変更({mkind}): {{target}} (値:{val1})"
+                 template = f"状態変更({tr(mkind)}): {{target}} (値:{val1})"
 
              if val1 == 0:
                  template = template.replace("{amount}{unit}選び、", "すべて") # Simplified "choose all"

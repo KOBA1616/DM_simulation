@@ -323,6 +323,39 @@ TRANSLATIONS: Dict[Any, str] = {
     "CANNOT_BLOCK": "ブロックできない",
     "CANNOT_ATTACK_OR_BLOCK": "攻撃もブロックもできない",
 
+    # --- Fallback Enum Translations (No dm_ai_module) ---
+    # Civilizations
+    "LIGHT": "光",
+    "WATER": "水",
+    "DARKNESS": "闇",
+    "FIRE": "火",
+    "NATURE": "自然",
+    "ZERO": "ゼロ",
+    "COLORLESS": "無色",
+
+    # Zones (JSON / editor)
+    "BATTLE_ZONE": "バトルゾーン",
+    "MANA_ZONE": "マナゾーン",
+    "SHIELD_ZONE": "シールドゾーン",
+    "HAND": "手札",
+    "GRAVEYARD": "墓地",
+    "DECK": "山札",
+    "DECK_TOP": "山札の上",
+    "DECK_BOTTOM": "山札の下",
+
+    # Zones (Command / native-style)
+    "BATTLE": "バトルゾーン",
+    "MANA": "マナゾーン",
+    "SHIELD": "シールドゾーン",
+
+    # Common triggers (if leaked)
+    "ON_PLAY": "出た時",
+    "AT_ATTACK": "攻撃する時",
+    "ON_DESTROY": "破壊された時",
+    "AT_END_OF_TURN": "ターンの終わりに",
+    "TURN_START": "ターンのはじめに",
+    "S_TRIGGER": "S・トリガー",
+
     # Command Types (Macros)
     "DRAW_CARD": "カードを引く",
     "DISCARD": "手札を捨てる",
@@ -364,6 +397,15 @@ TRANSLATIONS: Dict[Any, str] = {
     "Creature Text": "クリーチャーテキスト",
     "Spell Name": "呪文名",
     "Spell Text": "呪文テキスト",
+
+    # Card Preview Pane
+    "Card Preview": "カードプレビュー",
+    "Generated Text (Source):": "生成テキスト（元データ）:",
+    "CIR Summary:": "CIRサマリー:",
+    "Effect": "効果",
+    "Command": "コマンド",
+    "Action": "アクション",
+    "Legacy": "レガシー",
 
     # Phase 2 Main Screen Keys (Zones)
     "P0 Hand": "P0 手札",
@@ -724,7 +766,8 @@ def get_card_name_by_instance(game_state: Any, card_db: Dict[int, Any], instance
 
 def describe_command(cmd: Any, game_state: Any, card_db: Any) -> str:
     """Generate a localized string description for a GameCommand."""
-    if not m: return "GameCommand (Module not loaded)"
+    if not m:
+        return "GameCommand（ネイティブモジュール未ロード）"
 
     cmd_type = cmd.get_type()
 
@@ -761,12 +804,12 @@ def describe_command(cmd: Any, game_state: Any, card_db: Any) -> str:
         return f"[{tr('FLOW')}] {flow}: {val}"
 
     elif cmd_type == m.CommandType.QUERY:
-         c = cmd
-         return f"[{tr('QUERY')}] {c.query_type}"
+        c = cmd
+        return f"[{tr('QUERY')}] {tr(c.query_type)}"
 
     elif cmd_type == m.CommandType.DECIDE:
-         c = cmd
-         return f"[{tr('DECIDE')}] Opt: {c.selected_option_index}, Targets: {len(c.selected_indices)}"
+        c = cmd
+        return f"[{tr('DECIDE')}] 選択肢: {c.selected_option_index}, 対象数: {len(c.selected_indices)}"
 
     elif cmd_type == m.CommandType.STAT:
         c = cmd
@@ -776,4 +819,4 @@ def describe_command(cmd: Any, game_state: Any, card_db: Any) -> str:
         c = cmd
         return f"[{tr('GAME_RESULT')}] {tr(c.result)}"
 
-    return f"Command: {cmd_type}"
+    return f"未対応コマンド: {cmd_type}"

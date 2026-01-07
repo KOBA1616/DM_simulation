@@ -35,7 +35,7 @@ class CommandTextGenerator:
             elif cmd_type == dm.CommandType.GAME_RESULT:
                 return cls._format_game_result(command, game_state)
             else:
-                return f"不明なコマンド: {cmd_type}"
+                return f"未対応のコマンド: {cmd_type}"
         except Exception as e:
             return f"コマンドテキスト生成エラー: {e}"
 
@@ -114,7 +114,7 @@ class CommandTextGenerator:
 
     @classmethod
     def _format_query(cls, cmd: dm.QueryCommand, state: Optional[dm.GameState]) -> str:
-        return f"クエリ: {cmd.query_type} (対象数: {len(cmd.valid_targets)})"
+        return f"クエリ: {tr(str(cmd.query_type).split('.')[-1])}（対象数: {len(cmd.valid_targets)}）"
 
     @classmethod
     def _format_decide(cls, cmd: dm.DecideCommand, state: Optional[dm.GameState]) -> str:
