@@ -45,7 +45,15 @@ def _scan_gui_for_hardcoded_strings(root: Path) -> set[str]:
         re.compile(r"\bsetText\(\s*([^\)]+)\)"),
         re.compile(r"\bsetToolTip\(\s*([^\)]+)\)"),
         re.compile(r"\bsetPlaceholderText\(\s*([^\)]+)\)"),
+        re.compile(r"\bsetStatusTip\(\s*([^\)]+)\)"),
+        re.compile(r"\bsetWhatsThis\(\s*([^\)]+)\)"),
+        re.compile(r"\baddTab\([^,]+,\s*([^,\)]+)"),
+        # MessageBox: title and text
         re.compile(r"\bQMessageBox\.(?:information|warning|critical)\([^,]+,\s*([^,\)]+)"),
+        re.compile(r"\bQMessageBox\.(?:information|warning|critical)\([^,]+,\s*[^,\)]+,\s*([^,\)]+)"),
+        # InputDialog: label (and title if needed)
+        re.compile(r"\bQInputDialog\.get(?:Text|Int|Double|Item)\([^,]+,\s*([^,\)]+)"),
+        re.compile(r"\bQInputDialog\.get(?:Text|Int|Double|Item)\([^,]+,\s*[^,\)]+,\s*([^,\)]+)"),
     ]
 
     # Ignore when tr(...) appears before the first string (e.g. QLabel(tr("..."))).
@@ -69,23 +77,29 @@ def _scan_gui_for_hardcoded_strings(root: Path) -> set[str]:
                 if not m:
                     continue
 
-                arg = m.group(1).strip()
-                if arg.startswith("tr("):
-                    continue
+                # Iterate over all capturing groups to support multi-arg checks
+                for group_idx in range(1, m.lastindex + 1):
+                    arg = m.group(group_idx)
+                    if not arg:
+                        continue
+                    arg = arg.strip()
 
-                lit = _extract_string_literal(arg)
-                if lit is None:
-                    continue
+                    if arg.startswith("tr("):
+                        continue
 
-                if not lit:
-                    continue
+                    lit = _extract_string_literal(arg)
+                    if lit is None:
+                        continue
 
-                if not _is_probably_user_visible_english(lit):
-                    continue
+                    if not lit:
+                        continue
 
-                rel = file_path.relative_to(root).as_posix()
-                # Signature includes location + literal to keep diffs understandable.
-                hits.add(f"{rel}:{idx}:{lit}")
+                    if not _is_probably_user_visible_english(lit):
+                        continue
+
+                    rel = file_path.relative_to(root).as_posix()
+                    # Signature includes location + literal to keep diffs understandable.
+                    hits.add(f"{rel}:{idx}:{lit}")
 
     return hits
 
@@ -108,12 +122,13 @@ def test_gui_hardcoded_english_strings_do_not_increase() -> None:
     current = _scan_gui_for_hardcoded_strings(root)
     baseline = _load_baseline(root)
 
-    # If no baseline exists yet, fail with instructions.
-    if not baseline:
+    # Check if baseline file actually exists (empty set is valid if file exists)
+    baseline_path = root / "python" / "tests" / "verification" / "i18n_hardcoded_strings_baseline.txt"
+    if not baseline_path.exists():
         msg = [
-            "Missing baseline file: python/tests/verification/i18n_hardcoded_strings_baseline.txt",
+            f"Missing baseline file: {baseline_path}",
             "Generate it by running:",
-            "  C:/Users/ichirou/DM_simulation/.venv/Scripts/python.exe -c \"from python.tests.verification.test_i18n_hardcoded_strings_baseline import _repo_root,_scan_gui_for_hardcoded_strings; r=_repo_root(); print('\\n'.join(sorted(_scan_gui_for_hardcoded_strings(r))))\"",
+            "  python3 -c \"from python.tests.verification.test_i18n_hardcoded_strings_baseline import _repo_root,_scan_gui_for_hardcoded_strings; r=_repo_root(); print('\\n'.join(sorted(_scan_gui_for_hardcoded_strings(r))))\"",
         ]
         raise AssertionError("\n".join(msg))
 

@@ -485,7 +485,7 @@ class GameWindow(QMainWindow):
         query = EngineCompat.get_pending_query(self.gs)
         min_targets = query.params.get('min', 1)
         if len(self.selected_targets) < min_targets:
-            QMessageBox.warning(self, "Invalid Selection", f"Please select at least {min_targets} target(s).")
+            QMessageBox.warning(self, tr("Invalid Selection"), tr("Please select at least {min} target(s).").format(min=min_targets))
             return
         targets = list(self.selected_targets)
         self.selected_targets = []
@@ -610,7 +610,7 @@ class GameWindow(QMainWindow):
         query = EngineCompat.get_pending_query(self.gs)
         if query.query_type == "SELECT_OPTION":
              options = query.options
-             item, ok = QInputDialog.getItem(self, "Select Option", "Choose an option:", options, 0, False)
+             item, ok = QInputDialog.getItem(self, tr("Select Option"), tr("Choose an option:"), options, 0, False)
              if ok and item:
                  idx = options.index(item)
                  EngineCompat.EffectResolver_resume(self.gs, self.card_db, idx)

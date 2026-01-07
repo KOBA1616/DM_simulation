@@ -297,6 +297,18 @@ TRANSLATIONS: Dict[Any, str] = {
     # MCTS tooltips
     "Action: {name}\nVisits: {visits}\nValue: {value}": "アクション: {name}\n訪問回数: {visits}\n評価値: {value}",
 
+    # Dialogs
+    "Invalid Selection": "無効な選択",
+    "Please select at least {min} target(s).": "最低でも {min} つの対象を選択してください。",
+    "Select Option": "選択肢",
+    "Choose an option:": "選択してください:",
+
+    # Stack View
+    "Pending Effects (Stack)": "待機中の効果 (スタック)",
+    "Resolve Selected": "選択した効果を解決",
+    "Refresh": "更新",
+    "Error: Outdated C++ Module. Please rebuild.": "エラー: C++モジュールが古いです。リビルドしてください。",
+
     # Editor tooltips
     "Legacy Action: {orig}\nPlease replace with modern Commands.": "レガシーAction: {orig}\n可能なら新しいCommandに置き換えてください。",
 }

@@ -70,7 +70,7 @@ class StackViewWidget(QWidget):
                      raise AttributeError("No pending effects accessor found")
             except Exception:
                 # Fallback for outdated binary
-                item = QListWidgetItem("Error: Outdated C++ Module. Please rebuild.")
+                item = QListWidgetItem(tr("Error: Outdated C++ Module. Please rebuild."))
                 item.setForeground(Qt.GlobalColor.red)
                 self.list_widget.addItem(item)
                 self.current_effects = []
