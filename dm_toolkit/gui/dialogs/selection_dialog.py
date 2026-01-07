@@ -70,12 +70,12 @@ class CardSelectionDialog(QDialog):
     def populate_list(self, items):
         for idx, item in enumerate(items):
             # Determine display text based on item type
-            display_text = "Unknown Item"
+            display_text = tr("Unknown Item")
             card_id = -1
 
             if isinstance(item, dict):
                 # Expecting pending effect dict
-                name = item.get('source_name', 'Unknown')
+                name = item.get('source_name', tr('Unknown'))
                 desc = item.get('description', '')
                 card_id = item.get('card_id', -1)
                 display_text = f"{name}\n{desc}"
@@ -84,10 +84,11 @@ class CardSelectionDialog(QDialog):
                 card_id = item.card_id
                 if self.card_db:
                     cdef = self.card_db.get(card_id)
-                    name = cdef.name if cdef else "Unknown"
-                    display_text = f"{name} (Cost: {cdef.cost})"
+                    name = cdef.name if cdef else tr("Unknown")
+                    # display_text = f"{name} (Cost: {cdef.cost})"
+                    display_text = f"{name} " + tr("(Cost: {cost})").format(cost=cdef.cost if cdef else '?')
                 else:
-                    display_text = f"Card {card_id}"
+                    display_text = f"{tr('Card')} {card_id}"
 
             list_item = QListWidgetItem(display_text)
             list_item.setData(Qt.ItemDataRole.UserRole, idx)
