@@ -461,6 +461,32 @@ class CardTextGenerator:
         return mapping.get(trigger, tr(trigger))
 
     @classmethod
+    def _normalize_zone_name(cls, zone: str) -> str:
+        if not zone:
+            return ""
+
+        z = str(zone).split(".")[-1]
+        zone_map = {
+            # CommandSystem short names -> JSON/UI long names
+            "BATTLE": "BATTLE_ZONE",
+            "MANA": "MANA_ZONE",
+            "SHIELD": "SHIELD_ZONE",
+
+            # Identity / already-long
+            "BATTLE_ZONE": "BATTLE_ZONE",
+            "MANA_ZONE": "MANA_ZONE",
+            "SHIELD_ZONE": "SHIELD_ZONE",
+            "HAND": "HAND",
+            "GRAVEYARD": "GRAVEYARD",
+            "DECK": "DECK",
+            "DECK_TOP": "DECK_TOP",
+            "DECK_BOTTOM": "DECK_BOTTOM",
+            "BUFFER": "BUFFER",
+            "UNDER_CARD": "UNDER_CARD",
+        }
+        return zone_map.get(z, z)
+
+    @classmethod
     def _format_command(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
         if not command:
             return ""
@@ -473,6 +499,7 @@ class CardTextGenerator:
         if cmd_type == "POWER_MOD": cmd_type = "MODIFY_POWER"
         elif cmd_type == "ADD_KEYWORD": cmd_type = "GRANT_KEYWORD"
         elif cmd_type == "MANA_CHARGE": cmd_type = "SEND_TO_MANA" # Or ADD_MANA depending on context
+        elif cmd_type == "CHOICE": cmd_type = "SELECT_OPTION"
 
         # Construct proxy action object
         action_proxy = {
@@ -481,7 +508,8 @@ class CardTextGenerator:
             "filter": command.get("target_filter", {}),
             "value1": command.get("amount", 0),
             "optional": command.get("optional", False),
-            "str_val": command.get("str_param", ""),
+            # Prefer the normalized key, but accept legacy key if present
+            "str_val": command.get("str_param") or command.get("str_val", ""),
             "input_value_key": command.get("input_value_key", ""),
             "from_zone": command.get("from_zone", ""),
             "to_zone": command.get("to_zone", ""),
@@ -489,6 +517,27 @@ class CardTextGenerator:
             "destination_zone": command.get("to_zone", ""), # For MOVE_CARD mapping
             "result": command.get("str_param", "") # For GAME_RESULT
         }
+
+        # Extra passthrough fields for complex/structured commands
+        if "options" in command:
+            action_proxy["options"] = command.get("options")
+        if "flags" in command:
+            action_proxy["flags"] = command.get("flags")
+        if "look_count" in command:
+            action_proxy["look_count"] = command.get("look_count")
+        if "add_count" in command:
+            action_proxy["add_count"] = command.get("add_count")
+        if "rest_zone" in command:
+            action_proxy["rest_zone"] = command.get("rest_zone")
+        if "max_cost" in command:
+            action_proxy["max_cost"] = command.get("max_cost")
+        if "token_id" in command:
+            action_proxy["token_id"] = command.get("token_id")
+        if "play_flags" in command:
+            action_proxy["play_flags"] = command.get("play_flags")
+
+        # Some templates expect source_zone rather than from_zone
+        action_proxy["source_zone"] = command.get("from_zone", "")
 
         # Specific Adjustments
         if original_cmd_type == "MANA_CHARGE":
@@ -499,6 +548,38 @@ class CardTextGenerator:
 
         if original_cmd_type == "SHIELD_TRIGGER":
              return "S・トリガー"
+
+        # Normalize complex command representations into the Action-like proxy expected by _format_action
+        if original_cmd_type == "LOOK_AND_ADD":
+            if "look_count" in command and command.get("look_count") is not None:
+                action_proxy["value1"] = command.get("look_count")
+            if "add_count" in command and command.get("add_count") is not None:
+                action_proxy["value2"] = command.get("add_count")
+            rz = command.get("rest_zone") or command.get("destination_zone") or command.get("to_zone")
+            if rz:
+                action_proxy["rest_zone"] = rz
+                action_proxy["destination_zone"] = rz
+        elif original_cmd_type == "MEKRAID":
+            if "max_cost" in command and command.get("max_cost") is not None:
+                action_proxy["value1"] = command.get("max_cost")
+            if "look_count" in command and command.get("look_count") is not None:
+                action_proxy["look_count"] = command.get("look_count")
+            if "rest_zone" in command and command.get("rest_zone") is not None:
+                action_proxy["rest_zone"] = command.get("rest_zone")
+        elif original_cmd_type == "SUMMON_TOKEN":
+            # ACTION_MAP expects str_val for token name
+            if "token_id" in command and command.get("token_id") is not None:
+                action_proxy["str_val"] = command.get("token_id")
+        elif original_cmd_type == "PLAY_FROM_ZONE":
+            action_proxy["source_zone"] = command.get("from_zone", "")
+            if "max_cost" in command and command.get("max_cost") is not None:
+                action_proxy["value1"] = command.get("max_cost")
+        elif original_cmd_type == "CHOICE":
+            # Map CHOICE into SELECT_OPTION natural language generation
+            flags = command.get("flags", []) or []
+            if isinstance(flags, list) and "ALLOW_DUPLICATES" in flags:
+                action_proxy["value2"] = 1
+            action_proxy["value1"] = command.get("amount", 1)
 
         return cls._format_action(action_proxy, is_spell, sample=sample)
 
@@ -570,8 +651,8 @@ class CardTextGenerator:
 
         # Special-case: treat TRANSITION from DECK->HAND as DRAW_CARD for natural language
         if atype == 'TRANSITION':
-            from_zone = action.get('from_zone') or action.get('fromZone') or ''
-            to_zone = action.get('to_zone') or action.get('toZone') or ''
+            from_zone = cls._normalize_zone_name(action.get('from_zone') or action.get('fromZone') or '')
+            to_zone = cls._normalize_zone_name(action.get('to_zone') or action.get('toZone') or '')
             amt = action.get('amount') or action.get('value1') or 0
             # If transition represents drawing from deck to hand
             if (from_zone == 'DECK' or from_zone == '') and to_zone == 'HAND':
@@ -664,7 +745,16 @@ class CardTextGenerator:
             val1 = action.get("value1", 1)
             lines.append(f"次の中から{val1}回選ぶ。（同じものを選んでもよい）")
             for i, opt_chain in enumerate(options):
-                chain_text = " ".join([cls._format_action(a, is_spell) for a in opt_chain])
+                parts = []
+                for a in opt_chain:
+                    # options may contain either legacy Action dicts or normalized Command dicts
+                    if isinstance(a, dict) and (
+                        'amount' in a or 'target_group' in a or 'mutation_kind' in a or 'from_zone' in a or 'to_zone' in a
+                    ):
+                        parts.append(cls._format_command(a, is_spell=is_spell, sample=sample))
+                    else:
+                        parts.append(cls._format_action(a, is_spell, sample=sample))
+                chain_text = " ".join(parts)
                 lines.append(f"> {chain_text}")
             return "\n".join(lines)
 
@@ -699,9 +789,9 @@ class CardTextGenerator:
 
         # --- Enhanced Command-like actions ---
         elif atype == "TRANSITION":
-             from_z = action.get("from_zone", "").split('.')[-1]
-             to_z = action.get("to_zone", "").split('.')[-1]
-             amount = action.get("amount", 0)
+               from_z = cls._normalize_zone_name(action.get("from_zone", ""))
+               to_z = cls._normalize_zone_name(action.get("to_zone", ""))
+               amount = action.get("amount", 0)
 
              # Natural Language Mapping for Zones and Verbs
              if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
@@ -807,6 +897,36 @@ class CardTextGenerator:
             # Resolving base target might be tricky without a full "base_target" definition in Action,
             # usually ATTACH targets an existing card.
             return f"{target_str}をカードの下に重ねる。"
+
+        # --- Additional command types previously unformatted ---
+        elif atype == "DECIDE":
+            # Finalize selection/decision. Card JSON rarely uses this, but provide readable output.
+            sel = action.get("selected_option_index")
+            if isinstance(sel, int) and sel >= 0:
+                return f"選択肢{sel}を確定する。"
+            indices = action.get("selected_indices") or []
+            if isinstance(indices, list) and indices:
+                return f"選択（{indices}）を確定する。"
+            return "選択を確定する。"
+
+        elif atype == "DECLARE_REACTION":
+            # Declare/pass reaction. Keep concise natural phrasing.
+            if action.get("pass"):
+                return "リアクション: パスする。"
+            idx = action.get("reaction_index")
+            if isinstance(idx, int):
+                return f"リアクションを宣言する（インデックス {idx}）。"
+            return "リアクションを宣言する。"
+
+        elif atype == "STAT":
+            # Update game stats; prefer human-readable stat names.
+            key = action.get('stat') or action.get('str_param') or action.get('str_val')
+            amount = action.get('amount', action.get('value1', 0))
+            if key:
+                stat_name, unit = cls.STAT_KEY_MAP.get(str(key), (None, None))
+                if stat_name:
+                    return f"統計更新: {stat_name} += {amount}"
+            return f"統計更新: {tr(str(key))} += {amount}"
 
         if not template:
             return f"({tr(atype)})"

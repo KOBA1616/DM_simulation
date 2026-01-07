@@ -62,6 +62,31 @@ def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
         except Exception:
              pass # Ignore if not convertible
 
+    # ------------------------------------------------------------------
+    # Canonical key normalization (copy-only; keep legacy keys for compat)
+    # ------------------------------------------------------------------
+    # Prefer normalized keys used by docs / generators
+    if 'str_param' not in cmd:
+        if 'str_val' in cmd and cmd.get('str_val') is not None:
+            cmd['str_param'] = cmd.get('str_val')
+        elif 'str_val' in act and act.get('str_val') is not None:
+            cmd['str_param'] = act.get('str_val')
+
+    if 'amount' not in cmd:
+        # Typical legacy payloads store primary numeric in value1
+        if 'value1' in cmd and cmd.get('value1') is not None:
+            cmd['amount'] = cmd.get('value1')
+        elif 'value1' in act and act.get('value1') is not None:
+            cmd['amount'] = act.get('value1')
+
+    # Secondary numeric often appears as value2; keep it explicit if present
+    if 'value2' not in cmd and 'value2' in act:
+        cmd['value2'] = act.get('value2')
+
+    # For choice/select flows, flags may live in act; copy through
+    if 'flags' not in cmd and isinstance(act.get('flags'), list):
+        cmd['flags'] = list(act.get('flags') or [])
+
 def _validate_command_type(cmd: Dict[str, Any]):
     """
     Phase 2: Strict Type Enforcement.

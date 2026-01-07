@@ -584,7 +584,8 @@ if m:
             'MANA': "マナゾーン",
             'SHIELD': "シールドゾーン",
             'DECK': "デッキ",
-            'BUFFER': "効果バッファ",
+            'BUFFER': "バッファ",
+            'UNDER_CARD': "カードの下",
         }
         for _name, _text in _zone_map.items():
             _member = getattr(m.Zone, _name, None)

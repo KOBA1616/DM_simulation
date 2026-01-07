@@ -103,12 +103,47 @@ else:
 if _HAS_MODULE and hasattr(dm_ai_module, 'CommandType'):
     COMMAND_TYPES = _get_enum_names(dm_ai_module.CommandType)
 else:
+    # Fallback list should mirror docs/api/command_spec.md (best-effort)
     COMMAND_TYPES = [
-        "TRANSITION", "MUTATE", "FLOW", "QUERY",
-        "DRAW_CARD", "DISCARD", "DESTROY", "MANA_CHARGE",
-        "TAP", "UNTAP", "POWER_MOD", "ADD_KEYWORD",
-        "RETURN_TO_HAND", "BREAK_SHIELD", "SEARCH_DECK", "SHIELD_TRIGGER",
-        "NONE"
+        "TRANSITION",
+        "MUTATE",
+        "FLOW",
+        "QUERY",
+        "DRAW_CARD",
+        "DISCARD",
+        "DESTROY",
+        "MANA_CHARGE",
+        "TAP",
+        "UNTAP",
+        "POWER_MOD",
+        "ADD_KEYWORD",
+        "RETURN_TO_HAND",
+        "BREAK_SHIELD",
+        "SEARCH_DECK",
+        "SHIELD_TRIGGER",
+        "ATTACK_PLAYER",
+        "ATTACK_CREATURE",
+        "BLOCK",
+        "RESOLVE_BATTLE",
+        "RESOLVE_PLAY",
+        "RESOLVE_EFFECT",
+        "SHUFFLE_DECK",
+        "LOOK_AND_ADD",
+        "MEKRAID",
+        "REVEAL_CARDS",
+        "PLAY_FROM_ZONE",
+        "CAST_SPELL",
+        "SUMMON_TOKEN",
+        "SHIELD_BURN",
+        "SELECT_NUMBER",
+        "CHOICE",
+        "LOOK_TO_BUFFER",
+        "SELECT_FROM_BUFFER",
+        "PLAY_FROM_BUFFER",
+        "MOVE_BUFFER_TO_ZONE",
+        "FRIEND_BURST",
+        "REGISTER_DELAYED_EFFECT",
+        "NONE",
     ]
 
 # =============================================================================

@@ -25,4 +25,16 @@
 
 作成日: 2025-12-27 (Updated)
 
+## Editor-only ノードと未対応タイプ
+
+- `BRANCH`（条件分岐）: エディタ内ロジック用。エンジン実行コマンドではありません。保存時は `editor_only: true` を付与し、実行系へは流さないでください。
+- `FLOW: SEQUENCE`（順次実行）: エディタ構造表現用。`FlowType` に標準化された `PHASE_CHANGE` / `TURN_CHANGE` / `SET_ACTIVE_PLAYER` 等のみがネイティブサポート対象です。
+
+## テンプレート運用ガイドライン
+
+- 生成コマンドは必ず `type` に `TRANSITION` / `MUTATE` / `FLOW` / `QUERY` / `DECIDE` / `DECLARE_REACTION` / `STAT` / `GAME_RESULT` の正規タイプを使用してください。
+- ゾーン名は `HAND` / `DECK` / `BATTLE` / `MANA` / `SHIELD` / `GRAVEYARD` / `BUFFER` / `UNDER_CARD` のいずれかに正規化してください。
+- ドロー表現は `TRANSITION` の `from_zone=DECK` / `to_zone=HAND` で統一し、自然文生成で「カードをN枚引く。」に変換します（`DRAW_CARD` は内部互換として扱われます）。
+- マッピングは `dm_toolkit.action_to_command.action_to_command`（`map_action`）を唯一の入口として利用し、互換ロジックは `dm_toolkit.compat_wrappers` と `dm_toolkit.unified_execution` に集約します。
+
 ```

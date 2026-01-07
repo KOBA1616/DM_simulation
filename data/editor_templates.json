@@ -1,7 +1,7 @@
 {
   "commands": [
     {
-      "name": "Transition (Move Card)",
+      "name": "カード移動",
       "data": {
         "type": "TRANSITION",
         "target_group": "NONE",
@@ -10,16 +10,17 @@
       }
     },
     {
-      "name": "Branch (Condition)",
+      "name": "条件分岐（エディタ専用）",
       "data": {
         "type": "BRANCH",
         "condition": {},
         "if_true": [],
-        "if_false": []
+        "if_false": [],
+        "editor_only": true
       }
     },
     {
-      "name": "Mutate (Modifier)",
+      "name": "状態変更（付与）",
       "data": {
         "type": "MUTATE",
         "mutation_type": "ADD_MODIFIER",
@@ -27,15 +28,16 @@
       }
     },
     {
-      "name": "Flow (Sequence)",
+      "name": "進行（シーケンス／エディタ専用）",
       "data": {
         "type": "FLOW",
         "flow_type": "SEQUENCE",
-        "commands": []
+        "commands": [],
+        "editor_only": true
       }
     },
     {
-      "name": "Draw Card",
+      "name": "カードを引く",
       "data": {
         "type": "TRANSITION",
         "from_zone": "DECK",
@@ -45,7 +47,7 @@
       }
     },
     {
-      "name": "Destroy Card",
+      "name": "カードを破壊する",
       "data": {
         "type": "TRANSITION",
         "to_zone": "GRAVEYARD",
