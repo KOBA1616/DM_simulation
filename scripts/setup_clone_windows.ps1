@@ -26,6 +26,10 @@ param(
   [switch]$SkipSmokeTests,
   [switch]$NoInstall,
 
+  # Optional: attempt to install prerequisites (best-effort). Off by default.
+  [switch]$InstallCMake,
+  [switch]$InstallVSBuildTools,
+
   # Optional: explicitly pick the base python command used to create venv
   [string]$Python = ''
 )
@@ -35,6 +39,87 @@ $ErrorActionPreference = 'Stop'
 function Info([string]$m) { Write-Host "[info] $m" -ForegroundColor Cyan }
 function Warn([string]$m) { Write-Host "[warn] $m" -ForegroundColor Yellow }
 function Fail([string]$m) { Write-Error $m; exit 1 }
+
+function Test-HasCommand([string]$name) {
+  return [bool](Get-Command $name -ErrorAction SilentlyContinue)
+}
+
+function Enable-MsvcDevEnvironment {
+  # Best-effort: load MSVC environment variables into this PowerShell session.
+  # This helps CMake/MSBuild find cl/link when VS is installed but env is not configured.
+  $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+  if (-not (Test-Path $vswhere)) {
+    return $false
+  }
+
+  try {
+    $installPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null
+    $installPath = ($installPath | Select-Object -First 1)
+    if ([string]::IsNullOrWhiteSpace($installPath)) {
+      return $false
+    }
+
+    $vsDevCmd = Join-Path $installPath 'Common7\Tools\VsDevCmd.bat'
+    if (-not (Test-Path $vsDevCmd)) {
+      return $false
+    }
+
+    Info "Loading MSVC dev environment from: $vsDevCmd"
+    $cmd = "\"$vsDevCmd\" -no_logo -arch=x64 -host_arch=x64 && set"
+    $lines = & cmd.exe /c $cmd
+    foreach ($line in $lines) {
+      if ($line -match '^(?<k>[^=]+)=(?<v>.*)$') {
+        $env:${matches.k} = $matches.v
+      }
+    }
+    return $true
+  } catch {
+    return $false
+  }
+}
+
+function Ensure-BuildToolchain {
+  param([string]$toolchain)
+
+  if ($toolchain -eq 'msvc') {
+    # If cl.exe isn't available, try to load VS dev env. If that fails, provide clear guidance.
+    if (-not (Test-HasCommand 'cl.exe')) {
+      $loaded = Enable-MsvcDevEnvironment
+      if (-not $loaded -and -not (Test-HasCommand 'cl.exe')) {
+        Warn "MSVC build tools not detected (cl.exe not on PATH)."
+
+        if ($InstallVSBuildTools) {
+          if (Test-HasCommand 'winget') {
+            Info "Attempting to install Visual Studio 2022 Build Tools via winget (best-effort)..."
+            # Install Build Tools + VC workload (may require elevation / user interaction depending on policy)
+            winget install --id Microsoft.VisualStudio.2022.BuildTools -e --silent --override "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive --norestart"
+            Warn "Build Tools installation requested. Re-run this script in a new terminal after install completes."
+          } else {
+            Warn "winget not found; cannot auto-install Build Tools. Please install manually."
+          }
+        }
+
+        Fail (@(
+          'MSVC toolchain selected but Visual Studio C++ build tools are missing.',
+          'Install one of:',
+          '  - Visual Studio 2022 Build Tools (recommended) + "Desktop development with C++"',
+          '  - Visual Studio 2022 Community + C++ workload',
+          'Then re-run: pwsh -File .\\scripts\\setup_clone_windows.ps1'
+        ) -join "`n")
+      }
+    }
+  }
+
+  if ($toolchain -eq 'mingw') {
+    if (-not (Test-HasCommand 'g++.exe') -and -not (Test-HasCommand 'g++')) {
+      Fail (@(
+        'MinGW toolchain selected but g++ was not found on PATH.',
+        'Install MinGW/MSYS2 and add its bin directory to PATH, or run:',
+        '  pwsh -File .\\scripts\\setup_mingw_env.ps1 -GccPath "C:\\Path\\To\\x86_64-w64-mingw32-gcc.exe"'
+      ) -join "`n")
+    }
+  }
+}
 
 # Ensure UTF-8 for console output and Python I/O regardless of Windows locale.
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -48,9 +133,15 @@ try {
   Info "Repo root: $repoRoot"
 
   # --- Tool checks ---
-  foreach ($t in @('git','cmake')) {
-    if (-not (Get-Command $t -ErrorAction SilentlyContinue)) {
-      Fail "Required tool not found on PATH: $t"
+  if (-not (Test-HasCommand 'git')) { Fail 'Required tool not found on PATH: git' }
+  if (-not (Test-HasCommand 'cmake')) {
+    if ($InstallCMake -and (Test-HasCommand 'winget')) {
+      Info 'Installing CMake via winget (best-effort)...'
+      winget install --id Kitware.CMake -e --silent
+      Warn 'CMake install requested. Open a new terminal and re-run this script if cmake is still not found.'
+    }
+    if (-not (Test-HasCommand 'cmake')) {
+      Fail 'Required tool not found on PATH: cmake'
     }
   }
 
@@ -123,6 +214,7 @@ try {
 
   # --- Build native module ---
   if (-not $SkipBuild) {
+    Ensure-BuildToolchain -toolchain $Toolchain
     Info "Building native components via scripts/build.ps1 (Toolchain=$Toolchain, Configuration=$Configuration)"
     & (Join-Path $scriptDir 'build.ps1') -Toolchain $Toolchain -Config $Configuration
   } else {

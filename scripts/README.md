@@ -6,6 +6,7 @@
   - `init_env.ps1`（venv準備/起動の入口）
   - `setup_build_env.ps1` / `setup_mingw_env.ps1`
   - `setup_clone_windows.ps1`（クローン配布向け: 環境確認→venv→依存導入→ビルド→スモークテスト）
+  - `setup_gui_review_windows.ps1`（GUIレビュー専用: PyQt6のみ導入→カードエディタ起動。ネイティブ不要）
 
 - ビルド/テスト/CI
   - `build.ps1`（ローカルビルド）

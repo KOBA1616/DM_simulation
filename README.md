@@ -41,6 +41,18 @@ cd DM_simulation
 pwsh -File .\scripts\setup_clone_windows.ps1
 ```
 
+#### ビルドツールが無い（C++をビルドできない）場合
+
+このプロジェクトのフルGUI（対戦シミュレータ/シナリオ/AI表示など）は `dm_ai_module`（C++拡張）が必要です。相手PCにビルドツールが無い場合は次のどちらかになります。
+
+- **Build Tools を入れてビルドする（推奨）**
+	- Visual Studio 2022 Build Tools + C++（VCTools）を導入してから `setup_clone_windows.ps1` を再実行
+	- スクリプト側で best-effort の自動導入も試せます: `pwsh -File .\scripts\setup_clone_windows.ps1 -InstallVSBuildTools`
+
+- **GUI表示レビューだけ行う（ネイティブ不要の範囲に限定）**
+	- カードエディタ単体はネイティブ無しで起動できます:
+		- `pwsh -File .\scripts\setup_gui_review_windows.ps1`
+
 セットアップが通ったら、必要に応じて次を実行します。
 
 - GUI起動: `pwsh -File .\scripts\run_gui.ps1`

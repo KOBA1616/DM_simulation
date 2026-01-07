@@ -1,5 +1,7 @@
-$python = "C:\Users\ichirou\DM_simulation\.venv\Scripts\python.exe"
-$procdump = "C:\Users\ichirou\DM_simulation\tools\procdump64.exe"
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$repoRoot = (Resolve-Path (Join-Path $scriptDir '..')).Path
+$python = Join-Path $repoRoot '.venv\Scripts\python.exe'
+$procdump = Join-Path $repoRoot 'tools\procdump64.exe'
 New-Item -ItemType Directory -Force -Path dumps | Out-Null
 $proc = Start-Process -FilePath $python -ArgumentList '-m','pytest','-q' -PassThru
 Start-Sleep -Milliseconds 200

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import sys
 from PyQt6.QtWidgets import (
     QMainWindow, QSplitter, QVBoxLayout, QWidget, QMessageBox, QToolBar, QFileDialog,
     QSizePolicy
@@ -348,3 +349,33 @@ class CardEditor(QMainWindow):
 
     def delete_item(self):
         self.tree_widget.remove_current_item()
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Entry point for the card editor.
+
+    This GUI is useful for UI review and card JSON editing and does not require
+    the native dm_ai_module.
+    """
+    if argv is None:
+        argv = sys.argv[1:]
+
+    # Determine cards.json path
+    json_path = argv[0] if len(argv) >= 1 else os.path.join('data', 'cards.json')
+    if not os.path.exists(json_path):
+        # Fallback to repo-root relative when launched from within package folder
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        cand = os.path.join(base_dir, 'data', 'cards.json')
+        if os.path.exists(cand):
+            json_path = cand
+
+    from PyQt6.QtWidgets import QApplication
+
+    app = QApplication(sys.argv)
+    win = CardEditor(json_path)
+    win.show()
+    return app.exec()
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
