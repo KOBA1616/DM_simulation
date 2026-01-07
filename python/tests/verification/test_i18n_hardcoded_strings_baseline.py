@@ -38,9 +38,13 @@ def _scan_gui_for_hardcoded_strings(root: Path) -> set[str]:
     patterns = [
         re.compile(r"\bQLabel\(\s*([^,\)]+)"),
         re.compile(r"\bQPushButton\(\s*([^,\)]+)"),
+        re.compile(r"\bQCheckBox\(\s*([^,\)]+)"),
+        re.compile(r"\bQRadioButton\(\s*([^,\)]+)"),
         re.compile(r"\bQGroupBox\(\s*([^,\)]+)"),
         re.compile(r"\bQDockWidget\(\s*([^,\)]+)"),
         re.compile(r"\bQAction\(\s*([^,\)]+)"),
+        re.compile(r"\bQToolBar\(\s*([^,\)]+)"),
+        re.compile(r"\bQMenu\(\s*([^,\)]+)"),
         re.compile(r"\bsetWindowTitle\(\s*([^\)]+)\)"),
         re.compile(r"\bsetText\(\s*([^\)]+)\)"),
         re.compile(r"\bsetToolTip\(\s*([^\)]+)\)"),
@@ -79,6 +83,11 @@ def _scan_gui_for_hardcoded_strings(root: Path) -> set[str]:
             continue
 
         for idx, line in enumerate(lines, start=1):
+            stripped_line = line.strip()
+            # Ignore comments
+            if stripped_line.startswith("#"):
+                continue
+
             if "tr(" in line:
                 # We'll still check, but we avoid flagging if the captured arg is tr(...)
                 pass
