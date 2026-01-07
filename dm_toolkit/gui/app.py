@@ -56,6 +56,12 @@ class GameWindow(QMainWindow):
         # Initialize GameController
         self.controller = GameController(self.update_ui, self.log_message)
 
+        # Ensure log list exists before any callbacks (e.g., controller init) attempt to log.
+        self.log_list = QListWidget()
+
+        # Ensure GameState attribute exists before controller init triggers update_ui callback.
+        self.gs: Optional[GameState] = None
+
         # Load card database
         self.card_db: CardDB = {}
         loaded_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
@@ -333,7 +339,6 @@ class GameWindow(QMainWindow):
         self.log_dock = QDockWidget(tr("Logs"), self)
         self.log_dock.setObjectName("LogDock")
         self.log_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
-        self.log_list = QListWidget()
         self.log_dock.setWidget(self.log_list)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.log_dock)
         
@@ -698,6 +703,11 @@ class GameWindow(QMainWindow):
             self.is_processing = False
         
     def update_ui(self) -> None:
+        if self.gs is None:
+            return
+        # During early startup, controller.initialize_game may call update_ui before widgets exist.
+        if not hasattr(self, 'turn_label'):
+            return
         turn_number = EngineCompat.get_turn_number(self.gs)
         current_phase = EngineCompat.get_current_phase(self.gs)
         active_pid = EngineCompat.get_active_player_id(self.gs)

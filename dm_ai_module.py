@@ -24,6 +24,35 @@ from types import ModuleType
 from typing import Any, Optional
 
 
+def _ensure_windows_dll_search_path() -> None:
+    """Ensure dependent DLLs resolve from the active Python environment.
+
+    On Windows, native extensions (like dm_ai_module.pyd) may depend on DLLs such
+    as onnxruntime.dll. If an older DLL is found earlier on PATH, it can cause
+    C-API version mismatches at import time.
+    """
+    if os.name != "nt":
+        return
+    add_dir = getattr(os, "add_dll_directory", None)
+    if add_dir is None:
+        return
+
+    try:
+        import onnxruntime as ort  # type: ignore
+
+        ort_pkg_dir = os.path.dirname(os.path.abspath(ort.__file__))
+        capi_dir = os.path.join(ort_pkg_dir, "capi")
+        for p in (ort_pkg_dir, capi_dir):
+            if os.path.isdir(p):
+                try:
+                    add_dir(p)
+                except Exception:
+                    pass
+    except Exception:
+        # If onnxruntime isn't installed (or import fails), just skip.
+        pass
+
+
 def _repo_root() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
@@ -80,6 +109,8 @@ def _load_native_in_place(module_name: str, path: str) -> ModuleType:
 
 def _try_load_native() -> Optional[ModuleType]:
     root = _repo_root()
+
+    _ensure_windows_dll_search_path()
 
     # Allow explicit override (useful for debugging specific builds).
     override = os.environ.get("DM_AI_MODULE_NATIVE")

@@ -10,7 +10,7 @@ from dm_toolkit.consts import COMMAND_TYPES, GRANTABLE_KEYWORDS
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.gui.editor.action_converter import ActionConverter
 from dm_toolkit.gui.editor.forms.unified_widgets import (
-    make_scope_combo, make_value_spin, make_measure_mode_combo,
+    make_player_scope_selector, make_value_spin, make_measure_mode_combo,
     make_ref_mode_combo, make_zone_combos, make_option_controls
 )
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
@@ -118,10 +118,13 @@ class UnifiedActionForm(BaseEditForm):
         self.register_widget(self.type_combo)
         layout.addRow(tr("Command Type"), self.type_combo)
 
-        # Scope / Target Group
-        self.scope_combo = make_scope_combo(self)
-        self.register_widget(self.scope_combo)
-        layout.addRow(tr("Scope"), self.scope_combo)
+        # Scope / Target Group (Requirement: only self/opponent, civ-selector-like)
+        self.scope_widget, self.scope_self_check, self.scope_opp_check = make_player_scope_selector(self)
+        self.scope_self_check.setChecked(True)
+        self.register_widget(self.scope_widget)
+        self.register_widget(self.scope_self_check)
+        self.register_widget(self.scope_opp_check)
+        layout.addRow(tr("Scope"), self.scope_widget)
 
         # Common fields
         self.str_edit = QLineEdit()
@@ -244,7 +247,8 @@ class UnifiedActionForm(BaseEditForm):
         self.no_cost_check.stateChanged.connect(self.update_data)
         self.allow_duplicates_check.stateChanged.connect(self.update_data)
         self.arbitrary_check.stateChanged.connect(self.update_data)
-        self.scope_combo.currentIndexChanged.connect(self.update_data)
+        self.scope_self_check.stateChanged.connect(self._on_scope_check_changed)
+        self.scope_opp_check.stateChanged.connect(self._on_scope_check_changed)
         self.str_edit.textChanged.connect(self.update_data)
         self.val1_spin.valueChanged.connect(self.update_data)
         self.val2_spin.valueChanged.connect(self.update_data)
@@ -252,6 +256,27 @@ class UnifiedActionForm(BaseEditForm):
         self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
 
         self.update_ui_state(self.type_combo.currentData())
+
+    def _on_scope_check_changed(self):
+        """自分/相手のチェックを排他的に扱い、常にどちらかを選ばせる。"""
+        sender = self.sender()
+
+        if sender == self.scope_self_check and self.scope_self_check.isChecked():
+            self.scope_opp_check.blockSignals(True)
+            self.scope_opp_check.setChecked(False)
+            self.scope_opp_check.blockSignals(False)
+        elif sender == self.scope_opp_check and self.scope_opp_check.isChecked():
+            self.scope_self_check.blockSignals(True)
+            self.scope_self_check.setChecked(False)
+            self.scope_self_check.blockSignals(False)
+
+        # If user unchecks the last remaining one, default back to self.
+        if (not self.scope_self_check.isChecked()) and (not self.scope_opp_check.isChecked()):
+            self.scope_self_check.blockSignals(True)
+            self.scope_self_check.setChecked(True)
+            self.scope_self_check.blockSignals(False)
+
+        self.update_data()
 
     def on_group_changed(self):
         """When a group is selected, populate the type combo with relevant subtypes."""
@@ -344,7 +369,7 @@ class UnifiedActionForm(BaseEditForm):
     def update_ui_state(self, t):
         cfg = self._get_ui_config(t)
 
-        self.scope_combo.setVisible(cfg.get('target_group_visible', False))
+        self.scope_widget.setVisible(cfg.get('target_group_visible', False))
         self.filter_group.setVisible(cfg.get('target_filter_visible', False))
 
         # Amount
@@ -454,7 +479,16 @@ class UnifiedActionForm(BaseEditForm):
 
         self.set_combo_by_data(self.action_group_combo, grp)
         self.set_combo_by_data(self.type_combo, ui_type)
-        self.set_combo_by_data(self.scope_combo, data.get('target_group', 'NONE'))
+
+        target_group = data.get('target_group') or 'PLAYER_SELF'
+        self.scope_self_check.blockSignals(True)
+        self.scope_opp_check.blockSignals(True)
+        self.scope_self_check.setChecked(target_group == 'PLAYER_SELF')
+        self.scope_opp_check.setChecked(target_group == 'PLAYER_OPPONENT')
+        if not self.scope_self_check.isChecked() and not self.scope_opp_check.isChecked():
+            self.scope_self_check.setChecked(True)
+        self.scope_self_check.blockSignals(False)
+        self.scope_opp_check.blockSignals(False)
 
         self.str_edit.setText(data.get('str_param', ''))
 
@@ -511,7 +545,7 @@ class UnifiedActionForm(BaseEditForm):
         cmd['format'] = 'command' # Explicitly mark format
         cmd['type'] = sel
 
-        cmd['target_group'] = self.scope_combo.currentData()
+        cmd['target_group'] = 'PLAYER_SELF' if self.scope_self_check.isChecked() else 'PLAYER_OPPONENT'
         cmd['target_filter'] = self.filter_widget.get_data()
 
         # Standard mapping

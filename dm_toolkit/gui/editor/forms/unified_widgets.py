@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QComboBox, QSpinBox, QPushButton, QLabel, QHBoxLayout
+from PyQt6.QtWidgets import QComboBox, QSpinBox, QPushButton, QLabel, QHBoxLayout, QWidget, QGridLayout, QCheckBox
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.consts import ZONES_EXTENDED
 
@@ -10,6 +10,26 @@ def make_scope_combo(parent=None):
     for s in scopes:
         combo.addItem(tr(s), s)
     return combo
+
+
+def make_player_scope_selector(parent=None):
+    """文明選択のような形式で、自分/相手のみ選択できるスコープUI。
+
+    - UIはチェックボックス2つ（排他）
+    - 値は Command の target_group に対応（PLAYER_SELF / PLAYER_OPPONENT）
+    """
+    w = QWidget(parent)
+    layout = QGridLayout(w)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setHorizontalSpacing(12)
+
+    self_cb = QCheckBox(tr("PLAYER_SELF"), w)
+    opp_cb = QCheckBox(tr("PLAYER_OPPONENT"), w)
+
+    layout.addWidget(self_cb, 0, 0)
+    layout.addWidget(opp_cb, 0, 1)
+
+    return w, self_cb, opp_cb
 
 
 def make_value_spin(parent=None, minimum=-9999, maximum=9999):

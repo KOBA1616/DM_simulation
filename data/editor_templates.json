@@ -53,7 +53,7 @@
       }
     },
     {
-      "name": "Mana Charge",
+      "name": "マナゾーンに置く",
       "data": {
         "type": "TRANSITION",
         "to_zone": "MANA",

@@ -250,7 +250,8 @@ class CardTextGenerator:
                     elif k == "just_diver":
                         kw_str += "（このクリーチャーが出た時、次の自分のターンのはじめまで、このクリーチャーは相手に選ばれず、攻撃されない）"
 
-                    kw_lines.append(f"■ {kw_str}")
+                    # Requirement: show keyword abilities as generated text like "・スピードアタッカー"
+                    kw_lines.append(f"・{kw_str}")
         if kw_lines:
             lines.extend(kw_lines)
 
