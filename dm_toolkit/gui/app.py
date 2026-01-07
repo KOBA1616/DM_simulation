@@ -452,7 +452,7 @@ class GameWindow(QMainWindow):
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
     def show_help(self) -> None:
-        QMessageBox.information(self, tr("Help / Manual"), "Help text...")
+        QMessageBox.information(self, tr("Help / Manual"), tr("Help text..."))
 
     def toggle_simulation(self) -> None:
         if self.is_running:
@@ -485,7 +485,10 @@ class GameWindow(QMainWindow):
         query = EngineCompat.get_pending_query(self.gs)
         min_targets = query.params.get('min', 1)
         if len(self.selected_targets) < min_targets:
-            QMessageBox.warning(self, "Invalid Selection", f"Please select at least {min_targets} target(s).")
+            # QMessageBox.warning(self, "Invalid Selection", f"Please select at least {min_targets} target(s).")
+            # Converted to:
+            msg = tr("Please select at least {min_targets} target(s).").format(min_targets=min_targets)
+            QMessageBox.warning(self, tr("Invalid Selection"), msg)
             return
         targets = list(self.selected_targets)
         self.selected_targets = []
@@ -610,7 +613,7 @@ class GameWindow(QMainWindow):
         query = EngineCompat.get_pending_query(self.gs)
         if query.query_type == "SELECT_OPTION":
              options = query.options
-             item, ok = QInputDialog.getItem(self, "Select Option", "Choose an option:", options, 0, False)
+             item, ok = QInputDialog.getItem(self, tr("Select Option"), tr("Choose an option:"), options, 0, False)
              if ok and item:
                  idx = options.index(item)
                  EngineCompat.EffectResolver_resume(self.gs, self.card_db, idx)
@@ -632,7 +635,7 @@ class GameWindow(QMainWindow):
                      if found: items.append(found)
                  min_sel = query.params.get('min', 1)
                  max_sel = query.params.get('max', 99)
-                 dialog = CardSelectionDialog("Select Cards", "Please select cards:", items, min_sel, max_sel, self, self.card_db)
+                 dialog = CardSelectionDialog(tr("Select Cards"), tr("Please select cards:"), items, min_sel, max_sel, self, self.card_db)
                  if dialog.exec():
                      indices = dialog.get_selected_indices()
                      selected_instance_ids = [items[i].instance_id for i in indices]
@@ -680,7 +683,7 @@ class GameWindow(QMainWindow):
                             items.append({'source_name': source_name, 'description': desc, 'card_id': inst.card_id if inst else -1})
                             valid_actions.append(act)
                     if items:
-                         dialog = CardSelectionDialog("Select Trigger", "Select effect to resolve:", items, 1, 1, self, self.card_db)
+                         dialog = CardSelectionDialog(tr("Select Trigger"), tr("Select effect to resolve:"), items, 1, 1, self, self.card_db)
                          if dialog.exec():
                              indices = dialog.get_selected_indices()
                              if indices:

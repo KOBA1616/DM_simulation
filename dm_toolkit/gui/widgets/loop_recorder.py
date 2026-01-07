@@ -87,7 +87,7 @@ class LoopRecorderWidget(QWidget):
         current_hand = len(p0.hand)
         current_mana = len(p0.mana_zone)
 
-           self.log_text.append(tr("End Hash: {hash}").format(hash=current_hash))
+        self.log_text.append(tr("End Hash: {hash}").format(hash=current_hash))
 
         if current_hash == self.start_hash:
                self.log_text.append(tr("State Match: YES (Exact Hash)"))

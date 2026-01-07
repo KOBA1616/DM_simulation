@@ -67,7 +67,7 @@ class MCTSView(QWidget):
         children = tree_data.get("children", [])
         
         for child in children:
-            action_str = child.get("name", "Unknown")
+            action_str = child.get("name", tr("Unknown"))
             visits = child.get("visits", 0)
             value_sum = child.get("value", 0.0)
             avg_val = value_sum / visits if visits > 0 else 0.0
@@ -83,7 +83,7 @@ class MCTSView(QWidget):
             # Add grandchildren (optional, maybe too much detail)
             grandchildren = child.get("children", [])
             for gc in grandchildren:
-                gc_action = gc.get("name", "Unknown")
+                gc_action = gc.get("name", tr("Unknown"))
                 gc_visits = gc.get("visits", 0)
                 gc_val = gc.get("value", 0.0)
                 gc_avg = gc_val / gc_visits if gc_visits > 0 else 0.0
