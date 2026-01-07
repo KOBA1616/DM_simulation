@@ -18,7 +18,7 @@ class CardDetailPanel(QWidget):
         self.name_label.setWordWrap(True)
         layout.addWidget(self.name_label)
         
-        self.info_label = QLabel(f"{tr('Cost')}: - | {tr('Power')}: - | {tr('Civ')}: -")
+        self.info_label = QLabel(f"{tr('Cost')}: - | {tr('Power')}: - | {tr('Civilization')}: -")
         layout.addWidget(self.info_label)
         
         self.text_area = QTextEdit()
@@ -37,7 +37,7 @@ class CardDetailPanel(QWidget):
         civ_text = "/".join([tr(c) for c in civs])
 
         self.name_label.setText(card_data.name)
-        self.info_label.setText(f"{tr('Cost')}: {card_data.cost} | {tr('Power')}: {card_data.power} | {tr('Civ')}: {civ_text}")
+        self.info_label.setText(f"{tr('Cost')}: {card_data.cost} | {tr('Power')}: {card_data.power} | {tr('Civilization')}: {civ_text}")
         
         text = f"ID: {card_data.id}\n"
         text += f"{tr('Type')}: {str(card_data.type).split('.')[-1]}\n"
