@@ -261,9 +261,9 @@ class CommandEditForm(UnifiedActionForm):
         legacy_warning = data.get('legacy_warning', False)
         if legacy_warning:
             orig = data.get('legacy_original_type', 'Unknown')
-          self.warning_label.setText(
-            tr("Warning: Imperfect Conversion from {orig}").format(orig=orig)
-          )
+            self.warning_label.setText(
+                tr("Warning: Imperfect Conversion from {orig}").format(orig=orig)
+            )
             self.warning_label.setVisible(True)
         else:
             self.warning_label.setVisible(False)

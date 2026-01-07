@@ -3,7 +3,7 @@ GUI review launcher (Windows).
 
 Purpose:
   - Launch the Card Editor quickly for UI review.
-  - Does NOT install dependencies. Run setup_gui_review_windows.ps1 once first.
+  - Does NOT install dependencies. Run setup_run_gui_review_windows.ps1 once first.
 
 Usage:
   pwsh -File .\scripts\run_gui_review.ps1
@@ -29,7 +29,7 @@ $repoRoot = (Resolve-Path (Join-Path $scriptDir '..')).Path
 
 $pythonExe = Join-Path $repoRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path $pythonExe)) {
-  Fail "venv python not found: $pythonExe`nRun: pwsh -File .\\scripts\\setup_gui_review_windows.ps1"
+  Fail "venv python not found: $pythonExe`nRun: pwsh -File .\\scripts\\setup_run_gui_review_windows.ps1`n(or: pwsh -File .\\scripts\\setup_gui_review_windows.ps1 to setup+launch)"
 }
 
 Push-Location $repoRoot
