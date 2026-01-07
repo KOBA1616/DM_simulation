@@ -138,10 +138,10 @@ class GameWindow(QMainWindow):
         top_layout = QVBoxLayout()
         
         status_layout = QHBoxLayout()
-        self.turn_label = QLabel(f"{tr('Turn')}: 1")
+        self.turn_label = QLabel(tr("Turn: {turn}").format(turn=1))
         self.turn_label.setStyleSheet("font-weight: bold;")
-        self.phase_label = QLabel(f"{tr('Phase')}: START")
-        self.active_label = QLabel(f"{tr('Active')}: P0")
+        self.phase_label = QLabel(tr("Phase: {phase}").format(phase=tr("Start Phase")))
+        self.active_label = QLabel(tr("Active: P{player_id}").format(player_id=0))
         status_layout.addWidget(self.turn_label)
         status_layout.addWidget(self.phase_label)
         status_layout.addWidget(self.active_label)
@@ -257,12 +257,12 @@ class GameWindow(QMainWindow):
         
         self.p1_zones = QWidget()
         self.p1_layout = QVBoxLayout(self.p1_zones)
-        self.p1_hand = ZoneWidget("P1 手札")
-        self.p1_mana = ZoneWidget("P1 マナ")
-        self.p1_graveyard = ZoneWidget("P1 墓地")
-        self.p1_battle = ZoneWidget("P1 バトルゾーン")
-        self.p1_shield = ZoneWidget("P1 シールド")
-        self.p1_deck_zone = ZoneWidget("P1 デッキ")
+        self.p1_hand = ZoneWidget(tr("P1 Hand"))
+        self.p1_mana = ZoneWidget(tr("P1 Mana"))
+        self.p1_graveyard = ZoneWidget(tr("P1 Graveyard"))
+        self.p1_battle = ZoneWidget(tr("P1 Battle Zone"))
+        self.p1_shield = ZoneWidget(tr("P1 Shield Zone"))
+        self.p1_deck_zone = ZoneWidget(tr("P1 Deck"))
         
         self.p1_layout.addWidget(self.p1_hand)
         p1_row2 = QHBoxLayout()
@@ -278,12 +278,12 @@ class GameWindow(QMainWindow):
         
         self.p0_zones = QWidget()
         self.p0_layout = QVBoxLayout(self.p0_zones)
-        self.p0_battle = ZoneWidget("P0 バトルゾーン")
-        self.p0_deck_zone = ZoneWidget("P0 デッキ")
-        self.p0_shield = ZoneWidget("P0 シールド")
-        self.p0_mana = ZoneWidget("P0 マナ")
-        self.p0_graveyard = ZoneWidget("P0 墓地")
-        self.p0_hand = ZoneWidget("P0 手札")
+        self.p0_battle = ZoneWidget(tr("P0 Battle Zone"))
+        self.p0_deck_zone = ZoneWidget(tr("P0 Deck"))
+        self.p0_shield = ZoneWidget(tr("P0 Shield Zone"))
+        self.p0_mana = ZoneWidget(tr("P0 Mana"))
+        self.p0_graveyard = ZoneWidget(tr("P0 Graveyard"))
+        self.p0_hand = ZoneWidget(tr("P0 Hand"))
         
         # Connect
         self.p0_hand.action_triggered.connect(self.execute_action)
@@ -561,7 +561,7 @@ class GameWindow(QMainWindow):
                 self.loop_recorder.record_action(str(final_dict))
                 self.scenario_tools.record_action(str(final_dict))
             except Exception as e:
-                self.log_list.addItem(f"Execution Error: {e}")
+                self.log_list.addItem(tr("Execution Error: {error}").format(error=e))
                 # Fallback?
                 try:
                     EngineCompat.EffectResolver_resolve_action(self.gs, action, self.card_db)
@@ -713,10 +713,22 @@ class GameWindow(QMainWindow):
             return
         turn_number = EngineCompat.get_turn_number(self.gs)
         current_phase = EngineCompat.get_current_phase(self.gs)
+
+        phase_map = {
+            "START": "Start Phase",
+            "DRAW": "Draw Phase",
+            "MANA": "Mana Phase",
+            "MAIN": "Main Phase",
+            "ATTACK": "Attack Phase",
+            "BLOCK": "Block Phase",
+            "END": "End Phase"
+        }
+        phase_key = phase_map.get(str(current_phase), str(current_phase))
+
         active_pid = EngineCompat.get_active_player_id(self.gs)
-        self.turn_label.setText(f"{tr('Turn')}: {turn_number}")
-        self.phase_label.setText(f"{tr('Phase')}: {current_phase}")
-        self.active_label.setText(f"{tr('Active')}: P{active_pid}")
+        self.turn_label.setText(tr("Turn: {turn}").format(turn=turn_number))
+        self.phase_label.setText(tr("Phase: {phase}").format(phase=tr(phase_key)))
+        self.active_label.setText(tr("Active: P{player_id}").format(player_id=active_pid))
         
         self.stack_view.update_state(self.gs, self.card_db)
 

@@ -365,6 +365,45 @@ TRANSLATIONS: Dict[Any, str] = {
     "Spell Name": "呪文名",
     "Spell Text": "呪文テキスト",
 
+    # Phase 2 Main Screen Keys (Zones)
+    "P0 Hand": "P0 手札",
+    "P0 Mana": "P0 マナ",
+    "P0 Graveyard": "P0 墓地",
+    "P0 Battle Zone": "P0 バトルゾーン",
+    "P0 Shield Zone": "P0 シールド",
+    "P0 Deck": "P0 デッキ",
+    "P1 Hand": "P1 手札",
+    "P1 Mana": "P1 マナ",
+    "P1 Graveyard": "P1 墓地",
+    "P1 Battle Zone": "P1 バトルゾーン",
+    "P1 Shield Zone": "P1 シールド",
+    "P1 Deck": "P1 デッキ",
+
+    # Phases
+    "Start Phase": "開始フェーズ",
+    "Draw Phase": "ドローフェーズ",
+    "Mana Phase": "マナフェーズ",
+    "Main Phase": "メインフェーズ",
+    "Attack Phase": "攻撃フェーズ",
+    "Block Phase": "ブロックフェーズ",
+    "End Phase": "終了フェーズ",
+
+    # ZoneWidget
+    "Deck ({count})": "デッキ ({count})",
+    "Shield ({count})": "シールド ({count})",
+
+    # CardDetailPanel
+    "Civ": "文明",
+
+    # App Log
+    "Execution Error": "実行エラー",
+    "Execution Error: {error}": "実行エラー: {error}",
+    "Turn: {turn}": "ターン: {turn}",
+    "Phase: {phase}": "フェーズ: {phase}",
+    "Active: P{player_id}": "アクティブ: P{player_id}",
+    "Loaded Deck for P0": "P0のデッキを読み込みました",
+    "Loaded Deck for P1": "P1のデッキを読み込みました",
+
     # Loop recorder / logs
     "Start Hash: {hash}": "開始ハッシュ: {hash}",
     "End Hash: {hash}": "終了ハッシュ: {hash}",
