@@ -41,7 +41,7 @@ class FilterEditorWidget(QWidget):
         zone_grid = QGridLayout()
         for i, z in enumerate(zones):
             cb = QCheckBox(tr(z))
-            cb.setToolTip(tr(f"Include {z} in target selection"))
+            cb.setToolTip(tr("Include {zone} in target selection").format(zone=tr(z)))
             self.zone_checks[z] = cb
             zone_grid.addWidget(cb, i//2, i%2)
             cb.stateChanged.connect(self.filterChanged.emit)
@@ -93,9 +93,9 @@ class FilterEditorWidget(QWidget):
         self.max_cost_spin.setSpecialValueText(tr("Any"))
 
         cost_layout = QGridLayout()
-        cost_layout.addWidget(QLabel("Min:"), 0, 0)
+        cost_layout.addWidget(QLabel(tr("Min:")), 0, 0)
         cost_layout.addWidget(self.min_cost_spin, 0, 1)
-        cost_layout.addWidget(QLabel("Max:"), 0, 2)
+        cost_layout.addWidget(QLabel(tr("Max:")), 0, 2)
         cost_layout.addWidget(self.max_cost_spin, 0, 3)
         stats_layout.addLayout(cost_layout, 0, 1)
 
@@ -116,9 +116,9 @@ class FilterEditorWidget(QWidget):
         self.max_power_spin.setSpecialValueText(tr("Any"))
 
         power_layout = QGridLayout()
-        power_layout.addWidget(QLabel("Min:"), 0, 0)
+        power_layout.addWidget(QLabel(tr("Min:")), 0, 0)
         power_layout.addWidget(self.min_power_spin, 0, 1)
-        power_layout.addWidget(QLabel("Max:"), 0, 2)
+        power_layout.addWidget(QLabel(tr("Max:")), 0, 2)
         power_layout.addWidget(self.max_power_spin, 0, 3)
         stats_layout.addLayout(power_layout, 1, 1)
 

@@ -280,7 +280,12 @@ class ScenarioToolsDock(QDockWidget):
         if "enemy_shields" in config: setup_zone(1, dm_ai_module.Zone.SHIELD, config["enemy_shields"])
 
         self.parent_window.update_ui()
-        QMessageBox.information(self, tr("Scenario Loaded"), tr(f"Loaded scenario: {scenario.get('name')}"))
+        loaded_name = scenario.get('name') or "?"
+        QMessageBox.information(
+            self,
+            tr("Scenario Loaded"),
+            tr("Loaded scenario: {name}").format(name=loaded_name),
+        )
 
     def on_add_specific_card(self):
         if not self.gs: return
@@ -333,7 +338,11 @@ class ScenarioToolsDock(QDockWidget):
                 self.parent_window.update_ui()
 
         except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"Failed to add card: {e}")
+            QMessageBox.critical(
+                self,
+                tr("Error"),
+                tr("Failed to add card: {error}").format(error=e),
+            )
 
     def on_clear_zone(self):
         # Implementation: Move all cards in target zone to Graveyard.
@@ -435,9 +444,17 @@ class ScenarioToolsDock(QDockWidget):
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             self.load_scenarios() # Refresh list
-            QMessageBox.information(self, tr("Success"), tr(f"Scenario '{name}' saved."))
+            QMessageBox.information(
+                self,
+                tr("Success"),
+                tr("Scenario '{name}' saved.").format(name=name),
+            )
         except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"Failed to save: {e}")
+            QMessageBox.critical(
+                self,
+                tr("Error"),
+                tr("Failed to save: {error}").format(error=e),
+            )
 
     def on_toggle_record(self):
         if self.btn_record.isChecked():

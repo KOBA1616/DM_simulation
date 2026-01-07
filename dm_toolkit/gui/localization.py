@@ -149,6 +149,13 @@ TRANSLATIONS: Dict[Any, str] = {
     "Load Deck P1": "デッキ読込 P1",
     "God View": "ゴッドビュー (全公開)",
     "Help / Manual": "ヘルプ / マニュアル",
+    "DM AI Simulator": "DM AI シミュレーター",
+    "OK": "OK",
+    "Cancel": "キャンセル",
+    "Ready": "準備完了",
+    "Recording Loop...": "ループ記録中...",
+    "Start Recording": "記録開始",
+    "Stop & Verify": "停止＆検証",
     "Logs": "ログ",
     "MCTS Analysis": "MCTS分析",
     "Invalid Deck": "無効なデッキ",
@@ -255,6 +262,43 @@ TRANSLATIONS: Dict[Any, str] = {
     "Advance game by one step": "ゲームを1ステップ進める",
     "Confirm target selection": "対象選択を確定",
     "Reset the game state": "ゲーム状態をリセット",
+
+    # Messages with placeholders
+    "Loaded scenario: {name}": "シナリオを読み込みました: {name}",
+    "Scenario '{name}' saved.": "シナリオ '{name}' を保存しました。",
+    "Failed to add card: {error}": "カード追加に失敗しました: {error}",
+    "Failed to save: {error}": "保存に失敗しました: {error}",
+    "Include {zone} in target selection": "{zone} を対象に含める",
+    "This type '{cmd_type}' is only supported by the Legacy Action format.": "このタイプ '{cmd_type}' はレガシーAction形式のみ対応です。",
+    "Warning: Imperfect Conversion from {orig}": "警告: {orig} からの変換は不完全な可能性があります",
+    "Race": "種族",
+    "[Creature]": "[クリーチャー]",
+    "Creature Name": "クリーチャー名",
+    "Creature Text": "クリーチャーテキスト",
+    "Spell Name": "呪文名",
+    "Spell Text": "呪文テキスト",
+
+    # Loop recorder / logs
+    "Start Hash: {hash}": "開始ハッシュ: {hash}",
+    "End Hash: {hash}": "終了ハッシュ: {hash}",
+    "Resources: Hand={hand}, Mana={mana}": "リソース: 手札={hand}, マナ={mana}",
+    "Action: {action}": "アクション: {action}",
+    "State Match: YES (Exact Hash)": "状態一致: はい (完全一致)",
+    "State Match: NO": "状態一致: いいえ",
+    "Hand Diff: {diff}": "手札差分: {diff}",
+    "Mana Diff: {diff}": "マナ差分: {diff}",
+    "RESULT: Infinite Loop with Advantage Proven!": "結果: 無限ループ + 有利が証明されました!",
+    "RESULT: Loop Proven (No Resource Gain detected yet)": "結果: ループは証明されました (リソース増加は未検出)",
+    "Game Initialized via Controller": "ゲーム初期化 (Controller)",
+    "Game Over": "ゲーム終了",
+    "Controller Action: {type}": "Controllerアクション: {type}",
+    "Controller Execution Error: {error}": "Controller実行エラー: {error}",
+
+    # MCTS tooltips
+    "Action: {name}\nVisits: {visits}\nValue: {value}": "アクション: {name}\n訪問回数: {visits}\n評価値: {value}",
+
+    # Editor tooltips
+    "Legacy Action: {orig}\nPlease replace with modern Commands.": "レガシーAction: {orig}\n可能なら新しいCommandに置き換えてください。",
 }
 
 # Add Enum mappings if module is available

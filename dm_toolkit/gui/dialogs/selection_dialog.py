@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont, QIcon
 
+from dm_toolkit.gui.localization import tr
+
 class CardSelectionDialog(QDialog):
     """
     A generic dialog for selecting cards or actions.
@@ -48,9 +50,9 @@ class CardSelectionDialog(QDialog):
 
         # Buttons
         btn_layout = QHBoxLayout()
-        self.ok_btn = QPushButton("OK")
+        self.ok_btn = QPushButton(tr("OK"))
         self.ok_btn.clicked.connect(self.accept_selection)
-        self.cancel_btn = QPushButton("Cancel")
+        self.cancel_btn = QPushButton(tr("Cancel"))
         self.cancel_btn.clicked.connect(self.reject)
 
         # If selection is mandatory (min >= 1), user shouldn't be able to just close/cancel easily
@@ -103,9 +105,9 @@ class CardSelectionDialog(QDialog):
 
         # Update OK button text to show count
         if self.max_selection > 1:
-            self.ok_btn.setText(f"OK ({count}/{self.max_selection})")
+            self.ok_btn.setText(f"{tr('OK')} ({count}/{self.max_selection})")
         else:
-            self.ok_btn.setText("OK")
+            self.ok_btn.setText(tr("OK"))
 
     def accept_selection(self):
         selected_items = self.list_widget.selectedItems()

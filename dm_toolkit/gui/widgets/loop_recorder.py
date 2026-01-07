@@ -12,15 +12,15 @@ class LoopRecorderWidget(QWidget):
         self.gs_ref = game_state_ref # Reference to GameWindow's GS wrapper (or we pass it in update)
         self._layout = QVBoxLayout(self)
 
-        self.status_label = QLabel("Ready")
+        self.status_label = QLabel(tr("Ready"))
         self._layout.addWidget(self.status_label)
 
         btn_layout = QHBoxLayout()
-        self.start_btn = QPushButton("Start Recording")
+        self.start_btn = QPushButton(tr("Start Recording"))
         self.start_btn.clicked.connect(self.start_recording)
         btn_layout.addWidget(self.start_btn)
 
-        self.stop_btn = QPushButton("Stop & Verify")
+        self.stop_btn = QPushButton(tr("Stop & Verify"))
         self.stop_btn.clicked.connect(self.stop_and_verify)
         self.stop_btn.setEnabled(False)
         btn_layout.addWidget(self.stop_btn)
@@ -57,10 +57,15 @@ class LoopRecorderWidget(QWidget):
 
         self.action_history = []
 
-        self.status_label.setText("Recording Loop...")
+        self.status_label.setText(tr("Recording Loop..."))
         self.log_text.clear()
-        self.log_text.append(f"Start Hash: {self.start_hash}")
-        self.log_text.append(f"Resources: Hand={self.initial_hand_size}, Mana={self.initial_mana_size}")
+        self.log_text.append(tr("Start Hash: {hash}").format(hash=self.start_hash))
+        self.log_text.append(
+            tr("Resources: Hand={hand}, Mana={mana}").format(
+                hand=self.initial_hand_size,
+                mana=self.initial_mana_size,
+            )
+        )
 
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
@@ -68,7 +73,7 @@ class LoopRecorderWidget(QWidget):
     def record_action(self, action_str):
         if self.recording:
             self.action_history.append(action_str)
-            self.log_text.append(f"Action: {action_str}")
+            self.log_text.append(tr("Action: {action}").format(action=action_str))
 
     def stop_and_verify(self):
         if not self.gs_ref or not self.gs_ref():
@@ -82,26 +87,26 @@ class LoopRecorderWidget(QWidget):
         current_hand = len(p0.hand)
         current_mana = len(p0.mana_zone)
 
-        self.log_text.append(f"End Hash: {current_hash}")
+           self.log_text.append(tr("End Hash: {hash}").format(hash=current_hash))
 
         if current_hash == self.start_hash:
-             self.log_text.append("State Match: YES (Exact Hash)")
+               self.log_text.append(tr("State Match: YES (Exact Hash)"))
         else:
-             self.log_text.append("State Match: NO")
+               self.log_text.append(tr("State Match: NO"))
 
         # Check advantage
         diff_hand = current_hand - self.initial_hand_size
         diff_mana = current_mana - self.initial_mana_size
 
-        self.log_text.append(f"Hand Diff: {diff_hand}")
-        self.log_text.append(f"Mana Diff: {diff_mana}")
+        self.log_text.append(tr("Hand Diff: {diff}").format(diff=diff_hand))
+        self.log_text.append(tr("Mana Diff: {diff}").format(diff=diff_mana))
 
         if current_hash == self.start_hash:
             if diff_hand > 0 or diff_mana > 0:
-                self.log_text.append("RESULT: Infinite Loop with Advantage Proven!")
+                self.log_text.append(tr("RESULT: Infinite Loop with Advantage Proven!"))
             else:
-                 self.log_text.append("RESULT: Loop Proven (No Resource Gain detected yet)")
+                 self.log_text.append(tr("RESULT: Loop Proven (No Resource Gain detected yet)"))
 
         self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
-        self.status_label.setText("Ready")
+        self.status_label.setText(tr("Ready"))

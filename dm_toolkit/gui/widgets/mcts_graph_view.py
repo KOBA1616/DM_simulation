@@ -3,6 +3,8 @@ from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsEllipseItem,
 from PyQt6.QtGui import QPen, QBrush, QColor, QFont, QPainter
 from PyQt6.QtCore import Qt, QRectF
 
+from dm_toolkit.gui.localization import tr
+
 class MCTSGraphView(QGraphicsView):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -88,7 +90,13 @@ class MCTSGraphView(QGraphicsView):
         
         item = self._scene.addEllipse(rect, pen, brush)
         if item is not None:
-            item.setToolTip(f"Action: {data.get('name')}\nVisits: {visits}\nValue: {avg_val:.2f}")
+            item.setToolTip(
+                tr("Action: {name}\nVisits: {visits}\nValue: {value}").format(
+                    name=data.get('name'),
+                    visits=visits,
+                    value=f"{avg_val:.2f}",
+                )
+            )
         
         if not small:
             text = data.get("name", "")

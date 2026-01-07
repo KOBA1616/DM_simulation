@@ -150,7 +150,10 @@ class CommandEditForm(UnifiedActionForm):
 
         # If the selected type is not a native CommandType, display a legacy warning
         if cmd_type and cmd_type not in COMMAND_TYPES:
-          self.warning_label.setText(tr(f"This type '{cmd_type}' is only supported by the Legacy Action format."))
+          self.warning_label.setText(
+              tr("This type '{cmd_type}' is only supported by the Legacy Action format.")
+              .format(cmd_type=cmd_type)
+          )
           self.warning_label.setVisible(True)
         else:
           self.warning_label.setVisible(False)
@@ -258,7 +261,9 @@ class CommandEditForm(UnifiedActionForm):
         legacy_warning = data.get('legacy_warning', False)
         if legacy_warning:
             orig = data.get('legacy_original_type', 'Unknown')
-            self.warning_label.setText(tr(f"Warning: Imperfect Conversion from {orig}"))
+          self.warning_label.setText(
+            tr("Warning: Imperfect Conversion from {orig}").format(orig=orig)
+          )
             self.warning_label.setVisible(True)
         else:
             self.warning_label.setVisible(False)

@@ -50,7 +50,7 @@ from dm_toolkit.gui.game_controller import GameController
 class GameWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("DM AI Simulator")
+        self.setWindowTitle(tr("DM AI Simulator"))
         self.resize(1600, 900)
 
         # Initialize GameController

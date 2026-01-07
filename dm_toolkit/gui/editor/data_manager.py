@@ -1013,7 +1013,11 @@ class CardDataManager:
         item.setData(command, Qt.ItemDataRole.UserRole + 2)
 
         if command.get('legacy_warning'):
-             item.setToolTip(f"Legacy Action: {command.get('legacy_original_type', 'Unknown')}\nPlease replace with modern Commands.")
+             item.setToolTip(
+                 tr("Legacy Action: {orig}\nPlease replace with modern Commands.").format(
+                     orig=command.get('legacy_original_type', 'Unknown')
+                 )
+             )
              # item.setForeground(QColor("orange")) # Requires QColor import, relying on label icon for now
 
         if 'if_true' in command and command['if_true']:

@@ -6,6 +6,7 @@ from dm_toolkit.types import GameState, CardDB, Action
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.unified_execution import ensure_executable_command
 from dm_toolkit.commands import wrap_action
+from dm_toolkit.gui.localization import tr
 
 try:
     import dm_ai_module
@@ -35,7 +36,7 @@ class GameController:
                 dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
         else:
             self.gs = None
-        self.callback_log("Game Initialized via Controller")
+        self.callback_log(tr("Game Initialized via Controller"))
         self.callback_update_ui()
 
     def reset_game(self, p0_deck: Optional[List[int]] = None, p1_deck: Optional[List[int]] = None) -> None:
@@ -52,7 +53,7 @@ class GameController:
         if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
              dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
 
-        self.callback_log("Game Reset")
+           self.callback_log(tr("Game Reset"))
         self.callback_update_ui()
 
     def execute_action(self, action: Any) -> None:
@@ -71,13 +72,19 @@ class GameController:
              command = wrap_action(cmd_dict)
              if command:
                  command.execute(self.gs)
-                 self.callback_log(f"Controller Action: {cmd_dict.get('type', 'UNKNOWN')}")
+                 self.callback_log(
+                     tr("Controller Action: {type}").format(
+                         type=cmd_dict.get('type', 'UNKNOWN')
+                     )
+                 )
              else:
                  # Fallback if wrapping fails
                  EngineCompat.ExecuteCommand(self.gs, action, self.card_db)
 
         except Exception as e:
-             self.callback_log(f"Controller Execution Error: {e}")
+             self.callback_log(
+                 tr("Controller Execution Error: {error}").format(error=e)
+             )
 
         self.callback_update_ui()
 
@@ -87,7 +94,7 @@ class GameController:
         """
         if not self.gs: return
         if self.gs.game_over:
-            self.callback_log("Game Over")
+            self.callback_log(tr("Game Over"))
             return
 
         # Simple step logic

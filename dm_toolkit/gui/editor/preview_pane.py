@@ -171,20 +171,20 @@ class CardPreviewWidget(QWidget):
         layout.addWidget(self.cost_label, 0, 0)
 
         # Name
-        self.name_label = QLabel("Card Name")
+        self.name_label = QLabel(tr("Card Name"))
         self.name_label.setStyleSheet("font-weight: bold; font-size: 14px; background-color: transparent;")
         self.name_label.setWordWrap(True)
         self.name_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self.name_label, 0, 1, 1, 2)
 
         # Race
-        self.race_label = QLabel("Race")
+        self.race_label = QLabel(tr("Race"))
         self.race_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.race_label.setStyleSheet("font-style: italic; font-size: 10px; background-color: transparent;")
         layout.addWidget(self.race_label, 1, 1, 1, 2)
 
         # Type
-        self.type_label = QLabel("[Creature]")
+        self.type_label = QLabel(tr("[Creature]"))
         self.type_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.type_label.setStyleSheet("font-weight: bold; font-size: 10px; background-color: transparent;")
         layout.addWidget(self.type_label, 1, 0)
@@ -219,15 +219,15 @@ class CardPreviewWidget(QWidget):
         self.tp_cost_label.setFixedSize(24, 24)
         upper_layout.addWidget(self.tp_cost_label, 0, 0)
 
-        self.tp_name_label = QLabel("Creature Name")
+        self.tp_name_label = QLabel(tr("Creature Name"))
         self.tp_name_label.setStyleSheet("font-weight: bold; font-size: 12px;")
         upper_layout.addWidget(self.tp_name_label, 0, 1)
 
-        self.tp_race_label = QLabel("Race")
+        self.tp_race_label = QLabel(tr("Race"))
         self.tp_race_label.setStyleSheet("font-style: italic; font-size: 9px;")
         upper_layout.addWidget(self.tp_race_label, 1, 1)
 
-        self.tp_body_label = QLabel("Creature Text")
+        self.tp_body_label = QLabel(tr("Creature Text"))
         self.tp_body_label.setWordWrap(True)
         self.tp_body_label.setStyleSheet("font-size: 10px; background-color: rgba(255,255,255,0.4);")
         self.tp_body_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
@@ -250,11 +250,11 @@ class CardPreviewWidget(QWidget):
         self.tp_spell_cost_label.setFixedSize(24, 24)
         lower_layout.addWidget(self.tp_spell_cost_label, 0, 2, Qt.AlignmentFlag.AlignRight) # Column 2
 
-        self.tp_spell_name_label = QLabel("Spell Name")
+        self.tp_spell_name_label = QLabel(tr("Spell Name"))
         self.tp_spell_name_label.setStyleSheet("font-weight: bold; font-size: 12px;")
         lower_layout.addWidget(self.tp_spell_name_label, 0, 0, 1, 2)
 
-        self.tp_spell_body_label = QLabel("Spell Text")
+        self.tp_spell_body_label = QLabel(tr("Spell Text"))
         self.tp_spell_body_label.setWordWrap(True)
         self.tp_spell_body_label.setStyleSheet("font-size: 10px; background-color: rgba(255,255,255,0.4);")
         self.tp_spell_body_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
