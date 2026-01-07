@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
 from PyQt6.QtCore import Qt, pyqtSignal
 from .card_widget import CardWidget
-from dm_toolkit.gui.localization import get_card_civilization
+from dm_toolkit.gui.localization import tr, get_card_civilization
 from dm_toolkit.commands import wrap_action
 
 class ZoneWidget(QWidget):
@@ -77,7 +77,10 @@ class ZoneWidget(QWidget):
             # Single Bundle Representation
             count = len(card_data_list)
             # Use ID 0 (Back of Card)
-            display_name = f"Deck ({count})" if is_deck else f"Shield ({count})"
+            if is_deck:
+                display_name = tr("Deck ({count})").format(count=count)
+            else:
+                display_name = tr("Shield ({count})").format(count=count)
             # Pass is_face_down=True
             widget = CardWidget(0, display_name, 0, 0, "COLORLESS", False, -1, None, True)
             # Clicking emits signal with ID 0
