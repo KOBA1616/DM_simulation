@@ -14,12 +14,12 @@ class PendingEffectItem(QListWidgetItem):
         self.index = index
         self.effect_info = effect_info
 
-        effect_type = str(effect_info.get("type", "UNKNOWN"))
+        effect_type = str(effect_info.get("type", tr("Unknown")))
         controller = effect_info.get("controller", -1)
-        resolve_type = str(effect_info.get("resolve_type", "NONE"))
+        resolve_type = str(effect_info.get("resolve_type", tr("NONE")))
 
         display_text = f"[{index}] {effect_type} - {card_name} (P{controller})"
-        if resolve_type != "NONE":
+        if resolve_type != tr("NONE") and resolve_type != "NONE":
             display_text += f" [{resolve_type}]"
 
         self.setText(display_text)
@@ -87,7 +87,7 @@ class StackViewWidget(QWidget):
 
         for i, eff in enumerate(self.current_effects):
             source_id = eff.get("source_instance_id", -1)
-            card_name = "Unknown"
+            card_name = tr("Unknown")
             if source_id != -1:
                 # We need to look up card name from instance.
                 # game_state.get_card_instance(source_id) might be tricky if instance is gone,

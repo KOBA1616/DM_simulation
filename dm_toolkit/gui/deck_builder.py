@@ -137,7 +137,7 @@ class DeckBuilder(QWidget):
             self.populate_card_list()
             QMessageBox.information(self, tr("Info"), tr("Database reloaded!"))
         except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"Failed to reload database: {e}")
+            QMessageBox.critical(self, tr("Error"), tr("Failed to reload database: {e}").format(e=e))
 
     def populate_card_list(self):
         self.card_list.clear()
@@ -145,7 +145,8 @@ class DeckBuilder(QWidget):
         sorted_ids = sorted(self.card_db.keys())
         for cid in sorted_ids:
             card = self.card_db[cid]
-            self.card_list.addItem(f"[{cid}] {card.name} (Cost: {card.cost})")
+            # self.card_list.addItem(f"[{cid}] {card.name} (Cost: {card.cost})")
+            self.card_list.addItem(f"[{cid}] {card.name} " + tr("(Cost: {cost})").format(cost=card.cost))
 
     def filter_cards(self, text):
         # Simple filter
@@ -155,7 +156,7 @@ class DeckBuilder(QWidget):
             card = self.card_db[cid]
             if text.lower() in card.name.lower():
                 self.card_list.addItem(
-                    f"[{cid}] {card.name} (Cost: {card.cost})"
+                    f"[{cid}] {card.name} " + tr("(Cost: {cost})").format(cost=card.cost)
                 )
 
     def add_card(self, item):
