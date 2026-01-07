@@ -257,12 +257,12 @@ class GameWindow(QMainWindow):
         
         self.p1_zones = QWidget()
         self.p1_layout = QVBoxLayout(self.p1_zones)
-        self.p1_hand = ZoneWidget("P1 手札")
-        self.p1_mana = ZoneWidget("P1 マナ")
-        self.p1_graveyard = ZoneWidget("P1 墓地")
-        self.p1_battle = ZoneWidget("P1 バトルゾーン")
-        self.p1_shield = ZoneWidget("P1 シールド")
-        self.p1_deck_zone = ZoneWidget("P1 デッキ")
+        self.p1_hand = ZoneWidget(tr("P1 Hand"))
+        self.p1_mana = ZoneWidget(tr("P1 Mana"))
+        self.p1_graveyard = ZoneWidget(tr("P1 Graveyard"))
+        self.p1_battle = ZoneWidget(tr("P1 Battle Zone"))
+        self.p1_shield = ZoneWidget(tr("P1 Shield"))
+        self.p1_deck_zone = ZoneWidget(tr("P1 Deck"))
         
         self.p1_layout.addWidget(self.p1_hand)
         p1_row2 = QHBoxLayout()
@@ -278,12 +278,12 @@ class GameWindow(QMainWindow):
         
         self.p0_zones = QWidget()
         self.p0_layout = QVBoxLayout(self.p0_zones)
-        self.p0_battle = ZoneWidget("P0 バトルゾーン")
-        self.p0_deck_zone = ZoneWidget("P0 デッキ")
-        self.p0_shield = ZoneWidget("P0 シールド")
-        self.p0_mana = ZoneWidget("P0 マナ")
-        self.p0_graveyard = ZoneWidget("P0 墓地")
-        self.p0_hand = ZoneWidget("P0 手札")
+        self.p0_battle = ZoneWidget(tr("P0 Battle Zone"))
+        self.p0_deck_zone = ZoneWidget(tr("P0 Deck"))
+        self.p0_shield = ZoneWidget(tr("P0 Shield"))
+        self.p0_mana = ZoneWidget(tr("P0 Mana"))
+        self.p0_graveyard = ZoneWidget(tr("P0 Graveyard"))
+        self.p0_hand = ZoneWidget(tr("P0 Hand"))
         
         # Connect
         self.p0_hand.action_triggered.connect(self.execute_action)
