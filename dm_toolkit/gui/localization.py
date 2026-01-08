@@ -302,6 +302,7 @@ TRANSLATIONS: Dict[Any, str] = {
     "CARD_MOVE": "カード移動",
     "DECK_OPS": "デッキ操作",
     "PLAY": "プレイ",
+    "BUFFER": "バッファ関連",
     "CHEAT_PUT": "踏み倒し",
     "GRANT": "付与（状態変更）",
     "LOGIC": "ロジック",
@@ -337,6 +338,7 @@ TRANSLATIONS: Dict[Any, str] = {
     "Generate Options": "選択肢を生成",
     "Options to Add": "追加する選択肢数",
     "Manual Input": "手動入力",
+    "Up to": "まで",
     "Property Inspector": "プロパティインスペクタ",
     "Select an item to edit": "編集する項目を選択してください",
     "Stat Key": "統計キー",
@@ -366,7 +368,7 @@ TRANSLATIONS: Dict[Any, str] = {
     "SPELLS_CAST": "呪文詠唱数",
     "P1_WIN": "P1勝利",
     "P2_WIN": "P2勝利",
-    "DRAW": "引き分け",
+    "GAME_DRAW": "引き分け",
     "NONE": "なし",
     "PLAYER_SELF": "自分",
     "PLAYER_OPPONENT": "相手",
@@ -739,7 +741,7 @@ if m:
         getattr(m, 'FlowType', None),
         getattr(m, 'MutationType', None),
         getattr(m, 'StatType', None),
-        getattr(m, 'GameResult', None),
+        # Note: Avoid adding GameResult string keys to prevent 'DRAW' from overriding group translation.
     ]
     for enum_cls in [e for e in enum_candidates if e is not None]:
         for member in enum_cls.__members__.values():

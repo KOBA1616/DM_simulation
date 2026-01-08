@@ -23,13 +23,16 @@ COMMAND_GROUPS = {
         'DRAW_CARD'
     ],
     'CARD_MOVE': [
-        'TRANSITION', 'RETURN_TO_HAND', 'DISCARD', 'DESTROY', 'MANA_CHARGE', 'MOVE_BUFFER_TO_ZONE'
+        'TRANSITION', 'RETURN_TO_HAND', 'DISCARD', 'DESTROY', 'MANA_CHARGE'
     ],
     'DECK_OPS': [
-        'SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK', 'LOOK_TO_BUFFER', 'SELECT_FROM_BUFFER'
+        'SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK'
     ],
     'PLAY': [
-        'PLAY_FROM_ZONE', 'PLAY_FROM_BUFFER', 'CAST_SPELL'
+        'PLAY_FROM_ZONE', 'CAST_SPELL'
+    ],
+    'BUFFER': [
+        'LOOK_TO_BUFFER', 'SELECT_FROM_BUFFER', 'PLAY_FROM_BUFFER', 'MOVE_BUFFER_TO_ZONE'
     ],
     'CHEAT_PUT': [
         'MEKRAID', 'FRIEND_BURST'
@@ -173,10 +176,19 @@ class UnifiedActionForm(BaseEditForm):
         self.register_widget(self.ref_mode_combo)
         layout.addRow(tr("Ref Mode"), self.ref_mode_combo)
 
+        # Amount + 'Up to' checkbox on same row
+        from PyQt6.QtWidgets import QWidget, QHBoxLayout
         self.val1_spin = make_value_spin(self)
         self.register_widget(self.val1_spin)
+        self.up_to_check = QCheckBox(tr("Up to"))
+        self.register_widget(self.up_to_check)
+        amount_row = QWidget()
+        amount_row_layout = QHBoxLayout(amount_row)
+        amount_row_layout.setContentsMargins(0, 0, 0, 0)
+        amount_row_layout.addWidget(self.val1_spin)
+        amount_row_layout.addWidget(self.up_to_check)
         self.val1_label = QLabel(tr("Amount"))
-        layout.addRow(self.val1_label, self.val1_spin)
+        layout.addRow(self.val1_label, amount_row)
 
         self.val2_spin = make_value_spin(self)
         self.register_widget(self.val2_spin)
@@ -267,19 +279,8 @@ class UnifiedActionForm(BaseEditForm):
         self.update_ui_state(self.type_combo.currentData())
 
     def _on_scope_check_changed(self):
-        """自分/相手のチェックを排他的に扱い、常にどちらかを選ばせる。"""
-        sender = self.sender()
-
-        if sender == self.scope_self_check and self.scope_self_check.isChecked():
-            self.scope_opp_check.blockSignals(True)
-            self.scope_opp_check.setChecked(False)
-            self.scope_opp_check.blockSignals(False)
-        elif sender == self.scope_opp_check and self.scope_opp_check.isChecked():
-            self.scope_self_check.blockSignals(True)
-            self.scope_self_check.setChecked(False)
-            self.scope_self_check.blockSignals(False)
-
-        # If user unchecks the last remaining one, default back to self.
+        """自分/相手のチェックを両方選択可能にする。"""
+        # 両方未選択の場合のみ、自分をデフォルトで選択
         if (not self.scope_self_check.isChecked()) and (not self.scope_opp_check.isChecked()):
             self.scope_self_check.blockSignals(True)
             self.scope_self_check.setChecked(True)
@@ -384,6 +385,8 @@ class UnifiedActionForm(BaseEditForm):
         # Amount
         self.val1_label.setVisible(cfg.get('amount_visible', False))
         self.val1_spin.setVisible(cfg.get('amount_visible', False))
+        # Show 'Up to' only when command exposes it
+        self.up_to_check.setVisible('up_to' in (COMMAND_UI_CONFIG.get(t, {}).get('visible', [])))
         self.val1_label.setText(tr(cfg.get('amount_label', 'Amount')))
 
         # Value 2
@@ -524,6 +527,8 @@ class UnifiedActionForm(BaseEditForm):
 
         self.val1_spin.setValue(val1)
         self.val2_spin.setValue(val2)
+        # Up to flag
+        self.up_to_check.setChecked(bool(data.get('up_to', False)))
 
         self.set_combo_by_data(self.source_zone_combo, data.get('from_zone', 'NONE'))
         self.set_combo_by_data(self.dest_zone_combo, data.get('to_zone', 'NONE'))
@@ -554,11 +559,24 @@ class UnifiedActionForm(BaseEditForm):
         cmd['format'] = 'command' # Explicitly mark format
         cmd['type'] = sel
 
-        cmd['target_group'] = 'PLAYER_SELF' if self.scope_self_check.isChecked() else 'PLAYER_OPPONENT'
+        # スコープ設定: 自分と相手両方選択可能
+        self_checked = self.scope_self_check.isChecked()
+        opp_checked = self.scope_opp_check.isChecked()
+        if self_checked and opp_checked:
+            cmd['target_group'] = 'PLAYER_BOTH'
+        elif self_checked:
+            cmd['target_group'] = 'PLAYER_SELF'
+        elif opp_checked:
+            cmd['target_group'] = 'PLAYER_OPPONENT'
+        else:
+            cmd['target_group'] = 'PLAYER_SELF'  # デフォルト
         cmd['target_filter'] = self.filter_widget.get_data()
 
         # Standard mapping
         cmd['amount'] = self.val1_spin.value()
+        # Up to flag
+        if self.up_to_check.isVisible() and self.up_to_check.isChecked():
+            cmd['up_to'] = True
 
         # Specialized reverse mapping
         if sel == 'LOOK_AND_ADD':

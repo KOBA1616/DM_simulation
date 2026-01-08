@@ -35,7 +35,7 @@ _definitions = [
 
     # --- Atomic Actions (Shortcuts) ---
     CommandDef("DRAW_CARD",
-               visible=["target_group", "amount", "optional", "input_link"],
+               visible=["target_group", "amount", "optional", "up_to", "input_link"],
                labels={"amount": "Cards to Draw"},
                produces_output=True, output_label="Cards Drawn"),
 

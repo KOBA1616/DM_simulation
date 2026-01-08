@@ -649,15 +649,23 @@ class CardTextGenerator:
         atype = action.get("type", "NONE")
         template = cls.ACTION_MAP.get(atype, "")
 
+        # Up-to drawing: adjust template for explicit DRAW_CARD
+        if atype == 'DRAW_CARD':
+            if bool(action.get('up_to', False)):
+                template = "最大{value1}枚まで引く。"
+
         # Special-case: treat TRANSITION from DECK->HAND as DRAW_CARD for natural language
         if atype == 'TRANSITION':
             from_zone = cls._normalize_zone_name(action.get('from_zone') or action.get('fromZone') or '')
             to_zone = cls._normalize_zone_name(action.get('to_zone') or action.get('toZone') or '')
             amt = action.get('amount') or action.get('value1') or 0
+            up_to = bool(action.get('up_to', False))
             # If transition represents drawing from deck to hand
             if (from_zone == 'DECK' or from_zone == '') and to_zone == 'HAND':
                 if not amt and isinstance(action.get('target_filter'), dict):
                     amt = action.get('target_filter', {}).get('count', 1)
+                if up_to:
+                    return f"山札からカードを最大{amt}枚まで手札に加える。"
                 return f"カードを{amt}枚引く。"
             # If transition represents moving to mana zone, render as ADD_MANA
             if to_zone == 'MANA_ZONE':
@@ -677,17 +685,50 @@ class CardTextGenerator:
         str_val = action.get("str_val", "")
         input_key = action.get("input_value_key", "")
 
-        is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA", "MOVE_CARD", "TRANSITION"]
+        is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA", "MOVE_CARD", "TRANSITION", "DISCARD"]
 
         # 1. Handle Input Variable Linking (Contextual substitution)
         if input_key:
-            val1 = "その数"
-            if atype == "DRAW_CARD": template = "カードをその枚数引く。"
-            elif atype == "DESTROY": template = "{target}をその数だけ破壊する。"
-            elif atype == "TAP": template = "{target}をその数だけ選び、タップする。"
-            elif atype == "UNTAP": template = "{target}をその数だけ選び、アンタップする。"
-            elif atype == "RETURN_TO_HAND": template = "{target}をその数だけ選び、手札に戻す。"
-            elif atype == "SEND_TO_MANA": template = "{target}をその数だけ選び、マナゾーンに置く。"
+            # 前のアクションの出力を参照する場合
+            if atype == "DRAW_CARD": 
+                template = "カードをその同じ枚数引く。"
+                if bool(action.get('up_to', False)):
+                    template = "カードをその同じ枚数まで引く。"
+            elif atype == "DESTROY": 
+                template = "{target}をその同じ数だけ破壊する。"
+            elif atype == "TAP": 
+                template = "{target}をその同じ数だけ選び、タップする。"
+            elif atype == "UNTAP": 
+                template = "{target}をその同じ数だけ選び、アンタップする。"
+            elif atype == "RETURN_TO_HAND": 
+                template = "{target}をその同じ数だけ選び、手札に戻す。"
+            elif atype == "SEND_TO_MANA": 
+                template = "{target}をその同じ数だけ選び、マナゾーンに置く。"
+            elif atype == "TRANSITION":
+                # TRANSITION用の汎用的な参照表現
+                val1 = "その同じ枚数"
+                # 「まで」フラグがある場合は追加
+                if bool(action.get('up_to', False)):
+                    val1 = "その同じ枚数まで"
+            elif atype == "MOVE_CARD":
+                # MOVE_CARDの入力リンク対応（行き先に応じた自然文）
+                dest_zone = action.get("destination_zone", "")
+                up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
+                if dest_zone == "DECK_BOTTOM":
+                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、山札の下に置く。"
+                elif dest_zone == "GRAVEYARD":
+                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、墓地に置く。"
+                elif dest_zone == "HAND":
+                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、手札に戻す。"
+                elif dest_zone == "MANA_ZONE":
+                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、マナゾーンに置く。"
+            elif atype == "DISCARD":
+                # 前回の出力枚数と同じ枚数を捨てる
+                template = "手札をその同じ枚数捨てる。"
+                if bool(action.get('up_to', False)):
+                    template = "手札をその同じ枚数まで捨てる。"
+            else:
+                val1 = "その数"
         elif (val1 == 0 or (atype == "TRANSITION" and action.get("amount", 0) == 0)) and is_generic_selection:
              # Logic for "All"
              if atype == "DESTROY": template = "{target}をすべて破壊する。"
@@ -697,6 +738,7 @@ class CardTextGenerator:
              elif atype == "SEND_TO_MANA": template = "{target}をすべてマナゾーンに置く。"
              elif atype == "MOVE_CARD": pass # Handled below
              elif atype == "TRANSITION": pass # Handled below
+             elif atype == "DISCARD": template = "手札をすべて捨てる。"
 
         # Complex Action Logic
         if atype == "MODIFY_POWER":
@@ -709,35 +751,6 @@ class CardTextGenerator:
             val2 = action.get("value2", 0)
             if val1 > 0 and val2 > 0:
                  template = f"{val1}～{val2}の数字を1つ選ぶ。"
-
-        elif atype == "COST_REFERENCE":
-            str_val = action.get("str_val", "")
-            if str_val == "G_ZERO":
-                cond = action.get("condition", {})
-                cond_text = cls._format_condition(cond).strip().rstrip(':')
-                if is_spell:
-                    return f"G・ゼロ：{cond_text}（この呪文をコストを支払わずに唱えてもよい）"
-                else:
-                    return f"G・ゼロ：{cond_text}（このクリーチャーをコストを支払わずに召喚してもよい）"
-            elif str_val == "HYPER_ENERGY":
-                return "ハイパーエナジー"
-            elif str_val in ["SYM_CREATURE", "SYM_SPELL", "SYM_SHIELD"]:
-                val1 = action.get("value1", 0)
-                cost_term = "召喚コスト" if "CREATURE" in str_val and not is_spell else "コスト"
-                this_ref = "この呪文" if is_spell else "このクリーチャー"
-                return f"{target_str}1{unit}につき、{this_ref}の{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
-            elif str_val == "CARDS_DRAWN_THIS_TURN":
-                val1 = action.get("value1", 0)
-                this_ref = "この呪文" if is_spell else "このクリーチャー"
-                cost_term = "コスト" if is_spell else "召喚コスト"
-                return f"このターンに引いたカード1枚につき、{this_ref}の{cost_term}を{val1}少なくする。ただし、コストは0以下にはならない。"
-            else:
-                filter_def = action.get("filter")
-                if filter_def:
-                     val1 = action.get("value1", 0)
-                     this_ref = "この呪文" if is_spell else "このクリーチャー"
-                     return f"{target_str}1{unit}につき、{this_ref}のコストを{val1}少なくする。ただし、コストは0以下にはならない。"
-                return "コストを軽減する。"
 
         elif atype == "SELECT_OPTION":
             options = action.get("options", [])
@@ -793,42 +806,52 @@ class CardTextGenerator:
             to_z = cls._normalize_zone_name(action.get("to_zone", ""))
             amount = action.get("amount", 0)
 
-            # Natural Language Mapping for Zones and Verbs
+            # Natural Language Mapping with explicit source/destination zones
             if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
-                template = "{target}を{amount}{unit}破壊する。"
-                if amount == 0:
-                    template = "{target}をすべて破壊する。"
+                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                if amount == 0 and not input_key:
+                    template = "{from_z}の{target}をすべて{to_z}に置く。"
             elif from_z == "BATTLE_ZONE" and to_z == "MANA_ZONE":
-                template = "{target}を{amount}{unit}選び、マナゾーンに置く。"
-                if amount == 0:
-                    template = "{target}をすべてマナゾーンに置く。"
+                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                if amount == 0 and not input_key:
+                    template = "{from_z}の{target}をすべて{to_z}に置く。"
             elif from_z == "BATTLE_ZONE" and to_z == "HAND":
-                template = "{target}を{amount}{unit}選び、手札に戻す。"
-                if amount == 0:
-                    template = "{target}をすべて手札に戻す。"
+                template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
+                if amount == 0 and not input_key:
+                    template = "{from_z}の{target}をすべて{to_z}に戻す。"
             elif from_z == "HAND" and to_z == "MANA_ZONE":
-                template = "{target}を{amount}{unit}選び、マナゾーンに置く。"
+                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
             elif from_z == "DECK" and to_z == "HAND":
-                template = "カードを{amount}枚引く。"  # Simplification for generic draw
+                # Draw: include both zones explicitly
+                template = "山札からカードを{amount}枚手札に加える。"
                 if target_str != "カード":  # Search logic
-                    template = "山札から{target}を{amount}{unit}手札に加える。"
+                    template = "{from_z}から{target}を{amount}{unit}{to_z}に加える。"
             elif from_z == "GRAVEYARD" and to_z == "HAND":
-                template = "{target}を{amount}{unit}選び、墓地から手札に戻す。"
+                template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
             elif from_z == "GRAVEYARD" and to_z == "BATTLE_ZONE":
-                template = "{target}を{amount}{unit}選び、墓地からバトルゾーンに出す。"
+                template = "{from_z}の{target}を{amount}{unit}{to_z}に出す。"
             elif to_z == "GRAVEYARD":
-                template = "{target}を{amount}{unit}選び、墓地に置く。"  # Generic discard/mill
+                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"  # Generic discard/mill
+            elif to_z == "DECK_BOTTOM":
+                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                if input_key:
+                    # 入力リンクがある場合は単位重複を避けた表現へ
+                    template = "{from_z}の{target}をその同じ数だけ選び、{to_z}に置く。"
             else:
                 template = "{target}を{from_z}から{to_z}へ移動する。"
 
-            if amount == 0 and not is_generic_selection:
+            # input_value_keyがある場合は「その同じ枚数」と表示
+            if input_key:
+                val1 = "その同じ枚数"
+            elif amount == 0 and not is_generic_selection:
                 val1 = "すべて"
             else:
                 val1 = amount
 
-            # Fallback translation for zones if generic template hit
+            # Zone name localization when placeholders are present
             if "{from_z}" in template:
                 template = template.replace("{from_z}", tr(from_z))
+            if "{to_z}" in template:
                 template = template.replace("{to_z}", tr(to_z))
 
         elif atype == "MUTATE":
@@ -963,18 +986,35 @@ class CardTextGenerator:
             dest_zone = action.get("destination_zone", "")
             is_all = (val1 == 0 and not input_key)
 
+            # Include source zone when available for clearer movement description
+            src_zone = action.get("source_zone", "")
+            src_str = tr(src_zone) if src_zone else ""
+            zone_str = tr(dest_zone) if dest_zone else "どこか"
+
             if dest_zone == "HAND":
-                template = "{target}を{value1}{unit}選び、手札に戻す。"
-                if is_all: template = "{target}をすべて手札に戻す。"
+                template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。" if not src_str
+                            else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。")
+                if is_all:
+                    template = (f"{{target}}をすべて{zone_str}に戻す。" if not src_str
+                                else f"{src_str}の{{target}}をすべて{zone_str}に戻す。")
             elif dest_zone == "MANA_ZONE":
-                template = "{target}を{value1}{unit}選び、マナゾーンに置く。"
-                if is_all: template = "{target}をすべてマナゾーンに置く。"
+                template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
+                            else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
+                if is_all:
+                    template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
             elif dest_zone == "GRAVEYARD":
-                template = "{target}を{value1}{unit}選び、墓地に置く。"
-                if is_all: template = "{target}をすべて墓地に置く。"
+                template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
+                            else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
+                if is_all:
+                    template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
             elif dest_zone == "DECK_BOTTOM":
-                template = "{target}を{value1}{unit}選び、山札の下に置く。"
-                if is_all: template = "{target}をすべて山札の下に置く。"
+                template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
+                            else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
+                if is_all:
+                    template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
 
         elif atype == "PLAY_FROM_ZONE":
             action = action.copy()
