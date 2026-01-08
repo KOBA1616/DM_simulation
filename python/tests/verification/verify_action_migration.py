@@ -39,14 +39,18 @@ def verify_action_migration():
     k.blocker = True
     card_db[2].keywords = k
 
-    print("Testing ATTACK Action...")
+    print("Testing ATTACK Command...")
 
-    action_attack = dm_ai_module.Action()
-    action_attack.type = dm_ai_module.PlayerIntent.ATTACK_PLAYER
-    action_attack.source_instance_id = attacker_id
-    action_attack.target_player = p1
-
-    dm_ai_module.EffectResolver.resolve_action(state, action_attack, card_db)
+    # Use unified execution: convert legacy-like dict to command and execute
+    from dm_toolkit.unified_execution import ensure_executable_command
+    from dm_toolkit.engine.compat import EngineCompat
+    attack_action_dict = {
+        "type": "ATTACK_PLAYER",
+        "source_instance_id": attacker_id,
+        "target_player": p1,
+    }
+    attack_cmd = ensure_executable_command(attack_action_dict)
+    EngineCompat.ExecuteCommand(state, attack_cmd, card_db)
 
     attacker_inst = state.get_card_instance(attacker_id)
     if not attacker_inst.is_tapped:
@@ -72,15 +76,17 @@ def verify_action_migration():
     else:
         print("PASS: Undo successful (Attacker untaped).")
 
-    # Re-do attack
-    dm_ai_module.EffectResolver.resolve_action(state, action_attack, card_db)
+    # Re-do attack via unified command
+    attack_cmd = ensure_executable_command(attack_action_dict)
+    EngineCompat.ExecuteCommand(state, attack_cmd, card_db)
 
-    print("Testing BLOCK Action...")
-    action_block = dm_ai_module.Action()
-    action_block.type = dm_ai_module.PlayerIntent.BLOCK
-    action_block.source_instance_id = blocker_id
-
-    dm_ai_module.EffectResolver.resolve_action(state, action_block, card_db)
+    print("Testing BLOCK Command...")
+    block_action_dict = {
+        "type": "BLOCK",
+        "source_instance_id": blocker_id,
+    }
+    block_cmd = ensure_executable_command(block_action_dict)
+    EngineCompat.ExecuteCommand(state, block_cmd, card_db)
 
     blocker_inst = state.get_card_instance(blocker_id)
     if not blocker_inst.is_tapped:

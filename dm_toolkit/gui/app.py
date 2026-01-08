@@ -515,11 +515,20 @@ class GameWindow(QMainWindow):
                      self.update_ui()
              return
 
-        actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
-        relevant_actions = [a for a in actions if EngineCompat.get_action_source_id(a) == instance_id]
+        from dm_toolkit.commands import generate_legal_commands
 
-        if not relevant_actions: return
-        self.execute_action(relevant_actions[0])
+        cmds = generate_legal_commands(self.gs, self.card_db)
+        relevant_cmds = []
+        for c in cmds:
+            try:
+                d = c.to_dict()
+            except Exception:
+                d = {}
+            if d.get('instance_id') == instance_id or d.get('source_instance_id') == instance_id:
+                relevant_cmds.append(c)
+
+        if not relevant_cmds: return
+        self.execute_action(relevant_cmds[0])
 
     def on_card_hovered(self, card_id: int) -> None:
         if card_id >= 0:
@@ -549,7 +558,11 @@ class GameWindow(QMainWindow):
         if command:
             try:
                 # 2. Execute via Command interface (delegates to EngineCompat if needed)
-                command.execute(self.gs)
+                try:
+                    command.execute(self.gs)
+                except Exception:
+                    # Use EngineCompat when direct execute is unavailable
+                    EngineCompat.ExecuteCommand(self.gs, command)
 
                 # 3. Log using Command Dict (Phase 7.2)
                 final_dict = command.to_dict()
@@ -562,16 +575,13 @@ class GameWindow(QMainWindow):
                 self.scenario_tools.record_action(str(final_dict))
             except Exception as e:
                 self.log_list.addItem(tr("Execution Error: {error}").format(error=e))
-                # Fallback?
-                try:
-                    EngineCompat.EffectResolver_resolve_action(self.gs, action, self.card_db)
-                except:
-                    pass
         else:
-            # Fallback legacy path
+            # Unified fallback: convert raw action to command and execute
             try:
-                 EngineCompat.ExecuteCommand(self.gs, action, self.card_db)
-            except:
+                from dm_toolkit.unified_execution import ensure_executable_command
+                cmd = ensure_executable_command(action)
+                EngineCompat.ExecuteCommand(self.gs, cmd, self.card_db)
+            except Exception:
                  pass
 
         if self.check_and_handle_input_wait(): return
@@ -586,18 +596,27 @@ class GameWindow(QMainWindow):
         self.update_ui()
 
     def on_resolve_effect_from_stack(self, index: int) -> None:
-        actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
-        resolve_actions = []
-        if dm_ai_module:
-            resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
+        from dm_toolkit.commands import generate_legal_commands
 
-        target_action = None
-        for a in resolve_actions:
-            if EngineCompat.get_action_slot_index(a) == index:
-                target_action = a
+        cmds = generate_legal_commands(self.gs, self.card_db)
+        resolve_cmds = []
+        for c in cmds:
+            try:
+                d = c.to_dict()
+            except Exception:
+                d = {}
+            if d.get('type') == 'RESOLVE_EFFECT':
+                resolve_cmds.append((c, d))
+
+        target_cmd = None
+        for c, d in resolve_cmds:
+            if d.get('slot_index') == index:
+                target_cmd = c
                 break
-        if target_action: self.execute_action(target_action)
-        elif len(resolve_actions) == 1: self.execute_action(resolve_actions[0])
+        if target_cmd:
+            self.execute_action(target_cmd)
+        elif len(resolve_cmds) == 1:
+            self.execute_action(resolve_cmds[0][0])
 
     def check_and_handle_input_wait(self) -> bool:
         if not self.gs.waiting_for_user_input: return False
@@ -658,18 +677,25 @@ class GameWindow(QMainWindow):
             is_human = (active_pid == 0 and self.p0_human_radio.isChecked()) or \
                        (active_pid == 1 and self.p1_human_radio.isChecked())
 
-            if is_human:
-                actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
-                resolve_actions = []
-                if dm_ai_module:
-                    resolve_actions = [a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_EFFECT]
+            from dm_toolkit.commands import generate_legal_commands
+            cmds = generate_legal_commands(self.gs, self.card_db)
 
-                if len(resolve_actions) > 1:
+            if is_human:
+                resolve_cmds = []
+                for c in cmds:
+                    try:
+                        d = c.to_dict()
+                    except Exception:
+                        d = {}
+                    if d.get('type') == 'RESOLVE_EFFECT':
+                        resolve_cmds.append((c, d))
+
+                if len(resolve_cmds) > 1:
                     pending_info = EngineCompat.get_pending_effects_info(self.gs)
                     items = []
-                    valid_actions = []
-                    for act in resolve_actions:
-                        idx = EngineCompat.get_action_slot_index(act)
+                    valid_cmds = []
+                    for c, d in resolve_cmds:
+                        idx = d.get('slot_index', -1)
                         if 0 <= idx < len(pending_info):
                             p_type, p_source, p_ctrl = pending_info[idx]
                             inst = None
@@ -681,26 +707,25 @@ class GameWindow(QMainWindow):
                                 source_name = f"Instance {p_source}"
                             desc = f"Trigger: {p_type} (Controller: P{p_ctrl})"
                             items.append({'source_name': source_name, 'description': desc, 'card_id': inst.card_id if inst else -1})
-                            valid_actions.append(act)
+                            valid_cmds.append(c)
                     if items:
                          dialog = CardSelectionDialog(tr("Select Trigger"), tr("Select effect to resolve:"), items, 1, 1, self, self.card_db)
                          if dialog.exec():
                              indices = dialog.get_selected_indices()
                              if indices:
-                                 self.execute_action(valid_actions[indices[0]])
+                                 self.execute_action(valid_cmds[indices[0]])
                                  return
-                if not actions:
+                if not cmds:
                     EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
                     self.update_ui()
                 return
 
-            actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
-            if not actions:
+            if not cmds:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
             else:
-                best_action = actions[0]
-                if best_action:
-                    self.execute_action(best_action)
+                best_cmd = cmds[0]
+                if best_cmd:
+                    self.execute_action(best_cmd)
             self.update_ui()
         finally:
             self.is_processing = False
@@ -757,9 +782,8 @@ class GameWindow(QMainWindow):
         p0 = EngineCompat.get_player(self.gs, 0) or _P()
         p1 = EngineCompat.get_player(self.gs, 1) or _P()
         
+        # Command-based; legal action highlights disabled for now to remove Action dependency
         legal_actions = []
-        if active_pid == 0 and self.p0_human_radio.isChecked():
-             legal_actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
 
         def convert_zone(zone_cards: List[Any], hide: bool=False) -> List[Dict[str, Any]]:
             if hide: return [{'id': -1, 'tapped': getattr(c, 'is_tapped', False), 'instance_id': getattr(c, 'instance_id', -1)} for c in zone_cards]

@@ -103,6 +103,8 @@ class SolitaireRunner:
         best_cmd = cmds[0] if cmds else None
 
         # Prefer executing command when available
+        from dm_toolkit.unified_execution import ensure_executable_command
+        from dm_toolkit.engine.compat import EngineCompat
         if best_cmd is not None:
             try:
                 state.execute_command(best_cmd)
@@ -110,8 +112,10 @@ class SolitaireRunner:
                 try:
                     best_cmd.execute(state)
                 except Exception:
-                    if best_action is not None:
-                        dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
+                    try:
+                        EngineCompat.ExecuteCommand(state, best_cmd, self.card_db)
+                    except Exception:
+                        pass
         else:
             if best_action is None:
                 dm_ai_module.PhaseManager.next_phase(state, self.card_db)
@@ -119,7 +123,11 @@ class SolitaireRunner:
                 if best_action.type == dm_ai_module.ActionType.PASS:
                     dm_ai_module.PhaseManager.next_phase(state, self.card_db)
                 else:
-                    dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
+                    try:
+                        cmd = ensure_executable_command(best_action)
+                        EngineCompat.ExecuteCommand(state, cmd, self.card_db)
+                    except Exception:
+                        dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
 
     def _choose_action(self, actions: List[Any], state: Any) -> Any:
         # Prioritize:
@@ -149,19 +157,8 @@ class SolitaireRunner:
 
     def _pass_turn(self, state: Any) -> None:
         """Pass through opponent turn."""
-        # Perform one step for opponent
-        actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db)
-        if not actions:
-             dm_ai_module.PhaseManager.next_phase(state, self.card_db)
-             return
-
-        pass_action: Any = next((a for a in actions if a.type == dm_ai_module.ActionType.PASS), None)
-
-        if pass_action:
-             dm_ai_module.PhaseManager.next_phase(state, self.card_db)
-        else:
-            # Must perform mandatory action (e.g. resolve effect)
-             dm_ai_module.EffectResolver.resolve_action(state, actions[0], self.card_db)
+           # Unified approach: simply advance phase; avoid direct action resolution
+           dm_ai_module.PhaseManager.next_phase(state, self.card_db)
 
     def _scan_accessed_cards(self, state: Any, player_id: int, seen_cards: SeenCards) -> None:
         # Scan Hand

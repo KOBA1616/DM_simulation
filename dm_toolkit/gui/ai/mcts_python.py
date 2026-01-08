@@ -131,18 +131,22 @@ class PythonMCTS:
         next_state = node.state.clone()
         # Support both Action and ICommand objects
         try:
+            from dm_toolkit.unified_execution import ensure_executable_command
+            from dm_toolkit.engine.compat import EngineCompat
             if hasattr(action, 'type'):
-                dm_ai_module.EffectResolver.resolve_action(next_state, action, self.card_db)
+                cmd = ensure_executable_command(action)
+                EngineCompat.ExecuteCommand(next_state, cmd, self.card_db)
             else:
                 # ICommand-like
                 try:
-                    # Prefer GameState.execute_command
                     if hasattr(next_state, 'execute_command'):
                         next_state.execute_command(action)
                     elif hasattr(action, 'execute'):
                         action.execute(next_state)
+                    else:
+                        EngineCompat.ExecuteCommand(next_state, action, self.card_db)
                 except Exception:
-                    pass
+                    EngineCompat.ExecuteCommand(next_state, action, self.card_db)
         except Exception:
             pass
 
@@ -220,7 +224,13 @@ class PythonMCTS:
                             # Fallback to random (includes PASS)
                             action = random.choice(actions)
                 
-                dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
+                try:
+                    from dm_toolkit.unified_execution import ensure_executable_command
+                    from dm_toolkit.engine.compat import EngineCompat
+                    cmd = ensure_executable_command(action)
+                    EngineCompat.ExecuteCommand(current_state, cmd, self.card_db)
+                except Exception:
+                    dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
                 if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
                     dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
             depth += 1

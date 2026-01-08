@@ -103,12 +103,14 @@ class GameController:
         active_pid = EngineCompat.get_active_player_id(self.gs)
         # AI Logic would go here
 
-        actions = EngineCompat.ActionGenerator_generate_legal_actions(self.gs, self.card_db)
-        if not actions:
+        from dm_toolkit.commands import generate_legal_commands
+
+        cmds = generate_legal_commands(self.gs, self.card_db)
+        if not cmds:
             EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
         else:
             # Basic AI: Random or First
-            best_action = actions[0]
-            self.execute_action(best_action)
+            best_cmd = cmds[0]
+            self.execute_action(best_cmd)
 
         self.callback_update_ui()

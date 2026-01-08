@@ -28,8 +28,8 @@ class TestActionMapper(unittest.TestCase):
             ]
         }
         cmd = map_action(action)
-        # SELECT_OPTION maps to QUERY for player choice
-        self.assertEqual(cmd['type'], "QUERY")
+        # SELECT_OPTION maps to CHOICE if available, else QUERY for player choice
+        self.assertIn(cmd['type'], ("QUERY", "CHOICE"))
         self.assertEqual(len(cmd['options']), 2)
         # Check first option
         opt1 = cmd['options'][0][0]

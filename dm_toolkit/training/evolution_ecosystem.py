@@ -191,18 +191,31 @@ class EvolutionEcosystem:
                              found = True
                              break
 
-                 # Execute command if available, otherwise fallback to action resolver
-                 if best_cmd is not None:
-                     try:
-                         instance.state.execute_command(best_cmd)
-                     except Exception:
-                         try:
-                             best_cmd.execute(instance.state)
-                         except Exception:
-                             if best_action is not None:
-                                 instance.resolve_action(best_action)
-                 else:
-                     instance.resolve_action(best_action)
+                # Execute via unified command path; convert action if needed
+                from dm_toolkit.unified_execution import ensure_executable_command
+                from dm_toolkit.engine.compat import EngineCompat
+                if best_cmd is not None:
+                    try:
+                        instance.state.execute_command(best_cmd)
+                    except Exception:
+                        try:
+                            best_cmd.execute(instance.state)
+                        except Exception:
+                            try:
+                                EngineCompat.ExecuteCommand(instance.state, best_cmd)
+                            except Exception:
+                                pass
+                else:
+                    if best_action is not None:
+                        try:
+                            cmd = ensure_executable_command(best_action)
+                            EngineCompat.ExecuteCommand(instance.state, cmd)
+                        except Exception:
+                            # Last resort: let compat wrapper handle action
+                            try:
+                                EngineCompat.EffectResolver_resolve_action(instance.state, best_action, None)
+                            except Exception:
+                                pass
                  steps += 1
 
             # Game finished (or max steps), collect stats

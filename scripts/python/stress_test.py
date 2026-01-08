@@ -79,30 +79,26 @@ def run_stress_test(iterations=10000, max_steps=2000, verbose=False):
                 except Exception:
                     generate_legal_commands = None
 
-                actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+                # Prefer commands; avoid direct action usage
                 cmds = generate_legal_commands(state, card_db) if generate_legal_commands else []
 
-                if not actions and not cmds:
+                if not cmds:
                     # Stalemate or bug
                     break
 
                 # Prefer executing random command when available
-                if cmds:
-                    cmd = random.choice(cmds)
+                cmd = random.choice(cmds)
+                try:
+                    state.execute_command(cmd)
+                except Exception:
                     try:
-                        state.execute_command(cmd)
+                        cmd.execute(state)
                     except Exception:
                         try:
-                            cmd.execute(state)
+                            from dm_toolkit.engine.compat import EngineCompat
+                            EngineCompat.ExecuteCommand(state, cmd, card_db)
                         except Exception:
-                            # Last resort: fallback to action path
-                            if actions:
-                                action = random.choice(actions)
-                                dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
-                else:
-                    # Random action
-                    action = random.choice(actions)
-                    dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+                            pass
                 step_count += 1
 
         except Exception as e:

@@ -174,14 +174,19 @@ class MCTS:
 
             # Apply action/command
             try:
+                from dm_toolkit.unified_execution import ensure_executable_command
+                from dm_toolkit.engine.compat import EngineCompat
                 if is_action:
-                    dm_ai_module.EffectResolver.resolve_action(next_state, item, self.card_db)
+                    cmd = ensure_executable_command(item)
+                    EngineCompat.ExecuteCommand(next_state, cmd, self.card_db)
                 else:
                     # ICommand-like
                     if hasattr(next_state, 'execute_command'):
                         next_state.execute_command(item)
                     elif hasattr(item, 'execute'):
                         item.execute(next_state)
+                    else:
+                        EngineCompat.ExecuteCommand(next_state, item, self.card_db)
             except Exception:
                 pass
 

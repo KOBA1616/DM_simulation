@@ -20,6 +20,8 @@ Usage:
 """
 import uuid
 import copy
+import os
+import warnings
 from typing import Any, Dict, List, Optional
 from dm_toolkit.compat_wrappers import add_aliases_to_command
 
@@ -32,6 +34,14 @@ except Exception:
 
 _CommandType = getattr(dm_ai_module, 'CommandType', None) if dm_ai_module is not None else None
 _Zone = getattr(dm_ai_module, 'Zone', None) if dm_ai_module is not None else None
+
+# Optional deprecation flag: enable via environment variable to surface guidance
+_DEPRECATE_ACTION_DICTS = bool(os.getenv('DM_TOOLKIT_DEPRECATE_ACTION_DICTS'))
+
+def enable_action_deprecation(flag: bool) -> None:
+    """Enable or disable deprecation warnings for legacy Action dict conversion."""
+    global _DEPRECATE_ACTION_DICTS
+    _DEPRECATE_ACTION_DICTS = bool(flag)
 
 def set_command_type_enum(enum_cls):
     """
@@ -171,6 +181,17 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     """
     Pure function to convert a legacy Action dictionary/object to a Command dictionary.
     """
+    # Optional deprecation notice (configurable via env var or helper)
+    if _DEPRECATE_ACTION_DICTS:
+        try:
+            warnings.warn(
+                "map_action() is deprecated for new code: prefer dm_toolkit.command_builders + "
+                "dm_toolkit.unified_execution.ensure_executable_command.",
+                DeprecationWarning,
+            )
+        except Exception:
+            pass
+
     # Safe Copy
     try:
         if hasattr(action_data, 'to_dict'):
@@ -203,6 +224,14 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     for key in ['input_value_key', 'output_value_key', 'uid']:
         if key in act_data:
             cmd[key] = act_data[key]
+
+    # Preserve slot_index when provided (e.g., RESOLVE_EFFECT selection)
+    if 'slot_index' in act_data:
+        cmd['slot_index'] = act_data['slot_index']
+
+    # Preserve source_instance_id for generic filtering before specific handlers override
+    if 'source_instance_id' in act_data and 'instance_id' not in cmd:
+        cmd['instance_id'] = act_data['source_instance_id']
 
     # Recursion (Options)
     if 'options' in act_data and isinstance(act_data['options'], list):

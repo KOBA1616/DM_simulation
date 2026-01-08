@@ -30,8 +30,8 @@ def wrap_action(action: Any) -> Optional[ICommand]:
     """Return an `ICommand`-like object for the provided `action`.
 
     - If `action` already implements `execute`, return it.
-    - Otherwise, returns a wrapper that implements `execute` (via `dm_ai_module` or direct call)
-      and `to_dict` (via `map_action` from `action_to_command`).
+    - Otherwise, returns a wrapper that implements `execute` via unified command path
+      and `to_dict` via `map_action` from `action_to_command`.
     """
     if action is None:
         return None
@@ -40,42 +40,23 @@ def wrap_action(action: Any) -> Optional[ICommand]:
     if hasattr(action, "execute") and callable(getattr(action, "execute")):
         return action  # type: ignore
 
-    # Fallback wrapper
+    # Unified wrapper: convert action-like object to command dict and execute via EngineCompat
     class _ActionWrapper(BaseCommand):
         def __init__(self, a: Any):
             self._action = a
 
         def execute(self, state: Any) -> Optional[Any]:
-            # Try to use action's own execute if available
-            if hasattr(self._action, "execute"):
-                try:
-                    return self._action.execute(state)
-                except TypeError:
-                    try:
-                        return self._action.execute(state, None)
-                    except Exception:
-                        pass
-
-            # Use shim if available
             try:
-                import dm_ai_module
-                if hasattr(dm_ai_module, "action_to_command"):
-                    cmd = dm_ai_module.action_to_command(self._action)
-                    if hasattr(cmd, 'execute'):
-                        return cmd.execute(state)
+                from dm_toolkit.unified_execution import ensure_executable_command
+                from dm_toolkit.engine.compat import EngineCompat
+                cmd = ensure_executable_command(self._action)
+                EngineCompat.ExecuteCommand(state, cmd)
             except Exception:
-                pass
-
-            # Use compat shim as last resort (legacy path)
-            try:
-                from dm_toolkit.compat import ExecuteCommand
-                return ExecuteCommand(state, self._action)
-            except Exception:
-                pass
-
+                return None
             return None
 
         def invert(self, state: Any) -> Optional[Any]:
+            # Best-effort: delegate to underlying object if available
             try:
                 inv = getattr(self._action, "invert", None)
                 if callable(inv):
@@ -87,23 +68,6 @@ def wrap_action(action: Any) -> Optional[ICommand]:
         def to_dict(self) -> Dict[str, Any]:
             # Use the unified mapper
             cmd = map_action(self._action)
-            # Legacy wrapper: when wrapping an Action object representing a DRAW_CARD,
-            # some callers expect it to be represented as a TRANSITION for compatibility.
-            try:
-                # Determine original type from the action object if available
-                orig_type = None
-                if hasattr(self._action, 'type'):
-                    orig_type = str(getattr(self._action, 'type')).upper()
-                elif isinstance(self._action, dict):
-                    orig_type = str(self._action.get('type', '')).upper()
-
-                if orig_type == 'DRAW_CARD' and cmd.get('type') == 'DRAW_CARD':
-                    cmd['type'] = 'TRANSITION'
-                    if 'amount' not in cmd and 'value1' in cmd:
-                        cmd['amount'] = cmd.get('value1')
-            except Exception:
-                pass
-
             return cmd
 
     return _ActionWrapper(action)

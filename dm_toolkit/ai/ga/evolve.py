@@ -105,10 +105,20 @@ class DeckEvolution:
                     try:
                         cmd.execute(gs)
                     except Exception:
-                        # fallback to action path
-                        if actions:
-                            action = random.choice(actions)
-                            dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                        # fallback: try unified execute
+                        try:
+                            from dm_toolkit.engine.compat import EngineCompat
+                            EngineCompat.ExecuteCommand(gs, cmd, self.card_db)
+                        except Exception:
+                            # fallback to action path
+                            if actions:
+                                action = random.choice(actions)
+                                try:
+                                    from dm_toolkit.unified_execution import ensure_executable_command
+                                    cdict = ensure_executable_command(action)
+                                    EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
+                                except Exception:
+                                    dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
                 # best-effort phase advance check
                 try:
                     if getattr(cmd, 'to_dict', None):
@@ -119,7 +129,13 @@ class DeckEvolution:
                     pass
             else:
                 action = random.choice(actions)
-                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                try:
+                    from dm_toolkit.unified_execution import ensure_executable_command
+                    from dm_toolkit.engine.compat import EngineCompat
+                    cdict = ensure_executable_command(action)
+                    EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
+                except Exception:
+                    dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
                 if action.type == dm_ai_module.ActionType.PASS:
                     dm_ai_module.PhaseManager.next_phase(gs)
         

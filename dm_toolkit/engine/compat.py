@@ -133,21 +133,34 @@ class EngineCompat:
     def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
-        # Prefer action.execute (which will run attached Command when present)
+        # Phase 1 (AGENTS.md Policy): Route action through unified execution when possible
+        # Prefer action.execute first (may already encapsulate command behavior)
         try:
             if hasattr(action, 'execute') and callable(getattr(action, 'execute')):
                 try:
-                    # Some action.execute accept (state, db) others only (state,)
                     try:
                         action.execute(state, card_db)
                     except TypeError:
                         action.execute(state)
                     return
                 except Exception:
-                    # Fall through to resolver if wrapper fails
                     pass
         except Exception:
             pass
+
+        # Attempt unified conversion to Command dict and execute via EngineCompat
+        try:
+            from dm_toolkit.unified_execution import ensure_executable_command
+            cmd = ensure_executable_command(action)
+            # If conversion is inconclusive (NONE or legacy_warning), defer to native resolver
+            if isinstance(cmd, dict) and (cmd.get('type') in (None, 'NONE') or cmd.get('legacy_warning')):
+                raise RuntimeError('Inconclusive unified conversion; use native resolver')
+            EngineCompat.ExecuteCommand(state, cmd, card_db)
+            return
+        except Exception:
+            pass
+
+        # Legacy fallback: call native resolver directly if available
         if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
             dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
         else:
@@ -177,15 +190,8 @@ class EngineCompat:
         Deprecated: Prefer ActionGenerator_generate_legal_commands for new code.
         Returns raw Actions from the engine.
         """
-        EngineCompat._check_module()
-        assert dm_ai_module is not None
-                # 1. Try C++ CommandSystem for command-like inputs.
-                # Supports:
-                # - objects with `to_dict()` (ICommand-like)
-                # - raw dict command payloads (Phase 4 E2E / integration helpers)
-        if hasattr(dm_ai_module.ActionGenerator, 'generate_legal_actions'):
-            return list(dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db))
-        return []
+        # Disabled to eliminate Action-based flows. Use dm_toolkit.commands.generate_legal_commands instead.
+        raise RuntimeError("ActionGenerator_generate_legal_actions is deprecated. Use generate_legal_commands.")
 
     @staticmethod
     def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Any]:
