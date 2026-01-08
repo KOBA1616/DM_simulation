@@ -268,6 +268,7 @@ class UnifiedActionForm(BaseEditForm):
         self.no_cost_check.stateChanged.connect(self.update_data)
         self.allow_duplicates_check.stateChanged.connect(self.update_data)
         self.arbitrary_check.stateChanged.connect(self.update_data)
+        self.up_to_check.stateChanged.connect(self.update_data)
         self.scope_self_check.stateChanged.connect(self._on_scope_check_changed)
         self.scope_opp_check.stateChanged.connect(self._on_scope_check_changed)
         self.str_edit.textChanged.connect(self.update_data)
@@ -424,6 +425,9 @@ class UnifiedActionForm(BaseEditForm):
         # Special Modes
         is_query = (t == 'QUERY')
         self.measure_mode_combo.setVisible(is_query)
+        self.stat_key_combo.setVisible(is_query)
+        self.stat_key_label.setVisible(is_query)
+        self.stat_preset_btn.setVisible(is_query)
 
         self.ref_mode_combo.setVisible(t == 'MUTATE' and self.mutation_kind_combo.currentData() == 'COST_REFERENCE')
 
@@ -503,6 +507,12 @@ class UnifiedActionForm(BaseEditForm):
         self.scope_opp_check.blockSignals(False)
 
         self.str_edit.setText(data.get('str_param', ''))
+        
+        # For QUERY command, also set stat_key_combo if str_param is a stat key
+        if ui_type == 'QUERY':
+            stat_key = data.get('str_param', '')
+            if stat_key and hasattr(self, 'stat_key_combo'):
+                self.set_combo_by_data(self.stat_key_combo, stat_key)
 
         # Value Mapping for specific command types
         val1 = data.get('amount', 0)
@@ -574,8 +584,8 @@ class UnifiedActionForm(BaseEditForm):
 
         # Standard mapping
         cmd['amount'] = self.val1_spin.value()
-        # Up to flag
-        if self.up_to_check.isVisible() and self.up_to_check.isChecked():
+        # Up to flag - save when checked
+        if self.up_to_check.isChecked():
             cmd['up_to'] = True
 
         # Specialized reverse mapping

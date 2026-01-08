@@ -194,3 +194,16 @@ class VariableLinkWidget(QWidget):
         """
         # Ensure we pass a boolean to setVisible — callers may pass None
         self.setVisible(bool(enabled))
+
+    def set_output_hint(self, produces_output):
+        """
+        Enables/disables output key UI based on whether the command produces output.
+        If produces_output is True, show output_key_edit; otherwise hide if empty.
+        """
+        if produces_output:
+            # Force show output key controls when command produces output
+            self.output_key_label.setVisible(True)
+            self.output_key_edit.setVisible(True)
+        else:
+            # Hide if no output expected and field is empty
+            self._update_output_visibility()

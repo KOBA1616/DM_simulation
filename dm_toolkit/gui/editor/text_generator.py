@@ -409,17 +409,32 @@ class CardTextGenerator:
 
         # Commands-First Policy (Migration Phase 4.3):
         # If 'commands' exist, they are the source of truth. Ignore 'actions'.
-        # Only fallback to 'actions' if 'commands' is empty.
+        # If only 'actions' exist, convert them on-the-fly to commands for rendering.
         commands = effect.get("commands", [])
         if commands:
             for command in commands:
                 raw_items.append(command)
                 action_texts.append(cls._format_command(command, is_spell, sample=sample))
         else:
-            # Fallback for legacy data
-            for action in actions:
-                raw_items.append(action)
-                action_texts.append(cls._format_action(action, is_spell, sample=sample))
+            # Automatic migration: convert legacy actions to commands on-the-fly
+            legacy_actions = effect.get("actions", [])
+            if legacy_actions:
+                from dm_toolkit.gui.editor.action_converter import ActionConverter
+                for action in legacy_actions:
+                    try:
+                        # Convert Action to Command format
+                        converted = ActionConverter.convert(action)
+                        if converted and converted.get('type') != 'NONE':
+                            raw_items.append(converted)
+                            action_texts.append(cls._format_command(converted, is_spell, sample=sample))
+                        else:
+                            # Fallback if conversion fails
+                            raw_items.append(action)
+                            action_texts.append(cls._format_action(action, is_spell, sample=sample))
+                    except Exception:
+                        # Fallback to legacy rendering on conversion error
+                        raw_items.append(action)
+                        action_texts.append(cls._format_action(action, is_spell, sample=sample))
 
         # Try to merge common sequential patterns for more natural language
         full_action_text = cls._merge_action_texts(raw_items, action_texts)
@@ -508,6 +523,7 @@ class CardTextGenerator:
             "filter": command.get("target_filter", {}),
             "value1": command.get("amount", 0),
             "optional": command.get("optional", False),
+            "up_to": command.get("up_to", False),
             # Prefer the normalized key, but accept legacy key if present
             "str_val": command.get("str_param") or command.get("str_val", ""),
             "input_value_key": command.get("input_value_key", ""),
@@ -643,6 +659,15 @@ class CardTextGenerator:
 
     @classmethod
     def _format_action(cls, action: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
+        """
+        INTERNAL: Format action-like dictionary to Japanese text.
+        
+        This method is now primarily used internally by _format_command to handle
+        the action_proxy representation. Direct calls to this method for legacy
+        Action formatting should be replaced with ActionConverter + _format_command.
+        
+        Legacy Actions are automatically converted to Commands at load time.
+        """
         if not action:
             return ""
 
@@ -691,8 +716,9 @@ class CardTextGenerator:
         if input_key:
             # 前のアクションの出力を参照する場合
             if atype == "DRAW_CARD": 
+                up_to_flag = bool(action.get('up_to', False))
                 template = "カードをその同じ枚数引く。"
-                if bool(action.get('up_to', False)):
+                if up_to_flag:
                     template = "カードをその同じ枚数まで引く。"
             elif atype == "DESTROY": 
                 template = "{target}をその同じ数だけ破壊する。"
@@ -897,7 +923,7 @@ class CardTextGenerator:
                  stat_name, unit = cls.STAT_KEY_MAP.get(key, (None, None))
                  if stat_name:
                      # Return concise stat reference
-                     return f"{stat_name}{unit}を参照する。"
+                     return f"{stat_name}{unit}を数える。"
              mode = action.get("query_mode", "")
              return f"質問: {tr(mode)}"
 

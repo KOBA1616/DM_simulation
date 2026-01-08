@@ -558,6 +558,9 @@ class CardDataManager:
             item = eff_item.child(k)
             item_type = item.data(Qt.ItemDataRole.UserRole + 1)
 
+            # LEGACY SUPPORT: Auto-convert ACTION nodes to COMMAND nodes
+            # This handles legacy data loaded from old JSON files.
+            # New data should only use COMMAND nodes.
             if item_type == "ACTION":
                 # Always attempt conversion; produce a command-like dict even on failure
                 act_data = self._reconstruct_action(item)
@@ -599,6 +602,15 @@ class CardDataManager:
         return eff_data
 
     def _reconstruct_action(self, act_item):
+        """
+        LEGACY SUPPORT: Reconstruct action data from tree item.
+        
+        This method is maintained only for backward compatibility with old JSON files
+        containing ACTION nodes. All reconstructed actions are automatically converted
+        to Commands by the caller (_reconstruct_effect).
+        
+        New code should not create ACTION nodes; use COMMAND nodes instead.
+        """
         act_data = act_item.data(Qt.ItemDataRole.UserRole + 2)
         if act_item.rowCount() > 0:
             options = []
@@ -608,8 +620,13 @@ class CardDataManager:
                     option_actions = []
                     for n in range(option_item.rowCount()):
                         sub_act_item = option_item.child(n)
-                        if sub_act_item.data(Qt.ItemDataRole.UserRole + 1) == "ACTION":
+                        # Note: Nested actions should already be converted to commands
+                        # but check both types for robustness
+                        item_type = sub_act_item.data(Qt.ItemDataRole.UserRole + 1)
+                        if item_type == "ACTION":
                             option_actions.append(self._reconstruct_action(sub_act_item))
+                        elif item_type == "COMMAND":
+                            option_actions.append(self._reconstruct_command(sub_act_item))
                     options.append(option_actions)
             act_data['options'] = options
         elif 'options' in act_data:
@@ -684,8 +701,15 @@ class CardDataManager:
         if 'uid' not in data:
             data['uid'] = str(uuid.uuid4())
 
+        # MIGRATION POLICY: Prevent creation of new ACTION nodes
         # Force conversion of ACTION items to COMMAND items at creation time
         if item_type == "ACTION":
+            import warnings
+            warnings.warn(
+                "Creating ACTION nodes is deprecated. Auto-converting to COMMAND.",
+                DeprecationWarning,
+                stacklevel=2
+            )
             try:
                 objs = convert_action_to_objs(data)
                 # If any of the converted objects is a non-warning CommandDef, create COMMAND nodes
@@ -1064,14 +1088,21 @@ class CardDataManager:
         return label
 
     def _create_action_item(self, action):
+        """
+        DEPRECATED: Legacy action item creation.
+        Now automatically converts Actions to Commands.
+        All new code should use create_command_item directly.
+        """
+        import warnings
+        warnings.warn("_create_action_item is deprecated. Use create_command_item.", DeprecationWarning, stacklevel=2)
+        
         # Ensure UID
         if 'uid' not in action:
             action['uid'] = str(uuid.uuid4())
 
-        # Try to convert legacy Action -> Command via object adapter and prefer command representation
+        # Always try to convert legacy Action -> Command
         try:
             objs = convert_action_to_objs(action)
-            created = False
             for o in objs:
                 if isinstance(o, WarningCommand):
                     continue
@@ -1083,17 +1114,17 @@ class CardDataManager:
                     continue
                 if 'uid' not in cmd_dict:
                     cmd_dict['uid'] = action.get('uid')
-                # Return the first created command item (we could append multiple if needed)
+                # Return the first created command item
                 return self.create_command_item(cmd_dict)
-        except Exception:
-            # Conversion failed; fall back to creating an ACTION item
-            pass
-
-        # Fallback: keep as legacy ACTION node
-        label = self.format_action_label(action)
-        item = QStandardItem(label)
-        item.setData("ACTION", Qt.ItemDataRole.UserRole + 1)
-        item.setData(action, Qt.ItemDataRole.UserRole + 2)
+        except Exception as e:
+            # Conversion failed; create warning command instead of ACTION node
+            return self.create_command_item({
+                'type': 'NONE',
+                'legacy_warning': True,
+                'warning': f'Action conversion failed: {str(e)}',
+                'legacy_original_action': action,
+                'uid': action.get('uid')
+            })
 
         if 'options' in action:
             for i, opt_actions in enumerate(action['options']):
@@ -1102,7 +1133,26 @@ class CardDataManager:
                 opt_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
                 item.appendRow(opt_item)
                 for sub_action in opt_actions:
-                    sub_item = self._create_action_item(sub_action)
+                    # Auto-convert nested actions to commands
+                    try:
+                        converted = ActionConverter.convert(sub_action)
+                        if converted and converted.get('type') != 'NONE':
+                            sub_item = self.create_command_item(converted)
+                        else:
+                            # Fallback: create warning command
+                            sub_item = self.create_command_item({
+                                'type': 'NONE',
+                                'legacy_warning': True,
+                                'warning': 'Nested action conversion failed',
+                                'legacy_original_action': sub_action
+                            })
+                    except Exception:
+                        sub_item = self.create_command_item({
+                            'type': 'NONE',
+                            'legacy_warning': True,
+                            'warning': 'Nested action conversion error',
+                            'legacy_original_action': sub_action
+                        })
                     opt_item.appendRow(sub_item)
         try:
             self._internalize_item(item)
@@ -1111,7 +1161,13 @@ class CardDataManager:
         return item
 
     def format_action_label(self, action):
-        return f"{tr('Action')}: {tr(action.get('type', 'NONE'))}"
+        """
+        DEPRECATED: Legacy action label formatting.
+        Use format_command_label instead. Actions are auto-converted to Commands.
+        """
+        import warnings
+        warnings.warn("format_action_label is deprecated. Use format_command_label.", DeprecationWarning, stacklevel=2)
+        return f"{tr('Action')} (Legacy): {tr(action.get('type', 'NONE'))}"
 
     def create_command_item(self, command):
         if 'uid' not in command:

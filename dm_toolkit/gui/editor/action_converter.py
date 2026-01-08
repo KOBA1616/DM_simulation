@@ -1,15 +1,44 @@
 # -*- coding: utf-8 -*-
+"""
+Action → Command Converter (Legacy Support)
+
+This module provides backward compatibility for loading legacy Action-based
+JSON data. It should ONLY be used for:
+  1. Loading old JSON files with 'actions' arrays
+  2. Automatic migration during data import
+  3. Testing conversion logic
+
+DO NOT use this for creating new data. All new effects should use the
+Command format directly via UnifiedActionForm/CommandEditForm.
+
+The conversion is one-way: Actions → Commands. There is no reverse conversion.
+"""
 import uuid
 import warnings
 from dm_toolkit.action_to_command import map_action
 from dm_toolkit.gui.editor.utils import normalize_action_zone_keys
 
 class ActionConverter:
+    """
+    LEGACY SUPPORT: Converts Action dictionaries to Command dictionaries.
+    
+    This class exists solely for backward compatibility. New code should not
+    create Action-formatted data; use Command format from the start.
+    """
     @staticmethod
     def convert(action_data):
         """
         Converts a legacy Action dictionary to a Command dictionary.
         Delegates to the shared map_action to ensure consistency.
+        
+        Args:
+            action_data: Legacy action dict with keys like 'type', 'scope', 'filter', etc.
+            
+        Returns:
+            Command dict with keys like 'type', 'target_group', 'target_filter', etc.
+            
+        Note:
+            This is a one-way conversion. There is no reverse path.
         """
         return map_action(action_data)
 

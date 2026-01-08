@@ -304,20 +304,27 @@ class CardPreviewWidget(QWidget):
                         branch_info = f" branches=({t}/{f})"
                     cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Command')}[{ci}]: {kind}/{ctype}{opt_info}{branch_info}")
             else:
-                # Fallback to legacy actions
-                for ai, act in enumerate(eff.get('actions', []), start=1):
-                    cir = normalize.canonicalize(act)
-                    kind = cir.get('kind')
-                    atype = cir.get('type') or ''
-                    opts = cir.get('options') or []
-                    branches = cir.get('branches') or {}
-                    opt_info = f" options={len(opts)}" if opts else ""
-                    branch_info = ''
-                    if branches:
-                        t = len(branches.get('if_true', []))
-                        f = len(branches.get('if_false', []))
-                        branch_info = f" branches=({t}/{f})"
-                    cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Legacy')}): {kind}/{atype}{opt_info}{branch_info}")
+                # Auto-migration: convert legacy actions to commands for preview
+                legacy_actions = eff.get('actions', [])
+                if legacy_actions:
+                    from dm_toolkit.gui.editor.action_converter import ActionConverter
+                    for ai, act in enumerate(legacy_actions, start=1):
+                        try:
+                            converted = ActionConverter.convert(act)
+                            if converted and converted.get('type') != 'NONE':
+                                cir = normalize.canonicalize(converted)
+                                kind = cir.get('kind')
+                                ctype = cir.get('type') or ''
+                                opts = cir.get('options') or []
+                                opt_info = f" options={len(opts)}" if opts else ""
+                                cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Command')}[{ai}] ({tr('Auto-converted')}): {kind}/{ctype}{opt_info}")
+                            else:
+                                # Fallback rendering for unconvertible actions
+                                cir = normalize.canonicalize(act)
+                                cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Legacy')}): {cir.get('kind', 'UNKNOWN')}/{cir.get('type', 'NONE')}")
+                        except Exception:
+                            cir = normalize.canonicalize(act)
+                            cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Conversion Failed')}): {cir.get('kind', 'UNKNOWN')}")
 
         summary = "\n".join(cir_lines)
         if summary:
