@@ -1,22 +1,40 @@
 # -*- coding: utf-8 -*-
+"""
+Unified Execution Pipeline Entry Point
+
+This module serves as the **canonical entry point** for converting Action-like objects
+(dictionaries, ActionDef, CommandDef) into a unified Command dictionary format ready
+for execution by the game engine.
+
+AGENTS.md Policy Compliance:
+- Section 1: All conversions route through dm_toolkit.action_to_command.map_action
+- Section 2: Execution standardization minimizes dispersion of command post-processing
+- Section 3: Supports headless testing via run_pytest_with_pyqt_stub.py integration
+
+Key Functions:
+- to_command_dict: Converts any action-like object to a command dictionary
+- ensure_executable_command: Validates and prepares commands for engine execution
+
+Usage:
+    from dm_toolkit.unified_execution import ensure_executable_command
+    
+    # From legacy action dict
+    action = {"type": "DRAW_CARD", "value1": 2}
+    cmd = ensure_executable_command(action)
+    
+    # From ActionDef object
+    action_obj = ActionDef(...)
+    cmd = ensure_executable_command(action_obj)
+    
+    # Execute via engine
+    EngineCompat.ExecuteCommand(state, cmd, card_db)
+
+Note: action_mapper.py is deprecated; use this module instead.
+"""
 from typing import Any, Dict, List, Union, Optional
 import copy
 import json
 from dm_toolkit.action_to_command import map_action
-
-"""
-Unified Execution Pipeline Entry Point.
-
-This module serves as the canonical entry point for converting Action-like objects
-(dictionaries, ActionDef, CommandDef) into a unified Command dictionary format
-ready for execution by the game engine.
-
-Usage:
-    from dm_toolkit.unified_execution import ensure_executable_command
-    cmd = ensure_executable_command(action_or_command)
-
-Note: `action_mapper.py` is deprecated; use this module instead.
-"""
 
 try:
     from dm_ai_module import ActionDef, CommandDef
@@ -67,7 +85,20 @@ def ensure_executable_command(obj: Any) -> Dict[str, Any]:
     """
     Ensures the given object is a valid Command dictionary ready for execution.
     This is the Unified Execution Path entry point.
+    
+    Post-Processing (AGENTS.md Policy Section 2):
+    - Applies legacy field normalization via compat_wrappers
+    - Preserves backward compatibility with legacy test code
+    - Validates command structure for execution readiness
+    
+    Args:
+        obj: Action-like object (dict, ActionDef, CommandDef, etc.)
+        
+    Returns:
+        Validated and normalized Command dictionary ready for engine execution
     """
+    from dm_toolkit.compat_wrappers import normalize_legacy_fields
+    
     # Capture original simple type hint when input is a dict so we can preserve
     # certain execution-time semantics expected by the unified path tests.
     original_type = None
@@ -84,5 +115,8 @@ def ensure_executable_command(obj: Any) -> Dict[str, Any]:
     # Preserve DRAW_CARD direct execution semantics expected by some callers/tests
     if original_type == 'DRAW_CARD':
         cmd['type'] = 'DRAW_CARD'
+    
+    # Apply backward compatibility normalization (AGENTS.md Policy Section 2)
+    cmd = normalize_legacy_fields(cmd)
 
     return cmd

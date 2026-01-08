@@ -1,4 +1,23 @@
 # -*- coding: utf-8 -*-
+"""
+Unified Action-to-Command Converter
+
+This module serves as the **single source of truth** for converting legacy Action
+dictionaries to standardized GameCommand structures.
+
+Key Principles (AGENTS.md Policy):
+1. All Action-to-Command conversions MUST go through this module's `map_action` function.
+2. Standardizes zone names, field names, and command types to match engine expectations.
+3. Maintains backward compatibility via `compat_wrappers.add_aliases_to_command`.
+4. Eliminates ad-hoc dictionary manipulation in test code and wrappers.
+
+Usage:
+    from dm_toolkit.action_to_command import map_action
+    
+    legacy_action = {"type": "DRAW_CARD", "value1": 2}
+    command = map_action(legacy_action)
+    # command = {"type": "DRAW_CARD", "from_zone": "DECK", "to_zone": "HAND", "amount": 2, ...}
+"""
 import uuid
 import copy
 from typing import Any, Dict, List, Optional
@@ -22,11 +41,31 @@ def set_command_type_enum(enum_cls):
     _CommandType = enum_cls
 
 def normalize_action_zone_keys(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Ensures action dictionary has consistent zone keys."""
-    if not isinstance(data, dict): return data
+    """
+    Phase 1: Normalize legacy zone key variations to canonical keys.
+    
+    Ensures incoming action dictionaries have consistent zone keys by creating
+    aliases for common variations:
+    - from_zone -> source_zone (for compatibility)
+    - to_zone -> destination_zone (for compatibility)
+    
+    This normalization allows downstream code to reliably access zone information
+    without checking multiple key names.
+    
+    Args:
+        data: Legacy action dictionary potentially using varied zone key names.
+        
+    Returns:
+        Normalized dictionary with canonical zone keys added (original keys preserved).
+    """
+    if not isinstance(data, dict): 
+        return data
     new_data = data.copy()
-    if 'source_zone' not in new_data and 'from_zone' in new_data: new_data['source_zone'] = new_data['from_zone']
-    if 'destination_zone' not in new_data and 'to_zone' in new_data: new_data['destination_zone'] = new_data['to_zone']
+    # Add canonical keys if only legacy variants exist
+    if 'source_zone' not in new_data and 'from_zone' in new_data:
+        new_data['source_zone'] = new_data['from_zone']
+    if 'destination_zone' not in new_data and 'to_zone' in new_data:
+        new_data['destination_zone'] = new_data['to_zone']
     return new_data
 
 def _get_zone(d: Dict[str, Any], keys: List[str]) -> Optional[str]:
@@ -52,6 +91,23 @@ def _transfer_common_move_fields(act: Dict[str, Any], cmd: Dict[str, Any]):
          cmd['amount'] = act['value1']
 
 def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
+    """
+    Phase 3: Finalize command with canonical field normalization.
+    
+    Applies final standardizations to ensure the command has all required fields
+    in their canonical forms. Legacy keys are preserved for backward compatibility.
+    
+    Canonical Field Mappings:
+    - str_val -> str_param (preferred by engine)
+    - value1 -> amount (for count/quantity operations)
+    - value2 -> preserved as-is for secondary parameters
+    - flags -> propagated from action if present
+    
+    Args:
+        cmd: Command dictionary to finalize (modified in-place).
+        act: Original action dictionary (source for missing fields).
+    """
+    # Ensure every command has a unique identifier
     if 'uid' not in cmd:
         cmd['uid'] = str(uuid.uuid4())
 
@@ -63,15 +119,18 @@ def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
              pass # Ignore if not convertible
 
     # ------------------------------------------------------------------
-    # Canonical key normalization (copy-only; keep legacy keys for compat)
+    # Canonical Key Normalization (AGENTS.md Policy Section 2)
+    # Copy legacy keys to canonical forms; preserve original for compatibility
     # ------------------------------------------------------------------
-    # Prefer normalized keys used by docs / generators
+    
+    # String parameter normalization: str_val -> str_param
     if 'str_param' not in cmd:
         if 'str_val' in cmd and cmd.get('str_val') is not None:
             cmd['str_param'] = cmd.get('str_val')
         elif 'str_val' in act and act.get('str_val') is not None:
             cmd['str_param'] = act.get('str_val')
 
+    # Primary numeric parameter normalization: value1 -> amount
     if 'amount' not in cmd:
         # Typical legacy payloads store primary numeric in value1
         if 'value1' in cmd and cmd.get('value1') is not None:
@@ -79,11 +138,11 @@ def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
         elif 'value1' in act and act.get('value1') is not None:
             cmd['amount'] = act.get('value1')
 
-    # Secondary numeric often appears as value2; keep it explicit if present
+    # Secondary numeric parameter: preserve value2 explicitly
     if 'value2' not in cmd and 'value2' in act:
         cmd['value2'] = act.get('value2')
 
-    # For choice/select flows, flags may live in act; copy through
+    # Choice/select flow flags: propagate from action
     if 'flags' not in cmd and isinstance(act.get('flags'), list):
         cmd['flags'] = list(act.get('flags') or [])
 

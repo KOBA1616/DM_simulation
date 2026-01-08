@@ -2,8 +2,27 @@ import pytest
 import dm_ai_module
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.action_to_command import map_action
+from dm_toolkit.unified_execution import ensure_executable_command
+from dm_toolkit.command_builders import (
+    build_draw_command,
+    build_transition_command,
+    build_mana_charge_command,
+    build_attack_player_command
+)
 
-# Mock Action class if not available
+# ============================================================================
+# Phase 3: Gradual Migration from Action Dicts to GameCommand Builders
+# ============================================================================
+# This test file demonstrates the staged migration strategy outlined in AGENTS.md:
+# 1. Legacy Path: MockAction + map_action (backward compatibility)
+# 2. Modern Path: Direct GameCommand construction via builder functions
+#
+# The execute_via_direct_command path uses builders to demonstrate the preferred
+# pattern for new code, while execute_via_map_action maintains compatibility
+# with legacy Action dictionary patterns.
+# ============================================================================
+
+# Mock Action class for legacy compatibility paths
 class MockAction:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -57,21 +76,30 @@ def _run_turn_sequence(context, execution_method):
     # start_game might put us in MANA or MAIN. Force checks as needed.
 
     # ---------------------------------------------------------------------
-    # 1. DRAW (Simulated as TRANSITION from DECK to HAND)
+    # 1. DRAW (Using GameCommand Builder - Phase 3 Migration)
     # ---------------------------------------------------------------------
+    # MIGRATION NOTE: Prefer build_draw_command over MockAction + map_action
+    # for cleaner, more maintainable test code.
     deck_size_before = len(player.deck)
     hand_size_before = len(player.hand)
 
     if deck_size_before > 0:
         top_card = player.deck[-1]
 
-        # Simulate legacy Action with MockAction
-        draw_action = MockAction(type="DRAW_CARD",
-                                 from_zone="DECK",
-                                 to_zone="HAND",
-                                 source_instance_id=top_card.instance_id)
-
-        cmd_dict = map_action(draw_action.to_dict())
+        # Phase 3 Preferred Pattern: Direct GameCommand construction
+        if execution_method == execute_via_direct_command:
+            cmd_dict = build_draw_command(
+                from_zone="DECK",
+                to_zone="HAND",
+                source_instance_id=top_card.instance_id
+            )
+        else:
+            # Legacy Path: Still supported via map_action for backward compatibility
+            draw_action = MockAction(type="DRAW_CARD",
+                                     from_zone="DECK",
+                                     to_zone="HAND",
+                                     source_instance_id=top_card.instance_id)
+            cmd_dict = map_action(draw_action.to_dict())
 
         # Execute and verify via pytest assertions
         EngineCompat.ExecuteCommand(state, cmd_dict, card_db)
@@ -81,7 +109,7 @@ def _run_turn_sequence(context, execution_method):
         assert len(player.deck) == deck_size_before - 1, "Draw command should decrease deck size"
 
     # ---------------------------------------------------------------------
-    # 2. MANA CHARGE
+    # 2. MANA CHARGE (Using GameCommand Builder - Phase 3 Migration)
     # ---------------------------------------------------------------------
     try:
         phase = EngineCompat.get_current_phase(state)
@@ -96,11 +124,18 @@ def _run_turn_sequence(context, execution_method):
             mana_zone_before = player.mana_zone
             mana_size_before = len(mana_zone_before) if isinstance(mana_zone_before, list) else mana_zone_before.size()
 
-            charge_action = MockAction(type="MANA_CHARGE",
-                                       from_zone="HAND",
-                                       source_instance_id=card_to_charge.instance_id)
-
-            cmd_dict = map_action(charge_action.to_dict())
+            # Phase 3 Preferred Pattern: Direct GameCommand construction
+            if execution_method == execute_via_direct_command:
+                cmd_dict = build_mana_charge_command(
+                    source_instance_id=card_to_charge.instance_id,
+                    from_zone="HAND"
+                )
+            else:
+                # Legacy Path: MockAction + map_action
+                charge_action = MockAction(type="MANA_CHARGE",
+                                           from_zone="HAND",
+                                           source_instance_id=card_to_charge.instance_id)
+                cmd_dict = map_action(charge_action.to_dict())
 
             # Zone string normalization check
             assert cmd_dict.get('to_zone') == "MANA"
@@ -123,15 +158,14 @@ def _run_turn_sequence(context, execution_method):
     # -------------------------------------------------------------------------
     # 3. PLAY CARD (Action: PLAY_FROM_ZONE / PLAY_CARD)
     # -------------------------------------------------------------------------
-    # Ramp Mana using CommandSystem logic directly (TRANSITION command)
+    # Ramp Mana using Direct GameCommand (Phase 3 Migration Pattern)
     # This avoids relying on internal shims that might be guarded/mocked.
-    ramp_cmd = {
-        'type': 'TRANSITION',
-        'from_zone': 'DECK',
-        'to_zone': 'MANA',
-        'amount': 5, # Move 5 cards
-        'owner_id': p1
-    }
+    ramp_cmd = build_transition_command(
+        from_zone='DECK',
+        to_zone='MANA',
+        amount=5,  # Move 5 cards
+        owner_id=p1
+    )
     try:
         EngineCompat.ExecuteCommand(state, ramp_cmd, card_db)
     except Exception as e:
