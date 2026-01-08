@@ -234,7 +234,8 @@ class CardDataManager:
 
     def load_data(self, cards_data):
         self.model.clear()
-        self.model.setHorizontalHeaderLabels(["Logic Tree"])
+        from dm_toolkit.gui.localization import tr
+        self.model.setHorizontalHeaderLabels([tr("Logic Tree")])
 
         for card_idx, card in enumerate(cards_data):
             # 0. Check for 'triggers' key presence (Meta-info for preservation)
@@ -662,7 +663,7 @@ class CardDataManager:
     def add_new_card(self):
         new_id = self._generate_new_id()
         new_card = {
-            "id": new_id, "name": "New Card",
+            "id": new_id, "name": "新規カード",
             "civilizations": ["FIRE"], "type": "CREATURE",
             "cost": 1, "power": 1000, "races": [], "effects": []
         }
@@ -817,6 +818,120 @@ class CardDataManager:
                 eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
                 for act in eff_data.get('commands', []):
                     if act.get('mutation_kind') == 'REVOLUTION_CHANGE':
+                        rows_to_remove.append(i)
+                        break
+
+        for i in reversed(rows_to_remove):
+            card_item.removeRow(i)
+
+    def add_mekraid_logic(self, card_item):
+        """メクレイド効果を自動追加（ON_PLAYトリガーでMEKRAIDコマンドを生成）"""
+        # 既存のメクレイド効果をチェック
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                for cmd in eff_data.get('commands', []):
+                    if cmd.get('type') == 'MEKRAID':
+                        return child
+
+        # 新しいON_PLAY効果を作成
+        eff_data = {
+            "trigger": "ON_PLAY",
+            "condition": {"type": "NONE"},
+            "commands": []
+        }
+        eff_item = self._create_effect_item(eff_data)
+
+        # MEKRAIDコマンドを作成
+        cmd_data = {
+            "type": "MEKRAID",
+            "look_count": 3,
+            "max_cost": 5,
+            "target_filter": {"civilizations": ["FIRE"]}
+        }
+        cmd_item = self.create_command_item(cmd_data)
+        eff_item.appendRow(cmd_item)
+
+        card_item.appendRow(eff_item)
+
+        try:
+            self._update_card_from_child(eff_item)
+            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+            if 'keywords' not in card_data:
+                card_data['keywords'] = {}
+            card_data['keywords']['mekraid'] = True
+            card_item.setData(card_data, Qt.ItemDataRole.UserRole + 2)
+        except Exception:
+            pass
+
+        return eff_item
+
+    def remove_mekraid_logic(self, card_item):
+        """メクレイド効果を削除"""
+        rows_to_remove = []
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                for cmd in eff_data.get('commands', []):
+                    if cmd.get('type') == 'MEKRAID':
+                        rows_to_remove.append(i)
+                        break
+
+        for i in reversed(rows_to_remove):
+            card_item.removeRow(i)
+
+    def add_friend_burst_logic(self, card_item):
+        """フレンド・バースト効果を自動追加（ON_ATTACKトリガーでFRIEND_BURSTコマンドを生成）"""
+        # 既存のフレンド・バースト効果をチェック
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                for cmd in eff_data.get('commands', []):
+                    if cmd.get('type') == 'FRIEND_BURST':
+                        return child
+
+        # 新しいON_ATTACK効果を作成
+        eff_data = {
+            "trigger": "ON_ATTACK",
+            "condition": {"type": "NONE"},
+            "commands": []
+        }
+        eff_item = self._create_effect_item(eff_data)
+
+        # FRIEND_BURSTコマンドを作成
+        cmd_data = {
+            "type": "FRIEND_BURST",
+            "target_filter": {"civilizations": ["FIRE"]}
+        }
+        cmd_item = self.create_command_item(cmd_data)
+        eff_item.appendRow(cmd_item)
+
+        card_item.appendRow(eff_item)
+
+        try:
+            self._update_card_from_child(eff_item)
+            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+            if 'keywords' not in card_data:
+                card_data['keywords'] = {}
+            card_data['keywords']['friend_burst'] = True
+            card_item.setData(card_data, Qt.ItemDataRole.UserRole + 2)
+        except Exception:
+            pass
+
+        return eff_item
+
+    def remove_friend_burst_logic(self, card_item):
+        """フレンド・バースト効果を削除"""
+        rows_to_remove = []
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+                for cmd in eff_data.get('commands', []):
+                    if cmd.get('type') == 'FRIEND_BURST':
                         rows_to_remove.append(i)
                         break
 

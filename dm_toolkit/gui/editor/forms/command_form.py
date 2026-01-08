@@ -54,8 +54,10 @@ class CommandEditForm(UnifiedActionForm):
 
     def setup_ui(self):
       # Initialize base UnifiedActionForm UI first (creates common widgets)
+      # Guard to avoid re-adding a layout if already set by UnifiedActionForm.__init__
       try:
-        super().setup_ui()
+        if not self.layout():
+          super().setup_ui()
       except Exception:
         # During static import checks QApplication may not exist; ignore
         pass
@@ -97,14 +99,13 @@ class CommandEditForm(UnifiedActionForm):
       self.query_mode_combo = getattr(self, 'measure_mode_combo', None)
       self.query_mode_label = QLabel()
 
-      # Mutation kind container: present as stack of edit/combo
+      # Mutation kind container: reuse from UnifiedActionForm; do not recreate to avoid reparent/deletion
       try:
-        self.mutation_kind_container = QStackedWidget()
-        self.mutation_kind_container.addWidget(self.mutation_kind_edit)
-        self.mutation_kind_container.addWidget(self.mutation_kind_combo)
+        if not hasattr(self, 'mutation_kind_container') or self.mutation_kind_container is None:
+          from PyQt6.QtWidgets import QStackedWidget
+          self.mutation_kind_container = QStackedWidget()
       except Exception:
-        # fallback if mutation widgets missing
-        self.mutation_kind_container = QStackedWidget()
+        pass
 
       # Ensure variable link widget signals are connected
       try:

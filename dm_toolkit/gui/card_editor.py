@@ -14,9 +14,11 @@ from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_ADD_CHILD_EFFECT, STRUCT_CMD_ADD_SPELL_SIDE, STRUCT_CMD_REMOVE_SPELL_SIDE,
-    STRUCT_CMD_ADD_REV_CHANGE, STRUCT_CMD_REMOVE_REV_CHANGE, STRUCT_CMD_GENERATE_BRANCHES,
-    STRUCT_CMD_GENERATE_OPTIONS, STRUCT_CMD_MOVE_EFFECT, STRUCT_CMD_ADD_CHILD_ACTION,
-    STRUCT_CMD_REPLACE_WITH_COMMAND
+    STRUCT_CMD_ADD_REV_CHANGE, STRUCT_CMD_REMOVE_REV_CHANGE, 
+    STRUCT_CMD_ADD_MEKRAID, STRUCT_CMD_REMOVE_MEKRAID,
+    STRUCT_CMD_ADD_FRIEND_BURST, STRUCT_CMD_REMOVE_FRIEND_BURST,
+    STRUCT_CMD_GENERATE_BRANCHES, STRUCT_CMD_GENERATE_OPTIONS, STRUCT_CMD_MOVE_EFFECT, 
+    STRUCT_CMD_ADD_CHILD_ACTION, STRUCT_CMD_REPLACE_WITH_COMMAND
 )
 
 class CardEditor(QMainWindow):
@@ -264,6 +266,16 @@ class CardEditor(QMainWindow):
             self.tree_widget.expand(card_item.index())
         elif command == STRUCT_CMD_REMOVE_REV_CHANGE:
             self.tree_widget.remove_rev_change(card_item.index())
+        elif command == STRUCT_CMD_ADD_MEKRAID:
+            self.tree_widget.add_mekraid(card_item.index())
+            self.tree_widget.expand(card_item.index())
+        elif command == STRUCT_CMD_REMOVE_MEKRAID:
+            self.tree_widget.remove_mekraid(card_item.index())
+        elif command == STRUCT_CMD_ADD_FRIEND_BURST:
+            self.tree_widget.add_friend_burst(card_item.index())
+            self.tree_widget.expand(card_item.index())
+        elif command == STRUCT_CMD_REMOVE_FRIEND_BURST:
+            self.tree_widget.remove_friend_burst(card_item.index())
         elif command == STRUCT_CMD_GENERATE_OPTIONS:
             count = payload.get('count', 1)
             # Find the actual Action Item from the current selection

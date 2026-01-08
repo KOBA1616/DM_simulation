@@ -87,9 +87,11 @@ class ModifierEditForm(BaseEditForm):
         # So we should probably fix ModifierEditForm to use data or custom populate.
 
         # Let's fix type_combo population to use data same as text
+        from dm_toolkit.gui.localization import tr
         self.type_combo.clear()
         types = ["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
-        for t in types: self.type_combo.addItem(t, t)
+        for t in types:
+            self.type_combo.addItem(tr(t), t)
 
         self.bindings = {
             'type': self.type_combo,
@@ -116,28 +118,28 @@ class ModifierEditForm(BaseEditForm):
         if mtype == "COST_MODIFIER":
             self.label_value.setVisible(True)
             self.value_spin.setVisible(True)
-            self.label_value.setText(tr("Reduction Amount"))
-            self.filter_widget.setTitle(tr("Cards to Reduce"))
+            self.label_value.setText("軽減量")
+            self.filter_widget.setTitle("軽減対象カード")
 
         elif mtype == "POWER_MODIFIER":
             self.label_value.setVisible(True)
             self.value_spin.setVisible(True)
-            self.label_value.setText(tr("Power Amount"))
-            self.filter_widget.setTitle(tr("Creatures to Buff"))
+            self.label_value.setText("パワー修正値")
+            self.filter_widget.setTitle("強化対象クリーチャー")
 
         elif mtype == "GRANT_KEYWORD":
             self.label_str_val.setVisible(True)
             self.str_val_edit.setVisible(True)
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
-            self.filter_widget.setTitle(tr("Target Creatures"))
+            self.filter_widget.setTitle("対象クリーチャー")
 
         elif mtype == "SET_KEYWORD":
             self.label_str_val.setVisible(True)
             self.str_val_edit.setVisible(True)
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
-            self.filter_widget.setTitle(tr("Target Creatures"))
+            self.filter_widget.setTitle("対象クリーチャー")
 
     def on_keyword_combo_changed(self, text):
         self.str_val_edit.setText(text)
@@ -164,7 +166,7 @@ class ModifierEditForm(BaseEditForm):
 
     def _get_display_text(self, data):
         mtype = data.get('type', 'NONE')
-        return f"{tr('Static')}: {tr(mtype)}"
+        return f"常在効果: {tr(mtype)}"
 
     def block_signals_all(self, block):
         self.keyword_combo.blockSignals(block)

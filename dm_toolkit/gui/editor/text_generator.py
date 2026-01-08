@@ -789,44 +789,47 @@ class CardTextGenerator:
 
         # --- Enhanced Command-like actions ---
         elif atype == "TRANSITION":
-               from_z = cls._normalize_zone_name(action.get("from_zone", ""))
-               to_z = cls._normalize_zone_name(action.get("to_zone", ""))
-               amount = action.get("amount", 0)
+            from_z = cls._normalize_zone_name(action.get("from_zone", ""))
+            to_z = cls._normalize_zone_name(action.get("to_zone", ""))
+            amount = action.get("amount", 0)
 
-             # Natural Language Mapping for Zones and Verbs
-             if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
-                 template = "{target}を{amount}{unit}破壊する。"
-                 if amount == 0: template = "{target}をすべて破壊する。"
-             elif from_z == "BATTLE_ZONE" and to_z == "MANA_ZONE":
-                 template = "{target}を{amount}{unit}選び、マナゾーンに置く。"
-                 if amount == 0: template = "{target}をすべてマナゾーンに置く。"
-             elif from_z == "BATTLE_ZONE" and to_z == "HAND":
-                 template = "{target}を{amount}{unit}選び、手札に戻す。"
-                 if amount == 0: template = "{target}をすべて手札に戻す。"
-             elif from_z == "HAND" and to_z == "MANA_ZONE":
-                 template = "{target}を{amount}{unit}選び、マナゾーンに置く。"
-             elif from_z == "DECK" and to_z == "HAND":
-                 template = "カードを{amount}枚引く。" # Simplification for generic draw
-                 if target_str != "カード": # Search logic
-                     template = "山札から{target}を{amount}{unit}手札に加える。"
-             elif from_z == "GRAVEYARD" and to_z == "HAND":
-                 template = "{target}を{amount}{unit}選び、墓地から手札に戻す。"
-             elif from_z == "GRAVEYARD" and to_z == "BATTLE_ZONE":
-                 template = "{target}を{amount}{unit}選び、墓地からバトルゾーンに出す。"
-             elif to_z == "GRAVEYARD":
-                 template = "{target}を{amount}{unit}選び、墓地に置く。" # Generic discard/mill
-             else:
-                 template = "{target}を{from_z}から{to_z}へ移動する。"
+            # Natural Language Mapping for Zones and Verbs
+            if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
+                template = "{target}を{amount}{unit}破壊する。"
+                if amount == 0:
+                    template = "{target}をすべて破壊する。"
+            elif from_z == "BATTLE_ZONE" and to_z == "MANA_ZONE":
+                template = "{target}を{amount}{unit}選び、マナゾーンに置く。"
+                if amount == 0:
+                    template = "{target}をすべてマナゾーンに置く。"
+            elif from_z == "BATTLE_ZONE" and to_z == "HAND":
+                template = "{target}を{amount}{unit}選び、手札に戻す。"
+                if amount == 0:
+                    template = "{target}をすべて手札に戻す。"
+            elif from_z == "HAND" and to_z == "MANA_ZONE":
+                template = "{target}を{amount}{unit}選び、マナゾーンに置く。"
+            elif from_z == "DECK" and to_z == "HAND":
+                template = "カードを{amount}枚引く。"  # Simplification for generic draw
+                if target_str != "カード":  # Search logic
+                    template = "山札から{target}を{amount}{unit}手札に加える。"
+            elif from_z == "GRAVEYARD" and to_z == "HAND":
+                template = "{target}を{amount}{unit}選び、墓地から手札に戻す。"
+            elif from_z == "GRAVEYARD" and to_z == "BATTLE_ZONE":
+                template = "{target}を{amount}{unit}選び、墓地からバトルゾーンに出す。"
+            elif to_z == "GRAVEYARD":
+                template = "{target}を{amount}{unit}選び、墓地に置く。"  # Generic discard/mill
+            else:
+                template = "{target}を{from_z}から{to_z}へ移動する。"
 
-             if amount == 0 and not is_generic_selection:
-                  val1 = "すべて"
-             else:
-                  val1 = amount
+            if amount == 0 and not is_generic_selection:
+                val1 = "すべて"
+            else:
+                val1 = amount
 
-             # Fallback translation for zones if generic template hit
-             if "{from_z}" in template:
-                 template = template.replace("{from_z}", tr(from_z))
-                 template = template.replace("{to_z}", tr(to_z))
+            # Fallback translation for zones if generic template hit
+            if "{from_z}" in template:
+                template = template.replace("{from_z}", tr(from_z))
+                template = template.replace("{to_z}", tr(to_z))
 
         elif atype == "MUTATE":
              mkind = action.get("mutation_kind", "")

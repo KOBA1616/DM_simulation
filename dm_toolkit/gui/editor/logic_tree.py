@@ -481,3 +481,59 @@ class LogicTreeWidget(QTreeView):
                 self.data_manager.set_item_data(card_item, updated)
         except Exception:
             pass
+
+    def add_mekraid(self, card_index):
+        """メクレイド効果を追加"""
+        if not card_index.isValid(): return
+        card_item = self.standard_model.itemFromIndex(card_index)
+        eff_item = self.data_manager.add_mekraid_logic(card_item)
+        if eff_item:
+            try:
+                updated = self.data_manager.reconstruct_card_data(card_item)
+                if updated:
+                    self.data_manager.set_item_data(card_item, updated)
+            except Exception:
+                pass
+            self.setCurrentIndex(eff_item.index())
+            self.expand(card_index)
+        return eff_item
+
+    def remove_mekraid(self, card_index):
+        """メクレイド効果を削除"""
+        if not card_index.isValid(): return
+        card_item = self.standard_model.itemFromIndex(card_index)
+        self.data_manager.remove_mekraid_logic(card_item)
+        try:
+            updated = self.data_manager.reconstruct_card_data(card_item)
+            if updated:
+                self.data_manager.set_item_data(card_item, updated)
+        except Exception:
+            pass
+
+    def add_friend_burst(self, card_index):
+        """フレンド・バースト効果を追加"""
+        if not card_index.isValid(): return
+        card_item = self.standard_model.itemFromIndex(card_index)
+        eff_item = self.data_manager.add_friend_burst_logic(card_item)
+        if eff_item:
+            try:
+                updated = self.data_manager.reconstruct_card_data(card_item)
+                if updated:
+                    self.data_manager.set_item_data(card_item, updated)
+            except Exception:
+                pass
+            self.setCurrentIndex(eff_item.index())
+            self.expand(card_index)
+        return eff_item
+
+    def remove_friend_burst(self, card_index):
+        """フレンド・バースト効果を削除"""
+        if not card_index.isValid(): return
+        card_item = self.standard_model.itemFromIndex(card_index)
+        self.data_manager.remove_friend_burst_logic(card_item)
+        try:
+            updated = self.data_manager.reconstruct_card_data(card_item)
+            if updated:
+                self.data_manager.set_item_data(card_item, updated)
+        except Exception:
+            pass

@@ -16,23 +16,35 @@ from dm_toolkit.gui.editor.forms.unified_widgets import (
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
 # Grouping of Command types for UI organization
+# 新分類: ドロー、カード移動、デッキ操作、プレイ、踏み倒し、付与、ロジック、バトル、制限、特殊
+# 注: エンジン内部専用のタイプ（SUMMON_TOKEN, RESOLVE_EFFECT, RESOLVE_PLAY, NONE, ATTACK_PLAYER, ATTACK_CREATURE, BLOCK）はGUIから除外
 COMMAND_GROUPS = {
-    'BASIC': [
-        'DRAW_CARD', 'DISCARD', 'DESTROY', 'MANA_CHARGE', 'TAP', 'UNTAP', 'BREAK_SHIELD'
+    'DRAW': [
+        'DRAW_CARD'
     ],
-    'MOVEMENT': [
-        'TRANSITION', 'RETURN_TO_HAND', 'SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK'
+    'CARD_MOVE': [
+        'TRANSITION', 'RETURN_TO_HAND', 'DISCARD', 'DESTROY', 'MANA_CHARGE', 'MOVE_BUFFER_TO_ZONE'
+    ],
+    'DECK_OPS': [
+        'SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK', 'LOOK_TO_BUFFER', 'SELECT_FROM_BUFFER'
     ],
     'PLAY': [
-        'PLAY_FROM_ZONE', 'CAST_SPELL', 'SUMMON_TOKEN', 'MEKRAID', 'FRIEND_BURST', 'SHIELD_TRIGGER'
+        'PLAY_FROM_ZONE', 'PLAY_FROM_BUFFER', 'CAST_SPELL'
     ],
-    'MODIFICATION': [
-        'MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'REGISTER_DELAYED_EFFECT'
+    'CHEAT_PUT': [
+        'MEKRAID', 'FRIEND_BURST'
+    ],
+    'GRANT': [
+        'MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT'
     ],
     'LOGIC': [
         'QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION'
     ],
-    'OTHER': []
+    'BATTLE': [
+        'BREAK_SHIELD', 'RESOLVE_BATTLE', 'SHIELD_BURN', 'SHIELD_TRIGGER'
+    ],
+    'RESTRICTION': [
+    ]
 }
 
 
@@ -99,9 +111,6 @@ class UnifiedActionForm(BaseEditForm):
         # Command Group (top-level) + Type (subtype)
         self.action_group_combo = QComboBox()
         groups = list(COMMAND_GROUPS.keys())
-        # Put OTHER at the end if present
-        if 'OTHER' in groups:
-            groups = [g for g in groups if g != 'OTHER'] + ['OTHER']
         self.populate_combo(self.action_group_combo, groups, data_func=lambda x: x, display_func=tr)
         self.register_widget(self.action_group_combo)
         layout.addRow(tr("Command Group"), self.action_group_combo)

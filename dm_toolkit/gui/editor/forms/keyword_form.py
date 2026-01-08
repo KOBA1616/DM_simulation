@@ -51,7 +51,7 @@ class KeywordEditForm(BaseEditForm):
             "hyper_energy": "Hyper Energy",
             "shield_burn": "Shield Burn",
             "power_attacker": "Power Attacker",
-            "ex_life": "Ex-Life",
+            "ex_life": "EX-Life",
             "mega_last_burst": "Mega Last Burst"
         }
 
@@ -76,9 +76,21 @@ class KeywordEditForm(BaseEditForm):
 
         # Revolution Change
         self.rev_change_check = QCheckBox(tr("Revolution Change"))
-        self.rev_change_check.setToolTip(tr("Enable Revolution Change to generate the necessary logic tree structure."))
+        self.rev_change_check.setToolTip("革命チェンジを有効にすると、必要なロジックツリー構造が生成されます。")
         self.rev_change_check.stateChanged.connect(self.toggle_rev_change)
         special_layout.addWidget(self.rev_change_check)
+
+        # Mekraid
+        self.mekraid_check = QCheckBox(tr("Mekraid"))
+        self.mekraid_check.setToolTip("メクレイドを有効にすると、プレイ時の効果が自動で追加されます。")
+        self.mekraid_check.stateChanged.connect(self.toggle_mekraid)
+        special_layout.addWidget(self.mekraid_check)
+
+        # Friend Burst
+        self.friend_burst_check = QCheckBox(tr("Friend Burst"))
+        self.friend_burst_check.setToolTip("フレンド・バーストを有効にすると、攻撃時の効果が自動で追加されます。")
+        self.friend_burst_check.stateChanged.connect(self.toggle_friend_burst)
+        special_layout.addWidget(self.friend_burst_check)
 
         main_layout.addWidget(special_group)
         main_layout.addStretch()
@@ -90,6 +102,24 @@ class KeywordEditForm(BaseEditForm):
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_REV_CHANGE, {})
         self.update_data() # Update the checkbox state in data too
+
+    def toggle_mekraid(self, state):
+        from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_MEKRAID, STRUCT_CMD_REMOVE_MEKRAID
+        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        if is_checked:
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_MEKRAID, {})
+        else:
+            self.structure_update_requested.emit(STRUCT_CMD_REMOVE_MEKRAID, {})
+        self.update_data()
+
+    def toggle_friend_burst(self, state):
+        from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_FRIEND_BURST, STRUCT_CMD_REMOVE_FRIEND_BURST
+        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        if is_checked:
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_FRIEND_BURST, {})
+        else:
+            self.structure_update_requested.emit(STRUCT_CMD_REMOVE_FRIEND_BURST, {})
+        self.update_data()
 
     def _populate_ui(self, item):
         # The item data for KEYWORDS is the 'keywords' dictionary directly?
@@ -112,6 +142,14 @@ class KeywordEditForm(BaseEditForm):
         self.rev_change_check.blockSignals(True)
         self.rev_change_check.setChecked(kw_data.get('revolution_change', False))
         self.rev_change_check.blockSignals(False)
+
+        self.mekraid_check.blockSignals(True)
+        self.mekraid_check.setChecked(kw_data.get('mekraid', False))
+        self.mekraid_check.blockSignals(False)
+
+        self.friend_burst_check.blockSignals(True)
+        self.friend_burst_check.setChecked(kw_data.get('friend_burst', False))
+        self.friend_burst_check.blockSignals(False)
 
         # Check parent card for Twinpact to toggle Mega Last Burst visibility?
         # This form only sees its item. The LogicTree might need to manage this visibility or we pass context.
@@ -136,6 +174,18 @@ class KeywordEditForm(BaseEditForm):
         elif 'revolution_change' in data:
             del data['revolution_change']
 
+        # Mekraid
+        if self.mekraid_check.isChecked():
+            data['mekraid'] = True
+        elif 'mekraid' in data:
+            del data['mekraid']
+
+        # Friend Burst
+        if self.friend_burst_check.isChecked():
+            data['friend_burst'] = True
+        elif 'friend_burst' in data:
+            del data['friend_burst']
+
     def _get_display_text(self, data):
         return tr("Keywords")
 
@@ -143,3 +193,5 @@ class KeywordEditForm(BaseEditForm):
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
         self.rev_change_check.blockSignals(block)
+        self.mekraid_check.blockSignals(block)
+        self.friend_burst_check.blockSignals(block)

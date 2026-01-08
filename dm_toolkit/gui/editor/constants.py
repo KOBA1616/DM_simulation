@@ -3,11 +3,11 @@
 # These are constant variable names available in the Card Editor for specific contexts.
 
 RESERVED_VARIABLES = {
-    "$evo_target": "Evolution Source",
-    "$cost_reducer": "Cost Reducer",
-    "$shield_trigger": "Shield Trigger Source",
-    "$attacker": "Attacking Creature",
-    "$blocker": "Blocking Creature",
-    "$selected": "Selected Target",
-    "EVENT_SOURCE": "Event Source (Generic)"
+    "$evo_target": "進化元",
+    "$cost_reducer": "コスト軽減元",
+    "$shield_trigger": "シールド・トリガー元",
+    "$attacker": "攻撃クリーチャー",
+    "$blocker": "ブロック・クリーチャー",
+    "$selected": "選択された対象",
+    "EVENT_SOURCE": "イベント発生源 (汎用)"
 }

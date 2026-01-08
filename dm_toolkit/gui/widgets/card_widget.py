@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QCursor
 
 from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
+from dm_toolkit.gui.localization import tr
 
 class CardWidget(QFrame):
     clicked = pyqtSignal(int)  # Emits instance_id
@@ -44,18 +45,18 @@ class CardWidget(QFrame):
         # UX Improvement: Cursor Feedback
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        # UX Improvement: Accessibility
-        self.setAccessibleName(f"Card: {self.card_name}")
+        # UX Improvement: Accessibility (localized)
+        self.setAccessibleName(f"{tr('CARD')}: {self.card_name}")
         civ_str = "/".join(self.civs)
         self.setAccessibleDescription(
-            f"Cost {self.cost}, Power {self.power}, Civilization {civ_str}"
+            f"{tr('Cost')} {self.cost}, {tr('Power')} {self.power}, {tr('Civ')} {civ_str}"
         )
 
         self.setToolTip(
-            f"Name: {self.card_name}\n"
-            f"Cost: {self.cost}\n"
-            f"Power: {self.power}\n"
-            f"Civ: {civ_str}"
+            f"{tr('Name')}: {self.card_name}\n"
+            f"{tr('Cost')}: {self.cost}\n"
+            f"{tr('Power')}: {self.power}\n"
+            f"{tr('Civ')}: {civ_str}"
         )
 
         self.init_ui()
@@ -82,15 +83,21 @@ class CardWidget(QFrame):
         for action in self.legal_actions:
             action_str = action.to_string() # Fallback description
 
-            # Simple heuristic for display text
+            # Simple heuristic for display text (localized)
             label = action_str
-            if "Play" in action_str: label = "Play Card"
+            if "Play" in action_str:
+                label = "カードをプレイ"
             elif "Attack" in action_str:
-                if "Player" in action_str: label = "Attack Player"
-                elif "Creature" in action_str: label = "Attack Creature"
-                else: label = "Attack"
-            elif "Mana" in action_str: label = "Charge Mana"
-            elif "Use Ability" in action_str: label = "Use Ability"
+                if "Player" in action_str:
+                    label = "プレイヤーを攻撃"
+                elif "Creature" in action_str:
+                    label = "クリーチャーを攻撃"
+                else:
+                    label = "攻撃"
+            elif "Mana" in action_str:
+                label = tr("MANA_CHARGE")
+            elif "Use Ability" in action_str:
+                label = "能力を使用"
 
             # De-duplicate identical labels if multiple similar actions exist (e.g. attack different shields)
             # For simplicity, if we have multiple Attack Player (different shields), we might want to just show one "Attack Player"

@@ -47,13 +47,15 @@ class GameController:
         self.gs = dm_ai_module.GameState(seed)
         self.gs.setup_test_duel()
 
-        if p0_deck: self.gs.set_deck(0, p0_deck)
-        if p1_deck: self.gs.set_deck(1, p1_deck)
+        if p0_deck:
+            self.gs.set_deck(0, p0_deck)
+        if p1_deck:
+            self.gs.set_deck(1, p1_deck)
 
         if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
-             dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+            dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
 
-           self.callback_log(tr("Game Reset"))
+        self.callback_log(tr("Game Reset"))
         self.callback_update_ui()
 
     def execute_action(self, action: Any) -> None:
