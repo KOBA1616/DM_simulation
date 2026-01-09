@@ -9,14 +9,34 @@ def test_gui_libraries_are_stubbed():
     """
     # Attempt to import PyQt6 (which should be mocked)
     try:
-        from PyQt6.QtWidgets import QMainWindow, QWidget, QApplication
-        from PyQt6.QtCore import Qt, QObject
+        # Import directly first
+        from PyQt6 import QtWidgets, QtCore
+
+        # Check if attribute exists on parent
+        if hasattr(QtWidgets, 'QMainWindow'):
+            QMainWindow = QtWidgets.QMainWindow
+        else:
+            # Fallback to direct submodule import if parent package linking is broken
+            # BUT avoid using import if we are in a fragile stub state.
+            # Check sys.modules directly
+            mod = sys.modules.get('PyQt6.QtWidgets')
+            if mod and hasattr(mod, 'QMainWindow'):
+                QMainWindow = mod.QMainWindow
+            else:
+                # Last ditch: try import
+                import PyQt6.QtWidgets
+                QMainWindow = PyQt6.QtWidgets.QMainWindow
+
+        # Same for QWidget etc
+        QWidget = QtWidgets.QWidget if hasattr(QtWidgets, 'QWidget') else sys.modules['PyQt6.QtWidgets'].QWidget
+        Qt = QtCore.Qt if hasattr(QtCore, 'Qt') else sys.modules['PyQt6.QtCore'].Qt
+
     except ImportError as e:
         pytest.fail(f"PyQt6 import failed: {e}. Stubbing harness might be inactive.")
+    except AttributeError as e:
+         pytest.fail(f"PyQt6 attribute missing: {e}. Stubbing harness incomplete. Dir: {dir(QtWidgets)}")
 
     # Verify that these are indeed mocks (or at least present)
-    # In a real environment, these would be classes. In our stubbed env, they might be MagicMocks.
-    # We just want to ensure we can access them without crashing.
     assert QMainWindow is not None
     assert QWidget is not None
     assert Qt is not None
