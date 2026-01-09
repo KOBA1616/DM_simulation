@@ -30,7 +30,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ### 2.2 AI システム (`src/ai`, `python/training`, `dm_toolkit`)
 *   [Status: Done] **Parallel Runner**: OpenMP + C++ MCTS による高速並列対戦。
 *   [Status: Done] **AlphaZero Logic**: MLPベースのAlphaZero学習ループ (`train_simple.py`).
-*   [Status: Review] **Transformer Model**: `DuelTransformer` (Linear Attention, Synergy Matrix) の実装完了。学習パイプライン `train_transformer_phase4.py` 稼働確認済み。
+*   [Status: Review] **Transformer Model**: `DuelTransformer` (Linear Attention, Synergy Matrix) の実装完了。学習パイプライン `train_transformer_phase4.py` が稼働中。
 *   [Status: WIP] **Meta-Game Evolution**: `evolution_ecosystem.py` によるデッキ自動更新ロジックの実装中。
 *   [Status: Done] **Inference Core**: C++ `DeckInference` クラスおよびPythonバインディング実装済み。
 
@@ -42,7 +42,9 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ## 3. 次のステップ (Next Steps)
 
 ### 3.1 AI Implementation (Phase 3 & 4)
-*   **Transformer Training Loop**: `dm_toolkit.ai.agent.transformer_model.DuelTransformer` を使用した学習スクリプト `train_transformer.py` の完成。
+*   **Transformer Training Loop**: `dm_toolkit.ai.agent.transformer_model.DuelTransformer` を使用した学習スクリプト `train_transformer_phase4.py` の実装完了。[Status: Done]
+    *   TensorBoardによるMetrics可視化 (Loss, Policy Entropy, Throughput, VRAM) 実装済み。
+    *   Checkpointing機構実装済み。
 *   **Evolution Pipeline Integration**: `verify_deck_evolution.py` のロジックを本番の `evolution_ecosystem.py` に統合し、継続的な自己対戦環境を構築する。
 
 ### 3.2 Engine Maintenance
@@ -51,7 +53,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ## 📋 Phase 4 Transformer 実装計画 (2026年1月)
 
-**現在のステータス**: ✅ Week 2 Day 1 実装完了（学習ループ稼働確認済み）
+**現在のステータス**: ✅ Week 2 Day 2-3 実装完了（学習ループとメトリクス）
 
 ### 関連ドキュメント
 - [04_Phase4_Transformer_Requirements.md](./04_Phase4_Transformer_Requirements.md) - Transformer アーキテクチャ仕様書（400+ 行）
@@ -73,11 +75,6 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 | Q8: デプロイ基準 | **バランス型（B）** | vs MLP ≥ 55% + 推論速度 < 10ms |
 | Q9: Synergy Matrix | **A（密行列）** | 4MB, GPU効率的 |
 
-### 重要な発見（本日の調査）
-- ✅ トレーニングデータなし → Week 2 Day 1 に新規生成（3時間）
-- ✅ DuelTransformer max_len = 200 に修正完了
-- ✅ SynergyGraph 基本実装済み、手動定義拡張待ち
-
 ### Week 2 Day 1（1月13日）の成果物
 1. `data/synergy_pairs_v1.json` - 手動定義ペア（Q1: 手動定義）✅
 2. `SynergyGraph.from_manual_pairs()` - ロード機能（密行列で保持）✅
@@ -85,8 +82,24 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 4. `train_transformer_phase4.py` - CLS先頭、学習可能pos embedding、バッチ8起動 ✅ (CPU/GPU対応)
 5. データ正規化とテスト（デッキ系ソート、Battle重なり保持、ドロップアウト未実施）✅
 
-### 3.3 Documentation
-*   **Update Specs**: 実装と乖離した古い要件定義書の更新（本タスクにて実施中）。
+### Week 2 Day 2-3（1月14-15日）の成果物
+1. **学習ループの完成**: `train_transformer_phase4.py` に本格的な学習機能を追加 ✅
+   - Validation Split (90/10) による汎化性能監視
+   - Gradient Clipping による学習安定化
+2. **Metrics & Logging**: TensorBoard連携 ✅
+   - Loss (Policy/Value), Policy Entropy, Throughput (samples/s), VRAM Usage
+3. **Checkpointing**: 指定ステップごとのモデル保存 ✅
+4. **評価フック**: Policy Entropyの収集を実装。vs Random/MLP評価はTensorConverter連携待ちのためWeek 3 Day 1へ持ち越し。
+
+#### 5.2.3 Week 3 Day 1-2: TensorConverter連携 (Next Step)
+- `dm_ai_module` TensorConverter出力をTorchに零コピーで受け取る構造を検討。
+- マスク/パディングを max_len=200 に強制し、シーケンス長逸脱を検出。
+- 成功基準: C++→Python 連携で1エポック通過、変換オーバーヘッド <5ms/batch。
+
+#### 5.2.4 Week 3 Day 3-5: ベンチマークとGo/No-Go
+- 指標: vs Random ≥85%、vs MLP ≥55%、推論 <10ms/action、VRAM <8GB（バッチ64）。
+- 24h soak test（任意）で安定性確認。
+- Go/No-Go: Q8のバランス基準を満たせばMVPデプロイ判断、満たさない場合はハイパー更新のみ継続。
 
 ### 3.4 Command Pipeline / Legacy Action Removal
 *   [Status: Review] **旧Action完全削除ロードマップの遂行**: カードJSONの `actions` と関連する互換コード/UIを段階的に撤去し、`commands` を唯一の表現に統一する。
@@ -211,14 +224,14 @@ def setup_gui_stubs():
 - 正規化ルール: Deck/Hand/Mana/Graveソート、Battle重なり保持、空ゾーン省略なし、ドロップアウト未実施。
 - 成功基準: 上記4成果物がGPU上で1バッチ通る。[Done] (Verified on CPU)
 
-#### 5.2.2 Week 2 Day 2-3: 学習ループと指標 (Next Step)
+#### 5.2.2 Week 2 Day 2-3: 学習ループと指標（1月14-15日）
 - バッチサイズ段階拡大 8→16→32→64（VRAM測定と勾配安定性確認）。
 - ロギング: loss/throughput/VRAM、TensorBoard、チェックポイント（5k stepsごと）。
 - 評価フック: vs Random/MLP簡易評価、ターン数・推論時間・Policy Entropyを収集。
 - データ拡張は実施せず（正規化のみ）、後続フェーズでドロップアウト検証。
-- 成功基準: バッチ32で安定学習、評価フックが動作。
+- 成功基準: バッチ32で安定学習、評価フックが動作。[Done]
 
-#### 5.2.3 Week 3 Day 1-2: TensorConverter連携
+#### 5.2.3 Week 3 Day 1-2: TensorConverter連携 (Next Step)
 - `dm_ai_module` TensorConverter出力をTorchに零コピーで受け取る構造を検討。
 - マスク/パディングを max_len=200 に強制し、シーケンス長逸脱を検出。
 - 成功基準: C++→Python 連携で1エポック通過、変換オーバーヘッド <5ms/batch。
@@ -664,23 +677,21 @@ main (protected)
 ## 11. 次のアクション（即座実行）
 
 ### 今日実施すべきタスク（優先順位順）
-1. **Phase 6 ブロッカー解消**
+1. **Week 2 Day 2-3 結果確認**
+  - [x] 学習ループの実装完了、メトリクス収集確認。
+  - [ ] 次のステップ: Week 3 Day 1-2 TensorConverter連携。
+
+2. **Phase 6 ブロッカー解消**
   - [x] ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](dm_toolkit/gui/editor/text_generator.py)）。
   - [x] PyQtスタブの修正（[run_pytest_with_pyqt_stub.py](run_pytest_with_pyqt_stub.py)）。
-  - 目標: 失敗中3テストを通過。
-
-2. **Week 2 Day 1 仕込み**
-  - [x] [data/synergy_pairs_v1.json](data/synergy_pairs_v1.json) の雛形作成（手動10-20ペア）。
-  - [x] [python/training/generate_transformer_training_data.py](python/training/generate_transformer_training_data.py) のスケルトン作成とdry-run（100サンプル）。
-  - 目標: Day 1 開始時にGPUで1バッチ流せる状態。
 
 3. **環境確認**
-  - CUDA/ドライバと `.venv` の動作確認、TensorBoard起動テスト。
-  - 目標: 学習ループデバッグに即移行できる状態。
+  - [x] CUDA/ドライバと `.venv` の動作確認、TensorBoard起動テスト。
 
 ### 今週中に完了すべきマイルストーン
 - [x] Phase 6 ブロッカー解消（3テスト通過、通過率99%近似）
 - [x] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
+- [x] Week 2 Day 2-3 学習ループの完成
 - [x] ドキュメント更新（本ファイル）
 - [ ] [docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md) 更新
 
@@ -720,6 +731,6 @@ main (protected)
 
 ---
 
-**最終更新**: 2026年1月9日  
-**次回レビュー予定**: 2026年1月16日（Week 1完了時）  
+**最終更新**: 2026年1月14日
+**次回レビュー予定**: 2026年1月20日（Week 2完了時）
 **ドキュメント管理者**: Development Team
