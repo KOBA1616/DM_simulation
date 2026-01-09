@@ -218,12 +218,12 @@ def setup_gui_stubs():
 - データ拡張は実施せず（正規化のみ）、後続フェーズでドロップアウト検証。
 - 成功基準: バッチ32で安定学習、評価フックが動作。
 
-#### 5.2.3 Week 3 Day 1-2: TensorConverter連携 (Next Step)
-- `dm_ai_module` TensorConverter出力をTorchに零コピーで受け取る構造を検討。
-- マスク/パディングを max_len=200 に強制し、シーケンス長逸脱を検出。
-- 成功基準: C++→Python 連携で1エポック通過、変換オーバーヘッド <5ms/batch。
+#### 5.2.3 Week 3 Day 1-2: TensorConverter連携 [Done]
+- `dm_ai_module` TensorConverter出力を `py::array_t` (NumPy) としてTorchに零コピーで受け取る構造を実装。
+- C++側で `MAX_SEQ_LEN=200` へのパディング/切り詰めを強制。
+- 成功基準: 変換オーバーヘッド <5ms/batch を達成 (Batch 64で1.36ms)。
 
-#### 5.2.4 Week 3 Day 3-5: ベンチマークとGo/No-Go
+#### 5.2.4 Week 3 Day 3-5: ベンチマークとGo/No-Go (Next Step)
 - 指標: vs Random ≥85%、vs MLP ≥55%、推論 <10ms/action、VRAM <8GB（バッチ64）。
 - 24h soak test（任意）で安定性確認。
 - Go/No-Go: Q8のバランス基準を満たせばMVPデプロイ判断、満たさない場合はハイパー更新のみ継続。
@@ -664,25 +664,22 @@ main (protected)
 ## 11. 次のアクション（即座実行）
 
 ### 今日実施すべきタスク（優先順位順）
-1. **Phase 6 ブロッカー解消**
-  - [x] ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](dm_toolkit/gui/editor/text_generator.py)）。
-  - [x] PyQtスタブの修正（[run_pytest_with_pyqt_stub.py](run_pytest_with_pyqt_stub.py)）。
-  - 目標: 失敗中3テストを通過。
+1. **Week 3 Day 1-2: TensorConverter連携 (Done)**
+  - [x] `bind_ai.cpp` の `convert_batch_sequence` を `py::array_t` に最適化。
+  - [x] パフォーマンステスト `python/tests/test_tensor_converter_perf.py` で 1.36ms/batch を確認。
 
-2. **Week 2 Day 1 仕込み**
-  - [x] [data/synergy_pairs_v1.json](data/synergy_pairs_v1.json) の雛形作成（手動10-20ペア）。
-  - [x] [python/training/generate_transformer_training_data.py](python/training/generate_transformer_training_data.py) のスケルトン作成とdry-run（100サンプル）。
-  - 目標: Day 1 開始時にGPUで1バッチ流せる状態。
+2. **Week 3 Day 3-5: ベンチマークとGo/No-Go (Next Step)**
+  - 指標: vs Random ≥85%、vs MLP ≥55%、推論 <10ms/action、VRAM <8GB。
+  - 24h soak testの準備。
 
-3. **環境確認**
-  - CUDA/ドライバと `.venv` の動作確認、TensorBoard起動テスト。
-  - 目標: 学習ループデバッグに即移行できる状態。
+3. **Phase 3: メタゲーム進化システム着手**
+  - Population Managerの実装開始。
 
 ### 今週中に完了すべきマイルストーン
-- [x] Phase 6 ブロッカー解消（3テスト通過、通過率99%近似）
-- [x] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
-- [x] ドキュメント更新（本ファイル）
-- [ ] [docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md) 更新
+- [x] Phase 6 ブロッカー解消
+- [x] Week 2 Day 1-3 成果物（Synergy, 学習ループ）
+- [x] Week 3 Day 1-2 TensorConverter連携
+- [ ] Go/No-Go 判定の実施
 
 ### 月末までの目標
 - [ ] Transformerモデル初期バージョン稼働（バッチ32で安定、評価フック動作）
