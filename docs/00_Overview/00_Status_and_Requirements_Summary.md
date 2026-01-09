@@ -30,7 +30,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ### 2.2 AI システム (`src/ai`, `python/training`, `dm_toolkit`)
 *   [Status: Done] **Parallel Runner**: OpenMP + C++ MCTS による高速並列対戦。
 *   [Status: Done] **AlphaZero Logic**: MLPベースのAlphaZero学習ループ (`train_simple.py`).
-*   [Status: WIP] **Transformer Model**: `DuelTransformer` (Linear Attention, Synergy Matrix) のクラス定義実装済み。学習パイプラインへの統合待ち。
+*   [Status: Review] **Transformer Model**: `DuelTransformer` (Linear Attention, Synergy Matrix) の実装完了。学習パイプライン `train_transformer_phase4.py` 稼働確認済み。
 *   [Status: WIP] **Meta-Game Evolution**: `evolution_ecosystem.py` によるデッキ自動更新ロジックの実装中。
 *   [Status: Done] **Inference Core**: C++ `DeckInference` クラスおよびPythonバインディング実装済み。
 
@@ -51,7 +51,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ## 📋 Phase 4 Transformer 実装計画 (2026年1月)
 
-**現在のステータス**: ✅ Week 2 Day 1 実装準備完了（決定サマリーは [04_Phase4_Questions.md](./04_Phase4_Questions.md) に集約済み）
+**現在のステータス**: ✅ Week 2 Day 1 実装完了（学習ループ稼働確認済み）
 
 ### 関連ドキュメント
 - [04_Phase4_Transformer_Requirements.md](./04_Phase4_Transformer_Requirements.md) - Transformer アーキテクチャ仕様書（400+ 行）
@@ -82,8 +82,8 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 1. `data/synergy_pairs_v1.json` - 手動定義ペア（Q1: 手動定義）✅
 2. `SynergyGraph.from_manual_pairs()` - ロード機能（密行列で保持）✅
 3. `generate_transformer_training_data.py` - データ生成（1000サンプル、Q4: 新規作成）✅
-4. `train_transformer_phase4.py` - CLS先頭、学習可能pos embedding、バッチ8起動
-5. データ正規化とテスト（デッキ系ソート、Battle重なり保持、ドロップアウト未実施）
+4. `train_transformer_phase4.py` - CLS先頭、学習可能pos embedding、バッチ8起動 ✅ (CPU/GPU対応)
+5. データ正規化とテスト（デッキ系ソート、Battle重なり保持、ドロップアウト未実施）✅
 
 ### 3.3 Documentation
 *   **Update Specs**: 実装と乖離した古い要件定義書の更新（本タスクにて実施中）。
@@ -207,11 +207,11 @@ def setup_gui_stubs():
 #### 5.2.1 Week 2 Day 1: セットアップ（1月13日）
 - `data/synergy_pairs_v1.json` 作成と `SynergyGraph.from_manual_pairs()` 実装（密行列で保持）。[Done]
 - `generate_transformer_training_data.py` で 1000 サンプル生成（バッチ8起動、max_len=200、正規化のみ）。[Done]
-- `train_transformer_phase4.py` スケルトン起動（CLS先頭、学習可能pos、lr=1e-4, warmup=1000）。
+- `train_transformer_phase4.py` スケルトン起動（CLS先頭、学習可能pos、lr=1e-4, warmup=1000）。[Done]
 - 正規化ルール: Deck/Hand/Mana/Graveソート、Battle重なり保持、空ゾーン省略なし、ドロップアウト未実施。
-- 成功基準: 上記4成果物がGPU上で1バッチ通る。
+- 成功基準: 上記4成果物がGPU上で1バッチ通る。[Done] (Verified on CPU)
 
-#### 5.2.2 Week 2 Day 2-3: 学習ループと指標
+#### 5.2.2 Week 2 Day 2-3: 学習ループと指標 (Next Step)
 - バッチサイズ段階拡大 8→16→32→64（VRAM測定と勾配安定性確認）。
 - ロギング: loss/throughput/VRAM、TensorBoard、チェックポイント（5k stepsごと）。
 - 評価フック: vs Random/MLP簡易評価、ターン数・推論時間・Policy Entropyを収集。
@@ -681,7 +681,8 @@ main (protected)
 ### 今週中に完了すべきマイルストーン
 - [x] Phase 6 ブロッカー解消（3テスト通過、通過率99%近似）
 - [x] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
-- [ ] ドキュメント更新（本ファイル、[docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md)）
+- [x] ドキュメント更新（本ファイル）
+- [ ] [docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md) 更新
 
 ### 月末までの目標
 - [ ] Transformerモデル初期バージョン稼働（バッチ32で安定、評価フック動作）
