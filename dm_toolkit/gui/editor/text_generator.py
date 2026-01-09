@@ -95,7 +95,7 @@ class CardTextGenerator:
         "ADD_SHIELD": "山札の上から{value1}枚をシールド化する。",
         "SEND_SHIELD_TO_GRAVE": "相手のシールドを{value1}つ選び、墓地に置く。",
         "SEND_TO_DECK_BOTTOM": "{target}を{value1}枚、山札の下に置く。",
-        "CAST_SPELL": "{target}をコストを支払わずに唱える。",
+        "CAST_SPELL": "コストを支払わずに唱える。",
         "PUT_CREATURE": "{target}をバトルゾーンに出す。",
         "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
         "MOVE_CARD": "{target}を{zone}に置く。",
@@ -1118,6 +1118,34 @@ class CardTextGenerator:
                 if is_all:
                     template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
                                 else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
+
+        elif atype == "CAST_SPELL":
+            # CAST_SPELL: フィルタの詳細を反映した呪文テキスト生成
+            action = action.copy()
+            temp_filter = action.get("filter", {}).copy()
+            action["filter"] = temp_filter
+            
+            # フィルタでSPELLタイプが指定されている場合、詳細なターゲット文字列を生成
+            types = temp_filter.get("types", [])
+            if "SPELL" in types:
+                # フィルタに基づいた詳細なターゲット文字列を取得
+                target_str, unit = cls._resolve_target(action)
+                # 「呪文」部分を削除（すでに末尾に「呪文」が含まれている場合）
+                if target_str.endswith("呪文"):
+                    # 「火の呪文」→「火の」のように、「呪文」を除去
+                    prefix = target_str[:-2] if len(target_str) > 2 else ""
+                    template = f"{prefix}呪文をコストを支払わずに唱える。"
+                elif target_str == "カード" or target_str == "":
+                    template = "呪文をコストを支払わずに唱える。"
+                else:
+                    template = f"{target_str}の呪文をコストを支払わずに唱える。"
+            else:
+                # SPELLタイプ以外の場合は通常のターゲット文字列
+                target_str, unit = cls._resolve_target(action)
+                if target_str == "" or target_str == "カード":
+                    template = "カードをコストを支払わずに唱える。"
+                else:
+                    template = f"{target_str}をコストを支払わずに唱える。"
 
         elif atype == "PLAY_FROM_ZONE":
             action = action.copy()

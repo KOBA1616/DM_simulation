@@ -25,7 +25,7 @@ class CardActionDialog(QDialog):
         self.gs = game_state
         self.card_db = card_db
         self.action_type = action_type
-        self.result = None
+        self.result_data = None
         
         self.init_ui()
     
@@ -100,8 +100,8 @@ class CardActionDialog(QDialog):
             "quantity": int (if applicable)
         }
         """
-        if self.result:
-            return self.result
+        if getattr(self, 'result_data', None):
+            return self.result_data
         
         player_id = self.player_combo.currentData()
         zone = getattr(self, 'zone_combo', None)
@@ -117,10 +117,10 @@ class CardActionDialog(QDialog):
         quantity = getattr(self, 'quantity_spin', None)
         qty = quantity.value() if quantity else 1
         
-        self.result = {
+        self.result_data = {
             "player_id": player_id,
             "zone": zone_enum,
             "card_ids": card_ids,
             "quantity": qty
         }
-        return self.result
+        return self.result_data

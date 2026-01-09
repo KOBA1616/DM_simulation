@@ -97,29 +97,29 @@ class KeywordEditForm(BaseEditForm):
 
     def toggle_rev_change(self, state):
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        self.update_data() # Update the checkbox state in data first
         if is_checked:
             self.structure_update_requested.emit(STRUCT_CMD_ADD_REV_CHANGE, {})
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_REV_CHANGE, {})
-        self.update_data() # Update the checkbox state in data too
 
     def toggle_mekraid(self, state):
         from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_MEKRAID, STRUCT_CMD_REMOVE_MEKRAID
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        self.update_data() # Update the checkbox state in data first
         if is_checked:
             self.structure_update_requested.emit(STRUCT_CMD_ADD_MEKRAID, {})
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_MEKRAID, {})
-        self.update_data()
 
     def toggle_friend_burst(self, state):
         from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_FRIEND_BURST, STRUCT_CMD_REMOVE_FRIEND_BURST
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        self.update_data() # Update the checkbox state in data first
         if is_checked:
             self.structure_update_requested.emit(STRUCT_CMD_ADD_FRIEND_BURST, {})
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_FRIEND_BURST, {})
-        self.update_data()
 
     def _load_ui_from_data(self, data, item):
         # The item data for KEYWORDS is the 'keywords' dictionary directly

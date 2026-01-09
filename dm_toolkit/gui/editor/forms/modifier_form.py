@@ -19,6 +19,8 @@ class ModifierEditForm(BaseEditForm):
         self.basic_group = getattr(self, 'basic_group', None)
         self.condition_widget = getattr(self, 'condition_widget', None)
         self.filter_widget = getattr(self, 'filter_widget', None)
+        self.type_combo = getattr(self, 'type_combo', None)
+        self.keyword_combo = getattr(self, 'keyword_combo', None)
         self.bindings = getattr(self, 'bindings', {})
         try:
             self.setup_ui()
@@ -169,7 +171,8 @@ class ModifierEditForm(BaseEditForm):
         return f"常在効果: {tr(mtype)}"
 
     def block_signals_all(self, block):
-        self.keyword_combo.blockSignals(block)
+        if self.keyword_combo:
+            self.keyword_combo.blockSignals(block)
         super().block_signals_all(block)
 
     def set_combo_text(self, combo, text):

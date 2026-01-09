@@ -858,8 +858,7 @@ class CardDataManager:
         target_filter['types'] = ["CREATURE"]
 
         cmd_data = {
-            "type": "MUTATE",
-            "mutation_kind": "REVOLUTION_CHANGE",
+            "type": "REVOLUTION_CHANGE",
             "target_filter": target_filter
         }
         cmd_item = self.create_command_item(cmd_data)

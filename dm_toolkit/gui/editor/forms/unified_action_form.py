@@ -471,7 +471,17 @@ class UnifiedActionForm(BaseEditForm):
                 pass
             # Contextual titles/field constraints for special commands
             try:
-                if t == 'FRIEND_BURST':
+                if t == 'CAST_SPELL':
+                    self.filter_widget.setTitle(tr('Spell Filter'))
+                    # Set default SPELL type filter if empty
+                    try:
+                        f = self.filter_widget.get_data() if hasattr(self.filter_widget, 'get_data') else {}
+                        has_any = bool(f.get('civilizations') or f.get('races') or f.get('types'))
+                        if not has_any:
+                            self.filter_widget.set_data({'types': ['SPELL']})
+                    except Exception:
+                        pass
+                elif t == 'FRIEND_BURST':
                     self.filter_widget.setTitle(tr('Friend Burst Target'))
                     self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
                 elif t == 'MEKRAID':
@@ -485,10 +495,10 @@ class UnifiedActionForm(BaseEditForm):
                         pass
                     if mk == 'REVOLUTION_CHANGE':
                         self.filter_widget.setTitle(tr('Revolution Change Condition'))
-                        self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
+                        self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types', 'min_cost', 'max_cost'])
                 elif t == 'REVOLUTION_CHANGE':
                     self.filter_widget.setTitle(tr('Revolution Change Condition'))
-                    self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
+                    self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types', 'min_cost', 'max_cost'])
                     # If UI is empty, set sensible defaults for quick editing
                     try:
                         f = self.filter_widget.get_data() if hasattr(self.filter_widget, 'get_data') else {}
