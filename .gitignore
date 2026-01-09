@@ -26,6 +26,8 @@ test_results*.txt
 data/analytics/
 data/generations/
 data/logs/
+logs/
+checkpoints/
 
 # Models
 models/*.pth

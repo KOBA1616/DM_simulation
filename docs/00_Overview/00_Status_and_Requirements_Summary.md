@@ -51,7 +51,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ## 📋 Phase 4 Transformer 実装計画 (2026年1月)
 
-**現在のステータス**: ✅ Week 2 Day 1 実装完了（学習ループ稼働確認済み）
+**現在のステータス**: ✅ Week 2 Day 2-3 実装完了（学習ループ・メトリクス収集）
 
 ### 関連ドキュメント
 - [04_Phase4_Transformer_Requirements.md](./04_Phase4_Transformer_Requirements.md) - Transformer アーキテクチャ仕様書（400+ 行）
@@ -211,14 +211,14 @@ def setup_gui_stubs():
 - 正規化ルール: Deck/Hand/Mana/Graveソート、Battle重なり保持、空ゾーン省略なし、ドロップアウト未実施。
 - 成功基準: 上記4成果物がGPU上で1バッチ通る。[Done] (Verified on CPU)
 
-#### 5.2.2 Week 2 Day 2-3: 学習ループと指標 (Next Step)
-- バッチサイズ段階拡大 8→16→32→64（VRAM測定と勾配安定性確認）。
-- ロギング: loss/throughput/VRAM、TensorBoard、チェックポイント（5k stepsごと）。
-- 評価フック: vs Random/MLP簡易評価、ターン数・推論時間・Policy Entropyを収集。
+#### 5.2.2 Week 2 Day 2-3: 学習ループと指標 (完了)
+- バッチサイズ段階拡大 8→16→32→64（VRAM測定と勾配安定性確認）。[Done]
+- ロギング: loss/throughput/VRAM、TensorBoard、チェックポイント（5k stepsごと）。[Done]
+- 評価フック: vs Random/MLP簡易評価、ターン数・推論時間・Policy Entropyを収集。[Done] (Entropy/Throughput)
 - データ拡張は実施せず（正規化のみ）、後続フェーズでドロップアウト検証。
 - 成功基準: バッチ32で安定学習、評価フックが動作。
 
-#### 5.2.3 Week 3 Day 1-2: TensorConverter連携
+#### 5.2.3 Week 3 Day 1-2: TensorConverter連携 (Next Step)
 - `dm_ai_module` TensorConverter出力をTorchに零コピーで受け取る構造を検討。
 - マスク/パディングを max_len=200 に強制し、シーケンス長逸脱を検出。
 - 成功基準: C++→Python 連携で1エポック通過、変換オーバーヘッド <5ms/batch。
