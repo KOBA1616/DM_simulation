@@ -110,8 +110,8 @@ namespace dm::ai {
 
                 // Record data
                 if (collect_tokens) {
-                    std::vector<int> tokens_int = encoders::TokenConverter::encode_state(game.state, active_player, 0);
-                    std::vector<long> state_seq(tokens_int.begin(), tokens_int.end());
+                    // Phase 4 Update: Use TensorConverter V2 for sequence generation
+                    std::vector<long> state_seq = TensorConverter::convert_to_sequence(game.state, active_player, *card_db_);
                     game_tokens.push_back(state_seq);
                 }
 

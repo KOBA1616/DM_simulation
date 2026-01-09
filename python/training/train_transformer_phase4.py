@@ -135,7 +135,12 @@ def train(args):
             policy_logits, value_pred = model(states, padding_mask=padding_mask)
 
             # Loss
-            loss_policy = policy_loss_fn(policy_logits, target_policies)
+            # target_policies is (Batch, ActionDim) probabilities/one-hot.
+            # CrossEntropyLoss expects class indices (Batch) for hard labels.
+            # Since our data is one-hot (from Heuristic), we can use argmax.
+            target_indices = torch.argmax(target_policies, dim=1)
+            loss_policy = policy_loss_fn(policy_logits, target_indices)
+
             loss_value = value_loss_fn(value_pred, target_values)
             loss = loss_policy + loss_value
 
@@ -185,7 +190,8 @@ def train(args):
                 padding_mask = (states == 0)
 
                 policy_logits, value_pred = model(states, padding_mask=padding_mask)
-                loss_policy = policy_loss_fn(policy_logits, target_policies)
+                target_indices = torch.argmax(target_policies, dim=1)
+                loss_policy = policy_loss_fn(policy_logits, target_indices)
                 loss_value = value_loss_fn(value_pred, target_values)
                 val_loss += (loss_policy + loss_value).item()
                 val_entropy += calculate_policy_entropy(policy_logits).item()

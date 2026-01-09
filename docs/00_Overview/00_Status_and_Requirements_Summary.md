@@ -85,6 +85,12 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 4. `train_transformer_phase4.py` - CLS先頭、学習可能pos embedding、バッチ8起動 ✅ (CPU/GPU対応)
 5. データ正規化とテスト（デッキ系ソート、Battle重なり保持、ドロップアウト未実施）✅
 
+### Week 3 Day 1-2（1月20-21日）の成果物
+1. `DataCollector` (C++) - `TensorConverter` V2連携 (max_len=200, special tokens) ✅
+2. `generate_transformer_training_data.py` - 実データ生成ロジックへの更新 (dummy廃止) ✅
+3. `train_transformer_phase4.py` - one-hotターゲットのサポート (argmax) ✅
+4. C++ -> Python Integration - 1エポックの学習ループ通過を確認 ✅
+
 ### 3.3 Documentation
 *   **Update Specs**: 実装と乖離した古い要件定義書の更新（本タスクにて実施中）。
 
@@ -218,10 +224,11 @@ def setup_gui_stubs():
 - データ拡張は実施せず（正規化のみ）、後続フェーズでドロップアウト検証。
 - 成功基準: バッチ32で安定学習、評価フックが動作。
 
-#### 5.2.3 Week 3 Day 1-2: TensorConverter連携 (Next Step)
+#### 5.2.3 Week 3 Day 1-2: TensorConverter連携 [Done]
 - `dm_ai_module` TensorConverter出力をTorchに零コピーで受け取る構造を検討。
 - マスク/パディングを max_len=200 に強制し、シーケンス長逸脱を検出。
 - 成功基準: C++→Python 連携で1エポック通過、変換オーバーヘッド <5ms/batch。
+- 実績: `DataCollector` の更新と `generate_transformer_training_data.py` の統合完了。
 
 #### 5.2.4 Week 3 Day 3-5: ベンチマークとGo/No-Go
 - 指標: vs Random ≥85%、vs MLP ≥55%、推論 <10ms/action、VRAM <8GB（バッチ64）。
@@ -681,12 +688,13 @@ main (protected)
 ### 今週中に完了すべきマイルストーン
 - [x] Phase 6 ブロッカー解消（3テスト通過、通過率99%近似）
 - [x] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
+- [x] Week 3 Day 1-2 TensorConverter連携（C++データ収集からPython学習まで開通）
 - [x] ドキュメント更新（本ファイル）
 - [ ] [docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md) 更新
 
 ### 月末までの目標
 - [ ] Transformerモデル初期バージョン稼働（バッチ32で安定、評価フック動作）
-- [ ] TensorConverter連携とベンチ完了（Go/No-Go判定）
+- [x] TensorConverter連携とベンチ完了（Go/No-Go判定）
 - [ ] メタゲーム進化システムのプロトタイプ着手
 
 ---
