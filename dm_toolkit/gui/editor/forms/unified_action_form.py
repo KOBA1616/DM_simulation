@@ -35,7 +35,7 @@ COMMAND_GROUPS = {
         'LOOK_TO_BUFFER', 'SELECT_FROM_BUFFER', 'PLAY_FROM_BUFFER', 'MOVE_BUFFER_TO_ZONE'
     ],
     'CHEAT_PUT': [
-        'MEKRAID', 'FRIEND_BURST'
+        'MEKRAID', 'FRIEND_BURST', 'REVOLUTION_CHANGE'
     ],
     'GRANT': [
         'MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT'
@@ -195,6 +195,13 @@ class UnifiedActionForm(BaseEditForm):
         self.val2_label = QLabel(tr("Value 2"))
         layout.addRow(self.val2_label, self.val2_spin)
 
+        # MEKRAID-specific: Select Count control (third numeric field)
+        from PyQt6.QtWidgets import QWidget, QHBoxLayout
+        self.select_count_spin = make_value_spin(self)
+        self.register_widget(self.select_count_spin)
+        self.select_count_label = QLabel(tr("Select Count"))
+        layout.addRow(self.select_count_label, self.select_count_spin)
+
         # Option generation controls (for CHOICE/SELECT_OPTION)
         self.option_count_spin, self.generate_options_btn, self.option_count_label, self.option_gen_layout = make_option_controls(self)
         # Assuming make_option_controls returns widgets. Register them.
@@ -210,6 +217,12 @@ class UnifiedActionForm(BaseEditForm):
         self.register_widget(self.allow_duplicates_check)
         self.allow_duplicates_label = QLabel("")
         layout.addRow(self.allow_duplicates_label, self.allow_duplicates_check)
+
+        # Optional / Arbitrary selection flag
+        self.arbitrary_check = QCheckBox(tr("Optional / Arbitrary Amount"))
+        self.register_widget(self.arbitrary_check)
+        self.arbitrary_label = QLabel("")
+        layout.addRow(self.arbitrary_label, self.arbitrary_check)
 
         # Zones
         self.source_zone_combo, self.dest_zone_combo = make_zone_combos(self)
@@ -270,6 +283,7 @@ class UnifiedActionForm(BaseEditForm):
         self.str_edit.textChanged.connect(self.update_data)
         self.val1_spin.valueChanged.connect(self.update_data)
         self.val2_spin.valueChanged.connect(self.update_data)
+        self.select_count_spin.valueChanged.connect(self.update_data)
         self.source_zone_combo.currentIndexChanged.connect(self.update_data)
         self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
 
@@ -391,6 +405,10 @@ class UnifiedActionForm(BaseEditForm):
         self.val2_spin.setVisible(cfg.get('val2_visible', False))
         self.val2_label.setText(tr(cfg.get('val2_label', 'Value 2')))
 
+        # Default hidden for MEKRAID extra field
+        self.select_count_label.setVisible(False)
+        self.select_count_spin.setVisible(False)
+
         # String param
         self.str_label.setVisible(cfg.get('str_param_visible', False))
         self.str_edit.setVisible(cfg.get('str_param_visible', False))
@@ -457,7 +475,7 @@ class UnifiedActionForm(BaseEditForm):
                     self.filter_widget.setTitle(tr('Friend Burst Target'))
                     self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
                 elif t == 'MEKRAID':
-                    self.filter_widget.setTitle(tr('Mekraide Target'))
+                    self.filter_widget.setTitle(tr('Mekraid Target'))
                     self.filter_widget.set_allowed_fields(['civilizations', 'types', 'races'])
                 elif t == 'MUTATE':
                     mk = ''
@@ -468,6 +486,17 @@ class UnifiedActionForm(BaseEditForm):
                     if mk == 'REVOLUTION_CHANGE':
                         self.filter_widget.setTitle(tr('Revolution Change Condition'))
                         self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
+                elif t == 'REVOLUTION_CHANGE':
+                    self.filter_widget.setTitle(tr('Revolution Change Condition'))
+                    self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
+                    # If UI is empty, set sensible defaults for quick editing
+                    try:
+                        f = self.filter_widget.get_data() if hasattr(self.filter_widget, 'get_data') else {}
+                        has_any = bool(f.get('civilizations') or f.get('races') or f.get('types'))
+                        if not has_any:
+                            self.filter_widget.set_data({'civilizations': ['FIRE'], 'races': ['Dragon'], 'types': ['CREATURE']})
+                    except Exception:
+                        pass
             except Exception:
                 pass
 
@@ -477,6 +506,44 @@ class UnifiedActionForm(BaseEditForm):
                 self.mutation_kind_container.setCurrentIndex(1)
             elif self.mutation_kind_container:
                 self.mutation_kind_container.setCurrentIndex(0)
+        except Exception:
+            pass
+
+        # MEKRAID-specific labeling and field visibility adjustments
+        try:
+            if t == 'MEKRAID':
+                # Ensure both numeric fields are visible
+                self.val1_label.setText(tr('Max Cost'))
+                self.val1_label.setVisible(True)
+                self.val1_spin.setVisible(True)
+
+                self.val2_label.setText(tr('Look Count'))
+                self.val2_label.setVisible(True)
+                self.val2_spin.setVisible(True)
+
+                # Show and label Select Count control
+                self.select_count_label.setText(tr('Select Count'))
+                self.select_count_label.setVisible(True)
+                self.select_count_spin.setVisible(True)
+
+                # If newly switching to MEKRAID or values are unset/zero, set defaults 5/3/1
+                try:
+                    cur = {}
+                    if getattr(self, 'current_item', None):
+                        cur = self.current_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+                    # Consider it 'new' if type differs or keys missing
+                    is_new = (cur.get('type') != 'MEKRAID') or (
+                        'max_cost' not in cur and 'look_count' not in cur and 'select_count' not in cur
+                    )
+                    if is_new:
+                        if int(self.val1_spin.value() or 0) == 0:
+                            self.val1_spin.setValue(5)
+                        if int(self.val2_spin.value() or 0) == 0:
+                            self.val2_spin.setValue(3)
+                        if int(self.select_count_spin.value() or 0) == 0:
+                            self.select_count_spin.setValue(1)
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -518,6 +585,9 @@ class UnifiedActionForm(BaseEditForm):
             grp = 'OTHER'
 
         self.set_combo_by_data(self.action_group_combo, grp)
+        # Map MUTATE+REVOLUTION_CHANGE to UI pseudo-type for better editing UX
+        if ui_type == 'MUTATE' and data.get('mutation_kind') == 'REVOLUTION_CHANGE':
+            ui_type = 'REVOLUTION_CHANGE'
         self.set_combo_by_data(self.type_combo, ui_type)
 
         target_group = data.get('target_group') or 'PLAYER_SELF'
@@ -546,15 +616,14 @@ class UnifiedActionForm(BaseEditForm):
             val1 = data.get('look_count', 0)
             val2 = data.get('add_count', 0)
         elif ui_type == 'MEKRAID':
-            val1 = data.get('look_count', 0) # Mekraid Level
-            val2 = data.get('max_cost', 0) # Usually same?
-            # Wait, Mekraid N means look 3, play cost < N.
-            # ActionConverter: cmd['look_count'] = 3, cmd['max_cost'] = value1
-            # So val1 should map to max_cost
+            # Map to custom semantics:
+            # val1 -> max_cost, val2 -> look_count, select_count -> explicit control
             val1 = data.get('max_cost', 0)
-            # look_count is usually fixed/derived, but if we want to edit it?
-            # Let's say val2 is look_count
             val2 = data.get('look_count', 3)
+            try:
+                self.select_count_spin.setValue(int(data.get('select_count', 1)))
+            except Exception:
+                pass
         elif ui_type == 'SELECT_NUMBER':
             val1 = data.get('max', 0)
             val2 = data.get('min', 0)
@@ -621,9 +690,18 @@ class UnifiedActionForm(BaseEditForm):
         elif sel == 'MEKRAID':
             cmd['max_cost'] = self.val1_spin.value()
             cmd['look_count'] = self.val2_spin.value()
+            try:
+                cmd['select_count'] = int(self.select_count_spin.value())
+            except Exception:
+                cmd['select_count'] = 1
         elif sel == 'SELECT_NUMBER':
             cmd['max'] = self.val1_spin.value()
             cmd['min'] = self.val2_spin.value()
+        elif sel == 'REVOLUTION_CHANGE':
+            # Map UI-only type to engine command
+            cmd['type'] = 'MUTATE'
+            cmd['mutation_kind'] = 'REVOLUTION_CHANGE'
+            # target_filter already set above from widget
 
         # Flags
         flags = []
@@ -671,4 +749,7 @@ class UnifiedActionForm(BaseEditForm):
         data.update(cmd)
 
     def _get_display_text(self, data):
-        return f"{tr('Command')}: {tr(data.get('type', 'UNKNOWN'))}"
+        t = data.get('type', 'UNKNOWN')
+        if t == 'MUTATE' and data.get('mutation_kind') == 'REVOLUTION_CHANGE':
+            return f"{tr('Command')}: {tr('REVOLUTION_CHANGE')}"
+        return f"{tr('Command')}: {tr(t)}"

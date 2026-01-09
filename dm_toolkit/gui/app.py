@@ -470,8 +470,7 @@ class GameWindow(QMainWindow):
         query = EngineCompat.get_pending_query(self.gs)
         min_targets = query.params.get('min', 1)
         if len(self.selected_targets) < min_targets:
-            # QMessageBox.warning(self, "Invalid Selection", f"Please select at least {min_targets} target(s).")
-            # Converted to:
+            # Converted to localized message box:
             msg = tr("Please select at least {min_targets} target(s).").format(min_targets=min_targets)
             QMessageBox.warning(self, tr("Invalid Selection"), msg)
             return

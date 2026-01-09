@@ -844,6 +844,11 @@ class CardDataManager:
             card_data = {}
         civs = list(card_data.get('civilizations', []) or [])
         races = list(card_data.get('races', []) or [])
+        # Fallback to default "FIRE" / "Dragon" to make the editable default explicit
+        if not civs:
+            civs = ["FIRE"]
+        if not races:
+            races = ["Dragon"]
         # Default to creature type requirement without hard min_cost
         target_filter = {}
         if civs:
@@ -940,6 +945,7 @@ class CardDataManager:
             "type": "MEKRAID",
             "look_count": 3,
             "max_cost": 5,
+            "select_count": 1,
             "target_filter": target_filter
         }
         cmd_item = self.create_command_item(cmd_data)
@@ -1164,8 +1170,12 @@ class CardDataManager:
     def format_command_label(self, command):
         """Generates a human-readable label for a command."""
         cmd_type = command.get('type', 'NONE')
-        # Use 'Action' instead of 'Command' for UI consistency
-        label = f"{tr('Action')}: {tr(cmd_type)}"
+        # Specialize label for Revolution Change (MUTATE with mutation_kind)
+        if cmd_type == 'MUTATE' and command.get('mutation_kind') == 'REVOLUTION_CHANGE':
+            label = f"{tr('Action')}: {tr('REVOLUTION_CHANGE')}"
+        else:
+            # Use 'Action' instead of 'Command' for UI consistency
+            label = f"{tr('Action')}: {tr(cmd_type)}"
         if command.get('legacy_warning'):
              label += " [WARNING: Incomplete Conversion]"
         return label

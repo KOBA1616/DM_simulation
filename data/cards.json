@@ -127,18 +127,25 @@
       {
         "commands": [
           {
+            "amount": 0,
+            "format": "command",
+            "from_zone": "NONE",
+            "input_value_key": "",
             "mutation_kind": "REVOLUTION_CHANGE",
+            "output_value_key": "",
+            "str_param": "",
             "target_filter": {
-              "civilizations": [
-                "FIRE"
-              ],
-              "min_cost": 5,
               "races": [
-                "Dragon"
+                "マジック"
+              ],
+              "types": [
+                "CREATURE"
               ]
             },
+            "target_group": "PLAYER_SELF",
+            "to_zone": "NONE",
             "type": "MUTATE",
-            "uid": "60c4bfda-819b-4c6a-80c2-c953843e2994"
+            "uid": "005e67c4-f84b-4e8b-a331-cca0e0ce383b"
           }
         ],
         "condition": {
@@ -151,23 +158,22 @@
     "id": 2,
     "is_key_card": false,
     "keywords": {
-      "revolution_change": true,
       "g_strike": true,
+      "revolution_change": true,
       "speed_attacker": true
     },
-    "name": "カラクリバーシ",
+    "name": "芸魔隠狐カラクリバーシ",
     "power": 4000,
     "races": [
       "マジック"
     ],
     "reaction_abilities": [],
     "revolution_change_condition": {
-      "civilizations": [
-        "FIRE"
-      ],
-      "min_cost": 5,
       "races": [
-        "Dragon"
+        "マジック"
+      ],
+      "types": [
+        "CREATURE"
       ]
     },
     "static_abilities": [],

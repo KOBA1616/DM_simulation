@@ -108,7 +108,7 @@ _definitions = [
                produces_output=True, output_label="Added Cards"),
 
     CommandDef("MEKRAID",
-               visible=["target_filter", "amount", "output_link"],
+               visible=["target_filter", "amount", "val2", "output_link"],
                labels={"amount": "Level"},
                produces_output=True, output_label="Played Card"),
 
@@ -149,6 +149,10 @@ _definitions = [
     CommandDef("CHOICE", # Mapped from SELECT_OPTION in action_to_command
                visible=["amount"],
                labels={"amount": "Count"})
+    ,
+    # UI-only convenience type: saves as MUTATE+REVOLUTION_CHANGE under the hood
+    CommandDef("REVOLUTION_CHANGE",
+               visible=["target_filter"]) 
 ]
 
 # Generate Dictionary Export
