@@ -215,10 +215,6 @@ class GameWindow(QMainWindow):
         self.card_editor_button.clicked.connect(self.open_card_editor)
         tools_layout.addWidget(self.card_editor_button)
 
-        self.scenario_editor_button = QPushButton(tr("Scenario Editor"))
-        self.scenario_editor_button.clicked.connect(self.open_scenario_editor)
-        tools_layout.addWidget(self.scenario_editor_button)
-
         self.sim_dialog_button = QPushButton(tr("Batch Simulation"))
         self.sim_dialog_button.clicked.connect(self.open_simulation_dialog)
         tools_layout.addWidget(self.sim_dialog_button)
@@ -379,17 +375,6 @@ class GameWindow(QMainWindow):
         self.card_editor = CardEditor("data/cards.json")
         self.card_editor.data_saved.connect(self.reload_card_data)
         self.card_editor.show()
-
-    def open_scenario_editor(self) -> None:
-        try:
-            from dm_toolkit.gui.editor import scenario_editor
-            if hasattr(scenario_editor, 'ScenarioEditor'):
-                self.scenario_editor = scenario_editor.ScenarioEditor(self.card_db, parent=self)
-                self.scenario_editor.show()
-                return
-        except Exception:
-            pass
-        QMessageBox.information(self, tr("Scenario Editor"), tr("Scenario Editor not available."))
 
     def reload_card_data(self) -> None:
         try:

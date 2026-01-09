@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
-    QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
+    QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QDialog,
     QLabel, QPushButton, QComboBox, QSpinBox,
     QGroupBox, QFileDialog, QMessageBox, QInputDialog, QListWidget, QFormLayout
 )
@@ -10,6 +10,7 @@ import os
 import random
 import dm_ai_module
 from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.widgets.card_action_dialog import CardActionDialog
 
 class ScenarioToolsDock(QDockWidget):
     def __init__(self, parent=None, game_state=None, card_db=None):
@@ -56,6 +57,21 @@ class ScenarioToolsDock(QDockWidget):
         load_group.setLayout(load_layout)
         layout.addWidget(load_group)
 
+        # 0.5 Board Control
+        board_group = QGroupBox(tr("Board Control"))
+        board_layout = QVBoxLayout()
+
+        self.btn_clear_board = QPushButton(tr("Clear Board"))
+        self.btn_clear_board.clicked.connect(self.on_clear_board)
+        board_layout.addWidget(self.btn_clear_board)
+
+        self.btn_reset_game = QPushButton(tr("Reset Game"))
+        self.btn_reset_game.clicked.connect(self.on_reset_game)
+        board_layout.addWidget(self.btn_reset_game)
+
+        board_group.setLayout(board_layout)
+        layout.addWidget(board_group)
+
         # 1. Target Selection
         target_group = QGroupBox(tr("Target Zone Selection"))
         target_layout = QVBoxLayout()
@@ -101,6 +117,21 @@ class ScenarioToolsDock(QDockWidget):
 
         manip_group.setLayout(manip_layout)
         layout.addWidget(manip_group)
+
+        # 2.5 Game Flow Control
+        flow_group = QGroupBox(tr("Game Flow"))
+        flow_layout = QVBoxLayout()
+
+        self.btn_end_turn = QPushButton(tr("End Turn"))
+        self.btn_end_turn.clicked.connect(self.on_end_turn)
+        flow_layout.addWidget(self.btn_end_turn)
+
+        self.btn_draw_card = QPushButton(tr("Draw Card"))
+        self.btn_draw_card.clicked.connect(self.on_draw_card)
+        flow_layout.addWidget(self.btn_draw_card)
+
+        flow_group.setLayout(flow_layout)
+        layout.addWidget(flow_group)
 
         # 3. Game State Editing
         state_group = QGroupBox(tr("Game State"))
@@ -176,108 +207,52 @@ class ScenarioToolsDock(QDockWidget):
         if not self.parent_window: return
 
         # 1. Reset Game to clean slate
-        # Note: reset_game in app.py reloads decks. We want empty state ideally,
-        # or we accept deck load and then clear relevant zones?
-        # Ideally, Scenario Mode overrides standard decks.
-
-        # We will reset, then clear all zones manually.
         self.parent_window.reset_game()
 
-        # 2. Clear Zones (Hand, Battle, Mana, Shield)
-        # We leave Decks intact unless scenario specifies them?
-        # Scenarios usually specify 'my_deck'. If not, we might want to keep the loaded deck?
-        # Let's assume scenario config overrides everything present in it.
+        # 2. Clear all zones completely (safe method: move to deck bottom)
+        self._clear_board_safely()
 
-        # Actually, best way to 'Clear' is to create a new GameState with NO decks?
-        # But app.py reset_game logic is fixed.
-        # We will use DevTools or loop to move everything to Graveyard (then to "Void"?).
-
-        # A simpler way: Just set the GameState internal vectors to empty? Not exposed.
-        # We will use DevTools.move_cards to Graveyard for everything in Hand/Battle/Mana/Shield.
-        # Deck is harder to clear without drawing all.
-
-        # Strategy: Iterate all zones and move to Graveyard.
-        # Wait, if we move Deck to Graveyard, we might kill the game (Deckout).
-        # We only clear zones that the scenario DEFINES.
-
+        # 3. Apply scenario config
         config = scenario.get("config", {})
-
+        
         p0 = self.gs.players[0]
         p1 = self.gs.players[1]
 
-        # Helper to setup zone
         def setup_zone(pid, zone_enum, card_ids):
-            # 1. Clear existing cards in this zone?
-            # It's hard to clear specific zone safely without side effects (like triggering OnDestroy).
-            # For "Scenario Setup", we assume "God Mode" editing.
-            # We can't suppress triggers easily.
-            # But we can just ADD cards. If the user wants a clean board, they should have a "Clear Board" scenario?
-            # Or we force clear.
+            """Setup a zone with specified cards, moving from deck if needed."""
+            if not card_ids: 
+                return
 
-            # Let's try to clear Hand/Battle/Mana/Shield by moving to Deck? (Then shuffle/reset deck?)
-            # Moving to Graveyard triggers effects.
-            # If we just ADD, we might end up with mixed state.
-
-            # Since this is a tool, let's just ADD for now, or assume the user resets before load?
-            # The user clicked "Load". They expect the scenario state.
-
-            # If I can't clear safely, I will just add.
-            # Ideally, `GameState` should have `reset_zone`.
-
-            # 2. Add cards
-            if not card_ids: return
-
-            # We need new instance IDs.
-            # Find max ID first.
-            max_id = 0
-            for p in [self.gs.players[0], self.gs.players[1]]:
-                for z in [p.hand, p.mana_zone, p.battle_zone, p.shield_zone, p.graveyard, p.deck]:
-                    for c in z:
-                        if c.instance_id > max_id: max_id = c.instance_id
+            # Find max instance ID
+            max_id = self._get_max_instance_id()
 
             for i, cid in enumerate(card_ids):
                 iid = max_id + 1 + i
-                if zone_enum == dm_ai_module.Zone.HAND:
-                    self.gs.add_card_to_hand(pid, cid, iid)
-                elif zone_enum == dm_ai_module.Zone.MANA:
-                    self.gs.add_card_to_mana(pid, cid, iid)
-                elif zone_enum == dm_ai_module.Zone.BATTLE:
-                    self.gs.add_test_card_to_battle(pid, cid, iid, False, True) # Tapped=False, Sick=True
-                elif zone_enum == dm_ai_module.Zone.SHIELD:
-                    # Workaround: Add to hand, move to Shield
-                    self.gs.add_card_to_hand(pid, cid, iid)
-                    dm_ai_module.DevTools.move_cards(self.gs, iid, dm_ai_module.Zone.HAND, dm_ai_module.Zone.SHIELD)
-                elif zone_enum == dm_ai_module.Zone.GRAVEYARD:
-                    self.gs.add_card_to_hand(pid, cid, iid)
-                    dm_ai_module.DevTools.move_cards(self.gs, iid, dm_ai_module.Zone.HAND, dm_ai_module.Zone.GRAVEYARD)
-                elif zone_enum == dm_ai_module.Zone.DECK:
-                    self.gs.add_card_to_deck(pid, cid, iid)
-
-        # We assume the user wants the scenario to be the state.
-        # But clearing is hard.
-        # Let's implement a 'smart clear': Move Hand/Battle/Mana/Shield to Deck (bottom), then shuffle?
-        # That effectively clears the board without triggering 'Destroy'.
-
-        # Clear P0 and P1 board
-        for pid in [0, 1]:
-            # We must iterate copies because we are modifying the zones
-            # Actually, move_cards might invalidate iterators.
-            # Using DevTools to move everything to Deck?
-            pass
-            # Skipping complex clear for now to avoid crashes.
-            # Appending cards is "Safe".
+                # Add card to specified zone
+                self._add_card_to_zone(pid, zone_enum, cid, iid)
+                # Remove from deck if it exists there
+                self._remove_from_deck(pid, cid)
 
         # Apply Config
-        if "my_hand_cards" in config: setup_zone(0, dm_ai_module.Zone.HAND, config["my_hand_cards"])
-        if "my_battle_zone" in config: setup_zone(0, dm_ai_module.Zone.BATTLE, config["my_battle_zone"])
-        if "my_mana_zone" in config: setup_zone(0, dm_ai_module.Zone.MANA, config["my_mana_zone"])
-        if "my_shields" in config: setup_zone(0, dm_ai_module.Zone.SHIELD, config["my_shields"])
-        if "my_grave_yard" in config: setup_zone(0, dm_ai_module.Zone.GRAVEYARD, config["my_grave_yard"])
+        if "my_hand_cards" in config: 
+            setup_zone(0, dm_ai_module.Zone.HAND, config["my_hand_cards"])
+        if "my_battle_zone" in config: 
+            setup_zone(0, dm_ai_module.Zone.BATTLE, config["my_battle_zone"])
+        if "my_mana_zone" in config: 
+            setup_zone(0, dm_ai_module.Zone.MANA, config["my_mana_zone"])
+        if "my_shields" in config: 
+            setup_zone(0, dm_ai_module.Zone.SHIELD, config["my_shields"])
+        if "my_grave_yard" in config: 
+            setup_zone(0, dm_ai_module.Zone.GRAVEYARD, config["my_grave_yard"])
 
-        if "enemy_hand_cards" in config: setup_zone(1, dm_ai_module.Zone.HAND, config["enemy_hand_cards"])
-        if "enemy_battle_zone" in config: setup_zone(1, dm_ai_module.Zone.BATTLE, config["enemy_battle_zone"])
-        if "enemy_mana_zone" in config: setup_zone(1, dm_ai_module.Zone.MANA, config["enemy_mana_zone"])
-        if "enemy_shields" in config: setup_zone(1, dm_ai_module.Zone.SHIELD, config["enemy_shields"])
+        if "enemy_hand_cards" in config: 
+            setup_zone(1, dm_ai_module.Zone.HAND, config["enemy_hand_cards"])
+        if "enemy_battle_zone" in config: 
+            setup_zone(1, dm_ai_module.Zone.BATTLE, config["enemy_battle_zone"])
+        if "enemy_mana_zone" in config: 
+            setup_zone(1, dm_ai_module.Zone.MANA, config["enemy_mana_zone"])
+        if "enemy_shields" in config: 
+            setup_zone(1, dm_ai_module.Zone.SHIELD, config["enemy_shields"])
 
         self.parent_window.update_ui()
         loaded_name = scenario.get('name') or "?"
@@ -287,16 +262,87 @@ class ScenarioToolsDock(QDockWidget):
             tr("Loaded scenario: {name}").format(name=loaded_name),
         )
 
-    def on_add_specific_card(self):
-        if not self.gs: return
-        items = []
-        for cid, card in self.card_db.items():
-            items.append(f"{cid}: {card.name}")
+    def _clear_board_safely(self):
+        """Clear all cards from Hand, Battle, Mana, Shield zones (move to deck bottom)."""
+        if not self.gs:
+            return
+        
+        for pid in [0, 1]:
+            p = self.gs.players[pid]
+            # Collect all cards from target zones
+            cards_to_clear = []
+            for card in list(p.hand):
+                cards_to_clear.append((card, dm_ai_module.Zone.HAND))
+            for card in list(p.battle_zone):
+                cards_to_clear.append((card, dm_ai_module.Zone.BATTLE))
+            for card in list(p.mana_zone):
+                cards_to_clear.append((card, dm_ai_module.Zone.MANA))
+            for card in list(p.shield_zone):
+                cards_to_clear.append((card, dm_ai_module.Zone.SHIELD))
+            
+            # Move each to graveyard (safe, no side effects)
+            for card, from_zone in cards_to_clear:
+                try:
+                    dm_ai_module.DevTools.move_cards(
+                        self.gs, card.instance_id, from_zone, dm_ai_module.Zone.GRAVEYARD
+                    )
+                except Exception:
+                    pass  # Ignore move failures
 
-        item, ok = QInputDialog.getItem(self, tr("Select Card"), tr("Card:"), items, 0, False)
-        if ok and item:
-            card_id = int(item.split(":")[0])
-            self.add_card_to_target(card_id)
+    def _get_max_instance_id(self):
+        """Get the maximum instance ID across all cards."""
+        max_id = 0
+        for p in [self.gs.players[0], self.gs.players[1]]:
+            for zone in [p.hand, p.mana_zone, p.battle_zone, p.shield_zone, p.graveyard, p.deck]:
+                for c in zone:
+                    if c.instance_id > max_id:
+                        max_id = c.instance_id
+        return max_id
+
+    def _add_card_to_zone(self, pid, zone_enum, cid, iid):
+        """Add a card to a specific zone."""
+        if zone_enum == dm_ai_module.Zone.HAND:
+            self.gs.add_card_to_hand(pid, cid, iid)
+        elif zone_enum == dm_ai_module.Zone.MANA:
+            self.gs.add_card_to_mana(pid, cid, iid)
+        elif zone_enum == dm_ai_module.Zone.BATTLE:
+            self.gs.add_test_card_to_battle(pid, cid, iid, False, True)
+        elif zone_enum == dm_ai_module.Zone.SHIELD:
+            self.gs.add_card_to_hand(pid, cid, iid)
+            dm_ai_module.DevTools.move_cards(
+                self.gs, iid, dm_ai_module.Zone.HAND, dm_ai_module.Zone.SHIELD
+            )
+        elif zone_enum == dm_ai_module.Zone.GRAVEYARD:
+            self.gs.add_card_to_hand(pid, cid, iid)
+            dm_ai_module.DevTools.move_cards(
+                self.gs, iid, dm_ai_module.Zone.HAND, dm_ai_module.Zone.GRAVEYARD
+            )
+        elif zone_enum == dm_ai_module.Zone.DECK:
+            self.gs.add_card_to_deck(pid, cid, iid)
+
+    def _remove_from_deck(self, pid, card_id):
+        """Remove a specific card from player deck if present."""
+        if pid >= len(self.gs.players):
+            return
+        p = self.gs.players[pid]
+        p.deck = [c for c in p.deck if c.card_id != card_id]
+
+    def on_add_specific_card(self):
+        """Open card action dialog for adding cards."""
+        if not self.gs:
+            return
+        
+        dialog = CardActionDialog(
+            parent=self.parent_window,
+            game_state=self.gs,
+            card_db=self.card_db,
+            action_type="ADD_CARD"
+        )
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            result = dialog.get_result()
+            if result:
+                self._execute_add_card_action(result)
 
     def on_add_random_card(self):
         if not self.gs: return
@@ -368,7 +414,140 @@ class ScenarioToolsDock(QDockWidget):
         if self.parent_window:
             self.parent_window.update_ui()
 
+    def on_clear_board(self):
+        """Clear all cards from Hand, Battle, Mana, Shield zones."""
+        if not self.gs:
+            return
+        
+        reply = QMessageBox.question(
+            self,
+            tr("Clear Board"),
+            tr("Clear all cards from Hand, Battle, Mana, and Shield zones?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self._clear_board_safely()
+            if self.parent_window:
+                self.parent_window.update_ui()
+            QMessageBox.information(self, tr("Info"), tr("Board cleared."))
+
+    def on_reset_game(self):
+        """Reset entire game state."""
+        if not self.parent_window:
+            return
+        
+        reply = QMessageBox.question(
+            self,
+            tr("Reset Game"),
+            tr("Reset the game to initial state?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.parent_window.reset_game()
+
+    def on_end_turn(self):
+        """End the current turn (advance phase)."""
+        if not self.gs:
+            return
+        
+        try:
+            # Call the phase manager to advance
+            dm_ai_module.PhaseManager.advance_phase(self.gs)
+            if self.parent_window:
+                self.parent_window.update_ui()
+            QMessageBox.information(self, tr("Info"), tr("Turn advanced."))
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), f"Failed to advance turn: {e}")
+
+    def on_draw_card(self):
+        """Draw a card for the selected player."""
+        if not self.gs:
+            return
+        
+        pid = self.target_player_combo.currentData()
+        player = self.gs.players[pid]
+        
+        if not player.deck:
+            QMessageBox.warning(self, tr("Info"), tr("Deck is empty."))
+            return
+        
+        try:
+            # Draw one card
+            card = player.deck[-1]
+            player.deck.pop()
+            player.hand.append(card)
+            
+            if self.parent_window:
+                self.parent_window.update_ui()
+            QMessageBox.information(self, tr("Info"), tr("Card drawn."))
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), f"Failed to draw card: {e}")
+
+    def _execute_add_card_action(self, result):
+        """Execute card addition action from dialog result."""
+        if not result:
+            return
+        
+        player_id = result["player_id"]
+        zone = result["zone"]
+        card_ids = result["card_ids"]
+        quantity = result["quantity"]
+        
+        if not self.gs or player_id >= len(self.gs.players):
+            return
+        
+        try:
+            max_id = self._get_max_instance_id()
+            
+            for card_id in card_ids:
+                for i in range(quantity):
+                    iid = max_id + 1 + i
+                    self._add_card_to_zone(player_id, zone, card_id, iid)
+                    self._remove_from_deck(player_id, card_id)
+                    max_id = iid
+            
+            if self.parent_window:
+                self.parent_window.update_ui()
+            
+            QMessageBox.information(
+                self,
+                tr("Success"),
+                tr("Added {count} card(s) to {zone}").format(
+                    count=len(card_ids) * quantity,
+                    zone=self.zone_combo.currentText() if hasattr(self, 'zone_combo') else "zone"
+                )
+            )
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), f"Failed to add cards: {e}")
+
     def on_untap_all_mana(self):
+        pid = self.target_player_combo.currentData()
+        player = self.gs.players[pid]
+        for c in player.mana_zone:
+            c.is_tapped = False
+        if self.parent_window:
+            self.parent_window.update_ui()
+
+    def on_save_scenario(self):
+        if not self.gs: return
+
+        name, ok = QInputDialog.getText(self, tr("Save Scenario"), tr("Scenario Name:"))
+        if not ok or not name: return
+
+        config: dict[str, object] = {
+            "my_mana": len(self.gs.players[0].mana_zone),
+            "enemy_shield_count": len(self.gs.players[1].shield_zone),
+            "enemy_can_use_trigger": True,
+            "loop_proof_mode": False
+        }
+
+        def get_ids(zone_cards):
+            return [c.card_id for c in zone_cards]
+
+        p0 = self.gs.players[0]
+        p1 = self.gs.players[1]
         pid = self.target_player_combo.currentData()
         player = self.gs.players[pid]
         for c in player.mana_zone:

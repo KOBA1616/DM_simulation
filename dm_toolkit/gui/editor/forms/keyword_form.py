@@ -121,41 +121,29 @@ class KeywordEditForm(BaseEditForm):
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_FRIEND_BURST, {})
         self.update_data()
 
-    def _populate_ui(self, item):
-        # The item data for KEYWORDS is the 'keywords' dictionary directly?
-        # Or is it the card data?
-        # In DataManager, we will set data to the 'keywords' dict.
-        # However, BaseEditForm expects a dict.
-        # Let's assume the item data IS the keywords dict.
-
-        # NOTE: QStandardItem data is returned by value (copy) in Python often,
-        # but we need to verify if modifying it here updates the model correctly via update_data.
-        # update_data calls _save_data then sets it back.
-
-        kw_data = item.data(Qt.ItemDataRole.UserRole + 2)
-        if kw_data is None: kw_data = {}
+    def _load_ui_from_data(self, data, item):
+        # The item data for KEYWORDS is the 'keywords' dictionary directly
+        # data parameter is the keywords dictionary extracted from the KEYWORDS tree item
+        if data is None:
+            data = {}
 
         for k, cb in self.keyword_checks.items():
-            is_checked = kw_data.get(k, False)
+            is_checked = data.get(k, False)
             cb.setChecked(is_checked)
 
         self.rev_change_check.blockSignals(True)
-        self.rev_change_check.setChecked(kw_data.get('revolution_change', False))
+        self.rev_change_check.setChecked(data.get('revolution_change', False))
         self.rev_change_check.blockSignals(False)
 
         self.mekraid_check.blockSignals(True)
-        self.mekraid_check.setChecked(kw_data.get('mekraid', False))
+        self.mekraid_check.setChecked(data.get('mekraid', False))
         self.mekraid_check.blockSignals(False)
 
         self.friend_burst_check.blockSignals(True)
-        self.friend_burst_check.setChecked(kw_data.get('friend_burst', False))
+        self.friend_burst_check.setChecked(data.get('friend_burst', False))
         self.friend_burst_check.blockSignals(False)
 
-        # Check parent card for Twinpact to toggle Mega Last Burst visibility?
-        # This form only sees its item. The LogicTree might need to manage this visibility or we pass context.
-        # For now, let's leave it visible or always enabled. The user requirement doesn't specify strict context here.
-
-    def _save_data(self, data):
+    def _save_ui_to_data(self, data):
         # 'data' is the keywords dictionary
 
         # Reset managed keywords

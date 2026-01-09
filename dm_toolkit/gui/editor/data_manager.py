@@ -274,6 +274,15 @@ class CardDataManager:
 
                 card_item.appendRow(ra_item)
 
+            # 2.5 Add Keywords if present in card JSON
+            keywords_data = card.get('keywords', {})
+            if keywords_data and isinstance(keywords_data, dict):
+                kw_item = QStandardItem(tr("Keywords"))
+                kw_item.setData("KEYWORDS", Qt.ItemDataRole.UserRole + 1)
+                # Make a copy to avoid mutating the original card data
+                kw_item.setData(keywords_data.copy(), Qt.ItemDataRole.UserRole + 2)
+                card_item.appendRow(kw_item)
+
             # 3. Add Spell Side if exists
             spell_side_data = card.get('spell_side')
             if spell_side_data:
