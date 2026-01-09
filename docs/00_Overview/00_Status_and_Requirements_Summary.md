@@ -118,8 +118,13 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 3. `test_generated_text_choice_and_zone_normalization.py::test_choice_options_accept_command_dicts` - ✅ Fixed
 
 ### 4.2 スキップ中のテスト (5件)
-- `test_beam_search.py::test_beam_search_logic` - C++評価器の未初期化メモリ問題
 - その他CI関連スキップ
+
+### 4.3 解決済みのテスト (4件)
+1. `test_gui_stubbing.py::test_gui_libraries_are_stubbed` - ✅ Fixed
+2. `test_generated_text_choice_and_zone_normalization.py::test_transition_zone_short_names_render_naturally` - ✅ Fixed
+3. `test_generated_text_choice_and_zone_normalization.py::test_choice_options_accept_command_dicts` - ✅ Fixed
+4. `test_beam_search.py::test_beam_search_logic` - ✅ Fixed (C++未初期化メモリ/unsigned underflow問題修正)
 
 ## 5. 詳細実装計画 (Detailed Implementation Plan)
 
@@ -377,19 +382,13 @@ if "evolution" in keywords and not base_creatures:
 
 ---
 
-#### 5.4.3 Beam Search修正 [調査フェーズ - 1週間]
-**技術課題**: C++評価器の未初期化メモリ
+#### 5.4.3 Beam Search修正 [Done]
+**技術課題**: C++評価器の未初期化メモリおよびヒューリスティック計算におけるunsigned underflow
 
-**調査計画**:
-1. Valgrindによるメモリリーク検出
-2. AddressSanitizerでの実行
-3. デバッグビルドでの詳細ログ
-4. コードレビュー（src/ai/beam_search.cpp）
-
-**修正戦略**:
-- メンバ変数の明示的初期化
-- スマートポインタの活用
-- RAIIパターンの適用
+**対応結果**:
+- `CardDefinition` および `Action` 構造体の未初期化メンバにデフォルト値を設定
+- `BeamSearchEvaluator::calculate_resource_advantage` における `size_t` の減算で発生していたunderflowバグを、`static_cast<int>` へのキャストにより修正
+- テスト `test_beam_search.py::test_beam_search_logic` の通過を確認
 
 ---
 

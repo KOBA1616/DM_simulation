@@ -71,13 +71,13 @@ namespace dm::core {
     };
 
     struct CardDefinition {
-        CardID id;
+        CardID id = 0;
         std::string name;
         std::vector<Civilization> civilizations; // Changed from single civilization to vector
-        CardType type;
-        int cost;
-        int power; // POWER_INFINITY for infinite
-        int power_attacker_bonus; // Added for Power Attacker value
+        CardType type = CardType::CREATURE;
+        int cost = 0;
+        int power = 0; // POWER_INFINITY for infinite
+        int power_attacker_bonus = 0; // Added for Power Attacker value
         std::vector<std::string> races; // Storing as string for now, could be enum later
         
         CardKeywords keywords;
