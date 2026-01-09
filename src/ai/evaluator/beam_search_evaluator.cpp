@@ -154,10 +154,10 @@ namespace dm::ai {
         const Player& opp = state.players[1 - perspective];
 
         float score = 0.0f;
-        score += (me.mana_zone.size() - opp.mana_zone.size()) * 0.5f;
-        score += (me.hand.size() - opp.hand.size()) * 1.0f;
-        score += (me.battle_zone.size() - opp.battle_zone.size()) * 2.0f;
-        score += (me.shield_zone.size() - opp.shield_zone.size()) * 5.0f;
+        score += ((int)me.mana_zone.size() - (int)opp.mana_zone.size()) * 0.5f;
+        score += ((int)me.hand.size() - (int)opp.hand.size()) * 1.0f;
+        score += ((int)me.battle_zone.size() - (int)opp.battle_zone.size()) * 2.0f;
+        score += ((int)me.shield_zone.size() - (int)opp.shield_zone.size()) * 5.0f;
         return score;
     }
 

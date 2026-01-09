@@ -41,7 +41,9 @@ namespace dm::ai {
             BeamNode& operator=(BeamNode&& other) noexcept = default;
 
             // Helper constructor from GameState
-            BeamNode(dm::core::GameState&& s, float sc) : state(std::move(s)), score(sc) {}
+            // Ensure all members are initialized
+            BeamNode(dm::core::GameState&& s, float sc)
+                : state(std::move(s)), score(sc), path(), first_action(), is_root(false) {}
 
             // Deleted Copy to prevent accidental copying of GameState
             BeamNode(const BeamNode&) = delete;
