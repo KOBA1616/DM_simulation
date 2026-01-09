@@ -31,7 +31,9 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Parallel Runner**: OpenMP + C++ MCTS による高速並列対戦。
 *   [Status: Done] **AlphaZero Logic**: MLPベースのAlphaZero学習ループ (`train_simple.py`).
 *   [Status: Review] **Transformer Model**: `DuelTransformer` (Linear Attention, Synergy Matrix) の実装完了。学習パイプライン `train_transformer_phase4.py` 稼働確認済み。
-*   [Status: WIP] **Meta-Game Evolution**: `evolution_ecosystem.py` 実装開始。`PopulationManager` クラスの実装完了 (Phase 3 Day 1)。
+*   [Status: WIP] **Meta-Game Evolution**: `evolution_ecosystem.py` 実装中。
+    *   `PopulationManager` クラスの実装完了 (Phase 3 Day 1)。
+    *   `ParallelMatchExecutor` クラスの実装完了 (Phase 3 Day 2)。
 *   [Status: Done] **Inference Core**: C++ `DeckInference` クラスおよびPythonバインディング実装済み。
 
 ### 2.3 開発ツール (`python/gui`)
@@ -43,7 +45,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 3.1 AI Implementation (Phase 3 & 4)
 *   **Transformer Training Loop**: `dm_toolkit.ai.agent.transformer_model.DuelTransformer` を使用した学習スクリプト `train_transformer.py` の完成。
-*   **Evolution Pipeline Integration**: `verify_deck_evolution.py` のロジックを本番の `evolution_ecosystem.py` に統合し、継続的な自己対戦環境を構築する。
+*   **Evolution Pipeline Integration**: Phase 3 Day 3 の `Evolution Operator` を実装し、自己進化ループを完成させる。
 
 ### 3.2 Engine Maintenance
 *   **Test Coverage**: 新機能（革命チェンジ、ハイパー化）に対するカバレッジの向上。
@@ -269,9 +271,10 @@ class StubFinder(importlib.abc.MetaPathFinder):
    - 初期集団の生成 (`initialize_random_population`)
    - 保存/読み込み (`save_population`/`load_population`)
    
-2. Day 2: Parallel Workersの実装
-   - マルチプロセス対戦実行
+2. Day 2: Parallel Workersの実装 [Done]
+   - マルチプロセス対戦実行 (`ParallelMatchExecutor` クラス)
    - 結果集約
+   - C++ `ParallelRunner` を各ワーカープロセスで利用
 
 3. Day 3: Evolution Operatorの実装
    - 適応度関数の定義
@@ -671,19 +674,19 @@ main (protected)
 ## 11. 次のアクション（即座実行）
 
 ### 今日実施すべきタスク（優先順位順）
-1. **Phase 6 ブロッカー解消**
+1. **Week 3 Day 3: Evolution Pipeline Integration**
+  - [ ] `EvolutionOperator` の実装と `PopulationManager` への統合。
+  - [ ] 自己進化ループ (`run_evolution_loop`) の実装。
+
+2. **Phase 6 ブロッカー解消**
   - [x] ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](dm_toolkit/gui/editor/text_generator.py)）。
   - [x] PyQtスタブの修正（[run_pytest_with_pyqt_stub.py](run_pytest_with_pyqt_stub.py)）。
   - 目標: 失敗中3テストを通過。
 
-2. **Week 2 Day 1 仕込み**
+3. **Week 2 Day 1 仕込み**
   - [x] [data/synergy_pairs_v1.json](data/synergy_pairs_v1.json) の雛形作成（手動10-20ペア）。
   - [x] [python/training/generate_transformer_training_data.py](python/training/generate_transformer_training_data.py) のスケルトン作成とdry-run（100サンプル）。
   - 目標: Day 1 開始時にGPUで1バッチ流せる状態。
-
-3. **環境確認**
-  - CUDA/ドライバと `.venv` の動作確認、TensorBoard起動テスト。
-  - 目標: 学習ループデバッグに即移行できる状態。
 
 ### 今週中に完了すべきマイルストーン
 - [x] Phase 6 ブロッカー解消（3テスト通過、通過率99%近似）
