@@ -5,6 +5,7 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
+from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
 from dm_toolkit.gui.editor.utils import normalize_action_zone_keys, normalize_command_zone_keys
 from dm_toolkit.consts import COMMAND_TYPES, GRANTABLE_KEYWORDS
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
@@ -41,7 +42,7 @@ COMMAND_GROUPS = {
         'MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT'
     ],
     'LOGIC': [
-        'QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION'
+        'QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION', 'IF'
     ],
     'BATTLE': [
         'BREAK_SHIELD', 'RESOLVE_BATTLE', 'SHIELD_BURN', 'SHIELD_TRIGGER'
@@ -223,6 +224,12 @@ class UnifiedActionForm(BaseEditForm):
         self.register_widget(self.arbitrary_check)
         self.arbitrary_label = QLabel("")
         layout.addRow(self.arbitrary_label, self.arbitrary_check)
+
+        # Condition (New for IF)
+        self.condition_widget = ConditionEditorWidget(title=tr("Check Condition"))
+        self.register_widget(self.condition_widget)
+        self.condition_widget.dataChanged.connect(self.update_data)
+        layout.addRow(self.condition_widget)
 
         # Zones
         self.source_zone_combo, self.dest_zone_combo = make_zone_combos(self)
@@ -459,6 +466,15 @@ class UnifiedActionForm(BaseEditForm):
         self.arbitrary_label.setVisible(cfg.get('optional_visible', False))
         self.arbitrary_check.setVisible(cfg.get('optional_visible', False))
 
+        # Override optional label for IF
+        if t == 'IF':
+            self.arbitrary_check.setText(tr("Check Optional Executed"))
+        else:
+            self.arbitrary_check.setText(tr("Optional / Arbitrary Amount"))
+
+        # Condition Widget
+        self.condition_widget.setVisible(t == 'IF')
+
         self.type_combo.setToolTip(tr(cfg.get('tooltip', '')))
 
         # Filter group contextual setup
@@ -647,6 +663,10 @@ class UnifiedActionForm(BaseEditForm):
         self.set_combo_by_data(self.dest_zone_combo, data.get('to_zone', 'NONE'))
 
         self.filter_widget.set_data(data.get('target_filter', {}))
+
+        if ui_type == 'IF':
+             self.condition_widget.set_data(data.get('condition', {}))
+
         self.link_widget.set_data(data)
 
         # Mutation kind
@@ -743,6 +763,14 @@ class UnifiedActionForm(BaseEditForm):
 
         cmd['from_zone'] = self.source_zone_combo.currentData()
         cmd['to_zone'] = self.dest_zone_combo.currentData()
+
+        if sel == 'IF':
+             cmd['condition'] = self.condition_widget.get_data()
+             # If optional check is checked, we might want to set condition type to OPTIONAL_EXECUTED if not set?
+             # Or use optional flag as metadata.
+             # The user asked for check box in IF.
+             # If I use ConditionWidget, it has Type selector.
+             # I can map 'optional' flag to specific logic or just let user select condition type.
 
         # Variable links
         try:

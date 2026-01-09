@@ -28,6 +28,7 @@
 #include "handlers/play_handler.hpp"
 #include "handlers/modify_power_handler.hpp"
 #include "handlers/resolve_battle_handler.hpp"
+#include "handlers/if_handler.hpp"
 #include "engine/systems/command_system.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include <algorithm>
@@ -75,6 +76,7 @@ namespace dm::engine {
         register_handler(EffectPrimitive::PLAY_FROM_ZONE, std::make_unique<PlayHandler>());
         register_handler(EffectPrimitive::MODIFY_POWER, std::make_unique<ModifyPowerHandler>());
         register_handler(EffectPrimitive::RESOLVE_BATTLE, std::make_unique<ResolveBattleHandler>());
+        register_handler(EffectPrimitive::IF_CONDITION, std::make_unique<IfHandler>());
 
         ConditionSystem::instance().initialize_defaults();
 
@@ -210,6 +212,11 @@ namespace dm::engine {
         std::vector<dm::core::Instruction>* target_instructions = &out_instructions;
 
         bool has_condition = action.condition.has_value() && action.condition->type != "NONE";
+
+        // Special Case: IF_CONDITION type manages its own condition logic inside handler
+        if (action.type == EffectPrimitive::IF_CONDITION) {
+            has_condition = false;
+        }
 
         if (has_condition) {
             target_instructions = &inner_instructions;

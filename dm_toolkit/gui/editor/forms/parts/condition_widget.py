@@ -67,6 +67,16 @@ CONDITION_UI_CONFIG = {
         "show_val": False,
         "show_str": False,
         "show_filter": True
+    },
+    "OPTIONAL_EFFECT_EXECUTED": {
+        "show_val": False,
+        "show_str": False,
+        "label_str": "Optional"
+    },
+    "INPUT_VALUE_MATCH": {
+        "show_val": True,
+        "show_str": False,
+        "label_val": "Expected Value"
     }
 }
 
@@ -87,7 +97,8 @@ class ConditionEditorWidget(QGroupBox):
             "NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH",
             "OPPONENT_PLAYED_WITHOUT_MANA", "OPPONENT_DRAW_COUNT",
             "DURING_YOUR_TURN", "DURING_OPPONENT_TURN",
-            "FIRST_ATTACK", "EVENT_FILTER_MATCH"
+            "FIRST_ATTACK", "EVENT_FILTER_MATCH",
+            "OPTIONAL_EFFECT_EXECUTED", "INPUT_VALUE_MATCH"
         ]
         self.populate_combo(self.cond_type_combo, cond_types)
         self.cond_type_combo.currentIndexChanged.connect(self.on_cond_type_changed)
