@@ -71,6 +71,7 @@ namespace dm::engine::systems {
         void handle_move(const dm::core::Instruction& inst, core::GameState& state);
         void handle_modify(const dm::core::Instruction& inst, core::GameState& state);
         void handle_if(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
+        void handle_block(const dm::core::Instruction& inst);
         void handle_loop(const dm::core::Instruction& inst, core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db);
         void handle_calc(const dm::core::Instruction& inst, core::GameState& state);
         void handle_print(const dm::core::Instruction& inst, core::GameState& state);
