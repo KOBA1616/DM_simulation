@@ -134,7 +134,7 @@ namespace dm::ai {
     }
 
     float BeamSearchEvaluator::evaluate_state_heuristic(const GameState& state, PlayerID perspective) {
-        GameResult res;
+        GameResult res = GameResult::NONE;
         GameState check_state = state.clone();
         if (PhaseManager::check_game_over(check_state, res)) {
             if (res == GameResult::DRAW) return 0.0f;
@@ -154,10 +154,10 @@ namespace dm::ai {
         const Player& opp = state.players[1 - perspective];
 
         float score = 0.0f;
-        score += (me.mana_zone.size() - opp.mana_zone.size()) * 0.5f;
-        score += (me.hand.size() - opp.hand.size()) * 1.0f;
-        score += (me.battle_zone.size() - opp.battle_zone.size()) * 2.0f;
-        score += (me.shield_zone.size() - opp.shield_zone.size()) * 5.0f;
+        score += (static_cast<int>(me.mana_zone.size()) - static_cast<int>(opp.mana_zone.size())) * 0.5f;
+        score += (static_cast<int>(me.hand.size()) - static_cast<int>(opp.hand.size())) * 1.0f;
+        score += (static_cast<int>(me.battle_zone.size()) - static_cast<int>(opp.battle_zone.size())) * 2.0f;
+        score += (static_cast<int>(me.shield_zone.size()) - static_cast<int>(opp.shield_zone.size())) * 5.0f;
         return score;
     }
 
