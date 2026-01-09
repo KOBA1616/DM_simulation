@@ -95,20 +95,20 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 	*   前提: `dm_toolkit.action_to_command.action_to_command` を唯一の Action→Command 入口にする（AGENTSポリシー準拠）。
 
 ### 3.5 テキスト生成とi18n改善 (Text Generation & i18n)
-*   [Status: WIP] **自然言語化の強化**: CardTextGeneratorでのTRANSITIONコマンドの自然言語化が未実装。
-	*   課題: `BATTLE→GRAVEYARD` を「破壊」と表示する短縮形ルールの実装
-	*   課題: ゾーン名の生エキスポート（`BATTLE_ZONE`等）の防止
-*   [Status: WIP] **GUIスタブの改善**: PyQt6モックの設定不具合（`QMainWindow`等がMagicMockとして正しくインポートできない）。
-	*   影響: headlessテスト環境でのGUI関連テストが失敗
+*   [Status: Done] **自然言語化の強化**: CardTextGeneratorでのTRANSITIONコマンドの自然言語化の実装完了。
+	*   対応: `BATTLE→GRAVEYARD` を「破壊」と表示する短縮形ルールの実装完了
+	*   対応: ゾーン名の生エキスポート（`BATTLE_ZONE`等）の防止完了
+*   [Status: Done] **GUIスタブの改善**: PyQt6モックの設定修正完了（`QMainWindow`等を継承可能なダミークラスに変更）。
+	*   結果: headlessテスト環境でのGUI関連テスト通過確認。
 
 ## 4. テスト状況 (Test Status)
 **最終実行日**: 2026年1月9日  
-**通過率**: 95.9% (118 passed + 41 subtests passed / 123 total + 41 subtests)
+**通過率**: 98.3% (121 passed + 41 subtests passed / 123 total + 41 subtests)
 
-### 4.1 失敗中のテスト (3件)
-1. `test_gui_stubbing.py::test_gui_libraries_are_stubbed` - PyQtスタブのインポート問題
-2. `test_generated_text_choice_and_zone_normalization.py::test_transition_zone_short_names_render_naturally` - ゾーン名の自然言語化
-3. `test_generated_text_choice_and_zone_normalization.py::test_choice_options_accept_command_dicts` - 選択肢テキスト生成
+### 4.1 解決済みのテスト (3件)
+1. `test_gui_stubbing.py::test_gui_libraries_are_stubbed` - ✅ Fixed
+2. `test_generated_text_choice_and_zone_normalization.py::test_transition_zone_short_names_render_naturally` - ✅ Fixed
+3. `test_generated_text_choice_and_zone_normalization.py::test_choice_options_accept_command_dicts` - ✅ Fixed
 
 ### 4.2 スキップ中のテスト (5件)
 - `test_beam_search.py::test_beam_search_logic` - C++評価器の未初期化メモリ問題
@@ -120,7 +120,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 5.1 Phase 6: 品質保証と残存課題（即時対応 - 1週間）
 
-#### 5.1.1 テキスト生成の自然言語化 [Critical - 2日]
+#### 5.1.1 テキスト生成の自然言語化 [Done]
 **担当領域**: GUI/Editor  
 **技術スタック**: Python, dm_toolkit.gui.editor.text_generator  
 **依存関係**: なし（独立実装可能）
@@ -155,7 +155,7 @@ TRANSITION_ALIASES = {
 
 ---
 
-#### 5.1.2 GUIスタブの修正 [Critical - 4時間]
+#### 5.1.2 GUIスタブの修正 [Done]
 **担当領域**: Testing Infrastructure  
 **技術スタック**: Python, unittest.mock  
 **依存関係**: なし
@@ -665,8 +665,8 @@ main (protected)
 
 ### 今日実施すべきタスク（優先順位順）
 1. **Phase 6 ブロッカー解消**
-  - ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](dm_toolkit/gui/editor/text_generator.py)）。
-  - PyQtスタブの修正（[run_pytest_with_pyqt_stub.py](run_pytest_with_pyqt_stub.py)）。
+  - [x] ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](dm_toolkit/gui/editor/text_generator.py)）。
+  - [x] PyQtスタブの修正（[run_pytest_with_pyqt_stub.py](run_pytest_with_pyqt_stub.py)）。
   - 目標: 失敗中3テストを通過。
 
 2. **Week 2 Day 1 仕込み**
@@ -679,7 +679,7 @@ main (protected)
   - 目標: 学習ループデバッグに即移行できる状態。
 
 ### 今週中に完了すべきマイルストーン
-- [ ] Phase 6 ブロッカー解消（3テスト通過、通過率99%近似）
+- [x] Phase 6 ブロッカー解消（3テスト通過、通過率99%近似）
 - [ ] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
 - [ ] ドキュメント更新（本ファイル、[docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md)）
 
