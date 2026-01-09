@@ -700,11 +700,8 @@ namespace dm::engine::systems {
              std::string type = cond.value("type", "NONE");
              if (type != "NONE") {
                  core::ConditionDef def;
-                 def.type = type;
-                 if (cond.contains("value")) def.value = cond.value("value", 0);
-                 if (cond.contains("str_val")) def.str_val = cond.value("str_val", "");
-                 if (cond.contains("op")) def.op = cond.value("op", "==");
-                 if (cond.contains("stat_key")) def.stat_key = cond.value("stat_key", "");
+                 // Use centralized JSON parsing to ensure all fields (including filter) are handled
+                 dm::core::from_json(cond, def);
 
                  int source_id = -1;
                  auto v = get_context_var("$source");

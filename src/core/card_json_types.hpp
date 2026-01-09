@@ -116,6 +116,9 @@ namespace dm::core {
         PUT_CREATURE,
         SELECT_OPTION,
         RESOLVE_BATTLE,
+        IF,
+        IF_ELSE,
+        ELSE,
         NONE
     };
 
@@ -173,6 +176,9 @@ namespace dm::core {
         MOVE_BUFFER_TO_ZONE,
         FRIEND_BURST,
         REGISTER_DELAYED_EFFECT,
+        IF,
+        IF_ELSE,
+        ELSE,
 
         NONE
     };
@@ -448,7 +454,10 @@ namespace dm::core {
         {EffectPrimitive::CAST_SPELL, "CAST_SPELL"},
         {EffectPrimitive::PUT_CREATURE, "PUT_CREATURE"},
         {EffectPrimitive::SELECT_OPTION, "SELECT_OPTION"},
-        {EffectPrimitive::RESOLVE_BATTLE, "RESOLVE_BATTLE"}
+        {EffectPrimitive::RESOLVE_BATTLE, "RESOLVE_BATTLE"},
+        {EffectPrimitive::IF, "IF"},
+        {EffectPrimitive::IF_ELSE, "IF_ELSE"},
+        {EffectPrimitive::ELSE, "ELSE"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CommandType, {
@@ -501,7 +510,10 @@ namespace dm::core {
         {CommandType::PLAY_FROM_BUFFER, "PLAY_FROM_BUFFER"},
         {CommandType::MOVE_BUFFER_TO_ZONE, "MOVE_BUFFER_TO_ZONE"},
         {CommandType::FRIEND_BURST, "FRIEND_BURST"},
-        {CommandType::REGISTER_DELAYED_EFFECT, "REGISTER_DELAYED_EFFECT"}
+        {CommandType::REGISTER_DELAYED_EFFECT, "REGISTER_DELAYED_EFFECT"},
+        {CommandType::IF, "IF"},
+        {CommandType::IF_ELSE, "IF_ELSE"},
+        {CommandType::ELSE, "ELSE"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {

@@ -121,6 +121,59 @@ namespace dm::engine {
         }
     };
 
+    class CardsMatchingFilterEvaluator : public IConditionEvaluator {
+    public:
+        bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id, const std::map<CardID, CardDefinition>& card_db, const std::map<std::string, int>& execution_context) override {
+             PlayerID player_id = EffectSystem::get_controller(state, source_instance_id);
+
+             int count = 0;
+             if (condition.filter.has_value()) {
+                 const auto& filter = condition.filter.value();
+
+                 std::vector<std::string> zones = filter.zones;
+                 if (zones.empty()) zones = {"BATTLE_ZONE"};
+
+                 std::vector<PlayerID> pids;
+                 if (!filter.owner.has_value() || filter.owner.value() == "SELF" || filter.owner.value() == "PLAYER_SELF") pids.push_back(player_id);
+                 else if (filter.owner.value() == "OPPONENT" || filter.owner.value() == "PLAYER_OPPONENT") pids.push_back(1 - player_id);
+                 else if (filter.owner.value() == "BOTH" || filter.owner.value() == "ALL_PLAYERS") { pids.push_back(player_id); pids.push_back(1 - player_id); }
+
+                 for (PlayerID pid : pids) {
+                     for (const auto& z_str : zones) {
+                         Zone z = Zone::BATTLE;
+                         if (z_str == "HAND") z = Zone::HAND;
+                         else if (z_str == "MANA_ZONE") z = Zone::MANA;
+                         else if (z_str == "SHIELD_ZONE") z = Zone::SHIELD;
+                         else if (z_str == "GRAVEYARD") z = Zone::GRAVEYARD;
+                         else if (z_str == "DECK") z = Zone::DECK;
+                         else if (z_str == "BATTLE_ZONE") z = Zone::BATTLE;
+
+                         std::vector<int> zone_vec = state.get_zone(pid, z);
+                         for (int id : zone_vec) {
+                             const CardInstance* inst = state.get_card_instance(id);
+                             if (inst && card_db.count(inst->card_id)) {
+                                 if (TargetUtils::is_valid_target(*inst, card_db.at(inst->card_id), filter, state, player_id, pid)) {
+                                     count++;
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
+
+             int val = condition.value;
+             std::string op = condition.op;
+             if (op == ">") return count > val;
+             if (op == "<") return count < val;
+             if (op == ">=") return count >= val;
+             if (op == "<=") return count <= val;
+             if (op == "==" || op == "=") return count == val;
+             if (op == "!=") return count != val;
+
+             return count > val;
+        }
+    };
+
     nlohmann::json ConditionSystem::compile_condition(const dm::core::ConditionDef& condition) {
         nlohmann::json j;
         dm::core::to_json(j, condition);
@@ -136,5 +189,6 @@ namespace dm::engine {
         register_evaluator("CIVILIZATION_MATCH", std::make_unique<CivilizationMatchEvaluator>());
         register_evaluator("COMPARE_STAT", std::make_unique<CompareStatEvaluator>());
         register_evaluator("DECK_EMPTY", std::make_unique<DeckEmptyEvaluator>());
+        register_evaluator("CARDS_MATCHING_FILTER", std::make_unique<CardsMatchingFilterEvaluator>());
     }
 }

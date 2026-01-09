@@ -323,6 +323,9 @@ TRANSLATIONS: Dict[Any, str] = {
     "BATTLE": "バトル",
     "RESTRICTION": "制限",
     "SPECIAL": "特殊",
+    "IF": "IF判定",
+    "IF_ELSE": "IF_ELSE判定",
+    "ELSE": "ELSE判定",
     "This type maps to a native Command. It will be saved as a Command.": "このタイプはネイティブコマンドに対応しています。コマンドとして保存されます。",
     "Convert to Command": "コマンドに変換",
     "Source Zone": "移動元ゾーン",
@@ -582,6 +585,9 @@ if m:
             'MOVE_BUFFER_TO_ZONE': "バッファから移動",
             'SELECT_OPTION': "選択肢",
             'RESOLVE_BATTLE': "バトル解決",
+            'IF': "IF判定",
+            'IF_ELSE': "IF_ELSE判定",
+            'ELSE': "ELSE判定",
         }
         for _name, _text in _effect_map.items():
             _member = getattr(m.EffectActionType, _name, None)
@@ -682,6 +688,9 @@ if m:
             'DECLARE_REACTION': "リアクション宣言",
             'STAT': "統計更新",
             'GAME_RESULT': "ゲーム終了",
+            'IF': "IF判定",
+            'IF_ELSE': "IF_ELSE判定",
+            'ELSE': "ELSE判定",
         }
         for _name, _text in _cmd_map.items():
             _member = getattr(m.CommandType, _name, None)
