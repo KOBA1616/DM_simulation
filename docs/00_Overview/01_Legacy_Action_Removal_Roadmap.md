@@ -97,6 +97,10 @@
 **目的**: legacy Action 関連モジュール/テスト/ドキュメントを削除して維持コストを0にする。
 
 - 対象例（最終判断）
+### Phase 5: デッドコード削除 (Delete) [Status: Done]
+**目的**: legacy Action 関連モジュール/テスト/ドキュメントを削除して維持コストを0にする。
+
+- 対象例（最終判断）
   - [x] `dm_toolkit/action_mapper.py`（deprecated）
   - [x] `dm_toolkit/gui/editor/action_converter.py`（Command直結に置換後）
   - [x] `dm_toolkit/gui/editor/forms/action_config.py`（Action UI撤去後）
@@ -104,7 +108,46 @@
 
 - 完了条件
   - `actions` を前提にしたモジュールが存在しない
-  - “旧Action→Command変換”は外部入力（古いデータ）を読む必要がある場合に限って、別途 importable な移行ツールとして隔離
+  - "旧Action→Command変換"は外部入力（古いデータ）を読む必要がある場合に限って、別途 importable な移行ツールとして隔離
+
+---
+
+### Phase 6: 品質保証と残存課題の解決 (Quality Assurance) [Status: WIP]
+**目的**: Command移行に伴う副次的な課題（テキスト生成、テスト環境）を解決し、システム全体の品質を向上させる。
+
+#### 6.1 テキスト生成の自然言語化強化
+**課題**: CardTextGenerator._format_command()でのTRANSITIONコマンド処理が不十分。
+
+- 問題点
+  - `TRANSITION(BATTLE→GRAVEYARD)` が「破壊」と表示されず、生のゾーン名が露出
+  - `CHOICE`コマンド内のオプションでも同様の問題が発生
+  - テスト失敗: `test_transition_zone_short_names_render_naturally`, `test_choice_options_accept_command_dicts`
+
+- 対策
+  - CardTextGenerator._format_command()にゾーンペア→自然言語のマッピングを追加
+  - 優先実装: `(BATTLE, GRAVEYARD) → "破壊"`, `(HAND, GRAVEYARD) → "捨てる"`, `(BATTLE, HAND) → "手札に戻す"`
+  - ファイル: [dm_toolkit/gui/editor/text_generator.py](../../dm_toolkit/gui/editor/text_generator.py)
+
+#### 6.2 GUIスタブの修正
+**課題**: run_pytest_with_pyqt_stub.pyのモック設定が不完全。
+
+- 問題点
+  - `PyQt6.QtWidgets`のモッククラス（QMainWindow等）が正しくインポートできない
+  - テスト失敗: `test_gui_libraries_are_stubbed`
+
+- 対策
+  - `run_pytest_with_pyqt_stub.py`のsetup_gui_stubs()を修正
+  - MagicMockではなく、実際にインスタンス化可能なモッククラスを提供
+  - ファイル: [run_pytest_with_pyqt_stub.py](../../run_pytest_with_pyqt_stub.py)
+
+#### 6.3 テストカバレッジの向上
+- beam_searchテストのC++メモリ問題解決（現在スキップ）
+- CI環境での定期実行と結果監視の強化
+
+- 完了条件
+  - フルテストスイートの通過率99%以上（現在95.9%: 118/123 + 41 subtests passed）
+  - GUIスタブテストの成功
+  - テキスト生成テストの成功
 
 ## 3. リスクと対策
 - **古いデータの再流入**: CIで `actions` を弾く（Phase 2）。

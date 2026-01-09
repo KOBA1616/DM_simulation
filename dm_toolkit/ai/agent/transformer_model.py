@@ -22,7 +22,7 @@ class DuelTransformer(nn.Module):
     - Activation: GELU
     - Context Length: Dynamic (Max ~512)
     """
-    def __init__(self, vocab_size: int, action_dim: int, d_model: int = 256, nhead: int = 8, num_layers: int = 6, dim_feedforward: int = 1024, max_len: int = 512, synergy_matrix_path: Optional[str] = None) -> None:
+    def __init__(self, vocab_size: int, action_dim: int, d_model: int = 256, nhead: int = 8, num_layers: int = 6, dim_feedforward: int = 1024, max_len: int = 200, synergy_matrix_path: Optional[str] = None) -> None:
         super().__init__()
         self.d_model = d_model
         self.max_len = max_len
