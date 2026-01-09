@@ -43,6 +43,7 @@ namespace dm::engine::systems {
             case core::CommandType::TRANSITION:
             case core::CommandType::MUTATE:
             case core::CommandType::FLOW:
+            case core::CommandType::IF:
             case core::CommandType::QUERY:
             case core::CommandType::SHUFFLE_DECK:
                 execute_primitive(state, cmd, source_instance_id, player_id, execution_context);
@@ -71,15 +72,29 @@ namespace dm::engine::systems {
     }
 
     void CommandSystem::execute_primitive(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
-        if (cmd.type == core::CommandType::FLOW) {
-            // FLOW Primitive: Evaluate condition and execute branch
+        if (cmd.type == core::CommandType::FLOW || cmd.type == core::CommandType::IF) {
+            // FLOW/IF Primitive: Evaluate condition and execute branch
             bool cond_result = true;
             if (cmd.condition.has_value()) {
                  const auto& card_db = CardRegistry::get_all_definitions();
-                 // ConditionSystem expects map<string, int>
-                 cond_result = ConditionSystem::instance().evaluate_def(
-                     state, cmd.condition.value(), source_instance_id, card_db, execution_context
-                 );
+
+                 // Handle special conditions like INPUT_VALUE_MATCH if set in condition
+                 bool handled = false;
+                 if (cmd.condition->type == "INPUT_VALUE_MATCH") {
+                      int val = 0;
+                      if (!cmd.input_value_key.empty() && execution_context.count(cmd.input_value_key)) {
+                          val = execution_context.at(cmd.input_value_key);
+                      }
+                      cond_result = (val == cmd.condition->value);
+                      handled = true;
+                 }
+
+                 if (!handled) {
+                     // ConditionSystem expects map<string, int>
+                     cond_result = ConditionSystem::instance().evaluate_def(
+                         state, cmd.condition.value(), source_instance_id, card_db, execution_context
+                     );
+                 }
             }
 
             const auto& branch = cond_result ? cmd.if_true : cmd.if_false;

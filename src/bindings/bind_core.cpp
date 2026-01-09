@@ -279,6 +279,7 @@ void bind_core(py::module& m) {
         .value("MUTATE", CommandType::MUTATE)
         .value("FLOW", CommandType::FLOW)
         .value("QUERY", CommandType::QUERY)
+        .value("IF", CommandType::IF)
         .value("DRAW_CARD", CommandType::DRAW_CARD)
         .value("DISCARD", CommandType::DISCARD)
         .value("DESTROY", CommandType::DESTROY)
@@ -431,6 +432,8 @@ void bind_core(py::module& m) {
         .def_readwrite("output_value_key", &ActionDef::output_value_key)
         .def_readwrite("condition", &ActionDef::condition)
         .def_readwrite("options", &ActionDef::options)
+        .def_readwrite("if_true", &ActionDef::if_true)
+        .def_readwrite("if_false", &ActionDef::if_false)
         .def_readwrite("scope", &ActionDef::scope)
         .def_readwrite("cast_spell_side", &ActionDef::cast_spell_side);
 

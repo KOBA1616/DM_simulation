@@ -148,8 +148,13 @@ _definitions = [
 
     CommandDef("CHOICE", # Mapped from SELECT_OPTION in action_to_command
                visible=["amount"],
-               labels={"amount": "Count"})
-    ,
+               labels={"amount": "Count"}),
+
+    # IF / Flow Control
+    CommandDef("IF",
+               visible=["optional", "input_link"], # optional maps to check-box for "executed?", input_link for var check
+               labels={"optional": "Check if Optional Effect Executed"}),
+
     # UI-only convenience type: saves as MUTATE+REVOLUTION_CHANGE under the hood
     CommandDef("REVOLUTION_CHANGE",
                visible=["target_filter"]) 

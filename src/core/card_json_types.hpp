@@ -116,6 +116,7 @@ namespace dm::core {
         PUT_CREATURE,
         SELECT_OPTION,
         RESOLVE_BATTLE,
+        IF_CONDITION,
         NONE
     };
 
@@ -126,6 +127,7 @@ namespace dm::core {
         MUTATE,
         FLOW,
         QUERY,
+        IF,
 
         // Macros
         DRAW_CARD,
@@ -269,6 +271,8 @@ namespace dm::core {
         bool inverse_target = false;
         std::optional<ConditionDef> condition;
         std::vector<std::vector<ActionDef>> options;
+        std::vector<ActionDef> if_true;
+        std::vector<ActionDef> if_false;
         bool cast_spell_side = false;
     };
 
@@ -448,7 +452,8 @@ namespace dm::core {
         {EffectPrimitive::CAST_SPELL, "CAST_SPELL"},
         {EffectPrimitive::PUT_CREATURE, "PUT_CREATURE"},
         {EffectPrimitive::SELECT_OPTION, "SELECT_OPTION"},
-        {EffectPrimitive::RESOLVE_BATTLE, "RESOLVE_BATTLE"}
+        {EffectPrimitive::RESOLVE_BATTLE, "RESOLVE_BATTLE"},
+        {EffectPrimitive::IF_CONDITION, "IF"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CommandType, {
@@ -457,6 +462,7 @@ namespace dm::core {
         {CommandType::MUTATE, "MUTATE"},
         {CommandType::FLOW, "FLOW"},
         {CommandType::QUERY, "QUERY"},
+        {CommandType::IF, "IF"},
         {CommandType::DRAW_CARD, "DRAW_CARD"},
         {CommandType::DISCARD, "DISCARD"},
         {CommandType::DESTROY, "DESTROY"},
@@ -521,7 +527,7 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, and_conditions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition, options, cast_spell_side)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition, options, if_true, if_false, cast_spell_side)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, output_value_key)
 
     // Manual to_json for EffectDef to exclude actions
