@@ -2,6 +2,106 @@ import os
 import sys
 import importlib
 import pytest
+import unittest.mock
+
+# --- Force Stubbing Logic (Hook) ---
+# This runs when pytest loads conftest.py, ensuring stubs are set even if run_pytest_with_pyqt_stub.py didn't hold.
+def pytest_configure(config):
+    # Only stub if we are in headless mode or explicitly requested
+    # For now, we assume we want stubs if we are running in this environment without X11
+    # Check if we can already import PyQt6.QtWidgets successfully as a real module
+    try:
+        import PyQt6.QtWidgets
+        # If it has QMainWindow, it might be real or already stubbed.
+        # But if it's the "empty" namespace package issue, it won't have QMainWindow.
+        if not hasattr(PyQt6.QtWidgets, 'QMainWindow'):
+             _apply_stubs()
+        elif isinstance(PyQt6.QtWidgets, unittest.mock.MagicMock) or hasattr(PyQt6.QtWidgets, 'QMainWindow'):
+             # Already stubbed or valid
+             pass
+    except ImportError:
+        _apply_stubs()
+
+def _apply_stubs():
+    # Helper to reinject stubs
+    modules_to_mock = [
+        'PyQt6', 'PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets', 'PyQt6.QtTest',
+        'PySide6', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets'
+    ]
+
+    # Create Dummy Classes
+    class DummyQWidget(object):
+        def __init__(self, *args, **kwargs): pass
+        def setWindowTitle(self, title): pass
+        def setLayout(self, layout): pass
+        def setGeometry(self, *args): pass
+        def show(self): pass
+        def close(self): return True
+        def setEnabled(self, enabled): pass
+
+    class DummyQMainWindow(DummyQWidget):
+        def setCentralWidget(self, widget): pass
+        def setMenuBar(self, menu): pass
+        def addDockWidget(self, area, dock): pass
+        def setStatusBar(self, bar): pass
+
+    class DummyQApplication:
+        def __init__(self, args): pass
+        def exec(self): return 0
+        @staticmethod
+        def instance(): return None
+        def setStyle(self, style): pass
+
+    class DummyQt:
+        class ItemDataRole:
+            DisplayRole = 0
+            UserRole = 256
+        class AlignmentFlag:
+            AlignCenter = 0x0084
+        class WindowType:
+            Window = 0x00000001
+        class Orientation:
+            Horizontal = 1
+            Vertical = 2
+        class MatchFlag:
+            MatchContains = 1
+        SolidPattern = 1
+        Horizontal = 1
+        Vertical = 2
+        Checked = 2
+        Unchecked = 0
+
+    # Force inject
+    for mod_name in modules_to_mock:
+        m = unittest.mock.MagicMock()
+        sys.modules[mod_name] = m
+        if '.' in mod_name:
+            parent, child = mod_name.rsplit('.', 1)
+            if parent in sys.modules:
+                setattr(sys.modules[parent], child, m)
+
+    if 'PyQt6' in sys.modules:
+        sys.modules['PyQt6'].__path__ = []
+
+    mock_widgets = sys.modules.get('PyQt6.QtWidgets')
+    if mock_widgets:
+        mock_widgets.QMainWindow = DummyQMainWindow
+        mock_widgets.QWidget = DummyQWidget
+        mock_widgets.QApplication = DummyQApplication
+
+        for w in ['QLabel', 'QPushButton', 'QVBoxLayout', 'QHBoxLayout', 'QSplitter',
+              'QTreeWidget', 'QTreeWidgetItem', 'QComboBox', 'QLineEdit', 'QTextEdit',
+              'QCheckBox', 'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget',
+              'QStatusBar', 'QMenuBar', 'QMenu', 'QAction', 'QFormLayout', 'QSpinBox',
+              'QToolBar', 'QFileDialog', 'QMessageBox', 'QDialog']:
+             if not hasattr(mock_widgets, w):
+                 setattr(mock_widgets, w, type(w, (DummyQWidget,), {}))
+
+    mock_core = sys.modules.get('PyQt6.QtCore')
+    if mock_core:
+        mock_core.Qt = DummyQt
+        mock_core.QObject = type('QObject', (object,), {'__init__': lambda s, *a: None, 'blockSignals': lambda s, b: False})
+        mock_core.QTimer = type('QTimer', (object,), {'singleShot': lambda *a: None, 'start': lambda s, t: None, 'stop': lambda s: None})
 
 # Ensure local `python/` shim module directory is preferred so tests can run
 root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

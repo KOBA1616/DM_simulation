@@ -211,7 +211,7 @@ def train(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str, default="data/transformer_training_data_dummy.npz", help="Path to training data .npz file")
+    parser.add_argument("--data_path", type=str, default="data/transformer_training_data.npz", help="Path to training data .npz file")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size (expand 8->16->32->64)")
     parser.add_argument("--epochs", type=int, default=1, help="Number of training epochs")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")

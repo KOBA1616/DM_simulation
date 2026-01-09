@@ -22,6 +22,7 @@ def setup_gui_stubs():
         def setGeometry(self, *args): pass
         def show(self): pass
         def close(self): return True
+        def setEnabled(self, enabled): pass
 
     class DummyQMainWindow(DummyQWidget):
         def setCentralWidget(self, widget): pass
@@ -39,6 +40,7 @@ def setup_gui_stubs():
         def exec(self): return 0
         @staticmethod
         def instance(): return None
+        def setStyle(self, style): pass
 
     # Enums
     class DummyQt:
@@ -48,17 +50,24 @@ def setup_gui_stubs():
             ForegroundRole = 9
             BackgroundRole = 8
             EditRole = 2
+            ToolTipRole = 3
 
         class AlignmentFlag:
             AlignCenter = 0x0084
             AlignLeft = 0x0001
+            AlignRight = 0x0002
 
         class WindowType:
             Window = 0x00000001
 
+        class Orientation:
+            Horizontal = 1
+            Vertical = 2
+
         class MatchFlag:
             MatchContains = 1
             MatchFixedString = 8
+            MatchExactly = 0
 
         SolidPattern = 1
         Horizontal = 1
@@ -72,9 +81,22 @@ def setup_gui_stubs():
         'PySide6', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets'
     ]
 
+    # Force mock injection
     for mod_name in modules_to_mock:
-        if mod_name not in sys.modules:
-            sys.modules[mod_name] = unittest.mock.MagicMock()
+        m = unittest.mock.MagicMock()
+        # If the module is already loaded (e.g. real PyQt6), we overwrite it
+        # to ensure we don't accidentally rely on the real one in a headless env.
+        sys.modules[mod_name] = m
+
+        # Establish parent-child relationship for correct attribute access
+        if '.' in mod_name:
+            parent_name, child_name = mod_name.rsplit('.', 1)
+            if parent_name in sys.modules:
+                setattr(sys.modules[parent_name], child_name, m)
+
+    # Set __path__ to simulate a package, which helps with some import mechanisms
+    if 'PyQt6' in sys.modules:
+        sys.modules['PyQt6'].__path__ = []
 
     # Inject specific dummies into QtWidgets
     mock_widgets = sys.modules['PyQt6.QtWidgets']
@@ -82,19 +104,24 @@ def setup_gui_stubs():
     mock_widgets.QWidget = DummyQWidget
     mock_widgets.QDialog = DummyQDialog
     mock_widgets.QApplication = DummyQApplication
+
     # Map common widgets to DummyQWidget or MagicMock as needed
     for w in ['QLabel', 'QPushButton', 'QVBoxLayout', 'QHBoxLayout', 'QSplitter',
               'QTreeWidget', 'QTreeWidgetItem', 'QComboBox', 'QLineEdit', 'QTextEdit',
-              'QCheckBox', 'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu', 'QAction']:
-         setattr(mock_widgets, w, type(w, (DummyQWidget,), {}))
+              'QCheckBox', 'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget',
+              'QStatusBar', 'QMenuBar', 'QMenu', 'QAction', 'QFormLayout', 'QSpinBox',
+              'QToolBar', 'QFileDialog', 'QMessageBox']:
+         if not hasattr(mock_widgets, w):
+             setattr(mock_widgets, w, type(w, (DummyQWidget,), {}))
 
     # Inject into QtCore
     mock_core = sys.modules['PyQt6.QtCore']
     mock_core.Qt = DummyQt
     mock_core.QObject = type('QObject', (object,), {'__init__': lambda s, *a: None, 'blockSignals': lambda s, b: False})
-    mock_core.QThread = type('QThread', (object,), {'start': lambda s: None, 'wait': lambda s: None, 'quit': lambda s: None, 'isRunning': lambda s: False})
+    mock_core.QThread = type('QThread', (object,), {'start': lambda s: None, 'wait': lambda s: None, 'quit': lambda s: None, 'isRunning': lambda s: False, 'finished': unittest.mock.MagicMock()})
     mock_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
     mock_core.QTimer = type('QTimer', (object,), {'singleShot': lambda *a: None, 'start': lambda s, t: None, 'stop': lambda s: None})
+    mock_core.QSize = lambda w, h: None
 
     # Inject into QtGui
     mock_gui = sys.modules['PyQt6.QtGui']
@@ -102,7 +129,7 @@ def setup_gui_stubs():
     mock_gui.QIcon = lambda *a: None
     mock_gui.QAction = type('QAction', (DummyQWidget,), {})
     mock_gui.QStandardItemModel = type('QStandardItemModel', (object,), {'__init__': lambda s, *a: None, 'invisibleRootItem': lambda s: unittest.mock.MagicMock()})
-    mock_gui.QStandardItem = type('QStandardItem', (object,), {'__init__': lambda s, *a: None})
+    mock_gui.QStandardItem = type('QStandardItem', (object,), {'__init__': lambda s, *a: None, 'setData': lambda s, v, r=None: None, 'data': lambda s, r=None: None})
 
     print(" [STUB] GUI libraries mocked for headless execution (Custom Dummies).")
 
