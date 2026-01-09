@@ -1,87 +1,50 @@
 # 今後の課題と優先順位 (Next Steps & Priorities)
 
-**最終更新**: 2026年1月9日  
-**テスト通過率**: 95.9% (118 passed + 41 subtests / 123 total + 41 subtests)
+**最終更新**: 2026年1月22日
+**テスト通過率**: 98.3% (121 passed + 41 subtests / 123 total + 41 subtests)
 
 ---
 
 ## 📊 現状サマリー
 
-### ✅ 完了済み（Phase 1-5）
+### ✅ 完了済み（Phase 1-6）
 - **Legacy Action削除**: フェーズ1-5完了（入口統一、データ移行、GUI撤去、互換撤去、デッドコード削除）
 - **Command Pipeline**: 統一的なコマンドシステムの確立
 - **ゲームエンジン**: 基本機能の実装完了
 - **AI学習基盤**: AlphaZero学習ループの実装
+- **テキスト生成**: 自然言語化の強化 [Phase 6.1]
+- **GUIスタブ**: ヘッドレステスト環境の整備 [Phase 6.2]
 
 ### 🚧 進行中
-- **Phase 6**: 品質保証と残存課題の解決
-- **Transformerモデル**: 学習パイプラインへの統合
-- **テキスト生成**: 自然言語化の強化
+- **Phase 4**: Transformerモデル統合
+- **Phase 3**: メタゲーム進化システム
 
 ---
 
 ## 🎯 優先度別タスク
 
-### 【優先度: 高 - Critical】テスト失敗の解消
+### 【優先度: 高 - Critical】Phase 4 Transformer
 
-#### 1. テキスト生成の自然言語化 (Phase 6.1)
-**影響**: ユーザー体験、カードテキストの可読性  
-**作業量**: 中（1-2日）
-
-**タスク**:
-- [ ] CardTextGenerator._format_command()にTRANSITION短縮ルールを追加
-  - `(BATTLE, GRAVEYARD)` → 「～を破壊する」
-  - `(HAND, GRAVEYARD)` → 「～を捨てる」
-  - `(BATTLE, HAND)` → 「～を手札に戻す」
-  - `(DECK, MANA)` → 「マナチャージする」
-- [ ] ゾーン名の正規化処理を追加（`BATTLE_ZONE` → `BATTLE`）
-- [ ] CHOICEコマンド内のオプション再帰処理で自然言語化を適用
-- [ ] テスト修正: `test_transition_zone_short_names_render_naturally`
-- [ ] テスト修正: `test_choice_options_accept_command_dicts`
-
-**ファイル**: [dm_toolkit/gui/editor/text_generator.py](../../dm_toolkit/gui/editor/text_generator.py)  
-**関連**: [python/tests/verification/test_generated_text_choice_and_zone_normalization.py](../../python/tests/verification/test_generated_text_choice_and_zone_normalization.py)
-
----
-
-#### 2. GUIスタブの修正 (Phase 6.2)
-**影響**: CI/CD環境でのテスト実行  
-**作業量**: 小（数時間）
-
-**タスク**:
-- [ ] `run_pytest_with_pyqt_stub.py`のsetup_gui_stubs()を修正
-  - MagicMockのままでは継承できない問題を解決
-  - `type('QMainWindow', (), {})`形式でモッククラスを作成
-  - Qt列挙型の適切なモック化
-- [ ] テスト修正: `test_gui_libraries_are_stubbed`
-
-**ファイル**: [run_pytest_with_pyqt_stub.py](../../run_pytest_with_pyqt_stub.py)  
-**関連**: [python/tests/gui/test_gui_stubbing.py](../../python/tests/gui/test_gui_stubbing.py)
-
----
-
-### 【優先度: 高 - Important】AI進化システム
-
-#### 3. Transformerモデルの学習統合 (Phase 4)
+#### 1. Transformerモデルの学習統合 (Phase 4.4)
 **影響**: AI性能の大幅向上  
-**作業量**: 大（1-2週間）
+**作業量**: 大（1週間）
 
 **タスク**:
-- [ ] `train_transformer.py`の完成
-  - DuelTransformerモデルのロード/保存
-  - バッチ処理の最適化
-  - 学習ループの実装
+- [ ] `train_transformer_phase4.py`の完成度向上
+  - データローダーの最適化
+  - GPU学習の安定化
 - [ ] TensorConverterとの連携強化
+  - パディング/マスキングのC++側処理との整合性確認
 - [ ] パフォーマンステストとベンチマーク
-- [ ] ドキュメント更新: [docs/02_AI_System_Specs.md](../02_AI_System_Specs.md)
+  - 推論速度 < 10ms の達成確認
 
 **ファイル**: 
 - `dm_toolkit/ai/agent/transformer_model.py`
-- `python/training/train_transformer.py`（新規作成）
+- `python/training/train_transformer_phase4.py`
 
 ---
 
-#### 4. メタゲーム進化パイプライン (Phase 3)
+#### 2. メタゲーム進化パイプライン (Phase 3)
 **影響**: 自己対戦による継続的改善  
 **作業量**: 中（1週間）
 
@@ -100,7 +63,7 @@
 
 ### 【優先度: 中 - Enhancement】エンジン改善
 
-#### 5. Beam Searchの修正
+#### 3. Beam Searchの修正
 **影響**: AI探索性能  
 **作業量**: 中（調査込み）
 
@@ -116,7 +79,7 @@
 
 ---
 
-#### 6. カードエディタの完成度向上
+#### 4. カードエディタの完成度向上
 **影響**: 開発体験、データ品質  
 **作業量**: 中（1週間）
 
@@ -134,13 +97,13 @@
 
 ### 【優先度: 低 - Future】長期改善
 
-#### 7. 不完全情報推論の強化 (Phase 2)
+#### 5. 不完全情報推論の強化 (Phase 2)
 **タスク**:
 - [ ] DeckInferenceクラスの精度向上
 - [ ] PimcGeneratorの最適化
 - [ ] メタデータ学習の実装
 
-#### 8. 高度なAIアルゴリズム (Phase 5)
+#### 6. 高度なAIアルゴリズム (Phase 5)
 **タスク**:
 - [ ] Lethal Solver v2（完全探索ベース）
 - [ ] PPO/MuZero等の適用検討
@@ -150,11 +113,11 @@
 
 ## 📈 マイルストーン
 
-### Milestone 1: テスト100%通過 (2週間以内)
-- [x] Phase 1-5完了
-- [ ] Phase 6.1完了（テキスト生成）
-- [ ] Phase 6.2完了（GUIスタブ）
-- [ ] テスト通過率 99%以上達成
+### Milestone 1: テスト100%通過 (1週間以内)
+- [x] Phase 6.1完了（テキスト生成）
+- [x] Phase 6.2完了（GUIスタブ）
+- [ ] Phase 6.3完了（Beam Search修正）
+- [ ] テスト通過率 100%達成
 
 ### Milestone 2: AI進化システム稼働 (1ヶ月以内)
 - [ ] Transformerモデル統合
@@ -171,15 +134,12 @@
 ## 🔧 開発ワークフロー
 
 ### 推奨作業順序
-1. **即座に対応**: GUIスタブ修正（数時間で完了可能）
-2. **本日中**: テキスト生成の自然言語化（Priority High）
-3. **今週中**: Transformerモデル統合の着手
-4. **来週**: メタゲーム進化パイプラインの構築
-5. **継続的**: Beam Search修正とエディタ改善
+1. **今週中**: Transformerモデル統合の仕上げ (Phase 4)
+2. **来週**: メタゲーム進化パイプラインの構築 (Phase 3)
+3. **継続的**: Beam Search修正とエディタ改善
 
 ### 並行作業の推奨
-- テキスト生成とGUIスタブは独立しているため並行実装可能
-- AI進化システムはエンジン側が安定しているため並行開発可能
+- Transformer開発 ∥ Evolution開発（Phase 3/4は並行可）
 
 ---
 

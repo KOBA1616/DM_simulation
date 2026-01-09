@@ -104,11 +104,12 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **自然言語化の強化**: CardTextGeneratorでのTRANSITIONコマンドの自然言語化の実装完了。
 	*   対応: `BATTLE→GRAVEYARD` を「破壊」と表示する短縮形ルールの実装完了
 	*   対応: ゾーン名の生エキスポート（`BATTLE_ZONE`等）の防止完了
-*   [Status: Done] **GUIスタブの改善**: PyQt6モックの設定修正完了（`QMainWindow`等を継承可能なダミークラスに変更）。
+*   [Status: Done] **GUIスタブの改善**: PyQt6モックの設定修正完了（`MetaPathFinder`による強力なスタブ機構の導入）。
+	*   対応: 親モジュール属性リンクやリロード問題に対する堅牢な対処。
 	*   結果: headlessテスト環境でのGUI関連テスト通過確認。
 
 ## 4. テスト状況 (Test Status)
-**最終実行日**: 2026年1月9日  
+**最終実行日**: 2026年1月22日
 **通過率**: 98.3% (121 passed + 41 subtests passed / 123 total + 41 subtests)
 
 ### 4.1 解決済みのテスト (3件)
@@ -163,26 +164,25 @@ TRANSITION_ALIASES = {
 
 #### 5.1.2 GUIスタブの修正 [Done]
 **担当領域**: Testing Infrastructure  
-**技術スタック**: Python, unittest.mock  
+**技術スタック**: Python, unittest.mock, importlib
 **依存関係**: なし
 
 **実装詳細**:
 ```python
 # run_pytest_with_pyqt_stub.pyの修正
-def setup_gui_stubs():
-    # MagicMockではなく実クラスを作成
-    QMainWindow = type('QMainWindow', (object,), {
-        '__init__': lambda self, *args, **kwargs: None
-    })
-    QWidget = type('QWidget', (object,), {
-        '__init__': lambda self, *args, **kwargs: None
-    })
-    # 以下同様...
+class StubFinder(importlib.abc.MetaPathFinder):
+    # MetaPathFinderを用いてインポートプロセスに介入し、
+    # 本物のPyQt6がロードされる前に確実にモックを差し込む
+    def find_spec(self, fullname, path, target=None):
+        if fullname in self.mocks:
+            spec = importlib.machinery.ModuleSpec(...)
+            spec.has_location = False
+            return spec
 ```
 
 **作業タスク**:
-1. 1時間: モッククラス生成ロジックの実装
-2. 1時間: Qt列挙型のモック化
+1. 1時間: MetaPathFinderの実装によるモック注入機構の刷新
+2. 1時間: 親パッケージとサブモジュールの属性リンク問題の解決
 3. 1時間: 継承テストの検証
 4. 1時間: CI環境での動作確認
 
@@ -398,15 +398,15 @@ if "evolution" in keywords and not base_creatures:
 #### タイムライン概要（6週間計画）
 ```
 Week 1 (〜1/12): Phase 6 仕上げ + Week 2 Day 1 の下準備
-  ├─ テキスト生成/GUIスタブ修正
-  └─ synergy_pairs雛形とデータ生成スクリプトの雛形を用意
+  ├─ テキスト生成/GUIスタブ修正 [完了]
+  └─ synergy_pairs雛形とデータ生成スクリプトの雛形を用意 [完了]
 
 Week 2 (1/13-1/19): Phase 4 Day 1-3
-  ├─ Day 1: 手動Synergy JSON, from_manual_pairs, データ1000件, 学習起動
-  └─ Day 2-3: 学習ループ安定化（バッチ拡大、ロギング、評価フック）
+  ├─ Day 1: 手動Synergy JSON, from_manual_pairs, データ1000件, 学習起動 [完了]
+  └─ Day 2-3: 学習ループ安定化（バッチ拡大、ロギング、評価フック） [完了]
 
 Week 3 (1/20-1/26): Phase 4 Day 4-6
-  ├─ Day 4-5: TensorConverter連携とmax_len=200パディング検証
+  ├─ Day 4-5: TensorConverter連携とmax_len=200パディング検証 [完了]
   └─ Day 6: ベンチ/Go-NoGo (Q8基準: vs MLP≥55%, <10ms)
 
 Week 4-5: Phase 3 実装（メタゲーム進化）
@@ -690,7 +690,7 @@ main (protected)
 - [x] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
 - [x] Week 3 Day 1-2 TensorConverter連携（C++データ収集からPython学習まで開通）
 - [x] ドキュメント更新（本ファイル）
-- [ ] [docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md) 更新
+- [x] [docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md) 更新
 
 ### 月末までの目標
 - [ ] Transformerモデル初期バージョン稼働（バッチ32で安定、評価フック動作）
@@ -728,6 +728,6 @@ main (protected)
 
 ---
 
-**最終更新**: 2026年1月9日  
-**次回レビュー予定**: 2026年1月16日（Week 1完了時）  
+**最終更新**: 2026年1月22日
+**次回レビュー予定**: 2026年1月29日
 **ドキュメント管理者**: Development Team

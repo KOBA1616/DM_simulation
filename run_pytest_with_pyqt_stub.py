@@ -8,6 +8,35 @@ allowing GUI tests to run in headless CI environments without requiring a displa
 import sys
 import os
 import unittest.mock
+import types
+import importlib.abc
+import importlib.machinery
+
+class StubLoader(importlib.abc.Loader):
+    def __init__(self, module):
+        self.module = module
+
+    def create_module(self, spec):
+        return self.module
+
+    def exec_module(self, module):
+        # Module is already populated.
+        # Ensure it matches what we expect
+        if hasattr(self.module, '__spec__'):
+             module.__spec__ = self.module.__spec__
+
+class StubFinder(importlib.abc.MetaPathFinder):
+    def __init__(self, mocks):
+        self.mocks = mocks
+
+    def find_spec(self, fullname, path, target=None):
+        if fullname in self.mocks:
+            spec = importlib.machinery.ModuleSpec(fullname, StubLoader(self.mocks[fullname]))
+            # CRITICAL: If we set has_location=True, it might look for files.
+            # If False, it behaves like a namespace or builtin.
+            spec.has_location = False
+            return spec
+        return None
 
 def setup_gui_stubs():
     """
@@ -66,45 +95,84 @@ def setup_gui_stubs():
         Checked = 2
         Unchecked = 0
 
-    # Modules to mock
-    modules_to_mock = [
-        'PyQt6', 'PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets', 'PyQt6.QtTest',
-        'PySide6', 'PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets'
-    ]
+    # Helper to create mock module
+    def create_mock_module(name, is_package=False):
+        m = types.ModuleType(name)
+        if is_package:
+            m.__path__ = []
+        return m
 
-    for mod_name in modules_to_mock:
-        if mod_name not in sys.modules:
-            sys.modules[mod_name] = unittest.mock.MagicMock()
+    # Prepare mock modules map
+    mocks = {}
 
-    # Inject specific dummies into QtWidgets
-    mock_widgets = sys.modules['PyQt6.QtWidgets']
-    mock_widgets.QMainWindow = DummyQMainWindow
-    mock_widgets.QWidget = DummyQWidget
-    mock_widgets.QDialog = DummyQDialog
-    mock_widgets.QApplication = DummyQApplication
-    # Map common widgets to DummyQWidget or MagicMock as needed
+    # 1. Mock the top-level packages
+    pyqt6 = create_mock_module('PyQt6', is_package=True)
+    mocks['PyQt6'] = pyqt6
+
+    pyside6 = create_mock_module('PySide6', is_package=True)
+    mocks['PySide6'] = pyside6
+
+    # 2. Mock submodules
+    # QtWidgets
+    qt_widgets = create_mock_module('PyQt6.QtWidgets')
+    mocks['PyQt6.QtWidgets'] = qt_widgets
+    pyqt6.QtWidgets = qt_widgets
+
+    # QtCore
+    qt_core = create_mock_module('PyQt6.QtCore')
+    mocks['PyQt6.QtCore'] = qt_core
+    pyqt6.QtCore = qt_core
+
+    # QtGui
+    qt_gui = create_mock_module('PyQt6.QtGui')
+    mocks['PyQt6.QtGui'] = qt_gui
+    pyqt6.QtGui = qt_gui
+
+    # QtTest
+    qt_test = create_mock_module('PyQt6.QtTest')
+    mocks['PyQt6.QtTest'] = qt_test
+    pyqt6.QtTest = qt_test
+
+    # PySide6 mirrors
+    mocks['PySide6.QtCore'] = create_mock_module('PySide6.QtCore')
+    mocks['PySide6.QtGui'] = create_mock_module('PySide6.QtGui')
+    mocks['PySide6.QtWidgets'] = create_mock_module('PySide6.QtWidgets')
+
+    # 3. Inject attributes into QtWidgets
+    qt_widgets.QMainWindow = DummyQMainWindow
+    qt_widgets.QWidget = DummyQWidget
+    qt_widgets.QDialog = DummyQDialog
+    qt_widgets.QApplication = DummyQApplication
+
+    # Map common widgets
     for w in ['QLabel', 'QPushButton', 'QVBoxLayout', 'QHBoxLayout', 'QSplitter',
               'QTreeWidget', 'QTreeWidgetItem', 'QComboBox', 'QLineEdit', 'QTextEdit',
               'QCheckBox', 'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu', 'QAction']:
-         setattr(mock_widgets, w, type(w, (DummyQWidget,), {}))
+         setattr(qt_widgets, w, type(w, (DummyQWidget,), {}))
 
-    # Inject into QtCore
-    mock_core = sys.modules['PyQt6.QtCore']
-    mock_core.Qt = DummyQt
-    mock_core.QObject = type('QObject', (object,), {'__init__': lambda s, *a: None, 'blockSignals': lambda s, b: False})
-    mock_core.QThread = type('QThread', (object,), {'start': lambda s: None, 'wait': lambda s: None, 'quit': lambda s: None, 'isRunning': lambda s: False})
-    mock_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
-    mock_core.QTimer = type('QTimer', (object,), {'singleShot': lambda *a: None, 'start': lambda s, t: None, 'stop': lambda s: None})
+    # 4. Inject into QtCore
+    qt_core.Qt = DummyQt
+    qt_core.QObject = type('QObject', (object,), {'__init__': lambda s, *a: None, 'blockSignals': lambda s, b: False})
+    qt_core.QThread = type('QThread', (object,), {'start': lambda s: None, 'wait': lambda s: None, 'quit': lambda s: None, 'isRunning': lambda s: False})
+    qt_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
+    qt_core.QTimer = type('QTimer', (object,), {'singleShot': lambda *a: None, 'start': lambda s, t: None, 'stop': lambda s: None})
 
-    # Inject into QtGui
-    mock_gui = sys.modules['PyQt6.QtGui']
-    mock_gui.QColor = lambda *a: None
-    mock_gui.QIcon = lambda *a: None
-    mock_gui.QAction = type('QAction', (DummyQWidget,), {})
-    mock_gui.QStandardItemModel = type('QStandardItemModel', (object,), {'__init__': lambda s, *a: None, 'invisibleRootItem': lambda s: unittest.mock.MagicMock()})
-    mock_gui.QStandardItem = type('QStandardItem', (object,), {'__init__': lambda s, *a: None})
+    # 5. Inject into QtGui
+    qt_gui.QColor = lambda *a: None
+    qt_gui.QIcon = lambda *a: None
+    qt_gui.QAction = qt_widgets.QAction # Alias
+    qt_gui.QStandardItemModel = type('QStandardItemModel', (object,), {'__init__': lambda s, *a: None, 'invisibleRootItem': lambda s: unittest.mock.MagicMock()})
+    qt_gui.QStandardItem = type('QStandardItem', (object,), {'__init__': lambda s, *a: None})
 
-    print(" [STUB] GUI libraries mocked for headless execution (Custom Dummies).")
+    # Install MetaPathFinder
+    # We must insert it before standard importers
+    sys.meta_path.insert(0, StubFinder(mocks))
+
+    # Also populate sys.modules for good measure (some importers check it directly)
+    for name, m in mocks.items():
+        sys.modules[name] = m
+
+    print(" [STUB] GUI libraries mocked for headless execution (Custom Dummies via MetaPathFinder).")
 
 def main():
     """
