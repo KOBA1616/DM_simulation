@@ -137,7 +137,7 @@ _definitions = [
                labels={"amount": "Count"}),
 
     CommandDef("CAST_SPELL",
-               visible=["target_group", "target_filter"]),
+               visible=["target_group", "target_filter", "optional"]),
 
     CommandDef("FRIEND_BURST",
                visible=["target_filter"]),
