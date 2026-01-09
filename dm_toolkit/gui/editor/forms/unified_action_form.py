@@ -210,10 +210,6 @@ class UnifiedActionForm(BaseEditForm):
         self.register_widget(self.allow_duplicates_check)
         self.allow_duplicates_label = QLabel("")
         layout.addRow(self.allow_duplicates_label, self.allow_duplicates_check)
-        self.arbitrary_check = QCheckBox(tr("Optional / Arbitrary Amount"))
-        self.register_widget(self.arbitrary_check)
-        self.arbitrary_label = QLabel("")
-        layout.addRow(self.arbitrary_label, self.arbitrary_check)
 
         # Zones
         self.source_zone_combo, self.dest_zone_combo = make_zone_combos(self)
@@ -446,6 +442,34 @@ class UnifiedActionForm(BaseEditForm):
         self.arbitrary_check.setVisible(cfg.get('optional_visible', False))
 
         self.type_combo.setToolTip(tr(cfg.get('tooltip', '')))
+
+        # Filter group contextual setup
+        show_filter = cfg.get('target_filter_visible', False)
+        if show_filter:
+            # Default fields from config
+            try:
+                self.filter_widget.set_allowed_fields(cfg.get('allowed_filter_fields', None))
+            except Exception:
+                pass
+            # Contextual titles/field constraints for special commands
+            try:
+                if t == 'FRIEND_BURST':
+                    self.filter_widget.setTitle(tr('Friend Burst Target'))
+                    self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
+                elif t == 'MEKRAID':
+                    self.filter_widget.setTitle(tr('Mekraide Target'))
+                    self.filter_widget.set_allowed_fields(['civilizations', 'types', 'races'])
+                elif t == 'MUTATE':
+                    mk = ''
+                    try:
+                        mk = self.mutation_kind_edit.text().strip()
+                    except Exception:
+                        pass
+                    if mk == 'REVOLUTION_CHANGE':
+                        self.filter_widget.setTitle(tr('Revolution Change Condition'))
+                        self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
+            except Exception:
+                pass
 
         # Mutation kind widget switch
         try:

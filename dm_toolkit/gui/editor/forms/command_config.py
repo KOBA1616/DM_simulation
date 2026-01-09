@@ -140,7 +140,7 @@ _definitions = [
                visible=["target_group", "target_filter", "optional"]),
 
     CommandDef("FRIEND_BURST",
-               visible=["target_filter"]),
+               visible=["target_filter"]) ,
 
     CommandDef("REGISTER_DELAYED_EFFECT",
                visible=["str_param", "amount"],

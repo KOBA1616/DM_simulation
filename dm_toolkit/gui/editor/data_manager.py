@@ -275,16 +275,25 @@ class CardDataManager:
                 card_item.appendRow(ra_item)
 
             # 2.5 Add Keywords if present in card JSON
-            # Create both KEYWORDS tree item AND auto-generate effects for special keywords
+            # Create KEYWORDS tree item once AND auto-generate effects for special keywords
             keywords_data = card.get('keywords', {})
             if keywords_data and isinstance(keywords_data, dict):
-                kw_item = QStandardItem(tr("Keywords"))
-                kw_item.setData("KEYWORDS", Qt.ItemDataRole.UserRole + 1)
-                # Make a copy to avoid mutating the original card data
-                kw_item.setData(keywords_data.copy(), Qt.ItemDataRole.UserRole + 2)
-                card_item.appendRow(kw_item)
-                
-                # Auto-generate effects for special keywords from JSON
+                # Guard: avoid creating duplicate KEYWORDS nodes
+                has_keywords_node = False
+                for chk_i in range(card_item.rowCount()):
+                    chk_child = card_item.child(chk_i)
+                    if chk_child is not None and chk_child.data(Qt.ItemDataRole.UserRole + 1) == "KEYWORDS":
+                        has_keywords_node = True
+                        break
+
+                if not has_keywords_node:
+                    kw_item = QStandardItem(tr("Keywords"))
+                    kw_item.setData("KEYWORDS", Qt.ItemDataRole.UserRole + 1)
+                    # Make a copy to avoid mutating the original card data
+                    kw_item.setData(keywords_data.copy(), Qt.ItemDataRole.UserRole + 2)
+                    card_item.appendRow(kw_item)
+
+                # Auto-generate effects for special keywords from JSON (idempotent)
                 if keywords_data.get('revolution_change'):
                     self.add_revolution_change_logic(card_item)
                 if keywords_data.get('mekraid'):
@@ -445,9 +454,11 @@ class CardDataManager:
         spell_side_dict = None
         keywords_dict = {}
 
-        # Revolution Change extraction
+        # Revolution Change / Friend Burst extraction
         rev_change_filter = None
         has_rev_change_action = False
+        friend_burst_filter = None
+        has_friend_burst_action = False
 
         # Iterate children of CARD node (Flattened structure)
         for j in range(card_item.rowCount()):
@@ -473,6 +484,9 @@ class CardDataManager:
                             if isinstance(act, dict) and act.get('type') == "REVOLUTION_CHANGE":
                                 has_rev_change_action = True
                                 rev_change_filter = act.get('filter')
+                            if isinstance(act, dict) and act.get('type') == 'FRIEND_BURST':
+                                has_friend_burst_action = True
+                                friend_burst_filter = act.get('target_filter') or act.get('filter')
                 continue
 
             if item_type == "KEYWORDS":
@@ -490,6 +504,9 @@ class CardDataManager:
                     if isinstance(act, dict) and act.get('type') == "REVOLUTION_CHANGE":
                         has_rev_change_action = True
                         rev_change_filter = act.get('filter')
+                    if isinstance(act, dict) and act.get('type') == 'FRIEND_BURST':
+                        has_friend_burst_action = True
+                        friend_burst_filter = act.get('target_filter') or act.get('filter')
 
             elif item_type == "MODIFIER":
                 new_static.append(self._reconstruct_modifier(child_item))
@@ -555,13 +572,20 @@ class CardDataManager:
         current_keywords.update(keywords_dict)
         card_data['keywords'] = current_keywords
 
-        # Auto-set Revolution Change Keyword and Condition
+        # Auto-set Revolution Change / Friend Burst Keyword and Condition
         if has_rev_change_action and rev_change_filter:
             card_data['keywords']['revolution_change'] = True
             card_data['revolution_change_condition'] = rev_change_filter
         else:
             if 'revolution_change_condition' in card_data:
                 del card_data['revolution_change_condition']
+
+        if has_friend_burst_action and friend_burst_filter:
+            card_data['keywords']['friend_burst'] = True
+            card_data['friend_burst_condition'] = friend_burst_filter
+        else:
+            if 'friend_burst_condition' in card_data:
+                del card_data['friend_burst_condition']
 
         return card_data
 
@@ -813,10 +837,25 @@ class CardDataManager:
         eff_item = self._create_effect_item(eff_data)
 
         # Create COMMAND instead of ACTION for Revolution Change
+        # Derive sensible defaults from card data (civs/races)
+        try:
+            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+        except Exception:
+            card_data = {}
+        civs = list(card_data.get('civilizations', []) or [])
+        races = list(card_data.get('races', []) or [])
+        # Default to creature type requirement without hard min_cost
+        target_filter = {}
+        if civs:
+            target_filter['civilizations'] = civs
+        if races:
+            target_filter['races'] = races
+        target_filter['types'] = ["CREATURE"]
+
         cmd_data = {
             "type": "MUTATE",
             "mutation_kind": "REVOLUTION_CHANGE",
-            "target_filter": {"civilizations": ["FIRE"], "races": ["Dragon"], "min_cost": 5}
+            "target_filter": target_filter
         }
         cmd_item = self.create_command_item(cmd_data)
         eff_item.appendRow(cmd_item)
@@ -886,11 +925,22 @@ class CardDataManager:
         eff_item = self._create_effect_item(eff_data)
 
         # MEKRAIDコマンドを作成
+        # Derive default civs from card data
+        try:
+            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+        except Exception:
+            card_data = {}
+        civs = list(card_data.get('civilizations', []) or [])
+        target_filter = {}
+        if civs:
+            target_filter['civilizations'] = civs
+        target_filter['types'] = ["CREATURE"]
+
         cmd_data = {
             "type": "MEKRAID",
             "look_count": 3,
             "max_cost": 5,
-            "target_filter": {"civilizations": ["FIRE"]}
+            "target_filter": target_filter
         }
         cmd_item = self.create_command_item(cmd_data)
         eff_item.appendRow(cmd_item)
@@ -943,10 +993,23 @@ class CardDataManager:
         }
         eff_item = self._create_effect_item(eff_data)
 
-        # FRIEND_BURSTコマンドを作成
+        # FRIEND_BURSTコマンドを作成（デフォルトでカードの種族/文明を反映）
+        try:
+            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+        except Exception:
+            card_data = {}
+        civs = list(card_data.get('civilizations', []) or [])
+        races = list(card_data.get('races', []) or [])
+        target_filter = {}
+        if civs:
+            target_filter['civilizations'] = civs
+        if races:
+            target_filter['races'] = races
+        target_filter['types'] = ["CREATURE"]
+
         cmd_data = {
             "type": "FRIEND_BURST",
-            "target_filter": {"civilizations": ["FIRE"]}
+            "target_filter": target_filter
         }
         cmd_item = self.create_command_item(cmd_data)
         eff_item.appendRow(cmd_item)
@@ -959,6 +1022,8 @@ class CardDataManager:
             if 'keywords' not in card_data:
                 card_data['keywords'] = {}
             card_data['keywords']['friend_burst'] = True
+            # Mirror condition on card root for text generation
+            card_data['friend_burst_condition'] = cmd_data.get('target_filter')
             card_item.setData(card_data, Qt.ItemDataRole.UserRole + 2)
         except Exception:
             pass

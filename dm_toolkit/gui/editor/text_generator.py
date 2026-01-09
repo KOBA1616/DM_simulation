@@ -50,11 +50,14 @@ class CardTextGenerator:
         "hyper_energy": "ハイパーエナジー",
         "shield_burn": "シールド焼却",
         "revolution_change": "革命チェンジ",
+        "mekraid": "メクレイド",
+        "friend_burst": "フレンド・バースト",
         "untap_in": "タップして出る",
         "meta_counter_play": "メタカウンター",
         "power_attacker": "パワーアタッカー",
         "g_zero": "G・ゼロ",
         "ex_life": "EXライフ",
+        "mega_last_burst": "メガ・ラスト・バースト",
         "unblockable": "ブロックされない",
         "no_choice": "選ばれない"
     }
@@ -236,34 +239,61 @@ class CardTextGenerator:
 
         lines = []
 
-        # 2. Keywords
+        # 2. Keywords (ordered: basic -> special)
         keywords = data.get("keywords", {})
-        kw_lines = []
+        basic_kw_lines = []
+        special_kw_lines = []
         if keywords:
             for k, v in keywords.items():
-                if v:
-                    # Try explicit map first, then tr()
-                    kw_str = cls.KEYWORD_TRANSLATION.get(k, tr(k))
+                if not v:
+                    continue
 
+                # Build string for this keyword
+                kw_str = cls.KEYWORD_TRANSLATION.get(k, tr(k))
+
+                # Basic keywords: everything except the special set
+                if k not in ("revolution_change", "mekraid", "friend_burst"):
                     if k == "power_attacker":
                         bonus = data.get("power_attacker_bonus", 0)
                         if bonus > 0:
                             kw_str += f" +{bonus}"
-                    elif k == "revolution_change":
-                        cond = data.get("revolution_change_condition", {})
-                        if cond:
-                            cond_text = cls._describe_simple_filter(cond)
-                            kw_str += f"：{cond_text}"
-                            kw_str += f"（自分の{cond_text}が攻撃する時、そのクリーチャーと手札のこのクリーチャーと入れ替えてもよい）"
                     elif k == "hyper_energy":
                         kw_str += "（このクリーチャーを召喚する時、コストが異なる自分のクリーチャーを好きな数タップしてもよい、こうしてタップしたクリーチャー1体につき、このクリーチャーの召喚コストを2少なくする、ただし、コストは0以下にならない。）"
                     elif k == "just_diver":
                         kw_str += "（このクリーチャーが出た時、次の自分のターンのはじめまで、このクリーチャーは相手に選ばれず、攻撃されない）"
+                    basic_kw_lines.append(f"■ {kw_str}")
+                else:
+                    # Special keywords: single-line concise style. Show selected tribe/civ as requested.
+                    if k == "revolution_change":
+                        cond = data.get("revolution_change_condition", {})
+                        if cond and isinstance(cond, dict):
+                            civs = cond.get("civilizations", []) or []
+                            races = cond.get("races", []) or []
+                            pieces = []
+                            if civs:
+                                pieces.append(cls._format_civs(civs))
+                            # Add race names without extra noun when provided
+                            if races:
+                                if pieces:
+                                    # Civs exist -> join with の
+                                    pieces[-1] = pieces[-1] + "の" + "/".join(races)
+                                else:
+                                    pieces.append("/".join(races))
+                            if pieces:
+                                kw_str += f"：{''.join(pieces)}"
+                    elif k == "friend_burst":
+                        cond = data.get("friend_burst_condition", {})
+                        if cond and isinstance(cond, dict):
+                            races = cond.get("races", []) or []
+                            if races:
+                                kw_str += f"：{'/'.join(races)}"
+                    special_kw_lines.append(f"■ {kw_str}")
 
-                    # Requirement: show keyword abilities as generated text like "・スピードアタッカー"
-                    kw_lines.append(f"・{kw_str}")
-        if kw_lines:
-            lines.extend(kw_lines)
+        # Append in required order
+        if basic_kw_lines:
+            lines.extend(basic_kw_lines)
+        if special_kw_lines:
+            lines.extend(special_kw_lines)
 
         # 2.5 Cost Reductions
         cost_reductions = data.get("cost_reductions", [])
@@ -279,11 +309,32 @@ class CardTextGenerator:
             if text:
                 lines.append(f"■ {text}")
 
-        # 3. Effects
+        # 3. Effects (Configured actions). Skip effects that only realize special keywords
         effects = data.get("effects", [])
         is_spell = data.get("type", "CREATURE") == "SPELL"
 
+        def _is_special_only_effect(eff: Dict[str, Any]) -> bool:
+            cmds = eff.get("commands", []) or []
+            if not cmds:
+                return False
+            special_seen = False
+            for cmd in cmds:
+                if not isinstance(cmd, dict):
+                    continue
+                ctype = cmd.get("type")
+                if ctype == "MUTATE" and cmd.get("mutation_kind") == "REVOLUTION_CHANGE":
+                    special_seen = True
+                elif ctype == "MEKRAID" or ctype == "FRIEND_BURST":
+                    special_seen = True
+                else:
+                    # Found a non-special command -> not special-only
+                    return False
+            # All commands were special
+            return special_seen
+
         for effect in effects:
+            if _is_special_only_effect(effect):
+                continue
             text = cls._format_effect(effect, is_spell, sample=sample)
             if text:
                 lines.append(f"■ {text}")
