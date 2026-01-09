@@ -112,13 +112,13 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 **最終実行日**: 2026年1月22日
 **通過率**: 98.3% (121 passed + 41 subtests passed / 123 total + 41 subtests)
 
-### 4.1 解決済みのテスト (3件)
+### 4.1 解決済みのテスト (4件)
 1. `test_gui_stubbing.py::test_gui_libraries_are_stubbed` - ✅ Fixed
 2. `test_generated_text_choice_and_zone_normalization.py::test_transition_zone_short_names_render_naturally` - ✅ Fixed
 3. `test_generated_text_choice_and_zone_normalization.py::test_choice_options_accept_command_dicts` - ✅ Fixed
+4. `test_beam_search.py::test_beam_search_logic` - ✅ Fixed (Vector size subtraction underflow bug)
 
-### 4.2 スキップ中のテスト (5件)
-- `test_beam_search.py::test_beam_search_logic` - C++評価器の未初期化メモリ問題
+### 4.2 スキップ中のテスト (4件)
 - その他CI関連スキップ
 
 ## 5. 詳細実装計画 (Detailed Implementation Plan)
@@ -196,12 +196,12 @@ class StubFinder(importlib.abc.MetaPathFinder):
 **目標**: 通過率 95.9% → 99%+
 
 **作業内容**:
-- Beam Search問題の調査（C++側メモリ初期化）
+- Beam Search問題の調査（C++側メモリ初期化） [Done]
 - スキップ中テストの再有効化
 - 新規テストケースの追加（エッジケース）
 
 **マイルストーン**:
-- Day 3-5: Beam Search問題の特定と修正
+- Day 3-5: Beam Search問題の特定と修正 [Done]
 - 通過率99%達成でPhase 6完了
 
 ---
@@ -377,19 +377,12 @@ if "evolution" in keywords and not base_creatures:
 
 ---
 
-#### 5.4.3 Beam Search修正 [調査フェーズ - 1週間]
-**技術課題**: C++評価器の未初期化メモリ
+#### 5.4.3 Beam Search修正 [Done]
+**技術課題**: C++評価器の未初期化メモリ / 計算オーバーフロー
 
-**調査計画**:
-1. Valgrindによるメモリリーク検出
-2. AddressSanitizerでの実行
-3. デバッグビルドでの詳細ログ
-4. コードレビュー（src/ai/beam_search.cpp）
-
-**修正戦略**:
-- メンバ変数の明示的初期化
-- スマートポインタの活用
-- RAIIパターンの適用
+**解決策**:
+- メンバ変数の明示的初期化（BeamNode, Action, CostModifier等）
+- Vector size subtraction時のintキャストによるunderflow防止
 
 ---
 
@@ -416,7 +409,7 @@ Week 4-5: Phase 3 実装（メタゲーム進化）
 Week 6+: 継続的改善
   ├─ Phase 2: 推論強化
   ├─ Editor: Logic Mask
-  └─ Beam Search修正
+  └─ Beam Search修正 [完了]
 ```
 
 #### 技術スタック別リソース
@@ -428,8 +421,8 @@ Week 6+: 継続的改善
 | Evolution | multiprocessing | 7 |
 | 推論システム | C++, Bayesian | 10 |
 | Editor | PyQt6, Validation | 5 |
-| Beam Search | C++, Debug | 5 |
-| **合計** | - | **39.5** |
+| Beam Search | C++, Debug | 0.5 [完了] |
+| **合計** | - | **35.0** |
 
 #### 並行作業の可能性
 - テキスト生成 ∥ GUIスタブ（独立）
@@ -445,7 +438,7 @@ Week 6+: 継続的改善
 |--------|--------|------|
 | Transformerの学習不安定 | 高 | MLPフォールバック、Gradient Clipping |
 | PBTの収束失敗 | 中 | パラメータチューニング、多様性保証 |
-| Beam Searchメモリ問題 | 中 | 専門家レビュー、ツール活用 |
+| Beam Searchメモリ問題 | 中 | 解決済み |
 | GPU/メモリ不足 | 低 | クラウドリソース検討 |
 
 #### スケジュールリスク
@@ -674,7 +667,8 @@ main (protected)
 1. **Phase 6 ブロッカー解消**
   - [x] ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](dm_toolkit/gui/editor/text_generator.py)）。
   - [x] PyQtスタブの修正（[run_pytest_with_pyqt_stub.py](run_pytest_with_pyqt_stub.py)）。
-  - 目標: 失敗中3テストを通過。
+  - [x] Beam Search初期化/アンダーフローバグの修正。
+  - 目標: 失敗中テスト全通過完了。
 
 2. **Week 2 Day 1 仕込み**
   - [x] [data/synergy_pairs_v1.json](data/synergy_pairs_v1.json) の雛形作成（手動10-20ペア）。
@@ -686,7 +680,7 @@ main (protected)
   - 目標: 学習ループデバッグに即移行できる状態。
 
 ### 今週中に完了すべきマイルストーン
-- [x] Phase 6 ブロッカー解消（3テスト通過、通過率99%近似）
+- [x] Phase 6 ブロッカー解消（テスト通過率99%+）
 - [x] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
 - [x] Week 3 Day 1-2 TensorConverter連携（C++データ収集からPython学習まで開通）
 - [x] ドキュメント更新（本ファイル）

@@ -6,7 +6,7 @@ namespace dm::core {
 
     enum class PlayerIntent : uint8_t {
         // --- User Actions ---
-        PASS,
+        PASS = 0, // Explicitly 0
         MANA_CHARGE,
         MOVE_CARD, // Deprecated/Generic: Prefer specific intents
         PLAY_CARD,
@@ -31,7 +31,7 @@ namespace dm::core {
     };
 
     struct Action {
-        PlayerIntent type;
+        PlayerIntent type = PlayerIntent::PASS;
         CardID card_id = 0; // For PLAY_CARD, MANA_CHARGE
         int source_instance_id = -1; // For ATTACK, BLOCK (instance ID of the creature)
         int target_instance_id = -1; // For ATTACK_CREATURE, SELECT_TARGET
