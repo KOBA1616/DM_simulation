@@ -324,6 +324,9 @@ void bind_core(py::module& m) {
         .value("MOVE_BUFFER_TO_ZONE", CommandType::MOVE_BUFFER_TO_ZONE)
         .value("FRIEND_BURST", CommandType::FRIEND_BURST)
         .value("REGISTER_DELAYED_EFFECT", CommandType::REGISTER_DELAYED_EFFECT)
+        .value("IF", CommandType::IF)
+        .value("IF_ELSE", CommandType::IF_ELSE)
+        .value("ELSE", CommandType::ELSE)
         .value("NONE", CommandType::NONE)
         .export_values();
 

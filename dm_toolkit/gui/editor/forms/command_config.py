@@ -146,6 +146,15 @@ _definitions = [
                visible=["str_param", "amount"],
                labels={"str_param": "Effect ID", "amount": "Duration"}),
 
+    CommandDef("IF",
+               visible=["target_filter"]),
+
+    CommandDef("IF_ELSE",
+               visible=["target_filter"]),
+
+    CommandDef("ELSE",
+               visible=[]),
+
     CommandDef("CHOICE", # Mapped from SELECT_OPTION in action_to_command
                visible=["amount"],
                labels={"amount": "Count"})
