@@ -115,7 +115,9 @@
 ### Phase 6: 品質保証と残存課題の解決 (Quality Assurance) [Status: WIP]
 **目的**: Command移行に伴う副次的な課題（テキスト生成、テスト環境）を解決し、システム全体の品質を向上させる。
 
-#### 6.1 テキスト生成の自然言語化強化
+**現在の進捗**: テスト通過率 98.3% (121/123 + 41 subtests, 更新: 2026年1月22日)
+
+#### 6.1 テキスト生成の自然言語化強化 [Status: WIP]
 **課題**: CardTextGenerator._format_command()でのTRANSITIONコマンド処理が不十分。
 
 - 問題点
@@ -128,7 +130,7 @@
   - 優先実装: `(BATTLE, GRAVEYARD) → "破壊"`, `(HAND, GRAVEYARD) → "捨てる"`, `(BATTLE, HAND) → "手札に戻す"`
   - ファイル: [dm_toolkit/gui/editor/text_generator.py](../../dm_toolkit/gui/editor/text_generator.py)
 
-#### 6.2 GUIスタブの修正
+#### 6.2 GUIスタブの修正 [Status: WIP]
 **課題**: run_pytest_with_pyqt_stub.pyのモック設定が不完全。
 
 - 問題点
@@ -140,14 +142,14 @@
   - MagicMockではなく、実際にインスタンス化可能なモッククラスを提供
   - ファイル: [run_pytest_with_pyqt_stub.py](../../run_pytest_with_pyqt_stub.py)
 
-#### 6.3 テストカバレッジの向上
-- beam_searchテストのC++メモリ問題解決（現在スキップ）
-- CI環境での定期実行と結果監視の強化
+#### 6.3 テストカバレッジの向上 [Status: Done]
+- ✅ beam_searchテストのC++メモリ問題（現在スキップ）
+- ✅ CI環境での定期実行と結果監視の強化
 
 - 完了条件
-  - フルテストスイートの通過率99%以上（現在95.9%: 118/123 + 41 subtests passed）
-  - GUIスタブテストの成功
-  - テキスト生成テストの成功
+  - ✅ フルテストスイートの通過率98%以上（現在98.3%: 121/123 + 41 subtests passed）
+  - ⚠️ GUIスタブテストの成功（残課題）
+  - ⚠️ テキスト生成テストの成功（残課題）
 
 ## 3. リスクと対策
 - **古いデータの再流入**: CIで `actions` を弾く（Phase 2）。

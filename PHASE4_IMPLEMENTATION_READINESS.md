@@ -1,7 +1,8 @@
 # Phase 4 Transformer 実装準備チェックリスト
 
 **作成日**: 2026年1月9日  
-**ステータス**: ✅ Week 2 Day 1 実装開始準備完了
+**最終更新**: 2026年1月22日  
+**ステータス**: ✅ Week 2-3 実装完了 → 次フェーズへ移行
 
 ---
 
@@ -16,25 +17,23 @@
 
 ---
 
-## ✅ 本日（1月9日）完了項目
+## ✅ 実装完了項目（Week 2-3）
 
 ### 1. コード修正
 - ✅ `DuelTransformer.max_len`: 512→200 に統一
+- ✅ TensorConverter V2 連携 (max_len=200, special tokens)
 
-### 2. ドキュメント作成（6種類、~100KB）
+### 2. 実装完了機能
+- ✅ Synergy 手動定義（JSON + from_manual_pairs()）
+- ✅ トレーニングデータ生成（C++ DataCollector連携）
+- ✅ 訓練スクリプト（train_transformer_phase4.py）
+- ✅ バッチサイズ段階的テスト
+- ✅ 1エポック学習ループ通過確認
+
+### 3. ドキュメント作成
 - ✅ `05_Transformer_Current_Status.md` (13KB)
-  - 実装状況分析、Critical修正リスト
-  
 - ✅ `06_Week2_Day1_Detailed_Plan.md` (28KB)
-  - Task 1-4 の詳細実装手順（8時間分）
-  
 - ✅ `07_Transformer_Implementation_Summary.md` (13KB)
-  - 全体サマリー、スケジュール、フローチャート
-
-### 3. 調査実行
-- ✅ `inspect_training_data.py` 実行
-  - **発見**: トレーニングデータなし
-  - **対応**: Week 2 Day 1 で新規生成（3時間タスク）
 
 ---
 

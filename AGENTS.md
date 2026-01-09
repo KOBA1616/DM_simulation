@@ -4,6 +4,7 @@
 *   **Unified Entry Point:** All Action-to-Command conversions must go through `dm_toolkit.action_to_command.action_to_command`.
 *   **Standardization:** Ensure `action_to_command.py` is the single source of truth for mapping legacy Action dictionaries to strict `GameCommand` structures.
 *   **Goal:** Eliminate ad-hoc dictionary manipulation in test code and engine wrappers.
+*   **Status:** ✅ Phase 1-5 Complete (2026年1月22日). Phase 6 (Quality Assurance) in progress.
 
 ## 2. Compatibility and Post-Processing
 *   **Minimize Dispersion:** Logic for backward compatibility and command post-processing should be centralized.
@@ -22,3 +23,8 @@
 *   **Source Loader Priority:** The Python wrapper (`dm_ai_module.py`) should prioritize loading the extension from the build directory (`build/`, `bin/`) over system-installed versions.
 *   **Explicit Verification:** Only enforce native module presence when explicitly required by the test context (managed via `conftest.py`).
 *   **Environment Setup:** Use `sitecustomize.py` or the module's own loader to ensure `sys.path` is correctly configured to find the compiled extension.
+
+## 5. Quality Assurance Strategy (Phase 6)
+*   **Test Coverage Target:** Maintain 98%+ test pass rate (Current: 98.3% as of 2026年1月22日).
+*   **Critical Issues:** Focus on remaining test failures in GUI stubbing and text generation.
+*   **Continuous Improvement:** Address technical debt incrementally while maintaining system stability.

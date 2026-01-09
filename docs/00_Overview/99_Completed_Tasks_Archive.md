@@ -71,3 +71,70 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 
 *   **NetworkV2**: Transformer (Linear Attention) ベースの可変長入力モデルを実装完了。
 *   **TensorConverter**: C++側でのシーケンス変換ロジックを実装済み。
+
+---
+
+## Phase 1-5: Legacy Action削除 (2026年1月完了)
+
+### Phase 1: 入口の一本化・互換の局所化 (Normalization) [✅ 完了]
+*   Action→Command 変換は必ず `dm_toolkit.action_to_command.action_to_command` を経由
+*   `dm_toolkit.action_mapper` のロジックを `action_to_command` に統合
+*   `legacy_mode` 的な分岐は `dm_toolkit.compat_wrappers` / `dm_toolkit.unified_execution` に集約
+*   関連ファイル: [dm_toolkit/action_to_command.py](../../dm_toolkit/action_to_command.py), [dm_toolkit/compat_wrappers.py](../../dm_toolkit/compat_wrappers.py)
+
+### Phase 2: データ移行の完了 (Data Migration) [✅ 完了]
+*   `data/` 配下のカードJSONを一括変換し、`actions` を削除して `commands` のみに統一
+*   `data/editor_templates.json` などテンプレート/雛形から `actions` を削除
+*   移行スクリプト: [scripts/migrate_actions.py](../../scripts/migrate_actions.py)
+
+### Phase 3: GUIから Action 概念を撤去 (GUI Removal) [✅ 完了]
+*   Actionツリー表示のフォールバック削除
+*   Action UI 定義（`ACTION_UI_CONFIG` / Actionフォーム）を撤去
+*   Command Builders 実装: [dm_toolkit/command_builders.py](../../dm_toolkit/command_builders.py)
+
+### Phase 4: 互換スイッチ撤去・実行経路の整理 (Compat Removal) [✅ 完了]
+*   `EDITOR_LEGACY_SAVE` を撤去
+*   `DM_ACTION_CONVERTER_NATIVE` など移行中の互換フラグを整理
+*   `dm_toolkit.commands.wrap_action` の legacy 依存を縮退
+
+### Phase 5: デッドコード削除 (Delete) [✅ 完了]
+*   `dm_toolkit/action_mapper.py`（deprecated）削除
+*   `dm_toolkit/gui/editor/action_converter.py` 削除
+*   `dm_toolkit/gui/editor/forms/action_config.py` 削除
+
+**成果**: Commands-only アーキテクチャの確立、保守コストの削減
+**関連ドキュメント**: [01_Legacy_Action_Removal_Roadmap.md](./01_Legacy_Action_Removal_Roadmap.md)
+
+---
+
+## Phase 4 Transformer 基礎実装 (Week 2-3, 2026年1月完了)
+
+### 実装完了コンポーネント
+1. **DuelTransformer**: Encoder-Only Transformer (d_model=256, 6層, 8ヘッド)
+   - ファイル: [dm_toolkit/ai/agent/transformer_model.py](../../dm_toolkit/ai/agent/transformer_model.py)
+   - 機能: Token Embedding, Positional Embedding, Synergy Bias, Policy/Value Heads
+
+2. **SynergyGraph**: カード相性マトリクス管理
+   - ファイル: [dm_toolkit/ai/agent/synergy.py](../../dm_toolkit/ai/agent/synergy.py)
+   - 機能: 手動定義ペアからの初期化 (`from_manual_pairs`)
+
+3. **TensorConverter V2**: C++トークン生成
+   - ファイル: [src/ai/encoders/tensor_converter.hpp](../../src/ai/encoders/tensor_converter.hpp)
+   - 機能: max_len=200, 特殊トークン対応
+
+4. **学習パイプライン**: 
+   - データ生成: [python/training/generate_transformer_training_data.py](../../python/training/generate_transformer_training_data.py)
+   - 学習スクリプト: [python/training/train_transformer_phase4.py](../../python/training/train_transformer_phase4.py)
+   - 機能: CPU/GPU対応、TensorBoard統合、チェックポイント保存
+
+### ユーザー決定事項
+- Synergy初期化: 手動定義（JSON）
+- CLSトークン: 先頭配置
+- バッチサイズ: 段階的拡大（8→16→32→64）
+- Positional Encoding: 学習可能パラメータ
+
+**成果**: 1エポック学習ループ通過確認、基礎アーキテクチャ確立
+**関連ドキュメント**: 
+- [04_Phase4_Transformer_Requirements.md](./04_Phase4_Transformer_Requirements.md)
+- [07_Transformer_Implementation_Summary.md](./07_Transformer_Implementation_Summary.md)
+- [PHASE4_IMPLEMENTATION_READINESS.md](../../PHASE4_IMPLEMENTATION_READINESS.md)
