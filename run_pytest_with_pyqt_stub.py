@@ -43,6 +43,12 @@ def setup_gui_stubs():
     Injects mocks for PyQt6 and PySide6 modules into sys.modules.
     This prevents ImportErrors when tests try to import GUI components in a headless environment.
     """
+    # Check if stubs are already properly set up (e.g., by conftest.py)
+    qtwidgets_mod = sys.modules.get('PyQt6.QtWidgets')
+    if qtwidgets_mod and hasattr(qtwidgets_mod, 'QMainWindow'):
+        print(" [STUB] GUI stubs already configured (likely by conftest.py).")
+        return  # Already set up, don't override
+
     # Create dummy classes for inheritance
     class DummyQWidget(object):
         def __init__(self, *args, **kwargs): pass
@@ -117,26 +123,39 @@ def setup_gui_stubs():
     qt_widgets = create_mock_module('PyQt6.QtWidgets')
     mocks['PyQt6.QtWidgets'] = qt_widgets
     pyqt6.QtWidgets = qt_widgets
+    pyqt6.__dict__['QtWidgets'] = qt_widgets
 
     # QtCore
     qt_core = create_mock_module('PyQt6.QtCore')
     mocks['PyQt6.QtCore'] = qt_core
     pyqt6.QtCore = qt_core
+    pyqt6.__dict__['QtCore'] = qt_core
 
     # QtGui
     qt_gui = create_mock_module('PyQt6.QtGui')
     mocks['PyQt6.QtGui'] = qt_gui
     pyqt6.QtGui = qt_gui
+    pyqt6.__dict__['QtGui'] = qt_gui
 
     # QtTest
     qt_test = create_mock_module('PyQt6.QtTest')
     mocks['PyQt6.QtTest'] = qt_test
     pyqt6.QtTest = qt_test
+    pyqt6.__dict__['QtTest'] = qt_test
 
     # PySide6 mirrors
-    mocks['PySide6.QtCore'] = create_mock_module('PySide6.QtCore')
-    mocks['PySide6.QtGui'] = create_mock_module('PySide6.QtGui')
-    mocks['PySide6.QtWidgets'] = create_mock_module('PySide6.QtWidgets')
+    ps_core = create_mock_module('PySide6.QtCore')
+    ps_gui = create_mock_module('PySide6.QtGui')
+    ps_widgets = create_mock_module('PySide6.QtWidgets')
+    mocks['PySide6.QtCore'] = ps_core
+    mocks['PySide6.QtGui'] = ps_gui
+    mocks['PySide6.QtWidgets'] = ps_widgets
+    pyside6.QtCore = ps_core
+    pyside6.QtGui = ps_gui
+    pyside6.QtWidgets = ps_widgets
+    pyside6.__dict__['QtCore'] = ps_core
+    pyside6.__dict__['QtGui'] = ps_gui
+    pyside6.__dict__['QtWidgets'] = ps_widgets
 
     # 3. Inject attributes into QtWidgets
     qt_widgets.QMainWindow = DummyQMainWindow
@@ -164,13 +183,18 @@ def setup_gui_stubs():
     qt_gui.QStandardItemModel = type('QStandardItemModel', (object,), {'__init__': lambda s, *a: None, 'invisibleRootItem': lambda s: unittest.mock.MagicMock()})
     qt_gui.QStandardItem = type('QStandardItem', (object,), {'__init__': lambda s, *a: None})
 
-    # Install MetaPathFinder
-    # We must insert it before standard importers
-    sys.meta_path.insert(0, StubFinder(mocks))
+    # Add __all__ to package modules to support "from X import Y"
+    pyqt6.__all__ = ['QtWidgets', 'QtCore', 'QtGui', 'QtTest']
+    pyside6.__all__ = ['QtWidgets', 'QtCore', 'QtGui']
 
-    # Also populate sys.modules for good measure (some importers check it directly)
+    # CRITICAL: Populate sys.modules BEFORE installing MetaPathFinder
+    # This ensures modules are already loaded when pytest starts collecting tests
     for name, m in mocks.items():
         sys.modules[name] = m
+
+    # Install MetaPathFinder as fallback
+    # We must insert it before standard importers
+    sys.meta_path.insert(0, StubFinder(mocks))
 
     print(" [STUB] GUI libraries mocked for headless execution (Custom Dummies via MetaPathFinder).")
 

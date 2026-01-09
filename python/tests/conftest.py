@@ -3,6 +3,114 @@ import sys
 import importlib
 import pytest
 
+# ============================================================================
+# PyQt/PySide Stubbing for Headless Environments
+# ============================================================================
+# CRITICAL: This MUST execute BEFORE pytest starts collecting tests,
+# because dm_toolkit.gui modules will try to import PyQt6 during collection.
+
+# Execute stub setup immediately at module load time
+import unittest.mock
+import types
+
+def _setup_minimal_gui_stubs():
+    """Setup minimal GUI stubs to prevent ImportErrors during test collection."""
+    # If PyQt6.QtWidgets already exists and has QMainWindow, we're done
+    qtwidgets_mod = sys.modules.get('PyQt6.QtWidgets')
+    if qtwidgets_mod and hasattr(qtwidgets_mod, 'QMainWindow'):
+        return  # Already properly set up or real PyQt6 exists
+    
+    # Otherwise, set up minimal stubs NOW (before test collection)
+    
+    # Create dummy classes
+    class DummyQWidget:
+        def __init__(self, *args, **kwargs): pass
+        def setWindowTitle(self, title): pass
+        def setLayout(self, layout): pass
+        def show(self): pass
+
+    class DummyQMainWindow(DummyQWidget):
+        def setCentralWidget(self, widget): pass
+
+    class DummyQt:
+        class ItemDataRole:
+            DisplayRole = 0
+        Horizontal = 1
+
+    # Create module structure
+    if 'PyQt6' not in sys.modules:
+        pyqt6 = types.ModuleType('PyQt6')
+        pyqt6.__path__ = []
+        sys.modules['PyQt6'] = pyqt6
+    else:
+        pyqt6 = sys.modules['PyQt6']
+
+    if 'PyQt6.QtWidgets' not in sys.modules:
+        qt_widgets = types.ModuleType('PyQt6.QtWidgets')
+        sys.modules['PyQt6.QtWidgets'] = qt_widgets
+    else:
+        qt_widgets = sys.modules['PyQt6.QtWidgets']
+
+    if 'PyQt6.QtCore' not in sys.modules:
+        qt_core = types.ModuleType('PyQt6.QtCore')
+        sys.modules['PyQt6.QtCore'] = qt_core
+    else:
+        qt_core = sys.modules['PyQt6.QtCore']
+
+    if 'PyQt6.QtGui' not in sys.modules:
+        qt_gui = types.ModuleType('PyQt6.QtGui')
+        sys.modules['PyQt6.QtGui'] = qt_gui
+    else:
+        qt_gui = sys.modules['PyQt6.QtGui']
+
+    # Populate with stub classes
+    qt_widgets.QMainWindow = DummyQMainWindow
+    qt_widgets.QWidget = DummyQWidget
+    qt_widgets.QApplication = type('QApplication', (), {'__init__': lambda s, a: None, 'exec': lambda s: 0})
+    for name in ['QLabel', 'QPushButton', 'QVBoxLayout', 'QHBoxLayout', 'QTreeWidget', 
+                 'QTreeWidgetItem', 'QDialog', 'QLineEdit', 'QTextEdit', 'QCheckBox',
+                 'QComboBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QGraphicsView',
+                 'QGraphicsScene', 'QGraphicsEllipseItem', 'QGraphicsLineItem', 'QGraphicsTextItem',
+                 'QProgressBar', 'QHeaderView', 'QSplitter', 'QGroupBox', 'QMenuBar', 'QMenu',
+                 'QStatusBar']:
+        setattr(qt_widgets, name, type(name, (DummyQWidget,), {}))
+
+    qt_core.Qt = DummyQt
+    qt_core.QObject = type('QObject', (), {'__init__': lambda s, *a: None})
+    qt_core.QTimer = type('QTimer', (), {'singleShot': lambda *a: None})
+    qt_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
+    qt_core.QMimeData = type('QMimeData', (), {})
+    qt_core.QRectF = type('QRectF', (), {})
+    qt_core.QThread = type('QThread', (), {})
+
+    qt_gui.QAction = type('QAction', (DummyQWidget,), {})
+    qt_gui.QKeySequence = type('QKeySequence', (), {})
+    qt_gui.QStandardItem = type('QStandardItem', (), {'__init__': lambda s, *a: None})
+    qt_gui.QDrag = type('QDrag', (), {})
+    qt_gui.QPen = type('QPen', (), {})
+    qt_gui.QBrush = type('QBrush', (), {})
+    qt_gui.QColor = type('QColor', (), {})
+    qt_gui.QFont = type('QFont', (), {})
+    qt_gui.QPainter = type('QPainter', (), {})
+    qt_gui.QIcon = lambda *a: None
+    qt_gui.QStandardItemModel = type('QStandardItemModel', (), {'__init__': lambda s, *a: None})
+
+    # Link to parent package
+    pyqt6.QtWidgets = qt_widgets
+    pyqt6.QtCore = qt_core
+    pyqt6.QtGui = qt_gui
+    pyqt6.__dict__['QtWidgets'] = qt_widgets
+    pyqt6.__dict__['QtCore'] = qt_core
+    pyqt6.__dict__['QtGui'] = qt_gui
+    pyqt6.__all__ = ['QtWidgets', 'QtCore', 'QtGui']
+
+# Execute immediately - this runs when conftest.py is first imported by pytest
+_setup_minimal_gui_stubs()
+
+# ============================================================================
+# Path Setup and Module Loading
+# ============================================================================
+
 # Ensure local `python/` shim module directory is preferred so tests can run
 root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 shim_dir = os.path.join(root, 'python')
