@@ -25,6 +25,7 @@
 #include "ai/neural_net/self_attention.hpp"
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
+#include <pybind11/numpy.h>
 
 using namespace dm;
 using namespace dm::core;
@@ -51,18 +52,29 @@ void bind_ai(py::module& m) {
         // Helper wrapper to accept vector of pointers for batch sequence
         // Needed because GameState is not copyable, preventing direct std::vector<GameState> binding
         .def_static("convert_batch_sequence", [](const std::vector<std::shared_ptr<dm::core::GameState>>& states, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, bool mask_opponent_hand) {
-            std::vector<long> batch_seq;
-            batch_seq.reserve(states.size() * dm::ai::TensorConverter::MAX_SEQ_LEN);
-            for (const auto& state_ptr : states) {
+            size_t batch_size = states.size();
+            size_t seq_len = dm::ai::TensorConverter::MAX_SEQ_LEN;
+
+            // Allocate numpy array (Batch, SeqLen)
+            py::array_t<int64_t> result({batch_size, seq_len});
+            auto buf = result.mutable_unchecked<2>();
+
+            for (size_t i = 0; i < batch_size; ++i) {
+                const auto& state_ptr = states[i];
                 if (state_ptr) {
                     std::vector<long> s = dm::ai::TensorConverter::convert_to_sequence(*state_ptr, state_ptr->active_player_id, card_db, mask_opponent_hand);
-                    batch_seq.insert(batch_seq.end(), s.begin(), s.end());
+                    // Copy to buffer
+                    for (size_t j = 0; j < seq_len; ++j) {
+                        buf(i, j) = (j < s.size()) ? static_cast<int64_t>(s[j]) : 0;
+                    }
                 } else {
-                    // Pad if null to maintain batch alignment
-                    for(int i=0; i<dm::ai::TensorConverter::MAX_SEQ_LEN; ++i) batch_seq.push_back(0);
+                    // Pad if null
+                    for (size_t j = 0; j < seq_len; ++j) {
+                        buf(i, j) = 0;
+                    }
                 }
             }
-            return batch_seq;
+            return result;
         }, py::arg("states"), py::arg("card_db"), py::arg("mask_opponent_hand") = true);
 
     py::class_<ActionEncoder>(m, "ActionEncoder")
