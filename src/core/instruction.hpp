@@ -9,6 +9,8 @@ namespace dm::core {
         NOOP,
         // Logic
         IF,
+        IF_ELSE,
+        ELSE,
         LOOP,       // FOREACH
         REPEAT,     // Loop N times
         // Query
@@ -36,6 +38,8 @@ namespace dm::core {
     NLOHMANN_JSON_SERIALIZE_ENUM(InstructionOp, {
         {InstructionOp::NOOP, "NOOP"},
         {InstructionOp::IF, "IF"},
+        {InstructionOp::IF_ELSE, "IF_ELSE"},
+        {InstructionOp::ELSE, "ELSE"},
         {InstructionOp::LOOP, "LOOP"},
         {InstructionOp::REPEAT, "REPEAT"},
         {InstructionOp::SELECT, "SELECT"},
