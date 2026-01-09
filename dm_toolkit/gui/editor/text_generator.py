@@ -139,6 +139,16 @@ class CardTextGenerator:
         "MANA_CIVILIZATION_COUNT": ("マナゾーンの文明数", ""),
     }
 
+    # Short aliases for natural language rendering of common zone transitions
+    TRANSITION_ALIASES = {
+        ("BATTLE_ZONE", "GRAVEYARD"): "破壊",
+        ("HAND", "GRAVEYARD"): "捨てる",
+        ("BATTLE_ZONE", "HAND"): "手札に戻す",
+        ("DECK", "MANA_ZONE"): "マナチャージ",
+        ("SHIELD_ZONE", "GRAVEYARD"): "シールド焼却",
+        ("BATTLE_ZONE", "DECK"): "山札に戻す"
+    }
+
     @classmethod
     def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True) -> str:
         """
@@ -480,7 +490,7 @@ class CardTextGenerator:
         if not zone:
             return ""
 
-        z = str(zone).split(".")[-1]
+        z = str(zone).split(".")[-1].upper()
         zone_map = {
             # CommandSystem short names -> JSON/UI long names
             "BATTLE": "BATTLE_ZONE",
@@ -685,6 +695,22 @@ class CardTextGenerator:
             to_zone = cls._normalize_zone_name(action.get('to_zone') or action.get('toZone') or '')
             amt = action.get('amount') or action.get('value1') or 0
             up_to = bool(action.get('up_to', False))
+
+            # Use short alias if available (e.g., "破壊" for BATTLE->GRAVEYARD)
+            alias = cls.TRANSITION_ALIASES.get((from_zone, to_zone))
+            if alias:
+                 # Reconstruct natural sentences based on known aliases
+                 if alias == "破壊":
+                      return f"{{target}}を{amt}体破壊する。" if amt > 0 else f"{{target}}をすべて破壊する。"
+                 elif alias == "捨てる":
+                      return f"手札を{amt}枚捨てる。" if amt > 0 else "手札をすべて捨てる。"
+                 elif alias == "手札に戻す":
+                      return f"{{target}}を{amt}体手札に戻す。" if amt > 0 else f"{{target}}をすべて手札に戻す。"
+                 elif alias == "マナチャージ":
+                      return f"自分の山札の上から{amt}枚をマナゾーンに置く。"
+                 elif alias == "シールド焼却":
+                      return f"相手のシールドを{amt}つ選び、墓地に置く。"
+
             # If transition represents drawing from deck to hand
             if (from_zone == 'DECK' or from_zone == '') and to_zone == 'HAND':
                 if not amt and isinstance(action.get('target_filter'), dict):
@@ -971,7 +997,7 @@ class CardTextGenerator:
             return "リアクションを宣言する。"
 
         elif atype == "STAT":
-            # Update game stats; prefer human-readable stat names.
+            # Update game stats; prefer human-readable stat labels.
             key = action.get('stat') or action.get('str_param') or action.get('str_val')
             amount = action.get('amount', action.get('value1', 0))
             if key:
