@@ -79,9 +79,9 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 - ✅ SynergyGraph 基本実装済み、手動定義拡張待ち
 
 ### Week 2 Day 1（1月13日）の成果物
-1. `data/synergy_pairs_v1.json` - 手動定義ペア（Q1: 手動定義）
-2. `SynergyGraph.from_manual_pairs()` - ロード機能（密行列で保持）
-3. `generate_transformer_training_data.py` - データ生成（1000サンプル、Q4: 新規作成）
+1. `data/synergy_pairs_v1.json` - 手動定義ペア（Q1: 手動定義）✅
+2. `SynergyGraph.from_manual_pairs()` - ロード機能（密行列で保持）✅
+3. `generate_transformer_training_data.py` - データ生成（1000サンプル、Q4: 新規作成）✅
 4. `train_transformer_phase4.py` - CLS先頭、学習可能pos embedding、バッチ8起動
 5. データ正規化とテスト（デッキ系ソート、Battle重なり保持、ドロップアウト未実施）
 
@@ -205,8 +205,8 @@ def setup_gui_stubs():
 **📋 詳細要件**: [04_Phase4_Transformer_Requirements.md](04_Phase4_Transformer_Requirements.md) を参照。Q1-Q9 決定済み（手動Synergy、CLS先頭、学習可能pos、データ新規生成、密行列Synergy、データ正規化のみ）。
 
 #### 5.2.1 Week 2 Day 1: セットアップ（1月13日）
-- `data/synergy_pairs_v1.json` 作成と `SynergyGraph.from_manual_pairs()` 実装（密行列で保持）。
-- `generate_transformer_training_data.py` で 1000 サンプル生成（バッチ8起動、max_len=200、正規化のみ）。
+- `data/synergy_pairs_v1.json` 作成と `SynergyGraph.from_manual_pairs()` 実装（密行列で保持）。[Done]
+- `generate_transformer_training_data.py` で 1000 サンプル生成（バッチ8起動、max_len=200、正規化のみ）。[Done]
 - `train_transformer_phase4.py` スケルトン起動（CLS先頭、学習可能pos、lr=1e-4, warmup=1000）。
 - 正規化ルール: Deck/Hand/Mana/Graveソート、Battle重なり保持、空ゾーン省略なし、ドロップアウト未実施。
 - 成功基準: 上記4成果物がGPU上で1バッチ通る。
@@ -670,8 +670,8 @@ main (protected)
   - 目標: 失敗中3テストを通過。
 
 2. **Week 2 Day 1 仕込み**
-  - [data/synergy_pairs_v1.json](data/synergy_pairs_v1.json) の雛形作成（手動10-20ペア）。
-  - [python/training/generate_transformer_training_data.py](python/training/generate_transformer_training_data.py) のスケルトン作成とdry-run（100サンプル）。
+  - [x] [data/synergy_pairs_v1.json](data/synergy_pairs_v1.json) の雛形作成（手動10-20ペア）。
+  - [x] [python/training/generate_transformer_training_data.py](python/training/generate_transformer_training_data.py) のスケルトン作成とdry-run（100サンプル）。
   - 目標: Day 1 開始時にGPUで1バッチ流せる状態。
 
 3. **環境確認**
@@ -680,7 +680,7 @@ main (protected)
 
 ### 今週中に完了すべきマイルストーン
 - [x] Phase 6 ブロッカー解消（3テスト通過、通過率99%近似）
-- [ ] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
+- [x] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
 - [ ] ドキュメント更新（本ファイル、[docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md)）
 
 ### 月末までの目標
