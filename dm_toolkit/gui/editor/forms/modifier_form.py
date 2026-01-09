@@ -89,7 +89,6 @@ class ModifierEditForm(BaseEditForm):
         # So we should probably fix ModifierEditForm to use data or custom populate.
 
         # Let's fix type_combo population to use data same as text
-        from dm_toolkit.gui.localization import tr
         self.type_combo.clear()
         types = ["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
         for t in types:
@@ -107,7 +106,7 @@ class ModifierEditForm(BaseEditForm):
         self.update_visibility()
 
     def update_visibility(self):
-        mtype = self.type_combo.currentText()
+        mtype = self.type_combo.currentData()
 
         # Defaults
         self.label_value.setVisible(False)
