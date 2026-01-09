@@ -275,6 +275,7 @@ class CardDataManager:
                 card_item.appendRow(ra_item)
 
             # 2.5 Add Keywords if present in card JSON
+            # Create both KEYWORDS tree item AND auto-generate effects for special keywords
             keywords_data = card.get('keywords', {})
             if keywords_data and isinstance(keywords_data, dict):
                 kw_item = QStandardItem(tr("Keywords"))
@@ -282,6 +283,14 @@ class CardDataManager:
                 # Make a copy to avoid mutating the original card data
                 kw_item.setData(keywords_data.copy(), Qt.ItemDataRole.UserRole + 2)
                 card_item.appendRow(kw_item)
+                
+                # Auto-generate effects for special keywords from JSON
+                if keywords_data.get('revolution_change'):
+                    self.add_revolution_change_logic(card_item)
+                if keywords_data.get('mekraid'):
+                    self.add_mekraid_logic(card_item)
+                if keywords_data.get('friend_burst'):
+                    self.add_friend_burst_logic(card_item)
 
             # 3. Add Spell Side if exists
             spell_side_data = card.get('spell_side')
