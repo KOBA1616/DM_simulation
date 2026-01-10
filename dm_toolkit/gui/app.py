@@ -35,6 +35,7 @@ from dm_toolkit.gui.widgets.card_detail_panel import CardDetailPanel
 from dm_toolkit.gui.simulation_dialog import SimulationDialog
 from dm_toolkit.gui.widgets.stack_view import StackViewWidget
 from dm_toolkit.gui.widgets.loop_recorder import LoopRecorderWidget
+from dm_toolkit.gui.widgets.card_effect_debugger import CardEffectDebugger
 from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 
 # Import Phase 7 requirements: Action Wrapper and Mapper
@@ -121,6 +122,10 @@ class GameWindow(QMainWindow):
         loop_act = QAction(tr("Loop Recorder"), self)
         loop_act.triggered.connect(lambda: self.loop_dock.setVisible(not self.loop_dock.isVisible()))
         self.toolbar.addAction(loop_act)
+
+        debug_act = QAction(tr("Effect Debugger"), self)
+        debug_act.triggered.connect(lambda: self.debugger_dock.setVisible(not self.debugger_dock.isVisible()))
+        self.toolbar.addAction(debug_act)
 
         # UI Setup
         self.info_dock = QDockWidget(tr("Game Info & Controls"), self)
@@ -355,6 +360,14 @@ class GameWindow(QMainWindow):
         self.loop_dock.setWidget(self.loop_recorder)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.loop_dock)
         self.loop_dock.hide()
+
+        self.debugger_dock = QDockWidget(tr("Card Effect Debugger"), self)
+        self.debugger_dock.setObjectName("DebuggerDock")
+        self.debugger_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
+        self.effect_debugger = CardEffectDebugger()
+        self.debugger_dock.setWidget(self.effect_debugger)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.debugger_dock)
+        self.debugger_dock.hide()
 
         self.scenario_tools = ScenarioToolsDock(self, self.gs, self.card_db)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.scenario_tools)
@@ -740,6 +753,7 @@ class GameWindow(QMainWindow):
         self.active_label.setText(tr("Active: P{player_id}").format(player_id=active_pid))
         
         self.stack_view.update_state(self.gs, self.card_db)
+        self.effect_debugger.update_state(self.gs, self.card_db)
 
         history = EngineCompat.get_command_history(self.gs)
         try: current_len = len(history)
