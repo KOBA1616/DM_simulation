@@ -49,6 +49,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   互換ラッパー: `dm_toolkit.compat_wrappers` / `dm_toolkit.unified_execution` に集約。
     *   Command Builders: 直接的なGameCommand構築ヘルパー実装 (`dm_toolkit.command_builders`)。
 *   [Status: WIP] **Phase 6 品質保証**: テキスト生成の自然言語化、GUIスタブの改善。
+*   [Status: WIP] **Validation Tools**: 静的解析ツール `card_validator.py` 実装中。
 *   [Status: Todo] **Logic Mask**: カードデータ入力時の矛盾防止機能。
 
 ## 3. 完了したフェーズ (Completed Phases)
@@ -141,11 +142,11 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 **タスク**:
 
 1. **静的解析ツールの実装** (3日)
-   - [ ] コマンド構造の妥当性検証
-   - [ ] 変数参照の整合性チェック
-   - [ ] ゾーン遷移の矛盾検出
+   - [x] コマンド構造の妥当性検証
+   - [x] 変数参照の整合性チェック
+   - [x] ゾーン遷移の矛盾検出（簡易チェック）
    - [ ] 無限ループの静的検出
-   - 成果物: `card_validator.py`
+   - 成果物: `dm_toolkit/validator/card_validator.py`
 
 2. **自動テスト生成** (2日)
    - [ ] カード定義から基本テストケース生成
@@ -279,6 +280,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 - ✅ GUIスタブ機構の確立（headless環境対応）
 - ✅ テキスト生成の自然言語化（TRANSITIONコマンド対応）
 - ✅ Beam Search C++メモリ問題修正
+- ✅ 静的解析ツール `card_validator.py` の実装
 
 ### 残課題
 - ⚠️ GUIスタブの完全修正（一部テスト）
@@ -839,7 +841,7 @@ main (protected)
 2. **Phase 6 ブロッカー解消**
   - [x] ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](dm_toolkit/gui/editor/text_generator.py)）。
   - [x] PyQtスタブの修正（[run_pytest_with_pyqt_stub.py](run_pytest_with_pyqt_stub.py)）。
-  - 目標: 失敗中3テストを通過。
+  - [x] 静的解析ツール `card_validator.py` の実装。
 
 3. **Week 2 Day 1 仕込み**
   - [x] [data/synergy_pairs_v1.json](data/synergy_pairs_v1.json) の雛形作成（手動10-20ペア）。
