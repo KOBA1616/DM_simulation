@@ -34,9 +34,10 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
     *   データ生成: `generate_transformer_training_data.py` によるC++ DataCollector連携実装済み。
     *   Synergy Matrix: 手動定義ペアからの初期化機能実装済み (`data/synergy_pairs_v1.json`)。
     *   TensorConverter V2: max_len=200、特殊トークン対応完了。
-*   [Status: WIP] **Meta-Game Evolution**: `evolution_ecosystem.py` 実装中。
+*   [Status: Done] **Meta-Game Evolution**: `evolution_ecosystem.py` 実装完了。
     *   `PopulationManager` クラスの実装完了 (Phase 3 Day 1)。
     *   `ParallelMatchExecutor` クラスの実装完了 (Phase 3 Day 2)。
+    *   `EvolutionOperator` クラスおよび自己進化ループの実装完了 (Phase 3 Day 3)。
 *   [Status: Done] **Inference Core**: C++ `DeckInference` クラスおよびPythonバインディング実装済み。
 
 ### 2.3 開発ツール (`python/gui`)
@@ -831,8 +832,8 @@ main (protected)
 
 ### 今日実施すべきタスク（優先順位順）
 1. **Week 3 Day 3: Evolution Pipeline Integration**
-  - [ ] `EvolutionOperator` の実装と `PopulationManager` への統合。
-  - [ ] 自己進化ループ (`run_evolution_loop`) の実装。
+  - [x] `EvolutionOperator` の実装と `PopulationManager` への統合。
+  - [x] 自己進化ループ (`run_evolution_loop`) の実装。
 
 2. **Phase 6 ブロッカー解消**
   - [x] ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](dm_toolkit/gui/editor/text_generator.py)）。
