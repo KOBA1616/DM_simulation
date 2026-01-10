@@ -6,6 +6,7 @@ import copy
 import multiprocessing
 import sys
 import time
+import itertools
 from typing import List, Dict, Any, Optional, Tuple
 
 try:
@@ -96,7 +97,7 @@ class PopulationManager:
         """
         data = {
             "generation": self.generation,
-            "timestamp": "", # TODO: Add timestamp
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "decks": [d.to_dict() for d in self.population]
         }
 
@@ -132,22 +133,6 @@ def worker_play_batch(
     """
     Worker function to execute a batch of matchups.
     Must be top-level for multiprocessing pickling.
-
-    Args:
-        bin_path: Path to directory containing dm_ai_module
-        card_db_path: Path to cards.json
-        batch_matchups: List of (id1, cards1, id2, cards2)
-        games_per_match: Number of games to play per matchup
-        threads_per_match: Number of threads to use for ParallelRunner
-
-    Returns:
-        List of result dicts: {
-            "deck_a_id": str,
-            "deck_b_id": str,
-            "wins_a": int,
-            "wins_b": int,
-            "draws": int
-        }
     """
     # Setup path for this process
     if bin_path not in sys.path:
@@ -169,18 +154,12 @@ def worker_play_batch(
     if not card_db:
         print(f"[Worker] Warning: Loaded 0 cards from {card_db_path}")
 
-    # Initialize Runner
-    # Note: ParallelRunner constructor takes (card_db, simulations, threads)
-    # But here we are using it for `play_deck_matchup`, so constructor params
-    # might effectively be for 'default' behavior or pre-allocation.
-    # We'll set sims=100 (irrelevant for play_deck_matchup?) and threads=1 (controlled by arg).
     runner = dm_ai_module.ParallelRunner(card_db, 100, 1)
 
     results = []
 
     for id_a, cards_a, id_b, cards_b in batch_matchups:
         # play_deck_matchup returns List[int] of game results (0=None, 1=P1, 2=P2, 3=Draw)
-        # Signature: play_deck_matchup(deck_a, deck_b, num_games, threads)
         game_results = runner.play_deck_matchup(cards_a, cards_b, games_per_match, threads_per_match)
 
         wins_a = game_results.count(1)
@@ -206,8 +185,6 @@ class ParallelMatchExecutor:
         self.num_workers = num_workers
 
         # Determine bin path for workers
-        # Assuming we are in python/training/, bin is in ../../bin relative to this file
-        # But this file is imported, so use __file__
         self.bin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../bin'))
 
     def execute_matchups(
@@ -247,3 +224,174 @@ class ParallelMatchExecutor:
         print(f"[ParallelMatchExecutor] Completed in {elapsed:.2f}s ({len(all_results)} matchups)")
 
         return all_results
+
+# --- Day 3 Implementation: Evolution Logic ---
+
+class EvolutionOperator:
+    """
+    Handles the evolutionary operations: selection, crossover, and mutation.
+    """
+    def __init__(self, candidate_pool_ids: List[int], mutation_rate: float = 0.1, survival_rate: float = 0.5):
+        self.candidate_pool = candidate_pool_ids
+        self.mutation_rate = mutation_rate
+        self.survival_rate = survival_rate
+
+    def crossover(self, parent1_cards: List[int], parent2_cards: List[int]) -> List[int]:
+        """
+        Performs crossover between two parent decks.
+        Uses single-point crossover to maintain deck structure somewhat.
+        """
+        if len(parent1_cards) != len(parent2_cards):
+             # Fallback for mismatched sizes: just take half from each
+             size = len(parent1_cards)
+             mid = size // 2
+             return parent1_cards[:mid] + parent2_cards[mid : size - (size - mid) + mid]
+
+        size = len(parent1_cards)
+        if size < 2:
+            return list(parent1_cards)
+
+        point = random.randint(1, size - 1)
+        child = parent1_cards[:point] + parent2_cards[point:]
+        return child
+
+    def mutate(self, cards: List[int]) -> List[int]:
+        """
+        Mutates the deck by randomly replacing cards.
+        """
+        new_cards = list(cards)
+        if not self.candidate_pool:
+            return new_cards
+
+        for i in range(len(new_cards)):
+            if random.random() < self.mutation_rate:
+                new_cards[i] = random.choice(self.candidate_pool)
+        return new_cards
+
+    def evolve(self, current_pop: List[DeckIndividual], next_generation_index: int) -> List[DeckIndividual]:
+        """
+        Generates the next generation of decks.
+        """
+        # 1. Sort by fitness (win_rate)
+        sorted_pop = sorted(current_pop, key=lambda d: d.win_rate, reverse=True)
+
+        # 2. Select survivors (Elitism)
+        survivor_count = max(2, int(len(current_pop) * self.survival_rate))
+        survivors = sorted_pop[:survivor_count]
+
+        # 3. Create next generation
+        next_gen = []
+
+        # Elitism: Survivors pass to next generation
+        # We create new instances to reset stats for the new generation
+        for s in survivors:
+            # Keep the same ID to track lineage, or append gen?
+            # Requirements usually imply tracking specific decks.
+            # But stats reset per generation.
+            # Let's keep the ID but reset stats in the new object.
+            new_deck = DeckIndividual(s.deck_id, list(s.cards))
+            next_gen.append(new_deck)
+
+        # Fill the rest with offspring
+        target_size = len(current_pop)
+        child_index = 0
+
+        while len(next_gen) < target_size:
+            # Select parents from survivors
+            p1 = random.choice(survivors)
+            p2 = random.choice(survivors)
+
+            child_cards = self.crossover(p1.cards, p2.cards)
+            child_cards = self.mutate(child_cards)
+
+            # Generate ID
+            new_id = f"gen{next_generation_index}_child{child_index:03d}"
+            child_index += 1
+
+            next_gen.append(DeckIndividual(new_id, child_cards))
+
+        return next_gen
+
+def run_evolution_loop(
+    population_manager: PopulationManager,
+    match_executor: ParallelMatchExecutor,
+    evolution_operator: EvolutionOperator,
+    generations: int,
+    games_per_match: int = 10,
+    threads_per_match: int = 1
+):
+    """
+    Runs the evolutionary loop for a specified number of generations.
+    """
+    for gen in range(1, generations + 1):
+        current_gen_index = population_manager.generation
+        print(f"--- Starting Generation {current_gen_index} (Loop {gen}/{generations}) ---")
+        current_pop = population_manager.get_population()
+
+        if not current_pop:
+            print("Population is empty. Aborting.")
+            break
+
+        # 1. Generate Matchups (Round Robin)
+        matchups = []
+        ids = [d.deck_id for d in current_pop]
+        deck_map = {d.deck_id: d for d in current_pop}
+
+        for id_a, id_b in itertools.combinations(ids, 2):
+            matchups.append((id_a, deck_map[id_a].cards, id_b, deck_map[id_b].cards))
+
+        # 2. Execute Matches
+        print(f"Executing {len(matchups)} matchups (Round Robin)...")
+        results = match_executor.execute_matchups(matchups, games_per_match, threads_per_match)
+
+        # 3. Update Fitness
+        wins = {id: 0 for id in ids}
+        games = {id: 0 for id in ids}
+
+        for res in results:
+            id_a = res["deck_a_id"]
+            id_b = res["deck_b_id"]
+            w_a = res["wins_a"]
+            w_b = res["wins_b"]
+            draws = res["draws"]
+
+            wins[id_a] += w_a
+            games[id_a] += (w_a + w_b + draws)
+
+            wins[id_b] += w_b
+            games[id_b] += (w_a + w_b + draws)
+
+            # Store specific matchup info (optional)
+            if id_b not in deck_map[id_a].matchups:
+                deck_map[id_a].matchups[id_b] = 0.0
+            total_ab = w_a + w_b + draws
+            if total_ab > 0:
+                deck_map[id_a].matchups[id_b] = w_a / total_ab
+
+            if id_a not in deck_map[id_b].matchups:
+                 deck_map[id_b].matchups[id_a] = 0.0
+            if total_ab > 0:
+                 deck_map[id_b].matchups[id_a] = w_b / total_ab
+
+        print("\nGeneration Results:")
+        for d in current_pop:
+            g = games[d.deck_id]
+            if g > 0:
+                d.win_rate = wins[d.deck_id] / g
+            else:
+                d.win_rate = 0.0
+            d.games_played = g
+            print(f"  Deck {d.deck_id}: WinRate {d.win_rate:.3f} ({wins[d.deck_id]}/{g})")
+
+        # 4. Save Current Generation Stats
+        stats_filename = f"gen{current_gen_index}_stats.json"
+        population_manager.save_population(stats_filename)
+        print(f"Saved stats to {stats_filename}")
+
+        # 5. Evolve
+        next_gen_decks = evolution_operator.evolve(current_pop, current_gen_index + 1)
+        population_manager.update_generation(next_gen_decks)
+
+        # 6. Save New Population
+        population_manager.save_population("current_population.json")
+        print(f"Generation {population_manager.generation} initialized and saved.\n")
