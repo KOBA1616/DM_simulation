@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
-    QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QLabel, QGroupBox,
+    QWidget, QFormLayout, QComboBox, QSpinBox, QLabel, QGroupBox,
     QVBoxLayout
 )
 from PyQt6.QtCore import Qt
@@ -8,6 +8,7 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
+from dm_toolkit.gui.editor.forms.unified_widgets import make_player_scope_selector
 
 class ModifierEditForm(BaseEditForm):
     """
@@ -21,11 +22,16 @@ class ModifierEditForm(BaseEditForm):
         self.filter_widget = getattr(self, 'filter_widget', None)
         self.type_combo = getattr(self, 'type_combo', None)
         self.keyword_combo = getattr(self, 'keyword_combo', None)
+        self.scope_widget = getattr(self, 'scope_widget', None)
+        self.scope_self_check = getattr(self, 'scope_self_check', None)
+        self.scope_opp_check = getattr(self, 'scope_opp_check', None)
         self.bindings = getattr(self, 'bindings', {})
         try:
             self.setup_ui()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[ModifierForm.__init__] ERROR in setup_ui(): {e}")
+            import traceback
+            traceback.print_exc()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -36,36 +42,52 @@ class ModifierEditForm(BaseEditForm):
 
         # Type
         self.type_combo = QComboBox()
-        # "NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"
-        self.type_combo.addItems(["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"])
+        # Populate with data values: display text is tr(key), data is key itself
+        types = ["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
+        for t in types:
+            self.type_combo.addItem(tr(t), t)
         self.type_combo.currentTextChanged.connect(self.update_data)
         self.type_combo.currentTextChanged.connect(self.update_visibility)
+        self.register_widget(self.type_combo, 'type')
         form_layout.addRow(tr("Type"), self.type_combo)
 
         # Value (for Power/Cost)
         self.value_spin = QSpinBox()
         self.value_spin.setRange(-99999, 99999)
         self.value_spin.valueChanged.connect(self.update_data)
+        self.register_widget(self.value_spin, 'value')
         self.label_value = QLabel(tr("Value"))
         form_layout.addRow(self.label_value, self.value_spin)
 
-        # String Value (for Keyword)
-        self.str_val_edit = QLineEdit()
-        self.str_val_edit.textChanged.connect(self.update_data)
-        self.label_str_val = QLabel(tr("Keyword / String"))
-        form_layout.addRow(self.label_str_val, self.str_val_edit)
-
-        # Keyword Helper (ComboBox) - optional, for easier selection
+        # Keyword Selection (ComboBox only, no manual input)
         self.keyword_combo = QComboBox()
-        self.keyword_combo.addItems([
-            "speed_attacker", "blocker", "slayer", "double_breaker", "triple_breaker",
-            "shield_trigger", "mach_fighter", "just_diver", "g_strike"
-        ])
-        self.keyword_combo.currentTextChanged.connect(self.on_keyword_combo_changed)
-        self.label_keyword = QLabel(tr("Select Keyword"))
+        # Populate with Japanese display names
+        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.consts import GRANTABLE_KEYWORDS
+        # Temporarily block signals during population
+        self.keyword_combo.blockSignals(True)
+        keyword_items = [(kw, CardTextGenerator.KEYWORD_TRANSLATION.get(kw, kw)) for kw in GRANTABLE_KEYWORDS]
+        for kw_val, kw_display in keyword_items:
+            self.keyword_combo.addItem(kw_display, kw_val)
+        self.keyword_combo.blockSignals(False)
+        # Now connect after population
+        self.keyword_combo.currentIndexChanged.connect(self.update_data)
+        self.register_widget(self.keyword_combo)
+        self.label_keyword = QLabel(tr("Keyword"))
         form_layout.addRow(self.label_keyword, self.keyword_combo)
 
         layout.addWidget(self.basic_group)
+
+        # Scope Section
+        scope_group = QGroupBox(tr("Scope (Owner)"))
+        scope_layout = QFormLayout(scope_group)
+        self.scope_widget, self.scope_self_check, self.scope_opp_check = make_player_scope_selector()
+        self.scope_self_check.toggled.connect(self.update_data)
+        self.scope_opp_check.toggled.connect(self.update_data)
+        self.register_widget(self.scope_self_check)
+        self.register_widget(self.scope_opp_check)
+        scope_layout.addRow(tr("Owner"), self.scope_widget)
+        layout.addWidget(scope_group)
 
         # Condition Section
         self.condition_widget = ConditionEditorWidget()
@@ -79,25 +101,10 @@ class ModifierEditForm(BaseEditForm):
         layout.addWidget(self.filter_widget)
 
         # Define bindings
-        # Note: type_combo uses text, not user data, so binding won't work automatically with current BaseEditForm
-        # which uses currentData() for ComboBox.
-        # But wait, QComboBox without user data uses text as data if addItem(text) is used.
-        # But we need to verify if set_combo_by_data works. It uses findData.
-        # If we added items with text only, data is None or same as text?
-        # Actually in Qt6, currentData returns None if not set?
-        # ModifierEditForm uses addItems which sets text.
-        # So we should probably fix ModifierEditForm to use data or custom populate.
-
-        # Let's fix type_combo population to use data same as text
-        self.type_combo.clear()
-        types = ["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
-        for t in types:
-            self.type_combo.addItem(tr(t), t)
-
+        # Note: str_val と scope は手動で処理される（_populate_ui と _save_data）
         self.bindings = {
             'type': self.type_combo,
             'value': self.value_spin,
-            'str_val': self.str_val_edit,
             'condition': self.condition_widget,
             'filter': self.filter_widget
         }
@@ -111,8 +118,6 @@ class ModifierEditForm(BaseEditForm):
         # Defaults
         self.label_value.setVisible(False)
         self.value_spin.setVisible(False)
-        self.label_str_val.setVisible(False)
-        self.str_val_edit.setVisible(False)
         self.label_keyword.setVisible(False)
         self.keyword_combo.setVisible(False)
 
@@ -129,24 +134,19 @@ class ModifierEditForm(BaseEditForm):
             self.filter_widget.setTitle("強化対象クリーチャー")
 
         elif mtype == "GRANT_KEYWORD":
-            self.label_str_val.setVisible(True)
-            self.str_val_edit.setVisible(True)
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
             self.filter_widget.setTitle("対象クリーチャー")
 
         elif mtype == "SET_KEYWORD":
-            self.label_str_val.setVisible(True)
-            self.str_val_edit.setVisible(True)
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
             self.filter_widget.setTitle("対象クリーチャー")
 
-    def on_keyword_combo_changed(self, text):
-        self.str_val_edit.setText(text)
-
-    def _populate_ui(self, item):
-        data = item.data(Qt.ItemDataRole.UserRole + 2)
+    def _load_ui_from_data(self, data, item):
+        """Load data into UI widgets."""
+        if not data:
+            data = {}
 
         # Fallbacks for empty structures
         if not data.get('condition'):
@@ -154,31 +154,123 @@ class ModifierEditForm(BaseEditForm):
         if not data.get('filter'):
              self.filter_widget.set_data({})
 
+        # Apply basic bindings (type, value, condition, filter)
         self._apply_bindings(data)
+        
+        # Debug: Check what was set in type_combo (safely)
+        if self.type_combo:
+            print(f"[ModifierForm._load_ui_from_data] After _apply_bindings:")
+            print(f"  data['type'] = {data.get('type', 'N/A')}")
+            print(f"  type_combo.currentText() = {self.type_combo.currentText()}")
+            print(f"  type_combo.currentData() = {self.type_combo.currentData()}")
+        
+        # Manually set scope (checkboxes)
+        # Note: Signals are already blocked by load_data(), no need to block here
+        scope = data.get('scope', 'ALL')
+        
+        # Set checkboxes based on scope
+        if scope == 'SELF':
+            self.scope_self_check.setChecked(True)
+            self.scope_opp_check.setChecked(False)
+        elif scope == 'OPPONENT':
+            self.scope_self_check.setChecked(False)
+            self.scope_opp_check.setChecked(True)
+        else:  # 'ALL' or default - both checked
+            self.scope_self_check.setChecked(True)
+            self.scope_opp_check.setChecked(True)
+        
+        # Manually set keyword combo (str_val)
+        # Note: Signals are already blocked by load_data(), no need to block here
+        str_val = data.get('str_val', '')
+        if str_val:
+            idx = self.keyword_combo.findData(str_val)
+            if idx >= 0:
+                self.keyword_combo.setCurrentIndex(idx)
+            else:
+                # Keyword not found, set to first item
+                self.keyword_combo.setCurrentIndex(0)
+        else:
+            # No str_val, set to first item
+            self.keyword_combo.setCurrentIndex(0)
 
+        # Update visibility based on current modifier type
         self.update_visibility()
 
-    def _save_data(self, data):
+    def _save_ui_to_data(self, data):
+        """Save form values to data dictionary."""
         self._collect_bindings(data)
 
-        # Clean up empty filter/condition?
-        # Maybe not strictly necessary but cleaner JSON
-        pass
+        # Determine scope from checkboxes
+        self_checked = self.scope_self_check.isChecked()
+        opp_checked = self.scope_opp_check.isChecked()
+        
+        if self_checked and opp_checked:
+            scope_value = 'ALL'
+        elif self_checked and not opp_checked:
+            scope_value = 'SELF'
+        elif not self_checked and opp_checked:
+            scope_value = 'OPPONENT'
+        else:  # Neither checked
+            scope_value = 'ALL'  # Default
+        
+        data['scope'] = scope_value
+        
+        # Debug: Print what we're saving
+        print(f"[ModifierForm._save_ui_to_data] self_checked={self_checked}, opp_checked={opp_checked}, scope={scope_value}")
+
+        # Save keyword from combo to str_val
+        mtype = data.get('type', '')
+        if mtype in ('GRANT_KEYWORD', 'SET_KEYWORD'):
+            kw_val = self.keyword_combo.currentData()
+            data['str_val'] = kw_val if kw_val else ''
+            print(f"[ModifierForm._save_ui_to_data] Saving keyword: type={mtype}, str_val={data['str_val']}, combo_data={kw_val}")
+        else:
+            data['str_val'] = ''
+            print(f"[ModifierForm._save_ui_to_data] Non-keyword type: {mtype}, clearing str_val")
 
     def _get_display_text(self, data):
+        """Generate concise display text for tree item."""
+        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        
         mtype = data.get('type', 'NONE')
-        return f"常在効果: {tr(mtype)}"
-
-    def block_signals_all(self, block):
-        if self.keyword_combo:
-            self.keyword_combo.blockSignals(block)
-        super().block_signals_all(block)
-
-    def set_combo_text(self, combo, text):
-        # Legacy support if needed, but BaseEditForm.set_combo_by_data should work now
-        # that we populated with data.
-        idx = combo.findText(text)
-        if idx >= 0:
-            combo.setCurrentIndex(idx)
+        str_val = data.get('str_val', '')
+        scope = data.get('scope', 'ALL')
+        value = data.get('value', 0)
+        
+        # Build concise label
+        parts = []
+        
+        # Add scope prefix if not ALL
+        if scope == 'SELF':
+            parts.append('自分の')
+        elif scope == 'OPPONENT':
+            parts.append('相手の')
+        
+        # Add main type description
+        if mtype == 'COST_MODIFIER':
+            sign = '+' if value < 0 else '-'
+            parts.append(f'コスト{sign}{abs(value)}')
+        elif mtype == 'POWER_MODIFIER':
+            sign = '+' if value >= 0 else ''
+            parts.append(f'パワー{sign}{value}')
+        elif mtype == 'GRANT_KEYWORD':
+            if str_val:
+                keyword_display = CardTextGenerator.KEYWORD_TRANSLATION.get(str_val, str_val)
+                parts.append(f'付与:{keyword_display}')
+            else:
+                parts.append('付与:未設定')
+        elif mtype == 'SET_KEYWORD':
+            if str_val:
+                keyword_display = CardTextGenerator.KEYWORD_TRANSLATION.get(str_val, str_val)
+                parts.append(f'獲得:{keyword_display}')
+            else:
+                parts.append('獲得:未設定')
         else:
-            combo.setCurrentIndex(0)
+            parts.append(tr(mtype))
+        
+        result = ''.join(parts)
+        
+        # Limit to 30 characters for tree display
+        if len(result) > 30:
+            return result[:27] + "..."
+        return result

@@ -11,7 +11,7 @@ from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.gui.editor.action_converter import ActionConverter
 from dm_toolkit.gui.editor.forms.unified_widgets import (
     make_player_scope_selector, make_value_spin, make_measure_mode_combo,
-    make_ref_mode_combo, make_zone_combos, make_option_controls
+    make_ref_mode_combo, make_zone_combos, make_option_controls, make_scope_combo
 )
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
@@ -130,13 +130,20 @@ class UnifiedActionForm(BaseEditForm):
         self.register_widget(self.type_combo)
         layout.addRow(tr("Command Type"), self.type_combo)
 
-        # Scope / Target Group (Requirement: only self/opponent, civ-selector-like)
+        # Scope / Target Group 
+        # Simple player-only selector (for most commands)
         self.scope_widget, self.scope_self_check, self.scope_opp_check = make_player_scope_selector(self)
         self.scope_self_check.setChecked(True)
         self.register_widget(self.scope_widget)
         self.register_widget(self.scope_self_check)
         self.register_widget(self.scope_opp_check)
         layout.addRow(tr("Scope"), self.scope_widget)
+        
+        # Extended scope selector (for ADD_KEYWORD and similar commands that need zone specification)
+        self.scope_combo = make_scope_combo(self, include_zones=True)
+        self.register_widget(self.scope_combo)
+        self.scope_combo_label = QLabel(tr("Target Scope"))
+        layout.addRow(self.scope_combo_label, self.scope_combo)
 
         # Common fields
         self.str_edit = QLineEdit()
@@ -247,7 +254,11 @@ class UnifiedActionForm(BaseEditForm):
         self.register_widget(self.mutation_kind_edit)
         self.mutation_kind_combo = QComboBox()
         self.register_widget(self.mutation_kind_combo)
-        self.populate_combo(self.mutation_kind_combo, GRANTABLE_KEYWORDS, data_func=lambda x: x, display_func=tr)
+        # Populate with Japanese display names
+        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        keyword_items = [(kw, CardTextGenerator.KEYWORD_TRANSLATION.get(kw, kw)) for kw in GRANTABLE_KEYWORDS]
+        for kw_val, kw_display in keyword_items:
+            self.mutation_kind_combo.addItem(kw_display, kw_val)
         self.mutation_kind_label = QLabel(tr("Mutation Kind"))
 
         from PyQt6.QtWidgets import QStackedWidget
@@ -280,6 +291,7 @@ class UnifiedActionForm(BaseEditForm):
         self.up_to_check.stateChanged.connect(self.update_data)
         self.scope_self_check.stateChanged.connect(self._on_scope_check_changed)
         self.scope_opp_check.stateChanged.connect(self._on_scope_check_changed)
+        self.scope_combo.currentIndexChanged.connect(self.update_data)
         self.str_edit.textChanged.connect(self.update_data)
         self.val1_spin.valueChanged.connect(self.update_data)
         self.val2_spin.valueChanged.connect(self.update_data)
@@ -390,7 +402,12 @@ class UnifiedActionForm(BaseEditForm):
     def update_ui_state(self, t):
         cfg = self._get_ui_config(t)
 
-        self.scope_widget.setVisible(cfg.get('target_group_visible', False))
+        # Scope selection: use extended combo for ADD_KEYWORD, simple checkboxes for others
+        use_extended_scope = (t == 'ADD_KEYWORD')
+        self.scope_widget.setVisible(cfg.get('target_group_visible', False) and not use_extended_scope)
+        self.scope_combo_label.setVisible(use_extended_scope and cfg.get('target_group_visible', False))
+        self.scope_combo.setVisible(use_extended_scope and cfg.get('target_group_visible', False))
+        
         self.filter_group.setVisible(cfg.get('target_filter_visible', False))
 
         # Amount
@@ -601,14 +618,20 @@ class UnifiedActionForm(BaseEditForm):
         self.set_combo_by_data(self.type_combo, ui_type)
 
         target_group = data.get('target_group') or 'PLAYER_SELF'
-        self.scope_self_check.blockSignals(True)
-        self.scope_opp_check.blockSignals(True)
-        self.scope_self_check.setChecked(target_group == 'PLAYER_SELF')
-        self.scope_opp_check.setChecked(target_group == 'PLAYER_OPPONENT')
-        if not self.scope_self_check.isChecked() and not self.scope_opp_check.isChecked():
-            self.scope_self_check.setChecked(True)
-        self.scope_self_check.blockSignals(False)
-        self.scope_opp_check.blockSignals(False)
+        
+        # For commands with extended scope (ADD_KEYWORD), use scope combo
+        if ui_type == 'ADD_KEYWORD':
+            self.set_combo_by_data(self.scope_combo, target_group)
+        else:
+            # Use checkbox selectors for simple player scope
+            self.scope_self_check.blockSignals(True)
+            self.scope_opp_check.blockSignals(True)
+            self.scope_self_check.setChecked(target_group == 'PLAYER_SELF')
+            self.scope_opp_check.setChecked(target_group == 'PLAYER_OPPONENT')
+            if not self.scope_self_check.isChecked() and not self.scope_opp_check.isChecked():
+                self.scope_self_check.setChecked(True)
+            self.scope_self_check.blockSignals(False)
+            self.scope_opp_check.blockSignals(False)
 
         self.str_edit.setText(data.get('str_param', ''))
         
@@ -672,17 +695,21 @@ class UnifiedActionForm(BaseEditForm):
         cmd['format'] = 'command' # Explicitly mark format
         cmd['type'] = sel
 
-        # スコープ設定: 自分と相手両方選択可能
-        self_checked = self.scope_self_check.isChecked()
-        opp_checked = self.scope_opp_check.isChecked()
-        if self_checked and opp_checked:
-            cmd['target_group'] = 'PLAYER_BOTH'
-        elif self_checked:
-            cmd['target_group'] = 'PLAYER_SELF'
-        elif opp_checked:
-            cmd['target_group'] = 'PLAYER_OPPONENT'
+        # スコープ設定: ADD_KEYWORDは拡張コンボ、それ以外はチェックボックス
+        if sel == 'ADD_KEYWORD':
+            cmd['target_group'] = self.scope_combo.currentData() or 'PLAYER_SELF'
         else:
-            cmd['target_group'] = 'PLAYER_SELF'  # デフォルト
+            # 自分と相手両方選択可能
+            self_checked = self.scope_self_check.isChecked()
+            opp_checked = self.scope_opp_check.isChecked()
+            if self_checked and opp_checked:
+                cmd['target_group'] = 'PLAYER_BOTH'
+            elif self_checked:
+                cmd['target_group'] = 'PLAYER_SELF'
+            elif opp_checked:
+                cmd['target_group'] = 'PLAYER_OPPONENT'
+            else:
+                cmd['target_group'] = 'PLAYER_SELF'  # デフォルト
         cmd['target_filter'] = self.filter_widget.get_data()
 
         # Standard mapping

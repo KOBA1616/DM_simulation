@@ -59,6 +59,15 @@ class EffectEditForm(BaseEditForm):
 
         self.layer_str_edit = QLineEdit()
         self.register_widget(self.layer_str_edit, 'str_val')
+        
+        # Keyword Helper ComboBox for GRANT_KEYWORD
+        self.layer_keyword_combo = QComboBox()
+        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.consts import GRANTABLE_KEYWORDS
+        keyword_items = [(kw, CardTextGenerator.KEYWORD_TRANSLATION.get(kw, kw)) for kw in GRANTABLE_KEYWORDS]
+        for kw_val, kw_display in keyword_items:
+            self.layer_keyword_combo.addItem(kw_display, kw_val)
+        self.layer_keyword_combo.currentIndexChanged.connect(self.on_layer_keyword_changed)
 
         l_layout.addWidget(QLabel(tr("Layer Type")), 0, 0)
         l_layout.addWidget(self.layer_type_combo, 0, 1)
@@ -66,14 +75,16 @@ class EffectEditForm(BaseEditForm):
         l_layout.addWidget(self.layer_val_spin, 1, 1)
         l_layout.addWidget(QLabel(tr("String/Keyword")), 2, 0)
         l_layout.addWidget(self.layer_str_edit, 2, 1)
+        l_layout.addWidget(QLabel(tr("Select Keyword")), 3, 0)
+        l_layout.addWidget(self.layer_keyword_combo, 3, 1)
 
         # Target Filter (Static)
         self.target_filter = FilterEditorWidget()
         self.target_filter.filterChanged.connect(self.update_data)
         self.target_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
         self.register_widget(self.target_filter, 'filter')
-        l_layout.addWidget(QLabel(tr("Target Filter")), 3, 0)
-        l_layout.addWidget(self.target_filter, 3, 1)
+        l_layout.addWidget(QLabel(tr("Target Filter")), 4, 0)
+        l_layout.addWidget(self.target_filter, 4, 1)
 
         self.add_field(None, self.layer_group)
 
@@ -94,6 +105,7 @@ class EffectEditForm(BaseEditForm):
         self.trigger_combo.currentIndexChanged.connect(self.update_data)
 
         self.layer_type_combo.currentIndexChanged.connect(self.update_data)
+        self.layer_type_combo.currentIndexChanged.connect(self.update_layer_keyword_visibility)
         self.layer_val_spin.valueChanged.connect(self.update_data)
         self.layer_str_edit.textChanged.connect(self.update_data)
 
@@ -113,6 +125,22 @@ class EffectEditForm(BaseEditForm):
             self.condition_widget.setTitle(tr("Trigger Condition"))
         else:
             self.condition_widget.setTitle(tr("Apply Condition"))
+        
+        # Update keyword combo visibility
+        self.update_layer_keyword_visibility()
+    
+    def on_layer_keyword_changed(self):
+        kw_val = self.layer_keyword_combo.currentData()
+        if kw_val:
+            self.layer_str_edit.setText(kw_val)
+        self.update_data()
+    
+    def update_layer_keyword_visibility(self):
+        """Show keyword combo only for GRANT_KEYWORD or SET_KEYWORD types"""
+        layer_type = self.layer_type_combo.currentData() if hasattr(self, 'layer_type_combo') else None
+        show_keyword = layer_type in ['GRANT_KEYWORD', 'SET_KEYWORD']
+        if hasattr(self, 'layer_keyword_combo'):
+            self.layer_keyword_combo.setVisible(show_keyword)
 
     def on_add_action_clicked(self):
         self.structure_update_requested.emit("ADD_CHILD_ACTION", {})
@@ -166,10 +194,19 @@ class EffectEditForm(BaseEditForm):
 
         # Use Bindings
         self._apply_bindings(data)
+        
+        # Set keyword combo based on str_val for STATIC mode
+        if mode == "STATIC":
+            str_val = data.get('str_val', '')
+            if str_val and hasattr(self, 'layer_keyword_combo'):
+                self.set_combo_by_data(self.layer_keyword_combo, str_val)
 
         # Ensure fallback for condition if missing
         if not data.get('condition'):
              self.condition_widget.set_data({})
+        
+        # Update keyword combo visibility
+        self.update_layer_keyword_visibility()
 
     def update_trigger_options(self, card_type):
         is_spell = (card_type == "SPELL")

@@ -36,6 +36,12 @@ class PropertyInspector(QWidget):
         # Intermediate processing (logging/validation) can be added here
         self.structure_update_requested.emit(command, data)
 
+    def _on_data_changed(self):
+        """Handle simple data change notifications from forms without specific commands."""
+        # For forms that just emit dataChanged without command/data parameters,
+        # we emit a generic structure update signal
+        self.structure_update_requested.emit("update", {})
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         self.label = QLabel(tr("Property Inspector"))
@@ -85,6 +91,7 @@ class PropertyInspector(QWidget):
 
         self.modifier_form = ModifierEditForm()
         self.stack.addWidget(self.modifier_form)
+        self.modifier_form.dataChanged.connect(lambda: self._on_data_changed())
 
         layout.addWidget(self.stack)
 

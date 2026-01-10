@@ -201,7 +201,10 @@ class BaseEditForm(QWidget):
                      data[key] = widget_obj.get_data()
 
             elif isinstance(widget_obj, QComboBox):
-                data[key] = widget_obj.currentData()
+                collected_data = widget_obj.currentData()
+                data[key] = collected_data
+                if key == 'type':
+                    print(f"[BaseForm._collect_bindings] type_combo currentText='{widget_obj.currentText()}', currentData='{collected_data}'")
             elif isinstance(widget_obj, (QSpinBox, QDoubleSpinBox)):
                 data[key] = widget_obj.value()
             elif isinstance(widget_obj, QLineEdit):

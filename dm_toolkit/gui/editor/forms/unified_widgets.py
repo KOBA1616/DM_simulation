@@ -4,9 +4,21 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.consts import ZONES_EXTENDED
 
 
-def make_scope_combo(parent=None):
+def make_scope_combo(parent=None, include_zones=False):
+    """
+    スコープ選択のコンボボックスを作成。
+    
+    Args:
+        include_zones: Trueの場合、BATTLE_ZONE等のゾーン指定も選択肢に含める
+    """
     combo = QComboBox(parent)
     scopes = ["PLAYER_SELF","PLAYER_OPPONENT","TARGET_SELECT","ALL_PLAYERS","RANDOM","ALL_FILTERED","NONE"]
+    
+    if include_zones:
+        # ゾーン指定を追加（CIP効果と同様の選択肢）
+        zone_scopes = ["BATTLE_ZONE", "MANA_ZONE", "GRAVEYARD", "HAND", "DECK", "SHIELD_ZONE"]
+        scopes = scopes + zone_scopes
+    
     for s in scopes:
         combo.addItem(tr(s), s)
     return combo

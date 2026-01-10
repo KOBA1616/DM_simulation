@@ -76,6 +76,11 @@ class LogicTreeWidget(QTreeView):
             add_eff_action.triggered.connect(lambda: self.add_effect_interactive(index))
             menu.addAction(add_eff_action)
 
+            # Add Static Ability (Modifier)
+            add_static_action = QAction(tr("Add Static Ability"), self)
+            add_static_action.triggered.connect(lambda: self.add_static(index))
+            menu.addAction(add_static_action)
+
             # Removed restriction on Spells, as some (e.g. Strike Back) can apply to Spells.
             if item_type != "SPELL_SIDE":
                  add_reaction_action = QAction(tr("Add Reaction Ability"), self)

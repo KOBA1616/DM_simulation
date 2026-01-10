@@ -14,6 +14,68 @@ namespace dm::engine::systems {
     using namespace dm::core;
     using namespace dm::engine::game_command;
 
+    // Count cards that satisfy the command's target_filter across the selected players/zones.
+    // Ignores filter.count so queries can report the true total.
+    static int count_matching_cards(GameState& state, const CommandDef& cmd, PlayerID player_id, std::map<std::string, int>& execution_context) {
+        std::vector<PlayerID> players_to_check;
+        if (cmd.target_group == TargetScope::PLAYER_SELF || cmd.target_group == TargetScope::SELF) {
+            players_to_check.push_back(player_id);
+        } else if (cmd.target_group == TargetScope::PLAYER_OPPONENT) {
+            players_to_check.push_back(1 - player_id);
+        } else if (cmd.target_group == TargetScope::ALL_PLAYERS) {
+            players_to_check.push_back(player_id);
+            players_to_check.push_back(1 - player_id);
+        }
+
+        if (players_to_check.empty()) {
+            players_to_check.push_back(player_id);
+        }
+
+        core::FilterDef filter = cmd.target_filter;
+        filter.count.reset();
+        if (filter.zones.empty()) {
+            filter.zones.push_back("BATTLE_ZONE");
+        }
+
+        const auto& card_db = CardRegistry::get_all_definitions();
+        int total = 0;
+
+        for (PlayerID pid : players_to_check) {
+            for (const auto& zone_str : filter.zones) {
+                Zone zone_enum = parse_zone_string(zone_str);
+
+                const std::vector<CardInstance>* container = nullptr;
+                switch (zone_enum) {
+                    case Zone::HAND: container = &state.players[pid].hand; break;
+                    case Zone::MANA: container = &state.players[pid].mana_zone; break;
+                    case Zone::BATTLE: container = &state.players[pid].battle_zone; break;
+                    case Zone::GRAVEYARD: container = &state.players[pid].graveyard; break;
+                    case Zone::SHIELD: container = &state.players[pid].shield_zone; break;
+                    case Zone::DECK: container = &state.players[pid].deck; break;
+                    default: break;
+                }
+
+                if (!container) continue;
+
+                for (const auto& card : *container) {
+                    auto def_it = card_db.find(card.card_id);
+                    if (def_it != card_db.end()) {
+                        if (dm::engine::TargetUtils::is_valid_target(card, def_it->second, filter, state, player_id, pid, false, &execution_context)) {
+                            total++;
+                        }
+                    } else if (card.card_id == 0) {
+                        core::CardDefinition placeholder;
+                        if (dm::engine::TargetUtils::is_valid_target(card, placeholder, filter, state, player_id, pid, false, &execution_context)) {
+                            total++;
+                        }
+                    }
+                }
+            }
+        }
+
+        return total;
+    }
+
     Zone parse_zone_string(const std::string& zone_str) {
         if (zone_str == "DECK") return Zone::DECK;
         if (zone_str == "HAND") return Zone::HAND;
@@ -138,13 +200,20 @@ namespace dm::engine::systems {
         } else if (cmd.type == core::CommandType::QUERY) {
              // Map cmd parameters to Query params
              std::string query_type = cmd.str_param.empty() ? "SELECT_TARGET" : cmd.str_param;
-             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+             if (query_type == "CARDS_MATCHING_FILTER") {
+                 int count = count_matching_cards(state, cmd, player_id, execution_context);
+                 if (!cmd.output_value_key.empty()) {
+                     execution_context[cmd.output_value_key] = count;
+                 }
+             } else {
+                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
 
-             std::map<std::string, int> params;
-             params["amount"] = resolve_amount(cmd, execution_context);
+                 std::map<std::string, int> params;
+                 params["amount"] = resolve_amount(cmd, execution_context);
 
-             QueryCommand query(query_type, targets, params);
-             query.execute(state);
+                 QueryCommand query(query_type, targets, params);
+                 query.execute(state);
+             }
 
         } else if (cmd.type == core::CommandType::MUTATE) {
             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);

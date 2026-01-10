@@ -36,6 +36,7 @@ class CardTextGenerator:
 
     # Backup map if tr() returns the key itself
     KEYWORD_TRANSLATION = {
+        # Lowercase versions (original)
         "speed_attacker": "スピードアタッカー",
         "blocker": "ブロッカー",
         "slayer": "スレイヤー",
@@ -59,7 +60,39 @@ class CardTextGenerator:
         "ex_life": "EXライフ",
         "mega_last_burst": "メガ・ラスト・バースト",
         "unblockable": "ブロックされない",
-        "no_choice": "選ばれない"
+        "no_choice": "選ばれない",
+        # Uppercase versions (for compatibility)
+        "SPEED_ATTACKER": "スピードアタッカー",
+        "BLOCKER": "ブロッカー",
+        "SLAYER": "スレイヤー",
+        "DOUBLE_BREAKER": "W・ブレイカー",
+        "TRIPLE_BREAKER": "T・ブレイカー",
+        "WORLD_BREAKER": "ワールド・ブレイカー",
+        "SHIELD_TRIGGER": "S・トリガー",
+        "EVOLUTION": "進化",
+        "JUST_DIVER": "ジャストダイバー",
+        "MACH_FIGHTER": "マッハファイター",
+        "G_STRIKE": "G・ストライク",
+        "HYPER_ENERGY": "ハイパーエナジー",
+        "SHIELD_BURN": "シールド焼却",
+        "REVOLUTION_CHANGE": "革命チェンジ",
+        "MEKRAID": "メクレイド",
+        "FRIEND_BURST": "フレンド・バースト",
+        "UNTAP_IN": "タップして出る",
+        "META_COUNTER_PLAY": "メタカウンター",
+        "POWER_ATTACKER": "パワーアタッカー",
+        "G_ZERO": "G・ゼロ",
+        "EX_LIFE": "EXライフ",
+        "MEGA_LAST_BURST": "メガ・ラスト・バースト",
+        "UNBLOCKABLE": "ブロックされない",
+        "NO_CHOICE": "選ばれない",
+        "ATTACKER": "アタッカー",
+        # Additional keywords (uppercase)
+        "CANNOT_ATTACK": "攻撃できない",
+        "CANNOT_BLOCK": "ブロックできない",
+        "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない",
+        # Lowercase versions of additional keywords
+        "attacker": "アタッカー"
     }
 
     PHASE_MAP = {
@@ -150,6 +183,16 @@ class CardTextGenerator:
         ("DECK", "MANA_ZONE"): "マナチャージ",
         ("SHIELD_ZONE", "GRAVEYARD"): "シールド焼却",
         ("BATTLE_ZONE", "DECK"): "山札に戻す"
+    }
+
+    # Hint labels for how a linked input value is consumed by a subsequent step
+    INPUT_USAGE_LABELS = {
+        "COST": "コストとして使用",
+        "AMOUNT": "枚数として使用",
+        "COUNT": "枚数として使用",
+        "SELECTION": "選択数として使用",
+        "TARGET_COUNT": "選択数として使用",
+        "POWER": "パワーとして使用",
     }
 
     @classmethod
@@ -339,6 +382,15 @@ class CardTextGenerator:
             if text:
                 lines.append(f"■ {text}")
 
+        # 3.1 Static Abilities (常在効果)
+        # Process static_abilities array which contains Modifier objects
+        static_abilities = data.get("static_abilities", [])
+        for static_ability in static_abilities:
+            if static_ability and isinstance(static_ability, dict):
+                text = cls._format_effect(static_ability, is_spell, sample=sample)
+                if text:
+                    lines.append(f"■ {text}")
+
         # 3.5 Metamorph Abilities (Ultra Soul Cross, etc.)
         metamorphs = data.get("metamorph_abilities", [])
         if metamorphs:
@@ -444,7 +496,246 @@ class CardTextGenerator:
         return f"コスト軽減: {desc}"
 
     @classmethod
+    def _format_modifier(cls, modifier: Dict[str, Any], sample: List[Any] = None) -> str:
+        """Format a static ability (Modifier) with comprehensive support for all types and conditions."""
+        mtype = modifier.get("type", "NONE")
+        condition = modifier.get("condition", {})
+        filter_def = modifier.get("filter", {})
+        value = modifier.get("value", 0)
+        str_val = modifier.get("str_val", "")
+        scope = modifier.get("scope", "ALL")
+        
+        print(f"[TextGen._format_modifier] START: mtype={mtype}, str_val='{str_val}', scope='{scope}'")
+        
+        # Build condition prefix（条件がある場合）
+        cond_text = cls._format_condition(condition)
+        if cond_text and not cond_text.endswith("、"):
+            cond_text += "、"
+        
+        # Build scope prefix（SCALEが SELF/OPPONENTの場合）
+        scope_prefix = cls._get_scope_prefix(scope)
+        print(f"[TextGen._format_modifier] scope_prefix='{scope_prefix}'")
+        
+        # Build target description（フィルターがある場合）
+        # NOTE: フィルターは owner を持つ場合があるが、スコープで上書きする
+        effective_filter = filter_def.copy() if filter_def else {}
+        if scope and scope != "ALL":
+            effective_filter["owner"] = scope
+        
+        target_str = cls._format_modifier_target(effective_filter) if effective_filter else "対象"
+        print(f"[TextGen._format_modifier] target_str='{target_str}'")
+        
+        # Combine: condition + scope + target
+        # Final structure: 「条件」「自分の」「カード」「に〜を与える」
+        full_target = scope_prefix + target_str if scope_prefix else target_str
+        
+        # Format based on modifier type
+        if mtype == "COST_MODIFIER":
+            return cls._format_cost_modifier(cond_text, full_target, value)
+        
+        elif mtype == "POWER_MODIFIER":
+            return cls._format_power_modifier(cond_text, full_target, value)
+        
+        elif mtype == "GRANT_KEYWORD":
+            return cls._format_grant_keyword(cond_text, full_target, str_val)
+        
+        elif mtype == "SET_KEYWORD":
+            return cls._format_set_keyword(cond_text, full_target, str_val)
+        
+        else:
+            return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
+    
+    @classmethod
+    def _get_scope_prefix(cls, scope: str) -> str:
+        """Get Japanese prefix for scope."""
+        if scope == "SELF":
+            return "自分の"
+        elif scope == "OPPONENT":
+            return "相手の"
+        else:  # ALL or None
+            return ""
+    
+    @classmethod
+    def _format_cost_modifier(cls, cond: str, target: str, value: int) -> str:
+        """Format COST_MODIFIER modifier."""
+        if value > 0:
+            return f"{cond}{target}のコストを{value}軽減する。"
+        elif value < 0:
+            return f"{cond}{target}のコストを{abs(value)}増やす。"
+        return f"{cond}{target}のコストを修正する。"
+    
+    @classmethod
+    def _format_power_modifier(cls, cond: str, target: str, value: int) -> str:
+        """Format POWER_MODIFIER modifier."""
+        sign = "+" if value >= 0 else ""
+        if value == 0:
+            return f"{cond}{target}のパワーは不変。"
+        return f"{cond}{target}のパワーを{sign}{value}する。"
+    
+    @classmethod
+    def _format_grant_keyword(cls, cond: str, target: str, str_val: str) -> str:
+        """Format GRANT_KEYWORD modifier."""
+        if str_val:
+            # Try exact match first, then lowercase match
+            keyword = cls.KEYWORD_TRANSLATION.get(str_val, 
+                      cls.KEYWORD_TRANSLATION.get(str_val.lower(), str_val))
+            result = f"{cond}{target}に「{keyword}」を与える。"
+            print(f"[TextGen._format_grant_keyword] str_val='{str_val}', keyword='{keyword}', result='{result}'")
+            return result
+        # Fallback: if str_val is empty, show a more helpful message
+        return f"{cond}{target}に能力を与える。"
+    
+    @classmethod
+    def _format_set_keyword(cls, cond: str, target: str, str_val: str) -> str:
+        """Format SET_KEYWORD modifier."""
+        if str_val:
+            # Try exact match first, then lowercase match
+            keyword = cls.KEYWORD_TRANSLATION.get(str_val,
+                      cls.KEYWORD_TRANSLATION.get(str_val.lower(), str_val))
+            result = f"{cond}{target}は「{keyword}」を得る。"
+            print(f"[TextGen._format_set_keyword] str_val='{str_val}', keyword='{keyword}', result='{result}'")
+            return result
+        # Fallback: if str_val is empty, show a more helpful message
+        return f"{cond}{target}は能力を得る。"
+    
+    @classmethod
+    def _format_modifier_target(cls, filter_def: Dict[str, Any]) -> str:
+        """Format target description from filter with comprehensive support."""
+        if not filter_def:
+            return "対象"
+        
+        zones = filter_def.get("zones", [])
+        types = filter_def.get("types", [])
+        civs = filter_def.get("civilizations", [])
+        races = filter_def.get("races", [])
+        owner = filter_def.get("owner", "")  # Will NOT apply prefix here (handled in _format_modifier)
+        min_cost = filter_def.get("min_cost", 0)
+        max_cost = filter_def.get("max_cost", 999)
+        min_power = filter_def.get("min_power", 0)
+        max_power = filter_def.get("max_power", 999999)
+        is_tapped = filter_def.get("is_tapped")
+        is_blocker = filter_def.get("is_blocker")
+        is_evolution = filter_def.get("is_evolution")
+        
+        print(f"[TextGen._format_modifier_target] owner='{owner}', filter_keys={list(filter_def.keys())}")
+        
+        parts = []
+        
+        # Zone prefix
+        if zones:
+            zone_names = []
+            for z in zones:
+                if z == "BATTLE_ZONE":
+                    zone_names.append("バトルゾーン")
+                elif z == "MANA_ZONE":
+                    zone_names.append("マナゾーン")
+                elif z == "HAND":
+                    zone_names.append("手札")
+                elif z == "GRAVEYARD":
+                    zone_names.append("墓地")
+                else:
+                    zone_names.append(tr(z))
+            
+            if len(zone_names) == 1:
+                # Single zone: "手札の" or "バトルゾーンの"
+                parts.append(zone_names[0] + "の")
+            else:
+                # Multiple zones: "手札または墓地から"
+                parts.append("または".join(zone_names) + "から")
+        
+        # Owner prefix
+        # NOTE: Owner is handled by _format_modifier as a scope prefix, NOT here
+        # This prevents duplication of "自分の" in the output
+        # if owner:
+        #     if owner == "SELF":
+        #         parts.append("自分の")
+        #     elif owner == "OPPONENT":
+        #         parts.append("相手の")
+        
+        # Civilization adjective
+        if civs:
+            parts.append("/".join([tr(c) for c in civs]) + "の")
+        
+        # Race adjective
+        if races:
+            parts.append("/".join(races) + "の")
+        
+        # Cost range
+        if min_cost > 0 and max_cost < 999:
+            parts.append(f"コスト{min_cost}～{max_cost}の")
+        elif min_cost > 0:
+            parts.append(f"コスト{min_cost}以上の")
+        elif max_cost < 999:
+            parts.append(f"コスト{max_cost}以下の")
+        
+        # Power range
+        if min_power > 0 and max_power < 999999:
+            parts.append(f"パワー{min_power}～{max_power}の")
+        elif min_power > 0:
+            parts.append(f"パワー{min_power}以上の")
+        elif max_power < 999999:
+            parts.append(f"パワー{max_power}以下の")
+        
+        # Type noun
+        type_noun = "カード"
+        if types:
+            if len(types) == 1:
+                if types[0] == "CREATURE":
+                    type_noun = "クリーチャー"
+                elif types[0] == "SPELL":
+                    type_noun = "呪文"
+            else:
+                type_words = []
+                if "CREATURE" in types:
+                    type_words.append("クリーチャー")
+                if "SPELL" in types:
+                    type_words.append("呪文")
+                if type_words:
+                    type_noun = "/".join(type_words)
+        
+        # Flags
+        flag_parts = []
+        if is_tapped == 1:
+            flag_parts.append("タップ状態の")
+        elif is_tapped == 0:
+            flag_parts.append("アンタップ状態の")
+        
+        if is_blocker == 1:
+            flag_parts.append("ブロッカーの")
+        elif is_blocker == 0:
+            flag_parts.append("ブロッカー以外の")
+        
+        if is_evolution == 1:
+            flag_parts.append("進化クリーチャーの")
+        elif is_evolution == 0:
+            flag_parts.append("進化以外の")
+        
+        if flag_parts:
+            parts.extend(flag_parts)
+        
+        # Combine all parts
+        result = "".join(parts) + type_noun
+        
+        # Cleanup
+        result = result.replace("のの", "の").replace("、の", "の")
+        
+        return result if result else "対象"
+
+    @classmethod
     def _format_effect(cls, effect: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
+        # Check if this is a Modifier (static ability)
+        # Modifiers have a 'type' field with specific values (COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD, SET_KEYWORD)
+        # and do NOT have a 'trigger' field (or trigger is NONE)
+        if isinstance(effect, dict):
+            effect_type = effect.get("type", "")
+            trigger = effect.get("trigger", "NONE")
+            
+            # Check if this is a known Modifier type
+            if effect_type in ("COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"):
+                # Verify it's not a triggered effect
+                if trigger == "NONE" or trigger not in effect:
+                    return cls._format_modifier(effect, sample=sample)
+        
         trigger = effect.get("trigger", "NONE")
         condition = effect.get("condition", {})
         actions = effect.get("actions", [])
@@ -573,7 +864,11 @@ class CardTextGenerator:
         # Mapping CommandType to ActionType logic where applicable
         original_cmd_type = cmd_type
         if cmd_type == "POWER_MOD": cmd_type = "MODIFY_POWER"
-        elif cmd_type == "ADD_KEYWORD": cmd_type = "GRANT_KEYWORD"
+        elif cmd_type == "ADD_KEYWORD": 
+            cmd_type = "ADD_KEYWORD"
+            # Ensure mutation_kind is mapped to str_val for text generation
+            if not command.get("str_val") and command.get("mutation_kind"):
+                command["str_val"] = command["mutation_kind"]
         elif cmd_type == "MANA_CHARGE": cmd_type = "SEND_TO_MANA" # Or ADD_MANA depending on context
         elif cmd_type == "CHOICE": cmd_type = "SELECT_OPTION"
 
@@ -588,6 +883,7 @@ class CardTextGenerator:
             # Prefer the normalized key, but accept legacy key if present
             "str_val": command.get("str_param") or command.get("str_val", ""),
             "input_value_key": command.get("input_value_key", ""),
+            "input_value_usage": command.get("input_value_usage", ""),
             "from_zone": command.get("from_zone", ""),
             "to_zone": command.get("to_zone", ""),
             "mutation_kind": command.get("mutation_kind", ""),
@@ -786,6 +1082,7 @@ class CardTextGenerator:
         val2 = action.get("value2", 0)
         str_val = action.get("str_val", "")
         input_key = action.get("input_value_key", "")
+        input_usage = action.get("input_value_usage") or action.get("input_usage")
 
         is_generic_selection = atype in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA", "MOVE_CARD", "TRANSITION", "DISCARD"]
 
@@ -1000,9 +1297,19 @@ class CardTextGenerator:
                  stat_name, unit = cls.STAT_KEY_MAP.get(key, (None, None))
                  if stat_name:
                      # Return concise stat reference
-                     return f"{stat_name}{unit}を数える。"
+                     base = f"{stat_name}{unit}を数える。"
+                     if input_key:
+                         usage_label = cls._format_input_usage_label(input_usage)
+                         if usage_label:
+                             base += f"（{usage_label}）"
+                     return base
              mode = action.get("query_mode", "")
-             return f"質問: {tr(mode)}"
+             base = f"質問: {tr(mode)}"
+             if input_key:
+                 usage_label = cls._format_input_usage_label(input_usage)
+                 if usage_label:
+                     base += f"（{usage_label}）"
+             return base
 
         elif atype == "FLOW":
              ftype = action.get("flow_type", "")
@@ -1060,8 +1367,10 @@ class CardTextGenerator:
         if not template:
             return f"({tr(atype)})"
 
-        if atype == "GRANT_KEYWORD":
-            str_val = tr(str_val)
+        if atype == "GRANT_KEYWORD" or atype == "ADD_KEYWORD":
+            # キーワードの翻訳を適用
+            keyword = cls.KEYWORD_TRANSLATION.get(str_val.lower(), str_val)
+            str_val = keyword
 
         elif atype == "GET_GAME_STAT":
             # str_val holds the stat key, e.g. MANA_CIVILIZATION_COUNT
@@ -1234,6 +1543,17 @@ class CardTextGenerator:
                     text = text[:-1] + "てもよい。"
 
         return text
+
+    @classmethod
+    def _format_input_usage_label(cls, usage: Any) -> str:
+        """Return a short label indicating how an input value is used."""
+        if usage is None:
+            return ""
+        norm = str(usage).upper()
+        if norm in cls.INPUT_USAGE_LABELS:
+            return cls.INPUT_USAGE_LABELS[norm]
+        # Fallback to raw string for custom labels
+        return tr(str(usage)) if str(usage) else ""
 
     @classmethod
     def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False) -> Tuple[str, str]:

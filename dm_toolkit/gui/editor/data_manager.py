@@ -102,7 +102,10 @@ class CardDataManager:
         return {
             "type": "COST_MODIFIER",
             "value": -1,
-            "condition": {"type": "NONE"}
+            "str_val": "",
+            "scope": "ALL",
+            "condition": {"type": "NONE"},
+            "filter": {}
         }
 
     def create_default_reaction_data(self):
