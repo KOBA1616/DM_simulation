@@ -152,7 +152,16 @@ _definitions = [
     ,
     # UI-only convenience type: saves as MUTATE+REVOLUTION_CHANGE under the hood
     CommandDef("REVOLUTION_CHANGE",
-               visible=["target_filter"]) 
+               visible=["target_filter"]),
+
+    CommandDef("IF",
+               visible=["target_filter"]),
+
+    CommandDef("IF_ELSE",
+               visible=["target_filter"]),
+
+    CommandDef("ELSE",
+               visible=[])
 ]
 
 # Generate Dictionary Export

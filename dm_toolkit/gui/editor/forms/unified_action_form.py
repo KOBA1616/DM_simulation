@@ -41,7 +41,7 @@ COMMAND_GROUPS = {
         'MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT'
     ],
     'LOGIC': [
-        'QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION'
+        'QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION', 'IF', 'IF_ELSE', 'ELSE'
     ],
     'BATTLE': [
         'BREAK_SHIELD', 'RESOLVE_BATTLE', 'SHIELD_BURN', 'SHIELD_TRIGGER'
@@ -446,12 +446,12 @@ class UnifiedActionForm(BaseEditForm):
         self.ref_mode_combo.setVisible(t == 'MUTATE' and self.mutation_kind_combo.currentData() == 'COST_REFERENCE')
 
         # Option-related
-        is_choice = (t == 'CHOICE' or t == 'SELECT_OPTION')
+        is_choice = (t == 'CHOICE' or t == 'SELECT_OPTION' or t == 'IF' or t == 'IF_ELSE')
         self.option_count_label.setVisible(is_choice)
         self.option_count_spin.setVisible(is_choice)
         self.generate_options_btn.setVisible(is_choice)
-        self.allow_duplicates_label.setVisible(is_choice)
-        self.allow_duplicates_check.setVisible(is_choice)
+        self.allow_duplicates_label.setVisible(is_choice and t not in ('IF', 'IF_ELSE'))
+        self.allow_duplicates_check.setVisible(is_choice and t not in ('IF', 'IF_ELSE'))
 
         # Flags
         self.no_cost_label.setVisible(t == 'PLAY_FROM_ZONE')

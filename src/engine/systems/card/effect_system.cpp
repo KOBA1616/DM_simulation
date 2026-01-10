@@ -209,10 +209,41 @@ namespace dm::engine {
         std::vector<dm::core::Instruction> inner_instructions;
         std::vector<dm::core::Instruction>* target_instructions = &out_instructions;
 
-        bool has_condition = action.condition.has_value() && action.condition->type != "NONE";
+        bool is_control_flow = (action.type == EffectPrimitive::IF || action.type == EffectPrimitive::IF_ELSE);
+        bool has_condition = !is_control_flow && action.condition.has_value() && action.condition->type != "NONE";
 
         if (has_condition) {
             target_instructions = &inner_instructions;
+        }
+
+        if (is_control_flow) {
+             Instruction if_inst;
+             if_inst.op = InstructionOp::IF;
+             if (action.condition.has_value() && action.condition->type != "NONE") {
+                 if_inst.args["cond"] = ConditionSystem::instance().compile_condition(*action.condition);
+             } else if (!action.filter.zones.empty() || !action.filter.types.empty()) {
+                 // Implicit condition: Check if any cards match the filter
+                 nlohmann::json c;
+                 c["type"] = "CARDS_MATCHING_FILTER";
+                 c["filter"] = action.filter;
+                 c["op"] = ">";
+                 c["value"] = 0;
+                 if_inst.args["cond"] = c;
+             }
+
+             if (action.options.size() > 0) {
+                 for(const auto& sub_action : action.options[0]) {
+                     compile_action(game_state, sub_action, source_instance_id, execution_context, card_db, if_inst.then_block);
+                 }
+             }
+
+             if (action.type == EffectPrimitive::IF_ELSE && action.options.size() > 1) {
+                 for(const auto& sub_action : action.options[1]) {
+                     compile_action(game_state, sub_action, source_instance_id, execution_context, card_db, if_inst.else_block);
+                 }
+             }
+             target_instructions->push_back(if_inst);
+             return;
         }
 
         std::string selection_var_name;

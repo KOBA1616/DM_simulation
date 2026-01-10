@@ -268,6 +268,9 @@ void bind_core(py::module& m) {
         .value("PUT_CREATURE", EffectPrimitive::PUT_CREATURE)
         .value("SELECT_OPTION", EffectPrimitive::SELECT_OPTION)
         .value("RESOLVE_BATTLE", EffectPrimitive::RESOLVE_BATTLE)
+        .value("IF", EffectPrimitive::IF)
+        .value("IF_ELSE", EffectPrimitive::IF_ELSE)
+        .value("ELSE", EffectPrimitive::ELSE)
         .export_values();
 
     // Alias for backward compatibility
@@ -324,6 +327,9 @@ void bind_core(py::module& m) {
         .value("MOVE_BUFFER_TO_ZONE", CommandType::MOVE_BUFFER_TO_ZONE)
         .value("FRIEND_BURST", CommandType::FRIEND_BURST)
         .value("REGISTER_DELAYED_EFFECT", CommandType::REGISTER_DELAYED_EFFECT)
+        .value("IF", CommandType::IF)
+        .value("IF_ELSE", CommandType::IF_ELSE)
+        .value("ELSE", CommandType::ELSE)
         .value("NONE", CommandType::NONE)
         .export_values();
 
