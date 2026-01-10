@@ -209,10 +209,10 @@
 **前提**: `PopulationManager`, `ParallelMatchExecutor` 基礎実装完了
 
 #### Task 3.1: Evolution Ecosystem統合 (3日)
-1. **自動PBTループ** (1日)
-   - 世代交代ロジックの実装
-   - デッキ評価・選択アルゴリズム
-   - 淼汰と突然変異のバランス調整
+1. **自動PBTループ** (1日) [Done]
+   - ✅ 世代交代ロジックの実装 (`EvolutionOperator`)
+   - ✅ デッキ評価・選択アルゴリズム (`run_evolution_loop`)
+   - ✅ 淘汰と突然変異のバランス調整
 
 2. **リーグ戦システム** (1日)
    - Round-robin トーナメントの実装
