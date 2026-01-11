@@ -1,391 +1,265 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout
+import json
+import os
+from PyQt6.QtWidgets import (
+    QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox,
+    QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QStackedWidget
+)
 from PyQt6.QtCore import Qt, pyqtSignal
 from enum import Enum
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
-from dm_toolkit.gui.editor.utils import normalize_action_zone_keys, normalize_command_zone_keys
-from dm_toolkit.consts import COMMAND_TYPES, GRANTABLE_KEYWORDS
-from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
-from dm_toolkit.gui.editor.action_converter import ActionConverter
+from dm_toolkit.gui.editor.models import CommandModel
 from dm_toolkit.gui.editor.forms.unified_widgets import (
     make_player_scope_selector, make_value_spin, make_measure_mode_combo,
     make_ref_mode_combo, make_zone_combos, make_option_controls, make_scope_combo
 )
+from dm_toolkit.consts import GRANTABLE_KEYWORDS
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
-# Grouping of Command types for UI organization
-# 新分類: ドロー、カード移動、デッキ操作、プレイ、踏み倒し、付与、ロジック、バトル、制限、特殊
-# 注: エンジン内部専用のタイプ（SUMMON_TOKEN, RESOLVE_EFFECT, RESOLVE_PLAY, NONE, ATTACK_PLAYER, ATTACK_CREATURE, BLOCK）はGUIから除外
-COMMAND_GROUPS = {
-    'DRAW': [
-        'DRAW_CARD'
-    ],
-    'CARD_MOVE': [
-        'TRANSITION', 'REPLACE_CARD_MOVE', 'RETURN_TO_HAND', 'DISCARD', 'DESTROY', 'MANA_CHARGE'
-    ],
-    'DECK_OPS': [
-        'SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK'
-    ],
-    'PLAY': [
-        'PLAY_FROM_ZONE', 'CAST_SPELL'
-    ],
-    'BUFFER': [
-        'LOOK_TO_BUFFER', 'SELECT_FROM_BUFFER', 'PLAY_FROM_BUFFER', 'MOVE_BUFFER_TO_ZONE'
-    ],
-    'CHEAT_PUT': [
-        'MEKRAID', 'FRIEND_BURST', 'REVOLUTION_CHANGE'
-    ],
-    'GRANT': [
-        'MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT'
-    ],
-    'LOGIC': [
-        'QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION', 'IF', 'IF_ELSE', 'ELSE'
-    ],
-    'BATTLE': [
-        'BREAK_SHIELD', 'RESOLVE_BATTLE', 'SHIELD_BURN', 'SHIELD_TRIGGER'
-    ],
-    'RESTRICTION': [
+# Load schema
+def load_schema():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(current_dir, '..', '..', '..', 'data', 'configs', 'command_schema.json'),
+        os.path.join(os.getcwd(), 'data', 'configs', 'command_schema.json')
     ]
+    for c in candidates:
+        if os.path.exists(c):
+            try:
+                with open(c, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    return {}
+
+COMMAND_SCHEMA = load_schema()
+
+COMMAND_GROUPS = {
+    'DRAW': ['DRAW_CARD'],
+    'CARD_MOVE': ['TRANSITION', 'REPLACE_CARD_MOVE', 'RETURN_TO_HAND', 'DISCARD', 'DESTROY', 'MANA_CHARGE'],
+    'DECK_OPS': ['SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK'],
+    'PLAY': ['PLAY_FROM_ZONE', 'CAST_SPELL'],
+    'BUFFER': ['LOOK_TO_BUFFER', 'SELECT_FROM_BUFFER', 'PLAY_FROM_BUFFER', 'MOVE_BUFFER_TO_ZONE'],
+    'CHEAT_PUT': ['MEKRAID', 'FRIEND_BURST', 'REVOLUTION_CHANGE'],
+    'GRANT': ['MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT'],
+    'LOGIC': ['QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION', 'IF', 'IF_ELSE', 'ELSE'],
+    'BATTLE': ['BREAK_SHIELD', 'RESOLVE_BATTLE', 'SHIELD_BURN', 'SHIELD_TRIGGER'],
+    'RESTRICTION': []
 }
 
-
 class UnifiedActionForm(BaseEditForm):
-    """Unified editor for Commands. Legacy Actions are automatically converted.
-    """
-    structure_update_requested = pyqtSignal(str, dict)
+    """Schema-driven Unified Action Form."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Ensure some attributes exist even if UI creation fails (headless/static checks)
+        self.widgets_map = {} # key -> widget
+        self.fields_config = [] # Current list of field configs
+        self.current_model = None # CommandModel instance
+
+        # Ensure minimal attributes for headless env
         self.current_item = getattr(self, 'current_item', None)
-        self.generate_options_btn = getattr(self, 'generate_options_btn', None)
-        self.option_count_spin = getattr(self, 'option_count_spin', None)
-        self.option_count_label = getattr(self, 'option_count_label', None)
-        self.stat_key_combo = getattr(self, 'stat_key_combo', None)
-        self.stat_key_label = getattr(self, 'stat_key_label', None)
-        self.stat_preset_btn = getattr(self, 'stat_preset_btn', None)
         self.structure_update_requested = getattr(self, 'structure_update_requested', None)
-        try:
-            self.setup_ui()
-        except Exception:
-            # Defer full UI setup in environments without a QApplication
-            pass
-
-    def _normalize_cmd_type(self, tpe):
-        """Return a string command type even if an Enum instance is passed."""
-        if isinstance(tpe, Enum):
-            return tpe.value
-        return tpe or 'NONE'
-
-    def _get_ui_config(self, tpe):
-        # Use only COMMAND_UI_CONFIG
-        tpe = self._normalize_cmd_type(tpe)
-        cmd_cfg = COMMAND_UI_CONFIG.get(tpe, {})
-
-        # Source visible lists
-        cmd_vis = set(cmd_cfg.get('visible', []))
-
-        # Labels
-        amount_label = cmd_cfg.get('label_amount') or 'Amount'
-        val2_label = cmd_cfg.get('label_val2') or 'Value 2'
-        str_label = cmd_cfg.get('label_str_param') or ''
-        mutation_label = cmd_cfg.get('label_mutation_kind') or ''
-
-        return {
-            'target_group_visible': ('target_group' in cmd_vis),
-            'target_filter_visible': ('target_filter' in cmd_vis),
-            'amount_visible': ('amount' in cmd_vis),
-            'amount_label': amount_label,
-            'val2_visible': ('val2' in cmd_vis),
-            'val2_label': val2_label,
-            'str_param_visible': ('str_param' in cmd_vis),
-            'str_param_label': str_label,
-            'mutation_kind_visible': ('mutation_kind' in cmd_vis),
-            'mutation_kind_label': mutation_label,
-            'to_zone_visible': ('to_zone' in cmd_vis),
-            'from_zone_visible': ('from_zone' in cmd_vis),
-            'optional_visible': ('optional' in cmd_vis),
-            'input_link_visible': ('input_link' in cmd_vis),
-            'produces_output': cmd_cfg.get('produces_output', False),
-            'tooltip': cmd_cfg.get('tooltip', ''),
-            'allowed_filter_fields': cmd_cfg.get('allowed_filter_fields', None),
-            'can_be_optional': False # Commands use 'optional' flag in visible list
-        }
-
-    def setup_ui(self):
-        layout = QFormLayout(self)
-
-        from PyQt6.QtWidgets import QComboBox
-        # Command Group (top-level) + Type (subtype)
-        self.action_group_combo = QComboBox()
-        groups = list(COMMAND_GROUPS.keys())
-        self.populate_combo(self.action_group_combo, groups, data_func=lambda x: x, display_func=tr)
-        self.register_widget(self.action_group_combo)
-        layout.addRow(tr("Command Group"), self.action_group_combo)
-
-        self.type_combo = QComboBox()
-        # Initial population will be triggered by group change, but we need a default list
-        # We'll use all keys from COMMAND_UI_CONFIG or COMMAND_TYPES
-        self.known_types = sorted(list(COMMAND_UI_CONFIG.keys()))
-        if "NONE" in self.known_types:
-            self.known_types.remove("NONE")
-            self.known_types.insert(0, "NONE")
-
-        self.populate_combo(self.type_combo, self.known_types, data_func=lambda x: x, display_func=tr)
-        self.register_widget(self.type_combo)
-        layout.addRow(tr("Command Type"), self.type_combo)
-
-        # Scope / Target Group 
-        # Simple player-only selector (for most commands)
-        self.scope_widget, self.scope_self_check, self.scope_opp_check = make_player_scope_selector(self)
-        self.scope_self_check.setChecked(True)
-        self.register_widget(self.scope_widget)
-        self.register_widget(self.scope_self_check)
-        self.register_widget(self.scope_opp_check)
-        layout.addRow(tr("Scope"), self.scope_widget)
         
-        # Extended scope selector (for ADD_KEYWORD and similar commands that need zone specification)
-        self.scope_combo = make_scope_combo(self, include_zones=True)
-        self.register_widget(self.scope_combo)
-        self.scope_combo_label = QLabel(tr("Target Scope"))
-        layout.addRow(self.scope_combo_label, self.scope_combo)
-
-        # Common fields
-        self.str_edit = QLineEdit()
-        self.register_widget(self.str_edit)
-        self.str_label = QLabel(tr("String"))
-        layout.addRow(self.str_label, self.str_edit)
-
-        # Measure Mode (for QUERY)
-        self.measure_mode_combo = make_measure_mode_combo(self)
-        self.register_widget(self.measure_mode_combo)
-        layout.addRow(tr("Query Mode"), self.measure_mode_combo)
-
-        # Stat Key selector for QUERY (GET_GAME_STAT)
-        self.stat_key_combo = QComboBox()
-        self.register_widget(self.stat_key_combo)
         try:
-            stat_keys = list(CardTextGenerator.STAT_KEY_MAP.keys())
-            self.populate_combo(self.stat_key_combo, stat_keys, data_func=lambda x: x,
-                                display_func=lambda k: CardTextGenerator.STAT_KEY_MAP.get(k, (k, ''))[0])
+            self.setup_base_ui()
         except Exception:
             pass
-        self.stat_key_label = QLabel(tr("Stat Key"))
 
-        from PyQt6.QtWidgets import QWidget, QHBoxLayout
-        stat_row = QWidget()
-        stat_row_layout = QHBoxLayout(stat_row)
-        stat_row_layout.setContentsMargins(0, 0, 0, 0)
-        stat_row_layout.addWidget(self.stat_key_combo)
-        self.stat_preset_btn = QPushButton(tr("Preset: Mana Civs"))
-        self.stat_preset_btn.setToolTip(tr("Set stat key to MANA_CIVILIZATION_COUNT"))
-        self.stat_preset_btn.clicked.connect(lambda: self._preset_stat_key('MANA_CIVILIZATION_COUNT'))
-        stat_row_layout.addWidget(self.stat_preset_btn)
-        layout.addRow(self.stat_key_label, stat_row)
+    def setup_base_ui(self):
+        """Sets up the fixed top-level UI (Group/Type selectors)."""
+        self.main_layout = QFormLayout(self)
 
-        # Ref Mode (for COST_REFERENCE -> MUTATE)
-        self.ref_mode_combo = make_ref_mode_combo(self)
-        self.register_widget(self.ref_mode_combo)
-        layout.addRow(tr("Ref Mode"), self.ref_mode_combo)
-
-        # Amount + 'Up to' checkbox on same row
-        from PyQt6.QtWidgets import QWidget, QHBoxLayout
-        self.val1_spin = make_value_spin(self)
-        self.register_widget(self.val1_spin)
-        self.up_to_check = QCheckBox(tr("Up to"))
-        self.register_widget(self.up_to_check)
-        amount_row = QWidget()
-        amount_row_layout = QHBoxLayout(amount_row)
-        amount_row_layout.setContentsMargins(0, 0, 0, 0)
-        amount_row_layout.addWidget(self.val1_spin)
-        amount_row_layout.addWidget(self.up_to_check)
-        self.val1_label = QLabel(tr("Amount"))
-        layout.addRow(self.val1_label, amount_row)
-
-        self.val2_spin = make_value_spin(self)
-        self.register_widget(self.val2_spin)
-        self.val2_label = QLabel(tr("Value 2"))
-        layout.addRow(self.val2_label, self.val2_spin)
-
-        # MEKRAID-specific: Select Count control (third numeric field)
-        from PyQt6.QtWidgets import QWidget, QHBoxLayout
-        self.select_count_spin = make_value_spin(self)
-        self.register_widget(self.select_count_spin)
-        self.select_count_label = QLabel(tr("Select Count"))
-        layout.addRow(self.select_count_label, self.select_count_spin)
-
-        # Option generation controls (for CHOICE/SELECT_OPTION)
-        self.option_count_spin, self.generate_options_btn, self.option_count_label, self.option_gen_layout = make_option_controls(self)
-        # Assuming make_option_controls returns widgets. Register them.
-        self.register_widget(self.option_count_spin)
-        layout.addRow(self.option_count_label, self.option_gen_layout)
-
-        # Flags
-        self.no_cost_check = QCheckBox(tr("Play without paying cost"))
-        self.register_widget(self.no_cost_check)
-        self.no_cost_label = QLabel("")
-        layout.addRow(self.no_cost_label, self.no_cost_check)
-        self.allow_duplicates_check = QCheckBox(tr("Allow Duplicates"))
-        self.register_widget(self.allow_duplicates_check)
-        self.allow_duplicates_label = QLabel("")
-        layout.addRow(self.allow_duplicates_label, self.allow_duplicates_check)
-
-        # Optional / Arbitrary selection flag
-        self.arbitrary_check = QCheckBox(tr("Optional / Arbitrary Amount"))
-        self.register_widget(self.arbitrary_check)
-        self.arbitrary_label = QLabel("")
-        layout.addRow(self.arbitrary_label, self.arbitrary_check)
-
-        # Zones
-        self.source_zone_combo, self.dest_zone_combo = make_zone_combos(self)
-        self.register_widget(self.source_zone_combo)
-        self.register_widget(self.dest_zone_combo)
-        self.source_zone_label = QLabel(tr("Source Zone"))
-        self.dest_zone_label = QLabel(tr("Destination Zone"))
-        layout.addRow(self.source_zone_label, self.source_zone_combo)
-        layout.addRow(self.dest_zone_label, self.dest_zone_combo)
-
-        # Filter
-        self.filter_group = QGroupBox(tr("Filter"))
-        self.filter_widget = FilterEditorWidget()
-        self.register_widget(self.filter_widget)
-        fg_layout = QVBoxLayout(self.filter_group)
-        fg_layout.addWidget(self.filter_widget)
-        self.filter_widget.filterChanged.connect(self.update_data)
-        layout.addRow(self.filter_group)
-
-        # Mutation kind (keywords)
-        self.mutation_kind_edit = QLineEdit()
-        self.register_widget(self.mutation_kind_edit)
-        self.mutation_kind_combo = QComboBox()
-        self.register_widget(self.mutation_kind_combo)
-        # Populate with Japanese display names
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        keyword_items = [(kw, CardTextGenerator.KEYWORD_TRANSLATION.get(kw, kw)) for kw in GRANTABLE_KEYWORDS]
-        for kw_val, kw_display in keyword_items:
-            self.mutation_kind_combo.addItem(kw_display, kw_val)
-        self.mutation_kind_label = QLabel(tr("Mutation Kind"))
-
-        from PyQt6.QtWidgets import QStackedWidget
-        self.mutation_kind_container = QStackedWidget()
-        self.mutation_kind_container.addWidget(self.mutation_kind_edit)
-        self.mutation_kind_container.addWidget(self.mutation_kind_combo)
-        layout.addRow(self.mutation_kind_label, self.mutation_kind_container)
-
-        # Variable link
-        self.link_widget = VariableLinkWidget()
-        self.register_widget(self.link_widget)
-        self.link_widget.linkChanged.connect(self.update_data)
-        if hasattr(self.link_widget, 'smartLinkStateChanged'):
-            try:
-                self.link_widget.smartLinkStateChanged.connect(self.on_smart_link_changed)
-            except Exception:
-                pass
-        layout.addRow(self.link_widget)
-
-        # Signals
+        # Group Combo
+        self.action_group_combo = QComboBox()
+        self.populate_combo(self.action_group_combo, list(COMMAND_GROUPS.keys()), display_func=tr)
+        self.main_layout.addRow(tr("Command Group"), self.action_group_combo)
         self.action_group_combo.currentIndexChanged.connect(self.on_group_changed)
+
+        # Type Combo
+        self.type_combo = QComboBox()
+        self.main_layout.addRow(tr("Command Type"), self.type_combo)
         self.type_combo.currentIndexChanged.connect(self.on_type_changed)
-        self.measure_mode_combo.currentIndexChanged.connect(self.on_measure_mode_changed)
-        self.stat_key_combo.currentIndexChanged.connect(self.on_stat_key_changed)
-        self.ref_mode_combo.currentIndexChanged.connect(self.update_data)
-        self.generate_options_btn.clicked.connect(self.request_generate_options)
-        self.no_cost_check.stateChanged.connect(self.update_data)
-        self.allow_duplicates_check.stateChanged.connect(self.update_data)
-        self.arbitrary_check.stateChanged.connect(self.update_data)
-        self.up_to_check.stateChanged.connect(self.update_data)
-        self.scope_self_check.stateChanged.connect(self._on_scope_check_changed)
-        self.scope_opp_check.stateChanged.connect(self._on_scope_check_changed)
-        self.scope_combo.currentIndexChanged.connect(self.update_data)
-        self.str_edit.textChanged.connect(self.update_data)
-        self.val1_spin.valueChanged.connect(self.update_data)
-        self.val2_spin.valueChanged.connect(self.update_data)
-        self.select_count_spin.valueChanged.connect(self.update_data)
-        self.source_zone_combo.currentIndexChanged.connect(self.update_data)
-        self.dest_zone_combo.currentIndexChanged.connect(self.update_data)
 
-        self.update_ui_state(self.type_combo.currentData())
+        # Dynamic Content Container
+        self.dynamic_container = QWidget()
+        self.dynamic_layout = QFormLayout(self.dynamic_container)
+        self.dynamic_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.addRow(self.dynamic_container)
 
-    def _on_scope_check_changed(self):
-        """自分/相手のチェックを両方選択可能にする。"""
-        # 両方未選択の場合のみ、自分をデフォルトで選択
-        if (not self.scope_self_check.isChecked()) and (not self.scope_opp_check.isChecked()):
-            self.scope_self_check.blockSignals(True)
-            self.scope_self_check.setChecked(True)
-            self.scope_self_check.blockSignals(False)
-
-        self.update_data()
+        # Trigger initial population
+        self.on_group_changed()
 
     def on_group_changed(self):
-        """When a group is selected, populate the type combo with relevant subtypes."""
         grp = self.action_group_combo.currentData()
         types = COMMAND_GROUPS.get(grp, [])
         if not types:
-            types = self.known_types
+            # Fallback to all known types if group empty or error
+            types = sorted(list(COMMAND_SCHEMA.keys()))
 
         prev = self.type_combo.currentData()
         self.populate_combo(self.type_combo, types, data_func=lambda x: x, display_func=tr)
+
         if prev and prev in types:
             self.set_combo_by_data(self.type_combo, prev)
         else:
             self.type_combo.setCurrentIndex(0)
 
-        try:
-            self.update_ui_state(self.type_combo.currentData())
-        except Exception:
-            pass
-
     def on_type_changed(self):
         t = self.type_combo.currentData()
-        self.update_ui_state(t)
+        self.rebuild_dynamic_ui(t)
         self.update_data()
 
-    def on_measure_mode_changed(self):
-        try:
-            val = self.measure_mode_combo.currentData()
-            if val:
-                self.str_edit.setText(val)
-        except Exception:
-            pass
-        self.update_data()
+    def rebuild_dynamic_ui(self, cmd_type):
+        """Rebuilds the dynamic part of the form based on schema."""
+        # Clear existing widgets
+        while self.dynamic_layout.count():
+            item = self.dynamic_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
 
-    def on_smart_link_changed(self, is_active: bool):
-        try:
-            cfg = self._get_ui_config(self.type_combo.currentData())
-            amount_vis = cfg.get('amount_visible', False) and not is_active
-            self.val1_label.setVisible(amount_vis)
-            self.val1_spin.setVisible(amount_vis)
-            if cfg.get('target_filter_visible', False) and hasattr(self.filter_widget, 'set_external_count_control'):
-                self.filter_widget.set_external_count_control(is_active)
-        except Exception:
-            pass
-        self.update_data()
+        self.widgets_map = {}
+        self.fields_config = COMMAND_SCHEMA.get(cmd_type, {}).get('fields', [])
 
-    def on_stat_key_changed(self):
-        try:
-            val = self.stat_key_combo.currentData()
-            if val:
-                self.str_edit.setText(val)
-        except Exception:
-            pass
-        self.update_data()
+        for field in self.fields_config:
+            self._create_widget_for_field(field)
 
-    def _preset_stat_key(self, key: str):
-        try:
-            if self.stat_key_combo:
-                self.set_combo_by_data(self.stat_key_combo, key)
-                self.str_edit.setText(key)
-        except Exception:
-            try:
-                self.str_edit.setText(key)
-            except Exception:
-                pass
-        self.update_data()
+    def _create_widget_for_field(self, field):
+        key = field['key']
+        w_type = field.get('widget', 'text')
+        label = field.get('label')
+
+        widget = None
+
+        if w_type == 'text':
+            widget = QLineEdit()
+            widget.textChanged.connect(self.update_data)
+
+        elif w_type == 'spinbox':
+            widget = make_value_spin(self)
+            widget.valueChanged.connect(self.update_data)
+            if 'default' in field:
+                widget.setValue(field['default'])
+
+        elif w_type == 'checkbox':
+            widget = QCheckBox(tr(label) if label else "")
+            label = "" # Label is integrated
+            widget.stateChanged.connect(self.update_data)
+
+        elif w_type == 'player_scope':
+            # Special composite widget
+            container = QWidget()
+            h_layout = QHBoxLayout(container)
+            h_layout.setContentsMargins(0,0,0,0)
+
+            # Using existing helper but need to adapt slightly or reuse logic
+            # Since make_player_scope_selector returns (widget, chk1, chk2), we need to manage them
+            # Ideally we refactor make_player_scope_selector to return a single managing widget,
+            # but for now we inline the logic or wrap it.
+
+            self_chk = QCheckBox(tr("Self"))
+            opp_chk = QCheckBox(tr("Opponent"))
+
+            # Exclusive check logic wrapper
+            def check_state(state):
+                if not self_chk.isChecked() and not opp_chk.isChecked():
+                     self_chk.setChecked(True)
+                self.update_data()
+
+            self_chk.stateChanged.connect(check_state)
+            opp_chk.stateChanged.connect(check_state)
+
+            h_layout.addWidget(self_chk)
+            h_layout.addWidget(opp_chk)
+
+            widget = container
+            # Store sub-widgets for data mapping
+            widget.self_chk = self_chk
+            widget.opp_chk = opp_chk
+
+        elif w_type == 'zone_combo':
+            widget = QComboBox()
+            # Populate zones - using hardcoded list or helper
+            zones = ["NONE", "HAND", "BATTLE_ZONE", "MANA_ZONE", "GRAVEYARD", "SHIELD_ZONE", "DECK"]
+            for z in zones:
+                widget.addItem(tr(z), z)
+            widget.currentIndexChanged.connect(self.update_data)
+
+        elif w_type == 'scope_combo':
+            widget = make_scope_combo(self, include_zones=True)
+            widget.currentIndexChanged.connect(self.update_data)
+
+        elif w_type == 'query_mode_combo':
+            widget = make_measure_mode_combo(self)
+            widget.currentIndexChanged.connect(self.update_data)
+
+        elif w_type == 'keyword_combo':
+            widget = QComboBox()
+            for kw in GRANTABLE_KEYWORDS:
+                widget.addItem(tr(kw), kw)
+            widget.currentIndexChanged.connect(self.update_data)
+
+        elif w_type == 'filter_editor':
+            widget = FilterEditorWidget()
+            widget.filterChanged.connect(self.update_data)
+            if 'title' in field:
+                widget.setTitle(tr(field['title']))
+            if 'allowed_fields' in field:
+                widget.set_allowed_fields(field['allowed_fields'])
+
+        elif w_type == 'variable_link':
+            widget = VariableLinkWidget()
+            widget.linkChanged.connect(self.update_data)
+            if field.get('produces_output'):
+                if hasattr(widget, 'set_output_hint'):
+                    widget.set_output_hint(True)
+            if 'output_label' in field:
+                widget.output_label_text = tr(field['output_label'])
+
+        elif w_type == 'options_control':
+             # Complex composite for CHOICE
+             # We reuse make_option_controls logic but need to integrate it
+             spin, btn, lbl, layout = make_option_controls(self)
+
+             container = QWidget()
+             v_layout = QVBoxLayout(container)
+             v_layout.setContentsMargins(0,0,0,0)
+
+             top_row = QWidget()
+             h_layout = QHBoxLayout(top_row)
+             h_layout.setContentsMargins(0,0,0,0)
+             h_layout.addWidget(lbl)
+             h_layout.addWidget(spin)
+             h_layout.addWidget(btn)
+
+             v_layout.addWidget(top_row)
+             v_layout.addLayout(layout) # This is the dynamic options list
+
+             widget = container
+             # Store references
+             widget.spin = spin
+             widget.btn = btn
+             widget.option_layout = layout
+
+             # Connect
+             btn.clicked.connect(self.request_generate_options)
+             # Note: request_generate_options relies on self.option_count_spin, so we need to mock or route it
+             self.option_count_spin = spin
+             self.option_gen_layout = layout
+
+        if widget:
+            self.widgets_map[key] = widget
+            row_label = tr(label) if label else None
+            if row_label:
+                self.dynamic_layout.addRow(row_label, widget)
+            else:
+                self.dynamic_layout.addRow(widget)
 
     def request_generate_options(self):
+        """Re-implementation for option generation."""
         if not getattr(self, 'current_item', None):
             return
         try:
@@ -399,7 +273,7 @@ class UnifiedActionForm(BaseEditForm):
 
         data = self.current_item.data(Qt.ItemDataRole.UserRole + 2) or {}
         data['options'] = new_options
-        data['type'] = 'CHOICE' # Unified type for options
+        data['type'] = 'CHOICE'
 
         self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
         try:
@@ -407,391 +281,145 @@ class UnifiedActionForm(BaseEditForm):
         except Exception:
             self.dataChanged.emit()
 
-    def update_ui_state(self, t):
-        cfg = self._get_ui_config(t)
-
-        # Scope selection: use extended combo for ADD_KEYWORD, simple checkboxes for others
-        use_extended_scope = (t == 'ADD_KEYWORD')
-        self.scope_widget.setVisible(cfg.get('target_group_visible', False) and not use_extended_scope)
-        self.scope_combo_label.setVisible(use_extended_scope and cfg.get('target_group_visible', False))
-        self.scope_combo.setVisible(use_extended_scope and cfg.get('target_group_visible', False))
-        
-        self.filter_group.setVisible(cfg.get('target_filter_visible', False))
-
-        # Amount
-        self.val1_label.setVisible(cfg.get('amount_visible', False))
-        self.val1_spin.setVisible(cfg.get('amount_visible', False))
-        # Show 'Up to' only when command exposes it
-        self.up_to_check.setVisible('up_to' in (COMMAND_UI_CONFIG.get(t, {}).get('visible', [])))
-        self.val1_label.setText(tr(cfg.get('amount_label', 'Amount')))
-
-        # Value 2
-        self.val2_label.setVisible(cfg.get('val2_visible', False))
-        self.val2_spin.setVisible(cfg.get('val2_visible', False))
-        self.val2_label.setText(tr(cfg.get('val2_label', 'Value 2')))
-
-        # Default hidden for MEKRAID extra field
-        self.select_count_label.setVisible(False)
-        self.select_count_spin.setVisible(False)
-
-        # String param
-        self.str_label.setVisible(cfg.get('str_param_visible', False))
-        self.str_edit.setVisible(cfg.get('str_param_visible', False))
-        if cfg.get('str_param_label'):
-            self.str_label.setText(tr(cfg.get('str_param_label')))
-
-        # Mutation kind
-        self.mutation_kind_label.setVisible(cfg.get('mutation_kind_visible', False))
-        if self.mutation_kind_container:
-            self.mutation_kind_container.setVisible(cfg.get('mutation_kind_visible', False))
-        if cfg.get('mutation_kind_label'):
-            self.mutation_kind_label.setText(tr(cfg.get('mutation_kind_label')))
-
-        # Zones
-        self.source_zone_label.setVisible(cfg.get('from_zone_visible', False))
-        self.source_zone_combo.setVisible(cfg.get('from_zone_visible', False))
-        self.dest_zone_label.setVisible(cfg.get('to_zone_visible', False))
-        self.dest_zone_combo.setVisible(cfg.get('to_zone_visible', False))
-
-        # Input linking
-        can_link_input = cfg.get('amount_visible', False) or cfg.get('input_link_visible', False)
-        self.link_widget.set_smart_link_enabled(can_link_input)
-
-        # Produce output hint
-        produces = cfg.get('produces_output', False)
-        self.link_widget.set_output_hint(produces) if hasattr(self.link_widget, 'set_output_hint') else None
-
-        # Special Modes
-        is_query = (t == 'QUERY')
-        self.measure_mode_combo.setVisible(is_query)
-        self.stat_key_combo.setVisible(is_query)
-        self.stat_key_label.setVisible(is_query)
-        self.stat_preset_btn.setVisible(is_query)
-
-        self.ref_mode_combo.setVisible(t == 'MUTATE' and self.mutation_kind_combo.currentData() == 'COST_REFERENCE')
-
-        # Option-related
-        is_choice = (t == 'CHOICE' or t == 'SELECT_OPTION' or t == 'IF' or t == 'IF_ELSE')
-        self.option_count_label.setVisible(is_choice)
-        self.option_count_spin.setVisible(is_choice)
-        self.generate_options_btn.setVisible(is_choice)
-        self.allow_duplicates_label.setVisible(is_choice and t not in ('IF', 'IF_ELSE'))
-        self.allow_duplicates_check.setVisible(is_choice and t not in ('IF', 'IF_ELSE'))
-
-        # Flags
-        self.no_cost_label.setVisible(t == 'PLAY_FROM_ZONE')
-        self.no_cost_check.setVisible(t == 'PLAY_FROM_ZONE')
-        self.arbitrary_label.setVisible(cfg.get('optional_visible', False))
-        self.arbitrary_check.setVisible(cfg.get('optional_visible', False))
-
-        self.type_combo.setToolTip(tr(cfg.get('tooltip', '')))
-
-        # Filter group contextual setup
-        show_filter = cfg.get('target_filter_visible', False)
-        if show_filter:
-            # Default fields from config
-            try:
-                self.filter_widget.set_allowed_fields(cfg.get('allowed_filter_fields', None))
-            except Exception:
-                pass
-            # Contextual titles/field constraints for special commands
-            try:
-                if t == 'CAST_SPELL':
-                    self.filter_widget.setTitle(tr('Spell Filter'))
-                    # Set default SPELL type filter if empty
-                    try:
-                        f = self.filter_widget.get_data() if hasattr(self.filter_widget, 'get_data') else {}
-                        has_any = bool(f.get('civilizations') or f.get('races') or f.get('types'))
-                        if not has_any:
-                            self.filter_widget.set_data({'types': ['SPELL']})
-                    except Exception:
-                        pass
-                elif t == 'FRIEND_BURST':
-                    self.filter_widget.setTitle(tr('Friend Burst Target'))
-                    self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
-                elif t == 'MEKRAID':
-                    self.filter_widget.setTitle(tr('Mekraid Target'))
-                    self.filter_widget.set_allowed_fields(['civilizations', 'types', 'races'])
-                elif t == 'MUTATE':
-                    mk = ''
-                    try:
-                        mk = self.mutation_kind_edit.text().strip()
-                    except Exception:
-                        pass
-                    if mk == 'REVOLUTION_CHANGE':
-                        self.filter_widget.setTitle(tr('Revolution Change Condition'))
-                        self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types', 'min_cost', 'max_cost'])
-                elif t == 'REVOLUTION_CHANGE':
-                    self.filter_widget.setTitle(tr('Revolution Change Condition'))
-                    self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types', 'min_cost', 'max_cost'])
-                    # If UI is empty, set sensible defaults for quick editing
-                    try:
-                        f = self.filter_widget.get_data() if hasattr(self.filter_widget, 'get_data') else {}
-                        has_any = bool(f.get('civilizations') or f.get('races') or f.get('types'))
-                        if not has_any:
-                            self.filter_widget.set_data({'civilizations': ['FIRE'], 'races': ['Dragon'], 'types': ['CREATURE']})
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-
-        # Mutation kind widget switch
-        try:
-            if t == 'ADD_KEYWORD' and self.mutation_kind_container:
-                self.mutation_kind_container.setCurrentIndex(1)
-            elif self.mutation_kind_container:
-                self.mutation_kind_container.setCurrentIndex(0)
-        except Exception:
-            pass
-
-        # MEKRAID-specific labeling and field visibility adjustments
-        try:
-            if t == 'MEKRAID':
-                # Ensure both numeric fields are visible
-                self.val1_label.setText(tr('Max Cost'))
-                self.val1_label.setVisible(True)
-                self.val1_spin.setVisible(True)
-
-                self.val2_label.setText(tr('Look Count'))
-                self.val2_label.setVisible(True)
-                self.val2_spin.setVisible(True)
-
-                # Show and label Select Count control
-                self.select_count_label.setText(tr('Select Count'))
-                self.select_count_label.setVisible(True)
-                self.select_count_spin.setVisible(True)
-
-                # If newly switching to MEKRAID or values are unset/zero, set defaults 5/3/1
-                try:
-                    cur = {}
-                    if getattr(self, 'current_item', None):
-                        cur = self.current_item.data(Qt.ItemDataRole.UserRole + 2) or {}
-                    # Consider it 'new' if type differs or keys missing
-                    is_new = (cur.get('type') != 'MEKRAID') or (
-                        'max_cost' not in cur and 'look_count' not in cur and 'select_count' not in cur
-                    )
-                    if is_new:
-                        if int(self.val1_spin.value() or 0) == 0:
-                            self.val1_spin.setValue(5)
-                        if int(self.val2_spin.value() or 0) == 0:
-                            self.val2_spin.setValue(3)
-                        if int(self.select_count_spin.value() or 0) == 0:
-                            self.select_count_spin.setValue(1)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-    def _update_ui_state(self, data):
-        self.update_ui_state(self._normalize_cmd_type(data.get('type', 'NONE')))
-
     def _load_ui_from_data(self, data, item):
-        """Load data into UI, auto-converting legacy actions if needed."""
-        if item:
-            self.link_widget.set_current_item(item)
+        """Loads data into the UI widgets."""
+        if not data: data = {}
+        model = CommandModel(data)
+        self.current_model = model
 
-        normalize_action_zone_keys(data)
-        normalize_command_zone_keys(data)
+        # 1. Determine Type and Group
+        cmd_type = model.type
 
-        # Check for legacy and convert if necessary
-        # We rely on 'format' flag or heuristic checks (legacy keys presence)
-        is_legacy = data.get('format') != 'command'
+        # Special case: MUTATE + REVOLUTION_CHANGE
+        if cmd_type == 'MUTATE' and model.get('mutation_kind') == 'REVOLUTION_CHANGE':
+            cmd_type = 'REVOLUTION_CHANGE'
 
-        if is_legacy and data.get('type', 'NONE') != 'NONE':
-            try:
-                converted = ActionConverter.convert(data)
-                if converted and converted.get('type') != 'NONE':
-                    # Update data in-place to reflect conversion
-                    data.clear()
-                    data.update(converted)
-                    data['format'] = 'command'
-            except Exception:
-                pass
-
-        ui_type = self._normalize_cmd_type(data.get('type', 'NONE'))
-
-        # Determine group
-        grp = None
+        grp = 'OTHER'
         for g, types in COMMAND_GROUPS.items():
-            if ui_type in types:
+            if cmd_type in types:
                 grp = g
                 break
-        if grp is None:
-            grp = 'OTHER'
-
+        
         self.set_combo_by_data(self.action_group_combo, grp)
-        # Map MUTATE+REVOLUTION_CHANGE to UI pseudo-type for better editing UX
-        if ui_type == 'MUTATE' and data.get('mutation_kind') == 'REVOLUTION_CHANGE':
-            ui_type = 'REVOLUTION_CHANGE'
-        self.set_combo_by_data(self.type_combo, ui_type)
-
-        target_group = data.get('target_group') or 'PLAYER_SELF'
+        self.set_combo_by_data(self.type_combo, cmd_type)
         
-        # For commands with extended scope (ADD_KEYWORD), use scope combo
-        if ui_type == 'ADD_KEYWORD':
-            self.set_combo_by_data(self.scope_combo, target_group)
-        else:
-            # Use checkbox selectors for simple player scope
-            self.scope_self_check.blockSignals(True)
-            self.scope_opp_check.blockSignals(True)
-            self.scope_self_check.setChecked(target_group == 'PLAYER_SELF')
-            self.scope_opp_check.setChecked(target_group == 'PLAYER_OPPONENT')
-            if not self.scope_self_check.isChecked() and not self.scope_opp_check.isChecked():
-                self.scope_self_check.setChecked(True)
-            self.scope_self_check.blockSignals(False)
-            self.scope_opp_check.blockSignals(False)
+        # 2. Iterate schema fields and populate widgets
+        for field in self.fields_config:
+            key = field['key']
+            widget = self.widgets_map.get(key)
+            if not widget: continue
 
-        self.str_edit.setText(data.get('str_param', ''))
-        
-        # For QUERY command, also set stat_key_combo if str_param is a stat key
-        if ui_type == 'QUERY':
-            stat_key = data.get('str_param', '')
-            if stat_key and hasattr(self, 'stat_key_combo'):
-                self.set_combo_by_data(self.stat_key_combo, stat_key)
+            w_type = field.get('widget')
 
-        # Value Mapping for specific command types
-        val1 = data.get('amount', 0)
-        val2 = 0
+            if w_type == 'text':
+                widget.setText(str(model.get(key, '')))
 
-        if ui_type == 'LOOK_AND_ADD':
-            val1 = data.get('look_count', 0)
-            val2 = data.get('add_count', 0)
-        elif ui_type == 'MEKRAID':
-            # Map to custom semantics:
-            # val1 -> max_cost, val2 -> look_count, select_count -> explicit control
-            val1 = data.get('max_cost', 0)
-            val2 = data.get('look_count', 3)
-            try:
-                self.select_count_spin.setValue(int(data.get('select_count', 1)))
-            except Exception:
-                pass
-        elif ui_type == 'SELECT_NUMBER':
-            val1 = data.get('max', 0)
-            val2 = data.get('min', 0)
+            elif w_type == 'spinbox':
+                val = model.get(key, 0)
+                # Map special keys for specific types if schema key != data key
+                # Actually, our schema keys match data keys mostly.
+                # Except generic 'amount' mapping.
+                if key == 'amount' and cmd_type == 'MEKRAID':
+                    # Legacy: MEKRAID amount was max_cost?
+                    # Schema has specific 'max_cost', 'look_count'.
+                    # If data uses specific keys, good.
+                    pass
+                widget.setValue(int(val))
 
-        self.val1_spin.setValue(val1)
-        self.val2_spin.setValue(val2)
-        # Up to flag
-        self.up_to_check.setChecked(bool(data.get('up_to', False)))
+            elif w_type == 'checkbox':
+                # Handle 'play_for_free' which maps to flags list
+                if key == 'play_for_free':
+                     flags = model.get('play_flags', [])
+                     widget.setChecked('PLAY_FOR_FREE' in flags)
+                elif key == 'allow_duplicates':
+                     flags = model.get('flags', [])
+                     widget.setChecked('ALLOW_DUPLICATES' in flags)
+                else:
+                    widget.setChecked(bool(model.get(key, False)))
 
-        self.set_combo_by_data(self.source_zone_combo, data.get('from_zone', 'NONE'))
-        self.set_combo_by_data(self.dest_zone_combo, data.get('to_zone', 'NONE'))
+            elif w_type == 'player_scope':
+                tg = model.target_group
+                widget.self_chk.blockSignals(True)
+                widget.opp_chk.blockSignals(True)
+                widget.self_chk.setChecked(tg in ['PLAYER_SELF', 'PLAYER_BOTH'])
+                widget.opp_chk.setChecked(tg in ['PLAYER_OPPONENT', 'PLAYER_BOTH'])
+                widget.self_chk.blockSignals(False)
+                widget.opp_chk.blockSignals(False)
 
-        self.filter_widget.set_data(data.get('target_filter', {}))
-        self.link_widget.set_data(data)
+            elif w_type in ['zone_combo', 'scope_combo', 'query_mode_combo', 'keyword_combo']:
+                val = model.get(key, 'NONE')
+                self.set_combo_by_data(widget, val)
 
-        # Mutation kind
-        mutation_kind = data.get('mutation_kind', '')
-        if mutation_kind in GRANTABLE_KEYWORDS:
-             self.set_combo_by_data(self.mutation_kind_combo, mutation_kind)
-        else:
-             self.mutation_kind_edit.setText(mutation_kind)
+            elif w_type == 'filter_editor':
+                widget.set_data(model.get(key, {}))
 
-        # Flags
-        flags = data.get('flags', [])
-        self.allow_duplicates_check.setChecked('ALLOW_DUPLICATES' in flags)
-        self.arbitrary_check.setChecked(data.get('optional', False) or 'OPTIONAL' in flags)
+            elif w_type == 'variable_link':
+                widget.set_data(data) # It handles extraction internally
 
-        play_flags = data.get('play_flags', [])
-        self.no_cost_check.setChecked('PLAY_FOR_FREE' in play_flags)
+            elif w_type == 'options_control':
+                 widget.spin.setValue(int(model.get('amount', 0)))
+
 
     def _save_ui_to_data(self, data):
-        """Save UI to data as a Command."""
-        sel = self.type_combo.currentData()
+        """Saves UI state back to dictionary data."""
+        # Start fresh or update? Usually we update to keep ID/etc.
+        # But for 'command' format, we rebuild.
 
-        cmd = {}
-        cmd['format'] = 'command' # Explicitly mark format
-        cmd['type'] = sel
+        cmd_type = self.type_combo.currentData()
 
-        # スコープ設定: ADD_KEYWORDは拡張コンボ、それ以外はチェックボックス
-        if sel == 'ADD_KEYWORD':
-            cmd['target_group'] = self.scope_combo.currentData() or 'PLAYER_SELF'
-        else:
-            # 自分と相手両方選択可能
-            self_checked = self.scope_self_check.isChecked()
-            opp_checked = self.scope_opp_check.isChecked()
-            if self_checked and opp_checked:
-                cmd['target_group'] = 'PLAYER_BOTH'
-            elif self_checked:
-                cmd['target_group'] = 'PLAYER_SELF'
-            elif opp_checked:
-                cmd['target_group'] = 'PLAYER_OPPONENT'
-            else:
-                cmd['target_group'] = 'PLAYER_SELF'  # デフォルト
-        cmd['target_filter'] = self.filter_widget.get_data()
+        new_data = {'format': 'command', 'type': cmd_type}
 
-        # Standard mapping
-        cmd['amount'] = self.val1_spin.value()
-        # Up to flag - save when checked
-        if self.up_to_check.isChecked():
-            cmd['up_to'] = True
+        # Handle REVOLUTION_CHANGE mapping back
+        if cmd_type == 'REVOLUTION_CHANGE':
+            new_data['type'] = 'MUTATE'
+            new_data['mutation_kind'] = 'REVOLUTION_CHANGE'
 
-        # Specialized reverse mapping
-        if sel == 'LOOK_AND_ADD':
-            cmd['look_count'] = self.val1_spin.value()
-            cmd['add_count'] = self.val2_spin.value()
-            # Also keep 'amount' as legacy fallback/primary if engine expects it?
-            # Engine likely expects look_count/add_count
-        elif sel == 'MEKRAID':
-            cmd['max_cost'] = self.val1_spin.value()
-            cmd['look_count'] = self.val2_spin.value()
-            try:
-                cmd['select_count'] = int(self.select_count_spin.value())
-            except Exception:
-                cmd['select_count'] = 1
-        elif sel == 'SELECT_NUMBER':
-            cmd['max'] = self.val1_spin.value()
-            cmd['min'] = self.val2_spin.value()
-        elif sel == 'REVOLUTION_CHANGE':
-            # Map UI-only type to engine command
-            cmd['type'] = 'MUTATE'
-            cmd['mutation_kind'] = 'REVOLUTION_CHANGE'
-            # target_filter already set above from widget
+        model = CommandModel(new_data)
 
-        # Flags
-        flags = []
-        if self.allow_duplicates_check.isChecked():
-            flags.append('ALLOW_DUPLICATES')
-        if flags:
-            cmd['flags'] = flags
+        for field in self.fields_config:
+            key = field['key']
+            widget = self.widgets_map.get(key)
+            if not widget: continue
 
-        if self.arbitrary_check.isChecked():
-            cmd['optional'] = True
+            w_type = field.get('widget')
 
-        play_flags = []
-        if self.no_cost_check.isChecked():
-            play_flags.append('PLAY_FOR_FREE')
-        if play_flags:
-            cmd['play_flags'] = play_flags
+            if w_type == 'text':
+                model.set(key, widget.text())
 
-        # Params
-        if sel == 'ADD_KEYWORD':
-             cmd['mutation_kind'] = self.mutation_kind_combo.currentData() or self.mutation_kind_edit.text()
-        elif sel == 'MUTATE':
-             cfg = self._get_ui_config(sel)
-             if cfg.get('mutation_kind_visible'):
-                 cmd['mutation_kind'] = self.mutation_kind_edit.text()
-             if cfg.get('str_param_visible'):
-                 cmd['str_param'] = self.str_edit.text()
-        else:
-             cmd['str_param'] = self.str_edit.text()
+            elif w_type == 'spinbox':
+                model.set(key, widget.value())
 
-        cmd['from_zone'] = self.source_zone_combo.currentData()
-        cmd['to_zone'] = self.dest_zone_combo.currentData()
+            elif w_type == 'checkbox':
+                val = widget.isChecked()
+                if key == 'play_for_free':
+                    if val: model.set('play_flags', ['PLAY_FOR_FREE'])
+                elif key == 'allow_duplicates':
+                    if val: model.set('flags', ['ALLOW_DUPLICATES'])
+                else:
+                    if val: model.set(key, True)
 
-        # Variable links
-        try:
-            cfg = self._get_ui_config(sel)
-            produces = cfg.get('produces_output', False)
-            if hasattr(self.link_widget, 'ensure_output_key'):
-                self.link_widget.ensure_output_key(sel, produces)
-        except Exception:
-            pass
-        self.link_widget.get_data(cmd)
+            elif w_type == 'player_scope':
+                s = widget.self_chk.isChecked()
+                o = widget.opp_chk.isChecked()
+                if s and o: t = 'PLAYER_BOTH'
+                elif o: t = 'PLAYER_OPPONENT'
+                else: t = 'PLAYER_SELF'
+                model.target_group = t
 
-        # Clear old data and update with new command
+            elif w_type in ['zone_combo', 'scope_combo', 'query_mode_combo', 'keyword_combo']:
+                model.set(key, widget.currentData())
+
+            elif w_type == 'filter_editor':
+                model.set(key, widget.get_data())
+
+            elif w_type == 'variable_link':
+                widget.get_data(new_data) # Writes directly to dict
+
+            elif w_type == 'options_control':
+                model.amount = widget.spin.value()
+
         data.clear()
-        data.update(cmd)
+        data.update(new_data)
 
     def _get_display_text(self, data):
         t = data.get('type', 'UNKNOWN')
