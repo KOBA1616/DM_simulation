@@ -207,7 +207,18 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         elif isinstance(action_data, dict):
             act_data = copy.deepcopy(action_data)
         else:
-             return _create_error_command(str(action_data), "Invalid action shape")
+            # Fallback for Pybind11 structs (fields exposed as properties without __dict__)
+            # We attempt to extract known fields if 'type' is present
+            if hasattr(action_data, 'type'):
+                act_data = {}
+                # Extract common fields manually
+                for field in ['type', 'card_id', 'source_instance_id', 'target_instance_id',
+                              'target_player', 'slot_index', 'target_slot_index',
+                              'value1', 'value2', 'str_val', 'from_zone', 'to_zone']:
+                    if hasattr(action_data, field):
+                        act_data[field] = getattr(action_data, field)
+            else:
+                 return _create_error_command(str(action_data), "Invalid action shape")
     except Exception:
          return _create_error_command(str(action_data), "Uncopyable action")
 

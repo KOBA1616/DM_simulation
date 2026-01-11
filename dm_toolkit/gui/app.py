@@ -525,6 +525,30 @@ class GameWindow(QMainWindow):
                 relevant_cmds.append(c)
 
         if not relevant_cmds: return
+
+        # If multiple actions are available for the same card, let the user choose
+        # or rely on the context menu (which CardWidget handles).
+        # If we just execute the first one, we might pick the wrong one (e.g. Play vs Mana Charge).
+        if len(relevant_cmds) > 1:
+            # We could show a dialog, but CardWidget already has a context menu on right-click.
+            # To avoid confusion on left-click, we can trigger the context menu logic programmatically
+            # or show a simple selection dialog here.
+
+            # Construct items for selection
+            items = []
+            for cmd in relevant_cmds:
+                d = cmd.to_dict()
+                desc = describe_command(d, self.gs, self.card_db)
+                items.append({'description': desc, 'command': cmd})
+
+            # Use CardSelectionDialog-like logic but for actions
+            options = [item['description'] for item in items]
+            item, ok = QInputDialog.getItem(self, tr("Select Action"), tr("Choose action to perform:"), options, 0, False)
+            if ok and item:
+                idx = options.index(item)
+                self.execute_action(items[idx]['command'])
+            return
+
         self.execute_action(relevant_cmds[0])
 
     def on_card_hovered(self, card_id: int) -> None:
@@ -817,8 +841,11 @@ class GameWindow(QMainWindow):
         p0 = EngineCompat.get_player(self.gs, 0) or _P()
         p1 = EngineCompat.get_player(self.gs, 1) or _P()
         
-        # Command-based; legal action highlights disabled for now to remove Action dependency
+        # Generate legal actions for the active human player
         legal_actions = []
+        if active_pid == 0 and self.p0_human_radio.isChecked() and not self.gs.game_over:
+             from dm_toolkit.commands import generate_legal_commands
+             legal_actions = generate_legal_commands(self.gs, self.card_db)
 
         def convert_zone(zone_cards: List[Any], hide: bool=False) -> List[Dict[str, Any]]:
             if hide: return [{'id': -1, 'tapped': getattr(c, 'is_tapped', False), 'instance_id': getattr(c, 'instance_id', -1)} for c in zone_cards]
