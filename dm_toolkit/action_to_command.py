@@ -333,7 +333,7 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         # Keep legacy command type for compatibility; handler may add unified fields
         _handle_complex(act_type, act_data, cmd, dest)
 
-    elif act_type in ["PLAY_FROM_ZONE", "FRIEND_BURST", "REGISTER_DELAYED_EFFECT", "CAST_SPELL"]:
+    elif act_type in ["PLAY_CARD", "PLAY_FROM_ZONE", "FRIEND_BURST", "REGISTER_DELAYED_EFFECT", "CAST_SPELL", "DECLARE_PLAY"]:
         _handle_play_flow(act_type, act_data, cmd, src, dest)
 
     elif act_type == "RESET_INSTANCE":
@@ -639,7 +639,13 @@ def _handle_complex(act_type, act, cmd, dest):
     _transfer_targeting(act, cmd)
 
 def _handle_play_flow(act_type, act, cmd, src, dest):
-    if act_type == "PLAY_FROM_ZONE":
+    if act_type == "PLAY_CARD" or act_type == "DECLARE_PLAY":
+        # Direct play from hand
+        cmd['type'] = "PLAY_FROM_ZONE"
+        cmd['from_zone'] = src or "HAND"
+        cmd['to_zone'] = dest or "BATTLE"
+        if 'value1' in act: cmd['amount'] = act['value1']
+    elif act_type == "PLAY_FROM_ZONE":
         # Consolidate play commands to a single PLAY command with from_zone
         cmd['type'] = "PLAY_FROM_ZONE"
         if src: cmd['from_zone'] = src
