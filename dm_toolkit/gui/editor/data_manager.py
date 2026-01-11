@@ -10,6 +10,7 @@ from dm_toolkit.types import JSON
 from dm_toolkit.gui.editor import normalize
 from dm_toolkit.gui.editor.action_converter import ActionConverter, convert_action_to_objs
 from dm_toolkit.gui.editor.command_model import CommandDef, WarningCommand
+from dm_toolkit.gui.editor.templates import LogicTemplateManager
 
 class CardDataManager:
     """
@@ -19,43 +20,10 @@ class CardDataManager:
 
     def __init__(self, model: QStandardItemModel):
         self.model = model
-        self.templates: JSON = {"commands": [], "actions": []}
-        self.load_templates()
         # cache can hold internal representations keyed by uid for editor-only use
         self._internal_cache = {}
-
-    def load_templates(self):
-        # Resolve path to data/editor_templates.json
-        filepath = None
-
-        # 1. Check Environment Variable
-        env_path = os.environ.get('DM_EDITOR_TEMPLATES_PATH')
-        if env_path and os.path.exists(env_path):
-            filepath = env_path
-        else:
-            # 2. Search relative to this file
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            candidates = [
-                os.path.join(current_dir, '..', '..', '..', 'data', 'editor_templates.json'),
-                os.path.join(current_dir, '..', '..', 'data', 'editor_templates.json'),
-                # Add explicit data path relative to CWD for robustness in various envs
-                os.path.join(os.getcwd(), 'data', 'editor_templates.json')
-            ]
-
-            for candidate in candidates:
-                if os.path.exists(candidate):
-                    filepath = candidate
-                    break
-
-        if filepath and os.path.exists(filepath):
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    self.templates = json.load(f)
-            except Exception as e:
-                print(f"Error loading templates: {e}")
-                self.templates = {"commands": [], "actions": []}
-        else:
-            print("Warning: editor_templates.json not found.")
+        # Ensure Template Manager is initialized
+        self.template_manager = LogicTemplateManager.get_instance()
 
     def get_item_type(self, index_or_item):
         """Safe accessor for item type (UserRole+1)."""
@@ -823,80 +791,7 @@ class CardDataManager:
         return False
 
     def add_revolution_change_logic(self, card_item):
-        # Must add to card_item directly, searching for existing one
-        for i in range(card_item.rowCount()):
-            child = card_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
-                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
-                for act in eff_data.get('commands', []):
-                    if act.get('mutation_kind') == 'REVOLUTION_CHANGE':
-                        return child
-
-        eff_data = {
-            "trigger": "ON_ATTACK_FROM_HAND",
-            "condition": {"type": "NONE"},
-            "commands": []
-        }
-        eff_item = self._create_effect_item(eff_data)
-
-        # Create COMMAND instead of ACTION for Revolution Change
-        # Derive sensible defaults from card data (civs/races)
-        try:
-            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
-        except Exception:
-            card_data = {}
-        civs = list(card_data.get('civilizations', []) or [])
-        races = list(card_data.get('races', []) or [])
-        # Fallback to default "FIRE" / "Dragon" to make the editable default explicit
-        if not civs:
-            civs = ["FIRE"]
-        if not races:
-            races = ["Dragon"]
-        # Default to creature type requirement without hard min_cost
-        target_filter = {}
-        if civs:
-            target_filter['civilizations'] = civs
-        if races:
-            target_filter['races'] = races
-        target_filter['types'] = ["CREATURE"]
-
-        cmd_data = {
-            "type": "REVOLUTION_CHANGE",
-            "target_filter": target_filter
-        }
-        cmd_item = self.create_command_item(cmd_data)
-        eff_item.appendRow(cmd_item)
-
-        # Prefer attaching to an existing GROUP_TRIGGER node if present
-        attached = False
-        for i in range(card_item.rowCount()):
-            child = card_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "GROUP_TRIGGER":
-                child.appendRow(eff_item)
-                attached = True
-                break
-
-        if not attached:
-            card_item.appendRow(eff_item)
-
-        # Update reconstructed card data cache on change
-        try:
-            self._update_card_from_child(eff_item)
-        except Exception:
-            pass
-
-        # Ensure revolution_change keyword is reflected immediately in the CARD data
-        try:
-            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
-            if 'keywords' not in card_data or not isinstance(card_data['keywords'], dict):
-                card_data['keywords'] = card_data.get('keywords', {}) or {}
-            card_data['keywords']['revolution_change'] = True
-            card_data['revolution_change_condition'] = cmd_data.get('target_filter')
-            card_item.setData(card_data, Qt.ItemDataRole.UserRole + 2)
-        except Exception:
-            pass
-
-        return eff_item
+        return self._add_logic_from_template("revolution_change", card_item, 'mutation_kind', 'REVOLUTION_CHANGE')
 
     def remove_revolution_change_logic(self, card_item):
         rows_to_remove = []
@@ -913,59 +808,8 @@ class CardDataManager:
             card_item.removeRow(i)
 
     def add_mekraid_logic(self, card_item):
-        """メクレイド効果を自動追加（ON_PLAYトリガーでMEKRAIDコマンドを生成）"""
-        # 既存のメクレイド効果をチェック
-        for i in range(card_item.rowCount()):
-            child = card_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
-                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
-                for cmd in eff_data.get('commands', []):
-                    if cmd.get('type') == 'MEKRAID':
-                        return child
-
-        # 新しいON_PLAY効果を作成
-        eff_data = {
-            "trigger": "ON_PLAY",
-            "condition": {"type": "NONE"},
-            "commands": []
-        }
-        eff_item = self._create_effect_item(eff_data)
-
-        # MEKRAIDコマンドを作成
-        # Derive default civs from card data
-        try:
-            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
-        except Exception:
-            card_data = {}
-        civs = list(card_data.get('civilizations', []) or [])
-        target_filter = {}
-        if civs:
-            target_filter['civilizations'] = civs
-        target_filter['types'] = ["CREATURE"]
-
-        cmd_data = {
-            "type": "MEKRAID",
-            "look_count": 3,
-            "max_cost": 5,
-            "select_count": 1,
-            "target_filter": target_filter
-        }
-        cmd_item = self.create_command_item(cmd_data)
-        eff_item.appendRow(cmd_item)
-
-        card_item.appendRow(eff_item)
-
-        try:
-            self._update_card_from_child(eff_item)
-            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
-            if 'keywords' not in card_data:
-                card_data['keywords'] = {}
-            card_data['keywords']['mekraid'] = True
-            card_item.setData(card_data, Qt.ItemDataRole.UserRole + 2)
-        except Exception:
-            pass
-
-        return eff_item
+        """メクレイド効果を自動追加"""
+        return self._add_logic_from_template("mekraid", card_item, 'type', 'MEKRAID')
 
     def remove_mekraid_logic(self, card_item):
         """メクレイド効果を削除"""
@@ -983,58 +827,75 @@ class CardDataManager:
             card_item.removeRow(i)
 
     def add_friend_burst_logic(self, card_item):
-        """フレンド・バースト効果を自動追加（ON_ATTACKトリガーでFRIEND_BURSTコマンドを生成）"""
-        # 既存のフレンド・バースト効果をチェック
+        """フレンド・バースト効果を自動追加"""
+        return self._add_logic_from_template("friend_burst", card_item, 'type', 'FRIEND_BURST')
+
+    def _add_logic_from_template(self, template_key, card_item, check_key, check_val):
+        """Generic helper to add logic from a template."""
+        # 1. Check existence
         for i in range(card_item.rowCount()):
             child = card_item.child(i)
             if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
                 eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
                 for cmd in eff_data.get('commands', []):
-                    if cmd.get('type') == 'FRIEND_BURST':
+                    if cmd.get(check_key) == check_val:
                         return child
 
-        # 新しいON_ATTACK効果を作成
-        eff_data = {
-            "trigger": "ON_ATTACK",
-            "condition": {"type": "NONE"},
-            "commands": []
-        }
-        eff_item = self._create_effect_item(eff_data)
-
-        # FRIEND_BURSTコマンドを作成（デフォルトでカードの種族/文明を反映）
+        # 2. Prepare Context
         try:
             card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
         except Exception:
             card_data = {}
-        civs = list(card_data.get('civilizations', []) or [])
-        races = list(card_data.get('races', []) or [])
-        target_filter = {}
-        if civs:
-            target_filter['civilizations'] = civs
-        if races:
-            target_filter['races'] = races
-        target_filter['types'] = ["CREATURE"]
 
-        cmd_data = {
-            "type": "FRIEND_BURST",
-            "target_filter": target_filter
+        context = {
+            'civilizations': list(card_data.get('civilizations', ["FIRE"])),
+            'races': list(card_data.get('races', ["Dragon"]))
         }
-        cmd_item = self.create_command_item(cmd_data)
-        eff_item.appendRow(cmd_item)
 
-        card_item.appendRow(eff_item)
+        # 3. Apply Template
+        eff_data, keywords, meta = self.template_manager.apply_template(template_key, context)
+        if not eff_data:
+            return None
 
+        eff_item = self._create_effect_item(eff_data)
+        self._load_effect_children(eff_item, eff_data)
+
+        # 4. Attach to Tree
+        attached = False
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child.data(Qt.ItemDataRole.UserRole + 1) == "GROUP_TRIGGER":
+                child.appendRow(eff_item)
+                attached = True
+                break
+
+        if not attached:
+            card_item.appendRow(eff_item)
+
+        # 5. Update Card Data (Keywords and Mappings)
         try:
             self._update_card_from_child(eff_item)
             card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
-            if 'keywords' not in card_data:
-                card_data['keywords'] = {}
-            card_data['keywords']['friend_burst'] = True
-            # Mirror condition on card root for text generation
-            card_data['friend_burst_condition'] = cmd_data.get('target_filter')
+            current_keywords = card_data.get('keywords', {})
+            current_keywords.update(keywords)
+            card_data['keywords'] = current_keywords
+
+            # Handle mappings (e.g. friend_burst_condition -> commands[0].target_filter)
+            # This is a bit advanced for a generic function, so we do a simple resolution based on convention
+            # or use the meta info if provided.
+            mappings = meta.get('condition_mapping', {})
+            for root_key, path in mappings.items():
+                # Simplified resolution: "commands[0].target_filter"
+                if path.startswith("commands[0]."):
+                    sub_key = path.split(".")[1] # e.g. target_filter
+                    if eff_data.get('commands') and len(eff_data['commands']) > 0:
+                        val = eff_data['commands'][0].get(sub_key)
+                        if val:
+                            card_data[root_key] = val
+
             card_item.setData(card_data, Qt.ItemDataRole.UserRole + 2)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error updating card data after template application: {e}")
 
         return eff_item
 

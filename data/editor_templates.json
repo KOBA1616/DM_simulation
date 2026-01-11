@@ -1,66 +1,73 @@
 {
-  "commands": [
-    {
-      "name": "カード移動",
-      "data": {
-        "type": "TRANSITION",
-        "target_group": "NONE",
-        "to_zone": "HAND",
-        "target_filter": {}
-      }
+  "revolution_change": {
+    "name": "Revolution Change",
+    "root_type": "EFFECT",
+    "data": {
+      "trigger": "ON_ATTACK_FROM_HAND",
+      "condition": { "type": "NONE" },
+      "commands": [
+        {
+          "type": "REVOLUTION_CHANGE",
+          "target_filter": {
+            "types": ["CREATURE"],
+            "civilizations": ["__CARD_CIVILIZATIONS__"],
+            "races": ["__CARD_RACES__"]
+          }
+        }
+      ]
     },
-    {
-      "name": "条件分岐（エディタ専用）",
-      "data": {
-        "type": "BRANCH",
-        "condition": {},
-        "if_true": [],
-        "if_false": [],
-        "editor_only": true
-      }
+    "keywords": {
+      "revolution_change": true
     },
-    {
-      "name": "状態変更（付与）",
-      "data": {
-        "type": "MUTATE",
-        "mutation_type": "ADD_MODIFIER",
-        "payload": {}
-      }
-    },
-    {
-      "name": "進行（シーケンス／エディタ専用）",
-      "data": {
-        "type": "FLOW",
-        "flow_type": "SEQUENCE",
-        "commands": [],
-        "editor_only": true
-      }
-    },
-    {
-      "name": "カードを引く",
-      "data": {
-        "type": "TRANSITION",
-        "from_zone": "DECK",
-        "to_zone": "HAND",
-        "target_group": "NONE",
-        "amount": 1
-      }
-    },
-    {
-      "name": "カードを破壊する",
-      "data": {
-        "type": "TRANSITION",
-        "to_zone": "GRAVEYARD",
-        "target_group": "NONE"
-      }
-    },
-    {
-      "name": "マナゾーンに置く",
-      "data": {
-        "type": "TRANSITION",
-        "to_zone": "MANA",
-        "target_group": "NONE"
-      }
+    "condition_mapping": {
+       "revolution_change_condition": "commands[0].target_filter"
     }
-  ]
+  },
+  "mekraid": {
+    "name": "Mekraid",
+    "root_type": "EFFECT",
+    "data": {
+      "trigger": "ON_PLAY",
+      "condition": { "type": "NONE" },
+      "commands": [
+        {
+          "type": "MEKRAID",
+          "look_count": 3,
+          "max_cost": 5,
+          "select_count": 1,
+          "target_filter": {
+             "types": ["CREATURE"],
+             "civilizations": ["__CARD_CIVILIZATIONS__"]
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "mekraid": true
+    }
+  },
+  "friend_burst": {
+    "name": "Friend Burst",
+    "root_type": "EFFECT",
+    "data": {
+      "trigger": "ON_ATTACK",
+      "condition": { "type": "NONE" },
+      "commands": [
+        {
+          "type": "FRIEND_BURST",
+          "target_filter": {
+            "types": ["CREATURE"],
+            "civilizations": ["__CARD_CIVILIZATIONS__"],
+            "races": ["__CARD_RACES__"]
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "friend_burst": true
+    },
+    "condition_mapping": {
+       "friend_burst_condition": "commands[0].target_filter"
+    }
+  }
 }
