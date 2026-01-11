@@ -4,6 +4,7 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem, QAction
 from PyQt6.QtCore import Qt, QModelIndex
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
+from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
 import uuid
 
 class LogicTreeWidget(QTreeView):
@@ -67,104 +68,77 @@ class LogicTreeWidget(QTreeView):
         item_type = self.data_manager.get_item_type(index)
         menu = QMenu(self)
 
-        # Logic Mask: Get Card Type to filter options
-        card_type = self.data_manager.get_card_context_type(index)
-        is_spell = (card_type == "SPELL")
-
+        # Build menu using helper methods for clarity and future extensibility
         if item_type == "CARD" or item_type == "SPELL_SIDE":
-            add_eff_action = QAction(tr("Add Effect"), self)
-            add_eff_action.triggered.connect(lambda: self.add_effect_interactive(index))
-            menu.addAction(add_eff_action)
-
-            # Add Static Ability (Modifier)
-            add_static_action = QAction(tr("Add Static Ability"), self)
-            add_static_action.triggered.connect(lambda: self.add_static(index))
-            menu.addAction(add_static_action)
-
-            # Removed restriction on Spells, as some (e.g. Strike Back) can apply to Spells.
-            if item_type != "SPELL_SIDE":
-                 add_reaction_action = QAction(tr("Add Reaction Ability"), self)
-                 add_reaction_action.triggered.connect(lambda: self.add_reaction(index))
-                 menu.addAction(add_reaction_action)
-
+            self._build_card_context_menu(menu, index, item_type)
         elif item_type == "EFFECT":
-             cmd_menu = menu.addMenu(tr("Add Command"))
-             templates = self.data_manager.templates.get("commands", [])
-
-             # Always add Default Transition option
-             add_cmd_action = QAction(tr("Transition (Default)"), self)
-             add_cmd_action.triggered.connect(lambda checked: self.add_command_to_effect(index))
-             if cmd_menu is not None:
-                 cmd_menu.addAction(add_cmd_action)
-
-             if cmd_menu is not None:
-                 cmd_menu.addSeparator()
-
-             if not templates:
-                 warning = QAction(tr("(No Templates Found)"), self)
-                 warning.setEnabled(False)
-                 if cmd_menu is not None:
-                     cmd_menu.addAction(warning)
-             else:
-                 for tpl in templates:
-                     action = QAction(tr(tpl['name']), self)
-                     action.triggered.connect(lambda checked, data=tpl['data']: self.add_command_to_effect(index, data))
-                     if cmd_menu is not None:
-                         cmd_menu.addAction(action)
-
-             remove_action = QAction(tr("Remove Item"), self)
-             remove_action.triggered.connect(lambda: self.remove_current_item())
-             menu.addAction(remove_action)
-
-        elif item_type == "MODIFIER" or item_type == "REACTION_ABILITY":
-             remove_action = QAction(tr("Remove Item"), self)
-             remove_action.triggered.connect(lambda: self.remove_current_item())
-             menu.addAction(remove_action)
-
+            self._build_effect_context_menu(menu, index)
+        elif item_type in ["MODIFIER", "REACTION_ABILITY"]:
+            self._add_remove_action(menu)
         elif item_type == "OPTION":
-            cmd_menu = menu.addMenu(tr("Add Command"))
-            templates = self.data_manager.templates.get("commands", [])
-
-            # Always add Default Transition option
-            add_cmd_action = QAction(tr("Transition (Default)"), self)
-            add_cmd_action.triggered.connect(lambda checked: self.add_command_to_option(index))
-            if cmd_menu is not None:
-                cmd_menu.addAction(add_cmd_action)
-
-            if cmd_menu is not None:
-                cmd_menu.addSeparator()
-
-            if not templates:
-                warning = QAction(tr("(No Templates Found)"), self)
-                warning.setEnabled(False)
-                if cmd_menu is not None:
-                    cmd_menu.addAction(warning)
-            else:
-                for tpl in templates:
-                    action = QAction(tr(tpl['name']), self)
-                    action.triggered.connect(lambda checked, data=tpl['data']: self.add_command_to_option(index, data))
-                    if cmd_menu is not None:
-                        cmd_menu.addAction(action)
-
-            remove_opt_action = QAction(tr("Remove Option"), self)
-            remove_opt_action.triggered.connect(lambda: self.remove_current_item())
-            menu.addAction(remove_opt_action)
-
+            self._build_option_context_menu(menu, index)
         elif item_type == "COMMAND":
-             remove_cmd = QAction(tr("Remove Command"), self)
-             remove_cmd.triggered.connect(lambda: self.remove_current_item())
-             menu.addAction(remove_cmd)
-
-        # Add common helpers for CMD branches
-        if item_type in ["CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
-             add_cmd_br = QAction(tr("Add Command"), self)
-             add_cmd_br.triggered.connect(lambda: self._add_command_to_branch(index))
-             menu.addAction(add_cmd_br)
+            self._add_remove_action(menu)
+        elif item_type in ["CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
+            add_cmd_br = QAction(tr("Add Command"), self)
+            add_cmd_br.triggered.connect(lambda: self._add_command_to_branch(index))
+            menu.addAction(add_cmd_br)
 
         if not menu.isEmpty():
             vp = self.viewport()
             if vp is not None:
                 menu.exec(vp.mapToGlobal(pos))
+
+    def _build_card_context_menu(self, menu, index, item_type):
+        add_eff_action = QAction(tr("Add Effect"), self)
+        add_eff_action.triggered.connect(lambda: self.add_effect_interactive(index))
+        menu.addAction(add_eff_action)
+
+        add_static_action = QAction(tr("Add Static Ability"), self)
+        add_static_action.triggered.connect(lambda: self.add_static(index))
+        menu.addAction(add_static_action)
+
+        if item_type != "SPELL_SIDE":
+            add_reaction_action = QAction(tr("Add Reaction Ability"), self)
+            add_reaction_action.triggered.connect(lambda: self.add_reaction(index))
+            menu.addAction(add_reaction_action)
+
+    def _build_effect_context_menu(self, menu, index):
+        self._add_command_submenu(menu, index, self.add_command_to_effect)
+        menu.addSeparator()
+        self._add_remove_action(menu)
+
+    def _build_option_context_menu(self, menu, index):
+        self._add_command_submenu(menu, index, self.add_command_to_option)
+        menu.addSeparator()
+        self._add_remove_action(menu, label=tr("Remove Option"))
+
+    def _add_command_submenu(self, menu, index, callback):
+        cmd_menu = menu.addMenu(tr("Add Command"))
+        templates = self.data_manager.templates.get("commands", [])
+
+        # Default Transition
+        add_cmd_action = QAction(tr("Transition (Default)"), self)
+        add_cmd_action.triggered.connect(lambda checked: callback(index))
+        cmd_menu.addAction(add_cmd_action)
+        cmd_menu.addSeparator()
+
+        if not templates:
+            warning = QAction(tr("(No Templates Found)"), self)
+            warning.setEnabled(False)
+            cmd_menu.addAction(warning)
+        else:
+            for tpl in templates:
+                action = QAction(tr(tpl['name']), self)
+                # Use default argument binding properly
+                action.triggered.connect(lambda checked, d=tpl['data']: callback(index, d))
+                cmd_menu.addAction(action)
+
+    def _add_remove_action(self, menu, label=None):
+        label = label or tr("Remove Item")
+        remove_action = QAction(label, self)
+        remove_action.triggered.connect(lambda: self.remove_current_item())
+        menu.addAction(remove_action)
 
     def convert_all_legacy_actions_in_node(self, index):
         """Preview then (optionally) convert all Actions to Commands starting from the given node."""
@@ -231,8 +205,8 @@ class LogicTreeWidget(QTreeView):
         count = parent_item.rowCount() + 1
 
         new_item = QStandardItem(f"{tr('Option')} {count}")
-        new_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
-        new_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
+        new_item.setData("OPTION", ROLE_TYPE)
+        new_item.setData({'uid': str(uuid.uuid4())}, ROLE_DATA)
 
         parent_item.appendRow(new_item)
         self.expand(parent_index)
@@ -542,3 +516,25 @@ class LogicTreeWidget(QTreeView):
                 self.data_manager.set_item_data(card_item, updated)
         except Exception:
             pass
+
+    def request_generate_options(self):
+        if not getattr(self, 'current_item', None):
+            return
+        try:
+            count = int(self.option_count_spin.value())
+        except Exception:
+            count = 1
+
+        new_options = []
+        for _ in range(max(1, count)):
+            new_options.append([{"type": "NONE"}])
+
+        data = self.current_item.data(ROLE_DATA) or {}
+        data['options'] = new_options
+        data['type'] = 'CHOICE' # Unified type for options
+
+        self.current_item.setData(data, ROLE_DATA)
+        try:
+            self.load_data(self.current_item)
+        except Exception:
+            self.dataChanged.emit()

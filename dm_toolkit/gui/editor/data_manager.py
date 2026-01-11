@@ -11,6 +11,7 @@ from dm_toolkit.gui.editor import normalize
 from dm_toolkit.gui.editor.action_converter import ActionConverter, convert_action_to_objs
 from dm_toolkit.gui.editor.command_model import CommandDef, WarningCommand
 from dm_toolkit.gui.editor.templates import LogicTemplateManager
+from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
 
 class CardDataManager:
     """
@@ -29,21 +30,21 @@ class CardDataManager:
         """Safe accessor for item type (UserRole+1)."""
         item = self._ensure_item(index_or_item)
         if item:
-            return item.data(Qt.ItemDataRole.UserRole + 1)
+            return item.data(ROLE_TYPE)
         return None
 
     def get_item_data(self, index_or_item):
         """Safe accessor for item data (UserRole+2). Returns empty dict if None."""
         item = self._ensure_item(index_or_item)
         if item:
-            return item.data(Qt.ItemDataRole.UserRole + 2) or {}
+            return item.data(ROLE_DATA) or {}
         return {}
 
     def set_item_data(self, index_or_item, data):
         """Safe setter for item data (UserRole+2)."""
         item = self._ensure_item(index_or_item)
         if item:
-            item.setData(data, Qt.ItemDataRole.UserRole + 2)
+            item.setData(data, ROLE_DATA)
 
     def _ensure_item(self, index_or_item):
         if isinstance(index_or_item, QModelIndex):
@@ -114,12 +115,12 @@ class CardDataManager:
         data = self.get_item_data(item)
 
         if target_type == "TRIGGERED":
-            item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
+            item.setData("EFFECT", ROLE_TYPE)
             trigger = data.get('trigger', 'NONE')
             item.setText(f"{tr('Effect')}: {tr(trigger)}")
 
         elif target_type == "STATIC":
-            item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
+            item.setData("MODIFIER", ROLE_TYPE)
             mtype = data.get('type', data.get('layer_type', 'NONE'))
             item.setText(f"{tr('Static')}: {tr(mtype)}")
 
@@ -135,7 +136,7 @@ class CardDataManager:
         This uses the normalize.to_internal heuristic and stores by uid.
         """
         try:
-            data = item.data(Qt.ItemDataRole.UserRole + 2)
+            data = item.data(ROLE_DATA)
         except Exception:
             data = None
 
@@ -241,7 +242,7 @@ class CardDataManager:
                      # If reaction has actions/commands structure similar to effect
                      # We apply lift to it.
                      self._lift_actions_to_commands(ra)
-                     ra_item.setData(ra, Qt.ItemDataRole.UserRole + 2)
+                     ra_item.setData(ra, ROLE_DATA)
 
                 card_item.appendRow(ra_item)
 
@@ -253,15 +254,15 @@ class CardDataManager:
                 has_keywords_node = False
                 for chk_i in range(card_item.rowCount()):
                     chk_child = card_item.child(chk_i)
-                    if chk_child is not None and chk_child.data(Qt.ItemDataRole.UserRole + 1) == "KEYWORDS":
+                    if chk_child is not None and chk_child.data(ROLE_TYPE) == "KEYWORDS":
                         has_keywords_node = True
                         break
 
                 if not has_keywords_node:
                     kw_item = QStandardItem(tr("Keywords"))
-                    kw_item.setData("KEYWORDS", Qt.ItemDataRole.UserRole + 1)
+                    kw_item.setData("KEYWORDS", ROLE_TYPE)
                     # Make a copy to avoid mutating the original card data
-                    kw_item.setData(keywords_data.copy(), Qt.ItemDataRole.UserRole + 2)
+                    kw_item.setData(keywords_data.copy(), ROLE_DATA)
                     card_item.appendRow(kw_item)
 
                 # Auto-generate effects for special keywords from JSON (idempotent)
@@ -415,7 +416,7 @@ class CardDataManager:
 
     def reconstruct_card_data(self, card_item):
         """Reconstructs a single card's data from its tree item."""
-        card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
+        card_data = card_item.data(ROLE_DATA)
         if not card_data:
             return None
 
@@ -434,7 +435,7 @@ class CardDataManager:
         # Iterate children of CARD node (Flattened structure)
         for j in range(card_item.rowCount()):
             child_item = card_item.child(j)
-            item_type = child_item.data(Qt.ItemDataRole.UserRole + 1)
+            item_type = child_item.data(ROLE_TYPE)
 
             # Handle group containers (e.g., GROUP_TRIGGER holding EFFECT nodes)
             if isinstance(item_type, str) and item_type.startswith("GROUP_"):
@@ -442,7 +443,7 @@ class CardDataManager:
                     grp_child = child_item.child(k)
                     if grp_child is None:
                         continue
-                    if grp_child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
+                    if grp_child.data(ROLE_TYPE) == "EFFECT":
                         eff_data = self._reconstruct_effect(grp_child)
                         new_effects.append(eff_data)
                         # Detect revolution change in either legacy actions or new commands
@@ -461,7 +462,7 @@ class CardDataManager:
                 continue
 
             if item_type == "KEYWORDS":
-                kw_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
+                kw_data = child_item.data(ROLE_DATA)
                 if kw_data:
                     keywords_dict = kw_data.copy()
 
@@ -483,18 +484,18 @@ class CardDataManager:
                 new_static.append(self._reconstruct_modifier(child_item))
 
             elif item_type == "REACTION_ABILITY":
-                new_reactions.append(child_item.data(Qt.ItemDataRole.UserRole + 2))
+                new_reactions.append(child_item.data(ROLE_DATA))
 
             elif item_type == "SPELL_SIDE":
                 # Reconstruct Spell Side
-                spell_side_data = child_item.data(Qt.ItemDataRole.UserRole + 2)
+                spell_side_data = child_item.data(ROLE_DATA)
                 spell_side_effects = []
                 spell_side_static = []
 
                 # Iterate Spell Side Children (Flattened)
                 for k in range(child_item.rowCount()):
                     sp_child = child_item.child(k)
-                    sp_type = sp_child.data(Qt.ItemDataRole.UserRole + 1)
+                    sp_type = sp_child.data(ROLE_TYPE)
 
                     if sp_type == "EFFECT":
                         spell_side_effects.append(self._reconstruct_effect(sp_child))
@@ -561,7 +562,7 @@ class CardDataManager:
         return card_data
 
     def _reconstruct_effect(self, eff_item):
-        eff_data = eff_item.data(Qt.ItemDataRole.UserRole + 2)
+        eff_data = eff_item.data(ROLE_DATA)
 
         # New policy: when reconstructing, prefer emitting `commands` only.
         # Convert any legacy ACTION nodes into command dicts (using ActionConverter).
@@ -569,7 +570,7 @@ class CardDataManager:
 
         for k in range(eff_item.rowCount()):
             item = eff_item.child(k)
-            item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+            item_type = item.data(ROLE_TYPE)
 
             # LEGACY SUPPORT: Auto-convert ACTION nodes to COMMAND nodes
             # This handles legacy data loaded from old JSON files.
@@ -624,18 +625,18 @@ class CardDataManager:
         
         New code should not create ACTION nodes; use COMMAND nodes instead.
         """
-        act_data = act_item.data(Qt.ItemDataRole.UserRole + 2)
+        act_data = act_item.data(ROLE_DATA)
         if act_item.rowCount() > 0:
             options = []
             for m in range(act_item.rowCount()):
                 option_item = act_item.child(m)
-                if option_item.data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+                if option_item.data(ROLE_TYPE) == "OPTION":
                     option_actions = []
                     for n in range(option_item.rowCount()):
                         sub_act_item = option_item.child(n)
                         # Note: Nested actions should already be converted to commands
                         # but check both types for robustness
-                        item_type = sub_act_item.data(Qt.ItemDataRole.UserRole + 1)
+                        item_type = sub_act_item.data(ROLE_TYPE)
                         if item_type == "ACTION":
                             option_actions.append(self._reconstruct_action(sub_act_item))
                         elif item_type == "COMMAND":
@@ -648,34 +649,34 @@ class CardDataManager:
         return act_data
 
     def _reconstruct_modifier(self, mod_item):
-        return mod_item.data(Qt.ItemDataRole.UserRole + 2)
+        return mod_item.data(ROLE_DATA)
 
     def _reconstruct_command(self, cmd_item):
-        cmd_data = cmd_item.data(Qt.ItemDataRole.UserRole + 2)
+        cmd_data = cmd_item.data(ROLE_DATA)
         if_true_list = []
         if_false_list = []
         options_list = []
 
         for i in range(cmd_item.rowCount()):
             child = cmd_item.child(i)
-            role = child.data(Qt.ItemDataRole.UserRole + 1)
+            role = child.data(ROLE_TYPE)
 
             if role == "CMD_BRANCH_TRUE":
                 for j in range(child.rowCount()):
                     sub_item = child.child(j)
-                    if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                    if sub_item.data(ROLE_TYPE) == "COMMAND":
                         if_true_list.append(self._reconstruct_command(sub_item))
             elif role == "CMD_BRANCH_FALSE":
                 for j in range(child.rowCount()):
                     sub_item = child.child(j)
-                    if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                    if sub_item.data(ROLE_TYPE) == "COMMAND":
                         if_false_list.append(self._reconstruct_command(sub_item))
             elif role == "OPTION":
                 # Handle CHOICE options (list of commands)
                 opt_cmds = []
                 for j in range(child.rowCount()):
                     sub_item = child.child(j)
-                    if sub_item.data(Qt.ItemDataRole.UserRole + 1) == "COMMAND":
+                    if sub_item.data(ROLE_TYPE) == "COMMAND":
                         opt_cmds.append(self._reconstruct_command(sub_item))
                 options_list.append(opt_cmds)
 
@@ -706,7 +707,7 @@ class CardDataManager:
         parent_item = self.model.itemFromIndex(parent_index)
         if parent_item is None:
             return None
-        parent_role = parent_item.data(Qt.ItemDataRole.UserRole + 1)
+        parent_role = parent_item.data(ROLE_TYPE)
 
         target_item = parent_item
 
@@ -751,8 +752,8 @@ class CardDataManager:
                 pass
 
         new_item = QStandardItem(label)
-        new_item.setData(item_type, Qt.ItemDataRole.UserRole + 1)
-        new_item.setData(data, Qt.ItemDataRole.UserRole + 2)
+        new_item.setData(item_type, ROLE_TYPE)
+        new_item.setData(data, ROLE_DATA)
 
         target_item.appendRow(new_item)
         return new_item
@@ -762,7 +763,7 @@ class CardDataManager:
             child = card_item.child(i)
             if child is None:
                 continue
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
+            if child.data(ROLE_TYPE) == "SPELL_SIDE":
                 return child
 
         spell_data = {
@@ -781,7 +782,7 @@ class CardDataManager:
     def remove_spell_side_item(self, card_item):
         for i in reversed(range(card_item.rowCount())):
             child = card_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "SPELL_SIDE":
+            if child.data(ROLE_TYPE) == "SPELL_SIDE":
                 card_item.removeRow(i)
                 try:
                     self._update_card_from_child(card_item)
@@ -797,8 +798,8 @@ class CardDataManager:
         rows_to_remove = []
         for i in range(card_item.rowCount()):
             child = card_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
-                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+            if child.data(ROLE_TYPE) == "EFFECT":
+                eff_data = child.data(ROLE_DATA)
                 for act in eff_data.get('commands', []):
                     if act.get('mutation_kind') == 'REVOLUTION_CHANGE':
                         rows_to_remove.append(i)
@@ -816,8 +817,8 @@ class CardDataManager:
         rows_to_remove = []
         for i in range(card_item.rowCount()):
             child = card_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
-                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+            if child.data(ROLE_TYPE) == "EFFECT":
+                eff_data = child.data(ROLE_DATA)
                 for cmd in eff_data.get('commands', []):
                     if cmd.get('type') == 'MEKRAID':
                         rows_to_remove.append(i)
@@ -835,15 +836,15 @@ class CardDataManager:
         # 1. Check existence
         for i in range(card_item.rowCount()):
             child = card_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
-                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+            if child.data(ROLE_TYPE) == "EFFECT":
+                eff_data = child.data(ROLE_DATA)
                 for cmd in eff_data.get('commands', []):
                     if cmd.get(check_key) == check_val:
                         return child
 
         # 2. Prepare Context
         try:
-            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+            card_data = card_item.data(ROLE_DATA) or {}
         except Exception:
             card_data = {}
 
@@ -864,7 +865,7 @@ class CardDataManager:
         attached = False
         for i in range(card_item.rowCount()):
             child = card_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "GROUP_TRIGGER":
+            if child.data(ROLE_TYPE) == "GROUP_TRIGGER":
                 child.appendRow(eff_item)
                 attached = True
                 break
@@ -875,7 +876,7 @@ class CardDataManager:
         # 5. Update Card Data (Keywords and Mappings)
         try:
             self._update_card_from_child(eff_item)
-            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2) or {}
+            card_data = card_item.data(ROLE_DATA) or {}
             current_keywords = card_data.get('keywords', {})
             current_keywords.update(keywords)
             card_data['keywords'] = current_keywords
@@ -893,7 +894,7 @@ class CardDataManager:
                         if val:
                             card_data[root_key] = val
 
-            card_item.setData(card_data, Qt.ItemDataRole.UserRole + 2)
+            card_item.setData(card_data, ROLE_DATA)
         except Exception as e:
             print(f"Error updating card data after template application: {e}")
 
@@ -904,8 +905,8 @@ class CardDataManager:
         rows_to_remove = []
         for i in range(card_item.rowCount()):
             child = card_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == "EFFECT":
-                eff_data = child.data(Qt.ItemDataRole.UserRole + 2)
+            if child.data(ROLE_TYPE) == "EFFECT":
+                eff_data = child.data(ROLE_DATA)
                 for cmd in eff_data.get('commands', []):
                     if cmd.get('type') == 'FRIEND_BURST':
                         rows_to_remove.append(i)
@@ -917,14 +918,14 @@ class CardDataManager:
     def add_option_slots(self, action_item, count):
         current_options = 0
         for i in range(action_item.rowCount()):
-             if action_item.child(i).data(Qt.ItemDataRole.UserRole + 1) == "OPTION":
+             if action_item.child(i).data(ROLE_TYPE) == "OPTION":
                   current_options += 1
         for i in range(count):
             opt_num = current_options + i + 1
             opt_item = QStandardItem(f"{tr('Option')} {opt_num}")
-            opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
+            opt_item.setData("OPTION", ROLE_TYPE)
             uid = str(uuid.uuid4())
-            opt_item.setData({'uid': uid}, Qt.ItemDataRole.UserRole + 2)
+            opt_item.setData({'uid': uid}, ROLE_DATA)
             # register internal representation for this newly created option
             try:
                 self._internalize_item(opt_item)
@@ -940,15 +941,15 @@ class CardDataManager:
     def add_command_branches(self, cmd_item):
         has_true, has_false = False, False
         for i in range(cmd_item.rowCount()):
-            role = cmd_item.child(i).data(Qt.ItemDataRole.UserRole + 1)
+            role = cmd_item.child(i).data(ROLE_TYPE)
             if role == "CMD_BRANCH_TRUE": has_true = True
             if role == "CMD_BRANCH_FALSE": has_false = True
 
         if not has_true:
             true_item = QStandardItem(tr("If True"))
-            true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
+            true_item.setData("CMD_BRANCH_TRUE", ROLE_TYPE)
             t_uid = str(uuid.uuid4())
-            true_item.setData({'uid': t_uid}, Qt.ItemDataRole.UserRole + 2)
+            true_item.setData({'uid': t_uid}, ROLE_DATA)
             try:
                 self._internalize_item(true_item)
             except Exception:
@@ -957,32 +958,27 @@ class CardDataManager:
 
         if not has_false:
             false_item = QStandardItem(tr("If False"))
-            false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
+            false_item.setData("CMD_BRANCH_FALSE", ROLE_TYPE)
             f_uid = str(uuid.uuid4())
-            false_item.setData({'uid': f_uid}, Qt.ItemDataRole.UserRole + 2)
+            false_item.setData({'uid': f_uid}, ROLE_DATA)
             try:
                 self._internalize_item(false_item)
             except Exception:
                 pass
             cmd_item.appendRow(false_item)
-        # Update parent card data
-        try:
-            self._update_card_from_child(cmd_item)
-        except Exception:
-            pass
 
     def _create_card_item(self, card):
         if 'uid' not in card:
             card['uid'] = str(uuid.uuid4())
         item = QStandardItem(f"{card.get('id')} - {card.get('name', 'No Name')}")
-        item.setData("CARD", Qt.ItemDataRole.UserRole + 1)
-        item.setData(card, Qt.ItemDataRole.UserRole + 2)
+        item.setData("CARD", ROLE_TYPE)
+        item.setData(card, ROLE_DATA)
 
         # Create Node Type 1: Keywords
         kw_item = QStandardItem(tr("Keywords"))
-        kw_item.setData("KEYWORDS", Qt.ItemDataRole.UserRole + 1)
+        kw_item.setData("KEYWORDS", ROLE_TYPE)
         # We pass the keywords dictionary explicitly as data for this item
-        kw_item.setData(card.get('keywords', {}), Qt.ItemDataRole.UserRole + 2)
+        kw_item.setData(card.get('keywords', {}), ROLE_DATA)
         kw_item.setEditable(False)
         item.appendRow(kw_item)
 
@@ -997,16 +993,16 @@ class CardDataManager:
     def _create_spell_side_item(self, spell_data):
         self._ensure_uid(spell_data)
         item = QStandardItem(f"{tr('Spell Side')}: {spell_data.get('name', 'No Name')}")
-        item.setData("SPELL_SIDE", Qt.ItemDataRole.UserRole + 1)
-        item.setData(spell_data, Qt.ItemDataRole.UserRole + 2)
+        item.setData("SPELL_SIDE", ROLE_TYPE)
+        item.setData(spell_data, ROLE_DATA)
         return item
 
     def _create_effect_item(self, effect):
         self._ensure_uid(effect)
         trig = effect.get('trigger', 'NONE')
         item = QStandardItem(f"{tr('Effect')}: {tr(trig)}")
-        item.setData("EFFECT", Qt.ItemDataRole.UserRole + 1)
-        item.setData(effect, Qt.ItemDataRole.UserRole + 2)
+        item.setData("EFFECT", ROLE_TYPE)
+        item.setData(effect, ROLE_DATA)
         try:
             self._internalize_item(item)
         except Exception:
@@ -1017,16 +1013,16 @@ class CardDataManager:
         self._ensure_uid(modifier)
         mtype = modifier.get('type', 'NONE')
         item = QStandardItem(f"{tr('Static')}: {tr(mtype)}")
-        item.setData("MODIFIER", Qt.ItemDataRole.UserRole + 1)
-        item.setData(modifier, Qt.ItemDataRole.UserRole + 2)
+        item.setData("MODIFIER", ROLE_TYPE)
+        item.setData(modifier, ROLE_DATA)
         return item
 
     def _create_reaction_item(self, reaction):
         self._ensure_uid(reaction)
         rtype = reaction.get('type', 'NONE')
         item = QStandardItem(f"{tr('Reaction Ability')}: {rtype}")
-        item.setData("REACTION_ABILITY", Qt.ItemDataRole.UserRole + 1)
-        item.setData(reaction, Qt.ItemDataRole.UserRole + 2)
+        item.setData("REACTION_ABILITY", ROLE_TYPE)
+        item.setData(reaction, ROLE_DATA)
         return item
 
 
@@ -1085,8 +1081,8 @@ class CardDataManager:
         if 'options' in action:
             for i, opt_actions in enumerate(action['options']):
                 opt_item = QStandardItem(f"{tr('Option')} {i+1}")
-                opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
-                opt_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
+                opt_item.setData("OPTION", ROLE_TYPE)
+                opt_item.setData({'uid': str(uuid.uuid4())}, ROLE_DATA)
                 item.appendRow(opt_item)
                 for sub_action in opt_actions:
                     # Auto-convert nested actions to commands
@@ -1136,8 +1132,8 @@ class CardDataManager:
              label = f"⚠️ {label}"
 
         item = QStandardItem(label)
-        item.setData("COMMAND", Qt.ItemDataRole.UserRole + 1)
-        item.setData(command, Qt.ItemDataRole.UserRole + 2)
+        item.setData("COMMAND", ROLE_TYPE)
+        item.setData(command, ROLE_DATA)
 
         if command.get('legacy_warning'):
              item.setToolTip(
@@ -1149,16 +1145,16 @@ class CardDataManager:
 
         if 'if_true' in command and command['if_true']:
             true_item = QStandardItem(tr("If True"))
-            true_item.setData("CMD_BRANCH_TRUE", Qt.ItemDataRole.UserRole + 1)
-            true_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
+            true_item.setData("CMD_BRANCH_TRUE", ROLE_TYPE)
+            true_item.setData({'uid': str(uuid.uuid4())}, ROLE_DATA)
             item.appendRow(true_item)
             for child in command['if_true']:
                 true_item.appendRow(self.create_command_item(child))
 
         if 'if_false' in command and command['if_false']:
             false_item = QStandardItem(tr("If False"))
-            false_item.setData("CMD_BRANCH_FALSE", Qt.ItemDataRole.UserRole + 1)
-            false_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
+            false_item.setData("CMD_BRANCH_FALSE", ROLE_TYPE)
+            false_item.setData({'uid': str(uuid.uuid4())}, ROLE_DATA)
             item.appendRow(false_item)
             for child in command['if_false']:
                 false_item.appendRow(self.create_command_item(child))
@@ -1167,8 +1163,8 @@ class CardDataManager:
         if 'options' in command and command['options']:
             for i, opt_cmds in enumerate(command['options']):
                 opt_item = QStandardItem(f"{tr('Option')} {i+1}")
-                opt_item.setData("OPTION", Qt.ItemDataRole.UserRole + 1)
-                opt_item.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
+                opt_item.setData("OPTION", ROLE_TYPE)
+                opt_item.setData({'uid': str(uuid.uuid4())}, ROLE_DATA)
                 item.appendRow(opt_item)
                 for sub_cmd in opt_cmds:
                     opt_item.appendRow(self.create_command_item(sub_cmd))
@@ -1187,7 +1183,7 @@ class CardDataManager:
             card_item = root.child(i)
             if card_item is None:
                 continue
-            card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
+            card_data = card_item.data(ROLE_DATA)
             if card_data and 'id' in card_data:
                 try:
                     cid = int(card_data['id'])
@@ -1201,7 +1197,7 @@ class CardDataManager:
         cur_item = item
         # If a QModelIndex was passed, callers should convert to item beforehand.
         while cur_item is not None:
-            role = cur_item.data(Qt.ItemDataRole.UserRole + 1)
+            role = cur_item.data(ROLE_TYPE)
             if role == 'CARD':
                 return cur_item
             parent = cur_item.parent()
@@ -1217,7 +1213,7 @@ class CardDataManager:
         try:
             updated = self.reconstruct_card_data(card_item)
             if updated:
-                card_item.setData(updated, Qt.ItemDataRole.UserRole + 2)
+                card_item.setData(updated, ROLE_DATA)
                 return updated
         except Exception:
             pass
@@ -1227,13 +1223,13 @@ class CardDataManager:
         """Helper to find a child item with a specific user role data."""
         for i in range(parent_item.rowCount()):
             child = parent_item.child(i)
-            if child.data(Qt.ItemDataRole.UserRole + 1) == role_string:
+            if child.data(ROLE_TYPE) == role_string:
                 return child
         return None
 
     def _sync_editor_warnings(self, card_item):
         """Ensure an EDITOR_WARNINGS node exists under the card and populate warnings."""
-        card_data = card_item.data(Qt.ItemDataRole.UserRole + 2)
+        card_data = card_item.data(ROLE_DATA)
         if not isinstance(card_data, dict):
             return
         warnings_list = card_data.get('_editor_warnings', [])
@@ -1251,8 +1247,8 @@ class CardDataManager:
 
         if warn_node is None:
             warn_node = QStandardItem(tr("Warnings"))
-            warn_node.setData('EDITOR_WARNINGS', Qt.ItemDataRole.UserRole + 1)
-            warn_node.setData({'uid': str(uuid.uuid4())}, Qt.ItemDataRole.UserRole + 2)
+            warn_node.setData('EDITOR_WARNINGS', ROLE_TYPE)
+            warn_node.setData({'uid': str(uuid.uuid4())}, ROLE_DATA)
             warn_node.setEditable(False)
             card_item.insertRow(0, warn_node)
         else:
@@ -1263,8 +1259,8 @@ class CardDataManager:
         # Populate warning entries
         for w in warnings_list:
             w_item = QStandardItem(str(w))
-            w_item.setData('EDITOR_WARNING', Qt.ItemDataRole.UserRole + 1)
-            w_item.setData({'uid': str(uuid.uuid4()), 'text': w}, Qt.ItemDataRole.UserRole + 2)
+            w_item.setData('EDITOR_WARNING', ROLE_TYPE)
+            w_item.setData({'uid': str(uuid.uuid4()), 'text': w}, ROLE_DATA)
             w_item.setEditable(False)
             warn_node.appendRow(w_item)
 
