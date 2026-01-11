@@ -1,152 +1,114 @@
 # -*- coding: utf-8 -*-
-from typing import Dict, Any, List, Optional
+from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr
+from typing import List, Optional, Union, Dict, Any, Literal
+import uuid
 
-class BaseModel:
-    """Base wrapper for dictionary-based data models."""
-    def __init__(self, data: Dict[str, Any] = None):
-        self._data = data if data is not None else {}
+# --- Primitive Models ---
 
-    def to_dict(self) -> Dict[str, Any]:
-        return self._data
+class ConditionModel(BaseModel):
+    type: str = "NONE"
+    value: Optional[int] = None
+    str_val: Optional[str] = None
+    target: Optional[str] = None  # e.g., for target_player in condition
+    extra_fields: Dict[str, Any] = Field(default_factory=dict)
 
-    def get(self, key: str, default: Any = None) -> Any:
-        return self._data.get(key, default)
+    class Config:
+        extra = "allow"
 
-    def set(self, key: str, value: Any):
-        self._data[key] = value
+class FilterModel(BaseModel):
+    zones: List[str] = Field(default_factory=list)
+    civilizations: List[str] = Field(default_factory=list)
+    races: List[str] = Field(default_factory=list)
+    min_cost: Optional[int] = None
+    max_cost: Optional[int] = None
+    min_power: Optional[int] = None
+    max_power: Optional[int] = None
+    owner: Optional[str] = None
+    flags: List[str] = Field(default_factory=list) # e.g. is_tapped
+
+    class Config:
+        extra = "allow"
+
+# --- Command Models ---
 
 class CommandModel(BaseModel):
-    """Model wrapper for Action/Command data."""
+    type: str
+    uid: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
-    @property
-    def type(self) -> str:
-        return self.get('type', 'NONE')
+    # Common fields (consolidated from various subtypes to flat model for simplicity in Editor)
+    target_group: Optional[str] = None
+    target_filter: Optional[FilterModel] = None
 
-    @type.setter
-    def type(self, value: str):
-        self.set('type', value)
+    amount: int = 1
+    str_param: Optional[str] = None
 
-    @property
-    def format(self) -> str:
-        return self.get('format', 'command')
+    from_zone: Optional[str] = None
+    to_zone: Optional[str] = None
 
-    @format.setter
-    def format(self, value: str):
-        self.set('format', value)
+    mutation_kind: Optional[str] = None
 
-    @property
-    def amount(self) -> int:
-        return int(self.get('amount', 0))
+    if_true: List['CommandModel'] = Field(default_factory=list)
+    if_false: List['CommandModel'] = Field(default_factory=list)
+    options: List[List['CommandModel']] = Field(default_factory=list)
 
-    @amount.setter
-    def amount(self, value: int):
-        self.set('amount', int(value))
+    input_link: Optional[str] = None
+    output_link: Optional[str] = None
 
-    @property
-    def target_filter(self) -> Dict[str, Any]:
-        return self.get('target_filter', {})
+    class Config:
+        extra = "allow"
+        populate_by_name = True
 
-    @target_filter.setter
-    def target_filter(self, value: Dict[str, Any]):
-        self.set('target_filter', value)
+class EffectModel(BaseModel):
+    uid: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    trigger: str = "NONE"
+    condition: Optional[ConditionModel] = None
+    commands: List[CommandModel] = Field(default_factory=list)
 
-    @property
-    def target_group(self) -> str:
-        return self.get('target_group', 'PLAYER_SELF')
+class ModifierModel(BaseModel):
+    uid: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: str = "NONE" # e.g. COST_MODIFIER
+    condition: Optional[ConditionModel] = None
+    filter: Optional[FilterModel] = None
+    value: int = 0
+    str_val: Optional[str] = None
+    scope: str = "ALL"
 
-    @target_group.setter
-    def target_group(self, value: str):
-        self.set('target_group', value)
+class ReactionModel(BaseModel):
+    uid: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: str = "NONE" # e.g. NINJA_STRIKE
+    cost: Optional[int] = None
+    zone: Optional[str] = None
+    condition: Optional[ConditionModel] = None # e.g. trigger_event inside
 
-    @property
-    def str_param(self) -> str:
-        return self.get('str_param', '')
-
-    @str_param.setter
-    def str_param(self, value: str):
-        self.set('str_param', value)
-
-    @property
-    def mutation_kind(self) -> str:
-        return self.get('mutation_kind', '')
-
-    @mutation_kind.setter
-    def mutation_kind(self, value: str):
-        self.set('mutation_kind', value)
-
-    @property
-    def from_zone(self) -> str:
-        return self.get('from_zone', 'NONE')
-
-    @from_zone.setter
-    def from_zone(self, value: str):
-        self.set('from_zone', value)
-
-    @property
-    def to_zone(self) -> str:
-        return self.get('to_zone', 'NONE')
-
-    @to_zone.setter
-    def to_zone(self, value: str):
-        self.set('to_zone', value)
-
-    @property
-    def optional(self) -> bool:
-        return bool(self.get('optional', False))
-
-    @optional.setter
-    def optional(self, value: bool):
-        self.set('optional', value)
-
-    @property
-    def play_flags(self) -> List[str]:
-        return self.get('play_flags', [])
-
-    @play_flags.setter
-    def play_flags(self, value: List[str]):
-        self.set('play_flags', value)
-
-    @property
-    def flags(self) -> List[str]:
-        return self.get('flags', [])
-
-    @flags.setter
-    def flags(self, value: List[str]):
-        self.set('flags', value)
-
-    @property
-    def ref_mode(self) -> str:
-        return self.get('ref_mode', 'NONE')
-
-    @ref_mode.setter
-    def ref_mode(self, value: str):
-        self.set('ref_mode', value)
+# --- Card Model ---
 
 class CardModel(BaseModel):
-    """Model wrapper for Card data."""
-    pass
+    uid: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: int = 0
+    name: str = "New Card"
+    type: str = "CREATURE"
+    civilizations: List[str] = Field(default_factory=lambda: ["FIRE"])
+    races: List[str] = Field(default_factory=list)
+    cost: int = 1
+    power: int = 1000
 
-class CardNode(BaseModel):
-    """
-    Detailed validation model for Card Data.
-    Used by DataManager to validate structure.
-    """
+    keywords: Dict[str, Any] = Field(default_factory=dict)
 
-    @classmethod
-    def from_json(cls, data: Dict[str, Any]) -> 'CardNode':
-        return cls(data)
+    effects: List[EffectModel] = Field(default_factory=list)
+    static_abilities: List[ModifierModel] = Field(default_factory=list)
+    reaction_abilities: List[ReactionModel] = Field(default_factory=list)
 
-    def validate(self) -> List[str]:
-        """Performs validation on the card structure."""
-        errors = []
-        if not self.get('id'):
-            errors.append("Missing ID")
-        if not self.get('name'):
-            errors.append("Missing Name")
+    spell_side: Optional['CardModel'] = None
 
-        # Check effects structure
-        effects = self.get('effects', []) or self.get('triggers', [])
-        if not isinstance(effects, list):
-            errors.append("Effects must be a list")
+    # Helper fields for editor logic (legacy cleanup)
+    # Using PrivateAttr so it's not part of the standard schema but accessible
+    _editor_warnings: List[str] = PrivateAttr(default_factory=list)
 
-        return errors
+    @field_validator('civilizations', mode='before')
+    def parse_civs(cls, v):
+        if isinstance(v, str):
+            return [v]
+        return v
+
+    class Config:
+        extra = "allow"
