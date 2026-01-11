@@ -9,12 +9,14 @@
     ↓ [プレイ宣言: DECLARE_PLAY]
 スタック（STACK）
     ↓ [コスト支払い: PAY_COST]
-スタック（STACK - tapped）
+スタック（STACK - tapped）← カードはここに存在
     ↓ [解決: RESOLVE_PLAY]
-効果実行
+効果実行（★スタック上で処理）
     ↓ [自動移動]
 墓地（GRAVEYARD）
 ```
+
+**重要**: 呪文の効果は**スタック上のカードとして実行**されます。効果処理中、カードはまだスタックゾーンに存在しており、全ての効果が処理された後に墓地（または置換先）へ移動します。
 
 ### 1.2 実装の詳細
 
@@ -22,28 +24,95 @@
 
 ```cpp
 void GameLogicSystem::handle_resolve_play(...) {
-    // ... 効果コンパイル ...
+    int instance_id = exec.resolve_int(inst.args.value("card", 0));
+    const CardInstance* card = state.get_card_instance(instance_id);
+    // ★この時点で、カードはまだスタック上に存在している
     
     if (def.type == CardType::SPELL) {
-        // 1. 呪文効果をコンパイル
+        // 1. 呪文効果をコンパイル（カードはスタック上）
         for (const auto& eff : def.effects) {
             EffectSystem::instance().compile_effect(
                 state, eff, instance_id, ctx, card_db, compiled_effects
             );
         }
         
-        // 2. スタックから墓地へ移動（効果の後）
+        // 2. スタックから墓地へ移動命令を追加（効果の後に実行）
         nlohmann::json move_args;
         move_args["target"] = instance_id;
         move_args["to"] = "GRAVEYARD";
         compiled_effects.emplace_back(InstructionOp::MOVE, move_args);
     }
+    
+    // 3. パイプラインに命令を追加
+    auto block = std::make_shared<std::vector<Instruction>>(compiled_effects);
+    exec.call_stack.push_back({block, 0, LoopContext{}});
+}
+```
+
+```cpp
+void GameLogicSystem::resolve_play_from_stack(...) {
+    // パイプライン作成
+    PipelineExecutor pipeline;
+    
+    // handle_resolve_play を呼び出し（効果をコンパイル）
+    handle_resolve_play(pipeline, game_state, inst, card_db);
+    
+    // パイプライン実行（効果 → 移動の順で処理）
+    pipeline.execute(nullptr, game_state, card_db);
 }
 ```
 
 **重要ポイント**:
-- 呪文の効果はすべてコンパイルされた後、最後に自動的に `GRAVEYARD` への移動命令が追加される
+- 呪文の効果は**すべてスタック上のカードとして実行**される
+- `handle_resolve_play` が呼ばれた時点で、カードはスタックゾーンに存在
+- 効果がすべてコンパイルされた後、最後に `GRAVEYARD` への移動命令が追加される
+- パイプライン実行時、効果が順番に処理され、最後にゾーン移動が実行される
 - この移動は `STACK` から `GRAVEYARD` への `TransitionCommand` として実行される
+
+### 1.3 処理のタイムライン詳細
+
+呪文解決時の詳細なタイムライン：
+
+```
+時刻 T0: プレイ宣言
+  → カードが手札からスタックへ移動
+  
+時刻 T1: コスト支払い
+  → スタック上のカードがタップされる
+  
+時刻 T2: 解決開始 (handle_resolve_play 呼び出し)
+  → カードはまだスタック上に存在
+  → instance_id でカードを参照
+  
+時刻 T3: 効果コンパイル
+  → スタック上のカードとして各効果をコンパイル
+  → compiled_effects に効果命令を追加
+  
+時刻 T4: 墓地移動命令の追加
+  → STACK → GRAVEYARD への移動命令を compiled_effects に追加
+  
+時刻 T5: パイプライン実行開始
+  → compiled_effects の命令を順番に実行
+  
+時刻 T6: 効果実行
+  → カードはまだスタック上に存在
+  → 各効果が実行される（ドロー、破壊など）
+  
+時刻 T7: ゾーン移動実行
+  → STACK から GRAVEYARD への TransitionCommand 実行
+  → カードがスタックから取り除かれる
+  → カードが墓地に追加される
+  
+時刻 T8: 完了
+  → カードは墓地に存在
+  → ZONE_ENTER(GRAVEYARD) イベント発火
+```
+
+**重要な結論**:
+- **T2～T6**: カードはスタック上に存在
+- **T6**: 効果実行中もカードはスタック上
+- **T7**: 初めてカードがスタックから移動
+- **T8**: カードが最終的な位置（墓地）に到達
 
 ---
 
@@ -54,14 +123,24 @@ void GameLogicSystem::handle_resolve_play(...) {
 ```
 手札（HAND）
     ↓ [プレイ宣言]
-スタック（STACK）
+スタック（STACK）← カードの位置
     ↓ [コスト支払い]
-スタック（STACK - tapped）
+スタック（STACK - tapped）← カードはここに存在
     ↓ [解決]
-効果実行
-    ↓ [置換効果が介入]
+効果1実行（★スタック上で処理）
+効果2実行（★スタック上で処理）
+    ↓
+REPLACE_CARD_MOVE 実行（★スタック上で処理）
+    ↓ [置換効果が墓地への移動を検出]
 墓地（GRAVEYARD）に行く代わりに → 山札の下（DECK_BOTTOM）
 ```
+
+**処理の詳細**:
+1. カードはスタック上に存在したまま、すべての効果が実行される
+2. `REPLACE_CARD_MOVE` 効果もスタック上のカードとして処理される
+3. エンジンが自動追加する「墓地への移動」命令を検出
+4. 置換効果が介入し、移動先を変更
+5. カードはスタックから直接、山札の下（または指定ゾーン）へ移動
 
 ### 2.2 実装方法
 
