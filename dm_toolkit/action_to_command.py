@@ -367,9 +367,12 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         if 'str_val' in act_data: cmd['str_param'] = act_data['str_val']
         _transfer_targeting(act_data, cmd)
 
-    elif act_type in ["ATTACK_PLAYER", "ATTACK_CREATURE", "BLOCK", "BREAK_SHIELD",
+    elif act_type in ["ATTACK_PLAYER", "ATTACK_CREATURE", "BLOCK", "BLOCK_CREATURE", "BREAK_SHIELD",
                       "RESOLVE_BATTLE", "RESOLVE_EFFECT", "USE_SHIELD_TRIGGER", "RESOLVE_PLAY"]:
         _handle_engine_execution(act_type, act_data, cmd)
+
+    elif act_type == "PASS":
+        cmd['type'] = "PASS"
 
     elif act_type in ["LOOK_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE", "SUMMON_TOKEN"]:
         _handle_buffer_ops(act_type, act_data, cmd, dest)
@@ -681,11 +684,11 @@ def _handle_engine_execution(act_type, act, cmd):
         cmd['type'] = "ATTACK_CREATURE"
         cmd['instance_id'] = act.get('source_instance') or act.get('source_instance_id') or act.get('attacker_id')
         cmd['target_instance'] = act.get('target_instance') or act.get('target_instance_id') or act.get('target_id')
-    elif act_type == "BLOCK":
+    elif act_type == "BLOCK" or act_type == "BLOCK_CREATURE":
         cmd['type'] = "FLOW"
         cmd['flow_type'] = "BLOCK"
         cmd['instance_id'] = act.get('blocker_id') or act.get('source_instance_id')
-        cmd['target_instance'] = act.get('attacker_id') or act.get('target_instance_id')
+        cmd['target_instance'] = act.get('attacker_id') or act.get('target_instance_id') or act.get('target_id')
     elif act_type == "BREAK_SHIELD":
         cmd['type'] = "BREAK_SHIELD"
         cmd['amount'] = act.get('value1', 1)
