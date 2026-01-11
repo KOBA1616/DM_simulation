@@ -8,6 +8,7 @@ import os
 import copy
 from dm_toolkit.types import JSON
 from dm_toolkit.gui.editor import normalize
+from dm_toolkit.gui.editor.data_migration import DataMigration
 from dm_toolkit.gui.editor.action_converter import ActionConverter, convert_action_to_objs
 from dm_toolkit.gui.editor.command_model import CommandDef, WarningCommand
 from dm_toolkit.gui.editor.templates import LogicTemplateManager
@@ -58,15 +59,8 @@ class CardDataManager:
         for card_raw in cards_data:
             # Validate/Convert using Pydantic
             try:
-                # Handle legacy 'triggers' vs 'effects' normalization before model validation if needed
-                if 'triggers' in card_raw:
-                    card_raw['effects'] = card_raw.pop('triggers')
-
-                # Basic cleaning of legacy command structures inside effects
-                if 'effects' in card_raw:
-                    for eff in card_raw['effects']:
-                        self._lift_actions_to_commands(eff)
-
+                # Use DataMigration to normalize
+                card_raw = DataMigration.normalize_card_data(card_raw)
                 card_model = CardModel(**card_raw)
             except Exception as e:
                 print(f"Model validation failed for card {card_raw.get('id')}: {e}")
@@ -111,22 +105,7 @@ class CardDataManager:
             cmd_item = self.create_command_item(command)
             eff_item.appendRow(cmd_item)
 
-    def _lift_actions_to_commands(self, effect_data):
-        # Helper to convert legacy "actions" list to "commands" if present in raw dict
-        if 'actions' in effect_data:
-            legacy_actions = effect_data.pop('actions')
-            commands = effect_data.get('commands', [])
-            for act in legacy_actions:
-                 try:
-                     objs = convert_action_to_objs(act)
-                     for o in objs:
-                         if hasattr(o, 'to_dict'):
-                             commands.append(o.to_dict())
-                         elif isinstance(o, dict):
-                             commands.append(o)
-                 except:
-                     pass
-            effect_data['commands'] = commands
+    # Legacy method _lift_actions_to_commands moved to DataMigration
 
     def get_full_data(self):
         cards = []

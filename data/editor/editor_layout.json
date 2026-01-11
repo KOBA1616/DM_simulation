@@ -1,400 +1,208 @@
 {
     "COMMAND_GROUPS": {
-        "DRAW": [
-            "DRAW_CARD"
-        ],
-        "CARD_MOVE": [
-            "TRANSITION",
-            "REPLACE_CARD_MOVE",
-            "RETURN_TO_HAND",
-            "DISCARD",
-            "DESTROY",
-            "MANA_CHARGE"
-        ],
-        "DECK_OPS": [
-            "SEARCH_DECK",
-            "LOOK_AND_ADD",
-            "REVEAL_CARDS",
-            "SHUFFLE_DECK",
-            "SEARCH_DECK_BOTTOM",
-            "SEND_TO_DECK_BOTTOM"
-        ],
-        "PLAY": [
-            "PLAY_FROM_ZONE",
-            "CAST_SPELL",
-            "SUMMON_TOKEN",
-            "PUT_CREATURE"
-        ],
-        "BUFFER": [
-            "LOOK_TO_BUFFER",
-            "SELECT_FROM_BUFFER",
-            "PLAY_FROM_BUFFER",
-            "MOVE_BUFFER_TO_ZONE"
-        ],
-        "CHEAT_PUT": [
-            "MEKRAID",
-            "FRIEND_BURST",
-            "REVOLUTION_CHANGE"
-        ],
-        "GRANT": [
-            "MUTATE",
-            "POWER_MOD",
-            "ADD_KEYWORD",
-            "TAP",
-            "UNTAP",
-            "REGISTER_DELAYED_EFFECT",
-            "APPLY_MODIFIER"
-        ],
-        "LOGIC": [
-            "QUERY",
-            "FLOW",
-            "SELECT_NUMBER",
-            "CHOICE",
-            "SELECT_OPTION",
-            "IF",
-            "IF_ELSE",
-            "ELSE",
-            "STAT"
-        ],
-        "BATTLE": [
-            "BREAK_SHIELD",
-            "RESOLVE_BATTLE",
-            "SHIELD_BURN",
-            "SHIELD_TRIGGER",
-            "ADD_SHIELD",
-            "SEND_SHIELD_TO_GRAVE"
-        ],
-        "RESTRICTION": [],
-        "SPECIAL": [
-            "GAME_RESULT",
-            "COST_REFERENCE"
-        ]
+        "TRANSITION": ["MOVE_CARD", "DRAW_CARD", "DISCARD", "MANA_CHARGE", "SEARCH_DECK", "DESTROY", "RETURN_TO_HAND", "SEND_TO_MANA", "SEND_TO_DECK_BOTTOM"],
+        "MUTATE": ["GRANT_KEYWORD", "ADD_KEYWORD", "POWER_MODIFIER", "TAP", "UNTAP", "ADD_SHIELD", "BREAK_SHIELD", "APPLY_MODIFIER", "MODIFY_POWER"],
+        "FLOW": ["PHASE_CHANGE", "TURN_CHANGE", "PASS"],
+        "PLAY": ["PLAY_FROM_ZONE", "PUT_CREATURE", "CAST_SPELL", "SUMMON_TOKEN", "FRIEND_BURST", "COST_REFERENCE"],
+        "BUFFER": ["LOOK_AND_ADD", "LOOK_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE"],
+        "LOGIC": ["IF", "ELSE", "SELECT_OPTION", "SELECT_NUMBER", "REVEAL_CARDS"],
+        "CHEAT_PUT": ["MEKRAID", "REVOLUTION_CHANGE"],
+        "OTHER": ["COUNT_CARDS", "GET_GAME_STAT", "REGISTER_DELAYED_EFFECT", "RESET_INSTANCE", "NONE"]
     },
     "COMMAND_UI_CONFIG": {
-        "NONE": {
-            "visible": []
+        "MOVE_CARD": {
+            "fields": [
+                {"key": "from_zone", "widget": "zone_combo", "label": "From Zone"},
+                {"key": "to_zone", "widget": "zone_combo", "label": "To Zone"},
+                {"key": "amount", "widget": "spinbox", "label": "Amount"},
+                {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                {"key": "optional", "widget": "checkbox", "label": "Optional"},
+                {"key": "input_link", "widget": "variable_link", "label": "Input Variables"},
+                {"key": "output_link", "widget": "variable_link", "label": "Output Variables"}
+            ],
+            "produces_output": true
         },
         "DRAW_CARD": {
-            "visible": [
-                "target_group",
-                "amount",
-                "optional",
-                "up_to",
-                "input_link"
+            "fields": [
+                {"key": "amount", "widget": "spinbox", "label": "Cards to Draw"},
+                {"key": "target_player", "widget": "player_scope", "label": "Target Player"},
+                {"key": "input_link", "widget": "variable_link", "label": "Input Variables"},
+                {"key": "output_link", "widget": "variable_link", "label": "Output Variables"}
             ],
-            "label_amount": "Cards to Draw",
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Cards Drawn"
-            }
+            "produces_output": true
         },
-        "DISCARD": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "amount",
-                "optional",
-                "input_link",
-                "output_link"
-            ],
-            "label_amount": "Count",
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Discarded Cards"
-            }
+        "GRANT_KEYWORD": {
+             "fields": [
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                 {"key": "str_param", "widget": "text", "label": "Keyword"}
+             ]
+        },
+        "ADD_KEYWORD": {
+             "fields": [
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                 {"key": "str_param", "widget": "text", "label": "Keyword"}
+             ]
+        },
+        "POWER_MODIFIER": {
+             "fields": [
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                 {"key": "amount", "widget": "spinbox", "label": "Power Adjustment"},
+                 {"key": "value2", "widget": "spinbox", "label": "Duration (Turns)"}
+             ]
+        },
+        "MODIFY_POWER": {
+             "fields": [
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                 {"key": "amount", "widget": "spinbox", "label": "Power Adjustment"},
+                 {"key": "value2", "widget": "spinbox", "label": "Duration (Turns)"}
+             ]
         },
         "DESTROY": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "amount",
-                "input_link"
+            "fields": [
+                {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                {"key": "amount", "widget": "spinbox", "label": "Amount"},
+                {"key": "optional", "widget": "checkbox", "label": "Optional"},
+                {"key": "output_link", "widget": "variable_link", "label": "Output Variables"}
             ],
-            "label_amount": "Count (if selecting)"
+            "produces_output": true
         },
-        "MANA_CHARGE": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "amount",
-                "input_link"
+        "RETURN_TO_HAND": {
+            "fields": [
+                {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                {"key": "amount", "widget": "spinbox", "label": "Amount"},
+                {"key": "optional", "widget": "checkbox", "label": "Optional"},
+                {"key": "output_link", "widget": "variable_link", "label": "Output Variables"}
             ],
-            "label_amount": "Count (if selecting)"
+            "produces_output": true
         },
         "TAP": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "input_link"
+            "fields": [
+                {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                {"key": "amount", "widget": "spinbox", "label": "Amount"}
             ]
         },
         "UNTAP": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "input_link"
+            "fields": [
+                {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                {"key": "amount", "widget": "spinbox", "label": "Amount"}
             ]
-        },
-        "RETURN_TO_HAND": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "amount",
-                "input_link"
-            ],
-            "label_amount": "Count (if selecting)"
         },
         "BREAK_SHIELD": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "amount",
-                "input_link"
-            ],
-            "label_amount": "Count"
-        },
-        "TRANSITION": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "from_zone",
-                "to_zone",
-                "amount",
-                "optional",
-                "input_link",
-                "output_link"
-            ],
-            "label_amount": "Count",
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Moved Cards"
-            }
-        },
-        "REPLACE_CARD_MOVE": {
-            "visible": [
-                "target_filter",
-                "from_zone",
-                "to_zone",
-                "amount",
-                "input_link",
-                "output_link"
-            ],
-            "label_from_zone": "Original Destination",
-            "label_to_zone": "Replacement Destination",
-            "label_amount": "Count",
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Moved Cards"
-            },
-            "tooltip": "Replace card movement destination (e.g., instead of graveyard, to deck bottom)"
-        },
-        "MUTATE": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "mutation_kind",
-                "amount",
-                "str_param"
-            ],
-            "label_mutation_kind": "Mutation Type",
-            "label_amount": "Value / Duration",
-            "label_str_param": "Extra Param"
-        },
-        "POWER_MOD": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "amount"
-            ],
-            "label_amount": "Power Adjustment"
-        },
-        "ADD_KEYWORD": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "mutation_kind",
-                "amount"
-            ],
-            "label_mutation_kind": "Keyword",
-            "label_amount": "Duration (Turns)"
-        },
-        "QUERY": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "query_mode",
-                "output_link"
-            ],
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Query Result"
-            }
-        },
-        "FLOW": {
-            "visible": [
-                "str_param"
-            ],
-            "label_str_param": "Flow Instruction"
+             "fields": [
+                 {"key": "amount", "widget": "spinbox", "label": "Shields to Break"},
+                 {"key": "target_player", "widget": "player_scope", "label": "Target Player"}
+             ]
         },
         "SEARCH_DECK": {
-            "visible": [
-                "target_filter",
-                "amount",
-                "input_link",
-                "output_link"
-            ],
-            "label_amount": "Count",
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Found Cards"
-            }
+             "fields": [
+                {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                {"key": "amount", "widget": "spinbox", "label": "Amount"},
+                {"key": "value2", "widget": "spinbox", "label": "Look Count"},
+                {"key": "optional", "widget": "checkbox", "label": "Optional"}
+             ]
         },
-        "SHIELD_TRIGGER": {
-            "visible": [
-                "target_group"
-            ]
+        "COUNT_CARDS": {
+             "fields": [
+                {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                {"key": "target_group", "widget": "player_scope", "label": "Target Player"},
+                {"key": "output_link", "widget": "variable_link", "label": "Output Variables"}
+             ],
+             "produces_output": true
         },
-        "LOOK_AND_ADD": {
-            "visible": [
-                "target_filter",
-                "amount",
-                "input_link",
-                "output_link"
-            ],
-            "label_amount": "Look Count",
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Added Cards"
-            }
+        "GET_GAME_STAT": {
+             "fields": [
+                 {"key": "str_param", "widget": "text", "label": "Stat Key"},
+                 {"key": "target_group", "widget": "player_scope", "label": "Target Player"},
+                 {"key": "output_link", "widget": "variable_link", "label": "Output Variables"}
+             ],
+             "produces_output": true
+        },
+        "MANA_CHARGE": {
+             "fields": [
+                {"key": "from_zone", "widget": "zone_combo", "label": "From Zone"},
+                {"key": "amount", "widget": "spinbox", "label": "Amount"},
+                {"key": "target_filter", "widget": "filter_editor", "label": "Filter"}
+             ]
         },
         "MEKRAID": {
-            "visible": [
-                "target_filter",
-                "amount",
-                "val2",
-                "output_link"
-            ],
-            "label_amount": "Level",
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Played Card"
-            }
-        },
-        "REVEAL_CARDS": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "amount"
-            ],
-            "label_amount": "Count"
-        },
-        "SHUFFLE_DECK": {
-            "visible": [
-                "target_group"
-            ]
-        },
-        "PLAY_FROM_ZONE": {
-            "visible": [
-                "from_zone",
-                "to_zone",
-                "amount",
-                "str_param",
-                "input_link",
-                "output_link"
-            ],
-            "label_amount": "Max Cost",
-            "label_str_param": "Hint",
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Played Card"
-            }
-        },
-        "SUMMON_TOKEN": {
-            "visible": [
-                "amount",
-                "str_param"
-            ],
-            "label_amount": "Count",
-            "label_str_param": "Token ID"
-        },
-        "SELECT_NUMBER": {
-            "visible": [
-                "amount",
-                "output_link"
-            ],
-            "label_amount": "Max",
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Selected Number"
-            }
-        },
-        "SELECT_OPTION": {
-            "visible": [
-                "amount",
-                "str_param"
-            ],
-            "label_amount": "Count"
+             "fields": [
+                 {"key": "amount", "widget": "spinbox", "label": "Level"},
+                 {"key": "races", "widget": "text", "label": "Races (Comma separated)"},
+                 {"key": "civilizations", "widget": "text", "label": "Civilizations"}
+             ]
         },
         "CAST_SPELL": {
-            "visible": [
-                "target_group",
-                "target_filter",
-                "input_link",
-                "output_link"
-            ],
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Cast Card"
-            }
+             "fields": [
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                 {"key": "from_zone", "widget": "zone_combo", "label": "From Zone"}
+             ]
         },
-        "FRIEND_BURST": {
-            "visible": [
-                "target_filter",
-                "input_link",
-                "output_link"
-            ],
-            "produces_output": true,
-            "outputs": {
-                "output_value_key": "Spawned Card"
-            }
+        "PUT_CREATURE": {
+             "fields": [
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                 {"key": "from_zone", "widget": "zone_combo", "label": "From Zone"}
+             ]
         },
-        "REGISTER_DELAYED_EFFECT": {
-            "visible": [
-                "str_param",
-                "amount"
-            ],
-            "label_str_param": "Effect ID",
-            "label_amount": "Duration"
+        "SUMMON_TOKEN": {
+             "fields": [
+                 {"key": "str_param", "widget": "text", "label": "Token ID / Name"},
+                 {"key": "amount", "widget": "spinbox", "label": "Amount"}
+             ]
         },
-        "CHOICE": {
-            "visible": [
-                "amount"
-            ],
-            "label_amount": "Count"
-        },
-        "REVOLUTION_CHANGE": {
-            "visible": [
-                "target_filter"
-            ]
+        "LOOK_AND_ADD": {
+             "fields": [
+                 {"key": "value2", "widget": "spinbox", "label": "Look Count"},
+                 {"key": "amount", "widget": "spinbox", "label": "Add Count"},
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Filter"}
+             ]
         },
         "IF": {
-            "visible": [
-                "target_filter"
-            ]
-        },
-        "IF_ELSE": {
-            "visible": [
-                "target_filter"
-            ]
+             "fields": [
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Condition Filter"},
+                 {"key": "str_param", "widget": "text", "label": "Condition String"}
+             ]
         },
         "ELSE": {
-            "visible": []
+             "fields": []
+        },
+        "SELECT_OPTION": {
+             "fields": [
+                 {"key": "str_param", "widget": "text", "label": "Prompt Text"}
+             ]
+        },
+        "PLAY_FROM_ZONE": {
+             "fields": [
+                 {"key": "from_zone", "widget": "zone_combo", "label": "From Zone"},
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Filter"},
+                 {"key": "amount", "widget": "spinbox", "label": "Amount"},
+                 {"key": "optional", "widget": "checkbox", "label": "Optional"}
+             ]
+        },
+        "APPLY_MODIFIER": {
+             "fields": [
+                 {"key": "str_param", "widget": "text", "label": "Modifier ID/Type"},
+                 {"key": "value2", "widget": "spinbox", "label": "Duration (Turns)"},
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Filter"}
+             ]
+        },
+        "REVOLUTION_CHANGE": {
+             "fields": [
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Swap Filter"},
+                 {"key": "str_param", "widget": "text", "label": "Requirement (e.g. Cost 5+ Dragon)"}
+             ]
         },
         "COST_REFERENCE": {
-            "visible": [
-                "ref_mode"
-            ],
-            "tooltip": "Reference cost or reduce cost"
+             "fields": [
+                 {"key": "ref_mode", "widget": "ref_mode_combo", "label": "Reference Mode"},
+                 {"key": "amount", "widget": "spinbox", "label": "Amount"},
+                 {"key": "output_link", "widget": "variable_link", "label": "Output Variables"}
+             ],
+             "produces_output": true
+        },
+        "FRIEND_BURST": {
+             "fields": [
+                 {"key": "target_filter", "widget": "filter_editor", "label": "Tap Filter"}
+             ]
         }
     }
 }
