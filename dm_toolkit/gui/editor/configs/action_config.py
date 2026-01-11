@@ -1,0 +1,193 @@
+# -*- coding: utf-8 -*-
+# Action/Command UI Configuration
+from dm_toolkit.gui.localization import tr
+
+# Grouping of Command types for UI organization
+COMMAND_GROUPS = {
+    'DRAW': [
+        'DRAW_CARD'
+    ],
+    'CARD_MOVE': [
+        'TRANSITION', 'REPLACE_CARD_MOVE', 'RETURN_TO_HAND', 'DISCARD', 'DESTROY', 'MANA_CHARGE'
+    ],
+    'DECK_OPS': [
+        'SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK', 'SEARCH_DECK_BOTTOM', 'SEND_TO_DECK_BOTTOM'
+    ],
+    'PLAY': [
+        'PLAY_FROM_ZONE', 'CAST_SPELL', 'SUMMON_TOKEN', 'PUT_CREATURE'
+    ],
+    'BUFFER': [
+        'LOOK_TO_BUFFER', 'SELECT_FROM_BUFFER', 'PLAY_FROM_BUFFER', 'MOVE_BUFFER_TO_ZONE'
+    ],
+    'CHEAT_PUT': [
+        'MEKRAID', 'FRIEND_BURST', 'REVOLUTION_CHANGE'
+    ],
+    'GRANT': [
+        'MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT', 'APPLY_MODIFIER'
+    ],
+    'LOGIC': [
+        'QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION', 'IF', 'IF_ELSE', 'ELSE', 'STAT'
+    ],
+    'BATTLE': [
+        'BREAK_SHIELD', 'RESOLVE_BATTLE', 'SHIELD_BURN', 'SHIELD_TRIGGER', 'ADD_SHIELD', 'SEND_SHIELD_TO_GRAVE'
+    ],
+    'RESTRICTION': [
+    ],
+    'SPECIAL': [
+        'GAME_RESULT', 'COST_REFERENCE'
+    ]
+}
+
+# Detailed UI configuration for each command/action type
+COMMAND_UI_CONFIG = {
+    "NONE": { "visible": [] },
+    "DRAW_CARD": {
+        "visible": ["target_group", "amount", "optional", "up_to", "input_link"],
+        "label_amount": "Cards to Draw",
+        "produces_output": True,
+        "outputs": { "output_value_key": "Cards Drawn" }
+    },
+    "DISCARD": {
+        "visible": ["target_group", "target_filter", "amount", "optional", "input_link", "output_link"],
+        "label_amount": "Count",
+        "produces_output": True,
+        "outputs": { "output_value_key": "Discarded Cards" }
+    },
+    "DESTROY": {
+        "visible": ["target_group", "target_filter", "amount", "input_link"],
+        "label_amount": "Count (if selecting)"
+    },
+    "MANA_CHARGE": {
+        "visible": ["target_group", "target_filter", "amount", "input_link"],
+        "label_amount": "Count (if selecting)"
+    },
+    "TAP": {
+        "visible": ["target_group", "target_filter", "input_link"]
+    },
+    "UNTAP": {
+        "visible": ["target_group", "target_filter", "input_link"]
+    },
+    "RETURN_TO_HAND": {
+        "visible": ["target_group", "target_filter", "amount", "input_link"],
+        "label_amount": "Count (if selecting)"
+    },
+    "BREAK_SHIELD": {
+        "visible": ["target_group", "target_filter", "amount", "input_link"],
+        "label_amount": "Count"
+    },
+    "TRANSITION": {
+        "visible": ["target_group", "target_filter", "from_zone", "to_zone", "amount", "optional", "input_link", "output_link"],
+        "label_amount": "Count",
+        "produces_output": True,
+        "outputs": { "output_value_key": "Moved Cards" }
+    },
+    "MUTATE": {
+        "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param"],
+        "label_mutation_kind": "Mutation Type",
+        "label_amount": "Value / Duration",
+        "label_str_param": "Extra Param"
+    },
+    "POWER_MOD": {
+        "visible": ["target_group", "target_filter", "amount"],
+        "label_amount": "Power Adjustment"
+    },
+    "ADD_KEYWORD": {
+        "visible": ["target_group", "target_filter", "mutation_kind", "amount"],
+        "label_mutation_kind": "Keyword",
+        "label_amount": "Duration (Turns)"
+    },
+    "QUERY": {
+        "visible": ["target_group", "target_filter", "query_mode", "output_link"],
+        "produces_output": True,
+        "outputs": { "output_value_key": "Query Result" }
+    },
+    "FLOW": {
+        "visible": ["str_param"],
+        "label_str_param": "Flow Instruction"
+    },
+    "SEARCH_DECK": {
+        "visible": ["target_filter", "amount", "input_link", "output_link"],
+        "label_amount": "Count",
+        "produces_output": True,
+        "outputs": { "output_value_key": "Found Cards" }
+    },
+    "SHIELD_TRIGGER": {
+        "visible": ["target_group"]
+    },
+    "LOOK_AND_ADD": {
+        "visible": ["target_filter", "amount", "input_link", "output_link"],
+        "label_amount": "Look Count",
+        "produces_output": True,
+        "outputs": { "output_value_key": "Added Cards" }
+    },
+    "MEKRAID": {
+        "visible": ["target_filter", "amount", "val2", "output_link"],
+        "label_amount": "Level",
+        "produces_output": True,
+        "outputs": { "output_value_key": "Played Card" }
+    },
+    "REVEAL_CARDS": {
+        "visible": ["target_group", "target_filter", "amount"],
+        "label_amount": "Count"
+    },
+    "SHUFFLE_DECK": {
+        "visible": ["target_group"]
+    },
+    "PLAY_FROM_ZONE": {
+        "visible": ["from_zone", "to_zone", "amount", "str_param", "input_link", "output_link"],
+        "label_amount": "Max Cost",
+        "label_str_param": "Hint",
+        "produces_output": True,
+        "outputs": { "output_value_key": "Played Card" }
+    },
+    "SUMMON_TOKEN": {
+        "visible": ["amount", "str_param"],
+        "label_amount": "Count",
+        "label_str_param": "Token ID"
+    },
+    "SELECT_NUMBER": {
+        "visible": ["amount", "output_link"],
+        "label_amount": "Max",
+        "produces_output": True,
+        "outputs": { "output_value_key": "Selected Number" }
+    },
+    "SELECT_OPTION": {
+        "visible": ["amount", "str_param"],
+        "label_amount": "Count"
+    },
+    "CAST_SPELL": {
+        "visible": ["target_group", "target_filter", "input_link", "output_link"],
+        "produces_output": True,
+        "outputs": { "output_value_key": "Cast Card" }
+    },
+    "FRIEND_BURST": {
+        "visible": ["target_filter", "input_link", "output_link"],
+        "produces_output": True,
+        "outputs": { "output_value_key": "Spawned Card" }
+    },
+    "REGISTER_DELAYED_EFFECT": {
+        "visible": ["str_param", "amount"],
+        "label_str_param": "Effect ID",
+        "label_amount": "Duration"
+    },
+    "CHOICE": {
+        "visible": ["amount"],
+        "label_amount": "Count"
+    },
+    "REVOLUTION_CHANGE": {
+        "visible": ["target_filter"]
+    },
+    "IF": {
+        "visible": ["target_filter"]
+    },
+    "IF_ELSE": {
+        "visible": ["target_filter"]
+    },
+    "ELSE": {
+        "visible": []
+    },
+    "COST_REFERENCE": {
+        "visible": ["ref_mode"],
+        "tooltip": "Reference cost or reduce cost"
+    }
+}
