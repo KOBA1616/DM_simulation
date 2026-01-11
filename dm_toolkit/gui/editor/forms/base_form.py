@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
     QGroupBox, QDoubleSpinBox, QLabel, QFormLayout
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from contextlib import contextmanager
 
 class BaseEditForm(QWidget):
     """
@@ -20,6 +21,15 @@ class BaseEditForm(QWidget):
         self._is_populating = False
         self.bindings = {} # key: widget
         self.input_widgets = set() # Set of widgets to block signals for
+
+    @contextmanager
+    def suppress_signals(self):
+        """Context manager to block signals for all registered input widgets."""
+        self.block_signals_all(True)
+        try:
+            yield
+        finally:
+            self.block_signals_all(False)
 
     def register_widget(self, widget, key=None):
         """
