@@ -166,6 +166,13 @@ class GameWindow(QMainWindow):
         self.step_button.clicked.connect(self.step_phase)
         game_ctrl_layout.addWidget(self.step_button)
 
+        self.pass_btn = QPushButton(tr("Pass / End Turn"))
+        self.pass_btn.setShortcut("Ctrl+E")
+        self.pass_btn.clicked.connect(self.pass_turn)
+        self.pass_btn.setVisible(False)
+        self.pass_btn.setStyleSheet("background-color: #FF9800; color: white; font-weight: bold;")
+        game_ctrl_layout.addWidget(self.pass_btn)
+
         self.confirm_btn = QPushButton(tr("Confirm Selection"))
         self.confirm_btn.setShortcut("Return")
         self.confirm_btn.clicked.connect(self.confirm_selection)
@@ -467,6 +474,7 @@ class GameWindow(QMainWindow):
         self.is_running = False
         self.selected_targets = []
         self.confirm_btn.setVisible(False)
+        self.pass_btn.setVisible(False)
         self.start_btn.setText(tr("Start Sim"))
         self.log_list.clear()
 
@@ -477,6 +485,10 @@ class GameWindow(QMainWindow):
         self.scenario_tools.set_game_state(self.gs, self.card_db)
         self.last_command_index = 0
         self.update_ui()
+
+    def pass_turn(self) -> None:
+        if hasattr(self, 'current_pass_action') and self.current_pass_action:
+            self.execute_action(self.current_pass_action)
 
     def confirm_selection(self) -> None:
         if not EngineCompat.is_waiting_for_user_input(self.gs): return
@@ -846,6 +858,21 @@ class GameWindow(QMainWindow):
         if active_pid == 0 and self.p0_human_radio.isChecked() and not self.gs.game_over:
              from dm_toolkit.commands import generate_legal_commands
              legal_actions = generate_legal_commands(self.gs, self.card_db)
+
+        # Check for PASS action to enable Pass Button
+        self.current_pass_action = None
+        for cmd in legal_actions:
+            try: d = cmd.to_dict()
+            except: d = {}
+            if d.get('type') == 'PASS' or d.get('legacy_original_type') == 'PASS':
+                self.current_pass_action = cmd
+                break
+
+        if self.current_pass_action:
+            self.pass_btn.setVisible(True)
+            # self.pass_btn.setText(tr("Pass Turn")) # Optionally update text
+        else:
+            self.pass_btn.setVisible(False)
 
         def convert_zone(zone_cards: List[Any], hide: bool=False) -> List[Dict[str, Any]]:
             if hide: return [{'id': -1, 'tapped': getattr(c, 'is_tapped', False), 'instance_id': getattr(c, 'instance_id', -1)} for c in zone_cards]

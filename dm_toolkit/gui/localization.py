@@ -251,6 +251,7 @@ TRANSLATIONS: Dict[Any, str] = {
     "Zone is already empty.": "ゾーンは既に空です。",
     "Game Flow": "ゲームフロー",
     "End Turn": "ターン終了",
+    "Pass / End Turn": "パス / ターン終了",
     "Draw Card": "カード引き",
     "Turn advanced.": "ターンが進行しました。",
     "Card drawn.": "カードを引きました。",
