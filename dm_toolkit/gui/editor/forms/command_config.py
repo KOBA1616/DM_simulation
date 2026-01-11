@@ -1,178 +1,77 @@
 # -*- coding: utf-8 -*-
+import json
+import os
 
 class CommandDef:
     """
     Configuration class for a Command Type.
     Separates the definition logic from the generated configuration dictionary.
     """
-    def __init__(self, key, visible=None, labels=None,
-                 produces_output=False, output_label=None):
+    def __init__(self, key, config_dict=None):
         self.key = key
-        self.visible = visible or []
-        self.labels = labels or {}
-        self.produces_output = produces_output
-        self.output_label = output_label
+        self.config = config_dict or {}
 
     def build_config(self):
         """Generates the dictionary entry for COMMAND_UI_CONFIG."""
-        conf = {
-            "visible": self.visible,
-            "produces_output": self.produces_output
-        }
-        if self.output_label:
-            conf["outputs"] = {"output_value_key": self.output_label}
+        # The JSON structure is already close to what we need, but we map labels manually for now
+        # to match original build_config behavior if needed.
+        # Actually, if we just load JSON directly into COMMAND_UI_CONFIG, we don't need this class much.
 
-        for k, v in self.labels.items():
-            # Map friendly label names to config keys (Command specific)
+        # Flatten labels for the UnifiedActionForm consumption
+        conf = self.config.copy()
+        labels = conf.get('labels', {})
+        for k, v in labels.items():
             if k == "amount": conf["label_amount"] = v
             elif k == "mutation_kind": conf["label_mutation_kind"] = v
             elif k == "str_param": conf["label_str_param"] = v
 
+        # Handle Output Key Label
+        outputs = conf.get('outputs', {})
+        if outputs:
+            conf["outputs"] = outputs
+
         return conf
 
-_definitions = [
-    CommandDef("NONE", visible=[]),
+def load_command_config():
+    config_path = None
+    # 1. Environment Variable
+    env_path = os.environ.get('DM_COMMAND_UI_CONFIG_PATH')
+    if env_path and os.path.exists(env_path):
+        config_path = env_path
+    else:
+        # 2. Relative Path
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        candidates = [
+            os.path.join(current_dir, '..', '..', '..', 'data', 'configs', 'command_ui.json'),
+            os.path.join(os.getcwd(), 'data', 'configs', 'command_ui.json')
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                config_path = c
+                break
 
-    # --- Atomic Actions (Shortcuts) ---
-    CommandDef("DRAW_CARD",
-               visible=["target_group", "amount", "optional", "up_to", "input_link"],
-               labels={"amount": "Cards to Draw"},
-               produces_output=True, output_label="Cards Drawn"),
+    if config_path:
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading command_ui.json: {e}")
+    return {}
 
-    CommandDef("DISCARD",
-               visible=["target_group", "target_filter", "amount", "optional", "input_link", "output_link"],
-               labels={"amount": "Count"},
-               produces_output=True, output_label="Discarded Cards"),
-
-    CommandDef("DESTROY",
-               visible=["target_group", "target_filter", "amount", "input_link"],
-               labels={"amount": "Count (if selecting)"}),
-
-    CommandDef("MANA_CHARGE",
-               visible=["target_group", "target_filter", "amount", "input_link"],
-               labels={"amount": "Count (if selecting)"}),
-
-    CommandDef("TAP",
-               visible=["target_group", "target_filter", "input_link"]),
-
-    CommandDef("UNTAP",
-               visible=["target_group", "target_filter", "input_link"]),
-
-    CommandDef("RETURN_TO_HAND",
-               visible=["target_group", "target_filter", "amount", "input_link"],
-               labels={"amount": "Count (if selecting)"}),
-
-    CommandDef("BREAK_SHIELD",
-               visible=["target_group", "target_filter", "amount", "input_link"],
-               labels={"amount": "Count"}),
-
-    # --- Generalized Commands ---
-    CommandDef("TRANSITION",
-               visible=["target_group", "target_filter", "from_zone", "to_zone", "amount", "optional", "input_link", "output_link"],
-               labels={"amount": "Count"},
-               produces_output=True, output_label="Moved Cards"),
-
-    CommandDef("REPLACE_CARD_MOVE",
-               visible=["target_group", "target_filter", "from_zone", "to_zone", "input_link"],
-               labels={"amount": "Count"}),
-
-    CommandDef("MUTATE",
-               visible=["target_group", "target_filter", "mutation_kind", "amount", "str_param"],
-               labels={"mutation_kind": "Mutation Type", "amount": "Value / Duration", "str_param": "Extra Param"}),
-
-    CommandDef("POWER_MOD",
-               visible=["target_group", "target_filter", "amount"],
-               labels={"amount": "Power Adjustment"}),
-
-    CommandDef("ADD_KEYWORD",
-               visible=["target_group", "target_filter", "mutation_kind", "amount"],
-               labels={"mutation_kind": "Keyword", "amount": "Duration (Turns)"}),
-
-    # --- Information / Flow ---
-    CommandDef("QUERY",
-               visible=["target_group", "target_filter", "query_mode", "output_link"],
-               produces_output=True, output_label="Query Result"),
-
-    CommandDef("FLOW",
-               visible=["str_param"],
-               labels={"str_param": "Flow Instruction"}),
-
-    CommandDef("SEARCH_DECK",
-               visible=["target_filter", "amount", "input_link", "output_link"],
-               labels={"amount": "Count"},
-               produces_output=True, output_label="見つかったカード"),
-
-    CommandDef("SHIELD_TRIGGER",
-               visible=["target_group"]),
-
-    # --- New / Mapped Commands ---
-    CommandDef("LOOK_AND_ADD",
-               visible=["target_filter", "amount", "input_link", "output_link"],
-               labels={"amount": "Look Count"},
-               produces_output=True, output_label="加えたカード"),
-
-    CommandDef("MEKRAID",
-               visible=["target_filter", "amount", "val2", "output_link"],
-               labels={"amount": "Level"},
-               produces_output=True, output_label="Played Card"),
-
-    CommandDef("REVEAL_CARDS",
-               visible=["target_group", "target_filter", "amount"],
-               labels={"amount": "Count"}),
-
-    CommandDef("SHUFFLE_DECK",
-               visible=["target_group"]),
-
-    CommandDef("PLAY_FROM_ZONE",
-               visible=["from_zone", "to_zone", "amount", "str_param", "input_link", "output_link"],
-               labels={"amount": "Max Cost", "str_param": "Hint"},
-               produces_output=True, output_label="プレイしたカード"),
-
-    CommandDef("SUMMON_TOKEN",
-               visible=["amount", "str_param"],
-               labels={"amount": "Count", "str_param": "Token ID"}),
-
-    CommandDef("SELECT_NUMBER",
-               visible=["amount", "output_link"],
-               labels={"amount": "Max"},
-               produces_output=True, output_label="Selected Number"),
-
-    CommandDef("SELECT_OPTION",
-               visible=["amount", "str_param"], # str_param might be used for titles?
-               labels={"amount": "Count"}),
-
-    CommandDef("CAST_SPELL",
-               visible=["target_group", "target_filter", "input_link", "output_link"],
-               produces_output=True, output_label="唱えたカード"),
-
-    CommandDef("FRIEND_BURST",
-               visible=["target_filter", "input_link", "output_link"],
-               produces_output=True, output_label="出現カード") ,
-
-    CommandDef("REGISTER_DELAYED_EFFECT",
-               visible=["str_param", "amount"],
-               labels={"str_param": "Effect ID", "amount": "Duration"}),
-
-    CommandDef("CHOICE", # Mapped from SELECT_OPTION in action_to_command
-               visible=["amount"],
-               labels={"amount": "Count"})
-    ,
-    # UI-only convenience type: saves as MUTATE+REVOLUTION_CHANGE under the hood
-    CommandDef("REVOLUTION_CHANGE",
-               visible=["target_filter"]),
-
-    CommandDef("IF",
-               visible=["target_filter"]),
-
-    CommandDef("IF_ELSE",
-               visible=["target_filter"]),
-
-    CommandDef("ELSE",
-               visible=[])
-]
+# Load JSON
+_raw_config = load_command_config()
 
 # Generate Dictionary Export
 COMMAND_UI_CONFIG = {}
 
-for cmd in _definitions:
-    COMMAND_UI_CONFIG[cmd.key] = cmd.build_config()
+# If JSON load failed or is empty (fallback), we might want to keep the old hardcoded definitions
+# temporarily or just accept empty config. Ideally, we should have defaults.
+# For now, we assume JSON exists as we just created it.
+
+for key, val in _raw_config.items():
+    cmd_def = CommandDef(key, val)
+    COMMAND_UI_CONFIG[key] = cmd_def.build_config()
+
+# Fallback for NONE if missing
+if "NONE" not in COMMAND_UI_CONFIG:
+    COMMAND_UI_CONFIG["NONE"] = {"visible": []}
