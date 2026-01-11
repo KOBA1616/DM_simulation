@@ -43,6 +43,8 @@ def load_command_config():
         current_dir = os.path.dirname(os.path.abspath(__file__))
         candidates = [
             os.path.join(current_dir, '..', '..', '..', 'data', 'configs', 'command_ui.json'),
+            # repository root fallback (forms -> editor -> gui -> dm_toolkit -> repo root)
+            os.path.join(current_dir, '..', '..', '..', '..', 'data', 'configs', 'command_ui.json'),
             os.path.join(os.getcwd(), 'data', 'configs', 'command_ui.json')
         ]
         for c in candidates:

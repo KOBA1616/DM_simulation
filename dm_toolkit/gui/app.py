@@ -529,8 +529,45 @@ class GameWindow(QMainWindow):
 
     def on_card_hovered(self, card_id: int) -> None:
         if card_id >= 0:
-            card_data = self.card_db.get(card_id)
-            if card_data: self.card_detail_panel.update_card(card_data)
+            card_data = self._get_card_by_id(card_id)
+            if card_data:
+                self.card_detail_panel.update_card(card_data)
+
+    def _get_card_by_id(self, card_id: int):
+        """Retrieve card object from various possible CardDB implementations.
+        Supports dict-like and native dm_ai_module CardDatabase.
+        """
+        db = self.card_db
+        if db is None:
+            return None
+        # Standard dict
+        try:
+            if isinstance(db, dict):
+                return db.get(card_id)
+        except Exception:
+            pass
+        # Mapping-like
+        try:
+            if hasattr(db, '__contains__') and card_id in db:
+                return db[card_id]
+        except Exception:
+            pass
+        # Native wrappers
+        for meth in ('get_card', 'get_by_id'):
+            try:
+                fn = getattr(db, meth, None)
+                if callable(fn):
+                    return fn(card_id)
+            except Exception:
+                pass
+        # Fallback: iterate keys if supported
+        try:
+            for k in getattr(db, 'keys', lambda: [])():
+                if int(k) == int(card_id):
+                    return db[k]
+        except Exception:
+            pass
+        return None
 
     def execute_action(self, action: Any) -> None:
         """

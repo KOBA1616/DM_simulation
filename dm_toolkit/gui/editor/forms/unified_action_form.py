@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal
+from enum import Enum
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
@@ -73,8 +74,15 @@ class UnifiedActionForm(BaseEditForm):
             # Defer full UI setup in environments without a QApplication
             pass
 
+    def _normalize_cmd_type(self, tpe):
+        """Return a string command type even if an Enum instance is passed."""
+        if isinstance(tpe, Enum):
+            return tpe.value
+        return tpe or 'NONE'
+
     def _get_ui_config(self, tpe):
         # Use only COMMAND_UI_CONFIG
+        tpe = self._normalize_cmd_type(tpe)
         cmd_cfg = COMMAND_UI_CONFIG.get(tpe, {})
 
         # Source visible lists
@@ -575,7 +583,7 @@ class UnifiedActionForm(BaseEditForm):
             pass
 
     def _update_ui_state(self, data):
-        self.update_ui_state(data.get('type', 'NONE'))
+        self.update_ui_state(self._normalize_cmd_type(data.get('type', 'NONE')))
 
     def _load_ui_from_data(self, data, item):
         """Load data into UI, auto-converting legacy actions if needed."""
@@ -600,7 +608,7 @@ class UnifiedActionForm(BaseEditForm):
             except Exception:
                 pass
 
-        ui_type = data.get('type', 'NONE')
+        ui_type = self._normalize_cmd_type(data.get('type', 'NONE'))
 
         # Determine group
         grp = None

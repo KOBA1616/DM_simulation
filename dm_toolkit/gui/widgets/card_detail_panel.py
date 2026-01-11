@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from dm_toolkit.gui.localization import tr, get_card_civilizations
+from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
 
 class CardDetailPanel(QWidget):
     def __init__(self, parent=None):
@@ -12,64 +13,36 @@ class CardDetailPanel(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
-        
-        self.name_label = QLabel(tr("Card Name"))
-        self.name_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        self.name_label.setWordWrap(True)
-        layout.addWidget(self.name_label)
-        
-        self.info_label = QLabel(f"{tr('Cost')}: - | {tr('Power')}: - | {tr('Civ')}: -")
-        layout.addWidget(self.info_label)
-        
-        self.text_area = QTextEdit()
-        self.text_area.setReadOnly(True)
-        self.text_area.setPlaceholderText(tr("Card effects will appear here..."))
-        layout.addWidget(self.text_area)
+        # Replace simple labels with preview-style card widget
+        self.preview = CardPreviewWidget()
+        layout.addWidget(self.preview)
 
     def update_card(self, card_data, civ_map=None):
+        """Render the hovered/selected card using the preview card widget."""
         if not card_data:
-            self.name_label.setText(tr("Unknown Card"))
-            self.info_label.setText(f"{tr('Cost')}: ? | {tr('Power')}: ? | {tr('Civ')}: ?")
-            self.text_area.setText("")
+            self.preview.clear_preview()
             return
 
         civs = get_card_civilizations(card_data)
-        civ_text = "/".join([tr(c) for c in civs])
-
-        self.name_label.setText(card_data.name)
-        self.info_label.setText(f"{tr('Cost')}: {card_data.cost} | {tr('Power')}: {card_data.power} | {tr('Civ')}: {civ_text}")
-        
-        text = f"ID: {card_data.id}\n"
-        text += f"{tr('Type')}: {str(card_data.type).split('.')[-1]}\n"
-        
+        # Build a minimal dict compatible with CardPreviewWidget
+        t = str(getattr(card_data, 'type', 'CREATURE')).split('.')[-1]
+        race = None
         if hasattr(card_data, 'races') and card_data.races:
-            text += f"{tr('Races')}: {', '.join(card_data.races)}\n"
-            
-        if hasattr(card_data, 'keywords'):
-            k = card_data.keywords
-            kws = []
-            if k.blocker: kws.append(tr("Blocker"))
-            if k.speed_attacker: kws.append(tr("Speed Attacker"))
-            if k.slayer: kws.append(tr("Slayer"))
-            if k.double_breaker: kws.append(tr("W-Breaker"))
-            if k.triple_breaker: kws.append(tr("T-Breaker"))
-            if k.power_attacker: kws.append(f"{tr('Power Attacker')} +{card_data.power_attacker_bonus}")
-            if k.shield_trigger: kws.append(tr("Shield Trigger"))
-            if k.g_strike: kws.append(tr("G-Strike"))
-            if k.mach_fighter: kws.append(tr("Mach Fighter"))
-            if k.revolution_change: kws.append(tr("Revolution Change"))
-            if k.g_zero: kws.append(tr("G-Zero"))
-            if k.evolution: kws.append(tr("Evolution"))
-            if k.hyper_energy: kws.append(tr("Hyper Energy"))
-            if k.just_diver: kws.append(tr("Just Diver"))
-            if k.cip: kws.append(tr("CIP"))
-            if k.at_attack: kws.append(tr("At Attack"))
-            if k.at_block: kws.append(tr("At Block"))
-            if k.at_start_of_turn: kws.append(tr("Start of Turn"))
-            if k.at_end_of_turn: kws.append(tr("End of Turn"))
-            if k.destruction: kws.append(tr("On Destroy"))
-            
-            if kws:
-                text += f"{tr('Keywords')}: {', '.join(kws)}\n"
-        
-        self.text_area.setText(text)
+            race = card_data.races[0]
+        data = {
+            'id': getattr(card_data, 'id', -1),
+            'name': getattr(card_data, 'name', 'Unknown'),
+            'cost': getattr(card_data, 'cost', 0),
+            'power': getattr(card_data, 'power', 0),
+            'civilizations': civs,
+            'race': race,
+            'type': t,
+            'effects': [],
+            'triggers': [],
+            'spell_side': None,
+        }
+        try:
+            self.preview.render_card(data)
+        except Exception:
+            # Fallback: clear if rendering fails
+            self.preview.clear_preview()

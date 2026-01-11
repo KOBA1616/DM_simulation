@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QAction, QKeySequence, QStandardItem
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
@@ -27,7 +28,7 @@ class CardEditor(QMainWindow):
         super().__init__()
         self.json_path = json_path
         self.setWindowTitle(tr("Card Editor Ver 2.0"))
-        self.resize(1400, 800) # Increased width for 3 panes
+        self.resize(1600, 900) # Optimized for 3-pane layout with room for OS/DE chrome
 
         self.cards_data = []
         self.init_ui()
@@ -37,6 +38,8 @@ class CardEditor(QMainWindow):
         # Toolbar
         toolbar = QToolBar(tr("Main Toolbar"))
         self.addToolBar(toolbar)
+        toolbar.setIconSize(QSize(16, 16))  # Compact icon size
+        toolbar.setStyleSheet("QToolBar { padding: 2px; }")
 
         new_act = QAction(tr("New Card"), self)
         new_act.triggered.connect(self.new_card)
@@ -53,18 +56,21 @@ class CardEditor(QMainWindow):
         add_eff_act = QAction(tr("Add Effect"), self)
         add_eff_act.triggered.connect(self.add_effect)
         add_eff_act.setShortcut("Ctrl+Shift+E")
+        add_eff_act.setText(tr("Add Eff"))
         add_eff_act.setStatusTip(tr("Add a new effect to the selected card"))
         toolbar.addAction(add_eff_act)
 
         add_act_act = QAction(tr("Add Command"), self)
         add_act_act.triggered.connect(self.add_command)
         add_act_act.setShortcut("Ctrl+Shift+C")
+        add_act_act.setText(tr("Add Cmd"))
         add_act_act.setStatusTip(tr("Add a command to the selected effect"))
         toolbar.addAction(add_act_act)
 
         del_act = QAction(tr("Delete Item"), self)
         del_act.triggered.connect(self.delete_item)
         del_act.setShortcut(QKeySequence.StandardKey.Delete)
+        del_act.setText(tr("Delete"))
         del_act.setStatusTip(tr("Delete the selected item"))
         toolbar.addAction(del_act)
 
@@ -76,6 +82,7 @@ class CardEditor(QMainWindow):
         update_preview_act = QAction(tr("Update Preview"), self)
         update_preview_act.triggered.connect(self.update_preview_manual)
         update_preview_act.setShortcut(QKeySequence.StandardKey.Refresh)
+        update_preview_act.setText(tr("Update"))
         update_preview_act.setStatusTip(tr("Force update the card preview"))
         toolbar.addAction(update_preview_act)
 
@@ -96,9 +103,15 @@ class CardEditor(QMainWindow):
         self.splitter.addWidget(self.preview_widget)
 
         # Adjust stretch factors
-        self.splitter.setStretchFactor(0, 1) # Tree
-        self.splitter.setStretchFactor(1, 2) # Inspector
-        self.splitter.setStretchFactor(2, 1) # Preview
+        # Optimized stretch factors for balanced 3-pane layout
+        self.splitter.setStretchFactor(0, 1)   # Tree (25%)
+        self.splitter.setStretchFactor(1, 2)   # Inspector (50%)
+        self.splitter.setStretchFactor(2, 1)   # Preview (25%)
+        
+        # Set minimum widths to prevent panes from becoming too narrow
+        self.tree_widget.setMinimumWidth(250)
+        self.inspector.setMinimumWidth(400)
+        self.preview_widget.setMinimumWidth(250)
 
         self.setCentralWidget(self.splitter)
         self.statusBar() # Ensure status bar is created

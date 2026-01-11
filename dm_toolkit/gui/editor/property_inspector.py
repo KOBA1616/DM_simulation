@@ -46,6 +46,9 @@ class PropertyInspector(QWidget):
         layout = QVBoxLayout(self)
         self.label = QLabel(tr("Property Inspector"))
         layout.addWidget(self.label)
+        # Reduce margins for compact display
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(2)
 
         self.stack = QStackedWidget()
 

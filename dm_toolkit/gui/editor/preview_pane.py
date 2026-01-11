@@ -105,8 +105,9 @@ class CardPreviewWidget(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
 
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(4)
         # Title
         title = QLabel(tr("Card Preview"))
         font = title.font()
@@ -153,17 +154,15 @@ class CardPreviewWidget(QWidget):
         self.standard_widget.hide()
         self.twinpact_widget.hide()
 
-        # Generated Text Preview (Raw)
-        layout.addSpacing(10)
-        layout.addWidget(QLabel(tr("Generated Text (Source):")))
+        # Generated Text Preview (Raw) disabled
         self.raw_text_preview = QTextEdit()
         self.raw_text_preview.setReadOnly(True)
         self.raw_text_preview.setFixedHeight(100)
-        layout.addWidget(self.raw_text_preview)
+        self.raw_text_preview.setVisible(False)
 
     def setup_standard_layout(self, layout):
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(2)
 
         # Cost (Top Left)
         self.cost_label = ManaCostLabel("5")
@@ -206,8 +205,8 @@ class CardPreviewWidget(QWidget):
         layout.setRowStretch(2, 1)
 
     def setup_twinpact_layout(self, layout):
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(2)
+        layout.setContentsMargins(3, 3, 3, 3)
+        layout.setSpacing(1)
 
         # Upper Half (Creature)
         self.tp_upper_frame = QFrame()
@@ -278,68 +277,62 @@ class CardPreviewWidget(QWidget):
         self.raw_text_preview.clear()
 
     def render_card(self, data):
-        full_text = CardTextGenerator.generate_text(data)
-        # Generate canonical summaries for preview (CIR) to help detect action/command mismatches
-        cir_lines = []
-        effects = data.get('effects', []) or data.get('triggers', []) or []
-        for ei, eff in enumerate(effects, start=1):
-            # Commands-First Policy (Migration Phase 4.3)
-            # Prioritize 'commands' for CIR Summary.
-            # If commands are present, summarize them. Fallback to actions only if commands missing.
-            commands = eff.get('commands', [])
-            if commands:
-                for ci, cmd in enumerate(commands, start=1):
-                    # Normalize command to standard CIR form (it likely already is close)
-                    # Use canonicalize to handle nested structures uniformly
-                    cir = normalize.canonicalize(cmd)
-                    kind = cir.get('kind')
-                    ctype = cir.get('type') or ''
-                    opts = cir.get('options') or []
-                    branches = cir.get('branches') or {}
-                    opt_info = f" options={len(opts)}" if opts else ""
-                    branch_info = ''
-                    if branches:
-                        t = len(branches.get('if_true', []))
-                        f = len(branches.get('if_false', []))
-                        branch_info = f" branches=({t}/{f})"
-                    cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Command')}[{ci}]: {kind}/{ctype}{opt_info}{branch_info}")
-            else:
-                # Auto-migration: convert legacy actions to commands for preview
-                legacy_actions = eff.get('actions', [])
-                if legacy_actions:
-                    from dm_toolkit.gui.editor.action_converter import ActionConverter
-                    for ai, act in enumerate(legacy_actions, start=1):
-                        try:
-                            converted = ActionConverter.convert(act)
-                            if converted and converted.get('type') != 'NONE':
-                                cir = normalize.canonicalize(converted)
-                                kind = cir.get('kind')
-                                ctype = cir.get('type') or ''
-                                opts = cir.get('options') or []
-                                opt_info = f" options={len(opts)}" if opts else ""
-                                cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Command')}[{ai}] ({tr('Auto-converted')}): {kind}/{ctype}{opt_info}")
-                            else:
-                                # Fallback rendering for unconvertible actions
+        # When raw text preview is hidden, skip expensive text generation.
+        if self.raw_text_preview.isVisible():
+            full_text = CardTextGenerator.generate_text(data)
+            # Generate canonical summaries for preview (CIR) to help detect action/command mismatches
+            cir_lines = []
+            effects = data.get('effects', []) or data.get('triggers', []) or []
+            for ei, eff in enumerate(effects, start=1):
+                commands = eff.get('commands', [])
+                if commands:
+                    for ci, cmd in enumerate(commands, start=1):
+                        cir = normalize.canonicalize(cmd)
+                        kind = cir.get('kind')
+                        ctype = cir.get('type') or ''
+                        opts = cir.get('options') or []
+                        branches = cir.get('branches') or {}
+                        opt_info = f" options={len(opts)}" if opts else ""
+                        branch_info = ''
+                        if branches:
+                            t = len(branches.get('if_true', []))
+                            f = len(branches.get('if_false', []))
+                            branch_info = f" branches=({t}/{f})"
+                        cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Command')}[{ci}]: {kind}/{ctype}{opt_info}{branch_info}")
+                else:
+                    legacy_actions = eff.get('actions', [])
+                    if legacy_actions:
+                        from dm_toolkit.gui.editor.action_converter import ActionConverter
+                        for ai, act in enumerate(legacy_actions, start=1):
+                            try:
+                                converted = ActionConverter.convert(act)
+                                if converted and converted.get('type') != 'NONE':
+                                    cir = normalize.canonicalize(converted)
+                                    kind = cir.get('kind')
+                                    ctype = cir.get('type') or ''
+                                    opts = cir.get('options') or []
+                                    opt_info = f" options={len(opts)}" if opts else ""
+                                    cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Command')}[{ai}] ({tr('Auto-converted')}): {kind}/{ctype}{opt_info}")
+                                else:
+                                    cir = normalize.canonicalize(act)
+                                    cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Legacy')}): {cir.get('kind', 'UNKNOWN')}/{cir.get('type', 'NONE')}")
+                            except Exception:
                                 cir = normalize.canonicalize(act)
-                                cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Legacy')}): {cir.get('kind', 'UNKNOWN')}/{cir.get('type', 'NONE')}")
-                        except Exception:
-                            cir = normalize.canonicalize(act)
-                            cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Conversion Failed')}): {cir.get('kind', 'UNKNOWN')}")
+                                cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Conversion Failed')}): {cir.get('kind', 'UNKNOWN')}")
 
-        summary = "\n".join(cir_lines)
-        if summary:
-            # Prepend synthesized natural summaries for preview
-            synth = self._build_natural_summaries(data)
-            if synth:
-                self.raw_text_preview.setText(synth + "\n\n" + full_text + "\n\n" + tr("CIR Summary:") + "\n" + summary)
+            summary = "\n".join(cir_lines)
+            if summary:
+                synth = self._build_natural_summaries(data)
+                if synth:
+                    self.raw_text_preview.setText(synth + "\n\n" + full_text + "\n\n" + tr("CIR Summary:") + "\n" + summary)
+                else:
+                    self.raw_text_preview.setText(full_text + "\n\n" + tr("CIR Summary:") + "\n" + summary)
             else:
-                self.raw_text_preview.setText(full_text + "\n\n" + tr("CIR Summary:") + "\n" + summary)
-        else:
-            synth = self._build_natural_summaries(data)
-            if synth:
-                self.raw_text_preview.setText(synth + "\n\n" + full_text)
-            else:
-                self.raw_text_preview.setText(full_text)
+                synth = self._build_natural_summaries(data)
+                if synth:
+                    self.raw_text_preview.setText(synth + "\n\n" + full_text)
+                else:
+                    self.raw_text_preview.setText(full_text)
 
         # Check Twinpact
         is_twinpact = 'spell_side' in data and data['spell_side'] is not None
