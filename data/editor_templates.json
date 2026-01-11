@@ -1,73 +1,104 @@
 {
-  "revolution_change": {
-    "name": "Revolution Change",
-    "root_type": "EFFECT",
-    "data": {
-      "trigger": "ON_ATTACK_FROM_HAND",
-      "condition": { "type": "NONE" },
-      "commands": [
-        {
-          "type": "REVOLUTION_CHANGE",
-          "target_filter": {
-            "types": ["CREATURE"],
-            "civilizations": ["__CARD_CIVILIZATIONS__"],
-            "races": ["__CARD_RACES__"]
-          }
+    "revolution_change": {
+        "name": "Revolution Change",
+        "root_type": "EFFECT",
+        "data": {
+            "trigger": "NONE",
+            "commands": [
+                {
+                    "type": "MUTATE",
+                    "mutation_kind": "REVOLUTION_CHANGE",
+                    "target_filter": {
+                        "owner": "SELF",
+                        "zones": ["BATTLE_ZONE"],
+                        "types": ["CREATURE"],
+                        "civilizations": ["__CARD_CIVILIZATIONS__"],
+                        "races": ["__CARD_RACES__"],
+                        "min_cost": 5,
+                        "is_tapped": false,
+                        "is_blocker": null,
+                        "is_evolution": null
+                    }
+                }
+            ]
+        },
+        "keywords": {
+            "revolution_change": true
+        },
+        "condition_mapping": {
+            "revolution_change_condition": "commands[0].target_filter"
         }
-      ]
     },
-    "keywords": {
-      "revolution_change": true
-    },
-    "condition_mapping": {
-       "revolution_change_condition": "commands[0].target_filter"
-    }
-  },
-  "mekraid": {
-    "name": "Mekraid",
-    "root_type": "EFFECT",
-    "data": {
-      "trigger": "ON_PLAY",
-      "condition": { "type": "NONE" },
-      "commands": [
-        {
-          "type": "MEKRAID",
-          "look_count": 3,
-          "max_cost": 5,
-          "select_count": 1,
-          "target_filter": {
-             "types": ["CREATURE"],
-             "civilizations": ["__CARD_CIVILIZATIONS__"]
-          }
+    "mekraid": {
+        "name": "Mekraid",
+        "root_type": "EFFECT",
+        "data": {
+            "trigger": "ON_PLAY",
+            "commands": [
+                {
+                    "type": "MEKRAID",
+                    "amount": 5,
+                    "target_filter": {
+                        "races": ["Magic"]
+                    }
+                }
+            ]
+        },
+        "keywords": {
+            "mekraid": true
         }
-      ]
     },
-    "keywords": {
-      "mekraid": true
-    }
-  },
-  "friend_burst": {
-    "name": "Friend Burst",
-    "root_type": "EFFECT",
-    "data": {
-      "trigger": "ON_ATTACK",
-      "condition": { "type": "NONE" },
-      "commands": [
-        {
-          "type": "FRIEND_BURST",
-          "target_filter": {
-            "types": ["CREATURE"],
-            "civilizations": ["__CARD_CIVILIZATIONS__"],
-            "races": ["__CARD_RACES__"]
-          }
+    "friend_burst": {
+        "name": "Friend Burst",
+        "root_type": "EFFECT",
+        "data": {
+            "trigger": "NONE",
+            "commands": [
+                {
+                    "type": "FRIEND_BURST",
+                    "target_filter": {
+                        "races": ["__CARD_RACES__"],
+                        "is_tapped": false
+                    }
+                }
+            ]
+        },
+        "keywords": {
+            "friend_burst": true
+        },
+        "condition_mapping": {
+            "friend_burst_condition": "commands[0].target_filter"
         }
-      ]
     },
-    "keywords": {
-      "friend_burst": true
-    },
-    "condition_mapping": {
-       "friend_burst_condition": "commands[0].target_filter"
-    }
-  }
+    "commands": [
+        {
+            "name": "Draw Card",
+            "data": {
+                "type": "DRAW_CARD",
+                "amount": 1,
+                "target_group": "PLAYER_SELF"
+            }
+        },
+        {
+            "name": "Mana Charge",
+            "data": {
+                "type": "BOOST_MANA",
+                "amount": 1,
+                "target_group": "PLAYER_SELF"
+            }
+        },
+        {
+            "name": "Destroy Creature",
+            "data": {
+                "type": "DESTROY",
+                "target_group": "TARGET_SELECT",
+                "amount": 1,
+                "target_filter": {
+                    "owner": "PLAYER_OPPONENT",
+                    "zones": ["BATTLE_ZONE"],
+                    "types": ["CREATURE"]
+                }
+            }
+        }
+    ]
 }
