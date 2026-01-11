@@ -208,5 +208,106 @@
     "fields": [
       { "key": "target_group", "widget": "player_scope" }
     ]
+  },
+  "REVEAL_CARDS": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" }
+    ]
+  },
+  "LOOK_TO_BUFFER": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Look Count" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Buffer" }
+    ]
+  },
+  "SELECT_FROM_BUFFER": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Select Count" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Selected Cards" }
+    ]
+  },
+  "PLAY_FROM_BUFFER": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Played Card" }
+    ]
+  },
+  "MOVE_BUFFER_TO_ZONE": {
+    "fields": [
+      { "key": "to_zone", "widget": "zone_combo", "label": "To Zone" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" }
+    ]
+  },
+  "REGISTER_DELAYED_EFFECT": {
+    "fields": [
+      { "key": "str_param", "widget": "text", "label": "Effect ID" },
+      { "key": "amount", "widget": "spinbox", "label": "Duration" }
+    ]
+  },
+  "SELECT_OPTION": {
+    "fields": [
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "str_param", "widget": "text", "label": "Param" }
+    ]
+  },
+  "IF": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" }
+    ]
+  },
+  "IF_ELSE": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" }
+    ]
+  },
+  "ELSE": {
+    "fields": []
+  },
+  "COST_REFERENCE": {
+    "fields": [
+      { "key": "ref_mode", "widget": "ref_mode_combo", "label": "Reference Mode" }
+    ]
+  },
+  "GAME_RESULT": {
+    "fields": [
+      { "key": "str_param", "widget": "text", "label": "Result (WIN/LOSS/DRAW)" }
+    ]
+  },
+  "SHIELD_TRIGGER": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" }
+    ]
+  },
+  "SEND_TO_DECK_BOTTOM": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Moved Cards" }
+    ]
+  },
+  "SEARCH_DECK_BOTTOM": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Found Cards" }
+    ]
+  },
+  "SEND_SHIELD_TO_GRAVE": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" }
+    ]
   }
 }

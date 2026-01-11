@@ -1,152 +1,158 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
-    QWidget, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheckBox,
-    QLabel, QHBoxLayout, QFormLayout
+    QWidget, QLineEdit, QCheckBox, QHBoxLayout, QComboBox, QLabel, QVBoxLayout, QPushButton
 )
-from PyQt6.QtCore import Qt
-from dm_toolkit.gui.editor.schema_def import FieldType, FieldSchema
+from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
-from dm_toolkit.gui.localization import tr
-
-class ScopeSelectorWidget(QWidget):
-    """Wrapper for player scope checkboxes to look like a single widget."""
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.scope_self = QCheckBox(tr("Self"))
-        self.scope_opp = QCheckBox(tr("Opponent"))
-        self.layout.addWidget(self.scope_self)
-        self.layout.addWidget(self.scope_opp)
-
-        # Default
-        self.scope_self.setChecked(True)
-
-    def set_data(self, val):
-        self.scope_self.setChecked(False)
-        self.scope_opp.setChecked(False)
-        if val == "PLAYER_SELF":
-            self.scope_self.setChecked(True)
-        elif val == "PLAYER_OPPONENT":
-            self.scope_opp.setChecked(True)
-        elif val == "PLAYER_BOTH":
-            self.scope_self.setChecked(True)
-            self.scope_opp.setChecked(True)
-
-    def get_data(self):
-        s = self.scope_self.isChecked()
-        o = self.scope_opp.isChecked()
-        if s and o: return "PLAYER_BOTH"
-        if o: return "PLAYER_OPPONENT"
-        return "PLAYER_SELF"
-
-    def setReadOnly(self, val):
-        self.scope_self.setEnabled(not val)
-        self.scope_opp.setEnabled(not val)
+from dm_toolkit.gui.editor.forms.unified_widgets import (
+    make_value_spin, make_measure_mode_combo, make_ref_mode_combo,
+    make_scope_combo, make_option_controls
+)
+from dm_toolkit.consts import GRANTABLE_KEYWORDS
 
 class WidgetFactory:
-    """
-    Factory class to create PyQt widgets based on FieldSchema.
-    """
+    """Factory class to create widgets based on schema definitions."""
 
     @staticmethod
-    def create_widget(schema: FieldSchema, parent=None):
+    def create_widget(parent, field_config, update_callback):
+        """
+        Creates a widget based on the field configuration.
+
+        Args:
+            parent: The parent widget (usually the form).
+            field_config (dict): The configuration for the field.
+            update_callback (callable): The function to call when data changes.
+
+        Returns:
+            QWidget: The created widget.
+        """
+        w_type = field_config.get('widget', 'text')
+        label = field_config.get('label')
+
         widget = None
 
-        if schema.field_type == FieldType.INT:
-            widget = QSpinBox(parent)
-            if schema.min_value is not None:
-                widget.setMinimum(schema.min_value)
-            else:
-                widget.setMinimum(0) # Default
-            if schema.max_value is not None:
-                widget.setMaximum(schema.max_value)
-            else:
-                widget.setMaximum(9999)
+        if w_type == 'text':
+            widget = QLineEdit()
+            widget.textChanged.connect(update_callback)
 
-        elif schema.field_type == FieldType.FLOAT:
-            widget = QDoubleSpinBox(parent)
+        elif w_type == 'spinbox':
+            widget = make_value_spin(parent)
+            widget.valueChanged.connect(update_callback)
+            if 'default' in field_config:
+                widget.setValue(field_config['default'])
 
-        elif schema.field_type == FieldType.STRING:
-            widget = QLineEdit(parent)
+        elif w_type == 'checkbox':
+            widget = QCheckBox(tr(label) if label else "")
+            # Label is integrated into checkbox usually, but schema might provide it separately
+            widget.stateChanged.connect(update_callback)
 
-        elif schema.field_type == FieldType.BOOL:
-            widget = QCheckBox(parent)
-            # Label is usually handled by the form layout, but checkbox often has its own text
-            # For form consistency, we might leave text empty and use layout label
+        elif w_type == 'player_scope':
+            widget = WidgetFactory._create_player_scope(update_callback)
 
-        elif schema.field_type == FieldType.SELECT:
-            widget = QComboBox(parent)
-            for opt in schema.options:
-                if isinstance(opt, tuple):
-                    widget.addItem(str(opt[0]), opt[1])
-                else:
-                    widget.addItem(str(opt), opt)
-
-        elif schema.field_type == FieldType.ZONE:
-            # We assume single zone selector for now
-            widget = QComboBox(parent)
-            from dm_toolkit.consts import ZONE_NAMES
-            for z in ZONE_NAMES:
+        elif w_type == 'zone_combo':
+            widget = QComboBox()
+            zones = ["NONE", "HAND", "BATTLE_ZONE", "MANA_ZONE", "GRAVEYARD", "SHIELD_ZONE", "DECK"]
+            for z in zones:
                 widget.addItem(tr(z), z)
+            widget.currentIndexChanged.connect(update_callback)
 
-        elif schema.field_type == FieldType.FILTER:
-            widget = FilterEditorWidget(parent)
+        elif w_type == 'scope_combo':
+            widget = make_scope_combo(parent, include_zones=True)
+            widget.currentIndexChanged.connect(update_callback)
 
-        elif schema.field_type == FieldType.LINK:
-            widget = VariableLinkWidget(parent)
-            if schema.produces_output and hasattr(widget, 'set_output_hint'):
-                widget.set_output_hint(True)
+        elif w_type == 'query_mode_combo':
+            widget = make_measure_mode_combo(parent)
+            widget.currentIndexChanged.connect(update_callback)
 
-        elif schema.field_type == FieldType.PLAYER:
-            widget = ScopeSelectorWidget(parent)
+        elif w_type == 'ref_mode_combo':
+            widget = make_ref_mode_combo(parent)
+            widget.currentIndexChanged.connect(update_callback)
 
-        # Set tooltip
-        if widget and schema.tooltip:
-            widget.setToolTip(schema.tooltip)
+        elif w_type == 'keyword_combo':
+            widget = QComboBox()
+            for kw in GRANTABLE_KEYWORDS:
+                widget.addItem(tr(kw), kw)
+            widget.currentIndexChanged.connect(update_callback)
+
+        elif w_type == 'filter_editor':
+            widget = FilterEditorWidget()
+            widget.filterChanged.connect(update_callback)
+            if 'title' in field_config:
+                widget.setTitle(tr(field_config['title']))
+            if 'allowed_fields' in field_config:
+                widget.set_allowed_fields(field_config['allowed_fields'])
+
+        elif w_type == 'variable_link':
+            widget = VariableLinkWidget()
+            widget.linkChanged.connect(update_callback)
+            if field_config.get('produces_output'):
+                if hasattr(widget, 'set_output_hint'):
+                    widget.set_output_hint(True)
+            if 'output_label' in field_config:
+                widget.output_label_text = tr(field_config['output_label'])
+
+        elif w_type == 'options_control':
+            widget = WidgetFactory._create_options_control(parent, update_callback)
 
         return widget
 
-class FormBuilder:
-    """
-    Helper to build a form layout from a CommandSchema.
-    """
-    def __init__(self, parent_form):
-        self.form = parent_form
+    @staticmethod
+    def _create_player_scope(callback):
+        container = QWidget()
+        h_layout = QHBoxLayout(container)
+        h_layout.setContentsMargins(0,0,0,0)
 
-    def build(self, schema, layout: QFormLayout):
-        """
-        Populates the layout with widgets defined in schema.
-        Registers widgets to the parent form.
-        """
-        for field in schema.fields:
-            widget = WidgetFactory.create_widget(field, self.form)
-            if not widget:
-                continue
+        self_chk = QCheckBox(tr("Self"))
+        opp_chk = QCheckBox(tr("Opponent"))
 
-            # Register with base form
-            # Note: We need to ensure unique keys if multiple fields share generic names?
-            # The schema keys should be unique per command.
-            self.form.register_widget(widget, field.key)
+        def check_state(state):
+            if not self_chk.isChecked() and not opp_chk.isChecked():
+                 self_chk.setChecked(True)
+            callback()
 
-            # Add to layout
-            layout.addRow(field.label, widget)
+        self_chk.stateChanged.connect(check_state)
+        opp_chk.stateChanged.connect(check_state)
 
-            # Connect signals if possible to update_data
-            if hasattr(widget, 'valueChanged'):
-                widget.valueChanged.connect(self.form.update_data)
-            elif hasattr(widget, 'textChanged'):
-                widget.textChanged.connect(self.form.update_data)
-            elif hasattr(widget, 'currentIndexChanged'):
-                widget.currentIndexChanged.connect(self.form.update_data)
-            elif hasattr(widget, 'stateChanged'):
-                widget.stateChanged.connect(self.form.update_data)
-            elif hasattr(widget, 'filterChanged'):
-                widget.filterChanged.connect(self.form.update_data)
-            elif hasattr(widget, 'linkChanged'):
-                widget.linkChanged.connect(self.form.update_data)
-            # Custom ScopeSelectorWidget uses checkboxes inside
-            elif isinstance(widget, ScopeSelectorWidget):
-                 widget.scope_self.stateChanged.connect(self.form.update_data)
-                 widget.scope_opp.stateChanged.connect(self.form.update_data)
+        h_layout.addWidget(self_chk)
+        h_layout.addWidget(opp_chk)
+
+        # Attach sub-widgets for easy access
+        container.self_chk = self_chk
+        container.opp_chk = opp_chk
+
+        return container
+
+    @staticmethod
+    def _create_options_control(parent, callback):
+        # This requires the parent to handle request_generate_options logic usually,
+        # but here we encapsulate as much as possible.
+        spin, btn, lbl, layout = make_option_controls(parent)
+
+        container = QWidget()
+        v_layout = QVBoxLayout(container)
+        v_layout.setContentsMargins(0,0,0,0)
+
+        top_row = QWidget()
+        h_layout = QHBoxLayout(top_row)
+        h_layout.setContentsMargins(0,0,0,0)
+        h_layout.addWidget(lbl)
+        h_layout.addWidget(spin)
+        h_layout.addWidget(btn)
+
+        v_layout.addWidget(top_row)
+        v_layout.addLayout(layout)
+
+        container.spin = spin
+        container.btn = btn
+        container.option_layout = layout
+
+        # We need to bridge the button click to the parent's handler if possible,
+        # or expose the signal.
+        if hasattr(parent, 'request_generate_options'):
+             btn.clicked.connect(parent.request_generate_options)
+
+        # Also connect spin change to update data
+        spin.valueChanged.connect(callback)
+
+        return container

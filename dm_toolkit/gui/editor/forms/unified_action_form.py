@@ -2,22 +2,13 @@
 import json
 import os
 from PyQt6.QtWidgets import (
-    QWidget, QFormLayout, QComboBox, QSpinBox, QLineEdit, QCheckBox,
-    QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QStackedWidget
+    QWidget, QFormLayout, QComboBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QStackedWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from enum import Enum
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
-from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
-from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.models import CommandModel
-from dm_toolkit.gui.editor.forms.unified_widgets import (
-    make_player_scope_selector, make_value_spin, make_measure_mode_combo,
-    make_ref_mode_combo, make_zone_combos, make_option_controls, make_scope_combo
-)
-from dm_toolkit.consts import GRANTABLE_KEYWORDS
-from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 
 # Load schema
 def load_schema():
@@ -40,14 +31,15 @@ COMMAND_SCHEMA = load_schema()
 COMMAND_GROUPS = {
     'DRAW': ['DRAW_CARD'],
     'CARD_MOVE': ['TRANSITION', 'REPLACE_CARD_MOVE', 'RETURN_TO_HAND', 'DISCARD', 'DESTROY', 'MANA_CHARGE'],
-    'DECK_OPS': ['SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK'],
-    'PLAY': ['PLAY_FROM_ZONE', 'CAST_SPELL'],
+    'DECK_OPS': ['SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK', 'SEND_TO_DECK_BOTTOM', 'SEARCH_DECK_BOTTOM'],
+    'PLAY': ['PLAY_FROM_ZONE', 'CAST_SPELL', 'SUMMON_TOKEN', 'PUT_CREATURE'],
     'BUFFER': ['LOOK_TO_BUFFER', 'SELECT_FROM_BUFFER', 'PLAY_FROM_BUFFER', 'MOVE_BUFFER_TO_ZONE'],
     'CHEAT_PUT': ['MEKRAID', 'FRIEND_BURST', 'REVOLUTION_CHANGE'],
-    'GRANT': ['MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT'],
-    'LOGIC': ['QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION', 'IF', 'IF_ELSE', 'ELSE'],
-    'BATTLE': ['BREAK_SHIELD', 'RESOLVE_BATTLE', 'SHIELD_BURN', 'SHIELD_TRIGGER'],
-    'RESTRICTION': []
+    'GRANT': ['MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT', 'APPLY_MODIFIER'],
+    'LOGIC': ['QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION', 'IF', 'IF_ELSE', 'ELSE', 'STAT'],
+    'BATTLE': ['BREAK_SHIELD', 'RESOLVE_BATTLE', 'SHIELD_BURN', 'SHIELD_TRIGGER', 'ADD_SHIELD', 'SEND_SHIELD_TO_GRAVE'],
+    'RESTRICTION': [],
+    'SPECIAL': ['GAME_RESULT', 'COST_REFERENCE']
 }
 
 class UnifiedActionForm(BaseEditForm):
@@ -129,130 +121,23 @@ class UnifiedActionForm(BaseEditForm):
 
     def _create_widget_for_field(self, field):
         key = field['key']
-        w_type = field.get('widget', 'text')
         label = field.get('label')
 
-        widget = None
+        # Use WidgetFactory to create widget
+        widget = WidgetFactory.create_widget(self, field, self.update_data)
 
-        if w_type == 'text':
-            widget = QLineEdit()
-            widget.textChanged.connect(self.update_data)
-
-        elif w_type == 'spinbox':
-            widget = make_value_spin(self)
-            widget.valueChanged.connect(self.update_data)
-            if 'default' in field:
-                widget.setValue(field['default'])
-
-        elif w_type == 'checkbox':
-            widget = QCheckBox(tr(label) if label else "")
-            label = "" # Label is integrated
-            widget.stateChanged.connect(self.update_data)
-
-        elif w_type == 'player_scope':
-            # Special composite widget
-            container = QWidget()
-            h_layout = QHBoxLayout(container)
-            h_layout.setContentsMargins(0,0,0,0)
-
-            # Using existing helper but need to adapt slightly or reuse logic
-            # Since make_player_scope_selector returns (widget, chk1, chk2), we need to manage them
-            # Ideally we refactor make_player_scope_selector to return a single managing widget,
-            # but for now we inline the logic or wrap it.
-
-            self_chk = QCheckBox(tr("Self"))
-            opp_chk = QCheckBox(tr("Opponent"))
-
-            # Exclusive check logic wrapper
-            def check_state(state):
-                if not self_chk.isChecked() and not opp_chk.isChecked():
-                     self_chk.setChecked(True)
-                self.update_data()
-
-            self_chk.stateChanged.connect(check_state)
-            opp_chk.stateChanged.connect(check_state)
-
-            h_layout.addWidget(self_chk)
-            h_layout.addWidget(opp_chk)
-
-            widget = container
-            # Store sub-widgets for data mapping
-            widget.self_chk = self_chk
-            widget.opp_chk = opp_chk
-
-        elif w_type == 'zone_combo':
-            widget = QComboBox()
-            # Populate zones - using hardcoded list or helper
-            zones = ["NONE", "HAND", "BATTLE_ZONE", "MANA_ZONE", "GRAVEYARD", "SHIELD_ZONE", "DECK"]
-            for z in zones:
-                widget.addItem(tr(z), z)
-            widget.currentIndexChanged.connect(self.update_data)
-
-        elif w_type == 'scope_combo':
-            widget = make_scope_combo(self, include_zones=True)
-            widget.currentIndexChanged.connect(self.update_data)
-
-        elif w_type == 'query_mode_combo':
-            widget = make_measure_mode_combo(self)
-            widget.currentIndexChanged.connect(self.update_data)
-
-        elif w_type == 'keyword_combo':
-            widget = QComboBox()
-            for kw in GRANTABLE_KEYWORDS:
-                widget.addItem(tr(kw), kw)
-            widget.currentIndexChanged.connect(self.update_data)
-
-        elif w_type == 'filter_editor':
-            widget = FilterEditorWidget()
-            widget.filterChanged.connect(self.update_data)
-            if 'title' in field:
-                widget.setTitle(tr(field['title']))
-            if 'allowed_fields' in field:
-                widget.set_allowed_fields(field['allowed_fields'])
-
-        elif w_type == 'variable_link':
-            widget = VariableLinkWidget()
-            widget.linkChanged.connect(self.update_data)
-            if field.get('produces_output'):
-                if hasattr(widget, 'set_output_hint'):
-                    widget.set_output_hint(True)
-            if 'output_label' in field:
-                widget.output_label_text = tr(field['output_label'])
-
-        elif w_type == 'options_control':
-             # Complex composite for CHOICE
-             # We reuse make_option_controls logic but need to integrate it
-             spin, btn, lbl, layout = make_option_controls(self)
-
-             container = QWidget()
-             v_layout = QVBoxLayout(container)
-             v_layout.setContentsMargins(0,0,0,0)
-
-             top_row = QWidget()
-             h_layout = QHBoxLayout(top_row)
-             h_layout.setContentsMargins(0,0,0,0)
-             h_layout.addWidget(lbl)
-             h_layout.addWidget(spin)
-             h_layout.addWidget(btn)
-
-             v_layout.addWidget(top_row)
-             v_layout.addLayout(layout) # This is the dynamic options list
-
-             widget = container
-             # Store references
-             widget.spin = spin
-             widget.btn = btn
-             widget.option_layout = layout
-
-             # Connect
-             btn.clicked.connect(self.request_generate_options)
-             # Note: request_generate_options relies on self.option_count_spin, so we need to mock or route it
-             self.option_count_spin = spin
-             self.option_gen_layout = layout
+        # Store for options generation callback
+        if field.get('widget') == 'options_control':
+             self.option_count_spin = widget.spin
+             self.option_gen_layout = widget.option_layout
 
         if widget:
             self.widgets_map[key] = widget
             row_label = tr(label) if label else None
+            # Special handling for checkboxes where label is internal
+            if field.get('widget') == 'checkbox':
+                row_label = None
+
             if row_label:
                 self.dynamic_layout.addRow(row_label, widget)
             else:
@@ -316,24 +201,18 @@ class UnifiedActionForm(BaseEditForm):
 
             elif w_type == 'spinbox':
                 val = model.get(key, 0)
-                # Map special keys for specific types if schema key != data key
-                # Actually, our schema keys match data keys mostly.
-                # Except generic 'amount' mapping.
-                if key == 'amount' and cmd_type == 'MEKRAID':
-                    # Legacy: MEKRAID amount was max_cost?
-                    # Schema has specific 'max_cost', 'look_count'.
-                    # If data uses specific keys, good.
-                    pass
                 widget.setValue(int(val))
 
             elif w_type == 'checkbox':
-                # Handle 'play_for_free' which maps to flags list
                 if key == 'play_for_free':
-                     flags = model.get('play_flags', [])
+                     flags = model.play_flags
                      widget.setChecked('PLAY_FOR_FREE' in flags)
                 elif key == 'allow_duplicates':
-                     flags = model.get('flags', [])
+                     flags = model.flags
                      widget.setChecked('ALLOW_DUPLICATES' in flags)
+                elif key == 'up_to':
+                     flags = model.flags
+                     widget.setChecked('UP_TO' in flags)
                 else:
                     widget.setChecked(bool(model.get(key, False)))
 
@@ -346,8 +225,12 @@ class UnifiedActionForm(BaseEditForm):
                 widget.self_chk.blockSignals(False)
                 widget.opp_chk.blockSignals(False)
 
-            elif w_type in ['zone_combo', 'scope_combo', 'query_mode_combo', 'keyword_combo']:
+            elif w_type in ['zone_combo', 'scope_combo', 'query_mode_combo', 'keyword_combo', 'ref_mode_combo']:
                 val = model.get(key, 'NONE')
+                # For query_mode, logic mapped str_param to mode if type=QUERY
+                if cmd_type == 'QUERY' and key == 'str_param':
+                    if val == '': val = 'CARDS_MATCHING_FILTER'
+
                 self.set_combo_by_data(widget, val)
 
             elif w_type == 'filter_editor':
@@ -362,9 +245,6 @@ class UnifiedActionForm(BaseEditForm):
 
     def _save_ui_to_data(self, data):
         """Saves UI state back to dictionary data."""
-        # Start fresh or update? Usually we update to keep ID/etc.
-        # But for 'command' format, we rebuild.
-
         cmd_type = self.type_combo.currentData()
 
         new_data = {'format': 'command', 'type': cmd_type}
@@ -392,9 +272,11 @@ class UnifiedActionForm(BaseEditForm):
             elif w_type == 'checkbox':
                 val = widget.isChecked()
                 if key == 'play_for_free':
-                    if val: model.set('play_flags', ['PLAY_FOR_FREE'])
+                    if val: model.play_flags = ['PLAY_FOR_FREE']
                 elif key == 'allow_duplicates':
-                    if val: model.set('flags', ['ALLOW_DUPLICATES'])
+                    if val: model.flags = ['ALLOW_DUPLICATES']
+                elif key == 'up_to':
+                    if val: model.flags = ['UP_TO']
                 else:
                     if val: model.set(key, True)
 
@@ -406,7 +288,7 @@ class UnifiedActionForm(BaseEditForm):
                 else: t = 'PLAYER_SELF'
                 model.target_group = t
 
-            elif w_type in ['zone_combo', 'scope_combo', 'query_mode_combo', 'keyword_combo']:
+            elif w_type in ['zone_combo', 'scope_combo', 'query_mode_combo', 'keyword_combo', 'ref_mode_combo']:
                 model.set(key, widget.currentData())
 
             elif w_type == 'filter_editor':
@@ -417,6 +299,18 @@ class UnifiedActionForm(BaseEditForm):
 
             elif w_type == 'options_control':
                 model.amount = widget.spin.value()
+
+        # Ensure output keys are generated if needed
+        # (Legacy logic did this, good to keep)
+        out_key = new_data.get('output_value_key')
+        if not out_key:
+             # Check if schema says it produces output
+             field = next((f for f in self.fields_config if f.get('key') == 'output_link'), None)
+             if field and field.get('produces_output'):
+                  row = 0
+                  if getattr(self, 'current_item', None):
+                      row = self.current_item.row()
+                  new_data['output_value_key'] = f"var_{cmd_type}_{row}"
 
         data.clear()
         data.update(new_data)
