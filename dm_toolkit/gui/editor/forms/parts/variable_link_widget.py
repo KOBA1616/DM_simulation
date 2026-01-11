@@ -268,3 +268,11 @@ class VariableLinkWidget(QWidget):
         else:
             # Hide if no output expected and field is empty
             self._update_output_visibility()
+
+    @property
+    def output_label_text(self):
+        return self.output_key_label.text()
+
+    @output_label_text.setter
+    def output_label_text(self, text):
+        self.output_key_label.setText(text)

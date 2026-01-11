@@ -1,0 +1,212 @@
+{
+  "NONE": {
+    "fields": []
+  },
+  "DRAW_CARD": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "amount", "widget": "spinbox", "label": "Cards to Draw" },
+      { "key": "optional", "widget": "checkbox", "label": "Optional" },
+      { "key": "up_to", "widget": "checkbox", "label": "Up to" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Cards Drawn" }
+    ]
+  },
+  "DISCARD": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "optional", "widget": "checkbox", "label": "Optional" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Discarded Cards" }
+    ]
+  },
+  "DESTROY": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" }
+    ]
+  },
+  "MANA_CHARGE": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" }
+    ]
+  },
+  "TAP": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "input_link", "widget": "variable_link" }
+    ]
+  },
+  "UNTAP": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "input_link", "widget": "variable_link" }
+    ]
+  },
+  "RETURN_TO_HAND": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" }
+    ]
+  },
+  "BREAK_SHIELD": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" }
+    ]
+  },
+  "TRANSITION": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "from_zone", "widget": "zone_combo", "label": "From Zone" },
+      { "key": "to_zone", "widget": "zone_combo", "label": "To Zone" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "optional", "widget": "checkbox", "label": "Optional" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Moved Cards" }
+    ]
+  },
+  "REPLACE_CARD_MOVE": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "from_zone", "widget": "zone_combo", "label": "Original Dest" },
+      { "key": "to_zone", "widget": "zone_combo", "label": "Replacement Dest" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Replaced Cards" }
+    ]
+  },
+  "MUTATE": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "mutation_kind", "widget": "text", "label": "Mutation Type" },
+      { "key": "str_param", "widget": "text", "label": "Extra Param" },
+      { "key": "amount", "widget": "spinbox", "label": "Value / Duration" }
+    ]
+  },
+  "POWER_MOD": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Power Adjustment" }
+    ]
+  },
+  "ADD_KEYWORD": {
+    "fields": [
+      { "key": "target_group", "widget": "scope_combo", "label": "Target Scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "mutation_kind", "widget": "keyword_combo", "label": "Keyword" },
+      { "key": "amount", "widget": "spinbox", "label": "Duration (Turns)" }
+    ]
+  },
+  "QUERY": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "str_param", "widget": "query_mode_combo", "label": "Query Mode" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Query Result" }
+    ]
+  },
+  "FLOW": {
+    "fields": [
+      { "key": "str_param", "widget": "text", "label": "Flow Instruction" }
+    ]
+  },
+  "SEARCH_DECK": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Found Cards" }
+    ]
+  },
+  "LOOK_AND_ADD": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "look_count", "widget": "spinbox", "label": "Look Count" },
+      { "key": "add_count", "widget": "spinbox", "label": "Add Count" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Added Cards" }
+    ]
+  },
+  "MEKRAID": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor", "title": "Mekraid Target", "allowed_fields": ["civilizations", "types", "races"] },
+      { "key": "max_cost", "widget": "spinbox", "label": "Max Cost", "default": 5 },
+      { "key": "look_count", "widget": "spinbox", "label": "Look Count", "default": 3 },
+      { "key": "select_count", "widget": "spinbox", "label": "Select Count", "default": 1 },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Played Card" }
+    ]
+  },
+  "PLAY_FROM_ZONE": {
+    "fields": [
+      { "key": "from_zone", "widget": "zone_combo", "label": "From Zone" },
+      { "key": "to_zone", "widget": "zone_combo", "label": "To Zone" },
+      { "key": "amount", "widget": "spinbox", "label": "Max Cost" },
+      { "key": "play_for_free", "widget": "checkbox", "label": "Play without paying cost" },
+      { "key": "str_param", "widget": "text", "label": "Hint" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Played Card" }
+    ]
+  },
+  "SUMMON_TOKEN": {
+    "fields": [
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "str_param", "widget": "text", "label": "Token ID" }
+    ]
+  },
+  "SELECT_NUMBER": {
+    "fields": [
+      { "key": "max", "widget": "spinbox", "label": "Max" },
+      { "key": "min", "widget": "spinbox", "label": "Min" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Selected Number" }
+    ]
+  },
+  "CAST_SPELL": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" },
+      { "key": "target_filter", "widget": "filter_editor", "title": "Spell Filter" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Cast Card" }
+    ]
+  },
+  "FRIEND_BURST": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor", "title": "Friend Burst Target" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Spawned Card" }
+    ]
+  },
+  "CHOICE": {
+    "fields": [
+      { "key": "amount", "widget": "spinbox", "label": "Count" },
+      { "key": "allow_duplicates", "widget": "checkbox", "label": "Allow Duplicates" },
+      { "key": "options_control", "widget": "options_control" }
+    ]
+  },
+  "REVOLUTION_CHANGE": {
+    "fields": [
+      { "key": "target_filter", "widget": "filter_editor", "title": "Condition" }
+    ]
+  },
+  "SHUFFLE_DECK": {
+    "fields": [
+      { "key": "target_group", "widget": "player_scope" }
+    ]
+  }
+}
