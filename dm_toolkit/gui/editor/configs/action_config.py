@@ -81,6 +81,15 @@ COMMAND_UI_CONFIG = {
         "produces_output": True,
         "outputs": { "output_value_key": "Moved Cards" }
     },
+    "REPLACE_CARD_MOVE": {
+        "visible": ["target_filter", "from_zone", "to_zone", "amount", "input_link", "output_link"],
+        "label_from_zone": "Original Destination",
+        "label_to_zone": "Replacement Destination",
+        "label_amount": "Count",
+        "produces_output": True,
+        "outputs": { "output_value_key": "Moved Cards" },
+        "tooltip": "Replace card movement destination (e.g., instead of graveyard, to deck bottom)"
+    },
     "MUTATE": {
         "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param"],
         "label_mutation_kind": "Mutation Type",
