@@ -39,6 +39,13 @@
     "labels": { "amount": "Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "Moved Cards" }
+    "REPLACE_CARD_MOVE": {
+      "visible": ["target_filter", "from_zone", "to_zone", "amount", "input_link", "output_link"],
+      "labels": { "from_zone": "Original Destination", "to_zone": "Replacement Destination", "amount": "Count" },
+      "produces_output": true,
+      "outputs": { "output_value_key": "Replaced Cards" },
+      "tooltip": "Replacement effect: Instead of moving to original destination, move to replacement destination"
+    },
   },
   "MUTATE": {
     "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param"],
