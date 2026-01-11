@@ -8,6 +8,7 @@ class VariableLinkWidget(QWidget):
     """
     Reusable widget for linking variables (Action Chaining).
     Handles 'Input Source' selection (Manual, Event Source, Previous Steps) and Output Key generation.
+    Also allows specifying how the linked input is used (e.g., Cost, Amount, Selection Count).
     """
 
     # Signal emitted when any property changes
@@ -24,11 +25,34 @@ class VariableLinkWidget(QWidget):
         layout = QFormLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
+        # Input Source (previous output or reserved variables)
         self.input_key_combo = QComboBox()
         self.input_key_combo.setEditable(False)
         self.input_key_label = QLabel(tr("Input Source"))
         layout.addRow(self.input_key_label, self.input_key_combo)
 
+        # Input Usage (how to use linked value)
+        self.input_usage_combo = QComboBox()
+        self.input_usage_combo.setEditable(False)
+        self.input_usage_label = QLabel(tr("Input Usage"))
+        # Provide common usage mappings
+        usage_items = [
+            (tr("Default"), ""),
+            (tr("Cost"), "COST"),
+            (tr("Max Cost"), "MAX_COST"),
+            (tr("Min Cost"), "MIN_COST"),
+            (tr("Amount"), "AMOUNT"),
+            (tr("Selection Count"), "SELECTION"),
+            (tr("Target Count"), "TARGET_COUNT"),
+            (tr("Power"), "POWER"),
+            (tr("Max Power"), "MAX_POWER"),
+            (tr("Min Power"), "MIN_POWER"),
+        ]
+        for label, key in usage_items:
+            self.input_usage_combo.addItem(label, key)
+        layout.addRow(self.input_usage_label, self.input_usage_combo)
+
+        # Output Key (variable produced by this step)
         self.output_key_label = QLabel(tr("Output Key"))
         self.output_key_edit = QLineEdit()
         layout.addRow(self.output_key_label, self.output_key_edit)
@@ -42,7 +66,12 @@ class VariableLinkWidget(QWidget):
 
         # Connect signals
         self.input_key_combo.currentIndexChanged.connect(self.on_combo_changed)
+        self.input_usage_combo.currentIndexChanged.connect(self.linkChanged.emit)
         self.output_key_edit.textChanged.connect(self.linkChanged.emit)
+
+        # Initial visibility (hide usage until input is linked)
+        self.input_usage_label.setVisible(False)
+        self.input_usage_combo.setVisible(False)
 
         # Initial Population
         self.populate_input_keys()
@@ -61,13 +90,19 @@ class VariableLinkWidget(QWidget):
         self.populate_input_keys()
 
     def on_combo_changed(self):
+        # Update Input Usage visibility based on whether input is linked
+        is_linked = self.is_smart_link_active()
+        self.input_usage_label.setVisible(is_linked)
+        self.input_usage_combo.setVisible(is_linked)
+        
         self.linkChanged.emit()
-        self.smartLinkStateChanged.emit(self.is_smart_link_active())
+        self.smartLinkStateChanged.emit(is_linked)
 
     def set_data(self, data):
         self.blockSignals(True)
 
         input_key = data.get('input_value_key', '')
+        input_usage = data.get('input_value_usage', '')
         out_val = data.get('output_value_key', '')
         self.output_key_edit.setText(out_val)
         # Show output widgets if there is an output key present
@@ -100,9 +135,26 @@ class VariableLinkWidget(QWidget):
         elif not found and not input_key:
              self.input_key_combo.setCurrentIndex(0) # Manual Input
 
+        # Set usage selection
+        # Try exact match of data key
+        usage_found = False
+        for i in range(self.input_usage_combo.count()):
+            if self.input_usage_combo.itemData(i) == input_usage:
+                self.input_usage_combo.setCurrentIndex(i)
+                usage_found = True
+                break
+        if not usage_found:
+            # Default to first (empty) option
+            self.input_usage_combo.setCurrentIndex(0)
+
+        # Update Input Usage visibility
+        is_linked = self.is_smart_link_active()
+        self.input_usage_label.setVisible(is_linked)
+        self.input_usage_combo.setVisible(is_linked)
+        
         self.blockSignals(False)
         # Emit state change to ensure parent UI updates (hiding val1 etc)
-        self.smartLinkStateChanged.emit(self.is_smart_link_active())
+        self.smartLinkStateChanged.emit(is_linked)
 
     def get_data(self, data):
         """
@@ -120,6 +172,15 @@ class VariableLinkWidget(QWidget):
         # Save friendly label if valid link
         if val and val in getattr(self, 'valid_keys', set()):
              data['_input_value_label'] = self.input_key_combo.currentText()
+
+        # Input Usage
+        uidx = self.input_usage_combo.currentIndex()
+        usage_val = ""
+        if uidx >= 0:
+            usage_val = self.input_usage_combo.itemData(uidx)
+            if usage_val is None:
+                usage_val = ""
+        data['input_value_usage'] = usage_val
 
         # Output Key
         data['output_value_key'] = self.output_key_edit.text()

@@ -188,11 +188,15 @@ class CardTextGenerator:
     # Hint labels for how a linked input value is consumed by a subsequent step
     INPUT_USAGE_LABELS = {
         "COST": "コストとして使用",
+        "MAX_COST": "最大コストとして使用",
+        "MIN_COST": "最小コストとして使用",
         "AMOUNT": "枚数として使用",
         "COUNT": "枚数として使用",
         "SELECTION": "選択数として使用",
-        "TARGET_COUNT": "選択数として使用",
+        "TARGET_COUNT": "対象数として使用",
         "POWER": "パワーとして使用",
+        "MAX_POWER": "最大パワーとして使用",
+        "MIN_POWER": "最小パワーとして使用",
     }
 
     @classmethod
@@ -452,9 +456,20 @@ class CardTextGenerator:
         if civs:
             adjectives.append("/".join([tr(c) for c in civs]))
 
-        if min_cost > 0:
+        # Handle min_cost that might be int or dict with input_link
+        if isinstance(min_cost, dict):
+            usage = min_cost.get("input_value_usage", "")
+            if usage == "MIN_COST":
+                adjectives.append("コストその数以上")
+        elif min_cost > 0:
             adjectives.append(f"コスト{min_cost}以上")
-        if max_cost < 999:
+        
+        # Handle max_cost that might be int or dict with input_link
+        if isinstance(max_cost, dict):
+            usage = max_cost.get("input_value_usage", "")
+            if usage == "MAX_COST":
+                adjectives.append("コストその数以下")
+        elif max_cost < 999:
             adjectives.append(f"コスト{max_cost}以下")
 
         adj_str = "の".join(adjectives)
@@ -660,21 +675,41 @@ class CardTextGenerator:
         if races:
             parts.append("/".join(races) + "の")
         
-        # Cost range
-        if min_cost > 0 and max_cost < 999:
-            parts.append(f"コスト{min_cost}～{max_cost}の")
-        elif min_cost > 0:
-            parts.append(f"コスト{min_cost}以上の")
-        elif max_cost < 999:
-            parts.append(f"コスト{max_cost}以下の")
+        # Cost range (handle both int and dict with input_link)
+        if isinstance(min_cost, dict):
+            usage = min_cost.get("input_value_usage", "")
+            if usage == "MIN_COST":
+                parts.append("コストその数以上の")
+        elif isinstance(max_cost, dict):
+            usage = max_cost.get("input_value_usage", "")
+            if usage == "MAX_COST":
+                parts.append("コストその数以下の")
+        else:
+            # Both are numeric values
+            if min_cost > 0 and max_cost < 999:
+                parts.append(f"コスト{min_cost}～{max_cost}の")
+            elif min_cost > 0:
+                parts.append(f"コスト{min_cost}以上の")
+            elif max_cost < 999:
+                parts.append(f"コスト{max_cost}以下の")
         
-        # Power range
-        if min_power > 0 and max_power < 999999:
-            parts.append(f"パワー{min_power}～{max_power}の")
-        elif min_power > 0:
-            parts.append(f"パワー{min_power}以上の")
-        elif max_power < 999999:
-            parts.append(f"パワー{max_power}以下の")
+        # Power range (handle both int and dict with input_link)
+        if isinstance(min_power, dict):
+            usage = min_power.get("input_value_usage", "")
+            if usage == "MIN_POWER":
+                parts.append("パワーその数以上の")
+        elif isinstance(max_power, dict):
+            usage = max_power.get("input_value_usage", "")
+            if usage == "MAX_POWER":
+                parts.append("パワーその数以下の")
+        else:
+            # Both are numeric values
+            if min_power > 0 and max_power < 999999:
+                parts.append(f"パワー{min_power}～{max_power}の")
+            elif min_power > 0:
+                parts.append(f"パワー{min_power}以上の")
+            elif max_power < 999999:
+                parts.append(f"パワー{max_power}以下の")
         
         # Type noun
         type_noun = "カード"
@@ -859,7 +894,8 @@ class CardTextGenerator:
             return ""
 
         # Map CommandDef fields to Action-like dict to reuse _format_action logic where possible
-        cmd_type = command.get("type", "NONE")
+        # Robustly pick command type from either 'type' or legacy 'name'
+        cmd_type = command.get("type") or command.get("name") or "NONE"
 
         # Mapping CommandType to ActionType logic where applicable
         original_cmd_type = cmd_type
@@ -873,17 +909,21 @@ class CardTextGenerator:
         elif cmd_type == "CHOICE": cmd_type = "SELECT_OPTION"
 
         # Construct proxy action object
+        # Normalize common input-link fields from various sources
+        input_value_key = command.get("input_value_key") or command.get("input_link") or ""
+        input_value_usage = command.get("input_value_usage") or command.get("input_usage") or ""
+
         action_proxy = {
             "type": cmd_type,
             "scope": command.get("target_group", "NONE"),
-            "filter": command.get("target_filter", {}),
+            "filter": command.get("target_filter") or command.get("filter", {}),
             "value1": command.get("amount", 0),
             "optional": command.get("optional", False),
             "up_to": command.get("up_to", False),
             # Prefer the normalized key, but accept legacy key if present
             "str_val": command.get("str_param") or command.get("str_val", ""),
-            "input_value_key": command.get("input_value_key", ""),
-            "input_value_usage": command.get("input_value_usage", ""),
+            "input_value_key": input_value_key,
+            "input_value_usage": input_value_usage,
             "from_zone": command.get("from_zone", ""),
             "to_zone": command.get("to_zone", ""),
             "mutation_kind": command.get("mutation_kind", ""),
@@ -922,6 +962,15 @@ class CardTextGenerator:
         if original_cmd_type == "SHIELD_TRIGGER":
              return "S・トリガー"
 
+        if original_cmd_type == "QUERY":
+            # Set query_mode for _format_action to handle
+            query_mode = command.get("str_param") or command.get("query_mode") or ""
+            action_proxy["query_mode"] = query_mode
+            # Ensure str_param and str_val are set for stat queries
+            if query_mode and query_mode != "CARDS_MATCHING_FILTER":
+                action_proxy["str_param"] = query_mode
+                action_proxy["str_val"] = query_mode
+
         # Normalize complex command representations into the Action-like proxy expected by _format_action
         if original_cmd_type == "LOOK_AND_ADD":
             if "look_count" in command and command.get("look_count") is not None:
@@ -933,8 +982,13 @@ class CardTextGenerator:
                 action_proxy["rest_zone"] = rz
                 action_proxy["destination_zone"] = rz
         elif original_cmd_type == "MEKRAID":
-            if "max_cost" in command and command.get("max_cost") is not None:
-                action_proxy["value1"] = command.get("max_cost")
+            # Prefer max_cost from command or target_filter; support input-linked dict
+            max_cost_src = command.get("max_cost")
+            if max_cost_src is None and "target_filter" in command:
+                max_cost_src = command.get("target_filter", {}).get("max_cost")
+            # Only assign numeric value1; input-linked dict will be handled in _format_action
+            if max_cost_src is not None and not isinstance(max_cost_src, dict):
+                action_proxy["value1"] = max_cost_src
             if "look_count" in command and command.get("look_count") is not None:
                 action_proxy["look_count"] = command.get("look_count")
             if "rest_zone" in command and command.get("rest_zone") is not None:
@@ -945,8 +999,12 @@ class CardTextGenerator:
                 action_proxy["str_val"] = command.get("token_id")
         elif original_cmd_type == "PLAY_FROM_ZONE":
             action_proxy["source_zone"] = command.get("from_zone", "")
-            if "max_cost" in command and command.get("max_cost") is not None:
-                action_proxy["value1"] = command.get("max_cost")
+            # Check for max_cost at command level or within target_filter
+            max_cost = command.get("max_cost")
+            if max_cost is None and "target_filter" in command:
+                max_cost = command.get("target_filter", {}).get("max_cost")
+            if max_cost is not None and not isinstance(max_cost, dict):
+                action_proxy["value1"] = max_cost
         elif original_cmd_type == "CHOICE":
             # Map CHOICE into SELECT_OPTION natural language generation
             flags = command.get("flags", []) or []
@@ -1088,45 +1146,53 @@ class CardTextGenerator:
 
         # 1. Handle Input Variable Linking (Contextual substitution)
         if input_key:
+            # Usage label for linked inputs
+            usage_label_suffix = ""
+            if input_usage:
+                label = cls._format_input_usage_label(input_usage)
+                if label:
+                    usage_label_suffix = f"（{label}）"
+            
             # 前のアクションの出力を参照する場合
             if atype == "DRAW_CARD": 
                 up_to_flag = bool(action.get('up_to', False))
-                template = "カードをその同じ枚数引く。"
+                template = f"カードをその同じ枚数引く。{usage_label_suffix}"
                 if up_to_flag:
-                    template = "カードをその同じ枚数まで引く。"
+                    template = f"カードをその同じ枚数まで引く。{usage_label_suffix}"
             elif atype == "DESTROY": 
-                template = "{target}をその同じ数だけ破壊する。"
+                template = f"{{target}}をその同じ数だけ破壊する。{usage_label_suffix}"
             elif atype == "TAP": 
-                template = "{target}をその同じ数だけ選び、タップする。"
+                template = f"{{target}}をその同じ数だけ選び、タップする。{usage_label_suffix}"
             elif atype == "UNTAP": 
-                template = "{target}をその同じ数だけ選び、アンタップする。"
+                template = f"{{target}}をその同じ数だけ選び、アンタップする。{usage_label_suffix}"
             elif atype == "RETURN_TO_HAND": 
-                template = "{target}をその同じ数だけ選び、手札に戻す。"
+                template = f"{{target}}をその同じ数だけ選び、手札に戻す。{usage_label_suffix}"
             elif atype == "SEND_TO_MANA": 
-                template = "{target}をその同じ数だけ選び、マナゾーンに置く。"
+                template = f"{{target}}をその同じ数だけ選び、マナゾーンに置く。{usage_label_suffix}"
             elif atype == "TRANSITION":
                 # TRANSITION用の汎用的な参照表現
                 val1 = "その同じ枚数"
                 # 「まで」フラグがある場合は追加
                 if bool(action.get('up_to', False)):
                     val1 = "その同じ枚数まで"
+                # Add usage label at the end after template is fully formed
             elif atype == "MOVE_CARD":
                 # MOVE_CARDの入力リンク対応（行き先に応じた自然文）
                 dest_zone = action.get("destination_zone", "")
                 up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
                 if dest_zone == "DECK_BOTTOM":
-                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、山札の下に置く。"
+                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、山札の下に置く。{usage_label_suffix}"
                 elif dest_zone == "GRAVEYARD":
-                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、墓地に置く。"
+                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、墓地に置く。{usage_label_suffix}"
                 elif dest_zone == "HAND":
-                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、手札に戻す。"
+                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、手札に戻す。{usage_label_suffix}"
                 elif dest_zone == "MANA_ZONE":
-                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、マナゾーンに置く。"
+                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、マナゾーンに置く。{usage_label_suffix}"
             elif atype == "DISCARD":
                 # 前回の出力枚数と同じ枚数を捨てる
-                template = "手札をその同じ枚数捨てる。"
+                template = f"手札をその同じ枚数捨てる。{usage_label_suffix}"
                 if bool(action.get('up_to', False)):
-                    template = "手札をその同じ枚数まで捨てる。"
+                    template = f"手札をその同じ枚数まで捨てる。{usage_label_suffix}"
             else:
                 val1 = "その数"
         elif (val1 == 0 or (atype == "TRANSITION" and action.get("amount", 0) == 0)) and is_generic_selection:
@@ -1172,8 +1238,19 @@ class CardTextGenerator:
             return "\n".join(lines)
 
         elif atype == "MEKRAID":
+            # If input-linked MAX_COST is used, generate text with "その数"
             val1 = action.get("value1", 0)
-            return f"メクレイド{val1}（自分の山札の上から3枚を見る。その中からコスト{val1}以下のクリーチャーを1体、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
+            input_key = action.get("input_value_key", "")
+            input_usage = action.get("input_value_usage") or action.get("input_usage")
+            use_token = None
+            if input_key and input_usage == "MAX_COST":
+                use_token = "その数"
+            elif isinstance(val1, int) and val1 > 0:
+                use_token = str(val1)
+            else:
+                # Fallback when value not provided
+                use_token = "その数" if input_usage == "MAX_COST" else str(val1)
+            return f"メクレイド{use_token}（自分の山札の上から3枚を見る。その中からコスト{use_token}以下のクリーチャーを1体、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
 
         elif atype == "FRIEND_BURST":
             str_val = action.get("str_val", "")
@@ -1290,20 +1367,46 @@ class CardTextGenerator:
                  val1 = ""
 
         elif atype == "QUERY":
-             # If this is a stat query, prefer human-readable stat labels
-             # Accept several possible keys produced by converters: 'stat', 'str_param', 'str_val'
-             key = action.get('stat') or action.get('str_param') or action.get('str_val') or action.get('query_mode')
-             if key:
-                 stat_name, unit = cls.STAT_KEY_MAP.get(key, (None, None))
-                 if stat_name:
-                     # Return concise stat reference
-                     base = f"{stat_name}{unit}を数える。"
-                     if input_key:
-                         usage_label = cls._format_input_usage_label(input_usage)
-                         if usage_label:
-                             base += f"（{usage_label}）"
-                     return base
-             mode = action.get("query_mode", "")
+             # Determine query mode
+             mode = action.get("query_mode") or action.get("str_param") or action.get("str_val") or ""
+             
+             # Check if this is a stat query (predefined stat keys)
+             stat_name, unit = cls.STAT_KEY_MAP.get(str(mode), (None, None))
+             if stat_name:
+                 # Return concise stat reference
+                 base = f"{stat_name}{unit}を数える。"
+                 if input_key:
+                     usage_label = cls._format_input_usage_label(input_usage)
+                     if usage_label:
+                         base += f"（{usage_label}）"
+                 return base
+             
+             # When querying cards matching a filter, describe target and count
+             if str(mode) == "CARDS_MATCHING_FILTER" or not mode:
+                 target_str, unit = cls._resolve_target(action, is_spell)
+                 # Extract zone information from filter for more specific text
+                 filter_def = action.get("filter", {})
+                 zones = filter_def.get("zones", [])
+                 
+                 if target_str and target_str != "カード":
+                     base = f"{target_str}の数を数える。"
+                 elif zones:
+                     # Fallback with zone name when no specific target
+                     zone_names = [tr(z) for z in zones]
+                     if len(zone_names) == 1:
+                         base = f"{zone_names[0]}のカードの枚数を数える。"
+                     else:
+                         base = f"{'または'.join(zone_names)}のカードの枚数を数える。"
+                 else:
+                     base = "カードの数を数える。"
+                 
+                 if input_key:
+                     usage_label = cls._format_input_usage_label(input_usage)
+                     if usage_label:
+                         base += f"（{usage_label}）"
+                 return base
+             
+             # Fallback: generic question label for other modes
              base = f"質問: {tr(mode)}"
              if input_key:
                  usage_label = cls._format_input_usage_label(input_usage)
@@ -1434,32 +1537,46 @@ class CardTextGenerator:
             temp_filter = action.get("filter", {}).copy()
             action["filter"] = temp_filter
             
+            # Input Usage label
+            usage_label_suffix = ""
+            if input_key and input_usage:
+                label = cls._format_input_usage_label(input_usage)
+                if label:
+                    usage_label_suffix = f"（{label}）"
+            
             # フィルタでSPELLタイプが指定されている場合、詳細なターゲット文字列を生成
             types = temp_filter.get("types", [])
-            if "SPELL" in types:
+            if "SPELL" in types or not types:
                 # フィルタに基づいた詳細なターゲット文字列を取得
                 target_str, unit = cls._resolve_target(action)
                 # 「呪文」部分を削除（すでに末尾に「呪文」が含まれている場合）
                 if target_str.endswith("呪文"):
-                    # 「火の呪文」→「火の」のように、「呪文」を除去
-                    prefix = target_str[:-2] if len(target_str) > 2 else ""
-                    template = f"{prefix}呪文をコストを支払わずに唱える。"
+                    # 末尾「呪文」を含む場合は、その直前の形容（文明/コスト等）を保持してそのまま呪文を唱える
+                    template = f"{target_str}をコストを支払わずに唱える。{usage_label_suffix}"
                 elif target_str == "カード" or target_str == "":
-                    template = "呪文をコストを支払わずに唱える。"
+                    template = f"呪文をコストを支払わずに唱える。{usage_label_suffix}"
                 else:
-                    template = f"{target_str}の呪文をコストを支払わずに唱える。"
+                    # 形容に「コストその数以下の」などが含まれる場合、末尾に「呪文」を補って唱える
+                    template = f"{target_str}の呪文をコストを支払わずに唱える。{usage_label_suffix}"
             else:
                 # SPELLタイプ以外の場合は通常のターゲット文字列
                 target_str, unit = cls._resolve_target(action)
                 if target_str == "" or target_str == "カード":
-                    template = "カードをコストを支払わずに唱える。"
+                    template = f"カードをコストを支払わずに唱える。{usage_label_suffix}"
                 else:
-                    template = f"{target_str}をコストを支払わずに唱える。"
+                    template = f"{target_str}をコストを支払わずに唱える。{usage_label_suffix}"
 
         elif atype == "PLAY_FROM_ZONE":
             action = action.copy()
             temp_filter = action.get("filter", {}).copy()
             action["filter"] = temp_filter
+
+            # Input Usage label
+            usage_label_suffix = ""
+            if input_key and input_usage:
+                label = cls._format_input_usage_label(input_usage)
+                if label:
+                    usage_label_suffix = f"（{label}）"
 
             if not action.get("source_zone") and "zones" in temp_filter:
                 zones = temp_filter["zones"]
@@ -1468,7 +1585,12 @@ class CardTextGenerator:
 
             if action.get("value1", 0) == 0:
                 max_cost = temp_filter.get("max_cost", 999)
-                if max_cost < 999:
+                # Handle max_cost that might be int or dict with input_link
+                if isinstance(max_cost, dict):
+                    # If it's input-linked, don't extract a numeric value
+                    # Keep max_cost in filter so _resolve_target can process it
+                    pass
+                elif max_cost < 999:
                     action["value1"] = max_cost
                     if not input_key: val1 = max_cost
                     if "max_cost" in temp_filter: del temp_filter["max_cost"]
@@ -1486,9 +1608,9 @@ class CardTextGenerator:
                 verb = "召喚する"
 
             if action.get("source_zone"):
-                template = "{source_zone}からコスト{value1}以下の{target}を" + verb + "。"
+                template = "{source_zone}からコスト{value1}以下の{target}を" + verb + f"。{usage_label_suffix}"
             else:
-                template = "コスト{value1}以下の{target}を" + verb + "。"
+                template = "コスト{value1}以下の{target}を" + verb + f"。{usage_label_suffix}"
 
         # Destination/Source Resolution
         dest_zone = action.get("destination_zone", "")
@@ -1503,6 +1625,13 @@ class CardTextGenerator:
         text = text.replace("{unit}", unit)
         text = text.replace("{zone}", zone_str)
         text = text.replace("{source_zone}", src_str)
+
+        # Handle PLAY_FROM_ZONE with input-linked max_cost: remove "コスト{value1}以下の" since target_str includes cost info
+        if atype == "PLAY_FROM_ZONE" and action.get("value1") == 0:
+            max_cost = action.get("filter", {}).get("max_cost")
+            if isinstance(max_cost, dict) and max_cost.get("input_value_usage") == "MAX_COST":
+                # Remove the "コスト{value1}以下の" part since _resolve_target already includes it
+                text = text.replace("コスト0以下の", "")
 
         # Handle specific replacements for TRANSITION/MUTATE
         if atype in ["TRANSITION", "MUTATE"]:
@@ -1550,6 +1679,9 @@ class CardTextGenerator:
         if usage is None:
             return ""
         norm = str(usage).upper()
+        # Suppress label for MAX_COST to avoid redundant parenthetical hints
+        if norm == "MAX_COST":
+            return ""
         if norm in cls.INPUT_USAGE_LABELS:
             return cls.INPUT_USAGE_LABELS[norm]
         # Fallback to raw string for custom labels
@@ -1600,8 +1732,77 @@ class CardTextGenerator:
 
             if temp_adjs: adjectives += "/".join(temp_adjs) + "の"
 
-            if filter_def.get("min_cost", 0) > 0: adjectives += f"コスト{filter_def['min_cost']}以上の"
-            if filter_def.get("max_cost", 999) < 999: adjectives += f"コスト{filter_def['max_cost']}以下の"
+            # Handle min_cost (can be int or dict with input_link) or usage-only
+            min_cost = filter_def.get("min_cost", 0)
+            # usage-only from action
+            input_usage = action.get("input_value_usage") or action.get("input_usage")
+            has_input_key = bool(action.get("input_value_key"))
+            if isinstance(min_cost, dict):
+                # If it's an input-linked parameter, check the usage and generate appropriate text
+                usage = min_cost.get("input_value_usage", "")
+                if usage == "MIN_COST":
+                    # Generate text as if a cost value was provided: "コストその数以上の"
+                    adjectives += "コストその数以上の"
+            elif min_cost > 0:
+                adjectives += f"コスト{min_cost}以上の"
+            elif has_input_key and input_usage == "MIN_COST":
+                adjectives += "コストその数以上の"
+            
+            # Handle max_cost (can be int or dict with input_link) or usage-only
+            max_cost = filter_def.get("max_cost", 999)
+            if isinstance(max_cost, dict):
+                # If it's an input-linked parameter, check the usage and generate appropriate text
+                usage = max_cost.get("input_value_usage", "")
+                if usage == "MAX_COST":
+                    # Generate text as if a cost value was provided: "コストその数以下の"
+                    adjectives += "コストその数以下の"
+            elif max_cost < 999:
+                adjectives += f"コスト{max_cost}以下の"
+            elif has_input_key and input_usage == "MAX_COST":
+                adjectives += "コストその数以下の"
+
+            # Power constraints (min/max) with usage-only
+            min_power = filter_def.get("min_power", 0)
+            if isinstance(min_power, dict):
+                usage = min_power.get("input_value_usage", "")
+                if usage == "MIN_POWER":
+                    adjectives += "パワーその数以上の"
+            elif min_power > 0:
+                adjectives += f"パワー{min_power}以上の"
+            elif has_input_key and input_usage == "MIN_POWER":
+                adjectives += "パワーその数以上の"
+
+            max_power = filter_def.get("max_power", 999999)
+            if isinstance(max_power, dict):
+                usage = max_power.get("input_value_usage", "")
+                if usage == "MAX_POWER":
+                    adjectives += "パワーその数以下の"
+            elif max_power < 999999:
+                adjectives += f"パワー{max_power}以下の"
+            elif has_input_key and input_usage == "MAX_POWER":
+                adjectives += "パワーその数以下の"
+
+            # Handle min_power (can be int or dict with input_link)
+            min_power = filter_def.get("min_power", 0)
+            if isinstance(min_power, dict):
+                # If it's an input-linked parameter, check the usage and generate appropriate text
+                usage = min_power.get("input_value_usage", "")
+                if usage == "MIN_POWER":
+                    # Generate text as if a power value was provided: "パワーその数以上の"
+                    adjectives += "パワーその数以上の"
+            elif min_power > 0:
+                adjectives += f"パワー{min_power}以上の"
+            
+            # Handle max_power (can be int or dict with input_link)
+            max_power = filter_def.get("max_power", 999999)
+            if isinstance(max_power, dict):
+                # If it's an input-linked parameter, check the usage and generate appropriate text
+                usage = max_power.get("input_value_usage", "")
+                if usage == "MAX_POWER":
+                    # Generate text as if a power value was provided: "パワーその数以下の"
+                    adjectives += "パワーその数以下の"
+            elif max_power < 999999:
+                adjectives += f"パワー{max_power}以下の"
 
             if filter_def.get("is_tapped", None) is True: adjectives = "タップされている" + adjectives
             elif filter_def.get("is_tapped", None) is False: adjectives = "アンタップされている" + adjectives

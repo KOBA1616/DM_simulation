@@ -1,0 +1,39 @@
+{
+  "cards": [
+    {
+      "id": "test_usage_label",
+      "name": "用途ラベルテスト",
+      "cost": 5,
+      "civilizations": ["FIRE"],
+      "type": "SPELL",
+      "power": 0,
+      "races": [],
+      "effects": [
+        {
+          "trigger": "ON_PLAY",
+          "commands": [
+            {
+              "type": "QUERY",
+              "target_filter": {
+                "zones": ["HAND"],
+                "types": ["CREATURE"]
+              },
+              "str_param": "CARDS_MATCHING_FILTER",
+              "output_value_key": "var_hand_creatures"
+            },
+            {
+              "type": "DESTROY",
+              "target_filter": {
+                "zones": ["BATTLE_ZONE"],
+                "types": ["CREATURE"]
+              },
+              "amount": 0,
+              "input_value_key": "var_hand_creatures",
+              "input_value_usage": "TARGET_COUNT"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

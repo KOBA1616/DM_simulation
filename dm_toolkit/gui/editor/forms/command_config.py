@@ -94,18 +94,18 @@ _definitions = [
                labels={"str_param": "Flow Instruction"}),
 
     CommandDef("SEARCH_DECK",
-               visible=["target_filter", "amount", "output_link"],
+               visible=["target_filter", "amount", "input_link", "output_link"],
                labels={"amount": "Count"},
-               produces_output=True, output_label="Found Cards"),
+               produces_output=True, output_label="見つかったカード"),
 
     CommandDef("SHIELD_TRIGGER",
                visible=["target_group"]),
 
     # --- New / Mapped Commands ---
     CommandDef("LOOK_AND_ADD",
-               visible=["target_filter", "amount", "output_link"],
+               visible=["target_filter", "amount", "input_link", "output_link"],
                labels={"amount": "Look Count"},
-               produces_output=True, output_label="Added Cards"),
+               produces_output=True, output_label="加えたカード"),
 
     CommandDef("MEKRAID",
                visible=["target_filter", "amount", "val2", "output_link"],
@@ -120,8 +120,9 @@ _definitions = [
                visible=["target_group"]),
 
     CommandDef("PLAY_FROM_ZONE",
-               visible=["from_zone", "to_zone", "amount", "str_param"],
-               labels={"amount": "Max Cost", "str_param": "Hint"}),
+               visible=["from_zone", "to_zone", "amount", "str_param", "input_link", "output_link"],
+               labels={"amount": "Max Cost", "str_param": "Hint"},
+               produces_output=True, output_label="プレイしたカード"),
 
     CommandDef("SUMMON_TOKEN",
                visible=["amount", "str_param"],
@@ -137,10 +138,12 @@ _definitions = [
                labels={"amount": "Count"}),
 
     CommandDef("CAST_SPELL",
-               visible=["target_group", "target_filter", "optional"]),
+               visible=["target_group", "target_filter", "input_link", "output_link"],
+               produces_output=True, output_label="唱えたカード"),
 
     CommandDef("FRIEND_BURST",
-               visible=["target_filter"]) ,
+               visible=["target_filter", "input_link", "output_link"],
+               produces_output=True, output_label="出現カード") ,
 
     CommandDef("REGISTER_DELAYED_EFFECT",
                visible=["str_param", "amount"],
