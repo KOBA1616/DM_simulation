@@ -1,0 +1,142 @@
+{
+  "NONE": { "visible": [] },
+  "DRAW_CARD": {
+    "visible": ["target_group", "amount", "optional", "up_to", "input_link"],
+    "labels": { "amount": "Cards to Draw" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Cards Drawn" }
+  },
+  "DISCARD": {
+    "visible": ["target_group", "target_filter", "amount", "optional", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Discarded Cards" }
+  },
+  "DESTROY": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count (if selecting)" }
+  },
+  "MANA_CHARGE": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count (if selecting)" }
+  },
+  "TAP": {
+    "visible": ["target_group", "target_filter", "input_link"]
+  },
+  "UNTAP": {
+    "visible": ["target_group", "target_filter", "input_link"]
+  },
+  "RETURN_TO_HAND": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count (if selecting)" }
+  },
+  "BREAK_SHIELD": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "TRANSITION": {
+    "visible": ["target_group", "target_filter", "from_zone", "to_zone", "amount", "optional", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Moved Cards" }
+  },
+  "MUTATE": {
+    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param"],
+    "labels": { "mutation_kind": "Mutation Type", "amount": "Value / Duration", "str_param": "Extra Param" }
+  },
+  "POWER_MOD": {
+    "visible": ["target_group", "target_filter", "amount"],
+    "labels": { "amount": "Power Adjustment" }
+  },
+  "ADD_KEYWORD": {
+    "visible": ["target_group", "target_filter", "mutation_kind", "amount"],
+    "labels": { "mutation_kind": "Keyword", "amount": "Duration (Turns)" }
+  },
+  "QUERY": {
+    "visible": ["target_group", "target_filter", "query_mode", "output_link"],
+    "produces_output": true,
+    "outputs": { "output_value_key": "Query Result" }
+  },
+  "FLOW": {
+    "visible": ["str_param"],
+    "labels": { "str_param": "Flow Instruction" }
+  },
+  "SEARCH_DECK": {
+    "visible": ["target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "見つかったカード" }
+  },
+  "SHIELD_TRIGGER": {
+    "visible": ["target_group"]
+  },
+  "LOOK_AND_ADD": {
+    "visible": ["target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Look Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "加えたカード" }
+  },
+  "MEKRAID": {
+    "visible": ["target_filter", "amount", "val2", "output_link"],
+    "labels": { "amount": "Level" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Played Card" }
+  },
+  "REVEAL_CARDS": {
+    "visible": ["target_group", "target_filter", "amount"],
+    "labels": { "amount": "Count" }
+  },
+  "SHUFFLE_DECK": {
+    "visible": ["target_group"]
+  },
+  "PLAY_FROM_ZONE": {
+    "visible": ["from_zone", "to_zone", "amount", "str_param", "input_link", "output_link"],
+    "labels": { "amount": "Max Cost", "str_param": "Hint" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "プレイしたカード" }
+  },
+  "SUMMON_TOKEN": {
+    "visible": ["amount", "str_param"],
+    "labels": { "amount": "Count", "str_param": "Token ID" }
+  },
+  "SELECT_NUMBER": {
+    "visible": ["amount", "output_link"],
+    "labels": { "amount": "Max" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Selected Number" }
+  },
+  "SELECT_OPTION": {
+    "visible": ["amount", "str_param"],
+    "labels": { "amount": "Count" }
+  },
+  "CAST_SPELL": {
+    "visible": ["target_group", "target_filter", "input_link", "output_link"],
+    "produces_output": true,
+    "outputs": { "output_value_key": "唱えたカード" }
+  },
+  "FRIEND_BURST": {
+    "visible": ["target_filter", "input_link", "output_link"],
+    "produces_output": true,
+    "outputs": { "output_value_key": "出現カード" }
+  },
+  "REGISTER_DELAYED_EFFECT": {
+    "visible": ["str_param", "amount"],
+    "labels": { "str_param": "Effect ID", "amount": "Duration" }
+  },
+  "CHOICE": {
+    "visible": ["amount"],
+    "labels": { "amount": "Count" }
+  },
+  "REVOLUTION_CHANGE": {
+    "visible": ["target_filter"]
+  },
+  "IF": {
+    "visible": ["target_filter"]
+  },
+  "IF_ELSE": {
+    "visible": ["target_filter"]
+  },
+  "ELSE": {
+    "visible": []
+  }
+}

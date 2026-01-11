@@ -5,6 +5,7 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
+from dm_toolkit.consts import TRIGGER_TYPES, SPELL_TRIGGER_TYPES, LAYER_TYPES
 
 class EffectEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -37,11 +38,7 @@ class EffectEditForm(BaseEditForm):
         # Trigger Definition
         self.trigger_combo = QComboBox()
         # Initial population, will be updated by Logic Mask
-        triggers = [
-            "ON_PLAY", "ON_ATTACK", "ON_BLOCK", "ON_DESTROY", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
-            "ON_ATTACK_FROM_HAND", "AT_BREAK_SHIELD", "ON_CAST_SPELL", "ON_OPPONENT_DRAW"
-        ]
-        self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
+        self.populate_combo(self.trigger_combo, TRIGGER_TYPES, display_func=tr, data_func=lambda x: x)
         self.lbl_trigger = self.add_field(tr("Trigger"), self.trigger_combo, 'trigger')
 
         # Layer Definition (Static)
@@ -49,8 +46,7 @@ class EffectEditForm(BaseEditForm):
         l_layout = QGridLayout(self.layer_group)
 
         self.layer_type_combo = QComboBox()
-        layers = ["COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
-        self.populate_combo(self.layer_type_combo, layers, display_func=tr, data_func=lambda x: x)
+        self.populate_combo(self.layer_type_combo, LAYER_TYPES, display_func=tr, data_func=lambda x: x)
         self.register_widget(self.layer_type_combo, 'type')
 
         self.layer_val_spin = QSpinBox()
@@ -211,18 +207,7 @@ class EffectEditForm(BaseEditForm):
     def update_trigger_options(self, card_type):
         is_spell = (card_type == "SPELL")
 
-        all_triggers = [
-            "ON_PLAY", "ON_ATTACK", "ON_BLOCK", "ON_DESTROY", "TURN_START",
-            "PASSIVE_CONST", "ON_OTHER_ENTER", "ON_ATTACK_FROM_HAND",
-            "AT_BREAK_SHIELD", "ON_CAST_SPELL", "ON_OPPONENT_DRAW"
-        ]
-
-        allowed = []
-        if is_spell:
-            # Limit triggers for Spells to relevant ones
-            allowed = ["ON_PLAY", "ON_CAST_SPELL", "TURN_START", "ON_OPPONENT_DRAW", "PASSIVE_CONST", "ON_OTHER_ENTER"]
-        else:
-            allowed = all_triggers
+        allowed = SPELL_TRIGGER_TYPES if is_spell else TRIGGER_TYPES
 
         current_data = self.trigger_combo.currentData()
         self.trigger_combo.blockSignals(True)

@@ -226,3 +226,40 @@ GRANTABLE_KEYWORDS = [
     "CANNOT_BLOCK",
     "CANNOT_ATTACK_OR_BLOCK"
 ]
+
+# =============================================================================
+# Trigger Types (Effect Triggers)
+# =============================================================================
+TRIGGER_TYPES = [
+    "ON_PLAY",
+    "ON_ATTACK",
+    "ON_BLOCK",
+    "ON_DESTROY",
+    "TURN_START",
+    "PASSIVE_CONST",
+    "ON_OTHER_ENTER",
+    "ON_ATTACK_FROM_HAND",
+    "AT_BREAK_SHIELD",
+    "ON_CAST_SPELL",
+    "ON_OPPONENT_DRAW"
+]
+
+# Triggers valid for Spells (subset of above)
+SPELL_TRIGGER_TYPES = [
+    "ON_PLAY",
+    "ON_CAST_SPELL",
+    "TURN_START",
+    "ON_OPPONENT_DRAW",
+    "PASSIVE_CONST",
+    "ON_OTHER_ENTER"
+]
+
+# =============================================================================
+# Layer Types (Static Modifiers)
+# =============================================================================
+LAYER_TYPES = [
+    "COST_MODIFIER",
+    "POWER_MODIFIER",
+    "GRANT_KEYWORD",
+    "SET_KEYWORD"
+]
