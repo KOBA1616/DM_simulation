@@ -58,6 +58,69 @@ class CommandModel(BaseModel):
     def target_group(self, value: str):
         self.set('target_group', value)
 
+    @property
+    def str_param(self) -> str:
+        return self.get('str_param', '')
+
+    @str_param.setter
+    def str_param(self, value: str):
+        self.set('str_param', value)
+
+    @property
+    def mutation_kind(self) -> str:
+        return self.get('mutation_kind', '')
+
+    @mutation_kind.setter
+    def mutation_kind(self, value: str):
+        self.set('mutation_kind', value)
+
+    @property
+    def from_zone(self) -> str:
+        return self.get('from_zone', 'NONE')
+
+    @from_zone.setter
+    def from_zone(self, value: str):
+        self.set('from_zone', value)
+
+    @property
+    def to_zone(self) -> str:
+        return self.get('to_zone', 'NONE')
+
+    @to_zone.setter
+    def to_zone(self, value: str):
+        self.set('to_zone', value)
+
+    @property
+    def optional(self) -> bool:
+        return bool(self.get('optional', False))
+
+    @optional.setter
+    def optional(self, value: bool):
+        self.set('optional', value)
+
+    @property
+    def play_flags(self) -> List[str]:
+        return self.get('play_flags', [])
+
+    @play_flags.setter
+    def play_flags(self, value: List[str]):
+        self.set('play_flags', value)
+
+    @property
+    def flags(self) -> List[str]:
+        return self.get('flags', [])
+
+    @flags.setter
+    def flags(self, value: List[str]):
+        self.set('flags', value)
+
+    @property
+    def ref_mode(self) -> str:
+        return self.get('ref_mode', 'NONE')
+
+    @ref_mode.setter
+    def ref_mode(self, value: str):
+        self.set('ref_mode', value)
 
 class CardModel(BaseModel):
     """Model wrapper for Card data."""
