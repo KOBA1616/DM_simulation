@@ -344,9 +344,17 @@ class CardDataManager:
         - Ensure UIDs on commands and nested entries
         - Ensure command keys like 'options', 'if_true', 'if_false' are lists of dicts
         - Mark commands with missing/unknown 'type' as legacy_warning
+        - Validate trigger effects and static abilities structure
+        - Warn if modifiers have 'commands' or non-NONE 'trigger'
         """
         warnings = []
         from dm_toolkit.consts import COMMAND_TYPES
+        from dm_toolkit.gui.editor.validators_shared import (
+            ModifierValidator,
+            TriggerEffectValidator,
+            FilterValidator,
+            ConditionValidator
+        )
 
         def _ensure_uid(obj):
             if isinstance(obj, dict) and 'uid' not in obj:
@@ -393,11 +401,17 @@ class CardDataManager:
                     cmd[key] = new_list
             return cmd, w
 
-        # Process effects/triggers
+        # Process effects/triggers (trigger effects)
         effects_key = 'triggers' if 'triggers' in card else 'effects'
         effects = card.get(effects_key, [])
         for ei, eff in enumerate(effects):
-            eff_path = f"card.effects[{ei}]"
+            eff_path = f"card.{effects_key}[{ei}]"
+            
+            # Validate trigger effect structure using shared validator
+            trigger_errors = TriggerEffectValidator.validate(eff)
+            for err in trigger_errors:
+                warnings.append(f"{eff_path}: {err}")
+            
             # Ensure lists
             cmds = eff.get('commands', [])
             if cmds and not isinstance(cmds, list):
@@ -411,6 +425,70 @@ class CardDataManager:
                     new_cmds.append(normalized)
                 warnings.extend(w)
             eff['commands'] = new_cmds
+
+        # Process static abilities (modifiers)
+        static_abilities = card.get('static_abilities', [])
+        for si, mod in enumerate(static_abilities):
+            mod_path = f"card.static_abilities[{si}]"
+            
+            # Validate modifier structure using shared validator
+            modifier_errors = ModifierValidator.validate(mod)
+            for err in modifier_errors:
+                warnings.append(f"{mod_path}: {err}")
+            
+            # Ensure filter and condition are valid
+            if 'filter' in mod:
+                filter_errors = FilterValidator.validate(mod.get('filter', {}))
+                for err in filter_errors:
+                    warnings.append(f"{mod_path}.filter: {err}")
+            
+            if 'condition' in mod:
+                cond_errors = ConditionValidator.validate_static(mod.get('condition', {}))
+                for err in cond_errors:
+                    warnings.append(f"{mod_path}.condition: {err}")
+        
+        # Process reaction abilities (similar to triggers, validate basic structure)
+        reaction_abilities = card.get('reaction_abilities', [])
+        for ri, ra in enumerate(reaction_abilities):
+            ra_path = f"card.reaction_abilities[{ri}]"
+            # Reaction abilities can have similar structure to effects
+            if 'condition' in ra:
+                cond_errors = ConditionValidator.validate_trigger(ra.get('condition', {}))
+                for err in cond_errors:
+                    warnings.append(f"{ra_path}.condition: {err}")
+
+        # Process spell side if present
+        spell_side = card.get('spell_side')
+        if spell_side:
+            spell_effects_key = 'triggers' if 'triggers' in spell_side else 'effects'
+            spell_effects = spell_side.get(spell_effects_key, [])
+            for ei, eff in enumerate(spell_effects):
+                eff_path = f"card.spell_side.{spell_effects_key}[{ei}]"
+                
+                trigger_errors = TriggerEffectValidator.validate(eff)
+                for err in trigger_errors:
+                    warnings.append(f"{eff_path}: {err}")
+                
+                cmds = eff.get('commands', [])
+                if cmds and not isinstance(cmds, list):
+                    warnings.append(f"'commands' in {eff_path} is not a list; clearing.")
+                    eff['commands'] = []
+                    cmds = []
+                new_cmds = []
+                for ci, cmd in enumerate(cmds):
+                    normalized, w = _normalize_command(cmd, f"{eff_path}.commands[{ci}]")
+                    if normalized is not None:
+                        new_cmds.append(normalized)
+                    warnings.extend(w)
+                eff['commands'] = new_cmds
+            
+            # Spell side static abilities
+            spell_static = spell_side.get('static_abilities', [])
+            for si, mod in enumerate(spell_static):
+                mod_path = f"card.spell_side.static_abilities[{si}]"
+                modifier_errors = ModifierValidator.validate(mod)
+                for err in modifier_errors:
+                    warnings.append(f"{mod_path}: {err}")
 
         return warnings
 

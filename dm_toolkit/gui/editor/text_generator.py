@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Dict, Any, List, Tuple
 from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 class CardTextGenerator:
     """
@@ -563,13 +564,8 @@ class CardTextGenerator:
     
     @classmethod
     def _get_scope_prefix(cls, scope: str) -> str:
-        """Get Japanese prefix for scope."""
-        if scope == "SELF":
-            return "自分の"
-        elif scope == "OPPONENT":
-            return "相手の"
-        else:  # ALL or None
-            return ""
+        """Get Japanese prefix for scope. Uses CardTextResources."""
+        return CardTextResources.get_scope_text(scope)
     
     @classmethod
     def _format_cost_modifier(cls, cond: str, target: str, value: int) -> str:
@@ -590,11 +586,10 @@ class CardTextGenerator:
     
     @classmethod
     def _format_grant_keyword(cls, cond: str, target: str, str_val: str) -> str:
-        """Format GRANT_KEYWORD modifier."""
+        """Format GRANT_KEYWORD modifier. Uses CardTextResources."""
         if str_val:
-            # Try exact match first, then lowercase match
-            keyword = cls.KEYWORD_TRANSLATION.get(str_val, 
-                      cls.KEYWORD_TRANSLATION.get(str_val.lower(), str_val))
+            # Use CardTextResources for keyword translation
+            keyword = CardTextResources.get_keyword_text(str_val)
             result = f"{cond}{target}に「{keyword}」を与える。"
             print(f"[TextGen._format_grant_keyword] str_val='{str_val}', keyword='{keyword}', result='{result}'")
             return result
@@ -603,11 +598,10 @@ class CardTextGenerator:
     
     @classmethod
     def _format_set_keyword(cls, cond: str, target: str, str_val: str) -> str:
-        """Format SET_KEYWORD modifier."""
+        """Format SET_KEYWORD modifier. Uses CardTextResources."""
         if str_val:
-            # Try exact match first, then lowercase match
-            keyword = cls.KEYWORD_TRANSLATION.get(str_val,
-                      cls.KEYWORD_TRANSLATION.get(str_val.lower(), str_val))
+            # Use CardTextResources for keyword translation
+            keyword = CardTextResources.get_keyword_text(str_val)
             result = f"{cond}{target}は「{keyword}」を得る。"
             print(f"[TextGen._format_set_keyword] str_val='{str_val}', keyword='{keyword}', result='{result}'")
             return result
@@ -842,26 +836,8 @@ class CardTextGenerator:
 
     @classmethod
     def trigger_to_japanese(cls, trigger: str, is_spell: bool = False) -> str:
-        mapping = {
-            "ON_PLAY": "このクリーチャーが出た時" if not is_spell else "この呪文を唱えた時", # Suppressed later for main spell effect
-            "ON_OTHER_ENTER": "他のクリーチャーが出た時",
-            "AT_ATTACK": "このクリーチャーが攻撃する時",
-            "ON_DESTROY": "このクリーチャーが破壊された時",
-            "AT_END_OF_TURN": "自分のターンの終わりに",
-            "AT_END_OF_OPPONENT_TURN": "相手のターンの終わりに",
-            "ON_BLOCK": "このクリーチャーがブロックした時",
-            "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
-            "TURN_START": "自分のターンのはじめに",
-            "S_TRIGGER": "S・トリガー",
-            "PASSIVE_CONST": "（常在効果）",
-            "ON_SHIELD_ADD": "カードがシールドゾーンに置かれた時",
-            "AT_BREAK_SHIELD": "シールドをブレイクする時",
-            "ON_CAST_SPELL": "呪文を唱えた時",
-            "ON_OPPONENT_DRAW": "相手がカードを引いた時",
-            "NONE": ""
-        }
-        # Fallback: try localization table before leaking raw enum-like tokens
-        return mapping.get(trigger, tr(trigger))
+        """Get Japanese text for trigger event. Uses CardTextResources."""
+        return CardTextResources.get_trigger_text(trigger, is_spell=is_spell)
 
     @classmethod
     def _normalize_zone_name(cls, zone: str) -> str:

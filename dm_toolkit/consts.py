@@ -54,6 +54,42 @@ else:
     ]
 
 # =============================================================================
+# Target Scope (Unified)
+# =============================================================================
+# Unified scope constants for both trigger effects and static abilities.
+# Replaces the separate PLAYER_SELF/PLAYER_OPPONENT (triggers) and SELF/OPPONENT (statics).
+class TargetScope:
+    """
+    Unified target scope constants.
+    
+    Usage:
+    - Static abilities: Use SELF/OPPONENT/ALL for 'scope' field
+    - Trigger effects: Use SELF/OPPONENT for 'target_group' field
+    - Filters: Use SELF/OPPONENT for 'owner' field
+    """
+    SELF = "SELF"
+    OPPONENT = "OPPONENT"
+    ALL = "ALL"
+    
+    # Legacy aliases for backward compatibility
+    PLAYER_SELF = "SELF"
+    PLAYER_OPPONENT = "OPPONENT"
+    
+    @classmethod
+    def normalize(cls, value: str) -> str:
+        """Normalize legacy PLAYER_* values to unified format."""
+        if value == "PLAYER_SELF":
+            return cls.SELF
+        elif value == "PLAYER_OPPONENT":
+            return cls.OPPONENT
+        return value
+    
+    @classmethod
+    def all_values(cls) -> list:
+        """Get all valid scope values."""
+        return [cls.SELF, cls.OPPONENT, cls.ALL]
+
+# =============================================================================
 # Zones
 # =============================================================================
 # Note: The Engine explicitly expects these string values in JSON (FilterDef, etc.)
@@ -227,6 +263,10 @@ GRANTABLE_KEYWORDS = [
     "CANNOT_BLOCK",
     "CANNOT_ATTACK_OR_BLOCK"
 ]
+
+# Keywords that can be set via SET_KEYWORD (subset or extension of grantable)
+# For now, same as GRANTABLE_KEYWORDS but can be extended for permanent effects
+SETTABLE_KEYWORDS = GRANTABLE_KEYWORDS.copy()
 
 # =============================================================================
 # Trigger Types (Effect Triggers)

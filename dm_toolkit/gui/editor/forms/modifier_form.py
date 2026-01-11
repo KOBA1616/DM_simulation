@@ -9,6 +9,8 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
 from dm_toolkit.gui.editor.forms.unified_widgets import make_player_scope_selector
+from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
+from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
 
 class ModifierEditForm(BaseEditForm):
     """
@@ -59,19 +61,9 @@ class ModifierEditForm(BaseEditForm):
         self.label_value = QLabel(tr("Value"))
         form_layout.addRow(self.label_value, self.value_spin)
 
-        # Keyword Selection (ComboBox only, no manual input)
-        self.keyword_combo = QComboBox()
-        # Populate with Japanese display names
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        from dm_toolkit.consts import GRANTABLE_KEYWORDS
-        # Temporarily block signals during population
-        self.keyword_combo.blockSignals(True)
-        keyword_items = [(kw, CardTextGenerator.KEYWORD_TRANSLATION.get(kw, kw)) for kw in GRANTABLE_KEYWORDS]
-        for kw_val, kw_display in keyword_items:
-            self.keyword_combo.addItem(kw_display, kw_val)
-        self.keyword_combo.blockSignals(False)
-        # Now connect after population
-        self.keyword_combo.currentIndexChanged.connect(self.update_data)
+        # Keyword Selection - Unified Widget
+        self.keyword_combo = KeywordSelectorWidget(allow_settable=True)
+        self.keyword_combo.keywordSelected.connect(self.update_data)
         self.register_widget(self.keyword_combo)
         self.label_keyword = QLabel(tr("Keyword"))
         form_layout.addRow(self.label_keyword, self.keyword_combo)
@@ -94,9 +86,8 @@ class ModifierEditForm(BaseEditForm):
         self.condition_widget.dataChanged.connect(self.update_data)
         layout.addWidget(self.condition_widget)
 
-        # Filter Section (Target Filter or Source Filter)
-        self.filter_widget = FilterEditorWidget()
-        self.filter_widget.basic_group.setTitle(tr("Target Filter")) # FilterWidget doesn't have setTitle, but groups do
+        # Filter Section - Unified Handler
+        self.filter_widget = UnifiedFilterHandler.create_filter_widget("STATIC", self)
         self.filter_widget.filterChanged.connect(self.update_data)
         layout.addWidget(self.filter_widget)
 
@@ -183,12 +174,7 @@ class ModifierEditForm(BaseEditForm):
         # Note: Signals are already blocked by load_data(), no need to block here
         str_val = data.get('str_val', '')
         if str_val:
-            idx = self.keyword_combo.findData(str_val)
-            if idx >= 0:
-                self.keyword_combo.setCurrentIndex(idx)
-            else:
-                # Keyword not found, set to first item
-                self.keyword_combo.setCurrentIndex(0)
+            self.keyword_combo.set_keyword(str_val)
         else:
             # No str_val, set to first item
             self.keyword_combo.setCurrentIndex(0)
@@ -221,9 +207,8 @@ class ModifierEditForm(BaseEditForm):
         # Save keyword from combo to str_val
         mtype = data.get('type', '')
         if mtype in ('GRANT_KEYWORD', 'SET_KEYWORD'):
-            kw_val = self.keyword_combo.currentData()
-            data['str_val'] = kw_val if kw_val else ''
-            print(f"[ModifierForm._save_ui_to_data] Saving keyword: type={mtype}, str_val={data['str_val']}, combo_data={kw_val}")
+            data['str_val'] = self.keyword_combo.get_keyword()
+            print(f"[ModifierForm._save_ui_to_data] Saving keyword: type={mtype}, str_val={data['str_val']}")
         else:
             data['str_val'] = ''
             print(f"[ModifierForm._save_ui_to_data] Non-keyword type: {mtype}, clearing str_val")

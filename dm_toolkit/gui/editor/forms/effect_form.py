@@ -6,6 +6,8 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
 from dm_toolkit.consts import TRIGGER_TYPES, SPELL_TRIGGER_TYPES, LAYER_TYPES
+from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
+from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
 
 class EffectEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -56,14 +58,9 @@ class EffectEditForm(BaseEditForm):
         self.layer_str_edit = QLineEdit()
         self.register_widget(self.layer_str_edit, 'str_val')
         
-        # Keyword Helper ComboBox for GRANT_KEYWORD
-        self.layer_keyword_combo = QComboBox()
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        from dm_toolkit.consts import GRANTABLE_KEYWORDS
-        keyword_items = [(kw, CardTextGenerator.KEYWORD_TRANSLATION.get(kw, kw)) for kw in GRANTABLE_KEYWORDS]
-        for kw_val, kw_display in keyword_items:
-            self.layer_keyword_combo.addItem(kw_display, kw_val)
-        self.layer_keyword_combo.currentIndexChanged.connect(self.on_layer_keyword_changed)
+        # Keyword Helper - Unified Widget
+        self.layer_keyword_combo = KeywordSelectorWidget(allow_settable=True)
+        self.layer_keyword_combo.keywordSelected.connect(self.on_layer_keyword_changed)
 
         l_layout.addWidget(QLabel(tr("Layer Type")), 0, 0)
         l_layout.addWidget(self.layer_type_combo, 0, 1)
@@ -74,10 +71,9 @@ class EffectEditForm(BaseEditForm):
         l_layout.addWidget(QLabel(tr("Select Keyword")), 3, 0)
         l_layout.addWidget(self.layer_keyword_combo, 3, 1)
 
-        # Target Filter (Static)
-        self.target_filter = FilterEditorWidget()
+        # Target Filter - Unified Handler
+        self.target_filter = UnifiedFilterHandler.create_filter_widget("STATIC", self)
         self.target_filter.filterChanged.connect(self.update_data)
-        self.target_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
         self.register_widget(self.target_filter, 'filter')
         l_layout.addWidget(QLabel(tr("Target Filter")), 4, 0)
         l_layout.addWidget(self.target_filter, 4, 1)
@@ -125,10 +121,10 @@ class EffectEditForm(BaseEditForm):
         # Update keyword combo visibility
         self.update_layer_keyword_visibility()
     
-    def on_layer_keyword_changed(self):
-        kw_val = self.layer_keyword_combo.currentData()
-        if kw_val:
-            self.layer_str_edit.setText(kw_val)
+    def on_layer_keyword_changed(self, keyword: str):
+        """Update str_val when keyword is selected from unified widget."""
+        if keyword:
+            self.layer_str_edit.setText(keyword)
         self.update_data()
     
     def update_layer_keyword_visibility(self):
