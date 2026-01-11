@@ -27,6 +27,22 @@ class TestActionToCommand(unittest.TestCase):
         self.assertEqual(cmd['from_zone'], "HAND")
         self.assertEqual(cmd['amount'], 1)
 
+    def test_replace_card_move_maps_and_preserves_metadata(self):
+        act = {
+            "type": "REPLACE_CARD_MOVE",
+            "from_zone": "GRAVEYARD",
+            "to_zone": "DECK_BOTTOM",
+            "instance_id": 99,
+            "value1": 1
+        }
+        cmd = map_action(act)
+
+        self.assertEqual(cmd['type'], "REPLACE_CARD_MOVE")
+        self.assertEqual(cmd['original_to_zone'], "GRAVEYARD")
+        self.assertEqual(cmd['to_zone'], "DECK_BOTTOM")
+        self.assertEqual(cmd.get('instance_id'), 99)
+        self.assertFalse(cmd.get('legacy_warning', False))
+
     def test_destroy_card(self):
         act = {
             "type": "DESTROY",

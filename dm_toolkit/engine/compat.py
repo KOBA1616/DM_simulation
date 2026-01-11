@@ -413,6 +413,107 @@ class EngineCompat:
                         return getattr(state.players[player_id], 'deck', [])
                     return []
 
+                if ctype == 'REPLACE_CARD_MOVE':
+                    # Python-side fallback for replacement move semantics.
+                    zone_attr_map = {
+                        'BATTLE': 'battle_zone',
+                        'BATTLE_ZONE': 'battle_zone',
+                        'HAND': 'hand',
+                        'MANA': 'mana_zone',
+                        'MANA_ZONE': 'mana_zone',
+                        'GRAVEYARD': 'graveyard',
+                        'SHIELD': 'shield_zone',
+                        'SHIELD_ZONE': 'shield_zone',
+                        'DECK': 'deck',
+                        'DECK_BOTTOM': 'deck',
+                    }
+
+                    def _normalize_zone(z: str) -> str:
+                        zstr = str(z or '').upper()
+                        return zstr
+
+                    def _get_zone_list_for(player, zone_key: str):
+                        attr = zone_attr_map.get(zone_key)
+                        if not attr:
+                            return None
+                        return getattr(player, attr, None)
+
+                    def _detach_instance(inst_id: int):
+                        players = getattr(state, 'players', [])
+                        for pid, pl in enumerate(players):
+                            for zkey, attr in zone_attr_map.items():
+                                zone_list = getattr(pl, attr, None)
+                                if not zone_list:
+                                    continue
+                                for obj in list(zone_list):
+                                    cid = getattr(obj, 'instance_id', getattr(obj, 'id', None))
+                                    if cid == inst_id:
+                                        try:
+                                            zone_list.remove(obj)
+                                        except Exception:
+                                            pass
+                                        return obj, pid
+                        return None, None
+
+                    def _place(card_obj, pid: int, dest_zone: str):
+                        players = getattr(state, 'players', [])
+                        if pid is None or pid < 0 or pid >= len(players):
+                            return False
+                        zlist = _get_zone_list_for(players[pid], dest_zone)
+                        if zlist is None:
+                            return False
+                        try:
+                            # Deck bottom semantics: append
+                            zlist.append(card_obj)
+                            return True
+                        except Exception:
+                            return False
+
+                    dest_zone = _normalize_zone(cd.get('to_zone') or 'DECK_BOTTOM')
+                    original_zone = _normalize_zone(cd.get('original_to_zone') or cd.get('from_zone') or '')
+                    instance_id = cd.get('instance_id') or cd.get('target_instance') or cd.get('source_instance_id')
+                    try:
+                        amount = int(cd.get('amount', 1) or 1)
+                    except Exception:
+                        amount = 1
+
+                    moved = 0
+                    if instance_id is not None:
+                        card_obj, pid = _detach_instance(int(instance_id))
+                        if card_obj is not None:
+                            if _place(card_obj, pid, dest_zone):
+                                moved += 1
+
+                    # If we still need to move cards and a filter exists, try pulling from that zone
+                    if moved < amount:
+                        filter_dict = cd.get('target_filter') or {}
+                        owner = cd.get('owner_id', cd.get('player_id', player_id))
+                        players = getattr(state, 'players', [])
+                        if 0 <= int(owner) < len(players):
+                            zones = filter_dict.get('zones') or ([original_zone] if original_zone else [])
+                            for z in zones:
+                                z_norm = _normalize_zone(z)
+                                zlist = _get_zone_list_for(players[int(owner)], z_norm)
+                                if not zlist:
+                                    continue
+                                while zlist and moved < amount:
+                                    obj = zlist.pop(0)
+                                    if _place(obj, int(owner), dest_zone):
+                                        moved += 1
+                                    else:
+                                        # If placement failed, put the card back to avoid loss
+                                        try:
+                                            zlist.insert(0, obj)
+                                        except Exception:
+                                            pass
+                                        break
+                                if moved >= amount:
+                                    break
+
+                    if moved > 0:
+                        print(f'EngineCompat: REPLACE_CARD_MOVE moved {moved} card(s) from {original_zone or "UNKNOWN"} to {dest_zone}')
+                        return
+
                 if ctype in ('TAP', 'UNTAP', 'RETURN_TO_HAND'):
                     filter_dict = cd.get('target_filter') or {}
                     zones = filter_dict.get('zones') or []

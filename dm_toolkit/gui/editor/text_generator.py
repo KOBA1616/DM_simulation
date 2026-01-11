@@ -132,6 +132,7 @@ class CardTextGenerator:
         "PUT_CREATURE": "{target}をバトルゾーンに出す。",
         "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
         "MOVE_CARD": "{target}を{zone}に置く。",
+        "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
         "COST_REFERENCE": "",
         "SUMMON_TOKEN": "「{str_val}」を{value1}体出す。",
         "RESET_INSTANCE": "{target}の状態をリセットする（アンタップ等）。",
@@ -926,6 +927,7 @@ class CardTextGenerator:
             "input_value_usage": input_value_usage,
             "from_zone": command.get("from_zone", ""),
             "to_zone": command.get("to_zone", ""),
+            "original_to_zone": command.get("original_to_zone", ""),
             "mutation_kind": command.get("mutation_kind", ""),
             "destination_zone": command.get("to_zone", ""), # For MOVE_CARD mapping
             "result": command.get("str_param", "") # For GAME_RESULT
@@ -1207,6 +1209,27 @@ class CardTextGenerator:
              elif atype == "DISCARD": template = "手札をすべて捨てる。"
 
         # Complex Action Logic
+        if atype == "REPLACE_CARD_MOVE":
+            orig_zone = cls._normalize_zone_name(action.get("original_to_zone") or action.get("from_zone") or "")
+            dest_zone = cls._normalize_zone_name(action.get("to_zone") or "DECK_BOTTOM")
+
+            # Sensible defaults when zones are omitted
+            if not dest_zone:
+                dest_zone = "DECK_BOTTOM"
+            if not orig_zone:
+                orig_zone = "GRAVEYARD"
+
+            localized_orig = tr(orig_zone)
+            localized_dest = tr(dest_zone)
+
+            if input_key:
+                target_str = "そのカード"
+            elif target_str == "カード":
+                target_str = "そのカード"
+
+            template = "{target}を{orig}に置くかわりに{dest}に置く。"
+            return template.format(target=target_str, orig=localized_orig, dest=localized_dest)
+
         if atype == "MODIFY_POWER":
             val = action.get("value1", 0)
             sign = "+" if val >= 0 else ""
@@ -1547,17 +1570,42 @@ class CardTextGenerator:
             # フィルタでSPELLタイプが指定されている場合、詳細なターゲット文字列を生成
             types = temp_filter.get("types", [])
             if "SPELL" in types or not types:
-                # フィルタに基づいた詳細なターゲット文字列を取得
-                target_str, unit = cls._resolve_target(action)
-                # 「呪文」部分を削除（すでに末尾に「呪文」が含まれている場合）
+                # ゾーン表現（複数ゾーンは「または」で連結して『〜から』を生成）
+                zones = temp_filter.get("zones", [])
+                zone_phrase = ""
+                if zones:
+                    zone_names = []
+                    for z in zones:
+                        if z == "HAND":
+                            zone_names.append("手札")
+                        elif z == "GRAVEYARD":
+                            zone_names.append("墓地")
+                        elif z == "MANA_ZONE":
+                            zone_names.append("マナゾーン")
+                        elif z == "BATTLE_ZONE":
+                            zone_names.append("バトルゾーン")
+                        else:
+                            zone_names.append(tr(z))
+                    if len(zone_names) == 1:
+                        zone_phrase = zone_names[0] + "から"
+                    else:
+                        zone_phrase = "または".join(zone_names) + "から"
+
+                # ターゲット形容（文明/コスト/パワー等）はゾーンを除いて生成して重複を避ける
+                tf_no_zones = temp_filter.copy()
+                if "zones" in tf_no_zones:
+                    tf_no_zones["zones"] = []
+                action_no_zone = action.copy()
+                action_no_zone["filter"] = tf_no_zones
+                target_str, unit = cls._resolve_target(action_no_zone)
+
+                # 最終テンプレート
                 if target_str.endswith("呪文"):
-                    # 末尾「呪文」を含む場合は、その直前の形容（文明/コスト等）を保持してそのまま呪文を唱える
-                    template = f"{target_str}をコストを支払わずに唱える。{usage_label_suffix}"
+                    template = f"{zone_phrase}{target_str}をコストを支払わずに唱える。{usage_label_suffix}" if zone_phrase else f"{target_str}をコストを支払わずに唱える。{usage_label_suffix}"
                 elif target_str == "カード" or target_str == "":
-                    template = f"呪文をコストを支払わずに唱える。{usage_label_suffix}"
+                    template = f"{zone_phrase}呪文をコストを支払わずに唱える。{usage_label_suffix}" if zone_phrase else f"呪文をコストを支払わずに唱える。{usage_label_suffix}"
                 else:
-                    # 形容に「コストその数以下の」などが含まれる場合、末尾に「呪文」を補って唱える
-                    template = f"{target_str}の呪文をコストを支払わずに唱える。{usage_label_suffix}"
+                    template = f"{zone_phrase}{target_str}の呪文をコストを支払わずに唱える。{usage_label_suffix}" if zone_phrase else f"{target_str}の呪文をコストを支払わずに唱える。{usage_label_suffix}"
             else:
                 # SPELLタイプ以外の場合は通常のターゲット文字列
                 target_str, unit = cls._resolve_target(action)

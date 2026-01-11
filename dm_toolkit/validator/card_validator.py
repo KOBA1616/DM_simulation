@@ -26,7 +26,8 @@ class CardValidator:
             "REVEAL_CARDS", "PLAY_FROM_ZONE", "CAST_SPELL", "SUMMON_TOKEN",
             "SHIELD_BURN", "SELECT_NUMBER", "CHOICE", "LOOK_TO_BUFFER",
             "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE",
-            "FRIEND_BURST", "REGISTER_DELAYED_EFFECT", "IF", "IF_ELSE", "ELSE"
+            "FRIEND_BURST", "REGISTER_DELAYED_EFFECT", "IF", "IF_ELSE", "ELSE",
+            "REPLACE_CARD_MOVE"
         }
         self.valid_types = {
             "CREATURE", "SPELL", "EVOLUTION_CREATURE", "CROSS_GEAR",

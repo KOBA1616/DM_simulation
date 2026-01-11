@@ -35,6 +35,10 @@ except Exception:
 _CommandType = getattr(dm_ai_module, 'CommandType', None) if dm_ai_module is not None else None
 _Zone = getattr(dm_ai_module, 'Zone', None) if dm_ai_module is not None else None
 
+# Virtual command types that are allowed even if the native CommandType enum
+# does not expose them (handled by Python-side fallbacks or post-processing).
+_ALLOWED_VIRTUAL_COMMAND_TYPES = {"REPLACE_CARD_MOVE"}
+
 # Optional deprecation flag: enable via environment variable to surface guidance
 _DEPRECATE_ACTION_DICTS = bool(os.getenv('DM_TOOLKIT_DEPRECATE_ACTION_DICTS'))
 
@@ -165,6 +169,8 @@ def _validate_command_type(cmd: Dict[str, Any]):
         return
 
     ctype = cmd.get('type', 'NONE')
+    if ctype in _ALLOWED_VIRTUAL_COMMAND_TYPES:
+        return
     # If the command originated as the same legacy type, allow it through
     if cmd.get('legacy_original_type') == ctype:
         return
@@ -270,7 +276,10 @@ def map_action(action_data: Any) -> Dict[str, Any]:
 
     # --- Logic Mapping ---
 
-    if act_type == "MOVE_CARD":
+    if act_type == "REPLACE_CARD_MOVE":
+        _handle_replace_card_move(act_data, cmd, src, dest)
+
+    elif act_type == "MOVE_CARD":
         _handle_move_card(act_data, cmd, src, dest)
 
     elif act_type in ["DESTROY", "DISCARD", "MANA_CHARGE", "RETURN_TO_HAND",
@@ -389,6 +398,41 @@ def _create_error_command(orig_val: str, msg: str) -> Dict[str, Any]:
         "legacy_original_value": orig_val,
         "str_param": msg
     }
+
+
+def _handle_replace_card_move(act: Dict[str, Any], cmd: Dict[str, Any], original_zone: Optional[str], dest: Optional[str]):
+    """
+    Handle replacement-style card movement where an incoming zone is replaced
+    with another destination (e.g., "墓地に置くかわりに山札の下に置く").
+
+    The command remains a distinct type (REPLACE_CARD_MOVE) for text generation,
+    but execution can fallback to TRANSITION semantics via EngineCompat.
+    """
+    cmd['type'] = 'REPLACE_CARD_MOVE'
+    cmd['reason'] = 'REPLACE_CARD_MOVE'
+
+    # Preserve the original intended destination separately for clarity
+    if original_zone:
+        cmd['original_to_zone'] = original_zone
+        # Also expose as from_zone so existing UI/filters can reuse it
+        cmd.setdefault('from_zone', original_zone)
+
+    # Replacement destination defaults to deck bottom when omitted
+    cmd['to_zone'] = dest or 'DECK_BOTTOM'
+
+    # If an explicit current zone is provided, keep it; otherwise, rely on instance targeting
+    if 'source_zone' in act:
+        cmd['current_zone'] = act.get('source_zone')
+
+    # Preserve explicit targeting hints
+    if 'instance_id' in act:
+        cmd['instance_id'] = act['instance_id']
+    if 'source_instance_id' in act and 'instance_id' not in cmd:
+        cmd['instance_id'] = act['source_instance_id']
+    if 'target_instance' in act and 'instance_id' not in cmd:
+        cmd['instance_id'] = act['target_instance']
+
+    _transfer_common_move_fields(act, cmd)
 
 def _handle_move_card(act, cmd, src, dest):
     # Map generic MOVE_CARD to a more specific command when destination implies it.

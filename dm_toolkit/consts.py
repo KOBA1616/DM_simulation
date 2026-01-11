@@ -106,6 +106,7 @@ else:
     # Fallback list should mirror docs/api/command_spec.md (best-effort)
     COMMAND_TYPES = [
         "TRANSITION",
+        "REPLACE_CARD_MOVE",
         "MUTATE",
         "FLOW",
         "QUERY",

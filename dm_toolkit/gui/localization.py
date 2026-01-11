@@ -309,6 +309,7 @@ TRANSLATIONS: Dict[Any, str] = {
     "Optional (Arbitrary Amount)": "任意 (任意数)",
     "Query Mode": "クエリモード",
     "TRANSITION": "カード移動",
+    "REPLACE_CARD_MOVE": "置換カード移動",
     "MUTATE": "状態変更",
     "FLOW": "進行制御",
     "QUERY": "カード情報取得",
@@ -331,6 +332,8 @@ TRANSLATIONS: Dict[Any, str] = {
     "BATTLE": "バトル",
     "RESTRICTION": "制限",
     "SPECIAL": "特殊",
+
+    "DECK_BOTTOM": "山札の下",
     "IF": "IF判定",
     "IF_ELSE": "IF_ELSE判定",
     "ELSE": "ELSE判定",

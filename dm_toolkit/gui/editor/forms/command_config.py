@@ -72,6 +72,10 @@ _definitions = [
                labels={"amount": "Count"},
                produces_output=True, output_label="Moved Cards"),
 
+    CommandDef("REPLACE_CARD_MOVE",
+               visible=["target_group", "target_filter", "from_zone", "to_zone", "input_link"],
+               labels={"amount": "Count"}),
+
     CommandDef("MUTATE",
                visible=["target_group", "target_filter", "mutation_kind", "amount", "str_param"],
                labels={"mutation_kind": "Mutation Type", "amount": "Value / Duration", "str_param": "Extra Param"}),
