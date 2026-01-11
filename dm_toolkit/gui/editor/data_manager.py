@@ -12,6 +12,7 @@ from dm_toolkit.gui.editor.action_converter import ActionConverter, convert_acti
 from dm_toolkit.gui.editor.command_model import CommandDef, WarningCommand
 from dm_toolkit.gui.editor.templates import LogicTemplateManager
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
+from dm_toolkit.gui.editor.models import CardNode
 
 class CardDataManager:
     """
@@ -110,6 +111,18 @@ class CardDataManager:
             "target_filter": {}
         }
 
+    def validate_card_data(self, card_data: dict) -> list[str]:
+        """
+        Validates the card data using the strict CardNode model.
+        Returns a list of validation errors.
+        """
+        try:
+            # Try to round-trip through the model
+            node = CardNode.from_json(card_data)
+            return node.validate()
+        except Exception as e:
+            return [f"Model Validation Error: {str(e)}"]
+
     def update_effect_type(self, item, target_type):
         """Updates the item's visual state (Label) and Type to match the new effect type."""
         data = self.get_item_data(item)
@@ -151,9 +164,6 @@ class CardDataManager:
 
         self._internal_cache[uid] = internal
         return internal
-
-    def get_internal_by_uid(self, uid: str):
-        return self._internal_cache.get(uid)
 
     def _lift_actions_to_commands(self, effect_data):
         """
@@ -331,6 +341,12 @@ class CardDataManager:
             if card_data:
                 # Normalize and validate card for engine compatibility before returning
                 warnings = self._normalize_card_for_engine(card_data)
+
+                # Check against strict model validation as well (optional but good for debugging)
+                model_errors = self.validate_card_data(card_data)
+                if model_errors:
+                     warnings.extend([f"[Strict Model] {e}" for e in model_errors])
+
                 if warnings:
                     # Attach editor warnings so callers/UI can display them
                     card_data.setdefault('_editor_warnings', []).extend(warnings)
