@@ -6,18 +6,20 @@ class CommandDef:
     Separates the definition logic from the generated configuration dictionary.
     """
     def __init__(self, key, visible=None, labels=None,
-                 produces_output=False, output_label=None):
+                 produces_output=False, output_label=None, field_mapping=None):
         self.key = key
         self.visible = visible or []
         self.labels = labels or {}
         self.produces_output = produces_output
         self.output_label = output_label
+        self.field_mapping = field_mapping or {}
 
     def build_config(self):
         """Generates the dictionary entry for COMMAND_UI_CONFIG."""
         conf = {
             "visible": self.visible,
-            "produces_output": self.produces_output
+            "produces_output": self.produces_output,
+            "field_mapping": self.field_mapping
         }
         if self.output_label:
             conf["outputs"] = {"output_value_key": self.output_label}
@@ -27,6 +29,7 @@ class CommandDef:
             if k == "amount": conf["label_amount"] = v
             elif k == "mutation_kind": conf["label_mutation_kind"] = v
             elif k == "str_param": conf["label_str_param"] = v
+            elif k == "val2": conf["label_val2"] = v
 
         return conf
 
@@ -103,13 +106,15 @@ _definitions = [
 
     # --- New / Mapped Commands ---
     CommandDef("LOOK_AND_ADD",
-               visible=["target_filter", "amount", "input_link", "output_link"],
-               labels={"amount": "Look Count"},
+               visible=["target_filter", "amount", "val2", "input_link", "output_link"],
+               labels={"amount": "Look Count", "val2": "Add Count"},
+               field_mapping={"amount": "look_count", "val2": "add_count"},
                produces_output=True, output_label="加えたカード"),
 
     CommandDef("MEKRAID",
-               visible=["target_filter", "amount", "val2", "output_link"],
-               labels={"amount": "Level"},
+               visible=["target_filter", "amount", "val2", "select_count", "output_link"],
+               labels={"amount": "Max Cost", "val2": "Look Count"},
+               field_mapping={"amount": "max_cost", "val2": "look_count", "select_count": "select_count"},
                produces_output=True, output_label="Played Card"),
 
     CommandDef("REVEAL_CARDS",
@@ -129,8 +134,9 @@ _definitions = [
                labels={"amount": "Count", "str_param": "Token ID"}),
 
     CommandDef("SELECT_NUMBER",
-               visible=["amount", "output_link"],
-               labels={"amount": "Max"},
+               visible=["amount", "val2", "output_link"],
+               labels={"amount": "Max", "val2": "Min"},
+               field_mapping={"amount": "max", "val2": "min"},
                produces_output=True, output_label="Selected Number"),
 
     CommandDef("SELECT_OPTION",
@@ -151,8 +157,8 @@ _definitions = [
 
     CommandDef("CHOICE", # Mapped from SELECT_OPTION in action_to_command
                visible=["amount"],
-               labels={"amount": "Count"})
-    ,
+               labels={"amount": "Count"}),
+
     # UI-only convenience type: saves as MUTATE+REVOLUTION_CHANGE under the hood
     CommandDef("REVOLUTION_CHANGE",
                visible=["target_filter"]),
