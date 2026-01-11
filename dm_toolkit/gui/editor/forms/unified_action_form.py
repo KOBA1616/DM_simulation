@@ -6,7 +6,8 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.utils import normalize_action_zone_keys, normalize_command_zone_keys
-from dm_toolkit.consts import COMMAND_TYPES, GRANTABLE_KEYWORDS
+from dm_toolkit.consts import COMMAND_TYPES
+from dm_toolkit.gui.editor.registry import COMMAND_GROUPS, GRANTABLE_KEYWORDS
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.gui.editor.action_converter import ActionConverter
 from dm_toolkit.gui.editor.forms.unified_widgets import (
@@ -14,41 +15,6 @@ from dm_toolkit.gui.editor.forms.unified_widgets import (
     make_ref_mode_combo, make_zone_combos, make_option_controls, make_scope_combo
 )
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-
-# Grouping of Command types for UI organization
-# 新分類: ドロー、カード移動、デッキ操作、プレイ、踏み倒し、付与、ロジック、バトル、制限、特殊
-# 注: エンジン内部専用のタイプ（SUMMON_TOKEN, RESOLVE_EFFECT, RESOLVE_PLAY, NONE, ATTACK_PLAYER, ATTACK_CREATURE, BLOCK）はGUIから除外
-COMMAND_GROUPS = {
-    'DRAW': [
-        'DRAW_CARD'
-    ],
-    'CARD_MOVE': [
-        'TRANSITION', 'RETURN_TO_HAND', 'DISCARD', 'DESTROY', 'MANA_CHARGE'
-    ],
-    'DECK_OPS': [
-        'SEARCH_DECK', 'LOOK_AND_ADD', 'REVEAL_CARDS', 'SHUFFLE_DECK'
-    ],
-    'PLAY': [
-        'PLAY_FROM_ZONE', 'CAST_SPELL'
-    ],
-    'BUFFER': [
-        'LOOK_TO_BUFFER', 'SELECT_FROM_BUFFER', 'PLAY_FROM_BUFFER', 'MOVE_BUFFER_TO_ZONE'
-    ],
-    'CHEAT_PUT': [
-        'MEKRAID', 'FRIEND_BURST', 'REVOLUTION_CHANGE'
-    ],
-    'GRANT': [
-        'MUTATE', 'POWER_MOD', 'ADD_KEYWORD', 'TAP', 'UNTAP', 'REGISTER_DELAYED_EFFECT'
-    ],
-    'LOGIC': [
-        'QUERY', 'FLOW', 'SELECT_NUMBER', 'CHOICE', 'SELECT_OPTION', 'IF', 'IF_ELSE', 'ELSE'
-    ],
-    'BATTLE': [
-        'BREAK_SHIELD', 'RESOLVE_BATTLE', 'SHIELD_BURN', 'SHIELD_TRIGGER'
-    ],
-    'RESTRICTION': [
-    ]
-}
 
 
 class UnifiedActionForm(BaseEditForm):
@@ -101,9 +67,11 @@ class UnifiedActionForm(BaseEditForm):
             'from_zone_visible': ('from_zone' in cmd_vis),
             'optional_visible': ('optional' in cmd_vis),
             'input_link_visible': ('input_link' in cmd_vis),
+            'select_count_visible': ('select_count' in cmd_vis), # New Generic Field check
             'produces_output': cmd_cfg.get('produces_output', False),
             'tooltip': cmd_cfg.get('tooltip', ''),
             'allowed_filter_fields': cmd_cfg.get('allowed_filter_fields', None),
+            'field_mapping': cmd_cfg.get('field_mapping', {}),
             'can_be_optional': False # Commands use 'optional' flag in visible list
         }
 
@@ -202,7 +170,7 @@ class UnifiedActionForm(BaseEditForm):
         self.val2_label = QLabel(tr("Value 2"))
         layout.addRow(self.val2_label, self.val2_spin)
 
-        # MEKRAID-specific: Select Count control (third numeric field)
+        # Select Count control (third numeric field, generically named but used for Mekraid etc)
         from PyQt6.QtWidgets import QWidget, QHBoxLayout
         self.select_count_spin = make_value_spin(self)
         self.register_widget(self.select_count_spin)
@@ -402,7 +370,7 @@ class UnifiedActionForm(BaseEditForm):
     def update_ui_state(self, t):
         cfg = self._get_ui_config(t)
 
-        # Scope selection: use extended combo for ADD_KEYWORD, simple checkboxes for others
+        # Scope selection
         use_extended_scope = (t == 'ADD_KEYWORD')
         self.scope_widget.setVisible(cfg.get('target_group_visible', False) and not use_extended_scope)
         self.scope_combo_label.setVisible(use_extended_scope and cfg.get('target_group_visible', False))
@@ -413,7 +381,6 @@ class UnifiedActionForm(BaseEditForm):
         # Amount
         self.val1_label.setVisible(cfg.get('amount_visible', False))
         self.val1_spin.setVisible(cfg.get('amount_visible', False))
-        # Show 'Up to' only when command exposes it
         self.up_to_check.setVisible('up_to' in (COMMAND_UI_CONFIG.get(t, {}).get('visible', [])))
         self.val1_label.setText(tr(cfg.get('amount_label', 'Amount')))
 
@@ -422,9 +389,9 @@ class UnifiedActionForm(BaseEditForm):
         self.val2_spin.setVisible(cfg.get('val2_visible', False))
         self.val2_label.setText(tr(cfg.get('val2_label', 'Value 2')))
 
-        # Default hidden for MEKRAID extra field
-        self.select_count_label.setVisible(False)
-        self.select_count_spin.setVisible(False)
+        # Select Count (3rd numeric)
+        self.select_count_label.setVisible(cfg.get('select_count_visible', False))
+        self.select_count_spin.setVisible(cfg.get('select_count_visible', False))
 
         # String param
         self.str_label.setVisible(cfg.get('str_param_visible', False))
@@ -490,7 +457,6 @@ class UnifiedActionForm(BaseEditForm):
             try:
                 if t == 'CAST_SPELL':
                     self.filter_widget.setTitle(tr('Spell Filter'))
-                    # Set default SPELL type filter if empty
                     try:
                         f = self.filter_widget.get_data() if hasattr(self.filter_widget, 'get_data') else {}
                         has_any = bool(f.get('civilizations') or f.get('races') or f.get('types'))
@@ -500,10 +466,8 @@ class UnifiedActionForm(BaseEditForm):
                         pass
                 elif t == 'FRIEND_BURST':
                     self.filter_widget.setTitle(tr('Friend Burst Target'))
-                    self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types'])
                 elif t == 'MEKRAID':
                     self.filter_widget.setTitle(tr('Mekraid Target'))
-                    self.filter_widget.set_allowed_fields(['civilizations', 'types', 'races'])
                 elif t == 'MUTATE':
                     mk = ''
                     try:
@@ -512,11 +476,8 @@ class UnifiedActionForm(BaseEditForm):
                         pass
                     if mk == 'REVOLUTION_CHANGE':
                         self.filter_widget.setTitle(tr('Revolution Change Condition'))
-                        self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types', 'min_cost', 'max_cost'])
                 elif t == 'REVOLUTION_CHANGE':
                     self.filter_widget.setTitle(tr('Revolution Change Condition'))
-                    self.filter_widget.set_allowed_fields(['civilizations', 'races', 'types', 'min_cost', 'max_cost'])
-                    # If UI is empty, set sensible defaults for quick editing
                     try:
                         f = self.filter_widget.get_data() if hasattr(self.filter_widget, 'get_data') else {}
                         has_any = bool(f.get('civilizations') or f.get('races') or f.get('types'))
@@ -536,41 +497,22 @@ class UnifiedActionForm(BaseEditForm):
         except Exception:
             pass
 
-        # MEKRAID-specific labeling and field visibility adjustments
+        # Default initialization for new items
         try:
             if t == 'MEKRAID':
-                # Ensure both numeric fields are visible
-                self.val1_label.setText(tr('Max Cost'))
-                self.val1_label.setVisible(True)
-                self.val1_spin.setVisible(True)
+                cur = {}
+                if getattr(self, 'current_item', None):
+                    cur = self.current_item.data(Qt.ItemDataRole.UserRole + 2) or {}
 
-                self.val2_label.setText(tr('Look Count'))
-                self.val2_label.setVisible(True)
-                self.val2_spin.setVisible(True)
-
-                # Show and label Select Count control
-                self.select_count_label.setText(tr('Select Count'))
-                self.select_count_label.setVisible(True)
-                self.select_count_spin.setVisible(True)
-
-                # If newly switching to MEKRAID or values are unset/zero, set defaults 5/3/1
-                try:
-                    cur = {}
-                    if getattr(self, 'current_item', None):
-                        cur = self.current_item.data(Qt.ItemDataRole.UserRole + 2) or {}
-                    # Consider it 'new' if type differs or keys missing
-                    is_new = (cur.get('type') != 'MEKRAID') or (
-                        'max_cost' not in cur and 'look_count' not in cur and 'select_count' not in cur
-                    )
-                    if is_new:
-                        if int(self.val1_spin.value() or 0) == 0:
-                            self.val1_spin.setValue(5)
-                        if int(self.val2_spin.value() or 0) == 0:
-                            self.val2_spin.setValue(3)
-                        if int(self.select_count_spin.value() or 0) == 0:
-                            self.select_count_spin.setValue(1)
-                except Exception:
-                    pass
+                # If fields are empty, set defaults (Max 5, Look 3, Select 1)
+                # But we must be careful not to overwrite if mapping exists
+                # We defer this to _save if needed, or simple UI init
+                if int(self.val1_spin.value() or 0) == 0:
+                     self.val1_spin.setValue(5)
+                if int(self.val2_spin.value() or 0) == 0:
+                     self.val2_spin.setValue(3)
+                if int(self.select_count_spin.value() or 0) == 0:
+                     self.select_count_spin.setValue(1)
         except Exception:
             pass
 
@@ -586,14 +528,11 @@ class UnifiedActionForm(BaseEditForm):
         normalize_command_zone_keys(data)
 
         # Check for legacy and convert if necessary
-        # We rely on 'format' flag or heuristic checks (legacy keys presence)
         is_legacy = data.get('format') != 'command'
-
         if is_legacy and data.get('type', 'NONE') != 'NONE':
             try:
                 converted = ActionConverter.convert(data)
                 if converted and converted.get('type') != 'NONE':
-                    # Update data in-place to reflect conversion
                     data.clear()
                     data.update(converted)
                     data['format'] = 'command'
@@ -612,18 +551,15 @@ class UnifiedActionForm(BaseEditForm):
             grp = 'OTHER'
 
         self.set_combo_by_data(self.action_group_combo, grp)
-        # Map MUTATE+REVOLUTION_CHANGE to UI pseudo-type for better editing UX
         if ui_type == 'MUTATE' and data.get('mutation_kind') == 'REVOLUTION_CHANGE':
             ui_type = 'REVOLUTION_CHANGE'
         self.set_combo_by_data(self.type_combo, ui_type)
 
         target_group = data.get('target_group') or 'PLAYER_SELF'
         
-        # For commands with extended scope (ADD_KEYWORD), use scope combo
         if ui_type == 'ADD_KEYWORD':
             self.set_combo_by_data(self.scope_combo, target_group)
         else:
-            # Use checkbox selectors for simple player scope
             self.scope_self_check.blockSignals(True)
             self.scope_opp_check.blockSignals(True)
             self.scope_self_check.setChecked(target_group == 'PLAYER_SELF')
@@ -635,34 +571,42 @@ class UnifiedActionForm(BaseEditForm):
 
         self.str_edit.setText(data.get('str_param', ''))
         
-        # For QUERY command, also set stat_key_combo if str_param is a stat key
         if ui_type == 'QUERY':
             stat_key = data.get('str_param', '')
             if stat_key and hasattr(self, 'stat_key_combo'):
                 self.set_combo_by_data(self.stat_key_combo, stat_key)
 
-        # Value Mapping for specific command types
-        val1 = data.get('amount', 0)
+        # Generic Value Mapping
+        cfg = self._get_ui_config(ui_type)
+        mapping = cfg.get('field_mapping', {})
+
+        # Load val1
+        val1 = 0
+        if "amount" in mapping:
+             val1 = data.get(mapping["amount"], 0)
+        else:
+             val1 = data.get('amount', 0)
+
+        # Load val2
         val2 = 0
+        if "val2" in mapping:
+             val2 = data.get(mapping["val2"], 0)
+        else:
+             # Legacy/Default fallback
+             if ui_type == 'LOOK_AND_ADD': val2 = data.get('add_count', 0)
+             else: val2 = 0
 
-        if ui_type == 'LOOK_AND_ADD':
-            val1 = data.get('look_count', 0)
-            val2 = data.get('add_count', 0)
-        elif ui_type == 'MEKRAID':
-            # Map to custom semantics:
-            # val1 -> max_cost, val2 -> look_count, select_count -> explicit control
-            val1 = data.get('max_cost', 0)
-            val2 = data.get('look_count', 3)
-            try:
-                self.select_count_spin.setValue(int(data.get('select_count', 1)))
-            except Exception:
-                pass
-        elif ui_type == 'SELECT_NUMBER':
-            val1 = data.get('max', 0)
-            val2 = data.get('min', 0)
+        # Load select_count
+        sel_count = 1
+        if "select_count" in mapping:
+             sel_count = data.get(mapping["select_count"], 1)
+        else:
+             sel_count = data.get('select_count', 1)
 
-        self.val1_spin.setValue(val1)
-        self.val2_spin.setValue(val2)
+        self.val1_spin.setValue(int(val1))
+        self.val2_spin.setValue(int(val2))
+        self.select_count_spin.setValue(int(sel_count))
+
         # Up to flag
         self.up_to_check.setChecked(bool(data.get('up_to', False)))
 
@@ -692,14 +636,12 @@ class UnifiedActionForm(BaseEditForm):
         sel = self.type_combo.currentData()
 
         cmd = {}
-        cmd['format'] = 'command' # Explicitly mark format
+        cmd['format'] = 'command'
         cmd['type'] = sel
 
-        # スコープ設定: ADD_KEYWORDは拡張コンボ、それ以外はチェックボックス
         if sel == 'ADD_KEYWORD':
             cmd['target_group'] = self.scope_combo.currentData() or 'PLAYER_SELF'
         else:
-            # 自分と相手両方選択可能
             self_checked = self.scope_self_check.isChecked()
             opp_checked = self.scope_opp_check.isChecked()
             if self_checked and opp_checked:
@@ -709,36 +651,39 @@ class UnifiedActionForm(BaseEditForm):
             elif opp_checked:
                 cmd['target_group'] = 'PLAYER_OPPONENT'
             else:
-                cmd['target_group'] = 'PLAYER_SELF'  # デフォルト
+                cmd['target_group'] = 'PLAYER_SELF'
         cmd['target_filter'] = self.filter_widget.get_data()
 
-        # Standard mapping
-        cmd['amount'] = self.val1_spin.value()
-        # Up to flag - save when checked
+        # Generic Value Mapping
+        cfg = self._get_ui_config(sel)
+        mapping = cfg.get('field_mapping', {})
+
+        val1 = self.val1_spin.value()
+        val2 = self.val2_spin.value()
+        sel_count = self.select_count_spin.value()
+
+        # Map val1 (default 'amount')
+        if "amount" in mapping:
+             cmd[mapping["amount"]] = val1
+        else:
+             cmd['amount'] = val1
+
+        # Map val2
+        if "val2" in mapping:
+             cmd[mapping["val2"]] = val2
+
+        # Map select_count
+        if "select_count" in mapping:
+             cmd[mapping["select_count"]] = sel_count
+
+        # Up to flag
         if self.up_to_check.isChecked():
             cmd['up_to'] = True
 
-        # Specialized reverse mapping
-        if sel == 'LOOK_AND_ADD':
-            cmd['look_count'] = self.val1_spin.value()
-            cmd['add_count'] = self.val2_spin.value()
-            # Also keep 'amount' as legacy fallback/primary if engine expects it?
-            # Engine likely expects look_count/add_count
-        elif sel == 'MEKRAID':
-            cmd['max_cost'] = self.val1_spin.value()
-            cmd['look_count'] = self.val2_spin.value()
-            try:
-                cmd['select_count'] = int(self.select_count_spin.value())
-            except Exception:
-                cmd['select_count'] = 1
-        elif sel == 'SELECT_NUMBER':
-            cmd['max'] = self.val1_spin.value()
-            cmd['min'] = self.val2_spin.value()
-        elif sel == 'REVOLUTION_CHANGE':
-            # Map UI-only type to engine command
+        # REVOLUTION_CHANGE Special handling
+        if sel == 'REVOLUTION_CHANGE':
             cmd['type'] = 'MUTATE'
             cmd['mutation_kind'] = 'REVOLUTION_CHANGE'
-            # target_filter already set above from widget
 
         # Flags
         flags = []
@@ -781,7 +726,6 @@ class UnifiedActionForm(BaseEditForm):
             pass
         self.link_widget.get_data(cmd)
 
-        # Clear old data and update with new command
         data.clear()
         data.update(cmd)
 

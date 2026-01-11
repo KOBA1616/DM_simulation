@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit, QPushButton
+from PyQt6.QtWidgets import (
+    QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout,
+    QSpinBox, QLabel, QLineEdit, QPushButton
+)
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
+from dm_toolkit.gui.editor.forms.effect_config import EFFECT_UI_CONFIG, TRIGGER_TYPES, LAYER_TYPES
 
 class EffectEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -36,12 +40,8 @@ class EffectEditForm(BaseEditForm):
 
         # Trigger Definition
         self.trigger_combo = QComboBox()
-        # Initial population, will be updated by Logic Mask
-        triggers = [
-            "ON_PLAY", "ON_ATTACK", "ON_BLOCK", "ON_DESTROY", "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
-            "ON_ATTACK_FROM_HAND", "AT_BREAK_SHIELD", "ON_CAST_SPELL", "ON_OPPONENT_DRAW"
-        ]
-        self.populate_combo(self.trigger_combo, triggers, display_func=tr, data_func=lambda x: x)
+        # Populated from Config
+        self.populate_combo(self.trigger_combo, TRIGGER_TYPES, display_func=tr, data_func=lambda x: x)
         self.lbl_trigger = self.add_field(tr("Trigger"), self.trigger_combo, 'trigger')
 
         # Layer Definition (Static)
@@ -49,16 +49,17 @@ class EffectEditForm(BaseEditForm):
         l_layout = QGridLayout(self.layer_group)
 
         self.layer_type_combo = QComboBox()
-        layers = ["COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
-        self.populate_combo(self.layer_type_combo, layers, display_func=tr, data_func=lambda x: x)
+        self.populate_combo(self.layer_type_combo, LAYER_TYPES, display_func=tr, data_func=lambda x: x)
         self.register_widget(self.layer_type_combo, 'type')
 
         self.layer_val_spin = QSpinBox()
         self.layer_val_spin.setRange(-9999, 9999)
         self.register_widget(self.layer_val_spin, 'value')
+        self.lbl_layer_val = QLabel(tr("Value"))
 
         self.layer_str_edit = QLineEdit()
         self.register_widget(self.layer_str_edit, 'str_val')
+        self.lbl_layer_str = QLabel(tr("String/Keyword"))
         
         # Keyword Helper ComboBox for GRANT_KEYWORD
         self.layer_keyword_combo = QComboBox()
@@ -68,14 +69,23 @@ class EffectEditForm(BaseEditForm):
         for kw_val, kw_display in keyword_items:
             self.layer_keyword_combo.addItem(kw_display, kw_val)
         self.layer_keyword_combo.currentIndexChanged.connect(self.on_layer_keyword_changed)
+        self.lbl_layer_keyword = QLabel(tr("Select Keyword"))
 
+        # Layout for Layer Group
+        # Row 0: Type
         l_layout.addWidget(QLabel(tr("Layer Type")), 0, 0)
         l_layout.addWidget(self.layer_type_combo, 0, 1)
-        l_layout.addWidget(QLabel(tr("Value")), 1, 0)
+
+        # Row 1: Value
+        l_layout.addWidget(self.lbl_layer_val, 1, 0)
         l_layout.addWidget(self.layer_val_spin, 1, 1)
-        l_layout.addWidget(QLabel(tr("String/Keyword")), 2, 0)
+
+        # Row 2: String
+        l_layout.addWidget(self.lbl_layer_str, 2, 0)
         l_layout.addWidget(self.layer_str_edit, 2, 1)
-        l_layout.addWidget(QLabel(tr("Select Keyword")), 3, 0)
+
+        # Row 3: Keyword Combo
+        l_layout.addWidget(self.lbl_layer_keyword, 3, 0)
         l_layout.addWidget(self.layer_keyword_combo, 3, 1)
 
         # Target Filter (Static)
@@ -83,7 +93,10 @@ class EffectEditForm(BaseEditForm):
         self.target_filter.filterChanged.connect(self.update_data)
         self.target_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
         self.register_widget(self.target_filter, 'filter')
-        l_layout.addWidget(QLabel(tr("Target Filter")), 4, 0)
+
+        # Row 4: Filter
+        self.lbl_filter = QLabel(tr("Target Filter"))
+        l_layout.addWidget(self.lbl_filter, 4, 0)
         l_layout.addWidget(self.target_filter, 4, 1)
 
         self.add_field(None, self.layer_group)
@@ -102,10 +115,12 @@ class EffectEditForm(BaseEditForm):
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         self.mode_combo.currentIndexChanged.connect(self.update_data)
 
+        self.trigger_combo.currentIndexChanged.connect(self.on_trigger_changed)
         self.trigger_combo.currentIndexChanged.connect(self.update_data)
 
+        self.layer_type_combo.currentIndexChanged.connect(self.on_layer_type_changed)
         self.layer_type_combo.currentIndexChanged.connect(self.update_data)
-        self.layer_type_combo.currentIndexChanged.connect(self.update_layer_keyword_visibility)
+
         self.layer_val_spin.valueChanged.connect(self.update_data)
         self.layer_str_edit.textChanged.connect(self.update_data)
 
@@ -116,39 +131,72 @@ class EffectEditForm(BaseEditForm):
         mode = self.mode_combo.currentData()
         is_triggered = (mode == "TRIGGERED")
 
+        # Top-level visibility
         self.trigger_combo.setVisible(is_triggered)
         self.lbl_trigger.setVisible(is_triggered)
-
         self.layer_group.setVisible(not is_triggered)
 
         if is_triggered:
             self.condition_widget.setTitle(tr("Trigger Condition"))
+            self.on_trigger_changed() # Update fields based on selected trigger
         else:
             self.condition_widget.setTitle(tr("Apply Condition"))
-        
-        # Update keyword combo visibility
-        self.update_layer_keyword_visibility()
-    
+            self.on_layer_type_changed() # Update fields based on selected layer
+
+    def on_trigger_changed(self):
+        key = self.trigger_combo.currentData()
+        self.update_field_visibility(key)
+
+    def on_layer_type_changed(self):
+        key = self.layer_type_combo.currentData()
+        self.update_field_visibility(key)
+
+    def update_field_visibility(self, type_key):
+        """
+        Updates visibility of fields based on EFFECT_UI_CONFIG.
+        """
+        cfg = EFFECT_UI_CONFIG.get(type_key, {})
+        visible_fields = set(cfg.get('visible', []))
+        labels = cfg.get('labels', {})
+
+        # Value
+        show_val = 'value' in visible_fields
+        self.layer_val_spin.setVisible(show_val)
+        self.lbl_layer_val.setVisible(show_val)
+        if show_val:
+            self.lbl_layer_val.setText(tr(labels.get('value', 'Value')))
+
+        # String
+        show_str = 'str_val' in visible_fields
+        self.layer_str_edit.setVisible(show_str)
+        self.lbl_layer_str.setVisible(show_str)
+        if show_str:
+            self.lbl_layer_str.setText(tr(labels.get('str_val', 'String/Keyword')))
+
+        # Keyword Combo
+        show_kw = 'keyword' in visible_fields
+        self.layer_keyword_combo.setVisible(show_kw)
+        self.lbl_layer_keyword.setVisible(show_kw)
+
+        # Filter
+        show_filt = 'filter' in visible_fields
+        self.target_filter.setVisible(show_filt)
+        self.lbl_filter.setVisible(show_filt)
+
+        # Condition
+        # Condition widget is almost always visible, but configurable
+        self.condition_widget.setVisible('condition' in visible_fields)
+
     def on_layer_keyword_changed(self):
         kw_val = self.layer_keyword_combo.currentData()
         if kw_val:
             self.layer_str_edit.setText(kw_val)
         self.update_data()
     
-    def update_layer_keyword_visibility(self):
-        """Show keyword combo only for GRANT_KEYWORD or SET_KEYWORD types"""
-        layer_type = self.layer_type_combo.currentData() if hasattr(self, 'layer_type_combo') else None
-        show_keyword = layer_type in ['GRANT_KEYWORD', 'SET_KEYWORD']
-        if hasattr(self, 'layer_keyword_combo'):
-            self.layer_keyword_combo.setVisible(show_keyword)
-
     def on_add_action_clicked(self):
         self.structure_update_requested.emit("ADD_CHILD_ACTION", {})
 
     def _load_ui_from_data(self, data, item):
-        """
-        Populate UI from data (Hook).
-        """
         item_type = "EFFECT"
         if item:
             item_type = item.data(Qt.ItemDataRole.UserRole + 1)
@@ -173,68 +221,52 @@ class EffectEditForm(BaseEditForm):
         if item_type == "MODIFIER":
             mode = "STATIC"
         elif 'layer_type' in data or 'type' in data and item_type != "EFFECT":
-            # Legacy check or inferred from data
             mode = "STATIC"
 
         self.set_combo_by_data(self.mode_combo, mode)
-        # Trigger visibility update immediately
-        self.on_mode_changed()
+        # Visibility will be updated by on_mode_changed -> on_X_changed
 
         if mode == "TRIGGERED":
-             # Try to normalize data for binding if legacy keys exist
              if 'trigger_condition' in data and 'condition' not in data:
                  data['condition'] = data['trigger_condition']
         else:
-            # STATIC (ModifierDef) - Normalize for bindings
             if 'layer_type' in data: data['type'] = data['layer_type']
             if 'layer_value' in data: data['value'] = data['layer_value']
             if 'layer_str' in data: data['str_val'] = data['layer_str']
             if 'static_condition' in data and 'condition' not in data:
                  data['condition'] = data['static_condition']
 
-        # Use Bindings
         self._apply_bindings(data)
         
-        # Set keyword combo based on str_val for STATIC mode
+        # Set keyword combo if applicable
         if mode == "STATIC":
             str_val = data.get('str_val', '')
             if str_val and hasattr(self, 'layer_keyword_combo'):
                 self.set_combo_by_data(self.layer_keyword_combo, str_val)
 
-        # Ensure fallback for condition if missing
         if not data.get('condition'):
              self.condition_widget.set_data({})
-        
-        # Update keyword combo visibility
-        self.update_layer_keyword_visibility()
 
     def update_trigger_options(self, card_type):
         is_spell = (card_type == "SPELL")
 
-        all_triggers = [
-            "ON_PLAY", "ON_ATTACK", "ON_BLOCK", "ON_DESTROY", "TURN_START",
-            "PASSIVE_CONST", "ON_OTHER_ENTER", "ON_ATTACK_FROM_HAND",
-            "AT_BREAK_SHIELD", "ON_CAST_SPELL", "ON_OPPONENT_DRAW"
-        ]
-
+        # This Logic Mask could be moved to Registry later
         allowed = []
         if is_spell:
-            # Limit triggers for Spells to relevant ones
             allowed = ["ON_PLAY", "ON_CAST_SPELL", "TURN_START", "ON_OPPONENT_DRAW", "PASSIVE_CONST", "ON_OTHER_ENTER"]
         else:
-            allowed = all_triggers
+            allowed = TRIGGER_TYPES # Use imported list
 
         current_data = self.trigger_combo.currentData()
         self.trigger_combo.blockSignals(True)
         self.trigger_combo.clear()
 
-        # Ensure current data is preserved if it was valid before or legacy
+        # Preserve current if valid or legacy
         if current_data and current_data not in allowed:
             allowed.append(current_data)
 
         self.populate_combo(self.trigger_combo, allowed, display_func=tr, data_func=lambda x: x)
 
-        # Restore selection
         idx = self.trigger_combo.findData(current_data)
         if idx >= 0:
             self.trigger_combo.setCurrentIndex(idx)
@@ -244,36 +276,26 @@ class EffectEditForm(BaseEditForm):
         self.trigger_combo.blockSignals(False)
 
     def _save_ui_to_data(self, data):
-        """
-        Save UI to data (Hook).
-        """
         mode = self.mode_combo.currentData()
-
-        # Apply bindings (collects into data)
         self._collect_bindings(data)
 
-        # Post-processing based on Mode
         if self.current_item:
              current_type_code = self.current_item.data(Qt.ItemDataRole.UserRole + 1)
              target_type_code = "EFFECT" if mode == "TRIGGERED" else "MODIFIER"
 
-             # Update type if changed
              if current_type_code != target_type_code:
                  self.current_item.setData(target_type_code, Qt.ItemDataRole.UserRole + 1)
-                 # Emit MOVE_EFFECT to trigger UI/Label updates in the tree
                  self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": mode})
 
+        # Cleanup keys based on Mode
         if mode == "TRIGGERED":
             # Clean Static/Legacy keys
             for k in ['type', 'value', 'str_val', 'filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
                 data.pop(k, None)
 
         else: # STATIC
-            # Handle str_val optionality
             if not self.layer_str_edit.text():
                 data.pop('str_val', None)
-
-            # Clean Trigger/Legacy keys
             for k in ['trigger', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
                 data.pop(k, None)
 
