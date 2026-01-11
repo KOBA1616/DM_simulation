@@ -444,6 +444,26 @@ class CardDataManager:
             for err in modifier_errors:
                 warnings.append(f"{mod_path}: {err}")
             
+            # Apply scope to filter.owner for engine compatibility
+            # C++ engine reads filter.owner for passive/static targeting.
+            try:
+                from dm_toolkit.consts import TargetScope
+                scope_val = mod.get('scope')
+                if scope_val:
+                    scope_norm = TargetScope.normalize(scope_val)
+                    # Only apply when not ALL
+                    if scope_norm and scope_norm != TargetScope.ALL:
+                        filt = mod.get('filter') or {}
+                        owner = filt.get('owner')
+                        # Set owner only if not already specified
+                        if not owner:
+                            filt['owner'] = scope_norm
+                            mod['filter'] = filt
+                            warnings.append(f"{mod_path}: Applied scope '{scope_norm}' to filter.owner for engine")
+            except Exception as _e:
+                # Non-fatal: continue normalization
+                pass
+
             # Ensure filter and condition are valid
             if 'filter' in mod:
                 filter_errors = FilterValidator.validate(mod.get('filter', {}))
