@@ -147,6 +147,7 @@ class CardTextGenerator:
         "MOVE_BUFFER_TO_ZONE": "バッファから{zone}に置く。",
         "SELECT_OPTION": "次の中から選ぶ。",
         "LOCK_SPELL": "相手は呪文を唱えられない。",
+        "REPLACE_MOVE_CARD": "（置換移動）",
         "APPLY_MODIFIER": "効果を付与する。",
 
         # --- Generalized Commands (Mapped to natural text if encountered in Card Data) ---
@@ -1393,6 +1394,18 @@ class CardTextGenerator:
             if not target_str or target_str == "カード":
                  return f"({tr('COUNT_CARDS')})"
             return f"{target_str}の数を数える。"
+
+        elif atype == "REPLACE_MOVE_CARD":
+            dest_zone = action.get("destination_zone", "")
+            src_zone = action.get("source_zone", "") # Used as "Original Zone" here
+            zone_str = tr(dest_zone) if dest_zone else "どこか"
+            orig_zone_str = tr(src_zone) if src_zone else "元のゾーン"
+
+            # If input_key is present, we say "Instead of... move that card..."
+            if input_key:
+                template = f"{{target}}をその同じ数だけ{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+            else:
+                template = f"{{target}}を{orig_zone_str}に置くかわりに、{zone_str}に置く。"
 
         elif atype == "MOVE_CARD":
             dest_zone = action.get("destination_zone", "")

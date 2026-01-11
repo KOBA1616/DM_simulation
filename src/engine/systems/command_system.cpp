@@ -14,6 +14,8 @@ namespace dm::engine::systems {
     using namespace dm::core;
     using namespace dm::engine::game_command;
 
+    Zone parse_zone_string(const std::string& zone_str);
+
     // Count cards that satisfy the command's target_filter across the selected players/zones.
     // Ignores filter.count so queries can report the true total.
     static int count_matching_cards(GameState& state, const CommandDef& cmd, PlayerID player_id, std::map<std::string, int>& execution_context) {
