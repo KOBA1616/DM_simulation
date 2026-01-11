@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 from enum import Enum, auto
 from typing import Any, List, Optional, Dict, Union
+from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
 
 class FieldType(Enum):
     """Enumeration of supported field types for the schema."""
-    INT = auto()
-    FLOAT = auto()
-    STRING = auto()
-    BOOL = auto()
+    INT = auto()          # Spinbox
+    FLOAT = auto()        # DoubleSpinbox
+    STRING = auto()       # Text Line Edit
+    BOOL = auto()         # Checkbox
     SELECT = auto()       # Combo box from fixed options
     ZONE = auto()         # Zone selector
     FILTER = auto()       # Filter editor widget
     PLAYER = auto()       # Player scope selector
     LINK = auto()         # Variable Link widget
-    GROUP = auto()        # Logical grouping (visual only)
+    GROUP = auto()        # Logical grouping (visual only) - Not fully implemented yet
+    OPTIONS_CONTROL = auto() # Special control for generating option branches
 
 class FieldSchema:
     """
@@ -30,7 +32,8 @@ class FieldSchema:
         tooltip: str = "",
         min_value: Optional[int] = None,
         max_value: Optional[int] = None,
-        produces_output: bool = False # For LINK fields
+        produces_output: bool = False, # For LINK fields
+        widget_hint: Optional[str] = None # Hint for factory (e.g. 'ref_mode_combo')
     ):
         self.key = key
         self.label = label
@@ -42,6 +45,7 @@ class FieldSchema:
         self.min_value = min_value
         self.max_value = max_value
         self.produces_output = produces_output
+        self.widget_hint = widget_hint
 
 class CommandSchema:
     """
@@ -52,7 +56,7 @@ class CommandSchema:
         self.fields = fields
         self.label_override = label_override
 
-# Example registry
+# Registry
 SCHEMA_REGISTRY = {}
 
 def register_schema(schema: CommandSchema):
@@ -60,3 +64,76 @@ def register_schema(schema: CommandSchema):
 
 def get_schema(type_name: str) -> Optional[CommandSchema]:
     return SCHEMA_REGISTRY.get(type_name)
+
+class SchemaLoader:
+    """
+    Loads raw configuration from EditorConfigLoader and populates the SCHEMA_REGISTRY.
+    Centralizes the logic that was previously hardcoded in Forms.
+    """
+
+    # Default mapping for field names to types/widgets
+    _DEFAULT_MAPPING = {
+        'target_group':  {'type': FieldType.PLAYER, 'label': 'Target Player', 'hint': 'player_scope'},
+        'target_filter': {'type': FieldType.FILTER, 'label': 'Filter'},
+        'amount':        {'type': FieldType.INT, 'label': 'Amount', 'min': 1},
+        'str_param':     {'type': FieldType.STRING, 'label': 'String Param'},
+        'from_zone':     {'type': FieldType.ZONE, 'label': 'From Zone', 'hint': 'zone_combo'},
+        'to_zone':       {'type': FieldType.ZONE, 'label': 'To Zone', 'hint': 'zone_combo'},
+        'optional':      {'type': FieldType.BOOL, 'label': 'Optional'},
+        'up_to':         {'type': FieldType.BOOL, 'label': 'Up To'},
+        'input_link':    {'type': FieldType.LINK, 'label': 'Input Variables'},
+        'output_link':   {'type': FieldType.LINK, 'label': 'Output Variables', 'produces_output': True},
+        'mutation_kind': {'type': FieldType.STRING, 'label': 'Mutation Kind'},
+        'ref_mode':      {'type': FieldType.SELECT, 'label': 'Reference Mode', 'hint': 'ref_mode_combo'},
+        'generate_opts': {'type': FieldType.OPTIONS_CONTROL, 'label': 'Options', 'hint': 'options_control'}
+    }
+
+    @classmethod
+    def load_schemas(cls):
+        """Parses the loaded COMMAND_UI_CONFIG and registers schemas."""
+        if SCHEMA_REGISTRY:
+            return
+
+        raw_config = EditorConfigLoader.get_command_ui_config()
+
+        for cmd_type, config in raw_config.items():
+            fields = []
+            visible_keys = config.get('visible', [])
+
+            # Special case for output producers
+            produces_output_cmd = config.get('produces_output', False)
+
+            for key in visible_keys:
+                field_def = cls._infer_field_def(key, config)
+
+                # Override label from config if present
+                label_key = f"label_{key}"
+                if label_key in config:
+                    field_def.label = config[label_key]
+
+                # Special handling for output link
+                if key == 'output_link' and produces_output_cmd:
+                    field_def.produces_output = True
+
+                fields.append(field_def)
+
+            schema = CommandSchema(type_name=cmd_type, fields=fields)
+            register_schema(schema)
+
+    @classmethod
+    def _infer_field_def(cls, key: str, config: Dict) -> FieldSchema:
+        """Infers the FieldSchema from the key name using default mappings."""
+        mapping = cls._DEFAULT_MAPPING.get(key, {})
+
+        f_type = mapping.get('type', FieldType.STRING) # Default to String
+        label = mapping.get('label', key.replace('_', ' ').title())
+        hint = mapping.get('hint')
+        min_val = mapping.get('min')
+
+        return FieldSchema(
+            key=key,
+            label=label,
+            field_type=f_type,
+            widget_hint=hint,
+            min_value=min_val
+        )

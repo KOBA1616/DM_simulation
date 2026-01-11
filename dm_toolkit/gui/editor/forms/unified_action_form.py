@@ -9,7 +9,8 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.models import CommandModel
 from dm_toolkit.gui.editor.widget_factory import WidgetFactory
-from dm_toolkit.gui.editor.configs.action_config import COMMAND_GROUPS, COMMAND_UI_CONFIG
+from dm_toolkit.gui.editor.configs.action_config import COMMAND_GROUPS
+from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSchema, FieldType
 
 class UnifiedActionForm(BaseEditForm):
     """Schema-driven Unified Action Form using WidgetFactory and External Config."""
@@ -23,6 +24,9 @@ class UnifiedActionForm(BaseEditForm):
         self.current_item = getattr(self, 'current_item', None)
         self.structure_update_requested = getattr(self, 'structure_update_requested', None)
         
+        # Initialize Schema Registry
+        SchemaLoader.load_schemas()
+
         try:
             self.setup_base_ui()
         except Exception:
@@ -73,7 +77,7 @@ class UnifiedActionForm(BaseEditForm):
         self.update_data()
 
     def rebuild_dynamic_ui(self, cmd_type):
-        """Rebuilds the dynamic part of the form based on schema/config."""
+        """Rebuilds the dynamic part of the form based on schema."""
         # Clear existing widgets
         while self.dynamic_layout.count():
             item = self.dynamic_layout.takeAt(0)
@@ -83,60 +87,21 @@ class UnifiedActionForm(BaseEditForm):
 
         self.widgets_map = {}
 
-        config = COMMAND_UI_CONFIG.get(cmd_type, {})
-        visible_fields = config.get('visible', [])
+        schema = get_schema(cmd_type)
+        if not schema:
+            return
 
-        for key in visible_fields:
-            self._create_widget_for_key(key, cmd_type, config)
+        for field_schema in schema.fields:
+            self._create_widget_for_field(field_schema)
 
-    def _create_widget_for_key(self, key, cmd_type, config):
-        # Determine widget type based on key mapping
-        # This mapping serves as the bridge between the simple "visible" list in JSON and actual Widget types
-        # In a fully data-driven world, the JSON would specify the widget type, but we are adapting existing structure.
+    def _create_widget_for_field(self, field_schema: FieldSchema):
+        key = field_schema.key
 
-        field_def = {'key': key, 'label': key} # Default
-
-        # Mapping logic (previously hardcoded in form, now mapping here)
-        if key == 'target_group':
-            field_def['widget'] = 'player_scope'
-            field_def['label'] = 'Target Player'
-        elif key == 'target_filter':
-            field_def['widget'] = 'filter_editor'
-            field_def['label'] = 'Filter'
-        elif key == 'amount':
-            field_def['widget'] = 'spinbox'
-            field_def['label'] = config.get('label_amount', 'Amount')
-        elif key == 'str_param':
-            field_def['widget'] = 'text'
-            field_def['label'] = config.get('label_str_param', 'String Param')
-        elif key == 'from_zone':
-            field_def['widget'] = 'zone_combo'
-            field_def['label'] = config.get('label_from_zone', 'From Zone')
-        elif key == 'to_zone':
-            field_def['widget'] = 'zone_combo'
-            field_def['label'] = config.get('label_to_zone', 'To Zone')
-        elif key == 'optional':
-            field_def['widget'] = 'checkbox'
-            field_def['label'] = 'Optional'
-        elif key == 'up_to':
-            field_def['widget'] = 'checkbox'
-            field_def['label'] = 'Up To' # Actually handled inside checkbox logic usually
-        elif key in ['input_link', 'output_link']:
-            field_def['widget'] = 'variable_link'
-            field_def['label'] = 'Variables'
-        elif key == 'mutation_kind':
-            field_def['widget'] = 'text' # Or combo if we had a specific list
-            field_def['label'] = config.get('label_mutation_kind', 'Mutation')
-        elif key == 'ref_mode':
-             field_def['widget'] = 'ref_mode_combo'
-             field_def['label'] = 'Reference Mode'
-        # Add more mappings as needed
-
-        widget = WidgetFactory.create_widget(self, field_def, self.update_data)
+        widget = WidgetFactory.create_widget(self, field_schema, self.update_data)
 
         if widget:
             self.widgets_map[key] = widget
-            self.dynamic_layout.addRow(tr(field_def['label']), widget)
+            self.dynamic_layout.addRow(tr(field_schema.label), widget)
 
     def _load_ui_from_data(self, data, item):
         """Loads data using interface-based widgets."""
@@ -199,12 +164,15 @@ class UnifiedActionForm(BaseEditForm):
         new_data.update(dump)
 
         # Check outputs config
-        config = COMMAND_UI_CONFIG.get(cmd_type, {})
-        if config.get('produces_output') and 'output_value_key' not in new_data:
-             row = 0
-             if getattr(self, 'current_item', None):
-                 row = self.current_item.row()
-             new_data['output_value_key'] = f"var_{cmd_type}_{row}"
+        schema = get_schema(cmd_type)
+        if schema:
+            # Check if any field produces output
+            produces_output = any(f.produces_output for f in schema.fields)
+            if produces_output and 'output_value_key' not in new_data:
+                 row = 0
+                 if getattr(self, 'current_item', None):
+                     row = self.current_item.row()
+                 new_data['output_value_key'] = f"var_{cmd_type}_{row}"
 
         data.clear()
         data.update(new_data)
