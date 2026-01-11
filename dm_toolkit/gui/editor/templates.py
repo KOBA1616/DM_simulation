@@ -78,15 +78,20 @@ class LogicTemplateManager:
     def _recursive_substitute(self, obj, context):
         if isinstance(obj, dict):
             for k, v in obj.items():
-                if isinstance(v, (dict, list)):
-                    self._recursive_substitute(v, context)
-                elif isinstance(v, list) and len(v) == 1 and isinstance(v[0], str):
-                    # Handle list of strings like ["__CARD_CIVILIZATIONS__"]
+                # Check for substitution pattern FIRST
+                if isinstance(v, list) and len(v) == 1 and isinstance(v[0], str):
                     val = v[0]
                     if val == "__CARD_CIVILIZATIONS__":
                         obj[k] = context.get('civilizations', ["FIRE"])
+                        continue
                     elif val == "__CARD_RACES__":
                         obj[k] = context.get('races', ["Dragon"])
+                        continue
+
+                # Recurse if it's a container
+                if isinstance(v, (dict, list)):
+                    self._recursive_substitute(v, context)
+
         elif isinstance(obj, list):
             for item in obj:
                 self._recursive_substitute(item, context)
