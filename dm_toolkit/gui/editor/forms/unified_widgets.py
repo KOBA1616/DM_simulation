@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QComboBox, QSpinBox, QPushButton, QLabel, QHBoxLayout, QWidget, QGridLayout, QCheckBox
 from dm_toolkit.gui.localization import tr
-from dm_toolkit.consts import ZONES_EXTENDED
+from dm_toolkit.consts import ZONES_EXTENDED, TargetScope
 
 
 def make_scope_combo(parent=None, include_zones=False):
@@ -10,9 +10,20 @@ def make_scope_combo(parent=None, include_zones=False):
     
     Args:
         include_zones: Trueの場合、BATTLE_ZONE等のゾーン指定も選択肢に含める
+    
+    Note: Uses TargetScope.SELF/OPPONENT for player scopes (unified constants).
     """
     combo = QComboBox(parent)
-    scopes = ["PLAYER_SELF","PLAYER_OPPONENT","TARGET_SELECT","ALL_PLAYERS","RANDOM","ALL_FILTERED","NONE"]
+    # Use unified TargetScope constants
+    scopes = [
+        TargetScope.SELF,  # "SELF" instead of "PLAYER_SELF"
+        TargetScope.OPPONENT,  # "OPPONENT" instead of "PLAYER_OPPONENT"
+        "TARGET_SELECT",
+        "ALL_PLAYERS",
+        "RANDOM",
+        "ALL_FILTERED",
+        "NONE"
+    ]
     
     if include_zones:
         # ゾーン指定を追加（CIP効果と同様の選択肢）
@@ -28,15 +39,18 @@ def make_player_scope_selector(parent=None):
     """文明選択のような形式で、自分/相手のみ選択できるスコープUI。
 
     - UIはチェックボックス2つ（排他）
-    - 値は Command の target_group に対応（PLAYER_SELF / PLAYER_OPPONENT）
+    - 値は TargetScope に対応（SELF / OPPONENT）
+    
+    Note: Now uses TargetScope.SELF/OPPONENT (unified constants).
     """
     w = QWidget(parent)
     layout = QGridLayout(w)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setHorizontalSpacing(12)
 
-    self_cb = QCheckBox(tr("PLAYER_SELF"), w)
-    opp_cb = QCheckBox(tr("PLAYER_OPPONENT"), w)
+    # Use TargetScope constants for display
+    self_cb = QCheckBox(tr(TargetScope.SELF), w)
+    opp_cb = QCheckBox(tr(TargetScope.OPPONENT), w)
 
     layout.addWidget(self_cb, 0, 0)
     layout.addWidget(opp_cb, 0, 1)

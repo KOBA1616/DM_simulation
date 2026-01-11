@@ -210,13 +210,25 @@ class ModifierValidator:
                 errors.append(f"POWER_MODIFIER 'value' must be int, got {type(modifier.get('value'))}")
         
         elif mtype in ["GRANT_KEYWORD", "SET_KEYWORD"]:
-            if 'str_val' not in modifier or not modifier.get('str_val'):
-                errors.append(f"{mtype} requires non-empty 'str_val' (keyword name)")
+            # Check mutation_kind first (preferred), fallback to str_val (legacy)
+            has_mutation_kind = 'mutation_kind' in modifier and modifier.get('mutation_kind')
+            has_str_val = 'str_val' in modifier and modifier.get('str_val')
+            
+            if not has_mutation_kind and not has_str_val:
+                errors.append(f"{mtype} requires 'mutation_kind' or 'str_val' (keyword name)")
+            
+            # Warn if only legacy str_val is present
+            if has_str_val and not has_mutation_kind:
+                # Note: This is just a warning, not an error (for backward compatibility)
+                pass  # Could log: "Consider migrating str_val to mutation_kind"
         
-        # Scope validation
-        scope = modifier.get('scope', 'ALL')
-        if scope not in ['SELF', 'OPPONENT', 'ALL']:
-            errors.append(f"Invalid scope: '{scope}'. Valid: SELF, OPPONENT, ALL")
+        # Scope validation (using TargetScope)
+        from dm_toolkit.consts import TargetScope
+        scope = modifier.get('scope', TargetScope.ALL)
+        # Normalize legacy values
+        scope = TargetScope.normalize(scope)
+        if scope not in TargetScope.all_values():
+            errors.append(f"Invalid scope: '{scope}'. Valid: {TargetScope.all_values()}")
         
         # Condition validation (for context "STATIC")
         if 'condition' in modifier:

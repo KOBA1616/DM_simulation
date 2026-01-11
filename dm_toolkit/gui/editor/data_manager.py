@@ -346,6 +346,8 @@ class CardDataManager:
         - Mark commands with missing/unknown 'type' as legacy_warning
         - Validate trigger effects and static abilities structure
         - Warn if modifiers have 'commands' or non-NONE 'trigger'
+        - Migrate legacy str_val to mutation_kind for keyword abilities
+        - Normalize scope constants to use TargetScope
         """
         warnings = []
         from dm_toolkit.consts import COMMAND_TYPES
@@ -355,6 +357,12 @@ class CardDataManager:
             FilterValidator,
             ConditionValidator
         )
+        from dm_toolkit.gui.editor.data_migration import migrate_card_data
+
+        # Auto-migrate card data
+        migrated_count = migrate_card_data(card)
+        if migrated_count > 0:
+            warnings.append(f"自動マイグレーション: {migrated_count}個のフィールドを更新しました")
 
         def _ensure_uid(obj):
             if isinstance(obj, dict) and 'uid' not in obj:

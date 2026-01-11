@@ -515,14 +515,21 @@ class CardTextGenerator:
     @classmethod
     def _format_modifier(cls, modifier: Dict[str, Any], sample: List[Any] = None) -> str:
         """Format a static ability (Modifier) with comprehensive support for all types and conditions."""
+        from dm_toolkit.consts import TargetScope
+        
         mtype = modifier.get("type", "NONE")
         condition = modifier.get("condition", {})
         filter_def = modifier.get("filter", {})
         value = modifier.get("value", 0)
-        str_val = modifier.get("str_val", "")
-        scope = modifier.get("scope", "ALL")
         
-        print(f"[TextGen._format_modifier] START: mtype={mtype}, str_val='{str_val}', scope='{scope}'")
+        # Prefer mutation_kind, fallback to str_val for keywords
+        keyword = modifier.get("mutation_kind", "") or modifier.get("str_val", "")
+        
+        # Normalize scope using TargetScope
+        scope = modifier.get("scope", TargetScope.ALL)
+        scope = TargetScope.normalize(scope)
+        
+        print(f"[TextGen._format_modifier] START: mtype={mtype}, keyword='{keyword}', scope='{scope}'")
         
         # Build condition prefix（条件がある場合）
         cond_text = cls._format_condition(condition)
@@ -536,7 +543,7 @@ class CardTextGenerator:
         # Build target description（フィルターがある場合）
         # NOTE: フィルターは owner を持つ場合があるが、スコープで上書きする
         effective_filter = filter_def.copy() if filter_def else {}
-        if scope and scope != "ALL":
+        if scope and scope != TargetScope.ALL:
             effective_filter["owner"] = scope
         
         target_str = cls._format_modifier_target(effective_filter) if effective_filter else "対象"
@@ -554,10 +561,10 @@ class CardTextGenerator:
             return cls._format_power_modifier(cond_text, full_target, value)
         
         elif mtype == "GRANT_KEYWORD":
-            return cls._format_grant_keyword(cond_text, full_target, str_val)
+            return cls._format_grant_keyword(cond_text, full_target, keyword)
         
         elif mtype == "SET_KEYWORD":
-            return cls._format_set_keyword(cond_text, full_target, str_val)
+            return cls._format_set_keyword(cond_text, full_target, keyword)
         
         else:
             return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"

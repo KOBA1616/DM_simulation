@@ -5,6 +5,7 @@ Maps trigger types, conditions, scopes, and modifier types to Japanese text.
 """
 
 from typing import Dict, Optional
+from dm_toolkit.consts import TargetScope
 
 
 class CardTextResources:
@@ -22,10 +23,17 @@ class CardTextResources:
     }
     
     # Scope/Owner Japanese mapping (STATIC ability context)
+    # Now using TargetScope constants for consistency
     SCOPE_JAPANESE: Dict[str, str] = {
+        TargetScope.SELF: "自分の",
+        TargetScope.OPPONENT: "相手の",
+        TargetScope.ALL: "",
+        # Legacy support
         "SELF": "自分の",
         "OPPONENT": "相手の",
-        "ALL": ""
+        "ALL": "",
+        "PLAYER_SELF": "自分の",
+        "PLAYER_OPPONENT": "相手の",
     }
     
     # Trigger event Japanese mapping

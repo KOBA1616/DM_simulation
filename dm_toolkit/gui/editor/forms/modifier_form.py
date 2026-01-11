@@ -170,13 +170,14 @@ class ModifierEditForm(BaseEditForm):
             self.scope_self_check.setChecked(True)
             self.scope_opp_check.setChecked(True)
         
-        # Manually set keyword combo (str_val)
+        # Manually set keyword combo (mutation_kind or str_val)
         # Note: Signals are already blocked by load_data(), no need to block here
-        str_val = data.get('str_val', '')
-        if str_val:
-            self.keyword_combo.set_keyword(str_val)
+        # Prefer mutation_kind, fallback to str_val for legacy data
+        keyword = data.get('mutation_kind', '') or data.get('str_val', '')
+        if keyword:
+            self.keyword_combo.set_keyword(keyword)
         else:
-            # No str_val, set to first item
+            # No keyword, set to first item
             self.keyword_combo.setCurrentIndex(0)
 
         # Update visibility based on current modifier type
@@ -187,48 +188,56 @@ class ModifierEditForm(BaseEditForm):
         self._collect_bindings(data)
 
         # Determine scope from checkboxes
+        from dm_toolkit.consts import TargetScope
         self_checked = self.scope_self_check.isChecked()
         opp_checked = self.scope_opp_check.isChecked()
         
         if self_checked and opp_checked:
-            scope_value = 'ALL'
+            scope_value = TargetScope.ALL
         elif self_checked and not opp_checked:
-            scope_value = 'SELF'
+            scope_value = TargetScope.SELF
         elif not self_checked and opp_checked:
-            scope_value = 'OPPONENT'
+            scope_value = TargetScope.OPPONENT
         else:  # Neither checked
-            scope_value = 'ALL'  # Default
+            scope_value = TargetScope.ALL  # Default
         
         data['scope'] = scope_value
         
         # Debug: Print what we're saving
         print(f"[ModifierForm._save_ui_to_data] self_checked={self_checked}, opp_checked={opp_checked}, scope={scope_value}")
 
-        # Save keyword from combo to str_val
+        # Save keyword to mutation_kind (NEW) for GRANT_KEYWORD/SET_KEYWORD
+        # Also save to str_val for backward compatibility
         mtype = data.get('type', '')
         if mtype in ('GRANT_KEYWORD', 'SET_KEYWORD'):
-            data['str_val'] = self.keyword_combo.get_keyword()
-            print(f"[ModifierForm._save_ui_to_data] Saving keyword: type={mtype}, str_val={data['str_val']}")
+            keyword = self.keyword_combo.get_keyword()
+            data['mutation_kind'] = keyword  # Primary field
+            data['str_val'] = keyword  # Legacy support
+            print(f"[ModifierForm._save_ui_to_data] Saving keyword: type={mtype}, mutation_kind={keyword}")
         else:
+            # Clear both fields for non-keyword types
+            data['mutation_kind'] = ''
             data['str_val'] = ''
-            print(f"[ModifierForm._save_ui_to_data] Non-keyword type: {mtype}, clearing str_val")
+            print(f"[ModifierForm._save_ui_to_data] Non-keyword type: {mtype}, clearing mutation_kind/str_val")
 
     def _get_display_text(self, data):
         """Generate concise display text for tree item."""
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.consts import TargetScope
         
         mtype = data.get('type', 'NONE')
-        str_val = data.get('str_val', '')
-        scope = data.get('scope', 'ALL')
+        # Prefer mutation_kind, fallback to str_val
+        keyword = data.get('mutation_kind', '') or data.get('str_val', '')
+        scope = data.get('scope', TargetScope.ALL)
         value = data.get('value', 0)
         
         # Build concise label
         parts = []
         
         # Add scope prefix if not ALL
-        if scope == 'SELF':
+        if scope == TargetScope.SELF or scope == 'SELF':
             parts.append('自分の')
-        elif scope == 'OPPONENT':
+        elif scope == TargetScope.OPPONENT or scope == 'OPPONENT':
             parts.append('相手の')
         
         # Add main type description
@@ -239,14 +248,14 @@ class ModifierEditForm(BaseEditForm):
             sign = '+' if value >= 0 else ''
             parts.append(f'パワー{sign}{value}')
         elif mtype == 'GRANT_KEYWORD':
-            if str_val:
-                keyword_display = CardTextGenerator.KEYWORD_TRANSLATION.get(str_val, str_val)
+            if keyword:
+                keyword_display = CardTextGenerator.KEYWORD_TRANSLATION.get(keyword, keyword)
                 parts.append(f'付与:{keyword_display}')
             else:
                 parts.append('付与:未設定')
         elif mtype == 'SET_KEYWORD':
-            if str_val:
-                keyword_display = CardTextGenerator.KEYWORD_TRANSLATION.get(str_val, str_val)
+            if keyword:
+                keyword_display = CardTextGenerator.KEYWORD_TRANSLATION.get(keyword, keyword)
                 parts.append(f'獲得:{keyword_display}')
             else:
                 parts.append('獲得:未設定')
