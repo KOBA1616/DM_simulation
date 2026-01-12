@@ -465,6 +465,8 @@ void bind_core(py::module& m) {
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
         .def_readwrite("trigger", &EffectDef::trigger)
+        .def_readwrite("trigger_scope", &EffectDef::trigger_scope)
+        .def_readwrite("trigger_filter", &EffectDef::trigger_filter)
         .def_readwrite("condition", &EffectDef::condition)
         .def_readwrite("actions", &EffectDef::actions)
         .def_readwrite("commands", &EffectDef::commands); // Added commands field

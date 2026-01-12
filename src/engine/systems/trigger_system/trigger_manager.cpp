@@ -84,17 +84,71 @@ namespace dm::engine::systems {
 
                 for (const auto& effect : active_effects) {
                     if (effect.trigger == trigger_type) {
-                        // Condition: Is this card the source of the event?
-                        if (event.instance_id == instance_id) {
-                            // Match!
-                            PlayerID controller = state.card_owner_map[instance_id];
-                            PendingEffect pending(EffectType::TRIGGER_ABILITY, instance_id, controller);
-                            pending.resolve_type = ResolveType::EFFECT_RESOLUTION;
-                            pending.effect_def = effect; // Copy effect
-                            pending.optional = true;
-                            pending.chain_depth = state.turn_stats.current_chain_depth + 1;
+                        bool scope_match = false;
+                        PlayerID owner = state.card_owner_map[instance_id];
 
-                            state.pending_effects.push_back(pending);
+                        switch (effect.trigger_scope) {
+                            case TargetScope::NONE:
+                                // Default behavior: trigger on self
+                                scope_match = (event.instance_id == instance_id);
+                                break;
+                            case TargetScope::SELF:
+                            case TargetScope::PLAYER_SELF:
+                                // Matches if event is caused by owner's card
+                                scope_match = (event.player_id == owner);
+                                break;
+                            case TargetScope::PLAYER_OPPONENT:
+                                // Matches if event is caused by opponent's card
+                                scope_match = (event.player_id != owner);
+                                break;
+                            case TargetScope::ALL_PLAYERS:
+                            case TargetScope::ALL_FILTERED:
+                                scope_match = true;
+                                break;
+                            default:
+                                scope_match = (event.instance_id == instance_id);
+                                break;
+                        }
+
+                        if (scope_match) {
+                            bool filter_match = true;
+
+                            // Apply filter if specified (and we are not just defaulting to self)
+                            // If scope is NONE, we usually skip filter, but the user requested filter support always.
+                            // However, legacy cards have empty filters. TargetUtils::is_valid_target handles empty/default filters by returning true?
+                            // Let's assume if it has filter criteria, we check it.
+
+                            if (scope_match) {
+                                // For triggers, the "target" of the filter is the card that caused the event.
+                                const CardInstance* event_card = state.get_card_instance(event.instance_id);
+
+                                // Some events might not have a card instance (e.g. Turn Start?), but map_event_to_trigger handles card events.
+                                // For now, we only filter if we have a card.
+                                if (event_card && card_db.count(event_card->card_id)) {
+                                     // Check if filter is set?
+                                     // We blindly pass it to TargetUtils.
+                                     // Note: trigger_filter is FilterDef.
+                                     // TargetUtils::is_valid_target checks if card matches filter.
+
+                                     // We only check if there IS a filter (implicit or explicit).
+                                     // FilterDef default has empty vectors etc.
+                                     // TargetUtils handles default empty filter as "match all"?
+                                     // Yes, usually.
+
+                                     filter_match = TargetUtils::is_valid_target(*event_card, card_db.at(event_card->card_id), effect.trigger_filter, state, owner, owner);
+                                }
+                            }
+
+                            if (filter_match) {
+                                PlayerID controller = state.card_owner_map[instance_id];
+                                PendingEffect pending(EffectType::TRIGGER_ABILITY, instance_id, controller);
+                                pending.resolve_type = ResolveType::EFFECT_RESOLUTION;
+                                pending.effect_def = effect; // Copy effect
+                                pending.optional = true;
+                                pending.chain_depth = state.turn_stats.current_chain_depth + 1;
+
+                                state.pending_effects.push_back(pending);
+                            }
                         }
                     }
                 }
