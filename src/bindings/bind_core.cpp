@@ -157,7 +157,14 @@ void bind_core(py::module& m) {
         .value("TURN_START", TriggerType::TURN_START)
         .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
         .value("BEFORE_BREAK_SHIELD", TriggerType::BEFORE_BREAK_SHIELD)
+        .value("AT_BREAK_SHIELD", TriggerType::AT_BREAK_SHIELD)
         .value("ON_BLOCK", TriggerType::ON_BLOCK)
+        .value("ON_OTHER_ENTER", TriggerType::ON_OTHER_ENTER)
+        .value("ON_ATTACK_FROM_HAND", TriggerType::ON_ATTACK_FROM_HAND)
+        .value("ON_SHIELD_ADD", TriggerType::ON_SHIELD_ADD)
+        .value("ON_CAST_SPELL", TriggerType::ON_CAST_SPELL)
+        .value("ON_OPPONENT_DRAW", TriggerType::ON_OPPONENT_DRAW)
+        .value("ON_DRAW", TriggerType::ON_DRAW)
         .value("NONE", TriggerType::NONE)
         .export_values();
 
