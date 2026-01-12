@@ -386,7 +386,8 @@ void bind_core(py::module& m) {
         .def_property("unblockable", [](const CardKeywords& k) { return k.unblockable; }, [](CardKeywords& k, bool v) { k.unblockable = v; })
         .def_property("friend_burst", [](const CardKeywords& k) { return k.friend_burst; }, [](CardKeywords& k, bool v) { k.friend_burst = v; })
         .def_property("ex_life", [](const CardKeywords& k) { return k.ex_life; }, [](CardKeywords& k, bool v) { k.ex_life = v; })
-        .def_property("mega_last_burst", [](const CardKeywords& k) { return k.mega_last_burst; }, [](CardKeywords& k, bool v) { k.mega_last_burst = v; });
+        .def_property("mega_last_burst", [](const CardKeywords& k) { return k.mega_last_burst; }, [](CardKeywords& k, bool v) { k.mega_last_burst = v; })
+        .def_property("must_be_chosen", [](const CardKeywords& k) { return k.must_be_chosen; }, [](CardKeywords& k, bool v) { k.must_be_chosen = v; });
 
     py::class_<FilterDef>(m, "FilterDef")
         .def(py::init<>())

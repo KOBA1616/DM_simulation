@@ -78,20 +78,48 @@ def setup_gui_stubs():
             self.textChanged = MockSignal()
             self.stateChanged = MockSignal()
             self.currentIndexChanged = MockSignal()
+            self._items = []
             
         def setWindowTitle(self, title): pass
         def setLayout(self, layout): pass
         def setGeometry(self, *args): pass
         def show(self): pass
         def close(self): return True
-        def addWidget(self, widget): pass
-        def addLayout(self, layout): pass
+        def addWidget(self, widget, *args): pass  # Accept extra args for Grid Layout
+        def addLayout(self, layout, *args): pass  # Accept extra args for Grid Layout
         def setText(self, text): pass
         def text(self): return ""
         def setCheckState(self, state): pass
-        def addItem(self, *args): pass
+        def addItem(self, *args): self._items.append(args)
         def setCurrentIndex(self, index): pass
         def currentIndex(self): return 0
+        def blockSignals(self, block): return False
+        def count(self): return len(self._items)
+        def setItemData(self, index, data, role=None): pass
+        def itemData(self, index, role=None): return None
+        def addButton(self, button, id=-1): pass
+        def checkedId(self): return -1
+        def id(self, button): return -1
+        def setContentsMargins(self, *args): pass
+        def setSpacing(self, spacing): pass
+        def addStretch(self, *args): pass
+        def setStyleSheet(self, style): pass
+        def setMinimumWidth(self, width): pass
+        def setMinimumHeight(self, height): pass
+        def setMaximumWidth(self, width): pass
+        def setMaximumHeight(self, height): pass
+        def clear(self): self._items = []
+        def setToolTip(self, text): pass
+        def setCursor(self, cursor): pass
+        def setEnabled(self, enabled): pass
+        def isEnabled(self): return True
+        def setVisible(self, visible): pass
+        def isVisible(self): return True
+        def setExclusive(self, exclusive): pass
+        def insertItem(self, index, text): pass
+        def setFlat(self, flat): pass
+        def setSpacing(self, spacing): pass
+        def setContentsMargins(self, *args): pass
 
     class DummyQMainWindow(DummyQWidget):
         def setCentralWidget(self, widget): pass
@@ -129,6 +157,9 @@ def setup_gui_stubs():
         class MatchFlag:
             MatchContains = 1
             MatchFixedString = 8
+
+        class CursorShape:
+            PointingHandCursor = 13
 
         SolidPattern = 1
         Horizontal = 1
@@ -203,24 +234,60 @@ def setup_gui_stubs():
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.clicked = MockSignal()
+        def setCheckable(self, checkable): pass
+        def isChecked(self): return False
+        def setChecked(self, checked): pass
+        def setFlat(self, flat): pass
+        def setStyleSheet(self, style): pass
+        def setMinimumWidth(self, width): pass
+        def setCursor(self, cursor): pass
     
     class EnhancedComboBox(DummyQWidget):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.currentIndexChanged = MockSignal()
+            self._current_index = 0
+
+        def blockSignals(self, block): return False
             
-        def addItem(self, *args): pass
-        def setCurrentIndex(self, index): pass
-        def currentIndex(self): return 0
-        def currentText(self): return ""
+        def addItem(self, *args): self._items.append(args)
+        def setCurrentIndex(self, index): self._current_index = index
+        def currentIndex(self): return self._current_index
+        def currentText(self):
+            if 0 <= self._current_index < len(self._items):
+                return self._items[self._current_index][0]
+            return ""
+        def currentData(self):
+            if 0 <= self._current_index < len(self._items):
+                item = self._items[self._current_index]
+                if len(item) > 1: return item[-1]
+            return None
+
+        def setEditable(self, editable): pass
+        def setEnabled(self, enabled): pass
+
+        def findData(self, data):
+             for i, item in enumerate(self._items):
+                 if len(item) > 1 and item[-1] == data:
+                     return i
+             return -1
+
+        def itemData(self, index, role=None):
+            if 0 <= index < len(self._items):
+                item = self._items[index]
+                if len(item) > 1:
+                    return item[-1]
+            return None
     
     class EnhancedLineEdit(DummyQWidget):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.textChanged = MockSignal()
+            self.textEdited = MockSignal()
             
         def setText(self, text): pass
         def text(self): return ""
+        def setPlaceholderText(self, text): pass
     
     class EnhancedCheckBox(DummyQWidget):
         def __init__(self, *args, **kwargs):
@@ -231,6 +298,34 @@ def setup_gui_stubs():
         def checkState(self): return 0
         def isChecked(self): return False
 
+    class EnhancedSpinBox(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.valueChanged = MockSignal()
+            self._value = 0
+
+        def setRange(self, min_val, max_val): pass
+        def setMinimum(self, min_val): pass
+        def setMaximum(self, max_val): pass
+        def setValue(self, value): self._value = value
+        def value(self): return self._value
+        def setSpecialValueText(self, text): pass
+        def setSingleStep(self, step): pass
+        def setVisible(self, visible): pass
+
+    qt_widgets.QSpinBox = EnhancedSpinBox
+
+    class EnhancedFormLayout(DummyQWidget):
+        def addRow(self, *args): pass
+
+    qt_widgets.QFormLayout = EnhancedFormLayout
+
+    class EnhancedButtonGroup(DummyQWidget):
+        def setExclusive(self, exclusive): pass
+        def addButton(self, button, id=-1): pass
+
+    qt_widgets.QButtonGroup = EnhancedButtonGroup
+
     # Map widgets with enhanced signal support
     qt_widgets.QPushButton = EnhancedButton
     qt_widgets.QComboBox = EnhancedComboBox
@@ -240,15 +335,20 @@ def setup_gui_stubs():
     # Map other common widgets without special signals
     for w in ['QLabel', 'QVBoxLayout', 'QHBoxLayout', 'QSplitter',
               'QTreeWidget', 'QTreeWidgetItem', 'QTextEdit',
-              'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu', 'QAction']:
+              'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu', 'QAction',
+              'QGridLayout']:
          setattr(qt_widgets, w, type(w, (DummyQWidget,), {}))
 
     # 4. Inject into QtCore
     qt_core.Qt = DummyQt
     qt_core.QObject = type('QObject', (object,), {'__init__': lambda s, *a: None, 'blockSignals': lambda s, b: False})
+    qt_core.QModelIndex = type('QModelIndex', (object,), {})
     qt_core.QThread = type('QThread', (object,), {'start': lambda s: None, 'wait': lambda s: None, 'quit': lambda s: None, 'isRunning': lambda s: False})
     qt_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
     qt_core.QTimer = type('QTimer', (object,), {'singleShot': lambda *a: None, 'start': lambda s, t: None, 'stop': lambda s: None})
+
+    # 4.1 Inject QModelIndex into QtCore (was missing)
+    qt_core.QModelIndex = type('QModelIndex', (object,), {})
 
     # 5. Inject into QtGui
     qt_gui.QColor = lambda *a: None
