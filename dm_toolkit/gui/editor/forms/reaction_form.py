@@ -72,8 +72,10 @@ class ReactionEditForm(BaseEditForm):
             self.label_cost.setVisible(False)
             self.cost_spin.setVisible(False)
 
-    def _populate_ui(self, item):
-        data = item.data(Qt.ItemDataRole.UserRole + 2)
+    def _load_ui_from_data(self, data, item):
+        # data is passed directly from BaseEditForm.load_data
+        if data is None:
+             data = {}
 
         self.set_combo_text(self.type_combo, data.get('type', 'NONE'))
         self.cost_spin.setValue(data.get('cost', 0))
@@ -84,7 +86,7 @@ class ReactionEditForm(BaseEditForm):
 
         self.update_visibility()
 
-    def _save_data(self, data):
+    def _save_ui_to_data(self, data):
         data['type'] = self.type_combo.currentText()
         data['cost'] = self.cost_spin.value()
         data['zone'] = self.zone_edit.currentText()
