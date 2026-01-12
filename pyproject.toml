@@ -17,7 +17,7 @@ dependencies = [
 
 [project.scripts]
 dm-gui = "dm_toolkit.gui.app:main"
-dm-card-editor = "dm_toolkit.gui.card_editor:main"
+dm-card-editor = "dm_toolkit.gui.editor.window:main"
 
 [tool.setuptools.packages.find]
 include = ["dm_toolkit*"]

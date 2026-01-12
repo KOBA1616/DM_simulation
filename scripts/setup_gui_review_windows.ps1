@@ -4,7 +4,7 @@ GUI review setup (Windows) - no native build tools required.
 Purpose:
   - Create .venv
   - Install minimal GUI dependencies (PyQt6)
-  - Launch the Card Editor (dm_toolkit.gui.card_editor)
+  - Launch the Card Editor (dm_toolkit.gui.editor.window)
 
 Usage:
   pwsh -File .\scripts\setup_gui_review_windows.ps1
@@ -63,7 +63,7 @@ try {
   & $venvPython -m pip install PyQt6
 
   Info "Launching Card Editor (no native build required)"
-  & $venvPython -m dm_toolkit.gui.card_editor $CardsJson
+  & $venvPython -m dm_toolkit.gui.editor.window $CardsJson
 }
 finally {
   Pop-Location

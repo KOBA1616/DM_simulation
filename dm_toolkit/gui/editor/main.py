@@ -8,7 +8,7 @@ the card editor's main.
 from typing import Optional, List
 import sys
 
-from dm_toolkit.gui.card_editor import main as card_editor_main
+from dm_toolkit.gui.editor.window import main as card_editor_main
 
 
 def main(argv: Optional[List[str]] = None) -> int:

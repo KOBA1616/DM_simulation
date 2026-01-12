@@ -35,7 +35,7 @@ if (-not (Test-Path $pythonExe)) {
 Push-Location $repoRoot
 try {
   Info "Launching Card Editor for GUI review"
-  & $pythonExe -m dm_toolkit.gui.card_editor $CardsJson
+  & $pythonExe -m dm_toolkit.gui.editor.window $CardsJson
 }
 finally {
   Pop-Location
