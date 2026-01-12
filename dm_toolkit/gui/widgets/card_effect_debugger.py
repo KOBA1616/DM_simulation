@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QCheckBox, QPushButton, QComboBox, QGroupBox, QHeaderView
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.engine.compat import EngineCompat
 
 class CardEffectDebugger(QWidget):

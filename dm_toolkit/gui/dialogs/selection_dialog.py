@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont, QIcon
 
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class CardSelectionDialog(QDialog):
     """

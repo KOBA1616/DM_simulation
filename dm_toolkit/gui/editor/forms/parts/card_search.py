@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QListWidget, QListWidgetItem,
                              QLineEdit, QComboBox, QHBoxLayout, QLabel, QAbstractItemView)
 from PyQt6.QtCore import Qt, QMimeData, QSize
 from PyQt6.QtGui import QDrag
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 import json
 
 class CardSearchWidget(QWidget):

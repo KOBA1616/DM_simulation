@@ -1,7 +1,7 @@
 # -*- coding: cp932 -*-
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QLabel, QLineEdit
 from PyQt6.QtCore import pyqtSignal, Qt
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.variable_link_manager import VariableLinkManager
 
 class VariableLinkWidget(QWidget):

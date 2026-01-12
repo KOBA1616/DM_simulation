@@ -12,7 +12,7 @@ sys.path.append(os.getcwd())
 
 from dm_toolkit.consts import COMMAND_TYPES
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
-from dm_toolkit.gui.localization import TRANSLATIONS, tr
+from dm_toolkit.gui.i18n import TRANSLATIONS, tr
 
 def check_consistency():
     print("Checking GUI Consistency...")

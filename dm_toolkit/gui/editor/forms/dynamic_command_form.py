@@ -5,7 +5,7 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, get_schema, register_schema
 from dm_toolkit.gui.editor.widget_factory import FormBuilder
 from dm_toolkit.gui.editor.schema_config import register_all_schemas
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class DynamicCommandForm(BaseEditForm):
     """

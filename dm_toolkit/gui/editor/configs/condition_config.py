@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Condition UI Configuration
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 CONDITION_UI_CONFIG = {
     "NONE": {

@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QComboBox, QSpinBox, QLabel
 )
 from PyQt6.QtCore import Qt
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from typing import Any, Dict
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.reaction_condition_widget import ReactionConditionWidget

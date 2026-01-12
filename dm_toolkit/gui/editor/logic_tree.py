@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QInputDialog, QMessageBox
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt, QModelIndex
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
 from dm_toolkit.gui.editor.context_menus import LogicTreeContextMenuHandler
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA

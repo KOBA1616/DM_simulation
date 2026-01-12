@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout
 )
 from PyQt6.QtCore import Qt
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget

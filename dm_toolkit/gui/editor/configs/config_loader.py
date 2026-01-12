@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class EditorConfigLoader:
     _config_cache = None

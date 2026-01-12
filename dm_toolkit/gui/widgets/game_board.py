@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSplitter
 from PyQt6.QtCore import pyqtSignal, Qt
 
 from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class GameBoard(QWidget):
     """

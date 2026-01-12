@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from typing import Dict, Any, List, Optional
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 import dm_ai_module as dm
 
 class CommandTextGenerator:

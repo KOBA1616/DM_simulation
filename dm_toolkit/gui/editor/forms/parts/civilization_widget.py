@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QButtonGroup
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.consts import CIVILIZATIONS
 
 class CivilizationSelector(QWidget):

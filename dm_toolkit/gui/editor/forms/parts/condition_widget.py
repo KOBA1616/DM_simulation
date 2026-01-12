@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QGridLayout, QComboBox, QSpinBox, QLineEdit, QLabel, QGroupBox
 )
 from PyQt6.QtCore import pyqtSignal
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from typing import Any, cast
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 

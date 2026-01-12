@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 import dm_ai_module
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 
 class CardActionDialog(QDialog):

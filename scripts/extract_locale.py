@@ -4,7 +4,7 @@ import sys
 import os
 
 def extract():
-    src_path = "dm_toolkit/gui/localization.py"
+    src_path = "dm_toolkit/gui/i18n.py"
     if not os.path.exists(src_path):
         print(f"File not found: {src_path}")
         sys.exit(1)

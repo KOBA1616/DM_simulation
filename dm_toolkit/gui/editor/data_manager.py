@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt, QModelIndex
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 import uuid
 import json
 import os
