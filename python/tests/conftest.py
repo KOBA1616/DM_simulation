@@ -79,6 +79,35 @@ def _setup_minimal_gui_stubs():
     class DummyQMainWindow(DummyQWidget):
         def setCentralWidget(self, widget): pass
 
+    class DummyQComboBox(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._current_index = 0
+
+        def setCurrentIndex(self, index): self._current_index = index
+        def currentIndex(self): return self._current_index
+
+        def currentText(self):
+            if 0 <= self._current_index < len(self._items):
+                # Assuming addItem(text, ...) -> (text, ...)
+                if len(self._items[self._current_index]) > 0:
+                    return str(self._items[self._current_index][0])
+            return ""
+
+        def currentData(self):
+            if 0 <= self._current_index < len(self._items):
+                item = self._items[self._current_index]
+                if len(item) > 1: return item[-1]
+            return None
+
+        def findData(self, data):
+             for i, item in enumerate(self._items):
+                 if len(item) > 1 and item[-1] == data:
+                     return i
+             return -1
+
+        def setEditable(self, editable): pass
+
     class DummyQt:
         class ItemDataRole:
             DisplayRole = 0
@@ -119,9 +148,10 @@ def _setup_minimal_gui_stubs():
     qt_widgets.QMainWindow = DummyQMainWindow
     qt_widgets.QWidget = DummyQWidget
     qt_widgets.QApplication = type('QApplication', (), {'__init__': lambda s, a: None, 'exec': lambda s: 0})
+    qt_widgets.QComboBox = DummyQComboBox
     for name in ['QLabel', 'QPushButton', 'QVBoxLayout', 'QHBoxLayout', 'QTreeWidget', 
                  'QTreeWidgetItem', 'QDialog', 'QLineEdit', 'QTextEdit', 'QCheckBox',
-                 'QComboBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QGraphicsView',
+                 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QGraphicsView',
                  'QGraphicsScene', 'QGraphicsEllipseItem', 'QGraphicsLineItem', 'QGraphicsTextItem',
                  'QProgressBar', 'QHeaderView', 'QSplitter', 'QGroupBox', 'QMenuBar', 'QMenu',
                  'QStatusBar', 'QGridLayout', 'QSpinBox', 'QButtonGroup']:
