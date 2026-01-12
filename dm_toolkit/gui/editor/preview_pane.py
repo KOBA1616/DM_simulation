@@ -418,7 +418,7 @@ class CardPreviewWidget(QWidget):
             self.tp_power_label.setVisible(False)
 
         # Generate text for ONLY the creature part (generator returns a string)
-        creature_text = CardTextGenerator.generate_body_text_lines(data)
+        creature_text = CardTextGenerator.generate_body_text_lines(data, include_twinpact=False)
         self.tp_body_label.setText(creature_text)
 
         # Spell Side
