@@ -65,6 +65,12 @@
             "SEND_SHIELD_TO_GRAVE"
         ],
         "RESTRICTION": [],
+        "STATIC": [
+            "COST_MODIFIER",
+            "POWER_MODIFIER",
+            "GRANT_KEYWORD",
+            "SET_KEYWORD"
+        ],
         "SPECIAL": [
             "GAME_RESULT",
             "COST_REFERENCE"
@@ -396,6 +402,38 @@
                 "ref_mode"
             ],
             "tooltip": "Reference cost or reduce cost"
+        },
+        "COST_MODIFIER": {
+            "visible": [
+                "value",
+                "target_filter"
+            ],
+            "label_value": "Cost Reduction",
+            "valid_as_passive": true
+        },
+        "POWER_MODIFIER": {
+            "visible": [
+                "value",
+                "target_filter"
+            ],
+            "label_value": "Power Adjustment",
+            "valid_as_passive": true
+        },
+        "GRANT_KEYWORD": {
+            "visible": [
+                "mutation_kind",
+                "target_filter"
+            ],
+            "label_mutation_kind": "Keyword",
+            "valid_as_passive": true
+        },
+        "SET_KEYWORD": {
+            "visible": [
+                "mutation_kind",
+                "target_filter"
+            ],
+            "label_mutation_kind": "Keyword",
+            "valid_as_passive": true
         }
     }
 }

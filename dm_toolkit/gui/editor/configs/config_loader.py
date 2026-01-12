@@ -30,3 +30,9 @@ class EditorConfigLoader:
     def get_command_ui_config(cls):
         cfg = cls.load()
         return cfg.get('COMMAND_UI_CONFIG', {})
+
+    @classmethod
+    def get_passive_types(cls):
+        """Returns a list of action types that are valid as passive effects."""
+        config = cls.get_command_ui_config()
+        return [k for k, v in config.items() if v.get('valid_as_passive', False)]
