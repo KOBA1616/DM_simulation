@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QComboBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QStackedWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from pydantic import ValidationError
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.models import CommandModel
@@ -229,8 +230,11 @@ class UnifiedActionForm(BaseEditForm):
                     if val is not None:
                         widget.set_value(val)
 
+        # Clear validation styles on load
+        self._clear_validation_styles()
+
     def _save_ui_to_data(self, data):
-        """Saves data using interface-based widgets."""
+        """Saves data using interface-based widgets and provides validation feedback."""
         cmd_type = self.type_combo.currentData()
         if cmd_type is None:
             cmd_type = "DRAW"  # Default fallback
@@ -238,48 +242,84 @@ class UnifiedActionForm(BaseEditForm):
         # Start with fresh dict
         new_data = {'type': cmd_type}
 
-        # Use Pydantic model for validation/structure
-        model = CommandModel(type=cmd_type)
+        try:
+            # Use Pydantic model for validation/structure
+            # Initialize with type first
+            model = CommandModel(type=cmd_type)
 
-        for key, widget in self.widgets_map.items():
-            if hasattr(widget, 'get_value'):
-                val = widget.get_value()
+            for key, widget in self.widgets_map.items():
+                if hasattr(widget, 'get_value'):
+                    val = widget.get_value()
 
-                if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
-                    # VariableLink returns a dict of updates (e.g. {'input_value_key': ...})
-                    new_data.update(val)
-                    # Also update model for consistency if it uses standard keys
-                    if 'input_var' in val: model.input_var = val['input_var']
-                    if 'output_var' in val: model.output_var = val['output_var']
-                    if 'input_value_key' in val: model.input_var = val['input_value_key']
-                    if 'output_value_key' in val: model.output_var = val['output_value_key']
+                    if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
+                        new_data.update(val)
+                        if 'input_var' in val: model.input_var = val['input_var']
+                        if 'output_var' in val: model.output_var = val['output_var']
+                        if 'input_value_key' in val: model.input_var = val['input_value_key']
+                        if 'output_value_key' in val: model.output_var = val['output_value_key']
 
-                elif key == 'target_filter':
-                     if val: model.params['target_filter'] = val
-                else:
-                     if hasattr(model, key):
-                         setattr(model, key, val)
-                     else:
-                         model.params[key] = val
+                    elif key == 'target_filter':
+                        if val: model.params['target_filter'] = val
+                    else:
+                        if hasattr(model, key):
+                            setattr(model, key, val)
+                        else:
+                            model.params[key] = val
 
-        # Merge model back to dict
-        # This will use CommandModel.serialize_model which flattens params and maps keys
-        dump = model.model_dump(exclude_none=True)
-        new_data.update(dump)
+            # Validate manually if needed or catch validation during assignment above if we used setters
+            # Since we assigned attrs, Pydantic (if v2 with validate_assignment=True) would raise.
+            # If v1 or default, we might need manual validate or model_dump check.
 
-        # Check outputs config
-        schema = get_schema(cmd_type)
-        if schema:
-            # Check if any field produces output
-            produces_output = any(f.produces_output for f in schema.fields)
-            if produces_output and 'output_value_key' not in new_data:
-                 row = 0
-                 if getattr(self, 'current_item', None):
-                     row = self.current_item.row()
-                 new_data['output_value_key'] = f"var_{cmd_type}_{row}"
+            # Merge model back to dict
+            dump = model.model_dump(exclude_none=True)
+            new_data.update(dump)
 
-        data.clear()
-        data.update(new_data)
+            # Check outputs config
+            schema = get_schema(cmd_type)
+            if schema:
+                produces_output = any(f.produces_output for f in schema.fields)
+                if produces_output and 'output_value_key' not in new_data:
+                    row = 0
+                    if getattr(self, 'current_item', None):
+                        row = self.current_item.row()
+                    new_data['output_value_key'] = f"var_{cmd_type}_{row}"
+
+            data.clear()
+            data.update(new_data)
+
+            # Clear styles on success
+            self._clear_validation_styles()
+
+        except ValidationError as e:
+            print(f"Validation Error: {e}")
+            self._apply_validation_styles(e)
+            # We still allow saving partially valid data to avoid data loss,
+            # but UI shows error. Or we could abort save.
+            # Aborting save usually reverts the change in the tree item which might be confusing.
+            # For now, we save what we can but highlight errors.
+            data.clear()
+            data.update(new_data) # Best effort save
+
+    def _clear_validation_styles(self):
+        """Resets the style of all widgets."""
+        for widget in self.widgets_map.values():
+            if hasattr(widget, 'setStyleSheet'):
+                widget.setStyleSheet("")
+
+    def _apply_validation_styles(self, error: ValidationError):
+        """Parses ValidationError and highlights invalid widgets."""
+        for err in error.errors():
+            # err['loc'] is tuple like ('field_name',)
+            loc = err.get('loc', [])
+            if not loc: continue
+
+            field_name = str(loc[0])
+            if field_name in self.widgets_map:
+                widget = self.widgets_map[field_name]
+                if hasattr(widget, 'setStyleSheet'):
+                    # Red border for error
+                    widget.setStyleSheet("border: 1px solid red;")
+                    widget.setToolTip(err.get('msg', 'Invalid Value'))
 
     def _get_display_text(self, data):
         t = data.get('type', 'UNKNOWN')

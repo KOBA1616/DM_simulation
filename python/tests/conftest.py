@@ -102,6 +102,10 @@ def _setup_minimal_gui_stubs():
         def setFlat(self, flat): pass
         def setSpacing(self, spacing): pass
         def setContentsMargins(self, *args): pass
+        def setPlaceholderText(self, text): pass
+        def setRange(self, min_val, max_val): pass
+        def setMaximum(self, max_val): pass
+        def setMinimum(self, min_val): pass
 
     class DummyQMainWindow(DummyQWidget):
         def setCentralWidget(self, widget): pass
