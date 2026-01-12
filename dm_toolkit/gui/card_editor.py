@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QMainWindow, QSplitter, QVBoxLayout, QWidget, QMessageBox, QToolBar, QFileDialog,
     QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QAction, QKeySequence, QStandardItem
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
