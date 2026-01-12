@@ -2,6 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "target_utils.hpp"
+#include "engine/systems/card/condition_system.hpp"
 
 namespace dm::engine {
     class PassiveEffectSystem {
@@ -13,8 +14,21 @@ namespace dm::engine {
 
         int get_power_buff(const dm::core::GameState& game_state, const dm::core::CardInstance& creature, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
             int buff = 0;
+            // Hack: We need a non-const GameState for ConditionSystem because some evaluators might (though shouldn't) mutate or just signature mismatch.
+            // But evaluate_def takes non-const GameState&.
+            // This is a design flaw in ConditionSystem signature if it's purely read-only.
+            // However, for now we cast away constness because calculating power should not change state.
+            dm::core::GameState& state_ref = const_cast<dm::core::GameState&>(game_state);
+
             for (const auto& eff : game_state.passive_effects) {
                 if (eff.type == dm::core::PassiveType::POWER_MODIFIER) {
+                    // Check condition if present
+                    if (!eff.condition.type.empty() && eff.condition.type != "NONE") {
+                         if (!ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
+                             continue;
+                         }
+                    }
+
                     if (TargetUtils::is_valid_target(creature, card_db.at(creature.card_id), eff.target_filter, game_state, eff.controller, game_state.card_owner_map[creature.instance_id])) {
                         buff += eff.value;
                     }
@@ -24,8 +38,17 @@ namespace dm::engine {
         }
 
         bool check_restriction(const dm::core::GameState& game_state, const dm::core::CardInstance& card, dm::core::PassiveType restriction_type, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+            dm::core::GameState& state_ref = const_cast<dm::core::GameState&>(game_state);
+
             for (const auto& eff : game_state.passive_effects) {
                 if (eff.type == restriction_type) {
+                    // Check condition first
+                    if (!eff.condition.type.empty() && eff.condition.type != "NONE") {
+                         if (!ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
+                             continue;
+                         }
+                    }
+
                     bool restricted = false;
 
                     // Check specific targets first
@@ -57,6 +80,13 @@ namespace dm::engine {
                 }
                 // Lock Spells by Cost
                 if (restriction_type == dm::core::PassiveType::LOCK_SPELL_BY_COST && eff.type == dm::core::PassiveType::LOCK_SPELL_BY_COST) {
+                     // Check condition first
+                     if (!eff.condition.type.empty() && eff.condition.type != "NONE") {
+                         if (!ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
+                             continue;
+                         }
+                     }
+
                      if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
                         if (def.cost == eff.value) {

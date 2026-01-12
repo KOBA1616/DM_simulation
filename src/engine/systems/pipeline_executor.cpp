@@ -486,59 +486,105 @@ namespace dm::engine::systems {
         else return;
 
         // --- NEW: Intercept specific keywords to create PASSIVE EFFECTS instead ---
-        if (type == MutateCommand::MutationType::ADD_KEYWORD) {
-            std::vector<PassiveType> p_types;
-            if (str_val == "CANNOT_ATTACK") p_types.push_back(PassiveType::CANNOT_ATTACK);
-            else if (str_val == "CANNOT_BLOCK") p_types.push_back(PassiveType::CANNOT_BLOCK);
-            else if (str_val == "CANNOT_ATTACK_OR_BLOCK") {
-                p_types.push_back(PassiveType::CANNOT_ATTACK);
-                p_types.push_back(PassiveType::CANNOT_BLOCK);
-            }
+        // Also support passing them directly via ADD_PASSIVE to streamline ModifierHandler
+        bool is_passive_keyword = (type == MutateCommand::MutationType::ADD_KEYWORD &&
+                                  (str_val == "CANNOT_ATTACK" || str_val == "CANNOT_BLOCK" || str_val == "CANNOT_ATTACK_OR_BLOCK"));
 
-            if (!p_types.empty()) {
-                // For each target, apply each passive effect
-                // Since MutateCommand is 1-to-1, we iterate targets here.
-                for (int id : targets) {
-                    for (auto pt : p_types) {
-                        PassiveEffect eff;
-                        eff.type = pt;
-                        eff.value = 0;
-                        eff.turns_remaining = inst.args.value("duration", 1);
-                        eff.controller = state.active_player_id;
-                        eff.specific_targets = std::vector<int>{id};
-
-                        // We set source if available, though for ADD_KEYWORD it is often the card itself or effect source
-                        int source_id = -1;
-                        auto v = get_context_var("$source");
-                        if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
-                        eff.source_instance_id = source_id;
-
-                        auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
-                        cmd->passive_effect = eff;
-                        execute_command(std::move(cmd), state);
-                    }
-                }
-                // Return early as we handled this instruction
-                return;
-            }
+        if (is_passive_keyword) {
+             // Treat as ADD_PASSIVE flow below but with specific target iteration
         }
-        // -----------------------------------------------------------------------
+
+        // Handling ADD_PASSIVE for both Filter-based (global/broad) and Target-based (specific)
+        if (type == MutateCommand::MutationType::ADD_PASSIVE_EFFECT || is_passive_keyword) {
+             std::vector<PassiveType> p_types;
+             if (str_val == "LOCK_SPELL") p_types.push_back(PassiveType::CANNOT_USE_SPELLS);
+             else if (str_val == "POWER") p_types.push_back(PassiveType::POWER_MODIFIER);
+             else if (str_val == "CANNOT_ATTACK") p_types.push_back(PassiveType::CANNOT_ATTACK);
+             else if (str_val == "CANNOT_BLOCK") p_types.push_back(PassiveType::CANNOT_BLOCK);
+             else if (str_val == "CANNOT_ATTACK_OR_BLOCK") {
+                 p_types.push_back(PassiveType::CANNOT_ATTACK);
+                 p_types.push_back(PassiveType::CANNOT_BLOCK);
+             } else {
+                 // Fallback or unknown
+             }
+
+             if (!p_types.empty()) {
+                 int duration = inst.args.value("duration", 1);
+                 int source_id = -1;
+                 auto v = get_context_var("$source");
+                 if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
+
+                 FilterDef filter = inst.args.value("filter", FilterDef{});
+
+                 // If targets are provided (e.g. from Select or specific target logic), we apply specifically
+                 if (!targets.empty()) {
+                     for (int id : targets) {
+                         for (auto pt : p_types) {
+                             PassiveEffect eff;
+                             eff.type = pt;
+                             eff.value = val;
+                             eff.turns_remaining = duration;
+                             eff.controller = state.active_player_id;
+                             eff.source_instance_id = source_id;
+                             eff.specific_targets = std::vector<int>{id};
+                             // Pass condition if present
+                             if (inst.args.contains("condition")) {
+                                 dm::core::from_json(inst.args["condition"], eff.condition);
+                             }
+
+                             auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
+                             cmd->passive_effect = eff;
+                             execute_command(std::move(cmd), state);
+                         }
+                     }
+                 } else {
+                     // Filter based (Global)
+                     for (auto pt : p_types) {
+                         PassiveEffect eff;
+                         eff.type = pt;
+                         eff.target_filter = filter;
+                         eff.value = val;
+                         eff.turns_remaining = duration;
+                         eff.controller = state.active_player_id;
+                         eff.source_instance_id = source_id;
+                         if (inst.args.contains("condition")) {
+                             dm::core::from_json(inst.args["condition"], eff.condition);
+                         }
+
+                         auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
+                         cmd->passive_effect = eff;
+                         execute_command(std::move(cmd), state);
+                     }
+                 }
+                 return;
+             }
+             // If type matches but str_val not handled, fall through?
+             // Or if it was supposed to be simple ADD_PASSIVE without str_val mapping logic (unlikely in current design).
+        }
 
         if (type == MutateCommand::MutationType::ADD_PASSIVE_EFFECT) {
-             PassiveEffect eff;
-             eff.target_filter = inst.args.value("filter", FilterDef{});
-             if (str_val == "LOCK_SPELL") eff.type = PassiveType::CANNOT_USE_SPELLS;
-             else if (str_val == "POWER") eff.type = PassiveType::POWER_MODIFIER;
-             eff.value = val;
-             eff.turns_remaining = inst.args.value("duration", 1);
+             // Fallback for cases not handled above (e.g. direct integer type set?)
+             // Currently we rely on str_val. If str_val is empty or unknown, we might have an issue.
+             // But existing code only handled LOCK_SPELL and POWER.
+             // Let's keep the old block logic just in case but integrated.
+             // The above block covers LOCK_SPELL and POWER.
+             // So we effectively replaced the logic.
+             return;
+        }
+
+        if (type == MutateCommand::MutationType::ADD_COST_MODIFIER) {
+             CostModifier mod;
+             mod.reduction_amount = val;
+             mod.condition_filter = inst.args.value("filter", FilterDef{});
+             mod.turns_remaining = inst.args.value("duration", 1);
              int source_id = -1;
              auto v = get_context_var("$source");
              if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
-             eff.source_instance_id = source_id;
-             eff.controller = state.active_player_id;
+             mod.source_instance_id = source_id;
+             mod.controller = state.active_player_id;
 
              auto cmd = std::make_unique<MutateCommand>(-1, type);
-             cmd->passive_effect = eff;
+             cmd->cost_modifier = mod;
              execute_command(std::move(cmd), state);
              return;
         }
