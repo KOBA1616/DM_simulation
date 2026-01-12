@@ -12,6 +12,7 @@ from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSe
 from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_ADD_CHILD_EFFECT, STRUCT_CMD_ADD_SPELL_SIDE, STRUCT_CMD_REMOVE_SPELL_SIDE
 )
+from dm_toolkit.consts import CARD_TYPES
 
 class CardEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree
@@ -70,8 +71,8 @@ class CardEditForm(BaseEditForm):
         # Type
         self.type_combo = QComboBox()
         self.type_combo.setToolTip(tr("Card type (Creature, Spell, etc.)"))
-        types = ["CREATURE", "SPELL", "EVOLUTION_CREATURE", "TAMASEED", "CASTLE", "NEO_CREATURE", "G_NEO_CREATURE"]
-        self.populate_combo(self.type_combo, types, data_func=lambda x: x)
+        # Use centralized CARD_TYPES
+        self.populate_combo(self.type_combo, CARD_TYPES, data_func=lambda x: x)
         self.add_field(tr("Type"), self.type_combo, 'type')
 
         # Cost

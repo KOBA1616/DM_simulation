@@ -244,6 +244,8 @@ class UnifiedActionForm(BaseEditForm):
                 else:
                      if hasattr(model, key):
                          setattr(model, key, val)
+                     else:
+                         model.params[key] = val
 
         # Merge model back to dict
         dump = model.model_dump(exclude_none=True)
