@@ -5,7 +5,7 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
-from dm_toolkit.consts import TRIGGER_TYPES, SPELL_TRIGGER_TYPES, LAYER_TYPES
+from dm_toolkit.consts import TRIGGER_TYPES, SPELL_TRIGGER_TYPES, LAYER_TYPES, TARGET_SCOPES
 from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
 from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
 
@@ -18,6 +18,8 @@ class EffectEditForm(BaseEditForm):
         self.form_layout = getattr(self, 'form_layout', None)
         self.mode_combo = getattr(self, 'mode_combo', None)
         self.trigger_combo = getattr(self, 'trigger_combo', None)
+        self.trigger_scope_combo = getattr(self, 'trigger_scope_combo', None)
+        self.trigger_filter = getattr(self, 'trigger_filter', None)
         self.layer_group = getattr(self, 'layer_group', None)
         self.layer_type_combo = getattr(self, 'layer_type_combo', None)
         self.target_filter = getattr(self, 'target_filter', None)
@@ -42,6 +44,17 @@ class EffectEditForm(BaseEditForm):
         # Initial population, will be updated by Logic Mask
         self.populate_combo(self.trigger_combo, TRIGGER_TYPES, display_func=tr, data_func=lambda x: x)
         self.lbl_trigger = self.add_field(tr("Trigger"), self.trigger_combo, 'trigger')
+
+        self.trigger_scope_combo = QComboBox()
+        self.populate_combo(self.trigger_scope_combo, TARGET_SCOPES, display_func=tr, data_func=lambda x: x)
+        self.lbl_trigger_scope = self.add_field(tr("Trigger Scope"), self.trigger_scope_combo, 'trigger_scope')
+
+        # Trigger Filter - Unified Handler
+        self.trigger_filter = UnifiedFilterHandler.create_filter_widget("TRIGGER", self)
+        self.trigger_filter.filterChanged.connect(self.update_data)
+        self.register_widget(self.trigger_filter, 'trigger_filter')
+        self.lbl_trigger_filter = self.add_field(tr("Trigger Filter"), self.trigger_filter)
+
 
         # Layer Definition (Static)
         self.layer_group = QGroupBox(tr("Layer Definition"))
@@ -95,6 +108,7 @@ class EffectEditForm(BaseEditForm):
         self.mode_combo.currentIndexChanged.connect(self.update_data)
 
         self.trigger_combo.currentIndexChanged.connect(self.update_data)
+        self.trigger_scope_combo.currentIndexChanged.connect(self.update_data)
 
         self.layer_type_combo.currentIndexChanged.connect(self.update_data)
         self.layer_type_combo.currentIndexChanged.connect(self.update_layer_keyword_visibility)
@@ -112,6 +126,10 @@ class EffectEditForm(BaseEditForm):
 
         self.trigger_combo.setVisible(is_triggered)
         self.lbl_trigger.setVisible(is_triggered)
+        self.trigger_scope_combo.setVisible(is_triggered)
+        self.lbl_trigger_scope.setVisible(is_triggered)
+        self.trigger_filter.setVisible(is_triggered)
+        self.lbl_trigger_filter.setVisible(is_triggered)
 
         self.layer_group.setVisible(not is_triggered)
 
@@ -257,7 +275,7 @@ class EffectEditForm(BaseEditForm):
                 data.pop('str_val', None)
 
             # Clean Trigger/Legacy keys
-            for k in ['trigger', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
+            for k in ['trigger', 'trigger_scope', 'trigger_filter', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
                 data.pop(k, None)
 
     def _get_display_text(self, data):
