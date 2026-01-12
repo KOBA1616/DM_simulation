@@ -320,6 +320,96 @@ def setup_gui_stubs():
 
     qt_widgets.QFormLayout = EnhancedFormLayout
 
+    class EnhancedRadioButton(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.toggled = MockSignal()
+            self.clicked = MockSignal()
+        def setChecked(self, checked): pass
+        def isChecked(self): return False
+
+    qt_widgets.QRadioButton = EnhancedRadioButton
+
+    class DummyQSizePolicy:
+        def __init__(self, *args): pass
+        def setHorizontalStretch(self, stretch): pass
+        def setVerticalStretch(self, stretch): pass
+
+        Fixed = 0
+        Minimum = 1
+        Maximum = 4
+        Preferred = 5
+        Expanding = 7
+        MinimumExpanding = 3
+        Ignored = 13
+
+    qt_widgets.QSizePolicy = DummyQSizePolicy
+
+    class DummyQListWidgetItem:
+        def __init__(self, *args): pass
+        def setText(self, text): pass
+        def text(self): return ""
+        def setData(self, role, data): pass
+        def data(self, role): return None
+
+    qt_widgets.QListWidgetItem = DummyQListWidgetItem
+
+    class DummyQMessageBox(DummyQWidget):
+        @staticmethod
+        def information(*args): return
+        @staticmethod
+        def warning(*args): return
+        @staticmethod
+        def critical(*args): return
+        @staticmethod
+        def question(*args): return 16384 # Yes
+
+        NoButton = 0
+        Ok = 1024
+        Save = 2048
+        SaveAll = 4096
+        Open = 8192
+        Yes = 16384
+        YesToAll = 32768
+        No = 65536
+        NoToAll = 131072
+        Abort = 262144
+        Retry = 524288
+        Ignore = 1048576
+        Close = 2097152
+        Cancel = 4194304
+
+    qt_widgets.QMessageBox = DummyQMessageBox
+
+    class DummyQFileDialog(DummyQWidget):
+        @staticmethod
+        def getOpenFileName(*args): return ("", "")
+        @staticmethod
+        def getSaveFileName(*args): return ("", "")
+        @staticmethod
+        def getExistingDirectory(*args): return ""
+
+    qt_widgets.QFileDialog = DummyQFileDialog
+
+    class DummyQInputDialog(DummyQWidget):
+        @staticmethod
+        def getText(*args): return ("", False)
+        @staticmethod
+        def getItem(*args): return ("", False)
+        @staticmethod
+        def getInt(*args): return (0, False)
+
+    qt_widgets.QInputDialog = DummyQInputDialog
+
+    class DummyQAbstractItemView(DummyQWidget):
+         NoSelection = 0
+         SingleSelection = 1
+         MultiSelection = 2
+         ExtendedSelection = 3
+         ContiguousSelection = 4
+
+    qt_widgets.QAbstractItemView = DummyQAbstractItemView
+
     class EnhancedButtonGroup(DummyQWidget):
         def setExclusive(self, exclusive): pass
         def addButton(self, button, id=-1): pass
@@ -336,7 +426,7 @@ def setup_gui_stubs():
     for w in ['QLabel', 'QVBoxLayout', 'QHBoxLayout', 'QSplitter',
               'QTreeWidget', 'QTreeWidgetItem', 'QTextEdit',
               'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu', 'QAction',
-              'QGridLayout']:
+              'QGridLayout', 'QTreeView', 'QListWidget', 'QToolBar']:
          setattr(qt_widgets, w, type(w, (DummyQWidget,), {}))
 
     # 4. Inject into QtCore
