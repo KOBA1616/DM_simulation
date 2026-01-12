@@ -148,5 +148,38 @@ def register_all_schemas():
         FieldSchema("target_filter", tr("Revolution Change Condition"), FieldType.FILTER)
     ]))
 
+    # --- Logic Commands ---
+
+    # CHOICE
+    register_schema(CommandSchema("CHOICE", [
+        f_amount,  # e.g. "Choose 1"
+    ]))
+
+    # SELECT_OPTION
+    register_schema(CommandSchema("SELECT_OPTION", [
+        f_amount,
+        FieldSchema("str_param", tr("Option Text"), FieldType.STRING)
+    ]))
+
+    # IF / IF_ELSE (Use filter as condition)
+    register_schema(CommandSchema("IF", [
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER)
+    ]))
+    register_schema(CommandSchema("IF_ELSE", [
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER)
+    ]))
+    register_schema(CommandSchema("ELSE", []))
+
+    # SELECT_NUMBER
+    register_schema(CommandSchema("SELECT_NUMBER", [
+        FieldSchema("amount", tr("Max Number"), FieldType.INT, default=10),
+        f_links_out
+    ]))
+
+    # FLOW
+    register_schema(CommandSchema("FLOW", [
+        FieldSchema("str_param", tr("Flow Instruction"), FieldType.STRING)
+    ]))
+
     # NONE / Default
     register_schema(CommandSchema("NONE", []))
