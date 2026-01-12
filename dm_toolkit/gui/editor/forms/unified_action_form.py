@@ -202,7 +202,7 @@ class UnifiedActionForm(BaseEditForm):
         
         # Set current_item for VariableLinkWidget
         for key, widget in self.widgets_map.items():
-            if key == 'links' or key == 'input_link' or key == 'output_link':
+            if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
                 if hasattr(widget, 'set_current_item'):
                     widget.set_current_item(item)
         
@@ -210,14 +210,22 @@ class UnifiedActionForm(BaseEditForm):
         for key, widget in self.widgets_map.items():
             if hasattr(widget, 'set_value'):
                 # Special handling for flattened models vs structured widgets
-                if key == 'links' or key == 'input_link' or key == 'output_link':
-                    widget.set_value(data) # VariableLink expects full dict
+                if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
+                    # VariableLink expects full dict to parse keys (it handles legacy keys internally usually)
+                    # We pass the raw data dict which contains what came from JSON/Tree
+                    widget.set_value(data)
                 elif key == 'target_filter':
-                    widget.set_value(model.target_filter.model_dump() if model.target_filter else {})
+                    # target_filter is now stored in params
+                    tf = model.params.get('target_filter')
+                    widget.set_value(tf if tf else {})
                 elif key == 'options':
                     widget.set_value(model.options)
                 else:
+                    # check model attrs first, then params
                     val = getattr(model, key, None)
+                    if val is None:
+                        val = model.params.get(key)
+
                     if val is not None:
                         widget.set_value(val)
 
@@ -237,12 +245,17 @@ class UnifiedActionForm(BaseEditForm):
             if hasattr(widget, 'get_value'):
                 val = widget.get_value()
 
-                if key == 'links' or key == 'input_link' or key == 'output_link':
-                    # VariableLink returns a dict of updates
+                if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
+                    # VariableLink returns a dict of updates (e.g. {'input_value_key': ...})
                     new_data.update(val)
+                    # Also update model for consistency if it uses standard keys
+                    if 'input_var' in val: model.input_var = val['input_var']
+                    if 'output_var' in val: model.output_var = val['output_var']
+                    if 'input_value_key' in val: model.input_var = val['input_value_key']
+                    if 'output_value_key' in val: model.output_var = val['output_value_key']
+
                 elif key == 'target_filter':
-                     # FilterEditor returns dict
-                     if val: model.target_filter = val
+                     if val: model.params['target_filter'] = val
                 else:
                      if hasattr(model, key):
                          setattr(model, key, val)
@@ -250,6 +263,7 @@ class UnifiedActionForm(BaseEditForm):
                          model.params[key] = val
 
         # Merge model back to dict
+        # This will use CommandModel.serialize_model which flattens params and maps keys
         dump = model.model_dump(exclude_none=True)
         new_data.update(dump)
 
