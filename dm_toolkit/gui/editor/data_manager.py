@@ -497,3 +497,128 @@ class CardDataManager:
     def batch_convert_actions_recursive(self, item):
          # Stub
          return 0, 0
+
+    # --- Template-driven Logic Insertion ---
+
+    def _apply_template_to_item(self, card_item, template_key, display_label):
+        """
+        Generic helper to apply a logic template to a card item.
+        """
+        card_data = self.get_item_data(card_item)
+        # Prepare context for substitution
+        context = {
+            'civilizations': card_data.get('civilizations', ["FIRE"]),
+            'races': card_data.get('races', [])
+        }
+
+        # Apply Template
+        data, keywords_update, meta = self.template_manager.apply_template(template_key, context)
+
+        if not data:
+            print(f"Error: Template '{template_key}' not found or empty.")
+            return None
+
+        # Create Model from Data
+        # Assume root is EFFECT for now, based on meta['root_type']
+        if meta['root_type'] == 'EFFECT':
+            model = EffectModel(**data)
+            item = self._create_effect_item(model)
+            item.setText(f"{tr('Effect')}: {display_label}") # Override label
+            self._load_effect_children(item, model)
+        else:
+            # Fallback or other types if needed
+            return None
+
+        card_item.appendRow(item)
+
+        # Update Keywords if needed
+        if keywords_update:
+            # Find keyword item
+            kw_item = None
+            for i in range(card_item.rowCount()):
+                child = card_item.child(i)
+                if child.data(ROLE_TYPE) == "KEYWORDS":
+                    kw_item = child
+                    break
+
+            if kw_item:
+                current_kws = kw_item.data(ROLE_DATA) or {}
+                current_kws.update(keywords_update)
+                kw_item.setData(current_kws, ROLE_DATA)
+
+                # Also update card data cache?
+                # card_data['keywords'] = current_kws
+                # self.set_item_data(card_item, card_data) # This might overwrite other changes if card_data is stale
+
+        return item
+
+    def add_revolution_change_logic(self, card_item):
+        return self._apply_template_to_item(card_item, "REVOLUTION_CHANGE", "Revolution Change")
+
+    def remove_revolution_change_logic(self, card_item):
+        self._remove_logic_by_label(card_item, "Revolution Change")
+
+    def add_mekraid_logic(self, card_item):
+        return self._apply_template_to_item(card_item, "MEKRAID", "Mekraid")
+
+    def remove_mekraid_logic(self, card_item):
+        self._remove_logic_by_label(card_item, "Mekraid")
+
+    def add_friend_burst_logic(self, card_item):
+        return self._apply_template_to_item(card_item, "FRIEND_BURST", "Friend Burst")
+
+    def remove_friend_burst_logic(self, card_item):
+        self._remove_logic_by_label(card_item, "Friend Burst")
+
+    def add_mega_last_burst_logic(self, card_item):
+        # Specific check for spell side requirement
+        has_spell_side = False
+        for i in range(card_item.rowCount()):
+             child = card_item.child(i)
+             if child and child.data(ROLE_TYPE) == "SPELL_SIDE":
+                 has_spell_side = True
+                 break
+
+        if not has_spell_side:
+            self.add_spell_side_item(card_item)
+
+        return self._apply_template_to_item(card_item, "MEGA_LAST_BURST", "Mega Last Burst")
+
+    def remove_mega_last_burst_logic(self, card_item):
+        self._remove_logic_by_label(card_item, "Mega Last Burst")
+
+    def _remove_logic_by_label(self, card_item, label_substring):
+        for i in reversed(range(card_item.rowCount())):
+             child = card_item.child(i)
+             if label_substring in child.text():
+                 card_item.removeRow(i)
+                 return
+
+    def add_option_slots(self, parent_item, count):
+        """
+        Adds specified number of option slots to a COMMAND item.
+        Ensures existing options are preserved if possible, or added if missing.
+        Trims excess options.
+        """
+        if not parent_item: return
+
+        current_count = 0
+        options_to_remove = []
+
+        # Scan current children
+        for i in range(parent_item.rowCount()):
+            child = parent_item.child(i)
+            if child.data(ROLE_TYPE) == "OPTION":
+                current_count += 1
+                if current_count > count:
+                    options_to_remove.append(i)
+
+        # Remove excess (in reverse order)
+        for i in reversed(options_to_remove):
+            parent_item.removeRow(i)
+
+        # Add missing
+        for i in range(current_count, count):
+            opt_item = QStandardItem(f"{tr('Option')} {i+1}")
+            opt_item.setData("OPTION", ROLE_TYPE)
+            parent_item.appendRow(opt_item)

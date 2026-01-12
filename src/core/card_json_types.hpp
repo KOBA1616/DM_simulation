@@ -24,6 +24,7 @@ namespace dm::core {
         ON_SHIELD_ADD,
         ON_CAST_SPELL,
         ON_OPPONENT_DRAW,
+        ON_DRAW,
         NONE
     };
 
@@ -271,6 +272,7 @@ namespace dm::core {
         std::string destination_zone;
         std::string target_choice;
         std::string input_value_key;
+        std::string input_value_usage;
         std::string output_value_key;
         bool inverse_target = false;
         std::optional<ConditionDef> condition;
@@ -295,6 +297,7 @@ namespace dm::core {
         std::vector<CommandDef> if_true;
         std::vector<CommandDef> if_false;
         std::string input_value_key;
+        std::string input_value_usage;
         std::string output_value_key;
     };
 
@@ -385,7 +388,8 @@ namespace dm::core {
         {TriggerType::BEFORE_BREAK_SHIELD, "BEFORE_BREAK_SHIELD"},
         {TriggerType::ON_SHIELD_ADD, "ON_SHIELD_ADD"},
         {TriggerType::ON_CAST_SPELL, "ON_CAST_SPELL"},
-        {TriggerType::ON_OPPONENT_DRAW, "ON_OPPONENT_DRAW"}
+        {TriggerType::ON_OPPONENT_DRAW, "ON_OPPONENT_DRAW"},
+        {TriggerType::ON_DRAW, "ON_DRAW"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(ReactionType, {
@@ -535,8 +539,8 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, and_conditions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, output_value_key, inverse_target, condition, options, cast_spell_side)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, output_value_key)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, input_value_usage, output_value_key, inverse_target, condition, options, cast_spell_side)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key)
 
     // Manual to_json for EffectDef to exclude actions
     inline void to_json(nlohmann::json& j, const EffectDef& e) {

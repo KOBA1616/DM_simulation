@@ -309,6 +309,8 @@ class CardTextGenerator:
                             kw_str += f" +{bonus}"
                     elif k == "hyper_energy":
                         kw_str += "（このクリーチャーを召喚する時、コストが異なる自分のクリーチャーを好きな数タップしてもよい、こうしてタップしたクリーチャー1体につき、このクリーチャーの召喚コストを2少なくする、ただし、コストは0以下にならない。）"
+                    elif k == "mega_last_burst":
+                        kw_str += "（このクリーチャーが離れる時、手札または墓地からこのカードの呪文側をコストを支払わずに唱えてもよい）"
                     elif k == "just_diver":
                         kw_str += "（このクリーチャーが出た時、次の自分のターンのはじめまで、このクリーチャーは相手に選ばれず、攻撃されない）"
                     basic_kw_lines.append(f"■ {kw_str}")
@@ -317,20 +319,48 @@ class CardTextGenerator:
                     if k == "revolution_change":
                         cond = data.get("revolution_change_condition", {})
                         if cond and isinstance(cond, dict):
+                            parts = []
+
+                            # Civilizations
                             civs = cond.get("civilizations", []) or []
-                            races = cond.get("races", []) or []
-                            pieces = []
                             if civs:
-                                pieces.append(cls._format_civs(civs))
-                            # Add race names without extra noun when provided
+                                parts.append(cls._format_civs(civs))
+
+                            # Cost
+                            min_cost = cond.get("min_cost", 0)
+                            max_cost = cond.get("max_cost", 999)
+                            if isinstance(min_cost, dict):
+                                parts.append("コストその数以上")
+                            elif isinstance(max_cost, dict):
+                                parts.append("コストその数以下")
+                            else:
+                                if min_cost > 0 and max_cost < 999:
+                                    parts.append(f"コスト{min_cost}～{max_cost}")
+                                elif min_cost > 0:
+                                    parts.append(f"コスト{min_cost}以上")
+                                elif max_cost < 999:
+                                    parts.append(f"コスト{max_cost}以下")
+
+                            # Race / Noun
+                            races = cond.get("races", []) or []
+                            noun = ""
                             if races:
-                                if pieces:
-                                    # Civs exist -> join with の
-                                    pieces[-1] = pieces[-1] + "の" + "/".join(races)
-                                else:
-                                    pieces.append("/".join(races))
-                            if pieces:
-                                kw_str += f"：{''.join(pieces)}"
+                                noun = "/".join(races)
+                            else:
+                                noun = "クリーチャー"
+
+                            # Is Evolution?
+                            is_evo = cond.get("is_evolution")
+                            if is_evo is True:
+                                noun = "進化" + noun
+                            elif is_evo is False:
+                                parts.append("進化以外の")
+
+                            # Assemble
+                            adjs = "の".join(parts)
+                            full_str = f"{adjs}の{noun}" if adjs else noun
+
+                            kw_str += f"：{full_str}"
                     elif k == "friend_burst":
                         cond = data.get("friend_burst_condition", {})
                         if cond and isinstance(cond, dict):

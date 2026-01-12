@@ -523,6 +523,36 @@ class LogicTreeWidget(QTreeView):
         except Exception:
             pass
 
+    def add_mega_last_burst(self, card_index):
+        """メガ・ラスト・バースト効果を追加"""
+        if not card_index.isValid(): return
+        card_item = self.standard_model.itemFromIndex(card_index)
+        eff_item = self.data_manager.add_mega_last_burst_logic(card_item)
+        if eff_item:
+            try:
+                updated_model = self.data_manager.reconstruct_card_model(card_item)
+                updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
+                if updated:
+                    self.data_manager.set_item_data(card_item, updated)
+            except Exception:
+                pass
+            self.setCurrentIndex(eff_item.index())
+            self.expand(card_index)
+        return eff_item
+
+    def remove_mega_last_burst(self, card_index):
+        """メガ・ラスト・バースト効果を削除"""
+        if not card_index.isValid(): return
+        card_item = self.standard_model.itemFromIndex(card_index)
+        self.data_manager.remove_mega_last_burst_logic(card_item)
+        try:
+            updated_model = self.data_manager.reconstruct_card_model(card_item)
+            updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
+            if updated:
+                self.data_manager.set_item_data(card_item, updated)
+        except Exception:
+            pass
+
     def request_generate_options(self):
         if not getattr(self, 'current_item', None):
             return

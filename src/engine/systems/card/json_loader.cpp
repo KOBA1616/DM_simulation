@@ -20,6 +20,10 @@ namespace dm::engine {
         cmd.target_filter = act.filter;
         cmd.target_group = act.scope;
 
+        cmd.input_value_key = act.input_value_key;
+        cmd.output_value_key = act.output_value_key;
+        cmd.input_value_usage = act.input_value_usage;
+
         // Map Legacy Scope to Zone/Target if necessary
         if (act.source_zone.empty() == false) cmd.from_zone = act.source_zone;
         if (act.destination_zone.empty() == false) cmd.to_zone = act.destination_zone;

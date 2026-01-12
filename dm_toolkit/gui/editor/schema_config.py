@@ -2,6 +2,22 @@
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, register_schema
 from dm_toolkit.gui.localization import tr
 
+# Define constants for selection lists
+MUTATION_TYPES = [
+    "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
+    "POWER_ATTACKER", "SHIELD_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
+    "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER",
+    "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE"
+]
+
+MUTATION_KINDS_FOR_MUTATE = [
+    "GIVE_POWER", "GIVE_ABILITY"
+]
+
+TARGET_SCOPES = [
+    "PLAYER_SELF", "PLAYER_OPPONENT", "ALL"
+]
+
 def register_all_schemas():
     """
     Registers all Command UI schemas.
@@ -112,17 +128,16 @@ def register_all_schemas():
     register_schema(CommandSchema("MUTATE", [
         f_target,
         f_filter,
-        FieldSchema("mutation_kind", tr("Mutation Type"), FieldType.STRING), # Or special widget
+        FieldSchema("mutation_kind", tr("Mutation Type"), FieldType.SELECT, options=MUTATION_KINDS_FOR_MUTATE),
         FieldSchema("amount", tr("Duration/Value"), FieldType.INT, default=0),
         FieldSchema("str_param", tr("Extra Param"), FieldType.STRING)
     ]))
 
     # ADD_KEYWORD
     register_schema(CommandSchema("ADD_KEYWORD", [
-        FieldSchema("target_group", tr("Target Scope"), FieldType.SELECT, default="PLAYER_SELF",
-                   options=["PLAYER_SELF", "PLAYER_OPPONENT", "ALL"]), # Simplified options
+        f_target,
         f_filter,
-        FieldSchema("mutation_kind", tr("Keyword"), FieldType.STRING),
+        FieldSchema("mutation_kind", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES),
         FieldSchema("amount", tr("Duration (Turns)"), FieldType.INT, default=1)
     ]))
 
@@ -146,6 +161,39 @@ def register_all_schemas():
     # REVOLUTION_CHANGE
     register_schema(CommandSchema("REVOLUTION_CHANGE", [
         FieldSchema("target_filter", tr("Revolution Change Condition"), FieldType.FILTER)
+    ]))
+
+    # --- Logic Commands ---
+
+    # CHOICE
+    register_schema(CommandSchema("CHOICE", [
+        f_amount,  # e.g. "Choose 1"
+    ]))
+
+    # SELECT_OPTION
+    register_schema(CommandSchema("SELECT_OPTION", [
+        f_amount,
+        FieldSchema("str_param", tr("Option Text"), FieldType.STRING)
+    ]))
+
+    # IF / IF_ELSE (Use filter as condition)
+    register_schema(CommandSchema("IF", [
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER)
+    ]))
+    register_schema(CommandSchema("IF_ELSE", [
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER)
+    ]))
+    register_schema(CommandSchema("ELSE", []))
+
+    # SELECT_NUMBER
+    register_schema(CommandSchema("SELECT_NUMBER", [
+        FieldSchema("amount", tr("Max Number"), FieldType.INT, default=10),
+        f_links_out
+    ]))
+
+    # FLOW
+    register_schema(CommandSchema("FLOW", [
+        FieldSchema("str_param", tr("Flow Instruction"), FieldType.STRING)
     ]))
 
     # NONE / Default

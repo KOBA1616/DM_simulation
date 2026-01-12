@@ -592,7 +592,18 @@
     "keywords": {
       "friend_burst": true
     },
-    "effects": [],
+    "effects": [
+      {
+        "uid": "b1c34a3f-6b47-430a-9c90-42bbb60dda2c",
+        "trigger": "ON_OPPONENT_DRAW",
+        "condition": {
+          "type": "NONE",
+          "value": 0,
+          "extra_fields": {}
+        },
+        "commands": []
+      }
+    ],
     "static_abilities": [],
     "reaction_abilities": [],
     "spell_side": {
@@ -607,10 +618,84 @@
       "cost": 1,
       "power": 0,
       "keywords": {},
-      "effects": [],
+      "effects": [
+        {
+          "uid": "f5e9f628-72f9-4e37-bbbf-749ed0f1c1c0",
+          "trigger": "ON_CAST_SPELL",
+          "condition": {
+            "type": "NONE",
+            "value": 0,
+            "extra_fields": {}
+          },
+          "commands": [
+            {
+              "type": "TRANSITION",
+              "uid": "1e324697-4917-452e-a813-6b8458dcb753",
+              "target_group": "PLAYER_OPPONENT",
+              "target_filter": {
+                "zones": [],
+                "civilizations": [],
+                "races": [],
+                "flags": [],
+                "types": [
+                  "ELEMENT"
+                ]
+              },
+              "amount": 2,
+              "from_zone": "BATTLE",
+              "to_zone": "HAND",
+              "if_true": [],
+              "if_false": [],
+              "options": [],
+              "input_value_key": "",
+              "input_value_usage": "",
+              "output_value_key": ""
+            }
+          ]
+        }
+      ],
       "static_abilities": [],
       "reaction_abilities": []
     },
+    "ai_importance_score": 0,
+    "is_key_card": false
+  },
+  {
+    "uid": "43f77ab1-c3f7-4dff-b965-af5224ed7af8",
+    "id": 7,
+    "name": "氷柱と炎弧の決断",
+    "type": "SPELL",
+    "civilizations": [
+      "WATER",
+      "FIRE"
+    ],
+    "races": [],
+    "cost": 3,
+    "power": 0,
+    "keywords": {},
+    "effects": [
+      {
+        "uid": "3879e3ad-a482-4229-a1ad-5e613d8003d8",
+        "trigger": "ON_CAST_SPELL",
+        "condition": {
+          "type": "NONE",
+          "value": 0,
+          "extra_fields": {}
+        },
+        "commands": [
+          {
+            "type": "SELECT_OPTION",
+            "uid": "5fc9a1ce-5bd0-44f9-9332-eb42b9e6e1c1",
+            "amount": 1,
+            "if_true": [],
+            "if_false": [],
+            "options": []
+          }
+        ]
+      }
+    ],
+    "static_abilities": [],
+    "reaction_abilities": [],
     "ai_importance_score": 0,
     "is_key_card": false
   }
