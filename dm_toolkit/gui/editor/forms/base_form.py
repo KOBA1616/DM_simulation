@@ -180,10 +180,20 @@ class BaseEditForm(QWidget):
                  elif isinstance(widget_obj, QCheckBox): val = False
                  elif isinstance(widget_obj, QLineEdit): val = ""
                  elif isinstance(widget_obj, QComboBox): val = None
+                 # Add default for custom widgets that implement set_data but aren't standard types
+                 elif hasattr(widget_obj, 'set_data'): val = {}
 
             # Apply to widget
             if hasattr(widget_obj, 'set_data'):
-                widget_obj.set_data(val if val is not None else {})
+                # Some widgets expect a dict for set_data, ensure it's not None if dict expected
+                if val is None: val = {}
+                # Guard against invalid data types (e.g. integer 0 being passed to a widget expecting dict)
+                # This often happens if data.get(key) returns 0 (int) but the widget is a complex editor
+                if not isinstance(val, dict) and not isinstance(widget_obj, (QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit, QCheckBox)):
+                     # If it's a primitive value but widget is complex, default to empty dict
+                     if isinstance(val, (int, str, bool)) or val == 0:
+                          val = {}
+                widget_obj.set_data(val)
             elif isinstance(widget_obj, QComboBox):
                 self.set_combo_by_data(widget_obj, val)
             elif isinstance(widget_obj, (QSpinBox, QDoubleSpinBox)):

@@ -59,7 +59,7 @@ class EffectEditForm(BaseEditForm):
         self.trigger_filter.filterChanged.connect(self.update_data)
         self.register_widget(self.trigger_filter, 'trigger_filter')
         tf_layout.addWidget(self.trigger_filter, 0, 0)
-        self.lbl_trigger_filter = self.add_field(None, self.trigger_filter_group)
+        self.add_field(None, self.trigger_filter_group)
 
         # Layer Definition (Static)
         self.layer_group = QGroupBox(tr("Layer Definition"))
@@ -136,7 +136,6 @@ class EffectEditForm(BaseEditForm):
         self.lbl_scope.setVisible(is_triggered)
 
         self.trigger_filter_group.setVisible(is_triggered)
-        self.lbl_trigger_filter.setVisible(is_triggered)
 
         self.layer_group.setVisible(not is_triggered)
 
