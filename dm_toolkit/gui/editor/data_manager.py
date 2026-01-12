@@ -593,3 +593,32 @@ class CardDataManager:
              if label_substring in child.text():
                  card_item.removeRow(i)
                  return
+
+    def add_option_slots(self, parent_item, count):
+        """
+        Adds specified number of option slots to a COMMAND item.
+        Ensures existing options are preserved if possible, or added if missing.
+        Trims excess options.
+        """
+        if not parent_item: return
+
+        current_count = 0
+        options_to_remove = []
+
+        # Scan current children
+        for i in range(parent_item.rowCount()):
+            child = parent_item.child(i)
+            if child.data(ROLE_TYPE) == "OPTION":
+                current_count += 1
+                if current_count > count:
+                    options_to_remove.append(i)
+
+        # Remove excess (in reverse order)
+        for i in reversed(options_to_remove):
+            parent_item.removeRow(i)
+
+        # Add missing
+        for i in range(current_count, count):
+            opt_item = QStandardItem(f"{tr('Option')} {i+1}")
+            opt_item.setData("OPTION", ROLE_TYPE)
+            parent_item.appendRow(opt_item)
