@@ -150,13 +150,6 @@ class ModifierEditForm(BaseEditForm):
         # Apply basic bindings (type, value, condition, filter)
         self._apply_bindings(data)
         
-        # Debug: Check what was set in type_combo (safely)
-        if self.type_combo:
-            print(f"[ModifierForm._load_ui_from_data] After _apply_bindings:")
-            print(f"  data['type'] = {data.get('type', 'N/A')}")
-            print(f"  type_combo.currentText() = {self.type_combo.currentText()}")
-            print(f"  type_combo.currentData() = {self.type_combo.currentData()}")
-        
         # Manually set scope (checkboxes)
         # Note: Signals are already blocked by load_data(), no need to block here
         scope = data.get('scope', 'ALL')
@@ -205,9 +198,6 @@ class ModifierEditForm(BaseEditForm):
         
         data['scope'] = scope_value
         
-        # Debug: Print what we're saving
-        print(f"[ModifierForm._save_ui_to_data] self_checked={self_checked}, opp_checked={opp_checked}, scope={scope_value}")
-
         # Save keyword to mutation_kind (NEW) for GRANT_KEYWORD/SET_KEYWORD
         # Also save to str_val for backward compatibility
         mtype = data.get('type', '')
@@ -215,12 +205,10 @@ class ModifierEditForm(BaseEditForm):
             keyword = self.keyword_combo.get_keyword()
             data['mutation_kind'] = keyword  # Primary field
             data['str_val'] = keyword  # Legacy support
-            print(f"[ModifierForm._save_ui_to_data] Saving keyword: type={mtype}, mutation_kind={keyword}")
         else:
             # Clear both fields for non-keyword types
             data['mutation_kind'] = ''
             data['str_val'] = ''
-            print(f"[ModifierForm._save_ui_to_data] Non-keyword type: {mtype}, clearing mutation_kind/str_val")
 
     def _get_display_text(self, data):
         """Generate concise display text for tree item."""
