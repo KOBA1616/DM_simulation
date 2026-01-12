@@ -300,6 +300,8 @@ namespace dm::core {
 
     struct EffectDef {
         TriggerType trigger = TriggerType::NONE;
+        TargetScope trigger_scope = TargetScope::NONE;
+        FilterDef trigger_filter;
         ConditionDef condition;
         std::vector<ActionDef> actions;
         std::vector<CommandDef> commands;
@@ -540,6 +542,8 @@ namespace dm::core {
     inline void to_json(nlohmann::json& j, const EffectDef& e) {
         j = nlohmann::json{
             {"trigger", e.trigger},
+            {"trigger_scope", e.trigger_scope},
+            {"trigger_filter", e.trigger_filter},
             {"condition", e.condition},
             {"commands", e.commands}
             // Explicitly excluding "actions" from output
@@ -548,6 +552,8 @@ namespace dm::core {
 
     inline void from_json(const nlohmann::json& j, EffectDef& e) {
         if (j.contains("trigger")) j.at("trigger").get_to(e.trigger);
+        if (j.contains("trigger_scope")) j.at("trigger_scope").get_to(e.trigger_scope);
+        if (j.contains("trigger_filter")) j.at("trigger_filter").get_to(e.trigger_filter);
         if (j.contains("condition")) j.at("condition").get_to(e.condition);
         if (j.contains("commands")) j.at("commands").get_to(e.commands);
         if (j.contains("actions")) j.at("actions").get_to(e.actions);
