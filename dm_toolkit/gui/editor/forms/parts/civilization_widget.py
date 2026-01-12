@@ -3,14 +3,15 @@ from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QButtonGroup
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from dm_toolkit.gui.localization import tr
+from dm_toolkit.consts import CIVILIZATIONS
 
 class CivilizationSelector(QWidget):
     changed = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # "ZERO" removed from UI list, handled logically as empty selection
-        self.civs = ["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE"]
+        # Use dynamically loaded civilizations from consts (via dm_ai_module)
+        self.civs = CIVILIZATIONS
         self.buttons = {}
         self.setup_ui()
 
@@ -30,7 +31,11 @@ class CivilizationSelector(QWidget):
             "DARKNESS": ("#505050", "#D3D3D3"),  # DarkGray / LightGray
             "FIRE":     ("#FF0000", "#FFE4E1"),  # Red / MistyRose
             "NATURE":   ("#008000", "#90EE90"),  # Green / LightGreen
+            "ZERO":     ("#808080", "#F5F5F5"),  # Gray / WhiteSmoke
         }
+
+        # Default style for unknown civilizations
+        default_style = ("#000000", "#F0F0F0")
 
         for civ in self.civs:
             btn = QPushButton(tr(civ))
@@ -41,7 +46,7 @@ class CivilizationSelector(QWidget):
             # Use fixed size or minimum width for better look
             btn.setMinimumWidth(60)
 
-            color_main, color_bg = civ_styles.get(civ, ("#000000", "#FFFFFF"))
+            color_main, color_bg = civ_styles.get(civ, default_style)
 
             # CSS Styling for colored borders
             style = f"""
@@ -73,7 +78,7 @@ class CivilizationSelector(QWidget):
     def get_selected_civs(self):
         selected = []
         for civ in self.civs:
-            if self.buttons[civ].isChecked():
+            if civ in self.buttons and self.buttons[civ].isChecked():
                 selected.append(civ)
         # If empty, logic might interpret as Zero or Colorless elsewhere
         return selected
