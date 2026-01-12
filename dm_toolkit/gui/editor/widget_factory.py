@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: cp932 -*-
 from PyQt6.QtWidgets import (
     QWidget, QCheckBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel
 )

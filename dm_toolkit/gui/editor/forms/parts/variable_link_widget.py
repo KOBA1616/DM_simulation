@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: cp932 -*-
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QLabel, QLineEdit
 from PyQt6.QtCore import pyqtSignal, Qt
 from dm_toolkit.gui.localization import tr
@@ -253,7 +253,7 @@ class VariableLinkWidget(QWidget):
         Usually this is called to enable/disable the 'feature'.
         If 'enabled' is False, it means this action does not support input linking or Val1 is hidden.
         """
-        # Ensure we pass a boolean to setVisible — callers may pass None
+        # Ensure we pass a boolean to setVisible - callers may pass None
         self.setVisible(bool(enabled))
 
     def set_output_hint(self, produces_output):

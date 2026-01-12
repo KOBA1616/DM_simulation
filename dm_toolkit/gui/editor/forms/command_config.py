@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: cp932 -*-
 import json
 import os
 

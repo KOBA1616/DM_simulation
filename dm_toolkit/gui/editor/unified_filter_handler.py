@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: cp932 -*-
 """
 Unified Filter Handler for Static Abilities and Trigger Effects.
 Provides common widget creation and filter text generation.
@@ -108,7 +108,7 @@ class UnifiedFilterHandler:
             Japanese filter description
         """
         if not filter_def:
-            return "対象" if not is_static else ""
+            return "\x91Ώ\xdb" if not is_static else ""
         
         # Apply scope override to filter for display
         effective_filter = UnifiedFilterHandler.apply_scope_override(filter_def, scope)
