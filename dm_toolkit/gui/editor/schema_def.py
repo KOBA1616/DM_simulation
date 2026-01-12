@@ -19,6 +19,7 @@ class FieldType(Enum):
     CIVILIZATION = auto() # Civilization selector
     TYPE_SELECT = auto()  # Card type selector
     RACES = auto()        # Races editor
+    ENUM = auto()         # Dynamically loaded Enum
 
 class FieldSchema:
     """
@@ -36,7 +37,8 @@ class FieldSchema:
         min_value: Optional[int] = None,
         max_value: Optional[int] = None,
         produces_output: bool = False, # For LINK fields
-        widget_hint: Optional[str] = None # Hint for factory (e.g. 'ref_mode_combo')
+        widget_hint: Optional[str] = None, # Hint for factory (e.g. 'ref_mode_combo')
+        enum_source: Optional[str] = None # For ENUM type: 'dm_ai_module.ClassName'
     ):
         self.key = key
         self.label = label
@@ -49,6 +51,7 @@ class FieldSchema:
         self.max_value = max_value
         self.produces_output = produces_output
         self.widget_hint = widget_hint
+        self.enum_source = enum_source
 
 class CommandSchema:
     """
@@ -113,6 +116,13 @@ class SchemaLoader:
                 label_key = f"label_{key}"
                 if label_key in config:
                     field_def.label = config[label_key]
+
+                # Check for explicit enum configuration
+                # Format in JSON might be: "field_name_enum": "dm_ai_module.SomeEnum"
+                enum_key = f"{key}_enum"
+                if enum_key in config:
+                    field_def.field_type = FieldType.ENUM
+                    field_def.enum_source = config[enum_key]
 
                 # Special handling for output link
                 if key == 'output_link' and produces_output_cmd:

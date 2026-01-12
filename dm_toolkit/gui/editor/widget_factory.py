@@ -1,6 +1,6 @@
 # -*- coding: cp932 -*-
 from PyQt6.QtWidgets import (
-    QWidget, QCheckBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QLineEdit
+    QWidget, QCheckBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QLineEdit, QComboBox
 )
 from dm_toolkit.gui.editor.widgets.common import (
     ZoneCombo, ScopeCombo, TextWidget, NumberWidget, BoolCheckWidget, EditorWidgetMixin
@@ -9,6 +9,7 @@ from dm_toolkit.gui.editor.forms.unified_widgets import (
     make_player_scope_selector, make_measure_mode_combo, make_ref_mode_combo
 )
 from dm_toolkit.gui.editor.schema_def import FieldType, FieldSchema
+import importlib
 
 # Import correct widgets from actual file structure
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
@@ -49,14 +50,11 @@ class FilterEditorWrapper(FilterEditorWidget, EditorWidgetMixin):
 
 class VariableLinkWrapper(VariableLinkWidget, EditorWidgetMixin):
     def get_value(self):
-        # VariableLinkWidget usually writes directly to a dict passed in get_data
-        # We need to adapt this.
         d = {}
         self.get_data(d)
-        return d # This might need special handling in the Form if it expects flattened keys
+        return d
 
     def set_value(self, value):
-        # Value is the full command data dict usually
         self.set_data(value)
 
 class OptionsControlWidget(QWidget):
@@ -119,6 +117,17 @@ class RacesEditorWidget(TextWidget):
             self.setText(str(value))
 
 class WidgetFactory:
+    """
+    Factory for creating editor widgets.
+    Uses a Registry Pattern to allow extension without modifying the class.
+    """
+    _REGISTRY = {}
+
+    @classmethod
+    def register(cls, field_type: FieldType, factory_func):
+        """Register a factory function for a specific FieldType."""
+        cls._REGISTRY[field_type] = factory_func
+
     @staticmethod
     def create_widget(parent, field_config, update_callback=None):
         """
@@ -131,88 +140,25 @@ class WidgetFactory:
             return WidgetFactory._create_from_dict(parent, field_config, update_callback)
         return None
 
-    @staticmethod
-    def _create_from_schema(parent, field_schema: FieldSchema, update_callback):
+    @classmethod
+    def _create_from_schema(cls, parent, field_schema: FieldSchema, update_callback):
         w_type = field_schema.field_type
-        hint = field_schema.widget_hint
-        widget = None
 
-        if w_type == FieldType.STRING:
-            widget = TextWidget(parent)
-            if field_schema.tooltip:
-                widget.setPlaceholderText(field_schema.tooltip)
-            widget.textChanged.connect(lambda: update_callback())
+        # Check registry first
+        if w_type in cls._REGISTRY:
+            return cls._REGISTRY[w_type](parent, field_schema, update_callback)
 
-        elif w_type == FieldType.INT:
-            widget = NumberWidget(parent, min_val=field_schema.min_value or 0, max_val=field_schema.max_value or 99999)
-            widget.valueChanged.connect(lambda: update_callback())
-
-        elif w_type == FieldType.BOOL:
-            widget = BoolCheckWidget(field_schema.label, parent)
-            if field_schema.tooltip: widget.setToolTip(field_schema.tooltip)
-            widget.stateChanged.connect(lambda: update_callback())
-
-        elif w_type == FieldType.PLAYER:
-            widget = PlayerScopeWidget(parent)
-            widget.self_chk.stateChanged.connect(lambda: update_callback())
-            widget.opp_chk.stateChanged.connect(lambda: update_callback())
-
-        elif w_type == FieldType.ZONE:
-            widget = ZoneCombo(parent)
-            widget.currentIndexChanged.connect(lambda: update_callback())
-
-        elif w_type == FieldType.FILTER:
-            widget = FilterEditorWrapper(parent)
-            widget.filterChanged.connect(update_callback)
-
-        elif w_type == FieldType.LINK:
-            widget = VariableLinkWrapper(parent)
-            widget.linkChanged.connect(update_callback)
-            # Variable link might need config about producing output
-            if field_schema.produces_output:
-                # Assuming widget has a method or prop for this if needed
-                pass
-
-        elif w_type == FieldType.OPTIONS_CONTROL:
-            # Special callback needed
-            cb = getattr(parent, 'request_generate_options', lambda: None)
-            widget = OptionsControlWidget(parent, cb)
-
-        elif w_type == FieldType.CIVILIZATION:
-            widget = CivilizationWrapper(parent)
-            widget.changed.connect(lambda: update_callback())
-
-        elif w_type == FieldType.RACES:
-            widget = RacesEditorWidget(parent)
-            widget.textChanged.connect(lambda: update_callback())
-
-        elif w_type == FieldType.TYPE_SELECT:
-            from PyQt6.QtWidgets import QComboBox
-            widget = QComboBox(parent)
-            for t in CARD_TYPES:
-                widget.addItem(t, t)
-            widget.currentIndexChanged.connect(lambda: update_callback())
-
-        elif w_type == FieldType.SELECT:
-            if hint == 'ref_mode_combo':
-                widget = RefModeComboWrapper(parent)
-                widget.currentIndexChanged.connect(lambda: update_callback())
-            elif hint == 'scope_combo':
-                widget = ScopeCombo(parent)
-                widget.currentIndexChanged.connect(lambda: update_callback())
-            else:
-                from PyQt6.QtWidgets import QComboBox
-                widget = QComboBox(parent)
-                if field_schema.options:
-                    for opt in field_schema.options:
-                        widget.addItem(str(opt), opt)
-                widget.currentIndexChanged.connect(lambda: update_callback())
-
-        return widget
+        # Fallback to internal dispatch (kept for robustness during migration)
+        # In a full migration, these would all be registered.
+        # We will register the core ones at module level.
+        return None
 
     @staticmethod
     def _create_from_dict(parent, field_config: dict, update_callback):
         """Legacy creation method for backward compatibility."""
+        # For legacy dicts, we might want to map string keys to FieldTypes and use registry,
+        # but for now we keep the legacy logic separate or use a legacy registry.
+        # This implementation simply replicates the original logic for safety.
         w_type = field_config.get('widget')
         widget = None
 
@@ -257,10 +203,127 @@ class WidgetFactory:
              widget = RefModeComboWrapper(parent)
              widget.currentIndexChanged.connect(lambda: update_callback())
 
-        # Fallback for generic combo if not caught above
-        if widget is None and 'combo' in w_type:
-            from PyQt6.QtWidgets import QComboBox
+        # Fallback for generic combo
+        if widget is None and w_type and 'combo' in w_type:
             widget = QComboBox(parent)
             widget.currentIndexChanged.connect(lambda: update_callback())
 
         return widget
+
+# --- Factory Functions ---
+
+def _create_string_widget(parent, schema, cb):
+    widget = TextWidget(parent)
+    if schema.tooltip:
+        widget.setPlaceholderText(schema.tooltip)
+    widget.textChanged.connect(lambda: cb())
+    return widget
+
+def _create_int_widget(parent, schema, cb):
+    widget = NumberWidget(parent, min_val=schema.min_value or 0, max_val=schema.max_value or 99999)
+    widget.valueChanged.connect(lambda: cb())
+    return widget
+
+def _create_bool_widget(parent, schema, cb):
+    widget = BoolCheckWidget(schema.label, parent)
+    if schema.tooltip: widget.setToolTip(schema.tooltip)
+    widget.stateChanged.connect(lambda: cb())
+    return widget
+
+def _create_player_widget(parent, schema, cb):
+    widget = PlayerScopeWidget(parent)
+    widget.self_chk.stateChanged.connect(lambda: cb())
+    widget.opp_chk.stateChanged.connect(lambda: cb())
+    return widget
+
+def _create_zone_widget(parent, schema, cb):
+    widget = ZoneCombo(parent)
+    widget.currentIndexChanged.connect(lambda: cb())
+    return widget
+
+def _create_filter_widget(parent, schema, cb):
+    widget = FilterEditorWrapper(parent)
+    widget.filterChanged.connect(cb)
+    return widget
+
+def _create_link_widget(parent, schema, cb):
+    widget = VariableLinkWrapper(parent)
+    widget.linkChanged.connect(cb)
+    return widget
+
+def _create_options_control(parent, schema, cb):
+    # Special callback needed from parent
+    parent_cb = getattr(parent, 'request_generate_options', lambda: None)
+    widget = OptionsControlWidget(parent, parent_cb)
+    return widget
+
+def _create_civ_widget(parent, schema, cb):
+    widget = CivilizationWrapper(parent)
+    widget.changed.connect(lambda: cb())
+    return widget
+
+def _create_races_widget(parent, schema, cb):
+    widget = RacesEditorWidget(parent)
+    widget.textChanged.connect(lambda: cb())
+    return widget
+
+def _create_type_select_widget(parent, schema, cb):
+    widget = QComboBox(parent)
+    for t in CARD_TYPES:
+        widget.addItem(t, t)
+    widget.currentIndexChanged.connect(lambda: cb())
+    return widget
+
+def _create_select_widget(parent, schema, cb):
+    hint = schema.widget_hint
+    widget = None
+    if hint == 'ref_mode_combo':
+        widget = RefModeComboWrapper(parent)
+    elif hint == 'scope_combo':
+        widget = ScopeCombo(parent)
+    else:
+        widget = QComboBox(parent)
+        if schema.options:
+            for opt in schema.options:
+                widget.addItem(str(opt), opt)
+
+    widget.currentIndexChanged.connect(lambda: cb())
+    return widget
+
+def _create_enum_widget(parent, schema, cb):
+    """Dynamically loads an Enum and populates a ComboBox."""
+    widget = QComboBox(parent)
+    source = schema.enum_source
+    if source:
+        try:
+            # Assuming format 'module.class'
+            parts = source.split('.')
+            cls_name = parts[-1]
+            mod_name = '.'.join(parts[:-1])
+
+            module = importlib.import_module(mod_name)
+            enum_cls = getattr(module, cls_name)
+
+            for member in enum_cls:
+                widget.addItem(member.name, member.value) # or member.name depending on usage
+        except Exception as e:
+            print(f"Failed to load enum {source}: {e}")
+            widget.addItem("ERROR", None)
+
+    widget.currentIndexChanged.connect(lambda: cb())
+    return widget
+
+# --- Register Core Types ---
+WidgetFactory.register(FieldType.STRING, _create_string_widget)
+WidgetFactory.register(FieldType.INT, _create_int_widget)
+WidgetFactory.register(FieldType.BOOL, _create_bool_widget)
+WidgetFactory.register(FieldType.PLAYER, _create_player_widget)
+WidgetFactory.register(FieldType.ZONE, _create_zone_widget)
+WidgetFactory.register(FieldType.FILTER, _create_filter_widget)
+WidgetFactory.register(FieldType.LINK, _create_link_widget)
+WidgetFactory.register(FieldType.OPTIONS_CONTROL, _create_options_control)
+WidgetFactory.register(FieldType.CIVILIZATION, _create_civ_widget)
+WidgetFactory.register(FieldType.RACES, _create_races_widget)
+WidgetFactory.register(FieldType.TYPE_SELECT, _create_type_select_widget)
+WidgetFactory.register(FieldType.SELECT, _create_select_widget)
+WidgetFactory.register(FieldType.ENUM, _create_enum_widget)
