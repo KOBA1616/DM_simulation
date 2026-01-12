@@ -27,7 +27,7 @@ from dm_toolkit.types import GameState, CardDB, Action, PlayerID, CardID
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.gui.localization import tr, describe_command
 from dm_toolkit.gui.deck_builder import DeckBuilder
-from dm_toolkit.gui.card_editor import CardEditor
+from dm_toolkit.gui.editor.window import CardEditor
 from dm_toolkit.gui.widgets.scenario_tools import ScenarioToolsDock
 from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
 from dm_toolkit.gui.widgets.mcts_view import MCTSView
