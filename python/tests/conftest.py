@@ -30,16 +30,51 @@ def _setup_minimal_gui_stubs():
             self.textChanged = unittest.mock.MagicMock()
             self.stateChanged = unittest.mock.MagicMock()
             self.currentIndexChanged = unittest.mock.MagicMock()
+            self.valueChanged = unittest.mock.MagicMock()
+            self._items = []
             
         def setWindowTitle(self, title): pass
         def setLayout(self, layout): pass
         def show(self): pass
         def setText(self, text): pass
         def text(self): return ""
-        def addItem(self, *args): pass
+        def addItem(self, *args): self._items.append(args)
         def setCurrentIndex(self, index): pass
         def setCheckState(self, state): pass
-        def addWidget(self, widget): pass
+        def addWidget(self, *args, **kwargs): pass
+        def addLayout(self, *args, **kwargs): pass
+        def addStretch(self, *args): pass
+        def blockSignals(self, b): return False
+        def clear(self): self._items = []
+        def count(self): return len(self._items)
+        def setContentsMargins(self, *args): pass
+        def setSpacing(self, spacing): pass
+        def setExclusive(self, exclusive): pass
+        def setToolTip(self, text): pass
+        def setCheckable(self, checkable): pass
+        def isChecked(self): return False
+        def setChecked(self, checked): pass
+        def setFlat(self, flat): pass
+        def setCursor(self, cursor): pass
+        def setMinimumWidth(self, width): pass
+        def setStyleSheet(self, style): pass
+        def addButton(self, button, id=-1): pass
+        def setPlaceholderText(self, text): pass
+        def setVisible(self, visible): pass
+        def setRange(self, min_val, max_val): pass
+        def setEnabled(self, enabled): pass
+        def setValue(self, value): pass
+        def value(self): return 0
+        def setSingleStep(self, step): pass
+        def setSpecialValueText(self, text): pass
+        def currentData(self): return None
+        def itemData(self, index):
+            if 0 <= index < len(self._items):
+                # Return the second argument if available (user data), else None
+                args = self._items[index]
+                if len(args) > 1:
+                    return args[1]
+            return None
 
     class DummyQMainWindow(DummyQWidget):
         def setCentralWidget(self, widget): pass
@@ -47,6 +82,9 @@ def _setup_minimal_gui_stubs():
     class DummyQt:
         class ItemDataRole:
             DisplayRole = 0
+            UserRole = 256
+        class CursorShape:
+            PointingHandCursor = 13
         Horizontal = 1
         Checked = 2
         Unchecked = 0
@@ -86,10 +124,11 @@ def _setup_minimal_gui_stubs():
                  'QComboBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QGraphicsView',
                  'QGraphicsScene', 'QGraphicsEllipseItem', 'QGraphicsLineItem', 'QGraphicsTextItem',
                  'QProgressBar', 'QHeaderView', 'QSplitter', 'QGroupBox', 'QMenuBar', 'QMenu',
-                 'QStatusBar']:
+                 'QStatusBar', 'QGridLayout', 'QSpinBox', 'QButtonGroup']:
         setattr(qt_widgets, name, type(name, (DummyQWidget,), {}))
 
     qt_core.Qt = DummyQt
+    qt_core.QModelIndex = type('QModelIndex', (), {})
     qt_core.QObject = type('QObject', (), {'__init__': lambda s, *a: None})
     qt_core.QTimer = type('QTimer', (), {'singleShot': lambda *a: None})
     qt_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
