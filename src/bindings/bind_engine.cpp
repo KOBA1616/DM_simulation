@@ -286,8 +286,13 @@ void bind_engine(py::module& m) {
                 throw std::runtime_error("Unknown error in GenericCardSystem.resolve_effect_with_db");
              }
         })
-        .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id, const std::map<CardID, CardDefinition>& db) {
+        // Updated to explicitly accept py::dict and convert to std::map for card_db
+        .def_static("resolve_action", [](GameState& state, const ActionDef& action, int source_id, py::dict card_db_dict) {
              try {
+                 std::map<CardID, CardDefinition> db;
+                 for (auto item : card_db_dict) {
+                     db[item.first.cast<CardID>()] = item.second.cast<CardDefinition>();
+                 }
                  std::map<std::string, int> ctx;
                  dm::engine::EffectSystem::instance().resolve_action(state, action, source_id, ctx, db);
              } catch (const py::error_already_set& e) {
@@ -298,8 +303,12 @@ void bind_engine(py::module& m) {
                 throw std::runtime_error("Unknown error in GenericCardSystem.resolve_action (with db)");
              }
         })
-        .def_static("resolve_effect_with_targets", [](GameState& state, const EffectDef& eff, const std::vector<int>& targets, int source_id, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
+        .def_static("resolve_effect_with_targets", [](GameState& state, const EffectDef& eff, const std::vector<int>& targets, int source_id, py::dict card_db_dict, std::map<std::string, int> ctx) {
              try {
+                 std::map<CardID, CardDefinition> db;
+                 for (auto item : card_db_dict) {
+                     db[item.first.cast<CardID>()] = item.second.cast<CardDefinition>();
+                 }
                  dm::engine::EffectSystem::instance().resolve_effect_with_targets(state, eff, targets, source_id, db, ctx);
                  return ctx;
              } catch (const py::error_already_set& e) {
@@ -310,8 +319,12 @@ void bind_engine(py::module& m) {
                 throw std::runtime_error("Unknown error in GenericCardSystem.resolve_effect_with_targets");
              }
         })
-        .def_static("resolve_action_with_context", [](GameState& state, int source_id, const ActionDef& action, const std::map<CardID, CardDefinition>& db, std::map<std::string, int> ctx) {
+        .def_static("resolve_action_with_context", [](GameState& state, int source_id, const ActionDef& action, py::dict card_db_dict, std::map<std::string, int> ctx) {
             try {
+                std::map<CardID, CardDefinition> db;
+                for (auto item : card_db_dict) {
+                    db[item.first.cast<CardID>()] = item.second.cast<CardDefinition>();
+                }
                 dm::engine::EffectSystem::instance().resolve_action(state, action, source_id, ctx, db);
                 return ctx;
             } catch (const py::error_already_set& e) {
