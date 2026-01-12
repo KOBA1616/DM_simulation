@@ -597,7 +597,7 @@
         "uid": "b1c34a3f-6b47-430a-9c90-42bbb60dda2c",
         "trigger": "ON_OPPONENT_DRAW",
         "condition": {
-          "type": "NONE",
+          "type": "DURING_OPPONENT_TURN",
           "value": 0,
           "extra_fields": {}
         },
@@ -685,8 +685,29 @@
         "commands": [
           {
             "type": "SELECT_OPTION",
-            "uid": "5fc9a1ce-5bd0-44f9-9332-eb42b9e6e1c1",
-            "amount": 1,
+            "uid": "cc6fbf8f-1aa6-413e-bc8e-1bb639e23107",
+            "amount": 2,
+            "str_param": "",
+            "if_true": [],
+            "if_false": [],
+            "options": []
+          }
+        ]
+      },
+      {
+        "uid": "87dbe1a3-c05f-4ec5-bfb6-f847552f52c7",
+        "trigger": "PASSIVE_CONST",
+        "condition": {
+          "type": "NONE",
+          "value": 0,
+          "extra_fields": {}
+        },
+        "commands": [
+          {
+            "type": "ADD_KEYWORD",
+            "uid": "0264c6d1-f100-4c42-8d28-9db037c8d0a5",
+            "amount": 0,
+            "mutation_kind": "",
             "if_true": [],
             "if_false": [],
             "options": []
