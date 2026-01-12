@@ -159,7 +159,37 @@ namespace dm::engine {
                     }
                 }
 
-                // Step 3-1: Apply Selection Mode (MIN/MAX)
+                // Step 3-1: Apply "Must Be Chosen" Filter
+                // If the decision maker is selecting opponents' cards, and any of them have "must_be_chosen",
+                // we must filter down to only those cards.
+                bool opponent_has_magnet = false;
+                for (const auto& cand : candidates) {
+                    // Only applies if targeting opponent's cards
+                    if (cand.card.owner != decision_maker) {
+                        if (cand.def->keywords.must_be_chosen) {
+                            opponent_has_magnet = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (opponent_has_magnet) {
+                    std::vector<Candidate> filtered;
+                    for (const auto& cand : candidates) {
+                        // If it's an opponent's card, it must be a magnet.
+                        // If it's my card, it's unaffected (assuming magnet only forces selection among opponent's cards).
+                        if (cand.card.owner != decision_maker) {
+                            if (cand.def->keywords.must_be_chosen) {
+                                filtered.push_back(cand);
+                            }
+                        } else {
+                            filtered.push_back(cand);
+                        }
+                    }
+                    candidates = filtered;
+                }
+
+                // Step 3-2: Apply Selection Mode (MIN/MAX)
                 if (!candidates.empty() && filter.selection_mode.has_value() && filter.selection_sort_key.has_value()) {
                     std::string mode = filter.selection_mode.value();
                     std::string key = filter.selection_sort_key.value();
