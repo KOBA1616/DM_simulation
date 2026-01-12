@@ -6,7 +6,8 @@ from dm_toolkit.gui.localization import tr
 MUTATION_TYPES = [
     "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
     "POWER_ATTACKER", "SHIELD_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
-    "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER"
+    "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER",
+    "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE"
 ]
 
 MUTATION_KINDS_FOR_MUTATE = [
@@ -134,8 +135,7 @@ def register_all_schemas():
 
     # ADD_KEYWORD
     register_schema(CommandSchema("ADD_KEYWORD", [
-        FieldSchema("target_group", tr("Target Scope"), FieldType.SELECT, default="PLAYER_SELF",
-                   options=TARGET_SCOPES),
+        f_target,
         f_filter,
         FieldSchema("mutation_kind", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES),
         FieldSchema("amount", tr("Duration (Turns)"), FieldType.INT, default=1)
