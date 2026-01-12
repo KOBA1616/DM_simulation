@@ -61,7 +61,8 @@ class LogicTreeContextMenuHandler:
 
     def _add_command_submenu(self, menu, index, callback):
         cmd_menu = menu.addMenu(tr("Add Command"))
-        templates = self.tree_widget.data_manager.templates.get("commands", [])
+        # Fix access to templates via template_manager
+        templates = self.tree_widget.data_manager.template_manager.templates.get("commands", [])
 
         # Default Transition
         add_cmd_action = QAction(tr("Transition (Default)"), self.tree_widget)
