@@ -9,9 +9,11 @@ from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.models import CommandModel
 from dm_toolkit.gui.editor.widget_factory import WidgetFactory
-from dm_toolkit.gui.editor.configs.action_config import COMMAND_GROUPS
+from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
 from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSchema, FieldType
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
+
+COMMAND_GROUPS = EditorConfigLoader.get_command_groups()
 
 class UnifiedActionForm(BaseEditForm):
     """Schema-driven Unified Action Form using WidgetFactory and External Config."""

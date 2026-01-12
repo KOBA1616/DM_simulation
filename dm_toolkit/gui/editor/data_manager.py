@@ -500,10 +500,14 @@ class CardDataManager:
 
     # --- Template-driven Logic Insertion ---
 
-    def _apply_template_to_item(self, card_item, template_key, display_label):
+    def apply_template_by_key(self, card_item, template_key, display_label=None):
         """
         Generic helper to apply a logic template to a card item.
+        Replaces specific methods like add_revolution_change_logic.
         """
+        if display_label is None:
+             display_label = tr(template_key)
+
         card_data = self.get_item_data(card_item)
         # Prepare context for substitution
         context = {
@@ -518,8 +522,20 @@ class CardDataManager:
             print(f"Error: Template '{template_key}' not found or empty.")
             return None
 
+        # Check specific requirements if needed (e.g. Mega Last Burst needs Spell Side)
+        if template_key == "MEGA_LAST_BURST":
+             has_spell_side = False
+             for i in range(card_item.rowCount()):
+                 child = card_item.child(i)
+                 if child and child.data(ROLE_TYPE) == "SPELL_SIDE":
+                     has_spell_side = True
+                     break
+             if not has_spell_side:
+                 self.add_spell_side_item(card_item)
+
         # Create Model from Data
         # Assume root is EFFECT for now, based on meta['root_type']
+        item = None
         if meta['root_type'] == 'EFFECT':
             model = EffectModel(**data)
             item = self._create_effect_item(model)
@@ -546,52 +562,30 @@ class CardDataManager:
                 current_kws.update(keywords_update)
                 kw_item.setData(current_kws, ROLE_DATA)
 
-                # Also update card data cache?
-                # card_data['keywords'] = current_kws
-                # self.set_item_data(card_item, card_data) # This might overwrite other changes if card_data is stale
+                # Also force update the underlying data model for preview
+                try:
+                    updated_model = self.reconstruct_card_model(card_item)
+                    updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
+                    if updated:
+                        self.set_item_data(card_item, updated)
+                except Exception:
+                    pass
 
         return item
 
-    def add_revolution_change_logic(self, card_item):
-        return self._apply_template_to_item(card_item, "REVOLUTION_CHANGE", "Revolution Change")
-
-    def remove_revolution_change_logic(self, card_item):
-        self._remove_logic_by_label(card_item, "Revolution Change")
-
-    def add_mekraid_logic(self, card_item):
-        return self._apply_template_to_item(card_item, "MEKRAID", "Mekraid")
-
-    def remove_mekraid_logic(self, card_item):
-        self._remove_logic_by_label(card_item, "Mekraid")
-
-    def add_friend_burst_logic(self, card_item):
-        return self._apply_template_to_item(card_item, "FRIEND_BURST", "Friend Burst")
-
-    def remove_friend_burst_logic(self, card_item):
-        self._remove_logic_by_label(card_item, "Friend Burst")
-
-    def add_mega_last_burst_logic(self, card_item):
-        # Specific check for spell side requirement
-        has_spell_side = False
-        for i in range(card_item.rowCount()):
-             child = card_item.child(i)
-             if child and child.data(ROLE_TYPE) == "SPELL_SIDE":
-                 has_spell_side = True
-                 break
-
-        if not has_spell_side:
-            self.add_spell_side_item(card_item)
-
-        return self._apply_template_to_item(card_item, "MEGA_LAST_BURST", "Mega Last Burst")
-
-    def remove_mega_last_burst_logic(self, card_item):
-        self._remove_logic_by_label(card_item, "Mega Last Burst")
-
-    def _remove_logic_by_label(self, card_item, label_substring):
+    def remove_logic_by_label(self, card_item, label_substring):
         for i in reversed(range(card_item.rowCount())):
              child = card_item.child(i)
              if label_substring in child.text():
                  card_item.removeRow(i)
+                 # Force update preview
+                 try:
+                    updated_model = self.reconstruct_card_model(card_item)
+                    updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
+                    if updated:
+                        self.set_item_data(card_item, updated)
+                 except Exception:
+                    pass
                  return
 
     def add_option_slots(self, parent_item, count):

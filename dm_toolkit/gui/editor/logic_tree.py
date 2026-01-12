@@ -361,16 +361,8 @@ class LogicTreeWidget(QTreeView):
     def add_rev_change(self, card_index):
         if not card_index.isValid(): return
         card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.add_revolution_change_logic(card_item)
+        eff_item = self.data_manager.apply_template_by_key(card_item, "REVOLUTION_CHANGE", "Revolution Change")
         if eff_item:
-            # After structural change, immediately reconstruct the card data and update the card_item's stored dict
-            try:
-                updated_model = self.data_manager.reconstruct_card_model(card_item)
-                updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
-                if updated:
-                    self.data_manager.set_item_data(card_item, updated)
-            except Exception:
-                pass
             self.setCurrentIndex(eff_item.index())
             self.expand(card_index)
         return eff_item
@@ -378,28 +370,14 @@ class LogicTreeWidget(QTreeView):
     def remove_rev_change(self, card_index):
         if not card_index.isValid(): return
         card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_revolution_change_logic(card_item)
-        try:
-            updated_model = self.data_manager.reconstruct_card_model(card_item)
-            updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
-            if updated:
-                self.data_manager.set_item_data(card_item, updated)
-        except Exception:
-            pass
+        self.data_manager.remove_logic_by_label(card_item, "Revolution Change")
 
     def add_mekraid(self, card_index):
         """メクレイド効果を追加"""
         if not card_index.isValid(): return
         card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.add_mekraid_logic(card_item)
+        eff_item = self.data_manager.apply_template_by_key(card_item, "MEKRAID", "Mekraid")
         if eff_item:
-            try:
-                updated_model = self.data_manager.reconstruct_card_model(card_item)
-                updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
-                if updated:
-                    self.data_manager.set_item_data(card_item, updated)
-            except Exception:
-                pass
             self.setCurrentIndex(eff_item.index())
             self.expand(card_index)
         return eff_item
@@ -408,28 +386,14 @@ class LogicTreeWidget(QTreeView):
         """メクレイド効果を削除"""
         if not card_index.isValid(): return
         card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_mekraid_logic(card_item)
-        try:
-            updated_model = self.data_manager.reconstruct_card_model(card_item)
-            updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
-            if updated:
-                self.data_manager.set_item_data(card_item, updated)
-        except Exception:
-            pass
+        self.data_manager.remove_logic_by_label(card_item, "Mekraid")
 
     def add_friend_burst(self, card_index):
         """フレンド・バースト効果を追加"""
         if not card_index.isValid(): return
         card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.add_friend_burst_logic(card_item)
+        eff_item = self.data_manager.apply_template_by_key(card_item, "FRIEND_BURST", "Friend Burst")
         if eff_item:
-            try:
-                updated_model = self.data_manager.reconstruct_card_model(card_item)
-                updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
-                if updated:
-                    self.data_manager.set_item_data(card_item, updated)
-            except Exception:
-                pass
             self.setCurrentIndex(eff_item.index())
             self.expand(card_index)
         return eff_item
@@ -438,28 +402,14 @@ class LogicTreeWidget(QTreeView):
         """フレンド・バースト効果を削除"""
         if not card_index.isValid(): return
         card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_friend_burst_logic(card_item)
-        try:
-            updated_model = self.data_manager.reconstruct_card_model(card_item)
-            updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
-            if updated:
-                self.data_manager.set_item_data(card_item, updated)
-        except Exception:
-            pass
+        self.data_manager.remove_logic_by_label(card_item, "Friend Burst")
 
     def add_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を追加"""
         if not card_index.isValid(): return
         card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.add_mega_last_burst_logic(card_item)
+        eff_item = self.data_manager.apply_template_by_key(card_item, "MEGA_LAST_BURST", "Mega Last Burst")
         if eff_item:
-            try:
-                updated_model = self.data_manager.reconstruct_card_model(card_item)
-                updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
-                if updated:
-                    self.data_manager.set_item_data(card_item, updated)
-            except Exception:
-                pass
             self.setCurrentIndex(eff_item.index())
             self.expand(card_index)
         return eff_item
@@ -468,14 +418,7 @@ class LogicTreeWidget(QTreeView):
         """メガ・ラスト・バースト効果を削除"""
         if not card_index.isValid(): return
         card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_mega_last_burst_logic(card_item)
-        try:
-            updated_model = self.data_manager.reconstruct_card_model(card_item)
-            updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
-            if updated:
-                self.data_manager.set_item_data(card_item, updated)
-        except Exception:
-            pass
+        self.data_manager.remove_logic_by_label(card_item, "Mega Last Burst")
 
     def request_generate_options(self):
         if not getattr(self, 'current_item', None):

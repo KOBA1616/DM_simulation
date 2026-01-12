@@ -16,6 +16,9 @@ class FieldType(Enum):
     LINK = auto()         # Variable Link widget
     GROUP = auto()        # Logical grouping (visual only) - Not fully implemented yet
     OPTIONS_CONTROL = auto() # Special control for generating option branches
+    CIVILIZATION = auto() # Civilization selector
+    TYPE_SELECT = auto()  # Card type selector
+    RACES = auto()        # Races editor
 
 class FieldSchema:
     """

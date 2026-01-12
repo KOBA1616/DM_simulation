@@ -1,6 +1,6 @@
 # -*- coding: cp932 -*-
 from PyQt6.QtWidgets import (
-    QWidget, QCheckBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel
+    QWidget, QCheckBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QLineEdit
 )
 from dm_toolkit.gui.editor.widgets.common import (
     ZoneCombo, ScopeCombo, TextWidget, NumberWidget, BoolCheckWidget, EditorWidgetMixin
@@ -13,6 +13,9 @@ from dm_toolkit.gui.editor.schema_def import FieldType, FieldSchema
 # Import correct widgets from actual file structure
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
+from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
+from dm_toolkit.consts import CARD_TYPES
+from dm_toolkit.gui.localization import tr
 
 class PlayerScopeWidget(QWidget, EditorWidgetMixin):
     def __init__(self, parent=None):
@@ -95,6 +98,26 @@ class RefModeComboWrapper(QWidget, EditorWidgetMixin):
     def currentIndexChanged(self):
         return self.combo.currentIndexChanged
 
+class CivilizationWrapper(CivilizationSelector, EditorWidgetMixin):
+    def get_value(self):
+        return self.get_selected_civs()
+
+    def set_value(self, value):
+        self.set_selected_civs(value)
+
+class RacesEditorWidget(TextWidget):
+    """Simple wrapper for comma-separated list editing."""
+    def get_value(self):
+        text = self.text()
+        if not text: return []
+        return [r.strip() for r in text.split(',') if r.strip()]
+
+    def set_value(self, value):
+        if isinstance(value, list):
+            self.setText(", ".join(value))
+        else:
+            self.setText(str(value))
+
 class WidgetFactory:
     @staticmethod
     def create_widget(parent, field_config, update_callback=None):
@@ -116,14 +139,17 @@ class WidgetFactory:
 
         if w_type == FieldType.STRING:
             widget = TextWidget(parent)
+            if field_schema.tooltip:
+                widget.setPlaceholderText(field_schema.tooltip)
             widget.textChanged.connect(lambda: update_callback())
 
         elif w_type == FieldType.INT:
-            widget = NumberWidget(parent, min_val=field_schema.min_value or 0)
+            widget = NumberWidget(parent, min_val=field_schema.min_value or 0, max_val=field_schema.max_value or 99999)
             widget.valueChanged.connect(lambda: update_callback())
 
         elif w_type == FieldType.BOOL:
             widget = BoolCheckWidget(field_schema.label, parent)
+            if field_schema.tooltip: widget.setToolTip(field_schema.tooltip)
             widget.stateChanged.connect(lambda: update_callback())
 
         elif w_type == FieldType.PLAYER:
@@ -151,6 +177,21 @@ class WidgetFactory:
             # Special callback needed
             cb = getattr(parent, 'request_generate_options', lambda: None)
             widget = OptionsControlWidget(parent, cb)
+
+        elif w_type == FieldType.CIVILIZATION:
+            widget = CivilizationWrapper(parent)
+            widget.changed.connect(lambda: update_callback())
+
+        elif w_type == FieldType.RACES:
+            widget = RacesEditorWidget(parent)
+            widget.textChanged.connect(lambda: update_callback())
+
+        elif w_type == FieldType.TYPE_SELECT:
+            from PyQt6.QtWidgets import QComboBox
+            widget = QComboBox(parent)
+            for t in CARD_TYPES:
+                widget.addItem(t, t)
+            widget.currentIndexChanged.connect(lambda: update_callback())
 
         elif w_type == FieldType.SELECT:
             if hint == 'ref_mode_combo':
