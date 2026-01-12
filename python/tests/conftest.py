@@ -124,7 +124,9 @@ def _setup_minimal_gui_stubs():
                  'QComboBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QGraphicsView',
                  'QGraphicsScene', 'QGraphicsEllipseItem', 'QGraphicsLineItem', 'QGraphicsTextItem',
                  'QProgressBar', 'QHeaderView', 'QSplitter', 'QGroupBox', 'QMenuBar', 'QMenu',
-                 'QStatusBar', 'QGridLayout', 'QSpinBox', 'QButtonGroup']:
+                 'QStatusBar', 'QGridLayout', 'QSpinBox', 'QButtonGroup', 'QTreeView',
+                 'QAbstractItemView', 'QInputDialog', 'QMessageBox', 'QListWidget',
+                 'QListWidgetItem', 'QToolBar', 'QFileDialog', 'QSizePolicy', 'QFormLayout']:
         setattr(qt_widgets, name, type(name, (DummyQWidget,), {}))
 
     qt_core.Qt = DummyQt
