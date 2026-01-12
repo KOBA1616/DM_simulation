@@ -5,7 +5,6 @@ from dm_toolkit.gui.editor.forms.card_form import CardEditForm
 from dm_toolkit.gui.editor.forms.effect_form import EffectEditForm
 from dm_toolkit.gui.editor.forms.spell_side_form import SpellSideForm
 from dm_toolkit.gui.editor.forms.reaction_form import ReactionEditForm
-from dm_toolkit.gui.editor.forms.command_form import CommandEditForm
 from dm_toolkit.gui.editor.forms.unified_action_form import UnifiedActionForm
 from dm_toolkit.gui.editor.forms.keyword_form import KeywordEditForm
 from dm_toolkit.gui.editor.forms.modifier_form import ModifierEditForm
@@ -81,12 +80,6 @@ class PropertyInspector(QWidget):
 
         self.reaction_form = ReactionEditForm()
         self.stack.addWidget(self.reaction_form)
-
-        # Keep old forms available for now but DO NOT add them to the visible stack
-        # This effectively disables the legacy editors in the UI while preserving code.
-        self.command_form = CommandEditForm()
-        # Do not add to stack: self.stack.addWidget(self.command_form)
-        # Do not connect signals to avoid UI interactions until removal/cleanup
 
         self.keyword_form = KeywordEditForm()
         self.stack.addWidget(self.keyword_form)
