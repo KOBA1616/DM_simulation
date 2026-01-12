@@ -51,8 +51,9 @@ class CommandModel(BaseModel):
     if_false: List['CommandModel'] = Field(default_factory=list)
     options: List[List['CommandModel']] = Field(default_factory=list)
 
-    input_link: Optional[str] = None
-    output_link: Optional[str] = None
+    # Aliases for compatibility with legacy data and CommandDef
+    input_link: Optional[str] = Field(default=None, alias="input_value_key")
+    output_link: Optional[str] = Field(default=None, alias="output_value_key")
 
     class Config:
         extra = "allow"

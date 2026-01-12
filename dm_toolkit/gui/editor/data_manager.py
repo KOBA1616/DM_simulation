@@ -6,13 +6,21 @@ import uuid
 import json
 import os
 import copy
+from typing import Optional, Type, TypeVar
+from pydantic import BaseModel
 from dm_toolkit.types import JSON
 from dm_toolkit.gui.editor import normalize
 from dm_toolkit.gui.editor.action_converter import ActionConverter, convert_action_to_objs
 from dm_toolkit.gui.editor.command_model import CommandDef, WarningCommand
 from dm_toolkit.gui.editor.templates import LogicTemplateManager
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
-from dm_toolkit.gui.editor.models import CardModel, EffectModel, CommandModel, ModifierModel, ReactionModel
+from dm_toolkit.gui.editor.models import (
+    CardModel, EffectModel, CommandModel, ModifierModel, ReactionModel,
+    ConditionModel, FilterModel
+)
+from dm_toolkit.gui.editor.data_manager_helpers import set_item_model, get_item_model, ModelAwareItem
+
+T = TypeVar('T')
 
 class CardDataManager:
     """
@@ -32,19 +40,36 @@ class CardDataManager:
         return None
 
     def get_item_data(self, index_or_item):
+        """
+        Returns the raw dict data stored in the item.
+        For typed access, use get_item_model_data.
+        """
         item = self._ensure_item(index_or_item)
         if item:
             return item.data(ROLE_DATA) or {}
         return {}
 
-    def set_item_data(self, index_or_item, data):
+    def get_item_model_data(self, index_or_item, model_cls: Type[T]) -> Optional[T]:
+        """
+        Returns the data as a Pydantic model instance.
+        """
         item = self._ensure_item(index_or_item)
         if item:
-            if hasattr(data, 'model_dump'): # Pydantic v2
-                data = data.model_dump(by_alias=True)
-            elif hasattr(data, 'dict'): # Pydantic v1
-                data = data.dict(by_alias=True)
-            item.setData(data, ROLE_DATA)
+            return get_item_model(item, model_cls)
+        return None
+
+    def set_item_data(self, index_or_item, data):
+        """
+        Sets data to the item. 'data' can be a Pydantic model or a dict.
+        Internally converts to dict for storage, but validates if model is passed.
+        """
+        item = self._ensure_item(index_or_item)
+        if item:
+            if hasattr(data, 'model_dump') or hasattr(data, 'dict'):
+                set_item_model(item, data)
+            else:
+                # Fallback for direct dict usage (legacy or test)
+                item.setData(data, ROLE_DATA)
 
     def get_item_path(self, index_or_item):
         """Get hierarchical path of an item for identification."""
@@ -84,27 +109,39 @@ class CardDataManager:
         self.model.setHorizontalHeaderLabels([tr("Logic Tree")])
 
         for card_raw in cards_data:
-            # Validate/Convert using Pydantic
+            # --- Migration / Normalization Step ---
+            # Handle legacy 'triggers' vs 'effects' normalization
+            if 'triggers' in card_raw:
+                card_raw['effects'] = card_raw.pop('triggers')
+
+            # Strict migration: Lift actions to commands HERE
+            if 'effects' in card_raw:
+                for eff in card_raw['effects']:
+                    self._lift_actions_to_commands(eff)
+
+            # --- Validation Step ---
             try:
-                # Handle legacy 'triggers' vs 'effects' normalization before model validation if needed
-                if 'triggers' in card_raw:
-                    card_raw['effects'] = card_raw.pop('triggers')
-
-                # Basic cleaning of legacy command structures inside effects
-                if 'effects' in card_raw:
-                    for eff in card_raw['effects']:
-                        self._lift_actions_to_commands(eff)
-
                 card_model = CardModel(**card_raw)
             except Exception as e:
-                print(f"Model validation failed for card {card_raw.get('id')}: {e}")
-                # Fallback to raw dict if validation fails, but try to structure it
+                # print(f"Model validation failed for card {card_raw.get('id')}: {e}")
                 card_model = CardModel.construct(**card_raw)
 
+            # --- Creation Step ---
             card_item = self._create_card_item(card_model)
 
             # Effects
-            for effect in card_model.effects:
+            # Fallback for construct where effects might remain as list of dicts
+            effects_list = card_model.effects or []
+            if effects_list and isinstance(effects_list[0], dict):
+                 new_list = []
+                 for eff in effects_list:
+                     if isinstance(eff, dict):
+                         new_list.append(EffectModel(**eff))
+                     else:
+                         new_list.append(eff)
+                 effects_list = new_list
+
+            for effect in effects_list:
                 eff_item = self._create_effect_item(effect)
                 self._load_effect_children(eff_item, effect)
                 card_item.appendRow(eff_item)
@@ -140,7 +177,10 @@ class CardDataManager:
             eff_item.appendRow(cmd_item)
 
     def _lift_actions_to_commands(self, effect_data):
-        # Helper to convert legacy "actions" list to "commands" if present in raw dict
+        """
+        One-time migration helper used during load_data.
+        Converts legacy 'actions' list to 'commands' in place.
+        """
         if 'actions' in effect_data:
             legacy_actions = effect_data.pop('actions')
             commands = effect_data.get('commands', [])
@@ -152,6 +192,10 @@ class CardDataManager:
                              commands.append(o.to_dict())
                          elif isinstance(o, dict):
                              commands.append(o)
+                         elif hasattr(o, 'dict'): # Pydantic v1
+                             commands.append(o.dict())
+                         elif hasattr(o, 'model_dump'): # Pydantic v2
+                             commands.append(o.model_dump())
                  except:
                      pass
             effect_data['commands'] = commands
@@ -171,15 +215,24 @@ class CardDataManager:
         return cards
 
     def reconstruct_card_model(self, card_item) -> CardModel:
-        # Get base data
-        raw_data = card_item.data(ROLE_DATA)
-        # Deep copy to avoid mutating the item data directly during reconstruction
-        card_data = copy.deepcopy(raw_data) if raw_data else {}
+        # Get base data via Model (using construct to avoid strict validation failure on partial data during edit)
+        card_model_data = self.get_item_model_data(card_item, CardModel)
         
-        # Override lists
-        card_data['effects'] = []
-        card_data['static_abilities'] = []
-        card_data['reaction_abilities'] = []
+        # We need to construct a new model that includes children
+        if not card_model_data:
+             # Fallback
+             raw_data = self.get_item_data(card_item)
+             card_model_data = CardModel.construct(**raw_data)
+
+        # We will build a clean dict to re-instantiate CardModel at the end,
+        # or modify card_model_data if it's mutable (Models are usually mutable by default in Pydantic V1/V2 unless frozen)
+
+        # However, it's safer to build lists and assign
+        effects = []
+        static_abilities = []
+        reaction_abilities = []
+        spell_side = None
+        keywords = card_model_data.keywords.copy() if card_model_data.keywords else {}
 
         # Iterate children
         for i in range(card_item.rowCount()):
@@ -187,42 +240,56 @@ class CardDataManager:
             role = child.data(ROLE_TYPE)
             
             if role == "EFFECT":
-                card_data['effects'].append(self._reconstruct_effect(child))
+                effects.append(self._reconstruct_effect(child))
             elif role == "MODIFIER":
-                card_data['static_abilities'].append(child.data(ROLE_DATA))
+                mod = self.get_item_model_data(child, ModifierModel)
+                if mod: static_abilities.append(mod)
             elif role == "REACTION_ABILITY":
-                card_data['reaction_abilities'].append(child.data(ROLE_DATA))
+                react = self.get_item_model_data(child, ReactionModel)
+                if react: reaction_abilities.append(react)
             elif role == "SPELL_SIDE":
-                card_data['spell_side'] = self.reconstruct_card_model(child) # Recursively reconstruct
+                spell_side = self.reconstruct_card_model(child)
             elif role == "KEYWORDS":
-                card_data['keywords'] = child.data(ROLE_DATA)
+                k_data = child.data(ROLE_DATA)
+                if k_data: keywords.update(k_data)
 
-        # Legacy keyword inference (Revolution Change, etc.)
-        self._inject_keyword_logic(card_data)
+        # Update lists on the model instance (or copy)
+        card_model_data.effects = effects
+        card_model_data.static_abilities = static_abilities
+        card_model_data.reaction_abilities = reaction_abilities
+        card_model_data.spell_side = spell_side
+        card_model_data.keywords = keywords
 
-        return CardModel(**card_data)
+        # Legacy keyword inference
+        self._inject_keyword_logic_to_model(card_model_data)
+
+        return card_model_data
 
     def _reconstruct_effect(self, eff_item) -> EffectModel:
-        raw = eff_item.data(ROLE_DATA)
-        eff_data = copy.deepcopy(raw)
-        eff_data['commands'] = []
+        eff_model = self.get_item_model_data(eff_item, EffectModel)
+        if not eff_model:
+            raw = self.get_item_data(eff_item)
+            eff_model = EffectModel.construct(**raw)
 
+        commands = []
         for i in range(eff_item.rowCount()):
             child = eff_item.child(i)
-            if child.data(ROLE_TYPE) == "COMMAND":
-                eff_data['commands'].append(self._reconstruct_command(child))
-            # Handle legacy ACTION conversion on the fly if still present
-            elif child.data(ROLE_TYPE) == "ACTION":
-                 cmd = self.convert_action_tree_to_command(child)
-                 eff_data['commands'].append(cmd)
+            role = child.data(ROLE_TYPE)
+            if role == "COMMAND":
+                commands.append(self._reconstruct_command(child))
+            # ACTION role removed: migration happens at load time.
+            # If ACTION exists, it's dead data or needs manual conversion in UI (which is handled by convert tools)
+            # We ignore it here to enforce "Clean Model" policy.
 
-        return EffectModel(**eff_data)
+        eff_model.commands = commands
+        return eff_model
 
     def _reconstruct_command(self, cmd_item) -> CommandModel:
-        raw = cmd_item.data(ROLE_DATA)
-        cmd_data = copy.deepcopy(raw)
+        cmd_model = self.get_item_model_data(cmd_item, CommandModel)
+        if not cmd_model:
+            raw = self.get_item_data(cmd_item)
+            cmd_model = CommandModel.construct(**raw)
 
-        # Handle recursive structures (if_true, if_false, options)
         if_true_cmds = []
         if_false_cmds = []
         options_list = []
@@ -243,33 +310,24 @@ class CardDataManager:
                      opt_cmds.append(self._reconstruct_command(child.child(j)))
                 options_list.append(opt_cmds)
 
-        if if_true_cmds: cmd_data['if_true'] = if_true_cmds
-        if if_false_cmds: cmd_data['if_false'] = if_false_cmds
-        if options_list: cmd_data['options'] = options_list
+        cmd_model.if_true = if_true_cmds
+        cmd_model.if_false = if_false_cmds
+        cmd_model.options = options_list
 
-        return CommandModel(**cmd_data)
+        return cmd_model
 
-    def _inject_keyword_logic(self, card_data):
-        # Check commands for keywords like Revolution Change
-        keywords = card_data.get('keywords', {})
-        for eff in card_data['effects']:
-            # eff is a EffectModel or dict at this point?
-            # It's an EffectModel object if came from reconstruct, but we are modifying a dict before CardModel creation?
-            # actually reconstruct_effect returns EffectModel.
-            # We need to access it as model.
-            cmds = eff.commands
-            for cmd in cmds:
+    def _inject_keyword_logic_to_model(self, card_model: CardModel):
+        # Update keywords based on commands (e.g. Revolution Change)
+        # This modifies the model in-place
+        for eff in card_model.effects:
+            for cmd in eff.commands:
                 if cmd.mutation_kind == 'REVOLUTION_CHANGE' or cmd.type == 'REVOLUTION_CHANGE':
-                    keywords['revolution_change'] = True
-                    # In a full impl, we'd extract the filter to card_data['revolution_change_condition']
-        card_data['keywords'] = keywords
+                    card_model.keywords['revolution_change'] = True
 
     # --- Item Creation Wrappers ---
 
     def _create_card_item(self, model: CardModel):
-        item = QStandardItem(f"{model.id} - {model.name}")
-        item.setData("CARD", ROLE_TYPE)
-        item.setData(model.model_dump(), ROLE_DATA) # Store dict in Qt for compatibility
+        item = ModelAwareItem(f"{model.id} - {model.name}", model, "CARD")
 
         kw_item = QStandardItem(tr("Keywords"))
         kw_item.setData("KEYWORDS", ROLE_TYPE)
@@ -279,28 +337,16 @@ class CardDataManager:
         return item
 
     def _create_effect_item(self, model: EffectModel):
-        item = QStandardItem(f"{tr('Effect')}: {tr(model.trigger)}")
-        item.setData("EFFECT", ROLE_TYPE)
-        item.setData(model.model_dump(), ROLE_DATA)
-        return item
+        return ModelAwareItem(f"{tr('Effect')}: {tr(model.trigger)}", model, "EFFECT")
 
     def _create_spell_side_item(self, model: CardModel):
-        item = QStandardItem(f"{tr('Spell Side')}: {model.name}")
-        item.setData("SPELL_SIDE", ROLE_TYPE)
-        item.setData(model.model_dump(), ROLE_DATA)
-        return item
+        return ModelAwareItem(f"{tr('Spell Side')}: {model.name}", model, "SPELL_SIDE")
 
     def _create_modifier_item(self, model: ModifierModel):
-        item = QStandardItem(f"{tr('Static')}: {tr(model.type)}")
-        item.setData("MODIFIER", ROLE_TYPE)
-        item.setData(model.model_dump(), ROLE_DATA)
-        return item
+        return ModelAwareItem(f"{tr('Static')}: {tr(model.type)}", model, "MODIFIER")
 
     def _create_reaction_item(self, model: ReactionModel):
-        item = QStandardItem(f"{tr('Reaction')}: {tr(model.type)}")
-        item.setData("REACTION_ABILITY", ROLE_TYPE)
-        item.setData(model.model_dump(), ROLE_DATA)
-        return item
+        return ModelAwareItem(f"{tr('Reaction')}: {tr(model.type)}", model, "REACTION_ABILITY")
 
     def create_command_item(self, model_or_dict):
         if isinstance(model_or_dict, dict):
@@ -309,9 +355,7 @@ class CardDataManager:
             model = model_or_dict
 
         label = f"{tr('Action')}: {tr(model.type)}"
-        item = QStandardItem(label)
-        item.setData("COMMAND", ROLE_TYPE)
-        item.setData(model.model_dump(), ROLE_DATA)
+        item = ModelAwareItem(label, model, "COMMAND")
 
         # Recursive rendering for branches/options
         if model.if_true:
@@ -359,14 +403,19 @@ class CardDataManager:
             if child and child.data(ROLE_TYPE) == "SPELL_SIDE":
                 return child
 
-        card_data = self.get_item_data(card_item)
-        base_name = card_data.get('name', "New Card")
-        civs = card_data.get('civilizations', ["FIRE"])
-        races = card_data.get('races', [])
-        cost = card_data.get('cost', 1)
+        card_data = self.get_item_model_data(card_item, CardModel)
+        # fallback if not valid model
+        if not card_data:
+             card_data_dict = self.get_item_data(card_item)
+             card_data = CardModel.construct(**card_data_dict)
+
+        base_name = card_data.name
+        civs = card_data.civilizations
+        races = card_data.races
+        cost = card_data.cost
 
         spell_model = CardModel(
-            id=card_data.get('id', 0),
+            id=card_data.id,
             name=f"{base_name} (Spell Side)",
             type="SPELL",
             civilizations=civs,
@@ -424,7 +473,7 @@ class CardDataManager:
             condition=None,
             commands=[]
         )
-        return model.model_dump()
+        return model
 
     def create_default_static_data(self):
         """Create default data for a static ability."""
@@ -433,7 +482,7 @@ class CardDataManager:
             value=0,
             scope="ALL"
         )
-        return model.model_dump()
+        return model
 
     def add_child_item(self, parent_index, item_type, data, label):
         """Add a child item to a parent (e.g., effect to card, command to effect)."""
@@ -448,9 +497,24 @@ class CardDataManager:
         if not parent_item:
             return None
         
-        new_item = QStandardItem(label)
-        new_item.setData(item_type, ROLE_TYPE)
-        new_item.setData(data, ROLE_DATA)
+        # Determine model class from type if data is not already a model
+        model_obj = data
+        if isinstance(data, dict):
+            if item_type == "EFFECT": model_obj = EffectModel(**data)
+            elif item_type == "MODIFIER": model_obj = ModifierModel(**data)
+            elif item_type == "REACTION_ABILITY": model_obj = ReactionModel(**data)
+            elif item_type == "COMMAND": model_obj = CommandModel(**data)
+            elif item_type == "CARD": model_obj = CardModel(**data)
+
+        # Use ModelAwareItem
+        # If model_obj is still a dict (unknown type), ModelAwareItem handles it as dict
+        if isinstance(model_obj, BaseModel):
+            new_item = ModelAwareItem(label, model_obj, item_type)
+        else:
+            new_item = QStandardItem(label)
+            new_item.setData(item_type, ROLE_TYPE)
+            new_item.setData(data, ROLE_DATA)
+
         parent_item.appendRow(new_item)
         return new_item
 
@@ -462,21 +526,26 @@ class CardDataManager:
             zone=None
         )
         label = f"{tr('Reaction')}: {model.type}"
-        return self.add_child_item(parent_index, "REACTION_ABILITY", model.model_dump(), label)
+        return self.add_child_item(parent_index, "REACTION_ABILITY", model, label)
 
     def create_default_command_data(self, cmd_data=None):
         """Create or copy default command data."""
         if cmd_data:
+            if isinstance(cmd_data, BaseModel):
+                return cmd_data.model_copy(deep=True)
             return copy.deepcopy(cmd_data)
         model = CommandModel(
             type="DRAW",
             amount=1
         )
-        return model.model_dump()
+        return model
 
     def format_command_label(self, cmd_data):
         """Format a label for a command item."""
-        cmd_type = cmd_data.get('type', 'UNKNOWN')
+        if isinstance(cmd_data, CommandModel):
+            cmd_type = cmd_data.type
+        else:
+            cmd_type = cmd_data.get('type', 'UNKNOWN')
         return f"{tr('Action')}: {tr(cmd_type)}"
 
     def _sync_editor_warnings(self, card_item):
