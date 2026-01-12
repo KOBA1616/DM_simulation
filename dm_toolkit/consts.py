@@ -286,7 +286,9 @@ TRIGGER_TYPES = [
     "ON_ATTACK_FROM_HAND",
     "AT_BREAK_SHIELD",
     "ON_CAST_SPELL",
-    "ON_OPPONENT_DRAW"
+    "ON_OPPONENT_DRAW",
+    "ON_DRAW",
+    "ON_SHIELD_ADD"
 ]
 
 # Triggers valid for Spells (subset of above)
@@ -295,8 +297,19 @@ SPELL_TRIGGER_TYPES = [
     "ON_CAST_SPELL",
     "TURN_START",
     "ON_OPPONENT_DRAW",
+    "ON_DRAW",
     "PASSIVE_CONST",
     "ON_OTHER_ENTER"
+]
+
+# =============================================================================
+# Trigger Scopes
+# =============================================================================
+TRIGGER_SCOPES = [
+    "NONE",
+    "PLAYER_SELF",
+    "PLAYER_OPPONENT",
+    "ALL_PLAYERS"
 ]
 
 # =============================================================================
