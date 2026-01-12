@@ -105,7 +105,8 @@
       "FIRE"
     ],
     "races": [
-      "マジック"
+      "マジック",
+      "コマンド"
     ],
     "cost": 5,
     "power": 4000,
@@ -494,6 +495,116 @@
       ],
       "races": [],
       "cost": 3,
+      "power": 0,
+      "keywords": {},
+      "effects": [
+        {
+          "uid": "a6da69e2-bbaf-42b3-a32b-904ab3c2070c",
+          "trigger": "ON_CAST_SPELL",
+          "condition": {
+            "type": "NONE",
+            "value": 0,
+            "extra_fields": {}
+          },
+          "commands": [
+            {
+              "type": "DESTROY",
+              "uid": "7d4c461a-180d-48da-b015-4cdefd078b7b",
+              "target_group": "PLAYER_OPPONENT",
+              "target_filter": {
+                "zones": [
+                  "BATTLE_ZONE"
+                ],
+                "civilizations": [],
+                "races": [],
+                "max_cost": 2,
+                "flags": []
+              },
+              "amount": 0,
+              "if_true": [],
+              "if_false": [],
+              "options": [],
+              "input_value_key": "",
+              "input_value_usage": "",
+              "output_value_key": ""
+            }
+          ]
+        }
+      ],
+      "static_abilities": [],
+      "reaction_abilities": []
+    },
+    "ai_importance_score": 0,
+    "is_key_card": false
+  },
+  {
+    "uid": "b264a94d-ea42-4f95-b051-d2c7efb58839",
+    "id": 5,
+    "name": "AQvibrato",
+    "type": "CREATURE",
+    "civilizations": [
+      "WATER"
+    ],
+    "races": [
+      "マジック"
+    ],
+    "cost": 2,
+    "power": 1000,
+    "keywords": {},
+    "effects": [
+      {
+        "uid": "606be89c-b06e-40a2-b4c7-59e9c44bc604",
+        "trigger": "ON_PLAY",
+        "commands": [
+          {
+            "type": "DRAW_CARD",
+            "uid": "6ef1fee1-76de-415b-877a-441e428f0ae1",
+            "target_group": "PLAYER_SELF",
+            "amount": 1,
+            "if_true": [],
+            "if_false": [],
+            "options": [],
+            "input_value_key": "",
+            "input_value_usage": "",
+            "output_value_key": ""
+          }
+        ]
+      }
+    ],
+    "static_abilities": [],
+    "reaction_abilities": [],
+    "ai_importance_score": 0,
+    "is_key_card": false
+  },
+  {
+    "uid": "32c6c920-2a1e-452d-8f88-3dd2b1d967de",
+    "id": 6,
+    "name": "歌舞音愛 ヒメカット",
+    "type": "CREATURE",
+    "civilizations": [
+      "WATER"
+    ],
+    "races": [
+      "マジック"
+    ],
+    "cost": 2,
+    "power": 2000,
+    "keywords": {
+      "friend_burst": true
+    },
+    "effects": [],
+    "static_abilities": [],
+    "reaction_abilities": [],
+    "spell_side": {
+      "uid": "fcfabd3d-ca77-4ef7-a246-f4a6ebe14a0f",
+      "id": 6,
+      "name": "New Card (Spell Side)",
+      "type": "SPELL",
+      "civilizations": [
+        "WATER"
+      ],
+      "races": [],
+      "cost": 1,
       "power": 0,
       "keywords": {},
       "effects": [],
