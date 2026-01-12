@@ -53,6 +53,10 @@ else:
         "CASTLE"
     ]
 
+# Append pseudo-types for Filters
+if "ELEMENT" not in CARD_TYPES:
+    CARD_TYPES.append("ELEMENT")
+
 # =============================================================================
 # Target Scope (Unified)
 # =============================================================================
