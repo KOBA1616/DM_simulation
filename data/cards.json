@@ -685,8 +685,8 @@
         "commands": [
           {
             "type": "SELECT_OPTION",
-            "uid": "cc6fbf8f-1aa6-413e-bc8e-1bb639e23107",
-            "amount": 2,
+            "uid": "e9b4ee6b-9225-4ce5-86fd-0096508679f0",
+            "amount": 1,
             "str_param": "",
             "if_true": [],
             "if_false": [],
@@ -705,9 +705,20 @@
         "commands": [
           {
             "type": "ADD_KEYWORD",
-            "uid": "0264c6d1-f100-4c42-8d28-9db037c8d0a5",
+            "uid": "eea78a4d-673f-4cf0-9ef6-96bd20110443",
+            "target_group": "PLAYER_SELF",
+            "target_filter": {
+              "zones": [
+                "GRAVEYARD"
+              ],
+              "civilizations": [],
+              "races": [],
+              "flags": [],
+              "types": [
+                "SPELL"
+              ]
+            },
             "amount": 0,
-            "mutation_kind": "",
             "if_true": [],
             "if_false": [],
             "options": []
@@ -717,6 +728,40 @@
     ],
     "static_abilities": [],
     "reaction_abilities": [],
+    "ai_importance_score": 0,
+    "is_key_card": false
+  },
+  {
+    "uid": "644610f0-4b40-43fd-848f-77229de1d1a6",
+    "id": 8,
+    "name": "同期の妖精",
+    "type": "CREATURE",
+    "civilizations": [
+      "WATER"
+    ],
+    "races": [],
+    "cost": 2,
+    "power": 1000,
+    "keywords": {},
+    "effects": [],
+    "static_abilities": [],
+    "reaction_abilities": [],
+    "spell_side": {
+      "uid": "2d981296-b1e4-4a55-aca8-8f9cd6082fd9",
+      "id": 8,
+      "name": "New Card (Spell Side)",
+      "type": "SPELL",
+      "civilizations": [
+        "WATER"
+      ],
+      "races": [],
+      "cost": 2,
+      "power": 0,
+      "keywords": {},
+      "effects": [],
+      "static_abilities": [],
+      "reaction_abilities": []
+    },
     "ai_importance_score": 0,
     "is_key_card": false
   }
