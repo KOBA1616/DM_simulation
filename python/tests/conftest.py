@@ -22,70 +22,211 @@ def _setup_minimal_gui_stubs():
     
     # Otherwise, set up minimal stubs NOW (before test collection)
     
+    # Create a functional Signal class that actually calls connected slots
+    class MockSignal:
+        def __init__(self):
+            self._slots = []
+
+        def connect(self, slot):
+            self._slots.append(slot)
+            return None
+
+        def disconnect(self, slot=None):
+            if slot is None:
+                self._slots.clear()
+            elif slot in self._slots:
+                self._slots.remove(slot)
+            return None
+
+        def emit(self, *args, **kwargs):
+            for slot in self._slots:
+                slot(*args, **kwargs)
+            return None
+
     # Create dummy classes with signal support
-    class DummyQWidget:
+    class DummyQWidget(object):
         def __init__(self, *args, **kwargs):
-            # Add common signals as MagicMocks
-            self.clicked = unittest.mock.MagicMock()
-            self.textChanged = unittest.mock.MagicMock()
-            self.stateChanged = unittest.mock.MagicMock()
-            self.currentIndexChanged = unittest.mock.MagicMock()
-            self.valueChanged = unittest.mock.MagicMock()
+            # Add common signals as functional MockSignals
+            self.clicked = MockSignal()
+            self.textChanged = MockSignal()
+            self.stateChanged = MockSignal()
+            self.currentIndexChanged = MockSignal()
             self._items = []
             
         def setWindowTitle(self, title): pass
         def setLayout(self, layout): pass
+        def setGeometry(self, *args): pass
         def show(self): pass
+        def close(self): return True
+        def addWidget(self, widget, *args): pass  # Accept extra args for Grid Layout
+        def addLayout(self, layout, *args): pass  # Accept extra args for Grid Layout
         def setText(self, text): pass
         def text(self): return ""
+        def setCheckState(self, state): pass
         def addItem(self, *args): self._items.append(args)
         def setCurrentIndex(self, index): pass
-        def setCheckState(self, state): pass
-        def addWidget(self, *args, **kwargs): pass
-        def addLayout(self, *args, **kwargs): pass
-        def addStretch(self, *args): pass
-        def blockSignals(self, b): return False
-        def clear(self): self._items = []
+        def currentIndex(self): return 0
+        def blockSignals(self, block): return False
         def count(self): return len(self._items)
+        def setItemData(self, index, data, role=None): pass
+        def itemData(self, index, role=None): return None
+        def addButton(self, button, id=-1): pass
+        def checkedId(self): return -1
+        def id(self, button): return -1
         def setContentsMargins(self, *args): pass
         def setSpacing(self, spacing): pass
-        def setExclusive(self, exclusive): pass
+        def addStretch(self, *args): pass
+        def setStyleSheet(self, style): pass
+        def setMinimumWidth(self, width): pass
+        def setMinimumHeight(self, height): pass
+        def setMaximumWidth(self, width): pass
+        def setMaximumHeight(self, height): pass
+        def clear(self): self._items = []
         def setToolTip(self, text): pass
+        def setCursor(self, cursor): pass
+        def setEnabled(self, enabled): pass
+        def isEnabled(self): return True
+        def setVisible(self, visible): pass
+        def isVisible(self): return True
+        def setExclusive(self, exclusive): pass
+        def insertItem(self, index, text): pass
+        def setFlat(self, flat): pass
+        def setSpacing(self, spacing): pass
+        def setContentsMargins(self, *args): pass
+
+    class DummyQMainWindow(DummyQWidget):
+        def setCentralWidget(self, widget): pass
+        def setMenuBar(self, menu): pass
+        def addDockWidget(self, area, dock): pass
+        def setStatusBar(self, bar): pass
+
+    class DummyQDialog(DummyQWidget):
+        def exec(self): return 1
+        def accept(self): pass
+        def reject(self): pass
+
+    class DummyQApplication:
+        def __init__(self, args): pass
+        def exec(self): return 0
+        @staticmethod
+        def instance(): return None
+
+    # Enhanced widget classes with signals
+    class EnhancedButton(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.clicked = MockSignal()
         def setCheckable(self, checkable): pass
         def isChecked(self): return False
         def setChecked(self, checked): pass
         def setFlat(self, flat): pass
-        def setCursor(self, cursor): pass
-        def setMinimumWidth(self, width): pass
         def setStyleSheet(self, style): pass
-        def addButton(self, button, id=-1): pass
-        def setPlaceholderText(self, text): pass
-        def setVisible(self, visible): pass
-        def setRange(self, min_val, max_val): pass
-        def setEnabled(self, enabled): pass
-        def setValue(self, value): pass
-        def value(self): return 0
-        def setSingleStep(self, step): pass
-        def setSpecialValueText(self, text): pass
-        def currentData(self): return None
-        def itemData(self, index):
-            if 0 <= index < len(self._items):
-                # Return the second argument if available (user data), else None
-                args = self._items[index]
-                if len(args) > 1:
-                    return args[1]
+        def setMinimumWidth(self, width): pass
+        def setCursor(self, cursor): pass
+
+    class EnhancedComboBox(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.currentIndexChanged = MockSignal()
+            self._current_index = 0
+
+        def blockSignals(self, block): return False
+
+        def addItem(self, *args): self._items.append(args)
+        def setCurrentIndex(self, index): self._current_index = index
+        def currentIndex(self): return self._current_index
+        def currentText(self):
+            if 0 <= self._current_index < len(self._items):
+                return self._items[self._current_index][0]
+            return ""
+        def currentData(self):
+            if 0 <= self._current_index < len(self._items):
+                item = self._items[self._current_index]
+                if len(item) > 1: return item[-1]
             return None
 
-    class DummyQMainWindow(DummyQWidget):
-        def setCentralWidget(self, widget): pass
+        def setEditable(self, editable): pass
+        def setEnabled(self, enabled): pass
+
+        def findData(self, data):
+             for i, item in enumerate(self._items):
+                 if len(item) > 1 and item[-1] == data:
+                     return i
+             return -1
+
+        def itemData(self, index, role=None):
+            if 0 <= index < len(self._items):
+                item = self._items[index]
+                if len(item) > 1:
+                    return item[-1]
+            return None
+
+    class EnhancedLineEdit(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.textChanged = MockSignal()
+            self.textEdited = MockSignal()
+
+        def setText(self, text): pass
+        def text(self): return ""
+        def setPlaceholderText(self, text): pass
+
+    class EnhancedCheckBox(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.stateChanged = MockSignal()
+
+        def setCheckState(self, state): pass
+        def checkState(self): return 0
+        def isChecked(self): return False
+
+    class EnhancedSpinBox(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.valueChanged = MockSignal()
+            self._value = 0
+
+        def setRange(self, min_val, max_val): pass
+        def setMinimum(self, min_val): pass
+        def setMaximum(self, max_val): pass
+        def setValue(self, value): self._value = value
+        def value(self): return self._value
+        def setSpecialValueText(self, text): pass
+        def setSingleStep(self, step): pass
+        def setVisible(self, visible): pass
+
+    class EnhancedFormLayout(DummyQWidget):
+        def addRow(self, *args): pass
+
+    class EnhancedButtonGroup(DummyQWidget):
+        def setExclusive(self, exclusive): pass
+        def addButton(self, button, id=-1): pass
 
     class DummyQt:
         class ItemDataRole:
             DisplayRole = 0
             UserRole = 256
+            ForegroundRole = 9
+            BackgroundRole = 8
+            EditRole = 2
+
+        class AlignmentFlag:
+            AlignCenter = 0x0084
+            AlignLeft = 0x0001
+
+        class WindowType:
+            Window = 0x00000001
+
+        class MatchFlag:
+            MatchContains = 1
+            MatchFixedString = 8
+
         class CursorShape:
             PointingHandCursor = 13
+
+        SolidPattern = 1
         Horizontal = 1
+        Vertical = 2
         Checked = 2
         Unchecked = 0
 
@@ -118,35 +259,43 @@ def _setup_minimal_gui_stubs():
     # Populate with stub classes
     qt_widgets.QMainWindow = DummyQMainWindow
     qt_widgets.QWidget = DummyQWidget
-    qt_widgets.QApplication = type('QApplication', (), {'__init__': lambda s, a: None, 'exec': lambda s: 0})
-    for name in ['QLabel', 'QPushButton', 'QVBoxLayout', 'QHBoxLayout', 'QTreeWidget', 
-                 'QTreeWidgetItem', 'QDialog', 'QLineEdit', 'QTextEdit', 'QCheckBox',
-                 'QComboBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QGraphicsView',
-                 'QGraphicsScene', 'QGraphicsEllipseItem', 'QGraphicsLineItem', 'QGraphicsTextItem',
-                 'QProgressBar', 'QHeaderView', 'QSplitter', 'QGroupBox', 'QMenuBar', 'QMenu',
-                 'QStatusBar', 'QGridLayout', 'QSpinBox', 'QButtonGroup']:
+    qt_widgets.QDialog = DummyQDialog
+    qt_widgets.QApplication = DummyQApplication
+    qt_widgets.QSpinBox = EnhancedSpinBox
+    qt_widgets.QFormLayout = EnhancedFormLayout
+    qt_widgets.QButtonGroup = EnhancedButtonGroup
+    qt_widgets.QPushButton = EnhancedButton
+    qt_widgets.QComboBox = EnhancedComboBox
+    qt_widgets.QLineEdit = EnhancedLineEdit
+    qt_widgets.QCheckBox = EnhancedCheckBox
+
+    for name in ['QLabel', 'QVBoxLayout', 'QHBoxLayout', 'QTreeWidget',
+                 'QTreeWidgetItem', 'QTextEdit', 'QScrollArea', 'QTabWidget',
+                 'QDockWidget', 'QGraphicsView', 'QGraphicsScene', 'QGraphicsEllipseItem',
+                 'QGraphicsLineItem', 'QGraphicsTextItem', 'QProgressBar', 'QHeaderView',
+                 'QSplitter', 'QGroupBox', 'QMenuBar', 'QMenu', 'QStatusBar', 'QGridLayout']:
         setattr(qt_widgets, name, type(name, (DummyQWidget,), {}))
 
     qt_core.Qt = DummyQt
-    qt_core.QModelIndex = type('QModelIndex', (), {})
-    qt_core.QObject = type('QObject', (), {'__init__': lambda s, *a: None})
-    qt_core.QTimer = type('QTimer', (), {'singleShot': lambda *a: None})
+    qt_core.QModelIndex = type('QModelIndex', (object,), {})
+    qt_core.QObject = type('QObject', (object,), {'__init__': lambda s, *a: None, 'blockSignals': lambda s, b: False})
+    qt_core.QTimer = type('QTimer', (object,), {'singleShot': lambda *a: None, 'start': lambda s, t: None, 'stop': lambda s: None})
     qt_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
     qt_core.QMimeData = type('QMimeData', (), {})
     qt_core.QRectF = type('QRectF', (), {})
-    qt_core.QThread = type('QThread', (), {})
+    qt_core.QThread = type('QThread', (object,), {'start': lambda s: None, 'wait': lambda s: None, 'quit': lambda s: None, 'isRunning': lambda s: False})
 
     qt_gui.QAction = type('QAction', (DummyQWidget,), {})
     qt_gui.QKeySequence = type('QKeySequence', (), {})
-    qt_gui.QStandardItem = type('QStandardItem', (), {'__init__': lambda s, *a: None})
+    qt_gui.QStandardItem = type('QStandardItem', (object,), {'__init__': lambda s, *a: None})
     qt_gui.QDrag = type('QDrag', (), {})
     qt_gui.QPen = type('QPen', (), {})
     qt_gui.QBrush = type('QBrush', (), {})
-    qt_gui.QColor = type('QColor', (), {})
+    qt_gui.QColor = lambda *a: None
     qt_gui.QFont = type('QFont', (), {})
     qt_gui.QPainter = type('QPainter', (), {})
     qt_gui.QIcon = lambda *a: None
-    qt_gui.QStandardItemModel = type('QStandardItemModel', (), {'__init__': lambda s, *a: None})
+    qt_gui.QStandardItemModel = type('QStandardItemModel', (object,), {'__init__': lambda s, *a: None, 'invisibleRootItem': lambda s: unittest.mock.MagicMock()})
 
     # Link to parent package
     pyqt6.QtWidgets = qt_widgets
