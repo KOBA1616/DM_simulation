@@ -444,23 +444,40 @@
         "commands": [
           {
             "type": "DISCARD",
-            "uid": "945d79ba-a86b-46ea-8cef-f84198729ad0",
+            "uid": "caf00df2-ba5d-4105-b318-4cdea4166d8e",
             "target_group": "PLAYER_SELF",
             "amount": 2,
             "if_true": [],
             "if_false": [],
             "options": [],
+            "input_value_key": "",
+            "input_value_usage": "",
             "output_value_key": "var_DISCARD_0"
           },
           {
             "type": "DRAW_CARD",
-            "uid": "2b0fbc1c-048a-4e8d-94a5-4c3db30cef83",
+            "uid": "de393d6a-8dc8-4ea6-97ca-0e13df3dd2cf",
             "target_group": "PLAYER_SELF",
             "amount": 1,
             "if_true": [],
             "if_false": [],
             "options": [],
-            "output_value_key": "var_DRAW_CARD_1"
+            "_input_value_label": "Step 0: 手札を捨てる -> Discarded Cards",
+            "input_value_key": "var_DISCARD_0",
+            "input_value_usage": "",
+            "output_value_key": ""
+          },
+          {
+            "type": "DRAW_CARD",
+            "uid": "8747b4af-8afd-4df4-84aa-b126fe8a78b7",
+            "target_group": "PLAYER_SELF",
+            "amount": 1,
+            "if_true": [],
+            "if_false": [],
+            "options": [],
+            "input_value_key": "",
+            "input_value_usage": "",
+            "output_value_key": ""
           }
         ]
       }

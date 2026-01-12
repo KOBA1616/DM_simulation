@@ -22,12 +22,24 @@ def _setup_minimal_gui_stubs():
     
     # Otherwise, set up minimal stubs NOW (before test collection)
     
-    # Create dummy classes
+    # Create dummy classes with signal support
     class DummyQWidget:
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, *args, **kwargs):
+            # Add common signals as MagicMocks
+            self.clicked = unittest.mock.MagicMock()
+            self.textChanged = unittest.mock.MagicMock()
+            self.stateChanged = unittest.mock.MagicMock()
+            self.currentIndexChanged = unittest.mock.MagicMock()
+            
         def setWindowTitle(self, title): pass
         def setLayout(self, layout): pass
         def show(self): pass
+        def setText(self, text): pass
+        def text(self): return ""
+        def addItem(self, *args): pass
+        def setCurrentIndex(self, index): pass
+        def setCheckState(self, state): pass
+        def addWidget(self, widget): pass
 
     class DummyQMainWindow(DummyQWidget):
         def setCentralWidget(self, widget): pass
@@ -36,6 +48,8 @@ def _setup_minimal_gui_stubs():
         class ItemDataRole:
             DisplayRole = 0
         Horizontal = 1
+        Checked = 2
+        Unchecked = 0
 
     # Create module structure
     if 'PyQt6' not in sys.modules:

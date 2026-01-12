@@ -137,6 +137,10 @@ class UnifiedActionForm(BaseEditForm):
         widget = WidgetFactory.create_widget(self, field_schema, self.update_data)
 
         if widget:
+            # Set produces_output hint for VariableLinkWidget
+            if field_schema.field_type == FieldType.LINK and hasattr(widget, 'set_output_hint'):
+                widget.set_output_hint(field_schema.produces_output)
+            
             self.widgets_map[key] = widget
             self.dynamic_layout.addRow(tr(field_schema.label), widget)
 
@@ -145,6 +149,7 @@ class UnifiedActionForm(BaseEditForm):
         if not data: data = {}
         model = CommandModel(**data)
         self.current_model = model
+        self.current_item = item
 
         cmd_type = model.type
         # Mapping back group
@@ -157,11 +162,17 @@ class UnifiedActionForm(BaseEditForm):
         self.set_combo_by_data(self.action_group_combo, grp)
         self.set_combo_by_data(self.type_combo, cmd_type)
         
+        # Set current_item for VariableLinkWidget
+        for key, widget in self.widgets_map.items():
+            if key == 'links' or key == 'input_link' or key == 'output_link':
+                if hasattr(widget, 'set_current_item'):
+                    widget.set_current_item(item)
+        
         # Populate widgets via interface
         for key, widget in self.widgets_map.items():
             if hasattr(widget, 'set_value'):
                 # Special handling for flattened models vs structured widgets
-                if key == 'input_link' or key == 'output_link':
+                if key == 'links' or key == 'input_link' or key == 'output_link':
                     widget.set_value(data) # VariableLink expects full dict
                 elif key == 'target_filter':
                     widget.set_value(model.target_filter.model_dump() if model.target_filter else {})
@@ -188,7 +199,7 @@ class UnifiedActionForm(BaseEditForm):
             if hasattr(widget, 'get_value'):
                 val = widget.get_value()
 
-                if key == 'input_link' or key == 'output_link':
+                if key == 'links' or key == 'input_link' or key == 'output_link':
                     # VariableLink returns a dict of updates
                     new_data.update(val)
                 elif key == 'target_filter':

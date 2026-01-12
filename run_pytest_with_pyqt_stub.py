@@ -49,14 +49,49 @@ def setup_gui_stubs():
         print(" [STUB] GUI stubs already configured (likely by conftest.py).")
         return  # Already set up, don't override
 
+    # Create a functional Signal class that actually calls connected slots
+    class MockSignal:
+        def __init__(self):
+            self._slots = []
+        
+        def connect(self, slot):
+            self._slots.append(slot)
+            return None
+        
+        def disconnect(self, slot=None):
+            if slot is None:
+                self._slots.clear()
+            elif slot in self._slots:
+                self._slots.remove(slot)
+            return None
+        
+        def emit(self, *args, **kwargs):
+            for slot in self._slots:
+                slot(*args, **kwargs)
+            return None
+
     # Create dummy classes for inheritance
     class DummyQWidget(object):
-        def __init__(self, *args, **kwargs): pass
+        def __init__(self, *args, **kwargs):
+            # Add common signals as functional MockSignals
+            self.clicked = MockSignal()
+            self.textChanged = MockSignal()
+            self.stateChanged = MockSignal()
+            self.currentIndexChanged = MockSignal()
+            
         def setWindowTitle(self, title): pass
         def setLayout(self, layout): pass
         def setGeometry(self, *args): pass
         def show(self): pass
         def close(self): return True
+        def addWidget(self, widget): pass
+        def addLayout(self, layout): pass
+        def setText(self, text): pass
+        def text(self): return ""
+        def setCheckState(self, state): pass
+        def addItem(self, *args): pass
+        def setCurrentIndex(self, index): pass
+        def currentIndex(self): return 0
 
     class DummyQMainWindow(DummyQWidget):
         def setCentralWidget(self, widget): pass
@@ -163,10 +198,49 @@ def setup_gui_stubs():
     qt_widgets.QDialog = DummyQDialog
     qt_widgets.QApplication = DummyQApplication
 
-    # Map common widgets
-    for w in ['QLabel', 'QPushButton', 'QVBoxLayout', 'QHBoxLayout', 'QSplitter',
-              'QTreeWidget', 'QTreeWidgetItem', 'QComboBox', 'QLineEdit', 'QTextEdit',
-              'QCheckBox', 'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu', 'QAction']:
+    # Create enhanced widget classes with signals
+    class EnhancedButton(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.clicked = MockSignal()
+    
+    class EnhancedComboBox(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.currentIndexChanged = MockSignal()
+            
+        def addItem(self, *args): pass
+        def setCurrentIndex(self, index): pass
+        def currentIndex(self): return 0
+        def currentText(self): return ""
+    
+    class EnhancedLineEdit(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.textChanged = MockSignal()
+            
+        def setText(self, text): pass
+        def text(self): return ""
+    
+    class EnhancedCheckBox(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.stateChanged = MockSignal()
+            
+        def setCheckState(self, state): pass
+        def checkState(self): return 0
+        def isChecked(self): return False
+
+    # Map widgets with enhanced signal support
+    qt_widgets.QPushButton = EnhancedButton
+    qt_widgets.QComboBox = EnhancedComboBox
+    qt_widgets.QLineEdit = EnhancedLineEdit
+    qt_widgets.QCheckBox = EnhancedCheckBox
+    
+    # Map other common widgets without special signals
+    for w in ['QLabel', 'QVBoxLayout', 'QHBoxLayout', 'QSplitter',
+              'QTreeWidget', 'QTreeWidgetItem', 'QTextEdit',
+              'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu', 'QAction']:
          setattr(qt_widgets, w, type(w, (DummyQWidget,), {}))
 
     # 4. Inject into QtCore
