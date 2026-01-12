@@ -14,6 +14,10 @@ class CommandEditForm(UnifiedActionForm):
     structure_update_requested = pyqtSignal(str, dict)
 
     def __init__(self, parent=None):
+        # Initialize warning_label before calling super().__init__
+        # to prevent AttributeError during parent initialization
+        self.warning_label = None
+        self.gen_branch_btn = None
         super().__init__(parent)
         self.setup_ui()
 
@@ -43,18 +47,20 @@ class CommandEditForm(UnifiedActionForm):
 
         # Logic specific to CommandEditForm
 
-        # Legacy Warning
-        if cmd_type and cmd_type not in COMMAND_TYPES:
-             self.warning_label.setText(
-                  tr("This type '{cmd_type}' is only supported by the Legacy Action format.")
-                  .format(cmd_type=cmd_type)
-             )
-             self.warning_label.setVisible(True)
-        else:
-             self.warning_label.setVisible(False)
+        # Legacy Warning (only if warning_label is initialized)
+        if self.warning_label:
+            if cmd_type and cmd_type not in COMMAND_TYPES:
+                 self.warning_label.setText(
+                      tr("This type '{cmd_type}' is only supported by the Legacy Action format.")
+                      .format(cmd_type=cmd_type)
+                 )
+                 self.warning_label.setVisible(True)
+            else:
+                 self.warning_label.setVisible(False)
 
-        # Flow Button
-        self.gen_branch_btn.setVisible(cmd_type == "FLOW")
+        # Flow Button (only if gen_branch_btn is initialized)
+        if self.gen_branch_btn:
+            self.gen_branch_btn.setVisible(cmd_type == "FLOW")
 
     def _populate_ui(self, item):
         # We override _populate_ui to add the legacy warning check *after* standard load

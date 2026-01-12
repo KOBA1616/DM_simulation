@@ -127,18 +127,32 @@ class GameWindow(QMainWindow):
         debug_act.triggered.connect(lambda: self.debugger_dock.setVisible(not self.debugger_dock.isVisible()))
         self.toolbar.addAction(debug_act)
 
+        log_act = QAction(tr("Logs"), self)
+        log_act.triggered.connect(lambda: self.log_dock.setVisible(not self.log_dock.isVisible()))
+        self.toolbar.addAction(log_act)
+
         # UI Setup
-        self.info_dock = QDockWidget(tr("Game Info & Controls"), self)
-        self.info_dock.setObjectName("InfoDock")
-        self.info_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        # AI Tools Dock (Left)
+        self.ai_tools_dock = QDockWidget(tr("AI & Tools"), self)
+        self.ai_tools_dock.setObjectName("AIToolsDock")
+        self.ai_tools_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
 
-        self.info_panel = QWidget()
-        self.info_panel.setMinimumWidth(300)
-        self.info_layout = QVBoxLayout(self.info_panel)
-        self.info_dock.setWidget(self.info_panel)
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.info_dock)
+        self.ai_tools_panel = QWidget()
+        self.ai_tools_panel.setMinimumWidth(300)
+        self.ai_tools_layout = QVBoxLayout(self.ai_tools_panel)
+        self.ai_tools_dock.setWidget(self.ai_tools_panel)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.ai_tools_dock)
 
-        # Top Section
+        # Game Status Dock (Right) - Separate from AI Tools
+        self.status_dock = QDockWidget(tr("Game Status & Operations"), self)
+        self.status_dock.setObjectName("StatusDock")
+        self.status_dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        
+        self.status_panel = QWidget()
+        self.status_panel.setMinimumWidth(300)
+        self.status_layout_main = QVBoxLayout(self.status_panel)
+        self.status_dock.setWidget(self.status_panel)
+        
         self.top_section_group = QGroupBox(tr("Game Status & Operations"))
         top_layout = QVBoxLayout()
         
@@ -187,9 +201,10 @@ class GameWindow(QMainWindow):
         top_layout.addLayout(game_ctrl_layout)
 
         self.top_section_group.setLayout(top_layout)
-        self.info_layout.addWidget(self.top_section_group)
+        self.status_layout_main.addWidget(self.top_section_group)
+        self.status_layout_main.addStretch()
 
-        # Bottom Section
+        # Bottom Section (AI & Tools) - now in ai_tools_dock
         self.bottom_section_group = QGroupBox(tr("AI & Tools"))
         bottom_layout = QVBoxLayout()
 
@@ -202,6 +217,8 @@ class GameWindow(QMainWindow):
         self.p0_group = QButtonGroup()
         self.p0_group.addButton(self.p0_human_radio)
         self.p0_group.addButton(self.p0_ai_radio)
+        self.p0_human_radio.toggled.connect(lambda _: self._update_p0_controls_visibility())
+        self.p0_ai_radio.toggled.connect(lambda _: self._update_p0_controls_visibility())
         
         mode_layout.addWidget(self.p0_human_radio)
         mode_layout.addWidget(self.p0_ai_radio)
@@ -254,9 +271,42 @@ class GameWindow(QMainWindow):
         bottom_layout.addWidget(self.help_btn)
 
         self.bottom_section_group.setLayout(bottom_layout)
-        self.info_layout.addWidget(self.bottom_section_group)
-        
-        self.info_layout.addStretch()
+        self.ai_tools_layout.addWidget(self.bottom_section_group)
+
+        # P0 human control panel (hidden unless P0 is human)
+        self.p0_control_group = QGroupBox(tr("P0 Controls"))
+        p0_ctrl_layout = QVBoxLayout()
+
+        row1 = QHBoxLayout()
+        self.p0_ctrl_start = QPushButton(tr("Start"))
+        self.p0_ctrl_start.clicked.connect(self.toggle_simulation)
+        row1.addWidget(self.p0_ctrl_start)
+
+        self.p0_ctrl_step = QPushButton(tr("Step"))
+        self.p0_ctrl_step.clicked.connect(self.step_phase)
+        row1.addWidget(self.p0_ctrl_step)
+        p0_ctrl_layout.addLayout(row1)
+
+        row2 = QHBoxLayout()
+        self.p0_ctrl_pass = QPushButton(tr("Pass / End"))
+        self.p0_ctrl_pass.clicked.connect(self.pass_turn)
+        row2.addWidget(self.p0_ctrl_pass)
+
+        self.p0_ctrl_confirm = QPushButton(tr("Confirm"))
+        self.p0_ctrl_confirm.clicked.connect(self.confirm_selection)
+        row2.addWidget(self.p0_ctrl_confirm)
+        p0_ctrl_layout.addLayout(row2)
+
+        row3 = QHBoxLayout()
+        self.p0_ctrl_reset = QPushButton(tr("Reset"))
+        self.p0_ctrl_reset.clicked.connect(self.reset_game)
+        row3.addWidget(self.p0_ctrl_reset)
+        p0_ctrl_layout.addLayout(row3)
+
+        self.p0_control_group.setLayout(p0_ctrl_layout)
+        self.ai_tools_layout.addWidget(self.p0_control_group)
+
+        self.ai_tools_layout.addStretch()
         
         # Board Panel
         self.board_panel = QWidget()
@@ -304,6 +354,12 @@ class GameWindow(QMainWindow):
         self.p0_battle.card_clicked.connect(self.on_card_clicked)
         self.p0_graveyard.card_clicked.connect(self.on_card_clicked)
         
+        # Connect double-click handlers for quick play
+        self.p0_hand.card_double_clicked.connect(self.on_card_double_clicked)
+        self.p0_mana.card_double_clicked.connect(self.on_card_double_clicked)
+        self.p0_battle.card_double_clicked.connect(self.on_card_double_clicked)
+        self.p0_graveyard.card_double_clicked.connect(self.on_card_double_clicked)
+        
         self.p0_hand.card_hovered.connect(self.on_card_hovered)
         self.p0_mana.card_hovered.connect(self.on_card_hovered)
         self.p0_battle.card_hovered.connect(self.on_card_hovered)
@@ -315,6 +371,9 @@ class GameWindow(QMainWindow):
         self.p1_battle.card_hovered.connect(self.on_card_hovered)
         self.p1_shield.card_hovered.connect(self.on_card_hovered)
         self.p1_graveyard.card_hovered.connect(self.on_card_hovered)
+
+        # Ensure initial visibility
+        self._update_p0_controls_visibility()
         
         p0_battle_row = QHBoxLayout()
         p0_battle_row.addWidget(self.p0_battle, stretch=5)
@@ -344,13 +403,16 @@ class GameWindow(QMainWindow):
         self.stack_dock.setWidget(self.stack_view)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.stack_dock)
 
+        # Add Status Dock to right side (where log was)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.status_dock)
+        self.splitDockWidget(self.stack_dock, self.status_dock, Qt.Orientation.Vertical)
+        
         self.log_dock = QDockWidget(tr("Logs"), self)
         self.log_dock.setObjectName("LogDock")
         self.log_dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         self.log_dock.setWidget(self.log_list)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.log_dock)
-        
-        self.splitDockWidget(self.stack_dock, self.log_dock, Qt.Orientation.Vertical)
+        self.log_dock.hide()  # Hide by default
 
         self.mcts_dock: QDockWidget = QDockWidget(tr("MCTS Analysis"), self)
         self.mcts_dock.setObjectName("MCTSDock")
@@ -563,11 +625,67 @@ class GameWindow(QMainWindow):
 
         self.execute_action(relevant_cmds[0])
 
+    def on_card_double_clicked(self, card_id: int, instance_id: int) -> None:
+        """Handle double-click to quickly play the most common action (Play or Mana Charge)."""
+        if EngineCompat.get_active_player_id(self.gs) != 0 or not self.p0_human_radio.isChecked(): 
+            return
+
+        # Don't handle during input wait
+        if EngineCompat.is_waiting_for_user_input(self.gs):
+            return
+
+        from dm_toolkit.commands import generate_legal_commands
+
+        cmds = generate_legal_commands(self.gs, self.card_db)
+        relevant_cmds = []
+        for c in cmds:
+            try:
+                d = c.to_dict()
+            except Exception:
+                d = {}
+            if d.get('instance_id') == instance_id or d.get('source_instance_id') == instance_id:
+                relevant_cmds.append((c, d))
+
+        if not relevant_cmds: 
+            return
+
+        # Prioritize PLAY_CARD over MANA_CHARGE for hand cards
+        play_cmd = None
+        mana_cmd = None
+        attack_cmd = None
+        other_cmd = None
+
+        for cmd, d in relevant_cmds:
+            cmd_type = d.get('type', '')
+            if cmd_type == 'PLAY_CARD':
+                play_cmd = cmd
+            elif cmd_type == 'MANA_CHARGE':
+                mana_cmd = cmd
+            elif cmd_type == 'ATTACK':
+                attack_cmd = cmd
+            elif not other_cmd:
+                other_cmd = cmd
+
+        # Priority: Play > Attack > Other > Mana Charge
+        if play_cmd:
+            self.execute_action(play_cmd)
+        elif attack_cmd:
+            self.execute_action(attack_cmd)
+        elif other_cmd:
+            self.execute_action(other_cmd)
+        elif mana_cmd:
+            self.execute_action(mana_cmd)
+
     def on_card_hovered(self, card_id: int) -> None:
         if card_id >= 0:
             card_data = self._get_card_by_id(card_id)
             if card_data:
                 self.card_detail_panel.update_card(card_data)
+
+    def _update_p0_controls_visibility(self):
+        """Show human control panel only when P0 is human."""
+        show = self.p0_human_radio.isChecked()
+        self.p0_control_group.setVisible(show)
 
     def _get_card_by_id(self, card_id: int):
         """Retrieve card object from various possible CardDB implementations.

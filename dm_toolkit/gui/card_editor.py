@@ -217,7 +217,8 @@ class CardEditor(QMainWindow):
 
         if card_item:
             # Reconstruct data to ensure structure (effects/actions) is up to date
-            fresh_data = self.tree_widget.data_manager.reconstruct_card_data(card_item)
+            fresh_model = self.tree_widget.data_manager.reconstruct_card_model(card_item)
+            fresh_data = fresh_model.model_dump(by_alias=True) if hasattr(fresh_model, 'model_dump') else fresh_model.dict(by_alias=True)
             if fresh_data:
                 self.preview_widget.render_card(fresh_data)
             else:

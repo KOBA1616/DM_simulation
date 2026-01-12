@@ -1,0 +1,55 @@
+{
+  "name": "【サンプル】呪文破棄ボーナス",
+  "cost": 5,
+  "civilization": "LIGHT",
+  "type": "CREATURE",
+  "races": ["イニシエート"],
+  "power": 4000,
+  "effects": [
+    {
+      "trigger": "ON_SUMMON",
+      "trigger_condition": {},
+      "commands": [
+        {
+          "uid": "cmd_discard_spell",
+          "type": "DISCARD",
+          "target_group": "PLAYER_SELF",
+          "target_filter": {
+            "types": ["SPELL"]
+          },
+          "amount": 1,
+          "optional": true,
+          "output_value_key": "spell_discarded"
+        },
+        {
+          "uid": "cmd_check_discard",
+          "type": "CONDITION",
+          "condition": {
+            "type": "VARIABLE_GT",
+            "variable": "spell_discarded",
+            "value": 0
+          },
+          "if_true": [
+            {
+              "uid": "cmd_bonus_draw",
+              "type": "DRAW_CARD",
+              "target_group": "PLAYER_SELF",
+              "amount": 3
+            },
+            {
+              "uid": "cmd_bonus_shield",
+              "type": "TRANSITION",
+              "target_group": "PLAYER_SELF",
+              "from_zone": "DECK",
+              "to_zone": "SHIELD",
+              "amount": 1
+            }
+          ],
+          "if_false": []
+        }
+      ]
+    }
+  ],
+  "keywords": {},
+  "flavor": "このクリーチャーが出た時、呪文を1枚捨ててもよい。そうした場合、カードを3枚引き、新しいシールドを1つ追加する。"
+}

@@ -106,6 +106,8 @@ class EffectEditForm(BaseEditForm):
 
     def on_mode_changed(self):
         mode = self.mode_combo.currentData()
+        if mode is None:
+            mode = "TRIGGERED"  # Default fallback
         is_triggered = (mode == "TRIGGERED")
 
         self.trigger_combo.setVisible(is_triggered)

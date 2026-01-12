@@ -441,7 +441,8 @@ class LogicTreeWidget(QTreeView):
         if eff_item:
             # After structural change, immediately reconstruct the card data and update the card_item's stored dict
             try:
-                updated = self.data_manager.reconstruct_card_data(card_item)
+                updated_model = self.data_manager.reconstruct_card_model(card_item)
+                updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
                 if updated:
                     self.data_manager.set_item_data(card_item, updated)
             except Exception:
@@ -455,7 +456,8 @@ class LogicTreeWidget(QTreeView):
         card_item = self.standard_model.itemFromIndex(card_index)
         self.data_manager.remove_revolution_change_logic(card_item)
         try:
-            updated = self.data_manager.reconstruct_card_data(card_item)
+            updated_model = self.data_manager.reconstruct_card_model(card_item)
+            updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
             if updated:
                 self.data_manager.set_item_data(card_item, updated)
         except Exception:
@@ -468,7 +470,8 @@ class LogicTreeWidget(QTreeView):
         eff_item = self.data_manager.add_mekraid_logic(card_item)
         if eff_item:
             try:
-                updated = self.data_manager.reconstruct_card_data(card_item)
+                updated_model = self.data_manager.reconstruct_card_model(card_item)
+                updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
                 if updated:
                     self.data_manager.set_item_data(card_item, updated)
             except Exception:
@@ -483,7 +486,8 @@ class LogicTreeWidget(QTreeView):
         card_item = self.standard_model.itemFromIndex(card_index)
         self.data_manager.remove_mekraid_logic(card_item)
         try:
-            updated = self.data_manager.reconstruct_card_data(card_item)
+            updated_model = self.data_manager.reconstruct_card_model(card_item)
+            updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
             if updated:
                 self.data_manager.set_item_data(card_item, updated)
         except Exception:
@@ -496,7 +500,8 @@ class LogicTreeWidget(QTreeView):
         eff_item = self.data_manager.add_friend_burst_logic(card_item)
         if eff_item:
             try:
-                updated = self.data_manager.reconstruct_card_data(card_item)
+                updated_model = self.data_manager.reconstruct_card_model(card_item)
+                updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
                 if updated:
                     self.data_manager.set_item_data(card_item, updated)
             except Exception:
@@ -511,7 +516,8 @@ class LogicTreeWidget(QTreeView):
         card_item = self.standard_model.itemFromIndex(card_index)
         self.data_manager.remove_friend_burst_logic(card_item)
         try:
-            updated = self.data_manager.reconstruct_card_data(card_item)
+            updated_model = self.data_manager.reconstruct_card_model(card_item)
+            updated = updated_model.model_dump(by_alias=True) if hasattr(updated_model, 'model_dump') else updated_model.dict(by_alias=True)
             if updated:
                 self.data_manager.set_item_data(card_item, updated)
         except Exception:

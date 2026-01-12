@@ -1,0 +1,46 @@
+{
+  "name": "マナチャージ条件付きカード",
+  "type": "CREATURE",
+  "civilization": "NATURE",
+  "cost": 3,
+  "power": 2000,
+  "race": "スノーフェアリー",
+  "description": "召喚時、山札の上から2枚をマナゾーンに置く。2枚置けた場合、新しいシールドを1つ追加する。",
+  "effects": [
+    {
+      "trigger": "ON_SUMMON",
+      "description": "マナチャージ2枚成功でシールド追加",
+      "commands": [
+        {
+          "type": "MANA_CHARGE",
+          "target_group": "PLAYER_SELF",
+          "amount": 2,
+          "output_value_key": "charged",
+          "description": "山札の上から2枚をマナゾーンに置く"
+        },
+        {
+          "type": "CONDITION",
+          "condition": {
+            "type": "VARIABLE_EQ",
+            "variable": "charged",
+            "value": 2
+          },
+          "if_true": [
+            {
+              "type": "ADD_SHIELD",
+              "target_group": "PLAYER_SELF",
+              "amount": 1,
+              "description": "シールドを1つ追加"
+            }
+          ],
+          "description": "ちょうど2枚マナチャージできた場合のみシールド追加"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "charged には実際にマナゾーンに置かれたカード枚数が格納される",
+    "山札が1枚以下の場合、charged は 0 または 1 になり、シールド追加は発動しない",
+    "charged_ids_0, charged_ids_1 にはマナゾーンに置かれたカードのインスタンスIDが格納される"
+  ]
+}

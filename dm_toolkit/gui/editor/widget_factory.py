@@ -137,11 +137,11 @@ class WidgetFactory:
 
         elif w_type == FieldType.FILTER:
             widget = FilterEditorWrapper(parent)
-            widget.dataChanged.connect(update_callback)
+            widget.filterChanged.connect(update_callback)
 
         elif w_type == FieldType.LINK:
             widget = VariableLinkWrapper(parent)
-            widget.dataChanged.connect(update_callback)
+            widget.linkChanged.connect(update_callback)
             # Variable link might need config about producing output
             if field_schema.produces_output:
                 # Assuming widget has a method or prop for this if needed

@@ -228,6 +228,8 @@ class CardEditForm(BaseEditForm):
             del data['civilization']
 
         type_str = self.type_combo.currentData()
+        if type_str is None:
+            type_str = "CREATURE"  # Default fallback
 
         # Force power to 0 if Spell, regardless of hidden spinner value
         if type_str == "SPELL":

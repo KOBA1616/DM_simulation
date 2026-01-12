@@ -164,7 +164,10 @@ class ConditionEditorWidget(QGroupBox):
         else:
             self.cond_type_combo.setCurrentIndex(0)
 
-        self.cond_val_spin.setValue(data.get('value', 0))
+        value = data.get('value', 0)
+        if value is None:
+            value = 0
+        self.cond_val_spin.setValue(value)
         self.cond_str_edit.setText(data.get('str_val', ''))
         self.cond_filter.set_data(data.get('filter', {}))
 
@@ -174,6 +177,8 @@ class ConditionEditorWidget(QGroupBox):
 
     def get_data(self):
         ctype = self.cond_type_combo.currentData()
+        if ctype is None:
+            ctype = "NONE"  # Default fallback
         data = {
             "type": ctype,
             "value": self.cond_val_spin.value()

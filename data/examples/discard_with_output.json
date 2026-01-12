@@ -1,0 +1,36 @@
+{
+  "name": "【サンプル】手札交換クリーチャー",
+  "cost": 4,
+  "civilization": "WATER",
+  "type": "CREATURE",
+  "races": ["サイバー・ウイルス"],
+  "power": 3000,
+  "effects": [
+    {
+      "trigger": "ON_SUMMON",
+      "trigger_condition": {},
+      "commands": [
+        {
+          "uid": "cmd_discard_001",
+          "type": "DISCARD",
+          "target_group": "PLAYER_SELF",
+          "target_filter": {},
+          "amount": 2,
+          "up_to": true,
+          "optional": false,
+          "output_value_key": "discarded_count"
+        },
+        {
+          "uid": "cmd_draw_001",
+          "type": "DRAW_CARD",
+          "target_group": "PLAYER_SELF",
+          "amount": 1,
+          "input_value_key": "discarded_count",
+          "input_value_usage": "AMOUNT"
+        }
+      ]
+    }
+  ],
+  "keywords": {},
+  "flavor": "手札を最大2枚まで捨て、捨てた枚数と同じ枚数のカードを引く。"
+}

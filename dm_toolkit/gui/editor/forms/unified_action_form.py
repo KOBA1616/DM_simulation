@@ -14,18 +14,17 @@ from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSche
 
 class UnifiedActionForm(BaseEditForm):
     """Schema-driven Unified Action Form using WidgetFactory and External Config."""
+    
+    structure_update_requested = pyqtSignal(str, dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.widgets_map = {} # key -> widget
         self.current_model = None # CommandModel instance
-
-        # Ensure minimal attributes for headless env
-        self.current_item = getattr(self, 'current_item', None)
-        self.structure_update_requested = getattr(self, 'structure_update_requested', None)
         
-        # Initialize Schema Registry
-        SchemaLoader.load_schemas()
+        # Initialize Schema Registry from schema_config.py
+        from dm_toolkit.gui.editor.schema_config import register_all_schemas
+        register_all_schemas()
 
         try:
             self.setup_base_ui()
@@ -73,6 +72,8 @@ class UnifiedActionForm(BaseEditForm):
 
     def on_type_changed(self):
         t = self.type_combo.currentData()
+        if t is None:
+            t = "DRAW"  # Default fallback
         self.rebuild_dynamic_ui(t)
         self.update_data()
 
@@ -91,8 +92,44 @@ class UnifiedActionForm(BaseEditForm):
         if not schema:
             return
 
+        # Group optional and up_to fields for horizontal layout
+        optional_field = None
+        up_to_field = None
+        other_fields = []
+        
         for field_schema in schema.fields:
+            if field_schema.key == 'optional':
+                optional_field = field_schema
+            elif field_schema.key == 'up_to':
+                up_to_field = field_schema
+            else:
+                other_fields.append(field_schema)
+        
+        # Add regular fields first
+        for field_schema in other_fields:
             self._create_widget_for_field(field_schema)
+        
+        # Add optional and up_to in a horizontal layout if both exist
+        if optional_field or up_to_field:
+            from PyQt6.QtWidgets import QHBoxLayout, QWidget
+            options_widget = QWidget()
+            options_layout = QHBoxLayout(options_widget)
+            options_layout.setContentsMargins(0, 0, 0, 0)
+            
+            if optional_field:
+                opt_widget = WidgetFactory.create_widget(self, optional_field, self.update_data)
+                if opt_widget:
+                    self.widgets_map['optional'] = opt_widget
+                    options_layout.addWidget(opt_widget)
+            
+            if up_to_field:
+                upto_widget = WidgetFactory.create_widget(self, up_to_field, self.update_data)
+                if upto_widget:
+                    self.widgets_map['up_to'] = upto_widget
+                    options_layout.addWidget(upto_widget)
+            
+            options_layout.addStretch()
+            self.dynamic_layout.addRow(tr("Options"), options_widget)
 
     def _create_widget_for_field(self, field_schema: FieldSchema):
         key = field_schema.key
@@ -128,8 +165,8 @@ class UnifiedActionForm(BaseEditForm):
                     widget.set_value(data) # VariableLink expects full dict
                 elif key == 'target_filter':
                     widget.set_value(model.target_filter.model_dump() if model.target_filter else {})
-                elif key == 'optional':
-                    widget.set_value(model.optional)
+                elif key == 'options':
+                    widget.set_value(model.options)
                 else:
                     val = getattr(model, key, None)
                     if val is not None:
@@ -138,6 +175,8 @@ class UnifiedActionForm(BaseEditForm):
     def _save_ui_to_data(self, data):
         """Saves data using interface-based widgets."""
         cmd_type = self.type_combo.currentData()
+        if cmd_type is None:
+            cmd_type = "DRAW"  # Default fallback
 
         # Start with fresh dict
         new_data = {'type': cmd_type}

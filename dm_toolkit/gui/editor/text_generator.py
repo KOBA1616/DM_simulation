@@ -628,9 +628,17 @@ class CardTextGenerator:
         races = filter_def.get("races", [])
         owner = filter_def.get("owner", "")  # Will NOT apply prefix here (handled in _format_modifier)
         min_cost = filter_def.get("min_cost", 0)
+        if min_cost is None:
+            min_cost = 0
         max_cost = filter_def.get("max_cost", 999)
+        if max_cost is None:
+            max_cost = 999
         min_power = filter_def.get("min_power", 0)
+        if min_power is None:
+            min_power = 0
         max_power = filter_def.get("max_power", 999999)
+        if max_power is None:
+            max_power = 999999
         is_tapped = filter_def.get("is_tapped")
         is_blocker = filter_def.get("is_blocker")
         is_evolution = filter_def.get("is_evolution")
@@ -776,6 +784,8 @@ class CardTextGenerator:
         
         trigger = effect.get("trigger", "NONE")
         condition = effect.get("condition", {})
+        if condition is None:
+            condition = {}
         actions = effect.get("actions", [])
 
         trigger_text = cls.trigger_to_japanese(trigger, is_spell)
@@ -1176,9 +1186,11 @@ class CardTextGenerator:
                     template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、マナゾーンに置く。{usage_label_suffix}"
             elif atype == "DISCARD":
                 # 前回の出力枚数と同じ枚数を捨てる
-                template = f"手札をその同じ枚数捨てる。{usage_label_suffix}"
-                if bool(action.get('up_to', False)):
+                up_to_discard = bool(action.get('up_to', False))
+                if up_to_discard:
                     template = f"手札をその同じ枚数まで捨てる。{usage_label_suffix}"
+                else:
+                    template = f"手札をその同じ枚数捨てる。{usage_label_suffix}"
             else:
                 val1 = "その数"
         elif (val1 == 0 or (atype == "TRANSITION" and action.get("amount", 0) == 0)) and is_generic_selection:
@@ -1193,6 +1205,18 @@ class CardTextGenerator:
              elif atype == "DISCARD": template = "手札をすべて捨てる。"
 
         # Complex Action Logic
+        if atype == "DISCARD":
+            # Standard discard with amount
+            amt = action.get('amount', val1 if val1 else 1)
+            up_to_discard = bool(action.get('up_to', False))
+            if amt == 0:
+                template = "手札をすべて捨てる。"
+            elif up_to_discard:
+                template = f"手札を{amt}枚まで捨てる。"
+            else:
+                template = f"手札を{amt}枚捨てる。"
+            return template
+        
         if atype == "REPLACE_CARD_MOVE":
             orig_zone = cls._normalize_zone_name(action.get("original_to_zone") or action.get("from_zone") or "")
             dest_zone = cls._normalize_zone_name(action.get("to_zone") or "DECK_BOTTOM")
@@ -1778,6 +1802,8 @@ class CardTextGenerator:
 
             # Handle min_cost (can be int or dict with input_link) or usage-only
             min_cost = filter_def.get("min_cost", 0)
+            if min_cost is None:
+                min_cost = 0
             # usage-only from action
             input_usage = action.get("input_value_usage") or action.get("input_usage")
             has_input_key = bool(action.get("input_value_key"))
@@ -1794,6 +1820,8 @@ class CardTextGenerator:
             
             # Handle max_cost (can be int or dict with input_link) or usage-only
             max_cost = filter_def.get("max_cost", 999)
+            if max_cost is None:
+                max_cost = 999
             if isinstance(max_cost, dict):
                 # If it's an input-linked parameter, check the usage and generate appropriate text
                 usage = max_cost.get("input_value_usage", "")
@@ -1807,6 +1835,8 @@ class CardTextGenerator:
 
             # Power constraints (min/max) with usage-only
             min_power = filter_def.get("min_power", 0)
+            if min_power is None:
+                min_power = 0
             if isinstance(min_power, dict):
                 usage = min_power.get("input_value_usage", "")
                 if usage == "MIN_POWER":
@@ -1817,6 +1847,8 @@ class CardTextGenerator:
                 adjectives += "パワーその数以上の"
 
             max_power = filter_def.get("max_power", 999999)
+            if max_power is None:
+                max_power = 999999
             if isinstance(max_power, dict):
                 usage = max_power.get("input_value_usage", "")
                 if usage == "MAX_POWER":
@@ -1828,6 +1860,8 @@ class CardTextGenerator:
 
             # Handle min_power (can be int or dict with input_link)
             min_power = filter_def.get("min_power", 0)
+            if min_power is None:
+                min_power = 0
             if isinstance(min_power, dict):
                 # If it's an input-linked parameter, check the usage and generate appropriate text
                 usage = min_power.get("input_value_usage", "")
@@ -1839,6 +1873,8 @@ class CardTextGenerator:
             
             # Handle max_power (can be int or dict with input_link)
             max_power = filter_def.get("max_power", 999999)
+            if max_power is None:
+                max_power = 999999
             if isinstance(max_power, dict):
                 # If it's an input-linked parameter, check the usage and generate appropriate text
                 usage = max_power.get("input_value_usage", "")

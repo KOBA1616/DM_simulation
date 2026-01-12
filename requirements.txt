@@ -3,3 +3,4 @@ torch
 PyQt6
 onnx
 onnxruntime
+pydantic

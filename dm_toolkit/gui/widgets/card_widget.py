@@ -12,6 +12,7 @@ class CardWidget(QFrame):
     clicked = pyqtSignal(int)  # Emits instance_id
     hovered = pyqtSignal(int)  # Emits card_id
     action_triggered = pyqtSignal(object) # Emits the action object
+    double_clicked = pyqtSignal(int)  # Emits instance_id for quick play
 
     def __init__(self, card_id, card_name, cost, power, civ, tapped=False,
                  instance_id=-1, parent=None, is_face_down=False, legal_actions=None):
@@ -68,6 +69,12 @@ class CardWidget(QFrame):
     def enterEvent(self, event):
         self.hovered.emit(self.card_id)
         super().enterEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        """Handle double-click to quickly play the default action."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.double_clicked.emit(self.instance_id)
+        super().mouseDoubleClickEvent(event)
 
     def contextMenuEvent(self, event):
         """Show context menu on right click."""

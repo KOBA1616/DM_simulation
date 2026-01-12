@@ -1,0 +1,38 @@
+{
+  "name": "連鎖移動効果カード",
+  "type": "SPELL",
+  "civilization": "WATER",
+  "cost": 4,
+  "description": "自分のクリーチャーを2体まで手札に戻す。その後、戻したクリーチャー1体につきカードを1枚引く。",
+  "effects": [
+    {
+      "trigger": "ON_CAST",
+      "description": "自分のクリーチャーを手札に戻し、その数だけドロー",
+      "commands": [
+        {
+          "type": "RETURN_TO_HAND",
+          "target_group": "PLAYER_SELF",
+          "target_filter": {
+            "types": ["CREATURE"]
+          },
+          "from_zone": "BATTLE",
+          "amount": 2,
+          "output_value_key": "returned_count",
+          "description": "自分のバトルゾーンのクリーチャーを2体まで手札に戻す"
+        },
+        {
+          "type": "DRAW_CARD",
+          "target_group": "PLAYER_SELF",
+          "input_value_key": "returned_count",
+          "input_value_usage": "AMOUNT",
+          "description": "手札に戻したクリーチャーの数だけドロー"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "returned_count には実際に手札に戻ったクリーチャーの数が格納される",
+    "returned_count_ids_0, returned_count_ids_1 には各クリーチャーのインスタンスIDが格納される",
+    "returned_count_ids_count には戻したクリーチャーの総数が格納される"
+  ]
+}

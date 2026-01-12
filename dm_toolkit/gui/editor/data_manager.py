@@ -46,6 +46,34 @@ class CardDataManager:
                 data = data.dict(by_alias=True)
             item.setData(data, ROLE_DATA)
 
+    def get_item_path(self, index_or_item):
+        """Get hierarchical path of an item for identification."""
+        item = self._ensure_item(index_or_item)
+        if not item:
+            return ""
+        
+        path_parts = []
+        current = item
+        while current:
+            # Use item data to build unique path (e.g., card_id, effect_id, etc.)
+            data = current.data(ROLE_DATA) or {}
+            item_type = current.data(ROLE_TYPE)
+            
+            # Build identifier based on type and data
+            if item_type == "card":
+                identifier = f"card_{data.get('id', 'unknown')}"
+            elif item_type == "effect":
+                identifier = f"effect_{data.get('id', current.row())}"
+            elif item_type == "command":
+                identifier = f"command_{data.get('type', 'unknown')}_{current.row()}"
+            else:
+                identifier = f"{item_type or 'item'}_{current.row()}"
+            
+            path_parts.insert(0, identifier)
+            current = current.parent()
+        
+        return "/".join(path_parts)
+
     def _ensure_item(self, index_or_item):
         if isinstance(index_or_item, QModelIndex):
             return self.model.itemFromIndex(index_or_item)
@@ -319,6 +347,52 @@ class CardDataManager:
         self.model.appendRow(item)
         return item
 
+    def add_spell_side_item(self, card_item):
+        """Create and attach a spell-side child to a card if absent."""
+        card_item = self._ensure_item(card_item)
+        if not card_item:
+            return None
+
+        # If already present, return existing
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child and child.data(ROLE_TYPE) == "SPELL_SIDE":
+                return child
+
+        card_data = self.get_item_data(card_item)
+        base_name = card_data.get('name', "New Card")
+        civs = card_data.get('civilizations', ["FIRE"])
+        races = card_data.get('races', [])
+        cost = card_data.get('cost', 1)
+
+        spell_model = CardModel(
+            id=card_data.get('id', 0),
+            name=f"{base_name} (Spell Side)",
+            type="SPELL",
+            civilizations=civs,
+            races=races,
+            cost=cost,
+            power=0,
+            keywords={},
+            effects=[],
+            static_abilities=[],
+            reaction_abilities=[]
+        )
+
+        child = self._create_spell_side_item(spell_model)
+        card_item.appendRow(child)
+        return child
+
+    def remove_spell_side_item(self, card_item):
+        card_item = self._ensure_item(card_item)
+        if not card_item:
+            return
+        for i in range(card_item.rowCount()):
+            child = card_item.child(i)
+            if child and child.data(ROLE_TYPE) == "SPELL_SIDE":
+                card_item.removeRow(i)
+                return
+
     def _generate_new_id(self):
         # Simple max ID finder
         max_id = 0
@@ -334,6 +408,76 @@ class CardDataManager:
                         if cid > max_id: max_id = cid
                     except: pass
         return max_id + 1
+
+    def get_card_context_type(self, item):
+        """Get the 'type' field of a card or spell_side item."""
+        item = self._ensure_item(item)
+        if not item:
+            return "CREATURE"
+        data = self.get_item_data(item)
+        return data.get('type', 'CREATURE')
+
+    def create_default_trigger_data(self):
+        """Create default data for a triggered effect."""
+        model = EffectModel(
+            trigger="ON_PLAY",
+            condition=None,
+            commands=[]
+        )
+        return model.model_dump()
+
+    def create_default_static_data(self):
+        """Create default data for a static ability."""
+        model = ModifierModel(
+            type="COST_MODIFIER",
+            value=0,
+            scope="ALL"
+        )
+        return model.model_dump()
+
+    def add_child_item(self, parent_index, item_type, data, label):
+        """Add a child item to a parent (e.g., effect to card, command to effect)."""
+        from PyQt6.QtGui import QStandardItem
+        from PyQt6.QtCore import QModelIndex
+        
+        if isinstance(parent_index, QModelIndex):
+            parent_item = self.model.itemFromIndex(parent_index)
+        else:
+            parent_item = parent_index
+        
+        if not parent_item:
+            return None
+        
+        new_item = QStandardItem(label)
+        new_item.setData(item_type, ROLE_TYPE)
+        new_item.setData(data, ROLE_DATA)
+        parent_item.appendRow(new_item)
+        return new_item
+
+    def add_reaction(self, parent_index):
+        """Add a reaction ability to a card."""
+        model = ReactionModel(
+            type="NINJA_STRIKE",
+            cost=None,
+            zone=None
+        )
+        label = f"{tr('Reaction')}: {model.type}"
+        return self.add_child_item(parent_index, "REACTION_ABILITY", model.model_dump(), label)
+
+    def create_default_command_data(self, cmd_data=None):
+        """Create or copy default command data."""
+        if cmd_data:
+            return copy.deepcopy(cmd_data)
+        model = CommandModel(
+            type="DRAW",
+            amount=1
+        )
+        return model.model_dump()
+
+    def format_command_label(self, cmd_data):
+        """Format a label for a command item."""
+        cmd_type = cmd_data.get('type', 'UNKNOWN')
+        return f"{tr('Action')}: {tr(cmd_type)}"
 
     def _sync_editor_warnings(self, card_item):
         pass # Placeholder for validation logic

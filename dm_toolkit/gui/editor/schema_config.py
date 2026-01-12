@@ -26,25 +26,36 @@ def register_all_schemas():
     ]))
 
     # DISCARD
+    # Outputs: discarded count to output_value_key (card IDs in future C++ enhancement)
     register_schema(CommandSchema("DISCARD", [
         f_target,
         f_filter,
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=1),
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
-        f_links_out
+        f_links_out  # Enables output_value_key generation for discarded count
     ]))
 
     # DESTROY / MANA_CHARGE / RETURN_TO_HAND / BREAK_SHIELD
+    # Outputs: moved/destroyed/returned count and card instance IDs to output_value_key
     for cmd in ["DESTROY", "MANA_CHARGE", "RETURN_TO_HAND", "BREAK_SHIELD"]:
         register_schema(CommandSchema(cmd, [
             f_target,
             f_filter,
             FieldSchema("amount", tr("Count (if selecting)"), FieldType.INT, default=1),
-            f_links_in
+            f_links_out  # Enables output_value_key for card movement tracking
         ]))
 
-    # TAP / UNTAP / SHIELD_TRIGGER / SHUFFLE_DECK
-    for cmd in ["TAP", "UNTAP", "SHIELD_TRIGGER", "SHUFFLE_DECK"]:
+    # TAP / UNTAP (state changes, no movement)
+    for cmd in ["TAP", "UNTAP"]:
+        register_schema(CommandSchema(cmd, [
+            f_target,
+            f_filter,
+            f_links_in  # Input only - state changes don't need output tracking
+        ]))
+
+    # SHIELD_TRIGGER / SHUFFLE_DECK (no card selection)
+    for cmd in ["SHIELD_TRIGGER", "SHUFFLE_DECK"]:
         register_schema(CommandSchema(cmd, [
             f_target,
             f_filter,
@@ -52,6 +63,7 @@ def register_all_schemas():
         ]))
 
     # TRANSITION (Move Card)
+    # Outputs: moved count and card instance IDs to output_value_key
     register_schema(CommandSchema("TRANSITION", [
         f_target,
         f_filter,
@@ -59,7 +71,7 @@ def register_all_schemas():
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         f_optional,
-        f_links_out
+        f_links_out  # Enables output_value_key for card movement tracking
     ]))
 
     # SEARCH_DECK

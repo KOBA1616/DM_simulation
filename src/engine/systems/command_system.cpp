@@ -177,6 +177,7 @@ namespace dm::engine::systems {
 
             // Normal Target-based Transition
             int moved_count = 0;
+            std::vector<int> moved_ids;
             for (int target_id : targets) {
                 CardInstance* inst = state.get_card_instance(target_id);
                 if (inst) {
@@ -193,10 +194,19 @@ namespace dm::engine::systems {
                     TransitionCommand trans(target_id, actual_from, to_z, inst->owner);
                     trans.execute(state);
                     moved_count++;
+                    moved_ids.push_back(target_id);
                 }
             }
             if (!cmd.output_value_key.empty()) {
                 execution_context[cmd.output_value_key] = moved_count;
+                // Store card IDs in sequential keys
+                if (!moved_ids.empty()) {
+                    std::string ids_key = cmd.output_value_key + "_ids";
+                    for (size_t i = 0; i < moved_ids.size(); ++i) {
+                        execution_context[ids_key + "_" + std::to_string(i)] = moved_ids[i];
+                    }
+                    execution_context[ids_key + "_count"] = static_cast<int>(moved_ids.size());
+                }
             }
 
         } else if (cmd.type == core::CommandType::QUERY) {
@@ -274,6 +284,7 @@ namespace dm::engine::systems {
             case core::CommandType::BOOST_MANA:
             case core::CommandType::ADD_MANA: {
                  int charged = 0;
+                 std::vector<int> charged_ids;
                  for (int i = 0; i < count; ++i) {
                      const auto& deck = state.players[player_id].deck;
                      if (!deck.empty()) {
@@ -281,10 +292,19 @@ namespace dm::engine::systems {
                          TransitionCommand trans(card_inst_id, Zone::DECK, Zone::MANA, player_id);
                          trans.execute(state);
                          charged++;
+                         charged_ids.push_back(card_inst_id);
                      }
                 }
                 if (!cmd.output_value_key.empty()) {
                     execution_context[cmd.output_value_key] = charged;
+                    // Store card IDs in sequential keys
+                    if (!charged_ids.empty()) {
+                        std::string ids_key = cmd.output_value_key + "_ids";
+                        for (size_t i = 0; i < charged_ids.size(); ++i) {
+                            execution_context[ids_key + "_" + std::to_string(i)] = charged_ids[i];
+                        }
+                        execution_context[ids_key + "_count"] = static_cast<int>(charged_ids.size());
+                    }
                 }
                 break;
             }
@@ -320,32 +340,54 @@ namespace dm::engine::systems {
             case core::CommandType::DESTROY: {
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
                 int destroyed = 0;
+                std::vector<int> destroyed_ids;
                 for (int target_id : targets) {
                     CardInstance* inst = state.get_card_instance(target_id);
                     if (inst) {
                          TransitionCommand trans(target_id, Zone::BATTLE, Zone::GRAVEYARD, inst->owner);
                          trans.execute(state);
                          destroyed++;
+                         destroyed_ids.push_back(target_id);
                     }
                 }
                 if (!cmd.output_value_key.empty()) {
                     execution_context[cmd.output_value_key] = destroyed;
+                    // Store card IDs as comma-separated list in a companion key
+                    if (!destroyed_ids.empty()) {
+                        std::string ids_key = cmd.output_value_key + "_ids";
+                        // Encode as comma-separated integers (abuse int map by storing count at base key)
+                        // Better: we can only store one int per key, so we'll store IDs in sequential keys
+                        for (size_t i = 0; i < destroyed_ids.size(); ++i) {
+                            execution_context[ids_key + "_" + std::to_string(i)] = destroyed_ids[i];
+                        }
+                        execution_context[ids_key + "_count"] = static_cast<int>(destroyed_ids.size());
+                    }
                 }
                 break;
             }
             case core::CommandType::DISCARD: {
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
                 int discarded = 0;
+                std::vector<int> discarded_ids;
                 for (int target_id : targets) {
                     CardInstance* inst = state.get_card_instance(target_id);
                     if (inst) {
                         TransitionCommand trans(target_id, Zone::HAND, Zone::GRAVEYARD, inst->owner);
                         trans.execute(state);
                         discarded++;
+                        discarded_ids.push_back(target_id);
                     }
                 }
                 if (!cmd.output_value_key.empty()) {
                     execution_context[cmd.output_value_key] = discarded;
+                    // Store card IDs in sequential keys
+                    if (!discarded_ids.empty()) {
+                        std::string ids_key = cmd.output_value_key + "_ids";
+                        for (size_t i = 0; i < discarded_ids.size(); ++i) {
+                            execution_context[ids_key + "_" + std::to_string(i)] = discarded_ids[i];
+                        }
+                        execution_context[ids_key + "_count"] = static_cast<int>(discarded_ids.size());
+                    }
                 }
                 break;
             }
@@ -368,6 +410,7 @@ namespace dm::engine::systems {
             case core::CommandType::RETURN_TO_HAND: {
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
                 int returned = 0;
+                std::vector<int> returned_ids;
                 Zone from_z = parse_zone_string(cmd.from_zone);
 
                 for (int target_id : targets) {
@@ -387,10 +430,19 @@ namespace dm::engine::systems {
                          TransitionCommand trans(target_id, actual_from, Zone::HAND, inst->owner);
                          trans.execute(state);
                          returned++;
+                         returned_ids.push_back(target_id);
                     }
                 }
                 if (!cmd.output_value_key.empty()) {
                     execution_context[cmd.output_value_key] = returned;
+                    // Store card IDs in sequential keys
+                    if (!returned_ids.empty()) {
+                        std::string ids_key = cmd.output_value_key + "_ids";
+                        for (size_t i = 0; i < returned_ids.size(); ++i) {
+                            execution_context[ids_key + "_" + std::to_string(i)] = returned_ids[i];
+                        }
+                        execution_context[ids_key + "_count"] = static_cast<int>(returned_ids.size());
+                    }
                 }
                 break;
             }

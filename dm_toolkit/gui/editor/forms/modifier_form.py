@@ -105,6 +105,8 @@ class ModifierEditForm(BaseEditForm):
 
     def update_visibility(self):
         mtype = self.type_combo.currentData()
+        if mtype is None:
+            mtype = "COST_MODIFIER"  # Default fallback
 
         # Defaults
         self.label_value.setVisible(False)

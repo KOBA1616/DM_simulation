@@ -9,6 +9,7 @@ class ZoneWidget(QWidget):
     card_clicked = pyqtSignal(int, int) # card_id, instance_id
     card_hovered = pyqtSignal(int) # card_id
     action_triggered = pyqtSignal(object) # Action object (or Command)
+    card_double_clicked = pyqtSignal(int, int) # card_id, instance_id
 
     def __init__(self, title, parent=None):
         super().__init__(parent)
@@ -114,6 +115,7 @@ class ZoneWidget(QWidget):
                 widget.clicked.connect(lambda i_id, c_id=cid: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
                 widget.action_triggered.connect(self._handle_action_triggered)
+                widget.double_clicked.connect(lambda i_id, c_id=cid: self.card_double_clicked.emit(c_id, i_id))
                 self.card_layout.addWidget(widget)
                 self.cards.append(widget)
             else:
@@ -123,6 +125,7 @@ class ZoneWidget(QWidget):
                 widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
                 widget.action_triggered.connect(self._handle_action_triggered)
+                widget.double_clicked.connect(lambda i_id, c_id=0: self.card_double_clicked.emit(c_id, i_id))
                 self.card_layout.addWidget(widget)
 
     def set_card_selected(self, instance_id, selected):
