@@ -30,16 +30,18 @@ namespace dm::engine::systems {
             if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::BATTLE) {
                 return TriggerType::ON_PLAY;
             }
-        }
-        if (event.type == EventType::ATTACK_INITIATE) {
-            return TriggerType::ON_ATTACK;
-        }
-        if (event.type == EventType::ZONE_ENTER) {
-             // Destruction Logic: Moved TO Graveyard FROM Battle Zone
+            if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::HAND &&
+                event.context.count("from_zone") && event.context.at("from_zone") == (int)Zone::DECK) {
+                return TriggerType::ON_DRAW;
+            }
+            // Destruction Logic: Moved TO Graveyard FROM Battle Zone
              if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::GRAVEYARD &&
                  event.context.count("from_zone") && event.context.at("from_zone") == (int)Zone::BATTLE) {
                  return TriggerType::ON_DESTROY;
              }
+        }
+        if (event.type == EventType::ATTACK_INITIATE) {
+            return TriggerType::ON_ATTACK;
         }
         if (event.type == EventType::BLOCK_INITIATE) {
              return TriggerType::ON_BLOCK;
@@ -84,8 +86,52 @@ namespace dm::engine::systems {
 
                 for (const auto& effect : active_effects) {
                     if (effect.trigger == trigger_type) {
-                        // Condition: Is this card the source of the event?
-                        if (event.instance_id == instance_id) {
+                        bool condition_met = false;
+                        TargetScope scope = effect.trigger_scope;
+
+                        // Default Scope (NONE) => SELF (This Creature)
+                        if (scope == TargetScope::NONE) {
+                            if (event.instance_id == instance_id) {
+                                condition_met = true;
+                            }
+                        } else {
+                            // Expanded Scope Logic
+                            PlayerID controller = state.card_owner_map[instance_id];
+                            PlayerID event_player = event.player_id;
+
+                            // Try to infer event player from instance if missing
+                            if (event_player == 255 && event.instance_id != -1) {
+                                if (event.instance_id < (int)state.card_owner_map.size())
+                                    event_player = state.card_owner_map[event.instance_id];
+                            }
+
+                            bool player_match = false;
+                            if (scope == TargetScope::PLAYER_SELF) {
+                                if (event_player == controller) player_match = true;
+                            } else if (scope == TargetScope::PLAYER_OPPONENT) {
+                                if (event_player != 255 && event_player != controller) player_match = true;
+                            } else if (scope == TargetScope::ALL_PLAYERS || scope == TargetScope::ALL_FILTERED) {
+                                player_match = true;
+                            } else if (scope == TargetScope::SELF) {
+                                if (event.instance_id == instance_id) player_match = true;
+                            }
+
+                            if (player_match) {
+                                if (effect.trigger_filter.has_value()) {
+                                    const CardInstance* source_card = state.get_card_instance(event.instance_id);
+                                    if (source_card && card_db.count(source_card->card_id)) {
+                                         if (TargetUtils::is_valid_target(*source_card, card_db.at(source_card->card_id),
+                                                                          effect.trigger_filter.value(), state, controller, controller)) {
+                                              condition_met = true;
+                                         }
+                                    }
+                                } else {
+                                    condition_met = true;
+                                }
+                            }
+                        }
+
+                        if (condition_met) {
                             // Match!
                             PlayerID controller = state.card_owner_map[instance_id];
                             PendingEffect pending(EffectType::TRIGGER_ABILITY, instance_id, controller);

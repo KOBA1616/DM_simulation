@@ -117,6 +117,23 @@ class SchemaLoader:
 
                 fields.append(field_def)
 
+            # Ensure 'optional' and 'up_to' are always present for uniformity
+            existing_keys = {f.key for f in fields}
+
+            if 'optional' not in existing_keys:
+                field_def = cls._infer_field_def('optional', config)
+                if 'label_optional' in config:
+                    field_def.label = config['label_optional']
+                fields.append(field_def)
+
+            if 'up_to' not in existing_keys:
+                # Only add 'up_to' if 'amount' is present, as it implies a quantity limit
+                if 'amount' in existing_keys:
+                    field_def = cls._infer_field_def('up_to', config)
+                    if 'label_up_to' in config:
+                        field_def.label = config['label_up_to']
+                    fields.append(field_def)
+
             schema = CommandSchema(type_name=cmd_type, fields=fields)
             register_schema(schema)
 

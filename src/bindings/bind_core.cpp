@@ -157,7 +157,14 @@ void bind_core(py::module& m) {
         .value("TURN_START", TriggerType::TURN_START)
         .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
         .value("BEFORE_BREAK_SHIELD", TriggerType::BEFORE_BREAK_SHIELD)
+        .value("AT_BREAK_SHIELD", TriggerType::AT_BREAK_SHIELD)
         .value("ON_BLOCK", TriggerType::ON_BLOCK)
+        .value("ON_OTHER_ENTER", TriggerType::ON_OTHER_ENTER)
+        .value("ON_ATTACK_FROM_HAND", TriggerType::ON_ATTACK_FROM_HAND)
+        .value("ON_SHIELD_ADD", TriggerType::ON_SHIELD_ADD)
+        .value("ON_CAST_SPELL", TriggerType::ON_CAST_SPELL)
+        .value("ON_OPPONENT_DRAW", TriggerType::ON_OPPONENT_DRAW)
+        .value("ON_DRAW", TriggerType::ON_DRAW)
         .value("NONE", TriggerType::NONE)
         .export_values();
 
@@ -435,6 +442,7 @@ void bind_core(py::module& m) {
         .def_readwrite("destination_zone", &ActionDef::destination_zone)
         .def_readwrite("target_choice", &ActionDef::target_choice)
         .def_readwrite("input_value_key", &ActionDef::input_value_key)
+        .def_readwrite("input_value_usage", &ActionDef::input_value_usage)
         .def_readwrite("output_value_key", &ActionDef::output_value_key)
         .def_readwrite("condition", &ActionDef::condition)
         .def_readwrite("options", &ActionDef::options)
@@ -460,6 +468,7 @@ void bind_core(py::module& m) {
         .def_readwrite("if_true", &CommandDef::if_true)
         .def_readwrite("if_false", &CommandDef::if_false)
         .def_readwrite("input_value_key", &CommandDef::input_value_key)
+        .def_readwrite("input_value_usage", &CommandDef::input_value_usage)
         .def_readwrite("output_value_key", &CommandDef::output_value_key);
 
     py::class_<EffectDef>(m, "EffectDef")
