@@ -11,6 +11,7 @@ from dm_toolkit.gui.editor.models import CommandModel
 from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 from dm_toolkit.gui.editor.configs.action_config import COMMAND_GROUPS
 from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSchema, FieldType
+from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
 
 class UnifiedActionForm(BaseEditForm):
     """Schema-driven Unified Action Form using WidgetFactory and External Config."""
@@ -134,7 +135,12 @@ class UnifiedActionForm(BaseEditForm):
     def _create_widget_for_field(self, field_schema: FieldSchema):
         key = field_schema.key
 
-        widget = WidgetFactory.create_widget(self, field_schema, self.update_data)
+        # Wrap update_data to also check for auto-generation triggers
+        def update_and_trigger():
+            self.update_data()
+            self._check_auto_generation(key)
+
+        widget = WidgetFactory.create_widget(self, field_schema, update_and_trigger)
 
         if widget:
             # Set produces_output hint for VariableLinkWidget
@@ -143,6 +149,36 @@ class UnifiedActionForm(BaseEditForm):
             
             self.widgets_map[key] = widget
             self.dynamic_layout.addRow(tr(field_schema.label), widget)
+
+    def _check_auto_generation(self, changed_key):
+        """Checks if a field change should trigger structure updates (e.g. generating options)."""
+        cmd_type = self.type_combo.currentData()
+
+        # If type is CHOICE and amount changes, auto-generate options
+        if cmd_type == "CHOICE" and changed_key == "amount":
+            self.request_generate_options()
+
+    def request_generate_options(self):
+        """
+        Gathers option count from the form and requests structure update.
+        Called by OptionsControlWidget or auto-generation logic.
+        """
+        # Find 'amount' widget in map
+        amount_widget = self.widgets_map.get('amount')
+        if not amount_widget:
+             # Fallback: maybe it's named something else or we use default 1
+             count = 1
+        else:
+             # Depending on widget type, get value
+             if hasattr(amount_widget, 'get_value'):
+                 count = amount_widget.get_value()
+             elif hasattr(amount_widget, 'value'):
+                 count = amount_widget.value()
+             else:
+                 count = 1
+
+        # Emit signal to CardEditor/LogicTreeWidget
+        self.structure_update_requested.emit(STRUCT_CMD_GENERATE_OPTIONS, {"count": count})
 
     def _load_ui_from_data(self, data, item):
         """Loads data using interface-based widgets."""

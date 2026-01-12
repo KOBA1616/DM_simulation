@@ -261,7 +261,7 @@ class CardEditor(QMainWindow):
             parent = item.parent()
             if parent is not None:
                 card_item = parent
-        elif item_type == "ACTION":
+        elif item_type in ["ACTION", "COMMAND"]:
             parent = item.parent()
             if parent is not None:
                 grand = parent.parent()
@@ -300,7 +300,7 @@ class CardEditor(QMainWindow):
             count = payload.get('count', 1)
             # Find the actual Action Item from the current selection
             action_item = None
-            if item_type == "ACTION":
+            if item_type in ["ACTION", "COMMAND"]:
                  action_item = item
 
             if action_item:
@@ -328,7 +328,7 @@ class CardEditor(QMainWindow):
                 self.tree_widget.add_action_to_effect(item.index())
             elif item_type == "OPTION":
                 self.tree_widget.add_action_to_option(item.index())
-            elif item_type == "ACTION":
+            elif item_type in ["ACTION", "COMMAND"]:
                 self.tree_widget.add_action_sibling(item.index())
 
     def new_card(self):
