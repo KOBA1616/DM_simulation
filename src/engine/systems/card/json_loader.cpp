@@ -251,6 +251,7 @@ namespace dm::engine {
             if (kws.count("shield_burn") && kws.at("shield_burn")) def.keywords.shield_burn = true;
             if (kws.count("untap_in") && kws.at("untap_in")) def.keywords.untap_in = true;
             if (kws.count("unblockable") && kws.at("unblockable")) def.keywords.unblockable = true;
+            if (kws.count("must_be_chosen") && kws.at("must_be_chosen")) def.keywords.must_be_chosen = true;
 
              // Meta Counter Play (e.g. Oriot Judgement)
             if (kws.count("meta_counter_play") && kws.at("meta_counter_play")) {
@@ -292,6 +293,7 @@ namespace dm::engine {
                     if (action.str_val == "META_COUNTER") def.keywords.meta_counter_play = true;
                     if (action.str_val == "SHIELD_BURN") def.keywords.shield_burn = true;
                     if (action.str_val == "UNBLOCKABLE") def.keywords.unblockable = true;
+                    if (action.str_val == "MUST_BE_CHOSEN") def.keywords.must_be_chosen = true;
                 }
             }
         }
