@@ -34,8 +34,7 @@ class KeywordEditForm(BaseEditForm):
             "speed_attacker", "blocker", "slayer",
             "double_breaker", "triple_breaker", "shield_trigger",
             "just_diver", "mach_fighter", "g_strike",
-            "hyper_energy", "shield_burn", "power_attacker", "ex_life",
-            "mega_last_burst"
+            "hyper_energy", "shield_burn", "power_attacker", "ex_life"
         ]
 
         kw_map = {
@@ -51,8 +50,7 @@ class KeywordEditForm(BaseEditForm):
             "hyper_energy": "Hyper Energy",
             "shield_burn": "Shield Burn",
             "power_attacker": "Power Attacker",
-            "ex_life": "EX-Life",
-            "mega_last_burst": "Mega Last Burst"
+            "ex_life": "EX-Life"
         }
 
         row = 0
@@ -92,6 +90,12 @@ class KeywordEditForm(BaseEditForm):
         self.friend_burst_check.stateChanged.connect(self.toggle_friend_burst)
         special_layout.addWidget(self.friend_burst_check)
 
+        # Mega Last Burst
+        self.mega_last_burst_check = QCheckBox(tr("Mega Last Burst"))
+        self.mega_last_burst_check.setToolTip("メガ・ラスト・バーストを有効にすると、破壊時の効果が自動で追加されます。")
+        self.mega_last_burst_check.stateChanged.connect(self.toggle_mega_last_burst)
+        special_layout.addWidget(self.mega_last_burst_check)
+
         main_layout.addWidget(special_group)
         main_layout.addStretch()
 
@@ -121,6 +125,15 @@ class KeywordEditForm(BaseEditForm):
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_FRIEND_BURST, {})
 
+    def toggle_mega_last_burst(self, state):
+        from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_MEGA_LAST_BURST, STRUCT_CMD_REMOVE_MEGA_LAST_BURST
+        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        self.update_data() # Update the checkbox state in data first
+        if is_checked:
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_MEGA_LAST_BURST, {})
+        else:
+            self.structure_update_requested.emit(STRUCT_CMD_REMOVE_MEGA_LAST_BURST, {})
+
     def _load_ui_from_data(self, data, item):
         # The item data for KEYWORDS is the 'keywords' dictionary directly
         # data parameter is the keywords dictionary extracted from the KEYWORDS tree item
@@ -142,6 +155,10 @@ class KeywordEditForm(BaseEditForm):
         self.friend_burst_check.blockSignals(True)
         self.friend_burst_check.setChecked(data.get('friend_burst', False))
         self.friend_burst_check.blockSignals(False)
+
+        self.mega_last_burst_check.blockSignals(True)
+        self.mega_last_burst_check.setChecked(data.get('mega_last_burst', False))
+        self.mega_last_burst_check.blockSignals(False)
 
     def _save_ui_to_data(self, data):
         # 'data' is the keywords dictionary
@@ -174,6 +191,12 @@ class KeywordEditForm(BaseEditForm):
         elif 'friend_burst' in data:
             del data['friend_burst']
 
+        # Mega Last Burst
+        if self.mega_last_burst_check.isChecked():
+            data['mega_last_burst'] = True
+        elif 'mega_last_burst' in data:
+            del data['mega_last_burst']
+
     def _get_display_text(self, data):
         return tr("Keywords")
 
@@ -183,3 +206,4 @@ class KeywordEditForm(BaseEditForm):
         self.rev_change_check.blockSignals(block)
         self.mekraid_check.blockSignals(block)
         self.friend_burst_check.blockSignals(block)
+        self.mega_last_burst_check.blockSignals(block)
