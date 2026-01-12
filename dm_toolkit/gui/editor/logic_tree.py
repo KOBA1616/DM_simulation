@@ -22,12 +22,12 @@ class LogicTreeWidget(QTreeView):
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
+        # Initialize Data Manager
+        self.data_manager = CardDataManager(self.standard_model)
+
         # Initialize Context Menu Handler
         self.context_menu_handler = LogicTreeContextMenuHandler(self)
         self.customContextMenuRequested.connect(self.context_menu_handler.show_context_menu)
-
-        # Initialize Data Manager
-        self.data_manager = CardDataManager(self.standard_model)
 
         sel = self.selectionModel()
         if sel is not None:
