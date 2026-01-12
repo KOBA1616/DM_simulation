@@ -8,6 +8,7 @@ from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWi
 from dm_toolkit.consts import TRIGGER_TYPES, SPELL_TRIGGER_TYPES, LAYER_TYPES
 from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
 from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
+from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
 
 class EffectEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -48,7 +49,13 @@ class EffectEditForm(BaseEditForm):
         l_layout = QGridLayout(self.layer_group)
 
         self.layer_type_combo = QComboBox()
-        self.populate_combo(self.layer_type_combo, LAYER_TYPES, display_func=tr, data_func=lambda x: x)
+        # Dynamically load from config, falling back to consts if needed or just replacing
+        passive_types = EditorConfigLoader.get_passive_types()
+        # If config is empty (e.g. during minimal test setup), fallback to LAYER_TYPES might be safer,
+        # but the goal is to use the config.
+        if not passive_types:
+             passive_types = LAYER_TYPES
+        self.populate_combo(self.layer_type_combo, passive_types, display_func=tr, data_func=lambda x: x)
         self.register_widget(self.layer_type_combo, 'type')
 
         self.layer_val_spin = QSpinBox()

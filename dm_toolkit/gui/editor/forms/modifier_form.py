@@ -11,6 +11,7 @@ from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWi
 from dm_toolkit.gui.editor.forms.unified_widgets import make_player_scope_selector
 from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
 from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
+from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
 
 class ModifierEditForm(BaseEditForm):
     """
@@ -45,7 +46,8 @@ class ModifierEditForm(BaseEditForm):
         # Type
         self.type_combo = QComboBox()
         # Populate with data values: display text is tr(key), data is key itself
-        types = ["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
+        # Dynamically load passive types from config
+        types = ["NONE"] + EditorConfigLoader.get_passive_types()
         for t in types:
             self.type_combo.addItem(tr(t), t)
         self.type_combo.currentTextChanged.connect(self.update_data)
