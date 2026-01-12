@@ -246,6 +246,9 @@ class CardEditForm(BaseEditForm):
         if type_str is None:
             type_str = "CREATURE"  # Default fallback
 
+        # Ensure type is set in data
+        data['type'] = type_str
+
         # Force power to 0 if Spell, regardless of hidden spinner value
         if type_str == "SPELL":
             data['power'] = 0
