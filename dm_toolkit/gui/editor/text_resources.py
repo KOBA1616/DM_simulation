@@ -4,7 +4,7 @@ Centralized text resources for Static Abilities and Trigger Effects.
 Maps trigger types, conditions, scopes, and modifier types to Japanese text.
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from dm_toolkit.consts import TargetScope
 
 
@@ -172,6 +172,112 @@ class CardTextResources:
         "AURA": "オーラ",
         "FIELD": "フィールド",
         "D2_FIELD": "D2フィールド"
+    }
+
+    PHASE_MAP: Dict[int, str] = {
+        0: "ターン開始",
+        1: "ドロー",
+        2: "マナ",
+        3: "メイン",
+        4: "攻撃",
+        5: "ブロック",
+        6: "ターン終了"
+    }
+
+    ACTION_MAP: Dict[str, str] = {
+        "DRAW_CARD": "カードを{value1}枚引く。",
+        "ADD_MANA": "自分の山札の上から{value1}枚をマナゾーンに置く。",
+        "DESTROY": "{target}を{value1}{unit}破壊する。",
+        "TAP": "{target}を{value1}{unit}選び、タップする。",
+        "UNTAP": "{target}を{value1}{unit}選び、アンタップする。",
+        "RETURN_TO_HAND": "{target}を{value1}{unit}選び、手札に戻す。",
+        "SEND_TO_MANA": "{target}を{value1}{unit}選び、マナゾーンに置く。",
+        "MODIFY_POWER": "{target}のパワーを{value1}する。",
+        "BREAK_SHIELD": "相手のシールドを{value1}つブレイクする。",
+        "LOOK_AND_ADD": "自分の山札の上から{value1}枚を見る。その中から{value2}枚を手札に加え、残りを{zone}に置く。",
+        "SEARCH_DECK_BOTTOM": "自分の山札の下から{value1}枚を見る。",
+        "SEARCH_DECK": "自分の山札を見る。その中から{filter}を1枚選び、{zone}に置く。その後、山札をシャッフルする。",
+        "MEKRAID": "メクレイド{value1}",
+        "DISCARD": "手札を{value1}枚捨てる。",
+        "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下の{target}をプレイしてもよい。",
+        "COUNT_CARDS": "{filter}の数を数える。",
+        "GET_GAME_STAT": "（{str_val}を参照）",
+        "REVEAL_CARDS": "山札の上から{value1}枚を表向きにする。",
+        "SHUFFLE_DECK": "山札をシャッフルする。",
+        "ADD_SHIELD": "山札の上から{value1}枚をシールド化する。",
+        "SEND_SHIELD_TO_GRAVE": "相手のシールドを{value1}つ選び、墓地に置く。",
+        "SEND_TO_DECK_BOTTOM": "{target}を{value1}枚、山札の下に置く。",
+        "CAST_SPELL": "コストを支払わずに唱える。",
+        "PUT_CREATURE": "{target}をバトルゾーンに出す。",
+        "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
+        "MOVE_CARD": "{target}を{zone}に置く。",
+        "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
+        "COST_REFERENCE": "",
+        "SUMMON_TOKEN": "「{str_val}」を{value1}体出す。",
+        "RESET_INSTANCE": "{target}の状態をリセットする（アンタップ等）。",
+        "REGISTER_DELAYED_EFFECT": "「{str_val}」の効果を{value1}ターン登録する。",
+        "FRIEND_BURST": "{str_val}のフレンド・バースト",
+        "MOVE_TO_UNDER_CARD": "{target}を{value1}{unit}選び、カードの下に置く。",
+        "SELECT_NUMBER": "数字を1つ選ぶ。",
+        "DECLARE_NUMBER": "{value1}～{value2}の数字を1つ宣言する。",
+        "COST_REDUCTION": "{target}のコストを{value1}少なくする。ただし、コストは0以下にはならない。",
+        "LOOK_TO_BUFFER": "{source_zone}から{value1}枚を見る（バッファへ）。",
+        "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
+        "PLAY_FROM_BUFFER": "バッファからプレイする。",
+        "MOVE_BUFFER_TO_ZONE": "バッファから{zone}に置く。",
+        "SELECT_OPTION": "次の中から選ぶ。",
+        "LOCK_SPELL": "相手は呪文を唱えられない。",
+        "REPLACE_MOVE_CARD": "（置換移動）",
+        "APPLY_MODIFIER": "効果を付与する。",
+
+        # --- Generalized Commands (Mapped to natural text if encountered in Card Data) ---
+        "TRANSITION": "{target}を{from_zone}から{to_zone}へ移動する。", # Fallback
+        "MUTATE": "{target}の状態を変更する。", # Fallback
+        "FLOW": "進行制御: {str_param}",
+        "QUERY": "クエリ発行: {query_mode}",
+        "ATTACH": "{target}を{base_target}の下に重ねる。",
+        "GAME_RESULT": "ゲームを終了する（{result}）。",
+    }
+
+    STAT_KEY_MAP: Dict[str, Tuple[str, str]] = {
+        "MANA_COUNT": ("マナゾーンのカード", "枚"),
+        "CREATURE_COUNT": ("クリーチャー", "体"),
+        "SHIELD_COUNT": ("シールド", "つ"),
+        "HAND_COUNT": ("手札", "枚"),
+        "GRAVEYARD_COUNT": ("墓地のカード", "枚"),
+        "BATTLE_ZONE_COUNT": ("バトルゾーンのカード", "枚"),
+        "OPPONENT_MANA_COUNT": ("相手のマナゾーンのカード", "枚"),
+        "OPPONENT_CREATURE_COUNT": ("相手のクリーチャー", "体"),
+        "OPPONENT_SHIELD_COUNT": ("相手のシールド", "つ"),
+        "OPPONENT_HAND_COUNT": ("相手の手札", "枚"),
+        "OPPONENT_GRAVEYARD_COUNT": ("相手の墓地のカード", "枚"),
+        "OPPONENT_BATTLE_ZONE_COUNT": ("相手のバトルゾーンのカード", "枚"),
+        "CARDS_DRAWN_THIS_TURN": ("このターンに引いたカード", "枚"),
+        "MANA_CIVILIZATION_COUNT": ("マナゾーンの文明数", ""),
+    }
+
+    # Short aliases for natural language rendering of common zone transitions
+    TRANSITION_ALIASES: Dict[Tuple[str, str], str] = {
+        ("BATTLE_ZONE", "GRAVEYARD"): "破壊",
+        ("HAND", "GRAVEYARD"): "捨てる",
+        ("BATTLE_ZONE", "HAND"): "手札に戻す",
+        ("DECK", "MANA_ZONE"): "マナチャージ",
+        ("SHIELD_ZONE", "GRAVEYARD"): "シールド焼却",
+        ("BATTLE_ZONE", "DECK"): "山札に戻す"
+    }
+
+    # Hint labels for how a linked input value is consumed by a subsequent step
+    INPUT_USAGE_LABELS: Dict[str, str] = {
+        "COST": "コストとして使用",
+        "MAX_COST": "最大コストとして使用",
+        "MIN_COST": "最小コストとして使用",
+        "AMOUNT": "枚数として使用",
+        "COUNT": "枚数として使用",
+        "SELECTION": "選択数として使用",
+        "TARGET_COUNT": "対象数として使用",
+        "POWER": "パワーとして使用",
+        "MAX_POWER": "最大パワーとして使用",
+        "MIN_POWER": "最小パワーとして使用",
     }
     
     @classmethod

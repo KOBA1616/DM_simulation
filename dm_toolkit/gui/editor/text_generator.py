@@ -8,200 +8,6 @@ class CardTextGenerator:
     Generates Japanese rule text for Duel Masters cards based on JSON data.
     """
 
-    # Maps kept for reverse lookups or specific logic, but tr() should be preferred for output
-    CIVILIZATION_MAP = {
-        "LIGHT": "光",
-        "WATER": "水",
-        "DARKNESS": "闇",
-        "FIRE": "火",
-        "NATURE": "自然",
-        "ZERO": "ゼロ"
-    }
-
-    TYPE_MAP = {
-        "CREATURE": "クリーチャー",
-        "SPELL": "呪文",
-        "CROSS_GEAR": "クロスギア",
-        "CASTLE": "城",
-        "EVOLUTION_CREATURE": "進化クリーチャー",
-        "NEO_CREATURE": "NEOクリーチャー",
-        "PSYCHIC_CREATURE": "サイキック・クリーチャー",
-        "PSYCHIC_SUPER_CREATURE": "サイキック・スーパー・クリーチャー",
-        "DRAGHEART_CREATURE": "ドラグハート・クリーチャー",
-        "DRAGHEART_WEAPON": "ドラグハート・ウエポン",
-        "DRAGHEART_FORTRESS": "ドラグハート・フォートレス",
-        "AURA": "オーラ",
-        "FIELD": "フィールド",
-        "D2_FIELD": "D2フィールド",
-    }
-
-    # Backup map if tr() returns the key itself
-    KEYWORD_TRANSLATION = {
-        # Lowercase versions (original)
-        "speed_attacker": "スピードアタッカー",
-        "blocker": "ブロッカー",
-        "slayer": "スレイヤー",
-        "double_breaker": "W・ブレイカー",
-        "triple_breaker": "T・ブレイカー",
-        "world_breaker": "ワールド・ブレイカー",
-        "shield_trigger": "S・トリガー",
-        "evolution": "進化",
-        "just_diver": "ジャストダイバー",
-        "mach_fighter": "マッハファイター",
-        "g_strike": "G・ストライク",
-        "hyper_energy": "ハイパーエナジー",
-        "shield_burn": "シールド焼却",
-        "revolution_change": "革命チェンジ",
-        "mekraid": "メクレイド",
-        "friend_burst": "フレンド・バースト",
-        "untap_in": "タップして出る",
-        "meta_counter_play": "メタカウンター",
-        "power_attacker": "パワーアタッカー",
-        "g_zero": "G・ゼロ",
-        "ex_life": "EXライフ",
-        "mega_last_burst": "メガ・ラスト・バースト",
-        "unblockable": "ブロックされない",
-        "no_choice": "選ばれない",
-        # Uppercase versions (for compatibility)
-        "SPEED_ATTACKER": "スピードアタッカー",
-        "BLOCKER": "ブロッカー",
-        "SLAYER": "スレイヤー",
-        "DOUBLE_BREAKER": "W・ブレイカー",
-        "TRIPLE_BREAKER": "T・ブレイカー",
-        "WORLD_BREAKER": "ワールド・ブレイカー",
-        "SHIELD_TRIGGER": "S・トリガー",
-        "EVOLUTION": "進化",
-        "JUST_DIVER": "ジャストダイバー",
-        "MACH_FIGHTER": "マッハファイター",
-        "G_STRIKE": "G・ストライク",
-        "HYPER_ENERGY": "ハイパーエナジー",
-        "SHIELD_BURN": "シールド焼却",
-        "REVOLUTION_CHANGE": "革命チェンジ",
-        "MEKRAID": "メクレイド",
-        "FRIEND_BURST": "フレンド・バースト",
-        "UNTAP_IN": "タップして出る",
-        "META_COUNTER_PLAY": "メタカウンター",
-        "POWER_ATTACKER": "パワーアタッカー",
-        "G_ZERO": "G・ゼロ",
-        "EX_LIFE": "EXライフ",
-        "MEGA_LAST_BURST": "メガ・ラスト・バースト",
-        "UNBLOCKABLE": "ブロックされない",
-        "NO_CHOICE": "選ばれない",
-        "ATTACKER": "アタッカー",
-        # Additional keywords (uppercase)
-        "CANNOT_ATTACK": "攻撃できない",
-        "CANNOT_BLOCK": "ブロックできない",
-        "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない",
-        # Lowercase versions of additional keywords
-        "attacker": "アタッカー"
-    }
-
-    PHASE_MAP = {
-        0: "ターン開始",
-        1: "ドロー",
-        2: "マナ",
-        3: "メイン",
-        4: "攻撃",
-        5: "ブロック",
-        6: "ターン終了"
-    }
-
-    ACTION_MAP = {
-        "DRAW_CARD": "カードを{value1}枚引く。",
-        "ADD_MANA": "自分の山札の上から{value1}枚をマナゾーンに置く。",
-        "DESTROY": "{target}を{value1}{unit}破壊する。",
-        "TAP": "{target}を{value1}{unit}選び、タップする。",
-        "UNTAP": "{target}を{value1}{unit}選び、アンタップする。",
-        "RETURN_TO_HAND": "{target}を{value1}{unit}選び、手札に戻す。",
-        "SEND_TO_MANA": "{target}を{value1}{unit}選び、マナゾーンに置く。",
-        "MODIFY_POWER": "{target}のパワーを{value1}する。",
-        "BREAK_SHIELD": "相手のシールドを{value1}つブレイクする。",
-        "LOOK_AND_ADD": "自分の山札の上から{value1}枚を見る。その中から{value2}枚を手札に加え、残りを{zone}に置く。",
-        "SEARCH_DECK_BOTTOM": "自分の山札の下から{value1}枚を見る。",
-        "SEARCH_DECK": "自分の山札を見る。その中から{filter}を1枚選び、{zone}に置く。その後、山札をシャッフルする。",
-        "MEKRAID": "メクレイド{value1}",
-        "DISCARD": "手札を{value1}枚捨てる。",
-        "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下の{target}をプレイしてもよい。",
-        "COUNT_CARDS": "{filter}の数を数える。",
-        "GET_GAME_STAT": "（{str_val}を参照）",
-        "REVEAL_CARDS": "山札の上から{value1}枚を表向きにする。",
-        "SHUFFLE_DECK": "山札をシャッフルする。",
-        "ADD_SHIELD": "山札の上から{value1}枚をシールド化する。",
-        "SEND_SHIELD_TO_GRAVE": "相手のシールドを{value1}つ選び、墓地に置く。",
-        "SEND_TO_DECK_BOTTOM": "{target}を{value1}枚、山札の下に置く。",
-        "CAST_SPELL": "コストを支払わずに唱える。",
-        "PUT_CREATURE": "{target}をバトルゾーンに出す。",
-        "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
-        "MOVE_CARD": "{target}を{zone}に置く。",
-        "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
-        "COST_REFERENCE": "",
-        "SUMMON_TOKEN": "「{str_val}」を{value1}体出す。",
-        "RESET_INSTANCE": "{target}の状態をリセットする（アンタップ等）。",
-        "REGISTER_DELAYED_EFFECT": "「{str_val}」の効果を{value1}ターン登録する。",
-        "FRIEND_BURST": "{str_val}のフレンド・バースト",
-        "MOVE_TO_UNDER_CARD": "{target}を{value1}{unit}選び、カードの下に置く。",
-        "SELECT_NUMBER": "数字を1つ選ぶ。",
-        "DECLARE_NUMBER": "{value1}～{value2}の数字を1つ宣言する。",
-        "COST_REDUCTION": "{target}のコストを{value1}少なくする。ただし、コストは0以下にはならない。",
-        "LOOK_TO_BUFFER": "{source_zone}から{value1}枚を見る（バッファへ）。",
-        "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
-        "PLAY_FROM_BUFFER": "バッファからプレイする。",
-        "MOVE_BUFFER_TO_ZONE": "バッファから{zone}に置く。",
-        "SELECT_OPTION": "次の中から選ぶ。",
-        "LOCK_SPELL": "相手は呪文を唱えられない。",
-        "REPLACE_MOVE_CARD": "（置換移動）",
-        "APPLY_MODIFIER": "効果を付与する。",
-
-        # --- Generalized Commands (Mapped to natural text if encountered in Card Data) ---
-        "TRANSITION": "{target}を{from_zone}から{to_zone}へ移動する。", # Fallback
-        "MUTATE": "{target}の状態を変更する。", # Fallback
-        "FLOW": "進行制御: {str_param}",
-        "QUERY": "クエリ発行: {query_mode}",
-        "ATTACH": "{target}を{base_target}の下に重ねる。",
-        "GAME_RESULT": "ゲームを終了する（{result}）。",
-    }
-
-    STAT_KEY_MAP = {
-        "MANA_COUNT": ("マナゾーンのカード", "枚"),
-        "CREATURE_COUNT": ("クリーチャー", "体"),
-        "SHIELD_COUNT": ("シールド", "つ"),
-        "HAND_COUNT": ("手札", "枚"),
-        "GRAVEYARD_COUNT": ("墓地のカード", "枚"),
-        "BATTLE_ZONE_COUNT": ("バトルゾーンのカード", "枚"),
-        "OPPONENT_MANA_COUNT": ("相手のマナゾーンのカード", "枚"),
-        "OPPONENT_CREATURE_COUNT": ("相手のクリーチャー", "体"),
-        "OPPONENT_SHIELD_COUNT": ("相手のシールド", "つ"),
-        "OPPONENT_HAND_COUNT": ("相手の手札", "枚"),
-        "OPPONENT_GRAVEYARD_COUNT": ("相手の墓地のカード", "枚"),
-        "OPPONENT_BATTLE_ZONE_COUNT": ("相手のバトルゾーンのカード", "枚"),
-        "CARDS_DRAWN_THIS_TURN": ("このターンに引いたカード", "枚"),
-        "MANA_CIVILIZATION_COUNT": ("マナゾーンの文明数", ""),
-    }
-
-    # Short aliases for natural language rendering of common zone transitions
-    TRANSITION_ALIASES = {
-        ("BATTLE_ZONE", "GRAVEYARD"): "破壊",
-        ("HAND", "GRAVEYARD"): "捨てる",
-        ("BATTLE_ZONE", "HAND"): "手札に戻す",
-        ("DECK", "MANA_ZONE"): "マナチャージ",
-        ("SHIELD_ZONE", "GRAVEYARD"): "シールド焼却",
-        ("BATTLE_ZONE", "DECK"): "山札に戻す"
-    }
-
-    # Hint labels for how a linked input value is consumed by a subsequent step
-    INPUT_USAGE_LABELS = {
-        "COST": "コストとして使用",
-        "MAX_COST": "最大コストとして使用",
-        "MIN_COST": "最小コストとして使用",
-        "AMOUNT": "枚数として使用",
-        "COUNT": "枚数として使用",
-        "SELECTION": "選択数として使用",
-        "TARGET_COUNT": "対象数として使用",
-        "POWER": "パワーとして使用",
-        "MAX_POWER": "最大パワーとして使用",
-        "MIN_POWER": "最小パワーとして使用",
-    }
-
     @classmethod
     def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True) -> str:
         """
@@ -240,9 +46,9 @@ class CardTextGenerator:
                 civs_data = [civ_single]
         civs = cls._format_civs(civs_data)
 
-        # Use TYPE_MAP for translation
+        # Use CardTextResources for translation
         raw_type = data.get("type", "CREATURE")
-        type_str = cls.TYPE_MAP.get(raw_type, tr(raw_type))
+        type_str = CardTextResources.get_card_type_text(raw_type)
         races = " / ".join(data.get("races", []))
 
         header = f"【{name}】 {civs} コスト{cost}"
@@ -299,7 +105,7 @@ class CardTextGenerator:
                     continue
 
                 # Build string for this keyword
-                kw_str = cls.KEYWORD_TRANSLATION.get(k, tr(k))
+                kw_str = CardTextResources.get_keyword_text(k)
 
                 # Basic keywords: everything except the special set
                 if k not in ("revolution_change", "mekraid", "friend_burst"):
@@ -443,7 +249,7 @@ class CardTextGenerator:
     def _format_civs(cls, civs: List[str]) -> str:
         if not civs:
             return "無色"
-        return "/".join([tr(c) for c in civs])
+        return "/".join([CardTextResources.get_civilization_text(c) for c in civs])
 
     @classmethod
     def _compute_stat_from_sample(cls, key: str, sample: List[Any]) -> Any:
@@ -487,7 +293,7 @@ class CardTextGenerator:
 
         adjectives = []
         if civs:
-            adjectives.append("/".join([tr(c) for c in civs]))
+            adjectives.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
 
         # Handle min_cost that might be int or dict with input_link
         if isinstance(min_cost, dict):
@@ -710,7 +516,7 @@ class CardTextGenerator:
         
         # Civilization adjective
         if civs:
-            parts.append("/".join([tr(c) for c in civs]) + "の")
+            parts.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]) + "の")
         
         # Race adjective
         if races:
@@ -1067,7 +873,7 @@ class CardTextGenerator:
              key = condition.get("stat_key", "")
              op = condition.get("op", "=")
              val = condition.get("value", 0)
-             stat_name, unit = cls.STAT_KEY_MAP.get(key, (key, ""))
+             stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (key, ""))
 
              op_text = ""
              if op == ">=":
@@ -1113,7 +919,7 @@ class CardTextGenerator:
             return ""
 
         atype = action.get("type", "NONE")
-        template = cls.ACTION_MAP.get(atype, "")
+        template = CardTextResources.ACTION_MAP.get(atype, "")
 
         # Up-to drawing: adjust template for explicit DRAW_CARD
         if atype == 'DRAW_CARD':
@@ -1128,7 +934,7 @@ class CardTextGenerator:
             up_to = bool(action.get('up_to', False))
 
             # Use short alias if available (e.g., "破壊" for BATTLE->GRAVEYARD)
-            alias = cls.TRANSITION_ALIASES.get((from_zone, to_zone))
+            alias = CardTextResources.TRANSITION_ALIASES.get((from_zone, to_zone))
             if alias:
                  # Reconstruct natural sentences based on known aliases
                  if alias == "破壊":
@@ -1333,7 +1139,7 @@ class CardTextGenerator:
                  sign = "少なくする" if val1 > 0 else "増やす"
                  return f"{target_str}のコストを{abs(val1)}{sign}。"
              else:
-                 jp_val = cls.KEYWORD_TRANSLATION.get(str_val.lower(), str_val)
+                 jp_val = CardTextResources.get_keyword_text(str_val)
                  if jp_val != str_val:
                      return f"{target_str}に「{jp_val}」を与える。"
                  return f"{target_str}に効果（{str_val}）を与える。"
@@ -1405,15 +1211,15 @@ class CardTextGenerator:
                  sign = "+" if val1 >= 0 else ""
                  return f"{target_str}のパワーを{sign}{val1}する。"
              elif mkind == "ADD_KEYWORD":
-                 keyword = cls.KEYWORD_TRANSLATION.get(str_param.lower(), str_param)
+                 keyword = CardTextResources.get_keyword_text(str_param)
                  return f"{target_str}に「{keyword}」を与える。"
              elif mkind == "REMOVE_KEYWORD":
-                 keyword = cls.KEYWORD_TRANSLATION.get(str_param.lower(), str_param)
+                 keyword = CardTextResources.get_keyword_text(str_param)
                  return f"{target_str}の「{keyword}」を無視する。"
              elif mkind == "ADD_PASSIVE_EFFECT" or mkind == "ADD_MODIFIER":
                  # Use str_param if available to describe what is added
                  if str_param:
-                     kw = cls.KEYWORD_TRANSLATION.get(str_param.lower(), str_param)
+                     kw = CardTextResources.get_keyword_text(str_param)
                      # Check if it looks like a keyword (standard mapping) or generic
                      return f"{target_str}に「{kw}」を与える。"
                  else:
@@ -1432,7 +1238,7 @@ class CardTextGenerator:
              mode = action.get("query_mode") or action.get("str_param") or action.get("str_val") or ""
              
              # Check if this is a stat query (predefined stat keys)
-             stat_name, unit = cls.STAT_KEY_MAP.get(str(mode), (None, None))
+             stat_name, unit = CardTextResources.STAT_KEY_MAP.get(str(mode), (None, None))
              if stat_name:
                  # Return concise stat reference
                  base = f"{stat_name}{unit}を数える。"
@@ -1480,7 +1286,7 @@ class CardTextGenerator:
              val1 = action.get("value1", 0) # Often raw int
 
              if ftype == "PHASE_CHANGE":
-                 phase_name = cls.PHASE_MAP.get(val1, str(val1))
+                 phase_name = CardTextResources.PHASE_MAP.get(val1, str(val1))
                  return f"{phase_name}フェーズへ移行する。"
              elif ftype == "TURN_CHANGE":
                  return f"ターンを終了する。"
@@ -1523,7 +1329,7 @@ class CardTextGenerator:
             key = action.get('stat') or action.get('str_param') or action.get('str_val')
             amount = action.get('amount', action.get('value1', 0))
             if key:
-                stat_name, unit = cls.STAT_KEY_MAP.get(str(key), (None, None))
+                stat_name, unit = CardTextResources.STAT_KEY_MAP.get(str(key), (None, None))
                 if stat_name:
                     return f"統計更新: {stat_name} += {amount}"
             return f"統計更新: {tr(str(key))} += {amount}"
@@ -1533,13 +1339,13 @@ class CardTextGenerator:
 
         if atype == "GRANT_KEYWORD" or atype == "ADD_KEYWORD":
             # キーワードの翻訳を適用
-            keyword = cls.KEYWORD_TRANSLATION.get(str_val.lower(), str_val)
+            keyword = CardTextResources.get_keyword_text(str_val)
             str_val = keyword
 
         elif atype == "GET_GAME_STAT":
             # str_val holds the stat key, e.g. MANA_CIVILIZATION_COUNT
             key = action.get('str_val') or action.get('result') or ''
-            stat_name, unit = cls.STAT_KEY_MAP.get(key, (None, None))
+            stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (None, None))
             if stat_name:
                 # If a sample is provided, attempt to compute an example value
                 if sample is not None:
@@ -1780,8 +1586,8 @@ class CardTextGenerator:
         # Suppress label for MAX_COST to avoid redundant parenthetical hints
         if norm == "MAX_COST":
             return ""
-        if norm in cls.INPUT_USAGE_LABELS:
-            return cls.INPUT_USAGE_LABELS[norm]
+        if norm in CardTextResources.INPUT_USAGE_LABELS:
+            return CardTextResources.INPUT_USAGE_LABELS[norm]
         # Fallback to raw string for custom labels
         return tr(str(usage)) if str(usage) else ""
 
@@ -1808,10 +1614,11 @@ class CardTextGenerator:
              target = "この呪文" if is_spell else "このクリーチャー"
              return (target, "枚")
 
-        if scope == "PLAYER_OPPONENT": prefix = "相手の"
-        elif scope == "PLAYER_SELF" or scope == "SELF": prefix = "自分の"
-        elif scope == "ALL_PLAYERS": prefix = "すべてのプレイヤーの"
-        elif scope == "RANDOM": prefix = "ランダムな"
+        # Resolve prefix using CardTextResources
+        prefix = CardTextResources.get_scope_text(scope)
+        if not prefix:
+            if scope == "ALL_PLAYERS": prefix = "すべてのプレイヤーの"
+            elif scope == "RANDOM": prefix = "ランダムな"
 
         if filter_def:
             zones = filter_def.get("zones", [])
@@ -1821,11 +1628,13 @@ class CardTextGenerator:
             owner = filter_def.get("owner", "NONE")
 
             # Handle explicit owner filter if scope is generic
-            if owner == "PLAYER_OPPONENT" and not prefix: prefix = "相手の"
-            elif owner == "PLAYER_SELF" and not prefix: prefix = "自分の"
+            if not prefix and owner != "NONE":
+                 owner_text = CardTextResources.get_scope_text(owner)
+                 if owner_text:
+                     prefix = owner_text
 
             temp_adjs = []
-            if civs: temp_adjs.append("/".join([tr(c) for c in civs]))
+            if civs: temp_adjs.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
             if races: temp_adjs.append("/".join(races))
 
             if temp_adjs: adjectives += "/".join(temp_adjs) + "の"
@@ -1913,6 +1722,8 @@ class CardTextGenerator:
                     adjectives += "パワーその数以下の"
             elif max_power < 999999:
                 adjectives += f"パワー{max_power}以下の"
+            elif has_input_key and input_usage == "MAX_POWER":
+                adjectives += "パワーその数以下の"
 
             if filter_def.get("is_tapped", None) is True: adjectives = "タップされている" + adjectives
             elif filter_def.get("is_tapped", None) is False: adjectives = "アンタップされている" + adjectives
@@ -1964,7 +1775,7 @@ class CardTextGenerator:
                     type_noun = "呪文"
                 elif len(types) > 1:
                      # Join multiple types (e.g., Creature/Spell)
-                     type_noun = "または".join([tr(t) for t in types])
+                     type_noun = "または".join([CardTextResources.get_card_type_text(t) for t in types])
 
             # Special case for SEARCH_DECK
             if atype == "SEARCH_DECK":
