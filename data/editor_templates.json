@@ -1,104 +1,54 @@
 {
-    "revolution_change": {
-        "name": "Revolution Change",
+    "REVOLUTION_CHANGE": {
         "root_type": "EFFECT",
         "data": {
-            "trigger": "NONE",
+            "trigger": "ON_ATTACK_FROM_HAND",
             "commands": [
                 {
-                    "type": "MUTATE",
-                    "mutation_kind": "REVOLUTION_CHANGE",
-                    "target_filter": {
-                        "owner": "SELF",
-                        "zones": ["BATTLE_ZONE"],
-                        "types": ["CREATURE"],
-                        "civilizations": ["__CARD_CIVILIZATIONS__"],
-                        "races": ["__CARD_RACES__"],
-                        "min_cost": 5,
-                        "is_tapped": false,
-                        "is_blocker": null,
-                        "is_evolution": null
-                    }
+                    "type": "REVOLUTION_CHANGE",
+                    "mutation_kind": "REVOLUTION_CHANGE"
                 }
             ]
         },
         "keywords": {
             "revolution_change": true
-        },
-        "condition_mapping": {
-            "revolution_change_condition": "commands[0].target_filter"
         }
     },
-    "mekraid": {
-        "name": "Mekraid",
+    "MEKRAID": {
         "root_type": "EFFECT",
         "data": {
             "trigger": "ON_PLAY",
             "commands": [
                 {
                     "type": "MEKRAID",
-                    "amount": 5,
-                    "target_filter": {
-                        "races": ["Magic"]
-                    }
+                    "amount": 3,
+                    "str_param": "__CARD_RACES__"
                 }
             ]
-        },
-        "keywords": {
-            "mekraid": true
         }
     },
-    "friend_burst": {
-        "name": "Friend Burst",
+    "FRIEND_BURST": {
         "root_type": "EFFECT",
         "data": {
-            "trigger": "NONE",
+            "trigger": "ON_ATTACK",
             "commands": [
                 {
-                    "type": "FRIEND_BURST",
-                    "target_filter": {
-                        "races": ["__CARD_RACES__"],
-                        "is_tapped": false
-                    }
+                    "type": "FRIEND_BURST"
                 }
             ]
-        },
-        "keywords": {
-            "friend_burst": true
-        },
-        "condition_mapping": {
-            "friend_burst_condition": "commands[0].target_filter"
         }
     },
-    "commands": [
-        {
-            "name": "Draw Card",
-            "data": {
-                "type": "DRAW_CARD",
-                "amount": 1,
-                "target_group": "PLAYER_SELF"
-            }
-        },
-        {
-            "name": "Mana Charge",
-            "data": {
-                "type": "BOOST_MANA",
-                "amount": 1,
-                "target_group": "PLAYER_SELF"
-            }
-        },
-        {
-            "name": "Destroy Creature",
-            "data": {
-                "type": "DESTROY",
-                "target_group": "TARGET_SELECT",
-                "amount": 1,
-                "target_filter": {
-                    "owner": "PLAYER_OPPONENT",
-                    "zones": ["BATTLE_ZONE"],
-                    "types": ["CREATURE"]
+    "MEGA_LAST_BURST": {
+        "root_type": "EFFECT",
+        "data": {
+            "trigger": "ON_DESTROY",
+            "commands": [
+                {
+                    "type": "CAST_SPELL",
+                    "target_group": "SELF",
+                    "str_param": "SPELL_SIDE"
                 }
-            }
+            ]
         }
-    ]
+    }
 }

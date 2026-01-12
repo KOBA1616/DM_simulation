@@ -304,7 +304,7 @@ namespace dm::core {
     struct EffectDef {
         TriggerType trigger = TriggerType::NONE;
         TargetScope trigger_scope = TargetScope::NONE;
-        std::optional<FilterDef> trigger_filter;
+        FilterDef trigger_filter;
         ConditionDef condition;
         std::vector<ActionDef> actions;
         std::vector<CommandDef> commands;
