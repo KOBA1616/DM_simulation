@@ -80,6 +80,14 @@ class CardEditForm(BaseEditForm):
         self.cost_spin.setToolTip(tr("Mana cost of the card"))
         self.add_field(tr("Cost"), self.cost_spin, 'cost')
 
+        # Hyper Energy Checkbox
+        self.hyper_energy_check = QCheckBox(tr("Hyper Energy"))
+        self.hyper_energy_check.setToolTip(tr("Enables Hyper Energy cost reduction logic."))
+        self.hyper_energy_check.stateChanged.connect(self.update_data)
+        # We handle this manually in _load/_save as it lives in 'keywords'
+        self.register_widget(self.hyper_energy_check)
+        self.add_field(tr("Hyper Energy"), self.hyper_energy_check)
+
         # Power
         self.power_spin = QSpinBox()
         self.power_spin.setRange(0, 99999)
@@ -196,6 +204,12 @@ class CardEditForm(BaseEditForm):
         self.twinpact_check.setChecked(has_spell_side)
         self.twinpact_check.blockSignals(False)
 
+        # Hyper Energy from Keywords
+        keywords = data.get('keywords', {})
+        self.hyper_energy_check.blockSignals(True)
+        self.hyper_energy_check.setChecked(keywords.get('hyper_energy', False))
+        self.hyper_energy_check.blockSignals(False)
+
     def _update_ui_state(self, data):
         """
         Hook to update visibility based on data.
@@ -244,6 +258,8 @@ class CardEditForm(BaseEditForm):
                  del data['evolution_condition']
 
         current_keywords = data.get('keywords', {})
+        if not current_keywords:
+            current_keywords = {}
 
         # Clear specific flags first
         if 'evolution' in current_keywords: del current_keywords['evolution']
@@ -259,6 +275,12 @@ class CardEditForm(BaseEditForm):
             current_keywords['evolution'] = True
             current_keywords['neo'] = True
             current_keywords['g_neo'] = True
+
+        # Hyper Energy
+        if self.hyper_energy_check.isChecked():
+            current_keywords['hyper_energy'] = True
+        elif 'hyper_energy' in current_keywords:
+            del current_keywords['hyper_energy']
 
         data['keywords'] = current_keywords
 
