@@ -46,11 +46,15 @@ def _setup_minimal_gui_stubs():
     # Create dummy classes with signal support
     class DummyQWidget(object):
         def __init__(self, *args, **kwargs):
-            # Add common signals as functional MockSignals
-            self.clicked = MockSignal()
-            self.textChanged = MockSignal()
-            self.stateChanged = MockSignal()
-            self.currentIndexChanged = MockSignal()
+            # Add common signals as MagicMocks
+            self.clicked = unittest.mock.MagicMock()
+            self.textChanged = unittest.mock.MagicMock()
+            self.stateChanged = unittest.mock.MagicMock()
+            self.currentIndexChanged = unittest.mock.MagicMock()
+            self.valueChanged = unittest.mock.MagicMock()
+            self.customContextMenuRequested = unittest.mock.MagicMock()
+            self.triggered = unittest.mock.MagicMock()
+            self.activated = unittest.mock.MagicMock()
             self._items = []
             
         def setWindowTitle(self, title): pass
@@ -65,8 +69,13 @@ def _setup_minimal_gui_stubs():
         def setCheckState(self, state): pass
         def addItem(self, *args): self._items.append(args)
         def setCurrentIndex(self, index): pass
-        def currentIndex(self): return 0
-        def blockSignals(self, block): return False
+        def setCheckState(self, state): pass
+        def addWidget(self, *args, **kwargs): pass
+        def addLayout(self, *args, **kwargs): pass
+        def addRow(self, *args, **kwargs): pass
+        def addStretch(self, *args): pass
+        def blockSignals(self, b): return False
+        def clear(self): self._items = []
         def count(self): return len(self._items)
         def setItemData(self, index, data, role=None): pass
         def itemData(self, index, role=None): return None
@@ -223,12 +232,91 @@ def _setup_minimal_gui_stubs():
 
         class CursorShape:
             PointingHandCursor = 13
-
-        SolidPattern = 1
+        class ContextMenuPolicy:
+            CustomContextMenu = 2
         Horizontal = 1
         Vertical = 2
         Checked = 2
         Unchecked = 0
+        MatchContains = 1
+        LeftToRight = 0
+
+    class DummyAbstractItemView(DummyQWidget):
+        class EditTrigger:
+            NoEditTriggers = 0
+            DoubleClicked = 1
+        class SelectionBehavior:
+            SelectRows = 1
+            SelectItems = 0
+        class SelectionMode:
+            SingleSelection = 1
+            MultiSelection = 2
+            ExtendedSelection = 3
+        class DragDropMode:
+            NoDragDrop = 0
+            DragOnly = 1
+            DropOnly = 2
+            DragDrop = 3
+            InternalMove = 4
+
+        def setSelectionMode(self, mode): pass
+        def setEditTriggers(self, triggers): pass
+        def setDragEnabled(self, enabled): pass
+        def setAcceptDrops(self, accept): pass
+        def setDropIndicatorShown(self, show): pass
+        def setDragDropMode(self, mode): pass
+        def setModel(self, model): pass
+        def setHeaderHidden(self, hidden): pass
+        def selectionModel(self):
+            mock = unittest.mock.MagicMock()
+            mock.selectionChanged = unittest.mock.MagicMock()
+            mock.indexes = lambda: []
+            return mock
+        def indexAt(self, pos): return unittest.mock.MagicMock()
+        def viewport(self): return DummyQWidget()
+        def setContextMenuPolicy(self, policy): pass
+        def expand(self, index): pass
+        def setExpanded(self, index, expanded): pass
+        def isExpanded(self, index): return False
+        def collapse(self, index): pass
+        def scrollTo(self, index): pass
+        def clearSelection(self): pass
+
+    class DummyTreeView(DummyAbstractItemView):
+        def header(self): return DummyQWidget()
+        def setColumnWidth(self, column, width): pass
+
+    class DummyMessageBox(DummyQWidget):
+        StandardButton = unittest.mock.MagicMock()
+        Yes = 16384
+        No = 65536
+        Ok = 1024
+        Cancel = 4194304
+
+        @staticmethod
+        def information(parent, title, text, buttons=0, defaultButton=0): return 1024
+        @staticmethod
+        def warning(parent, title, text, buttons=0, defaultButton=0): return 1024
+        @staticmethod
+        def critical(parent, title, text, buttons=0, defaultButton=0): return 1024
+        @staticmethod
+        def question(parent, title, text, buttons=0, defaultButton=0): return 16384
+
+    class DummyInputDialog(DummyQWidget):
+        @staticmethod
+        def getText(parent, title, label, echo=0, text="", flags=0): return "", False
+        @staticmethod
+        def getItem(parent, title, label, items, current=0, editable=True): return "", False
+        @staticmethod
+        def getInt(parent, title, label, value=0, min=0, max=100, step=1): return 0, False
+
+    class DummyFileDialog(DummyQWidget):
+        @staticmethod
+        def getOpenFileName(*args, **kwargs): return "", ""
+        @staticmethod
+        def getSaveFileName(*args, **kwargs): return "", ""
+        @staticmethod
+        def getExistingDirectory(*args, **kwargs): return ""
 
     # Create module structure
     if 'PyQt6' not in sys.modules:
@@ -259,21 +347,21 @@ def _setup_minimal_gui_stubs():
     # Populate with stub classes
     qt_widgets.QMainWindow = DummyQMainWindow
     qt_widgets.QWidget = DummyQWidget
-    qt_widgets.QDialog = DummyQDialog
-    qt_widgets.QApplication = DummyQApplication
-    qt_widgets.QSpinBox = EnhancedSpinBox
-    qt_widgets.QFormLayout = EnhancedFormLayout
-    qt_widgets.QButtonGroup = EnhancedButtonGroup
-    qt_widgets.QPushButton = EnhancedButton
-    qt_widgets.QComboBox = EnhancedComboBox
-    qt_widgets.QLineEdit = EnhancedLineEdit
-    qt_widgets.QCheckBox = EnhancedCheckBox
+    qt_widgets.QApplication = type('QApplication', (), {'__init__': lambda s, a: None, 'exec': lambda s: 0})
 
-    for name in ['QLabel', 'QVBoxLayout', 'QHBoxLayout', 'QTreeWidget',
-                 'QTreeWidgetItem', 'QTextEdit', 'QScrollArea', 'QTabWidget',
-                 'QDockWidget', 'QGraphicsView', 'QGraphicsScene', 'QGraphicsEllipseItem',
-                 'QGraphicsLineItem', 'QGraphicsTextItem', 'QProgressBar', 'QHeaderView',
-                 'QSplitter', 'QGroupBox', 'QMenuBar', 'QMenu', 'QStatusBar', 'QGridLayout']:
+    qt_widgets.QAbstractItemView = DummyAbstractItemView
+    qt_widgets.QTreeView = DummyTreeView
+    qt_widgets.QMessageBox = DummyMessageBox
+    qt_widgets.QInputDialog = DummyInputDialog
+    qt_widgets.QFileDialog = DummyFileDialog
+
+    for name in ['QLabel', 'QPushButton', 'QVBoxLayout', 'QHBoxLayout', 'QTreeWidget', 
+                 'QTreeWidgetItem', 'QDialog', 'QLineEdit', 'QTextEdit', 'QCheckBox',
+                 'QComboBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QGraphicsView',
+                 'QGraphicsScene', 'QGraphicsEllipseItem', 'QGraphicsLineItem', 'QGraphicsTextItem',
+                 'QProgressBar', 'QHeaderView', 'QSplitter', 'QGroupBox', 'QMenuBar', 'QMenu',
+                 'QStatusBar', 'QGridLayout', 'QSpinBox', 'QButtonGroup', 'QListWidget',
+                 'QListWidgetItem', 'QToolBar', 'QSizePolicy', 'QFormLayout', 'QStackedWidget', 'QFrame']:
         setattr(qt_widgets, name, type(name, (DummyQWidget,), {}))
 
     qt_core.Qt = DummyQt
