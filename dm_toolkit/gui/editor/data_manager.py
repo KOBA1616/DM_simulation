@@ -497,3 +497,128 @@ class CardDataManager:
     def batch_convert_actions_recursive(self, item):
          # Stub
          return 0, 0
+
+    # --- Missing Methods Implementation ---
+
+    def add_revolution_change_logic(self, card_item):
+        """Adds Revolution Change logic placeholder."""
+        # Create Effect for Revolution Change (Trigger: NONE as it's a game rule usually, or special activation)
+        # Usually implemented as a special ability or keyword logic.
+        # Here we add a placeholder effect or logic structure.
+        # Since it's a keyword action from hand, maybe trigger is ON_ATTACK_FROM_HAND?
+        eff_model = EffectModel(
+            trigger="ON_ATTACK_FROM_HAND",
+            commands=[
+                CommandModel(
+                    type="REVOLUTION_CHANGE",
+                    mutation_kind="REVOLUTION_CHANGE"
+                )
+            ]
+        )
+        label = f"{tr('Effect')}: Revolution Change"
+        eff_item = self._create_effect_item(eff_model)
+        eff_item.setText(label)
+        self._load_effect_children(eff_item, eff_model)
+        card_item.appendRow(eff_item)
+        return eff_item
+
+    def remove_revolution_change_logic(self, card_item):
+        """Removes Revolution Change logic."""
+        for i in reversed(range(card_item.rowCount())):
+             child = card_item.child(i)
+             if "Revolution Change" in child.text():
+                 card_item.removeRow(i)
+                 return
+
+    def add_mekraid_logic(self, card_item):
+        """Adds Mekraid logic placeholder."""
+        eff_model = EffectModel(
+            trigger="ON_PLAY",
+            commands=[
+                CommandModel(
+                    type="MEKRAID",
+                    amount=3, # Default
+                    str_param="Magic" # Default race/category
+                )
+            ]
+        )
+        label = f"{tr('Effect')}: Mekraid"
+        eff_item = self._create_effect_item(eff_model)
+        eff_item.setText(label)
+        self._load_effect_children(eff_item, eff_model)
+        card_item.appendRow(eff_item)
+        return eff_item
+
+    def remove_mekraid_logic(self, card_item):
+        """Removes Mekraid logic."""
+        for i in reversed(range(card_item.rowCount())):
+             child = card_item.child(i)
+             if "Mekraid" in child.text():
+                 card_item.removeRow(i)
+                 return
+
+    def add_friend_burst_logic(self, card_item):
+        """Adds Friend Burst logic placeholder."""
+        eff_model = EffectModel(
+            trigger="ON_ATTACK",
+            commands=[
+                CommandModel(
+                    type="FRIEND_BURST"
+                )
+            ]
+        )
+        label = f"{tr('Effect')}: Friend Burst"
+        eff_item = self._create_effect_item(eff_model)
+        eff_item.setText(label)
+        self._load_effect_children(eff_item, eff_model)
+        card_item.appendRow(eff_item)
+        return eff_item
+
+    def remove_friend_burst_logic(self, card_item):
+        """Removes Friend Burst logic."""
+        for i in reversed(range(card_item.rowCount())):
+             child = card_item.child(i)
+             if "Friend Burst" in child.text():
+                 card_item.removeRow(i)
+                 return
+
+    def add_mega_last_burst_logic(self, card_item):
+        """Adds Mega Last Burst logic: ON_DESTROY -> Cast Spell Side."""
+        # Check if spell side exists (Mega Last Burst requires Twinpact)
+        has_spell_side = False
+        for i in range(card_item.rowCount()):
+             child = card_item.child(i)
+             if child and child.data(ROLE_TYPE) == "SPELL_SIDE":
+                 has_spell_side = True
+                 break
+
+        if not has_spell_side:
+            # Auto-add spell side if missing, as it's required
+            self.add_spell_side_item(card_item)
+
+        # Create Effect
+        eff_model = EffectModel(
+            trigger="ON_DESTROY",
+            commands=[
+                CommandModel(
+                    type="CAST_SPELL",
+                    target_group="SELF",
+                    str_param="SPELL_SIDE" # Indicator for engine/converter
+                )
+            ]
+        )
+
+        label = f"{tr('Effect')}: Mega Last Burst"
+        eff_item = self._create_effect_item(eff_model)
+        eff_item.setText(label) # Override label
+        self._load_effect_children(eff_item, eff_model)
+        card_item.appendRow(eff_item)
+        return eff_item
+
+    def remove_mega_last_burst_logic(self, card_item):
+        """Removes Mega Last Burst logic."""
+        for i in reversed(range(card_item.rowCount())):
+             child = card_item.child(i)
+             if "Mega Last Burst" in child.text():
+                 card_item.removeRow(i)
+                 return
