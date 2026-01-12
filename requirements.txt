@@ -3,4 +3,4 @@ torch
 PyQt6
 onnx
 onnxruntime
-pydantic
+pydantic>=2.0
