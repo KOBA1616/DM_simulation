@@ -117,6 +117,9 @@ def setup_gui_stubs():
         def isVisible(self): return True
         def setExclusive(self, exclusive): pass
         def insertItem(self, index, text): pass
+        def setFlat(self, flat): pass
+        def setSpacing(self, spacing): pass
+        def setContentsMargins(self, *args): pass
 
     class DummyQMainWindow(DummyQWidget):
         def setCentralWidget(self, widget): pass
@@ -236,12 +239,16 @@ def setup_gui_stubs():
         def setChecked(self, checked): pass
         def setFlat(self, flat): pass
         def setStyleSheet(self, style): pass
+        def setMinimumWidth(self, width): pass
+        def setCursor(self, cursor): pass
     
     class EnhancedComboBox(DummyQWidget):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.currentIndexChanged = MockSignal()
             self._current_index = 0
+
+        def blockSignals(self, block): return False
             
         def addItem(self, *args): self._items.append(args)
         def setCurrentIndex(self, index): self._current_index = index
@@ -257,6 +264,7 @@ def setup_gui_stubs():
             return None
 
         def setEditable(self, editable): pass
+        def setEnabled(self, enabled): pass
 
         def findData(self, data):
              for i, item in enumerate(self._items):
@@ -303,6 +311,7 @@ def setup_gui_stubs():
         def value(self): return self._value
         def setSpecialValueText(self, text): pass
         def setSingleStep(self, step): pass
+        def setVisible(self, visible): pass
 
     qt_widgets.QSpinBox = EnhancedSpinBox
 
@@ -310,6 +319,12 @@ def setup_gui_stubs():
         def addRow(self, *args): pass
 
     qt_widgets.QFormLayout = EnhancedFormLayout
+
+    class EnhancedButtonGroup(DummyQWidget):
+        def setExclusive(self, exclusive): pass
+        def addButton(self, button, id=-1): pass
+
+    qt_widgets.QButtonGroup = EnhancedButtonGroup
 
     # Map widgets with enhanced signal support
     qt_widgets.QPushButton = EnhancedButton
@@ -321,12 +336,13 @@ def setup_gui_stubs():
     for w in ['QLabel', 'QVBoxLayout', 'QHBoxLayout', 'QSplitter',
               'QTreeWidget', 'QTreeWidgetItem', 'QTextEdit',
               'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu', 'QAction',
-              'QGridLayout', 'QButtonGroup']:
+              'QGridLayout']:
          setattr(qt_widgets, w, type(w, (DummyQWidget,), {}))
 
     # 4. Inject into QtCore
     qt_core.Qt = DummyQt
     qt_core.QObject = type('QObject', (object,), {'__init__': lambda s, *a: None, 'blockSignals': lambda s, b: False})
+    qt_core.QModelIndex = type('QModelIndex', (object,), {})
     qt_core.QThread = type('QThread', (object,), {'start': lambda s: None, 'wait': lambda s: None, 'quit': lambda s: None, 'isRunning': lambda s: False})
     qt_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
     qt_core.QTimer = type('QTimer', (object,), {'singleShot': lambda *a: None, 'start': lambda s, t: None, 'stop': lambda s: None})
