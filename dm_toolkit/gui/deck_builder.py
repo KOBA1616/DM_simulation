@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 import dm_ai_module
 from dm_toolkit.gui.localization import tr, get_card_civilizations
-from dm_toolkit.gui.card_editor import CardEditor
+from dm_toolkit.gui.editor.window import CardEditor
 from dm_toolkit.gui.widgets.card_widget import CardWidget
 from dm_toolkit.gui.widgets.card_detail_panel import CardDetailPanel
 
