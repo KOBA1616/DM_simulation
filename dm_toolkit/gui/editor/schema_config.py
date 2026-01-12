@@ -2,6 +2,21 @@
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, register_schema
 from dm_toolkit.gui.localization import tr
 
+# Define constants for selection lists
+MUTATION_TYPES = [
+    "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
+    "POWER_ATTACKER", "SHIELD_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
+    "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER"
+]
+
+MUTATION_KINDS_FOR_MUTATE = [
+    "GIVE_POWER", "GIVE_ABILITY"
+]
+
+TARGET_SCOPES = [
+    "PLAYER_SELF", "PLAYER_OPPONENT", "ALL"
+]
+
 def register_all_schemas():
     """
     Registers all Command UI schemas.
@@ -112,7 +127,7 @@ def register_all_schemas():
     register_schema(CommandSchema("MUTATE", [
         f_target,
         f_filter,
-        FieldSchema("mutation_kind", tr("Mutation Type"), FieldType.STRING), # Or special widget
+        FieldSchema("mutation_kind", tr("Mutation Type"), FieldType.SELECT, options=MUTATION_KINDS_FOR_MUTATE),
         FieldSchema("amount", tr("Duration/Value"), FieldType.INT, default=0),
         FieldSchema("str_param", tr("Extra Param"), FieldType.STRING)
     ]))
@@ -120,9 +135,9 @@ def register_all_schemas():
     # ADD_KEYWORD
     register_schema(CommandSchema("ADD_KEYWORD", [
         FieldSchema("target_group", tr("Target Scope"), FieldType.SELECT, default="PLAYER_SELF",
-                   options=["PLAYER_SELF", "PLAYER_OPPONENT", "ALL"]), # Simplified options
+                   options=TARGET_SCOPES),
         f_filter,
-        FieldSchema("mutation_kind", tr("Keyword"), FieldType.STRING),
+        FieldSchema("mutation_kind", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES),
         FieldSchema("amount", tr("Duration (Turns)"), FieldType.INT, default=1)
     ]))
 
