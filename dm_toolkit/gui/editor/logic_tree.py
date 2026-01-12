@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu, QInputDialog, QMessageBox
-from PyQt6.QtGui import QStandardItemModel, QStandardItem, QAction
+from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QInputDialog, QMessageBox
+from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt, QModelIndex
 from dm_toolkit.gui.localization import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
