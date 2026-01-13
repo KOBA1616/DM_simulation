@@ -299,26 +299,7 @@ class CardPreviewWidget(QWidget):
                             f = len(branches.get('if_false', []))
                             branch_info = f" branches=({t}/{f})"
                         cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Command')}[{ci}]: {kind}/{ctype}{opt_info}{branch_info}")
-                else:
-                    legacy_actions = eff.get('actions', [])
-                    if legacy_actions:
-                        from dm_toolkit.gui.editor.action_converter import ActionConverter
-                        for ai, act in enumerate(legacy_actions, start=1):
-                            try:
-                                converted = ActionConverter.convert(act)
-                                if converted and converted.get('type') != 'NONE':
-                                    cir = normalize.canonicalize(converted)
-                                    kind = cir.get('kind')
-                                    ctype = cir.get('type') or ''
-                                    opts = cir.get('options') or []
-                                    opt_info = f" options={len(opts)}" if opts else ""
-                                    cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Command')}[{ai}] ({tr('Auto-converted')}): {kind}/{ctype}{opt_info}")
-                                else:
-                                    cir = normalize.canonicalize(act)
-                                    cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Legacy')}): {cir.get('kind', 'UNKNOWN')}/{cir.get('type', 'NONE')}")
-                            except Exception:
-                                cir = normalize.canonicalize(act)
-                                cir_lines.append(f"{tr('Effect')}[{ei}] {tr('Action')}[{ai}] ({tr('Conversion Failed')}): {cir.get('kind', 'UNKNOWN')}")
+                # Legacy actions processing removed (Migration Phase 4.3)
 
             summary = "\n".join(cir_lines)
             if summary:

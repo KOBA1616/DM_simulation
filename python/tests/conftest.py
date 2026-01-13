@@ -66,6 +66,7 @@ def _setup_minimal_gui_stubs():
         def addLayout(self, layout, *args): pass  # Accept extra args for Grid Layout
         def setText(self, text): pass
         def text(self): return ""
+        def setCheckable(self, checkable): pass
         def setCheckState(self, state): pass
         def addItem(self, *args): self._items.append(args)
         def setCurrentIndex(self, index): pass
@@ -359,13 +360,22 @@ def _setup_minimal_gui_stubs():
     qt_widgets.QInputDialog = DummyInputDialog
     qt_widgets.QFileDialog = DummyFileDialog
 
-    for name in ['QLabel', 'QPushButton', 'QVBoxLayout', 'QHBoxLayout', 'QTreeWidget', 
-                 'QTreeWidgetItem', 'QDialog', 'QLineEdit', 'QTextEdit', 'QCheckBox',
-                 'QComboBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QGraphicsView',
+    # Use Enhanced Widgets
+    qt_widgets.QPushButton = EnhancedButton
+    qt_widgets.QComboBox = EnhancedComboBox
+    qt_widgets.QLineEdit = EnhancedLineEdit
+    qt_widgets.QCheckBox = EnhancedCheckBox
+    qt_widgets.QSpinBox = EnhancedSpinBox
+    qt_widgets.QFormLayout = EnhancedFormLayout
+    qt_widgets.QButtonGroup = EnhancedButtonGroup
+
+    for name in ['QLabel', 'QVBoxLayout', 'QHBoxLayout', 'QTreeWidget',
+                 'QTreeWidgetItem', 'QDialog', 'QTextEdit',
+                 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QGraphicsView',
                  'QGraphicsScene', 'QGraphicsEllipseItem', 'QGraphicsLineItem', 'QGraphicsTextItem',
                  'QProgressBar', 'QHeaderView', 'QSplitter', 'QGroupBox', 'QMenuBar', 'QMenu',
-                 'QStatusBar', 'QGridLayout', 'QSpinBox', 'QButtonGroup', 'QListWidget',
-                 'QListWidgetItem', 'QToolBar', 'QSizePolicy', 'QFormLayout', 'QStackedWidget', 'QFrame']:
+                 'QStatusBar', 'QGridLayout', 'QListWidget',
+                 'QListWidgetItem', 'QToolBar', 'QSizePolicy', 'QStackedWidget', 'QFrame']:
         setattr(qt_widgets, name, type(name, (DummyQWidget,), {}))
 
     qt_core.Qt = DummyQt

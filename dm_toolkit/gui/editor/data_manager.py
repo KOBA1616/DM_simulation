@@ -156,6 +156,3 @@ class CardDataManager:
 
     def create_command_item(self, model):
         return self.serializer.create_command_item(model)
-
-    def convert_action_tree_to_command(self, action_item):
-        return self.serializer.convert_action_tree_to_command(action_item)

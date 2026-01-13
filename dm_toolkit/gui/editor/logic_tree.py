@@ -64,42 +64,6 @@ class LogicTreeWidget(QTreeView):
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
 
-    def convert_all_legacy_actions_in_node(self, index):
-        """Preview then (optionally) convert all Actions to Commands starting from the given node."""
-        if not index.isValid(): return
-
-        item = self.standard_model.itemFromIndex(index)
-        # Delegate collection to data manager
-        preview_items = self.data_manager.collect_conversion_preview(item)
-
-        if not preview_items:
-            QMessageBox.information(self, tr("Conversion Info"), tr("No legacy actions found to convert."))
-            return
-
-        # Show preview dialog and apply only if user accepts
-        from dm_toolkit.gui.editor.forms.convert_batch_preview_dialog import ConvertBatchPreviewDialog
-        dlg = ConvertBatchPreviewDialog(self, preview_items)
-        res = dlg.exec()
-        if res == dlg.Accepted:
-            # Delegate conversion to data manager
-            count, warnings = self.data_manager.batch_convert_actions_recursive(item)
-            if count > 0:
-                msg = f"{tr('Converted')} {count} {tr('actions to commands.')}"
-                if warnings > 0:
-                    msg += f"\n\n{tr('Warnings')}: {warnings} {tr('items require attention.')}\n"
-                    msg += tr("(Look for items marked with 'Legacy Warning')")
-                    QMessageBox.warning(self, tr("Conversion Complete"), msg)
-                else:
-                    QMessageBox.information(self, tr("Conversion Complete"), msg)
-
-    def replace_item_with_command(self, index, cmd_data):
-        """UI wrapper to replace a legacy Action item with a new Command item via DataManager."""
-        cmd_item = self.data_manager.replace_action_with_command(index, cmd_data)
-        if cmd_item:
-            # Update Selection and Expansion
-            self.setCurrentIndex(cmd_item.index())
-            self.expand(cmd_item.index()) # Expand to show preserved children
-
     def add_keywords(self, parent_index):
         if not parent_index.isValid(): return
         self.add_child_item(parent_index, "KEYWORDS", {}, tr("Keywords"))
@@ -152,28 +116,12 @@ class LogicTreeWidget(QTreeView):
         self.add_child_item(effect_index, "COMMAND", data_copy, label)
 
     def add_action_to_effect(self, effect_index, action_data=None):
-        # Redirect to add_command_to_effect with default
-        if action_data is None:
-             self.add_command_to_effect(effect_index)
-             return
-        # If data provided, try to convert on fly
-        try:
-             from dm_toolkit.gui.editor.action_converter import ActionConverter
-             cmd_data = ActionConverter.convert(action_data)
-             self.add_command_to_effect(effect_index, cmd_data)
-        except Exception:
-             pass
+        # Redirect to add_command_to_effect
+        self.add_command_to_effect(effect_index, action_data)
 
     def add_action_to_option(self, option_index, action_data=None):
-        if action_data is None:
-             self.add_command_to_option(option_index)
-             return
-        try:
-             from dm_toolkit.gui.editor.action_converter import ActionConverter
-             cmd_data = ActionConverter.convert(action_data)
-             self.add_command_to_option(option_index, cmd_data)
-        except Exception:
-             pass
+        # Redirect to add_command_to_option
+        self.add_command_to_option(option_index, action_data)
 
     def add_command_contextual(self, cmd_data=None):
         idx = self.currentIndex()
