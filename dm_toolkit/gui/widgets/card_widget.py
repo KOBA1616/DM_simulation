@@ -6,7 +6,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QCursor
 
 from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class CardWidget(QFrame):
     clicked = pyqtSignal(int)  # Emits instance_id

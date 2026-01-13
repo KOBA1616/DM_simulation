@@ -7,7 +7,8 @@ from dm_toolkit.types import GameState, CardDB, Action
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.unified_execution import ensure_executable_command
 from dm_toolkit.commands import wrap_action
-from dm_toolkit.gui.localization import tr, describe_command
+from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.utils.command_describer import describe_command
 
 try:
     import dm_ai_module

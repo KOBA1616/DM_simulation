@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QMimeData
 from PyQt6.QtGui import QDrag
 import dm_ai_module
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class PendingEffectItem(QListWidgetItem):
     def __init__(self, index, effect_info, card_name):

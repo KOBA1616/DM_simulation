@@ -2,7 +2,8 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from dm_toolkit.gui.localization import tr, get_card_civilizations
+from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.utils.card_helpers import get_card_civilizations
 from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
 
 class CardDetailPanel(QWidget):

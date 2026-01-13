@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QListWidget, QListWidg
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
 import json
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class ConvertBatchPreviewDialog(QDialog):
     def __init__(self, parent, preview_items):

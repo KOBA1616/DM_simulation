@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QLineEdit, QSpinBox, QComboBox, QVBoxLayout, QLabel
 )
 from PyQt6.QtCore import Qt
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 

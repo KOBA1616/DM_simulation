@@ -2,7 +2,8 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
 from PyQt6.QtCore import Qt, pyqtSignal
 from .card_widget import CardWidget
-from dm_toolkit.gui.localization import tr, get_card_civilization
+from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.utils.card_helpers import get_card_civilization
 from dm_toolkit.commands import wrap_action
 
 class ZoneWidget(QWidget):

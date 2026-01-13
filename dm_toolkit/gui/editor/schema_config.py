@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, register_schema
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 # Define constants for selection lists
 MUTATION_TYPES = [

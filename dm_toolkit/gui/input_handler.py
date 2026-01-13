@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 from PyQt6.QtWidgets import QInputDialog, QMessageBox
 
 from dm_toolkit.engine.compat import EngineCompat
-from dm_toolkit.gui.localization import tr, describe_command
+from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.utils.command_describer import describe_command
 from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 
 if TYPE_CHECKING:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QMenu
 from PyQt6.QtGui import QAction
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class LogicTreeContextMenuHandler:
     def __init__(self, tree_widget):

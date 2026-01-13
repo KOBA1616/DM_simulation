@@ -144,7 +144,7 @@ python -m pytest python/tests/unit/test_text_generator.py -k replace_card_move -
 - `dm_toolkit/gui/editor/configs/action_config.py` - UI設定
 - `dm_toolkit/gui/editor/text_generator.py` - テキスト生成
 - `dm_toolkit/engine/compat.py` - エンジン実行
-- `dm_toolkit/gui/localization.py` - ゾーン名の翻訳
+- `dm_toolkit/gui/i18n.py` - ゾーン名の翻訳
 
 ## 注意事項
 

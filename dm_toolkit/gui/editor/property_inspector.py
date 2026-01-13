@@ -9,7 +9,7 @@ from dm_toolkit.gui.editor.forms.unified_action_form import UnifiedActionForm
 from dm_toolkit.gui.editor.forms.keyword_form import KeywordEditForm
 from dm_toolkit.gui.editor.forms.modifier_form import ModifierEditForm
 from dm_toolkit.gui.editor.forms.option_form import OptionForm
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class OptionEditPage(QWidget):
     structure_update_requested = pyqtSignal(str, dict)

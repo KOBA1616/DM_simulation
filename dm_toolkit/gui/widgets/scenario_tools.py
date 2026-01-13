@@ -9,7 +9,7 @@ import json
 import os
 import random
 import dm_ai_module
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.widgets.card_action_dialog import CardActionDialog
 
 class ScenarioToolsDock(QDockWidget):

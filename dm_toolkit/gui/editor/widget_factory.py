@@ -16,7 +16,7 @@ from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.consts import CARD_TYPES
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class PlayerScopeWidget(QWidget, EditorWidgetMixin):
     def __init__(self, parent=None):

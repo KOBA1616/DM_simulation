@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem, 
 from PyQt6.QtCore import Qt
 from .mcts_graph_view import MCTSGraphView
 
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class MCTSView(QWidget):
     def __init__(self, parent=None):

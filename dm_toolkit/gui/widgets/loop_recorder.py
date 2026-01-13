@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QTimer
 import dm_ai_module
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class LoopRecorderWidget(QWidget):
     def __init__(self, game_state_ref, parent=None):

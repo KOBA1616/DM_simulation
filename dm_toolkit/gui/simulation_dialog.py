@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QProgressBar, QTextEdit, QGroupBox, QMessageBox, QFileDialog
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 # Import Backend Modules
 from types import ModuleType

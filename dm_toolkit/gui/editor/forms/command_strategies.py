@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QComboBox, QLineEdit
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.consts import GRANTABLE_KEYWORDS
 

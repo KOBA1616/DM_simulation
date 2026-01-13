@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QLabel
 from PyQt6.QtCore import Qt
 import json
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor import text_generator
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 

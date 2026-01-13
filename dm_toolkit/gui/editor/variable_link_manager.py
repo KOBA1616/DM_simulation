@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtCore import Qt
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.constants import RESERVED_VARIABLES
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 

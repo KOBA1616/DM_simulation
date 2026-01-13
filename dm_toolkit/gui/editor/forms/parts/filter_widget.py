@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QVBoxLayout
 )
 from PyQt6.QtCore import pyqtSignal
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from typing import Any
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.consts import ZONES, CARD_TYPES

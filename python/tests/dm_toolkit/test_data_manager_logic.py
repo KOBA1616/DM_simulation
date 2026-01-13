@@ -91,9 +91,9 @@ class MockQModelIndex:
 m_core.QModelIndex = MockQModelIndex
 
 # Now we can import DataManager
-# We also need to mock dm_toolkit.gui.localization
-sys.modules['dm_toolkit.gui.localization'] = MagicMock()
-sys.modules['dm_toolkit.gui.localization'].tr = lambda x: x
+# We also need to mock dm_toolkit.gui.i18n
+sys.modules['dm_toolkit.gui.i18n'] = MagicMock()
+sys.modules['dm_toolkit.gui.i18n'].tr = lambda x: x
 
 from dm_toolkit.gui.editor.data_manager import CardDataManager
 

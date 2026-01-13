@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsEllipseItem,
 from PyQt6.QtGui import QPen, QBrush, QColor, QFont, QPainter
 from PyQt6.QtCore import Qt, QRectF
 
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class MCTSGraphView(QGraphicsView):
     def __init__(self, parent=None):

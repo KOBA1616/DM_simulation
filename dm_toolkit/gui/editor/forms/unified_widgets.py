@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QComboBox, QSpinBox, QPushButton, QLabel, QHBoxLayout, QWidget, QGridLayout, QCheckBox
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.consts import ZONES_EXTENDED, TargetScope
 
 

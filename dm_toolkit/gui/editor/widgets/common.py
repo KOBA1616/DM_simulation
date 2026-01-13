@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QComboBox, QSpinBox, QCheckBox, QLineEdit, QWidget, QHBoxLayout
 # from dm_toolkit.gui.editor.widgets.interfaces import EditorWidgetInterface # Removed to avoid metaclass conflict
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 from dm_toolkit.consts import ZONES_EXTENDED, TargetScope
 
 # Implementing the interface methods directly (Duck Typing) or just using a Mixin without ABCMeta

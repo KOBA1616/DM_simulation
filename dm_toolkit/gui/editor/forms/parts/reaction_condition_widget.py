@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QGroupBox, QFormLayout, QComboBox, QCheckBox, QSpinBox, QLabel
 )
 from PyQt6.QtCore import pyqtSignal
-from dm_toolkit.gui.localization import tr
+from dm_toolkit.gui.i18n import tr
 
 class ReactionConditionWidget(QGroupBox):
     """
