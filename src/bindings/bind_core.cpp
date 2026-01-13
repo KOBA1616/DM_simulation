@@ -687,8 +687,22 @@ void bind_core(py::module& m) {
         .def("set_deck", [](GameState& s, PlayerID pid, std::vector<int> ids) {
             try {
                  s.players[pid].deck.clear();
-                 int counter = 0;
-                 for (int id : ids) s.players[pid].deck.push_back(CardInstance(id, counter++, pid));
+                 // Determine start counter based on current map size to ensure uniqueness
+                 int counter = (int)s.card_owner_map.size();
+
+                 // Resize map to accommodate new cards
+                 if (s.card_owner_map.size() < (size_t)(counter + ids.size())) {
+                     s.card_owner_map.resize(counter + ids.size(), pid);
+                 }
+
+                 for (int id : ids) {
+                     s.players[pid].deck.push_back(CardInstance(id, counter, pid));
+                     // Update owner map - redundant if resize filled correctly, but safe
+                     if ((size_t)counter < s.card_owner_map.size()) {
+                        s.card_owner_map[counter] = pid;
+                     }
+                     counter++;
+                 }
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
