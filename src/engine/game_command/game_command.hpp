@@ -23,7 +23,10 @@ namespace dm::engine::game_command {
         USE_ABILITY,
         MANA_CHARGE,
         RESOLVE_PENDING_EFFECT,
-        PASS_TURN // or just PASS
+        PASS_TURN, // or just PASS
+        SEARCH_DECK,
+        SHIELD_TRIGGER, // Added
+        RESOLVE_BATTLE  // Added
     };
 
     class GameCommand {
