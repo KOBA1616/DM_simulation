@@ -42,6 +42,7 @@ def load_translations():
 
         # List of Enums to register
         enum_list = [
+            'CardType',
             'EffectActionType',
             'ActionType',
             'TriggerType',
