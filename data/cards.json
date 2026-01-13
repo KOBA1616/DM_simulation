@@ -694,8 +694,20 @@
               ],
               [
                 {
-                  "uid": "03f1ec89-9a9c-4f8f-b0af-b703c34cd719",
-                  "type": "PUT_CREATURE"
+                  "uid": "f92db15f-bdbd-4883-8ada-90c5211e9ac1",
+                  "type": "PUT_CREATURE",
+                  "amount": 1,
+                  "input_value_usage": "",
+                  "target_filter": {
+                    "max_cost": 2,
+                    "types": [
+                      "ELEMENT"
+                    ],
+                    "zones": [
+                      "HAND"
+                    ]
+                  },
+                  "target_group": "PLAYER_SELF"
                 }
               ]
             ]
