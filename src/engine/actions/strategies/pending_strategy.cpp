@@ -1,6 +1,7 @@
 #include "pending_strategy.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/flow/reaction_system.hpp"
+#include "engine/systems/card/passive_effect_system.hpp"
 #include <algorithm>
 #include <vector>
 
@@ -166,7 +167,12 @@ namespace dm::engine {
                 for (const auto& cand : candidates) {
                     // Only applies if targeting opponent's cards
                     if (cand.card.owner != decision_maker) {
-                        if (cand.def->keywords.must_be_chosen) {
+                        bool must_select = cand.def->keywords.must_be_chosen;
+                        if (!must_select) {
+                            must_select = PassiveEffectSystem::instance().check_restriction(game_state, cand.card, PassiveType::FORCE_SELECTION, card_db);
+                        }
+
+                        if (must_select) {
                             opponent_has_magnet = true;
                             break;
                         }
@@ -179,7 +185,12 @@ namespace dm::engine {
                         // If it's an opponent's card, it must be a magnet.
                         // If it's my card, it's unaffected (assuming magnet only forces selection among opponent's cards).
                         if (cand.card.owner != decision_maker) {
-                            if (cand.def->keywords.must_be_chosen) {
+                            bool must_select = cand.def->keywords.must_be_chosen;
+                            if (!must_select) {
+                                must_select = PassiveEffectSystem::instance().check_restriction(game_state, cand.card, PassiveType::FORCE_SELECTION, card_db);
+                            }
+
+                            if (must_select) {
                                 filtered.push_back(cand);
                             }
                         } else {
