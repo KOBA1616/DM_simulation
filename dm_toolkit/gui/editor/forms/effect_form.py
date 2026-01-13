@@ -199,9 +199,7 @@ class EffectEditForm(BaseEditForm):
         self.on_mode_changed()
 
         if mode == "TRIGGERED":
-             # Try to normalize data for binding if legacy keys exist
-             if 'trigger_condition' in data and 'condition' not in data:
-                 data['condition'] = data['trigger_condition']
+             # Normalize data for binding (Commands Only)
 
              # Load Trigger Filter explicitly
              if 'trigger_filter' in data and self.trigger_filter:
@@ -210,11 +208,10 @@ class EffectEditForm(BaseEditForm):
                  self.trigger_filter.set_filter_data({})
         else:
             # STATIC (ModifierDef) - Normalize for bindings
-            if 'layer_type' in data: data['type'] = data['layer_type']
-            if 'layer_value' in data: data['value'] = data['layer_value']
-            if 'layer_str' in data: data['str_val'] = data['layer_str']
-            if 'static_condition' in data and 'condition' not in data:
-                 data['condition'] = data['static_condition']
+            # Ensure proper keys for Modifiers
+            if 'layer_type' in data and 'type' not in data: data['type'] = data['layer_type']
+            if 'layer_value' in data and 'value' not in data: data['value'] = data['layer_value']
+            if 'layer_str' in data and 'str_val' not in data: data['str_val'] = data['layer_str']
 
         # Use Bindings
         self._apply_bindings(data)
@@ -277,20 +274,24 @@ class EffectEditForm(BaseEditForm):
                  self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": mode})
 
         if mode == "TRIGGERED":
-            # Explicitly save trigger filter from widget (bindings might not catch it if it's complex/custom getter)
+            # Explicitly save trigger filter from widget
             data['trigger_filter'] = self.trigger_filter.get_filter_data()
 
-            # Clean Static/Legacy keys
-            for k in ['type', 'value', 'str_val', 'filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
+            # Clean Static keys
+            for k in ['type', 'value', 'str_val', 'filter']:
                 data.pop(k, None)
+
+            # Ensure commands list exists if creating new
+            if 'commands' not in data:
+                data['commands'] = []
 
         else: # STATIC
             # Handle str_val optionality
             if not self.layer_str_edit.text():
                 data.pop('str_val', None)
 
-            # Clean Trigger/Legacy keys
-            for k in ['trigger', 'trigger_scope', 'trigger_filter', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
+            # Clean Trigger keys
+            for k in ['trigger', 'trigger_scope', 'trigger_filter', 'commands']:
                 data.pop(k, None)
 
     def _get_display_text(self, data):

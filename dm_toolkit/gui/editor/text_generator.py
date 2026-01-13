@@ -78,7 +78,7 @@ class CardTextGenerator:
         "SHIELD_BURN": "シールド焼却",
         "REVOLUTION_CHANGE": "革命チェンジ",
         "MEKRAID": "メクレイド",
-        "FRIEND_BURST": "フレンド・バースト",
+        "FRIEND_BURST": "フレンド・BURST",
         "UNTAP_IN": "タップして出る",
         "META_COUNTER_PLAY": "メタカウンター",
         "POWER_ATTACKER": "パワーアタッカー",
@@ -816,7 +816,7 @@ class CardTextGenerator:
         condition = effect.get("condition", {})
         if condition is None:
             condition = {}
-        actions = effect.get("actions", [])
+        # actions = effect.get("actions", []) # Legacy field removed
 
         trigger_text = cls.trigger_to_japanese(trigger, is_spell)
         cond_text = cls._format_condition(condition)
@@ -837,34 +837,13 @@ class CardTextGenerator:
         # Keep parallel lists of raw and formatted for merging logic
         raw_items = []
 
-        # Commands-First Policy (Migration Phase 4.3):
-        # If 'commands' exist, they are the source of truth. Ignore 'actions'.
-        # If only 'actions' exist, convert them on-the-fly to commands for rendering.
+        # Commands-First Policy (Migration Complete):
+        # We only support 'commands' now. Legacy 'actions' are ignored.
         commands = effect.get("commands", [])
         if commands:
             for command in commands:
                 raw_items.append(command)
                 action_texts.append(cls._format_command(command, is_spell, sample=sample))
-        else:
-            # Automatic migration: convert legacy actions to commands on-the-fly
-            legacy_actions = effect.get("actions", [])
-            if legacy_actions:
-                from dm_toolkit.gui.editor.action_converter import ActionConverter
-                for action in legacy_actions:
-                    try:
-                        # Convert Action to Command format
-                        converted = ActionConverter.convert(action)
-                        if converted and converted.get('type') != 'NONE':
-                            raw_items.append(converted)
-                            action_texts.append(cls._format_command(converted, is_spell, sample=sample))
-                        else:
-                            # Fallback if conversion fails
-                            raw_items.append(action)
-                            action_texts.append(cls._format_action(action, is_spell, sample=sample))
-                    except Exception:
-                        # Fallback to legacy rendering on conversion error
-                        raw_items.append(action)
-                        action_texts.append(cls._format_action(action, is_spell, sample=sample))
 
         # Try to merge common sequential patterns for more natural language
         full_action_text = cls._merge_action_texts(raw_items, action_texts)
@@ -1104,10 +1083,9 @@ class CardTextGenerator:
         INTERNAL: Format action-like dictionary to Japanese text.
         
         This method is now primarily used internally by _format_command to handle
-        the action_proxy representation. Direct calls to this method for legacy
-        Action formatting should be replaced with ActionConverter + _format_command.
+        the action_proxy representation.
         
-        Legacy Actions are automatically converted to Commands at load time.
+        Legacy Action formatting is no longer supported directly.
         """
         if not action:
             return ""

@@ -8,7 +8,6 @@ import os
 import copy
 from dm_toolkit.types import JSON
 from dm_toolkit.gui.editor import normalize
-from dm_toolkit.gui.editor.action_converter import ActionConverter, convert_action_to_objs
 from dm_toolkit.gui.editor.command_model import CommandDef, WarningCommand
 from dm_toolkit.gui.editor.templates import LogicTemplateManager
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
@@ -114,10 +113,8 @@ class CardDataManager:
                 if 'triggers' in card_raw:
                     card_raw['effects'] = card_raw.pop('triggers')
 
-                # Basic cleaning of legacy command structures inside effects
-                if 'effects' in card_raw:
-                    for eff in card_raw['effects']:
-                        self._lift_actions_to_commands(eff)
+                # Legacy lifting of actions to commands removed as migration is complete.
+                # All incoming data is expected to have 'commands'.
 
                 card_model = CardModel(**card_raw)
             except Exception as e:
@@ -167,23 +164,6 @@ class CardDataManager:
         for command in effect_model.commands:
             cmd_item = self.create_command_item(command)
             eff_item.appendRow(cmd_item)
-
-    def _lift_actions_to_commands(self, effect_data):
-        # Helper to convert legacy "actions" list to "commands" if present in raw dict
-        if 'actions' in effect_data:
-            legacy_actions = effect_data.pop('actions')
-            commands = effect_data.get('commands', [])
-            for act in legacy_actions:
-                 try:
-                     objs = convert_action_to_objs(act)
-                     for o in objs:
-                         if hasattr(o, 'to_dict'):
-                             commands.append(o.to_dict())
-                         elif isinstance(o, dict):
-                             commands.append(o)
-                 except:
-                     pass
-            effect_data['commands'] = commands
 
     def get_full_data(self):
         cards = []
@@ -239,10 +219,7 @@ class CardDataManager:
             child = eff_item.child(i)
             if child.data(ROLE_TYPE) == "COMMAND":
                 eff_data['commands'].append(self._reconstruct_command(child))
-            # Handle legacy ACTION conversion on the fly if still present
-            elif child.data(ROLE_TYPE) == "ACTION":
-                 cmd = self.convert_action_tree_to_command(child)
-                 eff_data['commands'].append(cmd)
+            # Legacy ACTION items are no longer supported/reconstructed
 
         return EffectModel(**eff_data)
 
@@ -506,20 +483,8 @@ class CardDataManager:
     def _sync_editor_warnings(self, card_item):
         pass # Placeholder for validation logic
 
-    def convert_action_tree_to_command(self, action_item):
-        # Backward compatibility for legacy Action items
-        # Just grab data and assume it can be coerced to CommandModel
-        act_data = self.get_item_data(action_item)
-        # Use existing converter tool if needed
-        try:
-             cmd = ActionConverter.convert(act_data)
-             return CommandModel(**cmd)
-        except:
-             # Fallback
-             return CommandModel(type="NONE", str_param="Conversion Failed")
-
     def batch_convert_actions_recursive(self, item):
-         # Stub
+         # Stub - no-op as conversion is disabled/removed
          return 0, 0
 
     # --- Template-driven Logic Insertion ---
