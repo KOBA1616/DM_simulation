@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.utils.card_helpers import get_card_civilizations
+from dm_toolkit.gui.utils.card_helpers import convert_card_data_to_dict
 from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
 
 class CardDetailPanel(QWidget):
@@ -24,26 +24,11 @@ class CardDetailPanel(QWidget):
             self.preview.clear_preview()
             return
 
-        civs = get_card_civilizations(card_data)
-        # Build a minimal dict compatible with CardPreviewWidget
-        t = str(getattr(card_data, 'type', 'CREATURE')).split('.')[-1]
-        race = None
-        if hasattr(card_data, 'races') and card_data.races:
-            race = card_data.races[0]
-        data = {
-            'id': getattr(card_data, 'id', -1),
-            'name': getattr(card_data, 'name', 'Unknown'),
-            'cost': getattr(card_data, 'cost', 0),
-            'power': getattr(card_data, 'power', 0),
-            'civilizations': civs,
-            'race': race,
-            'type': t,
-            'effects': [],
-            'triggers': [],
-            'spell_side': None,
-        }
+        # Use helper to convert card_data (C++ object) to dict compatible with TextGenerator
         try:
+            data = convert_card_data_to_dict(card_data)
             self.preview.render_card(data)
-        except Exception:
+        except Exception as e:
+            # print(f"Error rendering card preview: {e}")
             # Fallback: clear if rendering fails
             self.preview.clear_preview()
