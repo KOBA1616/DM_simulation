@@ -156,3 +156,36 @@ class CardDataManager:
 
     def create_command_item(self, model):
         return self.serializer.create_command_item(model)
+
+    def add_command_contextual(self, index_or_item, cmd_data=None):
+        """
+        Adds a command item based on the context of the selected item.
+        Automatically resolves the target parent container (Effect, Option, Branch, or Sibling).
+        """
+        item = self.serializer._ensure_item(index_or_item)
+        if not item:
+            return None
+
+        type_ = self.get_item_type(item)
+        target_item = None
+
+        # Determine target container based on selection
+        if type_ in ["EFFECT", "OPTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
+            target_item = item
+        elif type_ in ["COMMAND", "ACTION"]:
+            # If a command is selected, add as sibling (append to its parent)
+            target_item = item.parent()
+
+        if not target_item:
+            return None
+
+        # Validate that the target is a valid container for commands
+        target_type = self.get_item_type(target_item)
+        if target_type not in ["EFFECT", "OPTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
+            return None
+
+        # Create Data
+        data = self.create_default_command_data(cmd_data)
+        label = self.format_command_label(data)
+
+        return self.add_child_item(target_item, "COMMAND", data, label)
