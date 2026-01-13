@@ -163,7 +163,25 @@ class ZoneWidget(QWidget):
             # Filter actions for this card
             relevant_actions = []
             if instance_id != -1:
-                relevant_actions = [a for a in self.legal_actions if getattr(a, 'source_instance_id', -1) == instance_id]
+                # Robust filtering checking both attribute and dict keys (like input_handler)
+                for a in self.legal_actions:
+                    matched = False
+                    # 1. Fast check: direct attribute
+                    # Note: getattr handles potential missing attribute on wrapper or underlying
+                    sid = getattr(a, 'source_instance_id', -1)
+                    if sid != -1 and sid == instance_id:
+                        matched = True
+                    # 2. Slow check: dict representation (covers mapped aliases like instance_id)
+                    else:
+                        try:
+                            d = a.to_dict()
+                            if d.get('instance_id') == instance_id or d.get('source_instance_id') == instance_id:
+                                matched = True
+                        except:
+                            pass
+
+                    if matched:
+                        relevant_actions.append(a)
 
             if cid in card_db:
                 card_def = card_db[cid]
