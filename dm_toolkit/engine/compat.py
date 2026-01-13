@@ -565,7 +565,17 @@ class EngineCompat:
         EngineCompat._check_module()
         assert dm_ai_module is not None
         if hasattr(dm_ai_module, 'JsonLoader') and hasattr(dm_ai_module.JsonLoader, 'load_cards'):
-            res = dm_ai_module.JsonLoader.load_cards(filepath)
+            # Suppress C++ stderr warnings about JSON parsing
+            import os
+            import sys
+            devnull = open(os.devnull, 'w')
+            old_stderr = sys.stderr
+            try:
+                sys.stderr = devnull
+                res = dm_ai_module.JsonLoader.load_cards(filepath)
+            finally:
+                sys.stderr = old_stderr
+                devnull.close()
             if res is None:
                 return None
             return res  # type: ignore
@@ -575,16 +585,12 @@ class EngineCompat:
     def load_cards_robust(filepath: str) -> Dict[int, Any]:
         """
         Attempts to load cards using the native loader first, then falls back to standard JSON loading.
+        Returns a dictionary mapping CardID (int) to card data.
+        
+        NOTE: Python fallback is preferred due to known C++ JSON parsing compatibility issues.
+        The C++ loader is deprecated and will be removed in a future version.
         """
-        # Try native loader first
-        try:
-            db = EngineCompat.JsonLoader_load_cards(filepath)
-            if db:
-                return db
-        except Exception:
-            pass
-
-        # Fallback to pure Python json load
+        # Fallback to pure Python json load (PREFERRED PATH)
         try:
             import json
             if not os.path.exists(filepath):
@@ -595,7 +601,27 @@ class EngineCompat:
                     filepath = alt_path
 
             with open(filepath, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+                
+            # Convert array format to dict format if needed
+            if isinstance(data, list):
+                card_dict = {}
+                for card in data:
+                    if isinstance(card, dict) and 'id' in card:
+                        card_id = card['id']
+                        card_dict[card_id] = card
+                return card_dict
+            else:
+                # Already in dict format
+                return data
+        except Exception as e:
+            print(f"Error loading cards: {e}", flush=True)
+
+        # Fallback: Try native loader only if Python loading failed
+        try:
+            db = EngineCompat.JsonLoader_load_cards(filepath)
+            if db:
+                return db
         except Exception:
             pass
 

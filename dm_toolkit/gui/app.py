@@ -62,13 +62,16 @@ class GameWindow(QMainWindow):
         if isinstance(self.card_db, list):
             self.card_db = {card['id']: card for card in self.card_db if isinstance(card, dict) and 'id' in card}
         
-        # Also try to load native CardDatabase for command generation
+        # Try to load native CardDatabase for command generation
+        # Note: Python path is preferred due to C++ JSON parsing issues.
+        # The native_card_db is optional - the system works fine with just card_db dict
         self.native_card_db = None
-        try:
-            if dm_ai_module and hasattr(dm_ai_module, 'JsonLoader'):
-                self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-        except Exception:
-            pass
+        # TODO: Re-enable native C++ loader after fixing JSON deserialization in C++
+        # try:
+        #     if dm_ai_module and hasattr(dm_ai_module, 'JsonLoader'):
+        #         self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+        # except Exception:
+        #     pass
         
         self.p0_deck_ids: Optional[List[int]] = None
         self.p1_deck_ids: Optional[List[int]] = None

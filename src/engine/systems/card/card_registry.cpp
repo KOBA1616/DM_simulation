@@ -10,6 +10,7 @@ namespace dm::engine {
     std::map<int, dm::core::CardData> CardRegistry::cards;
     std::shared_ptr<std::map<dm::core::CardID, dm::core::CardDefinition>> CardRegistry::definitions_ptr =
         std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>();
+    static bool json_error_logged = false;  // Track if JSON error has been logged
 
     // Helper for legacy conversion (duplicated from JsonLoader due to architectural split)
     static CommandDef convert_legacy_action_internal(const ActionDef& act) {
@@ -77,7 +78,11 @@ namespace dm::engine {
             definitions_ptr = new_defs;
 
         } catch (const std::exception& e) {
-            std::cerr << "Error loading card JSON: " << e.what() << std::endl;
+            // Only log the error once to avoid spam during multiple load_from_json calls
+            if (!json_error_logged) {
+                std::cerr << "Error loading card JSON: " << e.what() << std::endl;
+                json_error_logged = true;
+            }
         }
     }
 

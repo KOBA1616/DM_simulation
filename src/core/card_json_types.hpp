@@ -604,7 +604,12 @@ namespace dm::core {
         c.cost = j.value("cost", 0);
         if (j.contains("civilizations")) j.at("civilizations").get_to(c.civilizations); else c.civilizations = {};
         c.power = j.value("power", 0);
-        c.type = j.value("type", CardType::CREATURE); // Default to CREATURE
+        // Use get_to for enum types (they need explicit conversion from string)
+        if (j.contains("type")) {
+            j.at("type").get_to(c.type);
+        } else {
+            c.type = CardType::CREATURE;
+        }
         if (j.contains("races")) j.at("races").get_to(c.races); else c.races = {};
 
         // Support both "triggers" and "effects"
