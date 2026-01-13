@@ -35,13 +35,13 @@
     "labels": { "amount": "Count" }
   },
   "TRANSITION": {
-    "visible": ["target_group", "target_filter", "from_zone", "to_zone", "amount", "optional", "input_link", "output_link"],
+    "visible": ["target_group", "target_filter", "from_zone", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
     "labels": { "amount": "Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "Moved Cards" }
   },
-  "REPLACE_MOVE_CARD": {
-    "visible": ["target_filter", "from_zone", "to_zone", "amount", "input_link", "output_link"],
+  "REPLACE_CARD_MOVE": {
+    "visible": ["target_filter", "from_zone", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
     "labels": { "from_zone": "Original Destination", "to_zone": "Replacement Destination", "amount": "Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "Replaced Cards" },
@@ -102,13 +102,17 @@
     "produces_output": true,
     "outputs": { "output_value_key": "プレイしたカード" }
   },
+  "PUT_CREATURE": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
   "SUMMON_TOKEN": {
     "visible": ["amount", "str_param"],
     "labels": { "amount": "Count", "str_param": "Token ID" }
   },
   "SELECT_NUMBER": {
-    "visible": ["amount", "output_link"],
-    "labels": { "amount": "Max" },
+    "visible": ["min_value", "amount", "output_link"],
+    "labels": { "amount": "Max", "min_value": "Min" },
     "produces_output": true,
     "outputs": { "output_value_key": "Selected Number" }
   },
@@ -129,6 +133,10 @@
   "REGISTER_DELAYED_EFFECT": {
     "visible": ["str_param", "amount"],
     "labels": { "str_param": "Effect ID", "amount": "Duration" }
+  },
+  "APPLY_MODIFIER": {
+    "visible": ["target_group", "target_filter", "str_param", "amount", "val2"],
+    "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "val2": "Duration" }
   },
   "CHOICE": {
     "visible": ["amount"],
@@ -151,5 +159,9 @@
     "visible": ["output_link"],
     "produces_output": true,
     "outputs": { "output_value_key": "Condition Result" }
+  },
+  "COST_REFERENCE": {
+    "visible": ["ref_mode"],
+    "tooltip": "Reference cost or reduce cost"
   }
 }
