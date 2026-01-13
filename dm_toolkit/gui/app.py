@@ -56,25 +56,14 @@ class GameWindow(QMainWindow):
         self.log_viewer = LogViewer()
 
         # Load card database
-        self.card_db: CardDB = {}
-        loaded_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
-        if loaded_db:
-             self.card_db = loaded_db
-        else:
-            try:
-                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-                json_path = os.path.join(base_dir, 'data', 'cards.json')
-                with open(json_path, 'r', encoding='utf-8') as _f:
-                    self.card_db = json.load(_f)
-            except Exception:
-                self.card_db = {}
+        self.card_db = EngineCompat.load_cards_robust("data/cards.json")
         
-        # Initialize Game
-        self.session.initialize_game(self.card_db)
-
         self.p0_deck_ids: Optional[List[int]] = None
         self.p1_deck_ids: Optional[List[int]] = None
         self.last_command_index: int = 0
+
+        # Initialize Game
+        self.session.initialize_game(self.card_db)
 
         # Simulation Timer
         self.timer = QTimer()
@@ -114,8 +103,8 @@ class GameWindow(QMainWindow):
 
     def reload_card_data(self) -> None:
         try:
-            loaded = EngineCompat.JsonLoader_load_cards("data/cards.json")
-            if loaded is not None:
+            loaded = EngineCompat.load_cards_robust("data/cards.json")
+            if loaded:
                 self.card_db = loaded
             if hasattr(self, 'deck_builder') and self.deck_builder.isVisible():
                 self.deck_builder.reload_database()
@@ -251,42 +240,24 @@ class GameWindow(QMainWindow):
     def update_ui(self) -> None:
         if self.gs is None:
             return
-        if not hasattr(self, 'turn_label'):
-            return
 
-        turn_number = EngineCompat.get_turn_number(self.gs)
-        current_phase = EngineCompat.get_current_phase(self.gs)
-
-        phase_map = {
-            "START": "Start Phase",
-            "DRAW": "Draw Phase",
-            "MANA": "Mana Phase",
-            "MAIN": "Main Phase",
-            "ATTACK": "Attack Phase",
-            "BLOCK": "Block Phase",
-            "END": "End Phase"
-        }
-        phase_key = phase_map.get(str(current_phase), str(current_phase))
-
-        active_pid = EngineCompat.get_active_player_id(self.gs)
-        self.turn_label.setText(tr("Turn: {turn}").format(turn=turn_number))
-        self.phase_label.setText(tr("Phase: {phase}").format(phase=tr(phase_key)))
-        self.active_label.setText(tr("Active: P{player_id}").format(player_id=active_pid))
+        # 1. Update Game Status
+        if hasattr(self, 'game_status_widget'):
+            self.game_status_widget.update_state(self.gs)
         
-        self.stack_view.update_state(self.gs, self.card_db)
-        self.effect_debugger.update_state(self.gs, self.card_db)
+        # 2. Update Tools
+        if hasattr(self, 'stack_view'):
+            self.stack_view.update_state(self.gs, self.card_db)
+        if hasattr(self, 'effect_debugger'):
+            self.effect_debugger.update_state(self.gs, self.card_db)
 
+        # 3. Update Logs
         history = EngineCompat.get_command_history(self.gs)
-        try: current_len = len(history)
-        except: current_len = 0
-        if current_len > self.last_command_index:
-            for i in range(self.last_command_index, current_len):
-                cmd = history[i]
-                try: desc = describe_command(cmd, self.gs, self.card_db)
-                except: desc = str(cmd)
-                self.log_viewer.log_message(desc)
-            self.last_command_index = current_len
+        self.last_command_index = self.log_viewer.update_from_history(
+            history, self.last_command_index, self.gs, self.card_db
+        )
 
+        # 4. Generate Legal Actions & Update Game Board
         class _P:
              hand: List[Any] = []
              mana_zone: List[Any] = []
@@ -295,11 +266,16 @@ class GameWindow(QMainWindow):
              graveyard: List[Any] = []
              deck: List[Any] = []
 
+        active_pid = EngineCompat.get_active_player_id(self.gs)
         p0 = EngineCompat.get_player(self.gs, 0) or _P()
         p1 = EngineCompat.get_player(self.gs, 1) or _P()
         
         legal_actions = []
-        if active_pid == 0 and self.control_panel.is_p0_human() and not self.gs.game_over:
+        is_human = False
+        if hasattr(self, 'control_panel'):
+            is_human = self.control_panel.is_p0_human()
+
+        if active_pid == 0 and is_human and not self.gs.game_over:
              from dm_toolkit.commands import generate_legal_commands
              legal_actions = generate_legal_commands(self.gs, self.card_db)
 
@@ -311,25 +287,24 @@ class GameWindow(QMainWindow):
                 self.current_pass_action = cmd
                 break
 
-        self.control_panel.set_pass_button_visible(bool(self.current_pass_action))
+        god_view = False
+        if hasattr(self, 'control_panel'):
+            god_view = self.control_panel.is_god_view()
 
-        god_view = self.control_panel.is_god_view()
-        self.game_board.update_state(p0, p1, self.card_db, legal_actions, god_view)
+        if hasattr(self, 'game_board'):
+            self.game_board.update_state(p0, p1, self.card_db, legal_actions, god_view)
+            if EngineCompat.is_waiting_for_user_input(self.gs):
+                 self.game_board.set_selection_mode(self.input_handler.selected_targets)
 
-        pending = EngineCompat.get_pending_query(self.gs)
-        if EngineCompat.is_waiting_for_user_input(self.gs) and pending is not None and getattr(pending, 'query_type', '') == "SELECT_TARGET":
-            params = getattr(pending, 'params', {})
-            min_targets = params.get('min', 1) if hasattr(params, 'get') else 1
-            max_targets = params.get('max', 99) if hasattr(params, 'get') else 99
-
-            current = len(self.input_handler.selected_targets)
-            self.control_panel.set_confirm_button_text(f"{tr('Confirm')} ({current}/{min_targets}-{max_targets})")
-            self.control_panel.set_confirm_button_visible(True)
-            self.control_panel.set_confirm_button_enabled(current >= min_targets)
-
-            self.game_board.set_selection_mode(self.input_handler.selected_targets)
-        else:
-            self.control_panel.set_confirm_button_visible(False)
+        # 5. Update Control Panel
+        if hasattr(self, 'control_panel'):
+            pending = EngineCompat.get_pending_query(self.gs)
+            self.control_panel.update_state(
+                can_pass=bool(self.current_pass_action),
+                is_waiting_input=EngineCompat.is_waiting_for_user_input(self.gs),
+                pending_query=pending,
+                selected_count=len(self.input_handler.selected_targets)
+            )
 
 def main():
     import signal

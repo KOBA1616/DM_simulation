@@ -15,6 +15,7 @@ from dm_toolkit.gui.widgets.loop_recorder import LoopRecorderWidget
 from dm_toolkit.gui.widgets.card_effect_debugger import CardEffectDebugger
 from dm_toolkit.gui.widgets.control_panel import ControlPanel
 from dm_toolkit.gui.widgets.game_board import GameBoard
+from dm_toolkit.gui.widgets.game_status import GameStatusWidget
 
 if TYPE_CHECKING:
     from dm_toolkit.gui.app import GameWindow
@@ -92,24 +93,13 @@ class LayoutBuilder:
         window.status_layout_main = QVBoxLayout(window.status_panel)
         window.status_dock.setWidget(window.status_panel)
 
-        window.top_section_group = QGroupBox(tr("Game Status"))
-        top_layout = QVBoxLayout()
+        # Game Status Widget
+        window.game_status_widget = GameStatusWidget()
+        window.status_layout_main.addWidget(window.game_status_widget)
 
-        status_layout = QHBoxLayout()
-        window.turn_label = QLabel(tr("Turn: {turn}").format(turn=1))
-        window.turn_label.setStyleSheet("font-weight: bold;")
-        window.phase_label = QLabel(tr("Phase: {phase}").format(phase=tr("Start Phase")))
-        window.active_label = QLabel(tr("Active: P{player_id}").format(player_id=0))
-        status_layout.addWidget(window.turn_label)
-        status_layout.addWidget(window.phase_label)
-        status_layout.addWidget(window.active_label)
-        top_layout.addLayout(status_layout)
-
+        # Card Detail Panel
         window.card_detail_panel = CardDetailPanel()
-        top_layout.addWidget(window.card_detail_panel)
-
-        window.top_section_group.setLayout(top_layout)
-        window.status_layout_main.addWidget(window.top_section_group)
+        window.status_layout_main.addWidget(window.card_detail_panel)
 
         # Control Panel
         window.control_panel = ControlPanel()
