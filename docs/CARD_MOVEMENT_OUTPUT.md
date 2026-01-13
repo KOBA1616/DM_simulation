@@ -213,7 +213,7 @@ C++拡張をビルド後、以下で動作確認：
 scripts/build.ps1 -Config Release
 
 # GUIでカード編集
-C:\Users\ichirou\DM_simulation\.venv\Scripts\python.exe -m dm_toolkit.gui.editor.main
+C:\Users\ichirou\DM_simulation\.venv\Scripts\python.exe python/gui/card_editor.py
 ```
 
 GUIで移動系コマンドを追加すると、自動的に `output_value_key` が生成され、実行時にカードIDも記録されます。
