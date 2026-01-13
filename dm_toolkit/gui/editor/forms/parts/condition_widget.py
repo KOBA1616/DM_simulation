@@ -6,6 +6,7 @@ from PyQt6.QtCore import pyqtSignal
 from dm_toolkit.gui.i18n import tr
 from typing import Any, cast
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
+from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 
 # Configuration for Condition UI logic
 CONDITION_UI_CONFIG = {
@@ -78,11 +79,10 @@ CONDITION_UI_CONFIG = {
         "label_op": "Operator"
     },
     "COMPARE_INPUT": {
-        "show_val": True,
-        "show_str": True,
+        "show_val": False,
+        "show_str": False,
         "show_op": True,
-        "label_val": "Numeric Threshold",
-        "label_str": "String Value (if applicable)",
+        "show_link": True,
         "label_op": "Operator"
     },
     "CARDS_MATCHING_FILTER": {
@@ -103,6 +103,7 @@ CONDITION_UI_CONFIG = {
         "show_stat_key": True,
         "show_op": True,
         "show_filter": True,
+        "show_link": True,
         "label_val": "Value",
         "label_str": "String",
         "label_stat_key": "Stat Key",
@@ -194,6 +195,12 @@ class ConditionEditorWidget(QGroupBox):
         self.cond_filter.setVisible(False)
         layout.addWidget(self.cond_filter, 6, 0, 1, 2)
 
+        # Variable Link Widget (Row 7)
+        self.link_widget = VariableLinkWidget(parent=self)
+        self.link_widget.linkChanged.connect(self.dataChanged.emit)
+        self.link_widget.setVisible(False)
+        layout.addWidget(self.link_widget, 7, 0, 1, 2)
+
         # Initial Update
         self.update_ui_visibility("NONE")
 
@@ -228,6 +235,7 @@ class ConditionEditorWidget(QGroupBox):
         label_op = config.get("label_op", "Operator")
 
         show_filter = config.get("show_filter", False)
+        show_link = config.get("show_link", False)
 
         self.lbl_type_edit.setVisible(show_type_edit)
         self.type_edit.setVisible(show_type_edit)
@@ -249,6 +257,12 @@ class ConditionEditorWidget(QGroupBox):
         self.op_combo.setVisible(show_op)
 
         self.cond_filter.setVisible(show_filter)
+        self.link_widget.setVisible(show_link)
+        self.link_widget.set_output_hint(False) # Input only
+
+    def set_current_item(self, item):
+        """Pass current item to link widget for context."""
+        self.link_widget.set_current_item(item)
 
     def set_data(self, data):
         self.blockSignals(True)
@@ -288,6 +302,13 @@ class ConditionEditorWidget(QGroupBox):
             self.op_combo.setCurrentText(op)
 
         self.cond_filter.set_data(data.get('filter', {}))
+
+        link_data = {}
+        if 'input_link' in data:
+            link_data['input_link'] = data['input_link']
+        if 'input_var' in data: # Legacy support or direct var
+            link_data['input_link'] = data['input_var']
+        self.link_widget.set_data(link_data)
 
         # Refresh visibility based on current selection
         current_selection = self.cond_type_combo.currentData()
@@ -332,6 +353,12 @@ class ConditionEditorWidget(QGroupBox):
         if (config.get("show_filter", False) or combo_selection == "CUSTOM") and self.cond_filter.isVisible():
             data['filter'] = self.cond_filter.get_data()
 
+        if (config.get("show_link", False) or combo_selection == "CUSTOM") and self.link_widget.isVisible():
+            link_d = {}
+            self.link_widget.get_data(link_d)
+            if 'input_link' in link_d:
+                data['input_link'] = link_d['input_link']
+
         return data
 
     def blockSignals(self, block):
@@ -343,3 +370,4 @@ class ConditionEditorWidget(QGroupBox):
         self.stat_key_combo.blockSignals(block)
         self.op_combo.blockSignals(block)
         self.cond_filter.blockSignals(block)
+        self.link_widget.blockSignals(block)
