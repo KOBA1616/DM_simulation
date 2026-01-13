@@ -180,6 +180,7 @@ void bind_core(py::module& m) {
         .value("CANNOT_USE_SPELLS", PassiveType::CANNOT_USE_SPELLS)
         .value("LOCK_SPELL_BY_COST", PassiveType::LOCK_SPELL_BY_COST)
         .value("CANNOT_SUMMON", PassiveType::CANNOT_SUMMON)
+        .value("FORCE_SELECTION", PassiveType::FORCE_SELECTION)
         .export_values();
 
     py::class_<PassiveEffect>(m, "PassiveEffect")

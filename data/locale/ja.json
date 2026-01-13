@@ -323,6 +323,7 @@
     "LOGIC": "ロジック",
     "BATTLE": "バトルゾーン",
     "RESTRICTION": "制限",
+    "FORCE_SELECTION": "制限",
     "SPECIAL": "特殊",
     "DECK_BOTTOM": "山札の下",
     "IF": "IF判定",
