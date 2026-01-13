@@ -32,8 +32,8 @@ class CardTextResources:
         "SELF": "自分の",
         "OPPONENT": "相手の",
         "ALL": "",
-        "PLAYER_SELF": "自プレイヤー",
-        "PLAYER_OPPONENT": "相手プレイヤー",
+        "PLAYER_SELF": "自分",
+        "PLAYER_OPPONENT": "相手",
         "ALL_PLAYERS": "両プレイヤー",
     }
     
@@ -131,6 +131,16 @@ class CardTextResources:
         "CANNOT_ATTACK": "攻撃できない",
         "CANNOT_BLOCK": "ブロックできない",
         "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない"
+    }
+
+    # Duration Text Mapping (Added)
+    DURATION_TRANSLATION: Dict[str, str] = {
+        "THIS_TURN": "このターン",
+        "UNTIL_END_OF_OPPONENT_TURN": "次の相手のターンの終わりまで",
+        "UNTIL_START_OF_OPPONENT_TURN": "次の相手のターンのはじめまで",
+        "UNTIL_END_OF_YOUR_TURN": "次の自分のターンの終わりまで",
+        "UNTIL_START_OF_YOUR_TURN": "次の自分のターンのはじめまで",
+        "DURING_OPPONENT_TURN": "次の相手のターン中"
     }
     
     # Zone Japanese mapping
@@ -396,3 +406,10 @@ class CardTextResources:
             Japanese card type text
         """
         return cls.CARD_TYPE_JAPANESE.get(card_type, card_type)
+
+    @classmethod
+    def get_duration_text(cls, duration_key: str) -> str:
+        """
+        Get Japanese text for duration.
+        """
+        return cls.DURATION_TRANSLATION.get(duration_key, duration_key)

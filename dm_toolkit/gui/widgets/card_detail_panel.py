@@ -24,6 +24,16 @@ class CardDetailPanel(QWidget):
             self.preview.clear_preview()
             return
 
+        # If card_data is a dict (standard JSON loaded data), pass it directly
+        # to preserve effects/triggers for text generation.
+        if isinstance(card_data, dict):
+            try:
+                self.preview.render_card(card_data)
+                return
+            except Exception as e:
+                print(f"Error rendering card preview from dict: {e}")
+                # Fallthrough to robust construction
+
         civs = get_card_civilizations(card_data)
         # Build a minimal dict compatible with CardPreviewWidget
         t = str(getattr(card_data, 'type', 'CREATURE')).split('.')[-1]

@@ -51,7 +51,8 @@ namespace dm::core {
         COST_MODIFIER,
         POWER_MODIFIER,
         GRANT_KEYWORD,
-        SET_KEYWORD
+        SET_KEYWORD,
+        FORCE_ATTACK
     };
 
     NLOHMANN_JSON_SERIALIZE_ENUM(Civilization, {
@@ -415,7 +416,8 @@ namespace dm::core {
         {ModifierType::COST_MODIFIER, "COST_MODIFIER"},
         {ModifierType::POWER_MODIFIER, "POWER_MODIFIER"},
         {ModifierType::GRANT_KEYWORD, "GRANT_KEYWORD"},
-        {ModifierType::SET_KEYWORD, "SET_KEYWORD"}
+        {ModifierType::SET_KEYWORD, "SET_KEYWORD"},
+        {ModifierType::FORCE_ATTACK, "FORCE_ATTACK"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(EffectPrimitive, {

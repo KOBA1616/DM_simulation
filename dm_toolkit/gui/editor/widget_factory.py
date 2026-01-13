@@ -15,8 +15,10 @@ import importlib
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
+from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
 from dm_toolkit.consts import CARD_TYPES
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.text_resources import CardTextResources # Import for duration text
 
 class PlayerScopeWidget(QWidget, EditorWidgetMixin):
     def __init__(self, parent=None):
@@ -121,6 +123,13 @@ class RacesEditorWidget(TextWidget):
             self.setText(", ".join(value))
         else:
             self.setText(str(value))
+
+class ConditionEditorWrapper(ConditionEditorWidget, EditorWidgetMixin):
+    def get_value(self):
+        return self.get_data()
+
+    def set_value(self, value):
+        self.set_data(value)
 
 class WidgetFactory:
     """
@@ -291,7 +300,14 @@ def _create_select_widget(parent, schema, cb):
         widget = QComboBox(parent)
         if schema.options:
             for opt in schema.options:
-                widget.addItem(str(opt), opt)
+                # Use CardTextResources for translation if available (e.g. DURATION_THIS_TURN)
+                label = str(opt)
+                if opt in CardTextResources.DURATION_TRANSLATION:
+                     label = CardTextResources.get_duration_text(opt)
+                elif opt in CardTextResources.KEYWORD_TRANSLATION: # Also handle keywords if passed as raw list
+                     label = CardTextResources.get_keyword_text(opt)
+
+                widget.addItem(label, opt) # Display label, store value (opt)
 
     widget.currentIndexChanged.connect(lambda: cb())
     return widget
@@ -319,6 +335,11 @@ def _create_enum_widget(parent, schema, cb):
     widget.currentIndexChanged.connect(lambda: cb())
     return widget
 
+def _create_condition_widget(parent, schema, cb):
+    widget = ConditionEditorWrapper(parent)
+    widget.dataChanged.connect(cb)
+    return widget
+
 # --- Register Core Types ---
 WidgetFactory.register(FieldType.STRING, _create_string_widget)
 WidgetFactory.register(FieldType.INT, _create_int_widget)
@@ -333,3 +354,4 @@ WidgetFactory.register(FieldType.RACES, _create_races_widget)
 WidgetFactory.register(FieldType.TYPE_SELECT, _create_type_select_widget)
 WidgetFactory.register(FieldType.SELECT, _create_select_widget)
 WidgetFactory.register(FieldType.ENUM, _create_enum_widget)
+WidgetFactory.register(FieldType.CONDITION, _create_condition_widget)
