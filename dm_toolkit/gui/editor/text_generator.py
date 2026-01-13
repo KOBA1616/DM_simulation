@@ -212,6 +212,12 @@ class CardTextGenerator:
                     special_seen = True
                 elif ctype == "MEKRAID" or ctype == "FRIEND_BURST":
                     special_seen = True
+                elif ctype == "CAST_SPELL" and cmd.get("str_param") == "SPELL_SIDE":
+                    # Use data directly to ensure safety
+                    if data.get("keywords", {}).get("mega_last_burst"):
+                        special_seen = True
+                    else:
+                        return False
                 else:
                     # Found a non-special command -> not special-only
                     return False
