@@ -401,16 +401,20 @@
         },
         "IF": {
             "visible": [
+                "target_group",
                 "target_filter"
             ]
         },
         "IF_ELSE": {
             "visible": [
+                "target_group",
                 "target_filter"
             ]
         },
         "ELSE": {
-            "visible": []
+            "visible": [
+                "target_group"
+            ]
         },
         "COST_REFERENCE": {
             "visible": [
