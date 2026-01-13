@@ -24,6 +24,10 @@ class GameInputHandler:
 
     @property
     def card_db(self) -> 'CardDB':
+        # Prefer native_card_db for command generation if available
+        # Check for existence, not truthiness (CardDatabase might be empty but still valid)
+        if hasattr(self.window, 'native_card_db') and self.window.native_card_db is not None:
+            return self.window.native_card_db
         return self.window.card_db
 
     def on_card_clicked(self, card_id: int, instance_id: int) -> None:

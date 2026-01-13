@@ -20,6 +20,9 @@ class GameSession:
     Logic extracted from app.py and merged with GameController.
     """
 
+    # デフォルトデッキ（40枚のカードID=1）
+    DEFAULT_DECK = [1] * 40
+
     def __init__(self,
                  callback_update_ui: Callable[[], None],
                  callback_log: Callable[[str], None],
@@ -46,8 +49,38 @@ class GameSession:
         if dm_ai_module:
             self.gs = dm_ai_module.GameState(seed)
             self.gs.setup_test_duel()
+
+            # 両プレイヤーにデフォルトデッキを設定
+            self.gs.set_deck(0, self.DEFAULT_DECK)
+            self.gs.set_deck(1, self.DEFAULT_DECK)
+            
+            # デバッグ: デッキ設定後の状態を確認
+            self.callback_log(f"P0 deck size: {len(self.gs.players[0].deck)}, hand size: {len(self.gs.players[0].hand)}, shields: {len(self.gs.players[0].shield_zone)}")
+            self.callback_log(f"P1 deck size: {len(self.gs.players[1].deck)}, hand size: {len(self.gs.players[1].hand)}, shields: {len(self.gs.players[1].shield_zone)}")
+
             if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
-                dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+                # start_gameはCardDatabaseオブジェクトを期待しているため、
+                # 辞書形式のcard_dbをCardDatabaseに変換する
+                if hasattr(dm_ai_module, 'JsonLoader'):
+                    try:
+                        # JsonLoaderを使用してCardDatabaseを取得
+                        native_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+                        dm_ai_module.PhaseManager.start_game(self.gs, native_db)
+                        self.callback_log("start_game executed successfully")
+                    except Exception as e:
+                        self.callback_log(f"Warning: Failed to load CardDatabase: {e}")
+                        # CardDatabaseが必要ない場合は警告のみで続行
+                else:
+                    # 古いバージョンでは辞書のままで動作する可能性がある
+                    try:
+                        dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+                        self.callback_log("start_game executed successfully (dict format)")
+                    except Exception as e:
+                        self.callback_log(f"Warning: start_game failed: {e}")
+            
+            # デバッグ: start_game実行後の状態を確認
+            self.callback_log(f"After start_game - P0 deck size: {len(self.gs.players[0].deck)}, hand size: {len(self.gs.players[0].hand)}, shields: {len(self.gs.players[0].shield_zone)}")
+            self.callback_log(f"After start_game - P1 deck size: {len(self.gs.players[1].deck)}, hand size: {len(self.gs.players[1].hand)}, shields: {len(self.gs.players[1].shield_zone)}")
         else:
             self.gs = None
 
@@ -62,10 +95,13 @@ class GameSession:
         self.gs = dm_ai_module.GameState(seed)
         self.gs.setup_test_duel()
 
-        if p0_deck:
-            self.gs.set_deck(0, p0_deck)
-        if p1_deck:
-            self.gs.set_deck(1, p1_deck)
+        # デッキが指定されていない場合はデフォルトを使用
+        deck0 = p0_deck if p0_deck else self.DEFAULT_DECK
+        deck1 = p1_deck if p1_deck else self.DEFAULT_DECK
+        
+        # 両方のデッキを設定（P0→P1の順で）
+        self.gs.set_deck(0, deck0)
+        self.gs.set_deck(1, deck1)
 
         if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
             dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)

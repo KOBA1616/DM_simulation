@@ -29,6 +29,8 @@ namespace dm::core {
             p.graveyard.clear();
             p.deck.clear();
         }
+        // Clear card_owner_map to reset instance_id counter
+        card_owner_map.clear();
         turn_number = 1;
         active_player_id = 0;
         current_phase = Phase::START_OF_TURN;

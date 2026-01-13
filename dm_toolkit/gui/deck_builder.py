@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 import dm_ai_module
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.utils.card_helpers import get_card_civilizations
+from dm_toolkit.gui.utils.card_helpers import get_card_civilizations, get_card_name, get_card_cost
 from dm_toolkit.gui.editor.window import CardEditor
 from dm_toolkit.gui.widgets.card_widget import CardWidget
 from dm_toolkit.gui.widgets.card_detail_panel import CardDetailPanel
@@ -120,7 +120,12 @@ class DeckBuilder(QWidget):
             # Determine civilizations for widget
             civ_input = get_card_civilizations(card)
 
-            widget = CardWidget(card.id, card.name, card.cost, card.power, civ_input)
+            card_id_val = card.get('id') if isinstance(card, dict) else card.id
+            card_name = get_card_name(card)
+            card_cost = get_card_cost(card)
+            card_power = card.get('power') if isinstance(card, dict) else getattr(card, 'power', 0)
+
+            widget = CardWidget(card_id_val, card_name, card_cost, card_power, civ_input)
             self.preview_layout.addWidget(widget)
             
             self.card_detail_panel.update_card(card)
@@ -146,8 +151,8 @@ class DeckBuilder(QWidget):
         sorted_ids = sorted(self.card_db.keys())
         for cid in sorted_ids:
             card = self.card_db[cid]
-            # self.card_list.addItem(f"[{cid}] {card.name} (Cost: {card.cost})")
-            self.card_list.addItem(f"[{cid}] {card.name} " + tr("(Cost: {cost})").format(cost=card.cost))
+            # self.card_list.addItem(f"[{cid}] {get_card_name(card)} (Cost: {get_card_cost(card)})")
+            self.card_list.addItem(f"[{cid}] {get_card_name(card)} " + tr("(Cost: {cost})").format(cost=get_card_cost(card)))
 
     def filter_cards(self, text):
         # Simple filter
@@ -155,9 +160,9 @@ class DeckBuilder(QWidget):
         sorted_ids = sorted(self.card_db.keys())
         for cid in sorted_ids:
             card = self.card_db[cid]
-            if text.lower() in card.name.lower():
+            if text.lower() in get_card_name(card).lower():
                 self.card_list.addItem(
-                    f"[{cid}] {card.name} " + tr("(Cost: {cost})").format(cost=card.cost)
+                    f"[{cid}] {get_card_name(card)} " + tr("(Cost: {cost})").format(cost=get_card_cost(card))
                 )
 
     def add_card(self, item):
@@ -184,7 +189,7 @@ class DeckBuilder(QWidget):
         for cid in self.current_deck:
             if cid in self.card_db:
                 card = self.card_db[cid]
-                self.deck_list.addItem(f"[{cid}] {card.name}")
+                self.deck_list.addItem(f"[{cid}] {get_card_name(card)}")
             else:
                 self.deck_list.addItem(f"[{cid}] {tr('Unknown')}")
         self.deck_count_label.setText(f"{tr('Deck')}: {len(self.current_deck)}/40")

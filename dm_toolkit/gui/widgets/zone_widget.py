@@ -66,6 +66,12 @@ class ZoneWidget(QWidget):
         self.last_card_data_list = card_data_list
         self.civ_map = civ_map
 
+        # Debug: Log card_db type and card_data_list info
+        if hasattr(card_data_list, '__len__') and len(card_data_list) > 0:
+            first_card = card_data_list[0] if card_data_list else {}
+            card_id = first_card.get('id', -1)
+            # print(f"DEBUG [zone {self.title}]: card_data_list has {len(card_data_list)} cards, first id={card_id}, card_db type={type(card_db)}")
+
         # If popup is active, update it too
         if hasattr(self, 'active_popup') and self.active_popup and self.active_popup.isVisible():
             self.active_popup.update_content(card_data_list, card_db, civ_map, legal_actions)
@@ -163,14 +169,34 @@ class ZoneWidget(QWidget):
             # Filter actions for this card
             relevant_actions = []
             if instance_id != -1:
-                relevant_actions = [a for a in self.legal_actions if getattr(a, 'source_instance_id', -1) == instance_id]
+                for a in self.legal_actions:
+                    # Support both dict and object action representations
+                    if hasattr(a, 'source_instance_id'):
+                        if a.source_instance_id == instance_id:
+                            relevant_actions.append(a)
+                    elif isinstance(a, dict):
+                        if a.get('source_instance_id') == instance_id or a.get('instance_id') == instance_id:
+                            relevant_actions.append(a)
+                    else:
+                        # Try to_dict() method
+                        try:
+                            d = a.to_dict()
+                            if d.get('source_instance_id') == instance_id or d.get('instance_id') == instance_id:
+                                relevant_actions.append(a)
+                        except:
+                            pass
 
             if cid in card_db:
                 card_def = card_db[cid]
                 civ = get_card_civilization(card_def)
                 
+                # Support both dict and object formats for card_def
+                card_name = card_def['name'] if isinstance(card_def, dict) else card_def.name
+                card_cost = card_def['cost'] if isinstance(card_def, dict) else card_def.cost
+                card_power = card_def['power'] if isinstance(card_def, dict) else card_def.power
+                
                 widget = CardWidget(
-                    cid, card_def.name, card_def.cost, card_def.power, 
+                    cid, card_name, card_cost, card_power, 
                     civ, tapped, instance_id,
                     legal_actions=relevant_actions
                 )

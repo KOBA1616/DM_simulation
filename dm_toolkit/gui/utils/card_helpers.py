@@ -10,11 +10,19 @@ except ImportError:
 def get_card_civilizations(card_data: Any) -> List[str]:
     """
     Returns a list of civilization names (e.g. ["FIRE", "NATURE"]) from card data.
-    Handles C++ pybind11 objects and legacy dicts.
+    Handles C++ pybind11 objects, C++ CardDatabase objects, and legacy dicts.
     """
     if not card_data:
         return ["COLORLESS"]
 
+    # Handle dict format (from JSON)
+    if isinstance(card_data, dict):
+        civs_data = card_data.get('civilizations', [])
+        if isinstance(civs_data, list) and civs_data:
+            return [str(c) if isinstance(c, str) else c for c in civs_data]
+        return ["COLORLESS"]
+
+    # Handle object format (from C++)
     if hasattr(card_data, 'civilizations') and card_data.civilizations:
         civs = []
         for c in card_data.civilizations:
@@ -52,8 +60,28 @@ def get_card_name_by_instance(game_state: Any, card_db: Dict[int, Any], instance
         if inst:
             card_id = inst.card_id
             if card_id in card_db:
-                return card_db[card_id].name  # type: ignore
+                card_def = card_db[card_id]
+                # Support both dict and object formats
+                return card_def['name'] if isinstance(card_def, dict) else card_def.name
     except Exception:
         pass
 
     return f"Inst_{instance_id}"
+
+def get_card_name(card_def: Any) -> str:
+    """Get card name from dict or object format."""
+    if isinstance(card_def, dict):
+        return card_def.get('name', 'Unknown')
+    return getattr(card_def, 'name', 'Unknown')
+
+def get_card_cost(card_def: Any) -> int:
+    """Get card cost from dict or object format."""
+    if isinstance(card_def, dict):
+        return card_def.get('cost', 0)
+    return getattr(card_def, 'cost', 0)
+
+def get_card_power(card_def: Any) -> int:
+    """Get card power from dict or object format."""
+    if isinstance(card_def, dict):
+        return card_def.get('power', 0)
+    return getattr(card_def, 'power', 0)

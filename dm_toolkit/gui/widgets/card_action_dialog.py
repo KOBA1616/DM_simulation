@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 import dm_ai_module
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.utils.card_helpers import get_card_name
 
 
 class CardActionDialog(QDialog):
@@ -62,7 +63,7 @@ class CardActionDialog(QDialog):
         
         if self.card_db:
             for cid, card in self.card_db.items():
-                item = QListWidgetItem(f"{cid}: {card.name}")
+                item = QListWidgetItem(f"{cid}: {get_card_name(card)}")
                 item.setData(Qt.ItemDataRole.UserRole, cid)
                 self.card_list.addItem(item)
         

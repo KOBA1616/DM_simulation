@@ -686,18 +686,35 @@ void bind_core(py::module& m) {
         .def("get_zone", &GameState::get_zone)
         .def("set_deck", [](GameState& s, PlayerID pid, std::vector<int> ids) {
             try {
+                 // Find maximum instance_id across all zones BEFORE clearing
+                 // to ensure uniqueness even when setting multiple decks sequentially
+                 int max_instance_id = -1;
+                 
+                 // Check all players' zones (including the deck we're about to clear)
+                 for (int p = 0; p < 2; ++p) {
+                     auto& pl = s.players[p];
+                     for (auto& c : pl.deck) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                     for (auto& c : pl.hand) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                     for (auto& c : pl.battle_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                     for (auto& c : pl.mana_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                     for (auto& c : pl.shield_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                     for (auto& c : pl.graveyard) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                 }
+                 
+                 int counter = max_instance_id + 1;
+                 
+                 // Now clear the target deck
                  s.players[pid].deck.clear();
-                 // Determine start counter based on current map size to ensure uniqueness
-                 int counter = (int)s.card_owner_map.size();
-
+                 
                  // Resize map to accommodate new cards
-                 if (s.card_owner_map.size() < (size_t)(counter + ids.size())) {
-                     s.card_owner_map.resize(counter + ids.size(), pid);
+                 size_t required_size = counter + ids.size();
+                 if (s.card_owner_map.size() < required_size) {
+                     s.card_owner_map.resize(required_size, pid);
                  }
 
                  for (int id : ids) {
                      s.players[pid].deck.push_back(CardInstance(id, counter, pid));
-                     // Update owner map - redundant if resize filled correctly, but safe
+                     // Update owner map
                      if ((size_t)counter < s.card_owner_map.size()) {
                         s.card_owner_map[counter] = pid;
                      }

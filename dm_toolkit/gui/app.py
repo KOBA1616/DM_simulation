@@ -58,6 +58,18 @@ class GameWindow(QMainWindow):
         # Load card database
         self.card_db = EngineCompat.load_cards_robust("data/cards.json")
         
+        # Ensure card_db is always a dict (not a list)
+        if isinstance(self.card_db, list):
+            self.card_db = {card['id']: card for card in self.card_db if isinstance(card, dict) and 'id' in card}
+        
+        # Also try to load native CardDatabase for command generation
+        self.native_card_db = None
+        try:
+            if dm_ai_module and hasattr(dm_ai_module, 'JsonLoader'):
+                self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+        except Exception:
+            pass
+        
         self.p0_deck_ids: Optional[List[int]] = None
         self.p1_deck_ids: Optional[List[int]] = None
         self.last_command_index: int = 0
@@ -310,6 +322,7 @@ def main():
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+    print("Creating QApplication...")
     app = QApplication(sys.argv)
 
     if dm_ai_module is None:
@@ -317,10 +330,18 @@ def main():
             tr("dm_ai_module not found. Please build the C++ extension."))
         sys.exit(1)
 
-    window = GameWindow()
-    window.show()
+    print("Creating GameWindow...")
     try:
+        window = GameWindow()
+        print("GameWindow created successfully!")
+        window.show()
+        print("Window shown, entering event loop...")
         sys.exit(app.exec())
+    except Exception as e:
+        print(f"Error creating or showing window: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
     except KeyboardInterrupt:
         print("\nApplication interrupted by user.")
         sys.exit(0)

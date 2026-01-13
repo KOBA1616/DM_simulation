@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.engine.compat import EngineCompat
+from dm_toolkit.gui.utils.card_helpers import get_card_name
 
 class CardEffectDebugger(QWidget):
     """
@@ -94,7 +95,7 @@ class CardEffectDebugger(QWidget):
                 inst = game_state.get_card_instance(source_id)
                 card_def = card_db.get(inst.card_id)
                 if card_def:
-                    source_name = card_def.name
+                    source_name = get_card_name(card_def)
             except:
                 pass
 

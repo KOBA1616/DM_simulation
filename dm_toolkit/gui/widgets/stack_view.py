@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QMimeData
 from PyQt6.QtGui import QDrag
 import dm_ai_module
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.utils.card_helpers import get_card_name
 
 class PendingEffectItem(QListWidgetItem):
     def __init__(self, index, effect_info, card_name):
@@ -99,7 +100,7 @@ class StackViewWidget(QWidget):
                     if instance:
                          card = card_db.get(instance.card_id)
                          if card:
-                             card_name = card.name
+                             card_name = get_card_name(card)
                 except:
                     pass
 

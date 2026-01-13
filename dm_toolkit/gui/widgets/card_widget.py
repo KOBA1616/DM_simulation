@@ -70,6 +70,12 @@ class CardWidget(QFrame):
         self.hovered.emit(self.card_id)
         super().enterEvent(event)
 
+    def mousePressEvent(self, event):
+        """Handle left-click to emit clicked signal."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(self.instance_id)
+        super().mousePressEvent(event)
+
     def mouseDoubleClickEvent(self, event):
         """Handle double-click to quickly play the default action."""
         if event.button() == Qt.MouseButton.LeftButton:

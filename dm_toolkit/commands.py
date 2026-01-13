@@ -96,9 +96,12 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
 
         actions = []
         try:
+            # Try to use card_db directly - it could be a native CardDatabase or a dict
             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
-        except Exception:
-            actions = []
+        except Exception as e:
+            # If it fails, we may have a format mismatch
+            # Log for debugging but don't fail - just return empty list
+            pass
 
         cmds = []
         for a in actions:
