@@ -29,11 +29,13 @@ namespace dm::engine {
             args["filter"] = ctx.action.filter; // Filter is used for Global modifiers (ADD_PASSIVE) or Cost Modifiers
 
             // Serialize condition if present
-            // ActionDef has 'condition' field (ConditionDef)
-            if (ctx.action.condition.type != "NONE" && !ctx.action.condition.type.empty()) {
+            // ActionDef has 'condition' field (std::optional<ConditionDef>)
+            if (ctx.action.condition.has_value() && 
+                ctx.action.condition->type != "NONE" && 
+                !ctx.action.condition->type.empty()) {
                 // We need to serialize ConditionDef to JSON.
                 // Since nlohmann/json is available and to_json is defined for ConditionDef in card_json_types.hpp
-                args["condition"] = ctx.action.condition;
+                args["condition"] = ctx.action.condition.value();
             }
 
             // Determine the type for PipelineExecutor::handle_modify

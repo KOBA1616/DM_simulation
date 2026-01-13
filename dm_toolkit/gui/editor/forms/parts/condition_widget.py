@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QWidget, QGridLayout, QComboBox, QSpinBox, QLineEdit, QLabel, QGroupBox
 )

@@ -6,6 +6,42 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from contextlib import contextmanager
 
+
+def to_dict(obj):
+    """
+    Convert a Pydantic model or dict-like object to a dictionary.
+    Handles both Pydantic V1 and V2 models.
+    """
+    if hasattr(obj, 'model_dump'):
+        # Pydantic V2
+        return obj.model_dump(exclude_none=False)
+    elif hasattr(obj, 'dict'):
+        # Pydantic V1
+        return obj.dict(exclude_none=False)
+    elif isinstance(obj, dict):
+        return obj
+    return {}
+
+
+def get_attr(obj, key, default=None):
+    """
+    Get an attribute from a dict or Pydantic model.
+    Works with both types transparently.
+    """
+    if hasattr(obj, 'model_dump') or hasattr(obj, 'dict'):
+        # Convert to dict and get
+        obj_dict = to_dict(obj)
+        return obj_dict.get(key, default)
+    elif isinstance(obj, dict):
+        return obj.get(key, default)
+    else:
+        # Try attribute access
+        try:
+            return getattr(obj, key, default)
+        except AttributeError:
+            return default
+
+
 class BaseEditForm(QWidget):
     """
     Base class for all edit forms in the Card Editor.
@@ -117,6 +153,9 @@ class BaseEditForm(QWidget):
         if data is None:
             # Should not happen if item is valid, but handle gracefully
             data = {}
+        else:
+            # Convert Pydantic model to dict if needed
+            data = to_dict(data)
 
         self._save_ui_to_data(data)
 

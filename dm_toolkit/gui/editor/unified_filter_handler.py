@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 """
 Unified Filter Handler for Static Abilities and Trigger Effects.
 Provides common widget creation and filter text generation.

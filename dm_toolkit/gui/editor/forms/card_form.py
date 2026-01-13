@@ -1,11 +1,11 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QVBoxLayout, QScrollArea, QPushButton, QMenu, QGroupBox, QLabel
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QCursor
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, to_dict, get_attr
 from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_ADD_CHILD_EFFECT, STRUCT_CMD_ADD_SPELL_SIDE, STRUCT_CMD_REMOVE_SPELL_SIDE
 )
@@ -166,12 +166,16 @@ class CardEditForm(BaseEditForm):
     def _load_ui_from_data(self, data, item):
         if not data: data = {}
 
+        # Convert Pydantic model to dict
+        data_dict = to_dict(data)
+
         # Pre-process data to match flat schema (e.g. keywords extraction)
-        flat_data = data.copy()
+        flat_data = data_dict.copy() if isinstance(data_dict, dict) else {}
 
         # Flatten keywords
-        keywords = data.get('keywords', {})
-        if keywords.get('hyper_energy'): flat_data['hyper_energy'] = True
+        keywords = flat_data.get('keywords', {})
+        if isinstance(keywords, dict) and keywords.get('hyper_energy'):
+            flat_data['hyper_energy'] = True
 
         # Structural check for Twinpact
         has_spell_side = False

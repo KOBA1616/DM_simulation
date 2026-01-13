@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 # unified_action_form.py
 # \x83X\x83L\x81[\x83}\x8b쓮\x82̓\xae\x93I\x83t\x83H\x81[\x83\x80\x90\xb6\x90\xac\x81B\x95\xa1\x8eG\x82\xbe\x82\xaa\x81A\x92P\x88\xea\x82̐Ӗ\xb1\x81i\x83A\x83N\x83V\x83\x87\x83\x93\x90ݒ\xe8\x81j\x82ɏW\x92\x86\x82\xb5\x82Ă\xa2\x82\xe9\x81B
 # \x88ێ\x9d: AI\x82\xaa\x95ҏW\x82\xb7\x82\xe9\x8dۂ\xcd schema_def.py \x82\xe2 ACTION_UI_CONFIG (command_config.py) \x82ƃZ\x83b\x83g\x82ŗ\x9d\x89\xf0\x82\xb7\x82\xe9\x95K\x97v\x82\xaa\x82\xa0\x82\xe8\x82܂\xb7\x81B
@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from pydantic import ValidationError
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.models import CommandModel
 from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
@@ -191,7 +191,14 @@ class UnifiedActionForm(BaseEditForm):
     def _load_ui_from_data(self, data, item):
         """Loads data using interface-based widgets."""
         if not data: data = {}
-        model = CommandModel(**data)
+        # Handle case where data is already a CommandModel instance
+        if isinstance(data, CommandModel):
+            model = data
+            # Get dict representation for widgets that need it
+            data_dict = model.model_dump()
+        else:
+            model = CommandModel(**data)
+            data_dict = data
         self.current_model = model
         self.current_item = item
 
@@ -218,8 +225,8 @@ class UnifiedActionForm(BaseEditForm):
                 # Special handling for flattened models vs structured widgets
                 if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
                     # VariableLink expects full dict to parse keys (it handles legacy keys internally usually)
-                    # We pass the raw data dict which contains what came from JSON/Tree
-                    widget.set_value(data)
+                    # We pass the data_dict which is the dictionary representation
+                    widget.set_value(data_dict)
                 elif key == 'target_filter':
                     # target_filter is now stored in params
                     tf = model.params.get('target_filter')

@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
 from typing import Any, Dict
-from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.forms.parts.reaction_condition_widget import ReactionConditionWidget
 
 class ReactionEditForm(BaseEditForm):
@@ -76,6 +76,8 @@ class ReactionEditForm(BaseEditForm):
         # data is passed directly from BaseEditForm.load_data
         if data is None:
              data = {}
+        else:
+             data = to_dict(data)
 
         self.set_combo_text(self.type_combo, data.get('type', 'NONE'))
         self.cost_spin.setValue(data.get('cost', 0))

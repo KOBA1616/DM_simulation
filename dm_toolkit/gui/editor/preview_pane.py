@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, QRect
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor import normalize
 from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
 
@@ -368,7 +369,7 @@ class CardPreviewWidget(QWidget):
         races = " / ".join(data.get('races', []))
         self.race_label.setText(races if races else "")
 
-        type_str = CardTextGenerator.TYPE_MAP.get(data.get('type', 'CREATURE'), data.get('type', ''))
+        type_str = CardTextResources.get_card_type_text(data.get('type', 'CREATURE'))
         self.type_label.setText(f"[{type_str}]")
 
         # Use new structure (generator returns a string)

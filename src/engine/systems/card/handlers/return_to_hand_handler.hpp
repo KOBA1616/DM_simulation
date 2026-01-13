@@ -26,21 +26,21 @@ namespace dm::engine {
 
                 std::vector<std::pair<PlayerID, Zone>> zones_to_check;
                 if (ctx.action.filter.zones.empty()) {
-                    zones_to_check.push_back({0, Zone::BATTLE});
-                    zones_to_check.push_back({1, Zone::BATTLE});
+                    zones_to_check.push_back({static_cast<PlayerID>(0), Zone::BATTLE});
+                    zones_to_check.push_back({static_cast<PlayerID>(1), Zone::BATTLE});
                 } else {
                      for (const auto& z : ctx.action.filter.zones) {
                         if (z == "BATTLE_ZONE") {
-                            zones_to_check.push_back({0, Zone::BATTLE});
-                            zones_to_check.push_back({1, Zone::BATTLE});
+                            zones_to_check.push_back({static_cast<PlayerID>(0), Zone::BATTLE});
+                            zones_to_check.push_back({static_cast<PlayerID>(1), Zone::BATTLE});
                         }
                         if (z == "MANA_ZONE") {
-                            zones_to_check.push_back({0, Zone::MANA});
-                            zones_to_check.push_back({1, Zone::MANA});
+                            zones_to_check.push_back({static_cast<PlayerID>(0), Zone::MANA});
+                            zones_to_check.push_back({static_cast<PlayerID>(1), Zone::MANA});
                         }
                         if (z == "GRAVEYARD") {
-                            zones_to_check.push_back({0, Zone::GRAVEYARD});
-                            zones_to_check.push_back({1, Zone::GRAVEYARD});
+                            zones_to_check.push_back({static_cast<PlayerID>(0), Zone::GRAVEYARD});
+                            zones_to_check.push_back({static_cast<PlayerID>(1), Zone::GRAVEYARD});
                         }
                     }
                 }

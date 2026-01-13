@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QFormLayout, QComboBox, QWidget
 from PyQt6.QtCore import Qt
-from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, get_schema, register_schema
 from dm_toolkit.gui.editor.widget_factory import FormBuilder
 from dm_toolkit.gui.editor.schema_config import register_all_schemas
@@ -78,6 +78,9 @@ class DynamicCommandForm(BaseEditForm):
 
     def _load_ui_from_data(self, data, item):
         """Load data using schema-aware logic."""
+        # Convert to dict if needed
+        data = to_dict(data)
+        
         # 1. Set type (triggers rebuild)
         t = data.get('type', 'NONE')
 

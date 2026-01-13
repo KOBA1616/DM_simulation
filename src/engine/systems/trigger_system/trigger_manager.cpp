@@ -117,11 +117,25 @@ namespace dm::engine::systems {
                             }
 
                             if (player_match) {
-                                if (effect.trigger_filter.has_value()) {
+                                // Check if trigger_filter has any actual filtering criteria
+                                bool has_filter = !effect.trigger_filter.zones.empty() ||
+                                                 !effect.trigger_filter.types.empty() ||
+                                                 !effect.trigger_filter.civilizations.empty() ||
+                                                 !effect.trigger_filter.races.empty() ||
+                                                 effect.trigger_filter.owner.has_value() ||
+                                                 effect.trigger_filter.min_cost.has_value() ||
+                                                 effect.trigger_filter.max_cost.has_value() ||
+                                                 effect.trigger_filter.min_power.has_value() ||
+                                                 effect.trigger_filter.max_power.has_value() ||
+                                                 effect.trigger_filter.is_tapped.has_value() ||
+                                                 effect.trigger_filter.is_blocker.has_value() ||
+                                                 effect.trigger_filter.is_evolution.has_value();
+                                
+                                if (has_filter) {
                                     const CardInstance* source_card = state.get_card_instance(event.instance_id);
                                     if (source_card && card_db.count(source_card->card_id)) {
                                          if (TargetUtils::is_valid_target(*source_card, card_db.at(source_card->card_id),
-                                                                          effect.trigger_filter.value(), state, controller, controller)) {
+                                                                          effect.trigger_filter, state, controller, controller, false, nullptr)) {
                                               condition_met = true;
                                          }
                                     }

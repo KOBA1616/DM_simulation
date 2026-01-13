@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_REV_CHANGE, STRUCT_CMD_REMOVE_REV_CHANGE
 
 class KeywordEditForm(BaseEditForm):
@@ -140,6 +140,8 @@ class KeywordEditForm(BaseEditForm):
         # data parameter is the keywords dictionary extracted from the KEYWORDS tree item
         if data is None:
             data = {}
+        else:
+            data = to_dict(data)
 
         for k, cb in self.keyword_checks.items():
             is_checked = data.get(k, False)

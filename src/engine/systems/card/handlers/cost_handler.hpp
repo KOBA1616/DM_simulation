@@ -38,7 +38,7 @@ namespace dm::engine {
                  bool valid_costs = true;
 
                  for (int tid : *ctx.targets) {
-                    int card_id = -1;
+                    CardID card_id = 0;
                     bool found = false;
                     for (const auto &p : ctx.game_state.players) {
                         for (const auto& c : p.battle_zone) {
@@ -51,9 +51,9 @@ namespace dm::engine {
                         if (found) break;
                     }
 
-                    if (found && card_id != -1) {
+                    if (found && card_id != 0) {
                         if (ctx.card_db.count(card_id)) {
-                             int cost = ctx.card_db.at(card_id).cost;
+                             int cost = static_cast<int>(ctx.card_db.at(card_id).cost);
                              if (seen_costs.count(cost)) {
                                  valid_costs = false;
                                  break;

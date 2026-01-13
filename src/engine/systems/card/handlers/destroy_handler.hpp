@@ -51,7 +51,6 @@ namespace dm::engine {
 
             // Determine Targets
             std::string target_var = "";
-            bool selection_needed = false;
 
             if (!ctx.action.input_value_key.empty()) {
                 target_var = "$" + ctx.action.input_value_key;

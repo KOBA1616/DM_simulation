@@ -3,6 +3,7 @@ from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.constants import RESERVED_VARIABLES
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
+from dm_toolkit.gui.editor.forms.base_form import get_attr
 
 class VariableLinkManager:
     """
@@ -39,14 +40,14 @@ class VariableLinkManager:
             if not sib_data:
                 continue
 
-            out_key = sib_data.get('output_value_key')
+            out_key = get_attr(sib_data, 'output_value_key') or get_attr(sib_data, 'output_var')
             if out_key:
                 # The type stored in data is the command type (e.g. DRAW_CARD)
-                sib_type = sib_data.get('type')
-                type_disp = tr(sib_type)
+                sib_type = get_attr(sib_data, 'type')
+                type_disp = tr(sib_type) if sib_type else ''
 
                 # Enhance label with Output Port Name if available in COMMAND_UI_CONFIG
-                sib_config = COMMAND_UI_CONFIG.get(sib_type, {})
+                sib_config = COMMAND_UI_CONFIG.get(sib_type, {}) if sib_type else {}
                 outputs = sib_config.get('outputs', {})
                 port_name = outputs.get('output_value_key', '')
 
@@ -69,7 +70,7 @@ class VariableLinkManager:
             return ""
 
         command_data = current_item.data(Qt.ItemDataRole.UserRole + 2)
-        uid = command_data.get('uid')
+        uid = get_attr(command_data, 'uid')
 
         if uid:
             # Use UUID to ensure uniqueness

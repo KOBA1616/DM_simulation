@@ -117,7 +117,7 @@ namespace dm::engine {
 
                 for (PlayerID pid : pids) {
                      Player& p = ctx.game_state.players[pid];
-                     int available = p.deck.size();
+                     int available = static_cast<int>(p.deck.size());
                      int to_take = std::min(count, available);
                      // Take from top (end of vector)
                      for (int i = 0; i < to_take; ++i) {
@@ -126,7 +126,7 @@ namespace dm::engine {
                           // Better to just push back the ID. We assume deck structure is valid.
                           // However, we need Instance ID.
                           // Deck stores CardInstance.
-                          int idx = p.deck.size() - 1 - i;
+                          int idx = static_cast<int>(p.deck.size()) - 1 - i;
                           if (idx >= 0) targets.push_back(p.deck[idx].instance_id);
                      }
                 }

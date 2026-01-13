@@ -37,7 +37,9 @@ namespace dm::engine {
                 for (const auto& card : p.hand) {
                     if (!ctx.card_db.count(card.card_id)) continue;
                      const auto& def = ctx.card_db.at(card.card_id);
-                     if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, ctx.source_instance_id, target_pid)) {
+                     if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, 
+                                                     EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id), 
+                                                     target_pid, false, nullptr)) {
                          discard_candidates.push_back(card.instance_id);
                      }
                 }
@@ -46,7 +48,7 @@ namespace dm::engine {
                 if (ctx.action.value1 > 0) count = ctx.action.value1;
 
                 if (ctx.action.filter.selection_mode == "ALL" || ctx.action.target_choice == "ALL") {
-                    count = discard_candidates.size();
+                    count = static_cast<int>(discard_candidates.size());
                 }
 
                 if (!discard_candidates.empty()) {
@@ -55,11 +57,11 @@ namespace dm::engine {
                         std::vector<int> shuffled = discard_candidates;
                         std::shuffle(shuffled.begin(), shuffled.end(), ctx.game_state.rng);
 
-                        int num = std::min((int)shuffled.size(), count);
+                        int num = std::min(static_cast<int>(shuffled.size()), count);
                         for (int i = 0; i < num; ++i) targets.push_back(shuffled[i]);
                     } else {
                          // Default logic (e.g. ALL or First N)
-                         int num = std::min((int)discard_candidates.size(), count);
+                         int num = std::min(static_cast<int>(discard_candidates.size()), count);
                          for (int i = 0; i < num; ++i) targets.push_back(discard_candidates[i]);
                     }
                 }

@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 
 class SpellSideForm(BaseEditForm):
@@ -43,6 +43,9 @@ class SpellSideForm(BaseEditForm):
         main_layout.addStretch()
 
     def _load_ui_from_data(self, data, item):
+        # Convert to dict if needed
+        data = to_dict(data)
+        
         # Apply standard bindings
         self._apply_bindings(data)
 

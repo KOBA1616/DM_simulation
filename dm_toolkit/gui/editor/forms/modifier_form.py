@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
 from dm_toolkit.gui.editor.forms.unified_widgets import make_player_scope_selector
@@ -140,6 +140,8 @@ class ModifierEditForm(BaseEditForm):
         """Load data into UI widgets."""
         if not data:
             data = {}
+        else:
+            data = to_dict(data)
 
         # Fallbacks for empty structures
         if not data.get('condition'):

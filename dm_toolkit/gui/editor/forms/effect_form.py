@@ -1,8 +1,8 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit, QPushButton
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
+from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
 from dm_toolkit.consts import TRIGGER_TYPES, SPELL_TRIGGER_TYPES, LAYER_TYPES
@@ -167,6 +167,9 @@ class EffectEditForm(BaseEditForm):
         """
         Populate UI from data (Hook).
         """
+        # Convert to dict if needed
+        data = to_dict(data)
+        
         item_type = "EFFECT"
         if item:
             item_type = item.data(Qt.ItemDataRole.UserRole + 1)
@@ -182,7 +185,7 @@ class EffectEditForm(BaseEditForm):
                         card_type = "SPELL"
                     elif role == "CARD":
                          cdata = grandparent.data(Qt.ItemDataRole.UserRole + 2)
-                         card_type = cdata.get('type', 'CREATURE')
+                         card_type = get_attr(cdata, 'type', 'CREATURE')
 
             self.update_trigger_options(card_type)
 
@@ -205,9 +208,9 @@ class EffectEditForm(BaseEditForm):
 
              # Load Trigger Filter explicitly
              if 'trigger_filter' in data and self.trigger_filter:
-                 self.trigger_filter.set_filter_data(data['trigger_filter'])
+                 self.trigger_filter.set_data(data['trigger_filter'])
              else:
-                 self.trigger_filter.set_filter_data({})
+                 self.trigger_filter.set_data({})
         else:
             # STATIC (ModifierDef) - Normalize for bindings
             if 'layer_type' in data: data['type'] = data['layer_type']
