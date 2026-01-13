@@ -18,6 +18,15 @@ TARGET_SCOPES = [
     "PLAYER_SELF", "PLAYER_OPPONENT", "ALL"
 ]
 
+DURATION_OPTIONS = [
+    "THIS_TURN",
+    "UNTIL_END_OF_OPPONENT_TURN",
+    "UNTIL_START_OF_OPPONENT_TURN",
+    "UNTIL_END_OF_YOUR_TURN",
+    "UNTIL_START_OF_YOUR_TURN",
+    "DURING_OPPONENT_TURN"
+]
+
 def register_all_schemas():
     """
     Registers all Command UI schemas.
@@ -129,16 +138,22 @@ def register_all_schemas():
         f_target,
         f_filter,
         FieldSchema("mutation_kind", tr("Mutation Type"), FieldType.SELECT, options=MUTATION_KINDS_FOR_MUTATE),
-        FieldSchema("amount", tr("Duration/Value"), FieldType.INT, default=0),
-        FieldSchema("str_param", tr("Extra Param"), FieldType.STRING)
+        FieldSchema("amount", tr("Value (Power)"), FieldType.INT, default=0),
+        FieldSchema("str_param", tr("Extra Param"), FieldType.STRING),
+        # Using input_value_key for Duration Text (safe string storage)
+        FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
     ]))
 
     # ADD_KEYWORD
     register_schema(CommandSchema("ADD_KEYWORD", [
         f_target,
         f_filter,
-        FieldSchema("mutation_kind", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES),
-        FieldSchema("amount", tr("Duration (Turns)"), FieldType.INT, default=1)
+        # Keyword stored in str_param for correct C++ macro usage
+        FieldSchema("str_param", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES),
+        # Using input_value_key for Duration Text (safe string storage)
+        FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        # Hidden amount (default 0) to satisfy INT requirement
+        FieldSchema("amount", tr("Amount"), FieldType.INT, default=0, widget_hint="hidden")
     ]))
 
     # PLAY_FROM_ZONE

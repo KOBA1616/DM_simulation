@@ -17,6 +17,7 @@ from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkW
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.consts import CARD_TYPES
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.text_resources import CardTextResources # Import for duration text
 
 class PlayerScopeWidget(QWidget, EditorWidgetMixin):
     def __init__(self, parent=None):
@@ -291,7 +292,14 @@ def _create_select_widget(parent, schema, cb):
         widget = QComboBox(parent)
         if schema.options:
             for opt in schema.options:
-                widget.addItem(str(opt), opt)
+                # Use CardTextResources for translation if available (e.g. DURATION_THIS_TURN)
+                label = str(opt)
+                if opt in CardTextResources.DURATION_TRANSLATION:
+                     label = CardTextResources.get_duration_text(opt)
+                elif opt in CardTextResources.KEYWORD_TRANSLATION: # Also handle keywords if passed as raw list
+                     label = CardTextResources.get_keyword_text(opt)
+
+                widget.addItem(label, opt) # Display label, store value (opt)
 
     widget.currentIndexChanged.connect(lambda: cb())
     return widget
