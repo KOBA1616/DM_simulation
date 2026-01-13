@@ -407,3 +407,5 @@ else:
         MANA = 4
         BATTLE_ZONE = 5
         SHIELD_ZONE = 6
+        BATTLE = 5
+        SHIELD = 6

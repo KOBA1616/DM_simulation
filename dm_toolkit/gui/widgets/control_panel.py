@@ -212,3 +212,20 @@ class ControlPanel(QWidget):
 
     def is_god_view(self) -> bool:
         return self.god_view_check.isChecked()
+
+    def update_state(self, can_pass: bool, is_waiting_input: bool, pending_query: any, selected_count: int):
+        """Updates the state of control buttons based on game context."""
+        from dm_toolkit.gui.i18n import tr
+
+        self.set_pass_button_visible(can_pass)
+
+        if is_waiting_input and pending_query is not None and getattr(pending_query, 'query_type', '') == "SELECT_TARGET":
+            params = getattr(pending_query, 'params', {})
+            min_targets = params.get('min', 1) if hasattr(params, 'get') else 1
+            max_targets = params.get('max', 99) if hasattr(params, 'get') else 99
+
+            self.set_confirm_button_text(f"{tr('Confirm')} ({selected_count}/{min_targets}-{max_targets})")
+            self.set_confirm_button_visible(True)
+            self.set_confirm_button_enabled(selected_count >= min_targets)
+        else:
+            self.set_confirm_button_visible(False)

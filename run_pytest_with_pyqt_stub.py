@@ -83,10 +83,48 @@ def setup_gui_stubs():
         def setWindowTitle(self, title): pass
         def setLayout(self, layout): pass
         def setGeometry(self, *args): pass
+        def resize(self, *args): pass
+        def setObjectName(self, name): pass
+        def setSelectionMode(self, mode): pass
+        def scrollToBottom(self): pass
+        def addAction(self, action): pass
+        def setAllowedAreas(self, areas): pass
+        def setWidget(self, widget): pass
+        def setWidgetResizable(self, resizable): pass
+        def setVerticalScrollBarPolicy(self, policy): pass
+        def setHorizontalScrollBarPolicy(self, policy): pass
+        def setHorizontalHeaderLabels(self, labels): pass
+        def setHeaderLabels(self, labels): pass
+        def header(self): return unittest.mock.MagicMock()
+        def horizontalHeader(self): return unittest.mock.MagicMock()
+        def setDragDropMode(self, mode): pass
+        def model(self): return unittest.mock.MagicMock()
+        def font(self): return unittest.mock.MagicMock()
+        def setFont(self, font): pass
         def show(self): pass
+        def showMaximized(self): pass
+        def hide(self): pass
         def close(self): return True
-        def addWidget(self, widget, *args): pass  # Accept extra args for Grid Layout
-        def addLayout(self, layout, *args): pass  # Accept extra args for Grid Layout
+        def addWidget(self, widget, *args, **kwargs): pass  # Accept extra args for Grid Layout
+        def addLayout(self, layout, *args, **kwargs): pass  # Accept extra args for Grid Layout
+        def setRowStretch(self, row, stretch): pass
+        def setColumnStretch(self, col, stretch): pass
+        def setColumnCount(self, count): pass
+        def setRowCount(self, count): pass
+        def setItem(self, row, col, item): pass
+        def setColumnWidth(self, col, width): pass
+        def setStretch(self, index, stretch): pass
+        def addTab(self, widget, label): pass
+        def setAlignment(self, alignment): pass
+        def setScene(self, scene): pass
+        def setDragMode(self, mode): pass
+        def setTransformationAnchor(self, anchor): pass
+        def setResizeAnchor(self, anchor): pass
+        def setRenderHint(self, hint): pass
+        def setWordWrap(self, wrap): pass
+        def setRange(self, min_val, max_val): pass
+        def setValue(self, value): self._value = value
+        def setFormat(self, format): pass
         def setText(self, text): pass
         def text(self): return ""
         def setCheckState(self, state): pass
@@ -105,14 +143,19 @@ def setup_gui_stubs():
         def addStretch(self, *args): pass
         def setStyleSheet(self, style): pass
         def setMinimumWidth(self, width): pass
+        def setFixedWidth(self, width): pass
         def setMinimumHeight(self, height): pass
         def setMaximumWidth(self, width): pass
         def setMaximumHeight(self, height): pass
+        def setFixedHeight(self, height): pass
+        def setFixedSize(self, w, h): pass
+        def setShortcut(self, shortcut): pass
         def clear(self): self._items = []
         def setToolTip(self, text): pass
         def setCursor(self, cursor): pass
         def setEnabled(self, enabled): pass
         def isEnabled(self): return True
+        def setReadOnly(self, ro): pass
         def setVisible(self, visible): pass
         def isVisible(self): return True
         def setExclusive(self, exclusive): pass
@@ -125,6 +168,8 @@ def setup_gui_stubs():
         def setCentralWidget(self, widget): pass
         def setMenuBar(self, menu): pass
         def addDockWidget(self, area, dock): pass
+        def addToolBar(self, toolbar): pass
+        def splitDockWidget(self, *args): pass
         def setStatusBar(self, bar): pass
 
     class DummyQDialog(DummyQWidget):
@@ -150,6 +195,10 @@ def setup_gui_stubs():
         class AlignmentFlag:
             AlignCenter = 0x0084
             AlignLeft = 0x0001
+            AlignRight = 0x0002
+            AlignTop = 0x0020
+            AlignBottom = 0x0040
+            AlignVCenter = 0x0080
 
         class WindowType:
             Window = 0x00000001
@@ -160,6 +209,23 @@ def setup_gui_stubs():
 
         class CursorShape:
             PointingHandCursor = 13
+
+        class DockWidgetArea:
+             LeftDockWidgetArea = 1
+             RightDockWidgetArea = 2
+             AllDockWidgetAreas = 15
+
+        class ScrollBarPolicy:
+            ScrollBarAlwaysOff = 1
+            ScrollBarAlwaysOn = 2
+            ScrollBarAsNeeded = 0
+
+        class Orientation:
+            Horizontal = 1
+            Vertical = 2
+
+        class GlobalColor:
+            red = 1
 
         SolidPattern = 1
         Horizontal = 1
@@ -297,6 +363,7 @@ def setup_gui_stubs():
         def setCheckState(self, state): pass
         def checkState(self): return 0
         def isChecked(self): return False
+        def setChecked(self, checked): pass
 
     class EnhancedSpinBox(DummyQWidget):
         def __init__(self, *args, **kwargs):
@@ -314,6 +381,7 @@ def setup_gui_stubs():
         def setVisible(self, visible): pass
 
     qt_widgets.QSpinBox = EnhancedSpinBox
+    qt_widgets.QDoubleSpinBox = EnhancedSpinBox # Reuse spinbox mock for double
 
     class EnhancedFormLayout(DummyQWidget):
         def addRow(self, *args): pass
@@ -329,6 +397,13 @@ def setup_gui_stubs():
         def isChecked(self): return False
 
     qt_widgets.QRadioButton = EnhancedRadioButton
+
+    class EnhancedAction(DummyQWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.triggered = MockSignal()
+        def setCheckable(self, checkable): pass
+    qt_widgets.QAction = EnhancedAction
 
     class DummyQSizePolicy:
         def __init__(self, *args): pass
@@ -351,6 +426,7 @@ def setup_gui_stubs():
         def text(self): return ""
         def setData(self, role, data): pass
         def data(self, role): return None
+        def setForeground(self, brush): pass
 
     qt_widgets.QListWidgetItem = DummyQListWidgetItem
 
@@ -402,6 +478,18 @@ def setup_gui_stubs():
     qt_widgets.QInputDialog = DummyQInputDialog
 
     class DummyQAbstractItemView(DummyQWidget):
+         class SelectionMode:
+             NoSelection = 0
+             SingleSelection = 1
+             MultiSelection = 2
+             ExtendedSelection = 3
+             ContiguousSelection = 4
+         class DragDropMode:
+             NoDragDrop = 0
+             DragOnly = 1
+             DropOnly = 2
+             DragDrop = 3
+             InternalMove = 4
          NoSelection = 0
          SingleSelection = 1
          MultiSelection = 2
@@ -425,9 +513,37 @@ def setup_gui_stubs():
     # Map other common widgets without special signals
     for w in ['QLabel', 'QVBoxLayout', 'QHBoxLayout', 'QSplitter',
               'QTreeWidget', 'QTreeWidgetItem', 'QTextEdit',
-              'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu', 'QAction',
-              'QGridLayout', 'QTreeView', 'QListWidget', 'QToolBar']:
+              'QGroupBox', 'QScrollArea', 'QTabWidget', 'QDockWidget', 'QStatusBar', 'QMenuBar', 'QMenu',
+              'QGridLayout', 'QTreeView', 'QToolBar', 'QStackedWidget', 'QGraphicsDropShadowEffect', 'QProgressBar',
+              'QGraphicsScene', 'QGraphicsEllipseItem', 'QGraphicsLineItem', 'QGraphicsTextItem',
+              'QTableWidget', 'QTableWidgetItem']:
          setattr(qt_widgets, w, type(w, (DummyQWidget,), {}))
+
+    class EnhancedGraphicsView(DummyQWidget):
+        class DragMode:
+            ScrollHandDrag = 1
+            RubberBandDrag = 2
+            NoDrag = 0
+        class ViewportAnchor:
+            AnchorUnderMouse = 1
+            AnchorViewCenter = 2
+    qt_widgets.QGraphicsView = EnhancedGraphicsView
+
+    class EnhancedFrame(DummyQWidget):
+        class Shape:
+            StyledPanel = 6
+        class Shadow:
+            Raised = 32
+        def setFrameShape(self, shape): pass
+        def setFrameShadow(self, shadow): pass
+        def setLineWidth(self, width): pass
+    qt_widgets.QFrame = EnhancedFrame
+
+    qt_widgets.QHeaderView = type('QHeaderView', (DummyQWidget,), {
+        'ResizeMode': type('ResizeMode', (object,), {'ResizeToContents': 0, 'Stretch': 1})
+    })
+
+    qt_widgets.QListWidget = type('QListWidget', (DummyQAbstractItemView,), {})
 
     # 4. Inject into QtCore
     qt_core.Qt = DummyQt
@@ -435,7 +551,16 @@ def setup_gui_stubs():
     qt_core.QModelIndex = type('QModelIndex', (object,), {})
     qt_core.QThread = type('QThread', (object,), {'start': lambda s: None, 'wait': lambda s: None, 'quit': lambda s: None, 'isRunning': lambda s: False})
     qt_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
-    qt_core.QTimer = type('QTimer', (object,), {'singleShot': lambda *a: None, 'start': lambda s, t: None, 'stop': lambda s: None})
+    class MockTimer:
+        def __init__(self, *args): self.timeout = qt_core.pyqtSignal()
+        def singleShot(self, *args): pass
+        def start(self, *args): pass
+        def stop(self): pass
+    qt_core.QTimer = MockTimer
+    qt_core.QSize = type('QSize', (object,), {'__init__': lambda s, w, h: None, 'width': lambda s: 0, 'height': lambda s: 0})
+    qt_core.QRect = type('QRect', (object,), {'__init__': lambda s, *a: None})
+    qt_core.QRectF = type('QRectF', (object,), {'__init__': lambda s, *a: None})
+    qt_core.QMimeData = type('QMimeData', (object,), {'__init__': lambda s, *a: None})
 
     # 4.1 Inject QModelIndex into QtCore (was missing)
     qt_core.QModelIndex = type('QModelIndex', (object,), {})
@@ -443,9 +568,19 @@ def setup_gui_stubs():
     # 5. Inject into QtGui
     qt_gui.QColor = lambda *a: None
     qt_gui.QIcon = lambda *a: None
+    qt_gui.QCursor = lambda *a: None
+    qt_gui.QFont = lambda *a: None
+    class MockPainter:
+        class RenderHint:
+            Antialiasing = 1
+    qt_gui.QPainter = MockPainter
+    qt_gui.QPen = lambda *a: None
+    qt_gui.QBrush = lambda *a: None
+    qt_gui.QDrag = lambda *a: None
     qt_gui.QAction = qt_widgets.QAction # Alias
     qt_gui.QStandardItemModel = type('QStandardItemModel', (object,), {'__init__': lambda s, *a: None, 'invisibleRootItem': lambda s: unittest.mock.MagicMock()})
     qt_gui.QStandardItem = type('QStandardItem', (object,), {'__init__': lambda s, *a: None})
+    qt_gui.QKeySequence = type('QKeySequence', (object,), {'__init__': lambda s, *a: None, 'StandardKey': type('StandardKey', (object,), {'Save': 1, 'Copy': 2})})
 
     # Add __all__ to package modules to support "from X import Y"
     pyqt6.__all__ = ['QtWidgets', 'QtCore', 'QtGui', 'QtTest']

@@ -572,6 +572,36 @@ class EngineCompat:
         return None
 
     @staticmethod
+    def load_cards_robust(filepath: str) -> Dict[int, Any]:
+        """
+        Attempts to load cards using the native loader first, then falls back to standard JSON loading.
+        """
+        # Try native loader first
+        try:
+            db = EngineCompat.JsonLoader_load_cards(filepath)
+            if db:
+                return db
+        except Exception:
+            pass
+
+        # Fallback to pure Python json load
+        try:
+            import json
+            if not os.path.exists(filepath):
+                # Try finding relative to project root if path is relative
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                alt_path = os.path.join(base_dir, filepath)
+                if os.path.exists(alt_path):
+                    filepath = alt_path
+
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+        return {}
+
+    @staticmethod
     def register_batch_inference_numpy(callback: Callable[[List[Any]], Any]) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
