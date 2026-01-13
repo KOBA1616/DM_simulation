@@ -135,6 +135,8 @@ namespace dm::engine {
             } else if (ctx.action.str_val == "CANNOT_ATTACK_OR_BLOCK") {
                 create_passive(PassiveType::CANNOT_ATTACK);
                 create_passive(PassiveType::CANNOT_BLOCK);
+            } else if (ctx.action.str_val == "FORCE_ATTACK") {
+                create_passive(PassiveType::FORCE_ATTACK);
             }
         }
     };

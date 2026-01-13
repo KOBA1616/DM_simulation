@@ -69,6 +69,9 @@ namespace dm::engine::systems {
                                 // Not standard supported yet in PassiveType, maybe treat as Grant?
                                 pe.type = PassiveType::KEYWORD_GRANT;
                                 break;
+                            case ModifierType::FORCE_ATTACK:
+                                pe.type = PassiveType::FORCE_ATTACK;
+                                break;
                             default:
                                 continue; // Skip unknown
                         }
