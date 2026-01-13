@@ -930,7 +930,14 @@ class CardTextGenerator:
                  elif alias == "捨てる":
                       return f"手札を{amt}枚捨てる。" if amt > 0 else "手札をすべて捨てる。"
                  elif alias == "手札に戻す":
-                      return f"{{target}}を{amt}体手札に戻す。" if amt > 0 else f"{{target}}をすべて手札に戻す。"
+                      # Manually resolve vars to ensure correctness and return immediately
+                      target_str, unit = cls._resolve_target(action, is_spell)
+                      t = f"{target_str}を{amt}{unit}手札に戻す。"
+                      if amt == 0: t = f"{target_str}をすべて手札に戻す。"
+
+                      # Optional conjugation
+                      if bool(action.get("optional", False)): t += "してもよい。"
+                      return t
                  elif alias == "マナチャージ":
                       return f"自分の山札の上から{amt}枚をマナゾーンに置く。"
                  elif alias == "シールド焼却":
@@ -1610,6 +1617,10 @@ class CardTextGenerator:
             if scope == "ALL_PLAYERS": prefix = "すべてのプレイヤーの"
             elif scope == "RANDOM": prefix = "ランダムな"
 
+        # Apply possessive "の" to "自分" or "相手" if needed for natural flow
+        if prefix in ["自分", "相手"]:
+            prefix += "の"
+
         if filter_def:
             zones = filter_def.get("zones", [])
             types = filter_def.get("types", [])
@@ -1727,7 +1738,7 @@ class CardTextGenerator:
                     unit = "枚"
                 elif "ELEMENT" in types:
                     type_noun = "エレメント"
-                    unit = "つ"
+                    unit = "枚"
                 elif "CREATURE" in types or (not types):
                     type_noun = "クリーチャー"
                     unit = "体"
@@ -1757,7 +1768,7 @@ class CardTextGenerator:
                     unit = "枚"
                 elif "ELEMENT" in types:
                     type_noun = "エレメント"
-                    unit = "つ"
+                    unit = "枚"
                 elif "CREATURE" in types:
                     type_noun = "クリーチャー"
                     unit = "体"
