@@ -25,6 +25,7 @@ class FieldType(Enum):
     TYPE_SELECT = auto()  # Card type selector
     RACES = auto()        # Races editor
     ENUM = auto()         # Dynamically loaded Enum
+    CONDITION = auto()    # Condition editor
 
 class FieldSchema:
     """
@@ -96,7 +97,8 @@ class SchemaLoader:
         'output_link':   {'type': FieldType.LINK, 'label': 'Output Variables', 'produces_output': True},
         'mutation_kind': {'type': FieldType.STRING, 'label': 'Mutation Kind'},
         'ref_mode':      {'type': FieldType.SELECT, 'label': 'Reference Mode', 'hint': 'ref_mode_combo'},
-        'generate_opts': {'type': FieldType.OPTIONS_CONTROL, 'label': 'Options', 'hint': 'options_control'}
+        'generate_opts': {'type': FieldType.OPTIONS_CONTROL, 'label': 'Options', 'hint': 'options_control'},
+        'condition':     {'type': FieldType.CONDITION, 'label': 'Condition'}
     }
 
     @classmethod
