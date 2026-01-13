@@ -6,7 +6,6 @@ import os
 from dm_toolkit.types import GameState, CardDB, Action
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.unified_execution import ensure_executable_command
-from dm_toolkit.commands import wrap_action
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.command_describer import describe_command
 
@@ -89,44 +88,38 @@ class GameSession:
 
         self.last_action = action
 
-        # 1. Wrap into ICommand
+        # 1. Normalize to Command Dict (Unified Path)
         try:
-             cmd_dict = ensure_executable_command(action)
-        except:
-             cmd_dict = None
+            # Check for to_dict (e.g. ICommand wrappers)
+            if hasattr(action, 'to_dict'):
+                raw_action = action.to_dict()
+            else:
+                raw_action = action
 
-        if cmd_dict:
-            command = wrap_action(cmd_dict)
-        else:
-            command = wrap_action(action)
+            cmd_dict = ensure_executable_command(raw_action)
+        except Exception as e:
+            self.callback_log(tr("Command Conversion Error: {error}").format(error=e))
+            return
 
-        if command:
-            try:
-                # 2. Execute
-                try:
-                    command.execute(self.gs)
-                except Exception:
-                    EngineCompat.ExecuteCommand(self.gs, command)
+        # 2. Execute via EngineCompat
+        try:
+            EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
 
-                # 3. Log
-                final_dict = command.to_dict()
-                log_str = f"P{EngineCompat.get_active_player_id(self.gs)} {tr('Action')}: {final_dict.get('type', 'UNKNOWN')}"
-                if 'to_zone' in final_dict:
-                    log_str += f" -> {final_dict['to_zone']}"
-                self.callback_log(log_str)
+            # 3. Log
+            log_str = f"P{EngineCompat.get_active_player_id(self.gs)} {tr('Action')}: {cmd_dict.get('type', 'UNKNOWN')}"
+            if 'to_zone' in cmd_dict:
+                log_str += f" -> {cmd_dict['to_zone']}"
+            self.callback_log(log_str)
 
-                if self.callback_action_executed:
-                    self.callback_action_executed(final_dict)
+            if self.callback_action_executed:
+                self.callback_action_executed(cmd_dict)
 
-            except Exception as e:
-                self.callback_log(tr("Execution Error: {error}").format(error=e))
-        else:
-            # Fallback
-            try:
-                cmd = ensure_executable_command(action)
-                EngineCompat.ExecuteCommand(self.gs, cmd, self.card_db)
-            except Exception:
-                 pass
+        except RuntimeError as e:
+            # Distinct handling for Engine errors (C++ std::runtime_error)
+            self.callback_log(tr("Engine Error: {error}").format(error=e))
+        except Exception as e:
+            # Generic execution errors
+            self.callback_log(tr("Execution Error: {error}").format(error=e))
 
         # Check input wait
         if self.check_and_handle_input_wait(): return
@@ -134,8 +127,19 @@ class GameSession:
         # Auto Pass check
         if dm_ai_module:
             pending_count = self.gs.get_pending_effect_count()
-            act_type = getattr(action, 'type', None)
-            if (act_type == dm_ai_module.ActionType.PASS or act_type == dm_ai_module.ActionType.MANA_CHARGE) and pending_count == 0:
+            # Use cmd_dict type for check
+            act_type_str = cmd_dict.get('type')
+
+            # Helper to check type equivalence
+            is_pass = act_type_str == 'PASS'
+            is_charge = act_type_str == 'MANA_CHARGE'
+
+            # Also check against Enum if available
+            if hasattr(dm_ai_module, 'ActionType'):
+                if not is_pass and act_type_str == str(dm_ai_module.ActionType.PASS): is_pass = True
+                if not is_charge and act_type_str == str(dm_ai_module.ActionType.MANA_CHARGE): is_charge = True
+
+            if (is_pass or is_charge) and pending_count == 0:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
 
         self.callback_update_ui()
@@ -188,9 +192,7 @@ class GameSession:
                         resolve_cmds.append((c, d))
 
                 if len(resolve_cmds) > 1:
-                    # Ambiguous trigger resolution -> Ask User via input request if possible,
-                    # but since app.py handles 'input request' as purely Engine-driven,
-                    # we might leave this as-is (user clicks manually).
+                    # Ambiguous trigger resolution
                     pass
 
                 if not cmds:
