@@ -288,6 +288,7 @@ class CardTextGenerator:
     def _describe_simple_filter(cls, filter_def: Dict[str, Any]) -> str:
         civs = filter_def.get("civilizations", [])
         races = filter_def.get("races", [])
+        types = filter_def.get("types", [])
         min_cost = filter_def.get("min_cost", 0)
         max_cost = filter_def.get("max_cost", 999)
 
@@ -316,6 +317,11 @@ class CardTextGenerator:
             adj_str += "の"
 
         noun_str = "クリーチャー"
+        if "ELEMENT" in types:
+            noun_str = "エレメント"
+        elif "SPELL" in types:
+            noun_str = "呪文"
+
         if races:
             noun_str = "/".join(races)
 
@@ -566,12 +572,16 @@ class CardTextGenerator:
                     type_noun = "クリーチャー"
                 elif types[0] == "SPELL":
                     type_noun = "呪文"
+                elif types[0] == "ELEMENT":
+                    type_noun = "エレメント"
             else:
                 type_words = []
                 if "CREATURE" in types:
                     type_words.append("クリーチャー")
                 if "SPELL" in types:
                     type_words.append("呪文")
+                if "ELEMENT" in types:
+                    type_words.append("エレメント")
                 if type_words:
                     type_noun = "/".join(type_words)
         
