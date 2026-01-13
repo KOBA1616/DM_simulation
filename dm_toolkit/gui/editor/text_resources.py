@@ -32,8 +32,9 @@ class CardTextResources:
         "SELF": "自分の",
         "OPPONENT": "相手の",
         "ALL": "",
-        "PLAYER_SELF": "自分の",
-        "PLAYER_OPPONENT": "相手の",
+        "PLAYER_SELF": "自プレイヤー",
+        "PLAYER_OPPONENT": "相手プレイヤー",
+        "ALL_PLAYERS": "両プレイヤー",
     }
     
     # Trigger event Japanese mapping
