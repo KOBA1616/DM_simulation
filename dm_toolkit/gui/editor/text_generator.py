@@ -635,12 +635,18 @@ class CardTextGenerator:
                     return cls._format_modifier(effect, sample=sample)
         
         trigger = effect.get("trigger", "NONE")
+        trigger_scope = effect.get("trigger_scope", "NONE")
         condition = effect.get("condition", {})
         if condition is None:
             condition = {}
         actions = effect.get("actions", [])
 
         trigger_text = cls.trigger_to_japanese(trigger, is_spell)
+
+        # Apply trigger scope (NEW: Add prefix based on scope)
+        if trigger_scope and trigger_scope != "NONE" and trigger != "PASSIVE_CONST":
+            trigger_text = cls._apply_trigger_scope(trigger_text, trigger_scope, trigger)
+
         cond_text = cls._format_condition(condition)
         cond_type = condition.get("type", "NONE")
 
@@ -681,6 +687,46 @@ class CardTextGenerator:
              return f"{cond_text}{full_action_text}"
         else:
              return f"{cond_text}{full_action_text}"
+
+    @classmethod
+    def _apply_trigger_scope(cls, trigger_text: str, scope: str, trigger_type: str) -> str:
+        """
+        Apply scope prefix to trigger text (e.g., "ON_CAST_SPELL" + "OPPONENT" -> "相手が呪文を唱えた時").
+        """
+        if not scope or scope == "NONE" or scope == "ALL":
+            return trigger_text
+
+        scope_text = CardTextResources.get_scope_text(scope)
+        if not scope_text:
+            return trigger_text
+
+        # Special handling for already-subjected text to avoid duplication
+        if "相手が" in trigger_text and (scope == "OPPONENT" or scope == "PLAYER_OPPONENT"):
+            return trigger_text
+        if "自分が" in trigger_text and (scope == "SELF" or scope == "PLAYER_SELF"):
+            return trigger_text
+
+        # Specific mappings for natural Japanese particles
+        if trigger_type == "ON_OTHER_ENTER":
+            # "他の..." -> "自分の他の..." / "相手の他の..."
+            return f"{scope_text}の{trigger_text}"
+
+        if trigger_type == "ON_CAST_SPELL":
+            # "呪文を..." -> "自分が呪文を..." / "相手が呪文を..."
+            return f"{scope_text}が{trigger_text}"
+
+        if trigger_type == "ON_SHIELD_ADD":
+             # "カードがシールドゾーンに..." -> replace "シールドゾーン" with "自分の/相手のシールドゾーン"
+             if "シールドゾーン" in trigger_text:
+                 return trigger_text.replace("シールドゾーン", f"{scope_text}のシールドゾーン")
+
+        # Default fallbacks
+        if trigger_text.startswith("この"):
+             # "このクリーチャー..." -> "相手のこのクリーチャー..." (Syntactically valid for 'Target's this creature')
+             return f"{scope_text}の{trigger_text}"
+
+        # Default to "の" prefix
+        return f"{scope_text}の{trigger_text}"
 
     @classmethod
     def trigger_to_japanese(cls, trigger: str, is_spell: bool = False) -> str:

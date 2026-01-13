@@ -58,7 +58,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
-        f_links_out  # Enables output_value_key generation for discarded count
+        f_links_out  # Enables output_value_key for discarded count
     ]))
 
     # DESTROY / MANA_CHARGE / RETURN_TO_HAND / BREAK_SHIELD
@@ -154,6 +154,15 @@ def register_all_schemas():
         FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
         # Hidden amount (default 0) to satisfy INT requirement
         FieldSchema("amount", tr("Amount"), FieldType.INT, default=0, widget_hint="hidden")
+    ]))
+
+    # APPLY_MODIFIER (Added)
+    register_schema(CommandSchema("APPLY_MODIFIER", [
+        f_target,
+        f_filter,
+        FieldSchema("str_param", tr("Effect ID"), FieldType.STRING),
+        FieldSchema("amount", tr("Value"), FieldType.INT, default=1),
+        FieldSchema("val2", tr("Duration (Turns)"), FieldType.INT, default=1),
     ]))
 
     # PLAY_FROM_ZONE
