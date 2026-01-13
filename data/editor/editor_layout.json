@@ -310,6 +310,15 @@
                 "output_value_key": "Played Card"
             }
         },
+        "PUT_CREATURE": {
+            "visible": [
+                "target_group",
+                "target_filter",
+                "amount",
+                "input_link"
+            ],
+            "label_amount": "Count"
+        },
         "SUMMON_TOKEN": {
             "visible": [
                 "amount",
@@ -366,6 +375,18 @@
             ],
             "label_str_param": "Effect ID",
             "label_amount": "Duration"
+        },
+        "APPLY_MODIFIER": {
+            "visible": [
+                "target_group",
+                "target_filter",
+                "str_param",
+                "amount",
+                "val2"
+            ],
+            "label_str_param": "Effect ID",
+            "label_amount": "Value / Duration",
+            "label_val2": "Duration"
         },
         "CHOICE": {
             "visible": [
