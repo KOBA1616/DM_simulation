@@ -1681,6 +1681,11 @@ class CardTextGenerator:
             civs = filter_def.get("civilizations", [])
             owner = filter_def.get("owner", "NONE")
 
+            # Robustness: Check for singular 'civilization' if plural is missing/empty
+            if not civs and "civilization" in filter_def:
+                single = filter_def.get("civilization")
+                if single: civs = [single]
+
             # Handle explicit owner filter if scope is generic
             if not prefix and owner != "NONE":
                  owner_text = CardTextResources.get_scope_text(owner)
@@ -1726,31 +1731,6 @@ class CardTextGenerator:
             elif has_input_key and input_usage == "MAX_COST":
                 adjectives += "コストその数以下の"
 
-            # Power constraints (min/max) with usage-only
-            min_power = filter_def.get("min_power", 0)
-            if min_power is None:
-                min_power = 0
-            if isinstance(min_power, dict):
-                usage = min_power.get("input_value_usage", "")
-                if usage == "MIN_POWER":
-                    adjectives += "パワーその数以上の"
-            elif min_power > 0:
-                adjectives += f"パワー{min_power}以上の"
-            elif has_input_key and input_usage == "MIN_POWER":
-                adjectives += "パワーその数以上の"
-
-            max_power = filter_def.get("max_power", 999999)
-            if max_power is None:
-                max_power = 999999
-            if isinstance(max_power, dict):
-                usage = max_power.get("input_value_usage", "")
-                if usage == "MAX_POWER":
-                    adjectives += "パワーその数以下の"
-            elif max_power < 999999:
-                adjectives += f"パワー{max_power}以下の"
-            elif has_input_key and input_usage == "MAX_POWER":
-                adjectives += "パワーその数以下の"
-
             # Handle min_power (can be int or dict with input_link)
             min_power = filter_def.get("min_power", 0)
             if min_power is None:
@@ -1763,6 +1743,8 @@ class CardTextGenerator:
                     adjectives += "パワーその数以上の"
             elif min_power > 0:
                 adjectives += f"パワー{min_power}以上の"
+            elif has_input_key and input_usage == "MIN_POWER":
+                adjectives += "パワーその数以上の"
             
             # Handle max_power (can be int or dict with input_link)
             max_power = filter_def.get("max_power", 999999)
@@ -1784,52 +1766,52 @@ class CardTextGenerator:
             if filter_def.get("is_blocker", None) is True: adjectives = "ブロッカーを持つ" + adjectives
             if filter_def.get("is_evolution", None) is True: adjectives = "進化" + adjectives
 
+            # 1. Determine Zone Noun
+            if "BATTLE_ZONE" in zones: zone_noun = "バトルゾーン"
+            elif "MANA_ZONE" in zones: zone_noun = "マナゾーン"
+            elif "HAND" in zones: zone_noun = "手札"
+            elif "SHIELD_ZONE" in zones: zone_noun = "シールドゾーン"
+            elif "GRAVEYARD" in zones: zone_noun = "墓地"
+            elif "DECK" in zones: zone_noun = "山札"
+
+            # 2. Determine Generic Type Noun
+            if "ELEMENT" in types:
+                type_noun = "エレメント"
+                unit = "枚"
+            elif "CREATURE" in types:
+                type_noun = "クリーチャー"
+                unit = "体"
+            elif "SPELL" in types:
+                type_noun = "呪文"
+            elif "CROSS_GEAR" in types:
+                type_noun = "クロスギア"
+            elif "CARD" in types:
+                type_noun = "カード"
+                unit = "枚"
+            elif len(types) > 1:
+                 # Join multiple types (e.g., Creature/Spell)
+                 type_words = []
+                 if "CREATURE" in types: type_words.append("クリーチャー")
+                 if "SPELL" in types: type_words.append("呪文")
+                 if "ELEMENT" in types: type_words.append("エレメント")
+                 if "CROSS_GEAR" in types: type_words.append("クロスギア")
+                 if type_words: type_noun = "/".join(type_words)
+
+            # 3. Zone-specific Overrides
             if "BATTLE_ZONE" in zones:
-                zone_noun = "バトルゾーン"
-                if "CARD" in types:
-                    type_noun = "カード"
-                    unit = "枚"
-                elif "ELEMENT" in types:
-                    type_noun = "エレメント"
-                    unit = "枚"
-                elif "CREATURE" in types or (not types):
+                if "CREATURE" in types or not types:
                     type_noun = "クリーチャー"
                     unit = "体"
-                elif "CROSS_GEAR" in types:
-                    type_noun = "クロスギア"
-            elif "MANA_ZONE" in zones:
-                zone_noun = "マナゾーン"
-            elif "HAND" in zones:
-                zone_noun = "手札"
+                if "ELEMENT" in types: # Explicit Element override for BZ if needed
+                    type_noun = "エレメント"
+                    unit = "枚"
             elif "SHIELD_ZONE" in zones:
-                zone_noun = "シールドゾーン"
                 type_noun = "カード"
                 unit = "つ"
             elif "GRAVEYARD" in zones:
-                zone_noun = "墓地"
                 if "CREATURE" in types:
                      type_noun = "クリーチャー"
                      unit = "体"
-                elif "SPELL" in types:
-                     type_noun = "呪文"
-            elif "DECK" in zones:
-                 zone_noun = "山札"
-
-            if not zone_noun:
-                if "CARD" in types:
-                    type_noun = "カード"
-                    unit = "枚"
-                elif "ELEMENT" in types:
-                    type_noun = "エレメント"
-                    unit = "枚"
-                elif "CREATURE" in types:
-                    type_noun = "クリーチャー"
-                    unit = "体"
-                elif "SPELL" in types:
-                    type_noun = "呪文"
-                elif len(types) > 1:
-                     # Join multiple types (e.g., Creature/Spell)
-                     type_noun = "または".join([CardTextResources.get_card_type_text(t) for t in types])
 
             # Special case for SEARCH_DECK
             if atype == "SEARCH_DECK":
