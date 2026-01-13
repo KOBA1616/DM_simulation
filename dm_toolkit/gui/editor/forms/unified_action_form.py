@@ -247,6 +247,10 @@ class UnifiedActionForm(BaseEditForm):
 
     def _save_ui_to_data(self, data):
         """Saves data using interface-based widgets and provides validation feedback."""
+        # Ensure data is a dict
+        if not isinstance(data, dict):
+            raise TypeError(f"Expected dict, got {type(data).__name__}")
+        
         cmd_type = self.type_combo.currentData()
         if cmd_type is None:
             cmd_type = "DRAW"  # Default fallback

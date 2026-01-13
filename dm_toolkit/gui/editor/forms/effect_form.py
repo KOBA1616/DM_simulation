@@ -281,7 +281,7 @@ class EffectEditForm(BaseEditForm):
 
         if mode == "TRIGGERED":
             # Explicitly save trigger filter from widget (bindings might not catch it if it's complex/custom getter)
-            data['trigger_filter'] = self.trigger_filter.get_filter_data()
+            data['trigger_filter'] = self.trigger_filter.get_data()
 
             # Clean Static/Legacy keys
             for k in ['type', 'value', 'str_val', 'filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
