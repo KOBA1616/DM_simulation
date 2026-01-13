@@ -172,8 +172,8 @@ def register_all_schemas():
 
     # SELECT_OPTION
     register_schema(CommandSchema("SELECT_OPTION", [
-        f_amount,
-        FieldSchema("str_param", tr("Option Text"), FieldType.STRING)
+        FieldSchema("amount", tr("Options Count"), FieldType.OPTIONS_CONTROL, default=1, min_value=1),
+        FieldSchema("optional", tr("Allow Duplicates"), FieldType.BOOL, default=False)
     ]))
 
     # IF / IF_ELSE (Use filter as condition)
