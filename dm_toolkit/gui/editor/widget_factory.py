@@ -76,6 +76,12 @@ class OptionsControlWidget(QWidget):
         # Expose spin as property for factory
         self.option_layout = self.layout
 
+    def get_value(self):
+        return self.spin.value()
+
+    def set_value(self, value):
+        self.spin.setValue(int(value))
+
 class RefModeComboWrapper(QWidget, EditorWidgetMixin):
     """Wrapper for the unified ref mode combo."""
     def __init__(self, parent=None):
