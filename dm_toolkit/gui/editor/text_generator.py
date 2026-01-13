@@ -737,6 +737,7 @@ class CardTextGenerator:
             "scope": command.get("target_group", "NONE"),
             "filter": command.get("target_filter") or command.get("filter", {}),
             "value1": command.get("amount", 0),
+            "value2": command.get("val2") or command.get("value2", 0),
             "optional": command.get("optional", False),
             "up_to": command.get("up_to", False),
             # Prefer the normalized key, but accept legacy key if present
