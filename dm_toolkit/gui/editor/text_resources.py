@@ -32,8 +32,8 @@ class CardTextResources:
         "SELF": "自分の",
         "OPPONENT": "相手の",
         "ALL": "",
-        "PLAYER_SELF": "自プレイヤー",
-        "PLAYER_OPPONENT": "相手プレイヤー",
+        "PLAYER_SELF": "自分",
+        "PLAYER_OPPONENT": "相手",
         "ALL_PLAYERS": "両プレイヤー",
     }
     
