@@ -212,7 +212,7 @@ class ZoneWidget(QWidget):
         cmd = wrap_action(action)
         self.action_triggered.emit(cmd)
 
-    def _open_popup(self, _=None):
+    def _open_popup(self, *args):
         from dm_toolkit.gui.widgets.zone_popup import ZonePopup
         # Pass civ_map if available
         civ_map = getattr(self, 'civ_map', None)
