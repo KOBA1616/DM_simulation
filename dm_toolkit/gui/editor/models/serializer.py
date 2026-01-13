@@ -232,6 +232,12 @@ class ModelSerializer:
         item = QStandardItem(f"{tr('Spell Side')}: {model.name}")
         item.setData("SPELL_SIDE", ROLE_TYPE)
         item.setData(model, ROLE_DATA)
+
+        kw_item = QStandardItem(tr("Keywords"))
+        kw_item.setData("KEYWORDS", ROLE_TYPE)
+        kw_item.setData(model.keywords, ROLE_DATA) # Dict
+        kw_item.setEditable(False)
+        item.appendRow(kw_item)
         return item
 
     def create_modifier_item(self, model: ModifierModel):

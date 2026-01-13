@@ -49,6 +49,9 @@
                     "str_param": "SPELL_SIDE"
                 }
             ]
+        },
+        "keywords": {
+            "mega_last_burst": true
         }
     }
 }
