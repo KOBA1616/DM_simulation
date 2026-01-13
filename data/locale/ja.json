@@ -519,7 +519,7 @@
     "SEND_TO_DECK_BOTTOM": "デッキ下に送る",
     "MOVE_TO_UNDER_CARD": "カードの下に重ねる",
     "CAST_SPELL": "呪文を唱える",
-    "PUT_CREATURE": "踏み倒し：カードを出す",
+    "PUT_CREATURE": "カードを出す",
     "COST_REFERENCE": "コスト参照/軽減",
     "SELECT_NUMBER": "数字を選択",
     "SUMMON_TOKEN": "トークン生成",

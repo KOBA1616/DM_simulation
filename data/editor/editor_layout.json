@@ -22,8 +22,7 @@
         "PLAY": [
             "PLAY_FROM_ZONE",
             "CAST_SPELL",
-            "SUMMON_TOKEN",
-            "PUT_CREATURE"
+            "SUMMON_TOKEN"
         ],
         "BUFFER": [
             "LOOK_TO_BUFFER",
@@ -32,6 +31,7 @@
             "MOVE_BUFFER_TO_ZONE"
         ],
         "CHEAT_PUT": [
+            "PUT_CREATURE",
             "MEKRAID",
             "FRIEND_BURST",
             "REVOLUTION_CHANGE"
