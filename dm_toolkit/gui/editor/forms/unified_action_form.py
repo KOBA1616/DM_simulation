@@ -165,23 +165,28 @@ class UnifiedActionForm(BaseEditForm):
         # If type is CHOICE and amount changes, auto-generate options
         if cmd_type == "CHOICE" and changed_key == "amount":
             self.request_generate_options()
+        elif cmd_type == "SELECT_OPTION" and changed_key == "option_count":
+            self.request_generate_options()
 
     def request_generate_options(self):
         """
         Gathers option count from the form and requests structure update.
         Called by OptionsControlWidget or auto-generation logic.
         """
-        # Find 'amount' widget in map
-        amount_widget = self.widgets_map.get('amount')
-        if not amount_widget:
+        # Prioritize 'option_count' widget, then fallback to 'amount'
+        target_widget = self.widgets_map.get('option_count')
+        if not target_widget:
+            target_widget = self.widgets_map.get('amount')
+
+        if not target_widget:
              # Fallback: maybe it's named something else or we use default 1
              count = 1
         else:
              # Depending on widget type, get value
-             if hasattr(amount_widget, 'get_value'):
-                 count = amount_widget.get_value()
-             elif hasattr(amount_widget, 'value'):
-                 count = amount_widget.value()
+             if hasattr(target_widget, 'get_value'):
+                 count = target_widget.get_value()
+             elif hasattr(target_widget, 'value'):
+                 count = target_widget.value()
              else:
                  count = 1
 
