@@ -7,7 +7,6 @@ from pydantic import BaseModel
 
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
 from dm_toolkit.gui.editor.models import CardModel, EffectModel, CommandModel, ModifierModel, ReactionModel
-from dm_toolkit.gui.editor.action_converter import ActionConverter, convert_action_to_objs
 
 class ModelSerializer:
     """
@@ -67,11 +66,6 @@ class ModelSerializer:
                 # Handle legacy 'triggers' vs 'effects' normalization
                 if 'triggers' in card_raw:
                     card_raw['effects'] = card_raw.pop('triggers')
-
-                # Basic cleaning of legacy command structures inside effects
-                if 'effects' in card_raw:
-                    for eff in card_raw['effects']:
-                        self._lift_actions_to_commands(eff)
 
                 card_model = CardModel(**card_raw)
             except Exception as e:
@@ -174,10 +168,6 @@ class ModelSerializer:
             child = eff_item.child(i)
             if child.data(ROLE_TYPE) == "COMMAND":
                 eff_data['commands'].append(self._reconstruct_command(child))
-            # Handle legacy ACTION conversion on the fly if still present
-            elif child.data(ROLE_TYPE) == "ACTION":
-                 cmd = self.convert_action_tree_to_command(child)
-                 eff_data['commands'].append(cmd)
 
         return EffectModel(**eff_data)
 
@@ -217,30 +207,6 @@ class ModelSerializer:
             cmd_item = self.create_command_item(command)
             eff_item.appendRow(cmd_item)
 
-    def _lift_actions_to_commands(self, effect_data):
-        # Helper to convert legacy "actions" list to "commands" if present in raw dict
-        if 'actions' in effect_data:
-            legacy_actions = effect_data.pop('actions')
-            commands = effect_data.get('commands', [])
-            for act in legacy_actions:
-                 try:
-                     objs = convert_action_to_objs(act)
-                     for o in objs:
-                         if hasattr(o, 'to_dict'):
-                             commands.append(o.to_dict())
-                         elif isinstance(o, dict):
-                             commands.append(o)
-                 except:
-                     pass
-            effect_data['commands'] = commands
-
-    def convert_action_tree_to_command(self, action_item):
-        act_data = self.get_item_data(action_item)
-        try:
-             cmd = ActionConverter.convert(act_data)
-             return CommandModel(**cmd)
-        except:
-             return CommandModel(type="NONE", str_param="Conversion Failed")
 
     # --- Item Creation Methods ---
 

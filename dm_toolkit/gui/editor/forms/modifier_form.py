@@ -212,7 +212,7 @@ class ModifierEditForm(BaseEditForm):
 
     def _get_display_text(self, data):
         """Generate concise display text for tree item."""
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.gui.editor.text_resources import CardTextResources
         from dm_toolkit.consts import TargetScope
         
         mtype = data.get('type', 'NONE')
@@ -239,13 +239,13 @@ class ModifierEditForm(BaseEditForm):
             parts.append(f'パワー{sign}{value}')
         elif mtype == 'GRANT_KEYWORD':
             if keyword:
-                keyword_display = CardTextGenerator.KEYWORD_TRANSLATION.get(keyword, keyword)
+                keyword_display = CardTextResources.get_keyword_text(keyword)
                 parts.append(f'付与:{keyword_display}')
             else:
                 parts.append('付与:未設定')
         elif mtype == 'SET_KEYWORD':
             if keyword:
-                keyword_display = CardTextGenerator.KEYWORD_TRANSLATION.get(keyword, keyword)
+                keyword_display = CardTextResources.get_keyword_text(keyword)
                 parts.append(f'獲得:{keyword_display}')
             else:
                 parts.append('獲得:未設定')

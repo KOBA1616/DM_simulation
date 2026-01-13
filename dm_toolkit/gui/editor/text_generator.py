@@ -643,34 +643,12 @@ class CardTextGenerator:
         # Keep parallel lists of raw and formatted for merging logic
         raw_items = []
 
-        # Commands-First Policy (Migration Phase 4.3):
-        # If 'commands' exist, they are the source of truth. Ignore 'actions'.
-        # If only 'actions' exist, convert them on-the-fly to commands for rendering.
+        # Commands-Only Policy:
+        # We now expect 'commands' to be the sole source of truth.
         commands = effect.get("commands", [])
-        if commands:
-            for command in commands:
-                raw_items.append(command)
-                action_texts.append(cls._format_command(command, is_spell, sample=sample))
-        else:
-            # Automatic migration: convert legacy actions to commands on-the-fly
-            legacy_actions = effect.get("actions", [])
-            if legacy_actions:
-                from dm_toolkit.gui.editor.action_converter import ActionConverter
-                for action in legacy_actions:
-                    try:
-                        # Convert Action to Command format
-                        converted = ActionConverter.convert(action)
-                        if converted and converted.get('type') != 'NONE':
-                            raw_items.append(converted)
-                            action_texts.append(cls._format_command(converted, is_spell, sample=sample))
-                        else:
-                            # Fallback if conversion fails
-                            raw_items.append(action)
-                            action_texts.append(cls._format_action(action, is_spell, sample=sample))
-                    except Exception:
-                        # Fallback to legacy rendering on conversion error
-                        raw_items.append(action)
-                        action_texts.append(cls._format_action(action, is_spell, sample=sample))
+        for command in commands:
+            raw_items.append(command)
+            action_texts.append(cls._format_command(command, is_spell, sample=sample))
 
         # Try to merge common sequential patterns for more natural language
         full_action_text = cls._merge_action_texts(raw_items, action_texts)

@@ -151,14 +151,6 @@ class TestUnifiedInfrastructure:
 class TestBackwardCompatibility:
     """Tests for backward compatibility with existing code."""
     
-    def test_keyword_translation_still_available(self):
-        """KEYWORD_TRANSLATION still accessible for legacy code."""
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        
-        # Legacy attribute should still exist
-        assert hasattr(CardTextGenerator, 'KEYWORD_TRANSLATION')
-        assert CardTextGenerator.KEYWORD_TRANSLATION.get('blocker') == "ブロッカー"
-    
     def test_grantable_keywords_defined(self):
         """GRANTABLE_KEYWORDS and SETTABLE_KEYWORDS defined."""
         from dm_toolkit.consts import GRANTABLE_KEYWORDS, SETTABLE_KEYWORDS
