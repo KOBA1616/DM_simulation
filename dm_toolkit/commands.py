@@ -70,6 +70,18 @@ def wrap_action(action: Any) -> Optional[ICommand]:
             cmd = map_action(self._action)
             return cmd
 
+        def to_string(self) -> str:
+            # Check if underlying action has to_string
+            if hasattr(self._action, "to_string") and callable(getattr(self._action, "to_string")):
+                return self._action.to_string()
+            # Fallback to dict description
+            d = self.to_dict()
+            return str(d)
+
+        def __getattr__(self, name: str) -> Any:
+            # Delegate attribute access to underlying action
+            return getattr(self._action, name)
+
     return _ActionWrapper(action)
 
 

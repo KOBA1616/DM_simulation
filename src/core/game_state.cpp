@@ -6,6 +6,9 @@ namespace dm::core {
 
     GameState::GameState(int seed) : players(2) {
         rng.seed(seed);
+        for (size_t i = 0; i < players.size(); ++i) {
+            players[i].id = static_cast<PlayerID>(i);
+        }
     }
 
     GameState::~GameState() = default;
@@ -15,6 +18,9 @@ namespace dm::core {
     void GameState::setup_test_duel() {
         // Simple setup for tests
         players.resize(2);
+        for (size_t i = 0; i < players.size(); ++i) {
+            players[i].id = static_cast<PlayerID>(i);
+        }
         for(auto& p : players) {
             p.hand.clear();
             p.mana_zone.clear();
