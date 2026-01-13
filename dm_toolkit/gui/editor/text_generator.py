@@ -829,7 +829,7 @@ class CardTextGenerator:
             # Map CHOICE into SELECT_OPTION natural language generation
             flags = command.get("flags", []) or []
             if isinstance(flags, list) and "ALLOW_DUPLICATES" in flags:
-                action_proxy["value2"] = 1
+                action_proxy["optional"] = True
             action_proxy["value1"] = command.get("amount", 1)
 
         return cls._format_action(action_proxy, is_spell, sample=sample)
@@ -1077,7 +1077,9 @@ class CardTextGenerator:
             options = action.get("options", [])
             lines = []
             val1 = action.get("value1", 1)
-            lines.append(f"次の中から{val1}回選ぶ。（同じものを選んでもよい）")
+            optional = action.get("optional", False)
+            suffix = "（同じものを選んでもよい）" if optional else ""
+            lines.append(f"次の中から{val1}回選ぶ。{suffix}")
             for i, opt_chain in enumerate(options):
                 parts = []
                 for a in opt_chain:
