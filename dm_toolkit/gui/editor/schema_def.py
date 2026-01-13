@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+# schema_def.py
+# UIスキーマ定義。unified_action_form.py が UI を動的に生成するために使用します。
+# 維持: AIが編集する際は unified_action_form.py や ACTION_UI_CONFIG (command_config.py) とセットで理解する必要があります。
+# 重要: このファイルは削除しないでください。unified_action_form.py の動作に不可欠です。
+
 from enum import Enum, auto
 from typing import Any, List, Optional, Dict, Union
 from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
