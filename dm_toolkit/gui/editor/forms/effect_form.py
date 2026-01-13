@@ -47,8 +47,14 @@ class EffectEditForm(BaseEditForm):
 
         # Trigger Scope
         self.trigger_scope_combo = QComboBox()
-        scopes = ["NONE", "SELF", "PLAYER_SELF", "PLAYER_OPPONENT", "ALL_PLAYERS"]
-        self.populate_combo(self.trigger_scope_combo, scopes, display_func=tr, data_func=lambda x: x)
+
+        # Explicitly define scope options as requested
+        # Order: Self Player, Opponent Player, This Creature, Both Players
+        self.trigger_scope_combo.addItem(tr("自プレイヤー"), "PLAYER_SELF")
+        self.trigger_scope_combo.addItem(tr("相手プレイヤー"), "PLAYER_OPPONENT")
+        self.trigger_scope_combo.addItem(tr("このクリーチャー"), "NONE")
+        self.trigger_scope_combo.addItem(tr("両プレイヤー"), "ALL_PLAYERS")
+
         self.register_widget(self.trigger_scope_combo, 'trigger_scope')
         self.lbl_scope = self.add_field(tr("Trigger Scope"), self.trigger_scope_combo)
 
@@ -299,7 +305,17 @@ class EffectEditForm(BaseEditForm):
     def _get_display_text(self, data):
         if 'trigger' in data:
              scope = data.get('trigger_scope', 'NONE')
-             scope_str = "" if scope == "NONE" else f" ({tr(scope)})"
+             if scope == "NONE":
+                 scope_str = "" # Implicit "This Creature"
+             elif scope == "PLAYER_SELF":
+                 scope_str = " (自プレイヤー)"
+             elif scope == "PLAYER_OPPONENT":
+                 scope_str = " (相手プレイヤー)"
+             elif scope == "ALL_PLAYERS":
+                 scope_str = " (両プレイヤー)"
+             else:
+                 scope_str = f" ({tr(scope)})"
+
              return f"{tr('Effect')}: {tr(data.get('trigger', ''))}{scope_str}"
         elif 'type' in data or 'layer_type' in data:
              t = data.get('type', data.get('layer_type', ''))
