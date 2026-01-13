@@ -631,7 +631,7 @@ class CardTextGenerator:
         # Refined natural language logic
         if trigger != "NONE" and trigger != "PASSIVE_CONST":
             if cond_type == "DURING_YOUR_TURN" or cond_type == "DURING_OPPONENT_TURN":
-                base_cond = cond_text.replace(": ", "")
+                base_cond = cond_text.strip("、: ")
                 trigger_text = f"{base_cond}、{trigger_text}" # 自分のターン中、このクリーチャーが出た時
                 cond_text = ""
             elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
@@ -896,9 +896,9 @@ class CardTextGenerator:
             return f"{val}枚目以降なら: "
 
         elif cond_type == "DURING_YOUR_TURN":
-            return "自分のターン中: "
+            return CardTextResources.get_condition_text("DURING_YOUR_TURN")
         elif cond_type == "DURING_OPPONENT_TURN":
-            return "相手のターン中: "
+            return CardTextResources.get_condition_text("DURING_OPPONENT_TURN")
         elif cond_type == "EVENT_FILTER_MATCH":
             return ""
 
