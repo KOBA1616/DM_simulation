@@ -2,6 +2,7 @@
 from PyQt6.QtGui import QStandardItemModel
 from PyQt6.QtCore import QModelIndex
 from dm_toolkit.gui.i18n import tr
+import copy
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
 from dm_toolkit.gui.editor.models import CardModel, EffectModel, CommandModel, ModifierModel
 from dm_toolkit.gui.editor.models.serializer import ModelSerializer
