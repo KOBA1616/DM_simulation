@@ -138,12 +138,12 @@
     "visible": ["target_filter"]
   },
   "IF": {
-    "visible": ["target_filter", "output_link"],
+    "visible": ["input_link", "condition", "target_filter", "output_link"],
     "produces_output": true,
     "outputs": { "output_value_key": "Condition Result" }
   },
   "IF_ELSE": {
-    "visible": ["target_filter", "output_link"],
+    "visible": ["input_link", "condition", "target_filter", "output_link"],
     "produces_output": true,
     "outputs": { "output_value_key": "Condition Result" }
   },

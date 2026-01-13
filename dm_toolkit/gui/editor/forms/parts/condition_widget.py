@@ -77,6 +77,14 @@ CONDITION_UI_CONFIG = {
         "label_stat_key": "Stat Key (e.g. MY_SHIELD_COUNT)",
         "label_op": "Operator"
     },
+    "COMPARE_INPUT": {
+        "show_val": True,
+        "show_str": True,
+        "show_op": True,
+        "label_val": "Numeric Threshold",
+        "label_str": "String Value (if applicable)",
+        "label_op": "Operator"
+    },
     "CARDS_MATCHING_FILTER": {
         "show_val": True,
         "show_op": True,
@@ -120,7 +128,7 @@ class ConditionEditorWidget(QGroupBox):
             "OPPONENT_PLAYED_WITHOUT_MANA", "OPPONENT_DRAW_COUNT",
             "DURING_YOUR_TURN", "DURING_OPPONENT_TURN",
             "FIRST_ATTACK", "EVENT_FILTER_MATCH",
-            "COMPARE_STAT", "CARDS_MATCHING_FILTER", "DECK_EMPTY",
+            "COMPARE_STAT", "COMPARE_INPUT", "CARDS_MATCHING_FILTER", "DECK_EMPTY",
             "CUSTOM"
         ]
         self.populate_combo(self.cond_type_combo, cond_types)
