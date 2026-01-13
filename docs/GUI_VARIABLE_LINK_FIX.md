@@ -43,7 +43,7 @@ if key == 'links' or key == 'input_link' or key == 'output_link':
 ### 3. GUIでの使用方法
 
 #### ステップ1: カード移動コマンドを追加
-1. カードエディタを開く: `python -m dm_toolkit.gui.editor.main`
+1. カードエディタを開く: `python python/gui/card_editor.py`
 2. 効果に新しいコマンドを追加（例: DESTROY）
 3. **Variable Links**セクションが表示されます
 
@@ -66,7 +66,7 @@ if key == 'links' or key == 'input_link' or key == 'output_link':
 以下のコマンドでGUIを起動し、実際に動作を確認してください：
 
 ```powershell
-.\.venv\Scripts\python.exe -m dm_toolkit.gui.editor.main
+.\.venv\Scripts\python.exe python/gui/card_editor.py
 ```
 
 #### 確認項目:
