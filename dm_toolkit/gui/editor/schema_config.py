@@ -123,6 +123,14 @@ def register_all_schemas():
         f_links_out
     ]))
 
+    # PUT_CREATURE
+    register_schema(CommandSchema("PUT_CREATURE", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+
     # QUERY
     register_schema(CommandSchema("QUERY", [
         f_target,
