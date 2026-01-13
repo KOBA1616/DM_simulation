@@ -174,8 +174,6 @@ class CardEditForm(BaseEditForm):
 
         # Flatten keywords
         keywords = flat_data.get('keywords', {})
-        if isinstance(keywords, dict) and keywords.get('hyper_energy'):
-            flat_data['hyper_energy'] = True
 
         # Structural check for Twinpact
         has_spell_side = False
@@ -246,14 +244,7 @@ class CardEditForm(BaseEditForm):
             current_keywords['neo'] = True
             current_keywords['g_neo'] = True
 
-        # Hyper Energy
-        if new_data.get('hyper_energy'):
-            current_keywords['hyper_energy'] = True
-        elif 'hyper_energy' in current_keywords:
-            del current_keywords['hyper_energy']
-
         # Remove temporary fields from data
-        if 'hyper_energy' in new_data: del new_data['hyper_energy']
         if 'twinpact' in new_data: del new_data['twinpact']
 
         # Ensure spell power is 0
