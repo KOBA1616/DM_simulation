@@ -56,10 +56,19 @@ class ZoneWidget(QWidget):
                  relevant = [a for a in self.legal_actions if getattr(a, 'source_instance_id', -1) == widget.instance_id]
                  widget.update_legal_actions(relevant)
 
-    def update_cards(self, card_data_list, card_db, civ_map=None, legal_actions=None):
+    def update_cards(self, card_data_list, card_db, civ_map=None, legal_actions=None, collapsed=None):
         # Update cached legal actions if provided
         if legal_actions is not None:
             self.legal_actions = legal_actions
+
+        # Save necessary data for potential popup
+        self.card_db = card_db
+        self.last_card_data_list = card_data_list
+        self.civ_map = civ_map
+
+        # If popup is active, update it too
+        if hasattr(self, 'active_popup') and self.active_popup and self.active_popup.isVisible():
+            self.active_popup.update_content(card_data_list, card_db, civ_map, legal_actions)
 
         # Clear existing
         for i in reversed(range(self.card_layout.count())):
@@ -71,22 +80,74 @@ class ZoneWidget(QWidget):
         
         self.cards = []
 
-        # Check for Deck Bundle Visualization
+        # Check for Bundle Visualization
         is_deck = "Deck" in self.title or "デッキ" in self.title
         is_shield = "Shield" in self.title or "シールド" in self.title
+        is_mana = "Mana" in self.title or "マナ" in self.title
+        is_grave = "Graveyard" in self.title or "墓地" in self.title
 
-        if (is_deck or is_shield) and card_data_list:
+        # Determine collapsed state
+        if collapsed is None:
+            # Default behavior
+            if is_deck or is_shield or is_mana or is_grave:
+                collapsed = True
+            else:
+                collapsed = False
+
+        if collapsed and card_data_list:
             # Single Bundle Representation
             count = len(card_data_list)
-            # Use ID 0 (Back of Card)
+            display_name = ""
+            is_face_down = True
+            card_id_display = 0
+            civ_display = "COLORLESS"
+
+            # Use ID 0 (Back of Card) or Generic
             if is_deck:
                 display_name = tr("Deck ({count})").format(count=count)
-            else:
+            elif is_shield:
                 display_name = tr("Shield ({count})").format(count=count)
-            # Pass is_face_down=True
-            widget = CardWidget(0, display_name, 0, 0, "COLORLESS", False, -1, None, True)
-            # Clicking emits signal with ID 0
-            widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
+            elif is_mana:
+                display_name = tr("Mana ({count})").format(count=count)
+                is_face_down = False # Mana is public usually, but bundle is symbolic
+
+                # Try to show the top card if available
+                if count > 0:
+                    top_card = card_data_list[-1]
+                    tid = top_card['id']
+                    if tid in card_db:
+                        card_def = card_db[tid]
+                        # For bundle, we might want just "Mana (N)" text, but let's try to mimic "top card visible" if desired.
+                        # However, bundling implies we don't see the list.
+                        # If we just show the card back or generic info, it's safer.
+                        # But let's check civ distribution?
+                        # For now, generic "Mana (N)" is fine.
+                        pass
+
+            elif is_grave:
+                display_name = tr("Graveyard ({count})").format(count=count)
+                is_face_down = False
+                # Show top card of graveyard
+                if count > 0:
+                    top_card = card_data_list[-1]
+                    tid = top_card['id']
+                    card_id_display = tid
+                    if tid in card_db:
+                         card_def = card_db[tid]
+                         display_name = f"{card_def.name}\n({tr('Graveyard')}: {count})"
+                         civ_display = get_card_civilization(card_def)
+
+
+            widget = CardWidget(card_id_display, display_name, 0, 0, civ_display, False, -1, None, is_face_down)
+
+            # Clicking behavior
+            if is_mana or is_grave:
+                 # Open Popup
+                 widget.clicked.connect(self._open_popup)
+            else:
+                 # Standard emit
+                 widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
+
             widget.hovered.connect(self.card_hovered.emit)
             self.card_layout.addWidget(widget)
             self.cards.append(widget)
@@ -150,3 +211,23 @@ class ZoneWidget(QWidget):
         # Since this is a partial rollout, let's assume the receiver checks for 'execute'.
         cmd = wrap_action(action)
         self.action_triggered.emit(cmd)
+
+    def _open_popup(self, _=None):
+        from dm_toolkit.gui.widgets.zone_popup import ZonePopup
+        # Pass civ_map if available
+        civ_map = getattr(self, 'civ_map', None)
+        popup = ZonePopup(self.title, self.last_card_data_list, self.card_db, self.civ_map, self.legal_actions, parent=self.window())
+
+        # Track active popup to update it if game state changes while it's open
+        self.active_popup = popup
+
+        # Connect signals from popup's inner widget to our signals
+        # So if user clicks a card in popup, it behaves as if they clicked it in the zone
+        popup.zone_widget.card_clicked.connect(self.card_clicked.emit)
+        popup.zone_widget.card_double_clicked.connect(self.card_double_clicked.emit)
+        popup.zone_widget.action_triggered.connect(self.action_triggered.emit)
+        popup.zone_widget.card_hovered.connect(self.card_hovered.emit)
+
+        popup.exec()
+
+        self.active_popup = None
