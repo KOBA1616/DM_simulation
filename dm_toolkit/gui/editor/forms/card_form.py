@@ -1,4 +1,4 @@
-# -*- coding: cp932 -*-
+# -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QVBoxLayout, QScrollArea, QPushButton, QMenu, QGroupBox, QLabel
 )

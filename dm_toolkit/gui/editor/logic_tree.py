@@ -101,62 +101,46 @@ class LogicTreeWidget(QTreeView):
         self.setCurrentIndex(new_item.index())
 
     def add_command_to_option(self, option_index, cmd_data=None):
-        if not option_index.isValid(): return
-        data_copy = self.data_manager.create_default_command_data(cmd_data)
-        label = self.data_manager.format_command_label(data_copy)
-        self.add_child_item(option_index, "COMMAND", data_copy, label)
+        # Delegate to DataManager via contextual add
+        new_item = self.data_manager.add_command_contextual(option_index, cmd_data)
+        if new_item:
+            self.setExpanded(new_item.parent().index(), True)
+            self.setCurrentIndex(new_item.index())
 
     def add_action_sibling(self, action_index, action_data=None):
         pass
 
     def add_command_to_effect(self, effect_index, cmd_data=None):
-        if not effect_index.isValid(): return
-        data_copy = self.data_manager.create_default_command_data(cmd_data)
-        label = self.data_manager.format_command_label(data_copy)
-        self.add_child_item(effect_index, "COMMAND", data_copy, label)
+        # Delegate to DataManager via contextual add
+        new_item = self.data_manager.add_command_contextual(effect_index, cmd_data)
+        if new_item:
+            self.setExpanded(new_item.parent().index(), True)
+            self.setCurrentIndex(new_item.index())
 
     def add_action_to_effect(self, effect_index, action_data=None):
-        # Redirect to add_command_to_effect
         self.add_command_to_effect(effect_index, action_data)
 
     def add_action_to_option(self, option_index, action_data=None):
-        # Redirect to add_command_to_option
         self.add_command_to_option(option_index, action_data)
 
     def add_command_contextual(self, cmd_data=None):
         idx = self.currentIndex()
         if not idx.isValid(): return
 
-        item = self.standard_model.itemFromIndex(idx)
-        if item is None:
-            return
-        type_ = self.data_manager.get_item_type(item)
-
-        if type_ == "EFFECT":
-            self.add_command_to_effect(idx, cmd_data)
-        elif type_ == "OPTION":
-            self.add_command_to_option(idx, cmd_data)
-        elif type_ in ["COMMAND", "ACTION"]:
-             # Sibling or Branch
-             parent = item.parent()
-             if parent:
-                 parent_type = self.data_manager.get_item_type(parent)
-                 if parent_type == "EFFECT":
-                     self.add_command_to_effect(parent.index(), cmd_data)
-                 elif parent_type == "OPTION":
-                     self.add_command_to_option(parent.index(), cmd_data)
-                 elif parent_type in ["CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
-                     self._add_command_to_branch(parent.index(), cmd_data)
-        elif type_ in ["CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
-             self._add_command_to_branch(idx, cmd_data)
+        new_item = self.data_manager.add_command_contextual(idx, cmd_data)
+        if new_item:
+            self.setExpanded(new_item.parent().index(), True)
+            self.setCurrentIndex(new_item.index())
 
     def add_action_contextual(self, action_data=None):
         self.add_command_contextual(action_data)
 
     def _add_command_to_branch(self, branch_index, cmd_data=None):
-        if not branch_index.isValid(): return
-        data_copy = self.data_manager.create_default_command_data(cmd_data)
-        self.add_child_item(branch_index, "COMMAND", data_copy, f"{tr('Action')}: {tr(data_copy.get('type', 'NONE'))}")
+        # Delegate to DataManager via contextual add
+        new_item = self.data_manager.add_command_contextual(branch_index, cmd_data)
+        if new_item:
+             self.setExpanded(new_item.parent().index(), True)
+             self.setCurrentIndex(new_item.index())
 
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""
