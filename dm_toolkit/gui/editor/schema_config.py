@@ -175,7 +175,8 @@ def register_all_schemas():
         FieldSchema("amount", tr("Value (Power)"), FieldType.INT, default=0),
         FieldSchema("str_param", tr("Extra Param"), FieldType.STRING),
         # Using input_value_key for Duration Text (safe string storage)
-        FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
+        FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        f_links_in
     ]))
 
     # ADD_KEYWORD
@@ -187,7 +188,8 @@ def register_all_schemas():
         # Using input_value_key for Duration Text (safe string storage)
         FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
         # Hidden amount (default 0) to satisfy INT requirement
-        FieldSchema("amount", tr("Amount"), FieldType.INT, default=0, widget_hint="hidden")
+        FieldSchema("amount", tr("Amount"), FieldType.INT, default=0, widget_hint="hidden"),
+        f_links_in
     ]))
 
     # APPLY_MODIFIER (Added)
@@ -197,6 +199,7 @@ def register_all_schemas():
         FieldSchema("str_param", tr("Effect ID"), FieldType.SELECT, options=APPLY_MODIFIER_OPTIONS),
         FieldSchema("amount", tr("Value"), FieldType.INT, default=1),
         FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        f_links_in
     ]))
 
     # PLAY_FROM_ZONE
@@ -219,12 +222,49 @@ def register_all_schemas():
     # FRIEND_BURST
     register_schema(CommandSchema("FRIEND_BURST", [
         FieldSchema("str_param", tr("Race (e.g. Fire Bird)"), FieldType.STRING),
-        FieldSchema("target_filter", tr("Friend Burst Condition"), FieldType.FILTER)
+        FieldSchema("target_filter", tr("Friend Burst Condition"), FieldType.FILTER),
+        f_links_out
     ]))
 
     # REVOLUTION_CHANGE
     register_schema(CommandSchema("REVOLUTION_CHANGE", [
         FieldSchema("target_filter", tr("Revolution Change Condition"), FieldType.FILTER)
+    ]))
+
+    # POWER_MOD
+    register_schema(CommandSchema("POWER_MOD", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Power Adjustment"), FieldType.INT, default=0),
+        f_links_in
+    ]))
+
+    # REVEAL_CARDS
+    register_schema(CommandSchema("REVEAL_CARDS", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+
+    # SUMMON_TOKEN
+    register_schema(CommandSchema("SUMMON_TOKEN", [
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("str_param", tr("Token ID"), FieldType.STRING),
+        f_links_in
+    ]))
+
+    # REGISTER_DELAYED_EFFECT
+    register_schema(CommandSchema("REGISTER_DELAYED_EFFECT", [
+        FieldSchema("str_param", tr("Effect ID"), FieldType.STRING),
+        FieldSchema("amount", tr("Duration (Turns)"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+
+    # COST_REFERENCE
+    register_schema(CommandSchema("COST_REFERENCE", [
+        FieldSchema("ref_mode", tr("Reference Mode"), FieldType.SELECT, widget_hint="ref_mode_combo"),
+        f_links_out
     ]))
 
     # --- Logic Commands ---
