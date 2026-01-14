@@ -1449,6 +1449,12 @@ class CardTextGenerator:
                 return f"{stat_name}"
             return f"（{tr(key)}を参照）"
 
+        elif atype == "REVEAL_CARDS":
+            # REVEAL_CARDS support
+            if input_key:
+                return f"山札の上から、その数だけ表向きにする。"
+            return f"山札の上から{val1}枚を表向きにする。"
+
         elif atype == "COUNT_CARDS":
             if not target_str or target_str == "カード":
                  return f"({tr('COUNT_CARDS')})"
@@ -1608,10 +1614,24 @@ class CardTextGenerator:
             elif "CREATURE" in types:
                 verb = "召喚する"
 
-            if action.get("source_zone"):
-                template = "{source_zone}からコスト{value1}以下の{target}を" + verb + f"。{usage_label_suffix}"
+            # Check if using input-linked cost to avoid "Double Cost" text
+            # If max_cost is input-linked, _resolve_target will generate "Costs N or less..."
+            # So the template should NOT include "Cost {value1} or less" again.
+            use_linked_cost = False
+            max_cost = temp_filter.get("max_cost")
+            if isinstance(max_cost, dict) and max_cost.get("input_value_usage") == "MAX_COST":
+                use_linked_cost = True
+
+            if use_linked_cost:
+                if action.get("source_zone"):
+                    template = "{source_zone}から{target}を" + verb + f"。{usage_label_suffix}"
+                else:
+                    template = "{target}を" + verb + f"。{usage_label_suffix}"
             else:
-                template = "コスト{value1}以下の{target}を" + verb + f"。{usage_label_suffix}"
+                if action.get("source_zone"):
+                    template = "{source_zone}からコスト{value1}以下の{target}を" + verb + f"。{usage_label_suffix}"
+                else:
+                    template = "コスト{value1}以下の{target}を" + verb + f"。{usage_label_suffix}"
 
         # Destination/Source Resolution
         dest_zone = action.get("destination_zone", "")

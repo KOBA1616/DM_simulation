@@ -129,6 +129,7 @@ def register_all_schemas():
     register_schema(CommandSchema("SEARCH_DECK", [
         f_filter,
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in,
         f_links_out
     ]))
 
@@ -137,6 +138,7 @@ def register_all_schemas():
         f_filter,
         FieldSchema("amount", tr("Look Count"), FieldType.INT, default=3),
         FieldSchema("val2", tr("Add Count"), FieldType.INT, default=1),
+        f_links_in,
         f_links_out
     ]))
 
@@ -209,6 +211,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Max Cost"), FieldType.INT, default=99),
         FieldSchema("str_param", tr("Hint"), FieldType.STRING),
         FieldSchema("play_flags", tr("Play for Free"), FieldType.BOOL, default=False), # Mapped to checkbox
+        f_links_in,
         f_links_out
     ]))
 
@@ -285,10 +288,12 @@ def register_all_schemas():
     # Outputs: condition result (0=false, 1=true) to output_value_key
     register_schema(CommandSchema("IF", [
         FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
+        f_links_in,  # For dynamic condition inputs if needed
         f_links_out  # Enables output_value_key for condition result
     ]))
     register_schema(CommandSchema("IF_ELSE", [
         FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
+        f_links_in,
         f_links_out  # Enables output_value_key for condition result
     ]))
     register_schema(CommandSchema("ELSE", []))

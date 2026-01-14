@@ -153,12 +153,12 @@
     "visible": ["target_filter"]
   },
   "IF": {
-    "visible": ["input_link", "condition", "target_filter", "output_link"],
+    "visible": ["input_link", "target_filter", "output_link"],
     "produces_output": true,
     "outputs": { "output_value_key": "Condition Result" }
   },
   "IF_ELSE": {
-    "visible": ["input_link", "condition", "target_filter", "output_link"],
+    "visible": ["input_link", "target_filter", "output_link"],
     "produces_output": true,
     "outputs": { "output_value_key": "Condition Result" }
   },
@@ -172,8 +172,6 @@
     "tooltip": "Reference cost or reduce cost",
     "produces_output": true,
     "outputs": { "output_value_key": "Reference Value" }
-    "visible": ["ref_mode"],
-    "tooltip": "Reference cost or reduce cost"
   },
   "COMMAND_GROUPS": {
     "DRAW": [ "DRAW_CARD" ],
