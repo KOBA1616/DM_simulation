@@ -697,6 +697,9 @@ class CardTextGenerator:
         if not scope_text:
             return trigger_text
 
+        # Strip trailing "の" for consistent composition
+        scope_text = scope_text.rstrip("の")
+
         # Special handling for already-subjected text to avoid duplication
         if "相手が" in trigger_text and (scope == "OPPONENT" or scope == "PLAYER_OPPONENT"):
             return trigger_text
