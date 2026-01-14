@@ -26,6 +26,7 @@ class FieldType(Enum):
     RACES = auto()        # Races editor
     ENUM = auto()         # Dynamically loaded Enum
     CONDITION = auto()    # Condition editor
+    CONDITION_TREE = auto() # Hierarchical condition tree editor
 
 class FieldSchema:
     """

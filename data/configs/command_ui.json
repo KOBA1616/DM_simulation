@@ -7,7 +7,7 @@
     "outputs": { "output_value_key": "Cards Drawn" }
   },
   "DISCARD": {
-    "visible": ["target_group", "target_filter", "amount", "optional", "input_link", "output_link"],
+    "visible": ["target_group", "target_filter", "amount", "up_to", "optional", "input_link", "output_link"],
     "labels": { "amount": "Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "Discarded Cards" }
@@ -90,7 +90,7 @@
     "outputs": { "output_value_key": "加えたカード" }
   },
   "MEKRAID": {
-    "visible": ["target_filter", "amount", "val2", "output_link"],
+    "visible": ["target_filter", "amount", "val2", "select_count", "output_link"],
     "labels": { "amount": "Level" },
     "produces_output": true,
     "outputs": { "output_value_key": "Played Card" }
@@ -103,7 +103,7 @@
     "visible": ["target_group"]
   },
   "PLAY_FROM_ZONE": {
-    "visible": ["from_zone", "to_zone", "amount", "str_param", "input_link", "output_link"],
+    "visible": ["from_zone", "to_zone", "amount", "str_param", "play_flags", "input_link", "output_link"],
     "labels": { "amount": "Max Cost", "str_param": "Hint" },
     "produces_output": true,
     "outputs": { "output_value_key": "プレイしたカード" }
@@ -141,8 +141,8 @@
     "labels": { "str_param": "Effect ID", "amount": "Duration" }
   },
   "APPLY_MODIFIER": {
-    "visible": ["target_group", "target_filter", "str_param", "amount", "val2", "input_link"],
-    "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "val2": "Duration" }
+    "visible": ["target_group", "target_filter", "str_param", "amount", "input_value_key", "input_link"],
+    "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "input_value_key": "Duration" }
   },
   "CHOICE": {
     "visible": ["amount"],
