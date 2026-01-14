@@ -1,7 +1,7 @@
 {
   "NONE": { "visible": [] },
   "DRAW_CARD": {
-    "visible": ["target_group", "amount", "optional", "up_to", "input_link"],
+    "visible": ["target_group", "amount", "optional", "up_to", "input_link", "output_link"],
     "labels": { "amount": "Cards to Draw" },
     "produces_output": true,
     "outputs": { "output_value_key": "Cards Drawn" }
@@ -54,7 +54,7 @@
     "tooltip": "Replacement effect: Instead of moving to original destination, move to replacement destination"
   },
   "MUTATE": {
-    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param", "input_value_key"],
+    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param", "input_value_key", "input_link"],
     "labels": { "mutation_kind": "Mutation Type", "amount": "Value (Power)", "str_param": "Extra Param", "input_value_key": "Duration" }
   },
   "POWER_MOD": {
@@ -62,7 +62,7 @@
     "labels": { "amount": "Power Adjustment" }
   },
   "ADD_KEYWORD": {
-    "visible": ["target_group", "target_filter", "str_param", "input_value_key", "amount"],
+    "visible": ["target_group", "target_filter", "str_param", "input_value_key", "amount", "input_link"],
     "labels": { "str_param": "Keyword", "input_value_key": "Duration", "amount": "Amount (Hidden)" }
   },
   "QUERY": {

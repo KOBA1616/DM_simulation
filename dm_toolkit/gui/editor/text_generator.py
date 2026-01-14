@@ -785,7 +785,8 @@ class CardTextGenerator:
         original_cmd_type = cmd_type
         if cmd_type == "POWER_MOD": cmd_type = "MODIFY_POWER"
         elif cmd_type == "ADD_KEYWORD": 
-            cmd_type = "ADD_KEYWORD"
+            # Map ADD_KEYWORD to APPLY_MODIFIER to handle duration and keywords consistently
+            cmd_type = "APPLY_MODIFIER"
             # Ensure mutation_kind is mapped to str_val for text generation
             if not command.get("str_val") and command.get("mutation_kind"):
                 command["str_val"] = command["mutation_kind"]
@@ -1272,14 +1273,32 @@ class CardTextGenerator:
              mkind = action.get("mutation_kind", "")
              val1 = action.get("amount", 0)
              str_param = action.get("str_param", "")
+             input_key = action.get("input_value_key", "")
+             input_usage = action.get("input_value_usage") or action.get("input_usage")
+
+             # Input Usage label
+             usage_label_suffix = ""
+             if input_key and input_usage:
+                 label = cls._format_input_usage_label(input_usage)
+                 if label:
+                     usage_label_suffix = f"（{label}）"
 
              if mkind == "TAP":
-                 template = "{target}を{amount}{unit}選び、タップする。"
+                 if input_key:
+                     template = f"{{target}}をその同じ数だけ選び、タップする。{usage_label_suffix}"
+                 else:
+                     template = "{target}を{amount}{unit}選び、タップする。"
              elif mkind == "UNTAP":
-                 template = "{target}を{amount}{unit}選び、アンタップする。"
+                 if input_key:
+                     template = f"{{target}}をその同じ数だけ選び、アンタップする。{usage_label_suffix}"
+                 else:
+                     template = "{target}を{amount}{unit}選び、アンタップする。"
              elif mkind == "POWER_MOD":
-                 sign = "+" if val1 >= 0 else ""
-                 return f"{target_str}のパワーを{sign}{val1}する。"
+                 if input_key:
+                     return f"{target_str}のパワーをその数だけ増やす。{usage_label_suffix}"
+                 else:
+                     sign = "+" if val1 >= 0 else ""
+                     return f"{target_str}のパワーを{sign}{val1}する。"
              elif mkind == "ADD_KEYWORD":
                  keyword = CardTextResources.get_keyword_text(str_param)
                  return f"{target_str}に「{keyword}」を与える。"
@@ -1299,7 +1318,7 @@ class CardTextGenerator:
              else:
                  template = f"状態変更({tr(mkind)}): {{target}} (値:{val1})"
 
-             if val1 == 0:
+             if val1 == 0 and not input_key:
                  template = template.replace("{amount}{unit}選び、", "すべて") # Simplified "choose all"
                  val1 = ""
 
