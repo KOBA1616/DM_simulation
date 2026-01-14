@@ -47,23 +47,23 @@
     "outputs": { "output_value_key": "Moved Cards" }
   },
   "REPLACE_CARD_MOVE": {
-    "visible": ["target_filter", "from_zone", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
+    "visible": ["target_group", "target_filter", "from_zone", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
     "labels": { "from_zone": "Original Destination", "to_zone": "Replacement Destination", "amount": "Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "Replaced Cards" },
     "tooltip": "Replacement effect: Instead of moving to original destination, move to replacement destination"
   },
   "MUTATE": {
-    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param"],
-    "labels": { "mutation_kind": "Mutation Type", "amount": "Value / Duration", "str_param": "Extra Param" }
+    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param", "input_value_key"],
+    "labels": { "mutation_kind": "Mutation Type", "amount": "Value (Power)", "str_param": "Extra Param", "input_value_key": "Duration" }
   },
   "POWER_MOD": {
-    "visible": ["target_group", "target_filter", "amount"],
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
     "labels": { "amount": "Power Adjustment" }
   },
   "ADD_KEYWORD": {
-    "visible": ["target_group", "target_filter", "str_param", "amount"],
-    "labels": { "str_param": "Keyword", "amount": "Duration (Turns)" }
+    "visible": ["target_group", "target_filter", "str_param", "input_value_key", "amount"],
+    "labels": { "str_param": "Keyword", "input_value_key": "Duration", "amount": "Amount (Hidden)" }
   },
   "QUERY": {
     "visible": ["target_group", "target_filter", "query_mode", "output_link"],
@@ -84,8 +84,8 @@
     "visible": ["target_group"]
   },
   "LOOK_AND_ADD": {
-    "visible": ["target_filter", "amount", "input_link", "output_link"],
-    "labels": { "amount": "Look Count" },
+    "visible": ["target_filter", "amount", "val2", "input_link", "output_link"],
+    "labels": { "amount": "Look Count", "val2": "Add Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "加えたカード" }
   },
@@ -96,7 +96,7 @@
     "outputs": { "output_value_key": "Played Card" }
   },
   "REVEAL_CARDS": {
-    "visible": ["target_group", "target_filter", "amount"],
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
     "labels": { "amount": "Count" }
   },
   "SHUFFLE_DECK": {
@@ -113,7 +113,7 @@
     "labels": { "amount": "Count" }
   },
   "SUMMON_TOKEN": {
-    "visible": ["amount", "str_param"],
+    "visible": ["amount", "str_param", "input_link"],
     "labels": { "amount": "Count", "str_param": "Token ID" }
   },
   "SELECT_NUMBER": {
@@ -123,8 +123,8 @@
     "outputs": { "output_value_key": "Selected Number" }
   },
   "SELECT_OPTION": {
-    "visible": ["amount", "str_param"],
-    "labels": { "amount": "Count" }
+    "visible": ["amount", "option_count", "optional"],
+    "labels": { "amount": "Selections Count", "option_count": "Options Count" }
   },
   "CAST_SPELL": {
     "visible": ["target_group", "target_filter", "input_link", "output_link"],
@@ -138,8 +138,8 @@
     "outputs": { "output_value_key": "出現カード" }
   },
   "REGISTER_DELAYED_EFFECT": {
-    "visible": ["str_param", "amount"],
-    "labels": { "str_param": "Effect ID", "amount": "Duration" }
+    "visible": ["str_param", "amount", "input_link"],
+    "labels": { "str_param": "Effect ID", "amount": "Duration (Turns)" }
   },
   "APPLY_MODIFIER": {
     "visible": ["target_group", "target_filter", "str_param", "amount", "input_value_key", "input_link"],
@@ -168,7 +168,9 @@
     "outputs": { "output_value_key": "Condition Result" }
   },
   "COST_REFERENCE": {
-    "visible": ["ref_mode"],
-    "tooltip": "Reference cost or reduce cost"
+    "visible": ["ref_mode", "output_link"],
+    "tooltip": "Reference cost or reduce cost",
+    "produces_output": true,
+    "outputs": { "output_value_key": "Reference Value" }
   }
 }
