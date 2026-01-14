@@ -62,8 +62,8 @@
     "labels": { "amount": "Power Adjustment" }
   },
   "ADD_KEYWORD": {
-    "visible": ["target_group", "target_filter", "mutation_kind", "amount"],
-    "labels": { "mutation_kind": "Keyword", "amount": "Duration (Turns)" }
+    "visible": ["target_group", "target_filter", "str_param", "amount"],
+    "labels": { "str_param": "Keyword", "amount": "Duration (Turns)" }
   },
   "QUERY": {
     "visible": ["target_group", "target_filter", "query_mode", "output_link"],
@@ -132,7 +132,8 @@
     "outputs": { "output_value_key": "唱えたカード" }
   },
   "FRIEND_BURST": {
-    "visible": ["target_filter", "input_link", "output_link"],
+    "visible": ["str_param", "target_filter", "input_link", "output_link"],
+    "labels": { "str_param": "Race" },
     "produces_output": true,
     "outputs": { "output_value_key": "出現カード" }
   },
