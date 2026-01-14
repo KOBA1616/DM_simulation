@@ -70,7 +70,8 @@ class CardTextResources:
         "COST_MODIFIER": "コスト軽減",
         "POWER_MODIFIER": "パワー修正",
         "GRANT_KEYWORD": "キーワード付与",
-        "SET_KEYWORD": "キーワード設定"
+        "SET_KEYWORD": "キーワード設定",
+        "ADD_RESTRICTION": "制限追加"
     }
     
     # Keyword Japanese mapping
@@ -130,7 +131,9 @@ class CardTextResources:
         "ATTACKER": "アタッカー",
         "CANNOT_ATTACK": "攻撃できない",
         "CANNOT_BLOCK": "ブロックできない",
-        "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない"
+        "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない",
+        "TARGET_RESTRICTION": "攻撃・ブロック制限",
+        "SPELL_RESTRICTION": "呪文使用制限"
     }
 
     # Duration Text Mapping (Added)

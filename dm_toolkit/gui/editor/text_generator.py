@@ -411,6 +411,11 @@ class CardTextGenerator:
         elif mtype == "SET_KEYWORD":
             return cls._format_set_keyword(cond_text, full_target, keyword)
         
+        elif mtype == "ADD_RESTRICTION":
+            # keyword holds the restriction type (e.g. TARGET_RESTRICTION)
+            restriction_text = CardTextResources.get_keyword_text(keyword)
+            return f"{cond_text}{scope_prefix}{restriction_text}を与える。"
+
         else:
             return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
     
@@ -621,7 +626,7 @@ class CardTextGenerator:
             trigger = effect.get("trigger", "NONE")
             
             # Check if this is a known Modifier type
-            if effect_type in ("COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"):
+            if effect_type in ("COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD", "ADD_RESTRICTION"):
                 # Verify it's not a triggered effect
                 if trigger == "NONE" or trigger not in effect:
                     return cls._format_modifier(effect, sample=sample)
@@ -1016,7 +1021,7 @@ class CardTextGenerator:
                     return f"山札からカードを最大{amt}枚まで手札に加える。"
                 return f"カードを{amt}枚引く。"
             # If transition represents moving to mana zone, render as ADD_MANA
-            if to_zone == 'MANA_ZONE':
+            if (from_zone == 'DECK' or from_zone == '') and to_zone == 'MANA_ZONE':
                 if not amt and isinstance(action.get('target_filter'), dict):
                     amt = action.get('target_filter', {}).get('count', 1)
                 return f"自分の山札の上から{amt}枚をマナゾーンに置く。"
@@ -1168,6 +1173,7 @@ class CardTextGenerator:
 
         elif atype == "MEKRAID":
             val1 = action.get("value1", 0) # Level
+            val2 = action.get("value2", 3) # Look count
             select_count = action.get("select_count", 1) # Number to summon
             input_key = action.get("input_value_key", "")
             input_usage = action.get("input_value_usage") or action.get("input_usage")
@@ -1180,7 +1186,7 @@ class CardTextGenerator:
 
             count_str = "1体" if select_count == 1 else f"{select_count}体まで"
 
-            return f"メクレイド{use_token}（自分の山札の上から3枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
+            return f"メクレイド{use_token}（自分の山札の上から{val2}枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
 
         elif atype == "FRIEND_BURST":
             str_val = action.get("str_val", "")
@@ -1224,39 +1230,44 @@ class CardTextGenerator:
         elif atype == "TRANSITION":
             from_z = cls._normalize_zone_name(action.get("from_zone", ""))
             to_z = cls._normalize_zone_name(action.get("to_zone", ""))
-            amount = action.get("amount", 0)
+            amount = val1 # Use value1 which maps to amount
+            up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
 
             # Natural Language Mapping with explicit source/destination zones
             if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"
                 if amount == 0 and not input_key:
                     template = "{from_z}の{target}をすべて{to_z}に置く。"
             elif from_z == "BATTLE_ZONE" and to_z == "MANA_ZONE":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"
                 if amount == 0 and not input_key:
                     template = "{from_z}の{target}をすべて{to_z}に置く。"
             elif from_z == "BATTLE_ZONE" and to_z == "HAND":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
+                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に戻す。"
                 if amount == 0 and not input_key:
                     template = "{from_z}の{target}をすべて{to_z}に戻す。"
             elif from_z == "HAND" and to_z == "MANA_ZONE":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"
             elif from_z == "DECK" and to_z == "HAND":
                 # Draw: include both zones explicitly
-                template = "山札からカードを{amount}枚手札に加える。"
+                if bool(action.get('up_to', False)):
+                     template = "山札からカードを最大{amount}枚まで手札に加える。"
+                else:
+                     template = "山札からカードを{amount}枚手札に加える。"
+
                 if target_str != "カード":  # Search logic
-                    template = "{from_z}から{target}を{amount}{unit}{to_z}に加える。"
+                    template = "{from_z}から{target}を{amount}{unit}" + up_to_suffix + "{to_z}に加える。"
             elif from_z == "GRAVEYARD" and to_z == "HAND":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
+                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に戻す。"
             elif from_z == "GRAVEYARD" and to_z == "BATTLE_ZONE":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に出す。"
+                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に出す。"
             elif to_z == "GRAVEYARD":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"  # Generic discard/mill
+                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"  # Generic discard/mill
             elif to_z == "DECK_BOTTOM":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"
                 if input_key:
                     # 入力リンクがある場合は単位重複を避けた表現へ
-                    template = "{from_z}の{target}をその同じ数だけ選び、{to_z}に置く。"
+                    template = "{from_z}の{target}をその同じ数だけ" + up_to_suffix + "選び、{to_z}に置く。"
             else:
                 template = "{target}を{from_z}から{to_z}へ移動する。"
 
