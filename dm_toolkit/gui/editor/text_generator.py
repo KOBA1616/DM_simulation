@@ -1121,26 +1121,6 @@ class CardTextGenerator:
                 template = f"手札を{amt}枚捨てる。"
             return template
         
-        if atype == "REPLACE_CARD_MOVE":
-            orig_zone = cls._normalize_zone_name(action.get("original_to_zone") or action.get("from_zone") or "")
-            dest_zone = cls._normalize_zone_name(action.get("to_zone") or "DECK_BOTTOM")
-
-            # Sensible defaults when zones are omitted
-            if not dest_zone:
-                dest_zone = "DECK_BOTTOM"
-            if not orig_zone:
-                orig_zone = "GRAVEYARD"
-
-            localized_orig = tr(orig_zone)
-            localized_dest = tr(dest_zone)
-
-            if input_key:
-                target_str = "そのカード"
-            elif target_str == "カード":
-                target_str = "そのカード"
-
-            template = "{target}を{orig}に置くかわりに{dest}に置く。"
-            return template.format(target=target_str, orig=localized_orig, dest=localized_dest)
 
         if atype == "MODIFY_POWER":
             val = action.get("value1", 0)
@@ -1471,11 +1451,16 @@ class CardTextGenerator:
             if input_key:
                 template = f"{{target}}をその同じ数だけ{orig_zone_str}に置くかわりに、{zone_str}に置く。"
             else:
-                template = f"{{target}}を{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
+                if val1 > 0:
+                    template = f"{{target}}を{{value1}}{{unit}}{up_to_suffix}{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                else:
+                    template = f"{{target}}を{orig_zone_str}に置くかわりに、{zone_str}に置く。"
 
         elif atype == "MOVE_CARD":
             dest_zone = action.get("destination_zone", "")
             is_all = (val1 == 0 and not input_key)
+            up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
 
             # Include source zone when available for clearer movement description
             src_zone = action.get("source_zone", "")
@@ -1483,26 +1468,26 @@ class CardTextGenerator:
             zone_str = tr(dest_zone) if dest_zone else "どこか"
 
             if dest_zone == "HAND":
-                template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。" if not src_str
-                            else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。")
+                template = (f"{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に戻す。" if not src_str
+                            else f"{src_str}の{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に戻す。")
                 if is_all:
                     template = (f"{{target}}をすべて{zone_str}に戻す。" if not src_str
                                 else f"{src_str}の{{target}}をすべて{zone_str}に戻す。")
             elif dest_zone == "MANA_ZONE":
-                template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
-                            else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
+                template = (f"{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。" if not src_str
+                            else f"{src_str}の{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。")
                 if is_all:
                     template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
                                 else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
             elif dest_zone == "GRAVEYARD":
-                template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
-                            else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
+                template = (f"{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。" if not src_str
+                            else f"{src_str}の{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。")
                 if is_all:
                     template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
                                 else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
             elif dest_zone == "DECK_BOTTOM":
-                template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
-                            else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
+                template = (f"{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。" if not src_str
+                            else f"{src_str}の{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。")
                 if is_all:
                     template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
                                 else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
