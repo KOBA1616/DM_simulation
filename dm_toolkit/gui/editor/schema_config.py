@@ -195,7 +195,7 @@ def register_all_schemas():
         f_filter,
         FieldSchema("str_param", tr("Effect ID"), FieldType.SELECT, options=APPLY_MODIFIER_OPTIONS),
         FieldSchema("amount", tr("Value"), FieldType.INT, default=1),
-        FieldSchema("val2", tr("Duration (Turns)"), FieldType.INT, default=1),
+        FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
     ]))
 
     # PLAY_FROM_ZONE
