@@ -172,5 +172,20 @@
     "tooltip": "Reference cost or reduce cost",
     "produces_output": true,
     "outputs": { "output_value_key": "Reference Value" }
+    "visible": ["ref_mode"],
+    "tooltip": "Reference cost or reduce cost"
+  },
+  "COMMAND_GROUPS": {
+    "DRAW": [ "DRAW_CARD" ],
+    "CARD_MOVE": [ "TRANSITION", "REPLACE_CARD_MOVE", "RETURN_TO_HAND", "DISCARD", "DESTROY", "MANA_CHARGE" ],
+    "DECK_OPS": [ "SEARCH_DECK", "LOOK_AND_ADD", "REVEAL_CARDS", "SHUFFLE_DECK", "SEARCH_DECK_BOTTOM", "SEND_TO_DECK_BOTTOM" ],
+    "PLAY": [ "PLAY_FROM_ZONE", "CAST_SPELL", "SUMMON_TOKEN" ],
+    "BUFFER": [ "LOOK_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE" ],
+    "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE" ],
+    "GRANT": [ "MUTATE", "POWER_MOD", "ADD_KEYWORD", "TAP", "UNTAP", "REGISTER_DELAYED_EFFECT", "APPLY_MODIFIER" ],
+    "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT" ],
+    "BATTLE": [ "BREAK_SHIELD", "RESOLVE_BATTLE", "SHIELD_BURN", "SHIELD_TRIGGER", "ADD_SHIELD", "SEND_SHIELD_TO_GRAVE" ],
+    "RESTRICTION": [],
+    "SPECIAL": [ "GAME_RESULT", "COST_REFERENCE" ]
   }
 }
