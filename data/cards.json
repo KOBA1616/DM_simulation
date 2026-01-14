@@ -397,6 +397,7 @@
     "power": 6000,
     "keywords": {
       "double_breaker": true,
+      "mega_last_burst": true,
       "speed_attacker": true
     },
     "effects": [
