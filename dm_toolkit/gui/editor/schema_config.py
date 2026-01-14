@@ -10,6 +10,8 @@ MUTATION_TYPES = [
     "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE"
 ]
 
+APPLY_MODIFIER_OPTIONS = MUTATION_TYPES + ["COST"]
+
 MUTATION_KINDS_FOR_MUTATE = [
     "GIVE_POWER", "GIVE_ABILITY"
 ]
@@ -179,7 +181,7 @@ def register_all_schemas():
     register_schema(CommandSchema("APPLY_MODIFIER", [
         f_target,
         f_filter,
-        FieldSchema("str_param", tr("Effect ID"), FieldType.STRING),
+        FieldSchema("str_param", tr("Effect ID"), FieldType.SELECT, options=APPLY_MODIFIER_OPTIONS),
         FieldSchema("amount", tr("Value"), FieldType.INT, default=1),
         FieldSchema("val2", tr("Duration (Turns)"), FieldType.INT, default=1),
     ]))
