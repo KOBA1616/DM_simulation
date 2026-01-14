@@ -112,6 +112,18 @@ def register_all_schemas():
         f_links_out
     ]))
 
+    # REPLACE_CARD_MOVE
+    register_schema(CommandSchema("REPLACE_CARD_MOVE", [
+        f_target,
+        f_filter,
+        FieldSchema("from_zone", tr("Original Destination"), FieldType.ZONE, default="GRAVEYARD"),
+        FieldSchema("to_zone", tr("Replacement Destination"), FieldType.ZONE, default="DECK_BOTTOM"),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
+        f_optional,
+        f_links_out
+    ]))
+
     # SEARCH_DECK
     register_schema(CommandSchema("SEARCH_DECK", [
         f_filter,
