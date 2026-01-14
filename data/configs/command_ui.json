@@ -141,7 +141,7 @@
     "labels": { "str_param": "Effect ID", "amount": "Duration" }
   },
   "APPLY_MODIFIER": {
-    "visible": ["target_group", "target_filter", "str_param", "amount", "val2"],
+    "visible": ["target_group", "target_filter", "str_param", "amount", "val2", "input_link"],
     "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "val2": "Duration" }
   },
   "CHOICE": {
