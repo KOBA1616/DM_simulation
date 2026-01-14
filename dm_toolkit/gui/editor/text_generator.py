@@ -889,6 +889,10 @@ class CardTextGenerator:
             if isinstance(flags, list) and "ALLOW_DUPLICATES" in flags:
                 action_proxy["optional"] = True
             action_proxy["value1"] = command.get("amount", 1)
+        elif original_cmd_type == "SELECT_NUMBER":
+            # Map schema fields (min_value, amount) to action fields (value1, value2)
+            action_proxy["value1"] = command.get("min_value", 1)
+            action_proxy["value2"] = command.get("amount", 10)
 
         return cls._format_action(action_proxy, is_spell, sample=sample)
 
@@ -1162,6 +1166,7 @@ class CardTextGenerator:
         elif atype == "MEKRAID":
             # If input-linked MAX_COST is used, generate text with "その数"
             val1 = action.get("value1", 0)
+            select_count = action.get("select_count", 1)
             input_key = action.get("input_value_key", "")
             input_usage = action.get("input_value_usage") or action.get("input_usage")
             use_token = None
@@ -1172,10 +1177,19 @@ class CardTextGenerator:
             else:
                 # Fallback when value not provided
                 use_token = "その数" if input_usage == "MAX_COST" else str(val1)
-            return f"メクレイド{use_token}（自分の山札の上から3枚を見る。その中からコスト{use_token}以下のクリーチャーを1体、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
+
+            count_text = "1体" if select_count == 1 else f"{select_count}体まで"
+            return f"メクレイド{use_token}（自分の山札の上から3枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_text}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
 
         elif atype == "FRIEND_BURST":
             str_val = action.get("str_val", "")
+            # Fallback: try to extract race from filter if str_val (race name) is missing
+            if not str_val:
+                f = action.get("filter") or action.get("target_filter") or {}
+                races = f.get("races", [])
+                if races:
+                    str_val = "/".join(races)
+
             return f"＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
 
         elif atype == "REVOLUTION_CHANGE":
