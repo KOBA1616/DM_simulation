@@ -10,6 +10,8 @@ MUTATION_TYPES = [
     "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE"
 ]
 
+APPLY_MODIFIER_OPTIONS = MUTATION_TYPES + ["COST"]
+
 MUTATION_KINDS_FOR_MUTATE = [
     "GIVE_POWER", "GIVE_ABILITY"
 ]
@@ -95,8 +97,32 @@ def register_all_schemas():
         FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="NONE"),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out  # Enables output_value_key for card movement tracking
+    ]))
+
+    # MOVE_CARD
+    register_schema(CommandSchema("MOVE_CARD", [
+        f_target,
+        f_filter,
+        FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="GRAVEYARD"),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
+        f_optional,
+        f_links_out
+    ]))
+
+    # REPLACE_CARD_MOVE
+    register_schema(CommandSchema("REPLACE_CARD_MOVE", [
+        f_target,
+        f_filter,
+        FieldSchema("from_zone", tr("Original Destination"), FieldType.ZONE, default="GRAVEYARD"),
+        FieldSchema("to_zone", tr("Replacement Destination"), FieldType.ZONE, default="DECK_BOTTOM"),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
+        f_optional,
+        f_links_out
     ]))
 
     # SEARCH_DECK
@@ -168,9 +194,9 @@ def register_all_schemas():
     register_schema(CommandSchema("APPLY_MODIFIER", [
         f_target,
         f_filter,
-        FieldSchema("str_param", tr("Effect ID"), FieldType.STRING),
+        FieldSchema("str_param", tr("Effect ID"), FieldType.SELECT, options=APPLY_MODIFIER_OPTIONS),
         FieldSchema("amount", tr("Value"), FieldType.INT, default=1),
-        FieldSchema("val2", tr("Duration (Turns)"), FieldType.INT, default=1),
+        FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
     ]))
 
     # PLAY_FROM_ZONE
@@ -188,6 +214,11 @@ def register_all_schemas():
         f_target,
         FieldSchema("target_filter", tr("Spell Filter"), FieldType.FILTER),
         f_links_out
+    ]))
+
+    # FRIEND_BURST
+    register_schema(CommandSchema("FRIEND_BURST", [
+        FieldSchema("target_filter", tr("Friend Burst Condition"), FieldType.FILTER)
     ]))
 
     # REVOLUTION_CHANGE
@@ -212,17 +243,18 @@ def register_all_schemas():
     # IF / IF_ELSE (Use filter as condition)
     # Outputs: condition result (0=false, 1=true) to output_value_key
     register_schema(CommandSchema("IF", [
-        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER),
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
         f_links_out  # Enables output_value_key for condition result
     ]))
     register_schema(CommandSchema("IF_ELSE", [
-        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER),
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
         f_links_out  # Enables output_value_key for condition result
     ]))
     register_schema(CommandSchema("ELSE", []))
 
     # SELECT_NUMBER
     register_schema(CommandSchema("SELECT_NUMBER", [
+        FieldSchema("min_value", tr("Min Number"), FieldType.INT, default=1),
         FieldSchema("amount", tr("Max Number"), FieldType.INT, default=10),
         f_links_out
     ]))

@@ -116,7 +116,7 @@ class CardTextGenerator:
                     elif k == "hyper_energy":
                         kw_str += "（このクリーチャーを召喚する時、コストが異なる自分のクリーチャーを好きな数タップしてもよい、こうしてタップしたクリーチャー1体につき、このクリーチャーの召喚コストを2少なくする、ただし、コストは0以下にならない。）"
                     elif k == "mega_last_burst":
-                        kw_str += "（このクリーチャーが離れる時、手札または墓地からこのカードの呪文側をコストを支払わずに唱えてもよい）"
+                        kw_str += "（このクリーチャーが手札、マナゾーン、または墓地に置かれた時、このカードの呪文側をコストを支払わずに唱えてもよい）"
                     elif k == "just_diver":
                         kw_str += "（このクリーチャーが出た時、次の自分のターンのはじめまで、このクリーチャーは相手に選ばれず、攻撃されない）"
                     basic_kw_lines.append(f"■ {kw_str}")
@@ -378,8 +378,6 @@ class CardTextGenerator:
         scope = modifier.get("scope", TargetScope.ALL)
         scope = TargetScope.normalize(scope)
         
-        print(f"[TextGen._format_modifier] START: mtype={mtype}, keyword='{keyword}', scope='{scope}'")
-        
         # Build condition prefix（条件がある場合）
         cond_text = cls._format_condition(condition)
         if cond_text and not cond_text.endswith("、"):
@@ -387,7 +385,6 @@ class CardTextGenerator:
         
         # Build scope prefix（SCALEが SELF/OPPONENTの場合）
         scope_prefix = cls._get_scope_prefix(scope)
-        print(f"[TextGen._format_modifier] scope_prefix='{scope_prefix}'")
         
         # Build target description（フィルターがある場合）
         # NOTE: フィルターは owner を持つ場合があるが、スコープで上書きする
@@ -396,7 +393,6 @@ class CardTextGenerator:
             effective_filter["owner"] = scope
         
         target_str = cls._format_modifier_target(effective_filter) if effective_filter else "対象"
-        print(f"[TextGen._format_modifier] target_str='{target_str}'")
         
         # Combine: condition + scope + target
         # Final structure: 「条件」「自分の」「カード」「に〜を与える」
@@ -447,7 +443,6 @@ class CardTextGenerator:
             # Use CardTextResources for keyword translation
             keyword = CardTextResources.get_keyword_text(str_val)
             result = f"{cond}{target}に「{keyword}」を与える。"
-            print(f"[TextGen._format_grant_keyword] str_val='{str_val}', keyword='{keyword}', result='{result}'")
             return result
         # Fallback: if str_val is empty, show a more helpful message
         return f"{cond}{target}に能力を与える。"
@@ -459,7 +454,6 @@ class CardTextGenerator:
             # Use CardTextResources for keyword translation
             keyword = CardTextResources.get_keyword_text(str_val)
             result = f"{cond}{target}は「{keyword}」を得る。"
-            print(f"[TextGen._format_set_keyword] str_val='{str_val}', keyword='{keyword}', result='{result}'")
             return result
         # Fallback: if str_val is empty, show a more helpful message
         return f"{cond}{target}は能力を得る。"
@@ -490,8 +484,6 @@ class CardTextGenerator:
         is_tapped = filter_def.get("is_tapped")
         is_blocker = filter_def.get("is_blocker")
         is_evolution = filter_def.get("is_evolution")
-        
-        print(f"[TextGen._format_modifier_target] owner='{owner}', filter_keys={list(filter_def.keys())}")
         
         parts = []
         
@@ -645,7 +637,7 @@ class CardTextGenerator:
 
         # Apply trigger scope (NEW: Add prefix based on scope)
         if trigger_scope and trigger_scope != "NONE" and trigger != "PASSIVE_CONST":
-            trigger_text = cls._apply_trigger_scope(trigger_text, trigger_scope, trigger)
+            trigger_text = cls._apply_trigger_scope(trigger_text, trigger_scope, trigger, effect.get("trigger_filter", {}))
 
         cond_text = cls._format_condition(condition)
         cond_type = condition.get("type", "NONE")
@@ -689,7 +681,7 @@ class CardTextGenerator:
              return f"{cond_text}{full_action_text}"
 
     @classmethod
-    def _apply_trigger_scope(cls, trigger_text: str, scope: str, trigger_type: str) -> str:
+    def _apply_trigger_scope(cls, trigger_text: str, scope: str, trigger_type: str, trigger_filter: Dict[str, Any] = None) -> str:
         """
         Apply scope prefix to trigger text (e.g., "ON_CAST_SPELL" + "OPPONENT" -> "相手が呪文を唱えた時").
         """
@@ -705,6 +697,19 @@ class CardTextGenerator:
             return trigger_text
         if "自分が" in trigger_text and (scope == "SELF" or scope == "PLAYER_SELF"):
             return trigger_text
+
+        # Handle ON_PLAY with specific scope (e.g. Opponent's Creature Enters)
+        if trigger_type == "ON_PLAY" and (scope == "OPPONENT" or scope == "PLAYER_OPPONENT"):
+            noun = "クリーチャー"
+            if trigger_filter:
+                types = trigger_filter.get("types", [])
+                if "ELEMENT" in types:
+                    noun = "エレメント"
+                elif "Card" in types or "CARD" in types:
+                    noun = "カード"
+
+            # Use "相手の[Noun]がバトルゾーンに出た時"
+            return f"{scope_text}の{noun}がバトルゾーンに出た時"
 
         # Specific mappings for natural Japanese particles
         if trigger_type == "ON_OTHER_ENTER":
@@ -1179,20 +1184,27 @@ class CardTextGenerator:
         elif atype == "APPLY_MODIFIER":
              str_val = action.get("str_val", "")
              val1 = action.get("value1", 0)
+             duration_key = action.get("input_value_key", "")
+             duration_text = ""
+             if duration_key:
+                 duration_text = CardTextResources.get_duration_text(duration_key)
+                 if duration_text:
+                     duration_text += "、"
+
              if str_val == "SPEED_ATTACKER":
-                 return f"{target_str}に「スピードアタッカー」を与える。"
+                 return f"{duration_text}{target_str}に「スピードアタッカー」を与える。"
              elif str_val == "BLOCKER":
-                 return f"{target_str}に「ブロッカー」を与える。"
+                 return f"{duration_text}{target_str}に「ブロッカー」を与える。"
              elif str_val == "SLAYER":
-                 return f"{target_str}に「スレイヤー」を与える。"
+                 return f"{duration_text}{target_str}に「スレイヤー」を与える。"
              elif str_val == "COST":
                  sign = "少なくする" if val1 > 0 else "増やす"
-                 return f"{target_str}のコストを{abs(val1)}{sign}。"
+                 return f"{duration_text}{target_str}のコストを{abs(val1)}{sign}。"
              else:
                  jp_val = CardTextResources.get_keyword_text(str_val)
                  if jp_val != str_val:
-                     return f"{target_str}に「{jp_val}」を与える。"
-                 return f"{target_str}に効果（{str_val}）を与える。"
+                     return f"{duration_text}{target_str}に「{jp_val}」を与える。"
+                 return f"{duration_text}{target_str}に効果（{str_val}）を与える。"
 
         # --- Enhanced Command-like actions ---
         elif atype == "TRANSITION":
@@ -1414,9 +1426,16 @@ class CardTextGenerator:
                  return f"({tr('COUNT_CARDS')})"
             return f"{target_str}の数を数える。"
 
-        elif atype == "REPLACE_MOVE_CARD":
+        elif atype == "REPLACE_CARD_MOVE":
             dest_zone = action.get("destination_zone", "")
-            src_zone = action.get("source_zone", "") # Used as "Original Zone" here
+            # Fallback to standard keys if mapped props are empty
+            if not dest_zone:
+                dest_zone = action.get("to_zone", "DECK_BOTTOM")
+
+            src_zone = action.get("source_zone", "")
+            if not src_zone:
+                src_zone = action.get("from_zone", "GRAVEYARD") # Used as "Original Zone" here
+
             zone_str = tr(dest_zone) if dest_zone else "どこか"
             orig_zone_str = tr(src_zone) if src_zone else "元のゾーン"
 

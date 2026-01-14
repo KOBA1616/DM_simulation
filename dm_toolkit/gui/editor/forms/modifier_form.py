@@ -45,13 +45,24 @@ class ModifierEditForm(BaseEditForm):
         # Type
         self.type_combo = QComboBox()
         # Populate with data values: display text is tr(key), data is key itself
-        types = ["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD"]
+        types = ["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD", "ADD_RESTRICTION"]
         for t in types:
             self.type_combo.addItem(tr(t), t)
         self.type_combo.currentTextChanged.connect(self.update_data)
         self.type_combo.currentTextChanged.connect(self.update_visibility)
         self.register_widget(self.type_combo, 'type')
         form_layout.addRow(tr("Type"), self.type_combo)
+
+        # Restriction Type (Combo Box) - New
+        self.restriction_combo = QComboBox()
+        restriction_types = ["TARGET_RESTRICTION", "SPELL_RESTRICTION"]
+        for t in restriction_types:
+            self.restriction_combo.addItem(tr(t), t)
+        self.restriction_combo.currentTextChanged.connect(self.update_data)
+        # We don't register it directly with register_widget because it maps to mutation_kind conditionally
+        # self.register_widget(self.restriction_combo)
+        self.label_restriction = QLabel(tr("Restriction Type"))
+        form_layout.addRow(self.label_restriction, self.restriction_combo)
 
         # Value (for Power/Cost)
         self.value_spin = QSpinBox()
@@ -113,6 +124,8 @@ class ModifierEditForm(BaseEditForm):
         self.value_spin.setVisible(False)
         self.label_keyword.setVisible(False)
         self.keyword_combo.setVisible(False)
+        self.label_restriction.setVisible(False)
+        self.restriction_combo.setVisible(False)
 
         if mtype == "COST_MODIFIER":
             self.label_value.setVisible(True)
@@ -130,6 +143,11 @@ class ModifierEditForm(BaseEditForm):
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
             self.filter_widget.setTitle("対象クリーチャー")
+
+        elif mtype == "ADD_RESTRICTION":
+            self.label_restriction.setVisible(True)
+            self.restriction_combo.setVisible(True)
+            self.filter_widget.setTitle("制限対象")
 
         elif mtype == "SET_KEYWORD":
             self.label_keyword.setVisible(True)
@@ -171,11 +189,22 @@ class ModifierEditForm(BaseEditForm):
         # Note: Signals are already blocked by load_data(), no need to block here
         # Prefer mutation_kind, fallback to str_val for legacy data
         keyword = data.get('mutation_kind', '') or data.get('str_val', '')
-        if keyword:
-            self.keyword_combo.set_keyword(keyword)
+
+        # Load into appropriate widget based on type
+        mtype = data.get('type', '')
+        if mtype == 'ADD_RESTRICTION':
+            # For ADD_RESTRICTION, the mutation_kind holds the restriction sub-type
+            index = self.restriction_combo.findData(keyword)
+            if index >= 0:
+                self.restriction_combo.setCurrentIndex(index)
+            else:
+                self.restriction_combo.setCurrentIndex(0)
         else:
-            # No keyword, set to first item
-            self.keyword_combo.setCurrentIndex(0)
+            # Default behavior for keywords
+            if keyword:
+                self.keyword_combo.set_keyword(keyword)
+            else:
+                self.keyword_combo.setCurrentIndex(0)
 
         # Update visibility based on current modifier type
         self.update_visibility()
@@ -207,6 +236,10 @@ class ModifierEditForm(BaseEditForm):
             keyword = self.keyword_combo.get_keyword()
             data['mutation_kind'] = keyword  # Primary field
             data['str_val'] = keyword  # Legacy support
+        elif mtype == 'ADD_RESTRICTION':
+            restriction = self.restriction_combo.currentData()
+            data['mutation_kind'] = restriction
+            data['str_val'] = restriction
         else:
             # Clear both fields for non-keyword types
             data['mutation_kind'] = ''
@@ -251,6 +284,11 @@ class ModifierEditForm(BaseEditForm):
                 parts.append(f'獲得:{keyword_display}')
             else:
                 parts.append('獲得:未設定')
+        elif mtype == 'ADD_RESTRICTION':
+            if keyword:
+                parts.append(tr(keyword))
+            else:
+                parts.append(tr('ADD_RESTRICTION'))
         else:
             parts.append(tr(mtype))
         
