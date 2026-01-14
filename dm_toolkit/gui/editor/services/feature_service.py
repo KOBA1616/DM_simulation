@@ -236,4 +236,11 @@ class EditorFeatureService:
                 ctype = getattr(cmd, 'type', None) or (cmd.get('type') if isinstance(cmd, dict) else None)
                 if ctype == 'REVOLUTION_CHANGE':
                     keywords['revolution_change'] = True
+                elif ctype == 'FRIEND_BURST':
+                    keywords['friend_burst'] = True
+                    # Map filter to friend_burst_condition for text generation
+                    target_filter = getattr(cmd, 'target_filter', None) or (cmd.get('target_filter') if isinstance(cmd, dict) else None)
+                    if target_filter:
+                        card_data['friend_burst_condition'] = target_filter
+
         card_data['keywords'] = keywords

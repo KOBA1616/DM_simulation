@@ -40,6 +40,12 @@
     "produces_output": true,
     "outputs": { "output_value_key": "Moved Cards" }
   },
+  "MOVE_CARD": {
+    "visible": ["target_group", "target_filter", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Moved Cards" }
+  },
   "REPLACE_CARD_MOVE": {
     "visible": ["target_filter", "from_zone", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
     "labels": { "from_zone": "Original Destination", "to_zone": "Replacement Destination", "amount": "Count" },

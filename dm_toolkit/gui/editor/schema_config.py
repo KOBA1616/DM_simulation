@@ -99,6 +99,17 @@ def register_all_schemas():
         f_links_out  # Enables output_value_key for card movement tracking
     ]))
 
+    # MOVE_CARD
+    register_schema(CommandSchema("MOVE_CARD", [
+        f_target,
+        f_filter,
+        FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="GRAVEYARD"),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
+        f_optional,
+        f_links_out
+    ]))
+
     # SEARCH_DECK
     register_schema(CommandSchema("SEARCH_DECK", [
         f_filter,
@@ -188,6 +199,11 @@ def register_all_schemas():
         f_target,
         FieldSchema("target_filter", tr("Spell Filter"), FieldType.FILTER),
         f_links_out
+    ]))
+
+    # FRIEND_BURST
+    register_schema(CommandSchema("FRIEND_BURST", [
+        FieldSchema("target_filter", tr("Friend Burst Condition"), FieldType.FILTER)
     ]))
 
     # REVOLUTION_CHANGE
