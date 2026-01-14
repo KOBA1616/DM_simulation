@@ -54,16 +54,16 @@
     "tooltip": "Replacement effect: Instead of moving to original destination, move to replacement destination"
   },
   "MUTATE": {
-    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param"],
-    "labels": { "mutation_kind": "Mutation Type", "amount": "Value / Duration", "str_param": "Extra Param" }
+    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param", "input_value_key"],
+    "labels": { "mutation_kind": "Mutation Type", "amount": "Value / Duration", "str_param": "Extra Param", "input_value_key": "Duration" }
   },
   "POWER_MOD": {
     "visible": ["target_group", "target_filter", "amount"],
     "labels": { "amount": "Power Adjustment" }
   },
   "ADD_KEYWORD": {
-    "visible": ["target_group", "target_filter", "mutation_kind", "amount"],
-    "labels": { "mutation_kind": "Keyword", "amount": "Duration (Turns)" }
+    "visible": ["target_group", "target_filter", "str_param", "input_value_key"],
+    "labels": { "str_param": "Keyword", "input_value_key": "Duration" }
   },
   "QUERY": {
     "visible": ["target_group", "target_filter", "query_mode", "output_link"],
@@ -84,8 +84,8 @@
     "visible": ["target_group"]
   },
   "LOOK_AND_ADD": {
-    "visible": ["target_filter", "amount", "input_link", "output_link"],
-    "labels": { "amount": "Look Count" },
+    "visible": ["target_filter", "amount", "val2", "input_link", "output_link"],
+    "labels": { "amount": "Look Count", "val2": "Add Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "加えたカード" }
   },
@@ -132,7 +132,8 @@
     "outputs": { "output_value_key": "唱えたカード" }
   },
   "FRIEND_BURST": {
-    "visible": ["target_filter", "input_link", "output_link"],
+    "visible": ["str_param", "target_filter", "input_link", "output_link"],
+    "labels": { "str_param": "Race" },
     "produces_output": true,
     "outputs": { "output_value_key": "出現カード" }
   },
