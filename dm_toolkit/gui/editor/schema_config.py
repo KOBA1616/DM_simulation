@@ -242,17 +242,18 @@ def register_all_schemas():
     # IF / IF_ELSE (Use filter as condition)
     # Outputs: condition result (0=false, 1=true) to output_value_key
     register_schema(CommandSchema("IF", [
-        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER),
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
         f_links_out  # Enables output_value_key for condition result
     ]))
     register_schema(CommandSchema("IF_ELSE", [
-        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER),
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
         f_links_out  # Enables output_value_key for condition result
     ]))
     register_schema(CommandSchema("ELSE", []))
 
     # SELECT_NUMBER
     register_schema(CommandSchema("SELECT_NUMBER", [
+        FieldSchema("min_value", tr("Min Number"), FieldType.INT, default=1),
         FieldSchema("amount", tr("Max Number"), FieldType.INT, default=10),
         f_links_out
     ]))
