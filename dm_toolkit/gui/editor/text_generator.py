@@ -826,6 +826,8 @@ class CardTextGenerator:
             action_proxy["token_id"] = command.get("token_id")
         if "play_flags" in command:
             action_proxy["play_flags"] = command.get("play_flags")
+        if "select_count" in command:
+            action_proxy["select_count"] = command.get("select_count")
 
         # Some templates expect source_zone rather than from_zone
         action_proxy["source_zone"] = command.get("from_zone", "")
@@ -883,6 +885,11 @@ class CardTextGenerator:
                 max_cost = command.get("target_filter", {}).get("max_cost")
             if max_cost is not None and not isinstance(max_cost, dict):
                 action_proxy["value1"] = max_cost
+        elif original_cmd_type == "SELECT_NUMBER":
+            # Map Schema (min_value, amount) -> Action (value1, value2)
+            # Schema: amount is MAX, min_value is MIN
+            action_proxy["value1"] = command.get("min_value", 1)  # Min
+            action_proxy["value2"] = command.get("amount", 6)     # Max
         elif original_cmd_type == "CHOICE":
             # Map CHOICE into SELECT_OPTION natural language generation
             flags = command.get("flags", []) or []
@@ -1160,22 +1167,29 @@ class CardTextGenerator:
             return "\n".join(lines)
 
         elif atype == "MEKRAID":
-            # If input-linked MAX_COST is used, generate text with "その数"
-            val1 = action.get("value1", 0)
+            val1 = action.get("value1", 0) # Level
+            select_count = action.get("select_count", 1) # Number to summon
             input_key = action.get("input_value_key", "")
             input_usage = action.get("input_value_usage") or action.get("input_usage")
-            use_token = None
+
+            use_token = str(val1)
             if input_key and input_usage == "MAX_COST":
                 use_token = "その数"
-            elif isinstance(val1, int) and val1 > 0:
-                use_token = str(val1)
-            else:
-                # Fallback when value not provided
-                use_token = "その数" if input_usage == "MAX_COST" else str(val1)
-            return f"メクレイド{use_token}（自分の山札の上から3枚を見る。その中からコスト{use_token}以下のクリーチャーを1体、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
+            elif val1 == 0 and input_usage == "MAX_COST":
+                use_token = "その数"
+
+            count_str = "1体" if select_count == 1 else f"{select_count}体まで"
+
+            return f"メクレイド{use_token}（自分の山札の上から3枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
 
         elif atype == "FRIEND_BURST":
             str_val = action.get("str_val", "")
+            # Fallback: try to extract race from filter if str_val is missing
+            if not str_val:
+                races = action.get("filter", {}).get("races", [])
+                if races:
+                    str_val = races[0]
+
             return f"＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
 
         elif atype == "REVOLUTION_CHANGE":

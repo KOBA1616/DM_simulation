@@ -218,6 +218,7 @@ def register_all_schemas():
 
     # FRIEND_BURST
     register_schema(CommandSchema("FRIEND_BURST", [
+        FieldSchema("str_param", tr("Race (e.g. Fire Bird)"), FieldType.STRING),
         FieldSchema("target_filter", tr("Friend Burst Condition"), FieldType.FILTER)
     ]))
 
