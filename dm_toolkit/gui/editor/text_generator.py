@@ -1268,10 +1268,30 @@ class CardTextGenerator:
             if "{to_z}" in template:
                 template = template.replace("{to_z}", tr(to_z))
 
+        elif atype == "ADD_KEYWORD":
+             str_val = action.get("str_val") or action.get("str_param", "")
+             duration_key = action.get("input_value_key", "")
+             duration_text = ""
+             if duration_key:
+                 duration_text = CardTextResources.get_duration_text(duration_key)
+                 if duration_text:
+                     duration_text += "、"
+
+             keyword = CardTextResources.get_keyword_text(str_val)
+             return f"{duration_text}{target_str}に「{keyword}」を与える。"
+
         elif atype == "MUTATE":
              mkind = action.get("mutation_kind", "")
              val1 = action.get("amount", 0)
-             str_param = action.get("str_param", "")
+             str_param = action.get("str_param") or action.get("str_val", "")
+
+             # Duration handling
+             duration_key = action.get("input_value_key", "")
+             duration_text = ""
+             if duration_key:
+                 duration_text = CardTextResources.get_duration_text(duration_key)
+                 if duration_text:
+                     duration_text += "、"
 
              if mkind == "TAP":
                  template = "{target}を{amount}{unit}選び、タップする。"
@@ -1279,23 +1299,23 @@ class CardTextGenerator:
                  template = "{target}を{amount}{unit}選び、アンタップする。"
              elif mkind == "POWER_MOD":
                  sign = "+" if val1 >= 0 else ""
-                 return f"{target_str}のパワーを{sign}{val1}する。"
+                 return f"{duration_text}{target_str}のパワーを{sign}{val1}する。"
              elif mkind == "ADD_KEYWORD":
                  keyword = CardTextResources.get_keyword_text(str_param)
-                 return f"{target_str}に「{keyword}」を与える。"
+                 return f"{duration_text}{target_str}に「{keyword}」を与える。"
              elif mkind == "REMOVE_KEYWORD":
                  keyword = CardTextResources.get_keyword_text(str_param)
-                 return f"{target_str}の「{keyword}」を無視する。"
+                 return f"{duration_text}{target_str}の「{keyword}」を無視する。"
              elif mkind == "ADD_PASSIVE_EFFECT" or mkind == "ADD_MODIFIER":
                  # Use str_param if available to describe what is added
                  if str_param:
                      kw = CardTextResources.get_keyword_text(str_param)
                      # Check if it looks like a keyword (standard mapping) or generic
-                     return f"{target_str}に「{kw}」を与える。"
+                     return f"{duration_text}{target_str}に「{kw}」を与える。"
                  else:
-                     return f"{target_str}にパッシブ効果を与える。"
+                     return f"{duration_text}{target_str}にパッシブ効果を与える。"
              elif mkind == "ADD_COST_MODIFIER":
-                 return f"{target_str}にコスト修正を追加する。"
+                 return f"{duration_text}{target_str}にコスト修正を追加する。"
              else:
                  template = f"状態変更({tr(mkind)}): {{target}} (値:{val1})"
 
