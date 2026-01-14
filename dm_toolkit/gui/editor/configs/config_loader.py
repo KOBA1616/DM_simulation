@@ -56,4 +56,5 @@ class EditorConfigLoader:
             return cfg['COMMAND_UI_CONFIG']
         # Handle Modern Flat format (command_ui.json)
         # We assume keys starting with uppercase are Commands
-        return {k: v for k, v in cfg.items() if k.isupper() and isinstance(v, dict)}
+        # Exclude COMMAND_GROUPS as it's a configuration key, not a command
+        return {k: v for k, v in cfg.items() if k.isupper() and isinstance(v, dict) and k != 'COMMAND_GROUPS'}
