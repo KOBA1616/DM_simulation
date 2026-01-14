@@ -645,7 +645,7 @@ class CardTextGenerator:
 
         # Apply trigger scope (NEW: Add prefix based on scope)
         if trigger_scope and trigger_scope != "NONE" and trigger != "PASSIVE_CONST":
-            trigger_text = cls._apply_trigger_scope(trigger_text, trigger_scope, trigger)
+            trigger_text = cls._apply_trigger_scope(trigger_text, trigger_scope, trigger, effect.get("trigger_filter", {}))
 
         cond_text = cls._format_condition(condition)
         cond_type = condition.get("type", "NONE")
@@ -689,7 +689,7 @@ class CardTextGenerator:
              return f"{cond_text}{full_action_text}"
 
     @classmethod
-    def _apply_trigger_scope(cls, trigger_text: str, scope: str, trigger_type: str) -> str:
+    def _apply_trigger_scope(cls, trigger_text: str, scope: str, trigger_type: str, trigger_filter: Dict[str, Any] = None) -> str:
         """
         Apply scope prefix to trigger text (e.g., "ON_CAST_SPELL" + "OPPONENT" -> "相手が呪文を唱えた時").
         """
@@ -705,6 +705,19 @@ class CardTextGenerator:
             return trigger_text
         if "自分が" in trigger_text and (scope == "SELF" or scope == "PLAYER_SELF"):
             return trigger_text
+
+        # Handle ON_PLAY with specific scope (e.g. Opponent's Creature Enters)
+        if trigger_type == "ON_PLAY" and (scope == "OPPONENT" or scope == "PLAYER_OPPONENT"):
+            noun = "クリーチャー"
+            if trigger_filter:
+                types = trigger_filter.get("types", [])
+                if "ELEMENT" in types:
+                    noun = "エレメント"
+                elif "Card" in types or "CARD" in types:
+                    noun = "カード"
+
+            # Use "相手の[Noun]がバトルゾーンに出た時"
+            return f"{scope_text}の{noun}がバトルゾーンに出た時"
 
         # Specific mappings for natural Japanese particles
         if trigger_type == "ON_OTHER_ENTER":
