@@ -191,10 +191,10 @@ class EvolutionEcosystem:
                              found = True
                              break
 
-                # Execute via unified command path; convert action if needed
-                from dm_toolkit.unified_execution import ensure_executable_command
-                from dm_toolkit.engine.compat import EngineCompat
-                if best_cmd is not None:
+                 # Execute via unified command path; convert action if needed
+                 from dm_toolkit.unified_execution import ensure_executable_command
+                 from dm_toolkit.engine.compat import EngineCompat
+                 if best_cmd is not None:
                     try:
                         instance.state.execute_command(best_cmd)
                     except Exception:
@@ -205,17 +205,17 @@ class EvolutionEcosystem:
                                 EngineCompat.ExecuteCommand(instance.state, best_cmd)
                             except Exception:
                                 pass
-                else:
-                    if best_action is not None:
-                        try:
+                 else:
+                     if best_action is not None:
+                         try:
                             cmd = ensure_executable_command(best_action)
                             EngineCompat.ExecuteCommand(instance.state, cmd)
-                        except Exception:
-                            # Last resort: let compat wrapper handle action
-                            try:
-                                EngineCompat.EffectResolver_resolve_action(instance.state, best_action, None)
-                            except Exception:
-                                pass
+                         except Exception:
+                             # Last resort: let compat wrapper handle action
+                             try:
+                                 EngineCompat.EffectResolver_resolve_action(instance.state, best_action, None)
+                             except Exception:
+                                 pass
                  steps += 1
 
             # Game finished (or max steps), collect stats
