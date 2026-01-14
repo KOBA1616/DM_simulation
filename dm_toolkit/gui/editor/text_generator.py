@@ -1427,9 +1427,16 @@ class CardTextGenerator:
                  return f"({tr('COUNT_CARDS')})"
             return f"{target_str}の数を数える。"
 
-        elif atype == "REPLACE_MOVE_CARD":
+        elif atype == "REPLACE_CARD_MOVE":
             dest_zone = action.get("destination_zone", "")
-            src_zone = action.get("source_zone", "") # Used as "Original Zone" here
+            # Fallback to standard keys if mapped props are empty
+            if not dest_zone:
+                dest_zone = action.get("to_zone", "DECK_BOTTOM")
+
+            src_zone = action.get("source_zone", "")
+            if not src_zone:
+                src_zone = action.get("from_zone", "GRAVEYARD") # Used as "Original Zone" here
+
             zone_str = tr(dest_zone) if dest_zone else "どこか"
             orig_zone_str = tr(src_zone) if src_zone else "元のゾーン"
 
