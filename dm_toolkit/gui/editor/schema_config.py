@@ -97,6 +97,7 @@ def register_all_schemas():
         FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="NONE"),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out  # Enables output_value_key for card movement tracking
     ]))
