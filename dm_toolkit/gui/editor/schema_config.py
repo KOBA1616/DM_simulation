@@ -99,6 +99,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
+        f_links_in,
         f_links_out  # Enables output_value_key for card movement tracking
     ]))
 
@@ -110,6 +111,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
+        f_links_in,
         f_links_out
     ]))
 
@@ -122,6 +124,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
+        f_links_in,
         f_links_out
     ]))
 
@@ -199,7 +202,7 @@ def register_all_schemas():
         f_target,
         f_filter,
         FieldSchema("str_param", tr("Effect ID"), FieldType.SELECT, options=APPLY_MODIFIER_OPTIONS),
-        FieldSchema("amount", tr("Value"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Value (Modifier)"), FieldType.INT, default=1),
         FieldSchema("input_value_key", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
         f_links_in
     ]))
@@ -219,6 +222,7 @@ def register_all_schemas():
     register_schema(CommandSchema("CAST_SPELL", [
         f_target,
         FieldSchema("target_filter", tr("Spell Filter"), FieldType.FILTER),
+        f_links_in,
         f_links_out
     ]))
 
@@ -226,6 +230,7 @@ def register_all_schemas():
     register_schema(CommandSchema("FRIEND_BURST", [
         FieldSchema("str_param", tr("Race (e.g. Fire Bird)"), FieldType.STRING),
         FieldSchema("target_filter", tr("Friend Burst Condition"), FieldType.FILTER),
+        f_links_in,
         f_links_out
     ]))
 
@@ -270,6 +275,81 @@ def register_all_schemas():
         f_links_out
     ]))
 
+    # RESOLVE_BATTLE
+    register_schema(CommandSchema("RESOLVE_BATTLE", [
+        f_target,
+        f_links_in
+    ]))
+
+    # ADD_SHIELD
+    register_schema(CommandSchema("ADD_SHIELD", [
+        f_target,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+
+    # SEND_SHIELD_TO_GRAVE
+    register_schema(CommandSchema("SEND_SHIELD_TO_GRAVE", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in,
+        f_links_out
+    ]))
+
+    # SEARCH_DECK_BOTTOM
+    register_schema(CommandSchema("SEARCH_DECK_BOTTOM", [
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in,
+        f_links_out
+    ]))
+
+    # SEND_TO_DECK_BOTTOM
+    register_schema(CommandSchema("SEND_TO_DECK_BOTTOM", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+
+    # LOOK_TO_BUFFER
+    register_schema(CommandSchema("LOOK_TO_BUFFER", [
+        f_filter,
+        FieldSchema("amount", tr("Look Count"), FieldType.INT, default=1),
+        f_links_in,
+        f_links_out
+    ]))
+
+    # SELECT_FROM_BUFFER
+    register_schema(CommandSchema("SELECT_FROM_BUFFER", [
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in,
+        f_links_out
+    ]))
+
+    # PLAY_FROM_BUFFER
+    register_schema(CommandSchema("PLAY_FROM_BUFFER", [
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in,
+        f_links_out
+    ]))
+
+    # MOVE_BUFFER_TO_ZONE
+    register_schema(CommandSchema("MOVE_BUFFER_TO_ZONE", [
+        FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+
+    # GAME_RESULT
+    register_schema(CommandSchema("GAME_RESULT", [
+        FieldSchema("str_param", tr("Result (WIN/LOSE/DRAW)"), FieldType.STRING),
+        f_links_in
+    ]))
+
     # --- Logic Commands ---
 
     # CHOICE
@@ -296,7 +376,9 @@ def register_all_schemas():
         f_links_in,
         f_links_out  # Enables output_value_key for condition result
     ]))
-    register_schema(CommandSchema("ELSE", []))
+    register_schema(CommandSchema("ELSE", [
+        f_links_out
+    ]))
 
     # SELECT_NUMBER
     register_schema(CommandSchema("SELECT_NUMBER", [

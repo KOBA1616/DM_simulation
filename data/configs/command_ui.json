@@ -143,7 +143,56 @@
   },
   "APPLY_MODIFIER": {
     "visible": ["target_group", "target_filter", "str_param", "amount", "input_value_key", "input_link"],
-    "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "input_value_key": "Duration" }
+    "labels": { "str_param": "Effect ID", "amount": "Value (Modifier)", "input_value_key": "Duration" }
+  },
+  "RESOLVE_BATTLE": {
+    "visible": ["target_group", "input_link"]
+  },
+  "ADD_SHIELD": {
+    "visible": ["target_group", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "SEND_SHIELD_TO_GRAVE": {
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Burnt Shields" }
+  },
+  "SEARCH_DECK_BOTTOM": {
+    "visible": ["target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Found Cards" }
+  },
+  "SEND_TO_DECK_BOTTOM": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "LOOK_TO_BUFFER": {
+    "visible": ["target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Look Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Buffered Cards" }
+  },
+  "SELECT_FROM_BUFFER": {
+    "visible": ["target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Selected Cards" }
+  },
+  "PLAY_FROM_BUFFER": {
+    "visible": ["target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Played Cards" }
+  },
+  "MOVE_BUFFER_TO_ZONE": {
+    "visible": ["to_zone", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "GAME_RESULT": {
+    "visible": ["str_param", "input_link"],
+    "labels": { "str_param": "Result (WIN/LOSE/DRAW)" }
   },
   "CHOICE": {
     "visible": ["amount"],
