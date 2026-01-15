@@ -1424,6 +1424,41 @@ class CardTextGenerator:
                     return f"統計更新: {stat_name} += {amount}"
             return f"統計更新: {tr(str(key))} += {amount}"
 
+        elif atype == "RESOLVE_BATTLE":
+             return "バトル処理を行う。"
+
+        elif atype == "ADD_SHIELD":
+             amt = val1
+             if amt == 0 and input_key:
+                 return "シールドをその数だけ追加する。"
+             return f"シールドを{amt}つ追加する。"
+
+        elif atype == "SEND_SHIELD_TO_GRAVE":
+             amt = val1
+             # target_str already resolved, e.g. "相手のシールド"
+             if target_str == "カード" or target_str == "":
+                 target_str = "シールド"
+
+             if amt == 0 and input_key:
+                 return f"{target_str}をその数だけ選び、墓地に置く。"
+             return f"{target_str}を{amt}つ選び、墓地に置く。"
+
+        elif atype == "SEARCH_DECK_BOTTOM":
+             amt = val1
+             return f"山札の下から{amt}枚を探す。"
+
+        elif atype == "SEND_TO_DECK_BOTTOM":
+             amt = val1
+             up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
+             if amt == 0 and input_key:
+                  return f"{target_str}をその数だけ{up_to_suffix}選び、山札の下に置く。"
+             if amt == 0:
+                  return f"{target_str}をすべて山札の下に置く。"
+             return f"{target_str}を{amt}枚{up_to_suffix}選び、山札の下に置く。"
+
+        elif atype in ["LOOK_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE"]:
+             return f"バッファ操作({tr(atype)}): {val1}"
+
         if not template:
             return f"({tr(atype)})"
 
