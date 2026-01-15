@@ -1460,6 +1460,21 @@ class CardTextGenerator:
                  return f"({tr('COUNT_CARDS')})"
             return f"{target_str}の数を数える。"
 
+        elif atype == "SEARCH_DECK":
+            # SEARCH_DECK implies searching deck and putting result somewhere (usually hand)
+
+            # Use 'amount' for count
+            count = val1 if val1 > 0 else 1
+
+            # Resolve target string from filter
+            target_str, unit = cls._resolve_target(action, is_spell)
+
+            template = f"自分の山札を見る。その中から{target_str}を{count}{unit}選び、手札に加える。その後、山札をシャッフルする。"
+            if count == 1:
+                template = f"自分の山札を見る。その中から{target_str}を1{unit}選び、手札に加える。その後、山札をシャッフルする。"
+
+            return template
+
         elif atype == "REPLACE_CARD_MOVE":
             dest_zone = action.get("destination_zone", "")
             # Fallback to standard keys if mapped props are empty
@@ -1606,6 +1621,10 @@ class CardTextGenerator:
                     action["value1"] = max_cost
                     if not input_key: val1 = max_cost
                     if "max_cost" in temp_filter: del temp_filter["max_cost"]
+            else:
+                 # If value1 is already set (e.g. from schema param), remove it from filter to avoid duplication in target_str
+                 if "max_cost" in temp_filter:
+                      del temp_filter["max_cost"]
 
             if "zones" in temp_filter: temp_filter["zones"] = []
             scope = action.get("scope", "NONE")
@@ -1618,6 +1637,17 @@ class CardTextGenerator:
                 verb = "唱える"
             elif "CREATURE" in types:
                 verb = "召喚する"
+
+            # Check for play_flags (Play for Free)
+            play_flags = action.get("play_flags")
+            is_free = False
+            if isinstance(play_flags, bool) and play_flags:
+                is_free = True
+            elif isinstance(play_flags, list) and ("FREE" in play_flags or "COST_FREE" in play_flags):
+                is_free = True
+
+            if is_free:
+                verb = f"コストを支払わずに{verb}"
 
             # Check if using input-linked cost to avoid "Double Cost" text
             # If max_cost is input-linked, _resolve_target will generate "Costs N or less..."
@@ -1887,8 +1917,7 @@ class CardTextGenerator:
 
             # Special case for SEARCH_DECK
             if atype == "SEARCH_DECK":
-                 # Usually searching for a specific card in deck
-                 pass
+                 zone_noun = ""
 
             parts = []
             if prefix: parts.append(prefix)
