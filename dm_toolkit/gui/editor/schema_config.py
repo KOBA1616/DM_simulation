@@ -270,6 +270,84 @@ def register_all_schemas():
         f_links_out
     ]))
 
+    # SEARCH_DECK_BOTTOM
+    register_schema(CommandSchema("SEARCH_DECK_BOTTOM", [
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_out
+    ]))
+
+    # SEND_TO_DECK_BOTTOM
+    register_schema(CommandSchema("SEND_TO_DECK_BOTTOM", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+
+    # BATTLE related
+    register_schema(CommandSchema("RESOLVE_BATTLE", [
+        f_target,
+        f_filter
+    ]))
+    register_schema(CommandSchema("SHIELD_BURN", [
+        f_target,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+    register_schema(CommandSchema("ADD_SHIELD", [
+        f_target,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+    register_schema(CommandSchema("SEND_SHIELD_TO_GRAVE", [
+        f_target,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+
+    # BUFFER operations
+    register_schema(CommandSchema("LOOK_TO_BUFFER", [
+        FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="DECK"),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+    register_schema(CommandSchema("SELECT_FROM_BUFFER", [
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_out
+    ]))
+    register_schema(CommandSchema("PLAY_FROM_BUFFER", [
+        f_filter,
+        f_links_in
+    ]))
+    register_schema(CommandSchema("MOVE_BUFFER_TO_ZONE", [
+        FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+
+    # Others
+    register_schema(CommandSchema("LOCK_SPELL", [
+        f_target, # Target player
+        f_filter,
+        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+    ]))
+    register_schema(CommandSchema("RESET_INSTANCE", [
+        f_target,
+        f_filter
+    ]))
+    register_schema(CommandSchema("MOVE_TO_UNDER_CARD", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
+    register_schema(CommandSchema("DECLARE_NUMBER", [
+        FieldSchema("min_value", tr("Min Number"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Max Number"), FieldType.INT, default=10),
+        f_links_out
+    ]))
+
     # --- Logic Commands ---
 
     # CHOICE
