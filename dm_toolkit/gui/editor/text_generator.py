@@ -1544,6 +1544,13 @@ class CardTextGenerator:
         if not template:
             return f"({tr(atype)})"
 
+        if atype == "IF":
+             return "（条件判定: もし条件を満たすなら）"
+        elif atype == "IF_ELSE":
+             return "（条件分岐: もし条件を満たすなら...）"
+        elif atype == "ELSE":
+             return "（そうでなければ）"
+
         if atype == "GRANT_KEYWORD" or atype == "ADD_KEYWORD":
             # キーワードの翻訳を適用
             keyword = CardTextResources.get_keyword_text(str_val)
