@@ -84,13 +84,13 @@
     "visible": ["target_group"]
   },
   "LOOK_AND_ADD": {
-    "visible": ["target_filter", "amount", "val2", "input_link", "output_link"],
+    "visible": ["target_filter", "amount", "val2", "rest_zone", "input_link", "output_link"],
     "labels": { "amount": "Look Count", "val2": "Add Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "加えたカード" }
   },
   "MEKRAID": {
-    "visible": ["target_filter", "amount", "val2", "select_count", "output_link"],
+    "visible": ["target_filter", "amount", "val2", "select_count", "input_link", "output_link"],
     "labels": { "amount": "Level" },
     "produces_output": true,
     "outputs": { "output_value_key": "Played Card" }

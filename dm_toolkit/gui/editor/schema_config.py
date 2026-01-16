@@ -49,6 +49,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Cards to Draw"), FieldType.INT, default=1, min_value=1),
         f_optional,
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
+        f_links_in,
         f_links_out
     ]))
 
@@ -60,6 +61,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
+        f_links_in,
         f_links_out  # Enables output_value_key for discarded count
     ]))
 
@@ -70,6 +72,7 @@ def register_all_schemas():
             f_target,
             f_filter,
             FieldSchema("amount", tr("Count (if selecting)"), FieldType.INT, default=1),
+            f_links_in,
             f_links_out  # Enables output_value_key for card movement tracking
         ]))
 
@@ -99,6 +102,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
+        f_links_in,
         f_links_out  # Enables output_value_key for card movement tracking
     ]))
 
@@ -110,6 +114,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
+        f_links_in,
         f_links_out
     ]))
 
@@ -122,6 +127,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
+        f_links_in,
         f_links_out
     ]))
 
@@ -150,6 +156,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Level (Max Cost)"), FieldType.INT, default=7),
         FieldSchema("val2", tr("Look Count"), FieldType.INT, default=3),
         FieldSchema("select_count", tr("Select Count"), FieldType.INT, default=1),
+        f_links_in,
         f_links_out
     ]))
 
@@ -219,6 +226,7 @@ def register_all_schemas():
     register_schema(CommandSchema("CAST_SPELL", [
         f_target,
         FieldSchema("target_filter", tr("Spell Filter"), FieldType.FILTER),
+        f_links_in,
         f_links_out
     ]))
 
@@ -226,6 +234,7 @@ def register_all_schemas():
     register_schema(CommandSchema("FRIEND_BURST", [
         FieldSchema("str_param", tr("Race (e.g. Fire Bird)"), FieldType.STRING),
         FieldSchema("target_filter", tr("Friend Burst Condition"), FieldType.FILTER),
+        f_links_in,
         f_links_out
     ]))
 
