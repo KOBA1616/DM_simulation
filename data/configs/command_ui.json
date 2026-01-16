@@ -54,16 +54,16 @@
     "tooltip": "Replacement effect: Instead of moving to original destination, move to replacement destination"
   },
   "MUTATE": {
-    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param", "input_value_key"],
-    "labels": { "mutation_kind": "Mutation Type", "amount": "Value (Power)", "str_param": "Extra Param", "input_value_key": "Duration" }
+    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param", "duration", "input_link"],
+    "labels": { "mutation_kind": "Mutation Type", "amount": "Value (Power)", "str_param": "Extra Param", "duration": "Duration" }
   },
   "POWER_MOD": {
     "visible": ["target_group", "target_filter", "amount", "input_link"],
     "labels": { "amount": "Power Adjustment" }
   },
   "ADD_KEYWORD": {
-    "visible": ["target_group", "target_filter", "str_param", "input_value_key", "amount"],
-    "labels": { "str_param": "Keyword", "input_value_key": "Duration", "amount": "Amount (Hidden)" }
+    "visible": ["target_group", "target_filter", "str_param", "duration", "amount", "input_link"],
+    "labels": { "str_param": "Keyword", "duration": "Duration", "amount": "Amount (Hidden)" }
   },
   "QUERY": {
     "visible": ["target_group", "target_filter", "query_mode", "output_link"],
@@ -142,8 +142,8 @@
     "labels": { "str_param": "Effect ID", "amount": "Duration (Turns)" }
   },
   "APPLY_MODIFIER": {
-    "visible": ["target_group", "target_filter", "str_param", "amount", "input_value_key", "input_link"],
-    "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "input_value_key": "Duration" }
+    "visible": ["target_group", "target_filter", "str_param", "amount", "duration", "input_link"],
+    "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "duration": "Duration" }
   },
   "CHOICE": {
     "visible": ["amount"],

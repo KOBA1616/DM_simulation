@@ -814,7 +814,8 @@ class CardTextGenerator:
             "original_to_zone": command.get("original_to_zone", ""),
             "mutation_kind": command.get("mutation_kind", ""),
             "destination_zone": command.get("to_zone", ""), # For MOVE_CARD mapping
-            "result": command.get("result") or command.get("str_param", "") # For GAME_RESULT, map properly
+            "result": command.get("result") or command.get("str_param", ""), # For GAME_RESULT, map properly
+            "duration": command.get("duration", "")
         }
 
         # Extra passthrough fields for complex/structured commands
@@ -1187,12 +1188,22 @@ class CardTextGenerator:
         elif atype == "APPLY_MODIFIER":
              str_val = action.get("str_val", "")
              val1 = action.get("value1", 0)
-             duration_key = action.get("input_value_key", "")
+             duration_key = action.get("duration") or action.get("input_value_key", "")
+             # Check if input_value_key is actually an input link (dict) or usage string, not a duration constant
+             if not duration_key and action.get("input_value_key") in CardTextResources.DURATION_TRANSLATION:
+                  duration_key = action.get("input_value_key")
+
              duration_text = ""
              if duration_key:
                  duration_text = CardTextResources.get_duration_text(duration_key)
-                 if duration_text:
+                 if duration_text and duration_text != duration_key: # Ensure it was translated (valid key)
                      duration_text += "、"
+                 elif duration_key in CardTextResources.DURATION_TRANSLATION:
+                      # Direct lookup fallback
+                      duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
+                 else:
+                      # If it's not a known duration key, ignore it (likely an input link variable name)
+                      duration_text = ""
 
              if str_val == "SPEED_ATTACKER":
                  return f"{duration_text}{target_str}に「スピードアタッカー」を与える。"
@@ -1270,12 +1281,16 @@ class CardTextGenerator:
 
         elif atype == "ADD_KEYWORD":
              str_val = action.get("str_val") or action.get("str_param", "")
-             duration_key = action.get("input_value_key", "")
+             duration_key = action.get("duration") or action.get("input_value_key", "")
+
              duration_text = ""
              if duration_key:
-                 duration_text = CardTextResources.get_duration_text(duration_key)
-                 if duration_text:
-                     duration_text += "、"
+                 # Verify it is a valid duration key
+                 trans = CardTextResources.get_duration_text(duration_key)
+                 if trans and trans != duration_key:
+                     duration_text = trans + "、"
+                 elif duration_key in CardTextResources.DURATION_TRANSLATION:
+                     duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
 
              keyword = CardTextResources.get_keyword_text(str_val)
              return f"{duration_text}{target_str}に「{keyword}」を与える。"
@@ -1286,12 +1301,16 @@ class CardTextGenerator:
              str_param = action.get("str_param") or action.get("str_val", "")
 
              # Duration handling
-             duration_key = action.get("input_value_key", "")
+             duration_key = action.get("duration") or action.get("input_value_key", "")
+
              duration_text = ""
              if duration_key:
-                 duration_text = CardTextResources.get_duration_text(duration_key)
-                 if duration_text:
-                     duration_text += "、"
+                 # Verify it is a valid duration key
+                 trans = CardTextResources.get_duration_text(duration_key)
+                 if trans and trans != duration_key:
+                     duration_text = trans + "、"
+                 elif duration_key in CardTextResources.DURATION_TRANSLATION:
+                     duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
 
              if mkind == "TAP":
                  template = "{target}を{amount}{unit}選び、タップする。"
