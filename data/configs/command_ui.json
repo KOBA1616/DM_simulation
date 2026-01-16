@@ -13,11 +13,11 @@
     "outputs": { "output_value_key": "Discarded Cards" }
   },
   "DESTROY": {
-    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
     "labels": { "amount": "Count (if selecting)" }
   },
   "MANA_CHARGE": {
-    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
     "labels": { "amount": "Count (if selecting)" }
   },
   "TAP": {
@@ -27,11 +27,11 @@
     "visible": ["target_group", "target_filter", "input_link"]
   },
   "RETURN_TO_HAND": {
-    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
     "labels": { "amount": "Count (if selecting)" }
   },
   "BREAK_SHIELD": {
-    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
     "labels": { "amount": "Count" }
   },
   "TRANSITION": {

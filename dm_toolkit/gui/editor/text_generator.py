@@ -905,6 +905,15 @@ class CardTextGenerator:
             if isinstance(flags, list) and "ALLOW_DUPLICATES" in flags:
                 action_proxy["optional"] = True
             action_proxy["value1"] = command.get("amount", 1)
+        elif original_cmd_type == "SHUFFLE_DECK":
+            # No params needed usually
+            pass
+        elif original_cmd_type == "REGISTER_DELAYED_EFFECT":
+            # Requires str_param for ID, amount for Duration
+            action_proxy["str_val"] = command.get("str_param") or command.get("str_val", "")
+        elif original_cmd_type == "COST_REFERENCE":
+             # Used to just output value, handled in _format_action
+             action_proxy["ref_mode"] = command.get("ref_mode")
 
         return cls._format_action(action_proxy, is_spell, sample=sample)
 
@@ -1595,6 +1604,67 @@ class CardTextGenerator:
                 template = f"自分の山札を見る。その中から{target_str}を1{unit}選び、{action_phrase}。その後、山札をシャッフルする。"
 
             return template
+
+        elif atype == "LOOK_AND_ADD":
+             # LOOK_AND_ADD: Look at top N, add M to hand, rest to zone
+             look_count = val1 if val1 > 0 else 3
+             add_count = val2 if val2 > 0 else 1
+             rest_zone = action.get("rest_zone", "DECK_BOTTOM")
+
+             rest_text = ""
+             if rest_zone == "DECK_BOTTOM":
+                 rest_text = "残りを好きな順序で山札の下に置く。"
+             elif rest_zone == "GRAVEYARD":
+                 rest_text = "残りを墓地に置く。"
+             else:
+                 rest_text = f"残りを{tr(rest_zone)}に置く。"
+
+             # If filter is specific, mention it
+             target_str, unit = cls._resolve_target(action, is_spell)
+             filter_text = ""
+             if target_str != "カード":
+                 filter_text = f"{target_str}を"
+
+             return f"自分の山札の上から{look_count}枚を見る。その中から{filter_text}{add_count}{unit}手札に加え、{rest_text}"
+
+        elif atype == "PUT_CREATURE":
+             # Similar to TRANSITION BATTLE_ZONE but explicit "Put"
+             target_str, unit = cls._resolve_target(action, is_spell)
+             count = val1 if val1 > 0 else 1
+
+             # If source is not specified, assume generic "put" (often used for token or specific summon)
+             # But usually PUT_CREATURE implies from somewhere.
+             # If filter specifies zone, use it.
+             filter_zones = action.get("filter", {}).get("zones", [])
+             src_text = ""
+             if filter_zones:
+                 znames = [tr(z) for z in filter_zones]
+                 src_text = "または".join(znames) + "から"
+
+             return f"{src_text}{target_str}を{count}{unit}バトルゾーンに出す。"
+
+        elif atype == "SHUFFLE_DECK":
+             return "山札をシャッフルする。"
+
+        elif atype == "BREAK_SHIELD":
+             target_str, unit = cls._resolve_target(action, is_spell)
+             count = val1 if val1 > 0 else 1
+             # Often implies opponent's shields
+             if not action.get("scope") or action.get("scope") == "NONE":
+                 # If no scope, check if target string implies opponent
+                 if "相手" not in target_str:
+                     target_str = "相手の" + target_str
+
+             return f"{target_str}を{count}つブレイクする。"
+
+        elif atype == "REGISTER_DELAYED_EFFECT":
+             str_val = action.get("str_val", "")
+             duration = val1 if val1 > 0 else 1
+             return f"遅延効果（{str_val}）を{duration}ターン登録する。"
+
+        elif atype == "COST_REFERENCE":
+             ref_mode = action.get("ref_mode", "")
+             return f"（コスト参照: {tr(ref_mode)}）"
 
         elif atype == "REPLACE_CARD_MOVE":
             dest_zone = action.get("destination_zone", "")
