@@ -173,15 +173,78 @@
     "produces_output": true,
     "outputs": { "output_value_key": "Reference Value" }
   },
+  "SEARCH_DECK_BOTTOM": {
+    "visible": ["amount", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Found Cards" }
+  },
+  "SEND_TO_DECK_BOTTOM": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "LOOK_TO_BUFFER": {
+    "visible": ["from_zone", "amount", "input_link"],
+    "labels": { "amount": "Count", "from_zone": "Source" }
+  },
+  "SELECT_FROM_BUFFER": {
+    "visible": ["target_filter", "amount", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Selected Cards" }
+  },
+  "PLAY_FROM_BUFFER": {
+    "visible": ["target_filter", "input_link"]
+  },
+  "MOVE_BUFFER_TO_ZONE": {
+    "visible": ["to_zone", "amount", "input_link"],
+    "labels": { "amount": "Count", "to_zone": "Destination" }
+  },
+  "RESOLVE_BATTLE": {
+    "visible": ["target_group", "target_filter"]
+  },
+  "ADD_SHIELD": {
+    "visible": ["target_group", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "SEND_SHIELD_TO_GRAVE": {
+    "visible": ["target_group", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "SHIELD_BURN": {
+    "visible": ["target_group", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "GAME_RESULT": {
+    "visible": ["result", "target_group"],
+    "labels": { "result": "Result" }
+  },
+  "LOCK_SPELL": {
+    "visible": ["target_group", "target_filter", "amount"],
+    "labels": { "amount": "Duration (Turns)" }
+  },
+  "RESET_INSTANCE": {
+    "visible": ["target_group", "target_filter"]
+  },
+  "MOVE_TO_UNDER_CARD": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "DECLARE_NUMBER": {
+    "visible": ["min_value", "amount", "output_link"],
+    "labels": { "min_value": "Min", "amount": "Max" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Declared Number" }
+  },
   "COMMAND_GROUPS": {
     "DRAW": [ "DRAW_CARD" ],
     "CARD_MOVE": [ "TRANSITION", "REPLACE_CARD_MOVE", "RETURN_TO_HAND", "DISCARD", "DESTROY", "MANA_CHARGE" ],
     "DECK_OPS": [ "SEARCH_DECK", "LOOK_AND_ADD", "REVEAL_CARDS", "SHUFFLE_DECK", "SEARCH_DECK_BOTTOM", "SEND_TO_DECK_BOTTOM" ],
     "PLAY": [ "PLAY_FROM_ZONE", "CAST_SPELL", "SUMMON_TOKEN" ],
     "BUFFER": [ "LOOK_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE" ],
-    "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE" ],
-    "GRANT": [ "MUTATE", "POWER_MOD", "ADD_KEYWORD", "TAP", "UNTAP", "REGISTER_DELAYED_EFFECT", "APPLY_MODIFIER" ],
-    "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT" ],
+    "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE", "MOVE_TO_UNDER_CARD" ],
+    "GRANT": [ "MUTATE", "POWER_MOD", "ADD_KEYWORD", "TAP", "UNTAP", "REGISTER_DELAYED_EFFECT", "APPLY_MODIFIER", "LOCK_SPELL", "RESET_INSTANCE" ],
+    "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "DECLARE_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT" ],
     "BATTLE": [ "BREAK_SHIELD", "RESOLVE_BATTLE", "SHIELD_BURN", "SHIELD_TRIGGER", "ADD_SHIELD", "SEND_SHIELD_TO_GRAVE" ],
     "RESTRICTION": [],
     "SPECIAL": [ "GAME_RESULT", "COST_REFERENCE" ]

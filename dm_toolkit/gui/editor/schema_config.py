@@ -270,6 +270,12 @@ def register_all_schemas():
         f_links_out
     ]))
 
+    # GAME_RESULT
+    register_schema(CommandSchema("GAME_RESULT", [
+        f_target,
+        FieldSchema("result", tr("Result"), FieldType.SELECT, options=["WIN", "LOSE", "DRAW"])
+    ]))
+
     # SEARCH_DECK_BOTTOM
     register_schema(CommandSchema("SEARCH_DECK_BOTTOM", [
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
