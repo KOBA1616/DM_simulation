@@ -814,7 +814,7 @@ class CardTextGenerator:
             "original_to_zone": command.get("original_to_zone", ""),
             "mutation_kind": command.get("mutation_kind", ""),
             "destination_zone": command.get("to_zone", ""), # For MOVE_CARD mapping
-            "result": command.get("str_param", "") # For GAME_RESULT
+            "result": command.get("result") or command.get("str_param", "") # For GAME_RESULT, map properly
         }
 
         # Extra passthrough fields for complex/structured commands
@@ -893,7 +893,7 @@ class CardTextGenerator:
                 max_cost = command.get("target_filter", {}).get("max_cost")
             if max_cost is not None and not isinstance(max_cost, dict):
                 action_proxy["value1"] = max_cost
-        elif original_cmd_type == "SELECT_NUMBER":
+        elif original_cmd_type == "SELECT_NUMBER" or original_cmd_type == "DECLARE_NUMBER":
             # Map Schema (min_value, amount) -> Action (value1, value2)
             # Schema: amount is MAX, min_value is MIN
             action_proxy["value1"] = command.get("min_value", 1)  # Min
@@ -1387,12 +1387,101 @@ class CardTextGenerator:
 
         elif atype == "GAME_RESULT":
              res = action.get("result", "")
+             if not res:
+                  # Fallback to str_val/str_param if result is empty
+                  res = action.get("str_val") or action.get("str_param", "")
              return f"ゲームを終了する（{tr(res)}）。"
 
         elif atype == "ATTACH":
             # Resolving base target might be tricky without a full "base_target" definition in Action,
             # usually ATTACH targets an existing card.
             return f"{target_str}をカードの下に重ねる。"
+
+        elif atype == "MOVE_TO_UNDER_CARD":
+             target_str, unit = cls._resolve_target(action, is_spell)
+             amt = val1 if val1 > 0 else 1
+             if amt == 1:
+                  return f"{target_str}をカードの下に重ねる。"
+             return f"{target_str}を{amt}{unit}カードの下に重ねる。"
+
+        elif atype == "LOCK_SPELL":
+             scope = action.get("scope") or action.get("target_group", "NONE")
+             target_str = "プレイヤー"
+             if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
+                  target_str = "相手"
+             elif scope in ["PLAYER_SELF", "SELF"]:
+                  target_str = "自分"
+             elif scope == "ALL_PLAYERS":
+                  target_str = "すべてのプレイヤー"
+             else:
+                  target_str, unit = cls._resolve_target(action, is_spell)
+
+             duration = val1 if val1 > 0 else 1
+             return f"{target_str}は{duration}ターンの間、呪文を唱えられない。"
+
+        elif atype == "RESET_INSTANCE":
+             target_str, unit = cls._resolve_target(action, is_spell)
+             return f"{target_str}の状態を初期化する（効果を無視する）。"
+
+        elif atype == "DECLARE_NUMBER":
+             min_val = action.get("value1", 1)
+             max_val = action.get("value2", 10)
+             # Fallback if mapped incorrectly
+             if min_val == 0: min_val = action.get("min_value", 1)
+             if max_val == 0: max_val = action.get("amount", 10)
+             return f"数字を1つ宣言する（{min_val}～{max_val}）。"
+
+        elif atype == "ADD_SHIELD":
+             target_str, unit = cls._resolve_target(action, is_spell)
+             amt = val1 if val1 > 0 else 1
+             # If target is implicit (e.g. from deck to shield)
+             if "山札" in target_str or target_str == "カード":
+                 return f"山札の上から{amt}枚をシールド化する。"
+             return f"{target_str}を{amt}つシールド化する。"
+
+        elif atype == "SEND_SHIELD_TO_GRAVE":
+             target_str, unit = cls._resolve_target(action, is_spell)
+             amt = val1 if val1 > 0 else 1
+             # Generic case usually means opponent chooses shield to burn
+             if scope == "OPPONENT" or scope == "PLAYER_OPPONENT":
+                  return f"相手のシールドを{amt}つ選び、墓地に置く。"
+             return f"{target_str}を{amt}つ墓地に置く。"
+
+        elif atype == "SHIELD_BURN":
+             # SHIELD_BURN is usually "Select opponent shield and send to grave"
+             amt = val1 if val1 > 0 else 1
+             return f"相手のシールドを{amt}つ選び、墓地に置く。"
+
+        elif atype == "SEARCH_DECK_BOTTOM":
+             amt = val1 if val1 > 0 else 1
+             return f"山札の下から{amt}枚を探す。"
+
+        elif atype == "SEND_TO_DECK_BOTTOM":
+             target_str, unit = cls._resolve_target(action, is_spell)
+             amt = val1 if val1 > 0 else 1
+             return f"{target_str}を{amt}{unit}山札の下に置く。"
+
+        elif atype == "RESOLVE_BATTLE":
+             target_str, unit = cls._resolve_target(action, is_spell)
+             return f"{target_str}とバトルさせる。"
+
+        elif atype == "LOOK_TO_BUFFER":
+             src_zone = tr(action.get("from_zone", "DECK"))
+             amt = val1 if val1 > 0 else 1
+             return f"{src_zone}から{amt}枚を見る。"
+
+        elif atype == "SELECT_FROM_BUFFER":
+             amt = val1 if val1 > 0 else 1
+             return f"見たカードの中から{amt}枚を選ぶ。"
+
+        elif atype == "PLAY_FROM_BUFFER":
+             target_str, unit = cls._resolve_target(action, is_spell)
+             return f"選んだカード（{target_str}）を使う。"
+
+        elif atype == "MOVE_BUFFER_TO_ZONE":
+             to_zone = tr(action.get("to_zone", "HAND"))
+             amt = val1 if val1 > 0 else 1
+             return f"選んだカードを{amt}枚{to_zone}に置く。"
 
         # --- Additional command types previously unformatted ---
         elif atype == "DECIDE":
