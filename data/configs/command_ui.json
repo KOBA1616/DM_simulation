@@ -1,7 +1,7 @@
 {
   "NONE": { "visible": [] },
   "DRAW_CARD": {
-    "visible": ["target_group", "amount", "optional", "up_to", "input_link"],
+    "visible": ["target_group", "amount", "optional", "up_to", "input_link", "output_link"],
     "labels": { "amount": "Cards to Draw" },
     "produces_output": true,
     "outputs": { "output_value_key": "Cards Drawn" }
@@ -75,7 +75,7 @@
     "labels": { "str_param": "Flow Instruction" }
   },
   "SEARCH_DECK": {
-    "visible": ["target_filter", "amount", "input_link", "output_link"],
+    "visible": ["target_filter", "amount", "to_zone", "input_link", "output_link"],
     "labels": { "amount": "Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "見つかったカード" }
