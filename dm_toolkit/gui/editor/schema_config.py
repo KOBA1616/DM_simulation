@@ -129,6 +129,7 @@ def register_all_schemas():
     register_schema(CommandSchema("SEARCH_DECK", [
         f_filter,
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
         f_links_in,
         f_links_out
     ]))
@@ -138,6 +139,7 @@ def register_all_schemas():
         f_filter,
         FieldSchema("amount", tr("Look Count"), FieldType.INT, default=3),
         FieldSchema("val2", tr("Add Count"), FieldType.INT, default=1),
+        FieldSchema("rest_zone", tr("Rest Zone"), FieldType.ZONE, default="DECK_BOTTOM"),
         f_links_in,
         f_links_out
     ]))
