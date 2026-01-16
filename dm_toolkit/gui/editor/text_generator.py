@@ -1463,15 +1463,28 @@ class CardTextGenerator:
         elif atype == "SEARCH_DECK":
             # SEARCH_DECK implies searching deck and putting result somewhere (usually hand)
 
+            dest_zone = action.get("destination_zone", "HAND")
+            if not dest_zone: dest_zone = "HAND"
+            zone_str = tr(dest_zone)
+
             # Use 'amount' for count
             count = val1 if val1 > 0 else 1
 
             # Resolve target string from filter
             target_str, unit = cls._resolve_target(action, is_spell)
 
-            template = f"自分の山札を見る。その中から{target_str}を{count}{unit}選び、手札に加える。その後、山札をシャッフルする。"
+            if dest_zone == "HAND":
+                 action_phrase = "手札に加える"
+            elif dest_zone == "MANA_ZONE":
+                 action_phrase = "マナゾーンに置く"
+            elif dest_zone == "GRAVEYARD":
+                 action_phrase = "墓地に置く"
+            else:
+                 action_phrase = f"{zone_str}に置く"
+
+            template = f"自分の山札を見る。その中から{target_str}を{count}{unit}選び、{action_phrase}。その後、山札をシャッフルする。"
             if count == 1:
-                template = f"自分の山札を見る。その中から{target_str}を1{unit}選び、手札に加える。その後、山札をシャッフルする。"
+                template = f"自分の山札を見る。その中から{target_str}を1{unit}選び、{action_phrase}。その後、山札をシャッフルする。"
 
             return template
 
