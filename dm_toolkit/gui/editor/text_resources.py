@@ -222,7 +222,7 @@ class CardTextResources:
         "SEND_SHIELD_TO_GRAVE": "相手のシールドを{value1}つ選び、墓地に置く。",
         "SEND_TO_DECK_BOTTOM": "{target}を{value1}枚、山札の下に置く。",
         "CAST_SPELL": "コストを支払わずに唱える。",
-        "PUT_CREATURE": "{target}をバトルゾーンに出す。",
+        "PUT_CREATURE": "{target}を{value1}{unit}バトルゾーンに出す。",
         "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
         "MOVE_CARD": "{target}を{zone}に置く。",
         "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
