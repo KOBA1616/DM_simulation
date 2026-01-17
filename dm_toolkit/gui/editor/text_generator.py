@@ -227,7 +227,9 @@ class CardTextGenerator:
         for effect in effects:
             if _is_special_only_effect(effect):
                 continue
-            text = cls._format_effect(effect, is_spell, sample=sample)
+            # Check if this card has mega_last_burst keyword and pass it to _format_effect
+            has_mega_last_burst = data.get("keywords", {}).get("mega_last_burst", False)
+            text = cls._format_effect(effect, is_spell, sample=sample, card_mega_last_burst=has_mega_last_burst)
             if text:
                 lines.append(f"■ {text}")
 
@@ -617,7 +619,7 @@ class CardTextGenerator:
         return result if result else "対象"
 
     @classmethod
-    def _format_effect(cls, effect: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
+    def _format_effect(cls, effect: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
         # Check if this is a Modifier (static ability)
         # Modifiers have a 'type' field with specific values (COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD, SET_KEYWORD)
         # and do NOT have a 'trigger' field (or trigger is NONE)
@@ -667,7 +669,8 @@ class CardTextGenerator:
         commands = effect.get("commands", [])
         for command in commands:
             raw_items.append(command)
-            action_texts.append(cls._format_command(command, is_spell, sample=sample))
+            # Pass mega_last_burst flag to _format_command for CAST_SPELL detection
+            action_texts.append(cls._format_command(command, is_spell, sample=sample, card_mega_last_burst=card_mega_last_burst))
 
         # Try to merge common sequential patterns for more natural language
         full_action_text = cls._merge_action_texts(raw_items, action_texts)
@@ -773,7 +776,7 @@ class CardTextGenerator:
         return zone_map.get(z, z)
 
     @classmethod
-    def _format_command(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
+    def _format_command(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
         if not command:
             return ""
 
@@ -815,6 +818,7 @@ class CardTextGenerator:
             "mutation_kind": command.get("mutation_kind", ""),
             "destination_zone": command.get("to_zone", ""), # For MOVE_CARD mapping
             "result": command.get("result") or command.get("str_param", ""), # For GAME_RESULT, map properly
+            "is_mega_last_burst": card_mega_last_burst,  # Pass mega_last_burst flag for CAST_SPELL detection
             "duration": command.get("duration", "")
         }
 
@@ -1032,7 +1036,8 @@ class CardTextGenerator:
                     amt = action.get('target_filter', {}).get('count', 1)
                 if up_to:
                     return f"山札からカードを最大{amt}枚まで手札に加える。"
-                return f"カードを{amt}枚引く。"
+                else:
+                    return f"カードを{amt}枚引く。"
             # If transition represents moving to mana zone, render as ADD_MANA
             if (from_zone == 'DECK' or from_zone == '') and to_zone == 'MANA_ZONE':
                 if not amt and isinstance(action.get('target_filter'), dict):
@@ -1069,16 +1074,36 @@ class CardTextGenerator:
                 template = f"カードをその同じ枚数引く。{usage_label_suffix}"
                 if up_to_flag:
                     template = f"カードをその同じ枚数まで引く。{usage_label_suffix}"
-            elif atype == "DESTROY": 
-                template = f"{{target}}をその同じ数だけ破壊する。{usage_label_suffix}"
-            elif atype == "TAP": 
-                template = f"{{target}}をその同じ数だけ選び、タップする。{usage_label_suffix}"
-            elif atype == "UNTAP": 
-                template = f"{{target}}をその同じ数だけ選び、アンタップする。{usage_label_suffix}"
-            elif atype == "RETURN_TO_HAND": 
-                template = f"{{target}}をその同じ数だけ選び、手札に戻す。{usage_label_suffix}"
-            elif atype == "SEND_TO_MANA": 
-                template = f"{{target}}をその同じ数だけ選び、マナゾーンに置く。{usage_label_suffix}"
+            elif atype == "DESTROY":
+                up_to_flag = bool(action.get('up_to', False))
+                if up_to_flag:
+                    template = f"{{target}}をその同じ数だけまで選び、破壊する。{usage_label_suffix}"
+                else:
+                    template = f"{{target}}をその同じ数だけ破壊する。{usage_label_suffix}"
+            elif atype == "TAP":
+                up_to_flag = bool(action.get('up_to', False))
+                if up_to_flag:
+                    template = f"{{target}}をその同じ数だけまで選び、タップする。{usage_label_suffix}"
+                else:
+                    template = f"{{target}}をその同じ数だけ選び、タップする。{usage_label_suffix}"
+            elif atype == "UNTAP":
+                up_to_flag = bool(action.get('up_to', False))
+                if up_to_flag:
+                    template = f"{{target}}をその同じ数だけまで選び、アンタップする。{usage_label_suffix}"
+                else:
+                    template = f"{{target}}をその同じ数だけ選び、アンタップする。{usage_label_suffix}"
+            elif atype == "RETURN_TO_HAND":
+                up_to_flag = bool(action.get('up_to', False))
+                if up_to_flag:
+                    template = f"{{target}}をその同じ数だけまで選び、手札に戻す。{usage_label_suffix}"
+                else:
+                    template = f"{{target}}をその同じ数だけ選び、手札に戻す。{usage_label_suffix}"
+            elif atype == "SEND_TO_MANA":
+                up_to_flag = bool(action.get('up_to', False))
+                if up_to_flag:
+                    template = f"{{target}}をその同じ数だけまで選び、マナゾーンに置く。{usage_label_suffix}"
+                else:
+                    template = f"{{target}}をその同じ数だけ選び、マナゾーンに置く。{usage_label_suffix}"
             elif atype == "TRANSITION":
                 # TRANSITION用の汎用的な参照表現
                 val1 = "その同じ枚数"
@@ -1089,15 +1114,27 @@ class CardTextGenerator:
             elif atype == "MOVE_CARD":
                 # MOVE_CARDの入力リンク対応（行き先に応じた自然文）
                 dest_zone = action.get("destination_zone", "")
-                up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
+                up_to_flag = bool(action.get('up_to', False))
                 if dest_zone == "DECK_BOTTOM":
-                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、山札の下に置く。{usage_label_suffix}"
+                    if up_to_flag:
+                        template = f"{{target}}をその同じ数だけまで選び、山札の下に置く。{usage_label_suffix}"
+                    else:
+                        template = f"{{target}}をその同じ数だけ選び、山札の下に置く。{usage_label_suffix}"
                 elif dest_zone == "GRAVEYARD":
-                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、墓地に置く。{usage_label_suffix}"
+                    if up_to_flag:
+                        template = f"{{target}}をその同じ数だけまで選び、墓地に置く。{usage_label_suffix}"
+                    else:
+                        template = f"{{target}}をその同じ数だけ選び、墓地に置く。{usage_label_suffix}"
                 elif dest_zone == "HAND":
-                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、手札に戻す。{usage_label_suffix}"
+                    if up_to_flag:
+                        template = f"{{target}}をその同じ数だけまで選び、手札に戻す。{usage_label_suffix}"
+                    else:
+                        template = f"{{target}}をその同じ数だけ選び、手札に戻す。{usage_label_suffix}"
                 elif dest_zone == "MANA_ZONE":
-                    template = f"{{target}}をその同じ数だけ{up_to_suffix}選び、マナゾーンに置く。{usage_label_suffix}"
+                    if up_to_flag:
+                        template = f"{{target}}をその同じ数だけまで選び、マナゾーンに置く。{usage_label_suffix}"
+                    else:
+                        template = f"{{target}}をその同じ数だけ選び、マナゾーンに置く。{usage_label_suffix}"
             elif atype == "DISCARD":
                 # 前回の出力枚数と同じ枚数を捨てる
                 up_to_discard = bool(action.get('up_to', False))
@@ -1234,43 +1271,80 @@ class CardTextGenerator:
             from_z = cls._normalize_zone_name(action.get("from_zone", ""))
             to_z = cls._normalize_zone_name(action.get("to_zone", ""))
             amount = val1 # Use value1 which maps to amount
-            up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
+            up_to_flag = bool(action.get('up_to', False))
+            
+            # up_toが真の場合、選択肢を含む表現を使用
+            if up_to_flag and amount > 0:
+                up_to_phrase = f"{{amount}}{{unit}}まで選び、"
+            else:
+                up_to_phrase = ""
 
             # Natural Language Mapping with explicit source/destination zones
             if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
-                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"
-                if amount == 0 and not input_key:
-                    template = "{from_z}の{target}をすべて{to_z}に置く。"
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                    if amount == 0 and not input_key:
+                        template = "{from_z}の{target}をすべて{to_z}に置く。"
             elif from_z == "BATTLE_ZONE" and to_z == "MANA_ZONE":
-                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"
-                if amount == 0 and not input_key:
-                    template = "{from_z}の{target}をすべて{to_z}に置く。"
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                    if amount == 0 and not input_key:
+                        template = "{from_z}の{target}をすべて{to_z}に置く。"
             elif from_z == "BATTLE_ZONE" and to_z == "HAND":
-                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に戻す。"
-                if amount == 0 and not input_key:
-                    template = "{from_z}の{target}をすべて{to_z}に戻す。"
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
+                    if amount == 0 and not input_key:
+                        template = "{from_z}の{target}をすべて{to_z}に戻す。"
             elif from_z == "HAND" and to_z == "MANA_ZONE":
-                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
             elif from_z == "DECK" and to_z == "HAND":
                 # Draw: include both zones explicitly
-                if bool(action.get('up_to', False)):
-                     template = "山札からカードを最大{amount}枚まで手札に加える。"
+                if up_to_flag:
+                    if target_str != "カード":  # Search logic
+                        template = "{from_z}から{target}を{amount}{unit}まで選び、{to_z}に加える。"
+                    else:
+                        template = "山札からカードを最大{amount}枚まで手札に加える。"
                 else:
-                     template = "山札からカードを{amount}枚手札に加える。"
-
-                if target_str != "カード":  # Search logic
-                    template = "{from_z}から{target}を{amount}{unit}" + up_to_suffix + "{to_z}に加える。"
+                    if target_str != "カード":  # Search logic
+                        template = "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。"
+                    else:
+                        template = "山札からカードを{amount}枚手札に加える。"
             elif from_z == "GRAVEYARD" and to_z == "HAND":
-                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に戻す。"
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
             elif from_z == "GRAVEYARD" and to_z == "BATTLE_ZONE":
-                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に出す。"
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に出す。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に出す。"
             elif to_z == "GRAVEYARD":
-                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"  # Generic discard/mill
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
             elif to_z == "DECK_BOTTOM":
-                template = "{from_z}の{target}を{amount}{unit}" + up_to_suffix + "{to_z}に置く。"
                 if input_key:
                     # 入力リンクがある場合は単位重複を避けた表現へ
-                    template = "{from_z}の{target}をその同じ数だけ" + up_to_suffix + "選び、{to_z}に置く。"
+                    if up_to_flag:
+                        template = "{from_z}の{target}をその同じ数だけまで選び、{to_z}に置く。"
+                    else:
+                        template = "{from_z}の{target}をその同じ数だけ選び、{to_z}に置く。"
+                else:
+                    if up_to_flag and amount > 0:
+                        template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                    else:
+                        template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
             else:
                 template = "{target}を{from_z}から{to_z}へ移動する。"
 
@@ -1541,15 +1615,53 @@ class CardTextGenerator:
                     return f"統計更新: {stat_name} += {amount}"
             return f"統計更新: {tr(str(key))} += {amount}"
 
+        # IF/IF_ELSE/ELSE: Special handling with condition details
+        if atype == "IF":
+            cond_detail = action.get("condition", {}) or action.get("target_filter", {})
+            if isinstance(cond_detail, dict):
+                cond_type = cond_detail.get("type", "NONE")
+                cond_text = ""
+                if cond_type == "OPPONENT_DRAW_COUNT":
+                    val = cond_detail.get("value", 0)
+                    cond_text = f"相手がカードを{val}枚目以上引いたなら"
+                elif cond_type == "COMPARE_STAT":
+                    key = cond_detail.get("stat_key", "")
+                    op = cond_detail.get("op", "=")
+                    val = cond_detail.get("value", 0)
+                    stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (key, ""))
+                    op_text = ""
+                    if op == ">=":
+                        op_text = f"{val}{unit}以上"
+                    elif op == "<=":
+                        op_text = f"{val}{unit}以下"
+                    elif op == "=" or op == "==":
+                        op_text = f"{val}{unit}"
+                    elif op == ">":
+                        op_text = f"{val}{unit}より多い"
+                    elif op == "<":
+                        op_text = f"{val}{unit}より少ない"
+                    cond_text = f"自分の{stat_name}が{op_text}なら"
+                elif cond_type == "SHIELD_COUNT":
+                    val = cond_detail.get("value", 0)
+                    op = cond_detail.get("op", ">=")
+                    op_text = "以上" if op == ">=" else "以下" if op == "<=" else ""
+                    if op == "=": op_text = ""
+                    cond_text = f"自分のシールドが{val}つ{op_text}なら"
+                elif cond_type == "CIVILIZATION_MATCH":
+                    cond_text = "マナゾーンに同じ文明があれば"
+                
+                if cond_text:
+                    return f"（条件判定: {cond_text}）"
+                else:
+                    return "（条件判定: もし条件を満たすなら）"
+            return "（条件判定: もし条件を満たすなら）"
+        elif atype == "IF_ELSE":
+            return "（条件分岐: もし条件を満たすなら...）"
+        elif atype == "ELSE":
+            return "（そうでなければ）"
+
         if not template:
             return f"({tr(atype)})"
-
-        if atype == "IF":
-             return "（条件判定: もし条件を満たすなら）"
-        elif atype == "IF_ELSE":
-             return "（条件分岐: もし条件を満たすなら...）"
-        elif atype == "ELSE":
-             return "（そうでなければ）"
 
         if atype == "GRANT_KEYWORD" or atype == "ADD_KEYWORD":
             # キーワードの翻訳を適用
@@ -1685,48 +1797,71 @@ class CardTextGenerator:
 
             zone_str = tr(dest_zone) if dest_zone else "どこか"
             orig_zone_str = tr(src_zone) if src_zone else "元のゾーン"
+            up_to_flag = bool(action.get('up_to', False))
 
             # If input_key is present, we say "Instead of... move that card..."
             if input_key:
-                template = f"{{target}}をその同じ数だけ{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                up_to_text = "まで" if up_to_flag else ""
+                template = f"{{target}}をその同じ数だけ{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
             else:
-                up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
                 if val1 > 0:
-                    template = f"{{target}}を{{value1}}{{unit}}{up_to_suffix}{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                    # Normal case: specific amount specified
+                    up_to_text = "まで" if up_to_flag else ""
+                    template = f"{{target}}を{{value1}}{{unit}}{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
                 else:
-                    template = f"{{target}}を{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                    # All case
+                    template = f"{{target}}をすべて{orig_zone_str}に置くかわりに、{zone_str}に置く。"
 
         elif atype == "MOVE_CARD":
             dest_zone = action.get("destination_zone", "")
             is_all = (val1 == 0 and not input_key)
-            up_to_suffix = "まで" if bool(action.get('up_to', False)) else ""
+            up_to_flag = bool(action.get('up_to', False))
 
             # Include source zone when available for clearer movement description
             src_zone = action.get("source_zone", "")
             src_str = tr(src_zone) if src_zone else ""
             zone_str = tr(dest_zone) if dest_zone else "どこか"
+            
+            # Build choice suffix for up_to flag
+            choice_suffix = "まで" if (up_to_flag and val1 > 0) else ""
 
             if dest_zone == "HAND":
-                template = (f"{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に戻す。" if not src_str
-                            else f"{src_str}の{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に戻す。")
+                if up_to_flag and val1 > 0:
+                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に戻す。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に戻す。")
+                else:
+                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。")
                 if is_all:
                     template = (f"{{target}}をすべて{zone_str}に戻す。" if not src_str
                                 else f"{src_str}の{{target}}をすべて{zone_str}に戻す。")
             elif dest_zone == "MANA_ZONE":
-                template = (f"{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。" if not src_str
-                            else f"{src_str}の{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。")
+                if up_to_flag and val1 > 0:
+                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。")
+                else:
+                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
                 if is_all:
                     template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
                                 else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
             elif dest_zone == "GRAVEYARD":
-                template = (f"{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。" if not src_str
-                            else f"{src_str}の{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。")
+                if up_to_flag and val1 > 0:
+                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。")
+                else:
+                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
                 if is_all:
                     template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
                                 else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
             elif dest_zone == "DECK_BOTTOM":
-                template = (f"{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。" if not src_str
-                            else f"{src_str}の{{target}}を{{value1}}{{unit}}{up_to_suffix}選び、{zone_str}に置く。")
+                if up_to_flag and val1 > 0:
+                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。")
+                else:
+                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
                 if is_all:
                     template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
                                 else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
@@ -1736,6 +1871,12 @@ class CardTextGenerator:
             action = action.copy()
             temp_filter = action.get("filter", {}).copy()
             action["filter"] = temp_filter
+            
+            # Mega Last Burst detection: check for mega_last_burst flag in context or action
+            is_mega_last_burst = action.get("is_mega_last_burst", False) or action.get("mega_last_burst", False)
+            mega_burst_prefix = ""
+            if is_mega_last_burst:
+                mega_burst_prefix = "このクリーチャーがバトルゾーンから離れて、"
             
             # Input Usage label
             usage_label_suffix = ""
@@ -1778,18 +1919,18 @@ class CardTextGenerator:
 
                 # 最終テンプレート
                 if target_str.endswith("呪文"):
-                    template = f"{zone_phrase}{target_str}をコストを支払わずに唱える。{usage_label_suffix}" if zone_phrase else f"{target_str}をコストを支払わずに唱える。{usage_label_suffix}"
+                    template = f"{mega_burst_prefix}{zone_phrase}{target_str}をコストを支払わずに唱える。{usage_label_suffix}" if zone_phrase else f"{mega_burst_prefix}{target_str}をコストを支払わずに唱える。{usage_label_suffix}"
                 elif target_str == "カード" or target_str == "":
-                    template = f"{zone_phrase}呪文をコストを支払わずに唱える。{usage_label_suffix}" if zone_phrase else f"呪文をコストを支払わずに唱える。{usage_label_suffix}"
+                    template = f"{mega_burst_prefix}{zone_phrase}呪文をコストを支払わずに唱える。{usage_label_suffix}" if zone_phrase else f"{mega_burst_prefix}呪文をコストを支払わずに唱える。{usage_label_suffix}"
                 else:
-                    template = f"{zone_phrase}{target_str}の呪文をコストを支払わずに唱える。{usage_label_suffix}" if zone_phrase else f"{target_str}の呪文をコストを支払わずに唱える。{usage_label_suffix}"
+                    template = f"{mega_burst_prefix}{zone_phrase}{target_str}の呪文をコストを支払わずに唱える。{usage_label_suffix}" if zone_phrase else f"{mega_burst_prefix}{target_str}の呪文をコストを支払わずに唱える。{usage_label_suffix}"
             else:
                 # SPELLタイプ以外の場合は通常のターゲット文字列
                 target_str, unit = cls._resolve_target(action)
                 if target_str == "" or target_str == "カード":
-                    template = f"カードをコストを支払わずに唱える。{usage_label_suffix}"
+                    template = f"{mega_burst_prefix}カードをコストを支払わずに唱える。{usage_label_suffix}"
                 else:
-                    template = f"{target_str}をコストを支払わずに唱える。{usage_label_suffix}"
+                    template = f"{mega_burst_prefix}{target_str}をコストを支払わずに唱える。{usage_label_suffix}"
 
         elif atype == "PLAY_FROM_ZONE":
             action = action.copy()
@@ -2155,6 +2296,8 @@ class CardTextGenerator:
         Currently implements:
         - Draw (DECK->HAND) followed by move to deck-bottom ->
           "...カードをN枚引く。その後、引いた枚数と同じ枚数を山札の下に置く。"
+        - Spell cast followed by replacement move ->
+          "その呪文を唱えた後、{from_zone}に置くかわりに{to_zone}に置く。"
         """
         if not formatted_texts:
             return ""
@@ -2185,6 +2328,38 @@ class CardTextGenerator:
             if 'DECK_BOTTOM' in t:
                 return True
             return False
+
+        def is_cast_spell_item(it):
+            if not isinstance(it, dict):
+                return False
+            t = it.get('type', '').upper()
+            return t == 'CAST_SPELL'
+
+        def is_replace_card_move(it):
+            if not isinstance(it, dict):
+                return False
+            t = it.get('type', '').upper()
+            return t == 'REPLACE_CARD_MOVE'
+
+        # Pattern: spell cast followed by replacement move
+        if len(raw_items) >= 2 and is_cast_spell_item(raw_items[0]) and is_replace_card_move(raw_items[1]):
+            # Get the from_zone and to_zone for text generation
+            from_zone_key = raw_items[1].get('from_zone', 'GRAVEYARD')
+            to_zone_key = raw_items[1].get('to_zone', 'DECK_BOTTOM')
+            
+            # Translate zone names
+            from dm_toolkit.gui.i18n import tr
+            from_zone_text = tr(from_zone_key)
+            to_zone_text = tr(to_zone_key)
+            
+            # Compose merged sentence
+            merged = f"その呪文を唱えた後、{from_zone_text}に置くかわりに{to_zone_text}に置く。"
+            # Append remaining formatted_texts after the first two, if any
+            if len(formatted_texts) > 2:
+                rest = ' '.join(formatted_texts[2:]).strip()
+                if rest:
+                    merged = merged.rstrip('。') + '、' + rest
+            return merged
 
         # Pattern: first item is draw, second is deck-bottom move
         if len(raw_items) >= 2 and is_draw_item(raw_items[0]) and is_deck_bottom_move(raw_items[1]):

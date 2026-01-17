@@ -316,8 +316,17 @@
             "output_value_key": "var_MEKRAID_0"
           },
           {
-            "uid": "961b7b3c-23cb-4ec1-9c1b-aca78e2a1ed7",
-            "type": "REPLACE_MOVE_CARD"
+            "uid": "cfd61f39-cfe2-4179-bfc6-16804a39e4e2",
+            "type": "REPLACE_CARD_MOVE",
+            "_input_value_label": "Step 1: 呪文を唱える -> 唱えたカード",
+            "amount": 0,
+            "from_zone": "GRAVEYARD",
+            "input_value_usage": "",
+            "optional": false,
+            "target_group": "PLAYER_SELF",
+            "to_zone": "DECK_BOTTOM",
+            "up_to": false,
+            "input_value_key": "var_MEKRAID_0"
           }
         ]
       }
@@ -527,7 +536,17 @@
           "value": 0,
           "extra_fields": {}
         },
-        "commands": []
+        "commands": [
+          {
+            "uid": "42d69007-e0b4-4794-9981-039a48ca4e86",
+            "type": "IF",
+            "input_value_usage": "",
+            "target_filter": {
+              "type": "OPPONENT_DRAW_COUNT",
+              "value": 2
+            }
+          }
+        ]
       }
     ],
     "static_abilities": [],
