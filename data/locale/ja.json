@@ -557,7 +557,6 @@
     "ADD_PENDING_EFFECT": "待機効果追加",
     "DRAW": "ドロー",
     "CARD_MOVE": "カード移動",
-    "REPLACEMENT": "置換移動",
     "DECK_OPS": "デッキ操作",
     "PLAY": "プレイ",
     "BUFFER": "バッファ",
