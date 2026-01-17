@@ -841,6 +841,18 @@ class CardTextGenerator:
             action_proxy["play_flags"] = command.get("play_flags")
         if "select_count" in command:
             action_proxy["select_count"] = command.get("select_count")
+        
+        # Pass through IF/IF_ELSE/ELSE control flow fields
+        if "if_true" in command:
+            action_proxy["if_true"] = command.get("if_true")
+        if "if_false" in command:
+            action_proxy["if_false"] = command.get("if_false")
+        if "condition" in command:
+            action_proxy["condition"] = command.get("condition")
+        # IF commands may use target_filter for condition
+        if cmd_type == "IF" and "target_filter" in command:
+            if "condition" not in action_proxy or not action_proxy["condition"]:
+                action_proxy["target_filter"] = command.get("target_filter")
 
         # Some templates expect source_zone rather than from_zone
         action_proxy["source_zone"] = command.get("from_zone", "")
@@ -919,7 +931,7 @@ class CardTextGenerator:
              # Used to just output value, handled in _format_action
              action_proxy["ref_mode"] = command.get("ref_mode")
 
-        return cls._format_action(action_proxy, is_spell, sample=sample)
+        return cls._format_action(action_proxy, is_spell, sample=sample, card_mega_last_burst=card_mega_last_burst)
 
     @classmethod
     def _format_condition(cls, condition: Dict[str, Any]) -> str:
@@ -980,7 +992,7 @@ class CardTextGenerator:
         return ""
 
     @classmethod
-    def _format_action(cls, action: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None) -> str:
+    def _format_action(cls, action: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
         """
         INTERNAL: Format action-like dictionary to Japanese text.
         
@@ -1019,11 +1031,19 @@ class CardTextGenerator:
                  elif alias == "手札に戻す":
                       # Manually resolve vars to ensure correctness and return immediately
                       target_str, unit = cls._resolve_target(action, is_spell)
-                      t = f"{target_str}を{amt}{unit}手札に戻す。"
-                      if amt == 0: t = f"{target_str}をすべて手札に戻す。"
+                      if up_to and amt > 0:
+                          t = f"{target_str}を{amt}{unit}まで選び、手札に戻す。"
+                      elif amt == 0:
+                          t = f"{target_str}をすべて手札に戻す。"
+                      else:
+                          t = f"{target_str}を{amt}{unit}手札に戻す。"
 
                       # Optional conjugation
-                      if bool(action.get("optional", False)): t += "してもよい。"
+                      if bool(action.get("optional", False)):
+                          if t.endswith("す。"):
+                              t = t[:-2] + "してもよい。"
+                          else:
+                              t = t[:-1] + "てもよい。"
                       return t
                  elif alias == "マナチャージ":
                       return f"自分の山札の上から{amt}枚をマナゾーンに置く。"
@@ -1362,9 +1382,9 @@ class CardTextGenerator:
             if "{to_z}" in template:
                 template = template.replace("{to_z}", tr(to_z))
 
-        elif atype == "ADD_KEYWORD":
-             str_val = action.get("str_val") or action.get("str_param", "")
-             duration_key = action.get("duration") or action.get("input_value_key", "")
+           elif atype == "ADD_KEYWORD":
+               str_val = action.get("str_val") or action.get("str_param", "")
+               duration_key = action.get("duration") or action.get("input_value_key", "")
 
              duration_text = ""
              if duration_key:
@@ -1376,6 +1396,11 @@ class CardTextGenerator:
                      duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
 
              keyword = CardTextResources.get_keyword_text(str_val)
+
+             # Explicit "this card" target override
+             if action.get("explicit_self"):
+                 target_str = "このカード"
+
              return f"{duration_text}{target_str}に「{keyword}」を与える。"
 
         elif atype == "MUTATE":
@@ -1615,12 +1640,12 @@ class CardTextGenerator:
                     return f"統計更新: {stat_name} += {amount}"
             return f"統計更新: {tr(str(key))} += {amount}"
 
-        # IF/IF_ELSE/ELSE: Special handling with condition details
+        # IF/IF_ELSE/ELSE: Special handling with condition details and nested commands
         if atype == "IF":
             cond_detail = action.get("condition", {}) or action.get("target_filter", {})
+            cond_text = ""
             if isinstance(cond_detail, dict):
                 cond_type = cond_detail.get("type", "NONE")
-                cond_text = ""
                 if cond_type == "OPPONENT_DRAW_COUNT":
                     val = cond_detail.get("value", 0)
                     cond_text = f"相手がカードを{val}枚目以上引いたなら"
@@ -1647,16 +1672,110 @@ class CardTextGenerator:
                     op_text = "以上" if op == ">=" else "以下" if op == "<=" else ""
                     if op == "=": op_text = ""
                     cond_text = f"自分のシールドが{val}つ{op_text}なら"
+                elif cond_type == "COMPARE_INPUT":
+                    val = cond_detail.get("value", 0)
+                    op = cond_detail.get("op", ">=")
+                    input_key = action.get("input_value_key", "")
+                    # 入力キー名をより読みやすい形式に変換
+                    input_desc_map = {
+                        "spell_count": "墓地の呪文の数",
+                        "card_count": "カードの数",
+                        "creature_count": "クリーチャーの数",
+                        "element_count": "エレメントの数"
+                    }
+                    input_desc = input_desc_map.get(input_key, input_key if input_key else "入力値")
+                    op_text = ""
+                    if op == ">=":
+                        op_text = f"{val}以上"
+                    elif op == "<=":
+                        op_text = f"{val}以下"
+                    elif op == "=" or op == "==":
+                        op_text = f"{val}"
+                    elif op == ">":
+                        op_text = f"{val}より多い"
+                    elif op == "<":
+                        op_text = f"{val}より少ない"
+                    cond_text = f"{input_desc}が{op_text}なら"
                 elif cond_type == "CIVILIZATION_MATCH":
                     cond_text = "マナゾーンに同じ文明があれば"
+                elif cond_type == "MANA_CIVILIZATION_COUNT":
+                    val = cond_detail.get("value", 0)
+                    op = cond_detail.get("op", ">=")
+                    op_text = "以上" if op == ">=" else "以下" if op == "<=" else "と同じ" if op == "=" else ""
+                    cond_text = f"自分のマナゾーンにある文明の数が{val}{op_text}なら"
+            
+            # Default condition text if not specified
+            if not cond_text:
+                cond_text = "もし条件を満たすなら"
+            
+            # Expand if_true commands
+            if_true_cmds = action.get("if_true", [])
+            if_true_texts = []
+            for cmd in if_true_cmds:
+                if isinstance(cmd, dict):
+                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
+                    if cmd_text:
+                        if_true_texts.append(cmd_text)
+            
+            # Build result
+            if if_true_texts:
+                actions_text = "、".join(if_true_texts)
+                return f"{cond_text}、{actions_text}"
+            else:
+                return f"（{cond_text}）"
                 
-                if cond_text:
-                    return f"（条件判定: {cond_text}）"
-                else:
-                    return "（条件判定: もし条件を満たすなら）"
-            return "（条件判定: もし条件を満たすなら）"
         elif atype == "IF_ELSE":
-            return "（条件分岐: もし条件を満たすなら...）"
+            cond_detail = action.get("condition", {}) or action.get("target_filter", {})
+            cond_text = ""
+            if isinstance(cond_detail, dict):
+                cond_type = cond_detail.get("type", "NONE")
+                if cond_type == "COMPARE_STAT":
+                    key = cond_detail.get("stat_key", "")
+                    op = cond_detail.get("op", "=")
+                    val = cond_detail.get("value", 0)
+                    stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (key, ""))
+                    op_text = ""
+                    if op == ">=":
+                        op_text = f"{val}{unit}以上"
+                    elif op == "<=":
+                        op_text = f"{val}{unit}以下"
+                    elif op == "=" or op == "==":
+                        op_text = f"{val}{unit}"
+                    cond_text = f"自分の{stat_name}が{op_text}なら"
+            
+            if not cond_text:
+                cond_text = "もし条件を満たすなら"
+            
+            # Expand if_true and if_false
+            if_true_cmds = action.get("if_true", [])
+            if_false_cmds = action.get("if_false", [])
+            
+            if_true_texts = []
+            for cmd in if_true_cmds:
+                if isinstance(cmd, dict):
+                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
+                    if cmd_text:
+                        if_true_texts.append(cmd_text)
+            
+            if_false_texts = []
+            for cmd in if_false_cmds:
+                if isinstance(cmd, dict):
+                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
+                    if cmd_text:
+                        if_false_texts.append(cmd_text)
+            
+            # Build result
+            result_parts = []
+            if if_true_texts:
+                result_parts.append(f"{cond_text}、" + "、".join(if_true_texts))
+            if if_false_texts:
+                result_parts.append("そうでなければ、" + "、".join(if_false_texts))
+            
+            if result_parts:
+                return "。".join(result_parts) + "。"
+            else:
+                return f"（条件分岐: {cond_text}）"
+                
         elif atype == "ELSE":
             return "（そうでなければ）"
 
@@ -2218,7 +2337,7 @@ class CardTextGenerator:
             # 2. Determine Generic Type Noun
             if "ELEMENT" in types:
                 type_noun = "エレメント"
-                unit = "枚"
+                unit = "体"
             elif "CREATURE" in types:
                 type_noun = "クリーチャー"
                 unit = "体"

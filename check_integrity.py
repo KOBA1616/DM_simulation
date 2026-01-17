@@ -155,12 +155,63 @@ def check_i18n_integration():
         print(f"❌ i18n 翻訳失敗: {e}")
         return False
 
+def _iter_commands(commands):
+    for cmd in commands or []:
+        yield cmd
+        for branch in ['if_true', 'if_false']:
+            if cmd.get(branch):
+                yield from _iter_commands(cmd.get(branch))
+        options = cmd.get('options') or []
+        for opt in options:
+            yield from _iter_commands(opt)
+
+def check_grant_keyword_actions():
+    """ADD_KEYWORD/MUTATE アクションの整合性チェック"""
+    print("\n" + "=" * 60)
+    print("5. 付与・キーワード付与アクションの整合性チェック")
+    print("=" * 60)
+
+    with open('data/cards.json', 'r', encoding='utf-8') as f:
+        cards = json.load(f)
+
+    issues = []
+
+    def check_cmd(cmd, card):
+        ctype = cmd.get('type')
+        if ctype == 'ADD_KEYWORD':
+            str_val = cmd.get('str_val')
+            legacy = cmd.get('str_param')
+            if not str_val:
+                issues.append((card.get('id'), card.get('name'), cmd.get('uid'), 'ADD_KEYWORD', 'str_val_missing'))
+            if legacy:
+                issues.append((card.get('id'), card.get('name'), cmd.get('uid'), 'ADD_KEYWORD', 'legacy_str_param'))
+        elif ctype == 'MUTATE':
+            mk = cmd.get('mutation_kind')
+            if not mk:
+                issues.append((card.get('id'), card.get('name'), cmd.get('uid'), 'MUTATE', 'mutation_kind_missing'))
+
+    for card in cards:
+        for ability_key in ['effects', 'static_abilities', 'reaction_abilities']:
+            for ability in card.get(ability_key, []) or []:
+                for cmd in _iter_commands(ability.get('commands', [])):
+                    check_cmd(cmd, card)
+
+    if not issues:
+        print("✅ ADD_KEYWORD/MUTATE の整合性に問題なし")
+        return True
+
+    print(f"❌ 整合性問題: {len(issues)} 件")
+    for card_id, name, uid, ctype, reason in issues:
+        print(f"  id={card_id} {name} ({ctype}, uid={uid}) -> {reason}")
+    return False
+
 if __name__ == '__main__':
     results = []
     results.append(("command_ui.json", check_command_ui_json()))
     results.append(("ja.json", check_ja_json()))
     results.append(("schema_config", check_schema_config()))
     results.append(("i18n", check_i18n_integration()))
+    results.append(("grant_keyword_actions", check_grant_keyword_actions()))
     
     print("\n" + "=" * 60)
     print("整合性チェック結果")

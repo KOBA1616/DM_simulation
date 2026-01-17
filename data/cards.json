@@ -585,7 +585,7 @@
           },
           "commands": [
             {
-              "uid": "ed681dc5-298e-4a41-987f-1f98473ae277",
+              "uid": "39309ebe-d70d-46c2-8541-ac0e66849781",
               "type": "TRANSITION",
               "amount": 2,
               "from_zone": "BATTLE",
@@ -597,7 +597,8 @@
                 ]
               },
               "target_group": "PLAYER_OPPONENT",
-              "to_zone": "HAND"
+              "to_zone": "HAND",
+              "up_to": true
             }
           ]
         }
@@ -614,8 +615,8 @@
     "name": "氷柱と炎弧の決断",
     "type": "SPELL",
     "civilizations": [
-      "WATER",
-      "FIRE"
+      "FIRE",
+      "WATER"
     ],
     "races": [],
     "cost": 3,
@@ -635,6 +636,7 @@
             "uid": "c3965f0a-763e-47ae-8595-85256089702f",
             "type": "QUERY",
             "input_value_usage": "",
+            "query_mode": "CARDS_MATCHING_FILTER",
             "target_filter": {
               "types": [
                 "SPELL"
@@ -643,20 +645,36 @@
                 "GRAVEYARD"
               ]
             },
-            "target_group": "PLAYER_SELF"
+            "target_group": "PLAYER_SELF",
+            "output_value_key": "spell_count"
           },
           {
-            "uid": "eb0b7b65-a3bb-4e6a-a770-27017e79483a",
+            "uid": "70d62c9e-bb4a-44d4-8e63-3892c9517fa9",
             "type": "IF",
-            "_input_value_label": "$selected (選択された対象)",
+            "_input_value_label": "Step 0: カード情報取得 -> クエリ結果",
             "input_value_usage": "",
-            "input_value_key": "$selected"
-          },
-          {
-            "uid": "967760ea-8ca3-4333-99ac-d7287762c8fc",
-            "type": "ADD_KEYWORD",
-            "amount": 0,
-            "target_group": "PLAYER_SELF"
+            "target_filter": {
+              "op": ">=",
+              "type": "COMPARE_INPUT",
+              "value": 2
+            },
+            "if_true": [
+              {
+                "uid": "55c139cf-a610-41a4-925f-b60403035825",
+                "type": "ADD_KEYWORD",
+                "amount": 0,
+                "duration": "PERMANENT",
+                "input_value_usage": "",
+                "str_val": "S_TRIGGER",
+                "target_filter": {
+                  "zones": [
+                    "SHIELD_ZONE"
+                  ]
+                },
+                "target_group": "PLAYER_SELF"
+              }
+            ],
+            "input_value_key": "spell_count"
           }
         ]
       },
@@ -709,7 +727,7 @@
               ],
               [
                 {
-                  "uid": "f92db15f-bdbd-4883-8ada-90c5211e9ac1",
+                  "uid": "c64b424f-3649-431c-882d-680ae2d1296f",
                   "type": "PUT_CREATURE",
                   "amount": 1,
                   "input_value_usage": "",
@@ -733,6 +751,7 @@
     "static_abilities": [],
     "reaction_abilities": [],
     "ai_importance_score": 0,
+    "evolution_condition": "",
     "is_key_card": false
   },
   {

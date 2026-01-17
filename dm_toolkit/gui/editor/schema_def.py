@@ -90,6 +90,7 @@ class SchemaLoader:
         'target_filter': {'type': FieldType.FILTER, 'label': 'Filter'},
         'amount':        {'type': FieldType.INT, 'label': 'Amount', 'min': 1},
         'str_param':     {'type': FieldType.STRING, 'label': 'String Param'},
+        'str_val':       {'type': FieldType.STRING, 'label': 'String Value'},
         'from_zone':     {'type': FieldType.ZONE, 'label': 'From Zone', 'hint': 'zone_combo'},
         'to_zone':       {'type': FieldType.ZONE, 'label': 'To Zone', 'hint': 'zone_combo'},
         'optional':      {'type': FieldType.BOOL, 'label': 'Optional'},

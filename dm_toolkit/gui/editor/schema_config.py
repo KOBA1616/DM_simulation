@@ -5,7 +5,7 @@ from dm_toolkit.gui.i18n import tr
 # Define constants for selection lists
 MUTATION_TYPES = [
     "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
-    "POWER_ATTACKER", "SHIELD_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
+    "POWER_ATTACKER", "S_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
     "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER",
     "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE"
 ]
@@ -21,6 +21,7 @@ TARGET_SCOPES = [
 ]
 
 DURATION_OPTIONS = [
+    "PERMANENT",
     "THIS_TURN",
     "UNTIL_END_OF_OPPONENT_TURN",
     "UNTIL_START_OF_OPPONENT_TURN",
@@ -184,9 +185,10 @@ def register_all_schemas():
     register_schema(CommandSchema("ADD_KEYWORD", [
         f_target,
         f_filter,
-        # Keyword stored in str_param for correct C++ macro usage
-        FieldSchema("str_param", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES),
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        FieldSchema("explicit_self", tr("This Card"), FieldType.BOOL, default=False),
+        # Keyword stored in str_val for text generation compatibility
+        FieldSchema("str_val", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES, default=None),
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS, default=None),
         # Hidden amount (default 0) to satisfy INT requirement
         FieldSchema("amount", tr("Amount"), FieldType.INT, default=0, widget_hint="hidden"),
         f_links_in

@@ -164,6 +164,9 @@ class UnifiedActionForm(BaseEditForm):
         widget = WidgetFactory.create_widget(self, field_schema, update_and_trigger)
 
         if widget:
+            # Do NOT set default value here - only set values when loading actual data
+            # This ensures empty/unset fields show "---" until user explicitly sets them
+            
             # Set produces_output hint for VariableLinkWidget
             if field_schema.field_type == FieldType.LINK and hasattr(widget, 'set_output_hint'):
                 widget.set_output_hint(field_schema.produces_output)
@@ -221,6 +224,11 @@ class UnifiedActionForm(BaseEditForm):
         self.current_item = item
 
         cmd_type = model.type
+        # Legacy compatibility: ADD_KEYWORD used str_param in older data
+        if cmd_type == "ADD_KEYWORD":
+            legacy_kw = model.params.get('str_param')
+            if legacy_kw and not model.params.get('str_val'):
+                model.params['str_val'] = legacy_kw
         # Mapping back group
         grp = 'OTHER'
         for g, types in COMMAND_GROUPS.items():
@@ -274,8 +282,12 @@ class UnifiedActionForm(BaseEditForm):
                     if val is None:
                         val = model.params.get(key)
 
-                    if val is not None:
+                    # Only set value if data actually exists (not None and not empty string)
+                    # This ensures saved data is displayed, but unsaved fields remain empty ("---")
+                    # For boolean/numeric fields, False/0 are valid values, so we check type
+                    if val is not None and (isinstance(val, (bool, int, float)) or val != ''):
                         widget.set_value(val)
+                    # else: Leave widget at initial state (empty item "---" for combos)
 
         # Clear validation styles on load
         self._clear_validation_styles()
@@ -289,6 +301,9 @@ class UnifiedActionForm(BaseEditForm):
         cmd_type = self.type_combo.currentData()
         if cmd_type is None:
             cmd_type = "DRAW"  # Default fallback
+
+        # Clear previous validation styles before saving
+        self._clear_validation_styles()
 
         # Start with fresh dict
         new_data = {'type': cmd_type}
@@ -312,10 +327,38 @@ class UnifiedActionForm(BaseEditForm):
                     elif key == 'target_filter':
                         if val: model.params['target_filter'] = val
                     else:
-                        if hasattr(model, key):
-                            setattr(model, key, val)
-                        else:
-                            model.params[key] = val
+                        # Only save non-None values to avoid storing empty selections
+                        if val is not None and val != '':
+                            if hasattr(model, key):
+                                setattr(model, key, val)
+                            else:
+                                model.params[key] = val
+
+            # Required field checks for grant/keyword actions
+            def _get_widget_value(field_key):
+                w = self.widgets_map.get(field_key)
+                if w and hasattr(w, 'get_value'):
+                    return w.get_value()
+                return None
+
+            required_missing = []
+            if cmd_type == "ADD_KEYWORD":
+                kw = _get_widget_value('str_val')
+                if not kw:
+                    required_missing.append('str_val')
+            if cmd_type == "MUTATE":
+                mk = _get_widget_value('mutation_kind')
+                if not mk:
+                    required_missing.append('mutation_kind')
+
+            if required_missing:
+                for field_key in required_missing:
+                    widget = self.widgets_map.get(field_key)
+                    if widget and hasattr(widget, 'setStyleSheet'):
+                        widget.setStyleSheet("border: 1px solid red;")
+                        if hasattr(widget, 'setToolTip'):
+                            widget.setToolTip("必須項目です")
+                return
 
             # Validate manually if needed or catch validation during assignment above if we used setters
             # Since we assigned attrs, Pydantic (if v2 with validate_assignment=True) would raise.

@@ -313,3 +313,22 @@ class BaseEditForm(QWidget):
         idx = combo.findData(value)
         if idx >= 0:
             combo.setCurrentIndex(idx)
+            return
+
+        # Fallback: try matching by text
+        if value is not None:
+            text_idx = combo.findText(str(value))
+            if text_idx >= 0:
+                combo.setCurrentIndex(text_idx)
+                return
+
+        # Fallback: string-compare data payloads (handles type mismatches)
+        try:
+            value_str = "" if value is None else str(value)
+            for i in range(combo.count()):
+                data = combo.itemData(i)
+                if str(data) == value_str:
+                    combo.setCurrentIndex(i)
+                    return
+        except Exception:
+            pass

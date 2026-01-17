@@ -140,6 +140,8 @@ def setup_gui_stubs():
         def id(self, button): return -1
         def setContentsMargins(self, *args): pass
         def setSpacing(self, spacing): pass
+        def setHorizontalSpacing(self, spacing): pass
+        def setVerticalSpacing(self, spacing): pass
         def addStretch(self, *args): pass
         def setStyleSheet(self, style): pass
         def setMinimumWidth(self, width): pass
@@ -162,6 +164,8 @@ def setup_gui_stubs():
         def insertItem(self, index, text): pass
         def setFlat(self, flat): pass
         def setSpacing(self, spacing): pass
+        def setHorizontalSpacing(self, spacing): pass
+        def setVerticalSpacing(self, spacing): pass
         def setContentsMargins(self, *args): pass
 
     class DummyQMainWindow(DummyQWidget):

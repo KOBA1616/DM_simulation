@@ -12,22 +12,35 @@ class EditorWidgetMixin:
         raise NotImplementedError
 
 class ZoneCombo(QComboBox, EditorWidgetMixin):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, allow_empty=False):
         super().__init__(parent)
+        if allow_empty:
+            self.addItem("---", None)
         for z in ZONES_EXTENDED:
             self.addItem(tr(z), z)
 
     def get_value(self):
-        return self.currentData()
+        data = self.currentData()
+        return None if data is None else data
 
     def set_value(self, value):
+        if value is None:
+            # Select empty item if it exists
+            idx = self.findData(None)
+            if idx >= 0:
+                self.setCurrentIndex(idx)
+            return
+        
         idx = self.findData(value)
         if idx >= 0:
             self.setCurrentIndex(idx)
 
 class ScopeCombo(QComboBox, EditorWidgetMixin):
-    def __init__(self, parent=None, include_zones=False):
+    def __init__(self, parent=None, include_zones=False, allow_empty=False):
         super().__init__(parent)
+        if allow_empty:
+            self.addItem("---", None)
+        
         scopes = [
             TargetScope.SELF, TargetScope.OPPONENT, "TARGET_SELECT",
             "ALL_PLAYERS", "RANDOM", "ALL_FILTERED", "NONE"
@@ -39,9 +52,17 @@ class ScopeCombo(QComboBox, EditorWidgetMixin):
             self.addItem(tr(s), s)
 
     def get_value(self):
-        return self.currentData()
+        data = self.currentData()
+        return None if data is None else data
 
     def set_value(self, value):
+        if value is None:
+            # Select empty item if it exists
+            idx = self.findData(None)
+            if idx >= 0:
+                self.setCurrentIndex(idx)
+            return
+        
         idx = self.findData(value)
         if idx >= 0:
             self.setCurrentIndex(idx)

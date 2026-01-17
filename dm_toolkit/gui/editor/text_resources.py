@@ -22,6 +22,29 @@ class CardTextResources:
         "OPPONENT_DRAW_COUNT": "相手がカードを引いた時、"
     }
     
+    # IF判定用の条件タイプの日本語化（GUIエディタ用）
+    CONDITION_TYPE_LABELS: Dict[str, str] = {
+        "NONE": "なし",
+        "MANA_ARMED": "マナ武装",
+        "SHIELD_COUNT": "シールド枚数",
+        "CIVILIZATION_MATCH": "文明一致",
+        "OPPONENT_PLAYED_WITHOUT_MANA": "相手がマナなしでプレイ",
+        "OPPONENT_DRAW_COUNT": "相手のドロー枚数",
+        "DURING_YOUR_TURN": "自分のターン中",
+        "DURING_OPPONENT_TURN": "相手のターン中",
+        "FIRST_ATTACK": "初回攻撃",
+        "EVENT_FILTER_MATCH": "イベントフィルター一致",
+        "COMPARE_STAT": "統計値比較",
+        "COMPARE_INPUT": "入力値比較",
+        "CARDS_MATCHING_FILTER": "フィルター一致カード数",
+        "DECK_EMPTY": "デッキ切れ",
+        "MANA_CIVILIZATION_COUNT": "マナゾーン文明数",
+        "HAND_COUNT": "手札枚数",
+        "BATTLE_ZONE_COUNT": "バトルゾーンカード数",
+        "GRAVEYARD_COUNT": "墓地カード数",
+        "CUSTOM": "カスタム"
+    }
+    
     # Scope/Owner Japanese mapping (STATIC ability context)
     # Now using TargetScope constants for consistency
     SCOPE_JAPANESE: Dict[str, str] = {
@@ -102,6 +125,7 @@ class CardTextResources:
         "unblockable": "ブロックされない",
         "no_choice": "選ばれない",
         "attacker": "アタッカー",
+        "s_trigger": "S・トリガー",
         
         # Uppercase versions (for compatibility)
         "SPEED_ATTACKER": "スピードアタッカー",
@@ -129,6 +153,7 @@ class CardTextResources:
         "UNBLOCKABLE": "ブロックされない",
         "NO_CHOICE": "選ばれない",
         "ATTACKER": "アタッカー",
+        "S_TRIGGER": "S・トリガー",
         "CANNOT_ATTACK": "攻撃できない",
         "CANNOT_BLOCK": "ブロックできない",
         "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない",
@@ -138,6 +163,7 @@ class CardTextResources:
 
     # Duration Text Mapping (Added)
     DURATION_TRANSLATION: Dict[str, str] = {
+        "PERMANENT": "常に",
         "THIS_TURN": "このターン",
         "UNTIL_END_OF_OPPONENT_TURN": "次の相手のターンの終わりまで",
         "UNTIL_START_OF_OPPONENT_TURN": "次の相手のターンのはじめまで",
@@ -314,6 +340,19 @@ class CardTextResources:
         return cls.CONDITION_JAPANESE.get(condition_type, condition_type)
     
     @classmethod
+    def get_condition_type_label(cls, condition_type: str) -> str:
+        """
+        Get Japanese label for condition type (for GUI editor).
+        
+        Args:
+            condition_type: Condition type string (e.g., "OPPONENT_DRAW_COUNT")
+        
+        Returns:
+            Japanese condition type label, or original string if not found
+        """
+        return cls.CONDITION_TYPE_LABELS.get(condition_type, condition_type)
+    
+    @classmethod
     def get_scope_text(cls, scope: str) -> str:
         """
         Get Japanese text for scope/owner.
@@ -422,3 +461,19 @@ class CardTextResources:
         Get Japanese text for duration.
         """
         return cls.DURATION_TRANSLATION.get(duration_key, duration_key)
+    
+    @classmethod
+    def get_stat_key_label(cls, stat_key: str) -> str:
+        """
+        Get Japanese label for stat key (for GUI editor).
+        
+        Args:
+            stat_key: Stat key string (e.g., "MY_SHIELD_COUNT")
+        
+        Returns:
+            Japanese stat key label with unit
+        """
+        if stat_key in cls.STAT_KEY_MAP:
+            name, unit = cls.STAT_KEY_MAP[stat_key]
+            return f"{name}（{unit}）" if unit else name
+        return stat_key

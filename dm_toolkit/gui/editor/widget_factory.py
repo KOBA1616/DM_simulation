@@ -94,15 +94,47 @@ class RefModeComboWrapper(QWidget, EditorWidgetMixin):
         layout.addWidget(self.combo)
 
     def get_value(self):
-        return self.combo.currentData()
+        data = self.combo.currentData()
+        # Return None if empty item is selected
+        return None if data is None else data
 
     def set_value(self, value):
+        if value is None:
+            # Select empty item (index 0 if it exists and has None data)
+            if self.combo.count() > 0 and self.combo.itemData(0) is None:
+                self.combo.setCurrentIndex(0)
+            return
+        
         idx = self.combo.findData(value)
-        if idx >= 0: self.combo.setCurrentIndex(idx)
+        if idx >= 0: 
+            self.combo.setCurrentIndex(idx)
 
     @property
     def currentIndexChanged(self):
         return self.combo.currentIndexChanged
+
+class SelectComboWidget(QComboBox, EditorWidgetMixin):
+    def get_value(self):
+        data = self.currentData()
+        return None if data is None else data
+
+    def set_value(self, value):
+        if value is None:
+            idx = self.findData(None)
+            if idx >= 0:
+                self.setCurrentIndex(idx)
+            return
+
+        idx = self.findData(value)
+        if idx >= 0:
+            self.setCurrentIndex(idx)
+            return
+
+        # Fallback: match by text if data not found (legacy cases)
+        text = str(value)
+        idx = self.findText(text)
+        if idx >= 0:
+            self.setCurrentIndex(idx)
 
 class CivilizationWrapper(CivilizationSelector, EditorWidgetMixin):
     def get_value(self):
@@ -214,13 +246,13 @@ class WidgetFactory:
             cb = getattr(parent, 'request_generate_options', lambda: None)
             widget = OptionsControlWidget(parent, cb)
 
-        elif w_type == 'ref_mode_combo':
-             widget = RefModeComboWrapper(parent)
-             widget.currentIndexChanged.connect(lambda: update_callback())
+           elif w_type == 'ref_mode_combo':
+               widget = RefModeComboWrapper(parent)
+               widget.currentIndexChanged.connect(lambda: update_callback())
 
         # Fallback for generic combo
         if widget is None and w_type and 'combo' in w_type:
-            widget = QComboBox(parent)
+              widget = SelectComboWidget(parent)
             widget.currentIndexChanged.connect(lambda: update_callback())
 
         return widget
@@ -277,9 +309,9 @@ def _create_civ_widget(parent, schema, cb):
     widget.changed.connect(lambda: cb())
     return widget
 
-def _create_races_widget(parent, schema, cb):
+def _create_enum_widget(parent, schema, cb):
     widget = RacesEditorWidget(parent)
-    widget.textChanged.connect(lambda: cb())
+    widget = SelectComboWidget(parent)
     return widget
 
 def _create_type_select_widget(parent, schema, cb):
@@ -290,6 +322,9 @@ def _create_type_select_widget(parent, schema, cb):
     return widget
 
 def _create_select_widget(parent, schema, cb):
+
+            if schema.default is None:
+                widget.addItem("---", None)
     hint = schema.widget_hint
     widget = None
     if hint == 'ref_mode_combo':
@@ -297,7 +332,11 @@ def _create_select_widget(parent, schema, cb):
     elif hint == 'scope_combo':
         widget = ScopeCombo(parent)
     else:
-        widget = QComboBox(parent)
+        widget = SelectComboWidget(parent)
+        # Add empty item if field has no default or is optional
+        if schema.default is None:
+            widget.addItem("---", None)
+        
         if schema.options:
             for opt in schema.options:
                 # Use CardTextResources for translation if available (e.g. DURATION_THIS_TURN)

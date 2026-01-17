@@ -85,6 +85,8 @@ def _setup_minimal_gui_stubs():
         def id(self, button): return -1
         def setContentsMargins(self, *args): pass
         def setSpacing(self, spacing): pass
+        def setHorizontalSpacing(self, spacing): pass
+        def setVerticalSpacing(self, spacing): pass
         def addStretch(self, *args): pass
         def setStyleSheet(self, style): pass
         def setMinimumWidth(self, width): pass

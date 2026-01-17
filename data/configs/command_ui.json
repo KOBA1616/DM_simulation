@@ -62,8 +62,8 @@
     "labels": { "amount": "Power Adjustment" }
   },
   "ADD_KEYWORD": {
-    "visible": ["target_group", "target_filter", "str_param", "duration", "amount", "input_link"],
-    "labels": { "str_param": "Keyword", "duration": "Duration", "amount": "Amount (Hidden)" }
+    "visible": ["target_group", "target_filter", "explicit_self", "str_val", "duration", "amount", "input_link"],
+    "labels": { "explicit_self": "This Card", "str_val": "Keyword", "duration": "Duration", "amount": "Amount (Hidden)" }
   },
   "QUERY": {
     "visible": ["target_group", "target_filter", "query_mode", "output_link"],

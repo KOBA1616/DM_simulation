@@ -6,6 +6,7 @@ from PyQt6.QtCore import pyqtSignal
 from dm_toolkit.gui.i18n import tr
 from typing import Any, cast
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 # Configuration for Condition UI logic
 CONDITION_UI_CONFIG = {
@@ -79,7 +80,7 @@ CONDITION_UI_CONFIG = {
     },
     "COMPARE_INPUT": {
         "show_val": True,
-        "show_str": True,
+        "show_str": False,
         "show_op": True,
         "label_val": "Numeric Threshold",
         "label_str": "String Value (if applicable)",
@@ -200,7 +201,9 @@ class ConditionEditorWidget(QGroupBox):
     def populate_combo(self, combo, items):
         combo.clear()
         for item in items:
-            combo.addItem(tr(str(item)), str(item))
+            # Use CardTextResources for condition type labels
+            label = CardTextResources.get_condition_type_label(str(item))
+            combo.addItem(label, str(item))
 
     def on_cond_type_changed(self):
         ctype = self.cond_type_combo.currentData()
