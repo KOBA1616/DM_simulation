@@ -215,8 +215,19 @@ class UnifiedActionForm(BaseEditForm):
                 grp = g
                 break
         
-        self.set_combo_by_data(self.action_group_combo, grp)
-        self.set_combo_by_data(self.type_combo, cmd_type)
+        # Block signals during combo updates to prevent rebuild_dynamic_ui from being called prematurely
+        self.action_group_combo.blockSignals(True)
+        self.type_combo.blockSignals(True)
+        
+        try:
+            self.set_combo_by_data(self.action_group_combo, grp)
+            self.set_combo_by_data(self.type_combo, cmd_type)
+            
+            # Now rebuild UI based on the new type
+            self.rebuild_dynamic_ui(cmd_type)
+        finally:
+            self.action_group_combo.blockSignals(False)
+            self.type_combo.blockSignals(False)
         
         # Set current_item for VariableLinkWidget
         for key, widget in self.widgets_map.items():

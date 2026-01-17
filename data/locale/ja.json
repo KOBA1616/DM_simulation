@@ -554,5 +554,18 @@
     "REMOVE_KEYWORD": "キーワード削除",
     "ADD_PASSIVE_EFFECT": "パッシブ効果付与",
     "ADD_COST_MODIFIER": "コスト修正付与",
-    "ADD_PENDING_EFFECT": "待機効果追加"
+    "ADD_PENDING_EFFECT": "待機効果追加",
+    "DRAW": "ドロー",
+    "CARD_MOVE": "カード移動",
+    "REPLACEMENT": "置換移動",
+    "DECK_OPS": "デッキ操作",
+    "PLAY": "プレイ",
+    "BUFFER": "バッファ",
+    "CHEAT_PUT": "チート出現",
+    "GRANT": "付与",
+    "LOGIC": "ロジック",
+    "BATTLE": "バトル",
+    "RESTRICTION": "制限",
+    "SPECIAL": "特殊",
+    "REPLACE_CARD_MOVE": "置換移動"
 }
