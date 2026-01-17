@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, register_schema
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 # Define constants for selection lists
 MUTATION_TYPES = [
@@ -401,6 +402,13 @@ def register_all_schemas():
     # FLOW
     register_schema(CommandSchema("FLOW", [
         FieldSchema("str_param", tr("Flow Instruction"), FieldType.STRING)
+    ]))
+
+    # STAT
+    register_schema(CommandSchema("STAT", [
+        FieldSchema("str_param", tr("Stat Key"), FieldType.SELECT, options=list(CardTextResources.STAT_KEY_MAP.keys())),
+        FieldSchema("amount", tr("Value to Add"), FieldType.INT, default=1),
+        f_links_in
     ]))
 
     # NONE / Default
