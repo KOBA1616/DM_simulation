@@ -5,6 +5,16 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.i18n import tr
 
 class OptionForm(BaseEditForm):
+    """
+    Read-only display form for OPTION container nodes.
+    
+    OPTIONS are structural elements (containers for conditional branches or choices)
+    and have no editable properties themselves. Child nodes define the actual behavior.
+    
+    This form inherits from BaseEditForm for consistency but overrides template methods
+    to explicitly indicate read-only status.
+    """
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         # Safe defaults
@@ -29,3 +39,17 @@ class OptionForm(BaseEditForm):
     def set_data(self, item):
         super().set_data(item)
         self.label.setText(item.text())
+    
+    def _load_ui_from_data(self, data, item):
+        """
+        OPTION nodes are read-only structural containers.
+        No data loading is required or performed.
+        """
+        pass
+    
+    def _save_ui_to_data(self, data):
+        """
+        OPTION nodes are read-only structural containers.
+        No data saving is performed.
+        """
+        pass

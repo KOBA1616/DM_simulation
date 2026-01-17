@@ -71,18 +71,31 @@ class UnifiedActionForm(BaseEditForm):
             types = []
 
         prev = self.type_combo.currentData()
-        self.populate_combo(self.type_combo, types, data_func=lambda x: x, display_func=tr)
+        
+        # Block signals to prevent triggering on_type_changed during population
+        self.type_combo.blockSignals(True)
+        try:
+            self.populate_combo(self.type_combo, types, data_func=lambda x: x, display_func=tr)
 
-        if prev and prev in types:
-            self.set_combo_by_data(self.type_combo, prev)
-        else:
-            if types:
-                self.type_combo.setCurrentIndex(0)
+            if prev and prev in types:
+                self.set_combo_by_data(self.type_combo, prev)
+            else:
+                if types:
+                    self.type_combo.setCurrentIndex(0)
+        finally:
+            self.type_combo.blockSignals(False)
+        
+        # Manually trigger UI rebuild with the new selection
+        self.on_type_changed()
 
     def on_type_changed(self):
         t = self.type_combo.currentData()
         if t is None:
-            t = "DRAW"  # Default fallback
+            # Fallback: use first item in combo, or NONE if empty
+            if self.type_combo.count() > 0:
+                t = self.type_combo.itemData(0)
+            if t is None:
+                t = "NONE"  # Final fallback to valid command type
         self.rebuild_dynamic_ui(t)
         self.update_data()
 
@@ -220,7 +233,13 @@ class UnifiedActionForm(BaseEditForm):
         self.type_combo.blockSignals(True)
         
         try:
+            # Set group first (this will repopulate type_combo)
             self.set_combo_by_data(self.action_group_combo, grp)
+            # Trigger group change to repopulate type_combo with correct items
+            # (must be done with signals still blocked)
+            types = COMMAND_GROUPS.get(grp, [])
+            self.populate_combo(self.type_combo, types, data_func=lambda x: x, display_func=tr)
+            # Now set the specific type
             self.set_combo_by_data(self.type_combo, cmd_type)
             
             # Now rebuild UI based on the new type
