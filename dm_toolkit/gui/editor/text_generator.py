@@ -914,6 +914,8 @@ class CardTextGenerator:
         elif original_cmd_type == "COST_REFERENCE":
              # Used to just output value, handled in _format_action
              action_proxy["ref_mode"] = command.get("ref_mode")
+        elif original_cmd_type == "FLOW":
+            action_proxy["flow_type"] = command.get("str_param") or command.get("flow_type")
 
         return cls._format_action(action_proxy, is_spell, sample=sample)
 
