@@ -49,8 +49,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Cards to Draw"), FieldType.INT, default=1, min_value=1),
         f_optional,
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
-        f_links_in,
-        f_links_out
+        f_links_out  # Handles both input and output linking
     ]))
 
     # DISCARD
@@ -61,8 +60,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
-        f_links_in,
-        f_links_out  # Enables output_value_key for discarded count
+        f_links_out  # Handles both input and output linking
     ]))
 
     # DESTROY / MANA_CHARGE / RETURN_TO_HAND / BREAK_SHIELD
@@ -72,8 +70,7 @@ def register_all_schemas():
             f_target,
             f_filter,
             FieldSchema("amount", tr("Count (if selecting)"), FieldType.INT, default=1),
-            f_links_in,
-            f_links_out  # Enables output_value_key for card movement tracking
+            f_links_out  # Handles both input and output linking
         ]))
 
     # TAP / UNTAP (state changes, no movement)
@@ -102,8 +99,7 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
-        f_links_in,
-        f_links_out  # Enables output_value_key for card movement tracking
+        f_links_out  # Handles both input and output linking
     ]))
 
     # MOVE_CARD
@@ -114,7 +110,6 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
-        f_links_in,
         f_links_out
     ]))
 
@@ -127,7 +122,6 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
-        f_links_in,
         f_links_out
     ]))
 
@@ -136,7 +130,6 @@ def register_all_schemas():
         f_filter,
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
-        f_links_in,
         f_links_out
     ]))
 
@@ -146,7 +139,6 @@ def register_all_schemas():
         FieldSchema("amount", tr("Look Count"), FieldType.INT, default=3),
         FieldSchema("val2", tr("Add Count"), FieldType.INT, default=1),
         FieldSchema("rest_zone", tr("Rest Zone"), FieldType.ZONE, default="DECK_BOTTOM"),
-        f_links_in,
         f_links_out
     ]))
 
@@ -156,7 +148,6 @@ def register_all_schemas():
         FieldSchema("amount", tr("Level (Max Cost)"), FieldType.INT, default=7),
         FieldSchema("val2", tr("Look Count"), FieldType.INT, default=3),
         FieldSchema("select_count", tr("Select Count"), FieldType.INT, default=1),
-        f_links_in,
         f_links_out
     ]))
 
@@ -218,7 +209,6 @@ def register_all_schemas():
         FieldSchema("amount", tr("Max Cost"), FieldType.INT, default=99),
         FieldSchema("str_param", tr("Hint"), FieldType.STRING),
         FieldSchema("play_flags", tr("Play for Free"), FieldType.BOOL, default=False), # Mapped to checkbox
-        f_links_in,
         f_links_out
     ]))
 
@@ -226,7 +216,6 @@ def register_all_schemas():
     register_schema(CommandSchema("CAST_SPELL", [
         f_target,
         FieldSchema("target_filter", tr("Spell Filter"), FieldType.FILTER),
-        f_links_in,
         f_links_out
     ]))
 
@@ -234,7 +223,6 @@ def register_all_schemas():
     register_schema(CommandSchema("FRIEND_BURST", [
         FieldSchema("str_param", tr("Race (e.g. Fire Bird)"), FieldType.STRING),
         FieldSchema("target_filter", tr("Friend Burst Condition"), FieldType.FILTER),
-        f_links_in,
         f_links_out
     ]))
 
@@ -381,13 +369,11 @@ def register_all_schemas():
     # Outputs: condition result (0=false, 1=true) to output_value_key
     register_schema(CommandSchema("IF", [
         FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
-        f_links_in,  # For dynamic condition inputs if needed
-        f_links_out  # Enables output_value_key for condition result
+        f_links_out  # Handles both input and output linking
     ]))
     register_schema(CommandSchema("IF_ELSE", [
         FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
-        f_links_in,
-        f_links_out  # Enables output_value_key for condition result
+        f_links_out  # Handles both input and output linking
     ]))
     register_schema(CommandSchema("ELSE", []))
 
@@ -395,6 +381,13 @@ def register_all_schemas():
     register_schema(CommandSchema("SELECT_NUMBER", [
         FieldSchema("min_value", tr("Min Number"), FieldType.INT, default=1),
         FieldSchema("amount", tr("Max Number"), FieldType.INT, default=10),
+        f_links_out
+    ]))
+
+    # STAT
+    register_schema(CommandSchema("STAT", [
+        FieldSchema("str_param", tr("Stat Key"), FieldType.STRING),
+        f_amount,
         f_links_out
     ]))
 
