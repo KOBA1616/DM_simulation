@@ -72,6 +72,20 @@ namespace dm::engine::systems {
                             case ModifierType::FORCE_ATTACK:
                                 pe.type = PassiveType::FORCE_ATTACK;
                                 break;
+                            case ModifierType::ADD_RESTRICTION: {
+                                const std::string& kind = mod_def.str_val;
+
+                                // Restriction kind is stored in str_val (GUI writes both mutation_kind and str_val).
+                                // NOTE: SPELL_RESTRICTION is treated the same as TARGET_RESTRICTION in the engine for now.
+                                if (kind == "TARGET_RESTRICTION" || kind == "SPELL_RESTRICTION" || kind == "TARGET_THIS_CANNOT_SELECT") {
+                                    pe.type = PassiveType::CANNOT_BE_SELECTED;
+                                } else if (kind == "TARGET_THIS_FORCE_SELECT") {
+                                    pe.type = PassiveType::FORCE_SELECTION;
+                                } else {
+                                    continue; // Unknown restriction kind
+                                }
+                                break;
+                            }
                             default:
                                 continue; // Skip unknown
                         }

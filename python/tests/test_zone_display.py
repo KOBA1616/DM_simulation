@@ -1,21 +1,5 @@
-import sys
 import unittest
 from unittest.mock import MagicMock, patch
-
-# Mock PyQt6
-sys.modules["PyQt6"] = MagicMock()
-sys.modules["PyQt6.QtWidgets"] = MagicMock()
-sys.modules["PyQt6.QtCore"] = MagicMock()
-sys.modules["PyQt6.QtGui"] = MagicMock()
-
-# Mock Qt classes used in zone_widget.py
-class MockQWidget:
-    def __init__(self, parent=None):
-        pass
-    def setParent(self, parent):
-        pass
-    def window(self):
-        return self
 
 class MockSignal:
     def __init__(self):
@@ -26,30 +10,7 @@ class MockSignal:
         for cb in self.callbacks:
             cb(*args)
 
-sys.modules["PyQt6.QtWidgets"].QWidget = MockQWidget
-sys.modules["PyQt6.QtWidgets"].QHBoxLayout = MagicMock()
-sys.modules["PyQt6.QtWidgets"].QLabel = MagicMock()
-sys.modules["PyQt6.QtWidgets"].QScrollArea = MagicMock()
-sys.modules["PyQt6.QtCore"].pyqtSignal = lambda *args: MockSignal()
-sys.modules["PyQt6.QtCore"].Qt = MagicMock()
-
-# Mock tr function
-if "dm_toolkit.gui.i18n" not in sys.modules:
-    sys.modules["dm_toolkit.gui.i18n"] = MagicMock()
-    sys.modules["dm_toolkit.gui.i18n"].tr = lambda x: x
-
-# Mock card_helpers
-if "dm_toolkit.gui.utils.card_helpers" not in sys.modules:
-    sys.modules["dm_toolkit.gui.utils.card_helpers"] = MagicMock()
-    sys.modules["dm_toolkit.gui.utils.card_helpers"].get_card_civilization = lambda x: "FIRE"
-
-# Mock commands
-if "dm_toolkit.commands" not in sys.modules:
-    sys.modules["dm_toolkit.commands"] = MagicMock()
-    sys.modules["dm_toolkit.commands"].wrap_action = lambda x: x
-
 # Mock CardWidget
-mock_card_widget_module = MagicMock()
 class MockCardWidget:
     def __init__(self, *args, **kwargs):
         self.clicked = MockSignal()
@@ -70,10 +31,6 @@ class MockCardWidget:
     def update_legal_actions(self, actions):
         pass
 
-mock_card_widget_module.CardWidget = MockCardWidget
-sys.modules["dm_toolkit.gui.widgets.card_widget"] = mock_card_widget_module
-
-# Import after mocking
 from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
 
 class TestZoneDisplay(unittest.TestCase):
@@ -81,6 +38,21 @@ class TestZoneDisplay(unittest.TestCase):
     Tests for ZoneWidget display logic, focusing on bundled visualization
     and popup interaction for Mana and Graveyard.
     """
+
+    def setUp(self):
+        # `sys.modules` を触らず、ZoneWidget側の依存だけを安全に差し替える。
+        self._patchers = [
+            patch('dm_toolkit.gui.widgets.zone_widget.CardWidget', MockCardWidget),
+            patch('dm_toolkit.gui.widgets.zone_widget.tr', lambda x: x),
+            patch('dm_toolkit.gui.widgets.zone_widget.get_card_civilization', lambda x: 'FIRE'),
+            patch('dm_toolkit.gui.widgets.zone_widget.wrap_action', lambda x: x),
+        ]
+        for p in self._patchers:
+            p.start()
+
+    def tearDown(self):
+        for p in reversed(getattr(self, '_patchers', [])):
+            p.stop()
 
     def test_mana_zone_collapsed_by_default(self):
         # "P0 Mana" should trigger is_mana

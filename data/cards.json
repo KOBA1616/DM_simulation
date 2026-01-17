@@ -696,8 +696,21 @@
             "options": [
               [
                 {
-                  "uid": "90537ccd-2278-4ff6-84c6-3b3eea9fe68e",
-                  "type": "APPLY_MODIFIER"
+                  "uid": "964cd41c-52fe-4664-9d95-2e51b581c3ff",
+                  "type": "APPLY_MODIFIER",
+                  "amount": 1,
+                  "duration": "UNTIL_START_OF_YOUR_TURN",
+                  "input_value_usage": "",
+                  "str_param": "CANNOT_ATTACK_AND_BLOCK",
+                  "target_filter": {
+                    "types": [
+                      "CREATURE"
+                    ],
+                    "zones": [
+                      "BATTLE_ZONE"
+                    ]
+                  },
+                  "target_group": "PLAYER_OPPONENT"
                 }
               ],
               [
@@ -775,8 +788,20 @@
     "static_abilities": [
       {
         "uid": "e7486dfd-6261-4131-8d40-056041d1c607",
-        "type": "COST_MODIFIER",
+        "type": "ADD_RESTRICTION",
+        "condition": {
+          "type": "NONE",
+          "value": 0,
+          "extra_fields": {}
+        },
+        "filter": {
+          "zones": [],
+          "civilizations": [],
+          "races": [],
+          "flags": []
+        },
         "value": 0,
+        "str_val": "TARGET_RESTRICTION",
         "scope": "ALL"
       }
     ],
@@ -971,6 +996,7 @@
                 {
                   "uid": "e31d3211-33b5-4be1-827c-9c794b1af94b",
                   "type": "ADD_KEYWORD",
+                  "str_val": "SPEED_ATTACKER",
                   "amount": 1,
                   "target_filter": {
                     "types": [
@@ -1222,6 +1248,7 @@
                 {
                   "uid": "63f9e80c-2820-4a2d-88af-15114cb4f10c",
                   "type": "ADD_KEYWORD",
+                  "str_val": "DRAW_ON_ATTACK",
                   "amount": 2,
                   "target_group": "PLAYER_SELF"
                 },

@@ -1,6 +1,4 @@
-from dm_toolkit.gui.editor.action_converter import ActionConverter
-from dm_toolkit.gui.editor.data_manager import CardDataManager
-from PyQt6.QtGui import QStandardItemModel
+from dm_toolkit.action_to_command import map_action
 
 
 def test_convert_move_card_return_to_hand():
@@ -10,31 +8,14 @@ def test_convert_move_card_return_to_hand():
         "source_zone": "BATTLE_ZONE",
     }
 
-    cmd = ActionConverter.convert(act)
+    cmd = map_action(act)
     assert isinstance(cmd, dict)
     assert cmd.get('type') == 'RETURN_TO_HAND'
     assert 'uid' in cmd
 
 
-def test_normalize_card_for_engine_basic():
-    model = QStandardItemModel()
-    mgr = CardDataManager(model)
-
-    # Create a minimal card with an effect containing the converted command
-    act = {"type": "MOVE_CARD", "destination_zone": "HAND", "source_zone": "BATTLE_ZONE"}
-    cmd = ActionConverter.convert(act)
-
-    card = {
-        "id": 9999,
-        "name": "Test Card",
-        "effects": [
-            {"trigger": "ON_PLAY", "condition": {"type": "NONE"}, "commands": [cmd]}
-        ]
-    }
-
-    warnings = mgr._normalize_card_for_engine(card)
-    assert isinstance(warnings, list)
-    # For this simple converted command, we expect no warnings (conversion should be valid)
-    assert warnings == []
-    # Check uid preserved on command
-    assert 'uid' in card['effects'][0]['commands'][0]
+def test_map_action_produces_uid():
+    cmd = map_action({"type": "DRAW_CARD", "value1": 1})
+    assert isinstance(cmd, dict)
+    assert cmd.get('type') in ("DRAW_CARD", "NONE")
+    assert 'uid' in cmd

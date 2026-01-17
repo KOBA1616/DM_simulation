@@ -169,7 +169,15 @@ class ModifierValidator:
         "COST_MODIFIER",
         "POWER_MODIFIER",
         "GRANT_KEYWORD",
-        "SET_KEYWORD"
+        "SET_KEYWORD",
+        "ADD_RESTRICTION"
+    }
+
+    VALID_RESTRICTION_KINDS = {
+        "TARGET_RESTRICTION",
+        "SPELL_RESTRICTION",
+        "TARGET_THIS_CANNOT_SELECT",
+        "TARGET_THIS_FORCE_SELECT",
     }
     
     @staticmethod
@@ -221,6 +229,17 @@ class ModifierValidator:
             if has_str_val and not has_mutation_kind:
                 # Note: This is just a warning, not an error (for backward compatibility)
                 pass  # Could log: "Consider migrating str_val to mutation_kind"
+
+        elif mtype == "ADD_RESTRICTION":
+            has_mutation_kind = 'mutation_kind' in modifier and modifier.get('mutation_kind')
+            has_str_val = 'str_val' in modifier and modifier.get('str_val')
+            if not has_mutation_kind and not has_str_val:
+                errors.append("ADD_RESTRICTION requires 'mutation_kind' or 'str_val' (restriction kind)")
+            kind = (modifier.get('mutation_kind') or modifier.get('str_val') or "").strip()
+            if kind and kind not in ModifierValidator.VALID_RESTRICTION_KINDS:
+                errors.append(
+                    f"Invalid restriction kind: '{kind}'. Valid: {sorted(ModifierValidator.VALID_RESTRICTION_KINDS)}"
+                )
         
         # Scope validation (using TargetScope)
         from dm_toolkit.consts import TargetScope

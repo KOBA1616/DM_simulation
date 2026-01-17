@@ -265,7 +265,8 @@ GRANTABLE_KEYWORDS = [
     "power_attacker",
     "CANNOT_ATTACK",
     "CANNOT_BLOCK",
-    "CANNOT_ATTACK_OR_BLOCK"
+    "CANNOT_ATTACK_OR_BLOCK",
+    "CANNOT_ATTACK_AND_BLOCK"
 ]
 
 # Keywords that can be set via SET_KEYWORD (subset or extension of grantable)

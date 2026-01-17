@@ -139,6 +139,8 @@ class ModifierModel(BaseModel):
     condition: Optional[ConditionModel] = None
     filter: Optional[FilterModel] = None
     value: int = 0
+    # Preferred field for keyword/restriction sub-types (kept for backward compatibility with str_val)
+    mutation_kind: Optional[str] = None
     str_val: Optional[str] = None
     scope: str = "ALL"
 

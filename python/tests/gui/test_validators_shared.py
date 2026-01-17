@@ -163,13 +163,33 @@ class TestModifierValidator:
         assert "value" in errors[0].lower()
     
     def test_grant_keyword_missing_str_val(self):
-        """GRANT_KEYWORD requires 'str_val'."""
+        """GRANT_KEYWORD requires 'mutation_kind' or 'str_val'."""
         errors = ModifierValidator.validate({
             "type": "GRANT_KEYWORD",
             "scope": "ALL"
         })
         assert len(errors) > 0
-        assert "str_val" in errors[0].lower()
+        assert ("mutation_kind" in errors[0].lower()) or ("str_val" in errors[0].lower())
+
+    def test_add_restriction_requires_kind(self):
+        """ADD_RESTRICTION requires kind in mutation_kind/str_val."""
+        errors = ModifierValidator.validate({
+            "type": "ADD_RESTRICTION",
+            "scope": "ALL"
+        })
+        assert len(errors) > 0
+        assert ("mutation_kind" in errors[0].lower()) or ("str_val" in errors[0].lower())
+
+    def test_add_restriction_valid_kind(self):
+        """Valid ADD_RESTRICTION structure."""
+        errors = ModifierValidator.validate({
+            "type": "ADD_RESTRICTION",
+            "mutation_kind": "TARGET_THIS_CANNOT_SELECT",
+            "scope": "ALL",
+            "condition": {"type": "NONE"},
+            "filter": {}
+        })
+        assert len(errors) == 0
     
     def test_invalid_scope(self):
         """Invalid scope value."""

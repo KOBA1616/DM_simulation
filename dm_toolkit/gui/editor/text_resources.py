@@ -157,8 +157,12 @@ class CardTextResources:
         "CANNOT_ATTACK": "攻撃できない",
         "CANNOT_BLOCK": "ブロックできない",
         "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない",
-        "TARGET_RESTRICTION": "攻撃・ブロック制限",
-        "SPELL_RESTRICTION": "呪文使用制限"
+        # New phrasing: cannot attack and cannot block (both)
+        "CANNOT_ATTACK_AND_BLOCK": "攻撃もブロックもできない",
+        "TARGET_RESTRICTION": "対象制限",
+        "SPELL_RESTRICTION": "呪文制限",
+        "TARGET_THIS_CANNOT_SELECT": "このクリーチャーを対象として選択できない",
+        "TARGET_THIS_FORCE_SELECT": "可能ならこのクリーチャーを選択する"
     }
 
     # Duration Text Mapping (Added)

@@ -19,6 +19,41 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 Set-Location $projectRoot
 
+function Invoke-VsDevCmd {
+    param(
+        [ValidateSet('x64','x86')]
+        [string]$Arch = 'x64'
+    )
+
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (-not (Test-Path $vswhere)) {
+        throw "vswhere.exe not found at: $vswhere"
+    }
+
+    $installPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($installPath)) {
+        throw "Visual Studio with MSVC tools not found via vswhere."
+    }
+
+    $vsDevCmd = Join-Path $installPath 'Common7\Tools\VsDevCmd.bat'
+    if (-not (Test-Path $vsDevCmd)) {
+        throw "VsDevCmd.bat not found at: $vsDevCmd"
+    }
+
+    # Import the environment variables produced by VsDevCmd into this PowerShell session.
+    # Using cmd.exe because VsDevCmd is a .bat file.
+    $cmd = "`"$vsDevCmd`" -no_logo -arch=$Arch -host_arch=$Arch && set"
+    cmd.exe /s /c $cmd | ForEach-Object {
+        $line = $_
+        $idx = $line.IndexOf('=')
+        if ($idx -gt 0) {
+            $name = $line.Substring(0, $idx)
+            $value = $line.Substring($idx + 1)
+            try { Set-Item -Path "Env:$name" -Value $value } catch { }
+        }
+    }
+}
+
 if ($Clean -and (Test-Path $buildDir)) {
     Write-Host "Cleaning build directory..."
     Remove-Item -Path $buildDir -Recurse -Force
@@ -44,6 +79,9 @@ if (-not [string]::IsNullOrWhiteSpace($Generator)) {
 }
 
 if ($Toolchain -eq 'msvc') {
+    # Ensure MSVC standard library include paths etc. are available even when
+    # running from a plain PowerShell (not Developer Command Prompt).
+    Invoke-VsDevCmd -Arch 'x64'
     $cmakeArgs += @('-A', 'x64')
 }
 

@@ -153,12 +153,9 @@ class TestActionToCommand(unittest.TestCase):
             # TRANSITION is NOT in MockCommandType.
             cmd_invalid = map_action(act_invalid)
 
-            self.assertEqual(cmd_invalid['type'], "NONE")
-            self.assertTrue(cmd_invalid['legacy_warning'])
-            # add_aliases_to_command might set legacy_original_type to original action type (MOVE_CARD)
-            # which is preferred over the intermediate mapped type (TRANSITION).
-            self.assertEqual(cmd_invalid['legacy_original_type'], "MOVE_CARD")
-            self.assertIn("Invalid CommandType: TRANSITION", cmd_invalid['str_param'])
+            # Unknown types should not be clobbered to NONE; they are flagged.
+            self.assertEqual(cmd_invalid['type'], "TRANSITION")
+            self.assertTrue(cmd_invalid.get('legacy_warning'))
 
         finally:
             # Restore original

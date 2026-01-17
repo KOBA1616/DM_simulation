@@ -63,6 +63,9 @@ def _candidate_native_paths(root: str) -> list[str]:
         # Explicit bin directory often used for output
         os.path.join(root, "bin", "dm_ai_module*.pyd"),
         os.path.join(root, "bin", "dm_ai_module*.so"),
+        # Common layout: bin/Release, bin/Debug
+        os.path.join(root, "bin", "**", "dm_ai_module*.pyd"),
+        os.path.join(root, "bin", "**", "dm_ai_module*.so"),
         # CMake build directories
         os.path.join(root, "build", "**", "dm_ai_module*.pyd"),
         os.path.join(root, "build", "**", "dm_ai_module*.so"),

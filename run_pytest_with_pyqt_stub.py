@@ -79,7 +79,12 @@ def setup_gui_stubs():
             self.stateChanged = MockSignal()
             self.currentIndexChanged = MockSignal()
             self._items = []
-            
+            def findText(self, text):
+                # Match by display text (first tuple element)
+                for i, it in enumerate(self._items):
+                    if str(it[0]) == str(text):
+                        return i
+                return -1
         def setWindowTitle(self, title): pass
         def setLayout(self, layout): pass
         def setGeometry(self, *args): pass
@@ -327,6 +332,11 @@ def setup_gui_stubs():
             if 0 <= self._current_index < len(self._items):
                 return self._items[self._current_index][0]
             return ""
+        def findText(self, text):
+            for i, it in enumerate(self._items):
+                if str(it[0]) == str(text):
+                    return i
+            return -1
         def currentData(self):
             if 0 <= self._current_index < len(self._items):
                 item = self._items[self._current_index]

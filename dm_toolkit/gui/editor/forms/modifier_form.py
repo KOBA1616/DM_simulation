@@ -44,16 +44,13 @@ class ModifierEditForm(BaseEditForm):
 
         # Type
         self.type_combo = QComboBox()
-        # Populate with data values: display text is tr(key), data is key itself
-        types = ["NONE", "COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD", "ADD_RESTRICTION"]
-        for t in types:
-            self.type_combo.addItem(tr(t), t)
         self.type_combo.currentTextChanged.connect(self.update_data)
         self.type_combo.currentTextChanged.connect(self.update_visibility)
         self.register_widget(self.type_combo, 'type')
         form_layout.addRow(tr("Type"), self.type_combo)
 
-        # Restriction Type (Combo Box) - New
+        # Restriction Type (Combo Box)
+        # NOTE: Legacy UI kept for backward compatibility, but restriction selection is now done via type_combo.
         self.restriction_combo = QComboBox()
         restriction_types = ["TARGET_RESTRICTION", "SPELL_RESTRICTION"]
         for t in restriction_types:
@@ -100,6 +97,7 @@ class ModifierEditForm(BaseEditForm):
         # Filter Section - Unified Handler
         self.filter_widget = UnifiedFilterHandler.create_filter_widget("STATIC", self)
         self.filter_widget.filterChanged.connect(self.update_data)
+        self.filter_widget.filterChanged.connect(self._refresh_type_combo_items)
         layout.addWidget(self.filter_widget)
 
         # Define bindings
@@ -112,6 +110,72 @@ class ModifierEditForm(BaseEditForm):
         }
 
         # Initial visibility
+        self._refresh_type_combo_items()
+        self.update_visibility()
+
+    def _is_filter_empty(self) -> bool:
+        try:
+            filt = self.filter_widget.get_data()
+        except Exception:
+            return True
+        return not bool(filt)
+
+    def _refresh_type_combo_items(self):
+        """Rebuild Type combo items.
+
+        - Always show core modifier types.
+        - Always show TARGET_RESTRICTION / SPELL_RESTRICTION as top-level type choices.
+        - If filter is empty, also show self-only target selection adjustments.
+        """
+        prev = self.type_combo.currentData()
+
+        # If the previous selection was a legacy ADD_RESTRICTION, prefer its subtype.
+        if prev == "ADD_RESTRICTION":
+            prev = self.restriction_combo.currentData() or prev
+
+        allow_self_only = self._is_filter_empty()
+
+        # If filter is not empty, self-only options must not be selectable
+        self_only = {"TARGET_THIS_CANNOT_SELECT", "TARGET_THIS_FORCE_SELECT"}
+        if not allow_self_only and prev in self_only:
+            prev = "TARGET_RESTRICTION"
+
+        types: list[str] = [
+            "NONE",
+            "COST_MODIFIER",
+            "POWER_MODIFIER",
+            "GRANT_KEYWORD",
+            "SET_KEYWORD",
+            # Restrictions are now top-level choices
+            "TARGET_RESTRICTION",
+            "SPELL_RESTRICTION",
+        ]
+
+        if allow_self_only:
+            types.extend([
+                "TARGET_THIS_CANNOT_SELECT",
+                "TARGET_THIS_FORCE_SELECT",
+            ])
+
+        # Preserve unknown/legacy value if present (exclude disallowed self-only)
+        if prev and prev not in types and prev not in self_only:
+            types.append(str(prev))
+
+        self.type_combo.blockSignals(True)
+        self.type_combo.clear()
+        for t in types:
+            self.type_combo.addItem(tr(t), t)
+
+        # Restore selection
+        if prev:
+            idx = self.type_combo.findData(prev)
+            if idx >= 0:
+                self.type_combo.setCurrentIndex(idx)
+            else:
+                self.type_combo.setCurrentIndex(0)
+        self.type_combo.blockSignals(False)
+
+        # Ensure dependent widgets reflect the final selection
         self.update_visibility()
 
     def update_visibility(self):
@@ -124,6 +188,7 @@ class ModifierEditForm(BaseEditForm):
         self.value_spin.setVisible(False)
         self.label_keyword.setVisible(False)
         self.keyword_combo.setVisible(False)
+        # Restriction combo is legacy; hide by default
         self.label_restriction.setVisible(False)
         self.restriction_combo.setVisible(False)
 
@@ -144,9 +209,8 @@ class ModifierEditForm(BaseEditForm):
             self.keyword_combo.setVisible(True)
             self.filter_widget.setTitle("対象クリーチャー")
 
-        elif mtype == "ADD_RESTRICTION":
-            self.label_restriction.setVisible(True)
-            self.restriction_combo.setVisible(True)
+        elif mtype in ("TARGET_RESTRICTION", "SPELL_RESTRICTION", "TARGET_THIS_CANNOT_SELECT", "TARGET_THIS_FORCE_SELECT", "ADD_RESTRICTION"):
+            # Unified restriction types
             self.filter_widget.setTitle("制限対象")
 
         elif mtype == "SET_KEYWORD":
@@ -190,15 +254,27 @@ class ModifierEditForm(BaseEditForm):
         # Prefer mutation_kind, fallback to str_val for legacy data
         keyword = data.get('mutation_kind', '') or data.get('str_val', '')
 
+        # Refresh type choices before selecting
+        self._refresh_type_combo_items()
+
         # Load into appropriate widget based on type
         mtype = data.get('type', '')
         if mtype == 'ADD_RESTRICTION':
-            # For ADD_RESTRICTION, the mutation_kind holds the restriction sub-type
-            index = self.restriction_combo.findData(keyword)
-            if index >= 0:
-                self.restriction_combo.setCurrentIndex(index)
+            # New UI: the restriction sub-type is selected directly in type_combo
+            chosen = keyword or 'TARGET_RESTRICTION'
+            idx = self.type_combo.findData(chosen)
+            if idx < 0:
+                # Ensure unknown legacy value remains selectable
+                self._refresh_type_combo_items()
+                idx = self.type_combo.findData(chosen)
+            if idx >= 0:
+                self.type_combo.setCurrentIndex(idx)
             else:
-                self.restriction_combo.setCurrentIndex(0)
+                self.type_combo.setCurrentIndex(0)
+            # Keep legacy widget in sync (hidden)
+            legacy_idx = self.restriction_combo.findData(chosen)
+            if legacy_idx >= 0:
+                self.restriction_combo.setCurrentIndex(legacy_idx)
         else:
             # Default behavior for keywords
             if keyword:
@@ -236,10 +312,14 @@ class ModifierEditForm(BaseEditForm):
             keyword = self.keyword_combo.get_keyword()
             data['mutation_kind'] = keyword  # Primary field
             data['str_val'] = keyword  # Legacy support
-        elif mtype == 'ADD_RESTRICTION':
-            restriction = self.restriction_combo.currentData()
-            data['mutation_kind'] = restriction
-            data['str_val'] = restriction
+        elif mtype in ('TARGET_RESTRICTION', 'SPELL_RESTRICTION', 'TARGET_THIS_CANNOT_SELECT', 'TARGET_THIS_FORCE_SELECT', 'ADD_RESTRICTION'):
+            # Persist as legacy ADD_RESTRICTION + subtype for compatibility
+            ui_choice = self.type_combo.currentData() or 'TARGET_RESTRICTION'
+            if ui_choice == 'ADD_RESTRICTION':
+                ui_choice = self.restriction_combo.currentData() or 'TARGET_RESTRICTION'
+            data['type'] = 'ADD_RESTRICTION'
+            data['mutation_kind'] = ui_choice
+            data['str_val'] = ui_choice
         else:
             # Clear both fields for non-keyword types
             data['mutation_kind'] = ''

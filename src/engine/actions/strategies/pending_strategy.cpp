@@ -140,6 +140,9 @@ namespace dm::engine {
                                         }
                                     }
                                     if (!protected_by_jd) {
+                                        if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_BE_SELECTED, card_db)) {
+                                            continue;
+                                        }
                                         candidates.push_back({card, &def});
                                     }
                                 }
@@ -151,6 +154,9 @@ namespace dm::engine {
                                         const auto& under_def = card_db.at(under.card_id);
                                         // Note: Underlying cards are checked independently
                                         if (TargetUtils::is_valid_target(under, under_def, filter, game_state, decision_maker, (PlayerID)pid, false, &eff.execution_context)) {
+                                            if (PassiveEffectSystem::instance().check_restriction(game_state, under, PassiveType::CANNOT_BE_SELECTED, card_db)) {
+                                                continue;
+                                            }
                                             candidates.push_back({under, &under_def});
                                         }
                                     }

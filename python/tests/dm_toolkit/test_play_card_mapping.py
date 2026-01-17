@@ -17,6 +17,7 @@ except ImportError:
     dm_ai_module = MagicMock()
     sys.modules['dm_ai_module'] = dm_ai_module
 
+import dm_toolkit.action_to_command as module_under_test
 from dm_toolkit.action_to_command import map_action, set_command_type_enum
 
 # Define a Mock Enum that includes the new type
@@ -27,8 +28,13 @@ class MockCommandType(Enum):
 
 class TestPlayCardMapping(unittest.TestCase):
     def setUp(self):
+        # Save and restore global enum injection to avoid cross-test contamination.
+        self._original_command_type = getattr(module_under_test, '_CommandType', None)
         # Inject our mock enum
         set_command_type_enum(MockCommandType)
+
+    def tearDown(self):
+        set_command_type_enum(self._original_command_type)
 
     def test_play_card_mapping(self):
         # Action data representing PLAY_CARD

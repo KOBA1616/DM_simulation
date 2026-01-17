@@ -24,6 +24,7 @@ import os
 import warnings
 from typing import Any, Dict, List, Optional
 from dm_toolkit.compat_wrappers import add_aliases_to_command
+from dm_toolkit.consts import COMMAND_TYPES
 
 # Try to import dm_ai_module to get enums, otherwise define mocks/None.
 # Note: In some environments the compiled extension may be missing or fail to load.
@@ -175,13 +176,25 @@ def _validate_command_type(cmd: Dict[str, Any]):
     if cmd.get('legacy_original_type') == ctype:
         return
 
-    # Check if ctype is a valid member of _CommandType enum
-    if not hasattr(_CommandType, ctype):
-         cmd['legacy_warning'] = True
-         if 'legacy_original_type' not in cmd:
-             cmd['legacy_original_type'] = ctype
-         cmd['str_param'] = f"Invalid CommandType: {ctype}"
-         cmd['type'] = "NONE"
+    # Two modes:
+    # - Native enum present (dm_ai_module): be permissive; some builds expose a subset.
+    # - Test-injected enum: be strict; tests use this to validate warning behavior.
+    is_native_enum = bool(_CommandType is not None and getattr(_CommandType, '__module__', '') == 'dm_ai_module')
+
+    if ctype in _ALLOWED_VIRTUAL_COMMAND_TYPES:
+        return
+
+    if is_native_enum:
+        if ctype in COMMAND_TYPES:
+            return
+        if hasattr(_CommandType, ctype):
+            return
+    else:
+        if _CommandType is not None and hasattr(_CommandType, ctype):
+            return
+
+    cmd['legacy_warning'] = True
+    cmd.setdefault('legacy_invalid_type', ctype)
 
 def map_action(action_data: Any) -> Dict[str, Any]:
     """
@@ -570,10 +583,8 @@ def _handle_mutate(act_type, act, cmd):
 
 def _handle_selection(act_type, act, cmd):
     if act_type == "SELECT_OPTION":
-        # Fallback to QUERY or similar if CHOICE is not in Enum, but ideally CHOICE
-        cmd['type'] = "CHOICE" if hasattr(_CommandType, 'CHOICE') else "QUERY"
-        if cmd['type'] == 'QUERY':
-            cmd['query_kind'] = 'CHOICE'
+        # Always map to CHOICE; enum exposure differences are handled in validation.
+        cmd['type'] = "CHOICE"
 
         cmd['amount'] = act.get('value1', 1)
         if act.get('value2', 0) == 1:

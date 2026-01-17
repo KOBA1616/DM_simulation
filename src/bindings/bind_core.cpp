@@ -181,6 +181,7 @@ void bind_core(py::module& m) {
         .value("LOCK_SPELL_BY_COST", PassiveType::LOCK_SPELL_BY_COST)
         .value("CANNOT_SUMMON", PassiveType::CANNOT_SUMMON)
         .value("FORCE_SELECTION", PassiveType::FORCE_SELECTION)
+        .value("CANNOT_BE_SELECTED", PassiveType::CANNOT_BE_SELECTED)
         .export_values();
 
     py::class_<PassiveEffect>(m, "PassiveEffect")
@@ -232,6 +233,7 @@ void bind_core(py::module& m) {
         .value("POWER_MODIFIER", ModifierType::POWER_MODIFIER)
         .value("GRANT_KEYWORD", ModifierType::GRANT_KEYWORD)
         .value("SET_KEYWORD", ModifierType::SET_KEYWORD)
+        .value("ADD_RESTRICTION", ModifierType::ADD_RESTRICTION)
         .export_values();
 
     py::enum_<EffectPrimitive>(m, "EffectPrimitive")
@@ -655,6 +657,13 @@ void bind_core(py::module& m) {
         .def("add_card_to_zone", &GameState::add_card_to_zone)
         .def("register_card_instance", &GameState::register_card_instance)
         .def("undo", &GameState::undo)
+        .def("push_pending_target_select", [](GameState& s, int source_instance_id, PlayerID controller, const FilterDef& filter, int num_targets_needed) {
+            PendingEffect pe(EffectType::TRIGGER_ABILITY, source_instance_id, controller);
+            pe.resolve_type = ResolveType::TARGET_SELECT;
+            pe.filter = filter;
+            pe.num_targets_needed = num_targets_needed;
+            s.pending_effects.push_back(pe);
+        }, py::arg("source_instance_id"), py::arg("controller"), py::arg("filter"), py::arg("num_targets_needed") = 1)
         .def("add_passive_effect", &GameState::add_passive_effect)
         .def_readonly("command_history", &GameState::command_history)
         .def_readwrite("turn_number", &GameState::turn_number)

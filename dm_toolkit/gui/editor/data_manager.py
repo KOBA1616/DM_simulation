@@ -252,3 +252,59 @@ class CardDataManager:
         label = self.format_command_label(data)
 
         return self.add_child_item(target_item, "COMMAND", data, label)
+
+    # --- Legacy Action conversion helpers (for tests / migration) ---
+
+    def convert_action_tree_to_command(self, action_item):
+        """Convert an ACTION tree item into a normalized GameCommand dict.
+
+        This is a small compatibility helper used by tests and migration tooling.
+        All mapping logic is delegated to the unified converter.
+        """
+        from dm_toolkit.gui.editor.action_converter import ActionConverter
+
+        # Accept either editor items or plain objects used in tests.
+        try:
+            action_data = action_item.data(ROLE_DATA)
+        except Exception:
+            action_data = None
+
+        if not isinstance(action_data, dict):
+            return {"type": "NONE", "legacy_warning": True, "str_param": "Invalid action item"}
+
+        return ActionConverter.convert(action_data)
+
+    def collect_conversion_preview(self, root_item):
+        """Collect a preview list of action->command conversions under root_item."""
+        previews = []
+
+        def walk(item):
+            if item is None:
+                return
+
+            try:
+                role_type = item.data(ROLE_TYPE)
+            except Exception:
+                role_type = None
+
+            if role_type == "ACTION":
+                try:
+                    label = item.text()
+                except Exception:
+                    label = ""
+                cmd_data = self.convert_action_tree_to_command(item)
+                previews.append({"label": label, "cmd_data": cmd_data})
+
+            try:
+                rc = item.rowCount()
+            except Exception:
+                rc = 0
+            for i in range(rc):
+                try:
+                    child = item.child(i)
+                except Exception:
+                    child = None
+                walk(child)
+
+        walk(root_item)
+        return previews

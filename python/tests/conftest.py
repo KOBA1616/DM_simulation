@@ -52,7 +52,11 @@ def _setup_minimal_gui_stubs():
             self.stateChanged = unittest.mock.MagicMock()
             self.currentIndexChanged = unittest.mock.MagicMock()
             self.valueChanged = unittest.mock.MagicMock()
-            self.customContextMenuRequested = unittest.mock.MagicMock()
+            def findText(self, text):
+                for i, it in enumerate(self._items):
+                    if str(it[0]) == str(text):
+                        return i
+                return -1
             self.triggered = unittest.mock.MagicMock()
             self.activated = unittest.mock.MagicMock()
             self._items = []

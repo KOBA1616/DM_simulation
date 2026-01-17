@@ -16,16 +16,18 @@ except ImportError:
 class TestModifierPipeline(unittest.TestCase):
     def setUp(self):
         self.state = dm_ai_module.GameState(100)
-        self.card_db = {}
+        self.card_db = dm_ai_module.CardDatabase()
         # Setup dummy cards
-        self.card_db[1] = dm_ai_module.CardDefinition()
-        self.card_db[1].name = "TestCreature"
-        self.card_db[1].type = dm_ai_module.CardType.CREATURE
-        self.card_db[1].power = 3000
+        c1 = dm_ai_module.CardDefinition()
+        c1.name = "TestCreature"
+        c1.type = dm_ai_module.CardType.CREATURE
+        c1.power = 3000
+        self.card_db[1] = c1
 
-        self.card_db[2] = dm_ai_module.CardDefinition()
-        self.card_db[2].name = "TestModifierSource"
-        self.card_db[2].type = dm_ai_module.CardType.CREATURE
+        c2 = dm_ai_module.CardDefinition()
+        c2.name = "TestModifierSource"
+        c2.type = dm_ai_module.CardType.CREATURE
+        self.card_db[2] = c2
 
     def test_compile_action_and_execute(self):
         # 1. Setup GameState
@@ -54,7 +56,9 @@ class TestModifierPipeline(unittest.TestCase):
         source_id = 1
         state.add_test_card_to_battle(0, 2, 1, False, False)
 
-        instructions = dm_ai_module.EffectSystem.compile_action(state, action, source_id, card_db, {})
+        # Note: python/tests/conftest.py may wrap GameState with a proxy. Native bindings require the native object.
+        native_state = getattr(state, "_native", state)
+        instructions = dm_ai_module.EffectSystem.compile_action(native_state, action, source_id, card_db, {})
 
         self.assertTrue(len(instructions) > 0)
         inst = instructions[0]
@@ -65,7 +69,7 @@ class TestModifierPipeline(unittest.TestCase):
 
         # 4. Execute instructions via PipelineExecutor
         pipeline = dm_ai_module.PipelineExecutor()
-        pipeline.execute(instructions, state, card_db)
+        pipeline.execute(instructions, native_state, card_db)
 
         # 5. Verify effect applied (Global Filter based since no targets passed)
         passives = state.passive_effects

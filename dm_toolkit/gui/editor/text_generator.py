@@ -408,7 +408,7 @@ class CardTextGenerator:
             return cls._format_power_modifier(cond_text, full_target, value)
         
         elif mtype == "GRANT_KEYWORD":
-            return cls._format_grant_keyword(cond_text, full_target, keyword)
+            return cls._format_grant_keyword(cond_text, full_target, modifier)
         
         elif mtype == "SET_KEYWORD":
             return cls._format_set_keyword(cond_text, full_target, keyword)
@@ -444,15 +444,59 @@ class CardTextGenerator:
         return f"{cond}{target}のパワーを{sign}{value}する。"
     
     @classmethod
-    def _format_grant_keyword(cls, cond: str, target: str, str_val: str) -> str:
-        """Format GRANT_KEYWORD modifier. Uses CardTextResources."""
-        if str_val:
-            # Use CardTextResources for keyword translation
-            keyword = CardTextResources.get_keyword_text(str_val)
-            result = f"{cond}{target}に「{keyword}」を与える。"
-            return result
-        # Fallback: if str_val is empty, show a more helpful message
-        return f"{cond}{target}に能力を与える。"
+    def _format_grant_keyword(cls, cond: str, target: str, modifier: Dict[str, Any]) -> str:
+        """Format GRANT_KEYWORD modifier generically using modifier settings.
+
+        Uses `modifier` fields such as `mutation_kind`/`str_val`, `value`, `duration`,
+        and the provided `target` (which already includes scope/filter) to build
+        a natural Japanese sentence. Handles restriction-style keywords specially
+        but in a generic way driven by the modifier values.
+        """
+        # Resolve keyword id from modifier
+        str_val = modifier.get('mutation_kind') or modifier.get('str_val', '')
+
+        if not str_val:
+            return f"{cond}{target}に能力を与える。"
+
+        keyword = CardTextResources.get_keyword_text(str_val)
+
+        # Duration text
+        duration_key = modifier.get('duration') or modifier.get('input_value_key', '')
+        duration_text = ""
+        if duration_key:
+            trans = CardTextResources.get_duration_text(duration_key)
+            if trans and trans != duration_key:
+                duration_text = trans + "、"
+            elif duration_key in CardTextResources.DURATION_TRANSLATION:
+                duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
+
+        # Amount / value (how many to select)
+        amt = modifier.get('value') if modifier.get('value') not in (None, 0) else modifier.get('amount', 0)
+        if not isinstance(amt, int) or amt <= 0:
+            amt = None
+
+        # Restriction keywords (cannot attack/block etc.) are phrased as selection + effect
+        restriction_keys = [
+            'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
+        ]
+
+        subject = f"{cond}{target}"
+        # Build selection/subject phrase
+        if amt:
+            subject_phrase = f"{subject}を{amt}体は、"
+        else:
+            subject_phrase = f"{subject}を選び、"
+
+        # Ensure duration_text ends with a Japanese comma when present
+        if duration_text and not duration_text.endswith('、'):
+            duration_text = duration_text + '、'
+
+        if str_val in restriction_keys or str_val.upper() in restriction_keys:
+            # Use phrasing that applies an effect to the selected creature
+            return f"{subject_phrase}{duration_text}そのクリーチャーに{keyword}を与える。"
+
+        # Default behavior: give the keyword/effect to the target (quoted when it's a named keyword)
+        return f"{subject_phrase}{duration_text}そのクリーチャーに「{keyword}」を与える。"
     
     @classmethod
     def _format_set_keyword(cls, cond: str, target: str, str_val: str) -> str:
@@ -774,6 +818,28 @@ class CardTextGenerator:
             "UNDER_CARD": "UNDER_CARD",
         }
         return zone_map.get(z, z)
+
+    @classmethod
+    def _zone_to_japanese(cls, zone: str) -> str:
+        """Best-effort zone localization for text generation.
+
+        Unit tests run with a minimal i18n stub where tr() may be identity.
+        Keep the mapping here so core text output stays readable.
+        """
+        z = cls._normalize_zone_name(zone)
+        jp = {
+            "BATTLE_ZONE": "バトルゾーン",
+            "MANA_ZONE": "マナゾーン",
+            "SHIELD_ZONE": "シールドゾーン",
+            "HAND": "手札",
+            "GRAVEYARD": "墓地",
+            "DECK": "山札",
+            "DECK_TOP": "山札の上",
+            "DECK_BOTTOM": "山札の下",
+            "BUFFER": "バッファ",
+            "UNDER_CARD": "下",
+        }
+        return jp.get(z, tr(z))
 
     @classmethod
     def _format_command(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
@@ -1251,40 +1317,38 @@ class CardTextGenerator:
         elif atype == "REVOLUTION_CHANGE":
              return ""
 
+        
+
         elif atype == "APPLY_MODIFIER":
-             str_val = action.get("str_val", "")
-             val1 = action.get("value1", 0)
-             duration_key = action.get("duration") or action.get("input_value_key", "")
-             # Check if input_value_key is actually an input link (dict) or usage string, not a duration constant
-             if not duration_key and action.get("input_value_key") in CardTextResources.DURATION_TRANSLATION:
-                  duration_key = action.get("input_value_key")
+            # APPLY_MODIFIER uses str_param to indicate effect id (from schema)
+            str_param = action.get('str_param') or action.get('str_val') or action.get('mutation_kind') or ''
+            duration_key = action.get('duration') or action.get('input_value_key', '')
+            duration_text = ""
+            if duration_key:
+                trans = CardTextResources.get_duration_text(duration_key)
+                if trans and trans != duration_key:
+                    duration_text = trans + "、"
+                elif duration_key in CardTextResources.DURATION_TRANSLATION:
+                    duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
 
-             duration_text = ""
-             if duration_key:
-                 duration_text = CardTextResources.get_duration_text(duration_key)
-                 if duration_text and duration_text != duration_key: # Ensure it was translated (valid key)
-                     duration_text += "、"
-                 elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                      # Direct lookup fallback
-                      duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
-                 else:
-                      # If it's not a known duration key, ignore it (likely an input link variable name)
-                      duration_text = ""
+            # Effect application is not keyword granting.
+            # Build generic structure: 「(対象)を(数)体は、(期間)まで、そのクリーチャーに(効果)を与える。」
+            effect_text = CardTextResources.get_keyword_text(str_param) if str_param else "（効果）"
+            if isinstance(effect_text, str):
+                effect_text = effect_text.strip() or "（効果）"
 
-             if str_val == "SPEED_ATTACKER":
-                 return f"{duration_text}{target_str}に「スピードアタッカー」を与える。"
-             elif str_val == "BLOCKER":
-                 return f"{duration_text}{target_str}に「ブロッカー」を与える。"
-             elif str_val == "SLAYER":
-                 return f"{duration_text}{target_str}に「スレイヤー」を与える。"
-             elif str_val == "COST":
-                 sign = "少なくする" if val1 > 0 else "増やす"
-                 return f"{duration_text}{target_str}のコストを{abs(val1)}{sign}。"
-             else:
-                 jp_val = CardTextResources.get_keyword_text(str_val)
-                 if jp_val != str_val:
-                     return f"{duration_text}{target_str}に「{jp_val}」を与える。"
-                 return f"{duration_text}{target_str}に効果（{str_val}）を与える。"
+            # Amount comes from command 'amount' (value1 in proxy) in most cases.
+            amt = action.get('amount')
+            if amt is None:
+                amt = action.get('value1')
+
+            if isinstance(amt, int) and amt > 0:
+                select_phrase = f"{target_str}を{amt}{unit}は、"
+            else:
+                select_phrase = f"{target_str}を選び、"
+
+            return f"{select_phrase}{duration_text}そのクリーチャーに{effect_text}を与える。"
+
 
         # --- Enhanced Command-like actions ---
         elif atype == "TRANSITION":
@@ -1382,26 +1446,44 @@ class CardTextGenerator:
             if "{to_z}" in template:
                 template = template.replace("{to_z}", tr(to_z))
 
-           elif atype == "ADD_KEYWORD":
-               str_val = action.get("str_val") or action.get("str_param", "")
-               duration_key = action.get("duration") or action.get("input_value_key", "")
+        elif atype == "ADD_KEYWORD":
+            str_val = action.get("str_val") or action.get("str_param", "")
+            duration_key = action.get("duration") or action.get("input_value_key", "")
 
-             duration_text = ""
-             if duration_key:
-                 # Verify it is a valid duration key
-                 trans = CardTextResources.get_duration_text(duration_key)
-                 if trans and trans != duration_key:
-                     duration_text = trans + "、"
-                 elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                     duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
+            duration_text = ""
+            if duration_key:
+                # Verify it is a valid duration key
+                trans = CardTextResources.get_duration_text(duration_key)
+                if trans and trans != duration_key:
+                    duration_text = trans + "、"
+                elif duration_key in CardTextResources.DURATION_TRANSLATION:
+                    duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
 
-             keyword = CardTextResources.get_keyword_text(str_val)
+            keyword = CardTextResources.get_keyword_text(str_val)
 
-             # Explicit "this card" target override
-             if action.get("explicit_self"):
-                 target_str = "このカード"
+            # If this is a restriction keyword, use a different natural phrasing
+            restriction_keys = [
+                'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
+            ]
 
-             return f"{duration_text}{target_str}に「{keyword}」を与える。"
+            # Explicit "this card" target override
+            if action.get("explicit_self"):
+                target_str = "このカード"
+
+            if str_val in restriction_keys or str_val.upper() in restriction_keys:
+                # Build selection phrase (amount may be provided)
+                amt = action.get('amount', 1)
+                if isinstance(amt, int) and amt > 0:
+                    select_phrase = f"{target_str}を{amt}体選び、"
+                else:
+                    select_phrase = f"{target_str}を選び、"
+
+                # duration_text already formatted (e.g., "次の自分のターンのはじめは、")
+                # Final natural phrasing
+                return f"{select_phrase}{duration_text}そのクリーチャーは{keyword}。"
+
+            # Default phrasing for non-restriction keywords
+            return f"{duration_text}{target_str}に「{keyword}」を与える。"
 
         elif atype == "MUTATE":
              mkind = action.get("mutation_kind", "")
@@ -1914,16 +1996,25 @@ class CardTextGenerator:
             if not src_zone:
                 src_zone = action.get("from_zone", "GRAVEYARD") # Used as "Original Zone" here
 
-            zone_str = tr(dest_zone) if dest_zone else "どこか"
-            orig_zone_str = tr(src_zone) if src_zone else "元のゾーン"
+            zone_str = cls._zone_to_japanese(dest_zone) if dest_zone else "どこか"
+            orig_zone_str = cls._zone_to_japanese(src_zone) if src_zone else "元のゾーン"
             up_to_flag = bool(action.get('up_to', False))
 
-            # If input_key is present, we say "Instead of... move that card..."
+            # Special case: SELF replacement (spell/this card moving after resolving)
+            # Even when amount isn't specified, it should read as a single-card self reference.
+            scope = action.get("scope", action.get('target_group', "NONE"))
+            is_self_ref = scope == "SELF"
+
+            # If input_key is present, reference the prior selection as "そのカード".
             if input_key:
                 up_to_text = "まで" if up_to_flag else ""
-                template = f"{{target}}をその同じ数だけ{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                template = f"そのカードをその同じ数だけ{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
             else:
-                if val1 > 0:
+                if is_self_ref:
+                    target_str = "このカード"
+                    unit = ""
+                    template = f"{{target}}を{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                elif val1 > 0:
                     # Normal case: specific amount specified
                     up_to_text = "まで" if up_to_flag else ""
                     template = f"{{target}}を{{value1}}{{unit}}{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
@@ -2207,8 +2298,9 @@ class CardTextGenerator:
         Attempt to describe the target based on scope, filter, etc.
         Returns (target_description, unit_counter)
         """
-        scope = action.get("scope", "NONE")
-        filter_def = action.get("filter", {})
+        # Accept either new ('scope'/'filter') or legacy ('target_group'/'target_filter') keys
+        scope = action.get("scope", action.get('target_group', "NONE"))
+        filter_def = action.get("filter", action.get('target_filter', {}))
         atype = action.get("type", "")
 
         target_desc = ""
@@ -2387,8 +2479,6 @@ class CardTextGenerator:
             if "SHIELD_ZONE" in zones and (not types or "CARD" in types):
                 target_desc = target_desc.replace("シールドゾーンのカード", "シールド")
                 unit = "つ"
-            if "BATTLE_ZONE" in zones:
-                 target_desc = target_desc.replace("バトルゾーンの", "")
 
         else:
             if atype == "DESTROY":

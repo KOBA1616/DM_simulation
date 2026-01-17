@@ -67,9 +67,9 @@ class OptionsControlWidget(QWidget):
         self.layout.setContentsMargins(0,0,0,0)
 
         self.spin = NumberWidget(self, 1, 10)
-        self.btn = QPushButton("Generate Options")
+        self.btn = QPushButton(tr("Generate Options"))
         self.btn.clicked.connect(callback)
-        self.label = QLabel("Options Count")
+        self.label = QLabel(tr("Options Count"))
 
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.spin)
@@ -246,13 +246,13 @@ class WidgetFactory:
             cb = getattr(parent, 'request_generate_options', lambda: None)
             widget = OptionsControlWidget(parent, cb)
 
-           elif w_type == 'ref_mode_combo':
-               widget = RefModeComboWrapper(parent)
-               widget.currentIndexChanged.connect(lambda: update_callback())
+        elif w_type == 'ref_mode_combo':
+            widget = RefModeComboWrapper(parent)
+            widget.currentIndexChanged.connect(lambda: update_callback())
 
         # Fallback for generic combo
         if widget is None and w_type and 'combo' in w_type:
-              widget = SelectComboWidget(parent)
+            widget = SelectComboWidget(parent)
             widget.currentIndexChanged.connect(lambda: update_callback())
 
         return widget
@@ -309,9 +309,10 @@ def _create_civ_widget(parent, schema, cb):
     widget.changed.connect(lambda: cb())
     return widget
 
-def _create_enum_widget(parent, schema, cb):
+def _create_races_widget(parent, schema, cb):
+    # Use a simple text-based editor for comma-separated races
     widget = RacesEditorWidget(parent)
-    widget = SelectComboWidget(parent)
+    widget.textChanged.connect(lambda: cb())
     return widget
 
 def _create_type_select_widget(parent, schema, cb):
@@ -322,9 +323,6 @@ def _create_type_select_widget(parent, schema, cb):
     return widget
 
 def _create_select_widget(parent, schema, cb):
-
-            if schema.default is None:
-                widget.addItem("---", None)
     hint = schema.widget_hint
     widget = None
     if hint == 'ref_mode_combo':
@@ -342,9 +340,9 @@ def _create_select_widget(parent, schema, cb):
                 # Use CardTextResources for translation if available (e.g. DURATION_THIS_TURN)
                 label = str(opt)
                 if opt in CardTextResources.DURATION_TRANSLATION:
-                     label = CardTextResources.get_duration_text(opt)
+                    label = CardTextResources.get_duration_text(opt)
                 elif opt in CardTextResources.KEYWORD_TRANSLATION: # Also handle keywords if passed as raw list
-                     label = CardTextResources.get_keyword_text(opt)
+                    label = CardTextResources.get_keyword_text(opt)
 
                 widget.addItem(label, opt) # Display label, store value (opt)
 

@@ -52,7 +52,8 @@ namespace dm::core {
         POWER_MODIFIER,
         GRANT_KEYWORD,
         SET_KEYWORD,
-        FORCE_ATTACK
+        FORCE_ATTACK,
+        ADD_RESTRICTION
     };
 
     NLOHMANN_JSON_SERIALIZE_ENUM(Civilization, {
@@ -417,7 +418,8 @@ namespace dm::core {
         {ModifierType::POWER_MODIFIER, "POWER_MODIFIER"},
         {ModifierType::GRANT_KEYWORD, "GRANT_KEYWORD"},
         {ModifierType::SET_KEYWORD, "SET_KEYWORD"},
-        {ModifierType::FORCE_ATTACK, "FORCE_ATTACK"}
+        {ModifierType::FORCE_ATTACK, "FORCE_ATTACK"},
+        {ModifierType::ADD_RESTRICTION, "ADD_RESTRICTION"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(EffectPrimitive, {
