@@ -1191,9 +1191,6 @@ class CardTextGenerator:
 
             return f"＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
 
-        elif atype == "REVOLUTION_CHANGE":
-             return ""
-
         elif atype == "APPLY_MODIFIER":
              str_val = action.get("str_val", "")
              val1 = action.get("value1", 0)

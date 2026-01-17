@@ -167,6 +167,12 @@
     "produces_output": true,
     "outputs": { "output_value_key": "Condition Result" }
   },
+  "STAT": {
+    "visible": ["str_param", "amount", "output_link"],
+    "labels": { "str_param": "Stat Key", "amount": "Value to Add" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Updated Stat Value" }
+  },
   "COST_REFERENCE": {
     "visible": ["ref_mode", "output_link"],
     "tooltip": "Reference cost or reduce cost",
