@@ -244,6 +244,7 @@ class CardTextResources:
         "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
         "REPLACE_MOVE_CARD": "（置換移動）",
         "APPLY_MODIFIER": "効果を付与する。",
+        "REVOLUTION_CHANGE": "革命チェンジ：{filter}",
 
         # --- Generalized Commands (Mapped to natural text if encountered in Card Data) ---
         "TRANSITION": "{target}を{from_zone}から{to_zone}へ移動する。", # Fallback
