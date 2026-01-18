@@ -3,6 +3,8 @@
 """
 Simple Transformer Training
 シンプルな強化学習スクリプト
+
+Executed on: 2026-01-18
 """
 
 import sys
@@ -145,8 +147,8 @@ def train_simple(data_path: str = "data/transformer_training_data.npz", epochs: 
     print("\n" + "=" * 80)
     print("✓ Training complete")
     print(f"\nNext steps:")
-    print(f"  1. Generate more training data:")
-    print(f"     python generate_training_data.py")
+    print(f"  1. Generate more training data:
+     python generate_training_data.py")
     print(f"  2. Run another training round")
     print("=" * 80)
 
