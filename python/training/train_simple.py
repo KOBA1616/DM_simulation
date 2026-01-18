@@ -95,6 +95,10 @@ def collate_fn(batch):
 
     # Check if inputs are sequences (tensors of dim 1 with varying lengths)
     if inputs[0].dim() == 1:
+        # Ensure integer (Long) dtype for token indices before padding
+        if inputs[0].dtype != torch.long and inputs[0].dtype != torch.int64:
+            inputs = [x.to(torch.long) for x in inputs]
+
         # Pad sequences
         padded_inputs = pad_sequence(inputs, batch_first=True, padding_value=0)
 
