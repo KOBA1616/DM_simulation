@@ -2100,6 +2100,11 @@ class CardTextGenerator:
 
              return f"{src_text}{target_str}を{count}{unit}バトルゾーンに出す。"
 
+        elif atype == "SUMMON_TOKEN":
+             token_id = action.get("str_val", "")
+             count = val1 if val1 > 0 else 1
+             return f"トークン（{token_id}）を{count}体出す。"
+
         elif atype == "SHUFFLE_DECK":
              return "山札をシャッフルする。"
 
