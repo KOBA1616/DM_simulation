@@ -6,10 +6,16 @@ magic.jsonデッキを使用した訓練データ生成スクリプト
 """
 
 import sys
-sys.path.insert(0, '.')
+import os
+from pathlib import Path
+
+# プロジェクトルートを設定してパスに追加
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
+# カレントディレクトリをプロジェクトルートに変更（データ読み込みのため）
+os.chdir(project_root)
 
 import numpy as np
-import os
 import json
 from typing import List
 
