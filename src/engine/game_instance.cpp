@@ -9,6 +9,8 @@
 #include "engine/systems/card/effect_system.hpp" // Added for EffectSystem
 #include <functional>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 namespace dm::engine {
 
@@ -17,6 +19,7 @@ namespace dm::engine {
 
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
         : state(seed), card_db(db) {
+        initial_seed_ = seed;
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
@@ -26,6 +29,7 @@ namespace dm::engine {
 
     GameInstance::GameInstance(uint32_t seed)
         : state(seed), card_db(CardRegistry::get_all_definitions_ptr()) {
+        initial_seed_ = seed;
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
 
@@ -50,9 +54,95 @@ namespace dm::engine {
         }
         state.active_pipeline = pipeline;
 
+        // Guard: prevent repeated re-entry for the same resolve action signature.
+        // Use a signature combining turn, intent type and source_instance_id.
+        auto make_sig = [&](const core::Action& a)->uint64_t {
+            uint64_t sig = 0;
+            sig |= (uint64_t)state.turn_number << 32;
+            sig |= (uint64_t)((int)a.type & 0xFFFF) << 16;
+            sig |= (uint64_t)((uint32_t)a.source_instance_id & 0xFFFF);
+            return sig;
+        };
+
+        const size_t HARD_MAX = 150;
+        bool inserted_sig = false;
+        uint64_t sig = make_sig(action);
+
+        try {
+            if (pipeline->call_stack.size() > 0) {
+                if (action.type == PlayerIntent::RESOLVE_PLAY) {
+                    // If we are already resolving the same signature, skip to avoid runaway loops
+                    if (resolving_action_sigs.count(sig)) {
+                        std::filesystem::create_directories("logs");
+                        std::string trace_file = "logs/game_trace_" + std::to_string(initial_seed_) + ".jsonl";
+                        std::ofstream lout(trace_file, std::ios::app);
+                        if (lout) {
+                            lout << "{\"event\":\"resolve_action_skipped_repeat\",";
+                            lout << "\"turn\":" << state.turn_number << ",";
+                            lout << "\"phase\":" << static_cast<int>(state.current_phase) << ",";
+                            lout << "\"reason\":\"reentrant_signature\",";
+                            lout << "\"call_stack_size\":" << pipeline->call_stack.size() << "}" << std::endl;
+                            lout.close();
+                        }
+                        return;
+                    }
+                }
+
+                if (pipeline->call_stack.size() > HARD_MAX) {
+                    std::filesystem::create_directories("logs");
+                    std::string trace_file = "logs/game_trace_" + std::to_string(initial_seed_) + ".jsonl";
+                    std::ofstream lout(trace_file, std::ios::app);
+                    if (lout) {
+                        lout << "{\"event\":\"resolve_action_aborted\",";
+                        lout << "\"turn\":" << state.turn_number << ",";
+                        lout << "\"phase\":" << static_cast<int>(state.current_phase) << ",";
+                        lout << "\"reason\":\"call_stack_overflow\",";
+                        lout << "\"call_stack_size\":" << pipeline->call_stack.size() << "}" << std::endl;
+                        lout.close();
+                    }
+                    return;
+                }
+            }
+        } catch(...) {}
+
+        // If this is a RESOLVE_PLAY and we're about to process, insert signature to prevent reentry.
+        if (action.type == PlayerIntent::RESOLVE_PLAY) {
+            resolving_action_sigs.insert(sig);
+            inserted_sig = true;
+        }
+
+        // RAII guard to ensure signature removal on all exits
+        struct ScopedSigRemover {
+            GameInstance* inst;
+            uint64_t s;
+            bool active;
+            ~ScopedSigRemover() {
+                if (active) inst->resolving_action_sigs.erase(s);
+            }
+        } scoped_remover{this, sig, inserted_sig};
+
         // --- Migration to GameCommand ---
         // Instead of dispatching directly via GameLogicSystem, we convert to Command if possible
         // to ensure Undo/Redo consistency (treating Action as a single reversible unit).
+
+        // Ensure logs directory exists
+        try {
+            std::filesystem::create_directories("logs");
+        } catch (...) {}
+        // Open per-game trace log (append)
+        std::string trace_file = "logs/game_trace_" + std::to_string(initial_seed_) + ".jsonl";
+        try {
+            std::ofstream lout(trace_file, std::ios::app);
+            if (lout) {
+                lout << "{\"event\":\"resolve_action_start\",";
+                lout << "\"turn\":" << state.turn_number << ",";
+                lout << "\"phase\":" << static_cast<int>(state.current_phase) << ",";
+                lout << "\"active\":" << state.active_player_id << ",";
+                lout << "\"action_type\":" << (int)action.type << ",";
+                lout << "\"call_stack_size\":" << (pipeline ? pipeline->call_stack.size() : 0) << "}" << std::endl;
+                lout.close();
+            }
+        } catch (...) {}
 
         std::unique_ptr<GameCommand> cmd = nullptr;
 
@@ -150,6 +240,25 @@ namespace dm::engine {
              // If cmd was not created (e.g. unmapped intent), fallback
              systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
         }
+
+        // Execute any instructions enqueued onto the pipeline during dispatch/command
+        try {
+            if (pipeline) pipeline->execute(nullptr, state, *card_db);
+        } catch (...) {}
+
+        // Log after execution
+        try {
+            std::ofstream lout(trace_file, std::ios::app);
+            if (lout) {
+                lout << "{\"event\":\"resolve_action_end\",";
+                lout << "\"turn\":" << state.turn_number << ",";
+                lout << "\"phase\":" << static_cast<int>(state.current_phase) << ",";
+                lout << "\"active\":" << state.active_player_id << ",";
+                lout << "\"winner\":" << static_cast<int>(state.winner) << ",";
+                lout << "\"call_stack_size\":" << (pipeline ? pipeline->call_stack.size() : 0) << "}" << std::endl;
+                lout.close();
+            }
+        } catch (...) {}
 
         systems::ContinuousEffectSystem::recalculate(state, *card_db);
     }

@@ -11,6 +11,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <unordered_set>
 
 namespace dm::engine {
 
@@ -57,6 +58,9 @@ namespace dm::engine {
 
     private:
         void advance_phase();
+        uint32_t initial_seed_ = 0;
+        // Tracks active resolve-action signatures to prevent repeated re-entry
+        std::unordered_set<uint64_t> resolving_action_sigs;
     };
 
 } // namespace dm::engine

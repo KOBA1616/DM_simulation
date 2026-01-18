@@ -4,9 +4,12 @@
 #include "engine/systems/card/condition_system.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include <iostream>
+#include <cstdio>
 #include <algorithm>
 #include <random>
 #include <set>
+#include <filesystem>
+#include <fstream>
 
 namespace dm::engine::systems {
 
@@ -24,13 +27,63 @@ namespace dm::engine::systems {
         if ((!instructions || instructions->empty()) && call_stack.empty()) return;
 
         if (instructions && !instructions->empty()) {
+            size_t before_size = call_stack.size();
+            int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+            int parent_pc = -1;
+            if (parent_idx >= 0) parent_pc = call_stack[parent_idx].pc;
+            std::string inst_dump = "{}";
+            if (instructions && !instructions->empty()) inst_dump = (*instructions)[0].args.dump();
+            std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
             call_stack.push_back({instructions, 0, LoopContext{}});
+            size_t after_size = call_stack.size();
+            std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
         }
 
         execution_paused = false;
 
+        // Append a short trace entry for pipeline execute start
+        try {
+            std::filesystem::create_directories("logs");
+            std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+            if (lout) {
+                lout << "PIPELINE_EXECUTE start: turn=" << state.turn_number << " call_stack=" << call_stack.size() << "\n";
+                lout.close();
+            }
+        } catch (...) {}
+
+        // Safety: prevent runaway call stack (re-entrancy / infinite nesting).
+        const size_t MAX_CALL_STACK = 200;
+
+        // Track repeated top-instruction signatures to detect runaway loops
+        int resolve_repeat_count = 0;
+        std::string last_inst_sig;
+
         while (!call_stack.empty() && !execution_paused) {
-            auto& frame = call_stack.back();
+            // Use index-based access to avoid invalidated references when call_stack is resized
+            int frame_idx = (int)call_stack.size() - 1;
+            auto& frame = call_stack[frame_idx];
+
+            // Detect runaway nesting
+            if (call_stack.size() > MAX_CALL_STACK) {
+                try {
+                    std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                    if (lout) {
+                        lout << "PIPELINE_EXECUTE DUMP EXCEEDED: turn=" << state.turn_number
+                             << " call_stack=" << call_stack.size()
+                             << " pc=" << frame.pc << "\n";
+                        // Dump top frame instruction if possible
+                        if (frame.pc < (int)frame.instructions->size()) {
+                            auto inst = (*frame.instructions)[frame.pc];
+                            lout << "TOP_INSTRUCTION op=" << static_cast<int>(inst.op) << " args=" << inst.args.dump() << "\n";
+                        }
+                        lout.close();
+                    }
+                } catch (...) {}
+
+                // Pause execution to allow external inspection/resume rather than looping forever
+                execution_paused = true;
+                break;
+            }
 
             if (frame.pc >= (int)frame.instructions->size()) {
                 call_stack.pop_back();
@@ -39,27 +92,83 @@ namespace dm::engine::systems {
 
             const auto& inst = (*frame.instructions)[frame.pc];
 
-            int current_stack_size = call_stack.size();
+            int current_stack_size = (int)call_stack.size();
+            int parent_pc_before = -1;
+            if (current_stack_size > 0) parent_pc_before = call_stack[current_stack_size - 1].pc;
+
+            // Detect repeating top-instruction signatures (consecutive identical instructions)
+            try {
+                std::string sig = std::to_string((int)inst.op) + ":" + inst.args.dump();
+                if (!last_inst_sig.empty() && last_inst_sig == sig) {
+                    resolve_repeat_count++;
+                } else {
+                    last_inst_sig = sig;
+                    resolve_repeat_count = 1;
+                }
+
+                const int RESOLVE_REPEAT_THRESHOLD = 80;
+                if (resolve_repeat_count > RESOLVE_REPEAT_THRESHOLD) {
+                    try {
+                        std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                        if (lout) {
+                            lout << "PIPELINE_EXECUTE REPEAT_DETECTED: turn=" << state.turn_number
+                                 << " repeats=" << resolve_repeat_count << " call_stack=" << call_stack.size() << "\n";
+                            lout << "TOP_INST_SIG=" << sig << "\n";
+                            // Dump a few top frames
+                            for (int i = 0; i < 6 && i < (int)call_stack.size(); ++i) {
+                                int idx = (int)call_stack.size() - 1 - i;
+                                auto &f = call_stack[idx];
+                                if (f.pc < (int)f.instructions->size()) {
+                                    auto ii = (*f.instructions)[f.pc];
+                                    lout << "FRAME_" << i << " op=" << (int)ii.op << " args=" << ii.args.dump() << " pc=" << f.pc << "\n";
+                                }
+                            }
+                            lout.close();
+                        }
+                    } catch(...) {}
+                    execution_paused = true;
+                    break;
+                }
+            } catch(...) { resolve_repeat_count = 0; last_inst_sig.clear(); }
 
             execute_instruction(inst, state, card_db);
 
+            // If new frames were pushed, log parent pc change for diagnostics
+            if ((int)call_stack.size() > current_stack_size) {
+                try {
+                    std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                    if (lout) {
+                        int parent_idx = current_stack_size - 1;
+                        int parent_pc_after = -1;
+                        if (parent_idx >= 0 && parent_idx < (int)call_stack.size()) parent_pc_after = call_stack[parent_idx].pc;
+                        lout << "PIPELINE_EXECUTE PUSHED: turn=" << state.turn_number << " parent_idx=" << parent_idx
+                             << " before_pc=" << parent_pc_before << " after_pc=" << parent_pc_after
+                             << " new_call_stack=" << call_stack.size() << "\n";
+                        lout.close();
+                    }
+                } catch(...) {}
+            }
+
             if (execution_paused) break;
 
-            if (call_stack.size() > (size_t)current_stack_size) {
+            if ((int)call_stack.size() > current_stack_size) {
                  if (inst.op != InstructionOp::IF &&
                      inst.op != InstructionOp::LOOP &&
                      inst.op != InstructionOp::REPEAT) {
                      if (current_stack_size > 0 && current_stack_size <= (int)call_stack.size()) {
+                         // parent frame index is current_stack_size - 1
                          call_stack[current_stack_size - 1].pc++;
                      }
                  }
-            } else if (call_stack.size() < (size_t)current_stack_size) {
+            } else if ((int)call_stack.size() < current_stack_size) {
                  // Returned.
             } else {
                  if (inst.op != InstructionOp::IF &&
                      inst.op != InstructionOp::LOOP &&
                      inst.op != InstructionOp::REPEAT) {
-                     frame.pc++;
+                     // frame_idx still valid unless call_stack changed size, but we are in the branch
+                     // where size didn't change, so it's safe to use frame_idx
+                     if (frame_idx < (int)call_stack.size()) call_stack[frame_idx].pc++;
                  }
             }
         }
@@ -634,7 +743,18 @@ namespace dm::engine::systems {
 
         call_stack.back().pc++;
 
-        call_stack.push_back({block, 0, LoopContext{}});
+        {
+            size_t before_size = call_stack.size();
+            int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+            int parent_pc = -1;
+            if (parent_idx >= 0) parent_pc = call_stack[parent_idx].pc;
+            std::string inst_dump = "{}";
+            if (block && !block->empty()) inst_dump = (*block)[0].args.dump();
+            std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
+            call_stack.push_back({block, 0, LoopContext{}});
+            size_t after_size = call_stack.size();
+            std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
+        }
     }
 
     void PipelineExecutor::handle_loop(const Instruction& inst, GameState& state,
@@ -677,7 +797,18 @@ namespace dm::engine::systems {
 
              ctx.index++;
 
-             call_stack.push_back({block, 0, LoopContext{}});
+             {
+                 size_t before_size = call_stack.size();
+                 int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+                 int parent_pc = -1;
+                 if (parent_idx >= 0) parent_pc = call_stack[parent_idx].pc;
+                 std::string inst_dump = "{}";
+                 if (block && !block->empty()) inst_dump = (*block)[0].args.dump();
+                 std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
+                 call_stack.push_back({block, 0, LoopContext{}});
+                 size_t after_size = call_stack.size();
+                 std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
+             }
         } else {
              ctx.active = false;
              frame.pc++;

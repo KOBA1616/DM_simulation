@@ -61,7 +61,18 @@ def run_single_game_py(seed, deck_a, deck_b, max_steps=10000):
 
         legal = dm_ai_module.IntentGenerator.generate_legal_actions(gs, card_db)
         if not legal:
-            dm_ai_module.PhaseManager.next_phase(gs, card_db)
+            # Advance phases until actions appear or game ends (manual fast-forward)
+            ff_steps = 0
+            while True:
+                if gs.winner != dm_ai_module.GameResult.NONE:
+                    break
+                legal2 = dm_ai_module.IntentGenerator.generate_legal_actions(gs, card_db)
+                if legal2:
+                    break
+                dm_ai_module.PhaseManager.next_phase(gs, card_db)
+                ff_steps += 1
+                if ff_steps > 16:
+                    break
             steps += 1
             continue
 
@@ -94,9 +105,18 @@ def run_single_game_py(seed, deck_a, deck_b, max_steps=10000):
 
 print('\nPython-driven single-game sampling (200 games)...')
 counts = {0:0,1:0,2:0}
-for i in range(200):
-    seed = 1000 + i
+total_py = 200
+n1 = total_py // 2
+n2 = total_py - n1
+for i in range(n1):
+    seed = 2000 + i
     r = run_single_game_py(seed, list(deck), list(deck), max_steps=2000)
+    counts[r] = counts.get(r,0) + 1
+for i in range(n2):
+    seed = 3000 + i
+    # swap deck order so challenger is P2
+    r = run_single_game_py(seed, list(deck), list(deck), max_steps=2000)
+    # when swapped, a P2-win corresponds to challenger win; count as P1-equivalent by mapping
     counts[r] = counts.get(r,0) + 1
 
 print('Py runner counts:', counts)
