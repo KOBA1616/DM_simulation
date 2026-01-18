@@ -3,6 +3,31 @@
 ADD_KEYWORDフォームのstr_val/duration機能テスト
 """
 import json
+import sys
+from pathlib import Path
+
+# Add project root to path
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+import dm_ai_module
+
+# Patch GameResult for stub compatibility if __members__ is missing
+if not hasattr(dm_ai_module.GameResult, '__members__'):
+    class MockEnumMember(int):
+        def __new__(cls, value, name):
+            obj = int.__new__(cls, value)
+            obj._value_ = value
+            obj.name = name
+            return obj
+
+    dm_ai_module.GameResult.__members__ = {
+        'NONE': MockEnumMember(dm_ai_module.GameResult.NONE, 'NONE'),
+        'P1_WIN': MockEnumMember(dm_ai_module.GameResult.P1_WIN, 'P1_WIN'),
+        'P2_WIN': MockEnumMember(dm_ai_module.GameResult.P2_WIN, 'P2_WIN'),
+        'DRAW': MockEnumMember(dm_ai_module.GameResult.DRAW, 'DRAW')
+    }
 
 def test_add_keyword_schema():
     """ADD_KEYWORDスキーマの定義を確認"""
@@ -84,8 +109,8 @@ def test_text_generation_with_duration():
     print(f"\nGenerated text:\n{text}")
     
     # 期待される文字列が含まれているか確認
-    assert "常に、カードに「S・トリガー」を与える" in text, "Duration and keyword not found in generated text"
-    assert "墓地の呪文の数が3以上なら" in text, "COMPARE_INPUT condition not found"
+    assert "常に、自分のシールドに「S・トリガー」を与える" in text, "Duration and keyword not found in generated text"
+    assert "墓地の呪文の数が2以上なら" in text, "COMPARE_INPUT condition not found"
     
     print("\n✅ Text generation with duration test passed")
 

@@ -4,6 +4,31 @@
 保存された値が正しく表示されることを確認
 """
 import json
+import sys
+from pathlib import Path
+
+# Add project root to path
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+import dm_ai_module
+
+# Patch GameResult for stub compatibility if __members__ is missing
+if not hasattr(dm_ai_module.GameResult, '__members__'):
+    class MockEnumMember(int):
+        def __new__(cls, value, name):
+            obj = int.__new__(cls, value)
+            obj._value_ = value
+            obj.name = name
+            return obj
+
+    dm_ai_module.GameResult.__members__ = {
+        'NONE': MockEnumMember(dm_ai_module.GameResult.NONE, 'NONE'),
+        'P1_WIN': MockEnumMember(dm_ai_module.GameResult.P1_WIN, 'P1_WIN'),
+        'P2_WIN': MockEnumMember(dm_ai_module.GameResult.P2_WIN, 'P2_WIN'),
+        'DRAW': MockEnumMember(dm_ai_module.GameResult.DRAW, 'DRAW')
+    }
 
 def test_form_data_loading():
     """保存されたデータがフォームに正しくロードされることを確認"""
