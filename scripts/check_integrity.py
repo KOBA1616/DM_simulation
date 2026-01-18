@@ -5,9 +5,14 @@
 import json
 import sys
 import io
+import os
+from pathlib import Path
 
 # 標準出力を UTF-8 に設定
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+# プロジェクトルートを設定
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 def check_command_ui_json():
     """command_ui.json の整合性チェック"""
@@ -15,7 +20,7 @@ def check_command_ui_json():
     print("1. command_ui.json の整合性チェック")
     print("=" * 60)
     
-    with open('data/configs/command_ui.json', 'r', encoding='utf-8') as f:
+    with open(PROJECT_ROOT / 'data/configs/command_ui.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
     
     groups = data.get('COMMAND_GROUPS', {})
@@ -71,7 +76,7 @@ def check_ja_json():
     print("2. ja.json の翻訳キー確認")
     print("=" * 60)
     
-    with open('data/locale/ja.json', 'r', encoding='utf-8') as f:
+    with open(PROJECT_ROOT / 'data/locale/ja.json', 'r', encoding='utf-8') as f:
         translations = json.load(f)
     
     # 必要な翻訳キー
@@ -102,6 +107,10 @@ def check_schema_config():
     print("=" * 60)
     
     try:
+        # パスを追加してインポート可能にする
+        if str(PROJECT_ROOT) not in sys.path:
+            sys.path.insert(0, str(PROJECT_ROOT))
+
         from dm_toolkit.gui.editor.schema_config import register_all_schemas
         from dm_toolkit.gui.editor.schema_def import get_schema, SCHEMA_REGISTRY
         
@@ -171,7 +180,7 @@ def check_grant_keyword_actions():
     print("5. 付与・キーワード付与アクションの整合性チェック")
     print("=" * 60)
 
-    with open('data/cards.json', 'r', encoding='utf-8') as f:
+    with open(PROJECT_ROOT / 'data/cards.json', 'r', encoding='utf-8') as f:
         cards = json.load(f)
 
     issues = []

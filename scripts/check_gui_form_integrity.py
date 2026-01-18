@@ -263,7 +263,7 @@ def main():
     print("=" * 80)
 
     # パスの設定
-    project_root = Path(__file__).parent
+    project_root = Path(__file__).resolve().parent.parent
     forms_dir = project_root / 'dm_toolkit' / 'gui' / 'editor' / 'forms'
     inspector_file = project_root / 'dm_toolkit' / 'gui' / 'editor' / 'property_inspector.py'
 
