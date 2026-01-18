@@ -272,15 +272,47 @@ else:
             self.mana_zone: list[Any] = []
             self.shield_zone: list[Any] = []
 
+    class GameResult(Enum):
+        NONE = 0
+        P1_WIN = 1
+        P2_WIN = 2
+        DRAW = 3
+
     class GameState:
         def __init__(self, *args: Any, **kwargs: Any):
             self.game_over = False
             self.turn_number = 0
             self.players = [PlayerStub(), PlayerStub()]
             self.active_player_id = 0
+            self.winner = 0
+            self.loop_proven = False
 
         def setup_test_duel(self) -> None:
             return
+
+    class GameInstance:
+        def __init__(self, seed: int = 0, card_db: Any = None):
+            self.state = GameState()
+
+    class DevTools:
+        @staticmethod
+        def trigger_loop_detection(state: Any) -> None:
+            state.loop_proven = True
+
+    class DataCollector:
+        def collect_data_batch_heuristic(self, count: int, use_threads: bool, full: bool):
+            # Stub return
+            class Batch:
+                def __init__(self):
+                    self.token_states = []
+                    self.policies = []
+                    self.values = []
+
+            b = Batch()
+            b.token_states = [[] for _ in range(count)]
+            b.policies = [[] for _ in range(count)]
+            b.values = [0.0 for _ in range(count)]
+            return b
 
     class CardDefinition:
         def __init__(self, *args: Any, **kwargs: Any):
@@ -357,6 +389,10 @@ else:
         @staticmethod
         def next_phase(state: Any, card_db: Any) -> None:
             return
+
+        @staticmethod
+        def check_game_over(state: Any, result: Any) -> bool:
+            return state.game_over
 
     def register_card_data(data: Any) -> None:
         return

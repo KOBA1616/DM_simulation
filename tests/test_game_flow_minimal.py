@@ -17,7 +17,9 @@ Verified features:
 
 import sys
 import os
-sys.path.insert(0, '.')
+from pathlib import Path
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
 
 # Set encoding to UTF-8
 import io

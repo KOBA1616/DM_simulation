@@ -7,7 +7,9 @@ Testing: Draw, Untap, Tap, Game Flow, Card Effects, Attack, Shield Break, Win/Lo
 
 import sys
 import os
-sys.path.insert(0, '.')
+from pathlib import Path
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
 
 # Force UTF-8 output
 import locale

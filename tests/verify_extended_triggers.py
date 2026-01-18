@@ -1,10 +1,15 @@
 import sys
 import os
 import json
+from pathlib import Path
 
-# Add bin/ to path
-bin_path = os.path.join(os.path.dirname(__file__), '../bin')
-sys.path.append(bin_path)
+# Add project root to path
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
+
+# Add bin/ to path (relative to root)
+bin_path = project_root / 'bin'
+sys.path.append(str(bin_path))
 
 try:
     import dm_ai_module
