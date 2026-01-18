@@ -93,32 +93,31 @@ def main():
     # Ensure meta contains at least one deck so evaluate_deck uses real runner path
     eco.meta_decks = [{"name": "self", "cards": deck}]
 
-    # evaluate_deck may sample meta; instead run a deterministic alternating-order self-play
-    # so that challenger is P1 in even games and P2 in odd games (fairness)
-    wins = 0
+    # Use batch play to collect results deterministically from C++ runner
     total = args.games
-    for i in range(total):
-        # Always call matchup with same deck pair; interpret result based on index parity
-        try:
-            res = eco.runner.play_deck_matchup(deck, deck, 1, 4)
-        except Exception:
-            # Fallback to evaluate_deck if runner fails
-            wr, score = eco.evaluate_deck(deck, "self", num_games=args.games)
-            print(f"Fallback evaluate_deck result: {wr*100:.1f}%, Smart Score: {score:.2f}")
-            break
+    # Run half with challenger as P1, half with challenger as P2 by swapping argument order
+    n1 = total // 2
+    n2 = total - n1
 
-        if not res:
-            continue
+    deck_a = list(deck)
+    deck_b = list(deck)
 
-        winner = res[0]
-        # If i is even, challenger acted as P1 -> win if winner == 1
-        if i % 2 == 0:
-            if winner == 1:
-                wins += 1
-        else:
-            # odd: challenger considered as P2 -> win if winner == 2
-            if winner == 2:
-                wins += 1
+    wins = 0
+    try:
+        if n1 > 0:
+            res1 = eco.runner.play_deck_matchup(deck_a, deck_b, n1, 4)
+            # Challenger is deck_a (P1) in this batch
+            wins += res1.count(1)
+
+        if n2 > 0:
+            # Swap order so challenger is P2 in this batch
+            res2 = eco.runner.play_deck_matchup(deck_b, deck_a, n2, 4)
+            # Challenger is deck_a passed as second arg -> count P2 wins
+            wins += res2.count(2)
+    except Exception:
+        wr, score = eco.evaluate_deck(deck, "self", num_games=args.games)
+        print(f"Fallback evaluate_deck result: {wr*100:.1f}%, Smart Score: {score:.2f}")
+        return
 
     wr = wins / total if total > 0 else 0.0
     # Compute a quick smart score via evaluate_deck's stats path for reporting

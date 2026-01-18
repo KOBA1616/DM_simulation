@@ -4,6 +4,7 @@
 #include "ai/mcts/mcts.hpp"
 #include "ai/evaluator/heuristic_evaluator.hpp"
 #include "ai/evaluator/beam_search_evaluator.hpp"
+#include "ai/agents/heuristic_agent.hpp"
 #if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)
 #include "ai/evaluator/neural_evaluator.hpp"
 #endif
@@ -90,6 +91,10 @@ void bind_ai(py::module& m) {
     py::class_<HeuristicEvaluator>(m, "HeuristicEvaluator")
         .def(py::init<const std::map<CardID, CardDefinition>&>())
         .def("evaluate", &HeuristicEvaluator::evaluate);
+
+    py::class_<HeuristicAgent>(m, "HeuristicAgent")
+        .def(py::init<int, const std::map<CardID, CardDefinition>&>())
+        .def("get_action", &HeuristicAgent::get_action);
 
     py::class_<BeamSearchEvaluator>(m, "BeamSearchEvaluator")
         // Primary efficient constructor using CardRegistry

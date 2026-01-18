@@ -117,7 +117,7 @@ class EvolutionEcosystem:
             # We need to manually drive it since GameInstance.start_game just sets up state
             # ParallelRunner logic:
             steps = 0
-            max_steps = 400 # Limit to avoid infinite loops
+            max_steps = 10000 # Increase limit to avoid premature termination
 
             while steps < max_steps:
                  if instance.state.game_over:

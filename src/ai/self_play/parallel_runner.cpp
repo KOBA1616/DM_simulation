@@ -398,7 +398,7 @@ namespace dm::ai {
             HeuristicAgent agent1(1, *card_db_);
 
             int steps = 0;
-            int max_steps = 1000;
+            int max_steps = 10000;
             dm::core::GameResult final_res = dm::core::GameResult::NONE;
 
             while (steps < max_steps) {
@@ -427,6 +427,24 @@ namespace dm::ai {
 
                  GameLogicSystem::resolve_action(instance.state, action, *card_db_);
                  steps++;
+            }
+
+            // Ensure finalization to capture winner if engine has pending resolution
+            if (final_res == dm::core::GameResult::NONE) {
+                dm::core::GameResult tmp = final_res;
+                if (dm::engine::PhaseManager::check_game_over(instance.state, tmp)) {
+                    final_res = tmp;
+                }
+                // Try finalization hook if available on state
+                try {
+                    instance.state.on_game_finished(final_res);
+                } catch(...) {
+                    // Ignore if not present
+                }
+                // Update from state if set
+                if (instance.state.winner != dm::core::GameResult::NONE) {
+                    final_res = instance.state.winner;
+                }
             }
 
             if (final_res == dm::core::GameResult::P1_WIN) results[i] = 1;
@@ -483,7 +501,7 @@ namespace dm::ai {
             HeuristicAgent agent1(1, *card_db_);
 
             int steps = 0;
-            int max_steps = 1000;
+            int max_steps = 10000;
             dm::core::GameResult final_res = dm::core::GameResult::NONE;
 
             while (steps < max_steps) {
