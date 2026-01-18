@@ -495,13 +495,25 @@ else:
 
     class FlowCommand:
         def __init__(self, *args: Any, **kwargs: Any):
-            pass
+            self.new_value = -1
+            if len(args) > 1:
+                self.new_value = args[1]
         def execute(self, state: Any) -> None:
             pass
 
     class MutationType(Enum):
         ADD_MODIFIER = 1
         ADD_PASSIVE = 2
+        TAP = 3
+        UNTAP = 4
+
+    class FlowType(IntEnum):
+        NONE = 0
+        SET_ATTACK_SOURCE = 1
+        SET_ATTACK_PLAYER = 2
+        SET_ATTACK_TARGET_CREATURE = 3
+        RESOLVE_BATTLE = 4
+        TURN_END = 5
 
     class CardData:
         def __init__(self, *args: Any, **kwargs: Any):
