@@ -12,6 +12,7 @@
 #include <omp.h>
 #include <random>
 #include <algorithm>
+#include <fstream>
 
 namespace dm::ai {
 
@@ -447,6 +448,24 @@ namespace dm::ai {
                 }
             }
 
+            // Per-game JSONL logging for diagnostics (append)
+            try {
+                std::ofstream ofs("logs/runner_debug.jsonl", std::ios::app);
+                if (ofs) {
+                    ofs << "{\"game\":" << i << ",\"seed\":" << seed << ",\"winner\":";
+                    if (final_res == dm::core::GameResult::P1_WIN) ofs << 1;
+                    else if (final_res == dm::core::GameResult::P2_WIN) ofs << 2;
+                    else ofs << 0;
+                    ofs << ",\"turn\":" << instance.state.turn_number;
+                    ofs << ",\"p1_hand\":" << instance.state.players[0].hand.size();
+                    ofs << ",\"p2_hand\":" << instance.state.players[1].hand.size();
+                    ofs << "}\n";
+                    ofs.close();
+                }
+            } catch(...) {
+                // ignore logging failures
+            }
+
             if (final_res == dm::core::GameResult::P1_WIN) results[i] = 1;
             else if (final_res == dm::core::GameResult::P2_WIN) results[i] = 2;
             else results[i] = 0;
@@ -537,9 +556,37 @@ namespace dm::ai {
                 final_res = instance.state.winner;
             }
 
-            if (final_res == dm::core::GameResult::P1_WIN) results[i] = 1;
-            else if (final_res == dm::core::GameResult::P2_WIN) results[i] = 2;
-            else results[i] = 0;
+                // Try additional finalization if still none
+                if (final_res == dm::core::GameResult::NONE) {
+                    dm::core::GameResult tmp = final_res;
+                    if (dm::engine::PhaseManager::check_game_over(instance.state, tmp)) {
+                        final_res = tmp;
+                    }
+                    try {
+                        instance.state.on_game_finished(final_res);
+                    } catch(...) { }
+                    if (instance.state.winner != dm::core::GameResult::NONE) final_res = instance.state.winner;
+                }
+
+                // Per-game JSONL logging for diagnostics (append)
+                try {
+                    std::ofstream ofs("logs/runner_debug.jsonl", std::ios::app);
+                    if (ofs) {
+                        ofs << "{\"game\":" << i << ",\"seed\":" << seed << ",\"winner\":";
+                        if (final_res == dm::core::GameResult::P1_WIN) ofs << 1;
+                        else if (final_res == dm::core::GameResult::P2_WIN) ofs << 2;
+                        else ofs << 0;
+                        ofs << ",\"turn\":" << instance.state.turn_number;
+                        ofs << ",\"p1_hand\":" << instance.state.players[0].hand.size();
+                        ofs << ",\"p2_hand\":" << instance.state.players[1].hand.size();
+                        ofs << "}\n";
+                        ofs.close();
+                    }
+                } catch(...) { }
+
+                if (final_res == dm::core::GameResult::P1_WIN) results[i] = 1;
+                else if (final_res == dm::core::GameResult::P2_WIN) results[i] = 2;
+                else results[i] = 0;
         }
 
         return results;
