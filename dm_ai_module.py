@@ -19,9 +19,9 @@ import importlib.machinery
 import importlib.util
 import os
 import sys
-from enum import Enum
+from enum import Enum, IntEnum
 from types import ModuleType
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 
 def _ensure_windows_dll_search_path() -> None:
@@ -193,6 +193,12 @@ else:
         CREATURE = 1
         SPELL = 2
 
+    class GameResult(int):
+        NONE = -1
+        P1_WIN = 0
+        P2_WIN = 1
+        DRAW = 2
+
     class CardKeywords(int):
         pass
 
@@ -223,7 +229,7 @@ else:
             self.slot_index = 0
             self.value1 = 0
 
-    class ActionType(Enum):
+    class ActionType(IntEnum):
         PLAY_CARD = 1
         ATTACK_PLAYER = 2
         ATTACK_CREATURE = 3
@@ -233,6 +239,9 @@ else:
         MANA_CHARGE = 7
         RESOLVE_EFFECT = 8
         SELECT_TARGET = 9
+        TAP = 10
+        UNTAP = 11
+        BREAK_SHIELD = 14
 
     class ConditionDef:
         def __init__(self, *args: Any, **kwargs: Any):
@@ -256,12 +265,22 @@ else:
     class JsonLoader:
         @staticmethod
         def load_cards(path: str) -> dict[int, Any]:
-            return {}
+            # Simple mock returning a basic card dict
+            return {1: {"name": "Test Creature", "cost": 1, "power": 1000}}
 
     class LethalSolver:
         @staticmethod
         def is_lethal(state: Any, card_db: Any) -> bool:
             return False
+
+    class CardStub:
+        def __init__(self, card_id: int, instance_id: int):
+            self.card_id = card_id
+            self.instance_id = instance_id
+            self.is_tapped = False
+            self.power = 1000
+            self.power_modifier = 0
+            self.turn_played = 0
 
     class PlayerStub:
         def __init__(self) -> None:
@@ -271,6 +290,15 @@ else:
             self.graveyard: list[Any] = []
             self.mana_zone: list[Any] = []
             self.shield_zone: list[Any] = []
+            self.life = 0
+
+        @property
+        def shields(self):
+            return len(self.shield_zone)
+
+        @shields.setter
+        def shields(self, value):
+            pass
 
     class GameState:
         def __init__(self, *args: Any, **kwargs: Any):
@@ -278,9 +306,126 @@ else:
             self.turn_number = 0
             self.players = [PlayerStub(), PlayerStub()]
             self.active_player_id = 0
+            self.winner = GameResult.NONE
+            self.current_phase = 0
+            self.pending_effects: list[Any] = []
+            self.loop_proven = False
+            self.instance_counter = 0
 
         def setup_test_duel(self) -> None:
             return
+
+        def set_deck(self, player_id: int, deck_ids: list[int]):
+            self.players[player_id].deck = deck_ids[:]
+
+        def get_next_instance_id(self):
+            self.instance_counter += 1
+            return self.instance_counter
+
+    class GameInstance:
+        def __init__(self, seed: int = 0, card_db: Any = None):
+            self.state = GameState()
+            self.card_db = card_db
+
+        def start_game(self):
+            PhaseManager.start_game(self.state, self.card_db)
+
+        def execute_action(self, action: Any):
+            # Minimal logic for tests
+            if not hasattr(action, 'type'):
+                return
+
+            act_type = action.type
+            # Resolve to integer or string for comparison
+            # We standardize to ActionType enum values (int) if possible
+
+            # Helper to match type against string or enum
+            def is_type(t, name_str, enum_val):
+                if t == enum_val: return True
+                if isinstance(t, str) and t == name_str: return True
+                if hasattr(t, 'name') and t.name == name_str: return True
+                if hasattr(t, 'value') and t.value == enum_val: return True
+                return False
+
+            if is_type(act_type, "PASS", ActionType.PASS):
+                # Advance phase
+                self.state.current_phase += 1
+                if self.state.current_phase > 6:
+                    self.state.current_phase = 0
+                    self.state.turn_number += 1
+                    self.state.active_player_id = 1 - self.state.active_player_id
+
+                    # Untap phase on turn start
+                    active_p = self.state.players[self.state.active_player_id]
+                    for card in active_p.mana_zone:
+                        card.is_tapped = False
+                    for card in active_p.battle_zone:
+                        card.is_tapped = False
+
+                    # Draw for active player
+                    if len(active_p.deck) > 0:
+                        active_p.hand.append(CardStub(1, self.state.get_next_instance_id()))
+                        active_p.deck.pop(0)
+
+            elif is_type(act_type, "TAP", ActionType.TAP):
+                # Find card and tap
+                active_p = self.state.players[self.state.active_player_id]
+                target_id = getattr(action, 'source_instance_id', -1)
+                for card in active_p.battle_zone:
+                    if card.instance_id == target_id:
+                        card.is_tapped = True
+                        break
+                for card in active_p.mana_zone:
+                    if card.instance_id == target_id:
+                        card.is_tapped = True
+                        break
+
+            elif is_type(act_type, "MANA_CHARGE", ActionType.MANA_CHARGE):
+                # Move from hand to mana zone
+                active_p = self.state.players[self.state.active_player_id]
+                target_id = getattr(action, 'source_instance_id', -1)
+
+                # If specific card targeted
+                found_idx = -1
+                if target_id != -1:
+                    for i, card in enumerate(active_p.hand):
+                        if getattr(card, 'instance_id', -1) == target_id:
+                            found_idx = i
+                            break
+
+                # If found or fallback to last card
+                if found_idx != -1:
+                    card = active_p.hand.pop(found_idx)
+                    active_p.mana_zone.append(card)
+                elif len(active_p.hand) > 0:
+                    # Fallback logic for simple tests
+                    card = active_p.hand.pop()
+                    active_p.mana_zone.append(card)
+
+            elif is_type(act_type, "BREAK_SHIELD", ActionType.BREAK_SHIELD):
+                target_p = self.state.players[action.target_player]
+                if len(target_p.shield_zone) > 0:
+                    target_p.shield_zone.pop()
+                if len(target_p.shield_zone) == 0:
+                    # Win condition check simulation
+                    # Assuming P1_WIN=0 (P0 wins), P2_WIN=1 (P1 wins) if target player loses
+                    if action.target_player == 0:
+                        self.state.winner = GameResult.P2_WIN
+                    else:
+                        self.state.winner = GameResult.P1_WIN
+
+            elif is_type(act_type, "ATTACK_PLAYER", ActionType.ATTACK_PLAYER):
+                # In full engine this triggers shield break or direct attack
+                # For mock, we can assume direct shield break or win if no shields
+                target_p = self.state.players[action.target_player]
+                if len(target_p.shield_zone) > 0:
+                    target_p.shield_zone.pop()
+                else:
+                     # Direct attack win
+                    if action.target_player == 0:
+                        self.state.winner = GameResult.P2_WIN
+                    else:
+                        self.state.winner = GameResult.P1_WIN
 
     class CardDefinition:
         def __init__(self, *args: Any, **kwargs: Any):
@@ -300,7 +445,22 @@ else:
         _batch_callback = None
 
     class ActionEncoder:
-        TOTAL_ACTION_SIZE = 10
+        TOTAL_ACTION_SIZE = 591
+
+    class DataCollectorBatch:
+        def __init__(self):
+            self.token_states = []
+            self.policies = []
+            self.values = []
+
+    class DataCollector:
+        def collect_data_batch_heuristic(self, num_episodes: int, random_opponent: bool, verbose: bool):
+            batch = DataCollectorBatch()
+            # Fake data for test
+            batch.token_states = [[0]*200]
+            batch.policies = [[0.0]*ActionEncoder.TOTAL_ACTION_SIZE]
+            batch.values = [1.0]
+            return batch
 
     class NeuralEvaluator:
         def __init__(self, card_db: Any):
@@ -319,7 +479,11 @@ else:
 
     class GameCommand:
         def __init__(self, *args: Any, **kwargs: Any):
-            pass
+            self.type = ActionType.PASS
+            self.source_instance_id = -1
+            self.target_player = -1
+            self.card_id = -1
+
         def execute(self, state: Any) -> None:
             pass
 
@@ -355,8 +519,32 @@ else:
 
     class PhaseManager:
         @staticmethod
+        def start_game(state: Any, card_db: Any) -> None:
+            # Replicate GameInstance.start_game logic or call it?
+            # Since GameInstance wraps state, we can just operate on state here
+            state.turn_number = 1
+            state.active_player_id = 0
+            state.current_phase = 0
+            for p in state.players:
+                # Need to populate zones if not done
+                # Assuming setup_test_duel or similar was called or deck set
+                p.shield_zone = [state.get_next_instance_id() for _ in range(5)]
+                # Draw 5
+                if len(p.deck) >= 5:
+                    for _ in range(5):
+                        p.hand.append(CardStub(1, state.get_next_instance_id()))
+                    p.deck = p.deck[5:]
+
+        @staticmethod
         def next_phase(state: Any, card_db: Any) -> None:
             return
+
+        @staticmethod
+        def check_game_over(state: Any, result_ref: Any = None) -> bool:
+            # result_ref is ignored in python logic usually, but we check state
+            if state.winner != GameResult.NONE:
+                return True
+            return False
 
     def register_card_data(data: Any) -> None:
         return
@@ -412,3 +600,9 @@ else:
         SHIELD_ZONE = 6
         BATTLE = 5
         SHIELD = 6
+
+    class DevTools:
+        @staticmethod
+        def trigger_loop_detection(state: Any):
+            state.loop_proven = True
+            state.winner = GameResult.DRAW
