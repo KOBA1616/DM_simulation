@@ -77,7 +77,50 @@ namespace dm::engine::systems {
                 args["card"] = action.source_instance_id;
                 Instruction inst(InstructionOp::GAME_ACTION, args);
                 inst.args["type"] = "RESOLVE_PLAY";
-                handle_resolve_play(pipeline, state, inst, card_db);
+                {
+                    // Instead of invoking resolve handler inline (which may push child frames
+                    // while the caller's pc is still at the same instruction), enqueue a
+                    // RESOLVE_PLAY instruction block on the pipeline. The pipeline executor
+                    // will run it in sequence and properly advance the parent frame pc.
+                    auto block = std::make_shared<std::vector<Instruction>>();
+                    block->push_back(inst);
+
+                    // Duplicate suppression: if an identical RESOLVE_PLAY for the same card
+                    // is already present in the call_stack, skip enqueue to avoid runaway
+                    // repeated pushes. This is a minimal safe guard to help diagnose and
+                    // prevent infinite enqueue loops.
+                    bool duplicate = false;
+                    int inst_card = -1;
+                    if (inst.args.contains("card")) inst_card = inst.args["card"].get<int>();
+                    for (const auto &frame : pipeline.call_stack) {
+                        if (!frame.instructions || frame.instructions->empty()) continue;
+                        const Instruction &f0 = (*frame.instructions)[0];
+                        if (f0.args.contains("type") && f0.args["type"].is_string() && f0.args["type"] == "RESOLVE_PLAY") {
+                            if (inst_card >= 0 && f0.args.contains("card") && f0.args["card"].get<int>() == inst_card) {
+                                duplicate = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    size_t before_size = pipeline.call_stack.size();
+                    int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+                    // Compact telemetry: emit a single concise line rather than many verbose diagnostics.
+                    std::fprintf(stderr, "[TRACE] RESOLVE_PLAY card=%d duplicate=%d parent_idx=%d before_size=%zu\n", inst_card, duplicate ? 1 : 0, parent_idx, before_size);
+
+                    if (duplicate) {
+                        // Advance parent pc to avoid re-executing the same instruction
+                        if (parent_idx >= 0 && parent_idx < (int)pipeline.call_stack.size()) {
+                            pipeline.call_stack[parent_idx].pc++;
+                        }
+                    } else {
+                        auto const_block = std::static_pointer_cast<const std::vector<Instruction>>(block);
+                        pipeline.call_stack.push_back({const_block, 0, LoopContext{}});
+                        if (parent_idx >= 0 && parent_idx < (int)pipeline.call_stack.size()) {
+                            pipeline.call_stack[parent_idx].pc++;
+                        }
+                    }
+                }
                 break;
             }
             case PlayerIntent::DECLARE_PLAY:
@@ -269,7 +312,20 @@ namespace dm::engine::systems {
                      // We push this directly to the CURRENT pipeline execution
                      // Since dispatch_action populates the pipeline, we can just call handle_resolve_play
                      // which pushes instructions to pipeline.call_stack
-                     handle_resolve_play(pipeline, state, resolve_inst, card_db);
+                     {
+                         auto block = std::make_shared<std::vector<Instruction>>();
+                         block->push_back(resolve_inst);
+
+                         size_t before_size = pipeline.call_stack.size();
+                         int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+                         std::fprintf(stderr, "[TRACE] RESOLVE_PLAY_DECLARE card=%d parent_idx=%d before_size=%zu\n", iid, parent_idx, before_size);
+
+                         auto const_block = std::static_pointer_cast<const std::vector<Instruction>>(block);
+                         pipeline.call_stack.push_back({const_block, 0, LoopContext{}});
+                         if (parent_idx >= 0 && parent_idx < (int)pipeline.call_stack.size()) {
+                             pipeline.call_stack[parent_idx].pc++;
+                         }
+                     }
                 } else {
                      // Legacy/Override path (direct move)
                      handle_play_card(pipeline, state, inst, card_db);
@@ -384,7 +440,38 @@ namespace dm::engine::systems {
              nlohmann::json args = inst.args;
              Instruction resolve_inst(InstructionOp::GAME_ACTION, args);
              resolve_inst.args["type"] = "RESOLVE_PLAY";
-             handle_resolve_play(exec, state, resolve_inst, card_db);
+             {
+                 auto block = std::make_shared<std::vector<Instruction>>();
+                 block->push_back(resolve_inst);
+
+                 size_t before_size = exec.call_stack.size();
+                 int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+                 int parent_pc = -1;
+                 if (parent_idx >= 0) parent_pc = exec.call_stack[parent_idx].pc;
+                 std::cerr << "[DIAG RESOLVE_ENQUEUE PUT_IN_PLAY] before_size=" << before_size
+                           << " parent_idx=" << parent_idx << " parent_pc=" << parent_pc
+                           << " inst=" << resolve_inst.args.dump() << std::endl;
+
+                 {
+                     size_t before_size = exec.call_stack.size();
+                     int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+                     int parent_pc = -1;
+                     if (parent_idx >= 0) parent_pc = exec.call_stack[parent_idx].pc;
+                     std::string inst_dump = "{}";
+                     if (block && !block->empty()) inst_dump = (*block)[0].args.dump();
+                     std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
+                     exec.call_stack.push_back({block, 0, LoopContext{}});
+                     size_t after_size = exec.call_stack.size();
+                     std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
+                     if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
+                         exec.call_stack[parent_idx].pc++;
+                         std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
+                     }
+                 }
+
+                 size_t after_size = exec.call_stack.size();
+                 std::cerr << "[DIAG RESOLVE_ENQUEUE PUT_IN_PLAY] after_size=" << after_size << std::endl;
+             }
              return;
         }
 
@@ -428,7 +515,22 @@ namespace dm::engine::systems {
 
         if (!generated.empty()) {
              auto block = std::make_shared<std::vector<Instruction>>(generated);
-             exec.call_stack.push_back({block, 0, LoopContext{}});
+             {
+                 size_t before_size = exec.call_stack.size();
+                 int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+                 int parent_pc = -1;
+                 if (parent_idx >= 0) parent_pc = exec.call_stack[parent_idx].pc;
+                 std::string inst_dump = "{}";
+                 if (block && !block->empty()) inst_dump = (*block)[0].args.dump();
+                 std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
+                 exec.call_stack.push_back({block, 0, LoopContext{}});
+                 size_t after_size = exec.call_stack.size();
+                 std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
+                 if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
+                     exec.call_stack[parent_idx].pc++;
+                     std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
+                 }
+             }
         }
     }
 
@@ -486,7 +588,22 @@ namespace dm::engine::systems {
 
         if (!generated.empty()) {
             auto block = std::make_shared<std::vector<Instruction>>(generated);
-            exec.call_stack.push_back({block, 0, LoopContext{}});
+            {
+                size_t before_size = exec.call_stack.size();
+                int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+                int parent_pc = -1;
+                if (parent_idx >= 0) parent_pc = exec.call_stack[parent_idx].pc;
+                std::string inst_dump = "{}";
+                if (block && !block->empty()) inst_dump = (*block)[0].args.dump();
+                std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
+                exec.call_stack.push_back({block, 0, LoopContext{}});
+                size_t after_size = exec.call_stack.size();
+                std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
+                if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
+                    exec.call_stack[parent_idx].pc++;
+                    std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
+                }
+            }
         }
     }
 
@@ -580,7 +697,22 @@ namespace dm::engine::systems {
 
         if (!compiled_effects.empty()) {
              auto block = std::make_shared<std::vector<Instruction>>(compiled_effects);
-             exec.call_stack.push_back({block, 0, LoopContext{}});
+             {
+                 size_t before_size = exec.call_stack.size();
+                 int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+                 int parent_pc = -1;
+                 if (parent_idx >= 0) parent_pc = exec.call_stack[parent_idx].pc;
+                 std::string inst_dump = "{}";
+                 if (block && !block->empty()) inst_dump = (*block)[0].args.dump();
+                 std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
+                 exec.call_stack.push_back({block, 0, LoopContext{}});
+                 size_t after_size = exec.call_stack.size();
+                 std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
+                 if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
+                     exec.call_stack[parent_idx].pc++;
+                     std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
+                 }
+             }
         }
     }
 
@@ -720,7 +852,22 @@ namespace dm::engine::systems {
 
         if (!generated.empty()) {
              auto block = std::make_shared<std::vector<Instruction>>(generated);
-             exec.call_stack.push_back({block, 0, LoopContext{}});
+             {
+                 size_t before_size = exec.call_stack.size();
+                 int parent_idx = (before_size > 0) ? (int)before_size - 1 : -1;
+                 int parent_pc = -1;
+                 if (parent_idx >= 0) parent_pc = exec.call_stack[parent_idx].pc;
+                 std::string inst_dump = "{}";
+                 if (block && !block->empty()) inst_dump = (*block)[0].args.dump();
+                 std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
+                 exec.call_stack.push_back({block, 0, LoopContext{}});
+                 size_t after_size = exec.call_stack.size();
+                 std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
+                 if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
+                     exec.call_stack[parent_idx].pc++;
+                     std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
+                 }
+             }
         }
     }
 
