@@ -99,6 +99,24 @@ class FilterEditorWidget(QWidget):
         cost_layout.addWidget(self.max_cost_spin, 0, 3)
         stats_layout.addLayout(cost_layout, 0, 1)
 
+        # Exact cost and cost reference
+        stats_layout.addWidget(QLabel(tr("Exact Cost:")), 1, 0)
+        self.exact_cost_spin = QSpinBox()
+        self.exact_cost_spin.setRange(-1, 99) # -1 means not set
+        self.exact_cost_spin.setValue(-1)
+        self.exact_cost_spin.setSpecialValueText(tr("Not Set"))
+        self.exact_cost_spin.setToolTip(tr("Exact cost value (overrides min/max)"))
+        stats_layout.addWidget(self.exact_cost_spin, 1, 1)
+
+        stats_layout.addWidget(QLabel(tr("Cost Ref:")), 2, 0)
+        self.cost_ref_edit = QLineEdit()
+        self.cost_ref_edit.setPlaceholderText(tr("Variable name (e.g., chosen_cost)"))
+        self.cost_ref_edit.setToolTip(tr("Reference to execution_context variable for cost"))
+        stats_layout.addWidget(self.cost_ref_edit, 2, 1)
+
+        self.exact_cost_spin.valueChanged.connect(self.filterChanged.emit)
+        self.cost_ref_edit.textChanged.connect(self.filterChanged.emit)
+
         self.min_cost_spin.valueChanged.connect(self.filterChanged.emit)
         self.max_cost_spin.valueChanged.connect(self.filterChanged.emit)
 
@@ -265,6 +283,8 @@ class FilterEditorWidget(QWidget):
         # Costs
         self.min_cost_spin.setValue(filt_data.get('min_cost', -1) if filt_data.get('min_cost') is not None else -1)
         self.max_cost_spin.setValue(filt_data.get('max_cost', -1) if filt_data.get('max_cost') is not None else -1)
+        self.exact_cost_spin.setValue(filt_data.get('exact_cost', -1) if filt_data.get('exact_cost') is not None else -1)
+        self.cost_ref_edit.setText(filt_data.get('cost_ref', ''))
 
         # Powers
         self.min_power_spin.setValue(filt_data.get('min_power', -1) if filt_data.get('min_power') is not None else -1)
@@ -331,6 +351,9 @@ class FilterEditorWidget(QWidget):
 
         if self.min_cost_spin.value() != -1: filt['min_cost'] = self.min_cost_spin.value()
         if self.max_cost_spin.value() != -1: filt['max_cost'] = self.max_cost_spin.value()
+        if self.exact_cost_spin.value() != -1: filt['exact_cost'] = self.exact_cost_spin.value()
+        cost_ref = self.cost_ref_edit.text().strip()
+        if cost_ref: filt['cost_ref'] = cost_ref
 
         if self.min_power_spin.value() != -1: filt['min_power'] = self.min_power_spin.value()
         if self.max_power_spin.value() != -1: filt['max_power'] = self.max_power_spin.value()
@@ -376,6 +399,8 @@ class FilterEditorWidget(QWidget):
         self.races_edit.blockSignals(block)
         self.min_cost_spin.blockSignals(block)
         self.max_cost_spin.blockSignals(block)
+        self.exact_cost_spin.blockSignals(block)
+        self.cost_ref_edit.blockSignals(block)
         self.min_power_spin.blockSignals(block)
         self.max_power_spin.blockSignals(block)
         self.tapped_combo.blockSignals(block)

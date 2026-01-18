@@ -514,7 +514,15 @@ namespace dm::engine::systems {
                  auto v = get_context_var("$source");
                  if (std::holds_alternative<int>(v)) source_id = std::get<int>(v);
 
+                 // Resolve filter references from execution context
                  FilterDef filter = inst.args.value("filter", FilterDef{});
+                 if (filter.cost_ref.has_value()) {
+                     const auto& key = filter.cost_ref.value();
+                     auto ctx_val = get_context_var(key);
+                     if (std::holds_alternative<int>(ctx_val)) {
+                         filter.exact_cost = std::get<int>(ctx_val);
+                     }
+                 }
 
                  // If targets are provided (e.g. from Select or specific target logic), we apply specifically
                  if (!targets.empty()) {

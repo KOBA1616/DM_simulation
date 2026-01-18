@@ -26,7 +26,16 @@ namespace dm::engine {
             args["value"] = value;
             args["str_value"] = ctx.action.str_val;
             args["duration"] = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
-            args["filter"] = ctx.action.filter; // Filter is used for Global modifiers (ADD_PASSIVE) or Cost Modifiers
+
+            // Resolve dynamic filter refs (e.g., cost_ref -> exact_cost) from execution context
+            FilterDef resolved_filter = ctx.action.filter; // Filter is used for Global modifiers (ADD_PASSIVE) or Cost Modifiers
+            if (resolved_filter.cost_ref.has_value()) {
+                const auto& key = resolved_filter.cost_ref.value();
+                if (ctx.execution_vars.count(key)) {
+                    resolved_filter.exact_cost = ctx.execution_vars.at(key);
+                }
+            }
+            args["filter"] = resolved_filter;
 
             // Serialize condition if present
             // ActionDef has 'condition' field (std::optional<ConditionDef>)
@@ -114,7 +123,15 @@ namespace dm::engine {
             if (ctx.action.str_val == "COST") {
                  CostModifier mod;
                  mod.reduction_amount = value;
-                 mod.condition_filter = ctx.action.filter;
+                 // Resolve dynamic filter refs for cost modifiers
+                 FilterDef resolved_filter = ctx.action.filter;
+                 if (resolved_filter.cost_ref.has_value()) {
+                     const auto& key = resolved_filter.cost_ref.value();
+                     if (ctx.execution_vars.count(key)) {
+                         resolved_filter.exact_cost = ctx.execution_vars.at(key);
+                     }
+                 }
+                 mod.condition_filter = resolved_filter;
                  mod.source_instance_id = ctx.source_instance_id;
                  mod.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  mod.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
@@ -127,7 +144,47 @@ namespace dm::engine {
             } else if (ctx.action.str_val == "LOCK_SPELL") {
                 create_passive(PassiveType::CANNOT_USE_SPELLS);
             } else if (ctx.action.str_val == "POWER") {
-                create_passive(PassiveType::POWER_MODIFIER, value);
+                // Resolve filter references for all paths (specific targets or global)
+                FilterDef resolved_filter = ctx.action.filter;
+                if (resolved_filter.cost_ref.has_value()) {
+                    const auto& key = resolved_filter.cost_ref.value();
+                    if (ctx.execution_vars.count(key)) {
+                        resolved_filter.exact_cost = ctx.execution_vars.at(key);
+                    }
+                }
+                
+                if (targets && !targets->empty()) {
+                    // Apply to specific targets
+                    for (int id : *targets) {
+                        PassiveEffect eff;
+                        eff.type = PassiveType::POWER_MODIFIER;
+                        eff.value = value;
+                        eff.specific_targets = std::vector<int>{id};
+                        eff.source_instance_id = ctx.source_instance_id;
+                        eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                        eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
+                        eff.target_filter = resolved_filter;
+
+                        auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
+                        cmd->passive_effect = eff;
+                        cmd->execute(ctx.game_state);
+                        ctx.game_state.command_history.push_back(std::move(cmd));
+                    }
+                } else {
+                    // Global passive with resolved filter
+                    PassiveEffect eff;
+                    eff.type = PassiveType::POWER_MODIFIER;
+                    eff.value = value;
+                    eff.source_instance_id = ctx.source_instance_id;
+                    eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                    eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
+                    eff.target_filter = resolved_filter;
+
+                    auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
+                    cmd->passive_effect = eff;
+                    cmd->execute(ctx.game_state);
+                    ctx.game_state.command_history.push_back(std::move(cmd));
+                }
             } else if (ctx.action.str_val == "CANNOT_ATTACK") {
                 create_passive(PassiveType::CANNOT_ATTACK);
             } else if (ctx.action.str_val == "CANNOT_BLOCK") {

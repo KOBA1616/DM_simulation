@@ -407,6 +407,8 @@ void bind_core(py::module& m) {
         .def_readwrite("races", &FilterDef::races)
         .def_readwrite("min_cost", &FilterDef::min_cost)
         .def_readwrite("max_cost", &FilterDef::max_cost)
+        .def_readwrite("exact_cost", &FilterDef::exact_cost)
+        .def_readwrite("cost_ref", &FilterDef::cost_ref)
         .def_readwrite("min_power", &FilterDef::min_power)
         .def_readwrite("max_power", &FilterDef::max_power)
         .def_readwrite("is_tapped", &FilterDef::is_tapped)

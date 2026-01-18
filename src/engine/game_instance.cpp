@@ -6,6 +6,7 @@
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/continuous_effect_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
+#include "engine/systems/card/effect_system.hpp" // Added for EffectSystem
 #include <functional>
 #include <iostream>
 
@@ -92,6 +93,49 @@ namespace dm::engine {
                 }
                 break;
             case PlayerIntent::SELECT_OPTION:
+                {
+                    // Handle option selection for pending effects
+                    int effect_idx = action.slot_index;
+                    int option_idx = action.target_slot_index;
+                    
+                    if (effect_idx >= 0 && effect_idx < (int)state.pending_effects.size()) {
+                        auto& pe = state.pending_effects[effect_idx];
+                        
+                        // TODO: Implement option handling if needed in the future
+                        // Currently, options are handled via CommandDef in effect_def.commands
+                        
+                        // Remove the pending effect
+                        state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
+                    }
+                }
+                break;
+            case PlayerIntent::SELECT_NUMBER:
+                {
+                    // Handle number selection for pending effects
+                    int effect_idx = action.slot_index;
+                    int chosen_number = action.target_instance_id; // The chosen number is stored in target_instance_id
+                    
+                    if (effect_idx >= 0 && effect_idx < (int)state.pending_effects.size()) {
+                        auto& pe = state.pending_effects[effect_idx];
+                        
+                        // Store the chosen number in execution_context if output_value_key is specified
+                        if (pe.effect_def.has_value() && !pe.effect_def->condition.str_val.empty()) {
+                            // The output key is stored in effect_def.condition.str_val (as per SelectNumberHandler)
+                            std::string output_key = pe.effect_def->condition.str_val;
+                            pe.execution_context[output_key] = chosen_number;
+                        }
+                        
+                        // Execute continuation actions with the updated context
+                        if (pe.effect_def.has_value()) {
+                            for (const auto& act : pe.effect_def->actions) {
+                                EffectSystem::instance().resolve_action(state, act, pe.source_instance_id, pe.execution_context, *card_db);
+                            }
+                        }
+                        
+                        // Remove the pending effect
+                        state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
+                    }
+                }
                 break;
             default:
                 // Fallback for atomic actions (PAY_COST, RESOLVE_PLAY) or legacy

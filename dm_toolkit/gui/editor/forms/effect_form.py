@@ -8,6 +8,7 @@ from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWi
 from dm_toolkit.consts import TRIGGER_TYPES, SPELL_TRIGGER_TYPES, LAYER_TYPES
 from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
 from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
+from dm_toolkit.gui.editor.consistency import validate_trigger_scope_filter
 
 class EffectEditForm(BaseEditForm):
     structure_update_requested = pyqtSignal(str, dict)
@@ -63,8 +64,16 @@ class EffectEditForm(BaseEditForm):
         tf_layout = QGridLayout(self.trigger_filter_group)
         self.trigger_filter = UnifiedFilterHandler.create_filter_widget("TRIGGER", self)
         self.trigger_filter.filterChanged.connect(self.update_data)
+        self.trigger_filter.filterChanged.connect(self.on_trigger_filter_changed)
         self.register_widget(self.trigger_filter, 'trigger_filter')
         tf_layout.addWidget(self.trigger_filter, 0, 0)
+        
+        # Trigger Filter Description Label
+        self.trigger_filter_desc_label = QLabel("")
+        self.trigger_filter_desc_label.setWordWrap(True)
+        self.trigger_filter_desc_label.setStyleSheet("color: #666; font-size: 10px; font-style: italic;")
+        tf_layout.addWidget(self.trigger_filter_desc_label, 1, 0)
+        
         self.add_field(None, self.trigger_filter_group)
 
         # Layer Definition (Static)
@@ -288,6 +297,15 @@ class EffectEditForm(BaseEditForm):
         if mode == "TRIGGERED":
             # Explicitly save trigger filter from widget (bindings might not catch it if it's complex/custom getter)
             data['trigger_filter'] = self.trigger_filter.get_data()
+            # Consistency validation: warn about duplicate or conflicting settings
+            try:
+                warns = validate_trigger_scope_filter(data)
+                if warns:
+                    # Emit non-blocking warning event for inspector/host
+                    self.structure_update_requested.emit("INTEGRITY_WARNINGS", {"warnings": warns})
+            except Exception:
+                # Be robust in headless/unit test environments
+                pass
 
             # Clean Static/Legacy keys
             for k in ['type', 'value', 'str_val', 'filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
@@ -299,7 +317,10 @@ class EffectEditForm(BaseEditForm):
                 data.pop('str_val', None)
 
             # Clean Trigger/Legacy keys
-            for k in ['trigger', 'trigger_scope', 'trigger_filter', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
+            # Preserve trigger_scope to maintain user selection across mode toggles.
+            # Also preserve trigger_filter so that returning to TRIGGERED restores previous filter.
+            # Other legacy/static normalization keys can be safely cleaned.
+            for k in ['trigger', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
                 data.pop(k, None)
 
     def _get_display_text(self, data):
@@ -322,3 +343,22 @@ class EffectEditForm(BaseEditForm):
              return f"{tr('Static')}: {tr(t)}"
         else:
              return tr("Unknown Effect")
+    def on_trigger_filter_changed(self):
+        """Update trigger filter description when filter changes."""
+        try:
+            trigger_filter = self.trigger_filter.get_data()
+            if not trigger_filter:
+                self.trigger_filter_desc_label.setText("")
+                return
+            
+            # Import CardTextGenerator for description generation
+            from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+            
+            desc = CardTextGenerator.generate_trigger_filter_description(trigger_filter)
+            if desc:
+                self.trigger_filter_desc_label.setText(f"📋 条件: {desc}")
+            else:
+                self.trigger_filter_desc_label.setText("")
+        except Exception:
+            # Gracefully handle errors in headless environments
+            self.trigger_filter_desc_label.setText("")

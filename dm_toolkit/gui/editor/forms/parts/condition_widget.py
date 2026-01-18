@@ -67,14 +67,18 @@ CONDITION_UI_CONFIG = {
     "EVENT_FILTER_MATCH": {
         "show_val": False,
         "show_str": False,
-        "show_filter": True
+        "show_filter": True,
+        "label_val": "Value",
+        "label_str": "String"
     },
     # Expanded Types
     "COMPARE_STAT": {
         "show_val": True,
+        "show_str": True,
         "show_stat_key": True,
         "show_op": True,
         "label_val": "Threshold",
+        "label_str": "String Value (if applicable)",
         "label_stat_key": "Stat Key (e.g. MY_SHIELD_COUNT)",
         "label_op": "Operator"
     },
@@ -88,14 +92,18 @@ CONDITION_UI_CONFIG = {
     },
     "CARDS_MATCHING_FILTER": {
         "show_val": True,
+        "show_str": True,
         "show_op": True,
         "show_filter": True,
         "label_val": "Count Threshold",
+        "label_str": "String Value (if applicable)",
         "label_op": "Operator"
     },
     "DECK_EMPTY": {
         "show_val": False,
-        "show_str": False
+        "show_str": False,
+        "label_val": "Value",
+        "label_str": "String"
     },
     "CUSTOM": {
         "show_type_edit": True,

@@ -299,13 +299,19 @@ class CardTextGenerator:
         types = filter_def.get("types", [])
         min_cost = filter_def.get("min_cost", 0)
         max_cost = filter_def.get("max_cost", 999)
+        exact_cost = filter_def.get("exact_cost")
+        cost_ref = filter_def.get("cost_ref")
 
         adjectives = []
         if civs:
             adjectives.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
 
-        # Handle min_cost that might be int or dict with input_link
-        if isinstance(min_cost, dict):
+        # Handle cost filtering
+        if cost_ref:
+            adjectives.append("選択した数字と同じコスト")
+        elif exact_cost is not None:
+            adjectives.append(f"コスト{exact_cost}")
+        elif isinstance(min_cost, dict):
             usage = min_cost.get("input_value_usage", "")
             if usage == "MIN_COST":
                 adjectives.append("コストその数以上")
@@ -578,7 +584,16 @@ class CardTextGenerator:
             parts.append("/".join(races) + "の")
         
         # Cost range (handle both int and dict with input_link)
-        if isinstance(min_cost, dict):
+        # Check for exact_cost or cost_ref first
+        exact_cost = filter_def.get("exact_cost")
+        cost_ref = filter_def.get("cost_ref")
+        
+        if cost_ref:
+            # Reference to a variable (e.g., chosen number)
+            parts.append("選択した数字と同じコストの")
+        elif exact_cost is not None:
+            parts.append(f"コスト{exact_cost}の")
+        elif isinstance(min_cost, dict):
             usage = min_cost.get("input_value_usage", "")
             if usage == "MIN_COST":
                 parts.append("コストその数以上の")
@@ -753,27 +768,149 @@ class CardTextGenerator:
         if "自分が" in trigger_text and (scope == "SELF" or scope == "PLAYER_SELF"):
             return trigger_text
 
-        # Handle ON_PLAY with specific scope (e.g. Opponent's Creature Enters)
-        if trigger_type == "ON_PLAY" and (scope == "OPPONENT" or scope == "PLAYER_OPPONENT"):
-            noun = "クリーチャー"
-            if trigger_filter:
-                types = trigger_filter.get("types", [])
+        # Helper to compose subject phrase from filter
+        def _compose_subject_from_filter(default_type: str) -> str:
+            f = trigger_filter or {}
+            civs = f.get("civilizations", [])
+            races = f.get("races", [])
+            types = f.get("types", [])
+            zones = f.get("zones", [])
+            min_cost = f.get("min_cost", 0)
+            if min_cost is None:
+                min_cost = 0
+            max_cost = f.get("max_cost", 999)
+            if max_cost is None:
+                max_cost = 999
+            exact_cost = f.get("exact_cost")
+            cost_ref = f.get("cost_ref")
+            min_power = f.get("min_power", 0)
+            if min_power is None:
+                min_power = 0
+            max_power = f.get("max_power", 999999)
+            if max_power is None:
+                max_power = 999999
+            power_max_ref = f.get("power_max_ref")
+            is_tapped = f.get("is_tapped")
+            is_blocker = f.get("is_blocker")
+            is_evolution = f.get("is_evolution")
+            is_summoning_sick = f.get("is_summoning_sick")
+            flags = f.get("flags", [])
+
+            # Noun resolution
+            noun = "クリーチャー" if default_type == "CREATURE" else ("呪文" if default_type == "SPELL" else "カード")
+            if types:
                 if "ELEMENT" in types:
                     noun = "エレメント"
-                elif "Card" in types or "CARD" in types:
+                elif "SPELL" in types:
+                    noun = "呪文"
+                elif "CREATURE" in types:
+                    noun = "クリーチャー"
+                elif "CARD" in types:
                     noun = "カード"
 
-            # Use "相手の[Noun]がバトルゾーンに出た時"
-            return f"{scope_text}の{noun}がバトルゾーンに出た時"
+            adjs: List[str] = []
+            
+            # Zone conditions (if specified, generally not mentioned in trigger text but may appear)
+            if zones and "BATTLE_ZONE" not in zones:
+                zone_names = []
+                for z in zones:
+                    zone_text = cls._normalize_zone_name(z)
+                    if zone_text:
+                        zone_names.append(zone_text)
+                if zone_names:
+                    adjs.append("/".join(zone_names))
+            
+            if civs:
+                adjs.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
+            if races:
+                adjs.append("/".join(races))
+
+            # Cost conditions
+            if cost_ref:
+                adjs.append("選択した数字と同じコスト")
+            elif exact_cost is not None:
+                adjs.append(f"コスト{exact_cost}")
+            else:
+                if isinstance(min_cost, dict) and min_cost.get("input_value_usage") == "MIN_COST":
+                    adjs.append("コストその数以上")
+                elif isinstance(max_cost, dict) and max_cost.get("input_value_usage") == "MAX_COST":
+                    adjs.append("コストその数以下")
+                else:
+                    if min_cost > 0 and max_cost < 999:
+                        adjs.append(f"コスト{min_cost}～{max_cost}")
+                    elif min_cost > 0:
+                        adjs.append(f"コスト{min_cost}以上")
+                    elif max_cost < 999:
+                        adjs.append(f"コスト{max_cost}以下")
+
+            # Power conditions
+            if power_max_ref:
+                adjs.append("パワーその数以下")
+            elif isinstance(min_power, dict) and min_power.get("input_value_usage") == "MIN_POWER":
+                adjs.append("パワーその数以上")
+            elif isinstance(max_power, dict) and max_power.get("input_value_usage") == "MAX_POWER":
+                adjs.append("パワーその数以下")
+            else:
+                if min_power > 0 and max_power < 999999:
+                    adjs.append(f"パワー{min_power}～{max_power}")
+                elif min_power > 0:
+                    adjs.append(f"パワー{min_power}以上")
+                elif max_power < 999999:
+                    adjs.append(f"パワー{max_power}以下")
+
+            # Flags
+            if is_tapped == 1:
+                adjs.append("タップ状態")
+            elif is_tapped == 0:
+                adjs.append("アンタップ状態")
+            if is_blocker == 1:
+                adjs.append("ブロッカー")
+            elif is_blocker == 0:
+                adjs.append("ブロッカー以外")
+            if is_evolution == 1:
+                adjs.append("進化")
+            elif is_evolution == 0:
+                adjs.append("進化以外")
+            if is_summoning_sick == 1:
+                adjs.append("召喚酔い")
+            elif is_summoning_sick == 0:
+                adjs.append("召喚酔い以外")
+            
+            # Generic flags
+            if flags:
+                for flag in flags:
+                    if flag == "BLOCKER":
+                        if "ブロッカー" not in adjs:
+                            adjs.append("ブロッカー")
+
+            adj_str = "の".join(adjs)
+            if adj_str:
+                return f"{adj_str}の{noun}"
+            return noun
+
+        # Handle ON_PLAY with specific scope (e.g. Opponent's Creature Enters)
+        if trigger_type == "ON_PLAY" and (scope == "OPPONENT" or scope == "PLAYER_OPPONENT"):
+            subject = _compose_subject_from_filter("CREATURE")
+            return f"{scope_text}の{subject}がバトルゾーンに出た時"
+
+        # ON_PLAY for SELF scope
+        if trigger_type == "ON_PLAY" and (scope == "SELF" or scope == "PLAYER_SELF"):
+            subject = _compose_subject_from_filter("CREATURE")
+            return f"{scope_text}の{subject}がバトルゾーンに出た時"
 
         # Specific mappings for natural Japanese particles
         if trigger_type == "ON_OTHER_ENTER":
-            # "他の..." -> "自分の他の..." / "相手の他の..."
-            return f"{scope_text}の{trigger_text}"
+            # Compose with subject details
+            subject = _compose_subject_from_filter("CREATURE")
+            # "他の..." prefix to subject
+            if subject:
+                subject = "他の" + subject
+            return f"{scope_text}の{subject}がバトルゾーンに出た時"
 
         if trigger_type == "ON_CAST_SPELL":
-            # "呪文を..." -> "自分が呪文を..." / "相手が呪文を..."
-            return f"{scope_text}が{trigger_text}"
+            # "呪文を..." -> include filter adjectives
+            subject = _compose_subject_from_filter("SPELL")
+            return f"{scope_text}の{subject}を唱えた時"
 
         if trigger_type == "ON_SHIELD_ADD":
              # "カードがシールドゾーンに..." -> replace "シールドゾーン" with "自分の/相手のシールドゾーン"
@@ -2585,3 +2722,132 @@ class CardTextGenerator:
 
         # Default: join by space
         return ' '.join([t for t in formatted_texts if t]).strip()
+    @classmethod
+    def generate_trigger_filter_description(cls, trigger_filter: Dict[str, Any]) -> str:
+        """
+        Generate detailed Japanese description of trigger filter conditions.
+        
+        Args:
+            trigger_filter: Filter definition dictionary
+        
+        Returns:
+            Detailed Japanese description of filter (可: "コスト3以上の呪文" など)
+        """
+        if not trigger_filter:
+            return ""
+        
+        descriptions = []
+        
+        # Type conditions
+        types = trigger_filter.get("types", [])
+        if types:
+            type_names = []
+            for t in types:
+                if t == "CREATURE":
+                    type_names.append("クリーチャー")
+                elif t == "SPELL":
+                    type_names.append("呪文")
+                elif t == "ELEMENT":
+                    type_names.append("エレメント")
+                elif t == "CARD":
+                    type_names.append("カード")
+            if type_names:
+                descriptions.append("/".join(type_names))
+        
+        # Civilization conditions
+        civs = trigger_filter.get("civilizations", [])
+        if civs:
+            civ_names = [CardTextResources.get_civilization_text(c) for c in civs]
+            descriptions.append("/".join([c for c in civ_names if c]))
+        
+        # Race conditions
+        races = trigger_filter.get("races", [])
+        if races:
+            descriptions.append("/".join(races))
+        
+        # Cost conditions
+        exact_cost = trigger_filter.get("exact_cost")
+        cost_ref = trigger_filter.get("cost_ref")
+        min_cost = trigger_filter.get("min_cost", 0)
+        if min_cost is None:
+            min_cost = 0
+        max_cost = trigger_filter.get("max_cost", 999)
+        if max_cost is None:
+            max_cost = 999
+        
+        if cost_ref:
+            descriptions.append("コスト【選択数字】")
+        elif exact_cost is not None:
+            descriptions.append(f"コスト{exact_cost}")
+        else:
+            if isinstance(min_cost, dict) and min_cost.get("input_value_usage") == "MIN_COST":
+                descriptions.append("コスト【入力値】以上")
+            elif isinstance(max_cost, dict) and max_cost.get("input_value_usage") == "MAX_COST":
+                descriptions.append("コスト【入力値】以下")
+            else:
+                if min_cost > 0 and max_cost < 999:
+                    descriptions.append(f"コスト{min_cost}～{max_cost}")
+                elif min_cost > 0:
+                    descriptions.append(f"コスト{min_cost}以上")
+                elif max_cost < 999:
+                    descriptions.append(f"コスト{max_cost}以下")
+        
+        # Power conditions
+        min_power = trigger_filter.get("min_power", 0)
+        if min_power is None:
+            min_power = 0
+        max_power = trigger_filter.get("max_power", 999999)
+        if max_power is None:
+            max_power = 999999
+        power_max_ref = trigger_filter.get("power_max_ref")
+        
+        if power_max_ref:
+            descriptions.append("パワー【入力値】以下")
+        else:
+            if min_power > 0 and max_power < 999999:
+                descriptions.append(f"パワー{min_power}～{max_power}")
+            elif min_power > 0:
+                descriptions.append(f"パワー{min_power}以上")
+            elif max_power < 999999:
+                descriptions.append(f"パワー{max_power}以下")
+        
+        # Tapped/Untapped state
+        is_tapped = trigger_filter.get("is_tapped")
+        if is_tapped == 1:
+            descriptions.append("(タップ状態)")
+        elif is_tapped == 0:
+            descriptions.append("(アンタップ状態)")
+        
+        # Blocker status
+        is_blocker = trigger_filter.get("is_blocker")
+        if is_blocker == 1:
+            descriptions.append("(ブロッカー)")
+        elif is_blocker == 0:
+            descriptions.append("(ブロッカー以外)")
+        
+        # Evolution status
+        is_evolution = trigger_filter.get("is_evolution")
+        if is_evolution == 1:
+            descriptions.append("(進化)")
+        elif is_evolution == 0:
+            descriptions.append("(進化以外)")
+        
+        # Summoning sickness
+        is_summoning_sick = trigger_filter.get("is_summoning_sick")
+        if is_summoning_sick == 1:
+            descriptions.append("(召喚酔い)")
+        elif is_summoning_sick == 0:
+            descriptions.append("(召喚酔い解除)")
+        
+        # Zone conditions (if not BATTLE_ZONE)
+        zones = trigger_filter.get("zones", [])
+        if zones and "BATTLE_ZONE" not in zones:
+            zone_names = []
+            for z in zones:
+                zone_text = cls._normalize_zone_name(z)
+                if zone_text:
+                    zone_names.append(zone_text)
+            if zone_names:
+                descriptions.append("[" + "/".join(zone_names) + "]")
+        
+        return "、".join(descriptions) if descriptions else ""

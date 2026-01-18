@@ -63,6 +63,23 @@ namespace dm::engine {
             // 6. Cost/Power Checks
             if (filter.min_cost.has_value() && Props::get_cost(card_def) < filter.min_cost.value()) return false;
             if (filter.max_cost.has_value() && Props::get_cost(card_def) > filter.max_cost.value()) return false;
+            
+            // Exact cost check (can reference execution_context)
+            if (filter.exact_cost.has_value() || filter.cost_ref.has_value()) {
+                int required_cost = 0;
+                if (filter.exact_cost.has_value()) {
+                    required_cost = filter.exact_cost.value();
+                } else if (filter.cost_ref.has_value() && execution_context) {
+                    std::string key = filter.cost_ref.value();
+                    if (execution_context->count(key)) {
+                        required_cost = execution_context->at(key);
+                    } else {
+                        return false; // Reference not found, fail match
+                    }
+                }
+                if (Props::get_cost(card_def) != required_cost) return false;
+            }
+            
             if (filter.min_power.has_value() && Props::get_power(card_def) < filter.min_power.value()) return false;
 
             if (filter.max_power.has_value()) {

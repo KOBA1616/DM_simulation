@@ -33,6 +33,12 @@ class PropertyInspector(QWidget):
     def _on_structure_update(self, command: str, data: dict):
         """Handle structure update requests from child forms."""
         # Intermediate processing (logging/validation) can be added here
+        if command == "INTEGRITY_WARNINGS":
+            warns = data.get("warnings", []) if isinstance(data, dict) else []
+            if warns:
+                # Show a compact summary in the label area (non-blocking)
+                summary = "\n".join([f"⚠️ {w}" for w in warns])
+                self.label.setText(tr("Property Inspector") + "\n" + summary)
         self.structure_update_requested.emit(command, data)
 
     def _on_data_changed(self):

@@ -801,7 +801,8 @@
           "flags": []
         },
         "value": 0,
-        "str_val": "TARGET_RESTRICTION",
+        "mutation_kind": "TARGET_THIS_FORCE_SELECT",
+        "str_val": "TARGET_THIS_FORCE_SELECT",
         "scope": "ALL"
       }
     ],
@@ -901,13 +902,23 @@
         },
         "commands": [
           {
-            "uid": "bca1b5df-0050-4c09-b87b-d791cd9b8c71",
-            "type": "APPLY_MODIFIER"
-          },
-          {
-            "uid": "08b5949f-ce77-4bc4-abb8-30ac9c0d90ab",
-            "type": "IF",
-            "input_value_usage": ""
+            "uid": "b2859a60-c6c1-46a7-a96a-a19a39328cbb",
+            "type": "APPLY_MODIFIER",
+            "_input_value_label": "EVENT_SOURCE (イベント発生源 (汎用))",
+            "amount": 1,
+            "duration": "UNTIL_START_OF_OPPONENT_TURN",
+            "input_value_usage": "",
+            "str_param": "CANNOT_ATTACK",
+            "target_filter": {
+              "types": [
+                "CREATURE"
+              ],
+              "zones": [
+                "BATTLE_ZONE"
+              ]
+            },
+            "target_group": "PLAYER_SELF",
+            "input_value_key": "EVENT_SOURCE"
           }
         ]
       }
@@ -942,11 +953,25 @@
               "uid": "89614a6b-3310-463c-b629-6e7f13892464",
               "type": "SELECT_NUMBER",
               "amount": 0,
-              "input_value_usage": ""
+              "input_value_usage": "",
+              "output_value_key": "chosen_number"
             },
             {
-              "uid": "e0a1c699-a5a7-496e-8525-9bbc066a29f3",
-              "type": "APPLY_MODIFIER"
+              "uid": "c4653826-1f0e-4de5-ab7a-c24ef533c69d",
+              "type": "APPLY_MODIFIER",
+              "amount": 1,
+              "duration": "UNTIL_START_OF_YOUR_TURN",
+              "input_value_usage": "",
+              "str_param": "CANNOT_ATTACK_AND_BLOCK",
+              "target_filter": {
+                "types": [
+                  "CREATURE"
+                ],
+                "zones": [
+                  "BATTLE_ZONE"
+                ]
+              },
+              "target_group": "PLAYER_OPPONENT"
             }
           ]
         }

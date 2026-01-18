@@ -210,6 +210,7 @@ namespace dm::core {
         std::vector<std::string> races;
         std::optional<int> min_cost;
         std::optional<int> max_cost;
+        std::optional<int> exact_cost;  // For exact cost matching (can reference execution_context)
         std::optional<int> min_power;
         std::optional<int> max_power;
         std::optional<bool> is_tapped;
@@ -222,6 +223,7 @@ namespace dm::core {
         std::optional<std::string> selection_sort_key;
 
         std::optional<std::string> power_max_ref;
+        std::optional<std::string> cost_ref;  // Reference to execution_context variable for exact_cost
 
         std::vector<FilterDef> and_conditions;
     };
@@ -540,7 +542,7 @@ namespace dm::core {
         {ReductionType::ACTIVE_PAYMENT, "ACTIVE_PAYMENT"}
     })
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, and_conditions)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, exact_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, cost_ref, and_conditions)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, input_value_usage, output_value_key, inverse_target, condition, options, cast_spell_side)
