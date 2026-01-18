@@ -100,7 +100,10 @@ class UnifiedActionForm(BaseEditForm):
         self.update_data()
 
     def rebuild_dynamic_ui(self, cmd_type):
-        """Rebuilds the dynamic part of the form based on schema."""
+        """
+        Rebuilds the dynamic part of the form based on schema and command_ui.json config.
+        Prioritizes layout defined in command_ui.json's 'visible' list if present.
+        """
         # Clear existing widgets
         while self.dynamic_layout.count():
             item = self.dynamic_layout.takeAt(0)
@@ -114,47 +117,93 @@ class UnifiedActionForm(BaseEditForm):
         if not schema:
             return
 
-        # Group optional and up_to fields for horizontal layout
-        optional_field = None
-        up_to_field = None
-        other_fields = []
+        # Load UI Config
+        ui_configs = EditorConfigLoader.get_command_ui_config()
+        cmd_config = ui_configs.get(cmd_type, {})
+        visible_keys = cmd_config.get("visible", [])
         
-        for field_schema in schema.fields:
-            if field_schema.key == 'optional':
-                optional_field = field_schema
-            elif field_schema.key == 'up_to':
-                up_to_field = field_schema
-            else:
-                other_fields.append(field_schema)
-        
-        # Add regular fields first
-        for field_schema in other_fields:
-            self._create_widget_for_field(field_schema)
-        
-        # Add optional and up_to in a horizontal layout if both exist
-        if optional_field or up_to_field:
-            from PyQt6.QtWidgets import QHBoxLayout, QWidget
-            options_widget = QWidget()
-            options_layout = QHBoxLayout(options_widget)
-            options_layout.setContentsMargins(0, 0, 0, 0)
-            
-            if optional_field:
-                opt_widget = WidgetFactory.create_widget(self, optional_field, self.update_data)
-                if opt_widget:
-                    self.widgets_map['optional'] = opt_widget
-                    options_layout.addWidget(opt_widget)
-            
-            if up_to_field:
-                upto_widget = WidgetFactory.create_widget(self, up_to_field, self.update_data)
-                if upto_widget:
-                    self.widgets_map['up_to'] = upto_widget
-                    options_layout.addWidget(upto_widget)
-            
-            options_layout.addStretch()
-            self.dynamic_layout.addRow(tr("Options"), options_widget)
+        # Determine processing order
+        if visible_keys:
+            # Config-driven layout
+            # Create a map for quick lookup of schema fields
+            schema_map = {f.key: f for f in schema.fields}
 
-    def _create_widget_for_field(self, field_schema: FieldSchema):
-        key = field_schema.key
+            # Special handling for optional/up_to grouping if they appear consecutively in visible list
+            # For now, we respect the visible list order strictly.
+            # If 'input_link' or 'output_link' appear, map them to 'links' schema field with special mode.
+            
+            for key in visible_keys:
+                field_schema = None
+                mode_override = None # (show_input, show_output)
+
+                if key == "input_link":
+                    if "links" in schema_map:
+                        field_schema = schema_map["links"]
+                        mode_override = (True, False)
+                elif key == "output_link":
+                    if "links" in schema_map:
+                        field_schema = schema_map["links"]
+                        mode_override = (False, True)
+                elif key in schema_map:
+                    field_schema = schema_map[key]
+
+                if field_schema:
+                    # Use label from config if available
+                    custom_label = cmd_config.get("labels", {}).get(key)
+
+                    # For split links, we need unique keys in widgets_map
+                    widget_key = key if mode_override else field_schema.key
+
+                    self._create_widget_for_field(
+                        field_schema,
+                        widget_key=widget_key,
+                        custom_label=custom_label,
+                        mode_override=mode_override
+                    )
+        else:
+            # Fallback to Schema-driven layout (Original Logic)
+            
+            # Group optional and up_to fields for horizontal layout
+            optional_field = None
+            up_to_field = None
+            other_fields = []
+            
+            for field_schema in schema.fields:
+                if field_schema.key == 'optional':
+                    optional_field = field_schema
+                elif field_schema.key == 'up_to':
+                    up_to_field = field_schema
+                else:
+                    other_fields.append(field_schema)
+
+            # Add regular fields first
+            for field_schema in other_fields:
+                self._create_widget_for_field(field_schema)
+
+            # Add optional and up_to in a horizontal layout if both exist
+            if optional_field or up_to_field:
+                from PyQt6.QtWidgets import QHBoxLayout, QWidget
+                options_widget = QWidget()
+                options_layout = QHBoxLayout(options_widget)
+                options_layout.setContentsMargins(0, 0, 0, 0)
+
+                if optional_field:
+                    opt_widget = WidgetFactory.create_widget(self, optional_field, self.update_data)
+                    if opt_widget:
+                        self.widgets_map['optional'] = opt_widget
+                        options_layout.addWidget(opt_widget)
+
+                if up_to_field:
+                    upto_widget = WidgetFactory.create_widget(self, up_to_field, self.update_data)
+                    if upto_widget:
+                        self.widgets_map['up_to'] = upto_widget
+                        options_layout.addWidget(upto_widget)
+
+                options_layout.addStretch()
+                self.dynamic_layout.addRow(tr("Options"), options_widget)
+
+    def _create_widget_for_field(self, field_schema: FieldSchema, widget_key=None, custom_label=None, mode_override=None):
+        key = widget_key if widget_key else field_schema.key
 
         # Wrap update_data to also check for auto-generation triggers
         def update_and_trigger():
@@ -164,15 +213,22 @@ class UnifiedActionForm(BaseEditForm):
         widget = WidgetFactory.create_widget(self, field_schema, update_and_trigger)
 
         if widget:
-            # Do NOT set default value here - only set values when loading actual data
-            # This ensures empty/unset fields show "---" until user explicitly sets them
-            
             # Set produces_output hint for VariableLinkWidget
-            if field_schema.field_type == FieldType.LINK and hasattr(widget, 'set_output_hint'):
-                widget.set_output_hint(field_schema.produces_output)
+            if field_schema.field_type == FieldType.LINK:
+                if hasattr(widget, 'set_output_hint'):
+                    widget.set_output_hint(field_schema.produces_output)
+
+                # Apply view mode override (for split input/output links)
+                if mode_override and hasattr(widget, 'set_view_mode'):
+                    widget.set_view_mode(*mode_override)
             
             self.widgets_map[key] = widget
-            self.dynamic_layout.addRow(tr(field_schema.label), widget)
+
+            label = custom_label if custom_label else field_schema.label
+
+            # Apply tooltip from config if available (could be added later via config map)
+
+            self.dynamic_layout.addRow(tr(label), widget)
 
     def _check_auto_generation(self, changed_key):
         """Checks if a field change should trigger structure updates (e.g. generating options)."""
