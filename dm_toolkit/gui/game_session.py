@@ -2,6 +2,7 @@
 from typing import Any, List, Optional, Callable, Dict, Tuple
 import random
 import os
+import json
 
 from dm_toolkit.types import GameState, CardDB, Action
 from dm_toolkit.engine.compat import EngineCompat
@@ -20,8 +21,29 @@ class GameSession:
     Logic extracted from app.py and merged with GameController.
     """
 
-    # デフォルトデッキ（40枚のカードID=1）
-    DEFAULT_DECK = [1] * 40
+    # デフォルトデッキをmagic.jsonから読み込む
+    @staticmethod
+    def load_magic_deck() -> List[int]:
+        """Load the magic.json deck. Falls back to default if not found."""
+        try:
+            deck_path = "data/decks/magic.json"
+            if not os.path.exists(deck_path):
+                # Try relative to project root
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                deck_path = os.path.join(base_dir, deck_path)
+            
+            if os.path.exists(deck_path):
+                with open(deck_path, 'r', encoding='utf-8') as f:
+                    deck = json.load(f)
+                    if isinstance(deck, list) and len(deck) == 40:
+                        return deck
+        except Exception:
+            pass
+        
+        # Fallback to default deck
+        return [1] * 40
+    
+    DEFAULT_DECK = load_magic_deck.__func__()
 
     def __init__(self,
                  callback_update_ui: Callable[[], None],
@@ -177,6 +199,20 @@ class GameSession:
 
             if (is_pass or is_charge) and pending_count == 0:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
+                
+                # Check for game over after phase transition
+                if hasattr(dm_ai_module.PhaseManager, 'check_game_over'):
+                    try:
+                        game_over_result = dm_ai_module.PhaseManager.check_game_over(self.gs)
+                        if isinstance(game_over_result, tuple):
+                            is_over, winner = game_over_result
+                        else:
+                            is_over = game_over_result
+                        
+                        if is_over:
+                            self.gs.game_over = True
+                    except Exception as e:
+                        pass  # Silent fail, logging happens in step_phase
 
         self.callback_update_ui()
 
@@ -209,7 +245,23 @@ class GameSession:
         self.is_processing = True
         try:
             if self.check_and_handle_input_wait(): return
-            if self.gs.game_over:
+            
+            # Check for game over using PhaseManager
+            if self.gs and dm_ai_module and hasattr(dm_ai_module.PhaseManager, 'check_game_over'):
+                try:
+                    game_over_result = dm_ai_module.PhaseManager.check_game_over(self.gs)
+                    if isinstance(game_over_result, tuple):
+                        is_over, winner = game_over_result
+                    else:
+                        is_over = game_over_result
+                    
+                    if is_over:
+                        self.gs.game_over = True
+                        self.callback_log(tr("Game Over - Winner: {winner}").format(winner=winner if isinstance(game_over_result, tuple) else self.gs.winner))
+                        return
+                except Exception as e:
+                    self.callback_log(f"Warning: check_game_over failed: {e}")
+            elif self.gs and self.gs.game_over:
                 # self.callback_log(tr("Game Over")) # Optional
                 return
 

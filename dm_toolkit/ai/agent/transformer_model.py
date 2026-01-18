@@ -32,8 +32,12 @@ class DuelTransformer(nn.Module):
         self.token_embedding = nn.Embedding(vocab_size, d_model)
         self.pos_embedding = nn.Parameter(torch.randn(1, max_len, d_model) * 0.02)
 
-        # 2. Synergy Manager
-        self.synergy_graph = SynergyGraph(vocab_size, matrix_path=synergy_matrix_path)
+        # 2. Synergy Manager (optional for speed)
+        self.use_synergy = synergy_matrix_path is not None
+        if self.use_synergy:
+            self.synergy_graph = SynergyGraph(vocab_size, matrix_path=synergy_matrix_path)
+        else:
+            self.synergy_graph = None
 
         # 3. Transformer Encoder
         # We use a custom encoder block loop or standard encoder with custom mask logic.
@@ -86,23 +90,26 @@ class DuelTransformer(nn.Module):
         seq_len = min(S, self.max_len)
         emb = emb[:, :seq_len, :] + self.pos_embedding[:, :seq_len, :]
 
-        # 2. Synergy Bias
-        # [Batch, SeqLen, SeqLen]
-        # bias[b, i, j] is the value to add to attention score.
-        synergy_bias = self.synergy_graph.get_bias_for_sequence(x)
+        # 2. Synergy Bias (optional for speed)
+        if self.use_synergy and self.synergy_graph is not None:
+            # [Batch, SeqLen, SeqLen]
+            # bias[b, i, j] is the value to add to attention score.
+            synergy_bias = self.synergy_graph.get_bias_for_sequence(x)
 
-        # PyTorch MultiheadAttention expects mask of shape (Batch * NumHeads, SeqLen, SeqLen)
-        # if it's 3D.
-        # Our synergy_bias is (Batch, SeqLen, SeqLen).
-        # We need to repeat it for each head.
-        # Synergy is applied equally to all heads.
+            # PyTorch MultiheadAttention expects mask of shape (Batch * NumHeads, SeqLen, SeqLen)
+            # if it's 3D.
+            # Our synergy_bias is (Batch, SeqLen, SeqLen).
+            # We need to repeat it for each head.
+            # Synergy is applied equally to all heads.
 
-        # (Batch, Seq, Seq) -> (Batch, 1, Seq, Seq) -> (Batch, NumHeads, Seq, Seq) -> (Batch*NumHeads, Seq, Seq)
-        synergy_bias = synergy_bias.unsqueeze(1).repeat(1, self.nhead, 1, 1)
-        synergy_bias = synergy_bias.view(B * self.nhead, S, S)
+            # (Batch, Seq, Seq) -> (Batch, 1, Seq, Seq) -> (Batch, NumHeads, Seq, Seq) -> (Batch*NumHeads, Seq, Seq)
+            synergy_bias = synergy_bias.unsqueeze(1).repeat(1, self.nhead, 1, 1)
+            synergy_bias = synergy_bias.view(B * self.nhead, S, S)
+        else:
+            synergy_bias = None
 
         # 3. Encode
-        # Note: We pass synergy_bias as `mask`.
+        # Note: We pass synergy_bias as `mask` only if enabled.
         encoded = self.transformer_encoder(emb, mask=synergy_bias, src_key_padding_mask=padding_mask)
 
         # 4. Pooling

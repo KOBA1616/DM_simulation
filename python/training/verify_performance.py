@@ -136,9 +136,9 @@ class PerformanceVerifier:
 
         else:
             # ResNet / Flat Tensor
-            def flat_batch_inference(input_array: Any) -> Tuple[Any, Any]:
+            def flat_batch_inference(input_array: Any, *args: Any) -> Tuple[Any, Any]:
                 # Input is numpy array (Batch, InputSize) (via buffer protocol/copy in binding)
-                # But wait, the binding for set_flat_batch_callback passes a pointer/vector?
+                # Accepts *args to handle additional arguments passed by C++ (e.g. valid_action_masks) which are ignored for now.
                 # The binding `dm::python::call_flat_batch_callback` converts C++ vector to numpy array.
 
                 with torch.no_grad():
@@ -148,6 +148,12 @@ class PerformanceVerifier:
 
                     if isinstance(input_array, list):
                          input_array = np.array(input_array, dtype=np.float32)
+                    
+                    # Reshape if flat [Batch * InputSize]
+                    if input_array.ndim == 1:
+                         # Calculate batch size dynamically or use -1 if InputSize is known
+                         if self.input_size > 0:
+                             input_array = input_array.reshape(-1, self.input_size)
 
                     tensor = torch.from_numpy(input_array).float().to(self.device)
                     policy_logits, values = self.network(tensor)
