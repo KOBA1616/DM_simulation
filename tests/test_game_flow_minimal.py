@@ -17,7 +17,7 @@ Verified features:
 
 import sys
 import os
-sys.path.insert(0, '.')
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Set encoding to UTF-8
 import io

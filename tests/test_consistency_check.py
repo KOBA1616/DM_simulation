@@ -7,8 +7,25 @@ import sys
 import json
 from pathlib import Path
 
-project_root = Path(__file__).parent
+project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
+
+import dm_ai_module
+# Patch GameResult for stub compatibility if __members__ is missing
+if not hasattr(dm_ai_module.GameResult, '__members__'):
+    class MockEnumMember(int):
+        def __new__(cls, value, name):
+            obj = int.__new__(cls, value)
+            obj._value_ = value
+            obj.name = name
+            return obj
+
+    dm_ai_module.GameResult.__members__ = {
+        'NONE': MockEnumMember(dm_ai_module.GameResult.NONE, 'NONE'),
+        'P1_WIN': MockEnumMember(dm_ai_module.GameResult.P1_WIN, 'P1_WIN'),
+        'P2_WIN': MockEnumMember(dm_ai_module.GameResult.P2_WIN, 'P2_WIN'),
+        'DRAW': MockEnumMember(dm_ai_module.GameResult.DRAW, 'DRAW')
+    }
 
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
