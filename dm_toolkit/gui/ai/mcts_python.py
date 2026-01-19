@@ -260,7 +260,7 @@ class PythonMCTS:
             
             # Let's use simple "Win for Root Player" metric.
             # If the result was a win for root player, we add 1 to nodes where it was root player's turn?
-            # Wait, standard UCT assumes alternating max/max if we flip rewards, or max/min.
+            # Wait, standard UCT assumes alternating max if we flip rewards, or max/min.
             # Let's assume 2-player zero-sum.
             
             if self.root is None:

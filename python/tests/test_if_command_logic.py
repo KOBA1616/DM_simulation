@@ -163,7 +163,7 @@ if __name__ == "__main__":
         print("- IF判定のif_true/if_false配列はJSONに正しく保存されています")
         print("- CommandModelはif_true/if_falseを正しくロードします")
         print("- ModelSerializerはif_true/if_falseを")
-        print("  'If True'/'If False'ブランチノードとして表示します")
+        print("  'If True'If False'ブランチノードとして表示します")
         print("- ロジックツリーで子ノードとして編集できます")
         print("- フォームと保存ロジックは既に正しく実装されています")
         

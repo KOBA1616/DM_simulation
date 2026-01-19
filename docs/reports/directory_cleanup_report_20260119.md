@@ -3,7 +3,7 @@
 
 ## 実施内容（要約）
 - `AGENTS.md` をレビューし、ドキュメント参照の不整合（`action_mapper`の記載）を注記で修正。
-- 要件レビュー報告を `docs/requirements_review_20260119.md` として作成。
+- 要件レビュー報告を `docs/requirements/requirements_review_20260119.md` として作成。
 - 実装メモ（実験/機能実装記録）を `archive/docs/` に移動（コピー）し、ルートの元ファイルを簡略版に差し替え：
   - `MEGA_LAST_BURST_IMPLEMENTATION.md` → `archive/docs/MEGA_LAST_BURST_IMPLEMENTATION.md`
   - `CAST_SPELL_REPLACE_CARD_MOVE_IMPLEMENTATION.md` → `archive/docs/CAST_SPELL_REPLACE_CARD_MOVE_IMPLEMENTATION.md`
@@ -13,9 +13,9 @@
   - 結果: 1 passed
 
 ## 変更ファイル（主なもの）
-- [AGENTS.md](AGENTS.md)
-- [docs/requirements_review_20260119.md](docs/requirements_review_20260119.md)
-- [docs/directory_cleanup_report_20260119.md](docs/directory_cleanup_report_20260119.md) (本報告)
+- [AGENTS.md](Specs/AGENTS.md)
+- [docs/requirements/requirements_review_20260119.md](docs/requirements/requirements_review_20260119.md)
+- [docs/reports/directory_cleanup_report_20260119.md](docs/reports/directory_cleanup_report_20260119.md) (本報告)
 - アーカイブ先（コピー済）:
   - [archive/docs/MEGA_LAST_BURST_IMPLEMENTATION.md](archive/docs/MEGA_LAST_BURST_IMPLEMENTATION.md)
   - [archive/docs/CAST_SPELL_REPLACE_CARD_MOVE_IMPLEMENTATION.md](archive/docs/CAST_SPELL_REPLACE_CARD_MOVE_IMPLEMENTATION.md)

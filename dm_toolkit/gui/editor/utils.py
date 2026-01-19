@@ -2,7 +2,7 @@
 
 def normalize_action_zone_keys(data):
     """
-    Ensures 'source_zone' and 'destination_zone' are present in data if 'from_zone'/'to_zone' exist.
+    Ensures 'source_zone' and 'destination_zone' are present in data if 'from_zone'to_zone' exist.
     Removes 'from_zone' and 'to_zone' to prevent ambiguity and ensure compliance with C++ ActionDef.
 
     Args:
@@ -30,7 +30,7 @@ def normalize_action_zone_keys(data):
 
 def normalize_command_zone_keys(data):
     """
-    Ensures 'from_zone' and 'to_zone' are present in data if 'source_zone'/'destination_zone' exist.
+    Ensures 'from_zone' and 'to_zone' are present in data if 'source_zone'destination_zone' exist.
     Removes 'source_zone' and 'destination_zone' to ensure compliance with C++ CommandDef.
 
     Args:

@@ -5,7 +5,7 @@ import pytest
 import glob
 
 # Ensure data path relative to repo root
-DATA_DIR = os.path.join(os.path.dirname(__file__), "../../../data")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "../../data")
 
 def get_json_files():
     # Recursively find all JSON files in data directory

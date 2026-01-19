@@ -42,10 +42,10 @@
 - **Action items:**
     - 実装側の差分確認が必要（`dm_toolkit` と `dm_ai_module.py` の実装が方針に沿っているか）。
     - GUIスタブ関連テストの最新失敗ログを集めて優先度付けすること。
-    - 本ドキュメントは最新版として `docs/requirements_review_20260119.md` に要約と推奨アクションを追加済み。
+    - 本ドキュメントは最新版として `docs/requirements/requirements_review_20260119.md` に要約と推奨アクションを追加済み。
 
 ## Changelog
 
-- 2026-01-19: レビュー追記（非破壊）。今後のアクションは `docs/requirements_review_20260119.md` を参照。
+- 2026-01-19: レビュー追記（非破壊）。今後のアクションは `docs/requirements/requirements_review_20260119.md` を参照。
 
 ```

@@ -278,7 +278,7 @@
 2. バリデーションルール強化
 3. UI/UX改善
 
-**関連**: [docs/03_Card_Editor_Specs.md](../03_Card_Editor_Specs.md)
+**関連**: [docs/Specs/03_Card_Editor_Specs.md](../Specs/03_Card_Editor_Specs.md)
 
 #### B. 不完全情報推論 (Phase 2)
 1. `DeckInference` Python統合
@@ -317,7 +317,7 @@
 - **完了フェーズ**: [99_Completed_Tasks_Archive.md](./99_Completed_Tasks_Archive.md)
 - **Phase 4 詳細**: [07_Transformer_Implementation_Summary.md](./07_Transformer_Implementation_Summary.md)
 - **Legacy Action**: [01_Legacy_Action_Removal_Roadmap.md](./01_Legacy_Action_Removal_Roadmap.md)
-- **開発ポリシー**: [AGENTS.md](../../AGENTS.md)
+- **開発ポリシー**: [AGENTS.md](../Specs/AGENTS.md)
 **タスク**:
 - [ ] DeckInferenceクラスの精度向上
 - [ ] PimcGeneratorの最適化

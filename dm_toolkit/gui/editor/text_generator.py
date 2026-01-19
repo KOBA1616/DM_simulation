@@ -453,7 +453,7 @@ class CardTextGenerator:
     def _format_grant_keyword(cls, cond: str, target: str, modifier: Dict[str, Any]) -> str:
         """Format GRANT_KEYWORD modifier generically using modifier settings.
 
-        Uses `modifier` fields such as `mutation_kind`/`str_val`, `value`, `duration`,
+        Uses `modifier` fields such as `mutation_kind`str_val`, `value`, `duration`,
         and the provided `target` (which already includes scope/filter) to build
         a natural Japanese sentence. Handles restriction-style keywords specially
         but in a generic way driven by the modifier values.
@@ -2447,7 +2447,7 @@ class CardTextGenerator:
         Attempt to describe the target based on scope, filter, etc.
         Returns (target_description, unit_counter)
         """
-        # Accept either new ('scope'/'filter') or legacy ('target_group'/'target_filter') keys
+        # Accept either new ('scope'filter') or legacy ('target_group'target_filter') keys
         scope = action.get("scope", action.get('target_group', "NONE"))
         filter_def = action.get("filter", action.get('target_filter', {}))
         atype = action.get("type", "")

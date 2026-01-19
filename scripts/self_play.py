@@ -29,7 +29,7 @@ def play_once(seed: int | None = None) -> int:
     # Optionally randomize starting player for fairness
     # If attribute exists, we can set it; default keep what engine provides
     if hasattr(gi.state, 'active_player_id'):
-        # 50/50 random starting player
+        # 50 random starting player
         gi.state.active_player_id = random.choice([0, 1])
 
     # Simple loop: active player attacks opponent (break shield) until winner.

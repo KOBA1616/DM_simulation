@@ -133,7 +133,7 @@ class EngineCompat:
     def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
-        # Phase 1 (AGENTS.md Policy): Route action through unified execution when possible
+        # Phase 1 (Specs/AGENTS.md Policy): Route action through unified execution when possible
         # Prefer action.execute first (may already encapsulate command behavior)
         try:
             if hasattr(action, 'execute') and callable(getattr(action, 'execute')):

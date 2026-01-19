@@ -165,7 +165,7 @@ python train_transformer_phase4.py \
 
 # ステップ 3: 検証
 # Expected logs:
-#   Epoch 1/1
+#   Epoch 1
 #   [1] Policy Loss: 4.6053, Value Loss: 0.1234
 #   💾 Checkpoint saved
 ```

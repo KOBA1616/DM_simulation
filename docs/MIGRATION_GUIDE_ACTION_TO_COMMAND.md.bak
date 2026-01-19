@@ -301,7 +301,7 @@ git commit -m "migrate: test_file.pyをGameCommandビルダーに移行"
 4. **最終的な削除**: 十分な移行期間後、レガシーサポートを段階的に削減
 
 ### 参照ドキュメント
-- [AGENTS.md](Specs/AGENTS.md): 開発ポリシーとアーキテクチャガイドライン
+- [AGENTS.md](../Specs/AGENTS.md): 開発ポリシーとアーキテクチャガイドライン
 - [dm_toolkit/action_to_command.py](../dm_toolkit/action_to_command.py): 統一変換エントリポイント
 - [dm_toolkit/command_builders.py](../dm_toolkit/command_builders.py): GameCommandビルダー
 - [dm_toolkit/compat_wrappers.py](../dm_toolkit/compat_wrappers.py): 互換性レイヤー

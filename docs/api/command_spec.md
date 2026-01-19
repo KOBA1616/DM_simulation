@@ -6,7 +6,7 @@ The Command API is a type-safe, serialized interface for interacting with the Du
 
 ## Command Definition
 
-Commands are defined in C++ (`src/engine/game_command/game_command.hpp`) and exposed to Python via `dm_ai_module.CommandDef` (or `Command` struct).
+Commands are defined in C++ (`src/engine/game_command.hpp`) and exposed to Python via `dm_ai_module.CommandDef` (or `Command` struct).
 
 ### CommandType Enum
 

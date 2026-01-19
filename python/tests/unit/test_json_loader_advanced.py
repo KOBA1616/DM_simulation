@@ -6,7 +6,7 @@ import pytest
 import json
 
 # Add bin directory to path if not present (assuming run from root with PYTHONPATH set, but adding logic just in case)
-bin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../bin'))
+bin_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../bin'))
 if bin_path not in sys.path:
     sys.path.append(bin_path)
 

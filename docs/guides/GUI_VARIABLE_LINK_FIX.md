@@ -8,7 +8,7 @@
 ### 1. UnifiedActionFormの修正 ([unified_action_form.py](dm_toolkit/gui/editor/forms/unified_action_form.py))
 
 #### 変更点:
-- **'links'キーの処理を追加**: スキーマで使用される'links'フィールドを'input_link'/'output_link'と同様に処理
+- **'links'キーの処理を追加**: スキーマで使用される'links'フィールドを'input_link'output_link'と同様に処理
 - **current_itemの設定**: VariableLinkWidgetが前のステップの出力変数を取得できるよう、current_itemを設定
 - **produces_outputヒントの設定**: VariableLinkWidgetにproduces_outputフラグを渡し、Output Keyフィールドの表示を制御
 
@@ -112,10 +112,10 @@ if key == 'links' or key == 'input_link' or key == 'output_link':
 
 ## 関連ファイル
 
-- [schema_config.py](dm_toolkit/gui/editor/schema_config.py): f_links_out設定
-- [unified_action_form.py](dm_toolkit/gui/editor/forms/unified_action_form.py): linksキー処理
-- [variable_link_widget.py](dm_toolkit/gui/editor/forms/parts/variable_link_widget.py): ウィジェット実装
-- [command_system.cpp](src/engine/systems/command_system.cpp): C++出力実装
-- [CARD_MOVEMENT_OUTPUT.md](docs/CARD_MOVEMENT_OUTPUT.md): 機能詳細ドキュメント
+- [schema_config.py](../../dm_toolkit/gui/editor/schema_config.py): f_links_out設定
+- [unified_action_form.py](../../dm_toolkit/gui/editor/forms/unified_action_form.py): linksキー処理
+- [variable_link_widget.py](../../dm_toolkit/gui/editor/forms/parts/variable_link_widget.py): ウィジェット実装
+- [command_system.cpp](../../src/engine/systems/command_system.cpp): C++出力実装
+- [CARD_MOVEMENT_OUTPUT.md](../spell/CARD_MOVEMENT_OUTPUT.md): 機能詳細ドキュメント
 
 ````

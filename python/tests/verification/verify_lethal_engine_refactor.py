@@ -4,7 +4,7 @@ import sys
 import unittest
 
 # Ensure bin is in path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 bin_path = os.path.join(project_root, 'bin')
 if bin_path not in sys.path:
     sys.path.append(bin_path)

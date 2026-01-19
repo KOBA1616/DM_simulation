@@ -211,7 +211,7 @@ def test_spell_replacement():
 
 ## 関連ドキュメント
 
-- 📄 [REPLACE_CARD_MOVE 機能説明](REPLACE_CARD_MOVE_USAGE.md)
+- 📄 [REPLACE_CARD_MOVE 機能説明](guides/REPLACE_CARD_MOVE_USAGE.md)
 - 📄 [呪文のゾーン経路と置換効果（詳細版）](SPELL_ZONE_FLOW_AND_REPLACEMENT.md)
 - 🧪 [テストコード](../python/tests/unit/test_spell_replacement.py)
 

@@ -36,7 +36,7 @@
 | REGISTER_DELAYED_EFFECT | 「{str_val}」の効果を{value1}ターン登録する。 | - | `str_val`,`value1` |
 | FRIEND_BURST | {str_val}のフレンド・バースト | 固有書式（特殊効果説明付き） | `str_val` |
 | MOVE_TO_UNDER_CARD | {target}を{value1}{unit}選び、カードの下に置く。 | - | `value1` |
-| SELECT_NUMBER / DECLARE_NUMBER | 数字を選ぶ系テンプレ | `value1`/`value2` 範囲指定で生成 | `value1`,`value2` |
+| SELECT_NUMBER / DECLARE_NUMBER | 数字を選ぶ系テンプレ | `value1`value2` 範囲指定で生成 | `value1`,`value2` |
 | COST_REDUCTION | {target}のコストを{value1}少なくする。 | `_format_condition` が前置される場合あり。 | `value1`,`condition` |
 | LOOK_TO_BUFFER / SELECT_FROM_BUFFER / PLAY_FROM_BUFFER / MOVE_BUFFER_TO_ZONE | バッファ操作系テンプレ | バッファ固有文言 | `value1`,`filter` |
 | SELECT_OPTION | 選択肢列挙テキスト（複数行） | `options` により枝分かれを列挙 | `options`,`value1` |

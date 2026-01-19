@@ -103,7 +103,7 @@ class CardValidator:
         # Effects/Triggers
         effects = card_data.get('triggers', card_data.get('effects', []))
         if not isinstance(effects, list):
-             errors.append("'triggers'/'effects' must be a list")
+             errors.append("'triggers'effects' must be a list")
         else:
             for i, effect in enumerate(effects):
                 effect_errors = self.validate_effect(effect, context_prefix=f"Effect[{i}]")

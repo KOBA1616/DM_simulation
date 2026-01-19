@@ -187,7 +187,7 @@ set(SRC_ENGINE
     src/engine/game_instance.cpp
     src/engine/systems/mana/cost_payment_system.cpp
     src/engine/systems/trigger_system/trigger_manager.cpp
-    src/engine/systems/trigger_system/trigger_system.cpp
+    src/engine/systems/trigger_system.cpp
     src/engine/game_command/commands.cpp
     src/engine/game_command/action_commands.cpp # Added
     src/engine/systems/pipeline_executor.cpp
@@ -207,10 +207,10 @@ set(SRC_AI
     src/ai/encoders/tensor_converter.cpp
     src/ai/encoders/token_converter.cpp
     src/ai/encoders/action_encoder.cpp
-    src/ai/mcts/mcts.cpp
+    src/ai/mcts.cpp
     src/ai/evaluator/heuristic_evaluator.cpp
     src/ai/evaluator/beam_search_evaluator.cpp
-    src/ai/self_play/self_play.cpp
+    src/ai/self_play.cpp
     src/ai/self_play/parallel_runner.cpp
     src/ai/agents/heuristic_agent.cpp
     src/ai/data_collection/data_collector.cpp
@@ -221,7 +221,7 @@ set(SRC_AI
     src/bindings/python_batch_inference.cpp
     src/ai/inference/pimc_generator.cpp
     src/ai/inference/deck_inference.cpp
-    src/ai/pomdp/pomdp.cpp
+    src/ai/pomdp.cpp
     src/ai/neural_net/self_attention.cpp # Added
     # Optional neural evaluator / inference (guarded by USE_LIBTORCH / USE_ONNXRUNTIME)
     $<$<OR:$<BOOL:${USE_LIBTORCH}>,$<BOOL:${USE_ONNXRUNTIME}>>:src/ai/evaluator/neural_evaluator.cpp>
@@ -246,7 +246,7 @@ set_target_properties(dm_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Python Module (Phase 3)
 pybind11_add_module(dm_ai_module
-    src/bindings/bindings.cpp
+    src/bindings.cpp
     src/bindings/bind_core.cpp
     src/bindings/bind_engine.cpp
     src/bindings/bind_ai.cpp

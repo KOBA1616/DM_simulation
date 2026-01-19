@@ -6,8 +6,8 @@ import random
 # Ensure proper path for running inside the repo
 # We must add the path BEFORE importing the module
 # From python/tests/verification/, we need to go up 3 levels to reach root, then to bin
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../bin'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../src'))
 
 try:
     import dm_ai_module
@@ -23,7 +23,7 @@ def verify_deck_evolution_logic() -> None:
     json_path = "data/cards.json"
     if not os.path.exists(json_path):
         # Fallback if running from script directory
-        json_path = os.path.join(os.path.dirname(__file__), '../../../data/cards.json')
+        json_path = os.path.join(os.path.dirname(__file__), '../../data/cards.json')
 
     if not os.path.exists(json_path):
         print(f"Error: {json_path} not found.")

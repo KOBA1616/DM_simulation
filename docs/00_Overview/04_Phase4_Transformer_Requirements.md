@@ -705,7 +705,7 @@ def generate_data(num_games=10000):
 ### 9.3 内部ドキュメント
 - [dm_toolkit/ai/agent/transformer_model.py](../../dm_toolkit/ai/agent/transformer_model.py)
 - [src/ai/encoders/tensor_converter.hpp](../../src/ai/encoders/tensor_converter.hpp)
-- [docs/02_AI_System_Specs.md](../02_AI_System_Specs.md)
+- [docs/Specs/02_AI_System_Specs.md](../Specs/02_AI_System_Specs.md)
 
 ---
 

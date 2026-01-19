@@ -5,7 +5,7 @@ import numpy as np
 
 # Setup paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, '../../../'))
+project_root = os.path.abspath(os.path.join(current_dir, '../../'))
 bin_path = os.path.join(project_root, 'bin')
 python_path = os.path.join(project_root, 'python')
 

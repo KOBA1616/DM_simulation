@@ -3,7 +3,7 @@ import sys
 import os
 
 # Add the root directory to sys.path so dm_toolkit can be imported
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from dm_toolkit.validator.card_validator import CardValidator
 

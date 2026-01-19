@@ -14,7 +14,6 @@
 
 Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、Python/PyTorchによるAlphaZeroおよびTransformerベースのAI学習環境を統合したプロジェクトです。
 
-現在、**Core Engine (C++)** の実装はほぼ完了しており、以下のフェーズに焦点を移しています。
 1.  **AI Evolution (Phase 2 & 3)**: PBTを用いたメタゲーム進化と推論システム。
 2.  **Transformer Architecture (Phase 4)**: `dm_toolkit` によるシーケンスモデルの導入。
 3.  **Editor Refinement**: カードエディタの完成度向上（Logic Mask等）。
@@ -23,7 +22,6 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 2.1 ゲームエンジン (`src/core`, `src/engine`)
 *   [Status: Done] **Action/Command Architecture**: `GameCommand` ベースのイベント駆動モデル。
-*   [Status: Done] **Advanced Mechanics**: 革命チェンジ (Revolution Change), ハイパー化 (Hyper Energy), ジャストダイバー等の実装完了。
 *   [Status: Done] **Multi-Civilization**: 多色マナ支払いロジックの実装完了。
 *   [Status: Done] **Stats/Logs**: `TurnStats` や `GameResult` の収集基盤。
 
@@ -31,7 +29,6 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Parallel Runner**: OpenMP + C++ MCTS による高速並列対戦。
 *   [Status: Done] **AlphaZero Logic**: MLPベースのAlphaZero学習ループ (`train_simple.py`).
 *   [Status: Done] **Transformer Model**: `DuelTransformer` (Linear Attention, Synergy Matrix) の実装完了。学習パイプライン `train_transformer_phase4.py` 稼働確認済み（Week 2-3実装完了）。
-    *   データ生成: `generate_transformer_training_data.py` によるC++ DataCollector連携実装済み。
     *   Synergy Matrix: 手動定義ペアからの初期化機能実装済み (`data/synergy_pairs_v1.json`)。
     *   TensorConverter V2: max_len=200、特殊トークン対応完了。
 *   [Status: WIP] **Meta-Game Evolution**: `evolution_ecosystem.py` 実装中。
@@ -87,20 +84,14 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 **既存のテスト環境**:
 ✅ 以下の環境が既に実装済みです：
-
-1. **Scenario Tools (シナリオツール)**
-   - ファイル: [dm_toolkit/gui/widgets/scenario_tools.py](../../dm_toolkit/gui/widgets/scenario_tools.py)
    - 機能:
      - 特定のゲーム状態の保存・読み込み
-     - 任意のカードをゾーン（手札、バトルゾーン、マナ等）に追加
-     - ゾーンのクリア操作
-     - シナリオファイル管理 (data/scenarios/)
    - 使用方法: メインウィンドウで「Scenario Mode」を有効化
 
 2. **Simulation Dialog (バッチシミュレーション)**
    - ファイル: [dm_toolkit/gui/simulation_dialog.py](../../dm_toolkit/gui/simulation_dialog.py)
    - 機能:
-     - 定義済みシナリオでの大量対戦実行
+*   `docs/00_Overview/DM_Official_Rules.md`: デュエル・マスターズの公式ルール。
      - Random/Heuristic/MLPモデル評価
      - 勝率・ターン数統計の収集
    - 使用方法: ツールバー「Batch Simulation」
@@ -429,7 +420,7 @@ class StubFinder(importlib.abc.MetaPathFinder):
 1. Day 1: Population Managerの実装 [Done]
    - デッキプールのデータ構造 (`DeckIndividual` クラス)
    - 初期集団の生成 (`initialize_random_population`)
-   - 保存/読み込み (`save_population`/`load_population`)
+   - 保存/読み込み (`save_population`load_population`)
    
 2. Day 2: Parallel Workersの実装 [Done]
    - マルチプロセス対戦実行 (`ParallelMatchExecutor` クラス)
@@ -649,9 +640,9 @@ Week 6+: 継続的改善
 
 ## 6. ドキュメント構成
 
-*   `docs/01_Game_Engine_Specs.md`: ゲームエンジンの詳細仕様。
-*   `docs/02_AI_System_Specs.md`: AIモデル、学習パイプライン、推論システムの仕様。
-*   `docs/03_Card_Editor_Specs.md`: カードエディタの機能要件。
+*   `docs/Specs/01_Game_Engine_Specs.md`: ゲームエンジンの詳細仕様。
+*   `docs/Specs/02_AI_System_Specs.md`: AIモデル、学習パイプライン、推論システムの仕様。
+*   `docs/Specs/03_Card_Editor_Specs.md`: カードエディタの機能要件。
 *   `docs/00_Overview/01_Legacy_Action_Removal_Roadmap.md`: Legacy Action削除の詳細ロードマップ（Phase 1-6）。
 *   `docs/00_Overview/04_Phase4_Transformer_Requirements.md`: **Phase 4 Transformer実装の詳細要件定義書**（NEW）。
 *   `docs/00_Overview/20_Revised_Roadmap.md`: AI進化と統合の改定ロードマップ。

@@ -5,7 +5,7 @@ Unified Action-to-Command Converter
 This module serves as the **single source of truth** for converting legacy Action
 dictionaries to standardized GameCommand structures.
 
-Key Principles (AGENTS.md Policy):
+Key Principles (Specs/AGENTS.md Policy):
 1. All Action-to-Command conversions MUST go through this module's `map_action` function.
 2. Standardizes zone names, field names, and command types to match engine expectations.
 3. Maintains backward compatibility via `compat_wrappers.add_aliases_to_command`.
@@ -134,7 +134,7 @@ def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
              pass # Ignore if not convertible
 
     # ------------------------------------------------------------------
-    # Canonical Key Normalization (AGENTS.md Policy Section 2)
+    # Canonical Key Normalization (Specs/AGENTS.md Policy Section 2)
     # Copy legacy keys to canonical forms; preserve original for compatibility
     # ------------------------------------------------------------------
     

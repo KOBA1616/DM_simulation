@@ -86,7 +86,7 @@ def ensure_executable_command(obj: Any) -> Dict[str, Any]:
     Ensures the given object is a valid Command dictionary ready for execution.
     This is the Unified Execution Path entry point.
     
-    Post-Processing (AGENTS.md Policy Section 2):
+    Post-Processing (Specs/AGENTS.md Policy Section 2):
     - Applies legacy field normalization via compat_wrappers
     - Preserves backward compatibility with legacy test code
     - Validates command structure for execution readiness
@@ -116,7 +116,7 @@ def ensure_executable_command(obj: Any) -> Dict[str, Any]:
     if original_type == 'DRAW_CARD':
         cmd['type'] = 'DRAW_CARD'
     
-    # Apply backward compatibility normalization (AGENTS.md Policy Section 2)
+    # Apply backward compatibility normalization (Specs/AGENTS.md Policy Section 2)
     cmd = normalize_legacy_fields(cmd)
 
     return cmd

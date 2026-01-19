@@ -76,7 +76,7 @@ def main():
     print(f"Running minimal simulation: same deck vs same deck (2 games for stats)...")
     stats = eco.collect_smart_stats(deck, deck, num_games=2)
 
-    # Restore time/time behavior for runner if needed
+    # Restore time behavior for runner if needed
     if args.seed is not None:
         time.time = orig_time
 

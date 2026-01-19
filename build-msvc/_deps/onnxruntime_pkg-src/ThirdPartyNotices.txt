@@ -2728,7 +2728,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _____
-onnx/onnx-tensorrt
+onnx-tensorrt
 
 MIT License
 
@@ -3300,7 +3300,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 _____
 
 abseil-cpp
-https://github.com/abseil/abseil-cpp
+https://github.com/abseil-cpp
 
                                  Apache License
                            Version 2.0, January 2004
@@ -4031,7 +4031,7 @@ libprotobuf-mutator
 _____
 
    mpi4py
-   https://github.com/mpi4py/mpi4py/
+   https://github.com/mpi4py/
 
    =======================
    LICENSE: MPI for Python
@@ -4271,7 +4271,7 @@ huggingface/transformers
    See the License for the specific language governing permissions and
    limitations under the License.
 _____
-msgpack/msgpack-python
+msgpack-python
 
 Copyright (C) 2008-2011 INADA Naoki <songofacandy@gmail.com>
 
@@ -5184,7 +5184,7 @@ google/sentencepiece, https://github.com/google/sentencepiece
 
 _____
 
-dlfcn-win32/dlfcn-win32 is licensed under the MIT License
+dlfcn-win32 is licensed under the MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -5239,7 +5239,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 _____
 
-openssl/openssl, https://github.com/openssl/openssl
+openssl, https://github.com/openssl
 
                                  Apache License
                            Version 2.0, January 2004
@@ -5510,7 +5510,7 @@ DEALINGS IN THE SOFTWARE.
 
 _____
 
-libb64/libb64, https://github.com/libb64/libb64
+libb64, https://github.com/libb64
 
 Copyright-Only Dedication (based on United States law) or Public Domain Certification
 
@@ -5996,7 +5996,7 @@ https://github.com/tensorflow/tfjs
 
 ——
 
-curl/curl
+curl
 
 https://github.com/curl
 

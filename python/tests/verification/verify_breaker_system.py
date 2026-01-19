@@ -3,7 +3,7 @@ import sys
 import os
 
 # Add bin directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../bin'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
 # Add python directory to path (for other python modules if needed)
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 

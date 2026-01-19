@@ -14,7 +14,7 @@
 - `FR-1` → `src/engine/*`, `tests/engine_test.py`
 - `FR-2` → `dm_toolkit/action_to_command.py`, `tests/dm_toolkit/test_action_to_command.py`
 - `FR-4` → `training/*`, `scripts/generate_training_data.py`, `models/`
-- `FR-5` → `dm_toolkit/gui/editor/`, `docs/GUI_HEADLESS_TESTING_SETUP.md`
+- `FR-5` → `dm_toolkit/gui/editor/`, `docs/guides/GUI_HEADLESS_TESTING_SETUP.md`
 
 3) 優先度別アクション（短期）
 - 高: FR-1, FR-2, FR-4, FR-6 — 直近でCIとpytestが通る状態を作る
