@@ -10,7 +10,9 @@
 *   **Minimize Dispersion:** Logic for backward compatibility and command post-processing should be centralized.
     *   `dm_toolkit.compat_wrappers`: For wrappers handling legacy API signatures.
     *   `dm_toolkit.unified_execution`: For executing standardized commands against the engine.
-    *   `dm_toolkit.action_mapper`: For specific mapping logic (helper for `action_to_command`).
+    *   `dm_toolkit.action_mapper`: (注) リポジトリ内に明示的な `action_mapper` モジュールは存在しません。
+        実装は `dm_toolkit.action_to_command` に統合されているか、廃止されている可能性があります。
+        ドキュメント上の古い参照のため、必要に応じて削除または移動を検討してください。
 *   **Refactoring:** Avoid spreading "if legacy_mode:" checks throughout the codebase. encapsulate them in these modules.
 
 ## 3. Headless Testing and Stubbing
@@ -28,3 +30,19 @@
 *   **Test Coverage Target:** Maintain 98%+ test pass rate (Current: 98.3% as of 2026年1月22日).
 *   **Critical Issues:** Focus on remaining test failures in GUI stubbing and text generation.
 *   **Continuous Improvement:** Address technical debt incrementally while maintaining system stability.
+
+---
+
+## Review Log
+
+- **Reviewed on:** 2026-01-19
+- **Reviewer:** repository maintenance run
+- **Summary:** ドキュメントはコマンド正規化、互換性ラッパー、ヘッドレステスト方針、ネイティブモジュール読み込み優先度、QA戦略が明確に記載されている。`dm_toolkit.action_to_command.action_to_command` を単一の正規化入り口とする方針は現行実装のリファクタリング目標として適切。
+- **Action items:**
+    - 実装側の差分確認が必要（`dm_toolkit` と `dm_ai_module.py` の実装が方針に沿っているか）。
+    - GUIスタブ関連テストの最新失敗ログを集めて優先度付けすること。
+    - 本ドキュメントは最新版として `docs/requirements_review_20260119.md` に要約と推奨アクションを追加済み。
+
+## Changelog
+
+- 2026-01-19: レビュー追記（非破壊）。今後のアクションは `docs/requirements_review_20260119.md` を参照。

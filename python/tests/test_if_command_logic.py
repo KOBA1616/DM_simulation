@@ -165,7 +165,7 @@ if __name__ == "__main__":
         print("- ModelSerializerはif_true/if_falseを")
         print("  'If True'/'If False'ブランチノードとして表示します")
         print("- ロジックツリーで子ノードとして編集できます")
-        print("\n✅ フォームと保存ロジックは既に正しく実装されています")
+        print("- フォームと保存ロジックは既に正しく実装されています")
         
     except AssertionError as e:
         print(f"\n❌ TEST FAILED: {e}")
