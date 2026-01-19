@@ -1,6 +1,18 @@
 # Status and Requirements Summary (要件定義書 00)
 
+**最終更新**: 2026-01-20 04:59:38 +0900 (commit 076826d2 on branch `main`)
+
 このドキュメントはプロジェクトの現在のステータス、実装済み機能、および次のステップの要件をまとめたマスタードキュメントです。
+
+作業ツリーの現在状態 (未コミットの変更を含む):
+
+- Modified: `build-msvc/_deps/pybind11-src`
+- Modified: `docs/00_Overview/00_Status_and_Requirements_Summary.md` (このファイルへの追記あり)
+- Untracked (新規): `docs/00_Overview/00_Completed_Docs_Changes.md`
+- Untracked (新規): `docs/README.md`, `docs/backups/README.md`, `docs/guides/README.md`, `docs/migration/README.md`, `docs/reference/README.md`
+
+上記の変更はワークツリーにあります。コミットする前に差分を確認してください。
+
 
 ## ステータス定義
 *   `[Status: Todo]` : 未着手。
@@ -52,6 +64,25 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 ## 3. 完了したフェーズ (Completed Phases)
 
 完了したフェーズの詳細は [99_Completed_Tasks_Archive.md](./99_Completed_Tasks_Archive.md) を参照してください。
+
+---
+
+## ドキュメント整理履歴 (Documentation reorganization) — 2026-01-20
+
+この節では、ドキュメント直下の整理作業の履歴を記録します。詳細な完了項目は別ファイルに転記しています: [00_Completed_Docs_Changes.md](./00_Completed_Docs_Changes.md)
+
+概要:
+
+- `docs/` 直下にトピック別サブフォルダを整理（`guides`, `reference`, `migration`, `backups` を作成）
+- `.bak` ファイルを `docs/backups` に移動
+- 代表的なガイド・リファレンスファイルをそれぞれのフォルダへ移動
+- 各サブフォルダに `README.md` を追加し、短い要約と主要見出しを記載
+
+運用メモ:
+
+- 変更はワークツリー上で行われています。コミット前に差分を確認してください。
+- 迅速に戻す必要がある場合は `docs/backups` の該当 `.bak` を元の場所へ移動してください（例: `Move-Item docs\backups\IF_CONDITION_LABELS.md.bak docs\IF_CONDITION_LABELS.md -Force`）。
+
 
 ### 3.1 Phase 1-5: Legacy Action削除 (2026年1月完了)
 *   ✅ **Phase 1**: 入口統一（`action_to_command.py`）
