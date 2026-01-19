@@ -983,6 +983,9 @@ class CardTextGenerator:
         if not command:
             return ""
 
+        # Use command as action for blocks that expect 'action' variable
+        action = command
+
         # Map CommandDef fields to Action-like dict to reuse _format_action logic where possible
         # Robustly pick command type from either 'type' or legacy 'name'
         cmd_type = command.get("type") or command.get("name") or "NONE"
@@ -1718,7 +1721,7 @@ class CardTextGenerator:
              return base
 
         elif atype == "FLOW":
-             ftype = action.get("flow_type", "")
+             ftype = action.get("str_param") or action.get("flow_type", "")
              val1 = action.get("value1", 0) # Often raw int
 
              if ftype == "PHASE_CHANGE":
