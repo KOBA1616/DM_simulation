@@ -38,7 +38,7 @@ _Zone = getattr(dm_ai_module, 'Zone', None) if dm_ai_module is not None else Non
 
 # Virtual command types that are allowed even if the native CommandType enum
 # does not expose them (handled by Python-side fallbacks or post-processing).
-_ALLOWED_VIRTUAL_COMMAND_TYPES = {"REPLACE_CARD_MOVE"}
+_ALLOWED_VIRTUAL_COMMAND_TYPES = {"REPLACE_CARD_MOVE", "CHOICE"}
 
 # Optional deprecation flag: enable via environment variable to surface guidance
 _DEPRECATE_ACTION_DICTS = bool(os.getenv('DM_TOOLKIT_DEPRECATE_ACTION_DICTS'))

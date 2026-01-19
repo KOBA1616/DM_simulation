@@ -1,6 +1,47 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
-from PyQt6.QtCore import Qt, pyqtSignal
+try:
+    from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
+    from PyQt6.QtCore import Qt, pyqtSignal
+except Exception:
+    # Provide lightweight shims for headless/testing environments
+    class _DummySignal:
+        def __init__(self, *args, **kwargs): pass
+        def emit(self, *a, **k): return None
+
+    class _DummyWidget:
+        def __init__(self, *args, **kwargs): pass
+        def setParent(self, *a, **k): pass
+        def window(self): return None
+
+    class _DummyLayout:
+        def __init__(self, *a, **k): pass
+        def setContentsMargins(self, *a, **k): pass
+        def setAlignment(self, *a, **k): pass
+        def setSpacing(self, *a, **k): pass
+        def addWidget(self, *a, **k): pass
+        def itemAt(self, i): return None
+
+    class _DummyLabel:
+        def __init__(self, text=""): self._text = text
+        def setFixedWidth(self, *a, **k): pass
+        def setWordWrap(self, *a, **k): pass
+        def setAlignment(self, *a, **k): pass
+        def setStyleSheet(self, *a, **k): pass
+        def setVisible(self, *a, **k): pass
+
+    class _DummyScrollArea:
+        def __init__(self, *a, **k): pass
+        def setWidgetResizable(self, *a, **k): pass
+        def setMinimumHeight(self, *a, **k): pass
+        def setVerticalScrollBarPolicy(self, *a, **k): pass
+        def setWidget(self, *a, **k): pass
+
+    QWidget = _DummyWidget
+    QHBoxLayout = _DummyLayout
+    QLabel = _DummyLabel
+    QScrollArea = _DummyScrollArea
+    Qt = type('X', (), {'AlignmentFlag': type('A', (), {'AlignCenter': 0}), 'ScrollBarPolicy': type('S', (), {'ScrollBarAlwaysOff': 0})})
+    pyqtSignal = _DummySignal
 from .card_widget import CardWidget
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.card_helpers import get_card_civilization
@@ -26,25 +67,71 @@ class ZoneWidget(QWidget):
         
         # Title Label (Vertical)
         self.title_label = QLabel(self.title.replace(" ", "\n"))
-        self.title_label.setFixedWidth(40)
-        self.title_label.setWordWrap(True)
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setStyleSheet("background-color: #ddd; border: 1px solid #999; font-weight: bold;")
+        if hasattr(self.title_label, 'setFixedWidth'):
+            self.title_label.setFixedWidth(40)
+        elif hasattr(self.title_label, 'setFixedSize'):
+            try:
+                self.title_label.setFixedSize(40, 100)
+            except Exception:
+                pass
+
+        if hasattr(self.title_label, 'setWordWrap'):
+            self.title_label.setWordWrap(True)
+
+        if hasattr(self.title_label, 'setAlignment') and hasattr(Qt, 'AlignmentFlag'):
+            try:
+                self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            except Exception:
+                pass
+
+        if hasattr(self.title_label, 'setStyleSheet'):
+            try:
+                self.title_label.setStyleSheet("background-color: #ddd; border: 1px solid #999; font-weight: bold;")
+            except Exception:
+                pass
         main_layout.addWidget(self.title_label)
         
         # Scroll Area for Cards
         self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setMinimumHeight(150) 
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        if hasattr(self.scroll_area, 'setWidgetResizable'):
+            try:
+                self.scroll_area.setWidgetResizable(True)
+            except Exception:
+                pass
+        if hasattr(self.scroll_area, 'setMinimumHeight'):
+            try:
+                self.scroll_area.setMinimumHeight(150)
+            except Exception:
+                pass
+        if hasattr(self.scroll_area, 'setVerticalScrollBarPolicy') and hasattr(Qt, 'ScrollBarPolicy'):
+            try:
+                self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            except Exception:
+                pass
         
         self.card_container = QWidget()
         self.card_layout = QHBoxLayout(self.card_container)
-        self.card_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.card_layout.setContentsMargins(5, 5, 5, 5)
-        self.card_layout.setSpacing(5)
+        if hasattr(self.card_layout, 'setAlignment') and hasattr(Qt, 'AlignmentFlag'):
+            try:
+                self.card_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            except Exception:
+                pass
+        if hasattr(self.card_layout, 'setContentsMargins'):
+            try:
+                self.card_layout.setContentsMargins(5, 5, 5, 5)
+            except Exception:
+                pass
+        if hasattr(self.card_layout, 'setSpacing'):
+            try:
+                self.card_layout.setSpacing(5)
+            except Exception:
+                pass
         
-        self.scroll_area.setWidget(self.card_container)
+        if hasattr(self.scroll_area, 'setWidget'):
+            try:
+                self.scroll_area.setWidget(self.card_container)
+            except Exception:
+                pass
         main_layout.addWidget(self.scroll_area)
 
     def set_legal_actions(self, actions):

@@ -1,0 +1,209 @@
+{
+  "COMMAND_GROUPS": {
+    "LOGIC": ["QUERY", "IF", "IF_ELSE", "ELSE"],
+    "DRAW": ["DRAW_CARD", "LOOK_AND_ADD", "MEKRAID"],
+    "RESTRICTION": []
+  },
+  "NONE": { "visible": [] },
+  "DRAW_CARD": {
+    "visible": ["target_group", "amount", "optional", "up_to", "input_link", "output_link"],
+    "labels": { "amount": "Cards to Draw" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Cards Drawn" }
+  },
+  "DISCARD": {
+    "visible": ["target_group", "target_filter", "amount", "up_to", "optional", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Discarded Cards" }
+  },
+  "DESTROY": {
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count (if selecting)" }
+  },
+  "MANA_CHARGE": {
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count (if selecting)" }
+  },
+  "TAP": {
+    "visible": ["target_group", "target_filter", "input_link"]
+  },
+  "UNTAP": {
+    "visible": ["target_group", "target_filter", "input_link"]
+  },
+  "RETURN_TO_HAND": {
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count (if selecting)" }
+  },
+  "BREAK_SHIELD": {
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count" }
+  },
+  "TRANSITION": {
+    "visible": ["target_group", "target_filter", "from_zone", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Moved Cards" }
+  },
+  "MOVE_CARD": {
+    "visible": ["target_group", "target_filter", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Moved Cards" }
+  },
+  "REPLACE_CARD_MOVE": {
+    "visible": ["target_group", "target_filter", "from_zone", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
+    "labels": { "from_zone": "Original Destination", "to_zone": "Replacement Destination", "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Replaced Cards" },
+    "tooltip": "Replacement effect: Instead of moving to original destination, move to replacement destination"
+  },
+  "MUTATE": {
+    "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param", "duration", "input_link"],
+    "labels": { "mutation_kind": "Mutation Type", "amount": "Value (Power)", "str_param": "Extra Param", "duration": "Duration" }
+  },
+  "POWER_MOD": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Power Adjustment" }
+  },
+  "ADD_KEYWORD": {
+    "visible": ["target_group", "target_filter", "explicit_self", "str_val", "duration", "amount", "input_link"],
+    "labels": { "explicit_self": "This Card", "str_val": "Keyword", "duration": "Duration", "amount": "Amount (Hidden)" }
+  },
+  "QUERY": {
+    "visible": ["target_group", "target_filter", "query_mode", "output_link"],
+    "produces_output": true,
+    "outputs": { "output_value_key": "Query Result" }
+  },
+  "FLOW": {
+    "visible": ["str_param"],
+    "labels": { "str_param": "Flow Instruction" }
+  },
+  "SEARCH_DECK": {
+    "visible": ["target_filter", "amount", "to_zone", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "見つかったカード" }
+  },
+  "SHIELD_TRIGGER": {
+    "visible": ["target_group"]
+  },
+  "LOOK_AND_ADD": {
+    "visible": ["target_filter", "amount", "val2", "rest_zone", "input_link", "output_link"],
+    "labels": { "amount": "Look Count", "val2": "Add Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "加えたカード" }
+  },
+  "MEKRAID": {
+    "visible": ["target_filter", "amount", "val2", "select_count", "input_link", "output_link"],
+    "labels": { "amount": "Level" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Played Card" }
+  },
+  "REVEAL_CARDS": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "SHUFFLE_DECK": {
+    "visible": ["target_group"]
+  },
+  "PLAY_FROM_ZONE": {
+    "visible": ["from_zone", "to_zone", "amount", "str_param", "play_flags", "input_link", "output_link"],
+    "labels": { "amount": "Max Cost", "str_param": "Hint" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "プレイしたカード" }
+  },
+  "PUT_CREATURE": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "SUMMON_TOKEN": {
+    "visible": ["amount", "str_param", "input_link"],
+    "labels": { "amount": "Count", "str_param": "Token ID" }
+  },
+  "SELECT_NUMBER": {
+    "visible": ["min_value", "amount", "output_link"],
+    "labels": { "amount": "Max", "min_value": "Min" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Selected Number" }
+  },
+  "SELECT_OPTION": {
+    "visible": ["amount", "option_count", "optional"],
+    "labels": { "amount": "Selections Count", "option_count": "Options Count" }
+  },
+  "CAST_SPELL": {
+    "visible": ["target_group", "target_filter", "input_link", "output_link"],
+    "produces_output": true,
+    "outputs": { "output_value_key": "唱えたカード" }
+  },
+  "FRIEND_BURST": {
+    "visible": ["str_param", "target_filter", "input_link", "output_link"],
+    "labels": { "str_param": "Race" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "出現カード" }
+  },
+  "REGISTER_DELAYED_EFFECT": {
+    "visible": ["str_param", "amount", "input_link"],
+    "labels": { "str_param": "Effect ID", "amount": "Duration (Turns)" }
+  },
+  "APPLY_MODIFIER": {
+    "visible": ["target_group", "target_filter", "str_param", "amount", "duration", "input_link"],
+    "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "duration": "Duration" }
+  },
+  "CHOICE": {
+    "visible": ["amount"],
+    "labels": { "amount": "Count" }
+  },
+  "REVOLUTION_CHANGE": {
+    "visible": ["target_filter"]
+  },
+  "IF": {
+    "visible": ["input_link", "target_filter", "output_link"],
+    "produces_output": true,
+    "outputs": { "output_value_key": "Condition Result" }
+  },
+  "IF_ELSE": {
+    "visible": ["input_link", "target_filter", "output_link"],
+    "produces_output": true,
+    "outputs": { "output_value_key": "Condition Result" }
+  },
+  "ELSE": {
+    "visible": ["output_link"],
+    "produces_output": true,
+    "outputs": { "output_value_key": "Condition Result" }
+  },
+  "STAT": {
+    "visible": ["str_param", "amount"],
+    "labels": { "str_param": "Stat Key", "amount": "Value to Add" }
+  },
+  "COST_REFERENCE": {
+    "visible": ["ref_mode", "output_link"],
+    "tooltip": "Reference cost or reduce cost",
+    "produces_output": true,
+    "outputs": { "output_value_key": "Reference Value" }
+  },
+  "SEARCH_DECK_BOTTOM": {
+    "visible": ["amount", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Found Cards" }
+  },
+  "SEND_TO_DECK_BOTTOM": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "LOOK_TO_BUFFER": {
+    "visible": ["from_zone", "amount", "input_link"],
+    "labels": { "amount": "Count", "from_zone": "Source" }
+  },
+  "SELECT_FROM_BUFFER": {
+    "visible": ["target_filter", "amount", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Selected Cards" }
+  },
+  "PLAY_FROM_BUFFER": {
+    "visible": ["from_zone", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  }
+}

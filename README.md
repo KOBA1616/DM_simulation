@@ -133,3 +133,12 @@ See [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md) for more setup 
 - [API / Action→Command スキーマ](docs/api/action_command_mapping.md)
 - [Command Pipeline Migration (フェーズ2)](docs/02_Planned_Specs/command_pipeline_migration.md)
 - Notes and PR summaries: [docs/notes/](docs/notes/)
+
+## Repository cleanup
+
+一部のドキュメントとスクリプトをルートから `docs/` および `scripts/` に移動しました。古い重複ファイルはルートから削除されています。
+
+- ドキュメント（例）: `docs/AGENTS.md`, `docs/MEGA_LAST_BURST_IMPLEMENTATION.md`
+- スクリプト（例）: `scripts/diagnose_game_training.py`, `scripts/train_fast.py`
+
+必要であれば元の配置に戻すか参照パスを調整してください。

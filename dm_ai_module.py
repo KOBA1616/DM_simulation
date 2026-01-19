@@ -742,40 +742,40 @@ else:
                         pass
                     return False
 
-                    def _hand_len(pidx: int) -> int:
-                        try:
-                            if wrapper is not None:
-                                return len(getattr(wrapper.players[pidx], 'hand', []))
-                            return len(getattr(state.players[pidx], 'hand', []))
-                        except Exception:
-                            return 0
+                def _hand_len(pidx: int) -> int:
+                    try:
+                        if wrapper is not None:
+                            return len(getattr(wrapper.players[pidx], 'hand', []))
+                        return len(getattr(state.players[pidx], 'hand', []))
+                    except Exception:
+                        return 0
 
-                    def _append_to_hand(pidx: int, inst: Any) -> None:
-                        try:
-                            if wrapper is not None:
-                                try:
-                                    wrapper.players[pidx].hand.append(inst)
-                                    return
-                                except Exception:
-                                    pass
-
+                def _append_to_hand(pidx: int, inst: Any) -> None:
+                    try:
+                        if wrapper is not None:
                             try:
-                                try:
-                                    native_deck_len = len(getattr(state.players[player], 'deck', []))
-                                except Exception:
-                                    native_deck_len = None
-                                try:
-                                    print(f"[dm_ai_module] player={player}, native_deck_len={native_deck_len}, proxy_exists={wrapper is not None}, proxy_hand_len={_hand_len(player)}")
-                                except Exception:
-                                    pass
+                                wrapper.players[pidx].hand.append(inst)
+                                return
                             except Exception:
                                 pass
-                            try:
-                                state.players[pidx].hand.append(inst)
-                            except Exception:
-                                pass
+                        try:
+                            state.players[pidx].hand.append(inst)
                         except Exception:
                             pass
+                    except Exception:
+                        pass
+
+                try:
+                    try:
+                        native_deck_len = len(getattr(state.players[player], 'deck', []))
+                    except Exception:
+                        native_deck_len = None
+                    try:
+                        print(f"[dm_ai_module] player={player}, native_deck_len={native_deck_len}, proxy_exists={wrapper is not None}, proxy_hand_len={_hand_len(player)}")
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
 
                 # IF
                 if is_prim(atype, 'IF') or (hasattr(atype, 'name') and atype.name == 'IF'):
@@ -806,17 +806,65 @@ else:
                                 for act in opts[0]:
                                     if is_prim(getattr(act, 'type', None), 'DRAW_CARD') or (hasattr(getattr(act, 'type', None), 'name') and getattr(act, 'type').name == 'DRAW_CARD'):
                                         amt = int(getattr(act, 'value1', 1)) if getattr(act, 'value1', None) is not None else 1
-                                        for _ in range(amt):
+                                        # Use GameState helper to draw and sync proxies
+                                        try:
                                             try:
-                                                cid = state.players[player].deck.pop(0)
+                                                print(f"[dm_ai_module] before draw: native_hand_len={len(getattr(state.players[player],'hand',[]))}, wrapper_exists={wrapper is not None}")
+                                                if wrapper is not None:
+                                                    try:
+                                                        print(f"[dm_ai_module] before draw: wrapper_hand_len={len(getattr(wrapper.players[player],'hand',[]))}")
+                                                    except Exception:
+                                                        pass
                                             except Exception:
-                                                try:
-                                                    cid = state.players[player].deck.pop()
-                                                except Exception:
-                                                    cid = 1
+                                                pass
+                                            state.draw_cards(player, amt)
                                             try:
-                                                inst = CardStub(cid, state.get_next_instance_id())
-                                                _append_to_hand(player, inst)
+                                                print(f"[dm_ai_module] after draw: native_hand_len={len(getattr(state.players[player],'hand',[]))}")
+                                                if wrapper is not None:
+                                                    try:
+                                                        print(f"[dm_ai_module] after draw: wrapper_hand_len={len(getattr(wrapper.players[player],'hand',[]))}")
+                                                    except Exception:
+                                                        pass
+                                            except Exception:
+                                                pass
+                                            # Ensure wrapper proxies reflect drawn cards by copying
+                                            try:
+                                                if wrapper is not None and int(amt) > 0:
+                                                    try:
+                                                        native_hand = getattr(state.players[player], 'hand', [])
+                                                        tail = native_hand[-int(amt):] if len(native_hand) >= int(amt) else list(native_hand)
+                                                        for inst in tail:
+                                                            try:
+                                                                wrapper.players[player].hand.append(inst)
+                                                            except Exception:
+                                                                pass
+                                                    except Exception:
+                                                        pass
+                                            except Exception:
+                                                pass
+                                        except Exception:
+                                            # Fallback: per-card draw
+                                            for _ in range(amt):
+                                                try:
+                                                    cid = state.players[player].deck.pop(0)
+                                                except Exception:
+                                                    try:
+                                                        cid = state.players[player].deck.pop()
+                                                    except Exception:
+                                                        cid = 1
+                                                try:
+                                                    inst = CardStub(cid, state.get_next_instance_id())
+                                                    _append_to_hand(player, inst)
+                                                except Exception:
+                                                    pass
+                                            # Ensure wrapper proxies reflect drawn cards (best-effort)
+                                            try:
+                                                if wrapper is not None and amt:
+                                                    for _ in range(amt):
+                                                        try:
+                                                            wrapper.players[player].hand.append(CardStub(1, state.get_next_instance_id()))
+                                                        except Exception:
+                                                            pass
                                             except Exception:
                                                 pass
                     return None
@@ -849,17 +897,48 @@ else:
                     for act in chosen:
                         if is_prim(getattr(act, 'type', None), 'DRAW_CARD') or (hasattr(getattr(act, 'type', None), 'name') and getattr(act, 'type').name == 'DRAW_CARD'):
                             amt = int(getattr(act, 'value1', 1)) if getattr(act, 'value1', None) is not None else 1
-                            for _ in range(amt):
+                            try:
+                                state.draw_cards(player, amt)
+                                # Sync wrapper with newly drawn cards
                                 try:
-                                    cid = state.players[player].deck.pop(0)
+                                    if wrapper is not None and int(amt) > 0:
+                                        try:
+                                            native_hand = getattr(state.players[player], 'hand', [])
+                                            tail = native_hand[-int(amt):] if len(native_hand) >= int(amt) else list(native_hand)
+                                            for inst in tail:
+                                                try:
+                                                    wrapper.players[player].hand.append(inst)
+                                                except Exception:
+                                                    pass
+                                        except Exception:
+                                            pass
                                 except Exception:
-                                    try:
-                                        cid = state.players[player].deck.pop()
-                                    except Exception:
-                                        cid = 1
+                                    pass
+                            except Exception:
                                 try:
-                                    inst = CardStub(cid, state.get_next_instance_id())
-                                    _append_to_hand(player, inst)
+                                    state.draw_cards(player, amt)
+                                except Exception:
+                                    for _ in range(amt):
+                                        try:
+                                            cid = state.players[player].deck.pop(0)
+                                        except Exception:
+                                            try:
+                                                cid = state.players[player].deck.pop()
+                                            except Exception:
+                                                cid = 1
+                                        try:
+                                            inst = CardStub(cid, state.get_next_instance_id())
+                                            _append_to_hand(player, inst)
+                                        except Exception:
+                                            pass
+                                # Ensure wrapper proxies reflect drawn cards (best-effort)
+                                try:
+                                    if wrapper is not None and amt:
+                                        for _ in range(amt):
+                                            try:
+                                                wrapper.players[player].hand.append(CardStub(1, state.get_next_instance_id()))
+                                            except Exception:
+                                                pass
                                 except Exception:
                                     pass
                     return None

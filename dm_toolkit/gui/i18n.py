@@ -30,15 +30,37 @@ def load_translations():
     if m:
         # Helper to set enum translation using JSON only
         def register_enum_translations(enum_cls):
-            if not enum_cls: return
-            for member in enum_cls.__members__.values():
-                # Map Enum Member -> Translation (if available)
-                if member.name in TRANSLATIONS:
-                    TRANSLATIONS[member] = TRANSLATIONS[member.name]
+            """Register translations for an Enum-like class.
 
-                # Also ensure the String Key -> Translation is preserved (it should be from JSON loading)
-                # This loop essentially binds the Enum object itself to the string translation
-                # so translate(Enum.MEMBER) works.
+            Defensive: skip types that do not expose __members__ or have non-iterable members.
+            """
+            if not enum_cls:
+                return
+
+            # Only proceed if enum_cls exposes the Enum API we expect
+            members = getattr(enum_cls, '__members__', None)
+            if members is None or not hasattr(members, 'values'):
+                # Not an Enum-like object; skip with a warning
+                try:
+                    name = enum_cls.__name__
+                except Exception:
+                    name = str(enum_cls)
+                print(f"Warning: Skipping non-enum type when registering translations: {name}")
+                return
+
+            try:
+                for member in members.values():
+                    # Map Enum Member -> Translation (if available)
+                    member_name = getattr(member, 'name', None)
+                    if member_name and member_name in TRANSLATIONS:
+                        TRANSLATIONS[member] = TRANSLATIONS[member_name]
+            except Exception as e:
+                try:
+                    ename = enum_cls.__name__
+                except Exception:
+                    ename = str(enum_cls)
+                print(f"Warning: Failed to register translations for {ename}: {e}")
+                return
 
         # List of Enums to register
         enum_list = [

@@ -1,9 +1,45 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import (
-    QWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox,
-    QGroupBox, QDoubleSpinBox, QLabel, QFormLayout
-)
-from PyQt6.QtCore import Qt, pyqtSignal
+try:
+    from PyQt6.QtWidgets import (
+        QWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox,
+        QGroupBox, QDoubleSpinBox, QLabel, QFormLayout
+    )
+    from PyQt6.QtCore import Qt, pyqtSignal
+except Exception:
+    # Provide minimal shims for headless/test environments where PyQt6 isn't available
+    class _DummySignal:
+        def __init__(self, *a, **k): pass
+        def emit(self, *a, **k): return None
+
+    class _DummyWidget:
+        def __init__(self, *a, **k): pass
+        def layout(self): return None
+        def setLayout(self, *a, **k): pass
+        def setParent(self, *a, **k): pass
+
+    class _DummyFormLayout:
+        def __init__(self, *a, **k): pass
+        def addRow(self, *a, **k): pass
+
+    class _DummyLabel:
+        def __init__(self, text=""): self._text = text
+
+    class _DummyInput:
+        def __init__(self, *a, **k): pass
+        def setValue(self, *a, **k): pass
+        def value(self, *a, **k): return None
+
+    QWidget = _DummyWidget
+    QComboBox = _DummyInput
+    QSpinBox = _DummyInput
+    QLineEdit = _DummyInput
+    QCheckBox = _DummyInput
+    QGroupBox = _DummyWidget
+    QDoubleSpinBox = _DummyInput
+    QLabel = _DummyLabel
+    QFormLayout = _DummyFormLayout
+    Qt = type('X', (), {})
+    pyqtSignal = _DummySignal
 from contextlib import contextmanager
 
 

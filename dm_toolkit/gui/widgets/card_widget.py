@@ -1,9 +1,103 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import (
-    QFrame, QVBoxLayout, QLabel, QHBoxLayout, QMenu
-)
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QAction, QCursor
+try:
+    from PyQt6.QtWidgets import (
+        QFrame, QVBoxLayout, QLabel, QHBoxLayout, QMenu
+    )
+    from PyQt6.QtCore import Qt, pyqtSignal
+    from PyQt6.QtGui import QAction, QCursor
+except Exception:
+    # Headless / PyQt not installed: provide lightweight shims so tests can import GUI modules
+    class _DummySignal:
+        def __init__(self, *args, **kwargs):
+            pass
+        def emit(self, *a, **k):
+            return None
+
+    class _DummyWidget:
+        def __init__(self, *args, **kwargs):
+            pass
+        def setFixedSize(self, *a, **k):
+            pass
+        def setFrameStyle(self, *a, **k):
+            pass
+        def setLineWidth(self, *a, **k):
+            pass
+        def setCursor(self, *a, **k):
+            pass
+        def setAccessibleName(self, *a, **k):
+            pass
+        def setAccessibleDescription(self, *a, **k):
+            pass
+        def setToolTip(self, *a, **k):
+            pass
+        def setStyleSheet(self, *a, **k):
+            pass
+        def setVisible(self, *a, **k):
+            pass
+
+    class _DummyLayout:
+        def __init__(self, *a, **k):
+            pass
+        def setContentsMargins(self, *a, **k):
+            pass
+        def setSpacing(self, *a, **k):
+            pass
+        def addWidget(self, *a, **k):
+            pass
+        def addLayout(self, *a, **k):
+            pass
+        def addStretch(self, *a, **k):
+            pass
+
+    class _DummyLabel:
+        def __init__(self, text=""):
+            self._text = text
+        def setFixedSize(self, *a, **k):
+            pass
+        def setAlignment(self, *a, **k):
+            pass
+        def setWordWrap(self, *a, **k):
+            pass
+        def setFont(self, *a, **k):
+            pass
+        def font(self):
+            class F:
+                def setBold(self, *a, **k): pass
+                def setPointSize(self, *a, **k): pass
+            return F()
+
+    class _DummyMenu:
+        def __init__(self, *a, **k): pass
+        def addAction(self, *a, **k): pass
+        def exec(self, *a, **k): pass
+
+    class _DummyAction:
+        def __init__(self, *a, **k): pass
+        def triggered(self):
+            return self
+        def connect(self, *a, **k): pass
+
+    class _DummyQt:
+        class CursorShape:
+            PointingHandCursor = None
+        class MouseButton:
+            LeftButton = 1
+        class AlignmentFlag:
+            AlignCenter = 0
+            AlignTop = 0
+            AlignLeft = 0
+            AlignBottom = 0
+            AlignRight = 0
+
+    QFrame = _DummyWidget
+    QVBoxLayout = _DummyLayout
+    QLabel = _DummyLabel
+    QHBoxLayout = _DummyLayout
+    QMenu = _DummyMenu
+    Qt = _DummyQt
+    pyqtSignal = _DummySignal
+    QAction = _DummyAction
+    QCursor = None
 
 from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
 from dm_toolkit.gui.i18n import tr

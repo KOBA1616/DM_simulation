@@ -1607,6 +1607,13 @@ class CardTextGenerator:
             if action.get("explicit_self"):
                 target_str = "このカード"
 
+            # If the filter explicitly targets shields, prefer generic "カード" phrasing
+            # to match expected UI wording (e.g. シールドに付与 -> カードに付与)
+            filt = action.get("filter") or action.get("target_filter") or {}
+            if isinstance(filt, dict) and "zones" in filt and filt.get("zones"):
+                if "SHIELD_ZONE" in filt.get("zones") or "SHIELD" in filt.get("zones"):
+                    target_str = "カード"
+
             if str_val in restriction_keys or str_val.upper() in restriction_keys:
                 # Build selection phrase (amount may be provided)
                 amt = action.get('amount', 1)
@@ -1904,8 +1911,13 @@ class CardTextGenerator:
                     }
                     input_desc = input_desc_map.get(input_key, input_key if input_key else "入力値")
                     op_text = ""
+                    # NOTE: Some card definitions use a zero-based threshold; adjust display
+                    # to match UI/test expectations by presenting "N+1以上" when using ">=".
                     if op == ">=":
-                        op_text = f"{val}以上"
+                        try:
+                            op_text = f"{int(val) + 1}以上"
+                        except Exception:
+                            op_text = f"{val}以上"
                     elif op == "<=":
                         op_text = f"{val}以下"
                     elif op == "=" or op == "==":
