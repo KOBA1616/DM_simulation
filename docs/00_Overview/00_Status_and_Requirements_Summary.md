@@ -1,15 +1,16 @@
 # Status and Requirements Summary (要件定義書 00)
 
-**最終更新**: 2026-01-20 04:59:38 +0900 (commit 076826d2 on branch `main`)
+**最終更新**: 2026-01-20 05:21:10 +0900 (commit f0dc4de7 on branch `main`)
 
 このドキュメントはプロジェクトの現在のステータス、実装済み機能、および次のステップの要件をまとめたマスタードキュメントです。
 
 作業ツリーの現在状態 (未コミットの変更を含む):
 
+
 - Modified: `build-msvc/_deps/pybind11-src`
 - Modified: `docs/00_Overview/00_Status_and_Requirements_Summary.md` (このファイルへの追記あり)
-- Untracked (新規): `docs/00_Overview/00_Completed_Docs_Changes.md`
-- Untracked (新規): `docs/README.md`, `docs/backups/README.md`, `docs/guides/README.md`, `docs/migration/README.md`, `docs/reference/README.md`
+- Committed: docs changes (commit f0dc4de7) — `docs/*/README.md` と `00_Completed_Docs_Changes.md` を追加
+
 
 上記の変更はワークツリーにあります。コミットする前に差分を確認してください。
 
