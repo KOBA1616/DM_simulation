@@ -129,7 +129,7 @@ See [docs/dev/DEVELOPMENT_WORKFLOW.md](docs/dev/DEVELOPMENT_WORKFLOW.md) for mor
 
 - [Project Overview](docs/00_Overview/01_Project_Overview.md)
 - [System Architecture](docs/00_Overview/02_System_Architecture.md)
-- [Detailed Implementation Steps](docs/00_Overview/07_Transformer_Implementation_Summary.md)
+- [Detailed Implementation Steps](docs/00_Overview/00_Status_and_Requirements_Summary.md)
 - [API / Action→Command スキーマ](docs/api/action_command_mapping.md)
 - [Command Pipeline Migration (フェーズ2)](docs/dev/command_pipeline_migration.md)
 - Notes and PR summaries: [docs/notes/](docs/notes/)

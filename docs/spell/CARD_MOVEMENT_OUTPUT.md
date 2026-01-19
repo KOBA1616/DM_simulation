@@ -186,7 +186,7 @@ register_schema(CommandSchema("DESTROY", [
 
 ### C++ 実装箇所
 
-- [src/engine/systems/command_system.cpp](../src/engine/systems/command_system.cpp)
+-- [src/engine/systems/command_system.cpp](../../src/engine/systems/command_system.cpp)
   - `DESTROY` (line ~325-350)
   - `DISCARD` (line ~355-380)
   - `RETURN_TO_HAND` (line ~385-420)
@@ -195,7 +195,7 @@ register_schema(CommandSchema("DESTROY", [
 
 ### Python スキーマ
 
-- [dm_toolkit/gui/editor/schema_config.py](../dm_toolkit/gui/editor/schema_config.py)
+-- [dm_toolkit/gui/editor/schema_config.py](../../dm_toolkit/gui/editor/schema_config.py)
   - DESTROY, MANA_CHARGE, RETURN_TO_HAND, BREAK_SHIELD (line ~40-48)
   - TRANSITION (line ~60-70)
 

@@ -29,7 +29,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Parallel Runner**: OpenMP + C++ MCTS による高速並列対戦。
 *   [Status: Done] **AlphaZero Logic**: MLPベースのAlphaZero学習ループ (`train_simple.py`).
 *   [Status: Done] **Transformer Model**: `DuelTransformer` (Linear Attention, Synergy Matrix) の実装完了。学習パイプライン `train_transformer_phase4.py` 稼働確認済み（Week 2-3実装完了）。
-    *   Synergy Matrix: 手動定義ペアからの初期化機能実装済み (`data/synergy_pairs_v1.json`)。
+    *   Synergy Matrix: 手動定義ペアからの初期化機能実装済み (`../../data/synergy_pairs_v1.json`)。
     *   TensorConverter V2: max_len=200、特殊トークン対応完了。
 *   [Status: WIP] **Meta-Game Evolution**: `evolution_ecosystem.py` 実装中。
     *   `PopulationManager` クラスの実装完了 (Phase 3 Day 1)。
@@ -646,7 +646,7 @@ Week 6+: 継続的改善
 *   `docs/00_Overview/01_Legacy_Action_Removal_Roadmap.md`: Legacy Action削除の詳細ロードマップ（Phase 1-6）。
 *   `docs/00_Overview/04_Phase4_Transformer_Requirements.md`: **Phase 4 Transformer実装の詳細要件定義書**（NEW）。
 *   `docs/00_Overview/20_Revised_Roadmap.md`: AI進化と統合の改定ロードマップ。
-*   `docs/00_Overview/NEXT_STEPS.md`: 優先度別タスクリストと即時アクション。
+*   `NEXT_STEPS.md`: 優先度別タスクリストと即時アクション。
 *   `docs/00_Overview/archive/`: 過去の計画書や完了済みタスクのログ。
 
 ---
@@ -830,13 +830,13 @@ main (protected)
   - [x] 自己進化ループ (`run_evolution_loop`) の実装。
 
 2. **Phase 6 ブロッカー解消**
-  - [x] ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](dm_toolkit/gui/editor/text_generator.py)）。
-  - [x] PyQtスタブの修正（[run_pytest_with_pyqt_stub.py](run_pytest_with_pyqt_stub.py)）。
+  - [x] ゾーン自然言語化と選択肢生成の修正（[dm_toolkit/gui/editor/text_generator.py](../../dm_toolkit/gui/editor/text_generator.py)）。
+  - [x] PyQtスタブの修正（[run_pytest_with_pyqt_stub.py](../../run_pytest_with_pyqt_stub.py)）。
   - [x] 静的解析ツール `card_validator.py` の実装。
 
 3. **Week 2 Day 1 仕込み**
-  - [x] [data/synergy_pairs_v1.json](data/synergy_pairs_v1.json) の雛形作成（手動10-20ペア）。
-  - [x] [python/training/generate_transformer_training_data.py](python/training/generate_transformer_training_data.py) のスケルトン作成とdry-run（100サンプル）。
+  - [x] [data/synergy_pairs_v1.json](../../data/synergy_pairs_v1.json) の雛形作成（手動10-20ペア）。
+  - [x] [python/training/generate_transformer_training_data.py](../../python/training/generate_transformer_training_data.py) のスケルトン作成とdry-run（100サンプル）。
   - 目標: Day 1 開始時にGPUで1バッチ流せる状態。
 
 ### 今週中に完了すべきマイルストーン
@@ -844,7 +844,7 @@ main (protected)
 - [x] Week 2 Day 1 成果物の雛形完成（synergy JSON, データ生成スケルトン, 学習起動）
 - [x] Week 3 Day 1-2 TensorConverter連携（C++データ収集からPython学習まで開通）
 - [x] ドキュメント更新（本ファイル）
-- [x] [docs/00_Overview/NEXT_STEPS.md](docs/00_Overview/NEXT_STEPS.md) 更新
+[x] [NEXT_STEPS.md](NEXT_STEPS.md) 更新
 
 ### 月末までの目標
 - [ ] Transformerモデル初期バージョン稼働（バッチ32で安定、評価フック動作）

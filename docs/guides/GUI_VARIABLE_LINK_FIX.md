@@ -5,16 +5,16 @@
 
 カード移動コマンドで出力された変数を入力ソースとして参照できるよう、以下を修正しました：
 
-### 1. UnifiedActionFormの修正 ([unified_action_form.py](dm_toolkit/gui/editor/forms/unified_action_form.py))
+### 1. UnifiedActionFormの修正 ([unified_action_form.py](../../dm_toolkit/gui/editor/forms/unified_action_form.py))
 
 #### 変更点:
-- **'links'キーの処理を追加**: スキーマで使用される'links'フィールドを'input_link'output_link'と同様に処理
+ - **'links'キーの処理を追加**: スキーマで使用される'links'フィールドを'input_link'output_link'と同様に処理
 - **current_itemの設定**: VariableLinkWidgetが前のステップの出力変数を取得できるよう、current_itemを設定
 - **produces_outputヒントの設定**: VariableLinkWidgetにproduces_outputフラグを渡し、Output Keyフィールドの表示を制御
 
 #### 具体的な修正:
 
-```python
+#```python
 # _create_widget_for_field: produces_outputヒントを設定
 if field_schema.field_type == FieldType.LINK and hasattr(widget, 'set_output_hint'):
     widget.set_output_hint(field_schema.produces_output)

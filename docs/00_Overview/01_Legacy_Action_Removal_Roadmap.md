@@ -15,7 +15,7 @@
 - コードベースには `actions` 参照（移行スクリプト、解析、プレビュー、互換経路）が残っている。
 - GUI には Action 定義（`ACTION_UI_CONFIG`）が残っており、Action 概念が完全には消えていない。
 
-関連: [docs/command_pipeline_migration.md](../command_pipeline_migration.md)
+関連: [docs/command_pipeline_migration.md](../dev/command_pipeline_migration.md)
 
 ## 2. フェーズ設計 (Phases)
 

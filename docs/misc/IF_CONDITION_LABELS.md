@@ -3,7 +3,7 @@
 
 詳細はアーカイブ先を参照してください:
 
-- [archive/docs/IF_CONDITION_LABELS.md](archive/docs/IF_CONDITION_LABELS.md#L1)
+-- [archive/docs/IF_CONDITION_LABELS.md](../../archive/docs/IF_CONDITION_LABELS.md#L1)
 
 アーカイブ日: 2026-01-19
 

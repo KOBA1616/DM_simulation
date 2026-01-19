@@ -13,13 +13,13 @@
   - 結果: 1 passed
 
 ## 変更ファイル（主なもの）
-- [AGENTS.md](Specs/AGENTS.md)
-- [docs/requirements/requirements_review_20260119.md](docs/requirements/requirements_review_20260119.md)
-- [docs/reports/directory_cleanup_report_20260119.md](docs/reports/directory_cleanup_report_20260119.md) (本報告)
+- [AGENTS.md](../Specs/AGENTS.md)
+- [docs/requirements/requirements_review_20260119.md](../requirements/requirements_review_20260119.md)
+- [./directory_cleanup_report_20260119.md](./directory_cleanup_report_20260119.md) (本報告)
 - アーカイブ先（コピー済）:
-  - [archive/docs/MEGA_LAST_BURST_IMPLEMENTATION.md](archive/docs/MEGA_LAST_BURST_IMPLEMENTATION.md)
-  - [archive/docs/CAST_SPELL_REPLACE_CARD_MOVE_IMPLEMENTATION.md](archive/docs/CAST_SPELL_REPLACE_CARD_MOVE_IMPLEMENTATION.md)
-  - [archive/docs/IF_CONDITION_LABELS.md](archive/docs/IF_CONDITION_LABELS.md)
+  - [archive/docs/MEGA_LAST_BURST_IMPLEMENTATION.md](../../archive/docs/MEGA_LAST_BURST_IMPLEMENTATION.md)
+  - [archive/docs/CAST_SPELL_REPLACE_CARD_MOVE_IMPLEMENTATION.md](../../archive/docs/CAST_SPELL_REPLACE_CARD_MOVE_IMPLEMENTATION.md)
+  - [archive/docs/IF_CONDITION_LABELS.md](../../archive/docs/IF_CONDITION_LABELS.md)
 
 ## 推奨の次ステップ
 1. CI上でフルテスト実行（ヘッドレス GUI スタブ有効）: `python scripts/run_pytest_with_pyqt_stub.py -q` を CI ジョブに追加。
