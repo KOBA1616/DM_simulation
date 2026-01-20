@@ -1452,7 +1452,12 @@ class CardTextGenerator:
             return f"＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
 
         elif atype == "REVOLUTION_CHANGE":
-             return ""
+             target_str, unit = cls._resolve_target(action, is_spell)
+             # Resolve filter for Revolution Change conditions (e.g. Cost 5 or more Dragon)
+             filter_desc = cls._describe_simple_filter(action.get("filter", {}))
+             if filter_desc:
+                 return f"革命チェンジ：{filter_desc}"
+             return f"革命チェンジ"
 
         
 
@@ -1477,7 +1482,7 @@ class CardTextGenerator:
             # Amount comes from command 'amount' (value1 in proxy) in most cases.
             amt = action.get('amount')
             if amt is None:
-                amt = action.get('value1')
+                amt = val1
 
             if isinstance(amt, int) and amt > 0:
                 select_phrase = f"{target_str}を{amt}{unit}は、"
@@ -1616,7 +1621,9 @@ class CardTextGenerator:
 
             if str_val in restriction_keys or str_val.upper() in restriction_keys:
                 # Build selection phrase (amount may be provided)
-                amt = action.get('amount', 1)
+                amt = action.get('amount')
+                if amt is None: amt = val1 if val1 else 1
+
                 if isinstance(amt, int) and amt > 0:
                     select_phrase = f"{target_str}を{amt}体選び、"
                 else:
@@ -1631,7 +1638,10 @@ class CardTextGenerator:
 
         elif atype == "MUTATE":
              mkind = action.get("mutation_kind", "")
-             val1 = action.get("amount", 0)
+             # Check raw amount first, then fallback to val1 (proxy standardized value)
+             if action.get("amount") is not None:
+                 val1 = action.get("amount")
+
              str_param = action.get("str_param") or action.get("str_val", "")
 
              # Duration handling
@@ -1668,7 +1678,8 @@ class CardTextGenerator:
                  else:
                      return f"{duration_text}{target_str}にパッシブ効果を与える。"
              elif mkind == "ADD_COST_MODIFIER":
-                 return f"{duration_text}{target_str}にコスト修正を追加する。"
+                 sign = "+" if val1 >= 0 else ""
+                 return f"{duration_text}{target_str}の召喚コストを{sign}{val1}する。"
              else:
                  template = f"状態変更({tr(mkind)}): {{target}} (値:{val1})"
 
@@ -1934,10 +1945,20 @@ class CardTextGenerator:
                     op = cond_detail.get("op", ">=")
                     op_text = "以上" if op == ">=" else "以下" if op == "<=" else "と同じ" if op == "=" else ""
                     cond_text = f"自分のマナゾーンにある文明の数が{val}{op_text}なら"
+                elif cond_type == "MANA_ARMED":
+                    val = cond_detail.get("value", 0)
+                    civ_raw = cond_detail.get("str_val", "")
+                    civ = tr(civ_raw)
+                    cond_text = f"マナ武装 {val} ({civ})"
             
             # Default condition text if not specified
             if not cond_text:
-                cond_text = "もし条件を満たすなら"
+                # Attempt to use generic format and strip trailing punctuation
+                generic = cls._format_condition(cond_detail).strip(" :、")
+                if generic:
+                    cond_text = generic
+                else:
+                    cond_text = "もし条件を満たすなら"
             
             # Expand if_true commands
             if_true_cmds = action.get("if_true", [])
