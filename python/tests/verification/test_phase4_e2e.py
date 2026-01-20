@@ -1,5 +1,6 @@
 import pytest
 import dm_ai_module
+import logging
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.action_to_command import map_action
 from dm_toolkit.unified_execution import ensure_executable_command
@@ -169,7 +170,7 @@ def _run_turn_sequence(context, execution_method):
     try:
         EngineCompat.ExecuteCommand(state, ramp_cmd, card_db)
     except Exception as e:
-        print(f"Setup ramp warning: {e}")
+        logging.getLogger('dm_toolkit.tests').warning("Setup ramp warning: %s", e)
 
     # Now Play
     if len(player.hand) > 0:

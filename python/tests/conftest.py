@@ -512,6 +512,26 @@ if dm_ai_module:
                 self._native = _orig_GameState(*args, **kwargs)
             try:
                 native_players = list(self._native.players)
+                # Ensure native player zone attributes are plain Python lists
+                for np in native_players:
+                    try:
+                        for zn in ('hand', 'deck', 'battle_zone', 'graveyard', 'mana_zone', 'shield_zone'):
+                            try:
+                                val = getattr(np, zn, None)
+                                if val is None:
+                                    setattr(np, zn, [])
+                                elif not isinstance(val, list):
+                                    try:
+                                        setattr(np, zn, list(val))
+                                    except Exception:
+                                        setattr(np, zn, list())
+                            except Exception:
+                                try:
+                                    setattr(np, zn, [])
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
                 self.players = [_PlayerProxy(p, i) for i, p in enumerate(native_players)]
                 for i, proxy in enumerate(self.players):
                     try:
@@ -528,6 +548,42 @@ if dm_ai_module:
                 self.stack_zone = []
 
             self.pending_effects = list(getattr(self._native, 'pending_effects', []))
+
+        def __setattr__(self, name, value):
+            """Forward writes for core state fields to the native backing when possible.
+
+            This prevents the wrapper from shadowing attributes like `current_phase`
+            which would otherwise cause the wrapper and native to diverge.
+            """
+            # Always allow the internal attributes to be set on the wrapper itself
+            if name in ('_native', 'players', 'stack_zone', 'pending_effects', '_shim_command_history'):
+                object.__setattr__(self, name, value)
+                return
+
+            # Prefer writing to the native backing when available and the native
+            # object accepts the attribute. This keeps `state._native` authoritative.
+            try:
+                native = getattr(self, '_native', None)
+            except Exception:
+                native = None
+
+            if native is not None:
+                try:
+                    setattr(native, name, value)
+                    return
+                except Exception:
+                    # Fall back to storing on the wrapper if native write fails
+                    try:
+                        object.__setattr__(self, name, value)
+                        return
+                    except Exception:
+                        pass
+
+            # Default fallback
+            try:
+                object.__setattr__(self, name, value)
+            except Exception:
+                pass
 
         def __getattr__(self, name):
             try:
@@ -583,46 +639,98 @@ if dm_ai_module:
                     def __init__(self, native_player, zn):
                         object.__setattr__(self, '_p', native_player)
                         object.__setattr__(self, '_zn', zn)
+                    def _resolve(self):
+                        try:
+                            cur = getattr(self._p, self._zn)
+                        except Exception:
+                            return None
+                        try:
+                            seen = set()
+                            while cur is not None and hasattr(cur, '_p') and hasattr(cur, '_zn'):
+                                try:
+                                    p = getattr(cur, '_p')
+                                    zn = getattr(cur, '_zn')
+                                    next_obj = getattr(p, zn)
+                                except Exception:
+                                    break
+                                if id(next_obj) in seen:
+                                    break
+                                seen.add(id(next_obj))
+                                cur = next_obj
+                        except Exception:
+                            pass
+                        return cur
+
                     def __len__(self):
                         try:
-                            return len(getattr(self._p, self._zn))
+                            raw = self._resolve()
+                            if raw is None:
+                                return 0
+                            return len(raw)
                         except Exception:
                             return 0
+
                     def __iter__(self):
                         try:
-                            for ci in list(getattr(self._p, self._zn)):
+                            raw = self._resolve()
+                            if raw is None:
+                                return
+                            for ci in list(raw):
                                 yield _CIProxy(ci)
                         except Exception:
                             return
+
                     def append(self, ci):
                         try:
-                            getattr(self._p, self._zn).append(ci)
+                            raw = self._resolve()
+                            if raw is not None and hasattr(raw, 'append'):
+                                raw.append(ci)
+                                return
                         except Exception:
                             pass
+
                     def pop(self, idx=-1):
                         try:
-                            return getattr(self._p, self._zn).pop(idx)
-                        except Exception:
-                            raise
-                    def clear(self):
-                        try:
-                            getattr(self._p, self._zn).clear()
-                        except Exception:
-                            pass
-                    def __getitem__(self, idx):
-                        try:
-                            return _CIProxy(getattr(self._p, self._zn)[idx])
+                            raw = self._resolve()
+                            if raw is None:
+                                raise IndexError
+                            return raw.pop(idx)
                         except Exception:
                             raise
 
-                try: setattr(proxy, 'hand', _ZoneProxy(native_p, 'hand'))
-                except Exception: pass
-                try: setattr(proxy, 'mana_zone', _ZoneProxy(native_p, 'mana_zone'))
-                except Exception: pass
-                try: setattr(proxy, 'battle_zone', _ZoneProxy(native_p, 'battle_zone'))
-                except Exception: pass
-                try: setattr(proxy, 'shield_zone', _ZoneProxy(native_p, 'shield_zone'))
-                except Exception: pass
+                    def clear(self):
+                        try:
+                            raw = self._resolve()
+                            if raw is not None and hasattr(raw, 'clear'):
+                                raw.clear()
+                        except Exception:
+                            pass
+
+                    def __getitem__(self, idx):
+                        try:
+                            raw = self._resolve()
+                            if raw is None:
+                                raise IndexError
+                            return _CIProxy(raw[idx])
+                        except Exception:
+                            raise
+
+                try:
+                    object.__setattr__(proxy, 'hand', _ZoneProxy(native_p, 'hand'))
+                except Exception:
+                    pass
+                try:
+                    object.__setattr__(proxy, 'mana_zone', _ZoneProxy(native_p, 'mana_zone'))
+                except Exception:
+                    pass
+                try:
+                    object.__setattr__(proxy, 'battle_zone', _ZoneProxy(native_p, 'battle_zone'))
+                except Exception:
+                    pass
+                try:
+                    object.__setattr__(proxy, 'shield_zone', _ZoneProxy(native_p, 'shield_zone'))
+                except Exception:
+                    pass
             except Exception:
                 pass
 

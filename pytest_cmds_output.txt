@@ -1,0 +1,51 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\ichirou\DM_simulation\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\ichirou\DM_simulation
+configfile: pytest.ini
+collecting ... collected 4 items
+
+python/tests/unit/commands/test_command_system.py::TestCommandSystem::test_flow_condition_true PASSED [ 25%]
+python/tests/unit/commands/test_command_system.py::TestCommandSystem::test_mutate_power_mod PASSED [ 50%]
+python/tests/unit/commands/test_command_system.py::TestCommandSystem::test_mutate_tap FAILED [ 75%]
+python/tests/unit/commands/test_command_system.py::TestCommandSystem::test_mutate_untap FAILED [100%]
+
+================================== FAILURES ===================================
+______________________ TestCommandSystem.test_mutate_tap ______________________
+
+self = <test_command_system.TestCommandSystem testMethod=test_mutate_tap>
+
+    def test_mutate_tap(self):
+        # Create a TAP command
+        cmd = MutateCommand(self.instance_id, MutationType.TAP)
+    
+        # Check initial state
+        inst = self.state.get_card_instance(self.instance_id)
+        self.assertFalse(inst.is_tapped)
+    
+        # Execute
+        self.state.execute_command(cmd)
+    
+        # Check final state
+        inst = self.state.get_card_instance(self.instance_id)
+>       self.assertTrue(inst.is_tapped)
+E       AssertionError: False is not true
+
+python\tests\unit\commands\test_command_system.py:41: AssertionError
+_____________________ TestCommandSystem.test_mutate_untap _____________________
+
+self = <test_command_system.TestCommandSystem testMethod=test_mutate_untap>
+
+    def test_mutate_untap(self):
+        # Setup: Tap the card first
+        inst = self.state.get_card_instance(self.instance_id)
+        self.state.execute_command(MutateCommand(self.instance_id, MutationType.TAP))
+        inst = self.state.get_card_instance(self.instance_id)
+>       self.assertTrue(inst.is_tapped)
+E       AssertionError: False is not true
+
+python\tests\unit\commands\test_command_system.py:48: AssertionError
+=========================== short test summary info ===========================
+FAILED python/tests/unit/commands/test_command_system.py::TestCommandSystem::test_mutate_tap - AssertionError: False is not true
+FAILED python/tests/unit/commands/test_command_system.py::TestCommandSystem::test_mutate_untap - AssertionError: False is not true
+========================= 2 failed, 2 passed in 0.09s =========================

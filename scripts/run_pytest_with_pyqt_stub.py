@@ -629,6 +629,16 @@ def main():
     # Pass all arguments to pytest
     pytest_args = sys.argv[1:]
 
+    # If the caller did not request quiet/verbose output explicitly,
+    # enable verbose mode by default so full-test runs are detailed.
+    has_verbosity_flag = any(
+        (arg == '-v' or arg.startswith('-v') or arg == '--verbose' or
+         arg == '-q' or arg.startswith('-q') or arg == '--quiet')
+        for arg in pytest_args
+    )
+    if not has_verbosity_flag:
+        pytest_args = pytest_args + ['-v']
+
     print(f" [RUN] Starting pytest with args: {pytest_args}")
     result = pytest.main(pytest_args)
 

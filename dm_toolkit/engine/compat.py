@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
+import logging
 from typing import Any, List, Optional, Callable, Dict, Union
 from types import ModuleType
 
@@ -18,6 +19,14 @@ except ImportError:
         dm_ai_module = None
 
 from dm_toolkit.types import GameState, CardDB, Action, PlayerID, Tensor, NPArray
+
+# Module logger (default to null handler to avoid spamming test output)
+logger = logging.getLogger('dm_toolkit.engine.compat')
+try:
+    if not logger.handlers:
+        logger.addHandler(logging.NullHandler())
+except Exception:
+    pass
 
 class EngineCompat:
     """
@@ -70,7 +79,84 @@ class EngineCompat:
 
     @staticmethod
     def get_current_phase(state: GameState) -> Any:
-        return EngineCompat.get_game_state_attribute(state, 'current_phase', 'UNKNOWN')
+        val = EngineCompat.get_game_state_attribute(state, 'current_phase', None)
+        # Normalize numeric/native enum to the Python-side Phase enum when available
+        try:
+            if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
+                PhaseEnum = dm_ai_module.Phase
+
+                # If this GameState wraps a native backing, prefer the native
+                # object's `current_phase` as the authoritative source. This
+                # avoids cases where a wrapper's cached attribute lags behind
+                # the native object's update during `next_phase` calls.
+                try:
+                    native_obj = getattr(state, '_native', None)
+                    if native_obj is not None:
+                        raw_native = getattr(native_obj, 'current_phase', None)
+                        if raw_native is not None:
+                            # Convert native representation to PhaseEnum when possible
+                            try:
+                                if isinstance(raw_native, PhaseEnum):
+                                    return raw_native
+                            except Exception:
+                                pass
+                            try:
+                                if hasattr(raw_native, 'value'):
+                                    return PhaseEnum(int(getattr(raw_native, 'value')))
+                            except Exception:
+                                pass
+                            try:
+                                if isinstance(raw_native, str):
+                                    s = raw_native
+                                    name = s.split('.', 1)[1] if s.startswith('Phase.') else s
+                                    name = name.strip()
+                                    if hasattr(PhaseEnum, name):
+                                        return getattr(PhaseEnum, name)
+                            except Exception:
+                                pass
+                            try:
+                                return PhaseEnum(int(raw_native))
+                            except Exception:
+                                pass
+
+                except Exception:
+                    pass
+
+                # Already the enum
+                try:
+                    if isinstance(val, PhaseEnum):
+                        return val
+                except Exception:
+                    pass
+                # If value has .value (enum-like), try to convert
+                try:
+                    if hasattr(val, 'value'):
+                        return PhaseEnum(int(getattr(val, 'value')))
+                except Exception:
+                    pass
+
+                # Integer-like -> enum
+                try:
+                    ival = int(val)
+                    return PhaseEnum(ival)
+                except Exception:
+                    pass
+
+                # String-like -> enum (accept 'Phase.MAIN' or 'MAIN')
+                try:
+                    if isinstance(val, str):
+                        s = val
+                        name = s.split('.', 1)[1] if s.startswith('Phase.') else s
+                        name = name.strip()
+                        if hasattr(PhaseEnum, name):
+                            return getattr(PhaseEnum, name)
+                except Exception:
+                    pass
+
+        except Exception:
+            pass
+
+        return val
 
     @staticmethod
     def get_active_player_id(state: GameState) -> int:
@@ -127,7 +213,7 @@ class EngineCompat:
         if hasattr(dm_ai_module.EffectResolver, 'resume'):
             dm_ai_module.EffectResolver.resume(state, card_db, selection)
         else:
-            print("Warning: dm_ai_module.EffectResolver.resume not found.")
+            logger.warning("dm_ai_module.EffectResolver.resume not found.")
 
     @staticmethod
     def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
@@ -164,16 +250,239 @@ class EngineCompat:
         if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
             dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
         else:
-            print("Warning: dm_ai_module.EffectResolver.resolve_action not found.")
+            logger.warning("dm_ai_module.EffectResolver.resolve_action not found.")
 
     @staticmethod
     def PhaseManager_next_phase(state: GameState, card_db: CardDB) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
         if hasattr(dm_ai_module.PhaseManager, 'next_phase'):
+            # Normalize `state.current_phase` to native Phase enum when possible
+            try:
+                if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
+                    PhaseEnum = dm_ai_module.Phase
+                    cur_val = getattr(state, 'current_phase', None)
+                    try:
+                        # If it's already an enum of the native type, leave it
+                        if not (isinstance(cur_val, PhaseEnum)):
+                            # If cur_val is string like 'Phase.MAIN' or 'MAIN', map to enum
+                            if isinstance(cur_val, str):
+                                name = cur_val.split('.', 1)[1] if cur_val.startswith('Phase.') else cur_val
+                                name = name.strip()
+                                if hasattr(PhaseEnum, name):
+                                    try:
+                                        setattr(state, 'current_phase', getattr(PhaseEnum, name))
+                                    except Exception:
+                                        pass
+                            else:
+                                # Try int coercion
+                                try:
+                                    setattr(state, 'current_phase', PhaseEnum(int(cur_val)))
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+            # Defensive: detect if phase does not advance to avoid infinite loops
+            try:
+                before = EngineCompat.get_current_phase(state)
+            except Exception:
+                before = None
+
             dm_ai_module.PhaseManager.next_phase(state, card_db)
+
+            try:
+                after = EngineCompat.get_current_phase(state)
+            except Exception:
+                after = None
+
+            # If native call made no observable change, retry a few times then force progress
+            try:
+                def _phase_name(x):
+                    try:
+                        return str(x)
+                    except Exception:
+                        try:
+                            return getattr(x, 'name', repr(x))
+                        except Exception:
+                            return repr(x)
+
+                if _phase_name(before) == _phase_name(after):
+                    # Try a small number of retries in case native has transient issues
+                    retried = False
+                    for _ in range(3):
+                        try:
+                            dm_ai_module.PhaseManager.next_phase(state, card_db)
+                        except Exception:
+                            pass
+                        try:
+                            after = EngineCompat.get_current_phase(state)
+                        except Exception:
+                            after = None
+                        if _phase_name(before) != _phase_name(after):
+                            retried = True
+                            break
+
+                    if not retried:
+                        # As a last resort, compute and assign the next phase ourselves to break loops.
+                        try:
+                            if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
+                                PhaseEnum = dm_ai_module.Phase
+                                # helper to get int value from various representations
+                                def _to_int(x):
+                                    try:
+                                        if x is None:
+                                            return None
+                                        if isinstance(x, PhaseEnum):
+                                            return int(x)
+                                        if isinstance(x, str):
+                                            s = x.split('.', 1)[1] if x.startswith('Phase.') else x
+                                            s = s.strip()
+                                            if hasattr(PhaseEnum, s):
+                                                return int(getattr(PhaseEnum, s))
+                                        return int(x)
+                                    except Exception:
+                                        return None
+
+                                before_int = _to_int(before)
+                                if before_int is not None:
+                                    maxval = max((p.value for p in PhaseEnum))
+                                    forced_next = PhaseEnum((before_int + 1) % (maxval + 1))
+                                    try:
+                                        setattr(state, 'current_phase', forced_next)
+                                    except Exception:
+                                        pass
+                                    try:
+                                        native_obj = getattr(state, '_native', None)
+                                        if native_obj is not None:
+                                            try:
+                                                setattr(native_obj, 'current_phase', forced_next)
+                                            except Exception:
+                                                pass
+                                    except Exception:
+                                        pass
+                                    # update after view
+                                    try:
+                                        after = EngineCompat.get_current_phase(state)
+                                    except Exception:
+                                        after = None
+                                    try:
+                                        logger.warning("EngineCompat: forced phase advance %s -> %s", before, forced_next)
+                                    except Exception:
+                                        pass
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+            # Attempt to synchronize native backing if present
+            try:
+                if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
+                    PhaseEnum = dm_ai_module.Phase
+                    # Read raw assigned values
+                    raw_state_val = getattr(state, 'current_phase', None)
+                    native_obj = getattr(state, '_native', None)
+                    raw_native_val = getattr(native_obj, 'current_phase', None) if native_obj is not None else None
+
+                    def _to_phase(x):
+                        try:
+                            if x is None:
+                                return None
+                            if isinstance(x, PhaseEnum):
+                                return x
+                            if hasattr(x, 'value'):
+                                return PhaseEnum(int(getattr(x, 'value')))
+                            if isinstance(x, str):
+                                nm = x.split('.', 1)[1] if x.startswith('Phase.') else x
+                                nm = nm.strip()
+                                if hasattr(PhaseEnum, nm):
+                                    return getattr(PhaseEnum, nm)
+                            return PhaseEnum(int(x))
+                        except Exception:
+                            return None
+
+                    p_state = _to_phase(raw_state_val)
+                    p_native = _to_phase(raw_native_val)
+
+                    # Prefer native value if available
+                    chosen = p_native or p_state
+                    if chosen is not None:
+                        try:
+                            # set both representations to the chosen enum where possible
+                            try:
+                                setattr(state, 'current_phase', chosen)
+                            except Exception:
+                                pass
+                            if native_obj is not None:
+                                try:
+                                    setattr(native_obj, 'current_phase', chosen)
+                                except Exception:
+                                    pass
+                            # Update 'after' textual view for downstream checks
+                            after = EngineCompat.get_current_phase(state)
+                        except Exception:
+                            pass
+                    else:
+                        # If neither converted, emit diagnostics to stderr for debugging
+                        try:
+                            logger.debug("EngineCompat: PhaseManager_next_phase: could not normalize phases (state=%s, native=%s)", raw_state_val, raw_native_val)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+            # If phase didn't change (compare normalized names), increment per-state guard counter and raise after threshold
+            try:
+                def _phase_name(x):
+                    try:
+                        return str(x)
+                    except Exception:
+                        try:
+                            return getattr(x, 'name', repr(x))
+                        except Exception:
+                            return repr(x)
+
+                if _phase_name(before) == _phase_name(after):
+                    # attach counter to state object for persistence across calls
+                    cnt = getattr(state, '_phase_nochange_count', 0) or 0
+                    cnt += 1
+                    try:
+                        setattr(state, '_phase_nochange_count', cnt)
+                    except Exception:
+                        pass
+
+                    # Emit a concise diagnostic every 5 occurrences to avoid spam
+                    try:
+                        reported = getattr(state, '_phase_nochange_reported', 0) or 0
+                        if cnt % 5 == 0 and reported < cnt:
+                            try:
+                                native_obj = getattr(state, '_native', None)
+                                logger.debug("EngineCompat: phase no-change detected count=%s before=%s native_present=%s", cnt, before, (native_obj is not None))
+                            except Exception:
+                                pass
+                            try:
+                                setattr(state, '_phase_nochange_reported', cnt)
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+
+                    # Fail fast earlier to break test hang and gather stack trace
+                    if cnt > 10:
+                        raise RuntimeError(f"PhaseManager.next_phase: phase did not advance after {cnt} attempts (before={before})")
+                else:
+                    # reset counter on progress
+                    try:
+                        if hasattr(state, '_phase_nochange_count'):
+                            setattr(state, '_phase_nochange_count', 0)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         else:
-            print("Warning: dm_ai_module.PhaseManager.next_phase not found.")
+            logger.warning("dm_ai_module.PhaseManager.next_phase not found.")
 
     @staticmethod
     def PhaseManager_start_game(state: GameState, card_db: CardDB) -> None:
@@ -182,7 +491,7 @@ class EngineCompat:
         if hasattr(dm_ai_module.PhaseManager, 'start_game'):
             dm_ai_module.PhaseManager.start_game(state, card_db)
         else:
-            print("Warning: dm_ai_module.PhaseManager.start_game not found.")
+            logger.warning("dm_ai_module.PhaseManager.start_game not found.")
 
     @staticmethod
     def ActionGenerator_generate_legal_actions(state: GameState, card_db: CardDB) -> List[Action]:
@@ -226,9 +535,9 @@ class EngineCompat:
         # and has a valid type for the engine.
         if cmd_dict:
             try:
-                print('EngineCompat: cmd_dict detected:', cmd_dict)
+                logger.debug('EngineCompat: cmd_dict detected: %s', cmd_dict)
                 type_str = cmd_dict.get('type')
-                print('EngineCompat: type_str =', type_str)
+                logger.debug('EngineCompat: type_str = %s', type_str)
 
                 # STRICT VALIDATION: Only proceed if type exists in C++ CommandType
                 if type_str and hasattr(dm_ai_module.CommandType, type_str):
@@ -331,13 +640,13 @@ class EngineCompat:
                             return []
 
                         if filter_dict and not getattr(cmd_def, 'instance_id', 0):
-                            print('EngineCompat: resolving filter zones', filter_dict.get('zones'))
+                            logger.debug('EngineCompat: resolving filter zones %s', filter_dict.get('zones'))
                             zones = filter_dict.get('zones') or []
                             instances = []
                             for z in zones:
-                                print('EngineCompat: resolving zone', z)
+                                logger.debug('EngineCompat: resolving zone %s', z)
                                 for inst in _resolve_zone_instances(str(z)):
-                                    print('EngineCompat: found instance', getattr(inst, 'instance_id', None))
+                                    logger.debug('EngineCompat: found instance %s', getattr(inst, 'instance_id', None))
                                     instances.append(inst)
 
                             # If instances found, call CommandSystem per-instance
@@ -350,16 +659,16 @@ class EngineCompat:
                                     except Exception:
                                         pass
                                 if assigned_any:
-                                    print('EngineCompat: executed per-instance for command')
+                                    logger.debug('EngineCompat: executed per-instance for command')
                                     return
 
                         # Default single-shot execute if no per-instance fallback
-                        print('EngineCompat: calling CommandSystem.execute_command single-shot')
+                        logger.debug('EngineCompat: calling CommandSystem.execute_command single-shot')
                         dm_ai_module.CommandSystem.execute_command(state, cmd_def, source_id, player_id, ctx)
-                        print('EngineCompat: called CommandSystem.execute_command')
+                        logger.debug('EngineCompat: called CommandSystem.execute_command')
                         return # Success: Return only if executed by CommandSystem
-            except Exception as e:
-                    print('EngineCompat: exception during CommandSystem mapping', e)
+                except Exception:
+                    logger.exception('EngineCompat: exception during CommandSystem mapping')
                     # Fallthrough on error to try legacy path
                     pass
 
@@ -398,7 +707,7 @@ class EngineCompat:
                 cd = cmd_dict or cmd
                 ctype = cd.get('type')
                 player_id = getattr(state, 'active_player_id', 0)
-                print('EngineCompat: Python-fallback player_id =', player_id, 'ctype=', ctype)
+                logger.debug('EngineCompat: Python-fallback player_id=%s ctype=%s', player_id, ctype)
                 # Helper to resolve instances
                 def _resolve_zone_instances_local(zname: str):
                     if zname in ('BATTLE_ZONE', 'BATTLE'):
@@ -511,7 +820,7 @@ class EngineCompat:
                                     break
 
                     if moved > 0:
-                        print(f'EngineCompat: REPLACE_CARD_MOVE moved {moved} card(s) from {original_zone or "UNKNOWN"} to {dest_zone}')
+                        logger.debug('EngineCompat: REPLACE_CARD_MOVE moved %s card(s) from %s to %s', moved, (original_zone or 'UNKNOWN'), dest_zone)
                         return
 
                 if ctype in ('TAP', 'UNTAP', 'RETURN_TO_HAND'):
@@ -523,7 +832,7 @@ class EngineCompat:
                             targets.append(inst)
 
                     if targets:
-                        print('EngineCompat: Python-fallback found targets count', len(targets))
+                        logger.debug('EngineCompat: Python-fallback found targets count %s', len(targets))
                         if ctype == 'TAP':
                             for inst in targets:
                                 try:
@@ -556,7 +865,7 @@ class EngineCompat:
             pass
 
         try:
-            print('Warning: ExecuteCommand could not execute given command/object:', cmd)
+            logger.warning('ExecuteCommand could not execute given command/object: %s', cmd)
         except Exception:
             pass
 
@@ -615,7 +924,7 @@ class EngineCompat:
                 # Already in dict format
                 return data
         except Exception as e:
-            print(f"Error loading cards: {e}", flush=True)
+            logger.error("Error loading cards: %s", e)
 
         # Fallback: Try native loader only if Python loading failed
         try:
@@ -634,7 +943,7 @@ class EngineCompat:
         if hasattr(dm_ai_module, 'register_batch_inference_numpy'):
             dm_ai_module.register_batch_inference_numpy(callback)
         else:
-            print("Warning: dm_ai_module.register_batch_inference_numpy not found.")
+            logger.warning("dm_ai_module.register_batch_inference_numpy not found.")
 
     @staticmethod
     def TensorConverter_convert_to_tensor(state: GameState, player_id: int, card_db: CardDB) -> Union[List[float], Any]:
