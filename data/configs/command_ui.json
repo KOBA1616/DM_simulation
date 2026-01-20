@@ -234,6 +234,9 @@
     "visible": ["target_group", "target_filter", "amount", "input_link"],
     "labels": { "amount": "Count" }
   },
+  "ATTACH": {
+    "visible": ["target_group", "target_filter"]
+  },
   "DECLARE_NUMBER": {
     "visible": ["min_value", "amount", "output_link"],
     "labels": { "min_value": "Min", "amount": "Max" },
@@ -246,7 +249,7 @@
     "DECK_OPS": [ "SEARCH_DECK", "LOOK_AND_ADD", "REVEAL_CARDS", "SHUFFLE_DECK", "SEARCH_DECK_BOTTOM", "SEND_TO_DECK_BOTTOM" ],
     "PLAY": [ "PLAY_FROM_ZONE", "CAST_SPELL", "SUMMON_TOKEN" ],
     "BUFFER": [ "LOOK_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE" ],
-    "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE", "MOVE_TO_UNDER_CARD" ],
+    "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE", "MOVE_TO_UNDER_CARD", "ATTACH" ],
     "GRANT": [ "MUTATE", "POWER_MOD", "ADD_KEYWORD", "TAP", "UNTAP", "REGISTER_DELAYED_EFFECT", "APPLY_MODIFIER", "LOCK_SPELL", "RESET_INSTANCE" ],
     "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "DECLARE_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT" ],
     "BATTLE": [ "BREAK_SHIELD", "RESOLVE_BATTLE", "SHIELD_BURN", "SHIELD_TRIGGER", "ADD_SHIELD", "SEND_SHIELD_TO_GRAVE" ],

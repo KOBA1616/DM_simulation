@@ -355,6 +355,10 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         f_links_in
     ]))
+    register_schema(CommandSchema("ATTACH", [
+        f_target,
+        f_filter
+    ]))
     register_schema(CommandSchema("DECLARE_NUMBER", [
         FieldSchema("min_value", tr("Min Number"), FieldType.INT, default=1),
         FieldSchema("amount", tr("Max Number"), FieldType.INT, default=10),
