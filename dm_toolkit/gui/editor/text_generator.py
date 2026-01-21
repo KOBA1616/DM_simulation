@@ -987,14 +987,17 @@ class CardTextGenerator:
         # Robustly pick command type from either 'type' or legacy 'name'
         cmd_type = command.get("type") or command.get("name") or "NONE"
 
+        # Use a copy of command to avoid modifying the input dictionary in place
+        command_copy = command.copy()
+
         # Mapping CommandType to ActionType logic where applicable
         original_cmd_type = cmd_type
         if cmd_type == "POWER_MOD": cmd_type = "MODIFY_POWER"
         elif cmd_type == "ADD_KEYWORD": 
             cmd_type = "ADD_KEYWORD"
             # Ensure mutation_kind is mapped to str_val for text generation
-            if not command.get("str_val") and command.get("mutation_kind"):
-                command["str_val"] = command["mutation_kind"]
+            if not command_copy.get("str_val") and command_copy.get("mutation_kind"):
+                command_copy["str_val"] = command_copy["mutation_kind"]
         elif cmd_type == "MANA_CHARGE": cmd_type = "SEND_TO_MANA" # Or ADD_MANA depending on context
         elif cmd_type == "CHOICE": cmd_type = "SELECT_OPTION"
 
@@ -1005,60 +1008,61 @@ class CardTextGenerator:
 
         action_proxy = {
             "type": cmd_type,
-            "scope": command.get("target_group", "NONE"),
-            "filter": command.get("target_filter") or command.get("filter", {}),
-            "value1": command.get("amount", 0),
-            "value2": command.get("val2") or command.get("value2", 0),
-            "optional": command.get("optional", False),
-            "up_to": command.get("up_to", False),
-            # Prefer the normalized key, but accept legacy key if present
-            "str_val": command.get("str_param") or command.get("str_val", ""),
+            "scope": command_copy.get("target_group", "NONE"),
+            "filter": command_copy.get("target_filter") or command_copy.get("filter", {}),
+            "value1": command_copy.get("amount", 0),
+            "value2": command_copy.get("val2") or command_copy.get("value2", 0),
+            "optional": command_copy.get("optional", False),
+            "up_to": command_copy.get("up_to", False),
+            # Prefer the normalized key, but accept legacy key if present.
+            # IMPORTANT: str_param (from UI) is always mapped to str_val for logic usage.
+            "str_val": command_copy.get("str_param") or command_copy.get("str_val", ""),
             "input_value_key": input_value_key,
             "input_value_usage": input_value_usage,
-            "from_zone": command.get("from_zone", ""),
-            "to_zone": command.get("to_zone", ""),
-            "original_to_zone": command.get("original_to_zone", ""),
-            "mutation_kind": command.get("mutation_kind", ""),
-            "destination_zone": command.get("to_zone", ""), # For MOVE_CARD mapping
-            "result": command.get("result") or command.get("str_param", ""), # For GAME_RESULT, map properly
+            "from_zone": command_copy.get("from_zone", ""),
+            "to_zone": command_copy.get("to_zone", ""),
+            "original_to_zone": command_copy.get("original_to_zone", ""),
+            "mutation_kind": command_copy.get("mutation_kind", ""),
+            "destination_zone": command_copy.get("to_zone", ""), # For MOVE_CARD mapping
+            "result": command_copy.get("result") or command_copy.get("str_param", ""), # For GAME_RESULT, map properly
             "is_mega_last_burst": card_mega_last_burst,  # Pass mega_last_burst flag for CAST_SPELL detection
-            "duration": command.get("duration", "")
+            "duration": command_copy.get("duration", "")
         }
 
         # Extra passthrough fields for complex/structured commands
-        if "options" in command:
-            action_proxy["options"] = command.get("options")
-        if "flags" in command:
-            action_proxy["flags"] = command.get("flags")
-        if "look_count" in command:
-            action_proxy["look_count"] = command.get("look_count")
-        if "add_count" in command:
-            action_proxy["add_count"] = command.get("add_count")
-        if "rest_zone" in command:
-            action_proxy["rest_zone"] = command.get("rest_zone")
-        if "max_cost" in command:
-            action_proxy["max_cost"] = command.get("max_cost")
-        if "token_id" in command:
-            action_proxy["token_id"] = command.get("token_id")
-        if "play_flags" in command:
-            action_proxy["play_flags"] = command.get("play_flags")
-        if "select_count" in command:
-            action_proxy["select_count"] = command.get("select_count")
+        if "options" in command_copy:
+            action_proxy["options"] = command_copy.get("options")
+        if "flags" in command_copy:
+            action_proxy["flags"] = command_copy.get("flags")
+        if "look_count" in command_copy:
+            action_proxy["look_count"] = command_copy.get("look_count")
+        if "add_count" in command_copy:
+            action_proxy["add_count"] = command_copy.get("add_count")
+        if "rest_zone" in command_copy:
+            action_proxy["rest_zone"] = command_copy.get("rest_zone")
+        if "max_cost" in command_copy:
+            action_proxy["max_cost"] = command_copy.get("max_cost")
+        if "token_id" in command_copy:
+            action_proxy["token_id"] = command_copy.get("token_id")
+        if "play_flags" in command_copy:
+            action_proxy["play_flags"] = command_copy.get("play_flags")
+        if "select_count" in command_copy:
+            action_proxy["select_count"] = command_copy.get("select_count")
         
         # Pass through IF/IF_ELSE/ELSE control flow fields
-        if "if_true" in command:
-            action_proxy["if_true"] = command.get("if_true")
-        if "if_false" in command:
-            action_proxy["if_false"] = command.get("if_false")
-        if "condition" in command:
-            action_proxy["condition"] = command.get("condition")
+        if "if_true" in command_copy:
+            action_proxy["if_true"] = command_copy.get("if_true")
+        if "if_false" in command_copy:
+            action_proxy["if_false"] = command_copy.get("if_false")
+        if "condition" in command_copy:
+            action_proxy["condition"] = command_copy.get("condition")
         # IF commands may use target_filter for condition
-        if cmd_type == "IF" and "target_filter" in command:
+        if cmd_type == "IF" and "target_filter" in command_copy:
             if "condition" not in action_proxy or not action_proxy["condition"]:
-                action_proxy["target_filter"] = command.get("target_filter")
+                action_proxy["target_filter"] = command_copy.get("target_filter")
 
         # Some templates expect source_zone rather than from_zone
-        action_proxy["source_zone"] = command.get("from_zone", "")
+        action_proxy["source_zone"] = command_copy.get("from_zone", "")
 
         # Specific Adjustments
         if original_cmd_type == "MANA_CHARGE":
@@ -1072,7 +1076,7 @@ class CardTextGenerator:
 
         if original_cmd_type == "QUERY":
             # Set query_mode for _format_action to handle
-            query_mode = command.get("str_param") or command.get("query_mode") or ""
+            query_mode = command_copy.get("str_param") or command_copy.get("query_mode") or ""
             action_proxy["query_mode"] = query_mode
             # Ensure str_param and str_val are set for stat queries
             if query_mode and query_mode != "CARDS_MATCHING_FILTER":
@@ -1081,58 +1085,60 @@ class CardTextGenerator:
 
         # Normalize complex command representations into the Action-like proxy expected by _format_action
         if original_cmd_type == "LOOK_AND_ADD":
-            if "look_count" in command and command.get("look_count") is not None:
-                action_proxy["value1"] = command.get("look_count")
-            if "add_count" in command and command.get("add_count") is not None:
-                action_proxy["value2"] = command.get("add_count")
-            rz = command.get("rest_zone") or command.get("destination_zone") or command.get("to_zone")
+            if "look_count" in command_copy and command_copy.get("look_count") is not None:
+                action_proxy["value1"] = command_copy.get("look_count")
+            if "add_count" in command_copy and command_copy.get("add_count") is not None:
+                action_proxy["value2"] = command_copy.get("add_count")
+            rz = command_copy.get("rest_zone") or command_copy.get("destination_zone") or command_copy.get("to_zone")
             if rz:
                 action_proxy["rest_zone"] = rz
                 action_proxy["destination_zone"] = rz
         elif original_cmd_type == "MEKRAID":
             # Prefer max_cost from command or target_filter; support input-linked dict
-            max_cost_src = command.get("max_cost")
-            if max_cost_src is None and "target_filter" in command:
-                max_cost_src = command.get("target_filter", {}).get("max_cost")
+            max_cost_src = command_copy.get("max_cost")
+            if max_cost_src is None and "target_filter" in command_copy:
+                max_cost_src = command_copy.get("target_filter", {}).get("max_cost")
             # Only assign numeric value1; input-linked dict will be handled in _format_action
             if max_cost_src is not None and not isinstance(max_cost_src, dict):
                 action_proxy["value1"] = max_cost_src
-            if "look_count" in command and command.get("look_count") is not None:
-                action_proxy["look_count"] = command.get("look_count")
-            if "rest_zone" in command and command.get("rest_zone") is not None:
-                action_proxy["rest_zone"] = command.get("rest_zone")
+            if "look_count" in command_copy and command_copy.get("look_count") is not None:
+                action_proxy["look_count"] = command_copy.get("look_count")
+            if "rest_zone" in command_copy and command_copy.get("rest_zone") is not None:
+                action_proxy["rest_zone"] = command_copy.get("rest_zone")
         elif original_cmd_type == "SUMMON_TOKEN":
-            # ACTION_MAP expects str_val for token name
-            if "token_id" in command and command.get("token_id") is not None:
-                action_proxy["str_val"] = command.get("token_id")
+            # ACTION_MAP expects str_val for token name.
+            # UI uses str_param, which is already mapped to str_val above.
+            # But if token_id is present (legacy), use it.
+            if "token_id" in command_copy and command_copy.get("token_id") is not None:
+                action_proxy["str_val"] = command_copy.get("token_id")
         elif original_cmd_type == "PLAY_FROM_ZONE":
-            action_proxy["source_zone"] = command.get("from_zone", "")
+            action_proxy["source_zone"] = command_copy.get("from_zone", "")
             # Check for max_cost at command level or within target_filter
-            max_cost = command.get("max_cost")
-            if max_cost is None and "target_filter" in command:
-                max_cost = command.get("target_filter", {}).get("max_cost")
+            max_cost = command_copy.get("max_cost")
+            if max_cost is None and "target_filter" in command_copy:
+                max_cost = command_copy.get("target_filter", {}).get("max_cost")
             if max_cost is not None and not isinstance(max_cost, dict):
                 action_proxy["value1"] = max_cost
         elif original_cmd_type == "SELECT_NUMBER" or original_cmd_type == "DECLARE_NUMBER":
             # Map Schema (min_value, amount) -> Action (value1, value2)
             # Schema: amount is MAX, min_value is MIN
-            action_proxy["value1"] = command.get("min_value", 1)  # Min
-            action_proxy["value2"] = command.get("amount", 6)     # Max
+            action_proxy["value1"] = command_copy.get("min_value", 1)  # Min
+            action_proxy["value2"] = command_copy.get("amount", 6)     # Max
         elif original_cmd_type == "CHOICE":
             # Map CHOICE into SELECT_OPTION natural language generation
-            flags = command.get("flags", []) or []
+            flags = command_copy.get("flags", []) or []
             if isinstance(flags, list) and "ALLOW_DUPLICATES" in flags:
                 action_proxy["optional"] = True
-            action_proxy["value1"] = command.get("amount", 1)
+            action_proxy["value1"] = command_copy.get("amount", 1)
         elif original_cmd_type == "SHUFFLE_DECK":
             # No params needed usually
             pass
         elif original_cmd_type == "REGISTER_DELAYED_EFFECT":
             # Requires str_param for ID, amount for Duration
-            action_proxy["str_val"] = command.get("str_param") or command.get("str_val", "")
+            action_proxy["str_val"] = command_copy.get("str_param") or command_copy.get("str_val", "")
         elif original_cmd_type == "COST_REFERENCE":
              # Used to just output value, handled in _format_action
-             action_proxy["ref_mode"] = command.get("ref_mode")
+             action_proxy["ref_mode"] = command_copy.get("ref_mode")
 
         return cls._format_action(action_proxy, is_spell, sample=sample, card_mega_last_burst=card_mega_last_burst)
 

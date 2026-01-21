@@ -476,6 +476,51 @@ else:
                      cid = stub.card_id if isinstance(stub, CardStub) else stub
                      state.add_card_to_hand(player_id, cid)
 
+            elif cmd.type == CommandType.DESTROY:
+                p = state.players[player_id]
+                # Default to Battle Zone if not specified
+                target_zone = p.battle_zone
+
+                # Simple logic: destroy all in target zone or battle zone
+                # In a real engine, we'd filter. Here we just move generic targets for testing flow.
+                if cmd.target_filter:
+                    zones = getattr(cmd.target_filter, 'zones', [])
+                    if "MANA_ZONE" in zones: target_zone = p.mana_zone
+
+                # Move to graveyard
+                while target_zone:
+                    c = target_zone.pop(0)
+                    p.graveyard.append(c)
+
+            elif cmd.type == CommandType.MANA_CHARGE:
+                p = state.players[player_id]
+                # If Hand -> Mana
+                if cmd.target_filter and "HAND" in getattr(cmd.target_filter, 'zones', []):
+                    if p.hand:
+                        c = p.hand.pop(0)
+                        p.mana_zone.append(c)
+                # Default: Top of deck -> Mana
+                elif p.deck:
+                    stub = p.deck.pop()
+                    cid = stub.card_id if isinstance(stub, CardStub) else stub
+                    p.mana_zone.append(CardStub(cid, state.get_next_instance_id()))
+
+            elif cmd.type == CommandType.DISCARD:
+                p = state.players[player_id]
+                if p.hand:
+                    # Simple discard top one for stub
+                    c = p.hand.pop(0)
+                    p.graveyard.append(c)
+
+            elif cmd.type == CommandType.BREAK_SHIELD:
+                # Target player usually defined in cmd or context, default to opponent for now if not set
+                target_pid = 1 - player_id
+                p = state.players[target_pid]
+                if p.shield_zone:
+                    c = p.shield_zone.pop(0)
+                    # Break to hand
+                    p.hand.append(c)
+
     class TokenConverter:
         @staticmethod
         def encode_state(state: Any, player_id: int, length: int) -> List[int]:
