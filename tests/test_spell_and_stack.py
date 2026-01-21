@@ -11,8 +11,8 @@ class TestSpellAndStack(unittest.TestCase):
 
     def test_spell_casting_stub(self):
         # Setup: Add a "Spell" card to hand.
-        # Using ID 2 which is now mocked as a Spell in JsonLoader
-        spell_card_id = 2
+        # Using ID 7 (Ice and Fire) which is a real Spell in data/cards.json
+        spell_card_id = 7
         self.game.state.add_card_to_hand(0, spell_card_id)
 
         # Verify card is in hand
