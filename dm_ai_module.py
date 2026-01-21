@@ -280,6 +280,34 @@ else:
         UNDER_CARD = 10
 
     class CardDatabase:
+        _cards = {}
+        _loaded = False
+
+        @staticmethod
+        def load(path: str = "data/cards.json") -> None:
+            if CardDatabase._loaded: return
+            try:
+                # Attempt to resolve path relative to repo root if not found
+                if not os.path.exists(path):
+                    root = _repo_root()
+                    path = os.path.join(root, "data", "cards.json")
+
+                if os.path.exists(path):
+                    import json
+                    with open(path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        for c in data:
+                            CardDatabase._cards[c['id']] = c
+                    CardDatabase._loaded = True
+            except Exception as e:
+                print(f"Warning: Failed to load card database: {e}")
+
+        @staticmethod
+        def get_card(card_id: int) -> dict:
+            if not CardDatabase._loaded:
+                CardDatabase.load()
+            return CardDatabase._cards.get(card_id, {})
+
         def __init__(self): pass
 
     class CardStub:
@@ -575,20 +603,60 @@ else:
                 val = int(getattr(action, 'value1', 1))
                 state.draw_cards(player, val)
 
-            elif is_type(atype, 'CAST_SPELL') or atype == ActionType.PLAY_CARD:
-                # Simulate removing card from hand when played
-                if hasattr(action, 'card_id'):
+            elif atype == ActionType.MANA_CHARGE:
+                 if hasattr(action, 'card_id'):
                     cid = getattr(action, 'card_id')
                     p = state.players[player]
-                    # Find and remove one instance
+                    # Find and remove
                     for i, c in enumerate(p.hand):
                         if c.card_id == cid:
-                            p.hand.pop(i)
+                            card = p.hand.pop(i)
+                            # In DM, charged mana enters untapped but cannot be used immediately (handled by game logic limits, not tap state)
+                            card.is_tapped = False
+                            p.mana_zone.append(card)
                             break
+
+            elif atype == ActionType.ATTACK_PLAYER:
+                # Tap the attacker
+                p = state.players[player]
+                source_id = getattr(action, 'source_instance_id', -1)
+                for c in p.battle_zone:
+                    if c.instance_id == source_id:
+                        c.is_tapped = True
+                        break
+
+            elif is_type(atype, 'CAST_SPELL') or atype == ActionType.PLAY_CARD:
+                # Simulate removing card from hand when played
+                cid = getattr(action, 'card_id', 0)
+                inst_id = getattr(action, 'source_instance_id', 0)
+
+                p = state.players[player]
+                card_obj = None
+
+                # Find and remove one instance from hand
+                for i, c in enumerate(p.hand):
+                    if c.card_id == cid:
+                        card_obj = p.hand.pop(i)
+                        break
+
+                if card_obj is None:
+                    # Fallback if card wasn't in hand (e.g. created/token)
+                    card_obj = CardStub(cid, inst_id)
+
+                # Check Type to decide destination
+                cdata = CardDatabase.get_card(cid)
+                ctype = cdata.get('type', 'SPELL')
+
+                if ctype == 'CREATURE':
+                    card_obj.sick = True
+                    card_obj.is_tapped = False
+                    p.battle_zone.append(card_obj)
+                else:
+                    # Spell goes to graveyard
+                    state.players[player].graveyard.append(card_obj)
+
                 # Add to pending effects stub
                 state.pending_effects.append(action)
-                # Move to graveyard immediately in stub
-                state.players[player].graveyard.append(CardStub(cid, action.source_instance_id))
 
     class JsonLoader:
         @staticmethod
