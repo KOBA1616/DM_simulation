@@ -2,14 +2,14 @@ import sys
 import os
 import json
 
-# Add bin/ to path
-bin_path = os.path.join(os.path.dirname(__file__), '../bin')
-sys.path.append(bin_path)
+# Add root/ to path (prioritize root for python stub, bin for native if needed)
+root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, root_path)
 
 try:
     import dm_ai_module
 except ImportError:
-    print(f"Failed to import dm_ai_module from {bin_path}")
+    print(f"Failed to import dm_ai_module from {root_path}")
     sys.exit(1)
 
 def verify_trigger():

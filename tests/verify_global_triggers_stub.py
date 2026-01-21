@@ -1,5 +1,11 @@
 
 import unittest
+import sys
+import os
+
+# Add root directory to sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from dm_ai_module import (
     GameState, CardDefinition, CardData, EffectDef, ActionDef, TriggerType,
     TargetScope, EffectPrimitive, FilterDef, Civilization, CardType,
