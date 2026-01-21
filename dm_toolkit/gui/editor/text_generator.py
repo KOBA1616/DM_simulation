@@ -1725,7 +1725,8 @@ class CardTextGenerator:
              return base
 
         elif atype == "FLOW":
-             ftype = action.get("flow_type", "")
+             # Use str_val (mapped from str_param) if flow_type is missing
+             ftype = action.get("flow_type") or action.get("str_val", "")
              val1 = action.get("value1", 0) # Often raw int
 
              if ftype == "PHASE_CHANGE":
@@ -2111,6 +2112,17 @@ class CardTextGenerator:
                  src_text = "または".join(znames) + "から"
 
              return f"{src_text}{target_str}を{count}{unit}バトルゾーンに出す。"
+
+        elif atype == "SUMMON_TOKEN":
+             token_id = action.get("str_val", "")
+             val1 = action.get("value1", 0)
+             count = val1 if val1 > 0 else 1
+
+             # Try to resolve token name if possible (assuming token_id is a key or name)
+             # For now, just use the ID/Name directly.
+             token_name = tr(token_id) if token_id else "トークン"
+
+             return f"{token_name}を{count}体出す。"
 
         elif atype == "SHUFFLE_DECK":
              return "山札をシャッフルする。"
