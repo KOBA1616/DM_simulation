@@ -1,90 +1,99 @@
-import unittest
+import pytest
 import torch
 import numpy as np
 import os
-import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+import dm_ai_module
+from dm_ai_module import GameInstance, ActionType
 
-# Ensure project root is in path
-project_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(project_root))
-
-from dm_ai_module import GameInstance, ActionType, CardStub
+# Import the model architecture
 from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 
-class TestInferenceIntegration(unittest.TestCase):
-    def setUp(self):
-        self.game = GameInstance()
-        self.game.start_game()
+def test_inference_integration():
+    """
+    Verifies that a trained model can be loaded and used to generate an action
+    from a GameInstance state.
+    """
 
-        # Check if model exists, if not, create a dummy one for testing
-        self.model_path = os.path.join(project_root, "models", "test_model.pth")
+    # 1. Setup Model (Mock Training)
+    # Create a small instance of the model
+    vocab_size = 1000
+    action_dim = 600
+    model = DuelTransformer(
+        vocab_size=vocab_size,
+        action_dim=action_dim,
+        d_model=64, # Small for test
+        nhead=4,
+        num_layers=2,
+        dim_feedforward=128,
+        max_len=200
+    )
+    model.eval()
 
-        # Initialize model structure
-        self.model = DuelTransformer(
-            vocab_size=1000,
-            action_dim=600,
-            d_model=32, # Small for test
-            nhead=2,
-            num_layers=2,
-            dim_feedforward=64,
-            max_len=200
-        )
+    # Save it to a temporary path to verify loading logic
+    tmp_model_path = "tests/temp_test_model.pth"
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'epoch': 1
+    }, tmp_model_path)
 
-        # Save dummy model if not exists or always to ensure consistency
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'epoch': 1,
-        }, self.model_path)
+    try:
+        # 2. Setup Game State
+        game = GameInstance()
+        game.start_game()
 
-    def test_load_and_infer(self):
-        # 1. Load Model
-        checkpoint = torch.load(self.model_path)
+        # 3. Simulate "Encoding" the state
+        # In a real scenario, we would use a Tokenizer.
+        # Here we mock the tokenization process as verified in minimal flow.
+        # Just create a random token sequence representing the state.
+        seq_len = 50
+        fake_state_tokens = torch.randint(0, vocab_size, (1, seq_len))
+
+        # 4. Load Model and Run Inference
         loaded_model = DuelTransformer(
-            vocab_size=1000,
-            action_dim=600,
-            d_model=32,
-            nhead=2,
+            vocab_size=vocab_size,
+            action_dim=action_dim,
+            d_model=64,
+            nhead=4,
             num_layers=2,
-            dim_feedforward=64,
+            dim_feedforward=128,
             max_len=200
         )
+        checkpoint = torch.load(tmp_model_path)
         loaded_model.load_state_dict(checkpoint['model_state_dict'])
         loaded_model.eval()
 
-        # 2. Prepare Input (Mock Game State Tokenization)
-        # In a real scenario, we would use a Tokenizer. Here we mock it.
-        # State: List of token IDs.
-        mock_state_tokens = [1, 2, 3, 4, 0, 0] # Example tokens
-        state_tensor = torch.tensor([mock_state_tokens], dtype=torch.long)
-        padding_mask = (state_tensor == 0)
-
-        # 3. Inference
         with torch.no_grad():
-            policy_logits, value_pred = loaded_model(state_tensor, padding_mask=padding_mask)
+            policy_logits, value = loaded_model(fake_state_tokens)
 
-        # 4. Verify Output Shape
-        self.assertEqual(policy_logits.shape, (1, 600), "Policy output should be (batch_size, action_dim)")
-        self.assertEqual(value_pred.shape, (1, 1), "Value output should be (batch_size, 1)")
+        # 5. Verify Outputs
+        assert policy_logits.shape == (1, action_dim)
+        assert value.shape == (1, 1)
 
-        # 5. Decide Action
+        # 6. Select Action
         action_idx = torch.argmax(policy_logits, dim=1).item()
-        self.assertTrue(0 <= action_idx < 600)
+        assert 0 <= action_idx < action_dim
 
-        # 6. Map Action Index to Game Action (Mock Mapping)
-        # Assuming 0 is PASS, 1-10 is MANA_CHARGE, etc.
-        # This mapping should match `SimpleActionDecoder` mentioned in memory/report.
-        # Since we don't have the real decoder here, we just verify we got an index.
-        print(f"Inference produced Action Index: {action_idx}")
+        print(f"Inference successful. Selected action index: {action_idx}, Value: {value.item()}")
 
-        # If we want to test execution, we can create a dummy action from this index
-        # For this test, verifying the pipeline "Model Load -> Inference -> Index" is sufficient
-        # to address "Inference Integration" at the basic level requested.
+    finally:
+        # Cleanup
+        if os.path.exists(tmp_model_path):
+            os.remove(tmp_model_path)
 
-    def tearDown(self):
-        if os.path.exists(self.model_path):
-            os.remove(self.model_path)
+def test_inference_with_batch():
+    """Verify batch processing capability"""
+    vocab_size = 1000
+    action_dim = 600
+    model = DuelTransformer(vocab_size=vocab_size, action_dim=action_dim, d_model=32, nhead=2, num_layers=1)
+    model.eval()
 
-if __name__ == '__main__':
-    unittest.main()
+    batch_size = 4
+    seq_len = 30
+    fake_batch = torch.randint(0, vocab_size, (batch_size, seq_len))
+
+    with torch.no_grad():
+        policy, value = model(fake_batch)
+
+    assert policy.shape == (batch_size, action_dim)
+    assert value.shape == (batch_size, 1)

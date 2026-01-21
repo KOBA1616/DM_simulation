@@ -491,13 +491,10 @@ else:
                             "source_id": found_card.instance_id,
                             "card_id": found_card.card_id,
                             "player": self.state.active_player_id,
-                            "type": "SPELL_EFFECT"
+                            "type": "SPELL_EFFECT",
+                            "card_obj": found_card
                         })
-                        # Spells go to graveyard after cast (usually after resolution, but for stub we put to grave now or hold?)
-                        # In DM, spell stays on stack until resolved.
-                        # We will hold it in a temp "limbo" or just say it's processed when effect resolves.
-                        # For simplicity, let's put it in graveyard now, mimicking immediate processing start.
-                        active_p.graveyard.append(found_card)
+                        # Spell stays on stack (pending_effects) until resolved.
                     else:
                         # Creature Logic: Summon to Battle Zone
                         active_p.battle_zone.append(found_card)
@@ -508,6 +505,14 @@ else:
                 # Pop from pending effects (LIFO)
                 if len(self.state.pending_effects) > 0:
                     effect = self.state.pending_effects.pop()
+                    # Check if this effect is a spell resolution (has card_obj)
+                    if effect.get("type") == "SPELL_EFFECT" and "card_obj" in effect:
+                         card_obj = effect["card_obj"]
+                         player_id = effect.get("player", self.state.active_player_id)
+                         try:
+                             self.state.players[player_id].graveyard.append(card_obj)
+                         except Exception:
+                             pass
                     # Here we would execute the effect logic
                     # For stub, we just acknowledge it happened
                     pass

@@ -1,55 +1,107 @@
+import pytest
+import dm_ai_module
+from dm_ai_module import GameInstance, Action, ActionType, CardType, CardStub
 
-import unittest
-from dm_ai_module import GameInstance, ActionType, CardStub, GameState, Action, CardType
+def test_spell_cast_and_stack_resolution():
+    """
+    Verifies that casting a spell:
+    1. Removes it from hand.
+    2. Puts it on the pending_effects stack (not graveyard yet).
+    3. Resolving the effect moves it to graveyard.
+    """
+    game = GameInstance()
+    game.start_game()
 
-class TestSpellAndStack(unittest.TestCase):
-    def setUp(self):
-        self.game = GameInstance()
-        self.game.start_game()
-        self.p0 = self.game.state.players[0]
-        self.p1 = self.game.state.players[1]
+    # Setup: Player 1 (index 0) is active
+    p1 = game.state.players[0]
 
-    def test_spell_casting_stub(self):
-        # Setup: Add a "Spell" card to hand.
-        # Using ID 2 which is now mocked as a Spell in JsonLoader
-        spell_card_id = 2
-        self.game.state.add_card_to_hand(0, spell_card_id)
+    # Clear hand and add a Spell card (ID 2 is "Test Spell" in stub)
+    p1.hand = []
+    spell_instance_id = 100
+    p1.hand.append(CardStub(2, spell_instance_id))
 
-        # Verify card is in hand
-        hand_card = self.p0.hand[-1]
-        self.assertEqual(hand_card.card_id, spell_card_id)
+    # Verify initial state
+    assert len(p1.hand) == 1
+    assert len(p1.graveyard) == 0
+    assert len(game.state.pending_effects) == 0
 
-        # Action: Play Card (Cast Spell)
-        action = Action()
-        action.type = ActionType.PLAY_CARD
-        action.card_id = spell_card_id
-        action.source_instance_id = hand_card.instance_id
-        action.target_player = 0
+    # Action: Cast Spell (PLAY_CARD)
+    action = Action()
+    action.type = ActionType.PLAY_CARD
+    action.source_instance_id = spell_instance_id
 
-        # Execute
-        self.game.execute_action(action)
+    game.execute_action(action)
 
-        # Verification 1: Card removed from hand
-        card_in_hand = any(c.instance_id == hand_card.instance_id for c in self.p0.hand)
-        self.assertFalse(card_in_hand, "Spell card should be removed from hand")
+    # Verify after cast
+    # 1. Removed from hand
+    assert len(p1.hand) == 0
+    # 2. Not in graveyard yet
+    assert len(p1.graveyard) == 0
+    # 3. On stack
+    assert len(game.state.pending_effects) == 1
+    effect = game.state.pending_effects[0]
+    assert effect["type"] == "SPELL_EFFECT"
+    assert effect["source_id"] == spell_instance_id
 
-        # Verification 2: Pending effects populated
-        self.assertEqual(len(self.game.state.pending_effects), 1, "Should have 1 pending effect")
-        eff = self.game.state.pending_effects[0]
-        self.assertEqual(eff['card_id'], spell_card_id)
-        self.assertEqual(eff['type'], "SPELL_EFFECT")
+    # Action: Resolve Effect
+    resolve_action = Action()
+    resolve_action.type = ActionType.RESOLVE_EFFECT
 
-        # Verification 3: Resolve Stack
-        resolve_action = Action()
-        resolve_action.type = ActionType.RESOLVE_EFFECT
-        self.game.execute_action(resolve_action)
+    game.execute_action(resolve_action)
 
-        self.assertEqual(len(self.game.state.pending_effects), 0, "Pending effects should be empty after resolution")
+    # Verify after resolution
+    # 1. Stack empty
+    assert len(game.state.pending_effects) == 0
+    # 2. In graveyard
+    assert len(p1.graveyard) == 1
+    assert p1.graveyard[0].instance_id == spell_instance_id
 
-        # Verification 4: Card in graveyard (we moved it there immediately in our stub implementation)
-        # Note: In real engine it might move after resolution, but our stub moved it on cast.
-        card_in_grave = any(c.instance_id == hand_card.instance_id for c in self.p0.graveyard)
-        self.assertTrue(card_in_grave, "Spell card should be in graveyard")
+def test_creature_summon_no_stack():
+    """
+    Verifies that summoning a creature:
+    1. Removes it from hand.
+    2. Puts it in Battle Zone immediately (no stack for summon itself in this simple stub).
+    """
+    game = GameInstance()
+    game.start_game()
 
-if __name__ == '__main__':
-    unittest.main()
+    p1 = game.state.players[0]
+    p1.hand = []
+    creature_instance_id = 200
+    p1.hand.append(CardStub(1, creature_instance_id)) # ID 1 is "Test Creature"
+
+    # Action: Play Creature
+    action = Action()
+    action.type = ActionType.PLAY_CARD
+    action.source_instance_id = creature_instance_id
+
+    game.execute_action(action)
+
+    # Verify
+    assert len(p1.hand) == 0
+    assert len(game.state.pending_effects) == 0
+    assert len(p1.battle_zone) == 1
+    assert p1.battle_zone[0].instance_id == creature_instance_id
+
+def test_multiple_stack_resolution():
+    """
+    Verifies LIFO processing of stack.
+    """
+    game = GameInstance()
+    game.state.pending_effects = []
+
+    # Manually push effects
+    game.state.pending_effects.append({"type": "EFFECT_1", "id": 1})
+    game.state.pending_effects.append({"type": "EFFECT_2", "id": 2})
+
+    # Resolve first (should be EFFECT_2)
+    resolve_action = Action()
+    resolve_action.type = ActionType.RESOLVE_EFFECT
+    game.execute_action(resolve_action)
+
+    assert len(game.state.pending_effects) == 1
+    assert game.state.pending_effects[0]["id"] == 1
+
+    # Resolve second (should be EFFECT_1)
+    game.execute_action(resolve_action)
+    assert len(game.state.pending_effects) == 0
