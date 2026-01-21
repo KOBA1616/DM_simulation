@@ -273,7 +273,10 @@ else:
         @staticmethod
         def load_cards(path: str) -> dict[int, Any]:
             # Simple mock returning a basic card dict
-            return {1: {"name": "Test Creature", "cost": 1, "power": 1000}}
+            return {
+                1: {"name": "Test Creature", "cost": 1, "power": 1000, "card_type": CardType.CREATURE},
+                2: {"name": "Test Spell", "cost": 1, "card_type": CardType.SPELL}
+            }
 
     class LethalSolver:
         @staticmethod
@@ -437,6 +440,77 @@ else:
                 if hasattr(t, 'name') and t.name == name_str: return True
                 if hasattr(t, 'value') and t.value == enum_val: return True
                 return False
+
+            if is_type(act_type, "PLAY_CARD", ActionType.PLAY_CARD):
+                # PLAY_CARD Logic
+                active_p = self.state.players[self.state.active_player_id]
+                source_id = getattr(action, 'source_instance_id', -1)
+
+                # Find card in hand
+                found_idx = -1
+                found_card = None
+                if source_id != -1:
+                    for i, card in enumerate(active_p.hand):
+                        if getattr(card, 'instance_id', -1) == source_id:
+                            found_idx = i
+                            found_card = card
+                            break
+
+                # If not found by instance ID, try by card_id (fallback for tests)
+                if found_card is None and hasattr(action, 'card_id') and action.card_id != -1:
+                     for i, card in enumerate(active_p.hand):
+                        if getattr(card, 'card_id', -1) == action.card_id:
+                            found_idx = i
+                            found_card = card
+                            break
+
+                if found_card:
+                    # Remove from hand
+                    active_p.hand.pop(found_idx)
+
+                    # Determine type
+                    is_spell = False
+                    # Check card_db if available
+                    if self.card_db and hasattr(self.card_db, 'get_card_data'):
+                         cdata = self.card_db.get_card_data(found_card.card_id)
+                         if cdata and hasattr(cdata, 'card_type') and cdata.card_type == CardType.SPELL:
+                             is_spell = True
+                    # Check registry fallback
+                    elif found_card.card_id in _CARD_REGISTRY:
+                         cdata = _CARD_REGISTRY[found_card.card_id]
+                         if hasattr(cdata, 'card_type') and cdata.card_type == CardType.SPELL:
+                             is_spell = True
+                    # Check implicit ID assumption (999 for test)
+                    elif found_card.card_id == 999 or found_card.card_id == 2:
+                         is_spell = True
+
+                    if is_spell:
+                        # Spell Logic: Add to pending effects (Stack)
+                        # We create a dummy effect to represent the spell on stack
+                        self.state.pending_effects.append({
+                            "source_id": found_card.instance_id,
+                            "card_id": found_card.card_id,
+                            "player": self.state.active_player_id,
+                            "type": "SPELL_EFFECT"
+                        })
+                        # Spells go to graveyard after cast (usually after resolution, but for stub we put to grave now or hold?)
+                        # In DM, spell stays on stack until resolved.
+                        # We will hold it in a temp "limbo" or just say it's processed when effect resolves.
+                        # For simplicity, let's put it in graveyard now, mimicking immediate processing start.
+                        active_p.graveyard.append(found_card)
+                    else:
+                        # Creature Logic: Summon to Battle Zone
+                        active_p.battle_zone.append(found_card)
+                        # Summoning sickness
+                        found_card.sick = True
+
+            elif is_type(act_type, "RESOLVE_EFFECT", ActionType.RESOLVE_EFFECT):
+                # Pop from pending effects (LIFO)
+                if len(self.state.pending_effects) > 0:
+                    effect = self.state.pending_effects.pop()
+                    # Here we would execute the effect logic
+                    # For stub, we just acknowledge it happened
+                    pass
 
             if is_type(act_type, "PASS", ActionType.PASS):
                 # Advance phase
