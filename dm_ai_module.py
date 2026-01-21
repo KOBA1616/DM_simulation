@@ -212,12 +212,58 @@ else:
         SHIELD_TRIGGER = 16
         NONE = 17
         PUT_INTO_PLAY = 18
+        # Extended types matching schema_config.py
+        MOVE_CARD = 19
+        REPLACE_CARD_MOVE = 20
+        LOOK_AND_ADD = 21
+        MEKRAID = 22
+        PUT_CREATURE = 23
+        APPLY_MODIFIER = 24
+        PLAY_FROM_ZONE = 25
+        CAST_SPELL = 26
+        FRIEND_BURST = 27
+        REVOLUTION_CHANGE = 28
+        REVEAL_CARDS = 29
+        SUMMON_TOKEN = 30
+        REGISTER_DELAYED_EFFECT = 31
+        COST_REFERENCE = 32
+        GAME_RESULT = 33
+        SEARCH_DECK_BOTTOM = 34
+        SEND_TO_DECK_BOTTOM = 35
+        RESOLVE_BATTLE = 36
+        ADD_SHIELD = 37
+        SEND_SHIELD_TO_GRAVE = 38
+        SHIELD_BURN = 39
+        LOOK_TO_BUFFER = 40
+        SELECT_FROM_BUFFER = 41
+        PLAY_FROM_BUFFER = 42
+        MOVE_BUFFER_TO_ZONE = 43
+        LOCK_SPELL = 44
+        RESET_INSTANCE = 45
+        MOVE_TO_UNDER_CARD = 46
+        DECLARE_NUMBER = 47
+        CHOICE = 48
+        SELECT_OPTION = 49
+        IF = 50
+        IF_ELSE = 51
+        ELSE = 52
+        STAT = 53
+        SELECT_NUMBER = 54
+        DECIDE = 55
+        DECLARE_REACTION = 56
+        COUNT_CARDS = 57
+        GET_GAME_STAT = 58
+        ATTACH = 59
+        COST_REDUCTION = 60
+        SHUFFLE_DECK = 61
 
     class TargetScope(Enum):
         PLAYER_SELF = 1
         SELF = 1
         OPPONENT = 2
         PLAYER_OPPONENT = 2
+        ALL_PLAYERS = 3
+        RANDOM = 4
 
     class Zone(Enum):
         DECK = 1
@@ -228,6 +274,10 @@ else:
         SHIELD_ZONE = 6
         BATTLE = 5
         SHIELD = 6
+        DECK_TOP = 7
+        DECK_BOTTOM = 8
+        BUFFER = 9
+        UNDER_CARD = 10
 
     class CardDatabase:
         def __init__(self): pass
@@ -267,6 +317,11 @@ else:
             self.instance_counter = 0
 
         def setup_test_duel(self) -> None: pass
+
+        def set_deck(self, player_id: int, deck_ids: List[int]) -> None:
+            self._ensure_player(player_id)
+            # Create CardStub objects from IDs
+            self.players[player_id].deck = [CardStub(cid, self.get_next_instance_id()) for cid in deck_ids]
 
         def get_card_instance(self, instance_id: int) -> Optional[CardStub]:
             target = int(instance_id)
@@ -356,9 +411,10 @@ else:
             self.modifier = None
 
     class FlowCommand(GameCommand):
-        def __init__(self, *args: Any, **kwargs: Any):
+        def __init__(self, flow_type, new_value=0, *args: Any, **kwargs: Any):
             super().__init__(*args, **kwargs)
-            self.flow_type = FlowType.NONE
+            self.flow_type = flow_type
+            self.new_value = new_value
 
     class MutationType(Enum):
         ADD_MODIFIER = 1
@@ -466,9 +522,28 @@ else:
                 for sub_act in selected_opts:
                     GenericCardSystem.resolve_action(state, sub_act, player)
 
+            elif atype == ActionType.RESOLVE_EFFECT:
+                if state.pending_effects:
+                    state.pending_effects.pop()
+
             elif is_type(atype, 'DRAW_CARD'):
                 val = int(getattr(action, 'value1', 1))
                 state.draw_cards(player, val)
+
+            elif is_type(atype, 'CAST_SPELL') or atype == ActionType.PLAY_CARD:
+                # Simulate removing card from hand when played
+                if hasattr(action, 'card_id'):
+                    cid = getattr(action, 'card_id')
+                    p = state.players[player]
+                    # Find and remove one instance
+                    for i, c in enumerate(p.hand):
+                        if c.card_id == cid:
+                            p.hand.pop(i)
+                            break
+                # Add to pending effects stub
+                state.pending_effects.append(action)
+                # Move to graveyard immediately in stub
+                state.players[player].graveyard.append(CardStub(cid, action.source_instance_id))
 
     class JsonLoader:
         @staticmethod
@@ -492,3 +567,30 @@ else:
     class TargetGroup(Enum):
         SELF = 1
         OPPONENT = 2
+
+    class GameInstance:
+        def __init__(self, game_id: int = 0):
+            self.state = GameState()
+        def start_game(self):
+            self.state.setup_test_duel()
+        def execute_action(self, action: Any) -> None:
+            GenericCardSystem.resolve_action(self.state, action, 0)
+
+    class PhaseManager:
+        @staticmethod
+        def next_phase(state: Any, db: Any) -> None:
+            state.current_phase = (state.current_phase + 1) % 7
+            if state.current_phase == 0:
+                state.turn_number += 1
+
+    class DataCollector:
+        def __init__(self):
+            self.buffer = []
+
+        def collect_data_batch_heuristic(self, count: int, flag1: bool, flag2: bool):
+            class Batch:
+                def __init__(self):
+                    self.token_states = [[]]
+                    self.policies = [[]]
+                    self.values = [0]
+            return Batch()
