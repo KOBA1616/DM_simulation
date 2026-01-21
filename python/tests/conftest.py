@@ -535,6 +535,22 @@ if dm_ai_module:
             except Exception:
                 raise AttributeError(name)
 
+        def get_card_instance(self, instance_id):
+            try:
+                return self._native.get_card_instance(instance_id)
+            except Exception:
+                pass
+
+            # Fallback search in wrappers
+            for p in self.players:
+                # Zones are _ZoneProxy
+                for zone in [p.hand, p.battle_zone, p.mana_zone, p.shield_zone]:
+                    for card in zone:
+                        # card is _CIProxy, has .id property
+                        if card.id == instance_id:
+                            return card
+            return None
+
         def execute_command(self, cmd):
             try:
                 if not hasattr(self, '_shim_command_history'):
