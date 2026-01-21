@@ -1,55 +1,88 @@
 
+import sys
+import os
 import unittest
-from dm_ai_module import GameInstance, ActionType, CardStub, GameState, Action, CardType
+from typing import Any
+
+# Add project root to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+try:
+    import dm_ai_module
+except ImportError:
+    print("dm_ai_module not found")
+    sys.exit(1)
 
 class TestSpellAndStack(unittest.TestCase):
     def setUp(self):
-        self.game = GameInstance()
+        self.game = dm_ai_module.GameInstance()
         self.game.start_game()
-        self.p0 = self.game.state.players[0]
-        self.p1 = self.game.state.players[1]
+        self.state = self.game.state
+        self.player_id = 0
+        self.player = self.state.players[self.player_id]
 
-    def test_spell_casting_stub(self):
-        # Setup: Add a "Spell" card to hand.
-        # Using ID 2 which is now mocked as a Spell in JsonLoader
+    def test_spell_casting_flow(self):
+        """
+        Verify Issue 1 & 2: Spell Casting and Stack Processing.
+        1. Add Spell (ID 2) to hand.
+        2. Play Card -> Should go to pending_effects (Stack).
+        3. Resolve Effect -> Should go to Graveyard.
+        """
+        # 1. Add Spell (ID 2) to hand
+        # Note: In our stub, we hardcoded ID 2 as Spell in GameInstance.execute_action
         spell_card_id = 2
-        self.game.state.add_card_to_hand(0, spell_card_id)
 
-        # Verify card is in hand
-        hand_card = self.p0.hand[-1]
-        self.assertEqual(hand_card.card_id, spell_card_id)
+        # Manually add a specific card instance to hand for tracking
+        instance_id = 999
+        self.state.add_card_to_hand(self.player_id, spell_card_id, instance_id)
 
-        # Action: Play Card (Cast Spell)
-        action = Action()
-        action.type = ActionType.PLAY_CARD
-        action.card_id = spell_card_id
-        action.source_instance_id = hand_card.instance_id
-        action.target_player = 0
+        # Verify it's in hand
+        hand_card = None
+        for c in self.player.hand:
+            if c.instance_id == instance_id:
+                hand_card = c
+                break
+        self.assertIsNotNone(hand_card, "Spell card should be in hand")
+        initial_hand_size = len(self.player.hand)
 
-        # Execute
-        self.game.execute_action(action)
+        # 2. Play Card (Cast Spell)
+        play_cmd = dm_ai_module.GameCommand()
+        play_cmd.type = dm_ai_module.ActionType.PLAY_CARD
+        play_cmd.source_instance_id = instance_id
 
-        # Verification 1: Card removed from hand
-        card_in_hand = any(c.instance_id == hand_card.instance_id for c in self.p0.hand)
-        self.assertFalse(card_in_hand, "Spell card should be removed from hand")
+        print(f"\n[Test] Executing PLAY_CARD for instance {instance_id} (ID {spell_card_id})")
+        self.game.execute_action(play_cmd)
 
-        # Verification 2: Pending effects populated
-        self.assertEqual(len(self.game.state.pending_effects), 1, "Should have 1 pending effect")
-        eff = self.game.state.pending_effects[0]
-        self.assertEqual(eff['card_id'], spell_card_id)
-        self.assertEqual(eff['type'], "SPELL_EFFECT")
+        # Verify removed from hand
+        self.assertEqual(len(self.player.hand), initial_hand_size - 1, "Hand size should decrease by 1")
 
-        # Verification 3: Resolve Stack
-        resolve_action = Action()
-        resolve_action.type = ActionType.RESOLVE_EFFECT
-        self.game.execute_action(resolve_action)
+        # Verify added to pending_effects (Stack)
+        self.assertEqual(len(self.state.pending_effects), 1, "Pending effects should have 1 card")
+        self.assertEqual(self.state.pending_effects[0].instance_id, instance_id, "The pending effect should be our spell")
 
-        self.assertEqual(len(self.game.state.pending_effects), 0, "Pending effects should be empty after resolution")
+        print("[Test] Spell is now in pending_effects (Stack).")
 
-        # Verification 4: Card in graveyard (we moved it there immediately in our stub implementation)
-        # Note: In real engine it might move after resolution, but our stub moved it on cast.
-        card_in_grave = any(c.instance_id == hand_card.instance_id for c in self.p0.graveyard)
-        self.assertTrue(card_in_grave, "Spell card should be in graveyard")
+        # 3. Resolve Effect
+        resolve_cmd = dm_ai_module.GameCommand()
+        resolve_cmd.type = dm_ai_module.ActionType.RESOLVE_EFFECT
+
+        print("[Test] Executing RESOLVE_EFFECT")
+        self.game.execute_action(resolve_cmd)
+
+        # Verify removed from pending_effects
+        self.assertEqual(len(self.state.pending_effects), 0, "Pending effects should be empty after resolution")
+
+        # Verify added to Graveyard
+        self.assertTrue(len(self.player.graveyard) > 0, "Graveyard should not be empty")
+        # Check if our card is in graveyard
+        in_grave = False
+        for c in self.player.graveyard:
+            if c.instance_id == instance_id:
+                in_grave = True
+                break
+        self.assertTrue(in_grave, "Spell card should be in graveyard")
+
+        print("[Test] Spell resolved and moved to Graveyard.")
 
 if __name__ == '__main__':
     unittest.main()
