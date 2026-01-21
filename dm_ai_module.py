@@ -272,6 +272,17 @@ else:
     class JsonLoader:
         @staticmethod
         def load_cards(path: str) -> dict[int, Any]:
+            # Try to load real JSON if exists
+            if os.path.exists(path):
+                try:
+                    import json
+                    with open(path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            return {c['id']: c for c in data}
+                        return data
+                except Exception:
+                    pass
             # Simple mock returning a basic card dict
             return {1: {"name": "Test Creature", "cost": 1, "power": 1000}}
 
@@ -504,6 +515,48 @@ else:
                         self.state.winner = GameResult.P2_WIN
                     else:
                         self.state.winner = GameResult.P1_WIN
+
+            elif is_type(act_type, "PLAY_CARD", ActionType.PLAY_CARD):
+                # Move from hand to zone
+                active_p = self.state.players[self.state.active_player_id]
+                target_id = getattr(action, 'source_instance_id', -1)
+
+                # Find card in hand
+                found_idx = -1
+                if target_id != -1:
+                    for i, card in enumerate(active_p.hand):
+                        if getattr(card, 'instance_id', -1) == target_id:
+                            found_idx = i
+                            break
+
+                if found_idx != -1:
+                    card = active_p.hand.pop(found_idx)
+
+                    # Determine card type
+                    is_spell = False
+                    if self.card_db:
+                        cdata = self.card_db.get(card.card_id)
+                        if cdata:
+                            # Check "type" field (string in JSON) or "card_type" enum
+                            type_str = cdata.get('type', '')
+                            if type_str == 'SPELL':
+                                is_spell = True
+                            elif getattr(cdata, 'card_type', None) == CardType.SPELL:
+                                is_spell = True
+
+                    if is_spell:
+                        # Add to pending effects (Stack)
+                        self.state.pending_effects.append(card)
+                    else:
+                        # Creature -> Battle Zone
+                        active_p.battle_zone.append(card)
+
+            elif is_type(act_type, "RESOLVE_EFFECT", ActionType.RESOLVE_EFFECT):
+                if self.state.pending_effects:
+                    card = self.state.pending_effects.pop()
+                    # Move spell to graveyard after resolution
+                    active_p = self.state.players[self.state.active_player_id]
+                    active_p.graveyard.append(card)
 
             elif is_type(act_type, "ATTACK_PLAYER", ActionType.ATTACK_PLAYER):
                 # In full engine this triggers shield break or direct attack
