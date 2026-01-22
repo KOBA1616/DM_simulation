@@ -1,18 +1,10 @@
 # Status and Requirements Summary (要件定義書 00)
 
-**最終更新**: 2026-01-20 12:00:00 +0900 (updated by automation)
+**最終更新**: 2026-01-22 12:00:00 +0900 (updated by automation)
 
 このドキュメントはプロジェクトの現在のステータス、実装済み機能、および次のステップの要件をまとめたマスタードキュメントです。
 
-作業ツリーの現在状態 (未コミットの変更を含む):
-
-
-- Modified: `build-msvc/_deps/pybind11-src`
-- Modified: `docs/00_Overview/00_Status_and_Requirements_Summary.md` (このファイルへの追記あり)
-- Committed: docs changes (commit f0dc4de7) — `docs/*/README.md` と `00_Completed_Docs_Changes.md` を追加
-
-
-上記の変更はワークツリーにあります。コミットする前に差分を確認してください。
+作業ツリーの現在状態: ローカルに未コミットの変更が存在する場合があります。最新のリポジトリ状態は `git status` で確認してください。
 
 
 ## ステータス定義
@@ -142,17 +134,17 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
      - 特定のゲーム状態の保存・読み込み
    - 使用方法: メインウィンドウで「Scenario Mode」を有効化
 
-2. **Simulation Dialog (バッチシミュレーション)**
-   - ファイル: [dm_toolkit/gui/simulation_dialog.py](../../dm_toolkit/gui/simulation_dialog.py)
-   - 機能:
+2. **Simulation Dialog (バッチシミュレーション)** [Status: Done]
+  - ファイル: [dm_toolkit/gui/simulation_dialog.py](../../dm_toolkit/gui/simulation_dialog.py)
+  - 機能:
 *   `docs/00_Overview/DM_Official_Rules.md`: デュエル・マスターズの公式ルール。
      - Random/Heuristic/MLPモデル評価
      - 勝率・ターン数統計の収集
    - 使用方法: ツールバー「Batch Simulation」
 
-3. **Main Game Window (メインゲームウィンドウ)**
-   - ファイル: [dm_toolkit/gui/app.py](../../dm_toolkit/gui/app.py)
-   - 機能:
+3. **Main Game Window (メインゲームウィンドウ)** [Status: Done]
+  - ファイル: [dm_toolkit/gui/app.py](../../dm_toolkit/gui/app.py)
+  - 機能:
      - リアルタイムのゲーム実行と可視化
      - ステップ実行・自動実行
      - ゾーン表示とカード詳細パネル
@@ -162,11 +154,11 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 **改善タスク**:
 
 1. **カード効果デバッグツールの実装** (1週間)
-   - [ ] 効果解決ステップのブレークポイント機能 (UI準備完了)
-   - [x] コマンドスタックの詳細表示
-   - [ ] 変数状態のリアルタイム監視 (UI準備完了、C++バインディング待ち)
-   - [x] 効果解決の履歴トレース
-   - 成果物: `CardEffectDebugger` ウィジェット
+  - [ ] 効果解決ステップのブレークポイント機能 (UI準備: yes, 実行時ブレーク未実装)
+  - [x] コマンドスタックの詳細表示
+  - [ ] 変数状態のリアルタイム監視 (UI準備済み、C++バインディング待ち)
+  - [x] 効果解決の履歴トレース
+  - 成果物: `CardEffectDebugger` ウィジェット (基本機能は実装済み、変数ウォッチ等は未実装)
 
 2. **シナリオ作成の簡易化** (3日)
    - [ ] GUIからのシナリオ保存機能の改善
@@ -187,23 +179,23 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 **タスク**:
 
 1. **静的解析ツールの実装** (3日)
-   - [x] コマンド構造の妥当性検証
-   - [x] 変数参照の整合性チェック
-   - [x] ゾーン遷移の矛盾検出（簡易チェック）
-   - [x] 無限ループの静的検出
-   - 成果物: `dm_toolkit/validator/card_validator.py`
+  - [x] コマンド構造の妥当性検証
+  - [x] 変数参照の整合性チェック
+  - [x] ゾーン遷移の矛盾検出（簡易チェック）
+  - [x] 無限ループの静的検出
+  - 成果物: `dm_toolkit/validator/card_validator.py` （実装済み、`python/tests/validator` のテストが通過）
 
 2. **自動テスト生成** (2日)
-   - [ ] カード定義から基本テストケース生成
-   - [ ] エッジケースの自動列挙
-   - [ ] 回帰テストスイートの構築
-   - 成果物: `generate_card_tests.py`
+  - [ ] カード定義から基本テストケース生成
+  - [ ] エッジケースの自動列挙
+  - [ ] 回帰テストスイートの構築
+  - 成果物: `scripts/generate_card_tests.py` （未作成）
 
 3. **効果解決トレーサー** (2日)
-   - [ ] EffectResolverのデバッグログ強化
-   - [ ] JSON形式での解決履歴エクスポート
-   - [ ] 視覚的なフローチャート生成
-   - 成果物: `EffectTracer` クラス
+  - [ ] EffectResolverのデバッグログ強化
+  - [ ] JSON形式での解決履歴エクスポート
+  - [ ] 視覚的なフローチャート生成
+  - 成果物: `EffectTracer` クラス （未実装）
 
 **成功基準**:
 - ✅ 新規カードの効果を5分以内にテスト可能
@@ -214,6 +206,23 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 - GUI: [dm_toolkit/gui/](../../dm_toolkit/gui/)
 - エンジン: [src/engine/effect_resolver.hpp](../../src/engine/effect_resolver.hpp)
 - テスト: [python/tests/](../../python/tests/)
+
+#### 実装レビュー（2026-01-22）
+
+- **確認済み（実装あり）**:
+  - `dm_toolkit/gui/simulation_dialog.py`: バッチシミュレーションのUI/ワーカーは実装済み。
+  - `dm_toolkit/gui/widgets/scenario_tools.py`: シナリオの読み書き、カード配置、ボード操作が実装済み。
+  - `dm_toolkit/validator/card_validator.py`: 静的検証ツールは実装済みで一部テストが通過。
+
+- **部分実装／要追加作業**:
+  - `dm_toolkit/gui/widgets/card_effect_debugger.py`: 実行トレースとPending表示は実装済み。変数ウォッチやブレークポイントの実行時制御はC++側のコンテキスト露出が必要で未実装。
+  - `scripts/generate_card_tests.py`: 自動テスト生成スクリプトは未作成。
+  - `EffectTracer`（効果解決のフローチャート出力）: 未実装。
+
+- **推奨アクション**:
+  1. `CardEffectDebugger` の変数監視のため、C++側で実行コンテキスト（変数/スタック情報）をPythonバインディング経由で取得できるよう検討する。
+  2. `scripts/generate_card_tests.py` を作成し、カード定義から基本テストケースを自動生成して回帰スイートへ組み込む。
+  3. 要件定義書本体に未実装項目を明記し、優先度と責任者を割り当てる（この更新を下記に反映済み）。
 
 ### 4.1 Phase 4 Transformer本番統合（従来の最優先）
 
