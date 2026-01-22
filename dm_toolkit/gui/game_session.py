@@ -10,6 +10,16 @@ from dm_toolkit.unified_execution import ensure_executable_command
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.command_describer import describe_command
 
+# Ensure project root is in path for imports
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+try:
+    from training.ai_player import AIPlayer
+except ImportError:
+    AIPlayer = None
+
 try:
     import dm_ai_module
 except ImportError:
@@ -65,6 +75,28 @@ class GameSession:
         self.player_modes = {0: 'AI', 1: 'AI'}
 
         self.last_action: Optional[Action] = None
+        self.ai_player = None
+        self._load_latest_ai()
+
+    def _load_latest_ai(self):
+        if not AIPlayer: return
+        try:
+            models_dir = os.path.join(project_root, "models")
+            if not os.path.exists(models_dir):
+                self.callback_log("Models directory not found. Using random AI.")
+                return
+
+            files = [os.path.join(models_dir, f) for f in os.listdir(models_dir) if f.endswith('.pth')]
+            if not files:
+                self.callback_log("No trained models found. Using random AI.")
+                return
+
+            latest_model = max(files, key=os.path.getmtime)
+            self.callback_log(f"Loading AI Model: {os.path.basename(latest_model)}")
+            self.ai_player = AIPlayer(latest_model, device='cpu') # Force CPU for GUI safety
+        except Exception as e:
+            self.callback_log(f"Failed to load AI: {e}")
+            self.ai_player = None
 
     def initialize_game(self, card_db: CardDB, seed: int = 42) -> None:
         self.card_db = card_db
@@ -295,6 +327,55 @@ class GameSession:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
             else:
                 best_cmd = cmds[0]
+
+                if self.ai_player:
+                    try:
+                        # Mask invalid actions
+                        valid_indices = []
+                        cmd_map = {}
+                        encoder = self.ai_player.action_encoder
+
+                        for cmd in cmds:
+                            # cmd is wrapped, getattr delegates to inner action
+                            idx = encoder.encode_action(cmd, self.gs, active_pid)
+                            if idx != -1:
+                                valid_indices.append(idx)
+                                cmd_map[idx] = cmd
+
+                        if valid_indices:
+                            ai_cmd = self.ai_player.get_action(self.gs, active_pid, valid_indices)
+                            # Try to map back to original command object if possible
+                            ai_idx = encoder.encode_action(ai_cmd, self.gs, active_pid)
+                            if ai_idx in cmd_map:
+                                best_cmd = cmd_map[ai_idx]
+                            else:
+                                # Fallback to mapped command if ai_cmd was generated from index
+                                # get_action returns a NEW GameCommand decoded from index.
+                                # encode_action(ai_cmd) should return the same index.
+                                pass
+                                # If ai_idx not in map (which shouldn't happen if get_action respects valid_indices),
+                                # check if we can execute ai_cmd directly.
+                                # But best_cmd is currently cmds[0].
+                                # We should update best_cmd ONLY if we found a match or trust ai_cmd.
+
+                                # If AI returns a command that we didn't map (e.g. unencodable command chosen?),
+                                # we stick to cmds[0] or execute ai_cmd if it's valid.
+                                # But we masked, so it should be valid.
+
+                                # Wait, ai_player.get_action returns a decoded command.
+                                # We trust it.
+                                best_cmd = ai_cmd
+
+                        else:
+                            # No commands could be encoded (e.g. complex commands not supported by simple AI)
+                            # Fallback to random/first
+                            pass
+
+                    except Exception as e:
+                        self.callback_log(f"AI Error: {e}")
+                        # Fallback to first command
+                        pass
+
                 if best_cmd:
                     self.execute_action(best_cmd)
 
