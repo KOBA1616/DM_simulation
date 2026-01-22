@@ -987,14 +987,17 @@ class CardTextGenerator:
         # Robustly pick command type from either 'type' or legacy 'name'
         cmd_type = command.get("type") or command.get("name") or "NONE"
 
+        # Use a copy of command to avoid modifying the input dictionary in place
+        command_copy = command.copy()
+
         # Mapping CommandType to ActionType logic where applicable
         original_cmd_type = cmd_type
         if cmd_type == "POWER_MOD": cmd_type = "MODIFY_POWER"
         elif cmd_type == "ADD_KEYWORD": 
             cmd_type = "ADD_KEYWORD"
             # Ensure mutation_kind is mapped to str_val for text generation
-            if not command.get("str_val") and command.get("mutation_kind"):
-                command["str_val"] = command["mutation_kind"]
+            if not command_copy.get("str_val") and command_copy.get("mutation_kind"):
+                command_copy["str_val"] = command_copy["mutation_kind"]
         elif cmd_type == "MANA_CHARGE": cmd_type = "SEND_TO_MANA" # Or ADD_MANA depending on context
         elif cmd_type == "CHOICE": cmd_type = "SELECT_OPTION"
 
@@ -1005,60 +1008,61 @@ class CardTextGenerator:
 
         action_proxy = {
             "type": cmd_type,
-            "scope": command.get("target_group", "NONE"),
-            "filter": command.get("target_filter") or command.get("filter", {}),
-            "value1": command.get("amount", 0),
-            "value2": command.get("val2") or command.get("value2", 0),
-            "optional": command.get("optional", False),
-            "up_to": command.get("up_to", False),
-            # Prefer the normalized key, but accept legacy key if present
-            "str_val": command.get("str_param") or command.get("str_val", ""),
+            "scope": command_copy.get("target_group", "NONE"),
+            "filter": command_copy.get("target_filter") or command_copy.get("filter", {}),
+            "value1": command_copy.get("amount", 0),
+            "value2": command_copy.get("val2") or command_copy.get("value2", 0),
+            "optional": command_copy.get("optional", False),
+            "up_to": command_copy.get("up_to", False),
+            # Prefer the normalized key, but accept legacy key if present.
+            # IMPORTANT: str_param (from UI) is always mapped to str_val for logic usage.
+            "str_val": command_copy.get("str_param") or command_copy.get("str_val", ""),
             "input_value_key": input_value_key,
             "input_value_usage": input_value_usage,
-            "from_zone": command.get("from_zone", ""),
-            "to_zone": command.get("to_zone", ""),
-            "original_to_zone": command.get("original_to_zone", ""),
-            "mutation_kind": command.get("mutation_kind", ""),
-            "destination_zone": command.get("to_zone", ""), # For MOVE_CARD mapping
-            "result": command.get("result") or command.get("str_param", ""), # For GAME_RESULT, map properly
+            "from_zone": command_copy.get("from_zone", ""),
+            "to_zone": command_copy.get("to_zone", ""),
+            "original_to_zone": command_copy.get("original_to_zone", ""),
+            "mutation_kind": command_copy.get("mutation_kind", ""),
+            "destination_zone": command_copy.get("to_zone", ""), # For MOVE_CARD mapping
+            "result": command_copy.get("result") or command_copy.get("str_param", ""), # For GAME_RESULT, map properly
             "is_mega_last_burst": card_mega_last_burst,  # Pass mega_last_burst flag for CAST_SPELL detection
-            "duration": command.get("duration", "")
+            "duration": command_copy.get("duration", "")
         }
 
         # Extra passthrough fields for complex/structured commands
-        if "options" in command:
-            action_proxy["options"] = command.get("options")
-        if "flags" in command:
-            action_proxy["flags"] = command.get("flags")
-        if "look_count" in command:
-            action_proxy["look_count"] = command.get("look_count")
-        if "add_count" in command:
-            action_proxy["add_count"] = command.get("add_count")
-        if "rest_zone" in command:
-            action_proxy["rest_zone"] = command.get("rest_zone")
-        if "max_cost" in command:
-            action_proxy["max_cost"] = command.get("max_cost")
-        if "token_id" in command:
-            action_proxy["token_id"] = command.get("token_id")
-        if "play_flags" in command:
-            action_proxy["play_flags"] = command.get("play_flags")
-        if "select_count" in command:
-            action_proxy["select_count"] = command.get("select_count")
+        if "options" in command_copy:
+            action_proxy["options"] = command_copy.get("options")
+        if "flags" in command_copy:
+            action_proxy["flags"] = command_copy.get("flags")
+        if "look_count" in command_copy:
+            action_proxy["look_count"] = command_copy.get("look_count")
+        if "add_count" in command_copy:
+            action_proxy["add_count"] = command_copy.get("add_count")
+        if "rest_zone" in command_copy:
+            action_proxy["rest_zone"] = command_copy.get("rest_zone")
+        if "max_cost" in command_copy:
+            action_proxy["max_cost"] = command_copy.get("max_cost")
+        if "token_id" in command_copy:
+            action_proxy["token_id"] = command_copy.get("token_id")
+        if "play_flags" in command_copy:
+            action_proxy["play_flags"] = command_copy.get("play_flags")
+        if "select_count" in command_copy:
+            action_proxy["select_count"] = command_copy.get("select_count")
         
         # Pass through IF/IF_ELSE/ELSE control flow fields
-        if "if_true" in command:
-            action_proxy["if_true"] = command.get("if_true")
-        if "if_false" in command:
-            action_proxy["if_false"] = command.get("if_false")
-        if "condition" in command:
-            action_proxy["condition"] = command.get("condition")
+        if "if_true" in command_copy:
+            action_proxy["if_true"] = command_copy.get("if_true")
+        if "if_false" in command_copy:
+            action_proxy["if_false"] = command_copy.get("if_false")
+        if "condition" in command_copy:
+            action_proxy["condition"] = command_copy.get("condition")
         # IF commands may use target_filter for condition
-        if cmd_type == "IF" and "target_filter" in command:
+        if cmd_type == "IF" and "target_filter" in command_copy:
             if "condition" not in action_proxy or not action_proxy["condition"]:
-                action_proxy["target_filter"] = command.get("target_filter")
+                action_proxy["target_filter"] = command_copy.get("target_filter")
 
         # Some templates expect source_zone rather than from_zone
-        action_proxy["source_zone"] = command.get("from_zone", "")
+        action_proxy["source_zone"] = command_copy.get("from_zone", "")
 
         # Specific Adjustments
         if original_cmd_type == "MANA_CHARGE":
@@ -1072,7 +1076,7 @@ class CardTextGenerator:
 
         if original_cmd_type == "QUERY":
             # Set query_mode for _format_action to handle
-            query_mode = command.get("str_param") or command.get("query_mode") or ""
+            query_mode = command_copy.get("str_param") or command_copy.get("query_mode") or ""
             action_proxy["query_mode"] = query_mode
             # Ensure str_param and str_val are set for stat queries
             if query_mode and query_mode != "CARDS_MATCHING_FILTER":
@@ -1081,60 +1085,867 @@ class CardTextGenerator:
 
         # Normalize complex command representations into the Action-like proxy expected by _format_action
         if original_cmd_type == "LOOK_AND_ADD":
-            if "look_count" in command and command.get("look_count") is not None:
-                action_proxy["value1"] = command.get("look_count")
-            if "add_count" in command and command.get("add_count") is not None:
-                action_proxy["value2"] = command.get("add_count")
-            rz = command.get("rest_zone") or command.get("destination_zone") or command.get("to_zone")
+            if "look_count" in command_copy and command_copy.get("look_count") is not None:
+                action_proxy["value1"] = command_copy.get("look_count")
+            if "add_count" in command_copy and command_copy.get("add_count") is not None:
+                action_proxy["value2"] = command_copy.get("add_count")
+            rz = command_copy.get("rest_zone") or command_copy.get("destination_zone") or command_copy.get("to_zone")
             if rz:
                 action_proxy["rest_zone"] = rz
                 action_proxy["destination_zone"] = rz
         elif original_cmd_type == "MEKRAID":
             # Prefer max_cost from command or target_filter; support input-linked dict
-            max_cost_src = command.get("max_cost")
-            if max_cost_src is None and "target_filter" in command:
-                max_cost_src = command.get("target_filter", {}).get("max_cost")
+            max_cost_src = command_copy.get("max_cost")
+            if max_cost_src is None and "target_filter" in command_copy:
+                max_cost_src = command_copy.get("target_filter", {}).get("max_cost")
             # Only assign numeric value1; input-linked dict will be handled in _format_action
             if max_cost_src is not None and not isinstance(max_cost_src, dict):
                 action_proxy["value1"] = max_cost_src
-            if "look_count" in command and command.get("look_count") is not None:
-                action_proxy["look_count"] = command.get("look_count")
-            if "rest_zone" in command and command.get("rest_zone") is not None:
-                action_proxy["rest_zone"] = command.get("rest_zone")
+            if "look_count" in command_copy and command_copy.get("look_count") is not None:
+                action_proxy["look_count"] = command_copy.get("look_count")
+            if "rest_zone" in command_copy and command_copy.get("rest_zone") is not None:
+                action_proxy["rest_zone"] = command_copy.get("rest_zone")
         elif original_cmd_type == "SUMMON_TOKEN":
-            # ACTION_MAP expects str_val for token name
-            if "token_id" in command and command.get("token_id") is not None:
-                action_proxy["str_val"] = command.get("token_id")
+            # ACTION_MAP expects str_val for token name.
+            # UI uses str_param, which is already mapped to str_val above.
+            # But if token_id is present (legacy), use it.
+            if "token_id" in command_copy and command_copy.get("token_id") is not None:
+                action_proxy["str_val"] = command_copy.get("token_id")
         elif original_cmd_type == "PLAY_FROM_ZONE":
-            action_proxy["source_zone"] = command.get("from_zone", "")
+            action_proxy["source_zone"] = command_copy.get("from_zone", "")
             # Check for max_cost at command level or within target_filter
-            max_cost = command.get("max_cost")
-            if max_cost is None and "target_filter" in command:
-                max_cost = command.get("target_filter", {}).get("max_cost")
+            max_cost = command_copy.get("max_cost")
+            if max_cost is None and "target_filter" in command_copy:
+                max_cost = command_copy.get("target_filter", {}).get("max_cost")
             if max_cost is not None and not isinstance(max_cost, dict):
                 action_proxy["value1"] = max_cost
         elif original_cmd_type == "SELECT_NUMBER" or original_cmd_type == "DECLARE_NUMBER":
             # Map Schema (min_value, amount) -> Action (value1, value2)
             # Schema: amount is MAX, min_value is MIN
-            action_proxy["value1"] = command.get("min_value", 1)  # Min
-            action_proxy["value2"] = command.get("amount", 6)     # Max
+            action_proxy["value1"] = command_copy.get("min_value", 1)  # Min
+            action_proxy["value2"] = command_copy.get("amount", 6)     # Max
         elif original_cmd_type == "CHOICE":
             # Map CHOICE into SELECT_OPTION natural language generation
-            flags = command.get("flags", []) or []
+            flags = command_copy.get("flags", []) or []
             if isinstance(flags, list) and "ALLOW_DUPLICATES" in flags:
                 action_proxy["optional"] = True
-            action_proxy["value1"] = command.get("amount", 1)
+            action_proxy["value1"] = command_copy.get("amount", 1)
         elif original_cmd_type == "SHUFFLE_DECK":
             # No params needed usually
             pass
         elif original_cmd_type == "REGISTER_DELAYED_EFFECT":
             # Requires str_param for ID, amount for Duration
-            action_proxy["str_val"] = command.get("str_param") or command.get("str_val", "")
+            action_proxy["str_val"] = command_copy.get("str_param") or command_copy.get("str_val", "")
         elif original_cmd_type == "COST_REFERENCE":
              # Used to just output value, handled in _format_action
-             action_proxy["ref_mode"] = command.get("ref_mode")
+             action_proxy["ref_mode"] = command_copy.get("ref_mode")
 
         return cls._format_action(action_proxy, is_spell, sample=sample, card_mega_last_burst=card_mega_last_burst)
+
+    @classmethod
+    def _format_logic_command(cls, atype: str, action: Dict[str, Any], is_spell: bool, sample: List[Any], card_mega_last_burst: bool) -> str:
+        """Handle conditional logic commands (IF, IF_ELSE, ELSE)."""
+        cond_detail = action.get("condition", {}) or action.get("target_filter", {})
+        cond_text = ""
+        
+        if isinstance(cond_detail, dict):
+            cond_type = cond_detail.get("type", "NONE")
+            if cond_type == "OPPONENT_DRAW_COUNT":
+                val = cond_detail.get("value", 0)
+                cond_text = f"相手がカードを{val}枚目以上引いたなら"
+            elif cond_type == "COMPARE_STAT":
+                key = cond_detail.get("stat_key", "")
+                op = cond_detail.get("op", "=")
+                val = cond_detail.get("value", 0)
+                stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (key, ""))
+                op_text = ""
+                if op == ">=":
+                    op_text = f"{val}{unit}以上"
+                elif op == "<=":
+                    op_text = f"{val}{unit}以下"
+                elif op == "=" or op == "==":
+                    op_text = f"{val}{unit}"
+                elif op == ">":
+                    op_text = f"{val}{unit}より多い"
+                elif op == "<":
+                    op_text = f"{val}{unit}より少ない"
+                cond_text = f"自分の{stat_name}が{op_text}なら"
+            elif cond_type == "SHIELD_COUNT":
+                val = cond_detail.get("value", 0)
+                op = cond_detail.get("op", ">=")
+                op_text = "以上" if op == ">=" else "以下" if op == "<=" else ""
+                if op == "=": op_text = ""
+                cond_text = f"自分のシールドが{val}つ{op_text}なら"
+            elif cond_type == "COMPARE_INPUT":
+                val = cond_detail.get("value", 0)
+                op = cond_detail.get("op", ">=")
+                input_key = action.get("input_value_key", "")
+                # 入力キー名をより読みやすい形式に変換
+                input_desc_map = {
+                    "spell_count": "墓地の呪文の数",
+                    "card_count": "カードの数",
+                    "creature_count": "クリーチャーの数",
+                    "element_count": "エレメントの数"
+                }
+                input_desc = input_desc_map.get(input_key, input_key if input_key else "入力値")
+                op_text = ""
+                if op == ">=":
+                    try:
+                        op_text = f"{int(val) + 1}以上"
+                    except Exception:
+                        op_text = f"{val}以上"
+                elif op == "<=":
+                    op_text = f"{val}以下"
+                elif op == "=" or op == "==":
+                    op_text = f"{val}"
+                elif op == ">":
+                    op_text = f"{val}より多い"
+                elif op == "<":
+                    op_text = f"{val}より少ない"
+                cond_text = f"{input_desc}が{op_text}なら"
+            elif cond_type == "CIVILIZATION_MATCH":
+                cond_text = "マナゾーンに同じ文明があれば"
+            elif cond_type == "MANA_CIVILIZATION_COUNT":
+                val = cond_detail.get("value", 0)
+                op = cond_detail.get("op", ">=")
+                op_text = "以上" if op == ">=" else "以下" if op == "<=" else "と同じ" if op == "=" else ""
+                cond_text = f"自分のマナゾーンにある文明の数が{val}{op_text}なら"
+
+        if not cond_text and atype != "ELSE":
+            cond_text = "もし条件を満たすなら"
+
+        if atype == "IF":
+             if_true_cmds = action.get("if_true", [])
+             if_true_texts = []
+             for cmd in if_true_cmds:
+                 if isinstance(cmd, dict):
+                     cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
+                     if cmd_text:
+                         if_true_texts.append(cmd_text)
+
+             if if_true_texts:
+                 actions_text = "、".join(if_true_texts)
+                 return f"{cond_text}、{actions_text}"
+             else:
+                 return f"（{cond_text}）"
+
+        elif atype == "IF_ELSE":
+            if_true_cmds = action.get("if_true", [])
+            if_false_cmds = action.get("if_false", [])
+            
+            if_true_texts = []
+            for cmd in if_true_cmds:
+                if isinstance(cmd, dict):
+                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
+                    if cmd_text:
+                        if_true_texts.append(cmd_text)
+
+            if_false_texts = []
+            for cmd in if_false_cmds:
+                if isinstance(cmd, dict):
+                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
+                    if cmd_text:
+                        if_false_texts.append(cmd_text)
+
+            result_parts = []
+            if if_true_texts:
+                result_parts.append(f"{cond_text}、" + "、".join(if_true_texts))
+            if if_false_texts:
+                result_parts.append("そうでなければ、" + "、".join(if_false_texts))
+
+            if result_parts:
+                return "。".join(result_parts) + "。"
+            else:
+                return f"（条件分岐: {cond_text}）"
+
+        elif atype == "ELSE":
+            return "（そうでなければ）"
+        
+        return ""
+
+    @classmethod
+    def _format_buffer_command(cls, atype: str, action: Dict[str, Any], is_spell: bool, val1: int) -> str:
+        """Handle buffer-related commands."""
+        if atype == "LOOK_TO_BUFFER":
+             src_zone = tr(action.get("from_zone", "DECK"))
+             amt = val1 if val1 > 0 else 1
+             return f"{src_zone}から{amt}枚を見る。"
+
+        elif atype == "SELECT_FROM_BUFFER":
+             amt = val1 if val1 > 0 else 1
+             return f"見たカードの中から{amt}枚を選ぶ。"
+
+        elif atype == "PLAY_FROM_BUFFER":
+             target_str, unit = cls._resolve_target(action, is_spell)
+             return f"選んだカード（{target_str}）を使う。"
+
+        elif atype == "MOVE_BUFFER_TO_ZONE":
+             to_zone = tr(action.get("to_zone", "HAND"))
+             amt = val1 if val1 > 0 else 1
+             return f"選んだカードを{amt}枚{to_zone}に置く。"
+
+        return ""
+
+    @classmethod
+    def _format_special_effect_command(cls, atype: str, action: Dict[str, Any], is_spell: bool, val1: int, target_str: str, unit: str) -> str:
+        """Handle special effect commands (MEKRAID, FRIEND_BURST, MUTATE, etc)."""
+
+        if atype == "MEKRAID":
+            val2 = action.get("value2", 3) # Look count
+            select_count = action.get("select_count", 1) # Number to summon
+            input_key = action.get("input_value_key", "")
+            input_usage = action.get("input_value_usage") or action.get("input_usage")
+
+            use_token = str(val1)
+            if input_key and input_usage == "MAX_COST":
+                use_token = "その数"
+            elif val1 == 0 and input_usage == "MAX_COST":
+                use_token = "その数"
+
+            count_str = "1体" if select_count == 1 else f"{select_count}体まで"
+
+            return f"メクレイド{use_token}（自分の山札の上から{val2}枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
+
+        elif atype == "FRIEND_BURST":
+            str_val = action.get("str_val", "")
+            # Fallback: try to extract race from filter if str_val is missing
+            if not str_val:
+                races = action.get("filter", {}).get("races", [])
+                if races:
+                    str_val = races[0]
+
+            return f"＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
+
+        elif atype == "APPLY_MODIFIER":
+            # APPLY_MODIFIER uses str_param to indicate effect id (from schema)
+            str_param = action.get('str_param') or action.get('str_val') or action.get('mutation_kind') or ''
+            duration_key = action.get('duration') or action.get('input_value_key', '')
+            duration_text = ""
+            if duration_key:
+                trans = CardTextResources.get_duration_text(duration_key)
+                if trans and trans != duration_key:
+                    duration_text = trans + "、"
+                elif duration_key in CardTextResources.DURATION_TRANSLATION:
+                    duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
+
+            # Effect application is not keyword granting.
+            # Build generic structure: 「(対象)を(数)体は、(期間)まで、そのクリーチャーに(効果)を与える。」
+            effect_text = CardTextResources.get_keyword_text(str_param) if str_param else "（効果）"
+            if isinstance(effect_text, str):
+                effect_text = effect_text.strip() or "（効果）"
+
+            # Amount comes from command 'amount' (value1 in proxy) in most cases.
+            amt = action.get('amount')
+            if amt is None:
+                amt = action.get('value1')
+
+            if isinstance(amt, int) and amt > 0:
+                select_phrase = f"{target_str}を{amt}{unit}は、"
+            else:
+                select_phrase = f"{target_str}を選び、"
+
+            return f"{select_phrase}{duration_text}そのクリーチャーに{effect_text}を与える。"
+
+        elif atype == "ADD_KEYWORD":
+            str_val = action.get("str_val") or action.get("str_param", "")
+            duration_key = action.get("duration") or action.get("input_value_key", "")
+
+            duration_text = ""
+            if duration_key:
+                # Verify it is a valid duration key
+                trans = CardTextResources.get_duration_text(duration_key)
+                if trans and trans != duration_key:
+                    duration_text = trans + "、"
+                elif duration_key in CardTextResources.DURATION_TRANSLATION:
+                    duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
+
+            keyword = CardTextResources.get_keyword_text(str_val)
+
+            # If this is a restriction keyword, use a different natural phrasing
+            restriction_keys = [
+                'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
+            ]
+
+            # Explicit "this card" target override
+            if action.get("explicit_self"):
+                target_str = "このカード"
+
+            # If the filter explicitly targets shields, prefer generic "カード" phrasing
+            # to match expected UI wording (e.g. シールドに付与 -> カードに付与)
+            filt = action.get("filter") or action.get("target_filter") or {}
+            if isinstance(filt, dict) and "zones" in filt and filt.get("zones"):
+                if "SHIELD_ZONE" in filt.get("zones") or "SHIELD" in filt.get("zones"):
+                    target_str = "カード"
+
+            if str_val in restriction_keys or str_val.upper() in restriction_keys:
+                # Build selection phrase (amount may be provided)
+                amt = action.get('amount', 1)
+                if isinstance(amt, int) and amt > 0:
+                    select_phrase = f"{target_str}を{amt}体選び、"
+                else:
+                    select_phrase = f"{target_str}を選び、"
+
+                # duration_text already formatted (e.g., "次の自分のターンのはじめは、")
+                # Final natural phrasing
+                return f"{select_phrase}{duration_text}そのクリーチャーは{keyword}。"
+
+            # Default phrasing for non-restriction keywords
+            return f"{duration_text}{target_str}に「{keyword}」を与える。"
+
+        elif atype == "MUTATE":
+             mkind = action.get("mutation_kind", "")
+             # val1 is amount
+             str_param = action.get("str_param") or action.get("str_val", "")
+
+             # Duration handling
+             duration_key = action.get("duration") or action.get("input_value_key", "")
+
+             duration_text = ""
+             if duration_key:
+                 # Verify it is a valid duration key
+                 trans = CardTextResources.get_duration_text(duration_key)
+                 if trans and trans != duration_key:
+                     duration_text = trans + "、"
+                 elif duration_key in CardTextResources.DURATION_TRANSLATION:
+                     duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
+
+             if mkind == "TAP":
+                 template = "{target}を{amount}{unit}選び、タップする。"
+             elif mkind == "UNTAP":
+                 template = "{target}を{amount}{unit}選び、アンタップする。"
+             elif mkind == "POWER_MOD":
+                 sign = "+" if val1 >= 0 else ""
+                 return f"{duration_text}{target_str}のパワーを{sign}{val1}する。"
+             elif mkind == "ADD_KEYWORD":
+                 keyword = CardTextResources.get_keyword_text(str_param)
+                 return f"{duration_text}{target_str}に「{keyword}」を与える。"
+             elif mkind == "REMOVE_KEYWORD":
+                 keyword = CardTextResources.get_keyword_text(str_param)
+                 return f"{duration_text}{target_str}の「{keyword}」を無視する。"
+             elif mkind == "ADD_PASSIVE_EFFECT" or mkind == "ADD_MODIFIER":
+                 # Use str_param if available to describe what is added
+                 if str_param:
+                     kw = CardTextResources.get_keyword_text(str_param)
+                     # Check if it looks like a keyword (standard mapping) or generic
+                     return f"{duration_text}{target_str}に「{kw}」を与える。"
+                 else:
+                     return f"{duration_text}{target_str}にパッシブ効果を与える。"
+             elif mkind == "ADD_COST_MODIFIER":
+                 return f"{duration_text}{target_str}にコスト修正を追加する。"
+             else:
+                 template = f"状態変更({tr(mkind)}): {{target}} (値:{val1})"
+
+             if val1 == 0:
+                 template = template.replace("{amount}{unit}選び、", "すべて") # Simplified "choose all"
+                 val1 = ""
+             return template
+
+        elif atype == "SUMMON_TOKEN":
+             token_id = action.get("str_val", "")
+             count = val1 if val1 > 0 else 1
+
+             # Try to resolve token name if possible (assuming token_id is a key or name)
+             # For now, just use the ID/Name directly.
+             token_name = tr(token_id) if token_id else "トークン"
+
+             return f"{token_name}を{count}体出す。"
+
+        elif atype == "REGISTER_DELAYED_EFFECT":
+             str_val = action.get("str_val", "")
+             duration = val1 if val1 > 0 else 1
+             return f"遅延効果（{str_val}）を{duration}ターン登録する。"
+
+        return ""
+
+    @classmethod
+    def _format_game_action_command(cls, atype: str, action: Dict[str, Any], is_spell: bool, val1: int, val2: int, target_str: str, unit: str, input_key: str, input_usage: str, sample: List[Any]) -> str:
+        """Handle general game action commands (SEARCH, SHIELD, BATTLE, etc)."""
+
+        scope = action.get("scope", action.get('target_group', "NONE"))
+
+        if atype == "SEARCH_DECK":
+            dest_zone = action.get("destination_zone", "HAND")
+            if not dest_zone: dest_zone = "HAND"
+            zone_str = tr(dest_zone)
+            count = val1 if val1 > 0 else 1
+
+            if dest_zone == "HAND":
+                 action_phrase = "手札に加える"
+            elif dest_zone == "MANA_ZONE":
+                 action_phrase = "マナゾーンに置く"
+            elif dest_zone == "GRAVEYARD":
+                 action_phrase = "墓地に置く"
+            else:
+                 action_phrase = f"{zone_str}に置く"
+
+            template = f"自分の山札を見る。その中から{target_str}を{count}{unit}選び、{action_phrase}。その後、山札をシャッフルする。"
+            if count == 1:
+                template = f"自分の山札を見る。その中から{target_str}を1{unit}選び、{action_phrase}。その後、山札をシャッフルする。"
+            return template
+
+        elif atype == "LOOK_AND_ADD":
+             look_count = val1 if val1 > 0 else 3
+             add_count = val2 if val2 > 0 else 1
+             rest_zone = action.get("rest_zone", "DECK_BOTTOM")
+
+             rest_text = ""
+             if rest_zone == "DECK_BOTTOM":
+                 rest_text = "残りを好きな順序で山札の下に置く。"
+             elif rest_zone == "GRAVEYARD":
+                 rest_text = "残りを墓地に置く。"
+             else:
+                 rest_text = f"残りを{tr(rest_zone)}に置く。"
+
+             filter_text = ""
+             if target_str != "カード":
+                 filter_text = f"{target_str}を"
+
+             return f"自分の山札の上から{look_count}枚を見る。その中から{filter_text}{add_count}{unit}手札に加え、{rest_text}"
+
+        elif atype == "PUT_CREATURE":
+             count = val1 if val1 > 0 else 1
+             filter_zones = action.get("filter", {}).get("zones", [])
+             src_text = ""
+             if filter_zones:
+                 znames = [tr(z) for z in filter_zones]
+                 src_text = "または".join(znames) + "から"
+             return f"{src_text}{target_str}を{count}{unit}バトルゾーンに出す。"
+
+        elif atype == "SHUFFLE_DECK":
+             return "山札をシャッフルする。"
+
+        elif atype == "BREAK_SHIELD":
+             count = val1 if val1 > 0 else 1
+             if not action.get("scope") or action.get("scope") == "NONE":
+                 if "相手" not in target_str:
+                     target_str = "相手の" + target_str
+             return f"{target_str}を{count}つブレイクする。"
+
+        elif atype == "COST_REFERENCE":
+             ref_mode = action.get("ref_mode", "")
+             return f"（コスト参照: {tr(ref_mode)}）"
+
+        elif atype == "ADD_SHIELD":
+             amt = val1 if val1 > 0 else 1
+             if "山札" in target_str or target_str == "カード":
+                 return f"山札の上から{amt}枚をシールド化する。"
+             return f"{target_str}を{amt}つシールド化する。"
+
+        elif atype == "SEND_SHIELD_TO_GRAVE":
+             amt = val1 if val1 > 0 else 1
+             if scope == "OPPONENT" or scope == "PLAYER_OPPONENT":
+                  return f"相手のシールドを{amt}つ選び、墓地に置く。"
+             return f"{target_str}を{amt}つ墓地に置く。"
+
+        elif atype == "SHIELD_BURN":
+             amt = val1 if val1 > 0 else 1
+             return f"相手のシールドを{amt}つ選び、墓地に置く。"
+
+        elif atype == "SEARCH_DECK_BOTTOM":
+             amt = val1 if val1 > 0 else 1
+             return f"山札の下から{amt}枚を探す。"
+
+        elif atype == "SEND_TO_DECK_BOTTOM":
+             amt = val1 if val1 > 0 else 1
+             return f"{target_str}を{amt}{unit}山札の下に置く。"
+
+        elif atype == "RESOLVE_BATTLE":
+             return f"{target_str}とバトルさせる。"
+
+        elif atype == "MODIFY_POWER":
+            val = action.get("value1", 0)
+            sign = "+" if val >= 0 else ""
+            return f"{target_str}のパワーを{sign}{val}する。"
+
+        elif atype == "SELECT_NUMBER":
+            val1 = action.get("value1", 0)
+            val2 = action.get("value2", 0)
+            if val1 > 0 and val2 > 0:
+                 return f"{val1}～{val2}の数字を1つ選ぶ。"
+
+        elif atype == "SELECT_OPTION":
+            options = action.get("options", [])
+            lines = []
+            val1 = action.get("value1", 1)
+            optional = action.get("optional", False)
+            suffix = "（同じものを選んでもよい）" if optional else ""
+            lines.append(f"次の中から{val1}回選ぶ。{suffix}")
+            for i, opt_chain in enumerate(options):
+                parts = []
+                for a in opt_chain:
+                    if isinstance(a, dict) and (
+                        'amount' in a or 'target_group' in a or 'mutation_kind' in a or 'from_zone' in a or 'to_zone' in a
+                    ):
+                        parts.append(cls._format_command(a, is_spell=is_spell, sample=sample))
+                    else:
+                        parts.append(cls._format_action(a, is_spell, sample=sample))
+                chain_text = " ".join(parts)
+                lines.append(f"> {chain_text}")
+            return "\n".join(lines)
+
+        elif atype == "QUERY":
+             mode = action.get("query_mode") or action.get("str_param") or action.get("str_val") or ""
+             stat_name, stat_unit = CardTextResources.STAT_KEY_MAP.get(str(mode), (None, None))
+             if stat_name:
+                 base = f"{stat_name}{stat_unit}を数える。"
+                 if input_key:
+                     usage_label = cls._format_input_usage_label(input_usage)
+                     if usage_label:
+                         base += f"（{usage_label}）"
+                 return base
+             
+             if str(mode) == "CARDS_MATCHING_FILTER" or not mode:
+                 filter_def = action.get("filter", {})
+                 zones = filter_def.get("zones", [])
+                 if target_str and target_str != "カード":
+                     base = f"{target_str}の数を数える。"
+                 elif zones:
+                     zone_names = [tr(z) for z in zones]
+                     if len(zone_names) == 1:
+                         base = f"{zone_names[0]}のカードの枚数を数える。"
+                     else:
+                         base = f"{'または'.join(zone_names)}のカードの枚数を数える。"
+                 else:
+                     base = "カードの数を数える。"
+                 
+                 if input_key:
+                     usage_label = cls._format_input_usage_label(input_usage)
+                     if usage_label:
+                         base += f"（{usage_label}）"
+                 return base
+             
+             base = f"質問: {tr(mode)}"
+             if input_key:
+                 usage_label = cls._format_input_usage_label(input_usage)
+                 if usage_label:
+                     base += f"（{usage_label}）"
+             return base
+
+        elif atype == "FLOW":
+             ftype = action.get("flow_type") or action.get("str_val", "")
+             val1 = action.get("value1", 0)
+
+             if ftype == "PHASE_CHANGE":
+                 phase_name = CardTextResources.PHASE_MAP.get(val1, str(val1))
+                 return f"{phase_name}フェーズへ移行する。"
+             elif ftype == "TURN_CHANGE":
+                 return f"ターンを終了する。"
+             elif ftype == "SET_ACTIVE_PLAYER":
+                 return f"手番を変更する。"
+             return f"進行制御({tr(ftype)}): {val1}"
+
+        elif atype == "GAME_RESULT":
+             res = action.get("result", "")
+             if not res:
+                  res = action.get("str_val") or action.get("str_param", "")
+             return f"ゲームを終了する（{tr(res)}）。"
+
+        elif atype == "ATTACH":
+            return f"{target_str}をカードの下に重ねる。"
+
+        elif atype == "MOVE_TO_UNDER_CARD":
+             amt = val1 if val1 > 0 else 1
+             if amt == 1:
+                  return f"{target_str}をカードの下に重ねる。"
+             return f"{target_str}を{amt}{unit}カードの下に重ねる。"
+
+        elif atype == "LOCK_SPELL":
+             scope = action.get("scope") or action.get("target_group", "NONE")
+             target_str_lock = "プレイヤー"
+             if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
+                  target_str_lock = "相手"
+             elif scope in ["PLAYER_SELF", "SELF"]:
+                  target_str_lock = "自分"
+             elif scope == "ALL_PLAYERS":
+                  target_str_lock = "すべてのプレイヤー"
+             else:
+                  target_str_lock, _ = cls._resolve_target(action, is_spell)
+
+             duration = val1 if val1 > 0 else 1
+             return f"{target_str_lock}は{duration}ターンの間、呪文を唱えられない。"
+
+        elif atype == "RESET_INSTANCE":
+             return f"{target_str}の状態を初期化する（効果を無視する）。"
+
+        elif atype == "DECLARE_NUMBER":
+             min_val = action.get("value1", 1)
+             max_val = action.get("value2", 10)
+             if min_val == 0: min_val = action.get("min_value", 1)
+             if max_val == 0: max_val = action.get("amount", 10)
+             return f"数字を1つ宣言する（{min_val}～{max_val}）。"
+
+        elif atype == "DECIDE":
+            sel = action.get("selected_option_index")
+            if isinstance(sel, int) and sel >= 0:
+                return f"選択肢{sel}を確定する。"
+            indices = action.get("selected_indices") or []
+            if isinstance(indices, list) and indices:
+                return f"選択（{indices}）を確定する。"
+            return "選択を確定する。"
+
+        elif atype == "DECLARE_REACTION":
+            if action.get("pass"):
+                return "リアクション: パスする。"
+            idx = action.get("reaction_index")
+            if isinstance(idx, int):
+                return f"リアクションを宣言する（インデックス {idx}）。"
+            return "リアクションを宣言する。"
+
+        elif atype == "STAT":
+            key = action.get('stat') or action.get('str_param') or action.get('str_val')
+            amount = action.get('amount', action.get('value1', 0))
+            if key:
+                stat_name, stat_unit = CardTextResources.STAT_KEY_MAP.get(str(key), (None, None))
+                if stat_name:
+                    return f"統計更新: {stat_name} += {amount}"
+            return f"統計更新: {tr(str(key))} += {amount}"
+
+        elif atype == "GET_GAME_STAT":
+            key = action.get('str_val') or action.get('result') or ''
+            stat_name, stat_unit = CardTextResources.STAT_KEY_MAP.get(key, (None, None))
+            if stat_name:
+                if sample is not None:
+                    try:
+                        val = cls._compute_stat_from_sample(key, sample)
+                        if val is not None:
+                            return f"{stat_name}（例: {val}{stat_unit}）"
+                    except Exception:
+                        pass
+                return f"{stat_name}"
+            return f"（{tr(key)}を参照）"
+
+        elif atype == "REVEAL_CARDS":
+            if input_key:
+                return f"山札の上から、その数だけ表向きにする。"
+            return f"山札の上から{val1}枚を表向きにする。"
+
+        elif atype == "COUNT_CARDS":
+            if not target_str or target_str == "カード":
+                 return f"({tr('COUNT_CARDS')})"
+            return f"{target_str}の数を数える。"
+
+        return ""
+
+    @classmethod
+    def _format_zone_move_command(cls, atype: str, action: Dict[str, Any], is_spell: bool, val1: int, target_str: str) -> str:
+        """Handle zone movement commands (TRANSITION, MOVE_CARD, REPLACE_CARD_MOVE)."""
+        input_key = action.get("input_value_key", "")
+        # input_usage = action.get("input_value_usage") or action.get("input_usage")
+        is_generic_selection = atype in ["MOVE_CARD", "TRANSITION"]
+
+        if atype == "TRANSITION":
+            from_z = cls._normalize_zone_name(action.get("from_zone", ""))
+            to_z = cls._normalize_zone_name(action.get("to_zone", ""))
+            amount = val1 # Use value1 which maps to amount
+            up_to_flag = bool(action.get('up_to', False))
+
+            template = "{target}を{from_z}から{to_z}へ移動する。" # Default
+
+            # Natural Language Mapping with explicit source/destination zones
+            if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                    if amount == 0 and not input_key:
+                        template = "{from_z}の{target}をすべて{to_z}に置く。"
+            elif from_z == "BATTLE_ZONE" and to_z == "MANA_ZONE":
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                    if amount == 0 and not input_key:
+                        template = "{from_z}の{target}をすべて{to_z}に置く。"
+            elif from_z == "BATTLE_ZONE" and to_z == "HAND":
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
+                    if amount == 0 and not input_key:
+                        template = "{from_z}の{target}をすべて{to_z}に戻す。"
+            elif from_z == "HAND" and to_z == "MANA_ZONE":
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+            elif from_z == "DECK" and to_z == "HAND":
+                # Draw: include both zones explicitly
+                if up_to_flag:
+                    if target_str != "カード":  # Search logic
+                        template = "{from_z}から{target}を{amount}{unit}まで選び、{to_z}に加える。"
+                    else:
+                        template = "山札からカードを最大{amount}枚まで手札に加える。"
+                else:
+                    if target_str != "カード":  # Search logic
+                        template = "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。"
+                    else:
+                        template = "山札からカードを{amount}枚手札に加える。"
+            elif from_z == "GRAVEYARD" and to_z == "HAND":
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
+            elif from_z == "GRAVEYARD" and to_z == "BATTLE_ZONE":
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に出す。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に出す。"
+            elif to_z == "GRAVEYARD":
+                if up_to_flag and amount > 0:
+                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                else:
+                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+            elif to_z == "DECK_BOTTOM":
+                if input_key:
+                    if up_to_flag:
+                        template = "{from_z}の{target}をその同じ数だけまで選び、{to_z}に置く。"
+                    else:
+                        template = "{from_z}の{target}をその同じ数だけ選び、{to_z}に置く。"
+                else:
+                    if up_to_flag and amount > 0:
+                        template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                    else:
+                        template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+
+            # input_value_keyがある場合は「その同じ枚数」と表示
+            # Note: We need to return the modified template to be formatted by _format_action's loop?
+            # No, _format_zone_move_command is called by _format_command and returns the final string usually,
+            # BUT _format_command applies substitutions at the end.
+            # We should return the template and let _format_command do substitutions?
+            # Or we do them here. _format_command calls _format_action.
+            # Wait, `_format_command` structure:
+            # 1. Map to proxy
+            # 2. Call `_format_action(proxy)`
+            # 3. `_format_action` calls `_format_zone_move_command`? No, we intercepted it in `_format_action`.
+            # Let's verify where I put the call.
+            # I put it in `_format_command` (search block above).
+
+            # Zone name localization when placeholders are present
+            if "{from_z}" in template:
+                template = template.replace("{from_z}", tr(from_z))
+            if "{to_z}" in template:
+                template = template.replace("{to_z}", tr(to_z))
+
+            return template # Substitutions (target, amount, unit) happen in _format_action if we were there.
+            # But since we extracted it, we need to handle substitutions OR return a template
+            # that _format_command can handle?
+            # Actually, `_format_command` calls `_format_action`.
+            # The extraction happened inside `_format_action` logic (the big elif block).
+            # So `val1` is already available.
+            # We just need to ensure `template` is returned and `_format_action` continues to substitution?
+            # The `_format_command` calls `_format_action`.
+            # My Search/Replace block removed the logic from `_format_action`.
+            # So `_format_zone_move_command` is called from `_format_action`.
+            # Wait, look at the previous `replace_with_git_merge_diff`.
+            # I replaced:
+            # elif atype == "TRANSITION" ...
+            # with:
+            # elif atype == "TRANSITION" or ...: text = cls._format_zone_move_command(...)
+            # This is inside `_format_action`.
+            # So `_format_zone_move_command` returns the TEMPLATE.
+            # Then `_format_action` proceeds to: `text = template.replace(...)`
+            # YES.
+
+            return template
+
+        elif atype == "REPLACE_CARD_MOVE":
+            dest_zone = action.get("destination_zone", "")
+            if not dest_zone:
+                dest_zone = action.get("to_zone", "DECK_BOTTOM")
+
+            src_zone = action.get("source_zone", "")
+            if not src_zone:
+                src_zone = action.get("from_zone", "GRAVEYARD")
+
+            zone_str = cls._zone_to_japanese(dest_zone) if dest_zone else "どこか"
+            orig_zone_str = cls._zone_to_japanese(src_zone) if src_zone else "元のゾーン"
+            up_to_flag = bool(action.get('up_to', False))
+
+            scope = action.get("scope", action.get('target_group', "NONE"))
+            is_self_ref = scope == "SELF"
+
+            if input_key:
+                up_to_text = "まで" if up_to_flag else ""
+                template = f"そのカードをその同じ数だけ{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+            else:
+                if is_self_ref:
+                    # target_str = "このカード" # Handled by caller or substitution
+                    # unit = ""
+                    # Caller (_format_action) handles target resolution usually, but for REPLACE_CARD_MOVE
+                    # specific target strings might be needed.
+                    # In the original code:
+                    # if is_self_ref: target_str="このカード"; unit=""
+                    # BUT `target_str` is passed in as argument to this helper.
+                    # We might need to override it?
+                    # The original code did: `template = ...{target}...`
+                    # `_format_action` calculates `target_str` BEFORE calling this block.
+                    # If `is_self_ref`, `_resolve_target` might return "自分のカード" or similar.
+                    # Let's rely on standard template param {target} for now,
+                    # but maybe we should return a modified target string too?
+                    # The helper returns `str`.
+                    # Let's just return the template and hope `target_str` from `_resolve_target` is good enough.
+                    # Or we hardcode "このカード" in the template if self ref.
+                    template = f"このカードを{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                elif val1 > 0:
+                    up_to_text = "まで" if up_to_flag else ""
+                    template = f"{{target}}を{{value1}}{{unit}}{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                else:
+                    template = f"{{target}}をすべて{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+            return template
+
+        elif atype == "MOVE_CARD":
+            dest_zone = action.get("destination_zone", "")
+            is_all = (val1 == 0 and not input_key)
+            up_to_flag = bool(action.get('up_to', False))
+
+            src_zone = action.get("source_zone", "")
+            src_str = tr(src_zone) if src_zone else ""
+            zone_str = tr(dest_zone) if dest_zone else "どこか"
+            
+            if dest_zone == "HAND":
+                if up_to_flag and val1 > 0:
+                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に戻す。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に戻す。")
+                else:
+                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。")
+                if is_all:
+                    template = (f"{{target}}をすべて{zone_str}に戻す。" if not src_str
+                                else f"{src_str}の{{target}}をすべて{zone_str}に戻す。")
+            elif dest_zone == "MANA_ZONE":
+                if up_to_flag and val1 > 0:
+                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。")
+                else:
+                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
+                if is_all:
+                    template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
+            elif dest_zone == "GRAVEYARD":
+                if up_to_flag and val1 > 0:
+                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。")
+                else:
+                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
+                if is_all:
+                    template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
+            elif dest_zone == "DECK_BOTTOM":
+                if up_to_flag and val1 > 0:
+                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。")
+                else:
+                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
+                if is_all:
+                    template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
+                                else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
+
+            return template or ""
+
+        return ""
 
     @classmethod
     def _format_condition(cls, condition: Dict[str, Any]) -> str:
@@ -1198,11 +2009,11 @@ class CardTextGenerator:
     def _format_action(cls, action: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
         """
         INTERNAL: Format action-like dictionary to Japanese text.
-        
+
         This method is now primarily used internally by _format_command to handle
         the action_proxy representation. Direct calls to this method for legacy
         Action formatting should be replaced with ActionConverter + _format_command.
-        
+
         Legacy Actions are automatically converted to Commands at load time.
         """
         if not action:
@@ -1290,9 +2101,9 @@ class CardTextGenerator:
                 label = cls._format_input_usage_label(input_usage)
                 if label:
                     usage_label_suffix = f"（{label}）"
-            
+
             # 前のアクションの出力を参照する場合
-            if atype == "DRAW_CARD": 
+            if atype == "DRAW_CARD":
                 up_to_flag = bool(action.get('up_to', False))
                 template = f"カードをその同じ枚数引く。{usage_label_suffix}"
                 if up_to_flag:
@@ -1390,627 +2201,28 @@ class CardTextGenerator:
             else:
                 template = f"手札を{amt}枚捨てる。"
             return template
-        
-
-        if atype == "MODIFY_POWER":
-            val = action.get("value1", 0)
-            sign = "+" if val >= 0 else ""
-            return f"{target_str}のパワーを{sign}{val}する。"
-
-        elif atype == "SELECT_NUMBER":
-            val1 = action.get("value1", 0)
-            val2 = action.get("value2", 0)
-            if val1 > 0 and val2 > 0:
-                 template = f"{val1}～{val2}の数字を1つ選ぶ。"
-
-        elif atype == "SELECT_OPTION":
-            options = action.get("options", [])
-            lines = []
-            val1 = action.get("value1", 1)
-            optional = action.get("optional", False)
-            suffix = "（同じものを選んでもよい）" if optional else ""
-            lines.append(f"次の中から{val1}回選ぶ。{suffix}")
-            for i, opt_chain in enumerate(options):
-                parts = []
-                for a in opt_chain:
-                    # options may contain either legacy Action dicts or normalized Command dicts
-                    if isinstance(a, dict) and (
-                        'amount' in a or 'target_group' in a or 'mutation_kind' in a or 'from_zone' in a or 'to_zone' in a
-                    ):
-                        parts.append(cls._format_command(a, is_spell=is_spell, sample=sample))
-                    else:
-                        parts.append(cls._format_action(a, is_spell, sample=sample))
-                chain_text = " ".join(parts)
-                lines.append(f"> {chain_text}")
-            return "\n".join(lines)
-
-        elif atype == "MEKRAID":
-            val1 = action.get("value1", 0) # Level
-            val2 = action.get("value2", 3) # Look count
-            select_count = action.get("select_count", 1) # Number to summon
-            input_key = action.get("input_value_key", "")
-            input_usage = action.get("input_value_usage") or action.get("input_usage")
-
-            use_token = str(val1)
-            if input_key and input_usage == "MAX_COST":
-                use_token = "その数"
-            elif val1 == 0 and input_usage == "MAX_COST":
-                use_token = "その数"
-
-            count_str = "1体" if select_count == 1 else f"{select_count}体まで"
-
-            return f"メクレイド{use_token}（自分の山札の上から{val2}枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）"
-
-        elif atype == "FRIEND_BURST":
-            str_val = action.get("str_val", "")
-            # Fallback: try to extract race from filter if str_val is missing
-            if not str_val:
-                races = action.get("filter", {}).get("races", [])
-                if races:
-                    str_val = races[0]
-
-            return f"＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
-
-        elif atype == "REVOLUTION_CHANGE":
-             return ""
-
-        
-
-        elif atype == "APPLY_MODIFIER":
-            # APPLY_MODIFIER uses str_param to indicate effect id (from schema)
-            str_param = action.get('str_param') or action.get('str_val') or action.get('mutation_kind') or ''
-            duration_key = action.get('duration') or action.get('input_value_key', '')
-            duration_text = ""
-            if duration_key:
-                trans = CardTextResources.get_duration_text(duration_key)
-                if trans and trans != duration_key:
-                    duration_text = trans + "、"
-                elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                    duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
-
-            # Effect application is not keyword granting.
-            # Build generic structure: 「(対象)を(数)体は、(期間)まで、そのクリーチャーに(効果)を与える。」
-            effect_text = CardTextResources.get_keyword_text(str_param) if str_param else "（効果）"
-            if isinstance(effect_text, str):
-                effect_text = effect_text.strip() or "（効果）"
-
-            # Amount comes from command 'amount' (value1 in proxy) in most cases.
-            amt = action.get('amount')
-            if amt is None:
-                amt = action.get('value1')
-
-            if isinstance(amt, int) and amt > 0:
-                select_phrase = f"{target_str}を{amt}{unit}は、"
-            else:
-                select_phrase = f"{target_str}を選び、"
-
-            return f"{select_phrase}{duration_text}そのクリーチャーに{effect_text}を与える。"
 
 
-        # --- Enhanced Command-like actions ---
-        elif atype == "TRANSITION":
-            from_z = cls._normalize_zone_name(action.get("from_zone", ""))
-            to_z = cls._normalize_zone_name(action.get("to_zone", ""))
-            amount = val1 # Use value1 which maps to amount
-            up_to_flag = bool(action.get('up_to', False))
-            
-            # up_toが真の場合、選択肢を含む表現を使用
-            if up_to_flag and amount > 0:
-                up_to_phrase = f"{{amount}}{{unit}}まで選び、"
-            else:
-                up_to_phrase = ""
+        elif atype == "MEKRAID" or atype == "FRIEND_BURST" or atype == "APPLY_MODIFIER" or atype == "ADD_KEYWORD" or atype == "MUTATE" or atype == "REGISTER_DELAYED_EFFECT" or atype == "SUMMON_TOKEN":
+             text = cls._format_special_effect_command(atype, action, is_spell, val1, target_str, unit)
+             if text: return text
 
-            # Natural Language Mapping with explicit source/destination zones
-            if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-                    if amount == 0 and not input_key:
-                        template = "{from_z}の{target}をすべて{to_z}に置く。"
-            elif from_z == "BATTLE_ZONE" and to_z == "MANA_ZONE":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-                    if amount == 0 and not input_key:
-                        template = "{from_z}の{target}をすべて{to_z}に置く。"
-            elif from_z == "BATTLE_ZONE" and to_z == "HAND":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
-                    if amount == 0 and not input_key:
-                        template = "{from_z}の{target}をすべて{to_z}に戻す。"
-            elif from_z == "HAND" and to_z == "MANA_ZONE":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-            elif from_z == "DECK" and to_z == "HAND":
-                # Draw: include both zones explicitly
-                if up_to_flag:
-                    if target_str != "カード":  # Search logic
-                        template = "{from_z}から{target}を{amount}{unit}まで選び、{to_z}に加える。"
-                    else:
-                        template = "山札からカードを最大{amount}枚まで手札に加える。"
-                else:
-                    if target_str != "カード":  # Search logic
-                        template = "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。"
-                    else:
-                        template = "山札からカードを{amount}枚手札に加える。"
-            elif from_z == "GRAVEYARD" and to_z == "HAND":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
-            elif from_z == "GRAVEYARD" and to_z == "BATTLE_ZONE":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に出す。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に出す。"
-            elif to_z == "GRAVEYARD":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-            elif to_z == "DECK_BOTTOM":
-                if input_key:
-                    # 入力リンクがある場合は単位重複を避けた表現へ
-                    if up_to_flag:
-                        template = "{from_z}の{target}をその同じ数だけまで選び、{to_z}に置く。"
-                    else:
-                        template = "{from_z}の{target}をその同じ数だけ選び、{to_z}に置く。"
-                else:
-                    if up_to_flag and amount > 0:
-                        template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
-                    else:
-                        template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-            else:
-                template = "{target}を{from_z}から{to_z}へ移動する。"
+        elif atype == "TRANSITION" or atype == "MOVE_CARD" or atype == "REPLACE_CARD_MOVE":
+             text = cls._format_zone_move_command(atype, action, is_spell, val1, target_str)
+             if text: return text
 
-            # input_value_keyがある場合は「その同じ枚数」と表示
-            if input_key:
-                val1 = "その同じ枚数"
-            elif amount == 0 and not is_generic_selection:
-                val1 = "すべて"
-            else:
-                val1 = amount
+        elif atype == "IF" or atype == "IF_ELSE" or atype == "ELSE":
+            text = cls._format_logic_command(atype, action, is_spell, sample, card_mega_last_burst)
+            if text: return text
 
-            # Zone name localization when placeholders are present
-            if "{from_z}" in template:
-                template = template.replace("{from_z}", tr(from_z))
-            if "{to_z}" in template:
-                template = template.replace("{to_z}", tr(to_z))
-
-        elif atype == "ADD_KEYWORD":
-            str_val = action.get("str_val") or action.get("str_param", "")
-            duration_key = action.get("duration") or action.get("input_value_key", "")
-
-            duration_text = ""
-            if duration_key:
-                # Verify it is a valid duration key
-                trans = CardTextResources.get_duration_text(duration_key)
-                if trans and trans != duration_key:
-                    duration_text = trans + "、"
-                elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                    duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
-
-            keyword = CardTextResources.get_keyword_text(str_val)
-
-            # If this is a restriction keyword, use a different natural phrasing
-            restriction_keys = [
-                'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
-            ]
-
-            # Explicit "this card" target override
-            if action.get("explicit_self"):
-                target_str = "このカード"
-
-            # If the filter explicitly targets shields, prefer generic "カード" phrasing
-            # to match expected UI wording (e.g. シールドに付与 -> カードに付与)
-            filt = action.get("filter") or action.get("target_filter") or {}
-            if isinstance(filt, dict) and "zones" in filt and filt.get("zones"):
-                if "SHIELD_ZONE" in filt.get("zones") or "SHIELD" in filt.get("zones"):
-                    target_str = "カード"
-
-            if str_val in restriction_keys or str_val.upper() in restriction_keys:
-                # Build selection phrase (amount may be provided)
-                amt = action.get('amount', 1)
-                if isinstance(amt, int) and amt > 0:
-                    select_phrase = f"{target_str}を{amt}体選び、"
-                else:
-                    select_phrase = f"{target_str}を選び、"
-
-                # duration_text already formatted (e.g., "次の自分のターンのはじめは、")
-                # Final natural phrasing
-                return f"{select_phrase}{duration_text}そのクリーチャーは{keyword}。"
-
-            # Default phrasing for non-restriction keywords
-            return f"{duration_text}{target_str}に「{keyword}」を与える。"
-
-        elif atype == "MUTATE":
-             mkind = action.get("mutation_kind", "")
-             val1 = action.get("amount", 0)
-             str_param = action.get("str_param") or action.get("str_val", "")
-
-             # Duration handling
-             duration_key = action.get("duration") or action.get("input_value_key", "")
-
-             duration_text = ""
-             if duration_key:
-                 # Verify it is a valid duration key
-                 trans = CardTextResources.get_duration_text(duration_key)
-                 if trans and trans != duration_key:
-                     duration_text = trans + "、"
-                 elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                     duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
-
-             if mkind == "TAP":
-                 template = "{target}を{amount}{unit}選び、タップする。"
-             elif mkind == "UNTAP":
-                 template = "{target}を{amount}{unit}選び、アンタップする。"
-             elif mkind == "POWER_MOD":
-                 sign = "+" if val1 >= 0 else ""
-                 return f"{duration_text}{target_str}のパワーを{sign}{val1}する。"
-             elif mkind == "ADD_KEYWORD":
-                 keyword = CardTextResources.get_keyword_text(str_param)
-                 return f"{duration_text}{target_str}に「{keyword}」を与える。"
-             elif mkind == "REMOVE_KEYWORD":
-                 keyword = CardTextResources.get_keyword_text(str_param)
-                 return f"{duration_text}{target_str}の「{keyword}」を無視する。"
-             elif mkind == "ADD_PASSIVE_EFFECT" or mkind == "ADD_MODIFIER":
-                 # Use str_param if available to describe what is added
-                 if str_param:
-                     kw = CardTextResources.get_keyword_text(str_param)
-                     # Check if it looks like a keyword (standard mapping) or generic
-                     return f"{duration_text}{target_str}に「{kw}」を与える。"
-                 else:
-                     return f"{duration_text}{target_str}にパッシブ効果を与える。"
-             elif mkind == "ADD_COST_MODIFIER":
-                 return f"{duration_text}{target_str}にコスト修正を追加する。"
-             else:
-                 template = f"状態変更({tr(mkind)}): {{target}} (値:{val1})"
-
-             if val1 == 0:
-                 template = template.replace("{amount}{unit}選び、", "すべて") # Simplified "choose all"
-                 val1 = ""
-
-        elif atype == "QUERY":
-             # Determine query mode
-             mode = action.get("query_mode") or action.get("str_param") or action.get("str_val") or ""
-             
-             # Check if this is a stat query (predefined stat keys)
-             stat_name, unit = CardTextResources.STAT_KEY_MAP.get(str(mode), (None, None))
-             if stat_name:
-                 # Return concise stat reference
-                 base = f"{stat_name}{unit}を数える。"
-                 if input_key:
-                     usage_label = cls._format_input_usage_label(input_usage)
-                     if usage_label:
-                         base += f"（{usage_label}）"
-                 return base
-             
-             # When querying cards matching a filter, describe target and count
-             if str(mode) == "CARDS_MATCHING_FILTER" or not mode:
-                 target_str, unit = cls._resolve_target(action, is_spell)
-                 # Extract zone information from filter for more specific text
-                 filter_def = action.get("filter", {})
-                 zones = filter_def.get("zones", [])
-                 
-                 if target_str and target_str != "カード":
-                     base = f"{target_str}の数を数える。"
-                 elif zones:
-                     # Fallback with zone name when no specific target
-                     zone_names = [tr(z) for z in zones]
-                     if len(zone_names) == 1:
-                         base = f"{zone_names[0]}のカードの枚数を数える。"
-                     else:
-                         base = f"{'または'.join(zone_names)}のカードの枚数を数える。"
-                 else:
-                     base = "カードの数を数える。"
-                 
-                 if input_key:
-                     usage_label = cls._format_input_usage_label(input_usage)
-                     if usage_label:
-                         base += f"（{usage_label}）"
-                 return base
-             
-             # Fallback: generic question label for other modes
-             base = f"質問: {tr(mode)}"
-             if input_key:
-                 usage_label = cls._format_input_usage_label(input_usage)
-                 if usage_label:
-                     base += f"（{usage_label}）"
-             return base
-
-        elif atype == "FLOW":
-             ftype = action.get("flow_type", "")
-             val1 = action.get("value1", 0) # Often raw int
-
-             if ftype == "PHASE_CHANGE":
-                 phase_name = CardTextResources.PHASE_MAP.get(val1, str(val1))
-                 return f"{phase_name}フェーズへ移行する。"
-             elif ftype == "TURN_CHANGE":
-                 return f"ターンを終了する。"
-             elif ftype == "SET_ACTIVE_PLAYER":
-                 return f"手番を変更する。"
-
-             return f"進行制御({tr(ftype)}): {val1}"
-
-        elif atype == "GAME_RESULT":
-             res = action.get("result", "")
-             if not res:
-                  # Fallback to str_val/str_param if result is empty
-                  res = action.get("str_val") or action.get("str_param", "")
-             return f"ゲームを終了する（{tr(res)}）。"
-
-        elif atype == "ATTACH":
-            # Resolving base target might be tricky without a full "base_target" definition in Action,
-            # usually ATTACH targets an existing card.
-            return f"{target_str}をカードの下に重ねる。"
-
-        elif atype == "MOVE_TO_UNDER_CARD":
-             target_str, unit = cls._resolve_target(action, is_spell)
-             amt = val1 if val1 > 0 else 1
-             if amt == 1:
-                  return f"{target_str}をカードの下に重ねる。"
-             return f"{target_str}を{amt}{unit}カードの下に重ねる。"
-
-        elif atype == "LOCK_SPELL":
-             scope = action.get("scope") or action.get("target_group", "NONE")
-             target_str = "プレイヤー"
-             if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                  target_str = "相手"
-             elif scope in ["PLAYER_SELF", "SELF"]:
-                  target_str = "自分"
-             elif scope == "ALL_PLAYERS":
-                  target_str = "すべてのプレイヤー"
-             else:
-                  target_str, unit = cls._resolve_target(action, is_spell)
-
-             duration = val1 if val1 > 0 else 1
-             return f"{target_str}は{duration}ターンの間、呪文を唱えられない。"
-
-        elif atype == "RESET_INSTANCE":
-             target_str, unit = cls._resolve_target(action, is_spell)
-             return f"{target_str}の状態を初期化する（効果を無視する）。"
-
-        elif atype == "DECLARE_NUMBER":
-             min_val = action.get("value1", 1)
-             max_val = action.get("value2", 10)
-             # Fallback if mapped incorrectly
-             if min_val == 0: min_val = action.get("min_value", 1)
-             if max_val == 0: max_val = action.get("amount", 10)
-             return f"数字を1つ宣言する（{min_val}～{max_val}）。"
-
-        elif atype == "ADD_SHIELD":
-             target_str, unit = cls._resolve_target(action, is_spell)
-             amt = val1 if val1 > 0 else 1
-             # If target is implicit (e.g. from deck to shield)
-             if "山札" in target_str or target_str == "カード":
-                 return f"山札の上から{amt}枚をシールド化する。"
-             return f"{target_str}を{amt}つシールド化する。"
-
-        elif atype == "SEND_SHIELD_TO_GRAVE":
-             target_str, unit = cls._resolve_target(action, is_spell)
-             amt = val1 if val1 > 0 else 1
-             # Generic case usually means opponent chooses shield to burn
-             if scope == "OPPONENT" or scope == "PLAYER_OPPONENT":
-                  return f"相手のシールドを{amt}つ選び、墓地に置く。"
-             return f"{target_str}を{amt}つ墓地に置く。"
-
-        elif atype == "SHIELD_BURN":
-             # SHIELD_BURN is usually "Select opponent shield and send to grave"
-             amt = val1 if val1 > 0 else 1
-             return f"相手のシールドを{amt}つ選び、墓地に置く。"
-
-        elif atype == "SEARCH_DECK_BOTTOM":
-             amt = val1 if val1 > 0 else 1
-             return f"山札の下から{amt}枚を探す。"
-
-        elif atype == "SEND_TO_DECK_BOTTOM":
-             target_str, unit = cls._resolve_target(action, is_spell)
-             amt = val1 if val1 > 0 else 1
-             return f"{target_str}を{amt}{unit}山札の下に置く。"
-
-        elif atype == "RESOLVE_BATTLE":
-             target_str, unit = cls._resolve_target(action, is_spell)
-             return f"{target_str}とバトルさせる。"
-
-        elif atype == "LOOK_TO_BUFFER":
-             src_zone = tr(action.get("from_zone", "DECK"))
-             amt = val1 if val1 > 0 else 1
-             return f"{src_zone}から{amt}枚を見る。"
-
-        elif atype == "SELECT_FROM_BUFFER":
-             amt = val1 if val1 > 0 else 1
-             return f"見たカードの中から{amt}枚を選ぶ。"
-
-        elif atype == "PLAY_FROM_BUFFER":
-             target_str, unit = cls._resolve_target(action, is_spell)
-             return f"選んだカード（{target_str}）を使う。"
-
-        elif atype == "MOVE_BUFFER_TO_ZONE":
-             to_zone = tr(action.get("to_zone", "HAND"))
-             amt = val1 if val1 > 0 else 1
-             return f"選んだカードを{amt}枚{to_zone}に置く。"
-
-        # --- Additional command types previously unformatted ---
-        elif atype == "DECIDE":
-            # Finalize selection/decision. Card JSON rarely uses this, but provide readable output.
-            sel = action.get("selected_option_index")
-            if isinstance(sel, int) and sel >= 0:
-                return f"選択肢{sel}を確定する。"
-            indices = action.get("selected_indices") or []
-            if isinstance(indices, list) and indices:
-                return f"選択（{indices}）を確定する。"
-            return "選択を確定する。"
-
-        elif atype == "DECLARE_REACTION":
-            # Declare/pass reaction. Keep concise natural phrasing.
-            if action.get("pass"):
-                return "リアクション: パスする。"
-            idx = action.get("reaction_index")
-            if isinstance(idx, int):
-                return f"リアクションを宣言する（インデックス {idx}）。"
-            return "リアクションを宣言する。"
-
-        elif atype == "STAT":
-            # Update game stats; prefer human-readable stat labels.
-            key = action.get('stat') or action.get('str_param') or action.get('str_val')
-            amount = action.get('amount', action.get('value1', 0))
-            if key:
-                stat_name, unit = CardTextResources.STAT_KEY_MAP.get(str(key), (None, None))
-                if stat_name:
-                    return f"統計更新: {stat_name} += {amount}"
-            return f"統計更新: {tr(str(key))} += {amount}"
-
-        # IF/IF_ELSE/ELSE: Special handling with condition details and nested commands
-        if atype == "IF":
-            cond_detail = action.get("condition", {}) or action.get("target_filter", {})
-            cond_text = ""
-            if isinstance(cond_detail, dict):
-                cond_type = cond_detail.get("type", "NONE")
-                if cond_type == "OPPONENT_DRAW_COUNT":
-                    val = cond_detail.get("value", 0)
-                    cond_text = f"相手がカードを{val}枚目以上引いたなら"
-                elif cond_type == "COMPARE_STAT":
-                    key = cond_detail.get("stat_key", "")
-                    op = cond_detail.get("op", "=")
-                    val = cond_detail.get("value", 0)
-                    stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (key, ""))
-                    op_text = ""
-                    if op == ">=":
-                        op_text = f"{val}{unit}以上"
-                    elif op == "<=":
-                        op_text = f"{val}{unit}以下"
-                    elif op == "=" or op == "==":
-                        op_text = f"{val}{unit}"
-                    elif op == ">":
-                        op_text = f"{val}{unit}より多い"
-                    elif op == "<":
-                        op_text = f"{val}{unit}より少ない"
-                    cond_text = f"自分の{stat_name}が{op_text}なら"
-                elif cond_type == "SHIELD_COUNT":
-                    val = cond_detail.get("value", 0)
-                    op = cond_detail.get("op", ">=")
-                    op_text = "以上" if op == ">=" else "以下" if op == "<=" else ""
-                    if op == "=": op_text = ""
-                    cond_text = f"自分のシールドが{val}つ{op_text}なら"
-                elif cond_type == "COMPARE_INPUT":
-                    val = cond_detail.get("value", 0)
-                    op = cond_detail.get("op", ">=")
-                    input_key = action.get("input_value_key", "")
-                    # 入力キー名をより読みやすい形式に変換
-                    input_desc_map = {
-                        "spell_count": "墓地の呪文の数",
-                        "card_count": "カードの数",
-                        "creature_count": "クリーチャーの数",
-                        "element_count": "エレメントの数"
-                    }
-                    input_desc = input_desc_map.get(input_key, input_key if input_key else "入力値")
-                    op_text = ""
-                    # NOTE: Some card definitions use a zero-based threshold; adjust display
-                    # to match UI/test expectations by presenting "N+1以上" when using ">=".
-                    if op == ">=":
-                        try:
-                            op_text = f"{int(val) + 1}以上"
-                        except Exception:
-                            op_text = f"{val}以上"
-                    elif op == "<=":
-                        op_text = f"{val}以下"
-                    elif op == "=" or op == "==":
-                        op_text = f"{val}"
-                    elif op == ">":
-                        op_text = f"{val}より多い"
-                    elif op == "<":
-                        op_text = f"{val}より少ない"
-                    cond_text = f"{input_desc}が{op_text}なら"
-                elif cond_type == "CIVILIZATION_MATCH":
-                    cond_text = "マナゾーンに同じ文明があれば"
-                elif cond_type == "MANA_CIVILIZATION_COUNT":
-                    val = cond_detail.get("value", 0)
-                    op = cond_detail.get("op", ">=")
-                    op_text = "以上" if op == ">=" else "以下" if op == "<=" else "と同じ" if op == "=" else ""
-                    cond_text = f"自分のマナゾーンにある文明の数が{val}{op_text}なら"
-            
-            # Default condition text if not specified
-            if not cond_text:
-                cond_text = "もし条件を満たすなら"
-            
-            # Expand if_true commands
-            if_true_cmds = action.get("if_true", [])
-            if_true_texts = []
-            for cmd in if_true_cmds:
-                if isinstance(cmd, dict):
-                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
-                    if cmd_text:
-                        if_true_texts.append(cmd_text)
-            
-            # Build result
-            if if_true_texts:
-                actions_text = "、".join(if_true_texts)
-                return f"{cond_text}、{actions_text}"
-            else:
-                return f"（{cond_text}）"
-                
-        elif atype == "IF_ELSE":
-            cond_detail = action.get("condition", {}) or action.get("target_filter", {})
-            cond_text = ""
-            if isinstance(cond_detail, dict):
-                cond_type = cond_detail.get("type", "NONE")
-                if cond_type == "COMPARE_STAT":
-                    key = cond_detail.get("stat_key", "")
-                    op = cond_detail.get("op", "=")
-                    val = cond_detail.get("value", 0)
-                    stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (key, ""))
-                    op_text = ""
-                    if op == ">=":
-                        op_text = f"{val}{unit}以上"
-                    elif op == "<=":
-                        op_text = f"{val}{unit}以下"
-                    elif op == "=" or op == "==":
-                        op_text = f"{val}{unit}"
-                    cond_text = f"自分の{stat_name}が{op_text}なら"
-            
-            if not cond_text:
-                cond_text = "もし条件を満たすなら"
-            
-            # Expand if_true and if_false
-            if_true_cmds = action.get("if_true", [])
-            if_false_cmds = action.get("if_false", [])
-            
-            if_true_texts = []
-            for cmd in if_true_cmds:
-                if isinstance(cmd, dict):
-                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
-                    if cmd_text:
-                        if_true_texts.append(cmd_text)
-            
-            if_false_texts = []
-            for cmd in if_false_cmds:
-                if isinstance(cmd, dict):
-                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
-                    if cmd_text:
-                        if_false_texts.append(cmd_text)
-            
-            # Build result
-            result_parts = []
-            if if_true_texts:
-                result_parts.append(f"{cond_text}、" + "、".join(if_true_texts))
-            if if_false_texts:
-                result_parts.append("そうでなければ、" + "、".join(if_false_texts))
-            
-            if result_parts:
-                return "。".join(result_parts) + "。"
-            else:
-                return f"（条件分岐: {cond_text}）"
-                
-        elif atype == "ELSE":
-            return "（そうでなければ）"
+        # Attempt to format as a general game action command
+        text = cls._format_game_action_command(atype, action, is_spell, val1, val2, target_str, unit, input_key, input_usage, sample)
+        if text: return text
 
         if not template:
+            # Fallback to buffer commands or logic if not handled by template
+            buf = cls._format_buffer_command(atype, action, is_spell, val1)
+            if buf: return buf
             return f"({tr(atype)})"
 
         if atype == "GRANT_KEYWORD" or atype == "ADD_KEYWORD":
@@ -2018,212 +2230,6 @@ class CardTextGenerator:
             keyword = CardTextResources.get_keyword_text(str_val)
             str_val = keyword
 
-        elif atype == "GET_GAME_STAT":
-            # str_val holds the stat key, e.g. MANA_CIVILIZATION_COUNT
-            key = action.get('str_val') or action.get('result') or ''
-            stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (None, None))
-            if stat_name:
-                # If a sample is provided, attempt to compute an example value
-                if sample is not None:
-                    try:
-                        val = cls._compute_stat_from_sample(key, sample)
-                        if val is not None:
-                            return f"{stat_name}（例: {val}{unit}）"
-                    except Exception:
-                        # Fall back to concise name on error
-                        pass
-                return f"{stat_name}"
-            return f"（{tr(key)}を参照）"
-
-        elif atype == "REVEAL_CARDS":
-            # REVEAL_CARDS support
-            if input_key:
-                return f"山札の上から、その数だけ表向きにする。"
-            return f"山札の上から{val1}枚を表向きにする。"
-
-        elif atype == "COUNT_CARDS":
-            if not target_str or target_str == "カード":
-                 return f"({tr('COUNT_CARDS')})"
-            return f"{target_str}の数を数える。"
-
-        elif atype == "SEARCH_DECK":
-            # SEARCH_DECK implies searching deck and putting result somewhere (usually hand)
-
-            dest_zone = action.get("destination_zone", "HAND")
-            if not dest_zone: dest_zone = "HAND"
-            zone_str = tr(dest_zone)
-
-            # Use 'amount' for count
-            count = val1 if val1 > 0 else 1
-
-            # Resolve target string from filter
-            target_str, unit = cls._resolve_target(action, is_spell)
-
-            if dest_zone == "HAND":
-                 action_phrase = "手札に加える"
-            elif dest_zone == "MANA_ZONE":
-                 action_phrase = "マナゾーンに置く"
-            elif dest_zone == "GRAVEYARD":
-                 action_phrase = "墓地に置く"
-            else:
-                 action_phrase = f"{zone_str}に置く"
-
-            template = f"自分の山札を見る。その中から{target_str}を{count}{unit}選び、{action_phrase}。その後、山札をシャッフルする。"
-            if count == 1:
-                template = f"自分の山札を見る。その中から{target_str}を1{unit}選び、{action_phrase}。その後、山札をシャッフルする。"
-
-            return template
-
-        elif atype == "LOOK_AND_ADD":
-             # LOOK_AND_ADD: Look at top N, add M to hand, rest to zone
-             look_count = val1 if val1 > 0 else 3
-             add_count = val2 if val2 > 0 else 1
-             rest_zone = action.get("rest_zone", "DECK_BOTTOM")
-
-             rest_text = ""
-             if rest_zone == "DECK_BOTTOM":
-                 rest_text = "残りを好きな順序で山札の下に置く。"
-             elif rest_zone == "GRAVEYARD":
-                 rest_text = "残りを墓地に置く。"
-             else:
-                 rest_text = f"残りを{tr(rest_zone)}に置く。"
-
-             # If filter is specific, mention it
-             target_str, unit = cls._resolve_target(action, is_spell)
-             filter_text = ""
-             if target_str != "カード":
-                 filter_text = f"{target_str}を"
-
-             return f"自分の山札の上から{look_count}枚を見る。その中から{filter_text}{add_count}{unit}手札に加え、{rest_text}"
-
-        elif atype == "PUT_CREATURE":
-             # Similar to TRANSITION BATTLE_ZONE but explicit "Put"
-             target_str, unit = cls._resolve_target(action, is_spell)
-             count = val1 if val1 > 0 else 1
-
-             # If source is not specified, assume generic "put" (often used for token or specific summon)
-             # But usually PUT_CREATURE implies from somewhere.
-             # If filter specifies zone, use it.
-             filter_zones = action.get("filter", {}).get("zones", [])
-             src_text = ""
-             if filter_zones:
-                 znames = [tr(z) for z in filter_zones]
-                 src_text = "または".join(znames) + "から"
-
-             return f"{src_text}{target_str}を{count}{unit}バトルゾーンに出す。"
-
-        elif atype == "SHUFFLE_DECK":
-             return "山札をシャッフルする。"
-
-        elif atype == "BREAK_SHIELD":
-             target_str, unit = cls._resolve_target(action, is_spell)
-             count = val1 if val1 > 0 else 1
-             # Often implies opponent's shields
-             if not action.get("scope") or action.get("scope") == "NONE":
-                 # If no scope, check if target string implies opponent
-                 if "相手" not in target_str:
-                     target_str = "相手の" + target_str
-
-             return f"{target_str}を{count}つブレイクする。"
-
-        elif atype == "REGISTER_DELAYED_EFFECT":
-             str_val = action.get("str_val", "")
-             duration = val1 if val1 > 0 else 1
-             return f"遅延効果（{str_val}）を{duration}ターン登録する。"
-
-        elif atype == "COST_REFERENCE":
-             ref_mode = action.get("ref_mode", "")
-             return f"（コスト参照: {tr(ref_mode)}）"
-
-        elif atype == "REPLACE_CARD_MOVE":
-            dest_zone = action.get("destination_zone", "")
-            # Fallback to standard keys if mapped props are empty
-            if not dest_zone:
-                dest_zone = action.get("to_zone", "DECK_BOTTOM")
-
-            src_zone = action.get("source_zone", "")
-            if not src_zone:
-                src_zone = action.get("from_zone", "GRAVEYARD") # Used as "Original Zone" here
-
-            zone_str = cls._zone_to_japanese(dest_zone) if dest_zone else "どこか"
-            orig_zone_str = cls._zone_to_japanese(src_zone) if src_zone else "元のゾーン"
-            up_to_flag = bool(action.get('up_to', False))
-
-            # Special case: SELF replacement (spell/this card moving after resolving)
-            # Even when amount isn't specified, it should read as a single-card self reference.
-            scope = action.get("scope", action.get('target_group', "NONE"))
-            is_self_ref = scope == "SELF"
-
-            # If input_key is present, reference the prior selection as "そのカード".
-            if input_key:
-                up_to_text = "まで" if up_to_flag else ""
-                template = f"そのカードをその同じ数だけ{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
-            else:
-                if is_self_ref:
-                    target_str = "このカード"
-                    unit = ""
-                    template = f"{{target}}を{orig_zone_str}に置くかわりに、{zone_str}に置く。"
-                elif val1 > 0:
-                    # Normal case: specific amount specified
-                    up_to_text = "まで" if up_to_flag else ""
-                    template = f"{{target}}を{{value1}}{{unit}}{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
-                else:
-                    # All case
-                    template = f"{{target}}をすべて{orig_zone_str}に置くかわりに、{zone_str}に置く。"
-
-        elif atype == "MOVE_CARD":
-            dest_zone = action.get("destination_zone", "")
-            is_all = (val1 == 0 and not input_key)
-            up_to_flag = bool(action.get('up_to', False))
-
-            # Include source zone when available for clearer movement description
-            src_zone = action.get("source_zone", "")
-            src_str = tr(src_zone) if src_zone else ""
-            zone_str = tr(dest_zone) if dest_zone else "どこか"
-            
-            # Build choice suffix for up_to flag
-            choice_suffix = "まで" if (up_to_flag and val1 > 0) else ""
-
-            if dest_zone == "HAND":
-                if up_to_flag and val1 > 0:
-                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に戻す。" if not src_str
-                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に戻す。")
-                else:
-                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。" if not src_str
-                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に戻す。")
-                if is_all:
-                    template = (f"{{target}}をすべて{zone_str}に戻す。" if not src_str
-                                else f"{src_str}の{{target}}をすべて{zone_str}に戻す。")
-            elif dest_zone == "MANA_ZONE":
-                if up_to_flag and val1 > 0:
-                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。" if not src_str
-                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。")
-                else:
-                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
-                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
-                if is_all:
-                    template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
-                                else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
-            elif dest_zone == "GRAVEYARD":
-                if up_to_flag and val1 > 0:
-                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。" if not src_str
-                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。")
-                else:
-                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
-                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
-                if is_all:
-                    template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
-                                else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
-            elif dest_zone == "DECK_BOTTOM":
-                if up_to_flag and val1 > 0:
-                    template = (f"{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。" if not src_str
-                                else f"{src_str}の{{target}}を{{value1}}{{unit}}まで選び、{zone_str}に置く。")
-                else:
-                    template = (f"{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。" if not src_str
-                                else f"{src_str}の{{target}}を{{value1}}{{unit}}選び、{zone_str}に置く。")
-                if is_all:
-                    template = (f"{{target}}をすべて{zone_str}に置く。" if not src_str
-                                else f"{src_str}の{{target}}をすべて{zone_str}に置く。")
 
         elif atype == "CAST_SPELL":
             # CAST_SPELL: フィルタの詳細を反映した呪文テキスト生成
