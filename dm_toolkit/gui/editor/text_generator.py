@@ -1010,7 +1010,7 @@ class CardTextGenerator:
             "type": cmd_type,
             "scope": command_copy.get("target_group", "NONE"),
             "filter": command_copy.get("target_filter") or command_copy.get("filter", {}),
-            "value1": command_copy.get("amount", 0),
+            "value1": command_copy.get("amount") if command_copy.get("amount") is not None else command_copy.get("value1", 0),
             "value2": command_copy.get("val2") or command_copy.get("value2", 0),
             "optional": command_copy.get("optional", False),
             "up_to": command_copy.get("up_to", False),
@@ -1445,8 +1445,15 @@ class CardTextGenerator:
              count = val1 if val1 > 0 else 1
 
              # Try to resolve token name if possible (assuming token_id is a key or name)
-             # For now, just use the ID/Name directly.
-             token_name = tr(token_id) if token_id else "トークン"
+             token_name = "トークン"
+             if token_id:
+                 translated = tr(token_id)
+                 # Heuristic: If translation returns the key (same as input) and it looks like a system ID
+                 # (uppercase with underscores), fallback to generic "Token".
+                 if translated == token_id and "_" in token_id and token_id.isupper():
+                     token_name = "トークン"
+                 else:
+                     token_name = translated
 
              return f"{token_name}を{count}体出す。"
 
@@ -1822,11 +1829,11 @@ class CardTextGenerator:
 
             # Zone name localization when placeholders are present
             if "{from_z}" in template:
-                template = template.replace("{from_z}", tr(from_z))
+                template = template.replace("{from_z}", cls._zone_to_japanese(from_z))
             if "{to_z}" in template:
-                template = template.replace("{to_z}", tr(to_z))
+                template = template.replace("{to_z}", cls._zone_to_japanese(to_z))
 
-            return template # Substitutions (target, amount, unit) happen in _format_action if we were there.
+            return template
             # But since we extracted it, we need to handle substitutions OR return a template
             # that _format_command can handle?
             # Actually, `_format_command` calls `_format_action`.
