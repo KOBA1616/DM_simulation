@@ -1592,6 +1592,85 @@ else:
                 # IF
                 if is_prim(atype, 'IF') or (hasattr(atype, 'name') and atype.name == 'IF'):
                     cond = getattr(action, 'filter', None) or getattr(action, 'condition', None)
+                    # Handle implicit FilterDef-style conditions (e.g., FIRE in MANA_ZONE)
+                    try:
+                        zones = getattr(cond, 'zones', None)
+                    except Exception:
+                        zones = None
+                    if zones:
+                        try:
+                            civs = getattr(cond, 'civilizations', None)
+                        except Exception:
+                            civs = None
+                        try:
+                            player = source_id if getattr(action, 'target_player', None) in (None, 'PLAYER_SELF') else (1 - source_id if str(getattr(action, 'target_player')).upper().endswith('OPPONENT') else int(getattr(action, 'target_player')))
+                        except Exception:
+                            player = source_id
+                        matched = False
+                        try:
+                            for zn in zones:
+                                try:
+                                    if str(zn).upper() == 'MANA_ZONE':
+                                        for card in getattr(state.players[player], 'mana_zone', []):
+                                            try:
+                                                cid = getattr(card, 'card_id', getattr(card, 'id', None))
+                                                cdef = CardRegistry.get_card_data(cid)
+                                                if cdef is None:
+                                                    continue
+                                                if civs:
+                                                    for cv in civs:
+                                                        try:
+                                                            if getattr(cdef, 'civilization', None) == cv or (isinstance(getattr(cdef, 'civilization', None), int) and int(getattr(cdef, 'civilization', None)) == int(cv)):
+                                                                matched = True
+                                                                break
+                                                        except Exception:
+                                                            pass
+                                                else:
+                                                    matched = True
+                                                if matched:
+                                                    break
+                                            except Exception:
+                                                pass
+                                except Exception:
+                                    pass
+                                if matched:
+                                    break
+                        except Exception:
+                            pass
+                        if matched:
+                            opts = getattr(action, 'options', [])
+                            if opts and len(opts) >= 1:
+                                for act in opts[0]:
+                                    if is_prim(getattr(act, 'type', None), 'DRAW_CARD') or (hasattr(getattr(act, 'type', None), 'name') and getattr(act, 'type').name == 'DRAW_CARD'):
+                                        amt = int(getattr(act, 'value1', 1)) if getattr(act, 'value1', None) is not None else 1
+                                        try:
+                                            state.draw_cards(player, amt)
+                                            if wrapper is not None and int(amt) > 0:
+                                                try:
+                                                    native_hand = getattr(state.players[player], 'hand', [])
+                                                    tail = native_hand[-int(amt):] if len(native_hand) >= int(amt) else list(native_hand)
+                                                    for inst in tail:
+                                                        try:
+                                                            wrapper.players[player].hand.append(inst)
+                                                        except Exception:
+                                                            pass
+                                                except Exception:
+                                                    pass
+                                        except Exception:
+                                            for _ in range(amt):
+                                                try:
+                                                    cid = state.players[player].deck.pop(0)
+                                                except Exception:
+                                                    try:
+                                                        cid = state.players[player].deck.pop()
+                                                    except Exception:
+                                                        cid = 1
+                                                try:
+                                                    inst = CardStub(cid, state.get_next_instance_id())
+                                                    _append_to_hand(player, inst)
+                                                except Exception:
+                                                    pass
+                            return None
                     if cond is None:
                         return None
                     # evaluate simple compare stat for hand count
@@ -1620,29 +1699,27 @@ else:
                                         amt = int(getattr(act, 'value1', 1)) if getattr(act, 'value1', None) is not None else 1
                                         # Use GameState helper to draw and sync proxies
                                         try:
-                                            pass
-                                        except Exception:
-                                            pass
+                                            try:
+                                                import time, os
+                                                _log_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'draw_branch_trace.log'))
+                                                with open(_log_path, 'a', encoding='utf-8') as _f:
+                                                    _f.write(f"time={time.time()} state_id={id(state)} player={player} amt={amt} wrapper_present={bool(wrapper)}\n")
+                                            except Exception:
+                                                pass
+
                                             state.draw_cards(player, amt)
-                                            try:
-                                                pass
-                                            except Exception:
-                                                pass
-                                            # Ensure wrapper proxies reflect drawn cards by copying
-                                            try:
-                                                if wrapper is not None and int(amt) > 0:
-                                                    try:
-                                                        native_hand = getattr(state.players[player], 'hand', [])
-                                                        tail = native_hand[-int(amt):] if len(native_hand) >= int(amt) else list(native_hand)
-                                                        for inst in tail:
-                                                            try:
-                                                                wrapper.players[player].hand.append(inst)
-                                                            except Exception:
-                                                                pass
-                                                    except Exception:
-                                                        pass
-                                            except Exception:
-                                                pass
+
+                                            if wrapper is not None and int(amt) > 0:
+                                                try:
+                                                    native_hand = getattr(state.players[player], 'hand', [])
+                                                    tail = native_hand[-int(amt):] if len(native_hand) >= int(amt) else list(native_hand)
+                                                    for inst in tail:
+                                                        try:
+                                                            wrapper.players[player].hand.append(inst)
+                                                        except Exception:
+                                                            pass
+                                                except Exception:
+                                                    pass
                                         except Exception:
                                             # Fallback: per-card draw
                                             for _ in range(amt):

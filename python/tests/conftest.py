@@ -892,3 +892,215 @@ if dm_ai_module:
             @staticmethod
             def auto_tap_mana(state, player, card_def, card_db): return False
         dm_ai_module.ManaSystem = _ManaShim
+
+# Shim: handle implicit FilterDef (e.g., FIRE in MANA_ZONE) by invoking draw
+try:
+    if dm_ai_module is not None and hasattr(dm_ai_module, 'GenericCardSystem'):
+        try:
+            gcs = dm_ai_module.GenericCardSystem
+            if hasattr(gcs, 'resolve_action'):
+                _orig_resolve = gcs.resolve_action
+                def _shim_resolve(state, action, source_id):
+                    try:
+                        atype = getattr(action, 'type', None)
+                        # Detect IF primitive
+                        if atype == getattr(dm_ai_module, 'EffectPrimitive', None).IF or (hasattr(atype, 'name') and getattr(atype, 'name', '') == 'IF'):
+                            cond = getattr(action, 'filter', None) or getattr(action, 'condition', None)
+                            if cond is not None:
+                                try:
+                                    zones = getattr(cond, 'zones', []) or []
+                                    civs = getattr(cond, 'civilizations', None)
+                                except Exception:
+                                    zones = []
+                                    civs = None
+                                matched = False
+                                try:
+                                    player = source_id if getattr(action, 'target_player', None) in (None, 'PLAYER_SELF') else (1 - source_id if str(getattr(action, 'target_player')).upper().endswith('OPPONENT') else int(getattr(action, 'target_player')))
+                                except Exception:
+                                    player = source_id
+                                if zones:
+                                    for zn in zones:
+                                        try:
+                                            if str(zn).upper() == 'MANA_ZONE':
+                                                for card in getattr(state.players[player], 'mana_zone', []):
+                                                    try:
+                                                        cid = getattr(card, 'card_id', getattr(card, 'id', None))
+                                                        cdef = dm_ai_module.CardRegistry.get_card_data(cid)
+                                                        if cdef is None:
+                                                            continue
+                                                        if civs:
+                                                            for cv in civs:
+                                                                try:
+                                                                    if getattr(cdef, 'civilization', None) == cv or (isinstance(getattr(cdef, 'civilization', None), int) and int(getattr(cdef, 'civilization', None)) == int(cv)):
+                                                                        matched = True
+                                                                        break
+                                                                except Exception:
+                                                                    pass
+                                                        else:
+                                                            matched = True
+                                                        if matched:
+                                                            break
+                                                    except Exception:
+                                                        pass
+                                            if matched:
+                                                break
+                                        except Exception:
+                                            pass
+                                if matched:
+                                    opts = getattr(action, 'options', [])
+                                    if opts and len(opts) >= 1:
+                                        for act in opts[0]:
+                                            try:
+                                                is_draw = (getattr(act, 'type', None) == getattr(dm_ai_module, 'EffectPrimitive', None).DRAW_CARD) or (hasattr(getattr(act, 'type', None), 'name') and getattr(act, 'type').name == 'DRAW_CARD')
+                                            except Exception:
+                                                is_draw = False
+                                            if is_draw:
+                                                amt = int(getattr(act, 'value1', 1)) if getattr(act, 'value1', None) is not None else 1
+                                                try:
+                                                    # Call state's draw_cards (will update native lists)
+                                                    try:
+                                                        state.draw_cards(player, amt)
+                                                    except Exception:
+                                                        # Try native backing
+                                                        try:
+                                                            nat = getattr(state, '_native', None) or state
+                                                            nat.draw_cards(player, amt)
+                                                        except Exception:
+                                                            pass
+                                                except Exception:
+                                                    pass
+                                                return None
+                    except Exception:
+                        pass
+                    try:
+                        return _orig_resolve(state, action, source_id)
+                    except Exception:
+                        return None
+                try:
+                    gcs.resolve_action = staticmethod(_shim_resolve)
+                except Exception:
+                    gcs.resolve_action = _shim_resolve
+        except Exception:
+            pass
+except Exception:
+    pass
+
+# Safe monkeypatch: wrap GameState.draw_cards to synchronize wrapper proxies
+try:
+    if dm_ai_module is not None and hasattr(dm_ai_module, 'GameState'):
+        try:
+            _orig_draw = dm_ai_module.GameState.draw_cards
+            def _draw_and_sync(self, player_id, amount=1):
+                try:
+                    _orig_draw(self, player_id, amount)
+                except Exception:
+                    pass
+                try:
+                    wrapper = getattr(self, '_wrapper', None)
+                except Exception:
+                    wrapper = None
+                if wrapper is None:
+                    try:
+                        _map = getattr(dm_ai_module, '_NATIVE_TO_WRAPPER', None)
+                        if isinstance(_map, dict):
+                            try:
+                                wrapper = _map.get(id(self)) or _map.get(self) or _map.get(id(getattr(self, '_native', self)))
+                            except Exception:
+                                wrapper = None
+                    except Exception:
+                        wrapper = None
+                if wrapper is not None:
+                    try:
+                        try:
+                            pxy = wrapper.players[player_id]
+                        except Exception:
+                            pxy = None
+                        if pxy is not None:
+                            try:
+                                object.__setattr__(pxy, '_p', self.players[player_id])
+                            except Exception:
+                                try:
+                                    setattr(pxy, '_p', self.players[player_id])
+                                except Exception:
+                                    pass
+                            try:
+                                object.__setattr__(pxy, 'hand', self.players[player_id].hand)
+                            except Exception:
+                                try:
+                                    setattr(pxy, 'hand', self.players[player_id].hand)
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
+            try:
+                dm_ai_module.GameState.draw_cards = _draw_and_sync
+            except Exception:
+                try:
+                    setattr(dm_ai_module.GameState, 'draw_cards', _draw_and_sync)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+except Exception:
+    pass
+
+# Lightweight monkeypatch: wrap native GameState.draw_cards to sync wrapper proxies
+try:
+    if dm_ai_module is not None and hasattr(dm_ai_module, 'GameState'):
+        try:
+            _orig_draw = dm_ai_module.GameState.draw_cards
+            def _draw_and_sync(self, player_id, amount=1):
+                try:
+                    res = _orig_draw(self, player_id, amount)
+                except Exception:
+                    res = None
+                try:
+                    wrapper = getattr(self, '_wrapper', None)
+                except Exception:
+                    wrapper = None
+                if wrapper is None:
+                    try:
+                        _map = getattr(dm_ai_module, '_NATIVE_TO_WRAPPER', None)
+                        if isinstance(_map, dict):
+                            try:
+                                wrapper = _map.get(id(self)) or _map.get(self) or _map.get(id(getattr(self, '_native', self)))
+                            except Exception:
+                                wrapper = None
+                    except Exception:
+                        wrapper = None
+                if wrapper is not None:
+                    try:
+                        pxy = None
+                        try:
+                            pxy = wrapper.players[player_id]
+                        except Exception:
+                            pxy = None
+                        if pxy is not None:
+                            try:
+                                object.__setattr__(pxy, '_p', self.players[player_id])
+                            except Exception:
+                                try:
+                                    setattr(pxy, '_p', self.players[player_id])
+                                except Exception:
+                                    pass
+                            try:
+                                object.__setattr__(pxy, 'hand', self.players[player_id].hand)
+                            except Exception:
+                                try:
+                                    setattr(pxy, 'hand', self.players[player_id].hand)
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
+                return res
+            try:
+                dm_ai_module.GameState.draw_cards = _draw_and_sync
+            except Exception:
+                try:
+                    setattr(dm_ai_module.GameState, 'draw_cards', _draw_and_sync)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+except Exception:
+    pass

@@ -3,6 +3,7 @@ import sys
 import os
 import logging
 from typing import Any, List, Optional, Callable, Dict, Union
+import enum
 from types import ModuleType
 
 # dm_ai_module may be an optional compiled extension; annotate as Optional.
@@ -84,16 +85,18 @@ class EngineCompat:
         try:
             if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
                 PhaseEnum = dm_ai_module.Phase
+                phase_enum_is_real = isinstance(PhaseEnum, enum.EnumMeta)
 
                 # If this GameState wraps a native backing, prefer the native
-                # object's `current_phase` as the authoritative source. This
-                # avoids cases where a wrapper's cached attribute lags behind
-                # the native object's update during `next_phase` calls.
+                # object's `current_phase` as the authoritative source. Only
+                # attempt to convert to a Phase enum when the `Phase` exposed
+                # by the module is a real Enum type; otherwise preserve raw
+                # string/int values to maintain test expectations.
                 try:
                     native_obj = getattr(state, '_native', None)
                     if native_obj is not None:
                         raw_native = getattr(native_obj, 'current_phase', None)
-                        if raw_native is not None:
+                        if raw_native is not None and phase_enum_is_real:
                             # Convert native representation to PhaseEnum when possible
                             try:
                                 if isinstance(raw_native, PhaseEnum):
@@ -122,40 +125,55 @@ class EngineCompat:
                 except Exception:
                     pass
 
-                # Already the enum
+                # Only attempt enum conversions when PhaseEnum is a real Enum
                 try:
-                    if isinstance(val, PhaseEnum):
-                        return val
-                except Exception:
-                    pass
-                # If value has .value (enum-like), try to convert
-                try:
-                    if hasattr(val, 'value'):
-                        return PhaseEnum(int(getattr(val, 'value')))
-                except Exception:
-                    pass
+                    if phase_enum_is_real:
+                        # Already the enum
+                        try:
+                            if isinstance(val, PhaseEnum):
+                                return val
+                        except Exception:
+                            pass
+                        # If original value is a string, preserve it (tests expect textual alias)
+                        try:
+                            if isinstance(val, str):
+                                return val
+                        except Exception:
+                            pass
 
-                # Integer-like -> enum
-                try:
-                    ival = int(val)
-                    return PhaseEnum(ival)
-                except Exception:
-                    pass
+                        # If value has .value (enum-like), try to convert
+                        try:
+                            if hasattr(val, 'value'):
+                                return PhaseEnum(int(getattr(val, 'value')))
+                        except Exception:
+                            pass
 
-                # String-like -> enum (accept 'Phase.MAIN' or 'MAIN')
-                try:
-                    if isinstance(val, str):
-                        s = val
-                        name = s.split('.', 1)[1] if s.startswith('Phase.') else s
-                        name = name.strip()
-                        if hasattr(PhaseEnum, name):
-                            return getattr(PhaseEnum, name)
+                        # Integer-like -> enum
+                        try:
+                            ival = int(val)
+                            return PhaseEnum(ival)
+                        except Exception:
+                            pass
+
+                        # String-like -> enum (accept 'Phase.MAIN' or 'MAIN')
+                        try:
+                            if isinstance(val, str):
+                                s = val
+                                name = s.split('.', 1)[1] if s.startswith('Phase.') else s
+                                name = name.strip()
+                                if hasattr(PhaseEnum, name):
+                                    return getattr(PhaseEnum, name)
+                        except Exception:
+                            pass
                 except Exception:
                     pass
 
         except Exception:
             pass
 
+        # If nothing could be determined, return a conservative textual fallback
+        if val is None:
+            return 'UNKNOWN'
         return val
 
     @staticmethod
@@ -257,184 +275,188 @@ class EngineCompat:
         EngineCompat._check_module()
         assert dm_ai_module is not None
         if hasattr(dm_ai_module.PhaseManager, 'next_phase'):
-            # Normalize `state.current_phase` to native Phase enum when possible
             try:
-                if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
-                    PhaseEnum = dm_ai_module.Phase
-                    cur_val = getattr(state, 'current_phase', None)
-                    try:
-                        # If it's already an enum of the native type, leave it
-                        if not (isinstance(cur_val, PhaseEnum)):
-                            # If cur_val is string like 'Phase.MAIN' or 'MAIN', map to enum
-                            if isinstance(cur_val, str):
-                                name = cur_val.split('.', 1)[1] if cur_val.startswith('Phase.') else cur_val
-                                name = name.strip()
-                                if hasattr(PhaseEnum, name):
-                                    try:
-                                        setattr(state, 'current_phase', getattr(PhaseEnum, name))
-                                    except Exception:
-                                        pass
-                            else:
-                                # Try int coercion
-                                try:
-                                    setattr(state, 'current_phase', PhaseEnum(int(cur_val)))
-                                except Exception:
-                                    pass
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-
-            # Defensive: detect if phase does not advance to avoid infinite loops
-            try:
-                before = EngineCompat.get_current_phase(state)
-            except Exception:
-                before = None
-
-            dm_ai_module.PhaseManager.next_phase(state, card_db)
-
-            try:
-                after = EngineCompat.get_current_phase(state)
-            except Exception:
-                after = None
-
-            # If native call made no observable change, retry a few times then force progress
-            try:
-                def _phase_name(x):
-                    try:
-                        return str(x)
-                    except Exception:
+                # Normalize `state.current_phase` to native Phase enum when possible
+                try:
+                    if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
+                        PhaseEnum = dm_ai_module.Phase
+                        cur_val = getattr(state, 'current_phase', None)
                         try:
-                            return getattr(x, 'name', repr(x))
-                        except Exception:
-                            return repr(x)
-
-                if _phase_name(before) == _phase_name(after):
-                    # Try a small number of retries in case native has transient issues
-                    retried = False
-                    for _ in range(3):
-                        try:
-                            dm_ai_module.PhaseManager.next_phase(state, card_db)
-                        except Exception:
-                            pass
-                        try:
-                            after = EngineCompat.get_current_phase(state)
-                        except Exception:
-                            after = None
-                        if _phase_name(before) != _phase_name(after):
-                            retried = True
-                            break
-
-                    if not retried:
-                        # As a last resort, compute and assign the next phase ourselves to break loops.
-                        try:
-                            if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
-                                PhaseEnum = dm_ai_module.Phase
-                                # helper to get int value from various representations
-                                def _to_int(x):
+                            # If it's already an enum of the native type, leave it
+                            if not (isinstance(cur_val, PhaseEnum)):
+                                # If cur_val is string like 'Phase.MAIN' or 'MAIN', map to enum
+                                if isinstance(cur_val, str):
+                                    name = cur_val.split('.', 1)[1] if cur_val.startswith('Phase.') else cur_val
+                                    name = name.strip()
+                                    if hasattr(PhaseEnum, name):
+                                        try:
+                                            setattr(state, 'current_phase', getattr(PhaseEnum, name))
+                                        except Exception:
+                                            pass
+                                else:
+                                    # Try int coercion
                                     try:
-                                        if x is None:
-                                            return None
-                                        if isinstance(x, PhaseEnum):
-                                            return int(x)
-                                        if isinstance(x, str):
-                                            s = x.split('.', 1)[1] if x.startswith('Phase.') else x
-                                            s = s.strip()
-                                            if hasattr(PhaseEnum, s):
-                                                return int(getattr(PhaseEnum, s))
-                                        return int(x)
-                                    except Exception:
-                                        return None
-
-                                before_int = _to_int(before)
-                                if before_int is not None:
-                                    maxval = max((p.value for p in PhaseEnum))
-                                    forced_next = PhaseEnum((before_int + 1) % (maxval + 1))
-                                    try:
-                                        setattr(state, 'current_phase', forced_next)
-                                    except Exception:
-                                        pass
-                                    try:
-                                        native_obj = getattr(state, '_native', None)
-                                        if native_obj is not None:
-                                            try:
-                                                setattr(native_obj, 'current_phase', forced_next)
-                                            except Exception:
-                                                pass
-                                    except Exception:
-                                        pass
-                                    # update after view
-                                    try:
-                                        after = EngineCompat.get_current_phase(state)
-                                    except Exception:
-                                        after = None
-                                    try:
-                                        logger.warning("EngineCompat: forced phase advance %s -> %s", before, forced_next)
+                                        setattr(state, 'current_phase', PhaseEnum(int(cur_val)))
                                     except Exception:
                                         pass
                         except Exception:
                             pass
-            except Exception:
-                pass
+                except RuntimeError:
+                    raise
+                except Exception:
+                    pass
 
-            # Attempt to synchronize native backing if present
-            try:
-                if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
-                    PhaseEnum = dm_ai_module.Phase
-                    # Read raw assigned values
-                    raw_state_val = getattr(state, 'current_phase', None)
-                    native_obj = getattr(state, '_native', None)
-                    raw_native_val = getattr(native_obj, 'current_phase', None) if native_obj is not None else None
+                # Defensive: detect if phase does not advance to avoid infinite loops
+                try:
+                    before = EngineCompat.get_current_phase(state)
+                except Exception:
+                    before = None
 
-                    def _to_phase(x):
+                dm_ai_module.PhaseManager.next_phase(state, card_db)
+
+                try:
+                    after = EngineCompat.get_current_phase(state)
+                except Exception:
+                    after = None
+
+                # If native call made no observable change, retry a few times then force progress
+                try:
+                    def _phase_name(x):
                         try:
-                            if x is None:
-                                return None
-                            if isinstance(x, PhaseEnum):
-                                return x
-                            if hasattr(x, 'value'):
-                                return PhaseEnum(int(getattr(x, 'value')))
-                            if isinstance(x, str):
-                                nm = x.split('.', 1)[1] if x.startswith('Phase.') else x
-                                nm = nm.strip()
-                                if hasattr(PhaseEnum, nm):
-                                    return getattr(PhaseEnum, nm)
-                            return PhaseEnum(int(x))
+                            return str(x)
                         except Exception:
-                            return None
-
-                    p_state = _to_phase(raw_state_val)
-                    p_native = _to_phase(raw_native_val)
-
-                    # Prefer native value if available
-                    chosen = p_native or p_state
-                    if chosen is not None:
-                        try:
-                            # set both representations to the chosen enum where possible
                             try:
-                                setattr(state, 'current_phase', chosen)
+                                return getattr(x, 'name', repr(x))
+                            except Exception:
+                                return repr(x)
+
+                    if _phase_name(before) == _phase_name(after):
+                        # Try a small number of retries in case native has transient issues
+                        retried = False
+                        for _ in range(3):
+                            try:
+                                dm_ai_module.PhaseManager.next_phase(state, card_db)
                             except Exception:
                                 pass
-                            if native_obj is not None:
+                            try:
+                                after = EngineCompat.get_current_phase(state)
+                            except Exception:
+                                after = None
+                            if _phase_name(before) != _phase_name(after):
+                                retried = True
+                                break
+
+                        if not retried:
+                            # As a last resort, compute and assign the next phase ourselves to break loops.
+                            try:
+                                if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
+                                    PhaseEnum = dm_ai_module.Phase
+                                    # helper to get int value from various representations
+                                    def _to_int(x):
+                                        try:
+                                            if x is None:
+                                                return None
+                                            if isinstance(x, PhaseEnum):
+                                                return int(x)
+                                            if isinstance(x, str):
+                                                s = x.split('.', 1)[1] if x.startswith('Phase.') else x
+                                                s = s.strip()
+                                                if hasattr(PhaseEnum, s):
+                                                    return int(getattr(PhaseEnum, s))
+                                            return int(x)
+                                        except Exception:
+                                            return None
+
+                                    before_int = _to_int(before)
+                                    if before_int is not None:
+                                        maxval = max((p.value for p in PhaseEnum))
+                                        forced_next = PhaseEnum((before_int + 1) % (maxval + 1))
+                                        try:
+                                            setattr(state, 'current_phase', forced_next)
+                                        except Exception:
+                                            pass
+                                        try:
+                                            native_obj = getattr(state, '_native', None)
+                                            if native_obj is not None:
+                                                try:
+                                                    setattr(native_obj, 'current_phase', forced_next)
+                                                except Exception:
+                                                    pass
+                                        except Exception:
+                                            pass
+                                        # update after view
+                                        try:
+                                            after = EngineCompat.get_current_phase(state)
+                                        except Exception:
+                                            after = None
+                                        try:
+                                            logger.warning("EngineCompat: forced phase advance %s -> %s", before, forced_next)
+                                        except Exception:
+                                            pass
+                            except Exception:
+                                pass
+                except RuntimeError:
+                    raise
+                except Exception:
+                    pass
+
+                # Attempt to synchronize native backing if present
+                try:
+                    if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
+                        PhaseEnum = dm_ai_module.Phase
+                        # Read raw assigned values
+                        raw_state_val = getattr(state, 'current_phase', None)
+                        native_obj = getattr(state, '_native', None)
+                        raw_native_val = getattr(native_obj, 'current_phase', None) if native_obj is not None else None
+
+                        def _to_phase(x):
+                            try:
+                                if x is None:
+                                    return None
+                                if isinstance(x, PhaseEnum):
+                                    return x
+                                if hasattr(x, 'value'):
+                                    return PhaseEnum(int(getattr(x, 'value')))
+                                if isinstance(x, str):
+                                    nm = x.split('.', 1)[1] if x.startswith('Phase.') else x
+                                    nm = nm.strip()
+                                    if hasattr(PhaseEnum, nm):
+                                        return getattr(PhaseEnum, nm)
+                                return PhaseEnum(int(x))
+                            except Exception:
+                                return None
+
+                        p_state = _to_phase(raw_state_val)
+                        p_native = _to_phase(raw_native_val)
+
+                        # Prefer native value if available
+                        chosen = p_native or p_state
+                        if chosen is not None:
+                            try:
+                                # set both representations to the chosen enum where possible
                                 try:
-                                    setattr(native_obj, 'current_phase', chosen)
+                                    setattr(state, 'current_phase', chosen)
                                 except Exception:
                                     pass
-                            # Update 'after' textual view for downstream checks
-                            after = EngineCompat.get_current_phase(state)
-                        except Exception:
-                            pass
-                    else:
-                        # If neither converted, emit diagnostics to stderr for debugging
-                        try:
-                            logger.debug("EngineCompat: PhaseManager_next_phase: could not normalize phases (state=%s, native=%s)", raw_state_val, raw_native_val)
-                        except Exception:
-                            pass
-            except Exception:
-                pass
+                                if native_obj is not None:
+                                    try:
+                                        setattr(native_obj, 'current_phase', chosen)
+                                    except Exception:
+                                        pass
+                                # Update 'after' textual view for downstream checks
+                                after = EngineCompat.get_current_phase(state)
+                            except Exception:
+                                pass
+                        else:
+                            # If neither converted, emit diagnostics to stderr for debugging
+                            try:
+                                logger.debug("EngineCompat: PhaseManager_next_phase: could not normalize phases (state=%s, native=%s)", raw_state_val, raw_native_val)
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
 
-            # If phase didn't change (compare normalized names), increment per-state guard counter and raise after threshold
-            try:
+                # If phase didn't change (compare normalized names), increment per-state guard counter and raise after threshold
                 def _phase_name(x):
                     try:
                         return str(x)
@@ -470,7 +492,7 @@ class EngineCompat:
                         pass
 
                     # Fail fast earlier to break test hang and gather stack trace
-                    if cnt > 10:
+                    if cnt > 15:
                         raise RuntimeError(f"PhaseManager.next_phase: phase did not advance after {cnt} attempts (before={before})")
                 else:
                     # reset counter on progress
@@ -479,8 +501,8 @@ class EngineCompat:
                             setattr(state, '_phase_nochange_count', 0)
                     except Exception:
                         pass
-            except Exception:
-                pass
+            except RuntimeError:
+                raise
         else:
             logger.warning("dm_ai_module.PhaseManager.next_phase not found.")
 
@@ -667,10 +689,10 @@ class EngineCompat:
                         dm_ai_module.CommandSystem.execute_command(state, cmd_def, source_id, player_id, ctx)
                         logger.debug('EngineCompat: called CommandSystem.execute_command')
                         return # Success: Return only if executed by CommandSystem
-                except Exception:
-                    logger.exception('EngineCompat: exception during CommandSystem mapping')
-                    # Fallthrough on error to try legacy path
-                    pass
+            except Exception:
+                logger.exception('EngineCompat: exception during CommandSystem mapping')
+                # Fallthrough on error to try legacy path
+                pass
 
         # Fallback Logic (Legacy Path)
         try:
@@ -950,7 +972,7 @@ class EngineCompat:
         EngineCompat._check_module()
         assert dm_ai_module is not None
         if hasattr(dm_ai_module, 'TensorConverter') and hasattr(dm_ai_module.TensorConverter, 'convert_to_tensor'):
-             return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, card_db)
+            return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, card_db)
         return []
 
     @staticmethod

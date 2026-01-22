@@ -7,63 +7,74 @@ from pathlib import Path
 # Usage: python scripts/python/cli_target_selector.py <game_state_dump.json>
 # The game_state_dump.json should be a JSON export produced by the engine containing pending_effects and zones with instance ids.
 
-if len(sys.argv) < 2:
-    print("Usage: python scripts/python/cli_target_selector.py <game_state_dump.json>")
-    sys.exit(1)
+def main(argv):
+    if len(argv) < 2:
+        print("Usage: python scripts/python/cli_target_selector.py <game_state_dump.json>")
+        return 1
 
-p = Path(sys.argv[1])
-if not p.exists():
-    print("File not found:", p)
-    sys.exit(1)
+    p = Path(argv[1])
+    if not p.exists():
+        print("File not found:", p)
+        return 1
 
-with p.open('r', encoding='utf-8') as f:
-    gs = json.load(f)
+    with p.open('r', encoding='utf-8') as f:
+        gs = json.load(f)
 
-pending = gs.get('pending_effects', [])
-players = gs.get('players', [])
+    pending = gs.get('pending_effects', [])
+    players = gs.get('players', [])
 
-if not pending:
-    print('No pending effects')
-    sys.exit(0)
+    if not pending:
+        print('No pending effects')
+        return 0
 
-print('Pending Effects')
-for idx, pe in enumerate(pending):
-    print(f"[{idx}] type={pe.get('type')} src={pe.get('source_instance_id')} controller={pe.get('controller')} num_needed={pe.get('num_targets_needed')}")
+    # Refuse to block if stdin is not a TTY
+    if not sys.stdin.isatty():
+        print('Non-interactive environment detected; skipping interactive selection.')
+        return 2
 
-sel = int(input('Select pending effect index: '))
-pe = pending[sel]
-need = pe.get('num_targets_needed', 0)
-print('Need targets:', need)
+    print('Pending Effects')
+    for idx, pe in enumerate(pending):
+        print(f"[{idx}] type={pe.get('type')} src={pe.get('source_instance_id')} controller={pe.get('controller')} num_needed={pe.get('num_targets_needed')}")
 
-# list all battle zone instances
-instances = []
-for pl_idx, pl in enumerate(players):
-    for c in pl.get('battle_zone', []):
-        instances.append({'player': pl_idx, 'instance_id': c.get('instance_id'), 'card_id': c.get('card_id')})
+    sel = int(input('Select pending effect index: '))
+    pe = pending[sel]
+    need = pe.get('num_targets_needed', 0)
+    print('Need targets:', need)
 
-print('Available instances:')
-for i, it in enumerate(instances):
-    print(f"[{i}] player={it['player']} instance={it['instance_id']} card_id={it['card_id']}")
+    # list all battle zone instances
+    instances = []
+    for pl_idx, pl in enumerate(players):
+        for c in pl.get('battle_zone', []):
+            instances.append({'player': pl_idx, 'instance_id': c.get('instance_id'), 'card_id': c.get('card_id')})
 
-chosen = []
-for i in range(need):
-    idx = int(input(f"Choose instance index for target #{i+1}: "))
-    chosen.append(instances[idx]['instance_id'])
+    print('Available instances:')
+    for i, it in enumerate(instances):
+        print(f"[{i}] player={it['player']} instance={it['instance_id']} card_id={it['card_id']}")
 
-print('Selected targets:', chosen)
+    chosen = []
+    for i in range(need):
+        idx = int(input(f"Choose instance index for target #{i+1}: "))
+        chosen.append(instances[idx]['instance_id'])
 
-# Create an output action sequence that can be consumed by engine (format is simple JSON list of SELECT_TARGET actions)
-actions = []
-slot_index = sel
-for t in chosen:
-    actions.append({
-        'type': 'SELECT_TARGET',
-        'slot_index': slot_index,
-        'target_instance_id': t
-    })
+    print('Selected targets:', chosen)
 
-outp = Path('scripts/selected_targets.json')
-with outp.open('w', encoding='utf-8') as f:
-    json.dump(actions, f, indent=2)
+    # Create an output action sequence that can be consumed by engine (format is simple JSON list of SELECT_TARGET actions)
+    actions = []
+    slot_index = sel
+    for t in chosen:
+        actions.append({
+            'type': 'SELECT_TARGET',
+            'slot_index': slot_index,
+            'target_instance_id': t
+        })
 
-print('Wrote', outp)
+    outp = Path('scripts/selected_targets.json')
+    with outp.open('w', encoding='utf-8') as f:
+        json.dump(actions, f, indent=2)
+
+    print('Wrote', outp)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

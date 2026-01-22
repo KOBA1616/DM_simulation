@@ -12,21 +12,25 @@ import dm_ai_module
 
 card_db = dm_ai_module.JsonLoader.load_cards('data/cards.json')
 valid_ids = list(card_db.keys())
-if not valid_ids:
-    print('no cards')
-    raise SystemExit(1)
 
-deck = [random.choice(valid_ids) for _ in range(40)]
-runner = dm_ai_module.ParallelRunner(card_db, 50, 1)
 
-n = 200
-res = runner.play_deck_matchup(list(deck), list(deck), n, 4)
-print('C++ batch results:')
-print('  total', len(res))
-print('  count 1:', res.count(1))
-print('  count 2:', res.count(2))
-print('  count 0:', res.count(0))
-print('  sample first 40:', res[:40])
+def main():
+    if not valid_ids:
+        print('no cards')
+        raise SystemExit(1)
+
+    deck = [random.choice(valid_ids) for _ in range(40)]
+    # ParallelRunner is potentially heavy; only run when invoked as script
+    runner = dm_ai_module.ParallelRunner(card_db, 50, 1)
+
+    n = 200
+    res = runner.play_deck_matchup(list(deck), list(deck), n, 4)
+    print('C++ batch results:')
+    print('  total', len(res))
+    print('  count 1:', res.count(1))
+    print('  count 2:', res.count(2))
+    print('  count 0:', res.count(0))
+    print('  sample first 40:', res[:40])
 
 
 def run_single_game_py(seed, deck_a, deck_b, max_steps=10000):
@@ -103,20 +107,24 @@ def run_single_game_py(seed, deck_a, deck_b, max_steps=10000):
     return 0
 
 
-print('\nPython-driven single-game sampling (200 games)...')
+    print('\nPython-driven single-game sampling (200 games)...')
 counts = {0:0,1:0,2:0}
 total_py = 200
 n1 = total_py // 2
 n2 = total_py - n1
-for i in range(n1):
-    seed = 2000 + i
-    r = run_single_game_py(seed, list(deck), list(deck), max_steps=2000)
-    counts[r] = counts.get(r,0) + 1
-for i in range(n2):
-    seed = 3000 + i
-    # swap deck order so challenger is P2
-    r = run_single_game_py(seed, list(deck), list(deck), max_steps=2000)
-    # when swapped, a P2-win corresponds to challenger win; count as P1-equivalent by mapping
-    counts[r] = counts.get(r,0) + 1
+    for i in range(n1):
+        seed = 2000 + i
+        r = run_single_game_py(seed, list(deck), list(deck), max_steps=2000)
+        counts[r] = counts.get(r,0) + 1
+    for i in range(n2):
+        seed = 3000 + i
+        # swap deck order so challenger is P2
+        r = run_single_game_py(seed, list(deck), list(deck), max_steps=2000)
+        # when swapped, a P2-win corresponds to challenger win; count as P1-equivalent by mapping
+        counts[r] = counts.get(r,0) + 1
 
-print('Py runner counts:', counts)
+    print('Py runner counts:', counts)
+
+
+if __name__ == '__main__':
+    main()
