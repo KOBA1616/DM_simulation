@@ -39,8 +39,6 @@ class TestSpellAndStack(unittest.TestCase):
         # Allow attribute access for stub objects
         cid = getattr(eff, 'card_id', -1)
         self.assertEqual(cid, spell_card_id)
-        # Type is ActionType.PLAY_CARD, not "SPELL_EFFECT" in the stub logic I added
-        # self.assertEqual(eff['type'], "SPELL_EFFECT")
 
         # Verification 3: Resolve Stack
         resolve_action = Action()
@@ -49,10 +47,59 @@ class TestSpellAndStack(unittest.TestCase):
 
         self.assertEqual(len(self.game.state.pending_effects), 0, "Pending effects should be empty after resolution")
 
-        # Verification 4: Card in graveyard (we moved it there immediately in our stub implementation)
-        # Note: In real engine it might move after resolution, but our stub moved it on cast.
+        # Verification 4: Card in graveyard
         card_in_grave = any(c.instance_id == hand_card.instance_id for c in self.p0.graveyard)
         self.assertTrue(card_in_grave, "Spell card should be in graveyard")
+
+    def test_stack_lifo(self):
+        """Verify that pending effects are resolved in LIFO order."""
+        # 1. Add two spells to hand
+        card_id_A = 7  # Spell A
+        card_id_B = 8  # Spell B
+        self.game.state.add_card_to_hand(0, card_id_A)
+        self.game.state.add_card_to_hand(0, card_id_B)
+
+        hand_card_A = self.p0.hand[-2]
+        hand_card_B = self.p0.hand[-1]
+
+        # 2. Play Spell A
+        action_A = Action()
+        action_A.type = ActionType.PLAY_CARD
+        action_A.card_id = card_id_A
+        action_A.source_instance_id = hand_card_A.instance_id
+        action_A.target_player = 0
+        self.game.execute_action(action_A)
+
+        # 3. Play Spell B (Triggered via some mechanism? Or just stacked?)
+        # For this test, we simulate adding another effect to the stack
+        # as if Spell A triggered Spell B or we are in a chain.
+        # Since we can't easily chain in stub, we just Play B.
+        action_B = Action()
+        action_B.type = ActionType.PLAY_CARD
+        action_B.card_id = card_id_B
+        action_B.source_instance_id = hand_card_B.instance_id
+        action_B.target_player = 0
+        self.game.execute_action(action_B)
+
+        # Verify stack has 2 items: [A, B]
+        self.assertEqual(len(self.game.state.pending_effects), 2)
+        self.assertEqual(getattr(self.game.state.pending_effects[0], 'card_id'), card_id_A)
+        self.assertEqual(getattr(self.game.state.pending_effects[1], 'card_id'), card_id_B)
+
+        # 4. Resolve First (Should be B)
+        resolve_action = Action()
+        resolve_action.type = ActionType.RESOLVE_EFFECT
+        self.game.execute_action(resolve_action)
+
+        # Verify stack has 1 item: [A]
+        self.assertEqual(len(self.game.state.pending_effects), 1)
+        self.assertEqual(getattr(self.game.state.pending_effects[0], 'card_id'), card_id_A)
+
+        # 5. Resolve Second (Should be A)
+        self.game.execute_action(resolve_action)
+
+        # Verify stack empty
+        self.assertEqual(len(self.game.state.pending_effects), 0)
 
 if __name__ == '__main__':
     unittest.main()
