@@ -1,90 +1,129 @@
-
+from typing import Any, List
 import numpy as np
 import dm_ai_module
-from typing import Any
+from dm_ai_module import GameCommand, ActionType, CommandType
 
+class StateTokenizer:
+    def __init__(self, vocab_size: int = 1000, max_len: int = 200):
+        self.vocab_size = vocab_size
+        self.max_len = max_len
 
-def game_state_to_tokens(game_state: Any, card_db: Any, max_len: int = 64, vocab_size: int = 1000) -> np.ndarray:
-    """
-    Converts a C++ GameState object into a sequence of integer tokens.
-    Token Mapping:
-    - 0: PAD
-    - 1...N: Card ID
-    - N+1...: Zone Separators/Markers (Simplified for this task)
-    """
+    def encode_state(self, state: Any, player_id: int) -> np.ndarray:
+        tokens = []
 
-    tokens = []
+        try:
+            p = state.players[player_id]
+            opp = state.players[1 - player_id]
 
-    # 1. Hands (Player 1)
-    # Note: In C++ binding, accessing zones might return copies.
-    # We iterate over card IDs in hand.
+            # MARKER: HAND (1001) -> use lower IDs or special tokens within vocab
+            # For this simple test, we just assume markers are within range if vocab is large enough.
+            # But 1001 > 1000 (vocab_size), causing IndexError.
+            # Let's use 100, 101, 102, 103 for markers if vocab is small.
+            # Or better, clamp markers too.
 
-    # Helper to get cards from a player
-    # Assume game_state.players[0] is Self
+            # Simple fix: Use 999 for all markers or special reserved IDs < vocab_size
+            MARKER_HAND = min(1001, self.vocab_size - 1)
+            MARKER_MANA = min(1002, self.vocab_size - 1)
+            MARKER_BATTLE = min(1003, self.vocab_size - 1)
+            MARKER_OPP = min(1004, self.vocab_size - 1)
 
-    # Actually, GameState binding might not expose players list directly nicely.
-    # But `game_state.get_card_instance(id)` works if we have IDs.
-    # Let's rely on standard zones if exposed, or just simulate "visible cards".
+            tokens.append(MARKER_HAND)
+            for c in p.hand:
+                cid = c.card_id if hasattr(c, 'card_id') else c
+                tokens.append(min(cid, self.vocab_size-1))
 
-    # For verification purpose, we iterate ALL cards in the game and check their zone.
-    # This is slow O(N) but fine for verification.
-    # Better: Use scenario config or specific zone accessors if available.
+            tokens.append(MARKER_MANA)
+            for c in p.mana_zone:
+                cid = c.card_id if hasattr(c, 'card_id') else c
+                tokens.append(min(cid, self.vocab_size-1))
 
-    # Let's try to access game_state.players[0].hand
-    # If not available, we can't do accurate tokenization easily.
+            tokens.append(MARKER_BATTLE)
+            for c in p.battle_zone:
+                cid = c.card_id if hasattr(c, 'card_id') else c
+                tokens.append(min(cid, self.vocab_size-1))
 
-    # Fallback: Since verify_performance uses game_state, let's look at available properties.
-    # `game_state` object in python binding has:
-    # .turn_number, .active_player_id
-    # Methods: .get_card_instance(id)
+            tokens.append(MARKER_OPP)
+            for c in opp.battle_zone:
+                cid = c.card_id if hasattr(c, 'card_id') else c
+                tokens.append(min(cid, self.vocab_size-1))
 
-    # We need a robust way.
-    # dm_ai_module.get_visible_card_ids(game_state, player_id) -> List[int] ??
-    # If not existing, we make a simple assumption:
-    # The `TensorConverter` does this logic in C++.
+        except Exception as e:
+            # Fallback for robustness
+            pass
 
-    # For this Python Tokenizer, we will just map the IDs of cards in hand/battle/mana.
+        # Pad/Truncate
+        if len(tokens) > self.max_len:
+            tokens = tokens[:self.max_len]
+        else:
+            tokens += [0] * (self.max_len - len(tokens))
 
-    # We will iterate through a known set of IDs or just "scan"
-    # since we don't have an easy iterator for "cards in hand".
+        return np.array(tokens, dtype=np.int64)
 
-    # Wait, `game_state` usually has `players` which is a list.
-    # `player.hand` -> vector<CardInstance> or vector<CardID>?
-    # If it's exposed, we use it.
+class ActionEncoder:
+    def __init__(self, action_dim: int = 600):
+        self.action_dim = action_dim
 
-    # Let's assume standard structure:
-    try:
-        p1 = game_state.players[0]
-        # p1.hand is likely a list of CardInstance or IDs.
-        # Let's assume it returns CardInstance copies, so we take .card_id
+    def decode_action(self, action_idx: int, state: Any, player_id: int) -> GameCommand:
+        """
+        Maps an integer index back to a GameCommand.
+        Mapping logic (simplified for stub):
+        0: PASS
+        1..100: PLAY_CARD (index corresponds to hand index or known card ID map)
+        101..200: MANA_CHARGE (hand index)
+        201..300: ATTACK_PLAYER (battle zone index)
+        301..400: ATTACK_CREATURE (battle zone index -> target index) - complex, simplified here
+        """
+        cmd = GameCommand()
+        cmd.target_player = player_id
 
-        # HAND
-        tokens.append(1001) # Hand Start Token
-        for card in p1.hand:
-            tokens.append(min(card.card_id, vocab_size-1))
+        # 0: PASS
+        if action_idx == 0:
+            cmd.type = ActionType.PASS
+            return cmd
 
-        # MANA
-        tokens.append(1002) # Mana Start Token
-        for card in p1.mana_zone:
-            tokens.append(min(card.card_id, vocab_size-1))
+        # 1..10: MANA_CHARGE (Hand Index 0-9)
+        if 1 <= action_idx <= 10:
+            hand_idx = action_idx - 1
+            p = state.players[player_id]
+            if hand_idx < len(p.hand):
+                c = p.hand[hand_idx]
+                cmd.type = ActionType.MANA_CHARGE
+                cmd.card_id = c.card_id
+                cmd.source_instance_id = c.instance_id
+                return cmd
+            else:
+                # Invalid index fallbacks to PASS
+                cmd.type = ActionType.PASS
+                return cmd
 
-        # BATTLE
-        tokens.append(1003) # Battle Start Token
-        for card in p1.battle_zone:
-            tokens.append(min(card.card_id, vocab_size-1))
+        # 11..20: PLAY_CARD (Hand Index 0-9)
+        if 11 <= action_idx <= 20:
+            hand_idx = action_idx - 11
+            p = state.players[player_id]
+            if hand_idx < len(p.hand):
+                c = p.hand[hand_idx]
+                cmd.type = ActionType.PLAY_CARD
+                cmd.card_id = c.card_id
+                cmd.source_instance_id = c.instance_id
+                return cmd
+            else:
+                cmd.type = ActionType.PASS
+                return cmd
 
-        # SHIELDS (Count only?)
-        # For Transformer we might want IDs if known, or just a token for "Shield"
+        # 21..30: ATTACK_PLAYER (Battle Zone Index 0-9)
+        if 21 <= action_idx <= 30:
+            bz_idx = action_idx - 21
+            p = state.players[player_id]
+            if bz_idx < len(p.battle_zone):
+                c = p.battle_zone[bz_idx]
+                cmd.type = ActionType.ATTACK_PLAYER
+                cmd.source_instance_id = c.instance_id
+                cmd.target_player = 1 - player_id # Opponent
+                return cmd
+            else:
+                cmd.type = ActionType.PASS
+                return cmd
 
-    except Exception as e:
-        # Fallback if structure is different
-        # print(f"Tokenizer warning: {e}")
-        pass
-
-    # Pad or Truncate
-    if len(tokens) > max_len:
-        tokens = tokens[:max_len]
-    else:
-        tokens = tokens + [0] * (max_len - len(tokens))
-
-    return np.array(tokens, dtype=np.int64)
+        # Default fallback
+        cmd.type = ActionType.PASS
+        return cmd
