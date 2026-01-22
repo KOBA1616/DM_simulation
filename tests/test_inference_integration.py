@@ -19,7 +19,9 @@ class TestInferenceIntegration(unittest.TestCase):
         self.game.start_game()
 
         # Check if model exists, if not, create a dummy one for testing
-        self.model_path = os.path.join(project_root, "models", "test_model.pth")
+        self.model_dir = os.path.join(project_root, "models")
+        os.makedirs(self.model_dir, exist_ok=True)
+        self.model_path = os.path.join(self.model_dir, "test_model.pth")
 
         # Initialize model structure
         self.model = DuelTransformer(
