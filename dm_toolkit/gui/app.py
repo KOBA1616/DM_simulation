@@ -116,18 +116,49 @@ class GameWindow(QMainWindow):
         self.card_editor.data_saved.connect(self.reload_card_data)
         self.card_editor.show()
 
+    def toggle_native_db(self) -> None:
+        """Attempts to toggle the native CardDatabase loading."""
+        if self.native_card_db is not None:
+            # Disable it
+            self.native_card_db = None
+            self.log_viewer.log_message(tr("Native CardDatabase disabled."))
+            QMessageBox.information(self, tr("Native DB"), tr("Native CardDatabase disabled."))
+        else:
+            # Enable it
+            if dm_ai_module and hasattr(dm_ai_module, 'JsonLoader'):
+                try:
+                    self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+                    if self.native_card_db:
+                         self.log_viewer.log_message(tr("Native CardDatabase loaded successfully."))
+                         QMessageBox.information(self, tr("Native DB"), tr("Native CardDatabase loaded successfully."))
+                    else:
+                         self.log_viewer.log_message(tr("Native CardDatabase failed to load (returned None/Empty)."))
+                         QMessageBox.warning(self, tr("Native DB"), tr("Native CardDatabase failed to load."))
+                except Exception as e:
+                    self.log_viewer.log_message(f"{tr('Error loading Native DB')}: {e}")
+                    QMessageBox.critical(self, tr("Native DB Error"), f"{tr('Error loading Native DB')}:\n{e}")
+            else:
+                 QMessageBox.warning(self, tr("Native DB"), tr("dm_ai_module or JsonLoader not available."))
+
     def reload_card_data(self) -> None:
         try:
             loaded = EngineCompat.load_cards_robust("data/cards.json")
             if loaded:
                 self.card_db = loaded
-            if hasattr(self, 'deck_builder') and self.deck_builder.isVisible():
-                self.deck_builder.reload_database()
-            if hasattr(self, 'scenario_tools'):
-                self.scenario_tools.set_game_state(self.gs, self.card_db)
-            self.log_viewer.log_message(tr("Card Data Reloaded from Editor Save"))
+                # Ensure card_db is always a dict
+                if isinstance(self.card_db, list):
+                    self.card_db = {card['id']: card for card in self.card_db if isinstance(card, dict) and 'id' in card}
+
+                if hasattr(self, 'deck_builder') and self.deck_builder.isVisible():
+                    self.deck_builder.reload_database()
+                if hasattr(self, 'scenario_tools'):
+                    self.scenario_tools.set_game_state(self.gs, self.card_db)
+                self.log_viewer.log_message(tr("Card Data Reloaded from Editor Save"))
+            else:
+                 raise Exception("load_cards_robust returned empty/None")
         except Exception as e:
             self.log_viewer.log_message(f"{tr('Error reloading cards')}: {e}")
+            QMessageBox.critical(self, tr("Reload Failed"), f"{tr('Failed to reload card data')}:\n{e}")
 
     def toggle_scenario_mode(self, checked: bool) -> None:
         if not hasattr(self, 'scenario_tools'): return

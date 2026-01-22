@@ -1,0 +1,29 @@
+{
+  "description": "Simple mana charge test",
+  "setup": {
+    "player_turn": 0,
+    "players": [
+      {
+        "hand": [1, 2, 3],
+        "mana_zone": [],
+        "battle_zone": [],
+        "shield_zone": [4, 5]
+      },
+      {
+        "hand": [1, 2, 3],
+        "mana_zone": [],
+        "battle_zone": [],
+        "shield_zone": [4, 5]
+      }
+    ]
+  },
+  "action": {
+    "type": "MANA_CHARGE",
+    "card_index": 0,
+    "player_index": 0
+  },
+  "expected": {
+    "mana_zone_count_p0": 1,
+    "hand_count_p0": 2
+  }
+}

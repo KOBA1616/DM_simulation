@@ -33,10 +33,11 @@ namespace dm::engine::systems {
             if (parent_idx >= 0) parent_pc = call_stack[parent_idx].pc;
             std::string inst_dump = "{}";
             if (instructions && !instructions->empty()) inst_dump = (*instructions)[0].args.dump();
-            std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
+            // Removed noisy stderr diagnostic
+            // std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
             call_stack.push_back({instructions, 0, LoopContext{}});
             size_t after_size = call_stack.size();
-            std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
+            // std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
         }
 
         execution_paused = false;
@@ -131,6 +132,14 @@ namespace dm::engine::systems {
                 }
             } catch(...) { resolve_repeat_count = 0; last_inst_sig.clear(); }
 
+            // Record Execution History (Debug Hook)
+            nlohmann::json log_entry;
+            log_entry["op"] = static_cast<int>(inst.op);
+            log_entry["args"] = inst.args;
+            log_entry["pc"] = frame.pc;
+            log_entry["stack_depth"] = call_stack.size();
+            execution_history.push_back(log_entry);
+
             execute_instruction(inst, state, card_db);
 
             // If new frames were pushed, log parent pc change for diagnostics
@@ -197,6 +206,42 @@ namespace dm::engine::systems {
 
     void PipelineExecutor::clear_context() {
         context.clear();
+        execution_history.clear();
+    }
+
+    nlohmann::json PipelineExecutor::get_execution_history() const {
+        return execution_history;
+    }
+
+    nlohmann::json PipelineExecutor::dump_context() const {
+        nlohmann::json j_ctx = nlohmann::json::object();
+        for (const auto& kv : context) {
+            if (std::holds_alternative<int>(kv.second)) {
+                j_ctx[kv.first] = std::get<int>(kv.second);
+            } else if (std::holds_alternative<std::string>(kv.second)) {
+                j_ctx[kv.first] = std::get<std::string>(kv.second);
+            } else if (std::holds_alternative<std::vector<int>>(kv.second)) {
+                j_ctx[kv.first] = std::get<std::vector<int>>(kv.second);
+            } else {
+                j_ctx[kv.first] = nullptr;
+            }
+        }
+        return j_ctx;
+    }
+
+    nlohmann::json PipelineExecutor::dump_call_stack() const {
+        nlohmann::json j_stack = nlohmann::json::array();
+        for (const auto& frame : call_stack) {
+            nlohmann::json f;
+            f["pc"] = frame.pc;
+            f["total_instructions"] = frame.instructions ? frame.instructions->size() : 0;
+            // Maybe dump current instruction if within bounds
+            if (frame.instructions && frame.pc < (int)frame.instructions->size()) {
+                f["current_op"] = static_cast<int>((*frame.instructions)[frame.pc].op);
+            }
+            j_stack.push_back(f);
+        }
+        return j_stack;
     }
 
      void PipelineExecutor::execute_instruction(const Instruction& inst, GameState& state,

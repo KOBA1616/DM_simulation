@@ -34,6 +34,13 @@ class LayoutBuilder:
         window.toolbar.setObjectName("MainToolbar")
         window.addToolBar(window.toolbar)
 
+        # Debug Menu
+        menubar = window.menuBar()
+        debug_menu = menubar.addMenu(tr("Debug"))
+        toggle_db_act = QAction(tr("Toggle Native Card DB"), window)
+        toggle_db_act.triggered.connect(window.toggle_native_db)
+        debug_menu.addAction(toggle_db_act)
+
         deck_act = QAction(tr("Deck Builder"), window)
         deck_act.triggered.connect(window.open_deck_builder)
         window.toolbar.addAction(deck_act)

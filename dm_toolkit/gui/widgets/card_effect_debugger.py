@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QLabel,
     QTabWidget, QSplitter, QTableWidget, QTableWidgetItem,
-    QCheckBox, QPushButton, QComboBox, QGroupBox, QHeaderView
+    QCheckBox, QPushButton, QComboBox, QGroupBox, QHeaderView,
+    QToolBar
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.i18n import tr
@@ -17,9 +18,29 @@ class CardEffectDebugger(QWidget):
     - Pending Stack: Detailed view of pending effects.
     """
 
+    # Signal to request engine step
+    step_requested = pyqtSignal()
+    # Signal to request resume
+    resume_requested = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.layout = QVBoxLayout(self)
+
+        # Toolbar for Execution Control
+        self.toolbar_layout = QHBoxLayout()
+        self.step_btn = QPushButton(tr("Step Over"))
+        self.resume_btn = QPushButton(tr("Resume"))
+        self.pause_btn = QPushButton(tr("Pause")) # Optional manual pause
+
+        self.step_btn.clicked.connect(self.on_step_clicked)
+        self.resume_btn.clicked.connect(self.on_resume_clicked)
+
+        self.toolbar_layout.addWidget(self.step_btn)
+        self.toolbar_layout.addWidget(self.resume_btn)
+        self.toolbar_layout.addStretch()
+        self.layout.addLayout(self.toolbar_layout)
+
         self.tabs = QTabWidget()
         self.layout.addWidget(self.tabs)
 
@@ -45,8 +66,8 @@ class CardEffectDebugger(QWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.state_layout.addWidget(self.pending_table)
 
-        # Variable Watcher (Placeholder for now until Context is exposed)
-        self.state_layout.addWidget(QLabel(tr("Variable Watcher (Mock)")))
+        # Variable Watcher
+        self.state_layout.addWidget(QLabel(tr("Variable Watcher")))
         self.var_table = QTableWidget()
         self.var_table.setColumnCount(2)
         self.var_table.setHorizontalHeaderLabels([tr("Name"), tr("Value")])
@@ -67,6 +88,12 @@ class CardEffectDebugger(QWidget):
 
         self.last_history_len = 0
 
+    def on_step_clicked(self):
+        self.step_requested.emit()
+
+    def on_resume_clicked(self):
+        self.resume_requested.emit()
+
     def update_state(self, game_state, card_db):
         """Updates the view based on current game state."""
         if not game_state:
@@ -86,7 +113,10 @@ class CardEffectDebugger(QWidget):
         # Update Pending Effects
         pending_info = EngineCompat.get_pending_effects_info(game_state)
         self.pending_table.setRowCount(len(pending_info))
-        for i, (p_type, source_id, controller) in enumerate(pending_info):
+        for i, info in enumerate(pending_info):
+            # Info is now (type_str, source_id, controller, command_object)
+            p_type, source_id, controller, cmd_obj = info
+
             self.pending_table.setItem(i, 0, QTableWidgetItem(str(p_type)))
 
             # Resolve source name
@@ -101,9 +131,14 @@ class CardEffectDebugger(QWidget):
 
             self.pending_table.setItem(i, 1, QTableWidgetItem(source_name))
             self.pending_table.setItem(i, 2, QTableWidgetItem(f"P{controller}"))
-            self.pending_table.setItem(i, 3, QTableWidgetItem("-")) # Details need more exposure
 
-        # Update Variables (Placeholder)
-        # We don't have direct access to execution_context from python bindings yet.
-        # This would require C++ changes.
-        self.var_table.setRowCount(0)
+            # Details Column
+            details_str = EngineCompat.get_command_details(cmd_obj)
+            self.pending_table.setItem(i, 3, QTableWidgetItem(details_str))
+
+        # Update Variables
+        context_vars = EngineCompat.get_execution_context(game_state)
+        self.var_table.setRowCount(len(context_vars))
+        for i, (name, value) in enumerate(context_vars.items()):
+            self.var_table.setItem(i, 0, QTableWidgetItem(str(name)))
+            self.var_table.setItem(i, 1, QTableWidgetItem(str(value)))
