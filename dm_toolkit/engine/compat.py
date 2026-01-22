@@ -44,6 +44,34 @@ class EngineCompat:
         if not dm_ai_module:
             raise ImportError("dm_ai_module is not loaded.")
 
+    @staticmethod
+    def get_execution_context(state: GameState) -> Dict[str, Any]:
+        """Wraps dm_ai_module.get_execution_context"""
+        if dm_ai_module and hasattr(dm_ai_module, 'get_execution_context'):
+            try:
+                return dm_ai_module.get_execution_context(state)
+            except Exception:
+                pass
+        # Fallback if state has it directly (Python stub)
+        if hasattr(state, 'execution_context'):
+             # Check if it's an object with .variables or a dict
+             ctx = getattr(state, 'execution_context')
+             if hasattr(ctx, 'variables'):
+                 return ctx.variables
+             if isinstance(ctx, dict):
+                 return ctx
+        return {}
+
+    @staticmethod
+    def get_command_details(cmd: Any) -> str:
+        """Wraps dm_ai_module.get_command_details"""
+        if dm_ai_module and hasattr(dm_ai_module, 'get_command_details'):
+            try:
+                return dm_ai_module.get_command_details(cmd)
+            except Exception:
+                pass
+        return str(cmd)
+
     # -------------------------------------------------------------------------
     # GameState Attribute Wrappers
     # -------------------------------------------------------------------------
