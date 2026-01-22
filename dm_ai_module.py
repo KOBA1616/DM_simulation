@@ -552,12 +552,62 @@ else:
                     # Break to hand
                     p.hand.append(c)
 
+            elif cmd.type == CommandType.DRAW_CARD:
+                state.draw_cards(player_id, getattr(cmd, 'amount', 1))
+
     class TokenConverter:
         @staticmethod
         def encode_state(state: Any, player_id: int, length: int) -> List[int]:
             return [0] * length
 
     class GenericCardSystem:
+        @staticmethod
+        def execute_card_effect(state: Any, card_id: int, player_id: int) -> None:
+            """Stub implementation of effect resolution for Python mode."""
+            card_data = CardDatabase.get_card(card_id)
+            if not card_data:
+                return
+
+            # Determine effects based on Type (Spell vs Creature)
+            ctype = card_data.get('type', 'SPELL')
+            effects = card_data.get('effects', [])
+
+            # Simple heuristic: execute all commands in the first relevant effect
+            # In real engine, this is event-driven (ON_PLAY, ON_CAST_SPELL)
+
+            trigger_key = 'ON_CAST_SPELL' if ctype == 'SPELL' else 'ON_PLAY'
+
+            for effect in effects:
+                if effect.get('trigger') == trigger_key:
+                    commands = effect.get('commands', [])
+                    for cmd_dict in commands:
+                        # Map dict to CommandType and execute
+                        cmd_type_str = cmd_dict.get('type', '')
+
+                        # Create a dummy command object for CommandSystem
+                        class CmdObj:
+                            pass
+                        cmd_obj = CmdObj()
+
+                        # Simple mapping
+                        if cmd_type_str == 'DRAW_CARD':
+                            cmd_obj.type = CommandType.DRAW_CARD
+                            cmd_obj.amount = cmd_dict.get('amount', 1)
+                        elif cmd_type_str == 'MANA_CHARGE':
+                            cmd_obj.type = CommandType.MANA_CHARGE
+                        elif cmd_type_str == 'DESTROY':
+                            cmd_obj.type = CommandType.DESTROY
+                        elif cmd_type_str == 'DISCARD':
+                            cmd_obj.type = CommandType.DISCARD
+                        elif cmd_type_str == 'SEARCH_DECK':
+                            cmd_obj.type = CommandType.SEARCH_DECK
+                        else:
+                            cmd_obj.type = CommandType.NONE
+
+                        # Execute
+                        if cmd_obj.type != CommandType.NONE:
+                            CommandSystem.execute_command(state, cmd_obj, -1, player_id)
+
         @staticmethod
         def resolve_action(state: Any, action: Any, source_id: int) -> Any:
             tgt = getattr(action, 'target_player', None)
@@ -600,7 +650,12 @@ else:
 
             elif atype == ActionType.RESOLVE_EFFECT:
                 if state.pending_effects:
-                    state.pending_effects.pop()
+                    action_to_resolve = state.pending_effects.pop()
+                    # In a full engine, 'action_to_resolve' tracks which effect to run.
+                    # Here we extract card_id and blindly run the 'primary' effect of that card.
+                    card_id = getattr(action_to_resolve, 'card_id', 0)
+                    if card_id > 0:
+                        GenericCardSystem.execute_card_effect(state, card_id, player)
 
             elif is_type(atype, 'DRAW_CARD'):
                 val = int(getattr(action, 'value1', 1))
