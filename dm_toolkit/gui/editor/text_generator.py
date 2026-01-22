@@ -1062,7 +1062,7 @@ class CardTextGenerator:
                 action_proxy["target_filter"] = command_copy.get("target_filter")
 
         # Some templates expect source_zone rather than from_zone
-        action_proxy["source_zone"] = command_copy.get("from_zone", "")
+        action_proxy["source_zone"] = command_copy.get("from_zone") or command_copy.get("source_zone", "")
 
         # Specific Adjustments
         if original_cmd_type == "MANA_CHARGE":
@@ -1112,7 +1112,8 @@ class CardTextGenerator:
             if "token_id" in command_copy and command_copy.get("token_id") is not None:
                 action_proxy["str_val"] = command_copy.get("token_id")
         elif original_cmd_type == "PLAY_FROM_ZONE":
-            action_proxy["source_zone"] = command_copy.get("from_zone", "")
+            if not action_proxy["source_zone"]:
+                 action_proxy["source_zone"] = command_copy.get("from_zone", "")
             # Check for max_cost at command level or within target_filter
             max_cost = command_copy.get("max_cost")
             if max_cost is None and "target_filter" in command_copy:
@@ -2215,8 +2216,11 @@ class CardTextGenerator:
              if text: return text
 
         elif atype == "TRANSITION" or atype == "MOVE_CARD" or atype == "REPLACE_CARD_MOVE":
-             text = cls._format_zone_move_command(atype, action, is_spell, val1, target_str)
-             if text: return text
+             # Zone move commands return a template that needs variable substitution
+             # so we assign to template and let execution proceed.
+             t = cls._format_zone_move_command(atype, action, is_spell, val1, target_str)
+             if t:
+                 template = t
 
         elif atype == "IF" or atype == "IF_ELSE" or atype == "ELSE":
             text = cls._format_logic_command(atype, action, is_spell, sample, card_mega_last_burst)
