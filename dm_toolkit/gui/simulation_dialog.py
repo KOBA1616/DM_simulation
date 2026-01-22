@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import numpy as np
+import gc
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QSpinBox,
     QPushButton, QProgressBar, QTextEdit, QGroupBox, QMessageBox, QFileDialog
@@ -41,164 +42,198 @@ class SimulationWorker(QThread):
         self.is_cancelled = False
 
     def run(self):
-        if not EngineCompat.is_available():
-            self.finished_signal.emit(0.0, tr("Error: dm_ai_module not loaded."))
-            return
-
-        # Tell mypy that dm_ai_module is available after EngineCompat check
-        assert dm_ai_module is not None
-
-        self.progress_signal.emit(0, tr("Initializing..."))
-
-        # Setup Scenario
-        if self.scenario_name not in SCENARIOS:
-            self.finished_signal.emit(0.0, f"Error: Unknown scenario {self.scenario_name}")
-            return
-
-        scenario_def = SCENARIOS[self.scenario_name]
-        config_dict = scenario_def["config"]
-
-        config = dm_ai_module.ScenarioConfig()
-        config.my_mana = config_dict.get("my_mana", 0)
-        config.my_hand_cards = config_dict.get("my_hand_cards", [])
-        config.my_battle_zone = config_dict.get("my_battle_zone", [])
-        config.my_mana_zone = config_dict.get("my_mana_zone", [])
-        config.my_grave_yard = config_dict.get("my_grave_yard", [])
-        config.my_shields = config_dict.get("my_shields", [])
-        config.enemy_shield_count = config_dict.get("enemy_shield_count", 5)
-        config.enemy_battle_zone = config_dict.get("enemy_battle_zone", [])
-        config.enemy_can_use_trigger = config_dict.get("enemy_can_use_trigger", False)
-
-        # Prepare Initial States
-        initial_states = []
-        for i in range(self.episodes):
-             seed = int(time.time() * 1000 + i) % 1000000
-             state = dm_ai_module.GameState(seed)
-             dm_ai_module.PhaseManager.setup_scenario(state, config, self.card_db)
-             initial_states.append(state)
-
-        # Setup Evaluator
-        evaluator_func = None
-
-        # Keep references to objects to prevent GC
-        self.neural_evaluator = None
-        self.torch_network = None
-
-        if self.evaluator_type == "Model":
-            try:
-                import torch
-                from dm_toolkit.ai.agent.network import AlphaZeroNetwork
-
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-                # Input Size check
-                dummy_state = dm_ai_module.GameState(42)
-                dummy_vec = EngineCompat.TensorConverter_convert_to_tensor(dummy_state, 0, self.card_db)
-                input_size = len(dummy_vec)
-                action_size = 600
-
-                self.torch_network = AlphaZeroNetwork(input_size, action_size).to(device)
-
-                if self.model_path and os.path.exists(self.model_path):
-                    self.torch_network.load_state_dict(torch.load(self.model_path, map_location=device))
-                    self.progress_signal.emit(5, f"Loaded model from {self.model_path}")
-                else:
-                    self.progress_signal.emit(5, tr("Using initialized model (Untrained)"))
-
-                self.torch_network.eval()
-
-                # Batch Callback
-                def batch_inference(input_array):
-                    with torch.no_grad():
-                        tensor = torch.from_numpy(input_array).float().to(device)
-                        policy_logits, values = self.torch_network(tensor)
-                        policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
-                        vals = values.squeeze(1).cpu().numpy()
-                        return policies, vals
-
-                # Register global callback
-                EngineCompat.register_batch_inference_numpy(batch_inference)
-
-                self.neural_evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
-                evaluator_func = self.neural_evaluator.evaluate
-
-            except ImportError:
-                self.finished_signal.emit(0.0, "Error: PyTorch not available for Model evaluation.")
-                return
-            except Exception as e:
-                self.finished_signal.emit(0.0, f"Error loading model: {e}")
-                return
-
-        elif self.evaluator_type == "Heuristic":
-            self.heuristic = dm_ai_module.HeuristicEvaluator(self.card_db)
-
-            def heuristic_batch_evaluate(states):
-                results = []
-                for s in states:
-                    p, v = self.heuristic.evaluate(s)
-                    results.append((p, v))
-                return results
-
-            evaluator_func = heuristic_batch_evaluate
-
-        else: # Random
-            def random_batch_evaluate(states):
-                results = []
-                for s in states:
-                    policy = [1.0/600.0] * 600
-                    value = 0.0
-                    results.append((policy, value))
-                return results
-            evaluator_func = random_batch_evaluate
-
-        self.progress_signal.emit(10, tr("Starting simulation") + "...")
-
-        # IMPORTANT: Reduce batch size to mitigate potential memory leaks as per requirements
-        batch_size = 32
-
-        # NOTE: ParallelRunner is known to cause std::bad_alloc with large simulation counts.
-        # This is a tracked issue in Requirement Definition 00.
-        runner = EngineCompat.create_parallel_runner(self.card_db, self.sims, batch_size)
-
-        # Run
-        start_time = time.time()
-
         try:
-            results_info = EngineCompat.ParallelRunner_play_games(runner, initial_states, evaluator_func, 1.0, False, self.threads)
-        except Exception as e:
-            self.finished_signal.emit(0.0, f"{tr('Simulation Error')}: {e}")
-            return
+            if not EngineCompat.is_available():
+                self.finished_signal.emit(0.0, tr("Error: dm_ai_module not loaded."))
+                return
 
-        duration = time.time() - start_time
+            # Tell mypy that dm_ai_module is available after EngineCompat check
+            assert dm_ai_module is not None
 
-        # Tally results
-        wins = 0
-        losses = 0
-        draws = 0
+            self.progress_signal.emit(0, tr("Initializing..."))
 
-        for info in results_info:
-            if info.result == 1: wins += 1
-            elif info.result == 2: losses += 1
-            else: draws += 1
+            # Setup Scenario
+            if self.scenario_name not in SCENARIOS:
+                self.finished_signal.emit(0.0, f"Error: Unknown scenario {self.scenario_name}")
+                return
 
-        total = wins + losses + draws
-        win_rate = (wins / total * 100) if total > 0 else 0
+            scenario_def = SCENARIOS[self.scenario_name]
+            config_dict = scenario_def["config"]
 
-        summary = (
-            f"{tr('Completed')} {total} episodes in {duration:.2f}s.\n"
-            f"{tr('Wins')}: {wins} ({win_rate:.1f}%)\n"
-            f"{tr('Losses')}: {losses}\n"
-            f"{tr('Draws')}: {draws}\n"
-            f"{tr('Throughput')}: {total/duration:.1f} games/s"
-        )
+            config = dm_ai_module.ScenarioConfig()
+            config.my_mana = config_dict.get("my_mana", 0)
+            config.my_hand_cards = config_dict.get("my_hand_cards", [])
+            config.my_battle_zone = config_dict.get("my_battle_zone", [])
+            config.my_mana_zone = config_dict.get("my_mana_zone", [])
+            config.my_grave_yard = config_dict.get("my_grave_yard", [])
+            config.my_shields = config_dict.get("my_shields", [])
+            config.enemy_shield_count = config_dict.get("enemy_shield_count", 5)
+            config.enemy_battle_zone = config_dict.get("enemy_battle_zone", [])
+            config.enemy_can_use_trigger = config_dict.get("enemy_can_use_trigger", False)
 
-        self.finished_signal.emit(win_rate, summary)
+            # Setup Evaluator
+            evaluator_func = None
 
-        # Cleanup
-        # Note: If memory leaks persist, restarting the application may be required after heavy simulations.
-        if self.evaluator_type == "Model":
-            # Unregister callback if API allows, or it will be overwritten next time
-            pass
+            # Keep references to objects to prevent GC
+            self.neural_evaluator = None
+            self.torch_network = None
+
+            if self.evaluator_type == "Model":
+                try:
+                    import torch
+                    from dm_toolkit.ai.agent.network import AlphaZeroNetwork
+
+                    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+                    # Input Size check
+                    dummy_state = dm_ai_module.GameState(42)
+                    dummy_vec = EngineCompat.TensorConverter_convert_to_tensor(dummy_state, 0, self.card_db)
+                    input_size = len(dummy_vec)
+                    action_size = 600
+
+                    self.torch_network = AlphaZeroNetwork(input_size, action_size).to(device)
+
+                    if self.model_path and os.path.exists(self.model_path):
+                        self.torch_network.load_state_dict(torch.load(self.model_path, map_location=device))
+                        self.progress_signal.emit(5, f"Loaded model from {self.model_path}")
+                    else:
+                        self.progress_signal.emit(5, tr("Using initialized model (Untrained)"))
+
+                    self.torch_network.eval()
+
+                    # Batch Callback
+                    def batch_inference(input_array):
+                        with torch.no_grad():
+                            tensor = torch.from_numpy(input_array).float().to(device)
+                            policy_logits, values = self.torch_network(tensor)
+                            policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
+                            vals = values.squeeze(1).cpu().numpy()
+                            return policies, vals
+
+                    # Register global callback
+                    EngineCompat.register_batch_inference_numpy(batch_inference)
+
+                    self.neural_evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
+                    evaluator_func = self.neural_evaluator.evaluate
+
+                except ImportError:
+                    self.finished_signal.emit(0.0, "Error: PyTorch not available for Model evaluation.")
+                    return
+                except Exception as e:
+                    self.finished_signal.emit(0.0, f"Error loading model: {e}")
+                    return
+
+            elif self.evaluator_type == "Heuristic":
+                self.heuristic = dm_ai_module.HeuristicEvaluator(self.card_db)
+
+                def heuristic_batch_evaluate(states):
+                    results = []
+                    for s in states:
+                        p, v = self.heuristic.evaluate(s)
+                        results.append((p, v))
+                    return results
+
+                evaluator_func = heuristic_batch_evaluate
+
+            else: # Random
+                def random_batch_evaluate(states):
+                    results = []
+                    for s in states:
+                        policy = [1.0/600.0] * 600
+                        value = 0.0
+                        results.append((policy, value))
+                    return results
+                evaluator_func = random_batch_evaluate
+
+            self.progress_signal.emit(10, tr("Starting simulation") + "...")
+
+            # Simulation parameters
+            batch_size = 32
+
+            # Chunking Strategy for Large Scale Simulations
+            # Split total episodes into smaller chunks to manage memory
+            chunk_size = 50 # Process 50 games at a time
+            total_episodes = self.episodes
+            num_chunks = (total_episodes + chunk_size - 1) // chunk_size
+
+            all_results = []
+
+            start_time = time.time()
+
+            for chunk_idx in range(num_chunks):
+                if self.is_cancelled:
+                    self.progress_signal.emit(int((chunk_idx / num_chunks) * 90), tr("Simulation cancelled."))
+                    break
+
+                # Determine chunk range
+                start_game_idx = chunk_idx * chunk_size
+                end_game_idx = min((chunk_idx + 1) * chunk_size, total_episodes)
+                current_chunk_size = end_game_idx - start_game_idx
+
+                self.progress_signal.emit(
+                    10 + int((chunk_idx / num_chunks) * 80),
+                    f"Processing chunk {chunk_idx + 1}/{num_chunks} ({current_chunk_size} games)..."
+                )
+
+                # Prepare Initial States for this chunk
+                chunk_initial_states = []
+                for i in range(current_chunk_size):
+                    global_idx = start_game_idx + i
+                    seed = int(time.time() * 1000 + global_idx) % 1000000
+                    state = dm_ai_module.GameState(seed)
+                    dm_ai_module.PhaseManager.setup_scenario(state, config, self.card_db)
+                    chunk_initial_states.append(state)
+
+                # Create Runner for this chunk
+                # Recreating the runner helps to clear any internal buffers in C++ side
+                runner = EngineCompat.create_parallel_runner(self.card_db, self.sims, batch_size)
+
+                try:
+                    results_info = EngineCompat.ParallelRunner_play_games(runner, chunk_initial_states, evaluator_func, 1.0, False, self.threads)
+                    all_results.extend(results_info)
+                except Exception as e:
+                    self.finished_signal.emit(0.0, f"{tr('Simulation Error')} in chunk {chunk_idx}: {e}")
+                    return
+                finally:
+                    # Clean up runner explicitly
+                    del runner
+                    gc.collect()
+
+            if self.is_cancelled and not all_results:
+                 self.finished_signal.emit(0.0, tr("Simulation cancelled by user."))
+                 return
+
+            duration = time.time() - start_time
+
+            # Tally results
+            wins = 0
+            losses = 0
+            draws = 0
+
+            for info in all_results:
+                if info.result == 1: wins += 1
+                elif info.result == 2: losses += 1
+                else: draws += 1
+
+            total = wins + losses + draws
+            win_rate = (wins / total * 100) if total > 0 else 0
+
+            summary = (
+                f"{tr('Completed')} {total} episodes in {duration:.2f}s.\n"
+                f"{tr('Wins')}: {wins} ({win_rate:.1f}%)\n"
+                f"{tr('Losses')}: {losses}\n"
+                f"{tr('Draws')}: {draws}\n"
+                f"{tr('Throughput')}: {total/duration:.1f} games/s"
+            )
+
+            self.finished_signal.emit(win_rate, summary)
+
+        finally:
+            # Cleanup Callback
+            if self.evaluator_type == "Model":
+                # Unregister callback to prevent memory leaks and crash on exit
+                EngineCompat.register_batch_inference_numpy(None)
+
 
 class SimulationDialog(QDialog):
     def __init__(self, card_db, parent=None):
@@ -284,7 +319,7 @@ class SimulationDialog(QDialog):
 
         self.cancel_btn = QPushButton(tr("Cancel"))
         self.cancel_btn.setToolTip(tr("Close this dialog"))
-        self.cancel_btn.clicked.connect(self.reject)
+        self.cancel_btn.clicked.connect(self.cancel_simulation)
         self.cancel_btn.setEnabled(True) # Always enabled to close dialog
 
         btn_layout.addWidget(self.run_btn)
@@ -322,6 +357,12 @@ class SimulationDialog(QDialog):
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.finished_signal.connect(self.simulation_finished)
         self.worker.start()
+
+    def cancel_simulation(self):
+        if self.worker:
+            self.worker.is_cancelled = True
+            self.log_text.append(tr("Cancelling..."))
+        self.reject()
 
     def update_progress(self, val, msg):
         self.progress.setValue(val)

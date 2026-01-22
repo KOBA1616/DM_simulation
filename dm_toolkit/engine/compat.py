@@ -959,7 +959,7 @@ class EngineCompat:
         return {}
 
     @staticmethod
-    def register_batch_inference_numpy(callback: Callable[[List[Any]], Any]) -> None:
+    def register_batch_inference_numpy(callback: Optional[Callable[[List[Any]], Any]]) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
         if hasattr(dm_ai_module, 'register_batch_inference_numpy'):
