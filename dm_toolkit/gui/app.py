@@ -41,6 +41,9 @@ class GameWindow(QMainWindow):
         self.setWindowTitle(tr("DM AI Simulator"))
         self.resize(1600, 900)
 
+        # Ensure log list exists before any callbacks
+        self.log_viewer = LogViewer()
+
         # Initialize GameSession (Logic)
         self.session = GameSession(
             callback_update_ui=self.update_ui,
@@ -51,9 +54,6 @@ class GameWindow(QMainWindow):
 
         # Initialize Input Handler
         self.input_handler = GameInputHandler(self, self.session)
-
-        # Ensure log list exists before any callbacks
-        self.log_viewer = LogViewer()
 
         # Load card database
         self.card_db = EngineCompat.load_cards_robust("data/cards.json")

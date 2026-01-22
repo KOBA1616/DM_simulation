@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QComboBox, QSpinBox, QLabel, QGroupBox,
-    QVBoxLayout
+    QVBoxLayout, QScrollArea
 )
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
@@ -94,11 +94,14 @@ class ModifierEditForm(BaseEditForm):
         self.condition_widget.dataChanged.connect(self.update_data)
         layout.addWidget(self.condition_widget)
 
-        # Filter Section - Unified Handler
+        # Filter Section - Unified Handler (wrap in scroll area)
         self.filter_widget = UnifiedFilterHandler.create_filter_widget("STATIC", self)
         self.filter_widget.filterChanged.connect(self.update_data)
         self.filter_widget.filterChanged.connect(self._refresh_type_combo_items)
-        layout.addWidget(self.filter_widget)
+        self.filter_area = QScrollArea()
+        self.filter_area.setWidgetResizable(True)
+        self.filter_area.setWidget(self.filter_widget)
+        layout.addWidget(self.filter_area)
 
         # Define bindings
         # Note: str_val と scope は手動で処理される（_populate_ui と _save_data）

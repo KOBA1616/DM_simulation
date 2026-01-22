@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit, QPushButton
+from PyQt6.QtWidgets import QWidget, QFormLayout, QComboBox, QGroupBox, QGridLayout, QCheckBox, QSpinBox, QLabel, QLineEdit, QPushButton, QScrollArea
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
@@ -62,11 +62,15 @@ class EffectEditForm(BaseEditForm):
         # Trigger Filter
         self.trigger_filter_group = QGroupBox(tr("Trigger Filter"))
         tf_layout = QGridLayout(self.trigger_filter_group)
+        # Create filter widget and wrap in scroll area to avoid layout overlap
         self.trigger_filter = UnifiedFilterHandler.create_filter_widget("TRIGGER", self)
         self.trigger_filter.filterChanged.connect(self.update_data)
         self.trigger_filter.filterChanged.connect(self.on_trigger_filter_changed)
         self.register_widget(self.trigger_filter, 'trigger_filter')
-        tf_layout.addWidget(self.trigger_filter, 0, 0)
+        self.trigger_filter_area = QScrollArea()
+        self.trigger_filter_area.setWidgetResizable(True)
+        self.trigger_filter_area.setWidget(self.trigger_filter)
+        tf_layout.addWidget(self.trigger_filter_area, 0, 0)
         
         # Trigger Filter Description Label
         self.trigger_filter_desc_label = QLabel("")
@@ -108,8 +112,11 @@ class EffectEditForm(BaseEditForm):
         self.target_filter = UnifiedFilterHandler.create_filter_widget("STATIC", self)
         self.target_filter.filterChanged.connect(self.update_data)
         self.register_widget(self.target_filter, 'filter')
+        self.target_filter_area = QScrollArea()
+        self.target_filter_area.setWidgetResizable(True)
+        self.target_filter_area.setWidget(self.target_filter)
         l_layout.addWidget(QLabel(tr("Target Filter")), 4, 0)
-        l_layout.addWidget(self.target_filter, 4, 1)
+        l_layout.addWidget(self.target_filter_area, 4, 1)
 
         self.add_field(None, self.layer_group)
 

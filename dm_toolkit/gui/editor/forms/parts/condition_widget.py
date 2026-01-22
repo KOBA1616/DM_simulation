@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
-    QWidget, QGridLayout, QComboBox, QSpinBox, QLineEdit, QLabel, QGroupBox
+    QWidget, QGridLayout, QComboBox, QSpinBox, QLineEdit, QLabel, QGroupBox, QScrollArea
 )
 from PyQt6.QtCore import pyqtSignal
 from dm_toolkit.gui.i18n import tr
@@ -196,12 +196,16 @@ class ConditionEditorWidget(QGroupBox):
         layout.addWidget(self.lbl_str, 5, 0)
         layout.addWidget(self.cond_str_edit, 5, 1)
 
-        # Filter Widget (Row 6)
-        self.cond_filter = FilterEditorWidget()
-        self.cond_filter.filterChanged.connect(self.dataChanged.emit)
-        self.cond_filter.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
-        self.cond_filter.setVisible(False)
-        layout.addWidget(self.cond_filter, 6, 0, 1, 2)
+        # Filter Widget (Row 6) - wrap in QScrollArea to avoid layout overlap when expanded
+        self.cond_filter_widget = FilterEditorWidget()
+        self.cond_filter_widget.filterChanged.connect(self.dataChanged.emit)
+        self.cond_filter_widget.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
+
+        self.cond_filter_area = QScrollArea()
+        self.cond_filter_area.setWidgetResizable(True)
+        self.cond_filter_area.setWidget(self.cond_filter_widget)
+        self.cond_filter_area.setVisible(False)
+        layout.addWidget(self.cond_filter_area, 6, 0, 1, 2)
 
         # Initial Update
         self.update_ui_visibility("NONE")
@@ -259,7 +263,7 @@ class ConditionEditorWidget(QGroupBox):
         self.lbl_op.setVisible(show_op)
         self.op_combo.setVisible(show_op)
 
-        self.cond_filter.setVisible(show_filter)
+        self.cond_filter_area.setVisible(show_filter)
 
     def set_data(self, data):
         self.blockSignals(True)
@@ -298,7 +302,7 @@ class ConditionEditorWidget(QGroupBox):
         else:
             self.op_combo.setCurrentText(op)
 
-        self.cond_filter.set_data(data.get('filter', {}))
+        self.cond_filter_widget.set_data(data.get('filter', {}))
 
         # Refresh visibility based on current selection
         current_selection = self.cond_type_combo.currentData()
@@ -340,8 +344,8 @@ class ConditionEditorWidget(QGroupBox):
             if op:
                 data['op'] = op
 
-        if (config.get("show_filter", False) or combo_selection == "CUSTOM") and self.cond_filter.isVisible():
-            data['filter'] = self.cond_filter.get_data()
+        if (config.get("show_filter", False) or combo_selection == "CUSTOM") and self.cond_filter_area.isVisible():
+            data['filter'] = self.cond_filter_widget.get_data()
 
         return data
 
@@ -353,4 +357,4 @@ class ConditionEditorWidget(QGroupBox):
         self.cond_str_edit.blockSignals(block)
         self.stat_key_combo.blockSignals(block)
         self.op_combo.blockSignals(block)
-        self.cond_filter.blockSignals(block)
+        self.cond_filter_widget.blockSignals(block)
