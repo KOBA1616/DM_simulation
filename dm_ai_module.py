@@ -335,6 +335,13 @@ else:
         @property
         def shields(self): return len(self.shield_zone)
 
+    class ExecutionContext:
+        def __init__(self):
+            self.variables = {}
+
+        def set_variable(self, name: str, value: Any):
+            self.variables[name] = value
+
     class GameState:
         def __init__(self, *args: Any, **kwargs: Any):
             self.game_over = False
@@ -346,6 +353,7 @@ else:
             self.current_phase = 0
             self.pending_effects: list[Any] = []
             self.instance_counter = 0
+            self.execution_context = ExecutionContext()
 
         def setup_test_duel(self) -> None: pass
 
@@ -691,6 +699,29 @@ else:
             self.state.setup_test_duel()
         def execute_action(self, action: Any) -> None:
             GenericCardSystem.resolve_action(self.state, action, 0)
+
+    # Debugging functions for python stub
+    def get_execution_context(state: Any) -> dict:
+        if hasattr(state, 'execution_context'):
+             return state.execution_context.variables
+        return {}
+
+    def get_command_details(cmd: Any) -> str:
+        # Provide details string for command
+        if hasattr(cmd, 'type'):
+             return f"Type: {cmd.type}"
+        return str(cmd)
+
+    def get_pending_effects_info(state: Any) -> List[Any]:
+        # Return summary tuple + command object for details
+        # (type_str, source_id, controller, command_object)
+        info = []
+        for cmd in state.pending_effects:
+             t = getattr(cmd, 'type', 'UNKNOWN')
+             sid = getattr(cmd, 'source_instance_id', -1)
+             pid = getattr(cmd, 'target_player', 0)
+             info.append((str(t), sid, pid, cmd))
+        return info
 
     class PhaseManager:
         @staticmethod
