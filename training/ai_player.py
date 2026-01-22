@@ -53,7 +53,7 @@ class AIPlayer:
 
         self.model.eval()
 
-    def get_action(self, game_state, player_id: int) -> GameCommand:
+    def get_action(self, game_state, player_id: int, valid_indices: list[int] = None) -> GameCommand:
         # 1. Tokenize
         state_tokens = self.tokenizer.encode_state(game_state, player_id)
 
@@ -64,9 +64,24 @@ class AIPlayer:
         with torch.no_grad():
             policy_logits, _ = self.model(state_tensor, padding_mask=padding_mask)
 
-        # 3. Decode
+        # 3. Masking (Optional)
+        if valid_indices is not None and len(valid_indices) > 0:
+            # Create a mask with -inf for invalid actions
+            full_mask = torch.full_like(policy_logits, float('-inf'))
+
+            # Filter valid indices that are within range
+            safe_indices = [idx for idx in valid_indices if 0 <= idx < policy_logits.shape[1]]
+
+            if safe_indices:
+                full_mask[0, safe_indices] = 0
+                # Apply mask
+                policy_logits = policy_logits + full_mask
+            else:
+                pass # No valid indices in range? Fallback to raw model output
+
+        # 4. Decode
         action_idx = torch.argmax(policy_logits, dim=1).item()
 
-        # 4. Map to GameCommand
+        # 5. Map to GameCommand
         command = self.action_encoder.decode_action(action_idx, game_state, player_id)
         return command

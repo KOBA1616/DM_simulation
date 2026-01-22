@@ -127,3 +127,52 @@ class ActionEncoder:
         # Default fallback
         cmd.type = ActionType.PASS
         return cmd
+
+    def encode_action(self, action: GameCommand, state: Any, player_id: int) -> int:
+        """
+        Maps a GameCommand to an integer index.
+        Returns -1 if the command cannot be encoded (invalid or out of range).
+        """
+        cmd_type = action.type
+
+        # Check PASS
+        # Handle both IntEnum and int comparison
+        if cmd_type == ActionType.PASS or cmd_type == int(ActionType.PASS):
+            return 0
+
+        # Check MANA_CHARGE (1-10)
+        if cmd_type == ActionType.MANA_CHARGE or cmd_type == int(ActionType.MANA_CHARGE):
+            p = state.players[player_id]
+            for i, c in enumerate(p.hand):
+                if i >= 10: break
+                # Check instance_id match
+                # Use getattr for robustness across C++ objects and Python stubs
+                c_id = getattr(c, 'instance_id', -1)
+                cmd_id = getattr(action, 'source_instance_id', -2)
+                if c_id == cmd_id:
+                    return 1 + i
+            return -1
+
+        # Check PLAY_CARD (11-20)
+        if cmd_type == ActionType.PLAY_CARD or cmd_type == int(ActionType.PLAY_CARD):
+            p = state.players[player_id]
+            for i, c in enumerate(p.hand):
+                if i >= 10: break
+                c_id = getattr(c, 'instance_id', -1)
+                cmd_id = getattr(action, 'source_instance_id', -2)
+                if c_id == cmd_id:
+                    return 11 + i
+            return -1
+
+        # Check ATTACK_PLAYER (21-30)
+        if cmd_type == ActionType.ATTACK_PLAYER or cmd_type == int(ActionType.ATTACK_PLAYER):
+            p = state.players[player_id]
+            for i, c in enumerate(p.battle_zone):
+                if i >= 10: break
+                c_id = getattr(c, 'instance_id', -1)
+                cmd_id = getattr(action, 'source_instance_id', -2)
+                if c_id == cmd_id:
+                    return 21 + i
+            return -1
+
+        return -1

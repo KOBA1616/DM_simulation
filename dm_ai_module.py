@@ -354,6 +354,7 @@ else:
             self.pending_effects: list[Any] = []
             self.instance_counter = 0
             self.execution_context = ExecutionContext()
+            self.waiting_for_user_input = False
 
         def setup_test_duel(self) -> None: pass
 
