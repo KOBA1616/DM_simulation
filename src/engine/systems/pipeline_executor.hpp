@@ -40,6 +40,9 @@ namespace dm::engine::systems {
         // Call Stack for Resume Support
         std::vector<ExecutionFrame> call_stack;
 
+        // Debug Hooks
+        std::vector<nlohmann::json> execution_history;
+
         PipelineExecutor() = default;
 
         // Entry point
@@ -58,6 +61,11 @@ namespace dm::engine::systems {
         void set_context_var(const std::string& key, ContextValue value);
         ContextValue get_context_var(const std::string& key) const;
         void clear_context();
+
+        // Debug / Inspection
+        nlohmann::json get_execution_history() const;
+        nlohmann::json dump_context() const;
+        nlohmann::json dump_call_stack() const;
 
         // Helpers
         int resolve_int(const nlohmann::json& val) const;

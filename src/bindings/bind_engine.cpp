@@ -151,6 +151,18 @@ void bind_engine(py::module& m) {
             if (std::holds_alternative<int>(v)) return std::get<int>(v);
             return 0;
         })
+        .def("get_execution_history", [](const dm::engine::systems::PipelineExecutor& p) {
+            nlohmann::json j = p.get_execution_history();
+            return py::module::import("json").attr("loads")(j.dump());
+        })
+        .def("dump_context", [](const dm::engine::systems::PipelineExecutor& p) {
+            nlohmann::json j = p.dump_context();
+            return py::module::import("json").attr("loads")(j.dump());
+        })
+        .def("dump_call_stack", [](const dm::engine::systems::PipelineExecutor& p) {
+            nlohmann::json j = p.dump_call_stack();
+            return py::module::import("json").attr("loads")(j.dump());
+        })
         .def_readonly("execution_paused", &dm::engine::systems::PipelineExecutor::execution_paused)
         .def_readonly("waiting_for_key", &dm::engine::systems::PipelineExecutor::waiting_for_key)
         .def("resume", &dm::engine::systems::PipelineExecutor::resume)
