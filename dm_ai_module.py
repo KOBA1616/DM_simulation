@@ -349,6 +349,8 @@ else:
 
         def setup_test_duel(self) -> None: pass
 
+        def initialize(self) -> None: pass
+
         def set_deck(self, player_id: int, deck_ids: List[int]) -> None:
             self._ensure_player(player_id)
             # Create CardStub objects from IDs
@@ -687,6 +689,8 @@ else:
     class GameInstance:
         def __init__(self, game_id: int = 0):
             self.state = GameState()
+            self.player_instances = self.state.players # Alias for simpler access in python tests
+        def initialize(self): pass
         def start_game(self):
             self.state.setup_test_duel()
         def execute_action(self, action: Any) -> None:
