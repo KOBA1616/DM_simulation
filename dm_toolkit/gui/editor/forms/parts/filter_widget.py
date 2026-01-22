@@ -120,7 +120,7 @@ class FilterEditorWidget(QWidget):
         self.min_cost_spin.valueChanged.connect(self.filterChanged.emit)
         self.max_cost_spin.valueChanged.connect(self.filterChanged.emit)
 
-        stats_layout.addWidget(QLabel(tr("Power:")), 1, 0)
+        stats_layout.addWidget(QLabel(tr("Power:")), 3, 0)
         self.min_power_spin = QSpinBox()
         self.min_power_spin.setRange(-1, 99999)
         self.min_power_spin.setSingleStep(500)
@@ -138,7 +138,7 @@ class FilterEditorWidget(QWidget):
         power_layout.addWidget(self.min_power_spin, 0, 1)
         power_layout.addWidget(QLabel(tr("Max:")), 0, 2)
         power_layout.addWidget(self.max_power_spin, 0, 3)
-        stats_layout.addLayout(power_layout, 1, 1)
+        stats_layout.addLayout(power_layout, 3, 1)
 
         self.min_power_spin.valueChanged.connect(self.filterChanged.emit)
         self.max_power_spin.valueChanged.connect(self.filterChanged.emit)
