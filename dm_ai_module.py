@@ -195,6 +195,14 @@ else:
         UNTAP = 11
         BREAK_SHIELD = 14
 
+    class Phase(IntEnum):
+        START = 0
+        DRAW = 1
+        MANA = 2
+        MAIN = 3
+        ATTACK = 4
+        END = 5
+
     class CommandType(Enum):
         TRANSITION = 1
         MUTATE = 2
@@ -355,6 +363,9 @@ else:
             self.instance_counter = 0
             self.execution_context = ExecutionContext()
             self.waiting_for_user_input = False
+            self.pending_query = None
+            self.command_history: list[Any] = []
+            self.effect_buffer: list[Any] = []
 
         def setup_test_duel(self) -> None: pass
 
@@ -694,7 +705,7 @@ else:
             elif cmd_type == CommandType.DRAW_CARD:
                 state.draw_cards(player_id, get_attr('amount', 1))
 
-            elif cmd_type == CommandType.MOVE_CARD or cmd_type == CommandType.REPLACE_CARD_MOVE:
+            elif cmd_type == CommandType.MOVE_CARD or cmd_type == CommandType.REPLACE_CARD_MOVE or cmd_type == CommandType.PLAY_FROM_ZONE:
                 # Handle explicit moves
                 instance_id = get_attr('instance_id') or get_attr('target_instance') or source_id
                 to_zone = str(get_attr('to_zone', '')).upper()
@@ -729,6 +740,9 @@ else:
                     elif to_zone in ['HAND']:
                         dest_p.hand.append(card)
                     elif to_zone in ['BATTLE', 'BATTLE_ZONE']:
+                        if cmd_type == CommandType.PLAY_FROM_ZONE:
+                            card.is_tapped = False
+                            card.sick = True
                         dest_p.battle_zone.append(card)
                     elif to_zone in ['GRAVEYARD']:
                         dest_p.graveyard.append(card)
@@ -898,6 +912,14 @@ else:
                 # Add to pending effects stub
                 state.pending_effects.append(action)
 
+    class EffectResolver:
+        @staticmethod
+        def resolve_action(state: Any, action: Any, card_db: Any = None) -> None:
+            # Adapt signature for GenericCardSystem
+            # GenericCardSystem.resolve_action expects (state, action, player_id)
+            pid = getattr(state, 'active_player_id', 0)
+            GenericCardSystem.resolve_action(state, action, pid)
+
     class JsonLoader:
         @staticmethod
         def load_cards(path): return {}
@@ -921,6 +943,128 @@ else:
         SELF = 1
         OPPONENT = 2
 
+    class ActionGenerator:
+        @staticmethod
+        def generate_legal_actions(state: Any, card_db: Any) -> list:
+            actions = []
+
+            # Helper to get card data
+            def get_card_def(cid):
+                if hasattr(card_db, 'get_card'):
+                    return card_db.get_card(cid)
+                if isinstance(card_db, dict):
+                     # Handle string/int keys
+                     c = card_db.get(cid)
+                     if c is None: c = card_db.get(str(cid))
+                     return c
+                return CardDatabase.get_card(cid)
+
+            # 1. Pending Effects
+            if state.pending_effects:
+                act = Action()
+                act.type = ActionType.RESOLVE_EFFECT
+                actions.append(act)
+                return actions
+
+            pid = state.active_player_id
+            player = state.players[pid]
+            phase = state.current_phase
+
+            # 2. Mana Phase (Phase 2)
+            if phase == 2:
+                # Mana Charge
+                for card in player.hand:
+                    act = Action()
+                    act.type = ActionType.MANA_CHARGE
+                    act.card_id = card.card_id
+                    act.source_instance_id = card.instance_id
+                    actions.append(act)
+
+                # PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            # 3. Main Phase (Phase 3)
+            elif phase == 3:
+                # Calculate usable mana and civs
+                usable_mana = 0
+                available_civs = set()
+                for m in player.mana_zone:
+                    if not m.is_tapped:
+                        usable_mana += 1
+                    # Tap or untap, mana provides civ
+                    cdef = get_card_def(m.card_id)
+                    if cdef:
+                        civs = cdef.get('civilizations', [])
+                        if isinstance(civs, list):
+                            for civ in civs: available_civs.add(civ)
+
+                # Play Cards
+                for card in player.hand:
+                    cdata = get_card_def(card.card_id)
+                    if not cdata: continue
+
+                    cost = cdata.get('cost', 9999)
+                    card_civs = cdata.get('civilizations', [])
+
+                    # Check civ requirement
+                    has_civ = False
+                    if not card_civs: has_civ = True
+                    else:
+                        for c in card_civs:
+                            if c in available_civs:
+                                has_civ = True
+                                break
+
+                    if cost <= usable_mana and has_civ:
+                        act = Action()
+                        act.type = ActionType.PLAY_CARD
+                        act.card_id = card.card_id
+                        act.source_instance_id = card.instance_id
+                        actions.append(act)
+
+                # PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            # 4. Attack Phase (Phase 4)
+            elif phase == 4:
+                opponent_pid = 1 - pid
+                opponent = state.players[opponent_pid]
+
+                for card in player.battle_zone:
+                    if not card.is_tapped and not card.sick:
+                        # Attack Player
+                        act = Action()
+                        act.type = ActionType.ATTACK_PLAYER
+                        act.source_instance_id = card.instance_id
+                        act.target_player = opponent_pid
+                        actions.append(act)
+
+                        # Attack Tapped Creatures
+                        for op_card in opponent.battle_zone:
+                            if op_card.is_tapped:
+                                act2 = Action()
+                                act2.type = ActionType.ATTACK_CREATURE
+                                act2.source_instance_id = card.instance_id
+                                act2.target_player = opponent_pid
+                                act2.value1 = op_card.instance_id
+                                actions.append(act2)
+
+                # PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            else:
+                # Default PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            return actions
 
     class GameInstance:
         def __init__(self, game_id: int = 0):
@@ -999,6 +1143,19 @@ else:
             else:
                 # Fallback recovery
                 state.current_phase = 2
+
+        @staticmethod
+        def check_game_over(state: Any, result: Any = None) -> Any:
+            if state.game_over:
+                if result is not None:
+                     try:
+                         result.is_over = True
+                         result.result = state.winner
+                     except Exception:
+                         pass
+                     return True, result
+                return True
+            return False
 
     class DataCollector:
         def __init__(self):
