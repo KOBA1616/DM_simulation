@@ -11,7 +11,8 @@ from PyQt6.QtWidgets import (
     QPushButton, QProgressBar, QTextEdit, QGroupBox, QMessageBox, QFileDialog,
     QCheckBox, QLineEdit, QDoubleSpinBox
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
+import threading
 from dm_toolkit.gui.i18n import tr
 
 # Import Backend Modules
@@ -260,7 +261,7 @@ class AutoLoopWorker(QThread):
     progress_signal = pyqtSignal(int, str)
     finished_signal = pyqtSignal(float, str)
 
-    def __init__(self, repo_root, iterations, episodes, epochs, batch_size, out_dir, keep_data, keep_models, parallel, win_threshold, run_for_seconds):
+    def __init__(self, repo_root, iterations, episodes, epochs, batch_size, out_dir, keep_data, keep_models, parallel, win_threshold, run_for_seconds, eval_games=50, eval_parallel=8, eval_use_pytorch=False):
         super().__init__()
         self.repo_root = repo_root
         self.iterations = iterations
@@ -273,6 +274,10 @@ class AutoLoopWorker(QThread):
         self.parallel = parallel
         self.win_threshold = win_threshold
         self.run_for_seconds = run_for_seconds
+        # evaluation settings to run once after self-play completes
+        self.eval_games = eval_games
+        self.eval_parallel = eval_parallel
+        self.eval_use_pytorch = eval_use_pytorch
         self.proc = None
         self._cancelled = False
 
@@ -319,6 +324,77 @@ class AutoLoopWorker(QThread):
                     pass
 
             summary = '\n'.join(last_lines[-50:])
+            # After self-play completes, run a single head2head evaluation using latest checkpoints
+            try:
+                if not self._cancelled:
+                    h2h_script = Path(self.repo_root) / 'training' / 'head2head.py'
+                    if h2h_script.exists():
+                        # find checkpoints in repo_root/checkpoints/transformer
+                        ck_dir = Path(self.repo_root) / 'checkpoints' / 'transformer'
+                        models = []
+                        if ck_dir.exists():
+                            for fn in ck_dir.iterdir():
+                                if fn.suffix in ['.pth', '.onnx'] and 'step_' in fn.name:
+                                    models.append(fn)
+                        # sort by step number parsed from filename
+                        def step_key(p: Path):
+                            parts = p.stem.split('_')
+                            if 'step' in parts:
+                                try:
+                                    i = parts.index('step')
+                                    return int(parts[i+1])
+                                except Exception:
+                                    return 0
+                            return 0
+                        models = sorted(models, key=step_key, reverse=True)
+                        if len(models) >= 2:
+                            model_a = str(models[0])
+                            model_b = str(models[1])
+                        elif len(models) == 1:
+                            # only one model; skip evaluation
+                            self.progress_signal.emit(0, tr('No baseline model found; skipping head2head eval.'))
+                            model_a = None
+                            model_b = None
+                        else:
+                            model_a = None
+                            model_b = None
+
+                        if model_a and model_b:
+                            cmd = [sys.executable, str(h2h_script), model_a, model_b, '--games', str(self.eval_games), '--parallel', str(self.eval_parallel)]
+                            if self.eval_use_pytorch:
+                                cmd.append('--use_pytorch')
+                            try:
+                                try:
+                                    self.progress_signal.emit(0, tr('Running head2head:') + ' ' + ' '.join(shlex.quote(x) for x in cmd))
+                                except Exception:
+                                    self.progress_signal.emit(0, f"Running head2head: {' '.join(shlex.quote(x) for x in cmd)}")
+                                p = subprocess.Popen(cmd, cwd=self.repo_root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                                h2h_lines = []
+                                if p.stdout:
+                                    for ln in p.stdout:
+                                        if self._cancelled:
+                                            break
+                                        l = ln.rstrip('\n')
+                                        h2h_lines.append(l)
+                                        # forward to UI
+                                        self.progress_signal.emit(0, l)
+                                if not self._cancelled:
+                                    try:
+                                        p.wait()
+                                    except Exception:
+                                        pass
+                                # append h2h summary to overall summary
+                                summary = summary + '\n\n== head2head output ==\n' + '\n'.join(h2h_lines[-200:])
+                            except Exception as e:
+                                try:
+                                    self.progress_signal.emit(0, tr('Failed to run head2head: {e}').format(e=e))
+                                except Exception:
+                                    self.progress_signal.emit(0, f'Failed to run head2head: {e}')
+                    else:
+                        self.progress_signal.emit(0, tr('head2head script not found; skipping eval.'))
+            except Exception:
+                pass
+
             self.finished_signal.emit(0.0, summary)
         except Exception as e:
             try:
@@ -406,6 +482,11 @@ class SimulationDialog(QDialog):
         lbl_sims.setBuddy(self.sims_spin)
         h_params.addWidget(lbl_sims)
         h_params.addWidget(self.sims_spin)
+        # Recommended params button
+        self.recommend_btn = QPushButton(tr("推奨パラメータ適用"))
+        self.recommend_btn.setToolTip(tr("一括シミュレーションの推奨パラメータを設定します (軽量評価 / 長時間評価用の既定値)"))
+        self.recommend_btn.clicked.connect(self.apply_recommended_parameters)
+        h_params.addWidget(self.recommend_btn)
 
         form.addLayout(h_params)
         # Auto-loop settings
@@ -418,10 +499,11 @@ class SimulationDialog(QDialog):
         self.iterations_spin.setValue(3)
         self.iterations_spin.setToolTip(tr("Number of iterations for the auto loop"))
 
-        self.run_seconds_spin = QSpinBox()
-        self.run_seconds_spin.setRange(0, 86400)
-        self.run_seconds_spin.setValue(0)
-        self.run_seconds_spin.setToolTip(tr("Stop after N seconds (0 = disabled)"))
+        # run duration in minutes
+        self.run_minutes_spin = QSpinBox()
+        self.run_minutes_spin.setRange(0, 24 * 60)
+        self.run_minutes_spin.setValue(0)
+        self.run_minutes_spin.setToolTip(tr("停止するまでの実行時間（分単位、0=無効）"))
 
         self.epochs_spin = QSpinBox()
         self.epochs_spin.setRange(1, 1000)
@@ -452,8 +534,8 @@ class SimulationDialog(QDialog):
         loop_layout.addWidget(self.auto_checkbox)
         loop_layout.addWidget(QLabel(tr("Iterations")))
         loop_layout.addWidget(self.iterations_spin)
-        loop_layout.addWidget(QLabel(tr("Run seconds")))
-        loop_layout.addWidget(self.run_seconds_spin)
+        loop_layout.addWidget(QLabel(tr("Run minutes")))
+        loop_layout.addWidget(self.run_minutes_spin)
         loop_layout.addWidget(QLabel(tr("Epochs")))
         loop_layout.addWidget(self.epochs_spin)
         loop_layout.addWidget(QLabel(tr("Batch")))
@@ -469,6 +551,70 @@ class SimulationDialog(QDialog):
 
         form.addWidget(loop_group)
         layout.addWidget(group)
+
+        # Head2Head evaluation quick-run group
+        h2h_group = QGroupBox(tr("head2head 評価 (手動実行)"))
+        h2h_layout = QHBoxLayout(h2h_group)
+
+        self.h2h_games_spin = QSpinBox()
+        self.h2h_games_spin.setRange(1, 5000)
+        self.h2h_games_spin.setValue(50)
+        self.h2h_games_spin.setToolTip(tr("評価で実行するゲーム数 (軽量評価は 20-100 推奨)"))
+
+        self.h2h_parallel_spin = QSpinBox()
+        self.h2h_parallel_spin.setRange(1, 256)
+        self.h2h_parallel_spin.setValue(8)
+        self.h2h_parallel_spin.setToolTip(tr("head2head の parallel 値 (バッチサイズ)"))
+
+        self.h2h_use_pytorch_cb = QCheckBox(tr("PyTorch を使用"))
+        self.h2h_use_pytorch_cb.setToolTip(tr("PyTorch チェックポイント (.pth) を読み込んで評価する場合はチェック"))
+
+        self.h2h_baseline_le = QLineEdit()
+        self.h2h_baseline_le.setToolTip(tr("ベースラインモデルのパス (onnx/.pth)。空の場合は未指定。"))
+        self.h2h_baseline_btn = QPushButton(tr("参照"))
+        def pick_baseline():
+            f, _ = QFileDialog.getOpenFileName(self, tr("ベースラインモデルを選択"), os.getcwd(), "Model Files (*.onnx *.pth);;All Files (*)")
+            if f:
+                self.h2h_baseline_le.setText(f)
+        self.h2h_baseline_btn.clicked.connect(pick_baseline)
+
+        self.h2h_run_btn = QPushButton(tr("Run head2head 今すぐ実行"))
+        self.h2h_run_btn.setToolTip(tr("現在の設定で head2head を実行し、ログに出力します。"))
+        self.h2h_run_btn.clicked.connect(self.run_head2head_now)
+
+        h2h_layout.addWidget(QLabel(tr("ゲーム数:")))
+        h2h_layout.addWidget(self.h2h_games_spin)
+        h2h_layout.addWidget(QLabel(tr("parallel:")))
+        h2h_layout.addWidget(self.h2h_parallel_spin)
+        h2h_layout.addWidget(self.h2h_use_pytorch_cb)
+        h2h_layout.addWidget(self.h2h_baseline_le)
+        h2h_layout.addWidget(self.h2h_baseline_btn)
+        h2h_layout.addWidget(self.h2h_run_btn)
+
+        layout.addWidget(h2h_group)
+        # Auto-eval settings editable
+        eval_group = QGroupBox(tr("head2head 自動評価設定"))
+        eval_layout = QHBoxLayout(eval_group)
+        self.eval_every_steps_spin = QSpinBox()
+        self.eval_every_steps_spin.setRange(0, 100000000)
+        self.eval_every_steps_spin.setValue(0)
+        self.eval_every_steps_spin.setToolTip(tr("0=無効。チェックポイント保存後にこのステップ毎に評価を実行します（ステップ単位）。"))
+        eval_layout.addWidget(QLabel(tr("評価頻度 (steps):")))
+        eval_layout.addWidget(self.eval_every_steps_spin)
+        eval_layout.addWidget(QLabel(tr("評価ゲーム数:")))
+        self.eval_games_spin = QSpinBox()
+        self.eval_games_spin.setRange(1, 5000)
+        self.eval_games_spin.setValue(50)
+        eval_layout.addWidget(self.eval_games_spin)
+        eval_layout.addWidget(QLabel(tr("parallel:")))
+        self.eval_parallel_spin = QSpinBox()
+        self.eval_parallel_spin.setRange(1, 256)
+        self.eval_parallel_spin.setValue(8)
+        eval_layout.addWidget(self.eval_parallel_spin)
+        self.eval_use_pytorch_cb2 = QCheckBox(tr("PyTorch を使用"))
+        eval_layout.addWidget(self.eval_use_pytorch_cb2)
+        eval_layout.addStretch()
+        layout.addWidget(eval_group)
 
         # Warning label for memory leak
         leak_warning = QLabel(tr("Note: High simulation counts may cause memory issues (std::bad_alloc)."))
@@ -518,6 +664,16 @@ class SimulationDialog(QDialog):
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         layout.addWidget(self.log_text)
+        
+        # Time progress / remaining display for run_minutes
+        time_layout = QHBoxLayout()
+        self.remaining_label = QLabel(tr("Remaining") + ": -")
+        self.time_progress = QProgressBar()
+        self.time_progress.setRange(0, 100)
+        self.time_progress.setValue(0)
+        time_layout.addWidget(self.remaining_label)
+        time_layout.addWidget(self.time_progress)
+        layout.addLayout(time_layout)
 
     def start_simulation(self):
         scenario = self.scenario_combo.currentText()
@@ -548,7 +704,7 @@ class SimulationDialog(QDialog):
         if getattr(self, 'auto_checkbox', None) and self.auto_checkbox.isChecked():
             repo_root = str(Path(__file__).resolve().parents[2])
             iterations = self.iterations_spin.value()
-            run_seconds = self.run_seconds_spin.value()
+            run_seconds = int(self.run_minutes_spin.value()) * 60
             epochs = self.epochs_spin.value()
             batch_size = self.batch_spin.value()
             out_dir = os.path.join(repo_root, 'data')
@@ -557,16 +713,108 @@ class SimulationDialog(QDialog):
             win_threshold = self.win_threshold_spin.value()
 
             parallel = self.parallel_spin.value()
-            self.auto_worker = AutoLoopWorker(repo_root, iterations, episodes, epochs, batch_size, out_dir, keep_data, keep_models, parallel, win_threshold, run_seconds)
+            # pass eval settings so AutoLoopWorker can run one evaluation after self-play
+            self.auto_worker = AutoLoopWorker(
+                repo_root, iterations, episodes, epochs, batch_size, out_dir, keep_data, keep_models, parallel, win_threshold, run_seconds,
+                eval_games=self.eval_games_spin.value(), eval_parallel=self.eval_parallel_spin.value(), eval_use_pytorch=self.eval_use_pytorch_cb2.isChecked()
+            )
             self.auto_worker.progress_signal.connect(self.update_progress)
             self.auto_worker.finished_signal.connect(self.simulation_finished)
             self.auto_worker.start()
+            # track start time for remaining-time UI
+            try:
+                self.auto_start_time = time.time()
+                self.auto_run_seconds = run_seconds
+                # start a timer to update remaining time every second
+                try:
+                    if getattr(self, '_time_timer', None) is None:
+                        self._time_timer = QTimer(self)
+                        self._time_timer.timeout.connect(self._update_time_remaining)
+                    self._time_timer.start(1000)
+                except Exception:
+                    pass
+            except Exception:
+                self.auto_start_time = None
+                self.auto_run_seconds = 0
             return
 
         self.worker = SimulationWorker(self.card_db, scenario, episodes, threads, sims, evaluator, model_path)
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.finished_signal.connect(self.simulation_finished)
         self.worker.start()
+
+    def run_head2head_now(self):
+        # Build head2head command and run as subprocess, forwarding lines to log_text
+        repo_root = str(Path(__file__).resolve().parents[2])
+        h2h_script = os.path.join(repo_root, 'training', 'head2head.py')
+        if not os.path.exists(h2h_script):
+            self.log_text.append(tr("Error: head2head script not found: {p}").format(p=h2h_script))
+            return
+
+        # Choose model paths: prompt for two models (P0 vs baseline)
+        # For convenience, first model can be selected via file dialog
+        model_a, _ = QFileDialog.getOpenFileName(self, tr("評価モデルを選択 (Player A)"), os.getcwd(), "Model Files (*.pth *.onnx);;All Files (*)")
+        if not model_a:
+            return
+        model_b = self.h2h_baseline_le.text().strip()
+        if not model_b:
+            # attempt auto-select strongest model from checkpoints/transformer
+            repo_root = str(Path(__file__).resolve().parents[2])
+            ck_dir = os.path.join(repo_root, 'checkpoints', 'transformer')
+            best = None
+            best_step = -1
+            try:
+                if os.path.exists(ck_dir):
+                    for fn in os.listdir(ck_dir):
+                        if fn.endswith('.pth') and 'step_' in fn:
+                            parts = fn.split('_')
+                            try:
+                                idx = parts.index('step')
+                                s = int(parts[idx+1].split('.')[0])
+                                if s > best_step:
+                                    best_step = s
+                                    best = os.path.join(ck_dir, fn)
+                            except Exception:
+                                continue
+            except Exception:
+                best = None
+            if best:
+                model_b = best
+                self.h2h_baseline_le.setText(model_b)
+            else:
+                # prompt to choose baseline if empty
+                model_b, _ = QFileDialog.getOpenFileName(self, tr("ベースラインモデルを選択 (Player B)"), os.getcwd(), "Model Files (*.pth *.onnx);;All Files (*)")
+                if not model_b:
+                    return
+
+        games = str(self.h2h_games_spin.value())
+        parallel = str(self.h2h_parallel_spin.value())
+        use_pytorch = self.h2h_use_pytorch_cb.isChecked()
+
+        cmd = [sys.executable, h2h_script, model_a, model_b, '--games', games, '--parallel', parallel]
+        if use_pytorch:
+            cmd.append('--use_pytorch')
+
+        self.log_text.append(tr("Running head2head: {cmd}").format(cmd=' '.join(cmd)))
+
+        try:
+            proc = subprocess.Popen(cmd, cwd=repo_root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        except Exception as e:
+            self.log_text.append(f"Failed to start head2head: {e}")
+            return
+
+        def reader_thread():
+            try:
+                if proc.stdout:
+                    for ln in proc.stdout:
+                        line = ln.rstrip('\n')
+                        # emit to GUI thread
+                        QTimer.singleShot(0, lambda l=line: self.log_text.append(l))
+            except Exception as e:
+                QTimer.singleShot(0, lambda: self.log_text.append(f"head2head read error: {e}"))
+
+        t = threading.Thread(target=reader_thread, daemon=True)
+        t.start()
 
     def cancel_simulation(self):
         if getattr(self, 'auto_worker', None):
@@ -579,23 +827,49 @@ class SimulationDialog(QDialog):
             self.worker.is_cancelled = True
             self.log_text.append(tr("Cancelling..."))
         self.reject()
-
-    def update_progress(self, val, msg):
-        # Update progress bar
         try:
-            if isinstance(val, int):
-                self.progress.setValue(val)
+            if getattr(self, '_time_timer', None):
+                self._time_timer.stop()
+        except Exception:
+            pass
+        try:
+            self.auto_start_time = None
+            self.auto_run_seconds = 0
         except Exception:
             pass
 
-        # Append raw log for detail
-        self.log_text.append(msg)
+    def update_progress(self, val, msg):
+        # Defensive: coerce types so UI updates don't fail due to numpy/int/bytes
+        try:
+            try:
+                ival = int(val)
+            except Exception:
+                ival = None
+            if ival is not None:
+                try:
+                    # clamp to 0-100
+                    ival = max(0, min(100, int(ival)))
+                    self.progress.setValue(ival)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # Append raw log for detail (always convert to str)
+        try:
+            msg_str = str(msg)
+        except Exception:
+            msg_str = ''
+        try:
+            self.log_text.append(msg_str)
+        except Exception:
+            pass
 
         # If a JSON structured progress line is emitted (from head2head), parse it.
         # Format: H2H_JSON: { ... }
         try:
-            if isinstance(msg, str) and msg.startswith('H2H_JSON:'):
-                jtxt = msg.split(':', 1)[1].strip()
+            if msg_str.startswith('H2H_JSON:'):
+                jtxt = msg_str.split(':', 1)[1].strip()
                 data = json.loads(jtxt)
                 ev = data.get('event')
                 if ev == 'progress':
@@ -622,6 +896,32 @@ class SimulationDialog(QDialog):
                         self.status_label.setStyleSheet("font-weight: bold; color: green;")
                     except Exception:
                         pass
+                elif ev == 'h2h_stats':
+                    try:
+                        avg_len = data.get('avg_game_length')
+                        pass_rate = data.get('pass_rate')
+                        try:
+                            if avg_len is not None:
+                                self.throughput_label.setText(tr('AvgLen') + f": {float(avg_len):.2f} moves")
+                            else:
+                                self.throughput_label.setText(tr('AvgLen') + ': -')
+                        except Exception:
+                            pass
+                        try:
+                            if pass_rate is not None:
+                                self.log_text.append(tr('PASS率') + f": {float(pass_rate):.3f}")
+                        except Exception:
+                            pass
+                        # optionally pretty-print turn_action_distribution
+                        tad = data.get('turn_action_distribution')
+                        if tad:
+                            try:
+                                self.log_text.append(tr('Turn action distribution:'))
+                                self.log_text.append(json.dumps(tad, ensure_ascii=False))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                 # we've handled the JSON message; return early
                 return
         except Exception:
@@ -641,6 +941,13 @@ class SimulationDialog(QDialog):
             except Exception:
                 self.status_label.setText("Processing")
                 self.status_label.setStyleSheet("font-weight: bold; color: orange;")
+
+        # Update remaining time UI if auto-loop with time limit is running
+        try:
+            if getattr(self, 'auto_start_time', None) and getattr(self, 'auto_run_seconds', 0) and self.auto_run_seconds > 0:
+                self._update_time_remaining()
+        except Exception:
+            pass
 
         # Running command line
         if lower.startswith("running:") or lower.startswith(tr("Running:").lower()):
@@ -694,11 +1001,85 @@ class SimulationDialog(QDialog):
 
         self.run_btn.setEnabled(True)
         self.worker = None
+        try:
+            if getattr(self, '_time_timer', None):
+                self._time_timer.stop()
+        except Exception:
+            pass
+        try:
+            self.auto_start_time = None
+            self.auto_run_seconds = 0
+            self.time_progress.setValue(0)
+            self.remaining_label.setText(tr("Remaining") + ": -")
+        except Exception:
+            pass
 
     # Persistence helpers for remembering last-used settings
     def settings_file_path(self) -> Path:
         repo_root = Path(__file__).resolve().parents[2]
         return repo_root / 'data' / 'sim_settings.json'
+
+    def _update_time_remaining(self):
+        try:
+            if not getattr(self, 'auto_start_time', None) or not getattr(self, 'auto_run_seconds', 0):
+                return
+            total = float(self.auto_run_seconds)
+            elapsed = time.time() - float(self.auto_start_time)
+            remaining = max(0.0, total - elapsed)
+            # update label as MM:SS
+            mins = int(remaining) // 60
+            secs = int(remaining) % 60
+            self.remaining_label.setText(tr('Remaining') + f": {mins:02d}:{secs:02d}")
+            # update time progress as percent elapsed
+            pct = int(min(100.0, (elapsed / total) * 100.0)) if total > 0 else 0
+            self.time_progress.setValue(pct)
+            if remaining <= 0:
+                try:
+                    self.status_label.setText(tr('Time up'))
+                    self.status_label.setStyleSheet("font-weight: bold; color: red;")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def apply_recommended_parameters(self):
+        """Apply recommended parameters for batch simulation and head2head.
+
+        These defaults are tuned for a balance between speed and signal:
+        - Games: 100
+        - Threads: min(4, CPU)
+        - MCTS sims: 800
+        - head2head games: 50
+        - head2head parallel: 8
+        - eval games: 50
+        - eval parallel: 8
+        """
+        try:
+            import multiprocessing
+            cpu = multiprocessing.cpu_count()
+        except Exception:
+            cpu = 4
+        try:
+            self.episodes_spin.setValue(100)
+            self.threads_spin.setValue(min(4, cpu))
+            self.sims_spin.setValue(800)
+            self.h2h_games_spin.setValue(50)
+            self.h2h_parallel_spin.setValue(8)
+            self.h2h_use_pytorch_cb.setChecked(False)
+            self.h2h_baseline_le.setText('')
+            self.eval_every_steps_spin.setValue(5000)
+            self.eval_games_spin.setValue(50)
+            self.eval_parallel_spin.setValue(8)
+            self.eval_use_pytorch_cb2.setChecked(False)
+            # reasonable auto-loop defaults
+            self.iterations_spin.setValue(3)
+            self.batch_spin.setValue(8)
+            self.parallel_spin.setValue(8)
+            self.keep_data_spin.setValue(5)
+            self.keep_models_spin.setValue(3)
+            self.win_threshold_spin.setValue(0.55)
+        except Exception:
+            pass
 
     def load_settings(self):
         p = self.settings_file_path()
@@ -736,8 +1117,7 @@ class SimulationDialog(QDialog):
         except Exception: pass
         try: self.iterations_spin.setValue(int(s.get('iterations', self.iterations_spin.value())))
         except Exception: pass
-        try: self.run_seconds_spin.setValue(int(s.get('run_seconds', self.run_seconds_spin.value())))
-        except Exception: pass
+        # legacy 'run_seconds' removed; use 'run_minutes' only
         try: self.epochs_spin.setValue(int(s.get('epochs', self.epochs_spin.value())))
         except Exception: pass
         try: self.batch_spin.setValue(int(s.get('batch', self.batch_spin.value())))
@@ -749,6 +1129,25 @@ class SimulationDialog(QDialog):
         try: self.keep_models_spin.setValue(int(s.get('keep_models', self.keep_models_spin.value())))
         except Exception: pass
         try: self.win_threshold_spin.setValue(float(s.get('win_threshold', self.win_threshold_spin.value())))
+        except Exception: pass
+        try: self.run_minutes_spin.setValue(int(s.get('run_minutes', self.run_minutes_spin.value())))
+        except Exception: pass
+        # head2head quick-run settings
+        try: self.h2h_games_spin.setValue(int(s.get('h2h_games', self.h2h_games_spin.value())))
+        except Exception: pass
+        try: self.h2h_parallel_spin.setValue(int(s.get('h2h_parallel', self.h2h_parallel_spin.value())))
+        except Exception: pass
+        try: self.h2h_use_pytorch_cb.setChecked(bool(s.get('h2h_use_pytorch', self.h2h_use_pytorch_cb.isChecked())))
+        except Exception: pass
+        try: self.h2h_baseline_le.setText(str(s.get('h2h_baseline', self.h2h_baseline_le.text())))
+        except Exception: pass
+        try: self.eval_every_steps_spin.setValue(int(s.get('eval_every_steps', self.eval_every_steps_spin.value())))
+        except Exception: pass
+        try: self.eval_games_spin.setValue(int(s.get('eval_games', self.eval_games_spin.value())))
+        except Exception: pass
+        try: self.eval_parallel_spin.setValue(int(s.get('eval_parallel', self.eval_parallel_spin.value())))
+        except Exception: pass
+        try: self.eval_use_pytorch_cb2.setChecked(bool(s.get('eval_use_pytorch', self.eval_use_pytorch_cb2.isChecked())))
         except Exception: pass
 
     def save_settings(self):
@@ -762,13 +1161,24 @@ class SimulationDialog(QDialog):
             'sims': self.sims_spin.value(),
             'auto_enabled': bool(self.auto_checkbox.isChecked()),
             'iterations': self.iterations_spin.value(),
-            'run_seconds': self.run_seconds_spin.value(),
             'epochs': self.epochs_spin.value(),
             'batch': self.batch_spin.value(),
             'parallel': self.parallel_spin.value(),
             'keep_data': self.keep_data_spin.value(),
             'keep_models': self.keep_models_spin.value(),
             'win_threshold': self.win_threshold_spin.value(),
+            # run duration in minutes
+            'run_minutes': self.run_minutes_spin.value(),
+            # head2head quick-run settings
+            'h2h_games': self.h2h_games_spin.value(),
+            'h2h_parallel': self.h2h_parallel_spin.value(),
+            'h2h_use_pytorch': bool(self.h2h_use_pytorch_cb.isChecked()),
+            'h2h_baseline': str(self.h2h_baseline_le.text()),
+            # auto-eval settings
+            'eval_every_steps': self.eval_every_steps_spin.value(),
+            'eval_games': self.eval_games_spin.value(),
+            'eval_parallel': self.eval_parallel_spin.value(),
+            'eval_use_pytorch': bool(self.eval_use_pytorch_cb2.isChecked()),
         }
         with open(p, 'w', encoding='utf-8') as f:
             json.dump(s, f, ensure_ascii=False, indent=2)

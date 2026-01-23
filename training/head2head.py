@@ -3,11 +3,13 @@
 from pathlib import Path
 import sys
 import numpy as np
+import torch
 
 repo_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(repo_root))
 
 import onnxruntime as ort
+from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 import dm_ai_module as dm
 import random
 import time
@@ -17,11 +19,29 @@ from dm_toolkit.action_to_command import map_action
 CARD_DB = dm.JsonLoader.load_cards('data/cards.json')
 
 
-def make_session(onnx_path: str):
+def make_session(model_path: str, use_pytorch: bool = False):
     so = ort.SessionOptions()
     so.intra_op_num_threads = 4
     so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-    sess = ort.InferenceSession(str(onnx_path), sess_options=so, providers=['CPUExecutionProvider'])
+    if use_pytorch:
+        # Load PyTorch DuelTransformer from checkpoint
+        try:
+            ckpt = torch.load(str(model_path), map_location='cpu')
+            # Model hyperparams must match training defaults
+            model = DuelTransformer(vocab_size=1000, action_dim=600, d_model=256, nhead=8, num_layers=6, max_len=200, synergy_matrix_path=None)
+            state = ckpt.get('model_state_dict', ckpt)
+            model.load_state_dict(state)
+            model.eval()
+            try:
+                info = {'event': 'sess_info', 'pytorch_model': str(model_path)}
+                print("H2H_JSON: " + __import__('json').dumps(info, ensure_ascii=False))
+            except Exception:
+                pass
+            return model
+        except Exception as e:
+            raise
+    else:
+        sess = ort.InferenceSession(str(model_path), sess_options=so, providers=['CPUExecutionProvider'])
     # Emit session input/output metadata for diagnostics
     try:
         inputs = []
@@ -30,7 +50,7 @@ def make_session(onnx_path: str):
         outputs = []
         for out in sess.get_outputs():
             outputs.append({'name': out.name, 'shape': [d for d in out.shape], 'type': out.type})
-        info = {'event': 'sess_info', 'onnx': str(onnx_path), 'inputs': inputs, 'outputs': outputs}
+        info = {'event': 'sess_info', 'onnx': str(model_path), 'inputs': inputs, 'outputs': outputs}
         print("H2H_JSON: " + __import__('json').dumps(info, ensure_ascii=False))
     except Exception:
         pass
@@ -55,6 +75,10 @@ def eval_policy_batch(sess, token_seqs):
     # token_seqs: list of sequences (each list[int] or numpy array)
     if len(token_seqs) == 0:
         return np.zeros((0, 0)), np.zeros((0,))
+    # Dispatch between ONNX session and PyTorch model
+    if isinstance(sess, torch.nn.Module):
+        return eval_policy_batch_torch(sess, token_seqs)
+
     arr = np.array(token_seqs, dtype=np.int64)
     inp = sess.get_inputs()[0].name
     # Diagnostic: print eval call shapes
@@ -101,7 +125,25 @@ def eval_policy_batch(sess, token_seqs):
     return policy, value
 
 
-def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=None):
+def eval_policy_batch_torch(model: torch.nn.Module, token_seqs):
+    if len(token_seqs) == 0:
+        return np.zeros((0, 0)), np.zeros((0,))
+    # convert to tensor (batch, seq_len)
+    arr = np.array(token_seqs, dtype=np.int64)
+    t = torch.from_numpy(arr).long()
+    with torch.no_grad():
+        # create padding mask where 0 is PAD
+        padding_mask = (t == 0)
+        policy_logits, value = model(t, padding_mask=padding_mask)
+        # policy_logits: (batch, action_dim) or (batch, seq_len, action_dim)
+        if policy_logits.ndim == 3:
+            policy_logits = policy_logits[:, -1, :]
+        policy = policy_logits.cpu().numpy()
+        value = value.squeeze(-1).cpu().numpy()
+    return policy, value
+
+
+def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=None, pass_penalty: float = 0.0):
     # seeds: list of seeds for games to run in parallel
     n = len(seeds)
     instances = []
@@ -259,6 +301,11 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
     last_policy_summary = [None] * n
     last_value = [None] * n
     last_chosen = [None] * n
+    # statistics per-instance
+    moves_count = [0] * n
+    pass_count = [0] * n
+    # action counts per turn per game: list of dict(turn -> dict(action_type -> count))
+    action_by_turn = [dict() for _ in range(n)]
     # track consecutive PASS-only choices to detect infinite/pass loops
     consecutive_pass_count = [0] * n
     PASS_LOOP_THRESHOLD = 8
@@ -375,7 +422,30 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                             legal_map.append({'repr': map_action(a) if True else str(a), 'index': None, 'error': str(_e)})
                         except Exception:
                             legal_map.append({'repr': str(a), 'index': None, 'error': str(_e)})
-                dbg_leg = {'event': 'legal_map', 'index': game_idx, 'turn': EngineCompat.get_turn_number(instances[game_idx].state), 'legal_map': legal_map}
+                # emit legal_map and index diagnostics
+                try:
+                    policy_len = len(policy_logits) if hasattr(policy_logits, '__len__') else None
+                    # count invalid indices relative to policy length
+                    invalid_count = 0
+                    valid_count = 0
+                    max_idx = -1
+                    for lm in legal_map:
+                        idx = lm.get('index')
+                        if idx is None:
+                            invalid_count += 1
+                        else:
+                            try:
+                                if policy_len is not None and (int(idx) < 0 or int(idx) >= int(policy_len)):
+                                    invalid_count += 1
+                                else:
+                                    valid_count += 1
+                                if isinstance(idx, int) and idx > max_idx:
+                                    max_idx = idx
+                            except Exception:
+                                invalid_count += 1
+                    dbg_leg = {'event': 'legal_map', 'index': game_idx, 'turn': EngineCompat.get_turn_number(instances[game_idx].state), 'legal_map': legal_map, 'policy_len': policy_len, 'valid_indices': valid_count, 'invalid_indices': invalid_count, 'max_legal_index': max_idx}
+                except Exception:
+                    dbg_leg = {'event': 'legal_map', 'index': game_idx, 'turn': EngineCompat.get_turn_number(instances[game_idx].state), 'legal_map': legal_map}
                 print("H2H_JSON: " + __import__('json').dumps(dbg_leg, ensure_ascii=False))
             except Exception:
                 pass
@@ -388,11 +458,57 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 if idx is None or idx < 0 or idx >= len(policy_logits):
                     continue
                 score = float(policy_logits[idx])
+                # apply small penalty to PASS actions if configured
+                try:
+                    is_pass_act = (getattr(act, 'type', None) == dm.ActionType.PASS)
+                except Exception:
+                    is_pass_act = False
+                if is_pass_act and pass_penalty:
+                    score -= float(pass_penalty)
                 if score > best_score:
                     best_score = score
                     chosen = act
             if chosen is None:
                 chosen = random.choice(legal)
+            else:
+                # If model chose PASS but other non-PASS legal actions exist,
+                # prefer a non-PASS action to avoid sterile PASS-only loops.
+                try:
+                    is_chosen_pass = False
+                    try:
+                        is_chosen_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or getattr(chosen, 'type', None) == dm.ActionType.PASS )
+                    except Exception:
+                        is_chosen_pass = getattr(chosen, 'type', None) == dm.ActionType.PASS
+                    if is_chosen_pass:
+                        non_pass_candidates = [a for a in legal if not (getattr(a, 'type', None) == dm.ActionType.PASS)]
+                        if non_pass_candidates:
+                            try:
+                                print("H2H_JSON: " + __import__('json').dumps({'event': 'fallback_non_pass_selected', 'index': game_idx, 'reason': 'model_chose_pass_but_nonpass_available'}, ensure_ascii=False))
+                            except Exception:
+                                pass
+                            chosen = random.choice(non_pass_candidates)
+                except Exception:
+                    pass
+            else:
+                # If model chose PASS but other non-PASS legal actions exist,
+                # prefer a non-PASS action to avoid sterile PASS-only loops.
+                try:
+                    is_chosen_pass = False
+                    try:
+                        is_chosen_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or getattr(chosen, 'type', None) == dm.ActionType.PASS )
+                    except Exception:
+                        is_chosen_pass = getattr(chosen, 'type', None) == dm.ActionType.PASS
+                    if is_chosen_pass:
+                        non_pass_candidates = [a for a in legal if not (getattr(a, 'type', None) == dm.ActionType.PASS)]
+                        if non_pass_candidates:
+                            # log the fallback
+                            try:
+                                print("H2H_JSON: " + __import__('json').dumps({'event': 'fallback_non_pass_selected', 'index': game_idx, 'reason': 'model_chose_pass_but_nonpass_available'}, ensure_ascii=False))
+                            except Exception:
+                                pass
+                            chosen = random.choice(non_pass_candidates)
+                except Exception:
+                    pass
             # record chosen action representation
             try:
                 # Prefer converting legacy Action objects to unified command dict
@@ -405,13 +521,37 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                         last_chosen[game_idx] = str(chosen)
                 except Exception:
                     last_chosen[game_idx] = None
+            # update stats
             try:
-                instances[game_idx].resolve_action(chosen)
-            except Exception:
+                moves_count[game_idx] += 1
+                turn_no = EngineCompat.get_turn_number(instances[game_idx].state)
+                act_type = None
                 try:
-                    dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
+                    if isinstance(last_chosen[game_idx], dict):
+                        act_type = last_chosen[game_idx].get('type')
                 except Exception:
                     pass
+                if act_type is None:
+                    try:
+                        act_type = getattr(chosen, 'type', None)
+                        if isinstance(act_type, int):
+                            act_type = str(act_type)
+                    except Exception:
+                        act_type = 'UNKNOWN'
+                if act_type == None:
+                    act_type = 'UNKNOWN'
+                # pass count
+                if act_type == 'PASS' or getattr(chosen, 'type', None) == dm.ActionType.PASS:
+                    pass_count[game_idx] += 1
+                # turn distribution
+                tb = action_by_turn[game_idx].setdefault(str(turn_no), {})
+                tb[act_type] = tb.get(act_type, 0) + 1
+            except Exception:
+                pass
+            try:
+                dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
+            except Exception:
+                pass
             try:
                 if chosen.type == dm.ActionType.PASS:
                     dm.PhaseManager.next_phase(instances[game_idx].state, CARD_DB)
@@ -480,6 +620,13 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 if idx is None or idx < 0 or idx >= len(policy_logits):
                     continue
                 score = float(policy_logits[idx])
+                # apply small penalty to PASS actions if configured
+                try:
+                    is_pass_act = (getattr(act, 'type', None) == dm.ActionType.PASS)
+                except Exception:
+                    is_pass_act = False
+                if is_pass_act and pass_penalty:
+                    score -= float(pass_penalty)
                 if score > best_score:
                     best_score = score
                     chosen = act
@@ -496,6 +643,31 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                         last_chosen[game_idx] = str(chosen)
                 except Exception:
                     last_chosen[game_idx] = None
+            # update stats for player B
+            try:
+                moves_count[game_idx] += 1
+                turn_no = EngineCompat.get_turn_number(instances[game_idx].state)
+                act_type = None
+                try:
+                    if isinstance(last_chosen[game_idx], dict):
+                        act_type = last_chosen[game_idx].get('type')
+                except Exception:
+                    pass
+                if act_type is None:
+                    try:
+                        act_type = getattr(chosen, 'type', None)
+                        if isinstance(act_type, int):
+                            act_type = str(act_type)
+                    except Exception:
+                        act_type = 'UNKNOWN'
+                if act_type == None:
+                    act_type = 'UNKNOWN'
+                if act_type == 'PASS' or getattr(chosen, 'type', None) == dm.ActionType.PASS:
+                    pass_count[game_idx] += 1
+                tb = action_by_turn[game_idx].setdefault(str(turn_no), {})
+                tb[act_type] = tb.get(act_type, 0) + 1
+            except Exception:
+                pass
             try:
                 instances[game_idx].resolve_action(chosen)
             except Exception:
@@ -714,15 +886,36 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
         else:
             results[i] = 0
 
+    # Aggregate statistics across games
+    try:
+        total_moves = sum(moves_count) if moves_count else 0
+        total_passes = sum(pass_count) if pass_count else 0
+        avg_game_length = float(total_moves) / len(moves_count) if len(moves_count) > 0 else 0.0
+        pass_rate = float(total_passes) / total_moves if total_moves > 0 else 0.0
+        # aggregate turn-action distribution
+        agg_turn = {}
+        for g in action_by_turn:
+            for turn, acts in g.items():
+                ta = agg_turn.setdefault(turn, {})
+                for atype, cnt in acts.items():
+                    ta[atype] = ta.get(atype, 0) + int(cnt)
+        stats = {'event': 'h2h_stats', 'avg_game_length': avg_game_length, 'pass_rate': pass_rate, 'total_moves': int(total_moves), 'total_passes': int(total_passes), 'turn_action_distribution': agg_turn}
+        try:
+            print("H2H_JSON: " + __import__('json').dumps(stats, ensure_ascii=False))
+        except Exception:
+            pass
+    except Exception:
+        pass
+
     return results
 
 
-def head2head(onnx_a: str, onnx_b: str, games: int = 20, parallel: int = 1):
+def head2head(onnx_a: str, onnx_b: str, games: int = 20, parallel: int = 1, use_pytorch: bool = False, pass_penalty: float = 0.0):
     """Run head-to-head: onnx_a as player1, onnx_b as player2 using parallel batched games.
     Returns p1_win_rate and wins dict.
     """
-    sess_a = make_session(onnx_a)
-    sess_b = make_session(onnx_b)
+    sess_a = make_session(onnx_a, use_pytorch=use_pytorch)
+    sess_b = make_session(onnx_b, use_pytorch=use_pytorch)
 
     # Quick check whether batched inference of size>1 works; if not, fall back to sequential mode
     try:
@@ -768,7 +961,7 @@ def head2head(onnx_a: str, onnx_b: str, games: int = 20, parallel: int = 1):
             except Exception:
                 pass
 
-        results = play_games_batch(sess_a, sess_b, group, progress_callback=progress_cb)
+        results = play_games_batch(sess_a, sess_b, group, progress_callback=progress_cb, pass_penalty=pass_penalty)
 
         for r in results:
             wins[r] = wins.get(r, 0) + 1
@@ -801,6 +994,8 @@ if __name__ == '__main__':
     p.add_argument('b')
     p.add_argument('--games', type=int, default=20)
     p.add_argument('--parallel', type=int, default=1, help='Number of parallel games per batch')
+    p.add_argument('--pass-penalty', type=float, default=0.0, help='Small amount subtracted from PASS action logit to discourage PASS')
+    p.add_argument('--use_pytorch', action='store_true', help='Load PyTorch .pth checkpoints instead of ONNX')
     args = p.parse_args()
-    r, wins = head2head(args.a, args.b, games=args.games, parallel=args.parallel)
+    r, wins = head2head(args.a, args.b, games=args.games, parallel=args.parallel, use_pytorch=bool(getattr(args, 'use_pytorch', False)), pass_penalty=float(getattr(args, 'pass_penalty', 0.0)))
     print('p1_win_rate', r, 'wins', wins)

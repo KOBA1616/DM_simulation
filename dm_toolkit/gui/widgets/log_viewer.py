@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QListWidget
+from PyQt6.QtWidgets import QListWidget, QMenu, QAction
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence
+from PyQt6.QtWidgets import QApplication
 
 class LogViewer(QListWidget):
     """
@@ -9,8 +11,44 @@ class LogViewer(QListWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("LogViewer")
-        # Optional: set selection mode or other properties
-        self.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        # Allow multi-selection so users can select multiple log lines to copy
+        self.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        # Enable custom context menu for copy
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
+
+    def _show_context_menu(self, pos):
+        menu = QMenu(self)
+        copy_act = QAction("Copy", self)
+        copy_act.setShortcut(QKeySequence.Copy)
+        copy_act.triggered.connect(self.copy_selected)
+        menu.addAction(copy_act)
+        # Add select-all for convenience
+        sa = QAction("Select All", self)
+        sa.triggered.connect(self.selectAll)
+        menu.addAction(sa)
+        menu.exec(self.mapToGlobal(pos))
+
+    def copy_selected(self):
+        items = self.selectedItems()
+        if not items:
+            return
+        text = "\n".join([it.text() for it in items])
+        try:
+            cb = QApplication.clipboard()
+            cb.setText(text)
+        except Exception:
+            pass
+
+    def keyPressEvent(self, event):
+        # Support Ctrl+C copying
+        try:
+            if event.matches(QKeySequence.Copy):
+                self.copy_selected()
+                return
+        except Exception:
+            pass
+        super().keyPressEvent(event)
 
     def log_message(self, msg: str) -> None:
         """Appends a message to the log and scrolls to bottom."""
