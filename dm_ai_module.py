@@ -621,24 +621,52 @@ else:
                 # Default to Battle Zone if not specified
                 target_zone = p.battle_zone
 
-                # Simple logic: destroy all in target zone or battle zone
-                # In a real engine, we'd filter. Here we just move generic targets for testing flow.
+                # Check filtering
                 if cmd.target_filter:
                     zones = getattr(cmd.target_filter, 'zones', [])
                     if "MANA_ZONE" in zones: target_zone = p.mana_zone
 
-                # Move to graveyard
-                while target_zone:
-                    c = target_zone.pop(0)
-                    p.graveyard.append(c)
+                target_inst_id = getattr(cmd, 'instance_id', -1)
+                # Fallback to source_id if instance_id not set
+                if target_inst_id <= 0:
+                    target_inst_id = source_id
+
+                found = False
+                if target_inst_id > 0:
+                    for i, c in enumerate(target_zone):
+                        if c.instance_id == target_inst_id:
+                            c = target_zone.pop(i)
+                            p.graveyard.append(c)
+                            found = True
+                            break
+
+                # Fallback: destroy all if no specific instance (legacy behavior)
+                if not found and target_inst_id <= 0:
+                    while target_zone:
+                        c = target_zone.pop(0)
+                        p.graveyard.append(c)
 
             elif cmd.type == CommandType.MANA_CHARGE:
                 p = state.players[player_id]
+                target_inst_id = getattr(cmd, 'instance_id', -1)
+                if target_inst_id <= 0: target_inst_id = source_id
+
                 # If Hand -> Mana
                 if cmd.target_filter and "HAND" in getattr(cmd.target_filter, 'zones', []):
                     if p.hand:
-                        c = p.hand.pop(0)
-                        p.mana_zone.append(c)
+                        found = False
+                        if target_inst_id > 0:
+                            for i, c in enumerate(p.hand):
+                                if c.instance_id == target_inst_id:
+                                    c = p.hand.pop(i)
+                                    p.mana_zone.append(c)
+                                    found = True
+                                    break
+                        if not found:
+                            # Fallback
+                            c = p.hand.pop(0)
+                            p.mana_zone.append(c)
+
                 # Default: Top of deck -> Mana
                 elif p.deck:
                     stub = p.deck.pop()
@@ -648,9 +676,20 @@ else:
             elif cmd.type == CommandType.DISCARD:
                 p = state.players[player_id]
                 if p.hand:
-                    # Simple discard top one for stub
-                    c = p.hand.pop(0)
-                    p.graveyard.append(c)
+                    target_inst_id = getattr(cmd, 'instance_id', -1)
+                    if target_inst_id <= 0: target_inst_id = source_id
+
+                    found = False
+                    if target_inst_id > 0:
+                        for i, c in enumerate(p.hand):
+                            if c.instance_id == target_inst_id:
+                                c = p.hand.pop(i)
+                                p.graveyard.append(c)
+                                found = True
+                                break
+                    if not found:
+                        c = p.hand.pop(0)
+                        p.graveyard.append(c)
 
             elif cmd.type == CommandType.BREAK_SHIELD:
                 # Target player usually defined in cmd or context, default to opponent for now if not set
@@ -773,15 +812,27 @@ else:
             elif atype == ActionType.MANA_CHARGE:
                  if hasattr(action, 'card_id'):
                     cid = getattr(action, 'card_id')
+                    inst_id = getattr(action, 'source_instance_id', 0)
                     p = state.players[player]
-                    # Find and remove
-                    for i, c in enumerate(p.hand):
-                        if c.card_id == cid:
-                            card = p.hand.pop(i)
-                            # In DM, charged mana enters untapped but cannot be used immediately (handled by game logic limits, not tap state)
-                            card.is_tapped = False
-                            p.mana_zone.append(card)
-                            break
+                    # Find and remove by instance ID first
+                    found = False
+                    if inst_id > 0:
+                        for i, c in enumerate(p.hand):
+                            if c.instance_id == inst_id:
+                                card = p.hand.pop(i)
+                                card.is_tapped = False
+                                p.mana_zone.append(card)
+                                found = True
+                                break
+
+                    if not found:
+                        # Fallback by card_id
+                        for i, c in enumerate(p.hand):
+                            if c.card_id == cid:
+                                card = p.hand.pop(i)
+                                card.is_tapped = False
+                                p.mana_zone.append(card)
+                                break
 
             elif atype == ActionType.ATTACK_PLAYER:
                 # Tap the attacker
@@ -801,10 +852,18 @@ else:
                 card_obj = None
 
                 # Find and remove one instance from hand
-                for i, c in enumerate(p.hand):
-                    if c.card_id == cid:
-                        card_obj = p.hand.pop(i)
-                        break
+                if inst_id > 0:
+                    for i, c in enumerate(p.hand):
+                        if c.instance_id == inst_id:
+                            card_obj = p.hand.pop(i)
+                            break
+
+                if card_obj is None:
+                    # Fallback by card_id
+                    for i, c in enumerate(p.hand):
+                        if c.card_id == cid:
+                            card_obj = p.hand.pop(i)
+                            break
 
                 if card_obj is None:
                     # Fallback if card wasn't in hand (e.g. created/token)
