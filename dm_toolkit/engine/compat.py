@@ -408,7 +408,15 @@ class EngineCompat:
 
     @staticmethod
     def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
-        get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "Resolving Action", {"action": str(action)})
+        # Improved logging with structured data
+        log_data = {"action_str": str(action)}
+        try:
+            from dm_toolkit.action_to_command import map_action
+            log_data["command_map"] = map_action(action)
+        except Exception:
+            pass
+        get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "Resolving Action", log_data)
+
         EngineCompat._check_module()
         assert dm_ai_module is not None
         real_db = EngineCompat._resolve_db(card_db)

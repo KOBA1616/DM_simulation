@@ -167,6 +167,9 @@ else:
             self.slot_index = 0
             self.value1 = 0
 
+        def __repr__(self):
+            return f"<Action type={self.type} card={self.card_id} source={self.source_instance_id}>"
+
     class ConditionDef:
         def __init__(self, *args: Any, **kwargs: Any): pass
 
