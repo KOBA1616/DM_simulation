@@ -940,6 +940,15 @@ else:
         def generate_legal_actions(state: Any, card_db: Any) -> list:
             actions = []
 
+            def get_card_def(cid):
+                if hasattr(card_db, 'get_card'):
+                    return card_db.get_card(cid)
+                if isinstance(card_db, dict):
+                     c = card_db.get(cid)
+                     if c is None: c = card_db.get(str(cid))
+                     return c
+                return CardDatabase.get_card(cid)
+
             # 1. Pending Effects
             if state.pending_effects:
                 act = Action()
@@ -1105,6 +1114,32 @@ else:
                         p.hand.append(p.deck.pop())
 
         @staticmethod
+        def setup_scenario(state: Any, config: Any, db: Any) -> None:
+            # Reset
+            state.players[0] = PlayerStub()
+            state.players[1] = PlayerStub()
+            state.turn_number = 1
+            state.active_player_id = 0
+            state.current_phase = 2
+
+            def _add(pid, zone_list, card_id):
+                 inst_id = state.get_next_instance_id()
+                 cs = CardStub(card_id, inst_id)
+                 zone_list.append(cs)
+
+            # My (P0) setup
+            for cid in config.my_hand_cards: _add(0, state.players[0].hand, cid)
+            for cid in config.my_mana_zone: _add(0, state.players[0].mana_zone, cid)
+            for cid in config.my_battle_zone: _add(0, state.players[0].battle_zone, cid)
+            for cid in config.my_shields: _add(0, state.players[0].shield_zone, cid)
+            for cid in config.my_grave_yard: _add(0, state.players[0].graveyard, cid)
+
+            # Enemy (P1) setup
+            for _ in range(config.enemy_shield_count):
+                _add(1, state.players[1].shield_zone, 1) # Dummy ID 1
+            for cid in config.enemy_battle_zone: _add(1, state.players[1].battle_zone, cid)
+
+        @staticmethod
         def next_phase(state: Any, db: Any) -> None:
             # Cycle 2 -> 3 -> 4 -> 5 (End) -> 2 (Next Turn)
             if state.current_phase == 2:
@@ -1149,3 +1184,107 @@ else:
                     self.policies = [[]]
                     self.values = [0]
             return Batch()
+
+    class ScenarioConfig:
+        def __init__(self):
+            self.my_mana = 0
+            self.my_hand_cards = []
+            self.my_battle_zone = []
+            self.my_mana_zone = []
+            self.my_grave_yard = []
+            self.my_shields = []
+            self.enemy_shield_count = 5
+            self.enemy_battle_zone = []
+            self.enemy_can_use_trigger = False
+
+    class TensorConverter:
+        @staticmethod
+        def convert_to_tensor(state: Any, player_id: int, card_db: Any) -> List[float]:
+            # Return dummy zero vector of size 856 (compatible with AlphaZeroNetwork defaults)
+            return [0.0] * 856
+
+    _batch_inference_callback = None
+    def register_batch_inference_numpy(callback):
+        global _batch_inference_callback
+        _batch_inference_callback = callback
+
+    class HeuristicEvaluator:
+        def __init__(self, card_db: Any):
+            pass
+        def evaluate(self, state: Any) -> Any:
+            # Uniform policy, 0 value
+            return ([1.0/600.0]*600, 0.0)
+
+    class NeuralEvaluator:
+        def __init__(self, card_db: Any):
+            pass
+        def evaluate(self, state: Any) -> Any:
+            global _batch_inference_callback
+            if _batch_inference_callback:
+                import numpy as np
+                # Wrap input
+                vec = TensorConverter.convert_to_tensor(state, state.active_player_id, None)
+                # Call batch callback (expects batch dim)
+                policies, values = _batch_inference_callback(np.array([vec]))
+                return (policies[0], values[0])
+            return ([1.0/600.0]*600, 0.0)
+
+    class GameResultInfo:
+        def __init__(self, result):
+            self.result = result
+
+    class ParallelRunner:
+        def __init__(self, card_db: Any, sims: int, batch_size: int):
+            self.card_db = card_db
+            self.sims = sims
+            self.batch_size = batch_size
+
+        def play_games(self, initial_states: List[Any], evaluator_func: Any, temperature: float, verbose: bool, threads: int) -> List[Any]:
+            results = []
+            import random
+
+            for state in initial_states:
+                # Play a random game until end or limit
+                # We operate on 'state' directly (assuming ownership transfer or clone isn't strictly needed for this stub)
+
+                turn_limit = 50
+                winner = -1
+
+                for _ in range(turn_limit):
+                    # check_game_over returns bool in python stub if no result obj passed
+                    is_over = PhaseManager.check_game_over(state)
+                    if is_over:
+                         winner = state.winner
+                         break
+
+                    # Generate Actions
+                    actions = ActionGenerator.generate_legal_actions(state, self.card_db)
+
+                    if not actions:
+                        # Auto-pass if no actions? Or pass is usually generated.
+                        # ActionGenerator stub guarantees PASS is always present.
+                        pass
+
+                    # Policy: Random
+                    if actions:
+                        chosen = random.choice(actions)
+
+                        # Execute
+                        pid = state.active_player_id
+                        GenericCardSystem.resolve_action(state, chosen, pid)
+
+                    # Check again
+                    is_over = PhaseManager.check_game_over(state)
+                    if is_over:
+                         winner = state.winner
+                         break
+
+                    # Next Phase
+                    PhaseManager.next_phase(state, self.card_db)
+
+                if winner == -1:
+                    winner = 2 # DRAW
+
+                results.append(GameResultInfo(winner))
+
+            return results
