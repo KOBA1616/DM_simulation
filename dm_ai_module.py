@@ -195,6 +195,12 @@ else:
         UNTAP = 11
         BREAK_SHIELD = 14
 
+    class Phase(IntEnum):
+        MANA = 2
+        MAIN = 3
+        ATTACK = 4
+        END = 5
+
     class CommandType(Enum):
         TRANSITION = 1
         MUTATE = 2
@@ -1118,6 +1124,19 @@ else:
             else:
                 # Fallback recovery
                 state.current_phase = 2
+
+        @staticmethod
+        def check_game_over(state: Any, result: Any = None) -> Any:
+            if state.game_over:
+                if result is not None:
+                     try:
+                         result.is_over = True
+                         result.result = state.winner
+                     except Exception:
+                         pass
+                     return True, result
+                return True
+            return False
 
     class DataCollector:
         def __init__(self):
