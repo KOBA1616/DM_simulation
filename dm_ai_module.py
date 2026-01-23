@@ -700,7 +700,7 @@ else:
             elif cmd_type == CommandType.DRAW_CARD:
                 state.draw_cards(player_id, get_attr('amount', 1))
 
-            elif cmd_type == CommandType.MOVE_CARD or cmd_type == CommandType.REPLACE_CARD_MOVE:
+            elif cmd_type == CommandType.MOVE_CARD or cmd_type == CommandType.REPLACE_CARD_MOVE or cmd_type == CommandType.PLAY_FROM_ZONE:
                 # Handle explicit moves
                 instance_id = get_attr('instance_id') or get_attr('target_instance') or source_id
                 to_zone = str(get_attr('to_zone', '')).upper()
@@ -735,6 +735,9 @@ else:
                     elif to_zone in ['HAND']:
                         dest_p.hand.append(card)
                     elif to_zone in ['BATTLE', 'BATTLE_ZONE']:
+                        if cmd_type == CommandType.PLAY_FROM_ZONE:
+                            card.is_tapped = False
+                            card.sick = True
                         dest_p.battle_zone.append(card)
                     elif to_zone in ['GRAVEYARD']:
                         dest_p.graveyard.append(card)
@@ -939,6 +942,17 @@ else:
         @staticmethod
         def generate_legal_actions(state: Any, card_db: Any) -> list:
             actions = []
+
+            # Helper to get card data
+            def get_card_def(cid):
+                if hasattr(card_db, 'get_card'):
+                    return card_db.get_card(cid)
+                if isinstance(card_db, dict):
+                     # Handle string/int keys
+                     c = card_db.get(cid)
+                     if c is None: c = card_db.get(str(cid))
+                     return c
+                return CardDatabase.get_card(cid)
 
             # 1. Pending Effects
             if state.pending_effects:
