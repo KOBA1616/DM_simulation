@@ -72,6 +72,23 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 *   **NetworkV2**: Transformer (Linear Attention) ベースの可変長入力モデルを実装完了。
 *   **TensorConverter**: C++側でのシーケンス変換ロジックを実装済み。
 
+### Phase 6.1: Engine Stabilization & Testing (Jan 2026) [✅ 完了]
+
+#### 3.3 Python Binding Fixes & Testing (2026-01-22)
+*   **Command Execution**: `MutateCommand` (TAP/UNTAP/POWER_MOD) の実装、`GameState.execute_command` の Enum/文字列対応強化。
+*   **JsonLoader**: 属性アクセス可能なオブジェクトを返すように改善。
+*   **Automated Testing**:
+    *   `scripts/python/generate_card_tests.py` の実装完了。カード定義から動的にテストを生成。
+    *   `dm_toolkit/debug/effect_tracer.py` の実装完了。効果解決履歴のトレーシング基盤。
+*   **Verification**:
+    *   主要ユニットテスト通過 (`test_game_flow_minimal`, `test_spell_and_stack`, `test_inference_integration`).
+    *   14枚のカード自動生成テスト通過。
+    *   `Beam Search` メモリ問題修正確認。
+
+#### 4.0 Validation & Debugging Tools (Jan 2026)
+*   **Static Analysis**: `dm_toolkit/validator/card_validator.py` 実装完了。コマンド構造、変数参照、無限ループのチェック機能を提供。
+*   **Effect Tracer**: `EffectTracer` 実装完了。解決ログの記録とJSONエクスポート。
+
 ---
 
 ## Phase 1-5: Legacy Action削除 (2026年1月完了)
@@ -103,7 +120,7 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 *   `dm_toolkit/gui/editor/forms/action_config.py` 削除
 
 **成果**: Commands-only アーキテクチャの確立、保守コストの削減
-**関連ドキュメント**: [01_Legacy_Action_Removal_Roadmap.md](./01_Legacy_Action_Removal_Roadmap.md)
+**関連ドキュメント**: [01_Legacy_Action_Removal_Roadmap.md](../archive/01_Legacy_Action_Removal_Roadmap.md)
 
 ---
 
@@ -135,6 +152,5 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 
 **成果**: 1エポック学習ループ通過確認、基礎アーキテクチャ確立
 **関連ドキュメント**: 
-- [04_Phase4_Transformer_Requirements.md](./04_Phase4_Transformer_Requirements.md)
-- [07_Transformer_Implementation_Summary.md](./07_Transformer_Implementation_Summary.md)
-- [PHASE4_IMPLEMENTATION_READINESS.md](../../PHASE4_IMPLEMENTATION_READINESS.md)
+- [04_Phase4_Transformer_Requirements.md](../archive/04_Phase4_Transformer_Requirements.md)
+- [07_Transformer_Implementation_Summary.md](../archive/07_Transformer_Implementation_Summary.md)

@@ -82,3 +82,4 @@ archive/
 !.vscode/tasks.json
 !.vscode/extensions.json
 !.vscode/cmake-kits.json
+!docs/archive/
