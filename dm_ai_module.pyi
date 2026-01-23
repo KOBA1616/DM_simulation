@@ -1,15 +1,52 @@
 from typing import Any, Callable, List, Tuple, Dict
+from enum import IntEnum
 
 # Improved permissive stub for the C/C++ extension module. Commonly used
 # APIs are given lightweight signatures to improve mypy usefulness. Keep
 # most types as Any for now; refine gradually.
 
 PhaseManager: Any
-ActionType: Any
-Action: Any
 ActionGenerator: Any
 EffectResolver: Any
 JsonLoader: Any
+
+class Phase(IntEnum):
+    START = 0
+    DRAW = 1
+    MANA = 2
+    MAIN = 3
+    ATTACK = 4
+    END = 5
+
+class ActionType(IntEnum):
+    PLAY_CARD = 1
+    ATTACK_PLAYER = 2
+    ATTACK_CREATURE = 3
+    BLOCK_CREATURE = 4
+    PASS = 5
+    USE_SHIELD_TRIGGER = 6
+    MANA_CHARGE = 7
+    RESOLVE_EFFECT = 8
+    SELECT_TARGET = 9
+    TAP = 10
+    UNTAP = 11
+    BREAK_SHIELD = 14
+
+class Action:
+    type: ActionType
+    target_player: int
+    source_instance_id: int
+    card_id: int
+    slot_index: int
+    value1: int
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+class CardDatabase:
+    @staticmethod
+    def load(path: str = ...) -> None: ...
+    @staticmethod
+    def get_card(card_id: int) -> Dict[str, Any]: ...
+    def __init__(self) -> None: ...
 
 class ParallelRunner:
 	def __init__(self, card_db: Any, sims: int, batch_size: int) -> None: ...
@@ -76,7 +113,7 @@ class GameState:
 	turn_number: int
 	active_player_id: int
 	players: List[Player]
-	current_phase: Any
+	current_phase: Phase
 	winner: Any
 	def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 	def add_card_to_deck(self, player_id: int, card_id: int, instance_id: int) -> None: ...
@@ -98,4 +135,3 @@ class GameResult:
 	P1_WIN: int
 	P2_WIN: int
 	DRAW: int
-
