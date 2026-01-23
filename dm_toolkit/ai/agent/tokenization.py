@@ -133,45 +133,92 @@ class ActionEncoder:
         Maps a GameCommand to an integer index.
         Returns -1 if the command cannot be encoded (invalid or out of range).
         """
-        cmd_type = action.type
+        # Robustly obtain command type from various possible representations
+        cmd_type = None
+        try:
+            if hasattr(action, 'type'):
+                cmd_type = getattr(action, 'type')
+            elif isinstance(action, dict):
+                cmd_type = action.get('type')
+            else:
+                # Try to_dict() if available (wrappers)
+                try:
+                    d = action.to_dict()
+                    cmd_type = d.get('type')
+                except Exception:
+                    cmd_type = None
+        except Exception:
+            cmd_type = None
 
-        # Check PASS
-        # Handle both IntEnum and int comparison
-        if cmd_type == ActionType.PASS or cmd_type == int(ActionType.PASS):
+        def _type_matches(t, enum_val):
+            try:
+                if t == enum_val or t == int(enum_val):
+                    return True
+            except Exception:
+                pass
+            try:
+                if isinstance(t, str) and str(t).upper() == str(enum_val).upper():
+                    return True
+            except Exception:
+                pass
+            return False
+
+        # Check PASS (index 0)
+        if _type_matches(cmd_type, ActionType.PASS):
             return 0
 
         # Check MANA_CHARGE (1-40)
-        if cmd_type == ActionType.MANA_CHARGE or cmd_type == int(ActionType.MANA_CHARGE):
+        if _type_matches(cmd_type, ActionType.MANA_CHARGE):
             p = state.players[player_id]
+            # Determine source id from action (support dict/wrapper)
+            cmd_src = None
+            try:
+                cmd_src = getattr(action, 'source_instance_id', None)
+            except Exception:
+                cmd_src = None
+            if cmd_src is None and isinstance(action, dict):
+                cmd_src = action.get('source_instance_id') or action.get('instance_id')
+
             for i, c in enumerate(p.hand):
                 if i >= 40: break
-                # Check instance_id match
-                # Use getattr for robustness across C++ objects and Python stubs
                 c_id = getattr(c, 'instance_id', -1)
-                cmd_id = getattr(action, 'source_instance_id', -2)
-                if c_id == cmd_id:
+                if cmd_src is not None and c_id == cmd_src:
                     return 1 + i
             return -1
 
         # Check PLAY_CARD (41-80)
-        if cmd_type == ActionType.PLAY_CARD or cmd_type == int(ActionType.PLAY_CARD):
+        if _type_matches(cmd_type, ActionType.PLAY_CARD):
             p = state.players[player_id]
+            cmd_src = None
+            try:
+                cmd_src = getattr(action, 'source_instance_id', None)
+            except Exception:
+                cmd_src = None
+            if cmd_src is None and isinstance(action, dict):
+                cmd_src = action.get('source_instance_id') or action.get('instance_id')
+
             for i, c in enumerate(p.hand):
                 if i >= 40: break
                 c_id = getattr(c, 'instance_id', -1)
-                cmd_id = getattr(action, 'source_instance_id', -2)
-                if c_id == cmd_id:
+                if cmd_src is not None and c_id == cmd_src:
                     return 41 + i
             return -1
 
         # Check ATTACK_PLAYER (81-120)
-        if cmd_type == ActionType.ATTACK_PLAYER or cmd_type == int(ActionType.ATTACK_PLAYER):
+        if _type_matches(cmd_type, ActionType.ATTACK_PLAYER):
             p = state.players[player_id]
+            cmd_src = None
+            try:
+                cmd_src = getattr(action, 'source_instance_id', None)
+            except Exception:
+                cmd_src = None
+            if cmd_src is None and isinstance(action, dict):
+                cmd_src = action.get('source_instance_id') or action.get('instance_id')
+
             for i, c in enumerate(p.battle_zone):
                 if i >= 40: break
                 c_id = getattr(c, 'instance_id', -1)
-                cmd_id = getattr(action, 'source_instance_id', -2)
-                if c_id == cmd_id:
+                if cmd_src is not None and c_id == cmd_src:
                     return 81 + i
             return -1
 

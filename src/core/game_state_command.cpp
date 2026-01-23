@@ -3,6 +3,7 @@
 #include "engine/systems/game_logic_system.hpp"
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 
 namespace dm::engine::game_command {
 
@@ -41,6 +42,21 @@ namespace dm::engine::game_command {
 
         if (card_opt) {
             CardInstance& card = card_opt.value();
+            // Log details for diagnostics
+            try {
+                std::ofstream lout("logs/transition_debug.txt", std::ios::app);
+                if (lout) {
+                    lout << "[Transition] EXECUTE id=" << card_instance_id
+                         << " owner=" << owner_id
+                         << " from=" << static_cast<int>(from_zone)
+                         << " to=" << static_cast<int>(to_zone)
+                         << " src_size_hand=" << p_owner.hand.size()
+                         << " src_size_deck=" << p_owner.deck.size()
+                         << " src_size_mana=" << p_owner.mana_zone.size()
+                         << "\n";
+                    lout.close();
+                }
+            } catch(...) {}
             if (to_zone == Zone::HAND || to_zone == Zone::DECK) {
                 card.is_tapped = false;
                 card.summoning_sickness = true;

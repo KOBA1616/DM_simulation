@@ -3,7 +3,7 @@ from dm_toolkit.action_to_command import map_action
 
 @runtime_checkable
 class ICommand(Protocol):
-    def execute(self, state: Any) -> Optional[Any]:
+    def execute(self, state: Any, card_db: Any = None) -> Optional[Any]:
         ...
 
     def invert(self, state: Any) -> Optional[Any]:
@@ -45,12 +45,25 @@ def wrap_action(action: Any) -> Optional[ICommand]:
         def __init__(self, a: Any):
             self._action = a
 
-        def execute(self, state: Any) -> Optional[Any]:
+        def execute(self, state: Any, card_db: Any = None) -> Optional[Any]:
             try:
                 from dm_toolkit.unified_execution import ensure_executable_command
                 from dm_toolkit.engine.compat import EngineCompat
+                # Accept optional card_db when callers provide it (some callers
+                # invoke execute(state, card_db)). Support both signatures.
+                try:
+                    # Try to read card_db if provided as second arg via Python's call
+                    import inspect
+                    sig = inspect.signature(self.execute)
+                except Exception:
+                    pass
                 cmd = ensure_executable_command(self._action)
-                EngineCompat.ExecuteCommand(state, cmd)
+                # Pass through card_db when provided by caller.
+                try:
+                    EngineCompat.ExecuteCommand(state, cmd, card_db)
+                except TypeError:
+                    # Fallback if older signature expects two args
+                    EngineCompat.ExecuteCommand(state, cmd)
             except Exception:
                 return None
             return None
@@ -66,9 +79,16 @@ def wrap_action(action: Any) -> Optional[ICommand]:
             return None
 
         def to_dict(self) -> Dict[str, Any]:
-            # Use the unified mapper
-            cmd = map_action(self._action)
-            return cmd
+            # Use the unified execution mapper to preserve all normalization
+            try:
+                from dm_toolkit.unified_execution import to_command_dict
+                return to_command_dict(self._action)
+            except Exception:
+                # Fallback to direct mapping if unified path fails
+                try:
+                    return map_action(self._action)
+                except Exception:
+                    return {"type": "NONE"}
 
         def to_string(self) -> str:
             # Check if underlying action has to_string
@@ -98,14 +118,28 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
         try:
             # Try to use card_db directly - it could be a native CardDatabase or a dict
             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+            # Debug: show types/reprs of first few returned actions to diagnose discrepancies
+            try:
+                sample = []
+                for a in list(actions)[:6]:
+                    try:
+                        sample.append((type(a).__name__, repr(a)))
+                    except Exception:
+                        sample.append((type(a).__name__, str(a)))
+                print(f"Debug generate_legal_actions -> count={len(actions)}, samples={sample}")
+            except Exception:
+                pass
         except Exception as e:
             # If it fails, we may have a format mismatch
             # Log for debugging but don't fail - just return empty list
+            print(f"Warning: generate_legal_actions raised: {e}")
             pass
 
         cmds = []
         for a in actions:
-            cmds.append(wrap_action(a))
+            w = wrap_action(a)
+            if w is not None:
+                cmds.append(w)
         return cmds
     except Exception:
         return []

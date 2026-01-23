@@ -75,9 +75,28 @@ class GameSession:
             self.gs = dm_ai_module.GameState(seed)
             self.gs.setup_test_duel()
 
-            # 両プレイヤーにデフォルトデッキを設定
-            self.gs.set_deck(0, self.DEFAULT_DECK)
-            self.gs.set_deck(1, self.DEFAULT_DECK)
+            # 両プレイヤーにデフォルトデッキを設定（フォールバックあり）
+            # If DEFAULT_DECK is empty, build a deck from provided card_db
+            deck0 = list(self.DEFAULT_DECK) if self.DEFAULT_DECK else []
+            deck1 = list(self.DEFAULT_DECK) if self.DEFAULT_DECK else []
+            if not deck0:
+                try:
+                    deck0 = self._build_deck_from_card_db(self.card_db)
+                except Exception:
+                    deck0 = []
+            if not deck1:
+                try:
+                    deck1 = self._build_deck_from_card_db(self.card_db)
+                except Exception:
+                    deck1 = []
+
+            # Apply decks (engine will handle empty lists harmlessly)
+            try:
+                self.gs.set_deck(0, deck0)
+                self.gs.set_deck(1, deck1)
+            except Exception:
+                # Fallback: keep going; PhaseManager.start_game will operate accordingly
+                pass
 
             # デバッグ: デッキ設定後の状態を確認
             try:
@@ -118,6 +137,20 @@ class GameSession:
                 except Exception as e:
                     self.callback_log(f"Warning: start_game failed: {e}")
 
+                # Diagnostic: inspect native backing after start_game
+                try:
+                    dump = EngineCompat.dump_state_debug(self.gs, max_samples=1)
+                    self.callback_log(f"Debug: post-start_game native_present={dump.get('native_present')}")
+                    if not dump.get('native_present'):
+                        # Log a lightweight view of the GameState attributes to help bind debugging
+                        try:
+                            attrs = [a for a in dir(self.gs) if not a.startswith('__')][:40]
+                            self.callback_log(f"Debug: GameState attrs sample: {attrs}")
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
             # If native start_game was not applied, perform minimal Python-level setup
             if not applied:
                 try:
@@ -146,12 +179,34 @@ class GameSession:
         self.gs.setup_test_duel()
 
         # デッキが指定されていない場合はデフォルトを使用
-        deck0 = p0_deck if p0_deck else self.DEFAULT_DECK
-        deck1 = p1_deck if p1_deck else self.DEFAULT_DECK
+        deck0 = p0_deck if p0_deck else list(self.DEFAULT_DECK)
+        deck1 = p1_deck if p1_deck else list(self.DEFAULT_DECK)
+
+        # If decks are empty, build from card_db
+        if not deck0:
+            try:
+                deck0 = self._build_deck_from_card_db(self.card_db)
+            except Exception:
+                deck0 = []
+        if not deck1:
+            try:
+                deck1 = self._build_deck_from_card_db(self.card_db)
+            except Exception:
+                deck1 = []
 
         # 両方のデッキを設定（P0→P1の順で）
-        self.gs.set_deck(0, deck0)
-        self.gs.set_deck(1, deck1)
+        try:
+            self.gs.set_deck(0, deck0)
+            self.gs.set_deck(1, deck1)
+        except Exception:
+            pass
+
+        # デバッグ: デッキ設定直後の状態を確認
+        try:
+            self.callback_log(f"P0 deck size (post-set): {len(self.gs.players[0].deck)}")
+            self.callback_log(f"P1 deck size (post-set): {len(self.gs.players[1].deck)}")
+        except Exception:
+            pass
 
         # Ensure PhaseManager.start_game is invoked with proper card DB (same logic as initialize_game)
         try:
@@ -191,6 +246,19 @@ class GameSession:
             except Exception as e:
                 self.callback_log(f"Warning: start_game failed during reset_game: {e}")
                 applied = False
+            else:
+                # Diagnostic: inspect native backing after start_game attempt
+                try:
+                    dump = EngineCompat.dump_state_debug(self.gs, max_samples=1)
+                    self.callback_log(f"Debug: post-start_game native_present={dump.get('native_present')}")
+                    if not dump.get('native_present'):
+                        try:
+                            attrs = [a for a in dir(self.gs) if not a.startswith('__')][:40]
+                            self.callback_log(f"Debug: GameState attrs sample: {attrs}")
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
         else:
             # Fallback: if PhaseManager.start_game is not available or failed to run,
             # perform a minimal Python-level setup: place 5 shields and draw 5 cards from deck.
@@ -199,6 +267,13 @@ class GameSession:
                     self._fallback_apply_shields_and_draw()
             except Exception as e:
                 self.callback_log(f"Fallback deck setup failed: {e}")
+
+        # デバッグ: start_game/fallback 実行後の最終状態を確認
+        try:
+            self.callback_log(f"After start_game - P0 deck size: {len(self.gs.players[0].deck)}, hand size: {len(self.gs.players[0].hand)}, shields: {len(self.gs.players[0].shield_zone)}")
+            self.callback_log(f"After start_game - P1 deck size: {len(self.gs.players[1].deck)}, hand size: {len(self.gs.players[1].hand)}, shields: {len(self.gs.players[1].shield_zone)}")
+        except Exception:
+            pass
 
         self.callback_log(tr("Game Reset"))
         self.callback_update_ui()
@@ -265,6 +340,42 @@ class GameSession:
             pass
         self.callback_log(tr("Fallback: performed minimal deck setup (shields+draw)"))
 
+    def _build_deck_from_card_db(self, db: CardDB, count: int = 30) -> List[int]:
+        """Build a simple deck list of `count` CardIDs from `db`.
+
+        - If `db` is a mapping of CardID->definition, use its keys.
+        - If `db` is a list of card dicts (cards.json raw), extract `id` fields.
+        - If insufficient unique IDs, repeat entries to reach `count`.
+        """
+        ids: List[int] = []
+        try:
+            # dict-like
+            if isinstance(db, dict):
+                ids = [int(k) for k in db.keys()]
+            elif isinstance(db, list):
+                # cards.json style: list of dicts with 'id'
+                for entry in db:
+                    try:
+                        if isinstance(entry, dict) and 'id' in entry:
+                            ids.append(int(entry['id']))
+                    except Exception:
+                        continue
+        except Exception:
+            ids = []
+
+        if not ids:
+            # As last resort, return an empty deck
+            return []
+
+        # Build deck by repeating/truncating available ids
+        deck: List[int] = []
+        i = 0
+        while len(deck) < count:
+            deck.append(ids[i % len(ids)])
+            i += 1
+
+        return deck
+
     def set_player_mode(self, player_id: int, mode: str):
         """ mode: 'Human' or 'AI' """
         self.player_modes[player_id] = mode
@@ -296,7 +407,27 @@ class GameSession:
 
         # 2. Execute via EngineCompat
         try:
+            # Diagnostic: dump state before execution
+            try:
+                pre = EngineCompat.dump_state_debug(self.gs, max_samples=2)
+                try:
+                    self.callback_log(f"Debug Execute PRE -> {pre}")
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
             EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
+
+            # Diagnostic: dump state after execution
+            try:
+                post = EngineCompat.dump_state_debug(self.gs, max_samples=2)
+                try:
+                    self.callback_log(f"Debug Execute POST -> {post}")
+                except Exception:
+                    pass
+            except Exception:
+                pass
 
             # 3. Log
             log_str = f"P{EngineCompat.get_active_player_id(self.gs)} {tr('Action')}: {cmd_dict.get('type', 'UNKNOWN')}"
@@ -344,19 +475,14 @@ class GameSession:
             if (is_pass or is_charge) and pending_count == 0:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
 
-                # Check for game over after phase transition
+                # Check for game over after phase transition (safe invocation)
                 if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'check_game_over'):
                     try:
-                        game_over_result = dm_ai_module.PhaseManager.check_game_over(self.gs)
-                        if isinstance(game_over_result, tuple):
-                            is_over, winner = game_over_result
-                        else:
-                            is_over = game_over_result
-
+                        is_over, winner = EngineCompat.PhaseManager_check_game_over(self.gs)
                         if is_over:
                             self.gs.game_over = True
                     except Exception:
-                        pass  # Silent fail, logging happens in step_phase
+                        pass
 
         self.callback_update_ui()
 
@@ -405,19 +531,18 @@ class GameSession:
             # Check for game over using PhaseManager
             if self.gs and dm_ai_module and hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'check_game_over'):
                 try:
-                    game_over_result = dm_ai_module.PhaseManager.check_game_over(self.gs)
-                    if isinstance(game_over_result, tuple):
-                        is_over, winner = game_over_result
-                    else:
-                        is_over = game_over_result
-
-                    if is_over:
-                        self.gs.game_over = True
-                        try:
-                            self.callback_log(tr("Game Over - Winner: {winner}").format(winner=winner if isinstance(game_over_result, tuple) else self.gs.winner))
-                        except Exception:
-                            pass
-                        return
+                    try:
+                        is_over, winner = EngineCompat.PhaseManager_check_game_over(self.gs)
+                        if is_over:
+                            self.gs.game_over = True
+                            try:
+                                self.callback_log(tr("Game Over - Winner: {winner}").format(winner=winner if winner is not None else getattr(self.gs, 'winner', None)))
+                            except Exception:
+                                pass
+                            return
+                    except Exception:
+                        # If wrapper fails, continue execution; original code logged warnings
+                        pass
                 except Exception as e:
                     try:
                         self.callback_log(f"Warning: check_game_over failed: {e}")
@@ -429,8 +554,173 @@ class GameSession:
             active_pid = EngineCompat.get_active_player_id(self.gs)
             is_human = (self.player_modes.get(active_pid) == 'Human')
 
+            # Additional debug: log active player, waiting state, pending effects
+            try:
+                waiting = getattr(self.gs, 'waiting_for_user_input', False)
+            except Exception:
+                waiting = False
+            try:
+                pending_count = self.gs.get_pending_effect_count()
+            except Exception:
+                pending_count = 'NA'
+            try:
+                self.callback_log(f"Debug: active_pid={active_pid}, waiting={waiting}, pending_effects={pending_count}")
+            except Exception:
+                pass
+
             from dm_toolkit.commands import generate_legal_commands
             cmds = generate_legal_commands(self.gs, self.card_db)
+
+            # Dump more complete legal-command details for diagnosis
+            try:
+                max_dump = 30
+                total = len(cmds)
+                if total == 0:
+                    self.callback_log(f"Debug: legal commands total=0 for P{active_pid}")
+                else:
+                    # Limited full dump when small set; otherwise sample head
+                    if total <= max_dump:
+                        self.callback_log(f"Debug: legal commands total={total} for P{active_pid} (full dump)")
+                        for i, c in enumerate(cmds):
+                            try:
+                                tname = type(c).__name__
+                                raw = None
+                                try:
+                                    raw = c.to_dict()
+                                except Exception:
+                                    raw = str(c)
+                                src = None
+                                if isinstance(raw, dict):
+                                    src = raw.get('source_instance_id', raw.get('instance_id', ''))
+                                self.callback_log(f"Debug: Legal[{i}] type={tname} repr={raw} src={src}")
+                            except Exception:
+                                try:
+                                    self.callback_log(f"Debug: Legal[{i}] raw_fallback={str(c)}")
+                                except Exception:
+                                    pass
+                    else:
+                        self.callback_log(f"Debug: legal commands count={total} for P{active_pid} (showing first {max_dump})")
+                        for i, c in enumerate(cmds[:max_dump]):
+                            try:
+                                tname = type(c).__name__
+                                raw = None
+                                try:
+                                    raw = c.to_dict()
+                                except Exception:
+                                    raw = str(c)
+                                src = None
+                                if isinstance(raw, dict):
+                                    src = raw.get('source_instance_id', raw.get('instance_id', ''))
+                                self.callback_log(f"Debug: Legal[{i}] type={tname} repr={raw} src={src}")
+                            except Exception:
+                                try:
+                                    self.callback_log(f"Debug: Legal[{i}] raw_fallback={str(c)}")
+                                except Exception:
+                                    pass
+                    # indicate there are more if truncated
+                    if total > max_dump:
+                        try:
+                            self.callback_log(f"Debug: (truncated, total={total})")
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+            # (legacy compact summary retained for compatibility)
+            try:
+                self.callback_log(f"Debug: legal commands count={len(cmds)} for P{active_pid}")
+            except Exception:
+                pass
+
+            # If the only legal command is PASS, dump detailed player zones for diagnosis
+            try:
+                if len(cmds) == 1:
+                    only = cmds[0]
+                    try:
+                        od = only.to_dict()
+                    except Exception:
+                        od = {}
+                    if od.get('type') == 'PASS':
+                        try:
+                            p = self.gs.players[active_pid]
+                            # Log high-level GameState attributes for diagnosis
+                            try:
+                                gs_attrs = {}
+                                for attr in ('phase', 'phase_name', 'turn', 'active_player', 'current_player'):
+                                    try:
+                                        gs_attrs[attr] = getattr(self.gs, attr)
+                                    except Exception:
+                                        gs_attrs[attr] = None
+                                self.callback_log(f"Debug PASS-only -> GameState attrs: {gs_attrs}")
+                            except Exception:
+                                pass
+                            def ids_from_zone(zone):
+                                try:
+                                    return [getattr(c, 'instance_id', None) or getattr(c, 'id', None) for c in list(zone)[:10]]
+                                except Exception:
+                                    try:
+                                        return [str(x) for x in list(zone)[:10]]
+                                    except Exception:
+                                        return []
+
+                            deck_cnt = len(getattr(p, 'deck', []))
+                            hand_cnt = len(getattr(p, 'hand', []))
+                            mana_cnt = len(getattr(p, 'mana_zone', [])) if hasattr(p, 'mana_zone') else 'NA'
+                            shield_cnt = len(getattr(p, 'shield_zone', []))
+
+                            self.callback_log(f"Debug PASS-only -> P{active_pid} zones: deck_count={deck_cnt}, hand_count={hand_cnt}, mana_count={mana_cnt}, shield_count={shield_cnt}")
+                            try:
+                                self.callback_log(f"Debug PASS-only -> P{active_pid} deck top ids: {ids_from_zone(getattr(p, 'deck', []))}")
+                                self.callback_log(f"Debug PASS-only -> P{active_pid} hand ids: {ids_from_zone(getattr(p, 'hand', []))}")
+                                if hasattr(p, 'mana_zone'):
+                                    self.callback_log(f"Debug PASS-only -> P{active_pid} mana ids: {ids_from_zone(getattr(p, 'mana_zone', []))}")
+                                self.callback_log(f"Debug PASS-only -> P{active_pid} shields ids: {ids_from_zone(getattr(p, 'shield_zone', []))}")
+
+                                # Additional sampling: show type() and repr() for a few elements
+                                def sample_zone(zone, n=3):
+                                    out = []
+                                    try:
+                                        lst = list(zone)
+                                    except Exception:
+                                        try:
+                                            lst = list(getattr(zone, '__iter__', lambda: [])() )
+                                        except Exception:
+                                            lst = []
+                                    for i, c in enumerate(lst[:n]):
+                                        try:
+                                            tname = type(c).__name__
+                                            r = repr(c)
+                                            # Truncate repr to keep logs readable
+                                            if len(r) > 200:
+                                                r = r[:200] + '...'
+                                            out.append((i, tname, r))
+                                        except Exception as e:
+                                            out.append((i, 'ERROR', str(e)))
+                                    return out
+
+                                try:
+                                    self.callback_log(f"Debug PASS-only -> P{active_pid} deck samples: {sample_zone(getattr(p, 'deck', []), 3)}")
+                                    self.callback_log(f"Debug PASS-only -> P{active_pid} hand samples: {sample_zone(getattr(p, 'hand', []), 3)}")
+                                    if hasattr(p, 'mana_zone'):
+                                        self.callback_log(f"Debug PASS-only -> P{active_pid} mana samples: {sample_zone(getattr(p, 'mana_zone', []), 3)}")
+                                    self.callback_log(f"Debug PASS-only -> P{active_pid} shield samples: {sample_zone(getattr(p, 'shield_zone', []), 3)}")
+                                except Exception:
+                                    pass
+                                # Engine-level dump for deeper diagnostics
+                                try:
+                                    try:
+                                        dump = EngineCompat.dump_state_debug(self.gs, max_samples=3)
+                                        self.callback_log(f"Debug PASS-only -> EngineCompat dump: {dump}")
+                                    except Exception:
+                                        pass
+                                except Exception:
+                                    pass
+                            except Exception:
+                                pass
+                        except Exception:
+                            pass
+            except Exception:
+                pass
 
             if is_human:
                 resolve_cmds = []
@@ -469,6 +759,17 @@ class GameSession:
                             if idx != -1:
                                 valid_indices.append(idx)
                                 cmd_map[idx] = cmd
+                            else:
+                                # Log one example of an unencodable action for diagnostics
+                                try:
+                                    d = None
+                                    try:
+                                        d = cmd.to_dict()
+                                    except Exception:
+                                        d = str(cmd)
+                                    self.callback_log(f"Debug: encode_action -> -1 for cmd: {d}")
+                                except Exception:
+                                    pass
 
                         if valid_indices:
                             ai_cmd = self.ai_player.get_action(self.gs, active_pid, valid_indices)

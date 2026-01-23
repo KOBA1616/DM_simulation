@@ -24,7 +24,15 @@ class LogViewer(QListWidget):
     def _show_context_menu(self, pos):
         menu = QMenu(self)
         copy_act = QAction("Copy", self)
-        copy_act.setShortcut(QKeySequence.Copy)
+        # PyQt5 had QKeySequence.Copy; PyQt6 exposes StandardKey or may omit the attribute.
+        # Use string-based fallback to ensure compatibility across environments.
+        try:
+            copy_act.setShortcut(QKeySequence.Copy)
+        except Exception:
+            try:
+                copy_act.setShortcut(QKeySequence("Ctrl+C"))
+            except Exception:
+                pass
         copy_act.triggered.connect(self.copy_selected)
         menu.addAction(copy_act)
         # Add select-all for convenience
@@ -46,8 +54,11 @@ class LogViewer(QListWidget):
 
     def keyPressEvent(self, event):
         # Support Ctrl+C copying
+        # Robust Ctrl+C detection without relying on QKeySequence.Copy symbol
         try:
-            if event.matches(QKeySequence.Copy):
+            mods = event.modifiers()
+            key = event.key()
+            if (mods & Qt.KeyboardModifier.ControlModifier) and (key == Qt.Key.Key_C):
                 self.copy_selected()
                 return
         except Exception:

@@ -205,6 +205,141 @@ class EngineCompat:
         return val
 
     @staticmethod
+    def dump_state_debug(state: GameState, max_samples: int = 3) -> Dict[str, Any]:
+        """Produce a compact, serializable debug snapshot of GameState.
+
+        Returns a dict with basic attrs, native presence, and per-player zone
+        counts and a small sample (type + truncated repr) for quick diagnosis.
+        """
+        out: Dict[str, Any] = {}
+        try:
+            native_obj = getattr(state, '_native', None)
+            out['native_present'] = native_obj is not None
+        except Exception:
+            out['native_present'] = False
+
+        # Heuristic: some bindings expose pybind internals or do not set `_native`.
+        # If we didn't detect `_native`, inspect common alternatives:
+        try:
+            if not out.get('native_present') and dm_ai_module is not None:
+                # 1) Attributes with names like '_pybind' likely indicate pybind-wrapping
+                for a in dir(state):
+                    try:
+                        if a.startswith('_pybind') or a.startswith('_conduit'):
+                            out['native_present'] = True
+                            break
+                    except Exception:
+                        continue
+
+            # 2) Inspect player zones for native types coming from the extension module
+            if not out.get('native_present') and hasattr(state, 'players') and dm_ai_module is not None:
+                try:
+                    modname = getattr(dm_ai_module, '__name__', None)
+                    pl = getattr(state, 'players', [])
+                    for p in pl:
+                        if out.get('native_present'):
+                            break
+                        for zone_name in ('deck', 'hand', 'mana_zone', 'shield_zone'):
+                            try:
+                                zone = getattr(p, zone_name, None)
+                                if zone is None:
+                                    continue
+                                seq = list(zone)
+                                for c in seq[:1]:
+                                    t = type(c)
+                                    try:
+                                        # If the object's type's module matches the native module, it's native
+                                        if modname and getattr(t, '__module__', '') == modname:
+                                            out['native_present'] = True
+                                            break
+                                    except Exception:
+                                        pass
+                                if out.get('native_present'):
+                                    break
+                            except Exception:
+                                continue
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        try:
+            out['active_player_id'] = EngineCompat.get_active_player_id(state)
+        except Exception:
+            out['active_player_id'] = None
+
+        try:
+            out['current_phase'] = str(EngineCompat.get_current_phase(state))
+        except Exception:
+            out['current_phase'] = None
+
+        players = []
+        try:
+            plst = getattr(state, 'players', None) or []
+            for p in plst:
+                pdata: Dict[str, Any] = {}
+                try:
+                    pdata['deck_count'] = len(getattr(p, 'deck', []))
+                except Exception:
+                    pdata['deck_count'] = None
+                try:
+                    pdata['hand_count'] = len(getattr(p, 'hand', []))
+                except Exception:
+                    pdata['hand_count'] = None
+                try:
+                    pdata['mana_count'] = len(getattr(p, 'mana_zone', [])) if hasattr(p, 'mana_zone') else None
+                except Exception:
+                    pdata['mana_count'] = None
+                try:
+                    pdata['shield_count'] = len(getattr(p, 'shield_zone', []))
+                except Exception:
+                    pdata['shield_count'] = None
+
+                def _sample(zone_obj):
+                    samples = []
+                    try:
+                        seq = list(zone_obj)
+                    except Exception:
+                        try:
+                            seq = list(getattr(zone_obj, '__iter__', lambda: [])())
+                        except Exception:
+                            seq = []
+                    for i, c in enumerate(seq[:max_samples]):
+                        try:
+                            tname = type(c).__name__
+                            r = repr(c)
+                            if len(r) > 200:
+                                r = r[:200] + '...'
+                            samples.append({'idx': i, 'type': tname, 'repr': r})
+                        except Exception:
+                            samples.append({'idx': i, 'type': 'ERROR', 'repr': ''})
+                    return samples
+
+                try:
+                    pdata['deck_samples'] = _sample(getattr(p, 'deck', []))
+                except Exception:
+                    pdata['deck_samples'] = []
+                try:
+                    pdata['hand_samples'] = _sample(getattr(p, 'hand', []))
+                except Exception:
+                    pdata['hand_samples'] = []
+                try:
+                    pdata['mana_samples'] = _sample(getattr(p, 'mana_zone', [])) if hasattr(p, 'mana_zone') else []
+                except Exception:
+                    pdata['mana_samples'] = []
+                try:
+                    pdata['shield_samples'] = _sample(getattr(p, 'shield_zone', []))
+                except Exception:
+                    pdata['shield_samples'] = []
+
+                players.append(pdata)
+        except Exception:
+            pass
+
+        out['players'] = players
+        return out
+
+    @staticmethod
     def get_active_player_id(state: GameState) -> int:
         return int(EngineCompat.get_game_state_attribute(state, 'active_player_id', 0))
 
@@ -542,6 +677,59 @@ class EngineCompat:
             dm_ai_module.PhaseManager.start_game(state, card_db)
         else:
             logger.warning("dm_ai_module.PhaseManager.start_game not found.")
+
+    @staticmethod
+    def PhaseManager_check_game_over(state: GameState):
+        """
+        Safe wrapper around dm_ai_module.PhaseManager.check_game_over.
+
+        Returns a tuple (is_over: bool, result: Optional[GameResult/Object]).
+        The underlying binding has varied signatures across versions (one-arg
+        returning bool/tuple, or two-arg where a GameResult is provided by
+        reference). This wrapper tries the common forms and normalizes the
+        output to (bool, result_obj).
+        """
+        EngineCompat._check_module()
+        assert dm_ai_module is not None
+        try:
+            pm = getattr(dm_ai_module, 'PhaseManager', None)
+            if pm is None or not hasattr(pm, 'check_game_over'):
+                return False, None
+
+            # Prefer two-arg form when GameResult type is available
+            if hasattr(dm_ai_module, 'GameResult'):
+                try:
+                    gr = dm_ai_module.GameResult()
+                    res = dm_ai_module.PhaseManager.check_game_over(state, gr)
+                    # Interpret result
+                    if isinstance(res, tuple) and len(res) == 2:
+                        return res
+                    if isinstance(res, bool):
+                        return res, gr
+                    # Some bindings mutate gr and return None/other; inspect gr
+                    try:
+                        is_over = getattr(gr, 'is_over', None)
+                        if is_over is None:
+                            is_over = getattr(gr, 'result', None)
+                        if isinstance(is_over, bool):
+                            return is_over, gr
+                    except Exception:
+                        pass
+                    return bool(res), gr
+                except TypeError:
+                    # Binding likely expects single-arg form
+                    res2 = dm_ai_module.PhaseManager.check_game_over(state)
+                    if isinstance(res2, tuple) and len(res2) == 2:
+                        return res2
+                    return bool(res2), None
+            else:
+                # No GameResult type exposed; try single-arg call
+                res = dm_ai_module.PhaseManager.check_game_over(state)
+                if isinstance(res, tuple) and len(res) == 2:
+                    return res
+                return bool(res), None
+        except Exception:
+            return False, None
 
     @staticmethod
     def ActionGenerator_generate_legal_actions(state: GameState, card_db: CardDB) -> List[Action]:

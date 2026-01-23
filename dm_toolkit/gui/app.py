@@ -388,17 +388,30 @@ class GameWindow(QMainWindow):
         p0 = EngineCompat.get_player(self.gs, 0) or _P()
         p1 = EngineCompat.get_player(self.gs, 1) or _P()
         
+        # Obtain all legal commands from engine (useful to detect PASS even
+        # when UI filters actions by active player). For performance this is
+        # lightweight and avoids edge cases where PASS exists but the
+        # per-player filtered list is empty.
+        from dm_toolkit.commands import generate_legal_commands
+        all_legal_actions = []
+        try:
+            all_legal_actions = generate_legal_commands(self.gs, self.card_db)
+        except Exception:
+            all_legal_actions = []
+
         legal_actions = []
         is_human = False
         if hasattr(self, 'control_panel'):
             is_human = self.control_panel.is_p0_human()
 
         if active_pid == 0 and is_human and not self.gs.game_over:
-             from dm_toolkit.commands import generate_legal_commands
-             legal_actions = generate_legal_commands(self.gs, self.card_db)
+             legal_actions = all_legal_actions
 
+        # Determine if a PASS action exists in the full engine-provided set
+        # (not only the filtered per-player list). This prevents missing a
+        # pass action when view/filtering logic hides other commands.
         self.current_pass_action = None
-        for cmd in legal_actions:
+        for cmd in all_legal_actions:
             try: d = cmd.to_dict()
             except: d = {}
             if d.get('type') == 'PASS' or d.get('legacy_original_type') == 'PASS':

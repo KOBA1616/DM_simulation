@@ -4,6 +4,7 @@
 #include "engine/systems/card/card_registry.hpp" // Added for G-Neo lookup
 #include <iostream>
 #include <algorithm>
+#include <fstream>
 
 namespace dm::engine::game_command {
 
@@ -71,6 +72,16 @@ namespace dm::engine::game_command {
             [&](const core::CardInstance& c){ return c.instance_id == card_instance_id; });
 
         if (it == source_vec->end()) {
+             // Log missing instance for diagnostics
+             try {
+                 std::ofstream lout("logs/transition_debug.txt", std::ios::app);
+                 if (lout) {
+                     lout << "[Transition] MISSING in source: id=" << card_instance_id
+                          << " owner=" << owner_id << " from=" << static_cast<int>(from_zone)
+                          << " to=" << static_cast<int>(to_zone) << "\n";
+                     lout.close();
+                 }
+             } catch(...) {}
              return;
         }
 
@@ -173,6 +184,17 @@ namespace dm::engine::game_command {
 
             state.event_dispatcher(evt);
         }
+        // Log successful transition
+        try {
+            std::ofstream lout("logs/transition_debug.txt", std::ios::app);
+            if (lout) {
+                lout << "[Transition] MOVED id=" << card_instance_id
+                     << " from=" << static_cast<int>(from_zone)
+                     << " to=" << static_cast<int>(to_zone)
+                     << " owner=" << owner_id << "\n";
+                lout.close();
+            }
+        } catch(...) {}
     }
 
     void TransitionCommand::invert(core::GameState& state) {
