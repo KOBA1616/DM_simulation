@@ -100,7 +100,9 @@ def _transfer_targeting(act: Dict[str, Any], cmd: Dict[str, Any]):
 
 def _transfer_common_move_fields(act: Dict[str, Any], cmd: Dict[str, Any]):
     _transfer_targeting(act, cmd)
-    if 'filter' in act and isinstance(act['filter'], dict) and 'count' in act['filter']:
+    if 'amount' in act:
+         cmd['amount'] = act['amount']
+    elif 'filter' in act and isinstance(act['filter'], dict) and 'count' in act['filter']:
          cmd['amount'] = act['filter']['count']
     elif 'value1' in act:
          cmd['amount'] = act['value1']
@@ -142,6 +144,8 @@ def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
     if 'str_param' not in cmd:
         if 'str_val' in cmd and cmd.get('str_val') is not None:
             cmd['str_param'] = cmd.get('str_val')
+        elif 'str_param' in act and act.get('str_param') is not None:
+            cmd['str_param'] = act.get('str_param')
         elif 'str_val' in act and act.get('str_val') is not None:
             cmd['str_param'] = act.get('str_val')
 
@@ -150,6 +154,8 @@ def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
         # Typical legacy payloads store primary numeric in value1
         if 'value1' in cmd and cmd.get('value1') is not None:
             cmd['amount'] = cmd.get('value1')
+        elif 'amount' in act and act.get('amount') is not None:
+            cmd['amount'] = act.get('amount')
         elif 'value1' in act and act.get('value1') is not None:
             cmd['amount'] = act.get('value1')
 
@@ -502,7 +508,7 @@ def _handle_specific_moves(act_type, act, cmd, src):
 
     # Special-case amount/flags retained below where needed
     if act_type == "SHIELD_BURN":
-         cmd['amount'] = act.get('value1', 1)
+         cmd['amount'] = act.get('amount') or act.get('value1', 1)
 
     # NOTE: These strings should match dm_ai_module.Zone enum names if possible
     # to be picked up by compat.py correctly.
@@ -544,49 +550,55 @@ def _handle_specific_moves(act_type, act, cmd, src):
     _transfer_common_move_fields(act, cmd)
 
 def _handle_modifiers(act_type, act, cmd):
-    val = act.get('str_val', '')
+    val = act.get('str_param') or act.get('str_val', '')
     if act_type == "COST_REDUCTION" or val == "COST":
         cmd['type'] = "MUTATE"
         cmd['mutation_kind'] = "COST"
-        cmd['amount'] = act.get('value1', 0)
+        cmd['amount'] = act.get('amount') or act.get('value1', 0)
     elif act_type == "GRANT_KEYWORD":
         cmd['type'] = "ADD_KEYWORD"
-        cmd['mutation_kind'] = act.get('str_val', '')
-        cmd['amount'] = act.get('value1', 1)
+        cmd['mutation_kind'] = act.get('str_param') or act.get('str_val', '')
+        cmd['amount'] = act.get('amount') or act.get('value1', 1)
     else:
         cmd['type'] = "MUTATE"
         cmd['str_param'] = val
-        if 'value1' in act: cmd['amount'] = act['value1'] # Explicitly transfer value1 if present
+        if 'amount' in act: cmd['amount'] = act['amount']
+        elif 'value1' in act: cmd['amount'] = act['value1']
     _transfer_targeting(act, cmd)
 
 def _handle_mutate(act_type, act, cmd):
-    sval = str(act.get('str_val') or '').upper()
+    sval = str(act.get('str_param') or act.get('str_val') or '').upper()
     # Consolidate POWER_MOD into generic MUTATE with mutation_kind
     if act_type in ["POWER_MOD", "MODIFY_POWER"] or 'POWER' in sval:
         cmd['type'] = 'MUTATE'
         cmd['mutation_kind'] = 'POWER_MOD'
-        if 'value1' in act: cmd['amount'] = act['value1']
+        if 'amount' in act: cmd['amount'] = act['amount']
+        elif 'value1' in act: cmd['amount'] = act['value1']
         elif 'value2' in act: cmd['amount'] = act['value2']
     elif sval in ("TAP", "UNTAP"):
         cmd['type'] = sval
     elif sval == "SHIELD_BURN":
         cmd['type'] = "SHIELD_BURN"
-        if 'value1' in act: cmd['amount'] = act['value1']
+        if 'amount' in act: cmd['amount'] = act['amount']
+        elif 'value1' in act: cmd['amount'] = act['value1']
     elif sval in ("SET_POWER", "POWER_SET"):
         cmd['type'] = 'MUTATE'
         cmd['mutation_kind'] = 'POWER_SET'
-        if 'value1' in act: cmd['amount'] = act['value1']
+        if 'amount' in act: cmd['amount'] = act['amount']
+        elif 'value1' in act: cmd['amount'] = act['value1']
     elif 'HEAL' in sval or 'RECOVER' in sval:
         cmd['type'] = 'MUTATE'
         cmd['mutation_kind'] = 'HEAL'
-        if 'value1' in act: cmd['amount'] = act['value1']
+        if 'amount' in act: cmd['amount'] = act['amount']
+        elif 'value1' in act: cmd['amount'] = act['value1']
     elif 'REMOVE_KEYWORD' in sval:
          cmd['type'] = 'MUTATE'
          cmd['mutation_kind'] = 'REMOVE_KEYWORD'
     else:
         cmd['type'] = "MUTATE"
-        cmd['str_param'] = act.get('str_val')
-        if 'value1' in act: cmd['amount'] = act['value1']
+        cmd['str_param'] = act.get('str_param') or act.get('str_val')
+        if 'amount' in act: cmd['amount'] = act['amount']
+        elif 'value1' in act: cmd['amount'] = act['value1']
     _transfer_targeting(act, cmd)
 
 def _handle_selection(act_type, act, cmd):
@@ -594,7 +606,7 @@ def _handle_selection(act_type, act, cmd):
         # Always map to CHOICE; enum exposure differences are handled in validation.
         cmd['type'] = "CHOICE"
 
-        cmd['amount'] = act.get('value1', 1)
+        cmd['amount'] = act.get('amount') or act.get('value1', 1)
         if act.get('value2', 0) == 1:
             cmd.setdefault('flags', []).append("ALLOW_DUPLICATES")
     
@@ -606,12 +618,15 @@ def _handle_selection(act_type, act, cmd):
     elif act_type == "SELECT_NUMBER":
         # Preserve legacy SELECT_NUMBER command while providing numeric bounds
         cmd['type'] = "SELECT_NUMBER"
-        if 'value1' in act:
+        if 'max' in act: cmd['max'] = int(act.get('max') or 0)
+        elif 'value1' in act:
             cmd['max'] = int(act.get('value1') or 0)
-        if 'value2' in act:
+
+        if 'min' in act: cmd['min'] = int(act.get('min') or 0)
+        elif 'value2' in act:
             cmd['min'] = int(act.get('value2') or 0)
         # default amount is 1
-        cmd['amount'] = 1
+        cmd['amount'] = act.get('amount', 1)
         _transfer_targeting(act, cmd)
     else:
         _transfer_targeting(act, cmd)
