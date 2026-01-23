@@ -826,7 +826,11 @@ class EngineCompat:
                         cmd_def.optional = bool(cmd_dict.get('optional', False))
 
                         # Populate instance_id / target_instance_id / owner_id
-                        if 'instance_id' in cmd_dict: cmd_def.instance_id = int(cmd_dict['instance_id'])
+                        if 'instance_id' in cmd_dict:
+                            cmd_def.instance_id = int(cmd_dict['instance_id'])
+                        elif 'source_instance_id' in cmd_dict:
+                            cmd_def.instance_id = int(cmd_dict['source_instance_id'])
+
                         if 'target_instance' in cmd_dict: cmd_def.target_instance = int(cmd_dict['target_instance'])
                         if 'owner_id' in cmd_dict: cmd_def.owner_id = int(cmd_dict['owner_id'])
                         elif 'player_id' in cmd_dict: cmd_def.owner_id = int(cmd_dict['player_id'])

@@ -55,6 +55,23 @@ class TestEngineCompatConsistency(unittest.TestCase):
         self.assertEqual(len(state.players[0].mana_zone), 1)
         self.assertEqual(state.players[0].mana_zone[0].instance_id, 100)
 
+    def test_execute_command_legacy_source_id(self):
+        """Verify ExecuteCommand handles legacy source_instance_id in dict."""
+        state = dm_ai_module.GameState()
+        state.players[0].hand.append(dm_ai_module.CardStub(2, 200))
+
+        cmd = {
+            'type': 'MANA_CHARGE',
+            'source_instance_id': 200,
+            'player_id': 0
+        }
+
+        EngineCompat.ExecuteCommand(state, cmd)
+
+        self.assertEqual(len(state.players[0].hand), 0)
+        self.assertEqual(len(state.players[0].mana_zone), 1)
+        self.assertEqual(state.players[0].mana_zone[0].instance_id, 200)
+
     def test_phase_manager_next_phase_fallback(self):
         """Verify PhaseManager_next_phase wraps the stub correctly."""
         state = dm_ai_module.GameState()
