@@ -474,6 +474,104 @@ else:
         RESOLVE_BATTLE = 4
         TURN_END = 5
 
+    class ActionGenerator:
+        @staticmethod
+        def generate_legal_actions(state: Any, card_db: Any) -> List[Any]:
+            actions = []
+
+            # Helper to get card data
+            def get_card_def(cid):
+                if hasattr(card_db, 'get_card'):
+                    return card_db.get_card(cid)
+                if isinstance(card_db, dict):
+                     # Handle string/int keys
+                     c = card_db.get(cid)
+                     if c is None: c = card_db.get(str(cid))
+                     return c
+                return CardDatabase.get_card(cid)
+
+            # 1. Pending Effects (Must resolve)
+            if state.pending_effects:
+                act = Action()
+                act.type = ActionType.RESOLVE_EFFECT
+                # The real engine might enforce which effect, but for stub we simplify
+                # We usually resolve the top one (LIFO)
+                # Just return one action
+                return [act]
+
+            player_id = state.active_player_id
+            player = state.players[player_id]
+
+            # 2. PASS
+            pass_act = Action()
+            pass_act.type = ActionType.PASS
+            actions.append(pass_act)
+
+            # 3. MANA_CHARGE
+            # Allow charging from hand (simplified: all cards valid)
+            for i, card in enumerate(player.hand):
+                act = Action()
+                act.type = ActionType.MANA_CHARGE
+                act.source_instance_id = card.instance_id
+                act.card_id = card.card_id
+                act.target_player = player_id
+                actions.append(act)
+
+            # 4. PLAY_CARD
+            # Calculate available mana
+            mana_untapped = [c for c in player.mana_zone if not c.is_tapped]
+            mana_count = len(mana_untapped)
+
+            # Calculate available civs (from all mana cards, tapped or not usually counts for unlocking civ)
+            # In DM, you need at least one card of that civ in mana zone to play a card.
+            available_civs = set()
+            for c in player.mana_zone:
+                cdef = get_card_def(c.card_id)
+                if cdef:
+                    civs = cdef.get('civilizations', [])
+                    if isinstance(civs, list):
+                        for civ in civs: available_civs.add(civ)
+
+            for i, card in enumerate(player.hand):
+                cdef = get_card_def(card.card_id)
+                if not cdef: continue
+
+                cost = cdef.get('cost', 0)
+                civs = cdef.get('civilizations', [])
+
+                # Check cost
+                if mana_count >= cost:
+                    # Check civ
+                    has_civ = False
+                    if not civs:
+                        has_civ = True # Colorless
+                    else:
+                        for civ in civs:
+                            if civ in available_civs:
+                                has_civ = True
+                                break
+
+                    if has_civ:
+                        act = Action()
+                        act.type = ActionType.PLAY_CARD
+                        act.source_instance_id = card.instance_id
+                        act.card_id = card.card_id
+                        act.target_player = player_id
+                        actions.append(act)
+
+            # 5. ATTACK
+            for i, card in enumerate(player.battle_zone):
+                # Must be untapped and not sick
+                if not card.is_tapped and not card.sick:
+                    # Attack Player (Opponent)
+                    act = Action()
+                    act.type = ActionType.ATTACK_PLAYER
+                    act.source_instance_id = card.instance_id
+                    act.target_player = 1 - player_id
+                    actions.append(act)
+
+            return actions
+
     class CommandSystem:
         @staticmethod
         def execute_command(state: Any, cmd: Any, source_id: int, player_id: int, ctx: Any = None) -> None:
@@ -749,6 +847,106 @@ else:
     class TargetGroup(Enum):
         SELF = 1
         OPPONENT = 2
+
+    class ActionGenerator:
+        @staticmethod
+        def generate_legal_actions(state: Any, card_db: Any) -> list:
+            actions = []
+
+            # 1. Pending Effects
+            if state.pending_effects:
+                act = Action()
+                act.type = ActionType.RESOLVE_EFFECT
+                actions.append(act)
+                return actions
+
+            pid = state.active_player_id
+            player = state.players[pid]
+            phase = state.current_phase
+
+            # 2. Mana Phase (Phase 2)
+            if phase == 2:
+                # Mana Charge
+                for card in player.hand:
+                    act = Action()
+                    act.type = ActionType.MANA_CHARGE
+                    act.card_id = card.card_id
+                    act.source_instance_id = card.instance_id
+                    actions.append(act)
+
+                # PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            # 3. Main Phase (Phase 3)
+            elif phase == 3:
+                # Calculate usable mana
+                usable_mana = 0
+                for m in player.mana_zone:
+                    if not m.is_tapped:
+                        usable_mana += 1
+
+                # Play Cards
+                for card in player.hand:
+                    # Get Cost
+                    cost = 9999
+                    if hasattr(card_db, 'get_card'):
+                        cdata = card_db.get_card(card.card_id)
+                        cost = cdata.get('cost', 0)
+                    elif isinstance(card_db, dict):
+                        cdata = card_db.get(card.card_id) or card_db.get(str(card.card_id))
+                        if cdata:
+                            cost = cdata.get('cost', 0)
+
+                    if cost <= usable_mana:
+                        act = Action()
+                        act.type = ActionType.PLAY_CARD
+                        act.card_id = card.card_id
+                        act.source_instance_id = card.instance_id
+                        actions.append(act)
+
+                # PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            # 4. Attack Phase (Phase 4)
+            elif phase == 4:
+                opponent_pid = 1 - pid
+                opponent = state.players[opponent_pid]
+
+                for card in player.battle_zone:
+                    if not card.is_tapped and not card.sick:
+                        # Attack Player
+                        act = Action()
+                        act.type = ActionType.ATTACK_PLAYER
+                        act.source_instance_id = card.instance_id
+                        act.target_player = opponent_pid
+                        actions.append(act)
+
+                        # Attack Tapped Creatures
+                        for op_card in opponent.battle_zone:
+                            if op_card.is_tapped:
+                                act2 = Action()
+                                act2.type = ActionType.ATTACK_CREATURE
+                                act2.source_instance_id = card.instance_id
+                                act2.target_player = opponent_pid
+                                act2.value1 = op_card.instance_id
+                                actions.append(act2)
+
+                # PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            else:
+                # Default PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            return actions
 
     class GameInstance:
         def __init__(self, game_id: int = 0):

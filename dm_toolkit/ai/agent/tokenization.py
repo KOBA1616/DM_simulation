@@ -66,12 +66,12 @@ class ActionEncoder:
     def decode_action(self, action_idx: int, state: Any, player_id: int) -> GameCommand:
         """
         Maps an integer index back to a GameCommand.
-        Mapping logic (simplified for stub):
+        Mapping logic (updated for larger support):
         0: PASS
-        1..100: PLAY_CARD (index corresponds to hand index or known card ID map)
-        101..200: MANA_CHARGE (hand index)
-        201..300: ATTACK_PLAYER (battle zone index)
-        301..400: ATTACK_CREATURE (battle zone index -> target index) - complex, simplified here
+        1..40: MANA_CHARGE (Hand Index 0-39)
+        41..80: PLAY_CARD (Hand Index 0-39)
+        81..120: ATTACK_PLAYER (Battle Zone Index 0-39)
+        121..160: ATTACK_CREATURE (Battle Zone Index 0-39, Target defaults to first tapped? Simplified)
         """
         cmd = GameCommand()
         cmd.target_player = player_id
@@ -81,8 +81,8 @@ class ActionEncoder:
             cmd.type = ActionType.PASS
             return cmd
 
-        # 1..10: MANA_CHARGE (Hand Index 0-9)
-        if 1 <= action_idx <= 10:
+        # 1..40: MANA_CHARGE (Hand Index 0-39)
+        if 1 <= action_idx <= 40:
             hand_idx = action_idx - 1
             p = state.players[player_id]
             if hand_idx < len(p.hand):
@@ -96,9 +96,9 @@ class ActionEncoder:
                 cmd.type = ActionType.PASS
                 return cmd
 
-        # 11..20: PLAY_CARD (Hand Index 0-9)
-        if 11 <= action_idx <= 20:
-            hand_idx = action_idx - 11
+        # 41..80: PLAY_CARD (Hand Index 0-39)
+        if 41 <= action_idx <= 80:
+            hand_idx = action_idx - 41
             p = state.players[player_id]
             if hand_idx < len(p.hand):
                 c = p.hand[hand_idx]
@@ -110,9 +110,9 @@ class ActionEncoder:
                 cmd.type = ActionType.PASS
                 return cmd
 
-        # 21..30: ATTACK_PLAYER (Battle Zone Index 0-9)
-        if 21 <= action_idx <= 30:
-            bz_idx = action_idx - 21
+        # 81..120: ATTACK_PLAYER (Battle Zone Index 0-39)
+        if 81 <= action_idx <= 120:
+            bz_idx = action_idx - 81
             p = state.players[player_id]
             if bz_idx < len(p.battle_zone):
                 c = p.battle_zone[bz_idx]
@@ -140,11 +140,11 @@ class ActionEncoder:
         if cmd_type == ActionType.PASS or cmd_type == int(ActionType.PASS):
             return 0
 
-        # Check MANA_CHARGE (1-10)
+        # Check MANA_CHARGE (1-40)
         if cmd_type == ActionType.MANA_CHARGE or cmd_type == int(ActionType.MANA_CHARGE):
             p = state.players[player_id]
             for i, c in enumerate(p.hand):
-                if i >= 10: break
+                if i >= 40: break
                 # Check instance_id match
                 # Use getattr for robustness across C++ objects and Python stubs
                 c_id = getattr(c, 'instance_id', -1)
@@ -153,26 +153,26 @@ class ActionEncoder:
                     return 1 + i
             return -1
 
-        # Check PLAY_CARD (11-20)
+        # Check PLAY_CARD (41-80)
         if cmd_type == ActionType.PLAY_CARD or cmd_type == int(ActionType.PLAY_CARD):
             p = state.players[player_id]
             for i, c in enumerate(p.hand):
-                if i >= 10: break
+                if i >= 40: break
                 c_id = getattr(c, 'instance_id', -1)
                 cmd_id = getattr(action, 'source_instance_id', -2)
                 if c_id == cmd_id:
-                    return 11 + i
+                    return 41 + i
             return -1
 
-        # Check ATTACK_PLAYER (21-30)
+        # Check ATTACK_PLAYER (81-120)
         if cmd_type == ActionType.ATTACK_PLAYER or cmd_type == int(ActionType.ATTACK_PLAYER):
             p = state.players[player_id]
             for i, c in enumerate(p.battle_zone):
-                if i >= 10: break
+                if i >= 40: break
                 c_id = getattr(c, 'instance_id', -1)
                 cmd_id = getattr(action, 'source_instance_id', -2)
                 if c_id == cmd_id:
-                    return 21 + i
+                    return 81 + i
             return -1
 
         return -1
