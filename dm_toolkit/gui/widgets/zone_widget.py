@@ -227,7 +227,8 @@ class ZoneWidget(QWidget):
                     card_id_display = tid
                     if tid in card_db:
                          card_def = card_db[tid]
-                         display_name = f"{card_def.name}\n({tr('Graveyard')}: {count})"
+                         cname = card_def['name'] if isinstance(card_def, dict) else card_def.name
+                         display_name = f"{cname}\n({tr('Graveyard')}: {count})"
                          civ_display = get_card_civilization(card_def)
 
 

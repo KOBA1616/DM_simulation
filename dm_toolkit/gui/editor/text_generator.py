@@ -2046,6 +2046,28 @@ class CardTextGenerator:
             alias = CardTextResources.TRANSITION_ALIASES.get((from_zone, to_zone))
             if alias:
                  # Reconstruct natural sentences based on known aliases
+                 input_key = action.get("input_value_key", "")
+                 input_usage = action.get("input_value_usage") or action.get("input_usage")
+
+                 if input_key:
+                     # Input-linked alias handling
+                     usage_label_suffix = ""
+                     if input_usage:
+                        label = cls._format_input_usage_label(input_usage)
+                        if label:
+                            usage_label_suffix = f"（{label}）"
+
+                     if alias == "破壊":
+                         return f"{{target}}をその同じ数だけ破壊する。{usage_label_suffix}"
+                     elif alias == "捨てる":
+                         return f"手札をその同じ枚数捨てる。{usage_label_suffix}"
+                     elif alias == "手札に戻す":
+                         return f"{{target}}をその同じ数だけ手札に戻す。{usage_label_suffix}"
+                     elif alias == "マナチャージ":
+                         return f"自分の山札の上からその同じ枚数をマナゾーンに置く。{usage_label_suffix}"
+                     elif alias == "シールド焼却":
+                         return f"相手のシールドをその同じ数だけ選び、墓地に置く。{usage_label_suffix}"
+
                  if alias == "破壊":
                       return f"{{target}}を{amt}体破壊する。" if amt > 0 else f"{{target}}をすべて破壊する。"
                  elif alias == "捨てる":
@@ -2177,13 +2199,6 @@ class CardTextGenerator:
                         template = f"{{target}}をその同じ数だけまで選び、マナゾーンに置く。{usage_label_suffix}"
                     else:
                         template = f"{{target}}をその同じ数だけ選び、マナゾーンに置く。{usage_label_suffix}"
-            elif atype == "DISCARD":
-                # 前回の出力枚数と同じ枚数を捨てる
-                up_to_discard = bool(action.get('up_to', False))
-                if up_to_discard:
-                    template = f"手札をその同じ枚数まで捨てる。{usage_label_suffix}"
-                else:
-                    template = f"手札をその同じ枚数捨てる。{usage_label_suffix}"
             else:
                 val1 = "その数"
         elif (val1 == 0 or (atype == "TRANSITION" and action.get("amount", 0) == 0)) and is_generic_selection:
@@ -2199,16 +2214,29 @@ class CardTextGenerator:
 
         # Complex Action Logic
         if atype == "DISCARD":
-            # Standard discard with amount
-            amt = action.get('amount', val1 if val1 else 1)
             up_to_discard = bool(action.get('up_to', False))
-            if amt == 0:
-                template = "手札をすべて捨てる。"
-            elif up_to_discard:
-                template = f"手札を{amt}枚まで捨てる。"
+
+            if input_key:
+                # Re-calculate label since we are outside the initial input_key block
+                usage_label_suffix = ""
+                if input_usage:
+                    label = cls._format_input_usage_label(input_usage)
+                    if label:
+                        usage_label_suffix = f"（{label}）"
+
+                if up_to_discard:
+                    template = f"手札をその同じ枚数まで捨てる。{usage_label_suffix}"
+                else:
+                    template = f"手札をその同じ枚数捨てる。{usage_label_suffix}"
             else:
-                template = f"手札を{amt}枚捨てる。"
-            return template
+                # Standard discard with amount
+                amt = action.get('amount', val1 if val1 else 1)
+                if amt == 0:
+                    template = "手札をすべて捨てる。"
+                elif up_to_discard:
+                    template = f"手札を{amt}枚まで捨てる。"
+                else:
+                    template = f"手札を{amt}枚捨てる。"
 
 
         elif atype == "MEKRAID" or atype == "FRIEND_BURST" or atype == "APPLY_MODIFIER" or atype == "ADD_KEYWORD" or atype == "MUTATE" or atype == "REGISTER_DELAYED_EFFECT" or atype == "SUMMON_TOKEN":
@@ -2218,7 +2246,10 @@ class CardTextGenerator:
         elif atype == "TRANSITION" or atype == "MOVE_CARD" or atype == "REPLACE_CARD_MOVE":
              # Zone move commands return a template that needs variable substitution
              # so we assign to template and let execution proceed.
-             t = cls._format_zone_move_command(atype, action, is_spell, val1, target_str)
+             # Pass original numeric value for logic checks, as val1 might be a string placeholder
+             orig_val1 = action.get("value1") if action.get("value1") is not None else action.get("amount", 0)
+             if isinstance(orig_val1, str): orig_val1 = 0 # Fallback safety
+             t = cls._format_zone_move_command(atype, action, is_spell, orig_val1, target_str)
              if t:
                  template = t
 
