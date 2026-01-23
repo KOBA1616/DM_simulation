@@ -26,61 +26,31 @@ try:
 except ImportError:
     dm_ai_module = None
 
-class GameSession:
-    """
-    Manages the GameState, execution loop, and phase transitions.
-    Logic extracted from app.py and merged with GameController.
-    """
 
-    # デフォルトデッキをmagic.jsonから読み込む
-    @staticmethod
-    def load_magic_deck() -> List[int]:
-        """Load the magic.json deck. Falls back to default if not found."""
-        try:
-            deck_path = "data/decks/magic.json"
-            if not os.path.exists(deck_path):
-                # Try relative to project root
-                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-                deck_path = os.path.join(base_dir, deck_path)
-            
-            if os.path.exists(deck_path):
-                with open(deck_path, 'r', encoding='utf-8') as f:
-                    deck = json.load(f)
-                    if isinstance(deck, list) and len(deck) == 40:
-                        return deck
-        except Exception:
-            pass
-        
-        # Fallback to default deck
-        return [1] * 40
-    
-    DEFAULT_DECK = load_magic_deck.__func__()
+class GameSession:
+    DEFAULT_DECK: List[int] = []
 
     def __init__(self,
-                 callback_update_ui: Callable[[], None],
-                 callback_log: Callable[[str], None],
+                 callback_update_ui: Optional[Callable[[], None]] = None,
+                 callback_log: Optional[Callable[[str], None]] = None,
                  callback_input_request: Optional[Callable[[], None]] = None,
-                 callback_action_executed: Optional[Callable[[Dict[str, Any]], None]] = None):
+                 callback_action_executed: Optional[Callable[[Any], None]] = None):
+        self.callback_update_ui = callback_update_ui or (lambda: None)
+        self.callback_log = callback_log or (lambda m: None)
+        self.callback_input_request = callback_input_request or (lambda: None)
+        self.callback_action_executed = callback_action_executed or (lambda a: None)
 
-        self.gs: Optional[GameState] = None
-        self.card_db: CardDB = {}
-        self.callback_update_ui = callback_update_ui
-        self.callback_log = callback_log
-        self.callback_input_request = callback_input_request
-        self.callback_action_executed = callback_action_executed
-
+        self.player_modes: Dict[int, str] = {0: 'AI', 1: 'AI'}
         self.is_running = False
         self.is_processing = False
-
-        # Player Modes (0: Human, 1: AI by default)
-        self.player_modes = {0: 'AI', 1: 'AI'}
-
-        self.last_action: Optional[Action] = None
+        self.last_action = None
+        self.card_db: CardDB = {}
+        self.gs: Optional[GameState] = None
         self.ai_player = None
-        self._load_latest_ai()
 
     def _load_latest_ai(self):
-        if not AIPlayer: return
+        if not AIPlayer:
+            return
         try:
             models_dir = os.path.join(project_root, "models")
             if not os.path.exists(models_dir):
@@ -94,7 +64,7 @@ class GameSession:
 
             latest_model = max(files, key=os.path.getmtime)
             self.callback_log(f"Loading AI Model: {os.path.basename(latest_model)}")
-            self.ai_player = AIPlayer(latest_model, device='cpu') # Force CPU for GUI safety
+            self.ai_player = AIPlayer(latest_model, device='cpu')
         except Exception as e:
             self.callback_log(f"Failed to load AI: {e}")
             self.ai_player = None
@@ -108,34 +78,59 @@ class GameSession:
             # 両プレイヤーにデフォルトデッキを設定
             self.gs.set_deck(0, self.DEFAULT_DECK)
             self.gs.set_deck(1, self.DEFAULT_DECK)
-            
-            # デバッグ: デッキ設定後の状態を確認
-            self.callback_log(f"P0 deck size: {len(self.gs.players[0].deck)}, hand size: {len(self.gs.players[0].hand)}, shields: {len(self.gs.players[0].shield_zone)}")
-            self.callback_log(f"P1 deck size: {len(self.gs.players[1].deck)}, hand size: {len(self.gs.players[1].hand)}, shields: {len(self.gs.players[1].shield_zone)}")
 
+            # デバッグ: デッキ設定後の状態を確認
+            try:
+                self.callback_log(f"P0 deck size: {len(self.gs.players[0].deck)}, hand size: {len(self.gs.players[0].hand)}, shields: {len(self.gs.players[0].shield_zone)}")
+                self.callback_log(f"P1 deck size: {len(self.gs.players[1].deck)}, hand size: {len(self.gs.players[1].hand)}, shields: {len(self.gs.players[1].shield_zone)}")
+            except Exception:
+                pass
+
+            # Ensure we call PhaseManager.start_game with a proper CardDatabase.
+            applied = False
             if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
-                # start_gameはCardDatabaseオブジェクトを期待しているため、
-                # 辞書形式のcard_dbをCardDatabaseに変換する
-                if hasattr(dm_ai_module, 'JsonLoader'):
-                    try:
-                        # JsonLoaderを使用してCardDatabaseを取得
+                native_db = None
+                # Prefer JsonLoader (returns native CardDatabase)
+                try:
+                    if hasattr(dm_ai_module, 'JsonLoader'):
                         native_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-                        dm_ai_module.PhaseManager.start_game(self.gs, native_db)
-                        self.callback_log("start_game executed successfully")
-                    except Exception as e:
-                        self.callback_log(f"Warning: Failed to load CardDatabase: {e}")
-                        # CardDatabaseが必要ない場合は警告のみで続行
-                else:
-                    # 古いバージョンでは辞書のままで動作する可能性がある
+                        self.callback_log("Loaded native CardDatabase via JsonLoader")
+                except Exception as e:
+                    self.callback_log(f"Warning: JsonLoader failed: {e}")
+
+                # Fallback: try CardRegistry.get_all_definitions() if available
+                if native_db is None:
                     try:
-                        dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
-                        self.callback_log("start_game executed successfully (dict format)")
+                        if hasattr(dm_ai_module, 'CardRegistry') and hasattr(dm_ai_module.CardRegistry, 'get_all_definitions'):
+                            native_db = dm_ai_module.CardRegistry.get_all_definitions()
+                            self.callback_log("Loaded native CardDatabase via CardRegistry.get_all_definitions")
                     except Exception as e:
-                        self.callback_log(f"Warning: start_game failed: {e}")
-            
+                        self.callback_log(f"Warning: CardRegistry lookup failed: {e}")
+
+                # Last resort: use the Python-side card_db (dict)
+                if native_db is None:
+                    native_db = self.card_db
+
+                try:
+                    dm_ai_module.PhaseManager.start_game(self.gs, native_db)
+                    self.callback_log("start_game executed successfully")
+                    applied = True
+                except Exception as e:
+                    self.callback_log(f"Warning: start_game failed: {e}")
+
+            # If native start_game was not applied, perform minimal Python-level setup
+            if not applied:
+                try:
+                    self._fallback_apply_shields_and_draw()
+                except Exception as e:
+                    self.callback_log(f"Fallback during initialize_game failed: {e}")
+
             # デバッグ: start_game実行後の状態を確認
-            self.callback_log(f"After start_game - P0 deck size: {len(self.gs.players[0].deck)}, hand size: {len(self.gs.players[0].hand)}, shields: {len(self.gs.players[0].shield_zone)}")
-            self.callback_log(f"After start_game - P1 deck size: {len(self.gs.players[1].deck)}, hand size: {len(self.gs.players[1].hand)}, shields: {len(self.gs.players[1].shield_zone)}")
+            try:
+                self.callback_log(f"After start_game - P0 deck size: {len(self.gs.players[0].deck)}, hand size: {len(self.gs.players[0].hand)}, shields: {len(self.gs.players[0].shield_zone)}")
+                self.callback_log(f"After start_game - P1 deck size: {len(self.gs.players[1].deck)}, hand size: {len(self.gs.players[1].hand)}, shields: {len(self.gs.players[1].shield_zone)}")
+            except Exception:
+                pass
         else:
             self.gs = None
 
@@ -153,16 +148,122 @@ class GameSession:
         # デッキが指定されていない場合はデフォルトを使用
         deck0 = p0_deck if p0_deck else self.DEFAULT_DECK
         deck1 = p1_deck if p1_deck else self.DEFAULT_DECK
-        
+
         # 両方のデッキを設定（P0→P1の順で）
         self.gs.set_deck(0, deck0)
         self.gs.set_deck(1, deck1)
 
-        if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
-            dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+        # Ensure PhaseManager.start_game is invoked with proper card DB (same logic as initialize_game)
+        try:
+            has_pm = hasattr(dm_ai_module, 'PhaseManager')
+            has_start = has_pm and hasattr(dm_ai_module.PhaseManager, 'start_game')
+        except Exception:
+            has_pm = False
+            has_start = False
+        try:
+            self.callback_log(f"Debug: PhaseManager present={has_pm}, has start_game={has_start}")
+        except Exception:
+            pass
+
+        if has_pm and has_start:
+            native_db = None
+            try:
+                if hasattr(dm_ai_module, 'JsonLoader'):
+                    native_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+                    self.callback_log("Loaded native CardDatabase via JsonLoader")
+            except Exception as e:
+                self.callback_log(f"Warning: JsonLoader failed: {e}")
+
+            if native_db is None:
+                try:
+                    if hasattr(dm_ai_module, 'CardRegistry') and hasattr(dm_ai_module.CardRegistry, 'get_all_definitions'):
+                        native_db = dm_ai_module.CardRegistry.get_all_definitions()
+                        self.callback_log("Loaded native CardDatabase via CardRegistry.get_all_definitions")
+                except Exception as e:
+                    self.callback_log(f"Warning: CardRegistry lookup failed: {e}")
+
+            if native_db is None:
+                native_db = self.card_db
+
+            try:
+                dm_ai_module.PhaseManager.start_game(self.gs, native_db)
+                applied = True
+            except Exception as e:
+                self.callback_log(f"Warning: start_game failed during reset_game: {e}")
+                applied = False
+        else:
+            # Fallback: if PhaseManager.start_game is not available or failed to run,
+            # perform a minimal Python-level setup: place 5 shields and draw 5 cards from deck.
+            try:
+                if not globals().get('applied', False):
+                    self._fallback_apply_shields_and_draw()
+            except Exception as e:
+                self.callback_log(f"Fallback deck setup failed: {e}")
 
         self.callback_log(tr("Game Reset"))
         self.callback_update_ui()
+
+    def _fallback_apply_shields_and_draw(self) -> None:
+        """Perform minimal setup by moving cards from deck -> shields and deck -> hand.
+        Uses dm_ai_module.DevTools.move_cards when available, otherwise manipulates lists.
+        """
+        # Log deck sizes before fallback
+        try:
+            self.callback_log(f"Pre-fallback deck sizes: P0={len(self.gs.players[0].deck)}, P1={len(self.gs.players[1].deck)}")
+        except Exception:
+            pass
+
+        # If DevTools is available, use it to move cards safely
+        if dm_ai_module and hasattr(dm_ai_module, 'DevTools') and hasattr(dm_ai_module, 'Zone'):
+            for pid in (0, 1):
+                p = self.gs.players[pid]
+                # Place up to 5 shields from top (end) of deck
+                for _ in range(5):
+                    if not p.deck:
+                        break
+                    iid = p.deck[-1].instance_id
+                    try:
+                        dm_ai_module.DevTools.move_cards(self.gs, iid, dm_ai_module.Zone.DECK, dm_ai_module.Zone.SHIELD)
+                    except Exception:
+                        pass
+                # Draw up to 5 cards into hand
+                for _ in range(5):
+                    if not p.deck:
+                        break
+                    iid = p.deck[-1].instance_id
+                    try:
+                        dm_ai_module.DevTools.move_cards(self.gs, iid, dm_ai_module.Zone.DECK, dm_ai_module.Zone.HAND)
+                    except Exception:
+                        pass
+        else:
+            # DevTools not present in this binding; perform direct list moves
+            for pid in (0, 1):
+                p = self.gs.players[pid]
+                # Shields: move up to 5 from deck -> shield_zone
+                for _ in range(5):
+                    if not p.deck:
+                        break
+                    card = p.deck.pop()
+                    try:
+                        p.shield_zone.append(card)
+                    except Exception:
+                        pass
+                # Draw: move up to 5 from deck -> hand
+                for _ in range(5):
+                    if not p.deck:
+                        break
+                    card = p.deck.pop()
+                    try:
+                        p.hand.append(card)
+                    except Exception:
+                        pass
+
+        # Log deck sizes after fallback
+        try:
+            self.callback_log(f"Post-fallback deck sizes: P0={len(self.gs.players[0].deck)}, P1={len(self.gs.players[1].deck)}")
+        except Exception:
+            pass
+        self.callback_log(tr("Fallback: performed minimal deck setup (shields+draw)"))
 
     def set_player_mode(self, player_id: int, mode: str):
         """ mode: 'Human' or 'AI' """
@@ -175,7 +276,8 @@ class GameSession:
         """
         Executes an action, wraps it, logs it, and updates UI.
         """
-        if not self.gs: return
+        if not self.gs:
+            return
 
         self.last_action = action
 
@@ -213,11 +315,15 @@ class GameSession:
             self.callback_log(tr("Execution Error: {error}").format(error=e))
 
         # Check input wait
-        if self.check_and_handle_input_wait(): return
+        if self.check_and_handle_input_wait():
+            return
 
         # Auto Pass check
-        if dm_ai_module:
-            pending_count = self.gs.get_pending_effect_count()
+        if dm_ai_module and self.gs:
+            try:
+                pending_count = self.gs.get_pending_effect_count()
+            except Exception:
+                pending_count = 0
             # Use cmd_dict type for check
             act_type_str = cmd_dict.get('type')
 
@@ -227,37 +333,52 @@ class GameSession:
 
             # Also check against Enum if available
             if hasattr(dm_ai_module, 'ActionType'):
-                if not is_pass and act_type_str == str(dm_ai_module.ActionType.PASS): is_pass = True
-                if not is_charge and act_type_str == str(dm_ai_module.ActionType.MANA_CHARGE): is_charge = True
+                try:
+                    if not is_pass and act_type_str == str(dm_ai_module.ActionType.PASS):
+                        is_pass = True
+                    if not is_charge and act_type_str == str(dm_ai_module.ActionType.MANA_CHARGE):
+                        is_charge = True
+                except Exception:
+                    pass
 
             if (is_pass or is_charge) and pending_count == 0:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
-                
+
                 # Check for game over after phase transition
-                if hasattr(dm_ai_module.PhaseManager, 'check_game_over'):
+                if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'check_game_over'):
                     try:
                         game_over_result = dm_ai_module.PhaseManager.check_game_over(self.gs)
                         if isinstance(game_over_result, tuple):
                             is_over, winner = game_over_result
                         else:
                             is_over = game_over_result
-                        
+
                         if is_over:
                             self.gs.game_over = True
-                    except Exception as e:
+                    except Exception:
                         pass  # Silent fail, logging happens in step_phase
 
         self.callback_update_ui()
 
     def check_and_handle_input_wait(self) -> bool:
-        if not self.gs.waiting_for_user_input: return False
+        if not self.gs:
+            return False
+        try:
+            waiting = getattr(self.gs, 'waiting_for_user_input', False)
+        except Exception:
+            waiting = False
+        if not waiting:
+            return False
 
         # Stop running if auto-stepping
         if self.is_running:
             self.is_running = False
 
         if self.callback_input_request:
-            self.callback_input_request()
+            try:
+                self.callback_input_request()
+            except Exception:
+                pass
 
         self.callback_update_ui()
         return True
@@ -274,28 +395,35 @@ class GameSession:
         """
         The main game loop step.
         """
-        if self.is_processing: return
+        if self.is_processing:
+            return
         self.is_processing = True
         try:
-            if self.check_and_handle_input_wait(): return
-            
+            if self.check_and_handle_input_wait():
+                return
+
             # Check for game over using PhaseManager
-            if self.gs and dm_ai_module and hasattr(dm_ai_module.PhaseManager, 'check_game_over'):
+            if self.gs and dm_ai_module and hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'check_game_over'):
                 try:
                     game_over_result = dm_ai_module.PhaseManager.check_game_over(self.gs)
                     if isinstance(game_over_result, tuple):
                         is_over, winner = game_over_result
                     else:
                         is_over = game_over_result
-                    
+
                     if is_over:
                         self.gs.game_over = True
-                        self.callback_log(tr("Game Over - Winner: {winner}").format(winner=winner if isinstance(game_over_result, tuple) else self.gs.winner))
+                        try:
+                            self.callback_log(tr("Game Over - Winner: {winner}").format(winner=winner if isinstance(game_over_result, tuple) else self.gs.winner))
+                        except Exception:
+                            pass
                         return
                 except Exception as e:
-                    self.callback_log(f"Warning: check_game_over failed: {e}")
-            elif self.gs and self.gs.game_over:
-                # self.callback_log(tr("Game Over")) # Optional
+                    try:
+                        self.callback_log(f"Warning: check_game_over failed: {e}")
+                    except Exception:
+                        pass
+            elif self.gs and getattr(self.gs, 'game_over', False):
                 return
 
             active_pid = EngineCompat.get_active_player_id(self.gs)
@@ -307,20 +435,20 @@ class GameSession:
             if is_human:
                 resolve_cmds = []
                 for c in cmds:
-                    try: d = c.to_dict()
-                    except: d = {}
+                    try:
+                        d = c.to_dict()
+                    except Exception:
+                        d = {}
                     if d.get('type') == 'RESOLVE_EFFECT':
                         resolve_cmds.append((c, d))
 
                 if len(resolve_cmds) > 1:
-                    # Ambiguous trigger resolution
                     pass
 
                 if not cmds:
                     EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
                     self.callback_update_ui()
 
-                # Human turn ends here (waiting for input)
                 return
 
             # AI Logic
@@ -337,7 +465,6 @@ class GameSession:
                         encoder = self.ai_player.action_encoder
 
                         for cmd in cmds:
-                            # cmd is wrapped, getattr delegates to inner action
                             idx = encoder.encode_action(cmd, self.gs, active_pid)
                             if idx != -1:
                                 valid_indices.append(idx)
@@ -345,37 +472,17 @@ class GameSession:
 
                         if valid_indices:
                             ai_cmd = self.ai_player.get_action(self.gs, active_pid, valid_indices)
-                            # Try to map back to original command object if possible
                             ai_idx = encoder.encode_action(ai_cmd, self.gs, active_pid)
                             if ai_idx in cmd_map:
                                 best_cmd = cmd_map[ai_idx]
                             else:
-                                # Fallback to mapped command if ai_cmd was generated from index
-                                # get_action returns a NEW GameCommand decoded from index.
-                                # encode_action(ai_cmd) should return the same index.
-                                pass
-                                # If ai_idx not in map (which shouldn't happen if get_action respects valid_indices),
-                                # check if we can execute ai_cmd directly.
-                                # But best_cmd is currently cmds[0].
-                                # We should update best_cmd ONLY if we found a match or trust ai_cmd.
-
-                                # If AI returns a command that we didn't map (e.g. unencodable command chosen?),
-                                # we stick to cmds[0] or execute ai_cmd if it's valid.
-                                # But we masked, so it should be valid.
-
-                                # Wait, ai_player.get_action returns a decoded command.
-                                # We trust it.
                                 best_cmd = ai_cmd
 
-                        else:
-                            # No commands could be encoded (e.g. complex commands not supported by simple AI)
-                            # Fallback to random/first
-                            pass
-
                     except Exception as e:
-                        self.callback_log(f"AI Error: {e}")
-                        # Fallback to first command
-                        pass
+                        try:
+                            self.callback_log(f"AI Error: {e}")
+                        except Exception:
+                            pass
 
                 if best_cmd:
                     self.execute_action(best_cmd)
@@ -386,7 +493,8 @@ class GameSession:
             self.is_processing = False
 
     def generate_legal_actions(self) -> List[Any]:
-        if not self.gs: return []
+        if not self.gs:
+            return []
         from dm_toolkit.commands import generate_legal_commands
         return generate_legal_commands(self.gs, self.card_db)
 

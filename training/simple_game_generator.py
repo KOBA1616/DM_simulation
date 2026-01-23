@@ -80,8 +80,14 @@ class SimpleGameGenerator:
         """Play a single game and return (states, policies, values)"""
         
         try:
-            # Create game
-            instance = dm_ai_module.GameInstance(seed, self.card_db)
+            # Create game (handle different binding ctor signatures)
+            try:
+                instance = dm_ai_module.GameInstance(seed, self.card_db)
+            except TypeError:
+                try:
+                    instance = dm_ai_module.GameInstance(seed)
+                except Exception:
+                    instance = dm_ai_module.GameInstance(0)
             gs = instance.state
             
             # Setup deck - use all card ID 1 for simplicity
@@ -89,8 +95,35 @@ class SimpleGameGenerator:
             gs.set_deck(0, deck)
             gs.set_deck(1, deck)
             
-            # Start game
-            dm_ai_module.PhaseManager.start_game(gs, self.card_db)
+            # Start game: prefer native PhaseManager.start_game, fallback to instance.start_game(), else do a minimal python setup
+            applied = False
+            try:
+                if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
+                    dm_ai_module.PhaseManager.start_game(gs, self.card_db)
+                    applied = True
+            except Exception:
+                applied = False
+
+            if not applied:
+                try:
+                    if hasattr(instance, 'start_game'):
+                        instance.start_game()
+                        applied = True
+                except Exception:
+                    applied = False
+
+            if not applied:
+                # minimal python setup: 5 shields and 5 hand from deck
+                for pid in (0, 1):
+                    p = gs.players[pid]
+                    # shields
+                    for _ in range(5):
+                        if not p.deck: break
+                        p.shield_zone.append(p.deck.pop())
+                    # hand
+                    for _ in range(5):
+                        if not p.deck: break
+                        p.hand.append(p.deck.pop())
             
             # Decide winner beforehand (alternate between P1 and P2)
             # This creates balanced training data
@@ -139,13 +172,20 @@ class SimpleGameGenerator:
                 
                 # Record state from active player's perspective
                 try:
-                    active_player = gs.active_player_id
+                    try:
+                        from dm_toolkit.engine.compat import EngineCompat
+                        active_player = EngineCompat.get_active_player_id(gs)
+                    except Exception:
+                        active_player = getattr(gs, 'active_player_id', 0)
+
                     state_tokens = self._encode_state(gs, active_player)
                     states.append(state_tokens)
                     policy = self._create_policy_vector(591, 0)
                     policies.append(policy)
                     players.append(active_player)
-                except:
+                except Exception as e:
+                    # log and continue
+                    # print('state record failed:', e)
                     pass
             
             # Compute value signal from each player's perspective

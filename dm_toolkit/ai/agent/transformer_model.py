@@ -30,7 +30,9 @@ class DuelTransformer(nn.Module):
 
         # 1. Embeddings
         self.token_embedding = nn.Embedding(vocab_size, d_model)
-        self.pos_embedding = nn.Parameter(torch.randn(1, max_len, d_model) * 0.02)
+        # store positional embeddings without a leading batch dim so we can
+        # expand dynamically to the runtime batch size during forward.
+        self.pos_embedding = nn.Parameter(torch.randn(max_len, d_model) * 0.02)
 
         # 2. Synergy Manager (optional for speed)
         self.use_synergy = synergy_matrix_path is not None
@@ -88,7 +90,9 @@ class DuelTransformer(nn.Module):
 
         # Add Positional Embedding (Slice to current seq len)
         seq_len = min(S, self.max_len)
-        emb = emb[:, :seq_len, :] + self.pos_embedding[:, :seq_len, :]
+        # make positional embeddings have batch dimension at runtime
+        pos = self.pos_embedding[:seq_len, :].unsqueeze(0).expand(B, seq_len, self.d_model)
+        emb = emb[:, :seq_len, :] + pos
 
         # 2. Synergy Bias (optional for speed)
         if self.use_synergy and self.synergy_graph is not None:

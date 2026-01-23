@@ -16,15 +16,27 @@ def main():
 
     card_db = dm.JsonLoader.load_cards("data/cards.json")
 
-    gi = dm.GameInstance(0, card_db)
+    # Some builds expose GameInstance(seed) only; prefer single-arg constructor for compatibility
+    try:
+        gi = dm.GameInstance(0, card_db)
+    except TypeError:
+        gi = dm.GameInstance(0)
 
     # Prepare simple decks (40 cards of ID 1)
     deck = [1] * 40
     gi.state.set_deck(0, deck)
     gi.state.set_deck(1, deck)
 
-    # Start game (fills shields and draws)
-    gi.start_game()
+    # Try calling PhaseManager.start_game directly (ensures native PhaseManager is used)
+    try:
+        dm.PhaseManager.start_game(gi.state, card_db)
+        print("PhaseManager.start_game invoked directly")
+    except Exception as e:
+        print(f"PhaseManager.start_game failed: {e}; falling back to GameInstance.start_game()")
+        try:
+            gi.start_game()
+        except Exception as e2:
+            print(f"GameInstance.start_game also failed: {e2}")
     print(f"Turn: {gi.state.turn_number}, Active: {gi.state.active_player_id}")
     print(f"P0 shields: {len(gi.state.players[0].shield_zone)}, P1 shields: {len(gi.state.players[1].shield_zone)}")
 

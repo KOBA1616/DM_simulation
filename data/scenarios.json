@@ -1,3 +1,4 @@
+
 [
   {
     "name": "lethal_puzzle_easy",
@@ -10,6 +11,24 @@
       "my_shields": [1, 1],
       "enemy_shield_count": 0,
       "enemy_battle_zone": []
+    }
+  }
+  ,
+  {
+    "name": "standard_start",
+    "description": "Standard test start: both players 5 hand, 0 mana, 5 shields, empty battle/grave",
+    "config": {
+      "my_hand_cards": [1, 1, 1, 1, 1],
+      "my_battle_zone": [],
+      "my_mana_zone": [],
+      "my_shields": [1, 1, 1, 1, 1],
+      "my_grave_yard": [],
+
+      "enemy_hand_cards": [1, 1, 1, 1, 1],
+      "enemy_battle_zone": [],
+      "enemy_mana_zone": [],
+      "enemy_shields": [1, 1, 1, 1, 1],
+      "enemy_grave_yard": []
     }
   }
 ]

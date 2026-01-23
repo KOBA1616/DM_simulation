@@ -89,8 +89,18 @@ class GameWindow(QMainWindow):
         # Initialize Layout using Builder
         self.layout_builder = LayoutBuilder(self)
         self.layout_builder.build()
-
         self.update_ui()
+        # For test operation: auto-apply the 'standard_start' scenario if present
+        try:
+            if hasattr(self, 'scenario_tools') and getattr(self, 'scenario_tools') is not None:
+                for sc in getattr(self.scenario_tools, 'scenarios', []):
+                    if sc and sc.get('name') == 'standard_start':
+                        # Apply scenario (this will reset game and set zones accordingly)
+                        self.scenario_tools.apply_scenario(sc)
+                        self.log_viewer.log_message(tr("Applied 'standard_start' scenario on startup"))
+                        break
+        except Exception as e:
+            self.log_viewer.log_message(f"Failed to auto-apply standard scenario: {e}")
         self.showMaximized()
 
     @property
@@ -184,9 +194,14 @@ class GameWindow(QMainWindow):
                 if len(deck_ids) != 40:
                     QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return
+                # Shuffle deck on load so placement/draw are randomized immediately
+                try:
+                    random.shuffle(deck_ids)
+                except Exception:
+                    pass
                 self.p0_deck_ids = deck_ids
                 self.reset_game()
-                self.log_viewer.log_message(f"{tr('Loaded Deck for P0')}: {os.path.basename(fname)}")
+                self.log_viewer.log_message(f"{tr('Loaded Deck for P0')}: {os.path.basename(fname)} (shuffled)")
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
@@ -199,9 +214,14 @@ class GameWindow(QMainWindow):
                 if len(deck_ids) != 40:
                     QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
                     return
+                # Shuffle deck on load so placement/draw are randomized immediately
+                try:
+                    random.shuffle(deck_ids)
+                except Exception:
+                    pass
                 self.p1_deck_ids = deck_ids
                 self.reset_game()
-                self.log_viewer.log_message(f"{tr('Loaded Deck for P1')}: {os.path.basename(fname)}")
+                self.log_viewer.log_message(f"{tr('Loaded Deck for P1')}: {os.path.basename(fname)} (shuffled)")
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
