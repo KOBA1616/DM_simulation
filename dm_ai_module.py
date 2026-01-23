@@ -898,6 +898,14 @@ else:
                 # Add to pending effects stub
                 state.pending_effects.append(action)
 
+    class EffectResolver:
+        @staticmethod
+        def resolve_action(state: Any, action: Any, card_db: Any = None) -> None:
+            # Adapt signature for GenericCardSystem
+            # GenericCardSystem.resolve_action expects (state, action, player_id)
+            pid = getattr(state, 'active_player_id', 0)
+            GenericCardSystem.resolve_action(state, action, pid)
+
     class JsonLoader:
         @staticmethod
         def load_cards(path): return {}
