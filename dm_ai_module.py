@@ -437,6 +437,13 @@ else:
             self.to_zone = None
             self.value = 0
             self.card_id = 0
+            self.instance_id = 0
+            self.target_instance = 0
+            self.owner_id = 0
+            self.from_zone = ''
+            self.mutation_kind = ''
+            self.input_value_key = ''
+            self.output_value_key = ''
 
     class GameCommand:
         def __init__(self, *args: Any, **kwargs: Any):
@@ -575,11 +582,29 @@ else:
     class CommandSystem:
         @staticmethod
         def execute_command(state: Any, cmd: Any, source_id: int, player_id: int, ctx: Any = None) -> None:
-            if cmd.type == CommandType.TAP:
-                # If target filter requests specific instance (usually via simple loop in test setup)
-                # Here we blindly tap EVERYTHING in target zone to satisfy simple tests.
-                if cmd.target_filter:
-                    zones = getattr(cmd.target_filter, 'zones', [])
+            # Handle dictionary inputs
+            cmd_type = None
+            if hasattr(cmd, 'type'):
+                cmd_type = cmd.type
+            elif isinstance(cmd, dict):
+                cmd_type = cmd.get('type')
+                # Try mapping string type to Enum
+                if isinstance(cmd_type, str):
+                    try:
+                        cmd_type = getattr(CommandType, cmd_type)
+                    except AttributeError:
+                        pass
+
+            # Helper to access cmd attributes safely
+            def get_attr(name, default=None):
+                if hasattr(cmd, name): return getattr(cmd, name)
+                if isinstance(cmd, dict): return cmd.get(name, default)
+                return default
+
+            if cmd_type == CommandType.TAP:
+                target_filter = get_attr('target_filter')
+                if target_filter:
+                    zones = getattr(target_filter, 'zones', []) if hasattr(target_filter, 'zones') else target_filter.get('zones', [])
                     for z in zones:
                         if z in ["BATTLE_ZONE", "MANA_ZONE"]:
                             p = state.players[player_id]
@@ -587,82 +612,130 @@ else:
                             for card in zone_list:
                                 card.is_tapped = True
 
-            elif cmd.type == CommandType.UNTAP:
-                if cmd.target_filter:
-                    zones = getattr(cmd.target_filter, 'zones', [])
+            elif cmd_type == CommandType.UNTAP:
+                target_filter = get_attr('target_filter')
+                if target_filter:
+                    zones = getattr(target_filter, 'zones', []) if hasattr(target_filter, 'zones') else target_filter.get('zones', [])
                     for z in zones:
                         if z in ["BATTLE_ZONE", "MANA_ZONE"]:
                             p = state.players[player_id]
                             zone_list = p.battle_zone if z == "BATTLE_ZONE" else p.mana_zone
                             for card in zone_list:
-                                # Mock: Just untap everything if zone matches
                                 card.is_tapped = False
 
-            elif cmd.type == CommandType.RETURN_TO_HAND:
-                if cmd.target_filter:
-                    zones = getattr(cmd.target_filter, 'zones', [])
+            elif cmd_type == CommandType.RETURN_TO_HAND:
+                target_filter = get_attr('target_filter')
+                if target_filter:
+                    zones = getattr(target_filter, 'zones', []) if hasattr(target_filter, 'zones') else target_filter.get('zones', [])
                     if "BATTLE_ZONE" in zones:
                          p = state.players[player_id]
-                         # Move everything from battle to hand
-                         # Note: Use list(p.battle_zone) to avoid modification during iteration if we were iterating
-                         # But pop(0) is fine.
                          while p.battle_zone:
                              c = p.battle_zone.pop(0)
                              p.hand.append(c)
-            elif cmd.type == CommandType.SEARCH_DECK:
+
+            elif cmd_type == CommandType.SEARCH_DECK:
                  p = state.players[player_id]
                  if p.deck:
                      stub = p.deck.pop()
                      cid = stub.card_id if isinstance(stub, CardStub) else stub
                      state.add_card_to_hand(player_id, cid)
 
-            elif cmd.type == CommandType.DESTROY:
+            elif cmd_type == CommandType.DESTROY:
                 p = state.players[player_id]
-                # Default to Battle Zone if not specified
                 target_zone = p.battle_zone
-
-                # Simple logic: destroy all in target zone or battle zone
-                # In a real engine, we'd filter. Here we just move generic targets for testing flow.
-                if cmd.target_filter:
-                    zones = getattr(cmd.target_filter, 'zones', [])
+                target_filter = get_attr('target_filter')
+                if target_filter:
+                    zones = getattr(target_filter, 'zones', []) if hasattr(target_filter, 'zones') else target_filter.get('zones', [])
                     if "MANA_ZONE" in zones: target_zone = p.mana_zone
 
-                # Move to graveyard
                 while target_zone:
                     c = target_zone.pop(0)
                     p.graveyard.append(c)
 
-            elif cmd.type == CommandType.MANA_CHARGE:
+            elif cmd_type == CommandType.MANA_CHARGE:
                 p = state.players[player_id]
-                # If Hand -> Mana
-                if cmd.target_filter and "HAND" in getattr(cmd.target_filter, 'zones', []):
-                    if p.hand:
-                        c = p.hand.pop(0)
-                        p.mana_zone.append(c)
-                # Default: Top of deck -> Mana
-                elif p.deck:
-                    stub = p.deck.pop()
-                    cid = stub.card_id if isinstance(stub, CardStub) else stub
-                    p.mana_zone.append(CardStub(cid, state.get_next_instance_id()))
+                # Check explicit instance first
+                instance_id = get_attr('instance_id') or get_attr('source_instance_id') or source_id
 
-            elif cmd.type == CommandType.DISCARD:
+                found = False
+                if instance_id > 0:
+                    for i, c in enumerate(p.hand):
+                        if c.instance_id == instance_id:
+                            card = p.hand.pop(i)
+                            card.is_tapped = False
+                            p.mana_zone.append(card)
+                            found = True
+                            break
+
+                if not found:
+                    target_filter = get_attr('target_filter')
+                    if target_filter and "HAND" in (getattr(target_filter, 'zones', []) if hasattr(target_filter, 'zones') else target_filter.get('zones', [])):
+                        if p.hand:
+                            c = p.hand.pop(0)
+                            p.mana_zone.append(c)
+                    elif p.deck:
+                        stub = p.deck.pop()
+                        cid = stub.card_id if isinstance(stub, CardStub) else stub
+                        p.mana_zone.append(CardStub(cid, state.get_next_instance_id()))
+
+            elif cmd_type == CommandType.DISCARD:
                 p = state.players[player_id]
                 if p.hand:
-                    # Simple discard top one for stub
                     c = p.hand.pop(0)
                     p.graveyard.append(c)
 
-            elif cmd.type == CommandType.BREAK_SHIELD:
-                # Target player usually defined in cmd or context, default to opponent for now if not set
+            elif cmd_type == CommandType.BREAK_SHIELD:
                 target_pid = 1 - player_id
                 p = state.players[target_pid]
                 if p.shield_zone:
                     c = p.shield_zone.pop(0)
-                    # Break to hand
                     p.hand.append(c)
 
-            elif cmd.type == CommandType.DRAW_CARD:
-                state.draw_cards(player_id, getattr(cmd, 'amount', 1))
+            elif cmd_type == CommandType.DRAW_CARD:
+                state.draw_cards(player_id, get_attr('amount', 1))
+
+            elif cmd_type == CommandType.MOVE_CARD or cmd_type == CommandType.REPLACE_CARD_MOVE:
+                # Handle explicit moves
+                instance_id = get_attr('instance_id') or get_attr('target_instance') or source_id
+                to_zone = str(get_attr('to_zone', '')).upper()
+
+                # Find card
+                card = None
+                owner_idx = -1
+                from_zone_list = None
+
+                for pid, pl in enumerate(state.players):
+                    for zname in ['hand', 'mana_zone', 'battle_zone', 'shield_zone', 'graveyard', 'deck']:
+                        zlist = getattr(pl, zname)
+                        for i, c in enumerate(zlist):
+                            if c.instance_id == instance_id:
+                                card = c
+                                owner_idx = pid
+                                from_zone_list = zlist
+                                break
+                        if card: break
+                    if card: break
+
+                if card and from_zone_list is not None:
+                    # Remove from old
+                    from_zone_list.remove(card)
+
+                    # Add to new
+                    dest_p = state.players[owner_idx] # Keep owner unless changed
+
+                    if to_zone in ['MANA', 'MANA_ZONE']:
+                        card.is_tapped = False
+                        dest_p.mana_zone.append(card)
+                    elif to_zone in ['HAND']:
+                        dest_p.hand.append(card)
+                    elif to_zone in ['BATTLE', 'BATTLE_ZONE']:
+                        dest_p.battle_zone.append(card)
+                    elif to_zone in ['GRAVEYARD']:
+                        dest_p.graveyard.append(card)
+                    elif to_zone in ['SHIELD', 'SHIELD_ZONE']:
+                        dest_p.shield_zone.append(card)
+                    elif to_zone in ['DECK']:
+                        dest_p.deck.append(card)
 
     class TokenConverter:
         @staticmethod
@@ -881,25 +954,37 @@ else:
 
             # 3. Main Phase (Phase 3)
             elif phase == 3:
-                # Calculate usable mana
+                # Calculate usable mana and civs
                 usable_mana = 0
+                available_civs = set()
                 for m in player.mana_zone:
                     if not m.is_tapped:
                         usable_mana += 1
+                    # Tap or untap, mana provides civ
+                    cdef = get_card_def(m.card_id)
+                    if cdef:
+                        civs = cdef.get('civilizations', [])
+                        if isinstance(civs, list):
+                            for civ in civs: available_civs.add(civ)
 
                 # Play Cards
                 for card in player.hand:
-                    # Get Cost
-                    cost = 9999
-                    if hasattr(card_db, 'get_card'):
-                        cdata = card_db.get_card(card.card_id)
-                        cost = cdata.get('cost', 0)
-                    elif isinstance(card_db, dict):
-                        cdata = card_db.get(card.card_id) or card_db.get(str(card.card_id))
-                        if cdata:
-                            cost = cdata.get('cost', 0)
+                    cdata = get_card_def(card.card_id)
+                    if not cdata: continue
 
-                    if cost <= usable_mana:
+                    cost = cdata.get('cost', 9999)
+                    card_civs = cdata.get('civilizations', [])
+
+                    # Check civ requirement
+                    has_civ = False
+                    if not card_civs: has_civ = True
+                    else:
+                        for c in card_civs:
+                            if c in available_civs:
+                                has_civ = True
+                                break
+
+                    if cost <= usable_mana and has_civ:
                         act = Action()
                         act.type = ActionType.PLAY_CARD
                         act.card_id = card.card_id
@@ -983,10 +1068,48 @@ else:
 
     class PhaseManager:
         @staticmethod
+        def start_game(state: Any, db: Any) -> None:
+            state.current_phase = 2  # Start at Mana Phase
+            state.active_player_id = 0
+
+            # Standard Setup: Shuffle, Shields, Hand
+            import random
+            for p in state.players:
+                if not p.deck: continue
+
+                # Shuffle
+                random.shuffle(p.deck)
+
+                # 5 Shields
+                for _ in range(5):
+                    if p.deck:
+                        p.shield_zone.append(p.deck.pop())
+
+                # 5 Hand
+                for _ in range(5):
+                    if p.deck:
+                        p.hand.append(p.deck.pop())
+
+        @staticmethod
         def next_phase(state: Any, db: Any) -> None:
-            state.current_phase = (state.current_phase + 1) % 7
-            if state.current_phase == 0:
+            # Cycle 2 -> 3 -> 4 -> 5 (End) -> 2 (Next Turn)
+            if state.current_phase == 2:
+                state.current_phase = 3
+            elif state.current_phase == 3:
+                state.current_phase = 4
+            elif state.current_phase == 4:
+                state.current_phase = 5
+            elif state.current_phase == 5:
+                state.current_phase = 2
                 state.turn_number += 1
+                state.active_player_id = 1 - state.active_player_id
+                # Untap all
+                for p in state.players:
+                    for c in p.battle_zone: c.is_tapped = False
+                    for c in p.mana_zone: c.is_tapped = False
+            else:
+                # Fallback recovery
+                state.current_phase = 2
 
     class DataCollector:
         def __init__(self):

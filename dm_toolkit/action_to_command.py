@@ -263,6 +263,10 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     if 'source_instance_id' in act_data and 'instance_id' not in cmd:
         cmd['instance_id'] = act_data['source_instance_id']
 
+    # Preserve existing instance_id (idempotency for double-mapping)
+    if 'instance_id' in act_data and 'instance_id' not in cmd:
+        cmd['instance_id'] = act_data['instance_id']
+
     # Recursion (Options)
     if 'options' in act_data and isinstance(act_data['options'], list):
         cmd['options'] = []
