@@ -474,6 +474,104 @@ else:
         RESOLVE_BATTLE = 4
         TURN_END = 5
 
+    class ActionGenerator:
+        @staticmethod
+        def generate_legal_actions(state: Any, card_db: Any) -> List[Any]:
+            actions = []
+
+            # Helper to get card data
+            def get_card_def(cid):
+                if hasattr(card_db, 'get_card'):
+                    return card_db.get_card(cid)
+                if isinstance(card_db, dict):
+                     # Handle string/int keys
+                     c = card_db.get(cid)
+                     if c is None: c = card_db.get(str(cid))
+                     return c
+                return CardDatabase.get_card(cid)
+
+            # 1. Pending Effects (Must resolve)
+            if state.pending_effects:
+                act = Action()
+                act.type = ActionType.RESOLVE_EFFECT
+                # The real engine might enforce which effect, but for stub we simplify
+                # We usually resolve the top one (LIFO)
+                # Just return one action
+                return [act]
+
+            player_id = state.active_player_id
+            player = state.players[player_id]
+
+            # 2. PASS
+            pass_act = Action()
+            pass_act.type = ActionType.PASS
+            actions.append(pass_act)
+
+            # 3. MANA_CHARGE
+            # Allow charging from hand (simplified: all cards valid)
+            for i, card in enumerate(player.hand):
+                act = Action()
+                act.type = ActionType.MANA_CHARGE
+                act.source_instance_id = card.instance_id
+                act.card_id = card.card_id
+                act.target_player = player_id
+                actions.append(act)
+
+            # 4. PLAY_CARD
+            # Calculate available mana
+            mana_untapped = [c for c in player.mana_zone if not c.is_tapped]
+            mana_count = len(mana_untapped)
+
+            # Calculate available civs (from all mana cards, tapped or not usually counts for unlocking civ)
+            # In DM, you need at least one card of that civ in mana zone to play a card.
+            available_civs = set()
+            for c in player.mana_zone:
+                cdef = get_card_def(c.card_id)
+                if cdef:
+                    civs = cdef.get('civilizations', [])
+                    if isinstance(civs, list):
+                        for civ in civs: available_civs.add(civ)
+
+            for i, card in enumerate(player.hand):
+                cdef = get_card_def(card.card_id)
+                if not cdef: continue
+
+                cost = cdef.get('cost', 0)
+                civs = cdef.get('civilizations', [])
+
+                # Check cost
+                if mana_count >= cost:
+                    # Check civ
+                    has_civ = False
+                    if not civs:
+                        has_civ = True # Colorless
+                    else:
+                        for civ in civs:
+                            if civ in available_civs:
+                                has_civ = True
+                                break
+
+                    if has_civ:
+                        act = Action()
+                        act.type = ActionType.PLAY_CARD
+                        act.source_instance_id = card.instance_id
+                        act.card_id = card.card_id
+                        act.target_player = player_id
+                        actions.append(act)
+
+            # 5. ATTACK
+            for i, card in enumerate(player.battle_zone):
+                # Must be untapped and not sick
+                if not card.is_tapped and not card.sick:
+                    # Attack Player (Opponent)
+                    act = Action()
+                    act.type = ActionType.ATTACK_PLAYER
+                    act.source_instance_id = card.instance_id
+                    act.target_player = 1 - player_id
+                    actions.append(act)
+
+            return actions
+
     class CommandSystem:
         @staticmethod
         def execute_command(state: Any, cmd: Any, source_id: int, player_id: int, ctx: Any = None) -> None:
