@@ -693,16 +693,22 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
 def _handle_engine_execution(act_type, act, cmd):
     if act_type == "ATTACK_PLAYER":
         cmd['type'] = "ATTACK_PLAYER"
-        cmd['instance_id'] = act.get('source_instance') or act.get('source_instance_id') or act.get('attacker_id')
+        # Use explicit None checks to allow instance_id=0
+        cmd['instance_id'] = act.get('source_instance')
+        if cmd['instance_id'] is None: cmd['instance_id'] = act.get('source_instance_id')
+        if cmd['instance_id'] is None: cmd['instance_id'] = act.get('attacker_id')
         cmd['target_player'] = act.get('target_player')
     elif act_type == "ATTACK_CREATURE":
         cmd['type'] = "ATTACK_CREATURE"
-        cmd['instance_id'] = act.get('source_instance') or act.get('source_instance_id') or act.get('attacker_id')
+        cmd['instance_id'] = act.get('source_instance')
+        if cmd['instance_id'] is None: cmd['instance_id'] = act.get('source_instance_id')
+        if cmd['instance_id'] is None: cmd['instance_id'] = act.get('attacker_id')
         cmd['target_instance'] = act.get('target_instance') or act.get('target_instance_id') or act.get('target_id')
     elif act_type == "BLOCK" or act_type == "BLOCK_CREATURE":
         cmd['type'] = "FLOW"
         cmd['flow_type'] = "BLOCK"
-        cmd['instance_id'] = act.get('blocker_id') or act.get('source_instance_id')
+        cmd['instance_id'] = act.get('blocker_id')
+        if cmd['instance_id'] is None: cmd['instance_id'] = act.get('source_instance_id')
         cmd['target_instance'] = act.get('attacker_id') or act.get('target_instance_id') or act.get('target_id')
     elif act_type == "BREAK_SHIELD":
         cmd['type'] = "BREAK_SHIELD"

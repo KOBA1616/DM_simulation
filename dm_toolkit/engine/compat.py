@@ -391,7 +391,7 @@ class EngineCompat:
     def EffectResolver_resume(state: GameState, card_db: CardDB, selection: Union[int, List[int], Any]) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
-        if hasattr(dm_ai_module.EffectResolver, 'resume'):
+        if hasattr(dm_ai_module, 'EffectResolver') and hasattr(dm_ai_module.EffectResolver, 'resume'):
             dm_ai_module.EffectResolver.resume(state, card_db, selection)
         else:
             logger.warning("dm_ai_module.EffectResolver.resume not found.")
@@ -428,7 +428,7 @@ class EngineCompat:
             pass
 
         # Legacy fallback: call native resolver directly if available
-        if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
+        if hasattr(dm_ai_module, 'EffectResolver') and hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
             dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
         else:
             logger.warning("dm_ai_module.EffectResolver.resolve_action not found.")
@@ -1126,8 +1126,11 @@ class EngineCompat:
                             return
 
                 if ctype == 'ATTACK_PLAYER':
-                    instance_id = cd.get('source_instance_id') or cd.get('instance_id')
-                    if instance_id:
+                    instance_id = cd.get('source_instance_id')
+                    if instance_id is None:
+                        instance_id = cd.get('instance_id')
+
+                    if instance_id is not None:
                         p = state.players[player_id]
                         for c in p.battle_zone:
                             if getattr(c, 'instance_id', -1) == instance_id:

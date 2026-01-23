@@ -26,9 +26,10 @@ def verify_action_migration():
     blocker_id = 1
     state.add_test_card_to_battle(p1, 2, blocker_id, False, False)
 
+    # Arguments: card_id, name, cost, civ, power, ctype, races, effects
     card_db = {
-        1: dm_ai_module.CardDefinition(),
-        2: dm_ai_module.CardDefinition()
+        1: dm_ai_module.CardDefinition(1, "Attacker", 1, [], 1000, "CREATURE", [], []),
+        2: dm_ai_module.CardDefinition(2, "Blocker", 1, [], 1000, "CREATURE", [], [])
     }
     card_db[1].id = 1
     card_db[2].id = 2

@@ -355,6 +355,7 @@ else:
             self.instance_counter = 0
             self.execution_context = ExecutionContext()
             self.waiting_for_user_input = False
+            self.command_history = []
 
         def setup_test_duel(self) -> None: pass
 
@@ -742,6 +743,45 @@ else:
         def encode_state(state: Any, player_id: int, length: int) -> List[int]:
             return [0] * length
 
+    class EffectResolver:
+        @staticmethod
+        def resolve_action(state: Any, action: Any, card_db: Any) -> None:
+            # Stub: delegate to GenericCardSystem if source_id available
+            act_obj = action
+            if isinstance(action, dict):
+                class ActWrapper:
+                    pass
+                act_obj = ActWrapper()
+                for k, v in action.items():
+                    setattr(act_obj, k, v)
+
+            source_id = getattr(act_obj, 'source_instance_id', -1)
+            player_id = 0
+            if source_id > 0:
+                # Find owner
+                found_owner = False
+                for pid, p in enumerate(state.players):
+                    # Check zones
+                    for zone_name in ['hand', 'battle_zone', 'mana_zone', 'shield_zone', 'deck', 'graveyard']:
+                        if not hasattr(p, zone_name): continue
+                        zone = getattr(p, zone_name)
+                        for c in zone:
+                            cid = getattr(c, 'instance_id', getattr(c, 'id', -1))
+                            if cid == source_id:
+                                player_id = pid
+                                found_owner = True
+                                break
+                        if found_owner: break
+                    if found_owner: break
+
+            if source_id != -1:
+                GenericCardSystem.resolve_action(state, act_obj, player_id)
+
+        @staticmethod
+        def resume(state: Any, card_db: Any, selection: Any) -> None:
+            # Stub: clear waiting flag
+            state.waiting_for_user_input = False
+
     class GenericCardSystem:
         @staticmethod
         def execute_card_effect(state: Any, card_id: int, player_id: int) -> None:
@@ -843,7 +883,7 @@ else:
                 val = int(getattr(action, 'value1', 1))
                 state.draw_cards(player, val)
 
-            elif atype == ActionType.MANA_CHARGE:
+            elif is_type(atype, 'MANA_CHARGE') or atype == ActionType.MANA_CHARGE:
                  if hasattr(action, 'card_id'):
                     cid = getattr(action, 'card_id')
                     p = state.players[player]
@@ -856,14 +896,18 @@ else:
                             p.mana_zone.append(card)
                             break
 
-            elif atype == ActionType.ATTACK_PLAYER:
+            elif is_type(atype, 'ATTACK_PLAYER') or atype == ActionType.ATTACK_PLAYER:
                 # Tap the attacker
-                p = state.players[player]
                 source_id = getattr(action, 'source_instance_id', -1)
-                for c in p.battle_zone:
-                    if c.instance_id == source_id:
-                        c.is_tapped = True
-                        break
+                found_card = False
+                for pid in range(len(state.players)):
+                    p = state.players[pid]
+                    for c in p.battle_zone:
+                        if c.instance_id == source_id:
+                            c.is_tapped = True
+                            found_card = True
+                            break
+                    if found_card: break
 
             elif is_type(atype, 'CAST_SPELL') or atype == ActionType.PLAY_CARD:
                 # Simulate removing card from hand when played
@@ -921,117 +965,6 @@ else:
         SELF = 1
         OPPONENT = 2
 
-    class ActionGenerator:
-        @staticmethod
-        def generate_legal_actions(state: Any, card_db: Any) -> list:
-            actions = []
-
-            # 1. Pending Effects
-            if state.pending_effects:
-                act = Action()
-                act.type = ActionType.RESOLVE_EFFECT
-                actions.append(act)
-                return actions
-
-            pid = state.active_player_id
-            player = state.players[pid]
-            phase = state.current_phase
-
-            # 2. Mana Phase (Phase 2)
-            if phase == 2:
-                # Mana Charge
-                for card in player.hand:
-                    act = Action()
-                    act.type = ActionType.MANA_CHARGE
-                    act.card_id = card.card_id
-                    act.source_instance_id = card.instance_id
-                    actions.append(act)
-
-                # PASS
-                pass_act = Action()
-                pass_act.type = ActionType.PASS
-                actions.append(pass_act)
-
-            # 3. Main Phase (Phase 3)
-            elif phase == 3:
-                # Calculate usable mana and civs
-                usable_mana = 0
-                available_civs = set()
-                for m in player.mana_zone:
-                    if not m.is_tapped:
-                        usable_mana += 1
-                    # Tap or untap, mana provides civ
-                    cdef = get_card_def(m.card_id)
-                    if cdef:
-                        civs = cdef.get('civilizations', [])
-                        if isinstance(civs, list):
-                            for civ in civs: available_civs.add(civ)
-
-                # Play Cards
-                for card in player.hand:
-                    cdata = get_card_def(card.card_id)
-                    if not cdata: continue
-
-                    cost = cdata.get('cost', 9999)
-                    card_civs = cdata.get('civilizations', [])
-
-                    # Check civ requirement
-                    has_civ = False
-                    if not card_civs: has_civ = True
-                    else:
-                        for c in card_civs:
-                            if c in available_civs:
-                                has_civ = True
-                                break
-
-                    if cost <= usable_mana and has_civ:
-                        act = Action()
-                        act.type = ActionType.PLAY_CARD
-                        act.card_id = card.card_id
-                        act.source_instance_id = card.instance_id
-                        actions.append(act)
-
-                # PASS
-                pass_act = Action()
-                pass_act.type = ActionType.PASS
-                actions.append(pass_act)
-
-            # 4. Attack Phase (Phase 4)
-            elif phase == 4:
-                opponent_pid = 1 - pid
-                opponent = state.players[opponent_pid]
-
-                for card in player.battle_zone:
-                    if not card.is_tapped and not card.sick:
-                        # Attack Player
-                        act = Action()
-                        act.type = ActionType.ATTACK_PLAYER
-                        act.source_instance_id = card.instance_id
-                        act.target_player = opponent_pid
-                        actions.append(act)
-
-                        # Attack Tapped Creatures
-                        for op_card in opponent.battle_zone:
-                            if op_card.is_tapped:
-                                act2 = Action()
-                                act2.type = ActionType.ATTACK_CREATURE
-                                act2.source_instance_id = card.instance_id
-                                act2.target_player = opponent_pid
-                                act2.value1 = op_card.instance_id
-                                actions.append(act2)
-
-                # PASS
-                pass_act = Action()
-                pass_act.type = ActionType.PASS
-                actions.append(pass_act)
-
-            else:
-                # Default PASS
-                pass_act = Action()
-                pass_act.type = ActionType.PASS
-                actions.append(pass_act)
-
-            return actions
 
     class GameInstance:
         def __init__(self, game_id: int = 0):
