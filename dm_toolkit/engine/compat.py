@@ -532,12 +532,21 @@ class EngineCompat:
 
                                     before_int = _to_int(before)
                                     if before_int is not None:
-                                        maxval = max((p.value for p in PhaseEnum))
-                                        forced_next = PhaseEnum((before_int + 1) % (maxval + 1))
-                                        try:
-                                            setattr(state, 'current_phase', forced_next)
-                                        except Exception:
-                                            pass
+                                        # Use robust cycling based on defined enum values
+                                        sorted_values = sorted([p.value for p in PhaseEnum])
+                                        if sorted_values:
+                                            if before_int in sorted_values:
+                                                curr_idx = sorted_values.index(before_int)
+                                                next_val = sorted_values[(curr_idx + 1) % len(sorted_values)]
+                                                forced_next = PhaseEnum(next_val)
+                                            else:
+                                                # Fallback: go to first defined phase
+                                                forced_next = PhaseEnum(sorted_values[0])
+
+                                            try:
+                                                setattr(state, 'current_phase', forced_next)
+                                            except Exception:
+                                                pass
                                         try:
                                             native_obj = getattr(state, '_native', None)
                                             if native_obj is not None:
