@@ -532,12 +532,21 @@ class EngineCompat:
 
                                     before_int = _to_int(before)
                                     if before_int is not None:
-                                        maxval = max((p.value for p in PhaseEnum))
-                                        forced_next = PhaseEnum((before_int + 1) % (maxval + 1))
-                                        try:
-                                            setattr(state, 'current_phase', forced_next)
-                                        except Exception:
-                                            pass
+                                        # Use robust cycling based on defined enum values
+                                        sorted_values = sorted([p.value for p in PhaseEnum])
+                                        if sorted_values:
+                                            if before_int in sorted_values:
+                                                curr_idx = sorted_values.index(before_int)
+                                                next_val = sorted_values[(curr_idx + 1) % len(sorted_values)]
+                                                forced_next = PhaseEnum(next_val)
+                                            else:
+                                                # Fallback: go to first defined phase
+                                                forced_next = PhaseEnum(sorted_values[0])
+
+                                            try:
+                                                setattr(state, 'current_phase', forced_next)
+                                            except Exception:
+                                                pass
                                         try:
                                             native_obj = getattr(state, '_native', None)
                                             if native_obj is not None:
@@ -556,6 +565,33 @@ class EngineCompat:
                                             logger.warning("EngineCompat: forced phase advance %s -> %s", before, forced_next)
                                         except Exception:
                                             pass
+                                else:
+                                    # Fallback for integer phases when Phase enum is missing (e.g. Python stub)
+                                    try:
+                                        before_val = int(before) if before is not None else 0
+                                        # Heuristic for standard DM phases 2(MANA)->3(MAIN)->4(ATTACK)->5(END)->2
+                                        if before_val >= 2 and before_val < 5:
+                                            forced_next = before_val + 1
+                                        elif before_val == 5:
+                                            forced_next = 2
+                                        else:
+                                            # Blind increment if unknown range
+                                            forced_next = before_val + 1
+
+                                        setattr(state, 'current_phase', forced_next)
+
+                                        # Sync native if present (rare case where native present but no Phase enum)
+                                        try:
+                                            native_obj = getattr(state, '_native', None)
+                                            if native_obj is not None:
+                                                setattr(native_obj, 'current_phase', forced_next)
+                                        except Exception:
+                                            pass
+
+                                        after = EngineCompat.get_current_phase(state)
+                                        logger.warning("EngineCompat: forced phase advance (int) %s -> %s", before, forced_next)
+                                    except Exception:
+                                        pass
                             except Exception:
                                 pass
                 except RuntimeError:
@@ -1091,6 +1127,30 @@ class EngineCompat:
                                 p.mana_zone.append(card)
                                 return
 
+                if ctype == 'PLAY_FROM_ZONE':
+                    instance_id = cd.get('source_instance_id') or cd.get('instance_id')
+                    from_z = str(cd.get('from_zone', '')).upper()
+                    to_z = str(cd.get('to_zone', '')).upper()
+
+                    if instance_id:
+                        src_list = _resolve_zone_instances_local(from_z)
+                        card = None
+                        for i, c in enumerate(src_list):
+                            if getattr(c, 'instance_id', -1) == instance_id:
+                                card = src_list.pop(i)
+                                break
+
+                        if card:
+                            dest_list = _resolve_zone_instances_local(to_z)
+                            # If to_z is implied or explicitly standard
+                            if 'BATTLE' in to_z:
+                                card.sick = True
+                                card.is_tapped = False
+
+                            if dest_list is not None:
+                                dest_list.append(card)
+                            return
+
                 if ctype == 'PLAY_CARD':
                     instance_id = cd.get('source_instance_id') or cd.get('instance_id')
                     if instance_id:
@@ -1106,16 +1166,26 @@ class EngineCompat:
                             # Ideally check card_db but this is deep fallback
                             # Check if card has type info attached
                             is_spell = False
+                            cid = getattr(card, 'card_id', -1)
+                            cdef = {}
+
                             if card_db:
-                                cid = getattr(card, 'card_id', -1)
                                 if hasattr(card_db, 'get_card'):
                                     cdef = card_db.get_card(cid)
                                 elif isinstance(card_db, dict):
                                     cdef = card_db.get(cid) or card_db.get(str(cid))
-                                else:
-                                    cdef = {}
-                                if cdef and cdef.get('type') == 'SPELL':
-                                    is_spell = True
+
+                            # Fallback to global DB if provided DB is missing/empty and we have the module
+                            if not cdef and dm_ai_module and hasattr(dm_ai_module, 'CardDatabase'):
+                                try:
+                                    # Try static get_card
+                                    if hasattr(dm_ai_module.CardDatabase, 'get_card'):
+                                        cdef = dm_ai_module.CardDatabase.get_card(cid)
+                                except Exception:
+                                    pass
+
+                            if cdef and cdef.get('type') == 'SPELL':
+                                is_spell = True
 
                             if is_spell:
                                 p.graveyard.append(card)

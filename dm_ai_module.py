@@ -705,7 +705,7 @@ else:
             elif cmd_type == CommandType.DRAW_CARD:
                 state.draw_cards(player_id, get_attr('amount', 1))
 
-            elif cmd_type == CommandType.MOVE_CARD or cmd_type == CommandType.REPLACE_CARD_MOVE:
+            elif cmd_type == CommandType.MOVE_CARD or cmd_type == CommandType.REPLACE_CARD_MOVE or cmd_type == CommandType.PLAY_FROM_ZONE:
                 # Handle explicit moves
                 instance_id = get_attr('instance_id') or get_attr('target_instance') or source_id
                 to_zone = str(get_attr('to_zone', '')).upper()
@@ -740,6 +740,9 @@ else:
                     elif to_zone in ['HAND']:
                         dest_p.hand.append(card)
                     elif to_zone in ['BATTLE', 'BATTLE_ZONE']:
+                        if cmd_type == CommandType.PLAY_FROM_ZONE:
+                            card.is_tapped = False
+                            card.sick = True
                         dest_p.battle_zone.append(card)
                     elif to_zone in ['GRAVEYARD']:
                         dest_p.graveyard.append(card)
@@ -909,6 +912,14 @@ else:
                 # Add to pending effects stub
                 state.pending_effects.append(action)
 
+    class EffectResolver:
+        @staticmethod
+        def resolve_action(state: Any, action: Any, card_db: Any = None) -> None:
+            # Adapt signature for GenericCardSystem
+            # GenericCardSystem.resolve_action expects (state, action, player_id)
+            pid = getattr(state, 'active_player_id', 0)
+            GenericCardSystem.resolve_action(state, action, pid)
+
     class JsonLoader:
         @staticmethod
         def load_cards(path): return {}
@@ -936,6 +947,17 @@ else:
         @staticmethod
         def generate_legal_actions(state: Any, card_db: Any) -> list:
             actions = []
+
+            # Helper to get card data
+            def get_card_def(cid):
+                if hasattr(card_db, 'get_card'):
+                    return card_db.get_card(cid)
+                if isinstance(card_db, dict):
+                     # Handle string/int keys
+                     c = card_db.get(cid)
+                     if c is None: c = card_db.get(str(cid))
+                     return c
+                return CardDatabase.get_card(cid)
 
             # 1. Pending Effects
             if state.pending_effects:
@@ -1121,6 +1143,19 @@ else:
             else:
                 # Fallback recovery
                 state.current_phase = 2
+
+        @staticmethod
+        def check_game_over(state: Any, result: Any = None) -> Any:
+            if state.game_over:
+                if result is not None:
+                     try:
+                         result.is_over = True
+                         result.result = state.winner
+                     except Exception:
+                         pass
+                     return True, result
+                return True
+            return False
 
     class DataCollector:
         def __init__(self):
