@@ -25,9 +25,11 @@
 - dev/
 - DEVELOPMENT_WORKFLOW.md
 
-## Reports / Requirements
+## Reports
 - reports/
-- requirements/
+
+## Archive
+- archive/legacy_requirements/
 
 ## Misc
 - misc/

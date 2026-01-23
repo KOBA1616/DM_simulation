@@ -91,6 +91,22 @@ AI学習効率と拡張性を最大化するため、エンジンのコアロジ
 
 ---
 
+## Phase 6.2: Quality Assurance & Tools (Feb 2026) [✅ 完了]
+
+### 1. GUI Stub & Python Fallback Perfection
+*   **EngineCompat**: `dm_toolkit.engine.compat.EngineCompat` によるC++エンジン非依存の完全なフォールバック実装を確立。
+*   **PhaseManager**: フェーズ進行と再試行ロジック (`PhaseManager.step`) の安定化により、Python環境でもネイティブ同様のゲーム進行を実現。
+*   **Unified Execution**: `ActionGenerator` とコマンド実行パイプラインの統合により、テスト環境とGUI環境の挙動差異を解消。
+
+### 2. Text Generation & Verification
+*   **Text Generation**: `dm_toolkit.gui.editor.text_generator` により、カード定義からのテキスト生成をサポート。
+*   **Effect Verification**: `CardEffectDebugger` と `EffectTracer` の統合により、GUI上での詳細な効果検証が可能に。
+
+### 3. Beam Search Stability
+*   **Memory Issue**: `tests/test_beam_search.py` の通過により、Beam Search実行時のメモリ/安定性問題の解消を確認。
+
+---
+
 ## Phase 1-5: Legacy Action削除 (2026年1月完了)
 
 ### Phase 1: 入口の一本化・互換の局所化 (Normalization) [✅ 完了]
