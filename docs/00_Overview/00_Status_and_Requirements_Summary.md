@@ -1,6 +1,6 @@
 # Status and Requirements Summary (要件定義書 00)
 
-**最終更新**: 2026-02-04 (updated by automation)
+**最終更新**: 2026-02-18 (updated by automation)
 
 このドキュメントはプロジェクトの現在のステータス、実装済み機能、および次のステップの要件をまとめたマスタードキュメントです。
 
@@ -26,7 +26,7 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Action/Command Architecture**: `GameCommand` ベースのイベント駆動モデル。
 *   [Status: Done] **Multi-Civilization**: 多色マナ支払いロジックの実装完了。
 *   [Status: Done] **Stats/Logs**: `TurnStats` や `GameResult` の収集基盤。
-*   [Status: Done] **Python Fallback Engine**: `dm_ai_module.py` による完全なPython実装（PhaseManager, ActionGenerator等）。
+*   [Status: Done] **Python Fallback Engine**: `dm_ai_module.py` および `EngineCompat` による完全なPython実装（PhaseManager, ActionGenerator, EffectTracer等）が稼働中。
 
 ### 2.2 AI システム (`src/ai`, `python/training`, `dm_toolkit`)
 *   [Status: Done] **Parallel Runner**: OpenMP + C++ MCTS による高速並列対戦。
@@ -40,8 +40,9 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 *   [Status: Done] **Simulation UI**: 対戦シミュレーション実行・可視化ダイアログ。
 *   [Status: Done] **Command Pipeline**: Legacy Action削除完了。`dm_toolkit.action_to_command` に統一。
 *   [Status: Done] **Validation Tools**: 静的解析ツール `card_validator.py` 実装完了。
-*   [Status: Done] **Debug Tools**: `EffectTracer` 実装完了。カード効果の履歴追跡が可能。
+*   [Status: Done] **Debug Tools**: `EffectTracer` および `CardEffectDebugger` による効果追跡とGUI統合完了。
 *   [Status: Done] **Logic Mask**: `card_validator.py` およびエディタ連携により実現。
+*   [Status: Done] **GUI Stub / Python Fallback**: `EngineCompat` によりPython環境のみでのGUI動作とテスト実行が完全にサポートされました。
 
 ## 3. 完了したフェーズ (Completed Phases)
 
@@ -53,30 +54,39 @@ Duel Masters AI Simulatorは、C++による高速なゲームエンジンと、P
 
 ### 3.1 優先タスク (Current Priorities)
 
-現在の最優先事項は、GUIおよびPython環境での完全なエンジン機能の担保と、開発者体験（DX）の向上です。
+Phase 6の品質保証完了に伴い、開発の主軸はAIモデルの本番統合とメタゲーム進化システムに移ります。
 
-1.  **GUIスタブの完全修正 (GUI Stub Perfection)**
-    *   **目標**: ヘッドス環境 (`run_pytest_with_pyqt_stub.py`) と実際のGUI実行時の挙動差異をゼロにする。
-    *   **課題**: 一部のテストで発生しているスタブ起因のエラー解消。
+1.  **Transformerモデルの本番統合 (Phase 4 Integration)**
+    *   **目標**: 学習済みTransformerモデルを `GameState` の推論パイプラインに組み込み、実戦で稼働させる。
+    *   **タスク**:
+        *   C++ / ONNX Runtime へのモデルエクスポートと統合。
+        *   推論速度の最適化 (< 10ms/action)。
+        *   vs MLP モデルでの勝率評価 (目標: 勝率55%以上)。
 
-2.  **テキスト生成の完成 (Text Generation)**
-    *   **目標**: `GameCommand` から自然言語（日本語）への変換を完全にする。
-    *   **課題**: ゾーン移動や一部の特殊効果のテキスト生成テンプレートの拡充。
+2.  **メタゲーム進化システム (Meta-Game Evolution - Phase 3)**
+    *   **目標**: PBT (Population Based Training) を用いた、自己進化するメタゲーム環境の構築。
+    *   **タスク**:
+        *   `evolution_ecosystem.py` の完成と大規模並列実行。
+        *   デッキの自動生成・改良ループの確立。
+        *   メタゲーム分析ツール（相性マトリクス、使用率推移）の実装。
 
-3.  **カード効果検証の効率化 (Effect Verification Efficiency)**
-    *   **目標**: `CardEffectDebugger` と `EffectTracer` をGUI上で統合し、ワンクリックで効果解決フローを可視化する。
+3.  **AI対戦インターフェース (AI vs Human Interface)**
+    *   **目標**: GUI上で人間がAIとリアルタイムに対戦できる環境を整備する。
+    *   **タスク**:
+        *   `GameSession` と AI Agent のインタラクティブな接続。
+        *   思考時間のGUI表示と非同期処理。
 
 ### 3.2 中期目標 (Mid-Term Goals)
 
-*   **Meta-Game Evolution**: `evolution_ecosystem.py` の本格稼働と、PBTによるメタゲームの自動生成。
-*   **AI vs Human Interface**: GUI上でAIと対戦するためのインターフェース整備（現在はSimulationのみ）。
+*   **完全情報推論 (Perfect Information Inference)**: `DeckInference` を活用し、不完全情報下での最適手探索を強化。
+*   **Web対応検討**: Pythonバックエンドを用いたWeb API化の可能性調査。
 
 ## 6. テスト状況と品質指標 (Test Status & Quality Metrics)
 
-**最終実行日**: 2026年2月4日
+**最終実行日**: 2026年2月18日
 **結果**: 主要テストパス済み。
 **特記事項**:
+- `dm_toolkit.engine.compat` と `tests/verify_phase_manager_compat.py` により、Python環境でのエンジン挙動の信頼性が担保されています。
 - `scripts/python/generate_card_tests.py` により、カード定義からテストを自動生成する基盤が確立されました。
-- `dm_toolkit/validator/card_validator.py` により、コミット前にカードデータの静的解析が可能です。
 
-詳細は [NEXT_STEPS.md](./NEXT_STEPS.md) を参照。
+詳細は [99_Completed_Tasks_Archive.md](./99_Completed_Tasks_Archive.md) のアーカイブを参照。
