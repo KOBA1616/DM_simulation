@@ -1091,6 +1091,30 @@ class EngineCompat:
                                 p.mana_zone.append(card)
                                 return
 
+                if ctype == 'PLAY_FROM_ZONE':
+                    instance_id = cd.get('source_instance_id') or cd.get('instance_id')
+                    from_z = str(cd.get('from_zone', '')).upper()
+                    to_z = str(cd.get('to_zone', '')).upper()
+
+                    if instance_id:
+                        src_list = _resolve_zone_instances_local(from_z)
+                        card = None
+                        for i, c in enumerate(src_list):
+                            if getattr(c, 'instance_id', -1) == instance_id:
+                                card = src_list.pop(i)
+                                break
+
+                        if card:
+                            dest_list = _resolve_zone_instances_local(to_z)
+                            # If to_z is implied or explicitly standard
+                            if 'BATTLE' in to_z:
+                                card.sick = True
+                                card.is_tapped = False
+
+                            if dest_list is not None:
+                                dest_list.append(card)
+                            return
+
                 if ctype == 'PLAY_CARD':
                     instance_id = cd.get('source_instance_id') or cd.get('instance_id')
                     if instance_id:
