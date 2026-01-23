@@ -1189,3 +1189,19 @@ else:
                     self.policies = [[]]
                     self.values = [0]
             return Batch()
+
+    class ParallelRunner:
+        def __init__(self, card_db: Any, sims: int, batch_size: int) -> None:
+            pass
+        def play_games(self, initial_states: List[Any], evaluator: Any, temp: float, add_noise: bool, threads: int, alpha: float = 0.0, collect_data: bool = False) -> List[Any]:
+            # Stub: return list of GameResult/Info objects
+            class ResultInfo:
+                def __init__(self):
+                    self.result = 0 # Default P1_WIN
+            return [ResultInfo() for _ in initial_states]
+
+    class TensorConverter:
+        INPUT_SIZE = 856
+        @staticmethod
+        def convert_to_tensor(state: Any, player_id: int, card_db: Any) -> List[float]:
+            return [0.0] * 856
