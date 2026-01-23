@@ -579,14 +579,8 @@ def _handle_modifiers(act_type, act, cmd):
 
 def _handle_mutate(act_type, act, cmd):
     sval = str(act.get('str_param') or act.get('str_val') or '').upper()
-    # Consolidate POWER_MOD into generic MUTATE with mutation_kind
-    if act_type in ["POWER_MOD", "MODIFY_POWER"] or 'POWER' in sval:
-        cmd['type'] = 'MUTATE'
-        cmd['mutation_kind'] = 'POWER_MOD'
-        if 'amount' in act: cmd['amount'] = act['amount']
-        elif 'value1' in act: cmd['amount'] = act['value1']
-        elif 'value2' in act: cmd['amount'] = act['value2']
-    elif sval in ("TAP", "UNTAP"):
+
+    if sval in ("TAP", "UNTAP"):
         cmd['type'] = sval
     elif sval == "SHIELD_BURN":
         cmd['type'] = "SHIELD_BURN"
@@ -597,6 +591,14 @@ def _handle_mutate(act_type, act, cmd):
         cmd['mutation_kind'] = 'POWER_SET'
         if 'amount' in act: cmd['amount'] = act['amount']
         elif 'value1' in act: cmd['amount'] = act['value1']
+    # Consolidate POWER_MOD into generic MUTATE with mutation_kind
+    # Check this AFTER specific power-set operations
+    elif act_type in ["POWER_MOD", "MODIFY_POWER"] or 'POWER' in sval:
+        cmd['type'] = 'MUTATE'
+        cmd['mutation_kind'] = 'POWER_MOD'
+        if 'amount' in act: cmd['amount'] = act['amount']
+        elif 'value1' in act: cmd['amount'] = act['value1']
+        elif 'value2' in act: cmd['amount'] = act['value2']
     elif 'HEAL' in sval or 'RECOVER' in sval:
         cmd['type'] = 'MUTATE'
         cmd['mutation_kind'] = 'HEAL'
