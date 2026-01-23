@@ -750,6 +750,106 @@ else:
         SELF = 1
         OPPONENT = 2
 
+    class ActionGenerator:
+        @staticmethod
+        def generate_legal_actions(state: Any, card_db: Any) -> list:
+            actions = []
+
+            # 1. Pending Effects
+            if state.pending_effects:
+                act = Action()
+                act.type = ActionType.RESOLVE_EFFECT
+                actions.append(act)
+                return actions
+
+            pid = state.active_player_id
+            player = state.players[pid]
+            phase = state.current_phase
+
+            # 2. Mana Phase (Phase 2)
+            if phase == 2:
+                # Mana Charge
+                for card in player.hand:
+                    act = Action()
+                    act.type = ActionType.MANA_CHARGE
+                    act.card_id = card.card_id
+                    act.source_instance_id = card.instance_id
+                    actions.append(act)
+
+                # PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            # 3. Main Phase (Phase 3)
+            elif phase == 3:
+                # Calculate usable mana
+                usable_mana = 0
+                for m in player.mana_zone:
+                    if not m.is_tapped:
+                        usable_mana += 1
+
+                # Play Cards
+                for card in player.hand:
+                    # Get Cost
+                    cost = 9999
+                    if hasattr(card_db, 'get_card'):
+                        cdata = card_db.get_card(card.card_id)
+                        cost = cdata.get('cost', 0)
+                    elif isinstance(card_db, dict):
+                        cdata = card_db.get(card.card_id) or card_db.get(str(card.card_id))
+                        if cdata:
+                            cost = cdata.get('cost', 0)
+
+                    if cost <= usable_mana:
+                        act = Action()
+                        act.type = ActionType.PLAY_CARD
+                        act.card_id = card.card_id
+                        act.source_instance_id = card.instance_id
+                        actions.append(act)
+
+                # PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            # 4. Attack Phase (Phase 4)
+            elif phase == 4:
+                opponent_pid = 1 - pid
+                opponent = state.players[opponent_pid]
+
+                for card in player.battle_zone:
+                    if not card.is_tapped and not card.sick:
+                        # Attack Player
+                        act = Action()
+                        act.type = ActionType.ATTACK_PLAYER
+                        act.source_instance_id = card.instance_id
+                        act.target_player = opponent_pid
+                        actions.append(act)
+
+                        # Attack Tapped Creatures
+                        for op_card in opponent.battle_zone:
+                            if op_card.is_tapped:
+                                act2 = Action()
+                                act2.type = ActionType.ATTACK_CREATURE
+                                act2.source_instance_id = card.instance_id
+                                act2.target_player = opponent_pid
+                                act2.value1 = op_card.instance_id
+                                actions.append(act2)
+
+                # PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            else:
+                # Default PASS
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+            return actions
+
     class GameInstance:
         def __init__(self, game_id: int = 0):
             self.state = GameState()
