@@ -20,9 +20,13 @@ from enum import Enum
 class TraceEventType(Enum):
     COMMAND_EXECUTION = "COMMAND"
     EFFECT_RESOLUTION = "EFFECT"
+    START_EFFECT = "START_EFFECT"
+    END_EFFECT = "END_EFFECT"
+    STEP = "STEP"
     TRIGGER_ACTIVATION = "TRIGGER"
     STATE_CHANGE = "STATE"
     INFO = "INFO"
+    ERROR = "ERROR"
 
 class EffectTracer:
     def __init__(self):
@@ -98,6 +102,45 @@ class EffectTracer:
                 json.dump(self._trace_log, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"Error exporting trace to {filepath}: {e}")
+
+    def export_for_flowchart(self) -> Dict[str, Any]:
+        """
+        Exports data in a format suitable for flowchart generation.
+        Returns a dictionary representing nodes and edges or steps.
+        """
+        steps = []
+        depth = 0
+        for entry in self._trace_log:
+            # Create a copy to avoid modifying the original log if we needed to
+            item = entry.copy()
+            event_type = entry.get("type")
+
+            if event_type == TraceEventType.START_EFFECT.value:
+                item['depth'] = depth
+                depth += 1
+            elif event_type == TraceEventType.END_EFFECT.value:
+                depth = max(0, depth - 1)
+                item['depth'] = depth
+            else:
+                item['depth'] = depth
+            steps.append(item)
+
+        return {
+            "trace_id": str(time.time()),
+            "steps": steps
+        }
+
+    def start_effect(self, effect_name: str, context: Optional[Dict[str, Any]] = None):
+        self.log_event(TraceEventType.START_EFFECT, f"Start effect: {effect_name}", context)
+
+    def end_effect(self, effect_name: str, context: Optional[Dict[str, Any]] = None):
+        self.log_event(TraceEventType.END_EFFECT, f"End effect: {effect_name}", context)
+
+    def step(self, description: str, details: Optional[Dict[str, Any]] = None):
+        self.log_event(TraceEventType.STEP, description, details)
+
+    def error(self, message: str, details: Optional[Dict[str, Any]] = None):
+        self.log_event(TraceEventType.ERROR, message, details)
 
     def get_trace(self) -> List[Dict[str, Any]]:
         return self._trace_log
