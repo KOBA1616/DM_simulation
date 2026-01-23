@@ -196,6 +196,8 @@ else:
         BREAK_SHIELD = 14
 
     class Phase(IntEnum):
+        START = 0
+        DRAW = 1
         MANA = 2
         MAIN = 3
         ATTACK = 4
@@ -361,6 +363,9 @@ else:
             self.instance_counter = 0
             self.execution_context = ExecutionContext()
             self.waiting_for_user_input = False
+            self.pending_query = None
+            self.command_history: list[Any] = []
+            self.effect_buffer: list[Any] = []
 
         def setup_test_duel(self) -> None: pass
 
