@@ -211,7 +211,7 @@ class SimulationWorker(QThread):
                 runner = EngineCompat.create_parallel_runner(self.card_db, self.sims, batch_size)
 
                 try:
-                    results_info = EngineCompat.ParallelRunner_play_games(runner, chunk_initial_states, evaluator_func, 1.0, False, self.threads)
+                    results_info = EngineCompat.ParallelRunner_play_games(runner, chunk_initial_states, evaluator_func, 1.0, add_noise=False, threads=self.threads)
                     all_results.extend(results_info)
                 except Exception as e:
                     self.finished_signal.emit(0.0, f"{tr('Simulation Error')} in chunk {chunk_idx}: {e}")

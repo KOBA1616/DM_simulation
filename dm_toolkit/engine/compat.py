@@ -1432,7 +1432,7 @@ class EngineCompat:
         return None
 
     @staticmethod
-    def ParallelRunner_play_games(runner: Any, initial_states: List[GameState], evaluator_func: Callable, temperature: float, verbose: bool, threads: int) -> List[Any]:
+    def ParallelRunner_play_games(runner: Any, initial_states: List[GameState], evaluator_func: Callable, temperature: float, add_noise: bool, threads: int) -> List[Any]:
         if runner and hasattr(runner, 'play_games'):
-            return list(runner.play_games(initial_states, evaluator_func, temperature, verbose, threads))
+            return list(runner.play_games(initial_states, evaluator_func, temperature, add_noise, threads))
         raise RuntimeError("ParallelRunner invalid or play_games not found")
