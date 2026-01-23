@@ -750,6 +750,71 @@ else:
         SELF = 1
         OPPONENT = 2
 
+    class ActionGenerator:
+        @staticmethod
+        def generate_legal_actions(state: Any, card_db: Any = None) -> List[Any]:
+            actions = []
+            pid = state.active_player_id
+            player = state.players[pid]
+
+            # 1. Pending Effects
+            if state.pending_effects:
+                act = Action()
+                act.type = ActionType.RESOLVE_EFFECT
+                act.target_player = pid
+                actions.append(act)
+                return actions
+
+            # 2. Mana Charge
+            for i, card in enumerate(player.hand):
+                act = Action()
+                act.type = ActionType.MANA_CHARGE
+                act.target_player = pid
+                act.source_instance_id = getattr(card, 'instance_id', -1)
+                act.card_id = getattr(card, 'card_id', 0)
+                actions.append(act)
+
+            # 3. Play Card
+            current_mana = len(player.mana_zone)
+            for i, card in enumerate(player.hand):
+                card_id = getattr(card, 'card_id', 0)
+                # Lookup cost
+                cost = 0
+                if card_db:
+                     if hasattr(card_db, 'get_card'):
+                         cdata = card_db.get_card(card_id)
+                     elif isinstance(card_db, dict):
+                         cdata = card_db.get(card_id, {})
+                     else:
+                         cdata = {}
+                     cost = cdata.get('cost', 0)
+
+                if current_mana >= cost:
+                    act = Action()
+                    act.type = ActionType.PLAY_CARD
+                    act.target_player = pid
+                    act.source_instance_id = getattr(card, 'instance_id', -1)
+                    act.card_id = card_id
+                    actions.append(act)
+
+            # 4. Attack
+            for i, card in enumerate(player.battle_zone):
+                if not card.is_tapped and not getattr(card, 'sick', False):
+                    act = Action()
+                    act.type = ActionType.ATTACK_PLAYER
+                    act.target_player = 1 - pid
+                    act.source_instance_id = getattr(card, 'instance_id', -1)
+                    act.card_id = getattr(card, 'card_id', 0)
+                    actions.append(act)
+
+            # 5. Pass
+            pass_act = Action()
+            pass_act.type = ActionType.PASS
+            pass_act.target_player = pid
+            actions.append(pass_act)
+
+            return actions
+
     class GameInstance:
         def __init__(self, game_id: int = 0):
             self.state = GameState()
