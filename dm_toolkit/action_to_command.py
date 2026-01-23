@@ -514,8 +514,12 @@ def _handle_specific_moves(act_type, act, cmd, src):
     # to be picked up by compat.py correctly.
     if act_type in ["SEND_TO_MANA", "MANA_CHARGE", "ADD_MANA"]:
         cmd['to_zone'] = "MANA"
-        if not src and act_type in ["MANA_CHARGE", "ADD_MANA"]: cmd['from_zone'] = "DECK"
-        if src: cmd['from_zone'] = src
+        if src:
+            cmd['from_zone'] = src
+        elif act_type == "MANA_CHARGE":
+            cmd['from_zone'] = "HAND"
+        elif act_type == "ADD_MANA":
+            cmd['from_zone'] = "DECK"
     elif act_type in ["SEND_TO_DECK_BOTTOM", "SEARCH_DECK_BOTTOM"]:
         # SEARCH_DECK_BOTTOM also implies moving card to deck bottom (often from deck top or hand)
         cmd['to_zone'] = "DECK_BOTTOM"
