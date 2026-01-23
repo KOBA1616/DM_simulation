@@ -61,3 +61,28 @@ def test_replace_card_move_deck_top():
     # DECK should be localized to "山札" or "デッキ" depending on the translation
     # For now, accept either
     assert ("山札" in generated or "デッキ" in generated or "DECK" in generated)
+
+def test_transition_with_input_key():
+    """Test TRANSITION alias with input_value_key (e.g. destroy count)."""
+    action = {
+        "type": "TRANSITION",
+        "from_zone": "BATTLE_ZONE",
+        "to_zone": "GRAVEYARD",
+        "input_value_key": "my_input",
+        "value1": 1
+    }
+    # Should produce "その同じ数だけ破壊する"
+    generated = CardTextGenerator._format_action(action)
+    assert "その同じ数だけ破壊する" in generated
+
+def test_discard_with_input_key():
+    """Test DISCARD with input_value_key."""
+    action = {
+        "type": "DISCARD",
+        "input_value_key": "discard_count",
+        "amount": 2
+    }
+    # Should produce "その同じ枚数捨てる" instead of "2枚捨てる"
+    generated = CardTextGenerator._format_action(action)
+    assert "その同じ枚数捨てる" in generated
+    assert "2枚" not in generated
