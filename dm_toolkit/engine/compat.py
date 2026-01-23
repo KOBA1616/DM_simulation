@@ -273,6 +273,15 @@ class EngineCompat:
         except Exception:
             out['current_phase'] = None
 
+        try:
+            pe_info = EngineCompat.get_pending_effects_info(state)
+            out['pending_effects_count'] = len(pe_info)
+            if pe_info:
+                # Add brief summary of first few
+                out['pending_effects_summary'] = [str(x[0]) for x in pe_info[:3]]
+        except Exception:
+            out['pending_effects_count'] = 0
+
         players = []
         try:
             plst = getattr(state, 'players', None) or []
@@ -361,14 +370,28 @@ class EngineCompat:
 
     @staticmethod
     def get_player(state: GameState, player_index: int) -> Any:
-        players = getattr(state, 'players', None)
-        if players and len(players) > player_index:
-            return players[player_index]
-        # Fallback for older bindings that might expose player0/player1 directly
-        if player_index == 0:
-            return getattr(state, 'player0', None)
-        elif player_index == 1:
-            return getattr(state, 'player1', None)
+        try:
+            players = getattr(state, 'players', None)
+            if players is not None:
+                # Check for length if it's a list/sequence
+                if hasattr(players, '__len__'):
+                    if player_index < len(players):
+                        return players[player_index]
+                # Some native bindings might support indexing but not len() directly via python protocols efficiently?
+                # But typically list-like bindings support len.
+                # Try direct indexing as fallback
+                try:
+                    return players[player_index]
+                except (IndexError, TypeError):
+                    pass
+
+            # Fallback for older bindings that might expose player0/player1 directly
+            if player_index == 0:
+                return getattr(state, 'player0', None)
+            elif player_index == 1:
+                return getattr(state, 'player1', None)
+        except Exception:
+            pass
         return None
 
     # -------------------------------------------------------------------------
@@ -535,7 +558,10 @@ class EngineCompat:
                                         # Use robust cycling based on defined enum values
                                         sorted_values = sorted([p.value for p in PhaseEnum])
                                         if sorted_values:
-                                            if before_int in sorted_values:
+                                            # Heuristic for standard DM phases: END(5) -> MANA(2)
+                                            if before_int == 5 and 2 in sorted_values:
+                                                forced_next = PhaseEnum(2)
+                                            elif before_int in sorted_values:
                                                 curr_idx = sorted_values.index(before_int)
                                                 next_val = sorted_values[(curr_idx + 1) % len(sorted_values)]
                                                 forced_next = PhaseEnum(next_val)
@@ -1320,9 +1346,29 @@ class EngineCompat:
     def get_pending_effects_info(state: GameState) -> List[Any]:
         EngineCompat._check_module()
         assert dm_ai_module is not None
+
+        # Try module function first
         if hasattr(dm_ai_module, 'get_pending_effects_info'):
-            return list(dm_ai_module.get_pending_effects_info(state))
-        return []
+            try:
+                return list(dm_ai_module.get_pending_effects_info(state))
+            except Exception:
+                pass
+
+        # Fallback: manually inspect state.pending_effects
+        # This mirrors the logic in the Python stub's get_pending_effects_info
+        info = []
+        try:
+            pending = getattr(state, 'pending_effects', [])
+            if pending:
+                for cmd in pending:
+                    t = getattr(cmd, 'type', 'UNKNOWN')
+                    sid = getattr(cmd, 'source_instance_id', -1)
+                    pid = getattr(cmd, 'target_player', 0)
+                    info.append((str(t), sid, pid, cmd))
+        except Exception:
+            pass
+
+        return info
 
     @staticmethod
     def create_parallel_runner(card_db: CardDB, sims: int, batch_size: int) -> Any:
