@@ -565,6 +565,33 @@ class EngineCompat:
                                             logger.warning("EngineCompat: forced phase advance %s -> %s", before, forced_next)
                                         except Exception:
                                             pass
+                                else:
+                                    # Fallback for integer phases when Phase enum is missing (e.g. Python stub)
+                                    try:
+                                        before_val = int(before) if before is not None else 0
+                                        # Heuristic for standard DM phases 2(MANA)->3(MAIN)->4(ATTACK)->5(END)->2
+                                        if before_val >= 2 and before_val < 5:
+                                            forced_next = before_val + 1
+                                        elif before_val == 5:
+                                            forced_next = 2
+                                        else:
+                                            # Blind increment if unknown range
+                                            forced_next = before_val + 1
+
+                                        setattr(state, 'current_phase', forced_next)
+
+                                        # Sync native if present (rare case where native present but no Phase enum)
+                                        try:
+                                            native_obj = getattr(state, '_native', None)
+                                            if native_obj is not None:
+                                                setattr(native_obj, 'current_phase', forced_next)
+                                        except Exception:
+                                            pass
+
+                                        after = EngineCompat.get_current_phase(state)
+                                        logger.warning("EngineCompat: forced phase advance (int) %s -> %s", before, forced_next)
+                                    except Exception:
+                                        pass
                             except Exception:
                                 pass
                 except RuntimeError:
