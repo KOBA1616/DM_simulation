@@ -88,6 +88,14 @@ def _get_zone(d: Dict[str, Any], keys: List[str]) -> Optional[str]:
         if k in d: return d[k]
     return None
 
+def _get_any(d: Dict[str, Any], keys: List[str]) -> Any:
+    """Helper to get the first non-None value from a list of keys."""
+    for k in keys:
+        val = d.get(k)
+        if val is not None:
+            return val
+    return None
+
 def _transfer_targeting(act: Dict[str, Any], cmd: Dict[str, Any]):
     scope = act.get('scope', 'NONE')
     if scope == 'NONE' and 'filter' in act:
@@ -129,7 +137,10 @@ def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
     # Ensure amount/flags exist
     if 'amount' in act and 'amount' not in cmd:
         try:
-            cmd['amount'] = int(act.get('amount') or act.get('value1') or 0)
+            val = act.get('amount')
+            if val is None:
+                val = act.get('value1')
+            cmd['amount'] = int(val if val is not None else 0)
         except Exception:
              pass # Ignore if not convertible
 
@@ -697,17 +708,17 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
 def _handle_engine_execution(act_type, act, cmd):
     if act_type == "ATTACK_PLAYER":
         cmd['type'] = "ATTACK_PLAYER"
-        cmd['instance_id'] = act.get('source_instance') or act.get('source_instance_id') or act.get('attacker_id')
+        cmd['instance_id'] = _get_any(act, ['source_instance', 'source_instance_id', 'attacker_id'])
         cmd['target_player'] = act.get('target_player')
     elif act_type == "ATTACK_CREATURE":
         cmd['type'] = "ATTACK_CREATURE"
-        cmd['instance_id'] = act.get('source_instance') or act.get('source_instance_id') or act.get('attacker_id')
-        cmd['target_instance'] = act.get('target_instance') or act.get('target_instance_id') or act.get('target_id')
+        cmd['instance_id'] = _get_any(act, ['source_instance', 'source_instance_id', 'attacker_id'])
+        cmd['target_instance'] = _get_any(act, ['target_instance', 'target_instance_id', 'target_id'])
     elif act_type == "BLOCK" or act_type == "BLOCK_CREATURE":
         cmd['type'] = "FLOW"
         cmd['flow_type'] = "BLOCK"
-        cmd['instance_id'] = act.get('blocker_id') or act.get('source_instance_id')
-        cmd['target_instance'] = act.get('attacker_id') or act.get('target_instance_id') or act.get('target_id')
+        cmd['instance_id'] = _get_any(act, ['blocker_id', 'source_instance_id'])
+        cmd['target_instance'] = _get_any(act, ['attacker_id', 'target_instance_id', 'target_id'])
     elif act_type == "BREAK_SHIELD":
         cmd['type'] = "BREAK_SHIELD"
         cmd['amount'] = act.get('value1', 1)
@@ -721,10 +732,10 @@ def _handle_engine_execution(act_type, act, cmd):
         if 'effect_id' in act: cmd['effect_id'] = act['effect_id']
     elif act_type == "USE_SHIELD_TRIGGER":
         cmd['type'] = "USE_SHIELD_TRIGGER"
-        cmd['instance_id'] = act.get('card_id') or act.get('source_instance_id')
+        cmd['instance_id'] = _get_any(act, ['card_id', 'source_instance_id'])
     elif act_type == "RESOLVE_PLAY":
         cmd['type'] = "RESOLVE_PLAY"
-        cmd['instance_id'] = act.get('card_id') or act.get('source_instance_id')
+        cmd['instance_id'] = _get_any(act, ['card_id', 'source_instance_id'])
 
 def _handle_buffer_ops(act_type, act, cmd, dest):
     if act_type == "LOOK_TO_BUFFER":
