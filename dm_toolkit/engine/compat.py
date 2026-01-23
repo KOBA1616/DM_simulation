@@ -6,6 +6,8 @@ from typing import Any, List, Optional, Callable, Dict, Union
 import enum
 from types import ModuleType
 
+from dm_toolkit.debug.effect_tracer import get_tracer, TraceEventType
+
 # dm_ai_module may be an optional compiled extension; annotate as Optional.
 # Prefer the dm_toolkit shim module so unit tests can patch it reliably.
 dm_ai_module: Optional[ModuleType] = None
@@ -398,6 +400,7 @@ class EngineCompat:
 
     @staticmethod
     def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
+        get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "Resolving Action", {"action": str(action)})
         EngineCompat._check_module()
         assert dm_ai_module is not None
         # Phase 1 (Specs/AGENTS.md Policy): Route action through unified execution when possible
@@ -435,6 +438,7 @@ class EngineCompat:
 
     @staticmethod
     def PhaseManager_next_phase(state: GameState, card_db: CardDB) -> None:
+        get_tracer().log_event(TraceEventType.STATE_CHANGE, "PhaseManager.next_phase", {"current_phase": str(getattr(state, 'current_phase', 'UNKNOWN'))})
         EngineCompat._check_module()
         assert dm_ai_module is not None
         if hasattr(dm_ai_module.PhaseManager, 'next_phase'):
@@ -768,6 +772,8 @@ class EngineCompat:
             cmd_dict = cmd
         elif hasattr(cmd, 'to_dict'):
             cmd_dict = cmd.to_dict()
+
+        get_tracer().log_command(cmd_dict if cmd_dict else {"raw_cmd": str(cmd)})
 
         # 1. Try C++ CommandSystem if it's a wrapped Command with `to_dict`
         # and has a valid type for the engine.

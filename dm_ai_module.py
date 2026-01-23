@@ -582,6 +582,12 @@ else:
     class CommandSystem:
         @staticmethod
         def execute_command(state: Any, cmd: Any, source_id: int, player_id: int, ctx: Any = None) -> None:
+            try:
+                from dm_toolkit.debug.effect_tracer import get_tracer, TraceEventType
+                get_tracer().log_event(TraceEventType.COMMAND_EXECUTION, "CommandSystem.execute_command", {"cmd": str(cmd)})
+            except ImportError:
+                pass
+
             # Handle dictionary inputs
             cmd_type = None
             if hasattr(cmd, 'type'):
@@ -746,6 +752,12 @@ else:
         @staticmethod
         def execute_card_effect(state: Any, card_id: int, player_id: int) -> None:
             """Stub implementation of effect resolution for Python mode."""
+            try:
+                from dm_toolkit.debug.effect_tracer import get_tracer, TraceEventType
+                get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "GenericCardSystem.execute_card_effect", {"card_id": card_id})
+            except ImportError:
+                pass
+
             card_data = CardDatabase.get_card(card_id)
             if not card_data:
                 return
@@ -792,6 +804,12 @@ else:
 
         @staticmethod
         def resolve_action(state: Any, action: Any, source_id: int) -> Any:
+            try:
+                from dm_toolkit.debug.effect_tracer import get_tracer, TraceEventType
+                get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "GenericCardSystem.resolve_action", {"action": str(action)})
+            except ImportError:
+                pass
+
             tgt = getattr(action, 'target_player', None)
             player = source_id
             if isinstance(tgt, str) and 'SELF' in tgt: player = source_id
