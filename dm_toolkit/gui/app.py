@@ -56,33 +56,14 @@ class GameWindow(QMainWindow):
         # Initialize Input Handler
         self.input_handler = GameInputHandler(self, self.session)
 
-        # Load card database: prefer native loader when available to supply
-        # a CardDatabase object to the engine (avoids pybind type errors).
-        self.native_card_db = None
+        # Load card database using unified robust loader
+        # (Prioritizes Python dict for GUI, caches Native DB for EngineCompat wrappers)
         try:
-            try:
-                native_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
-            except Exception:
-                native_db = None
-            if native_db is not None:
-                self.card_db = native_db
-                self.native_card_db = native_db
-                try:
-                    self.log_viewer.log_message(tr("Native CardDatabase loaded via JsonLoader"))
-                except Exception:
-                    pass
-            else:
-                # Fallback to robust python loader (dict)
-                self.card_db = EngineCompat.load_cards_robust("data/cards.json")
-                # Ensure card_db is always a dict (not a list)
-                if isinstance(self.card_db, list):
-                    self.card_db = {card['id']: card for card in self.card_db if isinstance(card, dict) and 'id' in card}
+            self.card_db = EngineCompat.load_cards_robust("data/cards.json")
+            if isinstance(self.card_db, list):
+                self.card_db = {card['id']: card for card in self.card_db if isinstance(card, dict) and 'id' in card}
         except Exception:
-            # Last-resort: empty dict
-            try:
-                self.card_db = EngineCompat.load_cards_robust("data/cards.json")
-            except Exception:
-                self.card_db = {}
+            self.card_db = {}
         
         self.p0_deck_ids: Optional[List[int]] = None
         self.p1_deck_ids: Optional[List[int]] = None
@@ -179,28 +160,17 @@ class GameWindow(QMainWindow):
         self.card_editor.show()
 
     def toggle_native_db(self) -> None:
-        """Attempts to toggle the native CardDatabase loading."""
-        if self.native_card_db is not None:
-            # Disable it
-            self.native_card_db = None
-            self.log_viewer.log_message(tr("Native CardDatabase disabled."))
-            QMessageBox.information(self, tr("Native DB"), tr("Native CardDatabase disabled."))
-        else:
-            # Enable it
-            if dm_ai_module and hasattr(dm_ai_module, 'JsonLoader'):
-                try:
-                    self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-                    if self.native_card_db:
-                         self.log_viewer.log_message(tr("Native CardDatabase loaded successfully."))
-                         QMessageBox.information(self, tr("Native DB"), tr("Native CardDatabase loaded successfully."))
-                    else:
-                         self.log_viewer.log_message(tr("Native CardDatabase failed to load (returned None/Empty)."))
-                         QMessageBox.warning(self, tr("Native DB"), tr("Native CardDatabase failed to load."))
-                except Exception as e:
-                    self.log_viewer.log_message(f"{tr('Error loading Native DB')}: {e}")
-                    QMessageBox.critical(self, tr("Native DB Error"), f"{tr('Error loading Native DB')}:\n{e}")
-            else:
-                 QMessageBox.warning(self, tr("Native DB"), tr("dm_ai_module or JsonLoader not available."))
+        """Toggles the native CardDatabase usage in EngineCompat."""
+        new_state = not getattr(EngineCompat, '_native_enabled', True)
+        EngineCompat.set_native_enabled(new_state)
+
+        msg = tr("Native CardDatabase Enabled") if new_state else tr("Native CardDatabase Disabled")
+        self.log_viewer.log_message(msg)
+
+        # Reload to refresh cache state if enabling
+        self.reload_card_data()
+
+        QMessageBox.information(self, tr("Native DB"), msg)
 
     def reload_card_data(self) -> None:
         try:
@@ -392,10 +362,10 @@ class GameWindow(QMainWindow):
         # when UI filters actions by active player). For performance this is
         # lightweight and avoids edge cases where PASS exists but the
         # per-player filtered list is empty.
-        from dm_toolkit.commands import generate_legal_commands
         all_legal_actions = []
         try:
-            all_legal_actions = generate_legal_commands(self.gs, self.card_db)
+            # Use EngineCompat wrapper to handle Dict->NativeDB swapping
+            all_legal_actions = EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db)
         except Exception:
             all_legal_actions = []
 

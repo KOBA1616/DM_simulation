@@ -926,6 +926,17 @@ else:
         def generate_legal_actions(state: Any, card_db: Any) -> list:
             actions = []
 
+            # Helper to get card data
+            def get_card_def(cid):
+                if hasattr(card_db, 'get_card'):
+                    return card_db.get_card(cid)
+                if isinstance(card_db, dict):
+                     # Handle string/int keys
+                     c = card_db.get(cid)
+                     if c is None: c = card_db.get(str(cid))
+                     return c
+                return CardDatabase.get_card(cid)
+
             # 1. Pending Effects
             if state.pending_effects:
                 act = Action()

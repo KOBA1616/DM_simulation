@@ -35,9 +35,16 @@ class EngineCompat:
     Handles missing functions, renamed attributes, and robust API calls.
     """
 
+    _native_db_cache: Optional[Any] = None
+    _native_enabled: bool = True
+
     @staticmethod
     def is_available() -> bool:
         return dm_ai_module is not None
+
+    @staticmethod
+    def set_native_enabled(enabled: bool) -> None:
+        EngineCompat._native_enabled = enabled
 
     @staticmethod
     def _check_module() -> None:
@@ -391,8 +398,9 @@ class EngineCompat:
     def EffectResolver_resume(state: GameState, card_db: CardDB, selection: Union[int, List[int], Any]) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
+        real_db = EngineCompat._resolve_db(card_db)
         if hasattr(dm_ai_module.EffectResolver, 'resume'):
-            dm_ai_module.EffectResolver.resume(state, card_db, selection)
+            dm_ai_module.EffectResolver.resume(state, real_db, selection)
         else:
             logger.warning("dm_ai_module.EffectResolver.resume not found.")
 
@@ -400,13 +408,14 @@ class EngineCompat:
     def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
+        real_db = EngineCompat._resolve_db(card_db)
         # Phase 1 (Specs/AGENTS.md Policy): Route action through unified execution when possible
         # Prefer action.execute first (may already encapsulate command behavior)
         try:
             if hasattr(action, 'execute') and callable(getattr(action, 'execute')):
                 try:
                     try:
-                        action.execute(state, card_db)
+                        action.execute(state, real_db)
                     except TypeError:
                         action.execute(state)
                     return
@@ -429,7 +438,7 @@ class EngineCompat:
 
         # Legacy fallback: call native resolver directly if available
         if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
-            dm_ai_module.EffectResolver.resolve_action(state, action, card_db)
+            dm_ai_module.EffectResolver.resolve_action(state, action, real_db)
         else:
             logger.warning("dm_ai_module.EffectResolver.resolve_action not found.")
 
@@ -437,6 +446,7 @@ class EngineCompat:
     def PhaseManager_next_phase(state: GameState, card_db: CardDB) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
+        real_db = EngineCompat._resolve_db(card_db)
         if hasattr(dm_ai_module.PhaseManager, 'next_phase'):
             try:
                 # Normalize `state.current_phase` to native Phase enum when possible
@@ -475,7 +485,7 @@ class EngineCompat:
                 except Exception:
                     before = None
 
-                dm_ai_module.PhaseManager.next_phase(state, card_db)
+                dm_ai_module.PhaseManager.next_phase(state, real_db)
 
                 try:
                     after = EngineCompat.get_current_phase(state)
@@ -498,7 +508,7 @@ class EngineCompat:
                         retried = False
                         for _ in range(3):
                             try:
-                                dm_ai_module.PhaseManager.next_phase(state, card_db)
+                                dm_ai_module.PhaseManager.next_phase(state, real_db)
                             except Exception:
                                 pass
                             try:
@@ -673,8 +683,9 @@ class EngineCompat:
     def PhaseManager_start_game(state: GameState, card_db: CardDB) -> None:
         EngineCompat._check_module()
         assert dm_ai_module is not None
+        real_db = EngineCompat._resolve_db(card_db)
         if hasattr(dm_ai_module.PhaseManager, 'start_game'):
-            dm_ai_module.PhaseManager.start_game(state, card_db)
+            dm_ai_module.PhaseManager.start_game(state, real_db)
         else:
             logger.warning("dm_ai_module.PhaseManager.start_game not found.")
 
@@ -749,8 +760,9 @@ class EngineCompat:
         """
         EngineCompat._check_module()
         assert dm_ai_module is not None
+        real_db = EngineCompat._resolve_db(card_db)
         from dm_toolkit.commands import generate_legal_commands
-        return generate_legal_commands(state, card_db)
+        return generate_legal_commands(state, real_db)
 
     @staticmethod
     def ExecuteCommand(state: GameState, cmd: Any, card_db: CardDB = None) -> None:
@@ -923,7 +935,7 @@ class EngineCompat:
                 try:
                     # Some execute signatures accept (state, db)
                     try:
-                        cmd.execute(state, card_db)
+                        cmd.execute(state, EngineCompat._resolve_db(card_db))
                     except TypeError:
                         cmd.execute(state)
                     return
@@ -933,7 +945,7 @@ class EngineCompat:
             # If it's an Action-like object, use EffectResolver
             if hasattr(cmd, 'type'):
                 if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
-                    dm_ai_module.EffectResolver.resolve_action(state, cmd, card_db)
+                    dm_ai_module.EffectResolver.resolve_action(state, cmd, EngineCompat._resolve_db(card_db))
                     return
         except Exception:
             pass
@@ -1186,25 +1198,29 @@ class EngineCompat:
     @staticmethod
     def load_cards_robust(filepath: str) -> Dict[int, Any]:
         """
-        Attempts to load cards using the native loader first, then falls back to standard JSON loading.
-        Returns a dictionary mapping CardID (int) to card data.
-        
-        NOTE: Python fallback is preferred due to known C++ JSON parsing compatibility issues.
-        The C++ loader is deprecated and will be removed in a future version.
+        Loads cards using Python JSON loader first (preferred for robustness),
+        but also attempts to load via Native loader if available to populate the cache
+        for engine compatibility.
         """
-        # Fallback to pure Python json load (PREFERRED PATH)
-        try:
-            import json
-            if not os.path.exists(filepath):
+        # Resolve path
+        final_path = filepath
+        if not os.path.exists(final_path):
+            try:
                 # Try finding relative to project root if path is relative
                 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
                 alt_path = os.path.join(base_dir, filepath)
                 if os.path.exists(alt_path):
-                    filepath = alt_path
+                    final_path = alt_path
+            except Exception:
+                pass
 
-            with open(filepath, 'r', encoding='utf-8') as f:
+        # 1. Python Load (Data Source of Truth)
+        py_data: Optional[Dict[int, Any]] = None
+        try:
+            import json
+            with open(final_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                
+
             # Convert array format to dict format if needed
             if isinstance(data, list):
                 card_dict = {}
@@ -1212,22 +1228,39 @@ class EngineCompat:
                     if isinstance(card, dict) and 'id' in card:
                         card_id = card['id']
                         card_dict[card_id] = card
-                return card_dict
+                py_data = card_dict
             else:
-                # Already in dict format
-                return data
+                py_data = data
         except Exception as e:
-            logger.error("Error loading cards: %s", e)
+            logger.error("Error loading cards (Python): %s", e)
 
-        # Fallback: Try native loader only if Python loading failed
-        try:
-            db = EngineCompat.JsonLoader_load_cards(filepath)
-            if db:
-                return db
-        except Exception:
-            pass
+        # 2. Native Side-load (for Engine Compatibility)
+        if EngineCompat.is_available() and EngineCompat._native_enabled:
+            try:
+                native_db = EngineCompat.JsonLoader_load_cards(final_path)
+                if native_db:
+                    EngineCompat._native_db_cache = native_db
+                    logger.info("EngineCompat: Native CardDB cached successfully.")
+            except Exception:
+                pass
+
+        # 3. Return Logic
+        if py_data is not None:
+            return py_data
+
+        # If Python failed but Native succeeded (rare/unlikely if file is valid JSON), return Native (wrapped/cached)
+        if EngineCompat._native_db_cache:
+            return EngineCompat._native_db_cache
 
         return {}
+
+    @staticmethod
+    def _resolve_db(card_db: Any) -> Any:
+        """Helper to swap dict with cached Native DB if available."""
+        if isinstance(card_db, dict) and EngineCompat.is_available() and EngineCompat._native_enabled:
+             if EngineCompat._native_db_cache:
+                 return EngineCompat._native_db_cache
+        return card_db
 
     @staticmethod
     def register_batch_inference_numpy(callback: Optional[Callable[[List[Any]], Any]]) -> None:
@@ -1242,8 +1275,9 @@ class EngineCompat:
     def TensorConverter_convert_to_tensor(state: GameState, player_id: int, card_db: CardDB) -> Union[List[float], Any]:
         EngineCompat._check_module()
         assert dm_ai_module is not None
+        real_db = EngineCompat._resolve_db(card_db)
         if hasattr(dm_ai_module, 'TensorConverter') and hasattr(dm_ai_module.TensorConverter, 'convert_to_tensor'):
-            return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, card_db)
+            return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, real_db)
         return []
 
     @staticmethod
@@ -1258,8 +1292,9 @@ class EngineCompat:
     def create_parallel_runner(card_db: CardDB, sims: int, batch_size: int) -> Any:
         EngineCompat._check_module()
         assert dm_ai_module is not None
+        real_db = EngineCompat._resolve_db(card_db)
         if hasattr(dm_ai_module, 'ParallelRunner'):
-            return dm_ai_module.ParallelRunner(card_db, sims, batch_size)
+            return dm_ai_module.ParallelRunner(real_db, sims, batch_size)
         return None
 
     @staticmethod
