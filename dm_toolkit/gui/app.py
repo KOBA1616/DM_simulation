@@ -644,6 +644,13 @@ class GameWindow(QMainWindow):
                 status = QLabel(tr("Connecting..."))
                 te = QTextEdit()
                 te.setReadOnly(True)
+                # Allow text selection and copying from the H2H watch output
+                try:
+                    from PyQt6.QtCore import Qt
+                    te.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard)
+                except Exception:
+                    # Fallback: if Qt flags not available, leave as read-only which still allows copy via context menu
+                    pass
                 v.addWidget(status)
                 v.addWidget(te)
                 w.setLayout(v)

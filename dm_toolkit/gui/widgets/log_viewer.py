@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtWidgets import QListWidget, QMenu, QAction
+from PyQt6.QtWidgets import QListWidget, QMenu
+try:
+    from PyQt6.QtWidgets import QAction
+except Exception:
+    from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import QApplication
