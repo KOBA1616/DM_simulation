@@ -72,6 +72,24 @@ class GameSession:
     def initialize_game(self, card_db: CardDB, seed: int = 42) -> None:
         self.card_db = card_db
         if dm_ai_module:
+            # Ensure the Engine's static CardDatabase is populated if using the Python stub
+            # This is crucial for CommandSystem logic (e.g. PLAY_CARD checking type)
+            try:
+                if hasattr(dm_ai_module, 'CardDatabase') and hasattr(dm_ai_module.CardDatabase, '_cards'):
+                    # If card_db is a dict, we can try to inject it
+                    if isinstance(self.card_db, dict) and not getattr(dm_ai_module.CardDatabase, '_loaded', False):
+                        # We only inject if not already loaded to avoid overwriting native data if it exists
+                        # But for stub, _loaded is False by default.
+                        try:
+                            # Direct injection for Python Stub
+                            dm_ai_module.CardDatabase._cards.update(self.card_db)
+                            dm_ai_module.CardDatabase._loaded = True
+                            self.callback_log(" injected card_db into dm_ai_module.CardDatabase")
+                        except Exception:
+                            pass
+            except Exception as e:
+                self.callback_log(f"Warning: Failed to inject CardDatabase: {e}")
+
             self.gs = dm_ai_module.GameState(seed)
             self.gs.setup_test_duel()
 

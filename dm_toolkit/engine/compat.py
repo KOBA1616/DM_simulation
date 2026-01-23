@@ -1078,6 +1078,61 @@ class EngineCompat:
                                 except Exception:
                                     pass
                             return
+
+                # Fallback for standard actions
+                if ctype == 'MANA_CHARGE':
+                    instance_id = cd.get('source_instance_id') or cd.get('instance_id')
+                    if instance_id:
+                        p = state.players[player_id]
+                        for i, c in enumerate(p.hand):
+                            if getattr(c, 'instance_id', -1) == instance_id:
+                                card = p.hand.pop(i)
+                                card.is_tapped = False
+                                p.mana_zone.append(card)
+                                return
+
+                if ctype == 'PLAY_CARD':
+                    instance_id = cd.get('source_instance_id') or cd.get('instance_id')
+                    if instance_id:
+                        p = state.players[player_id]
+                        # Try hand first
+                        card = None
+                        for i, c in enumerate(p.hand):
+                            if getattr(c, 'instance_id', -1) == instance_id:
+                                card = p.hand.pop(i)
+                                break
+                        if card:
+                            # Assume Creature goes to Battle, Spell goes to Grave (simplification)
+                            # Ideally check card_db but this is deep fallback
+                            # Check if card has type info attached
+                            is_spell = False
+                            if card_db:
+                                cid = getattr(card, 'card_id', -1)
+                                if hasattr(card_db, 'get_card'):
+                                    cdef = card_db.get_card(cid)
+                                elif isinstance(card_db, dict):
+                                    cdef = card_db.get(cid) or card_db.get(str(cid))
+                                else:
+                                    cdef = {}
+                                if cdef and cdef.get('type') == 'SPELL':
+                                    is_spell = True
+
+                            if is_spell:
+                                p.graveyard.append(card)
+                            else:
+                                card.sick = True
+                                card.is_tapped = False
+                                p.battle_zone.append(card)
+                            return
+
+                if ctype == 'ATTACK_PLAYER':
+                    instance_id = cd.get('source_instance_id') or cd.get('instance_id')
+                    if instance_id:
+                        p = state.players[player_id]
+                        for c in p.battle_zone:
+                            if getattr(c, 'instance_id', -1) == instance_id:
+                                c.is_tapped = True
+                                return
                         if ctype == 'UNTAP':
                             for inst in targets:
                                 try:
