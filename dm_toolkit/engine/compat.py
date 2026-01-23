@@ -1106,16 +1106,26 @@ class EngineCompat:
                             # Ideally check card_db but this is deep fallback
                             # Check if card has type info attached
                             is_spell = False
+                            cid = getattr(card, 'card_id', -1)
+                            cdef = {}
+
                             if card_db:
-                                cid = getattr(card, 'card_id', -1)
                                 if hasattr(card_db, 'get_card'):
                                     cdef = card_db.get_card(cid)
                                 elif isinstance(card_db, dict):
                                     cdef = card_db.get(cid) or card_db.get(str(cid))
-                                else:
-                                    cdef = {}
-                                if cdef and cdef.get('type') == 'SPELL':
-                                    is_spell = True
+
+                            # Fallback to global DB if provided DB is missing/empty and we have the module
+                            if not cdef and dm_ai_module and hasattr(dm_ai_module, 'CardDatabase'):
+                                try:
+                                    # Try static get_card
+                                    if hasattr(dm_ai_module.CardDatabase, 'get_card'):
+                                        cdef = dm_ai_module.CardDatabase.get_card(cid)
+                                except Exception:
+                                    pass
+
+                            if cdef and cdef.get('type') == 'SPELL':
+                                is_spell = True
 
                             if is_spell:
                                 p.graveyard.append(card)
