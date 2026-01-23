@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Set, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Set, Optional, Union, TYPE_CHECKING
 
 # Centralized type aliases for gradual typing across the project
 CardID = int
@@ -7,8 +7,6 @@ TurnNumber = int
 
 # Data structures
 JSON = Dict[str, Any]
-# map CardID to CardDefinition-like objects (use int keys)
-CardDB = Dict[int, Any]
 Context = Dict[str, Any]
 Effects = List[Any]
 Deck = List[Any]
@@ -30,6 +28,9 @@ __all__ = [
     "CardCounts",
     "SeenCards",
     "ResultsList",
+    "GameState",
+    "Action",
+    "CardDatabase",
 ]
 
 # Optional imports for typing-heavy libraries
@@ -38,14 +39,27 @@ if TYPE_CHECKING:
     import numpy as np  # type: ignore
     import torch  # type: ignore
 
-# ML placeholders
-if TYPE_CHECKING:
+    GameState = dm_ai_module.GameState
+    Action = dm_ai_module.Action
+    CardDatabase = dm_ai_module.CardDatabase
+
     NPArray = np.ndarray
     Tensor = torch.Tensor
 else:
     NPArray = Any
     Tensor = Any
 
-# Runtime aliases for engine types to help other modules import names from dm_toolkit.types
-GameState = Any
-Action = Any
+    # Runtime aliases for engine types to help other modules import names from dm_toolkit.types
+    try:
+        import dm_ai_module
+        GameState = dm_ai_module.GameState
+        Action = dm_ai_module.Action
+        CardDatabase = dm_ai_module.CardDatabase
+    except (ImportError, AttributeError):
+        GameState = Any
+        Action = Any
+        CardDatabase = Any
+
+# map CardID to CardDefinition-like objects (use int keys)
+# CardDB can be a dict or the CardDatabase class/instance from the engine
+CardDB = Union[Dict[int, Any], CardDatabase]
