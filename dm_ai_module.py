@@ -664,6 +664,67 @@ else:
             elif cmd.type == CommandType.DRAW_CARD:
                 state.draw_cards(player_id, getattr(cmd, 'amount', 1))
 
+            elif cmd.type == CommandType.MOVE_CARD:
+                # 1. Find the card
+                inst_id = getattr(cmd, 'source_instance_id', -1)
+                if inst_id < 0: return
+
+                card = None
+                source_list = None
+                owner_player = None
+
+                # Search player's zones
+                p = state.players[player_id]
+                zones = [p.hand, p.battle_zone, p.mana_zone, p.shield_zone, p.graveyard, p.deck]
+
+                for z in zones:
+                    for c in z:
+                        if c.instance_id == inst_id:
+                            card = c
+                            source_list = z
+                            owner_player = p
+                            break
+                    if card: break
+
+                if not card:
+                     # Check other player?
+                     other = state.players[1 - player_id]
+                     zones = [other.hand, other.battle_zone, other.mana_zone, other.shield_zone, other.graveyard, other.deck]
+                     for z in zones:
+                        for c in z:
+                            if c.instance_id == inst_id:
+                                card = c
+                                source_list = z
+                                owner_player = other
+                                break
+                        if card: break
+
+                if not card or not source_list: return
+
+                # 2. Determine Target Zone
+                to_zone = getattr(cmd, 'to_zone', '')
+                target_list = None
+
+                # Handle Enums or Strings
+                tz_str = str(to_zone).upper()
+                if "MANA" in tz_str: target_list = owner_player.mana_zone
+                elif "HAND" in tz_str: target_list = owner_player.hand
+                elif "BATTLE" in tz_str: target_list = owner_player.battle_zone
+                elif "GRAVE" in tz_str: target_list = owner_player.graveyard
+                elif "SHIELD" in tz_str: target_list = owner_player.shield_zone
+                elif "DECK" in tz_str: target_list = owner_player.deck
+
+                # 3. Move
+                if target_list is not None:
+                    source_list.remove(card)
+                    # Reset state if moving to certain zones?
+                    if "MANA" in tz_str or "HAND" in tz_str:
+                        card.is_tapped = False
+                        card.sick = False
+                    if "BATTLE" in tz_str:
+                         card.sick = True # Summon sickness?
+                    target_list.append(card)
+
     class TokenConverter:
         @staticmethod
         def encode_state(state: Any, player_id: int, length: int) -> List[int]:
@@ -773,15 +834,27 @@ else:
             elif atype == ActionType.MANA_CHARGE:
                  if hasattr(action, 'card_id'):
                     cid = getattr(action, 'card_id')
+                    inst_id = getattr(action, 'source_instance_id', -1)
                     p = state.players[player]
-                    # Find and remove
-                    for i, c in enumerate(p.hand):
-                        if c.card_id == cid:
-                            card = p.hand.pop(i)
-                            # In DM, charged mana enters untapped but cannot be used immediately (handled by game logic limits, not tap state)
-                            card.is_tapped = False
-                            p.mana_zone.append(card)
-                            break
+
+                    found_idx = -1
+                    # Priority 1: Instance ID
+                    if inst_id > 0:
+                        for i, c in enumerate(p.hand):
+                            if c.instance_id == inst_id:
+                                found_idx = i
+                                break
+                    # Priority 2: Card ID fallback
+                    if found_idx == -1:
+                        for i, c in enumerate(p.hand):
+                            if c.card_id == cid:
+                                found_idx = i
+                                break
+
+                    if found_idx != -1:
+                        card = p.hand.pop(found_idx)
+                        card.is_tapped = False
+                        p.mana_zone.append(card)
 
             elif atype == ActionType.ATTACK_PLAYER:
                 # Tap the attacker
@@ -801,10 +874,20 @@ else:
                 card_obj = None
 
                 # Find and remove one instance from hand
-                for i, c in enumerate(p.hand):
-                    if c.card_id == cid:
-                        card_obj = p.hand.pop(i)
-                        break
+                found_idx = -1
+                if inst_id > 0:
+                    for i, c in enumerate(p.hand):
+                        if c.instance_id == inst_id:
+                            found_idx = i
+                            break
+                if found_idx == -1:
+                    for i, c in enumerate(p.hand):
+                        if c.card_id == cid:
+                            found_idx = i
+                            break
+
+                if found_idx != -1:
+                    card_obj = p.hand.pop(found_idx)
 
                 if card_obj is None:
                     # Fallback if card wasn't in hand (e.g. created/token)
@@ -983,10 +1066,83 @@ else:
 
     class PhaseManager:
         @staticmethod
+        def start_game(state: Any, db: Any) -> None:
+            # Basic start game logic for Python stub
+            # 1. Shuffle Decks (already random in setup usually, but we skip)
+            # 2. Set Initial Shields (5) and Hand (5) if not already done
+            for pid in [0, 1]:
+                p = state.players[pid]
+                if not p.shield_zone and not p.hand and len(p.deck) >= 10:
+                     for _ in range(5):
+                         p.shield_zone.append(p.deck.pop())
+                     for _ in range(5):
+                         p.hand.append(p.deck.pop())
+
+            # 3. Set Phase to Mana (Turn 1 Start)
+            state.current_phase = 2 # Mana Phase
+            state.turn_number = 1
+            state.active_player_id = 0
+
+        @staticmethod
         def next_phase(state: Any, db: Any) -> None:
             state.current_phase = (state.current_phase + 1) % 7
             if state.current_phase == 0:
                 state.turn_number += 1
+            # Skip phase 0/1 in simple cycle if they are "start turn" phases
+            if state.current_phase < 2:
+                state.current_phase = 2
+
+    class DevTools:
+        @staticmethod
+        def move_cards(state: Any, instance_id: int, from_zone: Any, to_zone: Any) -> None:
+            # Find card in any zone of any player
+            card = None
+            source_list = None
+
+            for p in state.players:
+                # Check all zones
+                zones = [p.deck, p.hand, p.graveyard, p.mana_zone, p.battle_zone, p.shield_zone]
+                for z in zones:
+                    for i, c in enumerate(z):
+                         cid = getattr(c, 'instance_id', -1)
+                         if cid == instance_id:
+                             card = c
+                             source_list = z
+                             break
+                    if card: break
+                if card: break
+
+            if not card or not source_list:
+                return
+
+            # Remove from source
+            source_list.remove(card)
+
+            # Re-find p corresponding to source_list
+            target_player = state.players[0]
+            for p in state.players:
+                if source_list in [p.deck, p.hand, p.graveyard, p.mana_zone, p.battle_zone, p.shield_zone]:
+                    target_player = p
+                    break
+
+            # Decode Zone Enum (int) or use logic
+            # Assuming simple int mapping or Enum
+            try:
+                z_val = int(from_zone)
+                to_val = int(to_zone)
+            except:
+                return
+
+            target_list = None
+            if to_val == 1: target_list = target_player.deck # DECK
+            elif to_val == 2: target_list = target_player.hand # HAND
+            elif to_val == 3: target_list = target_player.graveyard # GRAVEYARD
+            elif to_val == 4: target_list = target_player.mana_zone # MANA
+            elif to_val == 5: target_list = target_player.battle_zone # BATTLE
+            elif to_val == 6: target_list = target_player.shield_zone # SHIELD
+
+            if target_list is not None:
+                target_list.append(card)
 
     class DataCollector:
         def __init__(self):
