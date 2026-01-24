@@ -166,6 +166,15 @@ class CardTextResources:
         "TARGET_THIS_FORCE_SELECT": "可能ならこのクリーチャーを選択する"
     }
 
+    # Delayed Effect ID Japanese mapping
+    DELAYED_EFFECT_TRANSLATION: Dict[str, str] = {
+        "AT_END_OF_TURN_DESTROY": "このターンの終わりに、このクリーチャーを破壊する",
+        "AT_END_OF_TURN_RETURN_TO_HAND": "このターンの終わりに、このクリーチャーを手札に戻す",
+        "AT_END_OF_TURN_UNTAP": "このターンの終わりに、このクリーチャーをアンタップする",
+        "AT_START_OF_TURN_DRAW": "次の自分のターンのはじめに、カードを1枚引く",
+        "AT_ATTACK_END_UNTAP": "攻撃の終わりに、このクリーチャーをアンタップする"
+    }
+
     # Duration Text Mapping (Added)
     DURATION_TRANSLATION: Dict[str, str] = {
         "PERMANENT": "常に",
@@ -420,6 +429,19 @@ class CardTextResources:
         if keyword.upper() in cls.KEYWORD_TRANSLATION:
             return cls.KEYWORD_TRANSLATION[keyword.upper()]
         return keyword
+
+    @classmethod
+    def get_delayed_effect_text(cls, effect_id: str) -> str:
+        """
+        Get Japanese text for delayed effect ID.
+
+        Args:
+            effect_id: Effect ID string
+
+        Returns:
+            Japanese text, or original string if not found
+        """
+        return cls.DELAYED_EFFECT_TRANSLATION.get(effect_id, effect_id)
     
     @classmethod
     def get_zone_text(cls, zone: str) -> str:

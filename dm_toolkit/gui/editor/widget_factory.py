@@ -341,6 +341,8 @@ def _create_select_widget(parent, schema, cb):
                 label = str(opt)
                 if opt in CardTextResources.DURATION_TRANSLATION:
                     label = CardTextResources.get_duration_text(opt)
+                elif opt in CardTextResources.DELAYED_EFFECT_TRANSLATION:
+                    label = CardTextResources.get_delayed_effect_text(opt)
                 elif opt in CardTextResources.KEYWORD_TRANSLATION: # Also handle keywords if passed as raw list
                     label = CardTextResources.get_keyword_text(opt)
 
