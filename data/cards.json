@@ -954,11 +954,12 @@
               "output_value_key": "chosen_number"
             },
             {
-              "uid": "c4653826-1f0e-4de5-ab7a-c24ef533c69d",
+              "uid": "192151d9-470b-416d-96cd-61d62f81ac29",
               "type": "APPLY_MODIFIER",
-              "amount": 1,
+              "_input_value_label": "Step 0: 数字を選択 -> 選択した数",
+              "amount": 0,
               "duration": "UNTIL_START_OF_YOUR_TURN",
-              "input_value_usage": "",
+              "input_value_usage": "COST",
               "str_param": "CANNOT_ATTACK_AND_BLOCK",
               "target_filter": {
                 "types": [
@@ -968,7 +969,8 @@
                   "BATTLE_ZONE"
                 ]
               },
-              "target_group": "PLAYER_OPPONENT"
+              "target_group": "PLAYER_OPPONENT",
+              "input_value_key": "chosen_number"
             }
           ]
         }
@@ -1002,15 +1004,25 @@
         },
         "commands": [
           {
-            "uid": "954e114d-b2d8-43a2-8166-38b7b151174c",
+            "uid": "9d7bd046-2874-48ed-b9f4-679ed4afbf87",
             "type": "SELECT_OPTION",
-            "amount": 3,
+            "amount": 2,
+            "option_count": 1,
             "optional": true,
             "options": [
               [
                 {
-                  "uid": "dda951d5-a0d5-4dbf-9236-7dfe072796c9",
-                  "type": "PUT_CREATURE"
+                  "uid": "0b404a72-b082-4e5d-b8df-25765869830e",
+                  "type": "PUT_CREATURE",
+                  "amount": 0,
+                  "input_value_usage": "",
+                  "target_filter": {
+                    "max_cost": 3,
+                    "types": [
+                      "CREATURE"
+                    ]
+                  },
+                  "target_group": "PLAYER_SELF"
                 }
               ],
               [

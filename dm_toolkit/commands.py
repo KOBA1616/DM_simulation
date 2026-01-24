@@ -26,6 +26,15 @@ class BaseCommand:
         return {"type": "UNKNOWN", "kind": self.__class__.__name__}
 
 
+# Tracks whether a given player has performed a mana-charge during the current
+# turn for a particular `state` object. Keyed by (id(state), player_id).
+_mana_charged_by_state: Dict[tuple, bool] = {}
+# Track last observed mana count per (state, player) so we can detect
+# mana increases performed outside the Python wrapper (native flow commands,
+# etc.) and mark _mana_charged_by_state accordingly.
+_last_mana_count_by_state: Dict[tuple, int] = {}
+
+
 def wrap_action(action: Any) -> Optional[ICommand]:
     """Return an `ICommand`-like object for the provided `action`.
 
@@ -64,6 +73,21 @@ def wrap_action(action: Any) -> Optional[ICommand]:
                 except TypeError:
                     # Fallback if older signature expects two args
                     EngineCompat.ExecuteCommand(state, cmd)
+                # After successful execution, if this underlying action is a
+                # MANA_CHARGE, mark that the active player has charged mana for
+                # this turn so future legal-action generations can enforce the
+                # "once per turn" rule.
+                try:
+                    a_type = getattr(self._action, 'type', None)
+                    tname = ''
+                    if a_type is not None:
+                        tname = getattr(a_type, 'name', str(a_type))
+                    if isinstance(tname, str) and tname.endswith('MANA_CHARGE'):
+                        sid = id(state)
+                        pid = getattr(state, 'active_player_id', 0)
+                        _mana_charged_by_state[(sid, pid)] = True
+                except Exception:
+                    pass
             except Exception:
                 return None
             return None
@@ -129,14 +153,257 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                 print(f"Debug generate_legal_actions -> count={len(actions)}, samples={sample}")
             except Exception:
                 pass
+
+            # Normalize native actions to command dicts when possible so we can
+            # reliably detect whether PLAY_CARD (or its unified equivalent)
+            # is present. This absorbs differences where native bindings
+            # expose enums/fields differently (int vs Enum, value1 vs amount).
+            normalized_cmds = []
+            try:
+                from dm_toolkit.unified_execution import to_command_dict
+                for a in list(actions):
+                    try:
+                        normalized_cmds.append(to_command_dict(a))
+                    except Exception:
+                        try:
+                            # Fallback: try map_action directly
+                            normalized_cmds.append(map_action(a))
+                        except Exception:
+                            normalized_cmds.append(None)
+            except Exception:
+                # If unified path not importable, best-effort map_action attempt
+                try:
+                    for a in list(actions):
+                        try:
+                            normalized_cmds.append(map_action(a))
+                        except Exception:
+                            normalized_cmds.append(None)
+                except Exception:
+                    normalized_cmds = [None] * len(actions)
+
+            # Use normalized_cmds to detect presence of play-type commands
+            try:
+                has_play_native = False
+                for c in normalized_cmds:
+                    if not isinstance(c, dict):
+                        continue
+                    t = c.get('type') or c.get('legacy_original_type')
+                    if t is None:
+                        continue
+                    tt = str(t).upper()
+                    if tt in ('PLAY_FROM_ZONE', 'PLAY_FROM_BUFFER', 'CAST_SPELL', 'PLAY_CARD', 'FRIEND_BURST'):
+                        has_play_native = True
+                        break
+            except Exception:
+                has_play_native = False
         except Exception as e:
             # If it fails, we may have a format mismatch
             # Log for debugging but don't fail - just return empty list
             print(f"Warning: generate_legal_actions raised: {e}")
             pass
 
+        # Reset per-turn tracking when a new start-of-turn phase is observed
+        try:
+            sid = id(state)
+            pid = getattr(state, 'active_player_id', 0)
+            cur_phase = getattr(state, 'current_phase', None)
+            pstr = ''
+            if cur_phase is not None:
+                pstr = getattr(cur_phase, 'name', str(cur_phase))
+            # Treat phases that end with START_OF_TURN as the reset point
+            # Read current observed mana for the active player (best-effort)
+            try:
+                player = state.players[pid]
+                cur_mana = getattr(player, 'mana_count', None)
+                if cur_mana is None:
+                    cur_mana = len(getattr(player, 'mana_zone', []) or [])
+            except Exception:
+                cur_mana = None
+
+            # Reset flag at start-of-turn for the active player and initialize
+            # the last-observed mana count to avoid false positives.
+            if isinstance(pstr, str) and pstr.endswith('START_OF_TURN'):
+                _mana_charged_by_state[(sid, pid)] = False
+                if cur_mana is not None:
+                    _last_mana_count_by_state[(sid, pid)] = int(cur_mana)
+
+            # If we observe that the player's mana count has increased since
+            # the last observation, mark that they have effectively charged
+            # mana (covers native FlowCommand paths that bypass our wrapper).
+            try:
+                if cur_mana is not None:
+                    last = _last_mana_count_by_state.get((sid, pid))
+                    if last is None:
+                        _last_mana_count_by_state[(sid, pid)] = int(cur_mana)
+                    else:
+                        if int(cur_mana) > int(last):
+                            _mana_charged_by_state[(sid, pid)] = True
+                            _last_mana_count_by_state[(sid, pid)] = int(cur_mana)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        # If the engine returned no actions, provide a conservative Python-side
+        # fallback so the UI / AI can continue progressing while we debug
+        # the native ActionGenerator implementation.
+        # If engine returned nothing, or only a PASS (native may return PASS in
+        # a start-of-turn subphase), provide a conservative Python-side
+        # fallback so the UI / AI can continue progressing while we debug
+        # the native ActionGenerator implementation.
+        pass_only = False
+        try:
+            if actions and len(actions) == 1:
+                # Detect PASS-only by inspecting normalized command when available
+                if normalized_cmds and len(normalized_cmds) >= 1 and isinstance(normalized_cmds[0], dict):
+                    t = normalized_cmds[0].get('type') or normalized_cmds[0].get('legacy_original_type')
+                    if isinstance(t, str) and t.upper() == 'PASS':
+                        pass_only = True
+                else:
+                    a = actions[0]
+                    tname = getattr(a, 'type', None)
+                    # For native objects the type may be an Enum; compare by name/str
+                    if tname is not None and (str(tname).endswith('PASS') or getattr(tname, 'name', '') == 'PASS'):
+                        pass_only = True
+        except Exception:
+            pass
+
+        if not actions or pass_only:
+            try:
+                from dm_ai_module import Action, ActionType
+
+                pid = getattr(state, 'active_player_id', 0)
+                player = state.players[pid]
+
+                # PASS is always legal
+                pass_act = Action()
+                pass_act.type = ActionType.PASS
+                actions.append(pass_act)
+
+                # Mana charge actions (allow charging any card in hand) -
+                # only propose them if the player hasn't already charged mana
+                # this turn (runtime-tracked). We don't mark the tracker here;
+                # it's marked when an actual MANA_CHARGE is executed.
+                try:
+                    sid = id(state)
+                    pid = getattr(state, 'active_player_id', 0)
+                    already_charged = _mana_charged_by_state.get((sid, pid), False)
+                    if not already_charged:
+                        for c in list(getattr(player, 'hand', [])):
+                            act = Action()
+                            act.type = ActionType.MANA_CHARGE
+                            act.card_id = getattr(c, 'card_id', c)
+                            act.source_instance_id = getattr(c, 'instance_id', -1)
+                            actions.append(act)
+                except Exception:
+                    pass
+
+                # Playable cards heuristics: if enough untapped mana, propose PLAY_CARD
+                try:
+                    usable_mana = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
+                    for c in list(getattr(player, 'hand', [])):
+                        cid = getattr(c, 'card_id', c)
+                        cost = 9999
+                        try:
+                            if isinstance(card_db, dict):
+                                cdef = card_db.get(cid) or card_db.get(str(cid))
+                            elif hasattr(card_db, 'get_card'):
+                                cdef = card_db.get_card(cid)
+                            else:
+                                cdef = None
+                            if cdef:
+                                cost = int(cdef.get('cost', 9999))
+                        except Exception:
+                            cost = 9999
+                        if cost <= usable_mana:
+                            act = Action()
+                            act.type = ActionType.PLAY_CARD
+                            act.card_id = cid
+                            act.source_instance_id = getattr(c, 'instance_id', -1)
+                            actions.append(act)
+                except Exception:
+                    pass
+            except Exception:
+                # If we cannot construct fallback actions, keep actions empty
+                pass
+
+            # If native generator did not include any PLAY_CARD actions, attempt
+            # to add PLAY_CARD candidates using the same heuristic we use in the
+            # pure-Python ActionGenerator. This covers cases where the native
+            # generator omits play options due to mismatched card_db formats or
+            # other minor interoperability issues.
+            try:
+                # If normalized detection found a play, skip heuristic
+                if not ('has_play_native' in locals() and has_play_native):
+                    has_play = False
+                    for a in list(actions):
+                        try:
+                            t = getattr(a, 'type', None)
+                            tname = getattr(t, 'name', str(t)) if t is not None else str(t)
+                            if isinstance(tname, str) and tname.endswith('PLAY_CARD'):
+                                has_play = True
+                                break
+                        except Exception:
+                            continue
+                    if not has_play:
+                        from dm_ai_module import Action, ActionType
+                        pid = getattr(state, 'active_player_id', 0)
+                        player = state.players[pid]
+                        usable_mana = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
+                        for c in list(getattr(player, 'hand', [])):
+                            cid = getattr(c, 'card_id', c)
+                            cost = 9999
+                            try:
+                                if isinstance(card_db, dict):
+                                    cdef = card_db.get(cid) or card_db.get(str(cid))
+                                elif hasattr(card_db, 'get_card'):
+                                    cdef = card_db.get_card(cid)
+                                else:
+                                    cdef = None
+                                if cdef:
+                                    cost = int(cdef.get('cost', 9999))
+                            except Exception:
+                                cost = 9999
+                            if cost <= usable_mana:
+                                act = Action()
+                                act.type = ActionType.PLAY_CARD
+                                act.card_id = cid
+                                act.source_instance_id = getattr(c, 'instance_id', -1)
+                                actions.append(act)
+            except Exception:
+                pass
+
+        # Filter out MANA_CHARGE actions after they have been performed this
+        # turn (based on the runtime tracker). We only present a single
+        # candidate MANA_CHARGE to the UI/AI when possible to avoid
+        # multi-charge loops; the executed wrapper marks the tracker so
+        # subsequent generations will omit further MANA_CHARGE options.
+        filtered = []
+        try:
+            sid = id(state)
+            pid = getattr(state, 'active_player_id', 0)
+            charged = _mana_charged_by_state.get((sid, pid), False)
+            mana_added = False
+            for a in actions:
+                try:
+                    a_type = getattr(a, 'type', None)
+                    tname = ''
+                    if a_type is not None:
+                        tname = getattr(a_type, 'name', str(a_type))
+                    if isinstance(tname, str) and tname.endswith('MANA_CHARGE'):
+                        if charged:
+                            continue
+                        if mana_added:
+                            continue
+                        mana_added = True
+                except Exception:
+                    pass
+                filtered.append(a)
+        except Exception:
+            filtered = actions
+
         cmds = []
-        for a in actions:
+        for a in filtered:
             w = wrap_action(a)
             if w is not None:
                 cmds.append(w)

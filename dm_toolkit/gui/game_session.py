@@ -148,7 +148,13 @@ class GameSession:
                 if native_db is None:
                     native_db = self.card_db
 
+                # If we resolved a native-backed CardDatabase, ensure subsequent
+                # engine calls receive the same object instead of the original
+                # Python-side `self.card_db` (avoids TypeError in native bindings).
                 try:
+                    if native_db is not self.card_db:
+                        self.card_db = native_db
+
                     dm_ai_module.PhaseManager.start_game(self.gs, native_db)
                     self.callback_log("start_game executed successfully")
                     applied = True
@@ -259,6 +265,10 @@ class GameSession:
                 native_db = self.card_db
 
             try:
+                # Ensure we pass the same card DB object to later engine calls
+                if native_db is not self.card_db:
+                    self.card_db = native_db
+
                 dm_ai_module.PhaseManager.start_game(self.gs, native_db)
                 applied = True
             except Exception as e:
@@ -763,7 +773,34 @@ class GameSession:
             if not cmds:
                 EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
             else:
-                best_cmd = cmds[0]
+                # Prefer a non-PASS command if available to avoid always executing
+                # a leading PASS (which can prevent useful actions like MANA_CHARGE).
+                best_cmd = None
+                try:
+                    for c in cmds:
+                        try:
+                            d = c.to_dict()
+                        except Exception:
+                            d = {}
+                        t = d.get('type') if isinstance(d, dict) else None
+                        if t is None:
+                            # Fallback: inspect string repr for PASS marker
+                            try:
+                                s = str(d)
+                                if 'PASS' not in s:
+                                    best_cmd = c
+                                    break
+                            except Exception:
+                                continue
+                        else:
+                            if t != 'PASS':
+                                best_cmd = c
+                                break
+                except Exception:
+                    best_cmd = None
+
+                if best_cmd is None:
+                    best_cmd = cmds[0]
 
                 if self.ai_player:
                     try:
