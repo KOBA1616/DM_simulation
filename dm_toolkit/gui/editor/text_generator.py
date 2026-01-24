@@ -1460,8 +1460,11 @@ class CardTextGenerator:
 
         elif atype == "REGISTER_DELAYED_EFFECT":
              str_val = action.get("str_val", "")
-             duration = val1 if val1 > 0 else 1
-             return f"遅延効果（{str_val}）を{duration}ターン登録する。"
+             effect_text = CardTextResources.get_delayed_effect_text(str_val)
+             if effect_text == str_val:
+                  duration = val1 if val1 > 0 else 1
+                  return f"遅延効果（{str_val}）を{duration}ターン登録する。"
+             return effect_text
 
         return ""
 
