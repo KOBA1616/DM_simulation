@@ -2383,6 +2383,10 @@ class CardTextGenerator:
                 else:
                     template = "コスト{value1}以下の{target}を" + verb + f"。{usage_label_suffix}"
 
+        # Override template for DESTROY if targeting trigger source to avoid "All" or "1 body"
+        if atype == "DESTROY" and action.get('filter', {}).get('is_trigger_source'):
+            template = "{target}を破壊する。"
+
         # Destination/Source Resolution
         dest_zone = action.get("destination_zone", "")
         zone_str = tr(dest_zone) if dest_zone else "どこか"
@@ -2468,6 +2472,15 @@ class CardTextGenerator:
         scope = action.get("scope", action.get('target_group', "NONE"))
         filter_def = action.get("filter", action.get('target_filter', {}))
         atype = action.get("type", "")
+
+        # Handle Trigger Source targeting
+        if filter_def.get('is_trigger_source'):
+            types = filter_def.get('types', [])
+            if 'SPELL' in types:
+                return ("その呪文", "枚")
+            elif 'CARD' in types:
+                return ("そのカード", "枚")
+            return ("そのクリーチャー", "体")
 
         target_desc = ""
         prefix = ""
