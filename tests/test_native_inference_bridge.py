@@ -59,7 +59,7 @@ class TestNativeInferenceBridge(unittest.TestCase):
             initial_states,
             dummy_evaluator,
             temperature=1.0,
-            verbose=False,
+            add_noise=False,
             threads=1
         )
 
