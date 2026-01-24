@@ -137,6 +137,13 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
     """
     try:
         import dm_ai_module
+        # Debug: report observed state phase and active player for diagnostics
+        try:
+            cur_phase = getattr(state, 'current_phase', None)
+            phase_name = getattr(cur_phase, 'name', None) or str(cur_phase)
+            print(f"Debug state_phase -> active_player={getattr(state, 'active_player_id', getattr(state, 'active_player', None))}, current_phase={phase_name}, raw={cur_phase}")
+        except Exception:
+            pass
 
         actions = []
         try:
@@ -181,8 +188,36 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                 except Exception:
                     normalized_cmds = [None] * len(actions)
 
+            # Debug: dump normalized commands (safe representations)
+            try:
+                dump_norm = []
+                for c in normalized_cmds:
+                    try:
+                        if isinstance(c, dict):
+                            dump_norm.append(c)
+                        else:
+                            dump_norm.append({'_repr': repr(c)})
+                    except Exception:
+                        dump_norm.append({'_repr': str(c)})
+                print(f"Debug normalized_cmds -> count={len(dump_norm)}, entries={dump_norm[:12]}")
+            except Exception:
+                pass
+
+            # Debug: dump raw native actions (type and repr samples)
+            try:
+                raw_dump = []
+                for i, a in enumerate(list(actions)):
+                    try:
+                        raw_dump.append((i, type(a).__name__, repr(a)))
+                    except Exception:
+                        raw_dump.append((i, type(a).__name__, str(a)))
+                print(f"Debug raw_actions -> count={len(actions)}, samples={raw_dump[:12]}")
+            except Exception:
+                pass
+
             # Use normalized_cmds to detect presence of play-type commands
             try:
+                # Robustly detect play-like commands even when `type` is an Enum
                 has_play_native = False
                 for c in normalized_cmds:
                     if not isinstance(c, dict):
@@ -190,10 +225,20 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                     t = c.get('type') or c.get('legacy_original_type')
                     if t is None:
                         continue
-                    tt = str(t).upper()
-                    if tt in ('PLAY_FROM_ZONE', 'PLAY_FROM_BUFFER', 'CAST_SPELL', 'PLAY_CARD', 'FRIEND_BURST'):
-                        has_play_native = True
-                        break
+                    # Prefer enum name when available
+                    try:
+                        tname = getattr(t, 'name', None) or str(t)
+                    except Exception:
+                        tname = str(t)
+                    tt = tname.upper()
+                        # Accept several aliases and unified indicators for play actions
+                        if tt in ('PLAY_FROM_ZONE', 'PLAY_FROM_BUFFER', 'CAST_SPELL', 'PLAY_CARD', 'FRIEND_BURST', 'PLAY', 'DECLARE_PLAY', 'PUT_INTO_PLAY'):
+                            has_play_native = True
+                            break
+                        # Also inspect other possible hints
+                        if isinstance(c.get('unified_type'), str) and str(c.get('unified_type')).upper().startswith('PLAY'):
+                            has_play_native = True
+                            break
             except Exception:
                 has_play_native = False
         except Exception as e:
@@ -303,24 +348,62 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                     usable_mana = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
                     for c in list(getattr(player, 'hand', [])):
                         cid = getattr(c, 'card_id', c)
+                        # Robust card_db lookup (try multiple interfaces/keys)
                         cost = 9999
+                        cdef = None
                         try:
-                            if isinstance(card_db, dict):
-                                cdef = card_db.get(cid) or card_db.get(str(cid))
+                            if card_db is None:
+                                cdef = None
                             elif hasattr(card_db, 'get_card'):
-                                cdef = card_db.get_card(cid)
+                                try:
+                                    cdef = card_db.get_card(cid)
+                                except Exception:
+                                    # Some implementations may expect int keys
+                                    cdef = card_db.get_card(int(cid)) if isinstance(cid, str) and cid.isdigit() else None
+                            elif isinstance(card_db, dict):
+                                # try int and str keys
+                                try:
+                                    cdef = card_db.get(cid)
+                                except Exception:
+                                    cdef = None
+                                if cdef is None:
+                                    cdef = card_db.get(str(cid)) if isinstance(cid, (int, str)) else None
+                                if cdef is None and isinstance(cid, str) and cid.isdigit():
+                                    cdef = card_db.get(int(cid))
+                            elif hasattr(card_db, 'cards'):
+                                try:
+                                    cards_attr = getattr(card_db, 'cards')
+                                    if isinstance(cards_attr, dict):
+                                        cdef = cards_attr.get(cid) or cards_attr.get(str(cid))
+                                except Exception:
+                                    cdef = None
                             else:
                                 cdef = None
-                            if cdef:
-                                cost = int(cdef.get('cost', 9999))
+                            if cdef and isinstance(cdef, dict) and 'cost' in cdef:
+                                try:
+                                    cost = int(cdef.get('cost', cost))
+                                except Exception:
+                                    cost = cost
                         except Exception:
+                            cdef = None
                             cost = 9999
+
+                        # Debug lookup result
+                        try:
+                            print(f"Debug play_lookup -> pid={pid}, card_id={cid}, cdef_present={bool(cdef)}, assumed_cost={cost}")
+                        except Exception:
+                            pass
+
                         if cost <= usable_mana:
                             act = Action()
                             act.type = ActionType.PLAY_CARD
                             act.card_id = cid
                             act.source_instance_id = getattr(c, 'instance_id', -1)
                             actions.append(act)
+                            try:
+                                print(f"Debug play_heuristic1 -> pid={pid}, usable_mana={usable_mana}, card_id={cid}, cdef_present={bool(cdef)}, cost={cost}")
+                            except Exception:
+                                pass
                 except Exception:
                     pass
             except Exception:
@@ -333,8 +416,20 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
             # generator omits play options due to mismatched card_db formats or
             # other minor interoperability issues.
             try:
+                # Only propose play candidates when we're in the Main phase
+                cur_phase = getattr(state, 'current_phase', None)
+                p_name = getattr(cur_phase, 'name', None) or str(cur_phase)
+                in_main_phase = False
+                try:
+                    if isinstance(p_name, str) and 'MAIN' in p_name.upper():
+                        in_main_phase = True
+                    elif isinstance(cur_phase, int) and int(cur_phase) == 3:
+                        in_main_phase = True
+                except Exception:
+                    in_main_phase = False
+
                 # If normalized detection found a play, skip heuristic
-                if not ('has_play_native' in locals() and has_play_native):
+                if not ('has_play_native' in locals() and has_play_native) and in_main_phase:
                     has_play = False
                     for a in list(actions):
                         try:
@@ -370,6 +465,10 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                                 act.card_id = cid
                                 act.source_instance_id = getattr(c, 'instance_id', -1)
                                 actions.append(act)
+                                try:
+                                    print(f"Debug play_heuristic2 -> pid={pid}, usable_mana={usable_mana}, card_id={cid}, cdef_present={bool(cdef)}, cost={cost}")
+                                except Exception:
+                                    pass
             except Exception:
                 pass
 

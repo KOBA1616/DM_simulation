@@ -891,7 +891,7 @@
     "effects": [
       {
         "uid": "bdc305e4-63e1-4d9b-832e-c2aa10013e2e",
-        "trigger": "ON_PLAY",
+        "trigger": "ON_OPPONENT_CREATURE_ENTER",
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -899,10 +899,10 @@
         },
         "commands": [
           {
-            "uid": "b2859a60-c6c1-46a7-a96a-a19a39328cbb",
+            "uid": "f0ecf224-4e76-4085-971b-e2e504f50df6",
             "type": "APPLY_MODIFIER",
             "_input_value_label": "EVENT_SOURCE (イベント発生源 (汎用))",
-            "amount": 1,
+            "amount": 0,
             "duration": "UNTIL_START_OF_OPPONENT_TURN",
             "input_value_usage": "",
             "str_param": "CANNOT_ATTACK",
@@ -914,7 +914,7 @@
                 "BATTLE_ZONE"
               ]
             },
-            "target_group": "PLAYER_SELF",
+            "target_group": "PLAYER_OPPONENT",
             "input_value_key": "EVENT_SOURCE"
           }
         ]
@@ -1044,8 +1044,11 @@
               ],
               [
                 {
-                  "uid": "7b25dde4-0f68-4888-bd17-b46a973c3a73",
-                  "type": "REGISTER_DELAYED_EFFECT"
+                  "uid": "64138cc9-e268-4e25-87e6-dfe9ea975a7f",
+                  "type": "REGISTER_DELAYED_EFFECT",
+                  "amount": 0,
+                  "input_value_usage": "",
+                  "str_param": "AT_ATTACK_END_UNTAP"
                 }
               ]
             ]
