@@ -80,5 +80,20 @@ class TestActionToCommand(unittest.TestCase):
         self.assertEqual(cmd['instance_id'], 0)
         self.assertEqual(cmd['target_instance'], 1)
 
+    def test_zero_value_implies_all(self):
+        """Verify that value1: 0 implies amount: 255 (ALL) for specific commands."""
+        target_types = ["DESTROY", "DISCARD", "RETURN_TO_HAND", "TAP", "UNTAP", "SEND_TO_MANA"]
+
+        for t in target_types:
+            action = {"type": t, "value1": 0}
+            cmd = map_action(action)
+            self.assertEqual(cmd['amount'], 255, f"{t} with value1=0 should map to amount=255")
+
+        # Test generic MOVE_CARD (maps to TRANSITION or specific)
+        action = {"type": "MOVE_CARD", "value1": 0, "to_zone": "GRAVEYARD"}
+        cmd = map_action(action)
+        # Assuming maps to TRANSITION or DESTROY depending on inferrence, but handle move card logic applies 255
+        self.assertEqual(cmd['amount'], 255, "MOVE_CARD with value1=0 should map to amount=255")
+
 if __name__ == '__main__':
     unittest.main()

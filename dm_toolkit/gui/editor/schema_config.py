@@ -10,6 +10,14 @@ MUTATION_TYPES = [
     "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE"
 ]
 
+DELAYED_EFFECT_IDS = [
+    "AT_END_OF_TURN_DESTROY",
+    "AT_END_OF_TURN_RETURN_TO_HAND",
+    "AT_END_OF_TURN_UNTAP",
+    "AT_START_OF_TURN_DRAW",
+    "AT_ATTACK_END_UNTAP"
+]
+
 # Effect IDs for APPLY_MODIFIER (not keywords)
 EFFECT_IDS = [
     "CANNOT_ATTACK",
@@ -266,7 +274,7 @@ def register_all_schemas():
 
     # REGISTER_DELAYED_EFFECT
     register_schema(CommandSchema("REGISTER_DELAYED_EFFECT", [
-        FieldSchema("str_param", tr("Effect ID"), FieldType.STRING),
+        FieldSchema("str_param", tr("Effect ID"), FieldType.SELECT, options=DELAYED_EFFECT_IDS),
         FieldSchema("amount", tr("Duration (Turns)"), FieldType.INT, default=1),
         f_links_in
     ]))

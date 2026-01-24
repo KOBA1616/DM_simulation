@@ -174,6 +174,11 @@ class FilterEditorWidget(QWidget):
         flags_layout.addWidget(lbl_card, 3, 0)
         flags_layout.addWidget(self.card_designation_combo, 3, 1)
 
+        self.trigger_source_check = QCheckBox(tr("Match Trigger Source"))
+        self.trigger_source_check.setToolTip(tr("Target the specific card/object that triggered the event."))
+        self.trigger_source_check.stateChanged.connect(self.filterChanged.emit)
+        flags_layout.addWidget(self.trigger_source_check, 4, 0, 1, 2)
+
         # 4. Count / Selection Mode (Keep at bottom)
         self.sel_group = QGroupBox(tr("Selection"))
         sel_layout = QGridLayout(self.sel_group)
@@ -300,6 +305,7 @@ class FilterEditorWidget(QWidget):
         set_tristate(self.blocker_combo, filt_data.get('is_blocker'))
         set_tristate(self.evolution_combo, filt_data.get('is_evolution'))
         set_tristate(self.card_designation_combo, filt_data.get('is_card_designation'))
+        self.trigger_source_check.setChecked(bool(filt_data.get('is_trigger_source', False)))
 
         # Count
         count_val = filt_data.get('count', 0)
@@ -375,6 +381,9 @@ class FilterEditorWidget(QWidget):
         val_card = get_tristate(self.card_designation_combo)
         if val_card is not None: filt['is_card_designation'] = val_card
 
+        if self.trigger_source_check.isChecked():
+            filt['is_trigger_source'] = True
+
         mode = self.mode_combo.currentData()
         if mode == 1:
             count = self.count_spin.value()
@@ -407,6 +416,7 @@ class FilterEditorWidget(QWidget):
         self.blocker_combo.blockSignals(block)
         self.evolution_combo.blockSignals(block)
         self.card_designation_combo.blockSignals(block)
+        self.trigger_source_check.blockSignals(block)
         self.mode_combo.blockSignals(block)
         self.count_spin.blockSignals(block)
         self.sort_mode_combo.blockSignals(block)
