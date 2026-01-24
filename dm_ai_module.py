@@ -1202,7 +1202,7 @@ else:
             self.sims = sims
             self.batch_size = batch_size
 
-        def play_games(self, initial_states: List[Any], evaluator_func: Any, temperature: float, verbose: bool, threads: int) -> List[Any]:
+        def play_games(self, initial_states: List[Any], evaluator_func: Any, temperature: float, add_noise: bool, threads: int) -> List[Any]:
             results = []
             # Minimal mock implementation: return Draw for all games
             for _ in initial_states:

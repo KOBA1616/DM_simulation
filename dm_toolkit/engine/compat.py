@@ -1392,7 +1392,8 @@ class EngineCompat:
         real_db = EngineCompat._resolve_db(card_db)
         if hasattr(dm_ai_module, 'TensorConverter') and hasattr(dm_ai_module.TensorConverter, 'convert_to_tensor'):
             return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, real_db)
-        return []
+        # Return standard zero vector if native not available to prevent crashes in network modules
+        return [0.0] * 856
 
     @staticmethod
     def get_pending_effects_info(state: GameState) -> List[Any]:
@@ -1432,7 +1433,7 @@ class EngineCompat:
         return None
 
     @staticmethod
-    def ParallelRunner_play_games(runner: Any, initial_states: List[GameState], evaluator_func: Callable, temperature: float, verbose: bool, threads: int) -> List[Any]:
+    def ParallelRunner_play_games(runner: Any, initial_states: List[GameState], evaluator_func: Callable, temperature: float, add_noise: bool, threads: int) -> List[Any]:
         if runner and hasattr(runner, 'play_games'):
-            return list(runner.play_games(initial_states, evaluator_func, temperature, verbose, threads))
+            return list(runner.play_games(initial_states, evaluator_func, temperature, add_noise, threads))
         raise RuntimeError("ParallelRunner invalid or play_games not found")
