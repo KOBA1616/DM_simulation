@@ -364,6 +364,18 @@ class UnifiedActionForm(BaseEditForm):
             # Since we assigned attrs, Pydantic (if v2 with validate_assignment=True) would raise.
             # If v1 or default, we might need manual validate or model_dump check.
 
+            # Auto-map "COST" usage to filter cost_ref
+            # input_value_usage is in new_data (from links widget)
+            usage = new_data.get('input_value_usage')
+            key_var = new_data.get('input_value_key') or new_data.get('input_var')
+
+            if usage == 'COST' and key_var:
+                if 'target_filter' in model.params:
+                    tf = model.params['target_filter']
+                    if isinstance(tf, dict):
+                        tf['cost_ref'] = key_var
+                        model.params['target_filter'] = tf
+
             # Merge model back to dict
             dump = model.model_dump(exclude_none=True)
             new_data.update(dump)
