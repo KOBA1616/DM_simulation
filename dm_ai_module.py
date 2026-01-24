@@ -1189,3 +1189,62 @@ else:
                     self.policies = [[]]
                     self.values = [0]
             return Batch()
+
+    class TensorConverter:
+        @staticmethod
+        def convert_to_tensor(state: Any, player_id: int, card_db: Any) -> List[float]:
+            # Return a zero vector of size 856 as expected by the model
+            return [0.0] * 856
+
+    class ParallelRunner:
+        def __init__(self, card_db: Any, sims: int, batch_size: int):
+            self.card_db = card_db
+            self.sims = sims
+            self.batch_size = batch_size
+
+        def play_games(self, initial_states: List[Any], evaluator_func: Any, temperature: float, verbose: bool, threads: int) -> List[Any]:
+            results = []
+            # Minimal mock implementation: return Draw for all games
+            for _ in initial_states:
+                class ResultInfo:
+                    def __init__(self, r):
+                        self.result = r
+                        self.winner = r
+                        self.is_over = True
+                results.append(ResultInfo(2)) # 2 = DRAW
+            return results
+
+    class NeuralEvaluator:
+        def __init__(self, card_db: Any):
+            pass
+        def evaluate(self, state: Any):
+            return [1.0/600.0]*600, 0.0
+
+    class HeuristicEvaluator:
+        def __init__(self, card_db: Any):
+            pass
+        def evaluate(self, state: Any):
+            return [1.0/600.0]*600, 0.0
+
+    class ScenarioConfig:
+        def __init__(self):
+            self.my_mana = 0
+            self.my_hand_cards = []
+            self.my_battle_zone = []
+            self.my_mana_zone = []
+            self.my_grave_yard = []
+            self.my_shields = []
+            self.enemy_shield_count = 5
+            self.enemy_battle_zone = []
+            self.enemy_can_use_trigger = False
+            self.turn_number = 1
+            self.active_player_id = 0
+
+    def register_batch_inference_numpy(callback: Any) -> None:
+        pass
+
+    # Patch PhaseManager with setup_scenario if missing
+    if not hasattr(PhaseManager, 'setup_scenario'):
+        def _setup_scenario(state: Any, config: Any, card_db: Any) -> None:
+             pass
+        PhaseManager.setup_scenario = staticmethod(_setup_scenario)

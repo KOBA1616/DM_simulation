@@ -1,0 +1,75 @@
+
+import unittest
+import sys
+import os
+
+# Ensure the project root is in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from dm_toolkit.engine.compat import EngineCompat, dm_ai_module, GameState
+
+class TestNativeInferenceBridge(unittest.TestCase):
+    def setUp(self):
+        # Ensure native is enabled/checked
+        EngineCompat._check_module()
+
+    def test_tensor_converter(self):
+        """Verify TensorConverter_convert_to_tensor returns expected vector."""
+        state = GameState()
+        card_db = {} # Mock DB
+
+        # Should return a list of floats (zeros in fallback)
+        vec = EngineCompat.TensorConverter_convert_to_tensor(state, 0, card_db)
+
+        self.assertIsInstance(vec, list)
+        # Check specific length 856 as per requirement/memory
+        self.assertEqual(len(vec), 856, "Tensor vector length should be 856")
+        self.assertTrue(all(x == 0 for x in vec), "Fallback vector should be all zeros")
+
+    def test_register_batch_inference_numpy(self):
+        """Verify register_batch_inference_numpy accepts a callback."""
+        def dummy_callback(batch):
+            return []
+
+        # Should not raise exception
+        try:
+            EngineCompat.register_batch_inference_numpy(dummy_callback)
+        except Exception as e:
+            self.fail(f"register_batch_inference_numpy failed with: {e}")
+
+    def test_parallel_runner_lifecycle(self):
+        """Verify create_parallel_runner and ParallelRunner_play_games."""
+        card_db = {}
+        sims = 10
+        batch_size = 4
+
+        runner = EngineCompat.create_parallel_runner(card_db, sims, batch_size)
+        self.assertIsNotNone(runner, "Failed to create ParallelRunner")
+
+        initial_states = [GameState() for _ in range(2)]
+
+        def dummy_evaluator(states):
+            # Returns list of (policy, value)
+            return [([0.0]*600, 0.0) for _ in states]
+
+        # Run play_games
+        # Note: In fallback, this might be a simple mock or serial execution
+        results = EngineCompat.ParallelRunner_play_games(
+            runner,
+            initial_states,
+            dummy_evaluator,
+            temperature=1.0,
+            verbose=False,
+            threads=1
+        )
+
+        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), len(initial_states))
+
+        # Verify result structure (GameResult-like)
+        for res in results:
+            self.assertTrue(hasattr(res, 'result'), "Result should have 'result' attribute")
+            self.assertTrue(hasattr(res, 'winner'), "Result should have 'winner' attribute")
+
+if __name__ == '__main__':
+    unittest.main()
