@@ -512,6 +512,16 @@ def _handle_move_card(act, cmd, src, dest):
     _transfer_common_move_fields(act, cmd)
 
 def _handle_specific_moves(act_type, act, cmd, src):
+    """
+    Handle move actions that imply specific source/destination zones.
+
+    Applies default zone transitions when not explicitly provided:
+    - MANA_CHARGE: HAND -> MANA
+    - ADD_MANA: DECK -> MANA
+    - ADD_SHIELD: DECK -> SHIELD
+    - SEARCH_DECK_BOTTOM: DECK -> DECK_BOTTOM
+    - DESTROY: [Any] -> GRAVEYARD
+    """
     # Preserve the specific action type for compatibility with tests
     cmd['type'] = act_type
     # Also record original semantic intent as a reason for compatibility
