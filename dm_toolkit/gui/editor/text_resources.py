@@ -77,6 +77,7 @@ class CardTextResources:
         "AT_BREAK_SHIELD": "シールドをブレイクする時",
         "ON_CAST_SPELL": "呪文を唱えた時",
         "ON_OPPONENT_DRAW": "相手がカードを引いた時",
+        "ON_OPPONENT_CREATURE_ENTER": "相手のクリーチャーが出た時",
         "NONE": ""
     }
     

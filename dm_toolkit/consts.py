@@ -287,7 +287,8 @@ TRIGGER_TYPES = [
     "ON_ATTACK_FROM_HAND",
     "AT_BREAK_SHIELD",
     "ON_CAST_SPELL",
-    "ON_OPPONENT_DRAW"
+    "ON_OPPONENT_DRAW",
+    "ON_OPPONENT_CREATURE_ENTER"
 ]
 
 # Triggers valid for Spells (subset of above)
