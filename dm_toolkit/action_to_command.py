@@ -36,6 +36,9 @@ except Exception:
 _CommandType = getattr(dm_ai_module, 'CommandType', None) if dm_ai_module is not None else None
 _Zone = getattr(dm_ai_module, 'Zone', None) if dm_ai_module is not None else None
 
+# Value used to represent "ALL" when amount is 0 for targeting commands
+AMOUNT_ALL = 255
+
 # Virtual command types that are allowed even if the native CommandType enum
 # does not expose them (handled by Python-side fallbacks or post-processing).
 _ALLOWED_VIRTUAL_COMMAND_TYPES = {"REPLACE_CARD_MOVE", "CHOICE"}
@@ -342,6 +345,10 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     elif act_type in ["TAP", "UNTAP"]:
         cmd['type'] = act_type
         _transfer_targeting(act_data, cmd)
+        if 'amount' in act_data: cmd['amount'] = act_data['amount']
+        elif 'value1' in act_data: cmd['amount'] = act_data['value1']
+        if 'amount' in cmd and cmd['amount'] == 0:
+            cmd['amount'] = AMOUNT_ALL
 
     elif act_type in ["COUNT_CARDS", "MEASURE_COUNT", "GET_GAME_STAT"]:
         cmd['type'] = "QUERY"
@@ -481,6 +488,8 @@ def _handle_replace_card_move(act: Dict[str, Any], cmd: Dict[str, Any], original
         cmd['instance_id'] = act['target_instance']
 
     _transfer_common_move_fields(act, cmd)
+    if 'amount' in cmd and cmd['amount'] == 0:
+        cmd['amount'] = AMOUNT_ALL
 
 def _handle_move_card(act, cmd, src, dest):
     # Map generic MOVE_CARD to a more specific command when destination implies it.
@@ -510,6 +519,8 @@ def _handle_move_card(act, cmd, src, dest):
         cmd['from_zone'] = src
 
     _transfer_common_move_fields(act, cmd)
+    if 'amount' in cmd and cmd['amount'] == 0:
+        cmd['amount'] = AMOUNT_ALL
 
 def _handle_specific_moves(act_type, act, cmd, src):
     """
@@ -570,6 +581,11 @@ def _handle_specific_moves(act_type, act, cmd, src):
 
     _transfer_common_move_fields(act, cmd)
 
+    # Map explicit 0 amount to ALL (255) for targeting moves
+    if act_type in ["DESTROY", "DISCARD", "RETURN_TO_HAND", "SEND_TO_MANA"]:
+        if 'amount' in cmd and cmd['amount'] == 0:
+            cmd['amount'] = AMOUNT_ALL
+
 def _handle_modifiers(act_type, act, cmd):
     val = act.get('str_param') or act.get('str_val', '')
     if act_type == "COST_REDUCTION" or val == "COST":
@@ -592,6 +608,8 @@ def _handle_mutate(act_type, act, cmd):
 
     if sval in ("TAP", "UNTAP"):
         cmd['type'] = sval
+        if 'amount' in act: cmd['amount'] = act['amount']
+        elif 'value1' in act: cmd['amount'] = act['value1']
     elif sval == "SHIELD_BURN":
         cmd['type'] = "SHIELD_BURN"
         if 'amount' in act: cmd['amount'] = act['amount']
@@ -623,6 +641,11 @@ def _handle_mutate(act_type, act, cmd):
         if 'amount' in act: cmd['amount'] = act['amount']
         elif 'value1' in act: cmd['amount'] = act['value1']
     _transfer_targeting(act, cmd)
+
+    # Map explicit 0 amount to ALL for TAP/UNTAP
+    if cmd.get('type') in ["TAP", "UNTAP"]:
+        if 'amount' in cmd and cmd['amount'] == 0:
+            cmd['amount'] = AMOUNT_ALL
 
 def _handle_selection(act_type, act, cmd):
     if act_type == "SELECT_OPTION":
