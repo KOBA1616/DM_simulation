@@ -1345,6 +1345,10 @@ class CardTextGenerator:
             else:
                 select_phrase = f"{target_str}を選び、"
 
+            if str_param == "COST":
+                amt_val = amt if isinstance(amt, int) else 0
+                return f"{select_phrase}{duration_text}そのクリーチャーにコスト修正（{amt_val}）を与える。"
+
             return f"{select_phrase}{duration_text}そのクリーチャーに{effect_text}を与える。"
 
         elif atype == "ADD_KEYWORD":
@@ -1414,10 +1418,10 @@ class CardTextGenerator:
                  template = "{target}を{amount}{unit}選び、タップする。"
              elif mkind == "UNTAP":
                  template = "{target}を{amount}{unit}選び、アンタップする。"
-             elif mkind == "POWER_MOD":
+             elif mkind == "POWER_MOD" or mkind == "GIVE_POWER":
                  sign = "+" if val1 >= 0 else ""
                  return f"{duration_text}{target_str}のパワーを{sign}{val1}する。"
-             elif mkind == "ADD_KEYWORD":
+             elif mkind == "ADD_KEYWORD" or mkind == "GIVE_ABILITY":
                  keyword = CardTextResources.get_keyword_text(str_param)
                  return f"{duration_text}{target_str}に「{keyword}」を与える。"
              elif mkind == "REMOVE_KEYWORD":
@@ -1605,7 +1609,7 @@ class CardTextGenerator:
                          base += f"（{usage_label}）"
                  return base
              
-             if str(mode) == "CARDS_MATCHING_FILTER" or not mode:
+             if str(mode) == "CARDS_MATCHING_FILTER" or str(mode) == "COUNT_CARDS" or not mode:
                  filter_def = action.get("filter", {})
                  zones = filter_def.get("zones", [])
                  if target_str and target_str != "カード":
