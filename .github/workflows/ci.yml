@@ -44,7 +44,12 @@ jobs:
 
       - name: Run Python tests (pytest)
         run: |
-          PYTHONPATH=build:${PYTHONPATH} python -m pytest -q
+          # Prepend repo root so the Python wrapper `dm_ai_module.py` is
+          # imported before any built extension in `build/`.
+          PYTHONPATH=.${PYTHONPATH:+:}${PYTHONPATH}
+          PYTHONPATH=.\:build:${PYTHONPATH}
+          PYTHONPATH=.:build:${PYTHONPATH}
+          python -m pytest -q
 
   build-windows:
     runs-on: windows-latest

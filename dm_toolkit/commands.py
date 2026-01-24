@@ -231,14 +231,14 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                     except Exception:
                         tname = str(t)
                     tt = tname.upper()
-                        # Accept several aliases and unified indicators for play actions
-                        if tt in ('PLAY_FROM_ZONE', 'PLAY_FROM_BUFFER', 'CAST_SPELL', 'PLAY_CARD', 'FRIEND_BURST', 'PLAY', 'DECLARE_PLAY', 'PUT_INTO_PLAY'):
-                            has_play_native = True
-                            break
-                        # Also inspect other possible hints
-                        if isinstance(c.get('unified_type'), str) and str(c.get('unified_type')).upper().startswith('PLAY'):
-                            has_play_native = True
-                            break
+                    # Accept several aliases and unified indicators for play actions
+                    if tt in ('PLAY_FROM_ZONE', 'PLAY_FROM_BUFFER', 'CAST_SPELL', 'PLAY_CARD', 'FRIEND_BURST', 'PLAY', 'DECLARE_PLAY', 'PUT_INTO_PLAY'):
+                        has_play_native = True
+                        break
+                    # Also inspect other possible hints
+                    if isinstance(c.get('unified_type'), str) and str(c.get('unified_type')).upper().startswith('PLAY'):
+                        has_play_native = True
+                        break
             except Exception:
                 has_play_native = False
         except Exception as e:
@@ -315,6 +315,42 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
 
         if not actions or pass_only:
             try:
+                # Defensive fallback: if the engine returned no meaningful
+                # actions, attempt to advance the phase(s) a small number
+                # of times via the PhaseManager so native generator has a
+                # chance to produce phase-appropriate actions.
+                try:
+                    if hasattr(dm_ai_module, 'PhaseManager'):
+                        # Prefer fast_forward if available (advances until
+                        # actions are present or game over); otherwise step
+                        # a small number of phases.
+                        if hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
+                            try:
+                                dm_ai_module.PhaseManager.fast_forward(state, card_db)
+                                # Re-query actions after fast_forward
+                                actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+                            except Exception:
+                                # If fast_forward fails for any reason, fall back
+                                # to stepping phases a couple times.
+                                for _ in range(2):
+                                    try:
+                                        dm_ai_module.PhaseManager.next_phase(state, card_db)
+                                        actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+                                        if actions:
+                                            break
+                                    except Exception:
+                                        pass
+                        else:
+                            for _ in range(2):
+                                try:
+                                    dm_ai_module.PhaseManager.next_phase(state, card_db)
+                                    actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+                                    if actions:
+                                        break
+                                except Exception:
+                                    pass
+                except Exception:
+                    pass
                 from dm_ai_module import Action, ActionType
 
                 pid = getattr(state, 'active_player_id', 0)
@@ -435,7 +471,9 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                         try:
                             t = getattr(a, 'type', None)
                             tname = getattr(t, 'name', str(t)) if t is not None else str(t)
-                            if isinstance(tname, str) and tname.endswith('PLAY_CARD'):
+                            tn = str(tname).upper()
+                            # Consider many aliases: DECLARE_PLAY / PLAY_CARD / CAST_SPELL etc.
+                            if ('PLAY' in tn or 'DECLARE' in tn or 'CAST' in tn) and 'PASS' not in tn:
                                 has_play = True
                                 break
                         except Exception:

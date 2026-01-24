@@ -51,6 +51,8 @@ jobs:
       - name: Run tests
         shell: pwsh
         env:
-          PYTHONPATH: ${{ github.workspace }}\build\Release;${{ github.workspace }}\build
+          # Prepend repo root so the Python wrapper `dm_ai_module.py` is
+          # imported before the compiled extension.
+          PYTHONPATH: ${{ github.workspace }};${{ github.workspace }}\build\Release;${{ github.workspace }}\build
         run: |
           python -m pytest -q

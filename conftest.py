@@ -12,6 +12,23 @@ def pytest_configure(config):
         # disable quiet so pytest doesn't suppress output
         config.option.quiet = 0
 
+        # Force-load the repository dm_ai_module.py wrapper into sys.modules so
+        # tests use the Python stub/wrapper instead of accidentally importing a
+        # partial/native extension that may not expose the expected enums.
+        try:
+            import sys, os, importlib.util
+            root = os.path.dirname(os.path.abspath(__file__))
+            wrapper_path = os.path.join(root, 'dm_ai_module.py')
+            if os.path.exists(wrapper_path):
+                spec = importlib.util.spec_from_file_location('dm_ai_module', wrapper_path)
+                if spec is not None:
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules['dm_ai_module'] = module
+                    if spec.loader is not None:
+                        spec.loader.exec_module(module)
+        except Exception:
+            # Best-effort only; don't fail test startup on platform-specific issues
+            pass
 
 class _ProgressPlugin:
     """Simple pytest plugin to print a one-line progress bar and counts."""

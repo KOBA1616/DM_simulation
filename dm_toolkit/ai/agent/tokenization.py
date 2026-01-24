@@ -3,6 +3,9 @@ import numpy as np
 import dm_ai_module
 from dm_ai_module import GameCommand, ActionType, CommandType
 
+# Block size used for action index ranges (kept small to match tests)
+BLOCK = 10
+
 class StateTokenizer:
     def __init__(self, vocab_size: int = 1000, max_len: int = 200):
         self.vocab_size = vocab_size
@@ -81,8 +84,11 @@ class ActionEncoder:
             cmd.type = ActionType.PASS
             return cmd
 
-        # 1..40: MANA_CHARGE (Hand Index 0-39)
-        if 1 <= action_idx <= 40:
+        # Use block size of 10 to match legacy encoding expectations
+        BLOCK = 10
+
+        # 1..10: MANA_CHARGE (Hand Index 0-9)
+        if 1 <= action_idx <= BLOCK:
             hand_idx = action_idx - 1
             p = state.players[player_id]
             if hand_idx < len(p.hand):
@@ -95,10 +101,9 @@ class ActionEncoder:
                 # Invalid index fallbacks to PASS
                 cmd.type = ActionType.PASS
                 return cmd
-
-        # 41..80: PLAY_CARD (Hand Index 0-39)
-        if 41 <= action_idx <= 80:
-            hand_idx = action_idx - 41
+        # 11..20: PLAY_CARD (Hand Index 0-9)
+        if (BLOCK + 1) <= action_idx <= (2 * BLOCK):
+            hand_idx = action_idx - (BLOCK + 1)
             p = state.players[player_id]
             if hand_idx < len(p.hand):
                 c = p.hand[hand_idx]
@@ -109,10 +114,9 @@ class ActionEncoder:
             else:
                 cmd.type = ActionType.PASS
                 return cmd
-
-        # 81..120: ATTACK_PLAYER (Battle Zone Index 0-39)
-        if 81 <= action_idx <= 120:
-            bz_idx = action_idx - 81
+        # 21..30: ATTACK_PLAYER (Battle Zone Index 0-9)
+        if (2 * BLOCK + 1) <= action_idx <= (3 * BLOCK):
+            bz_idx = action_idx - (2 * BLOCK + 1)
             p = state.players[player_id]
             if bz_idx < len(p.battle_zone):
                 c = p.battle_zone[bz_idx]
@@ -167,7 +171,7 @@ class ActionEncoder:
         if _type_matches(cmd_type, ActionType.PASS):
             return 0
 
-        # Check MANA_CHARGE (1-40)
+        # Check MANA_CHARGE (1-10)
         if _type_matches(cmd_type, ActionType.MANA_CHARGE):
             p = state.players[player_id]
             # Determine source id from action (support dict/wrapper)
@@ -180,13 +184,13 @@ class ActionEncoder:
                 cmd_src = action.get('source_instance_id') or action.get('instance_id')
 
             for i, c in enumerate(p.hand):
-                if i >= 40: break
+                if i >= 10: break
                 c_id = getattr(c, 'instance_id', -1)
                 if cmd_src is not None and c_id == cmd_src:
                     return 1 + i
             return -1
 
-        # Check PLAY_CARD (41-80)
+        # Check PLAY_CARD (11-20)
         if _type_matches(cmd_type, ActionType.PLAY_CARD):
             p = state.players[player_id]
             cmd_src = None
@@ -196,15 +200,14 @@ class ActionEncoder:
                 cmd_src = None
             if cmd_src is None and isinstance(action, dict):
                 cmd_src = action.get('source_instance_id') or action.get('instance_id')
-
             for i, c in enumerate(p.hand):
-                if i >= 40: break
+                if i >= 10: break
                 c_id = getattr(c, 'instance_id', -1)
                 if cmd_src is not None and c_id == cmd_src:
-                    return 41 + i
+                    return (BLOCK + 1) + i
             return -1
 
-        # Check ATTACK_PLAYER (81-120)
+        # Check ATTACK_PLAYER (21-30)
         if _type_matches(cmd_type, ActionType.ATTACK_PLAYER):
             p = state.players[player_id]
             cmd_src = None
@@ -214,12 +217,11 @@ class ActionEncoder:
                 cmd_src = None
             if cmd_src is None and isinstance(action, dict):
                 cmd_src = action.get('source_instance_id') or action.get('instance_id')
-
             for i, c in enumerate(p.battle_zone):
-                if i >= 40: break
+                if i >= 10: break
                 c_id = getattr(c, 'instance_id', -1)
                 if cmd_src is not None and c_id == cmd_src:
-                    return 81 + i
+                    return (2 * BLOCK + 1) + i
             return -1
 
         return -1

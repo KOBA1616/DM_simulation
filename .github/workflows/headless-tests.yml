@@ -28,4 +28,6 @@ jobs:
 
       - name: Run headless GUI stub tests
         run: |
+          # Ensure repo root is on PYTHONPATH so the Python wrapper is used
+          PYTHONPATH=.:$PYTHONPATH
           python scripts/run_pytest_with_pyqt_stub.py python/tests -q

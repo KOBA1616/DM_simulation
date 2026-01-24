@@ -727,6 +727,8 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
         cmd['type'] = "PLAY_FROM_ZONE"
         cmd['from_zone'] = src or "HAND"
         cmd['to_zone'] = dest or "BATTLE"
+        # Unified hint for downstream detection
+        cmd['unified_type'] = 'PLAY'
         if 'value1' in act: cmd['amount'] = act['value1']
     elif act_type == "PLAY_FROM_ZONE":
         # Consolidate play commands to a single PLAY command with from_zone
@@ -735,6 +737,7 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
         cmd['to_zone'] = dest or 'BATTLE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
         cmd['str_param'] = "PLAY_FROM_ZONE_HINT"
+        cmd['unified_type'] = 'PLAY'
         # propagate explicit play_for_free flag if present
         if act.get('play_for_free') or act.get('play_free'):
             cmd.setdefault('play_flags', []).append('PLAY_FOR_FREE')
@@ -745,6 +748,7 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
         cmd['type'] = "FRIEND_BURST"
         cmd['str_val'] = act.get('str_val')
         if 'value1' in act: cmd['value1'] = act['value1']
+        cmd['unified_type'] = 'PLAY'
     elif act_type == "REGISTER_DELAYED_EFFECT":
         cmd['type'] = "REGISTER_DELAYED_EFFECT"
         cmd['str_val'] = act.get('str_val')
@@ -752,6 +756,7 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
     elif act_type == "CAST_SPELL":
         cmd['type'] = "CAST_SPELL"
         if 'str_val' in act: cmd['str_val'] = act['str_val']
+        cmd['unified_type'] = 'PLAY'
 
     _transfer_targeting(act, cmd)
 
