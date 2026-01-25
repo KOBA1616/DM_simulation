@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtGui import QStandardItemModel
-from PyQt6.QtCore import QModelIndex
+try:
+    from PyQt6.QtGui import QStandardItemModel
+    from PyQt6.QtCore import QModelIndex
+except ImportError:
+    from dm_toolkit.gui.editor.virtual_model import VirtualStandardItemModel as QStandardItemModel
+    QModelIndex = None
+
 from dm_toolkit.gui.i18n import tr
 import copy
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
@@ -148,7 +153,7 @@ class CardDataManager:
         return f"{tr('Action')}: {tr(cmd_type)}"
 
     def add_child_item(self, parent_index, item_type, data, label):
-        if isinstance(parent_index, QModelIndex):
+        if QModelIndex and isinstance(parent_index, QModelIndex):
             parent_item = self.model.itemFromIndex(parent_index)
         else:
             parent_item = parent_index

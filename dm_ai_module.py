@@ -583,6 +583,19 @@ if 'JsonLoader' not in globals():
             except Exception:
                 return {}
 
+if 'ScenarioConfig' not in globals():
+    class ScenarioConfig:
+        def __init__(self):
+            self.my_mana = 0
+            self.my_hand_cards = []
+            self.my_battle_zone = []
+            self.my_mana_zone = []
+            self.my_grave_yard = []
+            self.my_shields = []
+            self.enemy_shield_count = 5
+            self.enemy_battle_zone = []
+            self.enemy_can_use_trigger = False
+
 if 'PhaseManager' not in globals():
     class PhaseManager:
         @staticmethod
@@ -626,6 +639,11 @@ if 'PhaseManager' not in globals():
                             c.is_tapped = False
                         except Exception:
                             pass
+
+        @staticmethod
+        def setup_scenario(state: Any, config: Any, db: Any) -> None:
+            # Minimal implementation for verification
+            pass
 
         @staticmethod
         def check_game_over(state: Any, result: Any = None) -> Any:
