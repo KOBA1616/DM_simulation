@@ -1,8 +1,0 @@
-name: Windows Build & Tests (disabled)
-
-# This workflow previously built and tested on Windows. It has been disabled
-# to reduce CI load. Keep the file as a historical reference; to re-enable,
-# remove `on: none` and restore jobs.
-on: none
-
-# No jobs defined.

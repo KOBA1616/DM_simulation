@@ -1,7 +1,0 @@
-name: Mypy (disabled)
-
-# Static type check workflow disabled to reduce CI noise. Re-enable by
-# restoring triggers and job steps.
-on: none
-
-# No jobs defined.
