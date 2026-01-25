@@ -979,6 +979,35 @@ class CardTextGenerator:
         return jp.get(z, tr(z))
 
     @classmethod
+    def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None) -> str:
+        """Helper to format keyword granting text, handling restriction keywords specially."""
+        restriction_keys = [
+            'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
+        ]
+
+        # Check against ID or upper case ID
+        is_restriction = (key_id in restriction_keys) or (str(key_id).upper() in restriction_keys)
+
+        if is_restriction:
+            # Build selection phrase
+            if isinstance(amount, int) and amount > 0:
+                select_phrase = f"{target_str}を{amount}体選び、"
+            else:
+                select_phrase = f"{target_str}を選び、"
+
+            # Ensure duration_text ends with comma
+            if duration_text and not duration_text.endswith('、'):
+                duration_text += "、"
+
+            return f"{select_phrase}{duration_text}そのクリーチャーは{display_text}。"
+
+        # Default behavior
+        if duration_text and not duration_text.endswith('、'):
+            duration_text += "、"
+
+        return f"{duration_text}{target_str}に「{display_text}」を与える。"
+
+    @classmethod
     def _format_command(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
         if not command:
             return ""
@@ -1340,16 +1369,15 @@ class CardTextGenerator:
             if amt is None:
                 amt = action.get('value1')
 
-            if isinstance(amt, int) and amt > 0:
-                select_phrase = f"{target_str}を{amt}{unit}は、"
-            else:
-                select_phrase = f"{target_str}を選び、"
-
             if str_param == "COST":
                 amt_val = amt if isinstance(amt, int) else 0
+                if isinstance(amt, int) and amt > 0:
+                    select_phrase = f"{target_str}を{amt}{unit}は、"
+                else:
+                    select_phrase = f"{target_str}を選び、"
                 return f"{select_phrase}{duration_text}そのクリーチャーにコスト修正（{amt_val}）を与える。"
 
-            return f"{select_phrase}{duration_text}そのクリーチャーに{effect_text}を与える。"
+            return cls._format_keyword_grant_text(target_str, str_param, effect_text, duration_text, amt)
 
         elif atype == "ADD_KEYWORD":
             str_val = action.get("str_val") or action.get("str_param", "")
@@ -1366,11 +1394,6 @@ class CardTextGenerator:
 
             keyword = CardTextResources.get_keyword_text(str_val)
 
-            # If this is a restriction keyword, use a different natural phrasing
-            restriction_keys = [
-                'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
-            ]
-
             # Explicit "this card" target override
             if action.get("explicit_self"):
                 target_str = "このカード"
@@ -1382,20 +1405,8 @@ class CardTextGenerator:
                 if "SHIELD_ZONE" in filt.get("zones") or "SHIELD" in filt.get("zones"):
                     target_str = "カード"
 
-            if str_val in restriction_keys or str_val.upper() in restriction_keys:
-                # Build selection phrase (amount may be provided)
-                amt = action.get('amount', 1)
-                if isinstance(amt, int) and amt > 0:
-                    select_phrase = f"{target_str}を{amt}体選び、"
-                else:
-                    select_phrase = f"{target_str}を選び、"
-
-                # duration_text already formatted (e.g., "次の自分のターンのはじめは、")
-                # Final natural phrasing
-                return f"{select_phrase}{duration_text}そのクリーチャーは{keyword}。"
-
-            # Default phrasing for non-restriction keywords
-            return f"{duration_text}{target_str}に「{keyword}」を与える。"
+            amt = action.get('amount', 1)
+            return cls._format_keyword_grant_text(target_str, str_val, keyword, duration_text, amt)
 
         elif atype == "MUTATE":
              mkind = action.get("mutation_kind", "")
@@ -1423,7 +1434,8 @@ class CardTextGenerator:
                  return f"{duration_text}{target_str}のパワーを{sign}{val1}する。"
              elif mkind == "ADD_KEYWORD" or mkind == "GIVE_ABILITY":
                  keyword = CardTextResources.get_keyword_text(str_param)
-                 return f"{duration_text}{target_str}に「{keyword}」を与える。"
+                 # Revert amount usage for MUTATE - it usually comes from val1 which is amount
+                 return cls._format_keyword_grant_text(target_str, str_param, keyword, duration_text, val1)
              elif mkind == "REMOVE_KEYWORD":
                  keyword = CardTextResources.get_keyword_text(str_param)
                  return f"{duration_text}{target_str}の「{keyword}」を無視する。"
@@ -1730,9 +1742,12 @@ class CardTextGenerator:
             return f"（{tr(key)}を参照）"
 
         elif atype == "REVEAL_CARDS":
+            scope = action.get("scope") or action.get("target_group", "NONE")
+            deck_owner = "相手の" if scope in ["OPPONENT", "PLAYER_OPPONENT"] else ""
+
             if input_key:
-                return f"山札の上から、その数だけ表向きにする。"
-            return f"山札の上から{val1}枚を表向きにする。"
+                return f"{deck_owner}山札の上から、その数だけ表向きにする。"
+            return f"{deck_owner}山札の上から{val1}枚を表向きにする。"
 
         elif atype == "COUNT_CARDS":
             if not target_str or target_str == "カード":
