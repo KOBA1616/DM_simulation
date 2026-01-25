@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
+try:
+    from PyQt6.QtGui import QStandardItemModel, QStandardItem
+except ImportError:
+    from dm_toolkit.gui.editor.virtual_model import VirtualStandardItemModel as QStandardItemModel
+    from dm_toolkit.gui.editor.virtual_model import VirtualStandardItem as QStandardItem
+
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
 from dm_toolkit.gui.editor.models import CardModel, EffectModel, CommandModel, ReactionModel

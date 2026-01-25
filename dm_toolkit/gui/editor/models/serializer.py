@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtCore import Qt
+from typing import TYPE_CHECKING, Any, Union
+
+try:
+    from PyQt6.QtGui import QStandardItemModel, QStandardItem
+    from PyQt6.QtCore import Qt
+except ImportError:
+    from dm_toolkit.gui.editor.virtual_model import VirtualStandardItemModel as QStandardItemModel
+    from dm_toolkit.gui.editor.virtual_model import VirtualStandardItem as QStandardItem
+    Qt = None # Qt enum not available
+
 from dm_toolkit.gui.i18n import tr
 import copy
 from pydantic import BaseModel
@@ -186,11 +194,20 @@ class ModelSerializer:
             pass
 
     def _ensure_item(self, index_or_item):
-        from PyQt6.QtCore import QModelIndex
-        if isinstance(index_or_item, QModelIndex):
-            if index_or_item.model():
-                return index_or_item.model().itemFromIndex(index_or_item)
-            return None
+        try:
+            from PyQt6.QtCore import QModelIndex
+            if isinstance(index_or_item, QModelIndex):
+                if index_or_item.model():
+                    return index_or_item.model().itemFromIndex(index_or_item)
+                return None
+        except ImportError:
+            pass
+
+        # For virtual items (or objects behaving like items)
+        # If it has 'model' method and 'data' method, treat as item.
+        if hasattr(index_or_item, 'model') and hasattr(index_or_item, 'data'):
+            return index_or_item
+
         return index_or_item
 
     def load_data(self, model: QStandardItemModel, cards_data: list):
