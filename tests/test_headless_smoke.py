@@ -1,7 +1,9 @@
 import sys
 import subprocess
+import pytest
 
 
+@pytest.mark.slow
 def test_headless_smoke_runs():
     """Run the existing smoke script and assert it completes and reports legal commands."""
     proc = subprocess.run([sys.executable, "scripts/headless_smoke.py"],

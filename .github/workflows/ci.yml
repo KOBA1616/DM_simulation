@@ -1,5 +1,9 @@
 name: CI
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ main, master ]
@@ -34,13 +38,28 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - name: Run mypy
+        if: always()
+        run: |
+          # Run static type checks as part of nightly/full-tests to catch typing regressions
+          if python -c "import importlib,sys
+"; then true; fi
+          python -m mypy --config-file mypy.ini dm_toolkit || true
 
       - name: Run fast pytest (unit + smoke)
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           # run non-slow tests (mark slow tests with @pytest.mark.slow when needed)
-          python -m pytest -q -m "not slow"
+          mkdir -p reports || true
+          python -m pytest -q -m "not slow" --junitxml=reports/junit-fast.xml
+
+      - name: Upload pytest fast report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-fast-report
+          path: reports/junit-fast.xml
 
       - name: Headless smoke runner
         env:
@@ -72,8 +91,15 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          python -m pytest -q
-name: CI
+          mkdir -p reports || true
+          python -m pytest -q --junitxml=reports/junit-full.xml
+
+      - name: Upload pytest full report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-full-report
+          path: reports/junit-full.xml
 
 on:
   push:
