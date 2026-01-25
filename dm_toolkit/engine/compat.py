@@ -994,8 +994,17 @@ class EngineCompat:
 
                         # Target Scope Mapping
                         scope_str = cmd_dict.get('target_group')
-                        if scope_str and hasattr(dm_ai_module.TargetScope, scope_str):
-                            cmd_def.target_group = getattr(dm_ai_module.TargetScope, scope_str)
+                        # Guard access to TargetScope: may be missing in stubbed/native fallback
+                        _TargetScope = getattr(dm_ai_module, 'TargetScope', None)
+                        if scope_str and _TargetScope is not None and hasattr(_TargetScope, scope_str):
+                            try:
+                                cmd_def.target_group = getattr(_TargetScope, scope_str)
+                            except Exception:
+                                # If assignment fails, fall back to string label
+                                cmd_def.target_group = str(scope_str)
+                        elif scope_str:
+                            # No TargetScope enum available: assign normalized string
+                            cmd_def.target_group = str(scope_str)
 
                         # Execution Context
                         source_id = -1
