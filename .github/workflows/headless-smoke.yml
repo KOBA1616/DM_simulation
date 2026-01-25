@@ -1,6 +1,0 @@
-"""
-Deprecated workflow: replaced by .github/workflows/ci.yml which provides
-consolidated CI (fast tests + headless smoke + nightly full tests).
-
-Keep this file only for historical reference.
-"""
