@@ -415,11 +415,36 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                                     cdef = None
                             else:
                                 cdef = None
-                            if cdef and isinstance(cdef, dict) and 'cost' in cdef:
-                                try:
-                                    cost = int(cdef.get('cost', cost))
-                                except Exception:
-                                    cost = cost
+                            # Support multiple card_def formats: dicts (from Python
+                            # CardDB) and native/card objects exposed by bindings.
+                            try:
+                                c_cost = None
+                                if cdef is None:
+                                    c_cost = None
+                                elif isinstance(cdef, dict):
+                                    c_cost = cdef.get('cost')
+                                else:
+                                    # Try attribute access (native objects)
+                                    try:
+                                        c_cost = getattr(cdef, 'cost', None)
+                                    except Exception:
+                                        c_cost = None
+                                    # Try dictionary-like get method
+                                    if c_cost is None:
+                                        try:
+                                            getm = getattr(cdef, 'get', None)
+                                            if callable(getm):
+                                                c_cost = getm('cost', None)
+                                        except Exception:
+                                            pass
+                                if c_cost is not None:
+                                    try:
+                                        cost = int(c_cost)
+                                    except Exception:
+                                        pass
+                            except Exception:
+                                cdef = None
+                                cost = 9999
                         except Exception:
                             cdef = None
                             cost = 9999
@@ -493,8 +518,32 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                                     cdef = card_db.get_card(cid)
                                 else:
                                     cdef = None
-                                if cdef:
-                                    cost = int(cdef.get('cost', 9999))
+                                # Similar robust lookup for second heuristic.
+                                try:
+                                    c_cost = None
+                                    if cdef is None:
+                                        c_cost = None
+                                    elif isinstance(cdef, dict):
+                                        c_cost = cdef.get('cost')
+                                    else:
+                                        try:
+                                            c_cost = getattr(cdef, 'cost', None)
+                                        except Exception:
+                                            c_cost = None
+                                        if c_cost is None:
+                                            try:
+                                                getm = getattr(cdef, 'get', None)
+                                                if callable(getm):
+                                                    c_cost = getm('cost', None)
+                                            except Exception:
+                                                pass
+                                    if c_cost is not None:
+                                        try:
+                                            cost = int(c_cost)
+                                        except Exception:
+                                            cost = 9999
+                                except Exception:
+                                    cost = 9999
                             except Exception:
                                 cost = 9999
                             if cost <= usable_mana:
@@ -515,6 +564,121 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
         # candidate MANA_CHARGE to the UI/AI when possible to avoid
         # multi-charge loops; the executed wrapper marks the tracker so
         # subsequent generations will omit further MANA_CHARGE options.
+        # If native generator returned actions but no PLAY_CARD candidates,
+        # attempt to add PLAY_CARD candidates via the same robust heuristic
+        # used in the fallback path. This handles cases where the native
+        # generator interoperates poorly with the Python-side `card_db`.
+        try:
+            # Detect explicit play-like actions in native results
+            native_has_play = False
+            try:
+                for a in list(actions):
+                    try:
+                        t = getattr(a, 'type', None)
+                        tname = getattr(t, 'name', None) or str(t)
+                        if tname is None:
+                            continue
+                        tn = str(tname).upper()
+                        if ('PLAY' in tn or 'DECLARE' in tn or 'CAST' in tn) and 'PASS' not in tn:
+                            native_has_play = True
+                            break
+                    except Exception:
+                        continue
+            except Exception:
+                native_has_play = False
+
+            # Respect earlier normalized detection if available
+            overall_has_play = native_has_play or (('has_play_native' in locals() and has_play_native))
+
+            # Only add heuristic plays when none are present and we're in Main
+            cur_phase = getattr(state, 'current_phase', None)
+            p_name = getattr(cur_phase, 'name', None) or str(cur_phase)
+            in_main_phase = False
+            try:
+                if isinstance(p_name, str) and 'MAIN' in p_name.upper():
+                    in_main_phase = True
+                elif isinstance(cur_phase, int) and int(cur_phase) == 3:
+                    in_main_phase = True
+            except Exception:
+                in_main_phase = False
+
+            if not overall_has_play and in_main_phase:
+                try:
+                    from dm_ai_module import Action, ActionType
+                    pid = getattr(state, 'active_player_id', 0)
+                    player = state.players[pid]
+                    usable_mana = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
+                    for c in list(getattr(player, 'hand', [])):
+                        cid = getattr(c, 'card_id', c)
+                        cost = 9999
+                        cdef = None
+                        try:
+                            if card_db is None:
+                                cdef = None
+                            elif hasattr(card_db, 'get_card'):
+                                try:
+                                    cdef = card_db.get_card(cid)
+                                except Exception:
+                                    cdef = card_db.get_card(int(cid)) if isinstance(cid, str) and cid.isdigit() else None
+                            elif isinstance(card_db, dict):
+                                try:
+                                    cdef = card_db.get(cid)
+                                except Exception:
+                                    cdef = None
+                                if cdef is None:
+                                    cdef = card_db.get(str(cid)) if isinstance(cid, (int, str)) else None
+                                if cdef is None and isinstance(cid, str) and cid.isdigit():
+                                    cdef = card_db.get(int(cid))
+                            elif hasattr(card_db, 'cards'):
+                                try:
+                                    cards_attr = getattr(card_db, 'cards')
+                                    if isinstance(cards_attr, dict):
+                                        cdef = cards_attr.get(cid) or cards_attr.get(str(cid))
+                                except Exception:
+                                    cdef = None
+                            else:
+                                cdef = None
+
+                            # Extract cost from multiple possible shapes
+                            c_cost = None
+                            if cdef is None:
+                                c_cost = None
+                            elif isinstance(cdef, dict):
+                                c_cost = cdef.get('cost')
+                            else:
+                                try:
+                                    c_cost = getattr(cdef, 'cost', None)
+                                except Exception:
+                                    c_cost = None
+                                if c_cost is None:
+                                    try:
+                                        getm = getattr(cdef, 'get', None)
+                                        if callable(getm):
+                                            c_cost = getm('cost', None)
+                                    except Exception:
+                                        pass
+                            if c_cost is not None:
+                                try:
+                                    cost = int(c_cost)
+                                except Exception:
+                                    cost = 9999
+                        except Exception:
+                            cost = 9999
+
+                        if cost <= usable_mana:
+                            act = Action()
+                            act.type = ActionType.PLAY_CARD
+                            act.card_id = cid
+                            act.source_instance_id = getattr(c, 'instance_id', -1)
+                            actions.append(act)
+                            try:
+                                print(f"Debug added_play_candidate -> pid={pid}, card_id={cid}, cost={cost}, usable_mana={usable_mana}, cdef_present={bool(cdef)}")
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
         filtered = []
         try:
             sid = id(state)

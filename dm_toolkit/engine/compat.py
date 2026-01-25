@@ -862,30 +862,91 @@ class EngineCompat:
         if cmd_dict:
             try:
                 logger.debug('EngineCompat: cmd_dict detected: %s', cmd_dict)
-                type_str = cmd_dict.get('type')
-                logger.debug('EngineCompat: type_str = %s', type_str)
+                type_val = cmd_dict.get('type')
+                logger.debug('EngineCompat: type = %s', type_val)
 
-                # STRICT VALIDATION: Only proceed if type exists in C++ CommandType
-                if type_str and hasattr(dm_ai_module.CommandType, type_str):
-                    if hasattr(dm_ai_module, 'CommandSystem') and hasattr(dm_ai_module.CommandSystem, 'execute_command'):
-                        # Map dict to CommandDef
-                        cmd_def = dm_ai_module.CommandDef()
-                        cmd_def.type = getattr(dm_ai_module.CommandType, type_str)
+                # Try to resolve CommandType from flexible inputs (name, numeric, enum)
+                cmd_type_obj = None
+                try:
+                    if hasattr(dm_ai_module, 'CommandType'):
+                        # If it's already an enum-like object, try to use directly
+                        if isinstance(type_val, (int,)):
+                            try:
+                                cmd_type_obj = dm_ai_module.CommandType(int(type_val))
+                            except Exception:
+                                cmd_type_obj = None
+                        elif isinstance(type_val, str):
+                            # Numeric string?
+                            try:
+                                if type_val.isdigit():
+                                    cmd_type_obj = dm_ai_module.CommandType(int(type_val))
+                            except Exception:
+                                pass
+                            if cmd_type_obj is None and hasattr(dm_ai_module.CommandType, type_val):
+                                cmd_type_obj = getattr(dm_ai_module.CommandType, type_val)
+                        else:
+                            # Try direct assignment for enum-like objects
+                            if isinstance(type_val, type(getattr(dm_ai_module.CommandType, list(dir(dm_ai_module.CommandType))[0]))):
+                                cmd_type_obj = type_val
+                except Exception:
+                    cmd_type_obj = None
 
-                        # Common fields
-                        cmd_def.amount = int(cmd_dict.get('amount', 0))
-                        cmd_def.str_param = str(cmd_dict.get('str_param', ''))
-                        cmd_def.optional = bool(cmd_dict.get('optional', False))
+                # Only proceed to CommandSystem mapping if we have a type object and command system available
+                if cmd_type_obj is not None and hasattr(dm_ai_module, 'CommandSystem') and hasattr(dm_ai_module.CommandSystem, 'execute_command'):
+                    # Map dict to CommandDef (create instance)
+                    cmd_def = dm_ai_module.CommandDef()
+                    try:
+                        cmd_def.type = cmd_type_obj
+                    except Exception:
+                        # Fallback: set raw numeric or string when enum assignment fails
+                        try:
+                            setattr(cmd_def, 'type', int(getattr(cmd_type_obj, 'value', cmd_type_obj)))
+                        except Exception:
+                            try:
+                                setattr(cmd_def, 'type', str(cmd_type_obj))
+                            except Exception:
+                                pass
 
-                        # Populate instance_id / target_instance_id / owner_id
-                        if 'instance_id' in cmd_dict:
-                            cmd_def.instance_id = int(cmd_dict['instance_id'])
-                        elif 'source_instance_id' in cmd_dict:
-                            cmd_def.instance_id = int(cmd_dict['source_instance_id'])
+                    # Common fields (assign if present on CommandDef)
+                    def _assign_if_exists(o, name, value):
+                        try:
+                            if hasattr(o, name):
+                                setattr(o, name, value)
+                                return True
+                        except Exception:
+                            pass
+                        return False
 
-                        if 'target_instance' in cmd_dict: cmd_def.target_instance = int(cmd_dict['target_instance'])
-                        if 'owner_id' in cmd_dict: cmd_def.owner_id = int(cmd_dict['owner_id'])
-                        elif 'player_id' in cmd_dict: cmd_def.owner_id = int(cmd_dict['player_id'])
+                    _assign_if_exists(cmd_def, 'amount', int(cmd_dict.get('amount', 0)))
+                    _assign_if_exists(cmd_def, 'str_param', str(cmd_dict.get('str_param', '')))
+                    _assign_if_exists(cmd_def, 'optional', bool(cmd_dict.get('optional', False)))
+
+                    # Populate instance id from several possible keys
+                    for key in ('instance_id', 'source_instance_id', 'source_id', 'source'):
+                        if key in cmd_dict:
+                            try:
+                                _assign_if_exists(cmd_def, 'instance_id', int(cmd_dict[key]))
+                            except Exception:
+                                _assign_if_exists(cmd_def, 'instance_id', cmd_dict[key])
+                            break
+
+                    # target instance aliases
+                    for key in ('target_instance', 'target_instance_id', 'target', 'target_id'):
+                        if key in cmd_dict:
+                            try:
+                                _assign_if_exists(cmd_def, 'target_instance', int(cmd_dict[key]))
+                            except Exception:
+                                _assign_if_exists(cmd_def, 'target_instance', cmd_dict[key])
+                            break
+
+                    # owner/player id aliases
+                    for key in ('owner_id', 'player_id', 'owner'):
+                        if key in cmd_dict:
+                            try:
+                                _assign_if_exists(cmd_def, 'owner_id', int(cmd_dict[key]))
+                            except Exception:
+                                _assign_if_exists(cmd_def, 'owner_id', cmd_dict[key])
+                            break
 
                         # Map Zones (best-effort): try Zone enum, otherwise fall back to string.
                         fz = cmd_dict.get('from_zone')

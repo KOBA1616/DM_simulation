@@ -129,6 +129,12 @@ class LayoutBuilder:
         window.control_panel.p0_human_radio.toggled.connect(lambda c: window.session.set_player_mode(0, 'Human' if c else 'AI'))
         window.control_panel.p1_human_radio.toggled.connect(lambda c: window.session.set_player_mode(1, 'Human' if c else 'AI'))
 
+        # Ensure initial player modes in GameSession reflect the ControlPanel state
+        try:
+            window.session.set_player_mode(0, 'Human' if window.control_panel.is_p0_human() else 'AI')
+            window.session.set_player_mode(1, 'Human' if window.control_panel.is_p1_human() else 'AI')
+        except Exception:
+            pass
         window.ai_tools_layout.addWidget(window.control_panel)
         window.ai_tools_layout.addStretch()
 
