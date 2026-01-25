@@ -10,94 +10,112 @@ on:
   pull_request:
     branches: [ main, master ]
   schedule:
+    - cron: '0 3 * * *'
 
+jobs:
+  test:
+    name: Fast tests (unit + integration)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [ '3.12' ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Run fast pytest (non-slow)
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          mkdir -p reports || true
+          python -m pytest -q -m "not slow" --junitxml=reports/junit-fast.xml
+
+      - name: Upload pytest fast report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-fast-report
+          path: reports/junit-fast.xml
+
+  headless-smoke:
+    name: Headless smoke
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - name: Run headless smoke
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python scripts/headless_mainwindow.py --auto 3 --dump-json headless_ci_snapshot.json --log-level INFO
+      - name: Upload headless snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: headless-snapshot
+          path: headless_ci_snapshot.json
+
+  full-tests:
+    name: Full tests (nightly/main)
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - name: Run all pytest (includes slow)
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          mkdir -p reports || true
+          python -m pytest -q --junitxml=reports/junit-full.xml
+
+      - name: Upload pytest full report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
           name: pytest-full-report
           path: reports/junit-full.xml
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      PYTHONUTF8: '1'
-      PYTHONIOENCODING: 'utf-8'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install system dependencies
+      - name: Run mypy (non-failing)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build
+          python -m mypy --config-file mypy.ini dm_toolkit || true
 
-      - name: Install Python dev deps
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-
-      - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build (C++)
-        run: cmake --build build -- -j$(nproc)
-
-      - name: Run C++ tests (ctest)
-        run: |
-          if [ -f build/CTestTestfile.cmake ]; then cd build && ctest --output-on-failure; else echo "No CTest found"; fi
-
-      - name: Run Python tests (pytest)
-        run: |
-          # Prepend repo root so the Python wrapper `dm_ai_module.py` is
-          # imported before any built extension in `build/`.
-          PYTHONPATH=.${PYTHONPATH:+:}${PYTHONPATH}
-          PYTHONPATH=.\:build:${PYTHONPATH}
-          PYTHONPATH=.:build:${PYTHONPATH}
-          python -m pytest -q
-
-  build-windows:
-    runs-on: windows-latest
-    timeout-minutes: 60
-    env:
-      PYTHONUTF8: '1'
-      PYTHONIOENCODING: 'utf-8'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Configure CMake (MSVC)
-        run: cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build (MSVC)
-        run: cmake --build build --config Release -- /m
-
-      - name: Run C++ tests (ctest)
-        shell: powershell
-        run: |
-          if (Test-Path build\CTestTestfile.cmake) { cd build; ctest -V } else { Write-Host 'No CTest file; skipping ctest' }
-
-      - name: Run Python tests (pytest)
-        shell: powershell
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          if (Test-Path requirements-dev.txt) { pip install -r requirements-dev.txt }
-          # Ensure the built extension is on PYTHONPATH. MSVC places built
-          # extension files into build\Release by default.
-          $env:PYTHONPATH = "$env:PYTHONPATH;$(Resolve-Path build\Release)";
-          if (Test-Path build) { $env:PYTHONPATH = "$env:PYTHONPATH;$(Resolve-Path build)" }
-          python -m pytest -q
