@@ -1,7 +1,7 @@
 import dm_ai_module
 import random
 import logging
-from typing import Any, List
+from typing import Any, List, cast, Dict
 from dm_toolkit.types import CardDB, SeenCards
 
 class SolitaireRunner:
@@ -90,10 +90,11 @@ class SolitaireRunner:
 
         actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db) or []
         try:
-            from dm_toolkit.commands import generate_legal_commands
+            from dm_toolkit.commands import generate_legal_commands as _generate_legal_commands
         except Exception:
-            generate_legal_commands = None
-        cmds = generate_legal_commands(state, self.card_db) if generate_legal_commands else []
+            def _generate_legal_commands(state: Any, card_db: dict[Any, Any]) -> list[Any]:
+                return []
+        cmds = _generate_legal_commands(state, cast(Dict[int, Any], self.card_db))
 
         if not actions and not cmds:
             dm_ai_module.PhaseManager.next_phase(state, self.card_db)
@@ -107,7 +108,7 @@ class SolitaireRunner:
         from dm_toolkit.engine.compat import EngineCompat
         if best_cmd is not None:
             try:
-                state.execute_command(best_cmd)
+                cast(Any, state).execute_command(best_cmd)
             except Exception:
                 try:
                     best_cmd.execute(state)
@@ -145,7 +146,8 @@ class SolitaireRunner:
             return random.choice(charge_actions)
 
         if play_actions:
-            return max(play_actions, key=lambda a: self.card_db[state.get_card_instance(a.source_instance_id).card_id].cost)
+            db = cast(Dict[int, Any], self.card_db)
+            return max(play_actions, key=lambda a: db[state.get_card_instance(a.source_instance_id).card_id].cost)
 
         if attack_actions:
             return random.choice(attack_actions)
@@ -157,8 +159,8 @@ class SolitaireRunner:
 
     def _pass_turn(self, state: Any) -> None:
         """Pass through opponent turn."""
-           # Unified approach: simply advance phase; avoid direct action resolution
-           dm_ai_module.PhaseManager.next_phase(state, self.card_db)
+        # Unified approach: simply advance phase; avoid direct action resolution
+        dm_ai_module.PhaseManager.next_phase(state, self.card_db)
 
     def _scan_accessed_cards(self, state: Any, player_id: int, seen_cards: SeenCards) -> None:
         # Scan Hand

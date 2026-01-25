@@ -154,7 +154,7 @@ class ActionEncoder:
         except Exception:
             cmd_type = None
 
-        def _type_matches(t, enum_val):
+        def _type_matches(t: Any, enum_val: Any) -> bool:
             try:
                 if t == enum_val or t == int(enum_val):
                     return True

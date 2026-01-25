@@ -2,7 +2,7 @@ import os
 import sys
 import random
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 # Add root to path if needed
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
@@ -86,39 +86,40 @@ class DeckEvolution:
 
             # Random (prefer commands when available)
             try:
-                from dm_toolkit.commands import generate_legal_commands
+                from dm_toolkit.commands import generate_legal_commands as _generate_legal_commands
             except Exception:
-                generate_legal_commands = None
+                def _generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> List[Any]:
+                    return []
 
             actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db) or []
-            cmds = generate_legal_commands(gs, self.card_db) if generate_legal_commands else []
+            cmds = _generate_legal_commands(gs, self.card_db)
 
             if not actions and not cmds:
                 dm_ai_module.PhaseManager.next_phase(gs)
                 continue
 
-            if cmds:
-                cmd = random.choice(cmds)
-                try:
-                    gs.execute_command(cmd)
-                except Exception:
+                if cmds:
+                    cmd = random.choice(cmds)
                     try:
-                        cmd.execute(gs)
+                        cast(Any, gs).execute_command(cmd)
                     except Exception:
-                        # fallback: try unified execute
                         try:
-                            from dm_toolkit.engine.compat import EngineCompat
-                            EngineCompat.ExecuteCommand(gs, cmd, self.card_db)
+                            cmd.execute(gs)
                         except Exception:
-                            # fallback to action path
-                            if actions:
-                                action = random.choice(actions)
-                                try:
-                                    from dm_toolkit.unified_execution import ensure_executable_command
-                                    cdict = ensure_executable_command(action)
-                                    EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
-                                except Exception:
-                                    dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                            # fallback: try unified execute
+                            try:
+                                from dm_toolkit.engine.compat import EngineCompat
+                                EngineCompat.ExecuteCommand(gs, cmd, self.card_db)
+                            except Exception:
+                                # fallback to action path
+                                if actions:
+                                    action = random.choice(actions)
+                                    try:
+                                        from dm_toolkit.unified_execution import ensure_executable_command
+                                        cdict = ensure_executable_command(action)
+                                        EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
+                                    except Exception:
+                                        dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
                 # best-effort phase advance check
                 try:
                     if getattr(cmd, 'to_dict', None):

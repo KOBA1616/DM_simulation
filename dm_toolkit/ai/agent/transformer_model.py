@@ -36,10 +36,10 @@ class DuelTransformer(nn.Module):
 
         # 2. Synergy Manager (optional for speed)
         self.use_synergy = synergy_matrix_path is not None
+        # annotate attribute for gradual typing
+        self.synergy_graph: Optional[SynergyGraph] = None
         if self.use_synergy:
             self.synergy_graph = SynergyGraph(vocab_size, matrix_path=synergy_matrix_path)
-        else:
-            self.synergy_graph = None
 
         # 3. Transformer Encoder
         # We use a custom encoder block loop or standard encoder with custom mask logic.
@@ -108,7 +108,8 @@ class DuelTransformer(nn.Module):
 
             # (Batch, Seq, Seq) -> (Batch, 1, Seq, Seq) -> (Batch, NumHeads, Seq, Seq) -> (Batch*NumHeads, Seq, Seq)
             synergy_bias = synergy_bias.unsqueeze(1).repeat(1, self.nhead, 1, 1)
-            synergy_bias = synergy_bias.view(B * self.nhead, S, S)
+            # use the actual sequence length used for embeddings
+            synergy_bias = synergy_bias.view(B * self.nhead, seq_len, seq_len)
         else:
             synergy_bias = None
 

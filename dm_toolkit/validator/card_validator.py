@@ -1,15 +1,15 @@
 import json
 import os
 import re
-from typing import Dict, List, Set, Any, Optional
+from typing import Dict, List, Set, Any, Optional, Tuple
 
 class ValidationResult:
-    def __init__(self, valid: bool, errors: List[str]):
+    def __init__(self, valid: bool, errors: List[str]) -> None:
         self.valid = valid
         self.errors = errors
 
 class CardValidator:
-    def __init__(self):
+    def __init__(self) -> None:
         self.valid_zones = {
             "BATTLE_ZONE", "MANA_ZONE", "GRAVEYARD", "HAND", "DECK", "SHIELD_ZONE",
             "EFFECT_BUFFER", "DECK_BOTTOM", "NONE"
@@ -145,7 +145,7 @@ class CardValidator:
 
         return errors
 
-    def validate_command(self, cmd_data: Dict[str, Any], available_vars: Set[str], context_prefix: str) -> (List[str], Set[str]):
+    def validate_command(self, cmd_data: Dict[str, Any], available_vars: Set[str], context_prefix: str) -> Tuple[List[str], Set[str]]:
         errors = []
         new_vars = set()
 
@@ -223,8 +223,8 @@ class CardValidator:
         commands = effect_data.get('commands', [])
 
         # Helper to recursively scan commands
-        def scan_commands(cmd_list, prefix):
-            local_errors = []
+        def scan_commands(cmd_list: List[Dict[str, Any]], prefix: str) -> List[str]:
+            local_errors: List[str] = []
             for i, cmd in enumerate(cmd_list):
                 cmd_type = cmd.get('type', 'NONE')
                 if cmd_type in risky_commands:

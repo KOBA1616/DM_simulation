@@ -31,19 +31,25 @@ Usage:
 
 Note: action_mapper.py is deprecated; use this module instead.
 """
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Union, Optional, TYPE_CHECKING
 import copy
 import json
 from dm_toolkit.action_to_command import map_action
 
-try:
-    from dm_ai_module import ActionDef, CommandDef
-except ImportError:
-    # Dummy classes for environments without compiled module
-    class ActionDef:
-        pass
-    class CommandDef:
-        pass
+if TYPE_CHECKING:
+    # Provide type information for static analysis only
+    from dm_ai_module import ActionDef, CommandDef  # type: ignore
+else:
+    try:
+        import dm_ai_module as _native_dm  # type: ignore
+        ActionDef = getattr(_native_dm, 'ActionDef', object)
+        CommandDef = getattr(_native_dm, 'CommandDef', object)
+    except Exception:
+        # Dummy runtime fallbacks for environments without the compiled module
+        class ActionDef:
+            pass
+        class CommandDef:
+            pass
 
 def to_command_dict(obj: Any) -> Dict[str, Any]:
     """

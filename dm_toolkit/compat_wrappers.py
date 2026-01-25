@@ -22,7 +22,7 @@ Usage Pattern:
 
 Goal: Avoid spreading "if legacy_mode:" checks throughout the codebase.
 """
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 
 
 def add_aliases_to_command(cmd: Dict[str, Any], original_action_type: str) -> Dict[str, Any]:
@@ -120,15 +120,16 @@ def get_effective_command_type(cmd: Dict[str, Any]) -> Optional[str]:
     if not isinstance(cmd, dict):
         return None
     
-    current_type = cmd.get('type', 'NONE')
+    current_type = cast(str, cmd.get('type', 'NONE'))
     
     # If current type is valid, use it
     if current_type and current_type != 'NONE':
         # Unless it's marked as a legacy warning (invalid conversion)
         if cmd.get('legacy_warning', False):
-            return cmd.get('legacy_original_type', current_type)
+            # legacy_original_type may be Any; cast to Optional[str] for mypy
+            return cast(Optional[str], cmd.get('legacy_original_type')) or current_type
         return current_type
     
-    # Fallback to legacy original type
-    return cmd.get('legacy_original_type', 'NONE')
+    # Fallback to legacy original type (ensure str | None)
+    return cast(Optional[str], cmd.get('legacy_original_type')) or 'NONE'
 

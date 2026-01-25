@@ -11,11 +11,16 @@ class SynergyGraph(nn.Module):
         self.vocab_size: int = vocab_size
         self.embedding_dim: int = embedding_dim
         self.use_dense_matrix = use_dense_matrix
+        # Typed optional attributes to satisfy static analysis
+        self.synergy_matrix: Optional[torch.Tensor] = None
+        self.synergy_embeddings: Optional[nn.Embedding] = None
 
         if self.use_dense_matrix:
             # Dense matrix: [Vocab, Vocab]
-            # Register as buffer to be part of state_dict but not a parameter
-            self.register_buffer("synergy_matrix", torch.zeros(vocab_size, vocab_size))
+            # Create tensor and register as buffer to be part of state_dict but not a parameter
+            mat = torch.zeros(vocab_size, vocab_size)
+            self.synergy_matrix = mat
+            self.register_buffer("synergy_matrix", mat)
         else:
             # Learnable synergy embeddings
             # Each card gets a vector representation for synergy calculation
@@ -29,7 +34,8 @@ class SynergyGraph(nn.Module):
                 # For now, let's assume it provides initial embeddings or we warn.
                 data = np.load(matrix_path)
                 if isinstance(data, np.ndarray) and data.shape == (vocab_size, embedding_dim):
-                    self.synergy_embeddings.weight.data.copy_(torch.from_numpy(data))
+                    if self.synergy_embeddings is not None:
+                        self.synergy_embeddings.weight.data.copy_(torch.from_numpy(data))
                     print(f"Loaded synergy embeddings from {matrix_path}")
                 else:
                     print(f"Warning: Matrix at {matrix_path} shape mismatch or invalid format. Expected ({vocab_size}, {embedding_dim}). Initializing randomly.")
@@ -63,7 +69,8 @@ class SynergyGraph(nn.Module):
                         matrix[c2, c1] = score # Symmetric
                         count += 1
 
-            model.synergy_matrix.copy_(matrix)
+            if model.synergy_matrix is not None:
+                model.synergy_matrix.copy_(matrix)
             model.to(device)
             print(f"Loaded {count} synergy pairs from {json_path}")
         else:
@@ -116,7 +123,8 @@ class SynergyGraph(nn.Module):
             #    We want columns corresponding to sequence indices.
             #    torch.gather(row_embeddings, 2, sequence.unsqueeze(1).expand(-1, S, -1))
 
-            row_embeddings = torch.nn.functional.embedding(sequence, self.synergy_matrix) # [B, S, V]
+            # Cast synergy_matrix to Tensor for static typing
+            row_embeddings = torch.nn.functional.embedding(sequence, cast(torch.Tensor, self.synergy_matrix)) # [B, S, V]
 
             # Gather relevant columns
             # target indices: [B, S, S]
@@ -127,7 +135,9 @@ class SynergyGraph(nn.Module):
 
         else:
             # [Batch, SeqLen, EmbDim]
-            embs = cast(torch.Tensor, self.synergy_embeddings(sequence))
+            # Ensure embeddings exist and call them
+            assert self.synergy_embeddings is not None
+            embs = self.synergy_embeddings(sequence)
 
             # Calculate pairwise dot product as synergy score
             # [Batch, SeqLen, EmbDim] @ [Batch, EmbDim, SeqLen] -> [Batch, SeqLen, SeqLen]

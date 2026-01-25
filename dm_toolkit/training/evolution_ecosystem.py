@@ -6,7 +6,7 @@ import random
 import time
 import argparse
 from datetime import datetime
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, cast
 from dm_toolkit.types import CardCounts
 
 # Set up paths
@@ -129,10 +129,11 @@ class EvolutionEcosystem:
 
                  legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(instance.state, self.card_db) or []
                  try:
-                     from dm_toolkit.commands import generate_legal_commands
+                     from dm_toolkit.commands import generate_legal_commands as _generate_legal_commands
                  except Exception:
-                     generate_legal_commands = None
-                 cmds = generate_legal_commands(instance.state, self.card_db) if generate_legal_commands else []
+                    def _generate_legal_commands(state: Any, card_db: dict[Any, Any]) -> list[Any]:
+                             return []
+                 cmds = _generate_legal_commands(instance.state, self.card_db)
 
                  if not legal_actions and not cmds:
                      dm_ai_module.PhaseManager.next_phase(instance.state, self.card_db)
@@ -166,13 +167,16 @@ class EvolutionEcosystem:
                  # Check for Mana Charge first
                  current_mana = len(instance.state.get_zone(instance.state.active_player_id, dm_ai_module.Zone.MANA))
                  if current_mana < 7:
+                    # Use getattr guards for ActionType members to satisfy mypy
+                    _MANA_CHARGE = getattr(dm_ai_module.ActionType, 'MANA_CHARGE', None)
+                    _MOVE_CARD = getattr(dm_ai_module.ActionType, 'MOVE_CARD', None)
                     for act in legal_actions:
-                        # Check for MANA_CHARGE or MOVE_CARD in Mana Phase (Phase.MANA = 2)
-                        if act.type == dm_ai_module.ActionType.MANA_CHARGE:
+                        # Check for MANA_CHARGE or MOVE_CARD in Mana Phase
+                        if act.type == _MANA_CHARGE:
                             best_action = act
                             found = True
                             break
-                        if instance.state.current_phase == dm_ai_module.Phase.MANA and act.type == dm_ai_module.ActionType.MOVE_CARD:
+                        if instance.state.current_phase == dm_ai_module.Phase.MANA and act.type == _MOVE_CARD:
                             best_action = act
                             found = True
                             break
@@ -196,7 +200,7 @@ class EvolutionEcosystem:
                  from dm_toolkit.engine.compat import EngineCompat
                  if best_cmd is not None:
                     try:
-                        instance.state.execute_command(best_cmd)
+                        cast(Any, instance.state).execute_command(best_cmd)
                     except Exception:
                         try:
                             best_cmd.execute(instance.state)
@@ -213,7 +217,7 @@ class EvolutionEcosystem:
                          except Exception:
                              # Last resort: let compat wrapper handle action
                              try:
-                                 EngineCompat.EffectResolver_resolve_action(instance.state, best_action, None)
+                                 EngineCompat.EffectResolver_resolve_action(instance.state, best_action, cast(Dict[int, Any], self.card_db))
                              except Exception:
                                  pass
                  steps += 1

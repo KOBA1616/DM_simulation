@@ -1,0 +1,3 @@
+dm_toolkit\ai\agent\synergy.py:37: error: Item "None" of "Embedding | None" has no attribute "weight"  [union-attr]
+dm_toolkit\ai\agent\synergy.py:71: error: Item "None" of "Tensor | None" has no attribute "copy_"  [union-attr]
+Found 2 errors in 1 file (checked 1 source file)

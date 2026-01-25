@@ -7,33 +7,44 @@ import time
 import math
 import copy
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, TYPE_CHECKING
 
 # Ensure dm_ai_module is in path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
 
 # --- Mock / Import Handling ---
-try:
+if TYPE_CHECKING:
+    # Provide typing import only for static analysis
+    import dm_ai_module  # type: ignore
+    HAS_MODULE = True
+else:
     try:
-        from dm_toolkit import dm_ai_module
-    except ImportError:
-        import dm_ai_module
-    # Check if we have the native module capabilities required
-    if not hasattr(dm_ai_module, 'JsonLoader') or not hasattr(dm_ai_module, 'ParallelRunner'):
+        # Prefer the packaged shim if available
+        from dm_toolkit import dm_ai_module as _dm_module  # type: ignore
+        dm_ai_module = _dm_module
+    except Exception:
+        try:
+            import dm_ai_module as _dm_module  # type: ignore
+            dm_ai_module = _dm_module
+        except Exception:
+            dm_ai_module = None
+
+    if dm_ai_module is None:
         HAS_MODULE = False
-        print("Warning: dm_ai_module native components (JsonLoader/ParallelRunner) not found.")
+        print("Warning: dm_ai_module not found. Running in Mock/Simulation mode.")
     else:
-        HAS_MODULE = True
-except ImportError:
-    HAS_MODULE = False
-    print("Warning: dm_ai_module not found. Running in Mock/Simulation mode.")
+        if not hasattr(dm_ai_module, 'JsonLoader') or not hasattr(dm_ai_module, 'ParallelRunner'):
+            HAS_MODULE = False
+            print("Warning: dm_ai_module native components (JsonLoader/ParallelRunner) not found.")
+        else:
+            HAS_MODULE = True
 
 
 class MockParallelRunner:
-    def __init__(self, card_db, num_games, num_threads):
+    def __init__(self, card_db: Any, num_games: int, num_threads: int) -> None:
         self.card_db = card_db
 
-    def play_deck_matchup(self, deck1, deck2, num_games, num_threads):
+    def play_deck_matchup(self, deck1: List[int], deck2: List[int], num_games: int, num_threads: int) -> List[int]:
         # Return random results: [p1_wins, p2_wins, draws]
         p1_wins = 0
         p2_wins = 0
@@ -75,7 +86,7 @@ class DeckEvolutionSystem:
 
         self.load_resources()
 
-    def load_resources(self):
+    def load_resources(self) -> None:
         # Load Card DB
         if HAS_MODULE:
             loader = dm_ai_module.JsonLoader()
@@ -104,7 +115,7 @@ class DeckEvolutionSystem:
 
         print(f"Loaded {len(self.valid_card_ids)} cards and {len(self.meta_archetypes)} meta archetypes.")
 
-    def initialize_population(self, pop_size: int = 20):
+    def initialize_population(self, pop_size: int = 20) -> None:
         self.population = []
 
         # 1. Seed with Meta Archetypes
@@ -143,7 +154,7 @@ class DeckEvolutionSystem:
                 deck.append(cid)
         return MetaDeck("Random_Starter", deck)
 
-    def mutate_deck(self, meta_deck: MetaDeck, mutations: int = 2):
+    def mutate_deck(self, meta_deck: MetaDeck, mutations: int = 2) -> None:
         """Randomly swaps N cards in the deck with valid alternatives."""
         deck = meta_deck.cards
         changes = 0
@@ -172,7 +183,7 @@ class DeckEvolutionSystem:
             if "Var" not in meta_deck.name:
                 meta_deck.name += "_Var"
 
-    def run_evolution(self, generations: int = 5, matches_per_pair: int = 10):
+    def run_evolution(self, generations: int = 5, matches_per_pair: int = 10) -> None:
         # Runner can be either the C++ ParallelRunner or the local MockParallelRunner
         runner: Any
         if HAS_MODULE:
@@ -239,7 +250,7 @@ class DeckEvolutionSystem:
         # End of Evolution
         self.save_meta_decks()
 
-    def save_meta_decks(self):
+    def save_meta_decks(self) -> None:
         # Save top 5 unique decks to meta_decks.json
         top_decks = self.population[:5]
         output_data = {"decks": [d.to_dict() for d in top_decks]}
@@ -250,7 +261,7 @@ class DeckEvolutionSystem:
 
 # --- Entry Point ---
 
-def main():
+def main() -> None:
     base_dir = os.path.dirname(__file__)
     # Path resolution relative to script location
     # script is in python/training/

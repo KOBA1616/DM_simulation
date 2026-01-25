@@ -1,0 +1,2 @@
+dm_toolkit\ai\agent\heuristic_agent.py:19: error: Returning Any from function declared to return "bool"  [no-any-return]
+Found 1 error in 1 file (checked 1 source file)

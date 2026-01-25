@@ -1,0 +1,34 @@
+dm_toolkit\debug\effect_tracer.py:32: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:32: note: Use "-> None" if function does not return a value
+dm_toolkit\debug\effect_tracer.py:37: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:37: note: Use "-> None" if function does not return a value
+dm_toolkit\debug\effect_tracer.py:44: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:44: note: Use "-> None" if function does not return a value
+dm_toolkit\debug\effect_tracer.py:52: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:73: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:78: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:98: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:133: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:136: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:139: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:142: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:148: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\debug\effect_tracer.py:148: note: Use "-> None" if function does not return a value
+dm_toolkit\unified_execution.py:43: error: Name "ActionDef" already defined (possibly by an import)  [no-redef]
+dm_toolkit\unified_execution.py:45: error: Name "CommandDef" already defined (possibly by an import)  [no-redef]
+dm_toolkit\engine\compat.py:438: error: Incompatible types in assignment (expression has type "dict[str, Any]", target has type "str")  [assignment]
+dm_toolkit\engine\compat.py:507: error: Argument 1 to "int" has incompatible type "Any | None"; expected "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc"  [arg-type]
+dm_toolkit\engine\compat.py:767: error: Function is missing a return type annotation  [no-untyped-def]
+dm_toolkit\engine\compat.py:842: error: Incompatible default for argument "card_db" (default has type "None", argument has type "dict[int, Any] | CardDatabase")  [assignment]
+dm_toolkit\engine\compat.py:842: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+dm_toolkit\engine\compat.py:842: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+dm_toolkit\engine\compat.py:1141: error: Name "Tuple" is not defined  [name-defined]
+dm_toolkit\engine\compat.py:1141: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Tuple")
+dm_toolkit\engine\compat.py:1287: error: Need type annotation for "cdef" (hint: "cdef: dict[<type>, <type>] = ...")  [var-annotated]
+dm_toolkit\engine\compat.py:1293: error: No overload variant of "get" of "dict" matches argument type "str"  [call-overload]
+dm_toolkit\engine\compat.py:1293: note: Possible overload variants:
+dm_toolkit\engine\compat.py:1293: note:     def get(self, int, None = ..., /) -> Any | None
+dm_toolkit\engine\compat.py:1293: note:     def get(self, int, Any, /) -> Any
+dm_toolkit\engine\compat.py:1293: note:     def [_T] get(self, int, _T, /) -> Any | _T
+dm_toolkit\engine\compat.py:1428: error: Returning Any from function declared to return "dict[int, Any]"  [no-any-return]
+Found 22 errors in 3 files (checked 1 source file)

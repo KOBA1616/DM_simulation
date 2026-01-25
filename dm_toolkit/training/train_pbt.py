@@ -29,7 +29,7 @@ except ImportError:
     sys.exit(1)
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
-from dm_toolkit.training.train_simple import Trainer
+from dm_toolkit.training.train_simple import Trainer  # type: ignore[import-untyped]
 
 class PBTAgent:
     def __init__(self, agent_id: int, deck: List[int], name: str = "Agent") -> None:

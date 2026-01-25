@@ -45,7 +45,7 @@ def build_draw_command(
     to_zone: str = "HAND",
     amount: int = 1,
     owner_id: Optional[int] = None,
-    **kwargs
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Build a standardized DRAW_CARD command.
@@ -78,7 +78,7 @@ def build_transition_command(
     amount: int = 1,
     owner_id: Optional[int] = None,
     source_instance_id: Optional[int] = None,
-    **kwargs
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Build a standardized TRANSITION command for moving cards between zones.
@@ -111,7 +111,7 @@ def build_transition_command(
 def build_mana_charge_command(
     source_instance_id: int,
     from_zone: str = "HAND",
-    **kwargs
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Build a standardized MANA_CHARGE command.
@@ -138,7 +138,7 @@ def build_destroy_command(
     source_instance_id: Optional[int] = None,
     from_zone: str = "BATTLE",
     target_filter: Optional[Dict[str, Any]] = None,
-    **kwargs
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Build a standardized DESTROY command.
@@ -168,7 +168,7 @@ def build_destroy_command(
 def build_tap_command(
     source_instance_id: Optional[int] = None,
     target_filter: Optional[Dict[str, Any]] = None,
-    **kwargs
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Build a standardized TAP command.
@@ -195,7 +195,7 @@ def build_tap_command(
 def build_untap_command(
     source_instance_id: Optional[int] = None,
     target_filter: Optional[Dict[str, Any]] = None,
-    **kwargs
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Build a standardized UNTAP command.
@@ -224,7 +224,7 @@ def build_mutate_command(
     amount: int = 0,
     source_instance_id: Optional[int] = None,
     target_filter: Optional[Dict[str, Any]] = None,
-    **kwargs
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Build a standardized MUTATE command for modifying card properties.
@@ -255,7 +255,7 @@ def build_mutate_command(
 def build_attack_player_command(
     attacker_instance_id: int,
     target_player: int,
-    **kwargs
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Build a standardized ATTACK_PLAYER command.
@@ -280,7 +280,7 @@ def build_attack_player_command(
 def build_choice_command(
     options: List[List[Dict[str, Any]]],
     amount: int = 1,
-    **kwargs
+    **kwargs: Any
 ) -> Dict[str, Any]:
     """
     Build a standardized CHOICE command for player selections.

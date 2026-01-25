@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 Unified Action-to-Command Converter
-
+    ...
+    -> None:
 This module serves as the **single source of truth** for converting legacy Action
 dictionaries to standardized GameCommand structures.
-
+    ...
+    -> None:
 Key Principles (Specs/AGENTS.md Policy):
 1. All Action-to-Command conversions MUST go through this module's `map_action` function.
-2. Standardizes zone names, field names, and command types to match engine expectations.
+    ...
+    -> None:
 3. Maintains backward compatibility via `compat_wrappers.add_aliases_to_command`.
 4. Eliminates ad-hoc dictionary manipulation in test code and wrappers.
 
@@ -22,7 +25,7 @@ import uuid
 import copy
 import os
 import warnings
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from dm_toolkit.compat_wrappers import add_aliases_to_command
 from dm_toolkit.consts import COMMAND_TYPES
 
@@ -51,7 +54,7 @@ def enable_action_deprecation(flag: bool) -> None:
     global _DEPRECATE_ACTION_DICTS
     _DEPRECATE_ACTION_DICTS = bool(flag)
 
-def set_command_type_enum(enum_cls):
+def set_command_type_enum(enum_cls: Any) -> None:
     """
     Helper to inject a CommandType enum for testing or manual setup.
     """
@@ -88,7 +91,7 @@ def normalize_action_zone_keys(data: Dict[str, Any]) -> Dict[str, Any]:
 
 def _get_zone(d: Dict[str, Any], keys: List[str]) -> Optional[str]:
     for k in keys:
-        if k in d: return d[k]
+        if k in d: return cast(Optional[str], d[k])
     return None
 
 def _get_any(d: Dict[str, Any], keys: List[str]) -> Any:
@@ -99,7 +102,7 @@ def _get_any(d: Dict[str, Any], keys: List[str]) -> Any:
             return val
     return None
 
-def _transfer_targeting(act: Dict[str, Any], cmd: Dict[str, Any]):
+def _transfer_targeting(act: Dict[str, Any], cmd: Dict[str, Any]) -> None:
     scope = act.get('scope', 'NONE')
     if scope == 'NONE' and 'filter' in act:
          scope = 'TARGET_SELECT'
@@ -107,9 +110,10 @@ def _transfer_targeting(act: Dict[str, Any], cmd: Dict[str, Any]):
     if 'filter' in act:
         cmd['target_filter'] = copy.deepcopy(act['filter'])
     if act.get('optional', False):
-        cmd.setdefault('flags', []).append('OPTIONAL')
+        flags = cast(List[Any], cmd.setdefault('flags', []))
+        flags.append('OPTIONAL')
 
-def _transfer_common_move_fields(act: Dict[str, Any], cmd: Dict[str, Any]):
+def _transfer_common_move_fields(act: Dict[str, Any], cmd: Dict[str, Any]) -> None:
     _transfer_targeting(act, cmd)
     if 'amount' in act:
          cmd['amount'] = act['amount']
@@ -118,7 +122,7 @@ def _transfer_common_move_fields(act: Dict[str, Any], cmd: Dict[str, Any]):
     elif 'value1' in act:
          cmd['amount'] = act['value1']
 
-def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
+def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]) -> None:
     """
     Phase 3: Finalize command with canonical field normalization.
     
@@ -181,7 +185,7 @@ def _finalize_command(cmd: Dict[str, Any], act: Dict[str, Any]):
     if 'flags' not in cmd and isinstance(act.get('flags'), list):
         cmd['flags'] = list(act.get('flags') or [])
 
-def _validate_command_type(cmd: Dict[str, Any]):
+def _validate_command_type(cmd: Dict[str, Any]) -> None:
     """
     Phase 2: Strict Type Enforcement.
     If dm_ai_module is available, ensures cmd['type'] exists in CommandType.
@@ -291,10 +295,11 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     if 'options' in act_data and isinstance(act_data['options'], list):
         cmd['options'] = []
         for opt in act_data['options']:
+            options_list = cast(List[Any], cmd['options'])
             if isinstance(opt, list):
-                cmd['options'].append([map_action(sub) for sub in opt])
+                options_list.append([map_action(sub) for sub in opt])
             else:
-                cmd['options'].append([map_action(opt)])
+                options_list.append([map_action(opt)])
 
     src = _get_zone(act_data, ['source_zone', 'from_zone', 'origin_zone'])
     dest = _get_zone(act_data, ['destination_zone', 'to_zone', 'dest_zone'])
@@ -455,7 +460,7 @@ def _create_error_command(orig_val: str, msg: str) -> Dict[str, Any]:
     }
 
 
-def _handle_replace_card_move(act: Dict[str, Any], cmd: Dict[str, Any], original_zone: Optional[str], dest: Optional[str]):
+def _handle_replace_card_move(act: Dict[str, Any], cmd: Dict[str, Any], original_zone: Optional[str], dest: Optional[str]) -> None:
     """
     Handle replacement-style card movement where an incoming zone is replaced
     with another destination (e.g., "墓地に置くかわりに山札の下に置く").
@@ -491,7 +496,7 @@ def _handle_replace_card_move(act: Dict[str, Any], cmd: Dict[str, Any], original
     if 'amount' in cmd and cmd['amount'] == 0:
         cmd['amount'] = AMOUNT_ALL
 
-def _handle_move_card(act, cmd, src, dest):
+def _handle_move_card(act: Dict[str, Any], cmd: Dict[str, Any], src: Optional[str], dest: Optional[str]) -> None:
     # Map generic MOVE_CARD to a more specific command when destination implies it.
     # Default to TRANSITION when no clearer mapping exists.
     # Default mapping for a generic MOVE_CARD should be a TRANSITION
@@ -522,7 +527,7 @@ def _handle_move_card(act, cmd, src, dest):
     if 'amount' in cmd and cmd['amount'] == 0:
         cmd['amount'] = AMOUNT_ALL
 
-def _handle_specific_moves(act_type, act, cmd, src):
+def _handle_specific_moves(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any], src: Optional[str]) -> None:
     """
     Handle move actions that imply specific source/destination zones.
 
@@ -586,7 +591,7 @@ def _handle_specific_moves(act_type, act, cmd, src):
         if 'amount' in cmd and cmd['amount'] == 0:
             cmd['amount'] = AMOUNT_ALL
 
-def _handle_modifiers(act_type, act, cmd):
+def _handle_modifiers(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any]) -> None:
     val = act.get('str_param') or act.get('str_val', '')
     if act_type == "COST_REDUCTION" or val == "COST":
         cmd['type'] = "MUTATE"
@@ -603,7 +608,7 @@ def _handle_modifiers(act_type, act, cmd):
         elif 'value1' in act: cmd['amount'] = act['value1']
     _transfer_targeting(act, cmd)
 
-def _handle_mutate(act_type, act, cmd):
+def _handle_mutate(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any]) -> None:
     sval = str(act.get('str_param') or act.get('str_val') or '').upper()
 
     if sval in ("TAP", "UNTAP"):
@@ -647,14 +652,15 @@ def _handle_mutate(act_type, act, cmd):
         if 'amount' in cmd and cmd['amount'] == 0:
             cmd['amount'] = AMOUNT_ALL
 
-def _handle_selection(act_type, act, cmd):
+def _handle_selection(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any]) -> None:
     if act_type == "SELECT_OPTION":
         # Always map to CHOICE; enum exposure differences are handled in validation.
         cmd['type'] = "CHOICE"
 
         cmd['amount'] = act.get('amount') or act.get('value1', 1)
         if act.get('value2', 0) == 1:
-            cmd.setdefault('flags', []).append("ALLOW_DUPLICATES")
+            flags = cast(List[Any], cmd.setdefault('flags', []))
+            flags.append("ALLOW_DUPLICATES")
     
     elif act_type == "SELECT_TARGET":
         cmd['type'] = "QUERY"
@@ -677,7 +683,7 @@ def _handle_selection(act_type, act, cmd):
     else:
         _transfer_targeting(act, cmd)
 
-def _handle_complex(act_type, act, cmd, dest):
+def _handle_complex(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any], dest: Optional[str]) -> None:
     # Map complex/deck effects while preserving legacy 'type' for tests and compat.
     if act_type == "SEARCH_DECK":
         cmd['type'] = "SEARCH_DECK"
@@ -721,7 +727,7 @@ def _handle_complex(act_type, act, cmd, dest):
         if 'str_val' in act: cmd['str_param'] = act['str_val']
     _transfer_targeting(act, cmd)
 
-def _handle_play_flow(act_type, act, cmd, src, dest):
+def _handle_play_flow(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any], src: Optional[str], dest: Optional[str]) -> None:
     if act_type == "PLAY_CARD" or act_type == "DECLARE_PLAY":
         # Direct play from hand
         cmd['type'] = "PLAY_FROM_ZONE"
@@ -740,10 +746,12 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
         cmd['unified_type'] = 'PLAY'
         # propagate explicit play_for_free flag if present
         if act.get('play_for_free') or act.get('play_free'):
-            cmd.setdefault('play_flags', []).append('PLAY_FOR_FREE')
+            play_flags = cast(List[Any], cmd.setdefault('play_flags', []))
+            play_flags.append('PLAY_FOR_FREE')
         # propagate put-into-play semantic if action explicitly requests it
         if act.get('put_into_play') or act.get('force_put'):
-            cmd.setdefault('play_flags', []).append('PUT_IN_PLAY')
+            play_flags = cast(List[Any], cmd.setdefault('play_flags', []))
+            play_flags.append('PUT_IN_PLAY')
     elif act_type == "FRIEND_BURST":
         cmd['type'] = "FRIEND_BURST"
         cmd['str_val'] = act.get('str_val')
@@ -760,7 +768,7 @@ def _handle_play_flow(act_type, act, cmd, src, dest):
 
     _transfer_targeting(act, cmd)
 
-def _handle_engine_execution(act_type, act, cmd):
+def _handle_engine_execution(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any]) -> None:
     if act_type == "ATTACK_PLAYER":
         cmd['type'] = "ATTACK_PLAYER"
         cmd['instance_id'] = _get_any(act, ['source_instance', 'source_instance_id', 'attacker_id'])
@@ -792,14 +800,16 @@ def _handle_engine_execution(act_type, act, cmd):
         cmd['type'] = "RESOLVE_PLAY"
         cmd['instance_id'] = _get_any(act, ['card_id', 'source_instance_id'])
 
-def _handle_buffer_ops(act_type, act, cmd, dest):
+def _handle_buffer_ops(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any], dest: Optional[str]) -> None:
     if act_type == "LOOK_TO_BUFFER":
         cmd['type'] = 'LOOK_TO_BUFFER'
         cmd['look_count'] = act.get('value1', 1)
     elif act_type == "SELECT_FROM_BUFFER":
         cmd['type'] = 'SELECT_FROM_BUFFER'
         cmd['amount'] = act.get('value1', 1)
-        if act.get('value2', 0) == 1: cmd.setdefault('flags', []).append('ALLOW_DUPLICATES')
+        if act.get('value2', 0) == 1:
+            flags = cast(List[Any], cmd.setdefault('flags', []))
+            flags.append('ALLOW_DUPLICATES')
     elif act_type == "PLAY_FROM_BUFFER":
         # Preserve legacy type while indicating unified PLAY semantics
         cmd['type'] = 'PLAY_FROM_BUFFER'

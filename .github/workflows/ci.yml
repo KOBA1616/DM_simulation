@@ -115,7 +115,33 @@ jobs:
           name: pytest-full-report
           path: reports/junit-full.xml
 
-      - name: Run mypy (non-failing)
+      - name: Run mypy (non-failing, staged)
         run: |
-          python -m mypy --config-file mypy.ini dm_toolkit || true
+          # Temporarily restrict mypy to files we've stabilized while we incrementally add annotations
+          python -m mypy --config-file mypy.ini dm_toolkit/compat_wrappers.py dm_toolkit/validator/card_validator.py dm_toolkit/action_to_command.py
+
+  mypy-nightly:
+    name: Nightly mypy (full, artifact)
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      - name: Run mypy (full) and save output
+        run: |
+          mkdir -p reports || true
+          python -m mypy --config-file mypy.ini dm_toolkit 2>&1 | tee reports/mypy-full.txt || true
+      - name: Upload mypy artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mypy-full-report
+          path: reports/mypy-full.txt
 

@@ -1,0 +1,115 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\ichirou\DM_simulation\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\ichirou\DM_simulation
+configfile: pytest.ini
+testpaths: tests
+collecting ... Total tests: 45
+collected 45 items / 1 skipped
+
+tests/debug/test_import_dm_ai.py::test_print_dm_ai_module_source PASSED  [  2%]
+[                              ] 1/45 (  2.2%) passed=1 failed=0 skipped=0
+tests/generated/test_scenarios.py::test_generated_scenario[C:\\Users\\ichirou\\DM_simulation\\tests\\generated\\scenarios\\example_mana_charge.json] PASSED [  4%]
+[=                             ] 2/45 (  4.4%) passed=2 failed=0 skipped=0
+tests/test_ai_masking.py::TestAIMasking::test_ai_masking PASSED          [  6%]
+[==                            ] 3/45 (  6.7%) passed=3 failed=0 skipped=0
+tests/test_ai_masking.py::TestAIMasking::test_ai_masking_pass PASSED     [  8%]
+[==                            ] 4/45 (  8.9%) passed=4 failed=0 skipped=0
+tests/test_ai_masking.py::TestAIMasking::test_encode_action PASSED       [ 11%]
+[===                           ] 5/45 ( 11.1%) passed=5 failed=0 skipped=0
+tests/test_beam_search.py::TestBeamSearch::test_beam_search_logic PASSED [ 13%]
+[====                          ] 6/45 ( 13.3%) passed=6 failed=0 skipped=0
+tests/test_compat_consistency.py::TestEngineCompatConsistency::test_execute_command_fallback PASSED [ 15%]
+[====                          ] 7/45 ( 15.6%) passed=7 failed=0 skipped=0
+tests/test_compat_consistency.py::TestEngineCompatConsistency::test_execute_command_legacy_source_id PASSED [ 17%]
+[=====                         ] 8/45 ( 17.8%) passed=8 failed=0 skipped=0
+tests/test_compat_consistency.py::TestEngineCompatConsistency::test_get_current_phase_without_enum PASSED [ 20%]
+[======                        ] 9/45 ( 20.0%) passed=9 failed=0 skipped=0
+tests/test_compat_consistency.py::TestEngineCompatConsistency::test_load_cards_robust PASSED [ 22%]
+[======                        ] 10/45 ( 22.2%) passed=10 failed=0 skipped=0
+tests/test_compat_consistency.py::TestEngineCompatConsistency::test_phase_manager_force_advance PASSED [ 24%]
+[=======                       ] 11/45 ( 24.4%) passed=11 failed=0 skipped=0
+tests/test_compat_consistency.py::TestEngineCompatConsistency::test_phase_manager_next_phase_fallback PASSED [ 26%]
+[========                      ] 12/45 ( 26.7%) passed=12 failed=0 skipped=0
+tests/test_consistency_check.py::TestConsistencyCheck::test_consistency_card_structure PASSED [ 28%]
+[========                      ] 13/45 ( 28.9%) passed=13 failed=0 skipped=0
+tests/test_consistency_check.py::TestConsistencyCheck::test_consistency_text_generation PASSED [ 31%]
+[=========                     ] 14/45 ( 31.1%) passed=14 failed=0 skipped=0
+tests/test_consistency_check.py::TestConsistencyCheck::test_edge_cases PASSED [ 33%]
+[==========                    ] 15/45 ( 33.3%) passed=15 failed=0 skipped=0
+tests/test_consistency_check.py::TestConsistencyCheck::test_filter_content_coverage PASSED [ 35%]
+[==========                    ] 16/45 ( 35.6%) passed=16 failed=0 skipped=0
+tests/test_consistency_check.py::TestConsistencyCheck::test_scope_and_filter_text_generation PASSED [ 37%]
+[===========                   ] 17/45 ( 37.8%) passed=17 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_initial_state PASSED [ 40%]
+[============                  ] 18/45 ( 40.0%) passed=18 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_start_stop_tracing PASSED [ 42%]
+[============                  ] 19/45 ( 42.2%) passed=19 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_log_event PASSED [ 44%]
+[=============                 ] 20/45 ( 44.4%) passed=20 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_log_when_disabled PASSED [ 46%]
+[==============                ] 21/45 ( 46.7%) passed=21 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_log_command PASSED [ 48%]
+[==============                ] 22/45 ( 48.9%) passed=22 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_log_state_snapshot PASSED [ 51%]
+[===============               ] 23/45 ( 51.1%) passed=23 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_log_state_snapshot_error PASSED [ 53%]
+[================              ] 24/45 ( 53.3%) passed=24 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_export_to_json PASSED [ 55%]
+[================              ] 25/45 ( 55.6%) passed=25 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_singleton_accessor PASSED [ 57%]
+[=================             ] 26/45 ( 57.8%) passed=26 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_clear PASSED [ 60%]
+[==================            ] 27/45 ( 60.0%) passed=27 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_flowchart_logic PASSED [ 62%]
+[==================            ] 28/45 ( 62.2%) passed=28 failed=0 skipped=0
+tests/test_debug_effect_tracer.py::TestDebugEffectTracer::test_helper_methods PASSED [ 64%]
+[===================           ] 29/45 ( 64.4%) passed=29 failed=0 skipped=0
+tests/test_game_flow_minimal.py::TestGameFlowMinimal::test_full_flow PASSED [ 66%]
+[====================          ] 30/45 ( 66.7%) passed=30 failed=0 skipped=0
+tests/test_generate_legal_commands.py::test_generate_play_candidates_present PASSED [ 68%]
+[====================          ] 31/45 ( 68.9%) passed=31 failed=0 skipped=0
+tests/test_generate_legal_commands_mock.py::test_play_heuristic_with_mocked_dm_ai_module PASSED [ 71%]
+[=====================         ] 32/45 ( 71.1%) passed=32 failed=0 skipped=0
+tests/test_headless_smoke.py::test_headless_smoke_runs PASSED            [ 73%]
+[======================        ] 33/45 ( 73.3%) passed=33 failed=0 skipped=0
+tests/test_inference_integration.py::TestInferenceIntegration::test_ai_player_execution_flow PASSED [ 75%]
+[======================        ] 34/45 ( 75.6%) passed=34 failed=0 skipped=0
+tests/test_native_inference_bridge.py::TestNativeInferenceBridge::test_parallel_runner_lifecycle PASSED [ 77%]
+[=======================       ] 35/45 ( 77.8%) passed=35 failed=0 skipped=0
+tests/test_native_inference_bridge.py::TestNativeInferenceBridge::test_register_batch_inference_numpy PASSED [ 80%]
+[========================      ] 36/45 ( 80.0%) passed=36 failed=0 skipped=0
+tests/test_native_inference_bridge.py::TestNativeInferenceBridge::test_tensor_converter PASSED [ 82%]
+[========================      ] 37/45 ( 82.2%) passed=37 failed=0 skipped=0
+tests/test_spell_and_stack.py::TestSpellAndStack::test_spell_casting_stub PASSED [ 84%]
+[=========================     ] 38/45 ( 84.4%) passed=38 failed=0 skipped=0
+tests/test_spell_and_stack.py::TestSpellAndStack::test_stack_lifo PASSED [ 86%]
+[==========================    ] 39/45 ( 86.7%) passed=39 failed=0 skipped=0
+tests/test_unified_execution.py::test_conversion_consistency_basic PASSED [ 88%]
+[==========================    ] 40/45 ( 88.9%) passed=40 failed=0 skipped=0
+tests/test_unified_execution.py::test_conversion_consistency_conflict PASSED [ 91%]
+[===========================   ] 41/45 ( 91.1%) passed=41 failed=0 skipped=0
+tests/test_unified_execution.py::test_ensure_executable_idempotency PASSED [ 93%]
+[============================  ] 42/45 ( 93.3%) passed=42 failed=0 skipped=0
+tests/test_unified_execution.py::test_object_input PASSED                [ 95%]
+[============================  ] 43/45 ( 95.6%) passed=43 failed=0 skipped=0
+tests/test_unified_execution.py::test_missing_fields_normalization PASSED [ 97%]
+[============================= ] 44/45 ( 97.8%) passed=44 failed=0 skipped=0
+tests/test_unified_execution.py::test_str_normalization PASSED           [100%]
+[==============================] 45/45 (100.0%) passed=45 failed=0 skipped=0
+
+============================== warnings summary ===============================
+tests/test_ai_masking.py::TestAIMasking::test_ai_masking
+tests/test_ai_masking.py::TestAIMasking::test_ai_masking_pass
+tests/test_ai_masking.py::TestAIMasking::test_encode_action
+tests/test_inference_integration.py::TestInferenceIntegration::test_ai_player_execution_flow
+  C:\Users\ichirou\DM_simulation\.venv\Lib\site-packages\torch\nn\modules\transformer.py:392: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+    warnings.warn(
+
+tests/test_ai_masking.py::TestAIMasking::test_ai_masking
+  C:\Users\ichirou\DM_simulation\training\ai_player.py:60: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\torch\csrc\utils\tensor_new.cpp:256.)
+    state_tensor = torch.tensor([state_tokens], dtype=torch.long).to(self.device)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+-- generated xml file: C:\Users\ichirou\DM_simulation\reports\junit-full.xml --
+================== 45 passed, 1 skipped, 5 warnings in 3.97s ==================

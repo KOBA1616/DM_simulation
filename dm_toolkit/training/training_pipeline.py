@@ -34,7 +34,7 @@ except ImportError:
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 # from dm_toolkit.ai.agent.transformer_model import DuelTransformer
-from dm_toolkit.ai.agent.transformer_network import NetworkV2
+from dm_toolkit.ai.agent.transformer_network import NetworkV2  # type: ignore[import-untyped]
 from typing import Any
 
 class DuelDataset(Dataset):

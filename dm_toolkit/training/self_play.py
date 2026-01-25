@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import torch
 import time
-from typing import List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any, Dict, cast
 
 # Ensure bin is in path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
@@ -27,7 +27,9 @@ class SelfPlayRunner:
 
         # Initialize dimensions
         # GameInstance not exposed, using GameState directly
-        dummy_state = dm_ai_module.GameState(len(self.card_db))
+        # CardDB can be a dict or an engine CardDatabase; cast to dict for len() here
+        db_dict = cast(Dict[int, Any], self.card_db)
+        dummy_state = dm_ai_module.GameState(len(db_dict))
         # Note: instance.state returns a copy, but checking dimensions is fine
         dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_state, 0, self.card_db)
         self.input_size = len(dummy_vec)
@@ -56,7 +58,7 @@ class SelfPlayRunner:
             # but we can also just create GameState directly.
             # GameInstance initializes RNG seed.
             # instance = dm_ai_module.GameInstance(int(time.time() * 1000 + i) % 1000000, self.card_db)
-            state = dm_ai_module.GameState(len(self.card_db))
+            state = dm_ai_module.GameState(len(cast(Dict[int, Any], self.card_db)))
 
             # Capture the COPY of the state
             # state = instance.state
@@ -84,7 +86,7 @@ class SelfPlayRunner:
 
         # Find a valid creature for dummy deck
         valid_cid = 0
-        for cid, defn in self.card_db.items():
+        for cid, defn in cast(Dict[int, Any], self.card_db).items():
             if defn.type == dm_ai_module.CardType.CREATURE:
                 valid_cid = cid
                 break
@@ -182,7 +184,7 @@ class SelfPlayRunner:
         net2 = self.load_model(model2_path)
 
         valid_cid = 0
-        for cid, defn in self.card_db.items():
+        for cid, defn in cast(Dict[int, Any], self.card_db).items():
             if defn.type == dm_ai_module.CardType.CREATURE:
                 valid_cid = cid
                 break

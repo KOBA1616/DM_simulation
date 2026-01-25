@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, Optional, Protocol, runtime_checkable, List, cast
 from dm_toolkit.action_to_command import map_action
 
 @runtime_checkable
@@ -117,7 +117,7 @@ def wrap_action(action: Any) -> Optional[ICommand]:
         def to_string(self) -> str:
             # Check if underlying action has to_string
             if hasattr(self._action, "to_string") and callable(getattr(self._action, "to_string")):
-                return self._action.to_string()
+                return str(self._action.to_string())
             # Fallback to dict description
             d = self.to_dict()
             return str(d)
@@ -129,7 +129,7 @@ def wrap_action(action: Any) -> Optional[ICommand]:
     return _ActionWrapper(action)
 
 
-def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
+def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
     """Compatibility helper: generate legal actions and return wrapped commands.
 
     Calls `dm_ai_module.ActionGenerator.generate_legal_actions` and maps each
@@ -145,7 +145,7 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
         except Exception:
             pass
 
-        actions = []
+        actions: List[Any] = []
         try:
             # Try to use card_db directly - it could be a native CardDatabase or a dict
             actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
@@ -165,7 +165,8 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
             # reliably detect whether PLAY_CARD (or its unified equivalent)
             # is present. This absorbs differences where native bindings
             # expose enums/fields differently (int vs Enum, value1 vs amount).
-            normalized_cmds = []
+            from typing import Optional
+            normalized_cmds: List[Optional[Dict[str, Any]]] = []
             try:
                 from dm_toolkit.unified_execution import to_command_dict
                 for a in list(actions):
@@ -399,13 +400,13 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                             elif isinstance(card_db, dict):
                                 # try int and str keys
                                 try:
-                                    cdef = card_db.get(cid)
+                                    cdef = cast(Dict[Any, Any], card_db).get(cid)
                                 except Exception:
                                     cdef = None
                                 if cdef is None:
-                                    cdef = card_db.get(str(cid)) if isinstance(cid, (int, str)) else None
+                                    cdef = cast(Dict[Any, Any], card_db).get(str(cid)) if isinstance(cid, (int, str)) else None
                                 if cdef is None and isinstance(cid, str) and cid.isdigit():
-                                    cdef = card_db.get(int(cid))
+                                    cdef = cast(Dict[Any, Any], card_db).get(int(cid))
                             elif hasattr(card_db, 'cards'):
                                 try:
                                     cards_attr = getattr(card_db, 'cards')
@@ -513,7 +514,7 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                             cost = 9999
                             try:
                                 if isinstance(card_db, dict):
-                                    cdef = card_db.get(cid) or card_db.get(str(cid))
+                                    cdef = cast(Dict[Any, Any], card_db).get(cid) or cast(Dict[Any, Any], card_db).get(str(cid))
                                 elif hasattr(card_db, 'get_card'):
                                     cdef = card_db.get_card(cid)
                                 else:
@@ -622,13 +623,13 @@ def generate_legal_commands(state: Any, card_db: Dict[int, Any]) -> list:
                                     cdef = card_db.get_card(int(cid)) if isinstance(cid, str) and cid.isdigit() else None
                             elif isinstance(card_db, dict):
                                 try:
-                                    cdef = card_db.get(cid)
+                                    cdef = cast(Dict[Any, Any], card_db).get(cid)
                                 except Exception:
                                     cdef = None
                                 if cdef is None:
-                                    cdef = card_db.get(str(cid)) if isinstance(cid, (int, str)) else None
+                                    cdef = cast(Dict[Any, Any], card_db).get(str(cid)) if isinstance(cid, (int, str)) else None
                                 if cdef is None and isinstance(cid, str) and cid.isdigit():
-                                    cdef = card_db.get(int(cid))
+                                    cdef = cast(Dict[Any, Any], card_db).get(int(cid))
                             elif hasattr(card_db, 'cards'):
                                 try:
                                     cards_attr = getattr(card_db, 'cards')

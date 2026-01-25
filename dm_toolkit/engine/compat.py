@@ -2,7 +2,7 @@
 import sys
 import os
 import logging
-from typing import Any, List, Optional, Callable, Dict, Union
+from typing import Any, List, Optional, Callable, Dict, Union, cast, Tuple
 import enum
 from types import ModuleType
 
@@ -58,7 +58,7 @@ class EngineCompat:
         """Wraps dm_ai_module.get_execution_context"""
         if dm_ai_module and hasattr(dm_ai_module, 'get_execution_context'):
             try:
-                return dm_ai_module.get_execution_context(state)
+                return cast(Dict[str, Any], dm_ai_module.get_execution_context(state))
             except Exception:
                 pass
         # Fallback if state has it directly (Python stub)
@@ -66,9 +66,9 @@ class EngineCompat:
              # Check if it's an object with .variables or a dict
              ctx = getattr(state, 'execution_context')
              if hasattr(ctx, 'variables'):
-                 return ctx.variables
+                 return cast(Dict[str, Any], ctx.variables)
              if isinstance(ctx, dict):
-                 return ctx
+                 return cast(Dict[str, Any], ctx)
         return {}
 
     @staticmethod
@@ -76,7 +76,7 @@ class EngineCompat:
         """Wraps dm_ai_module.get_command_details"""
         if dm_ai_module and hasattr(dm_ai_module, 'get_command_details'):
             try:
-                return dm_ai_module.get_command_details(cmd)
+                return cast(str, dm_ai_module.get_command_details(cmd))
             except Exception:
                 pass
         return str(cmd)
@@ -187,8 +187,12 @@ class EngineCompat:
 
                         # Integer-like -> enum
                         try:
-                            ival = int(val)
-                            return PhaseEnum(ival)
+                            if val is None:
+                                # nothing to coerce
+                                pass
+                            else:
+                                ival = int(val)
+                                return PhaseEnum(ival)
                         except Exception:
                             pass
 
@@ -313,8 +317,8 @@ class EngineCompat:
                 except Exception:
                     pdata['shield_count'] = None
 
-                def _sample(zone_obj):
-                    samples = []
+                def _sample(zone_obj: Any) -> List[Dict[str, Any]]:
+                    samples: List[Dict[str, Any]] = []
                     try:
                         seq = list(zone_obj)
                     except Exception:
@@ -432,7 +436,7 @@ class EngineCompat:
     @staticmethod
     def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
         # Improved logging with structured data
-        log_data = {"action_str": str(action)}
+        log_data: Dict[str, Any] = {"action_str": str(action)}
         try:
             from dm_toolkit.action_to_command import map_action
             log_data["command_map"] = map_action(action)
@@ -504,7 +508,8 @@ class EngineCompat:
                                 else:
                                     # Try int coercion
                                     try:
-                                        setattr(state, 'current_phase', PhaseEnum(int(cur_val)))
+                                        if cur_val is not None:
+                                            setattr(state, 'current_phase', PhaseEnum(int(cur_val)))
                                     except Exception:
                                         pass
                         except Exception:
@@ -529,12 +534,12 @@ class EngineCompat:
 
                 # If native call made no observable change, retry a few times then force progress
                 try:
-                    def _phase_name(x):
+                    def _phase_name(x: Any) -> str:
                         try:
                             return str(x)
                         except Exception:
                             try:
-                                return getattr(x, 'name', repr(x))
+                                return cast(str, getattr(x, 'name', repr(x)))
                             except Exception:
                                 return repr(x)
 
@@ -560,7 +565,7 @@ class EngineCompat:
                                 if dm_ai_module is not None and hasattr(dm_ai_module, 'Phase'):
                                     PhaseEnum = dm_ai_module.Phase
                                     # helper to get int value from various representations
-                                    def _to_int(x):
+                                    def _to_int(x: Any) -> Optional[int]:
                                         try:
                                             if x is None:
                                                 return None
@@ -656,20 +661,20 @@ class EngineCompat:
                         native_obj = getattr(state, '_native', None)
                         raw_native_val = getattr(native_obj, 'current_phase', None) if native_obj is not None else None
 
-                        def _to_phase(x):
+                        def _to_phase(x: Any) -> Optional[Any]:
                             try:
                                 if x is None:
                                     return None
                                 if isinstance(x, PhaseEnum):
                                     return x
                                 if hasattr(x, 'value'):
-                                    return PhaseEnum(int(getattr(x, 'value')))
+                                    return cast(Any, PhaseEnum(int(getattr(x, 'value'))))
                                 if isinstance(x, str):
                                     nm = x.split('.', 1)[1] if x.startswith('Phase.') else x
                                     nm = nm.strip()
                                     if hasattr(PhaseEnum, nm):
-                                        return getattr(PhaseEnum, nm)
-                                return PhaseEnum(int(x))
+                                        return cast(Any, getattr(PhaseEnum, nm))
+                                return cast(Any, PhaseEnum(int(x)))
                             except Exception:
                                 return None
 
@@ -704,12 +709,12 @@ class EngineCompat:
                     pass
 
                 # If phase didn't change (compare normalized names), increment per-state guard counter and raise after threshold
-                def _phase_name(x):
+                def _phase_name(x: Any) -> str:
                     try:
                         return str(x)
                     except Exception:
                         try:
-                            return getattr(x, 'name', repr(x))
+                            return cast(str, getattr(x, 'name', repr(x)))
                         except Exception:
                             return repr(x)
 
@@ -764,7 +769,7 @@ class EngineCompat:
             logger.warning("dm_ai_module.PhaseManager.start_game not found.")
 
     @staticmethod
-    def PhaseManager_check_game_over(state: GameState):
+    def PhaseManager_check_game_over(state: GameState) -> Tuple[bool, Optional[Any]]:
         """
         Safe wrapper around dm_ai_module.PhaseManager.check_game_over.
 
@@ -839,7 +844,7 @@ class EngineCompat:
         return generate_legal_commands(state, real_db)
 
     @staticmethod
-    def ExecuteCommand(state: GameState, cmd: Any, card_db: CardDB = None) -> None:
+    def ExecuteCommand(state: GameState, cmd: Any, card_db: Optional[Any] = None) -> None:
         """Execute a command-like object on the provided GameState.
 
         Tries `dm_ai_module.CommandSystem.execute_command` if applicable,
@@ -908,7 +913,7 @@ class EngineCompat:
                                 pass
 
                     # Common fields (assign if present on CommandDef)
-                    def _assign_if_exists(o, name, value):
+                    def _assign_if_exists(o: Any, name: str, value: Any) -> bool:
                         try:
                             if hasattr(o, name):
                                 setattr(o, name, value)
@@ -1012,22 +1017,22 @@ class EngineCompat:
                         # Execute
                         # If a target_filter is present but instance_id wasn't assigned,
                         # attempt a Python-side target resolution as a fallback.
-                        ctx = {}
+                        ctx: Dict[str, Any] = {}
                         filter_dict = cmd_dict.get('target_filter') or {}
                         assigned_any = False
 
-                        def _resolve_zone_instances(zname: str):
+                        def _resolve_zone_instances(zname: str) -> List[Any]:
                             # Normalize common legacy names
                             if zname in ('BATTLE_ZONE', 'BATTLE'):
-                                return getattr(state.players[player_id], 'battle_zone', [])
+                                return cast(List[Any], getattr(state.players[player_id], 'battle_zone', []))
                             if zname in ('HAND',):
-                                return getattr(state.players[player_id], 'hand', [])
+                                return cast(List[Any], getattr(state.players[player_id], 'hand', []))
                             if zname in ('MANA_ZONE', 'MANA'):
-                                return getattr(state.players[player_id], 'mana_zone', [])
+                                return cast(List[Any], getattr(state.players[player_id], 'mana_zone', []))
                             if zname in ('SHIELD_ZONE', 'SHIELD'):
-                                return getattr(state.players[player_id], 'shield_zone', [])
+                                return cast(List[Any], getattr(state.players[player_id], 'shield_zone', []))
                             if zname in ('DECK',):
-                                return getattr(state.players[player_id], 'deck', [])
+                                return cast(List[Any], getattr(state.players[player_id], 'deck', []))
                             return []
 
                         if filter_dict and not getattr(cmd_def, 'instance_id', 0):
@@ -1100,17 +1105,17 @@ class EngineCompat:
                 player_id = getattr(state, 'active_player_id', 0)
                 logger.debug('EngineCompat: Python-fallback player_id=%s ctype=%s', player_id, ctype)
                 # Helper to resolve instances
-                def _resolve_zone_instances_local(zname: str):
+                def _resolve_zone_instances_local(zname: str) -> List[Any]:
                     if zname in ('BATTLE_ZONE', 'BATTLE'):
-                        return getattr(state.players[player_id], 'battle_zone', [])
+                        return cast(List[Any], getattr(state.players[player_id], 'battle_zone', []))
                     if zname in ('HAND',):
-                        return getattr(state.players[player_id], 'hand', [])
+                        return cast(List[Any], getattr(state.players[player_id], 'hand', []))
                     if zname in ('MANA_ZONE', 'MANA'):
-                        return getattr(state.players[player_id], 'mana_zone', [])
+                        return cast(List[Any], getattr(state.players[player_id], 'mana_zone', []))
                     if zname in ('SHIELD_ZONE', 'SHIELD'):
-                        return getattr(state.players[player_id], 'shield_zone', [])
+                        return cast(List[Any], getattr(state.players[player_id], 'shield_zone', []))
                     if zname in ('DECK',):
-                        return getattr(state.players[player_id], 'deck', [])
+                        return cast(List[Any], getattr(state.players[player_id], 'deck', []))
                     return []
 
                 if ctype == 'REPLACE_CARD_MOVE':
@@ -1132,13 +1137,13 @@ class EngineCompat:
                         zstr = str(z or '').upper()
                         return zstr
 
-                    def _get_zone_list_for(player, zone_key: str):
+                    def _get_zone_list_for(player: Any, zone_key: str) -> Optional[List[Any]]:
                         attr = zone_attr_map.get(zone_key)
                         if not attr:
                             return None
-                        return getattr(player, attr, None)
+                        return cast(Optional[List[Any]], getattr(player, attr, None))
 
-                    def _detach_instance(inst_id: int):
+                    def _detach_instance(inst_id: int) -> Tuple[Optional[Any], Optional[int]]:
                         players = getattr(state, 'players', [])
                         for pid, pl in enumerate(players):
                             for zkey, attr in zone_attr_map.items():
@@ -1155,7 +1160,7 @@ class EngineCompat:
                                         return obj, pid
                         return None, None
 
-                    def _place(card_obj, pid: int, dest_zone: str):
+                    def _place(card_obj: Any, pid: int, dest_zone: str) -> bool:
                         players = getattr(state, 'players', [])
                         if pid is None or pid < 0 or pid >= len(players):
                             return False
@@ -1181,7 +1186,11 @@ class EngineCompat:
                     if instance_id is not None:
                         card_obj, pid = _detach_instance(int(instance_id))
                         if card_obj is not None:
-                            if _place(card_obj, pid, dest_zone):
+                            try:
+                                pid_int = int(pid) if pid is not None else -1
+                            except Exception:
+                                pid_int = -1
+                            if _place(card_obj, pid_int, dest_zone):
                                 moved += 1
 
                     # If we still need to move cards and a filter exists, try pulling from that zone
@@ -1284,13 +1293,13 @@ class EngineCompat:
                             # Check if card has type info attached
                             is_spell = False
                             cid = getattr(card, 'card_id', -1)
-                            cdef = {}
+                            cdef: Optional[Dict[str, Any]] = None
 
                             if card_db:
                                 if hasattr(card_db, 'get_card'):
                                     cdef = card_db.get_card(cid)
                                 elif isinstance(card_db, dict):
-                                    cdef = card_db.get(cid) or card_db.get(str(cid))
+                                    cdef = cast(Dict[Any, Any], card_db).get(cid) or cast(Dict[Any, Any], card_db).get(str(cid))
 
                             # Fallback to global DB if provided DB is missing/empty and we have the module
                             if not cdef and dm_ai_module and hasattr(dm_ai_module, 'CardDatabase'):
@@ -1425,7 +1434,7 @@ class EngineCompat:
 
         # If Python failed but Native succeeded (rare/unlikely if file is valid JSON), return Native (wrapped/cached)
         if EngineCompat._native_db_cache:
-            return EngineCompat._native_db_cache
+            return cast(Dict[int, Any], EngineCompat._native_db_cache)
 
         return {}
 

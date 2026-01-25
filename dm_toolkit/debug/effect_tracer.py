@@ -29,19 +29,19 @@ class TraceEventType(Enum):
     ERROR = "ERROR"
 
 class EffectTracer:
-    def __init__(self):
+    def __init__(self) -> None:
         self._trace_log: List[Dict[str, Any]] = []
         self._enabled = False
         self._start_time = 0.0
 
-    def start_tracing(self):
+    def start_tracing(self) -> None:
         """Starts recording the trace."""
         self._trace_log = []
         self._enabled = True
         self._start_time = time.time()
         self.log_event(TraceEventType.INFO, "Tracing Started")
 
-    def stop_tracing(self):
+    def stop_tracing(self) -> None:
         """Stops recording."""
         self.log_event(TraceEventType.INFO, "Tracing Stopped")
         self._enabled = False
@@ -49,7 +49,7 @@ class EffectTracer:
     def is_enabled(self) -> bool:
         return self._enabled
 
-    def log_event(self, event_type: TraceEventType, message: str, data: Optional[Dict[str, Any]] = None):
+    def log_event(self, event_type: TraceEventType, message: str, data: Optional[Dict[str, Any]] = None) -> None:
         """
         Logs an event to the trace.
 
@@ -70,12 +70,12 @@ class EffectTracer:
         }
         self._trace_log.append(entry)
 
-    def log_command(self, command: Dict[str, Any]):
+    def log_command(self, command: Dict[str, Any]) -> None:
         """Helper to log a command execution."""
         cmd_type = command.get("type", "UNKNOWN")
         self.log_event(TraceEventType.COMMAND_EXECUTION, f"Executing {cmd_type}", command)
 
-    def log_state_snapshot(self, state: Any):
+    def log_state_snapshot(self, state: Any) -> None:
         """
         Logs a snapshot of the game state.
         Note: This can be heavy, use sparingly or filter essential data.
@@ -95,7 +95,7 @@ class EffectTracer:
         except Exception as e:
             self.log_event(TraceEventType.INFO, f"Failed to snapshot state: {e}")
 
-    def export_to_json(self, filepath: str):
+    def export_to_json(self, filepath: str) -> None:
         """Exports the recorded trace to a JSON file."""
         try:
             with open(filepath, 'w', encoding='utf-8') as f:
@@ -130,22 +130,22 @@ class EffectTracer:
             "steps": steps
         }
 
-    def start_effect(self, effect_name: str, context: Optional[Dict[str, Any]] = None):
+    def start_effect(self, effect_name: str, context: Optional[Dict[str, Any]] = None) -> None:
         self.log_event(TraceEventType.START_EFFECT, f"Start effect: {effect_name}", context)
 
-    def end_effect(self, effect_name: str, context: Optional[Dict[str, Any]] = None):
+    def end_effect(self, effect_name: str, context: Optional[Dict[str, Any]] = None) -> None:
         self.log_event(TraceEventType.END_EFFECT, f"End effect: {effect_name}", context)
 
-    def step(self, description: str, details: Optional[Dict[str, Any]] = None):
+    def step(self, description: str, details: Optional[Dict[str, Any]] = None) -> None:
         self.log_event(TraceEventType.STEP, description, details)
 
-    def error(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def error(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
         self.log_event(TraceEventType.ERROR, message, details)
 
     def get_trace(self) -> List[Dict[str, Any]]:
         return self._trace_log
 
-    def clear(self):
+    def clear(self) -> None:
         self._trace_log = []
 
 # Global instance for easy access if needed (singleton pattern)
