@@ -1,0 +1,37 @@
+name: Headless Smoke
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  headless-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Run pytest smoke
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        python -m pytest -q tests/test_headless_smoke.py
+
+    - name: Run headless mainwindow auto
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        python scripts/headless_mainwindow.py --auto 3 --dump-json headless_ci_snapshot.json --log-level INFO
