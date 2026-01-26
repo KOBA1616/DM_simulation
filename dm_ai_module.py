@@ -863,53 +863,6 @@ if 'ParallelRunner' not in globals():
     def create_parallel_runner(card_db: Any, sims: int, batch_size: int) -> Any:
         return ParallelRunner(card_db, sims, batch_size)
 
-if 'GameInstance' in globals() and hasattr(globals()['GameInstance'], 'execute_action'):
-    # Patch existing GameInstance.execute_action to use GenericCardSystem if it's a no-op
-    try:
-        gi = globals()['GameInstance']
-        if getattr(gi, 'execute_action') and gi.execute_action.__code__.co_consts == (None,):
-            def _exec_action(self, action: Any) -> None:
-                try:
-                    try:
-                        from dm_toolkit.compat_wrappers import execute_action_compat
-                        execute_action_compat(self.state, action, getattr(self.state, 'card_db', None))
-                    except Exception:
-                        GenericCardSystem.resolve_action(self.state, action, getattr(self.state, 'active_player_id', 0))
-                except Exception:
-                    pass
-            globals()['GameInstance'].execute_action = _exec_action
-    except Exception:
-        pass
-
-# End of file
-
-# Ensure a minimal `GameInstance` is always exported for tests that import it
-if 'GameInstance' not in globals():
-    class GameInstance:
-        def __init__(self, game_id: int = 0):
-            self.state = GameState()
-            self.player_instances = self.state.players
-
-        def initialize(self):
-            return None
-
-        def start_game(self):
-            try:
-                PhaseManager.start_game(self.state, getattr(self.state, 'card_db', None))
-            except Exception:
-                pass
-
-        def execute_action(self, action: Any) -> None:
-                try:
-                    try:
-                        from dm_toolkit.compat_wrappers import execute_action_compat
-                        execute_action_compat(self.state, action, getattr(self.state, 'card_db', None))
-                    except Exception:
-                        GenericCardSystem.resolve_action(self.state, action, getattr(self.state, 'active_player_id', 0))
-                except Exception:
-                    pass
-
-
 if 'GameResult' not in globals():
     class GameResult(IntEnum):
         NONE = -1
