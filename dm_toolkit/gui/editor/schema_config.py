@@ -353,6 +353,29 @@ def register_all_schemas():
         f_filter,
         FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
     ]))
+
+    # Player Restrictions
+    register_schema(CommandSchema("SPELL_RESTRICTION", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+    ]))
+    register_schema(CommandSchema("CANNOT_PUT_CREATURE", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+    ]))
+    register_schema(CommandSchema("CANNOT_SUMMON_CREATURE", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+    ]))
+    register_schema(CommandSchema("PLAYER_CANNOT_ATTACK", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+    ]))
+
     register_schema(CommandSchema("RESET_INSTANCE", [
         f_target,
         f_filter

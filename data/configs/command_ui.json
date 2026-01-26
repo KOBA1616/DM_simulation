@@ -223,7 +223,19 @@
     "visible": ["result", "target_group"],
     "labels": { "result": "Result" }
   },
-  "LOCK_SPELL": {
+  "SPELL_RESTRICTION": {
+    "visible": ["target_group", "target_filter", "amount"],
+    "labels": { "amount": "Duration (Turns)" }
+  },
+  "CANNOT_PUT_CREATURE": {
+    "visible": ["target_group", "target_filter", "amount"],
+    "labels": { "amount": "Duration (Turns)" }
+  },
+  "CANNOT_SUMMON_CREATURE": {
+    "visible": ["target_group", "target_filter", "amount"],
+    "labels": { "amount": "Duration (Turns)" }
+  },
+  "PLAYER_CANNOT_ATTACK": {
     "visible": ["target_group", "target_filter", "amount"],
     "labels": { "amount": "Duration (Turns)" }
   },
@@ -247,10 +259,10 @@
     "PLAY": [ "PLAY_FROM_ZONE", "CAST_SPELL", "SUMMON_TOKEN" ],
     "BUFFER": [ "LOOK_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE" ],
     "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE", "MOVE_TO_UNDER_CARD" ],
-    "GRANT": [ "MUTATE", "POWER_MOD", "ADD_KEYWORD", "TAP", "UNTAP", "REGISTER_DELAYED_EFFECT", "APPLY_MODIFIER", "LOCK_SPELL", "RESET_INSTANCE" ],
+    "GRANT": [ "MUTATE", "POWER_MOD", "ADD_KEYWORD", "TAP", "UNTAP", "REGISTER_DELAYED_EFFECT", "APPLY_MODIFIER", "RESET_INSTANCE" ],
     "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "DECLARE_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT" ],
     "BATTLE": [ "BREAK_SHIELD", "RESOLVE_BATTLE", "SHIELD_BURN", "SHIELD_TRIGGER", "ADD_SHIELD", "SEND_SHIELD_TO_GRAVE" ],
-    "RESTRICTION": [],
+    "RESTRICTION": [ "SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK" ],
     "SPECIAL": [ "GAME_RESULT", "COST_REFERENCE" ]
   }
 }
