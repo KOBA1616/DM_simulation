@@ -294,6 +294,19 @@ if 'GameState' not in globals():
                             return card
             return None
 
+        def get_zone(self, player_id: int, zone_id: int) -> list:
+            if player_id < 0 or player_id >= len(self.players):
+                return []
+            p = self.players[player_id]
+            # Zone enum values: DECK=0, HAND=1, MANA=2, BATTLE=3, GRAVEYARD=4, SHIELD=5
+            if zone_id == 0: return p.deck
+            if zone_id == 1: return p.hand
+            if zone_id == 2: return p.mana_zone
+            if zone_id == 3: return p.battle_zone
+            if zone_id == 4: return p.graveyard
+            if zone_id == 5: return p.shield_zone
+            return []
+
 if 'Action' not in globals():
     class Action:
         def __init__(self, *args: Any, **kwargs: Any):
@@ -323,7 +336,7 @@ if 'CommandDef' not in globals():
 
 if 'GameInstance' not in globals():
     class GameInstance:
-        def __init__(self, game_id: int = 0):
+        def __init__(self, game_id: int = 0, card_db: Any = None):
             self.state = GameState()
             self.player_instances = self.state.players
         def initialize(self):
@@ -332,6 +345,10 @@ if 'GameInstance' not in globals():
             pass
         def execute_action(self, action: Any) -> None:
             pass
+        def initialize_card_stats(self, size: int):
+            pass
+        def get_card_stats(self):
+            return {}
 
 if 'CommandSystem' not in globals():
     class CommandSystem:
@@ -970,6 +987,10 @@ if 'ParallelRunner' not in globals():
                 results.append(Result())
             return results
 
+        def play_deck_matchup(self, deck1: List[int], deck2: List[int], num_games: int, threads: int) -> List[int]:
+            # Stub: return P1 win for all
+            return [0] * num_games
+
     def create_parallel_runner(card_db: Any, sims: int, batch_size: int) -> Any:
         return ParallelRunner(card_db, sims, batch_size)
 
@@ -1236,3 +1257,50 @@ if 'DataCollector' not in globals():
                 def __init__(self):
                     self.values = []
             return Batch()
+
+if 'DeckEvolutionConfig' not in globals():
+    class DeckEvolutionConfig:
+        def __init__(self):
+            self.population_size = 100
+            self.games_per_matchup = 10
+            self.mutation_rate = 0.1
+            self.crossover_rate = 0.5
+            self.elite_count = 5
+
+if 'ScenarioConfig' not in globals():
+    class ScenarioConfig:
+        def __init__(self):
+            self.my_mana = 0
+            self.my_hand_cards = []
+            self.my_battle_zone = []
+            self.my_mana_zone = []
+            self.my_grave_yard = []
+            self.my_shields = []
+            self.enemy_shield_count = 5
+            self.enemy_battle_zone = []
+            self.enemy_can_use_trigger = False
+
+if 'NeuralEvaluator' not in globals():
+    class NeuralEvaluator:
+        def __init__(self, db):
+            pass
+        def evaluate(self, state):
+            return ([0.0]*600, 0.0)
+
+if 'HeuristicEvaluator' not in globals():
+    class HeuristicEvaluator:
+        def __init__(self, db):
+            pass
+        def evaluate(self, state):
+            return ([0.0]*600, 0.0)
+
+if 'DeckEvolution' not in globals():
+    class DeckEvolution:
+        def __init__(self, card_db):
+            pass
+        def evolve_generation(self, config, population, scores):
+            return population
+
+if 'get_card_stats' not in globals():
+    def get_card_stats(state: Any) -> dict:
+        return {}
