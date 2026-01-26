@@ -506,7 +506,16 @@ if 'GenericCardSystem' not in globals():
 
         @staticmethod
         def resolve_action(state: Any, action: Any, player_id: int) -> None:
+            import warnings
             try:
+                # Deprecation notice: prefer unified command API
+                try:
+                    warnings.warn(
+                        "GenericCardSystem.resolve_action is deprecated; use dm_toolkit.unified_execution.ensure_executable_command + EngineCompat.ExecuteCommand",
+                        DeprecationWarning,
+                    )
+                except Exception:
+                    pass
                 atype = getattr(action, 'type', None)
                 # Normalize string types
                 if isinstance(atype, str):
@@ -581,6 +590,22 @@ if 'GenericCardSystem' not in globals():
                         pass
             except Exception:
                 # Swallow errors in resolve_action to avoid test interruption
+                pass
+            # Fallback: if legacy resolution didn't handle the action, attempt
+            # to convert to a command dict and execute via EngineCompat so
+            # that Action-based callers still result in canonical execution.
+            try:
+                from dm_toolkit.unified_execution import ensure_executable_command
+                from dm_toolkit.engine.compat import EngineCompat
+                try:
+                    cmd = ensure_executable_command(action)
+                    if cmd and cmd.get('type') not in (None, 'NONE'):
+                        card_db = getattr(state, 'card_db', None)
+                        EngineCompat.ExecuteCommand(state, cmd, card_db)
+                        return
+                except Exception:
+                    pass
+            except Exception:
                 pass
 
 if 'JsonLoader' not in globals():

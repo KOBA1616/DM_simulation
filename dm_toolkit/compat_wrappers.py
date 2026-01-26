@@ -133,3 +133,30 @@ def get_effective_command_type(cmd: Dict[str, Any]) -> Optional[str]:
     # Fallback to legacy original type (ensure str | None)
     return cast(Optional[str], cmd.get('legacy_original_type')) or 'NONE'
 
+
+def execute_action_compat(state: Any, action: Any, card_db: Any = None) -> None:
+    """
+    Execute a legacy Action-like object by converting to a canonical command
+    and invoking EngineCompat.ExecuteCommand. This helper centralizes the
+    migration path for callers still using Action objects.
+
+    Args:
+        state: GameState-like object
+        action: Action-like object or dict
+        card_db: optional CardDB to pass to executor
+    """
+    try:
+        from dm_toolkit.unified_execution import ensure_executable_command
+        from dm_toolkit.engine.compat import EngineCompat
+    except Exception:
+        return
+
+    try:
+        cmd = ensure_executable_command(action)
+        if not cmd or cmd.get('type') in (None, 'NONE'):
+            return
+        EngineCompat.ExecuteCommand(state, cmd, card_db)
+    except Exception:
+        # Be defensive: do not raise from compatibility helper
+        return
+

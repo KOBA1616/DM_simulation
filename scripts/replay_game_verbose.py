@@ -62,7 +62,8 @@ def replay(seed, deck=None, max_steps=200):
         print('  Chosen action type:', getattr(action, 'type', None))
 
         try:
-            inst.resolve_action(action)
+            from dm_toolkit.compat_wrappers import execute_action_compat
+            execute_action_compat(inst.state, action, card_db)
         except Exception as e:
             print('  resolve_action exception:', e)
             try:

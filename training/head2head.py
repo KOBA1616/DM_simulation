@@ -549,7 +549,8 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             except Exception:
                 pass
             try:
-                dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
+                from dm_toolkit.compat_wrappers import execute_action_compat
+                execute_action_compat(instances[game_idx].state, chosen, CARD_DB)
             except Exception:
                 pass
             try:
@@ -669,7 +670,10 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             except Exception:
                 pass
             try:
-                instances[game_idx].resolve_action(chosen)
+                from dm_toolkit.compat_wrappers import execute_action_compat
+                # Prefer instance-level API when available, but route through
+                # compatibility helper to ensure command path execution.
+                execute_action_compat(instances[game_idx].state, chosen, CARD_DB)
             except Exception:
                 try:
                     dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)

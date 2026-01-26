@@ -91,7 +91,8 @@ def run_single_game_py(seed, deck_a, deck_b, max_steps=10000):
             continue
 
         try:
-            inst.resolve_action(action)
+            from dm_toolkit.compat_wrappers import execute_action_compat
+            execute_action_compat(inst.state, action, card_db)
         except Exception:
             try:
                 dm_ai_module.GameLogicSystem.resolve_action_oneshot(gs, action, card_db)

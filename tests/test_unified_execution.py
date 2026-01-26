@@ -123,3 +123,27 @@ def test_str_normalization():
     cmd2 = ensure_executable_command(action2)
     assert cmd2['str_val'] == "TEST2"
     assert cmd2['str_param'] == "TEST2"
+
+
+class PybindLike:
+    # Simulate a pybind-like object exposing fields as properties
+    @property
+    def type(self):
+        return 'PLAY_CARD'
+
+    @property
+    def card_id(self):
+        return 123
+
+    @property
+    def source_instance_id(self):
+        return 5
+
+
+def test_ensure_executable_command_pybind_like_object():
+    obj = PybindLike()
+    cmd = ensure_executable_command(obj)
+    assert isinstance(cmd, dict)
+    # Mapping should produce a non-NONE command type for the object
+    assert cmd.get('type') not in (None, 'NONE')
+    assert not cmd.get('legacy_warning', False)

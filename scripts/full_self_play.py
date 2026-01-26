@@ -113,7 +113,11 @@ def mana_charge_phase(state, trace: bool = False):
                     a.source_instance_id = card.instance_id
                 if trace:
                     print(f"  mana_charge_phase: using resolve_action, source_instance={getattr(card,'instance_id',None)}")
-                gi.resolve_action(a)
+                try:
+                    from dm_toolkit.compat_wrappers import execute_action_compat
+                    execute_action_compat(gi.state, a, None)
+                except Exception:
+                    gi.resolve_action(a)
                 if trace:
                     print(f"  mana_charge_phase: after resolve_action hand={len(getattr(player,'hand',[]))} mana={len(getattr(player,'mana_zone',[]))} ids_hand={_zone_ids(getattr(player,'hand',[]))} ids_mana={_zone_ids(getattr(player,'mana_zone',[]))}")
                 return
@@ -158,7 +162,11 @@ def summon_phase(state, trace: bool = False):
                     a.card_id = getattr(card, 'card_id')
                 if trace:
                     print(f"  summon_phase: using resolve_action, source_instance={getattr(card,'instance_id',None)}, card_id={getattr(card,'card_id',None)}")
-                gi.resolve_action(a)
+                try:
+                    from dm_toolkit.compat_wrappers import execute_action_compat
+                    execute_action_compat(gi.state, a, None)
+                except Exception:
+                    gi.resolve_action(a)
                 if trace:
                     print(f"  summon_phase: after resolve_action hand={len(getattr(player,'hand',[]))} battle={len(getattr(player,'battle_zone',[]))} ids_hand={_zone_ids(getattr(player,'hand',[]))} ids_battle={_zone_ids(getattr(player,'battle_zone',[]))}")
                 return
@@ -231,7 +239,11 @@ def attack_phase(gi, card_db=None, trace: bool = False):
                                 print(f"  attack_phase: using legal action: {chosen.to_string()}")
                             except Exception:
                                 print(f"  attack_phase: using legal action: type={getattr(chosen,'type',None)} src={getattr(chosen,'source_instance_id',None)} tgt={getattr(chosen,'target_player',None)}")
-                        gi.resolve_action(chosen)
+                        try:
+                            from dm_toolkit.compat_wrappers import execute_action_compat
+                            execute_action_compat(gi.state, chosen, card_db if 'card_db' in locals() else None)
+                        except Exception:
+                            gi.resolve_action(chosen)
                         tp = state.players[target]
                         if trace:
                             print(f"  attack_phase: after resolve_action target_shields={len(getattr(tp,'shield_zone',[]))} shield_ids={_zone_ids(getattr(tp,'shield_zone',[]))} winner={state.winner}")
@@ -305,7 +317,11 @@ def attack_phase(gi, card_db=None, trace: bool = False):
                                         a_res.target_player = target
                                     if trace:
                                         print(f"    attempt: resolve_action(RESOLVE_BATTLE) source={a_res.source_instance_id} target_instance={getattr(a_res,'target_instance_id',None)} target_player={getattr(a_res,'target_player',None)}")
-                                    gi.resolve_action(a_res)
+                                    try:
+                                        from dm_toolkit.compat_wrappers import execute_action_compat
+                                        execute_action_compat(gi.state, a_res, card_db if 'card_db' in locals() else None)
+                                    except Exception:
+                                        gi.resolve_action(a_res)
                                     if trace:
                                         tp_post = state.players[target]
                                         print(f"    after resolve_action(RESOLVE_BATTLE) target_shields={len(getattr(tp_post,'shield_zone',[]))} shield_ids={_zone_ids(getattr(tp_post,'shield_zone',[]))}")
@@ -405,7 +421,11 @@ def attack_phase(gi, card_db=None, trace: bool = False):
             if trace:
                 print(f"  attack_phase: using resolve_action attacking player {target} (pre_shields={pre_shields})")
                 print(f"    action before resolve: {_action_dict(a)}")
-            gi.resolve_action(a)
+            try:
+                from dm_toolkit.compat_wrappers import execute_action_compat
+                execute_action_compat(gi.state, a, card_db if 'card_db' in locals() else None)
+            except Exception:
+                gi.resolve_action(a)
             post_shields = len(getattr(tp, 'shield_zone', []))
             if trace:
                 print(f"  attack_phase: after resolve_action target_shields={post_shields} shield_ids={_zone_ids(getattr(tp,'shield_zone',[]))} winner={state.winner}")
@@ -420,7 +440,14 @@ def attack_phase(gi, card_db=None, trace: bool = False):
                         if trace:
                             print("  attack_phase: resolve_action had no effect, trying execute_action(BREAK_SHIELD)")
                             print(f"    fallback action: {_action_dict(fb)}")
-                        gi.execute_action(fb)
+                        try:
+                            from dm_toolkit.compat_wrappers import execute_action_compat
+                            execute_action_compat(gi.state, fb, card_db if 'card_db' in locals() else None)
+                        except Exception:
+                            try:
+                                gi.execute_action(fb)
+                            except Exception:
+                                pass
                     elif hasattr(gi, 'resolve_action'):
                         if trace:
                             print("  attack_phase: resolve_action had no effect, trying resolve_action(BREAK_SHIELD)")
@@ -452,12 +479,23 @@ def attack_phase(gi, card_db=None, trace: bool = False):
                             if trace:
                                 print("  attack_phase: trying execute_action(BREAK_SHIELD) with shield instance")
                                 print(f"    fallback action 2: {_action_dict(fb2)}")
-                            gi.execute_action(fb2)
+                            try:
+                                from dm_toolkit.compat_wrappers import execute_action_compat
+                                execute_action_compat(gi.state, fb2, card_db if 'card_db' in locals() else None)
+                            except Exception:
+                                try:
+                                    gi.execute_action(fb2)
+                                except Exception:
+                                    pass
                         elif hasattr(gi, 'resolve_action'):
                             if trace:
                                 print("  attack_phase: trying resolve_action(BREAK_SHIELD) with shield instance")
                                 print(f"    fallback action 2: {_action_dict(fb2)}")
-                            gi.resolve_action(fb2)
+                            try:
+                                from dm_toolkit.compat_wrappers import execute_action_compat
+                                execute_action_compat(gi.state, fb2, card_db if 'card_db' in locals() else None)
+                            except Exception:
+                                gi.resolve_action(fb2)
 
                     if trace:
                         print(f"  attack_phase: after fallback target_shields={len(getattr(tp,'shield_zone',[]))} shield_ids={_zone_ids(getattr(tp,'shield_zone',[]))} winner={state.winner}")
@@ -596,7 +634,14 @@ def minimal_attack_test(seed: int | None = None, trace: bool = False) -> int:
                     fb.target_player = 1
                 if trace:
                     print(f"Mini test: attempting resolve_action(BREAK_SHIELD) target_instance={getattr(sh,'instance_id',None)}")
-                gi.resolve_action(fb)
+                try:
+                    from dm_toolkit.compat_wrappers import execute_action_compat
+                    execute_action_compat(gi.state, fb, card_db if 'card_db' in locals() else None)
+                except Exception:
+                    try:
+                        gi.resolve_action(fb)
+                    except Exception:
+                        pass
                 if trace:
                     print(f"Mini test: after BREAK_SHIELD target_shields={len(getattr(tp,'shield_zone',[]))} shield_ids={_zone_ids(getattr(tp,'shield_zone',[]))}")
             except Exception:
