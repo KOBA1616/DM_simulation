@@ -440,19 +440,23 @@ def attack_phase(gi, card_db=None, trace: bool = False):
                         if trace:
                             print("  attack_phase: resolve_action had no effect, trying execute_action(BREAK_SHIELD)")
                             print(f"    fallback action: {_action_dict(fb)}")
-                        try:
-                            from dm_toolkit.compat_wrappers import execute_action_compat
-                            execute_action_compat(gi.state, fb, card_db if 'card_db' in locals() else None)
-                        except Exception:
                             try:
-                                gi.execute_action(fb)
+                                from dm_toolkit.compat_wrappers import execute_action_compat
+                                execute_action_compat(gi.state, fb, card_db if 'card_db' in locals() else None)
                             except Exception:
-                                pass
+                                try:
+                                    gi.execute_action(fb)
+                                except Exception:
+                                    pass
                     elif hasattr(gi, 'resolve_action'):
                         if trace:
                             print("  attack_phase: resolve_action had no effect, trying resolve_action(BREAK_SHIELD)")
                             print(f"    fallback action: {_action_dict(fb)}")
-                        gi.resolve_action(fb)
+                            try:
+                                from dm_toolkit.compat_wrappers import execute_action_compat
+                                execute_action_compat(gi.state, fb, card_db if 'card_db' in locals() else None)
+                            except Exception:
+                                gi.resolve_action(fb)
 
                     # If still no effect, attempt to target a specific shield instance
                     post_shields2 = len(getattr(tp, 'shield_zone', []))
