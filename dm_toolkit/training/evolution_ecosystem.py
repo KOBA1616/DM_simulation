@@ -215,11 +215,15 @@ class EvolutionEcosystem:
                             cmd = ensure_executable_command(best_action)
                             EngineCompat.ExecuteCommand(instance.state, cmd)
                          except Exception:
-                             # Last resort: let compat wrapper handle action
+                             # Last resort: try central compat wrapper, then fall back to EngineCompat resolver
                              try:
-                                 EngineCompat.EffectResolver_resolve_action(instance.state, best_action, cast(Dict[int, Any], self.card_db))
+                                 from dm_toolkit.compat_wrappers import execute_action_compat
+                                 execute_action_compat(instance.state, best_action, cast(Dict[int, Any], self.card_db))
                              except Exception:
-                                 pass
+                                 try:
+                                     EngineCompat.EffectResolver_resolve_action(instance.state, best_action, cast(Dict[int, Any], self.card_db))
+                                 except Exception:
+                                     pass
                  steps += 1
 
             # Game finished (or max steps), collect stats
