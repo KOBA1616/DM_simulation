@@ -1754,6 +1754,10 @@ class CardTextGenerator:
                  return f"({tr('COUNT_CARDS')})"
             return f"{target_str}の数を数える。"
 
+        elif atype == "SELECT_TARGET":
+             amt = val1 if val1 > 0 else 1
+             return f"{target_str}を{amt}{unit}選ぶ。"
+
         return ""
 
     @classmethod
