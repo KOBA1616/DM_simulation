@@ -1359,7 +1359,7 @@ class CardTextGenerator:
             # Determine if target is linked via input
             input_key = action.get("input_value_key", "")
             input_usage = action.get("input_value_usage") or action.get("input_usage")
-            is_target_linked = bool(input_key) and input_usage == "TARGET"
+            is_target_linked = bool(input_key) and (not input_usage or input_usage == "TARGET")
 
             duration_text = ""
             if duration_key:
@@ -1399,7 +1399,7 @@ class CardTextGenerator:
             # Determine if target is linked via input
             input_key = action.get("input_value_key", "")
             input_usage = action.get("input_value_usage") or action.get("input_usage")
-            is_target_linked = bool(input_key) and input_usage == "TARGET"
+            is_target_linked = bool(input_key) and (not input_usage or input_usage == "TARGET")
 
             duration_text = ""
             if duration_key:
@@ -1434,7 +1434,7 @@ class CardTextGenerator:
              # Determine if target is linked via input
              input_key = action.get("input_value_key", "")
              input_usage = action.get("input_value_usage") or action.get("input_usage")
-             is_target_linked = bool(input_key) and input_usage == "TARGET"
+             is_target_linked = bool(input_key) and (not input_usage or input_usage == "TARGET")
 
              # Duration handling
              duration_key = action.get("duration") or action.get("input_value_key", "")
