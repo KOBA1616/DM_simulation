@@ -113,6 +113,36 @@ def ensure_executable_command(obj: Any) -> Dict[str, Any]:
 
     cmd = to_command_dict(obj)
 
+    # If mapping produced a NONE/legacy_warning result, attempt a more
+    # aggressive extraction for dm_ai_module.Action-like objects which may
+    # expose fields as properties (pybind11) rather than __dict__.
+    try:
+        if (not cmd or cmd.get('type') in (None, 'NONE')) or cmd.get('legacy_warning'):
+            # Try to extract a conservative field set from the original object
+            if obj is not None and not isinstance(obj, dict):
+                extracted = {}
+                # common fields to attempt to read
+                for field in ('type', 'card_id', 'source_instance_id', 'instance_id', 'target_instance_id',
+                              'target_player', 'slot_index', 'target_slot_index',
+                              'value1', 'value2', 'str_val', 'from_zone', 'to_zone',
+                              'play_for_free', 'play_free', 'put_into_play'):
+                    try:
+                        if hasattr(obj, field):
+                            extracted[field] = getattr(obj, field)
+                    except Exception:
+                        pass
+
+                # Only re-map if we found something useful beyond empty
+                if extracted:
+                    # Prefer explicit 'type' override when available
+                    cmd2 = map_action(extracted)
+                    # If mapping looks valid (not NONE), use it
+                    if cmd2 and cmd2.get('type') not in (None, 'NONE'):
+                        cmd = cmd2
+    except Exception:
+        # Be defensive: never raise here
+        pass
+
     # Basic Validation (Lightweight)
     if cmd.get('type') == 'NONE' and not cmd.get('legacy_warning'):
         # Maybe it was an empty action or failed conversion
