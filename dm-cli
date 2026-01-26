@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import sys
+import os
+
+# Ensure current directory is in path
+sys.path.insert(0, os.getcwd())
+if os.path.isdir("python"):
+    sys.path.insert(0, os.path.abspath("python"))
+
+from dm_toolkit.cli import main
+
+if __name__ == "__main__":
+    main()

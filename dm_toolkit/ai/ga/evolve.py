@@ -119,14 +119,14 @@ class DeckEvolution:
                                         cdict = ensure_executable_command(action)
                                         EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
                                     except Exception:
-                                    try:
-                                        from dm_toolkit.compat_wrappers import execute_action_compat
-                                        execute_action_compat(gs, action, self.card_db)
-                                    except Exception:
                                         try:
-                                            dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                                            from dm_toolkit.compat_wrappers import execute_action_compat
+                                            execute_action_compat(gs, action, self.card_db)
                                         except Exception:
-                                            pass
+                                            try:
+                                                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                                            except Exception:
+                                                pass
                 # best-effort phase advance check
                 try:
                     if getattr(cmd, 'to_dict', None):
@@ -143,7 +143,14 @@ class DeckEvolution:
                     cdict = ensure_executable_command(action)
                     EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
                 except Exception:
-                    dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                    try:
+                        from dm_toolkit.compat_wrappers import execute_action_compat
+                        execute_action_compat(gs, action, self.card_db)
+                    except Exception:
+                        try:
+                            dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                        except Exception:
+                            pass
                 if action.type == dm_ai_module.ActionType.PASS:
                     dm_ai_module.PhaseManager.next_phase(gs)
         
