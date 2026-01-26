@@ -4,6 +4,7 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt, QModelIndex
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
+from dm_toolkit.gui.editor.qt_impl import QtEditorModel
 from dm_toolkit.gui.editor.context_menus import LogicTreeContextMenuHandler
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
 import uuid
@@ -23,7 +24,8 @@ class LogicTreeWidget(QTreeView):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
         # Initialize Data Manager
-        self.data_manager = CardDataManager(self.standard_model)
+        self.qt_adapter = QtEditorModel(self.standard_model)
+        self.data_manager = CardDataManager(self.qt_adapter)
 
         # Initialize Context Menu Handler
         self.context_menu_handler = LogicTreeContextMenuHandler(self)
@@ -104,8 +106,9 @@ class LogicTreeWidget(QTreeView):
         # Delegate to DataManager via contextual add
         new_item = self.data_manager.add_command_contextual(option_index, cmd_data)
         if new_item:
-            self.setExpanded(new_item.parent().index(), True)
-            self.setCurrentIndex(new_item.index())
+            qitem = new_item.item
+            self.setExpanded(qitem.parent().index(), True)
+            self.setCurrentIndex(qitem.index())
 
     def add_action_sibling(self, action_index, action_data=None):
         pass
@@ -114,8 +117,9 @@ class LogicTreeWidget(QTreeView):
         # Delegate to DataManager via contextual add
         new_item = self.data_manager.add_command_contextual(effect_index, cmd_data)
         if new_item:
-            self.setExpanded(new_item.parent().index(), True)
-            self.setCurrentIndex(new_item.index())
+            qitem = new_item.item
+            self.setExpanded(qitem.parent().index(), True)
+            self.setCurrentIndex(qitem.index())
 
     def add_action_to_effect(self, effect_index, action_data=None):
         self.add_command_to_effect(effect_index, action_data)
@@ -129,8 +133,9 @@ class LogicTreeWidget(QTreeView):
 
         new_item = self.data_manager.add_command_contextual(idx, cmd_data)
         if new_item:
-            self.setExpanded(new_item.parent().index(), True)
-            self.setCurrentIndex(new_item.index())
+            qitem = new_item.item
+            self.setExpanded(qitem.parent().index(), True)
+            self.setCurrentIndex(qitem.index())
 
     def add_action_contextual(self, action_data=None):
         self.add_command_contextual(action_data)
@@ -139,8 +144,9 @@ class LogicTreeWidget(QTreeView):
         # Delegate to DataManager via contextual add
         new_item = self.data_manager.add_command_contextual(branch_index, cmd_data)
         if new_item:
-             self.setExpanded(new_item.parent().index(), True)
-             self.setCurrentIndex(new_item.index())
+             qitem = new_item.item
+             self.setExpanded(qitem.parent().index(), True)
+             self.setCurrentIndex(qitem.index())
 
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""
@@ -242,15 +248,17 @@ class LogicTreeWidget(QTreeView):
     def add_new_card(self):
         item = self.data_manager.add_new_card()
         if item:
-            self.setCurrentIndex(item.index())
-            self.expand(item.index())
+            qitem = item.item
+            self.setCurrentIndex(qitem.index())
+            self.expand(qitem.index())
         return item
 
     def add_child_item(self, parent_index, item_type, data, label):
         new_item = self.data_manager.add_child_item(parent_index, item_type, data, label)
         if new_item:
+            qitem = new_item.item
             self.setExpanded(parent_index, True)
-            self.setCurrentIndex(new_item.index())
+            self.setCurrentIndex(qitem.index())
         return new_item
 
     def remove_current_item(self):
@@ -278,79 +286,74 @@ class LogicTreeWidget(QTreeView):
 
     def add_spell_side(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        item = self.data_manager.add_spell_side_item(card_item)
+        item = self.data_manager.add_spell_side_item(card_index)
         if item:
-            self.setCurrentIndex(item.index())
+            qitem = item.item
+            self.setCurrentIndex(qitem.index())
             self.expand(card_index)
         return item
 
     def remove_spell_side(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_spell_side_item(card_item)
+        self.data_manager.remove_spell_side_item(card_index)
 
     def add_rev_change(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.apply_template_by_key(card_item, "REVOLUTION_CHANGE", "Revolution Change")
+        eff_item = self.data_manager.apply_template_by_key(card_index, "REVOLUTION_CHANGE", "Revolution Change")
         if eff_item:
-            self.setCurrentIndex(eff_item.index())
+            qitem = eff_item.item
+            self.setCurrentIndex(qitem.index())
             self.expand(card_index)
         return eff_item
 
     def remove_rev_change(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_logic_by_label(card_item, "Revolution Change")
+        self.data_manager.remove_logic_by_label(card_index, "Revolution Change")
 
     def add_mekraid(self, card_index):
         """メクレイド効果を追加"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.apply_template_by_key(card_item, "MEKRAID", "Mekraid")
+        eff_item = self.data_manager.apply_template_by_key(card_index, "MEKRAID", "Mekraid")
         if eff_item:
-            self.setCurrentIndex(eff_item.index())
+            qitem = eff_item.item
+            self.setCurrentIndex(qitem.index())
             self.expand(card_index)
         return eff_item
 
     def remove_mekraid(self, card_index):
         """メクレイド効果を削除"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_logic_by_label(card_item, "Mekraid")
+        self.data_manager.remove_logic_by_label(card_index, "Mekraid")
 
     def add_friend_burst(self, card_index):
         """フレンド・バースト効果を追加"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.apply_template_by_key(card_item, "FRIEND_BURST", "Friend Burst")
+        eff_item = self.data_manager.apply_template_by_key(card_index, "FRIEND_BURST", "Friend Burst")
         if eff_item:
-            self.setCurrentIndex(eff_item.index())
+            qitem = eff_item.item
+            self.setCurrentIndex(qitem.index())
             self.expand(card_index)
         return eff_item
 
     def remove_friend_burst(self, card_index):
         """フレンド・バースト効果を削除"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_logic_by_label(card_item, "Friend Burst")
+        self.data_manager.remove_logic_by_label(card_index, "Friend Burst")
 
     def add_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を追加"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.apply_template_by_key(card_item, "MEGA_LAST_BURST", "Mega Last Burst")
+        eff_item = self.data_manager.apply_template_by_key(card_index, "MEGA_LAST_BURST", "Mega Last Burst")
         if eff_item:
-            self.setCurrentIndex(eff_item.index())
+            qitem = eff_item.item
+            self.setCurrentIndex(qitem.index())
             self.expand(card_index)
         return eff_item
 
     def remove_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を削除"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_logic_by_label(card_item, "Mega Last Burst")
+        self.data_manager.remove_logic_by_label(card_index, "Mega Last Burst")
 
     def request_generate_options(self):
         if not getattr(self, 'current_item', None):

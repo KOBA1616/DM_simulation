@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
+from typing import TYPE_CHECKING, Any
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
 from dm_toolkit.gui.editor.models import CardModel, EffectModel, CommandModel, ReactionModel
 from dm_toolkit.gui.editor.templates import LogicTemplateManager
+from dm_toolkit.editor.core.abstraction import IEditorItem, IEditorModel
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from dm_toolkit.gui.editor.models.serializer import ModelSerializer
 
@@ -15,7 +15,7 @@ class EditorFeatureService:
     applying templates, and injecting business logic.
     """
 
-    def __init__(self, model: QStandardItemModel, serializer: 'ModelSerializer'):
+    def __init__(self, model: IEditorModel, serializer: 'ModelSerializer'):
         self.model = model
         self.serializer = serializer
         self.template_manager = LogicTemplateManager.get_instance()
@@ -23,7 +23,7 @@ class EditorFeatureService:
     def add_new_card(self):
         new_id = self._generate_new_id()
         model = CardModel(id=new_id, name="New Card")
-        item = self.serializer.create_card_item(model)
+        item = self.serializer.create_card_item(model, self.model)
         self.model.appendRow(item)
         return item
 
@@ -75,7 +75,7 @@ class EditorFeatureService:
             reaction_abilities=[]
         )
 
-        child = self.serializer.create_spell_side_item(spell_model)
+        child = self.serializer.create_spell_side_item(spell_model, self.model)
         card_item.appendRow(child)
         return child
 
@@ -98,17 +98,20 @@ class EditorFeatureService:
         )
         label = f"{tr('Reaction')}: {model.type}"
         # We need parent_item
-        if isinstance(parent_index, QStandardItem):
+        if isinstance(parent_index, IEditorItem):
             parent_item = parent_index
         else:
             parent_item = self.model.itemFromIndex(parent_index)
 
-        return self.serializer.add_child_item(parent_item, "REACTION_ABILITY", model, label)
+        return self.serializer.add_child_item(parent_item, "REACTION_ABILITY", model, label, self.model)
 
     def apply_template_by_key(self, card_item, template_key, display_label=None):
         """
         Generic helper to apply a logic template to a card item.
         """
+        card_item = self.serializer._ensure_item(card_item)
+        if not card_item: return None
+
         if display_label is None:
              display_label = tr(template_key)
 
@@ -141,9 +144,9 @@ class EditorFeatureService:
         item = None
         if meta['root_type'] == 'EFFECT':
             model = EffectModel(**data)
-            item = self.serializer.create_effect_item(model)
+            item = self.serializer.create_effect_item(model, self.model)
             item.setText(f"{tr('Effect')}: {display_label}") # Override label
-            self.serializer._load_effect_children(item, model)
+            self.serializer._load_effect_children(item, model, self.model)
         else:
             return None
 
@@ -174,6 +177,9 @@ class EditorFeatureService:
         return item
 
     def remove_logic_by_label(self, card_item, label_substring):
+        card_item = self.serializer._ensure_item(card_item)
+        if not card_item: return
+
         for i in reversed(range(card_item.rowCount())):
              child = card_item.child(i)
              if label_substring in child.text():
@@ -189,6 +195,7 @@ class EditorFeatureService:
         """
         Adds specified number of option slots to a COMMAND item.
         """
+        parent_item = self.serializer._ensure_item(parent_item)
         if not parent_item: return
 
         current_count = 0
@@ -208,21 +215,14 @@ class EditorFeatureService:
 
         # Add missing
         for i in range(current_count, count):
-            opt_item = QStandardItem(f"{tr('Option')} {i+1}")
+            opt_item = self.model.create_item(f"{tr('Option')} {i+1}")
             opt_item.setData("OPTION", ROLE_TYPE)
             parent_item.appendRow(opt_item)
 
     @staticmethod
     def inject_keyword_logic(card_data):
         keywords = card_data.get('keywords', {})
-        # Ensure effects list exists
         effects = card_data.get('effects', [])
-        # effects could be dicts (if processed raw) or EffectModel objects
-        # The serializer calls this right before creating CardModel,
-        # but after creating 'effects' list of EffectModels.
-
-        # In Serializer.reconstruct_card_model:
-        # card_data['effects'] is a list of EffectModel
 
         for eff in effects:
             # Handle both dict and Model
@@ -238,7 +238,6 @@ class EditorFeatureService:
                     keywords['revolution_change'] = True
                 elif ctype == 'FRIEND_BURST':
                     keywords['friend_burst'] = True
-                    # Map filter to friend_burst_condition for text generation
                     target_filter = getattr(cmd, 'target_filter', None) or (cmd.get('target_filter') if isinstance(cmd, dict) else None)
                     if target_filter:
                         card_data['friend_burst_condition'] = target_filter
