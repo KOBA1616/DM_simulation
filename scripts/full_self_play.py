@@ -117,7 +117,10 @@ def mana_charge_phase(state, trace: bool = False):
                     from dm_toolkit.compat_wrappers import execute_action_compat
                     execute_action_compat(gi.state, a, None)
                 except Exception:
-                    gi.resolve_action(a)
+                    try:
+                        gi.resolve_action(a)
+                    except Exception:
+                        pass
                 if trace:
                     print(f"  mana_charge_phase: after resolve_action hand={len(getattr(player,'hand',[]))} mana={len(getattr(player,'mana_zone',[]))} ids_hand={_zone_ids(getattr(player,'hand',[]))} ids_mana={_zone_ids(getattr(player,'mana_zone',[]))}")
                 return
@@ -166,7 +169,10 @@ def summon_phase(state, trace: bool = False):
                     from dm_toolkit.compat_wrappers import execute_action_compat
                     execute_action_compat(gi.state, a, None)
                 except Exception:
-                    gi.resolve_action(a)
+                    try:
+                        gi.resolve_action(a)
+                    except Exception:
+                        pass
                 if trace:
                     print(f"  summon_phase: after resolve_action hand={len(getattr(player,'hand',[]))} battle={len(getattr(player,'battle_zone',[]))} ids_hand={_zone_ids(getattr(player,'hand',[]))} ids_battle={_zone_ids(getattr(player,'battle_zone',[]))}")
                 return
@@ -243,7 +249,10 @@ def attack_phase(gi, card_db=None, trace: bool = False):
                             from dm_toolkit.compat_wrappers import execute_action_compat
                             execute_action_compat(gi.state, chosen, card_db if 'card_db' in locals() else None)
                         except Exception:
-                            gi.resolve_action(chosen)
+                            try:
+                                gi.resolve_action(chosen)
+                            except Exception:
+                                pass
                         tp = state.players[target]
                         if trace:
                             print(f"  attack_phase: after resolve_action target_shields={len(getattr(tp,'shield_zone',[]))} shield_ids={_zone_ids(getattr(tp,'shield_zone',[]))} winner={state.winner}")
@@ -321,7 +330,10 @@ def attack_phase(gi, card_db=None, trace: bool = False):
                                         from dm_toolkit.compat_wrappers import execute_action_compat
                                         execute_action_compat(gi.state, a_res, card_db if 'card_db' in locals() else None)
                                     except Exception:
-                                        gi.resolve_action(a_res)
+                                        try:
+                                            gi.resolve_action(a_res)
+                                        except Exception:
+                                            pass
                                     if trace:
                                         tp_post = state.players[target]
                                         print(f"    after resolve_action(RESOLVE_BATTLE) target_shields={len(getattr(tp_post,'shield_zone',[]))} shield_ids={_zone_ids(getattr(tp_post,'shield_zone',[]))}")

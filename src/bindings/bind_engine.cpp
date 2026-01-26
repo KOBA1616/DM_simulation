@@ -12,6 +12,7 @@
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/trigger_system/trigger_manager.hpp"
 #include "engine/game_command/commands.hpp"
+#include "engine/game_command/action_commands.hpp"
 #include "engine/utils/dev_tools.hpp"
 #include <pybind11/stl.h>
 
@@ -143,6 +144,37 @@ void bind_engine(py::module& m) {
         .def(py::init<PlayerID>())
         .def_readwrite("player_id", &dm::engine::game_command::ShuffleCommand::player_id);
 
+    // High-level action command bindings (used by Python-side execution helpers)
+    py::class_<dm::engine::game_command::PlayCardCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::PlayCardCommand>>(m, "PlayCardCommand")
+        .def(py::init<int>())
+        .def_readwrite("card_instance_id", &dm::engine::game_command::PlayCardCommand::card_instance_id)
+        .def_readwrite("target_slot_index", &dm::engine::game_command::PlayCardCommand::target_slot_index)
+        .def_readwrite("is_spell_side", &dm::engine::game_command::PlayCardCommand::is_spell_side)
+        .def_readwrite("spawn_source", &dm::engine::game_command::PlayCardCommand::spawn_source);
+
+    py::class_<dm::engine::game_command::AttackCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::AttackCommand>>(m, "AttackCommand")
+        .def(py::init<int, int, dm::core::PlayerID>())
+        .def_readwrite("source_id", &dm::engine::game_command::AttackCommand::source_id)
+        .def_readwrite("target_id", &dm::engine::game_command::AttackCommand::target_id)
+        .def_readwrite("target_player_id", &dm::engine::game_command::AttackCommand::target_player_id);
+
+    py::class_<dm::engine::game_command::BlockCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::BlockCommand>>(m, "BlockCommand")
+        .def(py::init<int, int>())
+        .def_readwrite("blocker_id", &dm::engine::game_command::BlockCommand::blocker_id)
+        .def_readwrite("attacker_id", &dm::engine::game_command::BlockCommand::attacker_id);
+
+    py::class_<dm::engine::game_command::UseAbilityCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::UseAbilityCommand>>(m, "UseAbilityCommand")
+        .def(py::init<int, int>())
+        .def_readwrite("source_id", &dm::engine::game_command::UseAbilityCommand::source_id)
+        .def_readwrite("target_id", &dm::engine::game_command::UseAbilityCommand::target_id);
+
+    py::class_<dm::engine::game_command::ManaChargeCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::ManaChargeCommand>>(m, "ManaChargeCommand")
+        .def(py::init<int>())
+        .def_readwrite("card_id", &dm::engine::game_command::ManaChargeCommand::card_id);
+
+    py::class_<dm::engine::game_command::PassCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::PassCommand>>(m, "PassCommand")
+        .def(py::init<>());
+
     py::class_<dm::engine::systems::PipelineExecutor, std::shared_ptr<dm::engine::systems::PipelineExecutor>>(m, "PipelineExecutor")
         .def(py::init<>())
         .def("set_context_var", &dm::engine::systems::PipelineExecutor::set_context_var)
@@ -166,7 +198,55 @@ void bind_engine(py::module& m) {
         .def_readonly("execution_paused", &dm::engine::systems::PipelineExecutor::execution_paused)
         .def_readonly("waiting_for_key", &dm::engine::systems::PipelineExecutor::waiting_for_key)
         .def("resume", &dm::engine::systems::PipelineExecutor::resume)
-        .def("execute", static_cast<void (dm::engine::systems::PipelineExecutor::*)(const std::vector<dm::core::Instruction>&, core::GameState&, const std::map<core::CardID, core::CardDefinition>&)>(&dm::engine::systems::PipelineExecutor::execute));
+        .def("execute", static_cast<void (dm::engine::systems::PipelineExecutor::*)(const std::vector<dm::core::Instruction>&, core::GameState&, const std::map<core::CardID, core::CardDefinition>&)>(&dm::engine::systems::PipelineExecutor::execute))
+        // execute_command wrapper: accept a dict or bound command objects and dispatch
+        .def("execute_command", [](dm::engine::systems::PipelineExecutor& exec, py::object obj, core::GameState& state) {
+            try {
+                std::unique_ptr<dm::engine::game_command::GameCommand> cmd;
+                if (py::isinstance<py::dict>(obj)) {
+                    py::dict d = obj.cast<py::dict>();
+                    std::string t = py::str(d["type"]);
+                    if (t == "PLAY_CARD") {
+                        int iid = (int)d["instance_id"];
+                        auto p = std::make_unique<dm::engine::game_command::PlayCardCommand>(iid);
+                        if (d.contains("target_slot_index")) p->target_slot_index = (int)d["target_slot_index"];
+                        if (d.contains("is_spell_side")) p->is_spell_side = (bool)d["is_spell_side"];
+                        cmd = std::move(p);
+                    } else if (t == "MANA_CHARGE") {
+                        int iid = (int)d["instance_id"];
+                        cmd = std::make_unique<dm::engine::game_command::ManaChargeCommand>(iid);
+                    } else if (t == "PASS") {
+                        cmd = std::make_unique<dm::engine::game_command::PassCommand>();
+                    } else if (t == "ATTACK") {
+                        int src = (int)d["source_id"];
+                        int tgt = (int)d["target_id"];
+                        int pid = 0;
+                        if (d.contains("target_player_id")) pid = (int)d["target_player_id"];
+                        cmd = std::make_unique<dm::engine::game_command::AttackCommand>(src, tgt, (dm::core::PlayerID)pid);
+                    }
+                } else {
+                    // If it's one of the bound command types, attempt to cast and copy fields
+                    try {
+                        if (py::isinstance(obj, m.attr("PlayCardCommand"))) {
+                            auto pc = obj.cast<std::shared_ptr<dm::engine::game_command::PlayCardCommand>>();
+                            auto p = std::make_unique<dm::engine::game_command::PlayCardCommand>(pc->card_instance_id);
+                            p->target_slot_index = pc->target_slot_index;
+                            p->is_spell_side = pc->is_spell_side;
+                            p->spawn_source = pc->spawn_source;
+                            cmd = std::move(p);
+                        }
+                    } catch(...) {}
+                }
+
+                if (cmd) exec.execute_command(std::move(cmd), state);
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error(std::string("Error in PipelineExecutor.execute_command wrapper: ") + e.what());
+            } catch (...) {
+                throw std::runtime_error("Unknown error in PipelineExecutor.execute_command wrapper");
+            }
+        });
 
     py::class_<dm::engine::systems::TriggerManager>(m, "TriggerManager")
         .def(py::init<>())
@@ -383,6 +463,51 @@ void bind_engine(py::module& m) {
         .def_readonly("state", &GameInstance::state)
         .def("start_game", &GameInstance::start_game)
         .def("resolve_action", &GameInstance::resolve_action)
+        .def("execute_command", [](GameInstance& gi, py::object obj) {
+            try {
+                // Prefer to dispatch via pipeline if available
+                std::unique_ptr<dm::engine::game_command::GameCommand> cmd;
+                if (py::isinstance<py::dict>(obj)) {
+                    py::dict d = obj.cast<py::dict>();
+                    std::string t = py::str(d["type"]);
+                    if (t == "PLAY_CARD") {
+                        int iid = (int)d["instance_id"];
+                        auto p = std::make_unique<dm::engine::game_command::PlayCardCommand>(iid);
+                        if (d.contains("target_slot_index")) p->target_slot_index = (int)d["target_slot_index"];
+                        if (d.contains("is_spell_side")) p->is_spell_side = (bool)d["is_spell_side"];
+                        cmd = std::move(p);
+                    } else if (t == "MANA_CHARGE") {
+                        int iid = (int)d["instance_id"];
+                        cmd = std::make_unique<dm::engine::game_command::ManaChargeCommand>(iid);
+                    } else if (t == "PASS") {
+                        cmd = std::make_unique<dm::engine::game_command::PassCommand>();
+                    }
+                } else {
+                    // Try to cast known bound command types
+                    try {
+                        if (py::isinstance(obj, m.attr("PlayCardCommand"))) {
+                            auto pc = obj.cast<std::shared_ptr<dm::engine::game_command::PlayCardCommand>>();
+                            auto p = std::make_unique<dm::engine::game_command::PlayCardCommand>(pc->card_instance_id);
+                            p->target_slot_index = pc->target_slot_index;
+                            p->is_spell_side = pc->is_spell_side;
+                            p->spawn_source = pc->spawn_source;
+                            cmd = std::move(p);
+                        }
+                    } catch(...) {}
+                }
+
+                if (cmd) {
+                    // dispatch to state's execute_command
+                    gi.state.execute_command(std::move(cmd));
+                }
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error(std::string("Error in GameInstance.execute_command wrapper: ") + e.what());
+            } catch (...) {
+                throw std::runtime_error("Unknown error in GameInstance.execute_command wrapper");
+            }
+        })
         .def("undo", &GameInstance::undo)
         .def("initialize_card_stats", &GameInstance::initialize_card_stats)
         .def("reset_with_scenario", &GameInstance::reset_with_scenario);

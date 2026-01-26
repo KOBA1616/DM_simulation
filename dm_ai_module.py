@@ -980,7 +980,11 @@ if 'GameInstance' in globals() and hasattr(globals()['GameInstance'], 'execute_a
         if getattr(gi, 'execute_action') and gi.execute_action.__code__.co_consts == (None,):
             def _exec_action(self, action: Any) -> None:
                 try:
-                    GenericCardSystem.resolve_action(self.state, action, getattr(self.state, 'active_player_id', 0))
+                    try:
+                        from dm_toolkit.compat_wrappers import execute_action_compat
+                        execute_action_compat(self.state, action, getattr(self.state, 'card_db', None))
+                    except Exception:
+                        GenericCardSystem.resolve_action(self.state, action, getattr(self.state, 'active_player_id', 0))
                 except Exception:
                     pass
             globals()['GameInstance'].execute_action = _exec_action
@@ -1006,10 +1010,14 @@ if 'GameInstance' not in globals():
                 pass
 
         def execute_action(self, action: Any) -> None:
-            try:
-                GenericCardSystem.resolve_action(self.state, action, getattr(self.state, 'active_player_id', 0))
-            except Exception:
-                pass
+                try:
+                    try:
+                        from dm_toolkit.compat_wrappers import execute_action_compat
+                        execute_action_compat(self.state, action, getattr(self.state, 'card_db', None))
+                    except Exception:
+                        GenericCardSystem.resolve_action(self.state, action, getattr(self.state, 'active_player_id', 0))
+                except Exception:
+                    pass
 
 
 if 'GameResult' not in globals():
