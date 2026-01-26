@@ -276,6 +276,7 @@ class CardTextResources:
         "DECLARE_NUMBER": "{value1}～{value2}の数字を1つ宣言する。",
         "COST_REDUCTION": "{target}のコストを{value1}少なくする。ただし、コストは0以下にはならない。",
         "LOOK_TO_BUFFER": "{source_zone}から{value1}枚を見る（バッファへ）。",
+        "REVEAL_TO_BUFFER": "{source_zone}から{value1}枚を表向きにしてバッファに置く。",
         "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
         "PLAY_FROM_BUFFER": "バッファからプレイする。",
         "MOVE_BUFFER_TO_ZONE": "バッファから{zone}に置く。",

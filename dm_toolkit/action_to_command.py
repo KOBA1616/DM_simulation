@@ -422,7 +422,7 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     elif act_type == "PASS":
         cmd['type'] = "PASS"
 
-    elif act_type in ["LOOK_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE", "SUMMON_TOKEN"]:
+    elif act_type in ["LOOK_TO_BUFFER", "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE", "SUMMON_TOKEN"]:
         _handle_buffer_ops(act_type, act_data, cmd, dest)
 
     else:
@@ -805,6 +805,9 @@ def _handle_engine_execution(act_type: str, act: Dict[str, Any], cmd: Dict[str, 
 def _handle_buffer_ops(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any], dest: Optional[str]) -> None:
     if act_type == "LOOK_TO_BUFFER":
         cmd['type'] = 'LOOK_TO_BUFFER'
+        cmd['look_count'] = act.get('value1', 1)
+    elif act_type == "REVEAL_TO_BUFFER":
+        cmd['type'] = 'REVEAL_TO_BUFFER'
         cmd['look_count'] = act.get('value1', 1)
     elif act_type == "SELECT_FROM_BUFFER":
         cmd['type'] = 'SELECT_FROM_BUFFER'
