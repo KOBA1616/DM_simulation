@@ -6,6 +6,7 @@ from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
 from dm_toolkit.gui.editor.context_menus import LogicTreeContextMenuHandler
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
+from dm_toolkit.gui.editor.qt_impl import QtEditorModel, QtEditorItem
 import uuid
 
 class LogicTreeWidget(QTreeView):
@@ -23,7 +24,8 @@ class LogicTreeWidget(QTreeView):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
         # Initialize Data Manager
-        self.data_manager = CardDataManager(self.standard_model)
+        self.qt_model = QtEditorModel(self.standard_model)
+        self.data_manager = CardDataManager(self.qt_model)
 
         # Initialize Context Menu Handler
         self.context_menu_handler = LogicTreeContextMenuHandler(self)
@@ -80,8 +82,12 @@ class LogicTreeWidget(QTreeView):
 
     def add_reaction(self, parent_index):
         if not parent_index.isValid(): return
-        ra_data = self.data_manager.create_default_reaction_data()
-        self.add_child_item(parent_index, "REACTION_ABILITY", ra_data, f"{tr('Reaction Ability')}: NINJA_STRIKE")
+        # Resolve index via data manager
+        new_item = self.data_manager.add_reaction(parent_index)
+        if new_item:
+            self.setExpanded(parent_index, True)
+            if isinstance(new_item, QtEditorItem):
+                self.setCurrentIndex(new_item.get_raw_item().index())
 
     def add_option(self, parent_index):
         # NOTE: Deprecated for Actions, but useful for COMMAND 'CHOICE' structures if manually building.
@@ -103,9 +109,9 @@ class LogicTreeWidget(QTreeView):
     def add_command_to_option(self, option_index, cmd_data=None):
         # Delegate to DataManager via contextual add
         new_item = self.data_manager.add_command_contextual(option_index, cmd_data)
-        if new_item:
-            self.setExpanded(new_item.parent().index(), True)
-            self.setCurrentIndex(new_item.index())
+        if new_item and isinstance(new_item, QtEditorItem):
+            self.setExpanded(new_item.parent().get_raw_item().index(), True)
+            self.setCurrentIndex(new_item.get_raw_item().index())
 
     def add_action_sibling(self, action_index, action_data=None):
         pass
@@ -113,9 +119,9 @@ class LogicTreeWidget(QTreeView):
     def add_command_to_effect(self, effect_index, cmd_data=None):
         # Delegate to DataManager via contextual add
         new_item = self.data_manager.add_command_contextual(effect_index, cmd_data)
-        if new_item:
-            self.setExpanded(new_item.parent().index(), True)
-            self.setCurrentIndex(new_item.index())
+        if new_item and isinstance(new_item, QtEditorItem):
+            self.setExpanded(new_item.parent().get_raw_item().index(), True)
+            self.setCurrentIndex(new_item.get_raw_item().index())
 
     def add_action_to_effect(self, effect_index, action_data=None):
         self.add_command_to_effect(effect_index, action_data)
@@ -128,9 +134,9 @@ class LogicTreeWidget(QTreeView):
         if not idx.isValid(): return
 
         new_item = self.data_manager.add_command_contextual(idx, cmd_data)
-        if new_item:
-            self.setExpanded(new_item.parent().index(), True)
-            self.setCurrentIndex(new_item.index())
+        if new_item and isinstance(new_item, QtEditorItem):
+            self.setExpanded(new_item.parent().get_raw_item().index(), True)
+            self.setCurrentIndex(new_item.get_raw_item().index())
 
     def add_action_contextual(self, action_data=None):
         self.add_command_contextual(action_data)
@@ -138,38 +144,34 @@ class LogicTreeWidget(QTreeView):
     def _add_command_to_branch(self, branch_index, cmd_data=None):
         # Delegate to DataManager via contextual add
         new_item = self.data_manager.add_command_contextual(branch_index, cmd_data)
-        if new_item:
-             self.setExpanded(new_item.parent().index(), True)
-             self.setCurrentIndex(new_item.index())
+        if new_item and isinstance(new_item, QtEditorItem):
+             self.setExpanded(new_item.parent().get_raw_item().index(), True)
+             self.setCurrentIndex(new_item.get_raw_item().index())
 
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""
         index = self.currentIndex()
         if not index.isValid(): return
 
-        item = self.standard_model.itemFromIndex(index)
-        if item is None:
-            return
-        item_type = self.data_manager.get_item_type(item)
+        # Pass index directly
+        item_type = self.data_manager.get_item_type(index)
 
         if item_type == "COMMAND":
-            self.data_manager.add_command_branches(item)
+            self.data_manager.add_command_branches(index)
             self.expand(index)
 
     def add_effect_interactive(self, parent_index):
         if not parent_index.isValid(): return
 
-        parent_item = self.standard_model.itemFromIndex(parent_index)
-        if parent_item is None:
-            return
-        role = self.data_manager.get_item_type(parent_item)
+        # Check role via data manager using index
+        role = self.data_manager.get_item_type(parent_index)
 
         items = [tr("Triggered Ability"), tr("Static Ability")]
 
         # Check if we can add Reaction Ability
         # Only for CARD (not SPELL_SIDE)
         if role == "CARD":
-             card_type = self.data_manager.get_card_context_type(parent_item)
+             card_type = self.data_manager.get_card_context_type(parent_index)
              if card_type != "SPELL":
                   items.append(tr("Reaction Ability"))
 
@@ -187,7 +189,10 @@ class LogicTreeWidget(QTreeView):
 
     def move_effect_item(self, item, target_type):
         """Updates the item's visual state (Label) and Type to match the new effect type."""
-        self.data_manager.update_effect_type(item, target_type)
+        # item is QStandardItem
+        # Update using wrapper
+        wrapped = QtEditorItem(item)
+        self.data_manager.update_effect_type(wrapped, target_type)
 
     def load_data(self, cards_data):
         # Save Expansion State
@@ -209,8 +214,8 @@ class LogicTreeWidget(QTreeView):
         index = item.index()
         # Root index is invalid but we traverse its children
         if index.isValid() and self.isExpanded(index):
-            # Use data_manager helper
-            path = self.data_manager.get_item_path(item)
+            # Use data_manager helper, pass wrapper
+            path = self.data_manager.get_item_path(QtEditorItem(item))
             expanded_ids.add(path)
         for i in range(item.rowCount()):
             child = item.child(i)
@@ -227,7 +232,7 @@ class LogicTreeWidget(QTreeView):
         index = item.index()
         if index.isValid():
             # Use data_manager helper
-            path = self.data_manager.get_item_path(item)
+            path = self.data_manager.get_item_path(QtEditorItem(item))
             if path in expanded_ids:
                 self.setExpanded(index, True)
         for i in range(item.rowCount()):
@@ -241,16 +246,16 @@ class LogicTreeWidget(QTreeView):
 
     def add_new_card(self):
         item = self.data_manager.add_new_card()
-        if item:
-            self.setCurrentIndex(item.index())
-            self.expand(item.index())
+        if item and isinstance(item, QtEditorItem):
+            self.setCurrentIndex(item.get_raw_item().index())
+            self.expand(item.get_raw_item().index())
         return item
 
     def add_child_item(self, parent_index, item_type, data, label):
         new_item = self.data_manager.add_child_item(parent_index, item_type, data, label)
-        if new_item:
+        if new_item and isinstance(new_item, QtEditorItem):
             self.setExpanded(parent_index, True)
-            self.setCurrentIndex(new_item.index())
+            self.setCurrentIndex(new_item.get_raw_item().index())
         return new_item
 
     def remove_current_item(self):
@@ -278,79 +283,69 @@ class LogicTreeWidget(QTreeView):
 
     def add_spell_side(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        item = self.data_manager.add_spell_side_item(card_item)
-        if item:
-            self.setCurrentIndex(item.index())
+        item = self.data_manager.add_spell_side_item(card_index)
+        if item and isinstance(item, QtEditorItem):
+            self.setCurrentIndex(item.get_raw_item().index())
             self.expand(card_index)
         return item
 
     def remove_spell_side(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_spell_side_item(card_item)
+        self.data_manager.remove_spell_side_item(card_index)
 
     def add_rev_change(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.apply_template_by_key(card_item, "REVOLUTION_CHANGE", "Revolution Change")
-        if eff_item:
-            self.setCurrentIndex(eff_item.index())
+        eff_item = self.data_manager.apply_template_by_key(card_index, "REVOLUTION_CHANGE", "Revolution Change")
+        if eff_item and isinstance(eff_item, QtEditorItem):
+            self.setCurrentIndex(eff_item.get_raw_item().index())
             self.expand(card_index)
         return eff_item
 
     def remove_rev_change(self, card_index):
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_logic_by_label(card_item, "Revolution Change")
+        self.data_manager.remove_logic_by_label(card_index, "Revolution Change")
 
     def add_mekraid(self, card_index):
         """メクレイド効果を追加"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.apply_template_by_key(card_item, "MEKRAID", "Mekraid")
-        if eff_item:
-            self.setCurrentIndex(eff_item.index())
+        eff_item = self.data_manager.apply_template_by_key(card_index, "MEKRAID", "Mekraid")
+        if eff_item and isinstance(eff_item, QtEditorItem):
+            self.setCurrentIndex(eff_item.get_raw_item().index())
             self.expand(card_index)
         return eff_item
 
     def remove_mekraid(self, card_index):
         """メクレイド効果を削除"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_logic_by_label(card_item, "Mekraid")
+        self.data_manager.remove_logic_by_label(card_index, "Mekraid")
 
     def add_friend_burst(self, card_index):
         """フレンド・バースト効果を追加"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.apply_template_by_key(card_item, "FRIEND_BURST", "Friend Burst")
-        if eff_item:
-            self.setCurrentIndex(eff_item.index())
+        eff_item = self.data_manager.apply_template_by_key(card_index, "FRIEND_BURST", "Friend Burst")
+        if eff_item and isinstance(eff_item, QtEditorItem):
+            self.setCurrentIndex(eff_item.get_raw_item().index())
             self.expand(card_index)
         return eff_item
 
     def remove_friend_burst(self, card_index):
         """フレンド・バースト効果を削除"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_logic_by_label(card_item, "Friend Burst")
+        self.data_manager.remove_logic_by_label(card_index, "Friend Burst")
 
     def add_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を追加"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        eff_item = self.data_manager.apply_template_by_key(card_item, "MEGA_LAST_BURST", "Mega Last Burst")
-        if eff_item:
-            self.setCurrentIndex(eff_item.index())
+        eff_item = self.data_manager.apply_template_by_key(card_index, "MEGA_LAST_BURST", "Mega Last Burst")
+        if eff_item and isinstance(eff_item, QtEditorItem):
+            self.setCurrentIndex(eff_item.get_raw_item().index())
             self.expand(card_index)
         return eff_item
 
     def remove_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を削除"""
         if not card_index.isValid(): return
-        card_item = self.standard_model.itemFromIndex(card_index)
-        self.data_manager.remove_logic_by_label(card_item, "Mega Last Burst")
+        self.data_manager.remove_logic_by_label(card_index, "Mega Last Burst")
 
     def request_generate_options(self):
         if not getattr(self, 'current_item', None):
@@ -360,16 +355,6 @@ class LogicTreeWidget(QTreeView):
         except Exception:
             count = 1
 
-        new_options = []
-        for _ in range(max(1, count)):
-            new_options.append([{"type": "NONE"}])
-
-        data = self.current_item.data(ROLE_DATA) or {}
-        data['options'] = new_options
-        data['type'] = 'CHOICE' # Unified type for options
-
-        self.current_item.setData(data, ROLE_DATA)
-        try:
-            self.load_data(self.current_item)
-        except Exception:
-            self.dataChanged.emit()
+        wrapped = QtEditorItem(self.current_item)
+        self.data_manager.generate_options(wrapped, count)
+        self.expand(wrapped.get_raw_item().index())

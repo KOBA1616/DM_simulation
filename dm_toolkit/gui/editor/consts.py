@@ -4,7 +4,12 @@ Constants for the Card Editor GUI.
 This file defines command strings, internal event names, and data roles to ensure consistency
 across the editor's forms and logic.
 """
-from PyQt6.QtCore import Qt
+try:
+    from PyQt6.QtCore import Qt
+    UserRole = Qt.ItemDataRole.UserRole
+except ImportError:
+    # Fallback for headless mode
+    UserRole = 256
 
 # Structural Command Constants
 # Used for signaling structural changes from forms to the main editor
@@ -27,5 +32,5 @@ STRUCT_CMD_REPLACE_WITH_COMMAND = "REPLACE_WITH_COMMAND"
 
 # Item Data Roles
 # Defined here to avoid magic numbers scattered throughout the code
-ROLE_TYPE = Qt.ItemDataRole.UserRole + 1
-ROLE_DATA = Qt.ItemDataRole.UserRole + 2
+ROLE_TYPE = UserRole + 1
+ROLE_DATA = UserRole + 2
