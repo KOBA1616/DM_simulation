@@ -332,6 +332,11 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         f_links_in
     ]))
+    register_schema(CommandSchema("REVEAL_TO_BUFFER", [
+        FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="DECK"),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_links_in
+    ]))
     register_schema(CommandSchema("SELECT_FROM_BUFFER", [
         f_filter,
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),

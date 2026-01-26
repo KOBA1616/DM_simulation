@@ -218,7 +218,15 @@
   },
   "LOOK_TO_BUFFER": {
     "fields": [
-      { "key": "target_filter", "widget": "filter_editor" },
+      { "key": "from_zone", "widget": "zone_combo", "label": "Source Zone" },
+      { "key": "amount", "widget": "spinbox", "label": "Look Count" },
+      { "key": "input_link", "widget": "variable_link" },
+      { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Buffer" }
+    ]
+  },
+  "REVEAL_TO_BUFFER": {
+    "fields": [
+      { "key": "from_zone", "widget": "zone_combo", "label": "Source Zone" },
       { "key": "amount", "widget": "spinbox", "label": "Look Count" },
       { "key": "input_link", "widget": "variable_link" },
       { "key": "output_link", "widget": "variable_link", "produces_output": true, "output_label": "Buffer" }

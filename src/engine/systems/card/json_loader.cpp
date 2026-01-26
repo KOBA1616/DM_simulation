@@ -89,6 +89,9 @@ namespace dm::engine {
             case EffectPrimitive::LOOK_TO_BUFFER:
                 cmd.type = CommandType::LOOK_TO_BUFFER;
                 break;
+            case EffectPrimitive::REVEAL_TO_BUFFER:
+                cmd.type = CommandType::REVEAL_TO_BUFFER;
+                break;
             case EffectPrimitive::SELECT_FROM_BUFFER:
                 cmd.type = CommandType::SELECT_FROM_BUFFER;
                 break;

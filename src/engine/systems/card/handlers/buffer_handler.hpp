@@ -69,6 +69,24 @@ namespace dm::engine {
                         if (source->empty()) break;
                         CardInstance c = source->back();
                         source->pop_back();
+                        c.is_face_down = true;
+                        controller.effect_buffer.push_back(c);
+                    }
+                }
+            } else if (ctx.action.type == EffectPrimitive::REVEAL_TO_BUFFER) {
+                int count = val1;
+                std::vector<CardInstance>* source = nullptr;
+                if (ctx.action.source_zone == "DECK" || ctx.action.source_zone.empty()) {
+                    source = &controller.deck;
+                } else if (ctx.action.source_zone == "HAND") {
+                    source = &controller.hand;
+                }
+
+                if (source) {
+                    for (int i = 0; i < count; ++i) {
+                        if (source->empty()) break;
+                        CardInstance c = source->back();
+                        source->pop_back();
                         c.is_face_down = false;
                         controller.effect_buffer.push_back(c);
                     }

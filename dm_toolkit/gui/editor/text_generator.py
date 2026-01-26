@@ -1301,6 +1301,11 @@ class CardTextGenerator:
              amt = val1 if val1 > 0 else 1
              return f"{src_zone}から{amt}枚を見る。"
 
+        elif atype == "REVEAL_TO_BUFFER":
+             src_zone = tr(action.get("from_zone", "DECK"))
+             amt = val1 if val1 > 0 else 1
+             return f"{src_zone}から{amt}枚を表向きにしてバッファに置く。"
+
         elif atype == "SELECT_FROM_BUFFER":
              amt = val1 if val1 > 0 else 1
              return f"見たカードの中から{amt}枚を選ぶ。"

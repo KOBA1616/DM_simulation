@@ -191,6 +191,10 @@
     "visible": ["from_zone", "amount", "input_link"],
     "labels": { "amount": "Count", "from_zone": "Source" }
   },
+  "REVEAL_TO_BUFFER": {
+    "visible": ["from_zone", "amount", "input_link"],
+    "labels": { "amount": "Count", "from_zone": "Source" }
+  },
   "SELECT_FROM_BUFFER": {
     "visible": ["target_filter", "amount", "output_link"],
     "labels": { "amount": "Count" },
@@ -245,7 +249,7 @@
     "CARD_MOVE": [ "TRANSITION", "MOVE_CARD", "REPLACE_CARD_MOVE", "RETURN_TO_HAND", "DISCARD", "DESTROY", "MANA_CHARGE" ],
     "DECK_OPS": [ "SEARCH_DECK", "LOOK_AND_ADD", "REVEAL_CARDS", "SHUFFLE_DECK", "SEARCH_DECK_BOTTOM", "SEND_TO_DECK_BOTTOM" ],
     "PLAY": [ "PLAY_FROM_ZONE", "CAST_SPELL", "SUMMON_TOKEN" ],
-    "BUFFER": [ "LOOK_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE" ],
+    "BUFFER": [ "LOOK_TO_BUFFER", "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE" ],
     "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE", "MOVE_TO_UNDER_CARD" ],
     "GRANT": [ "MUTATE", "POWER_MOD", "ADD_KEYWORD", "TAP", "UNTAP", "REGISTER_DELAYED_EFFECT", "APPLY_MODIFIER", "LOCK_SPELL", "RESET_INSTANCE" ],
     "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "DECLARE_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT" ],

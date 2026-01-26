@@ -179,6 +179,7 @@ else:
         "SELECT_NUMBER",
         "CHOICE",
         "LOOK_TO_BUFFER",
+        "REVEAL_TO_BUFFER",
         "SELECT_FROM_BUFFER",
         "PLAY_FROM_BUFFER",
         "MOVE_BUFFER_TO_ZONE",
