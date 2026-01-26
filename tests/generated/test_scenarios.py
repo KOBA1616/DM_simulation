@@ -106,7 +106,7 @@ def test_generated_scenario(scenario_path, card_db):
         if 0 <= c_idx < len(player.hand):
             card = player.hand[c_idx]
 
-            # Construct an Action-like object that GenericCardSystem expects
+            # Construct an Action-like object
             class MockAction:
                 def __init__(self):
                     self.type = dm_ai_module.ActionType.MANA_CHARGE
@@ -117,7 +117,6 @@ def test_generated_scenario(scenario_path, card_db):
             action = MockAction()
 
             # Execute
-            # GameInstance.execute_action calls GenericCardSystem.resolve_action
             game.execute_action(action)
 
     # Add other action types as needed for future generated tests
