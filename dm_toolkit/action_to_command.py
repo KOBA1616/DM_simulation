@@ -423,7 +423,7 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         cmd['type'] = "PASS"
 
     elif act_type in ["LOOK_TO_BUFFER", "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE", "SUMMON_TOKEN"]:
-        _handle_buffer_ops(act_type, act_data, cmd, dest)
+        _handle_buffer_ops(act_type, act_data, cmd, src, dest)
 
     else:
         # Fallback / Special Legacy Keyword
@@ -802,13 +802,17 @@ def _handle_engine_execution(act_type: str, act: Dict[str, Any], cmd: Dict[str, 
         cmd['type'] = "RESOLVE_PLAY"
         cmd['instance_id'] = _get_any(act, ['card_id', 'source_instance_id'])
 
-def _handle_buffer_ops(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any], dest: Optional[str]) -> None:
+def _handle_buffer_ops(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any], src: Optional[str], dest: Optional[str]) -> None:
     if act_type == "LOOK_TO_BUFFER":
         cmd['type'] = 'LOOK_TO_BUFFER'
         cmd['look_count'] = act.get('value1', 1)
+        if src:
+            cmd['from_zone'] = src
     elif act_type == "REVEAL_TO_BUFFER":
         cmd['type'] = 'REVEAL_TO_BUFFER'
         cmd['look_count'] = act.get('value1', 1)
+        if src:
+            cmd['from_zone'] = src
     elif act_type == "SELECT_FROM_BUFFER":
         cmd['type'] = 'SELECT_FROM_BUFFER'
         cmd['amount'] = act.get('value1', 1)
@@ -820,8 +824,8 @@ def _handle_buffer_ops(act_type: str, act: Dict[str, Any], cmd: Dict[str, Any], 
         cmd['type'] = 'PLAY_FROM_BUFFER'
         cmd['unified_type'] = 'PLAY'
         cmd['from_zone'] = 'BUFFER'
-        # Prefer original action's destination_zone/key for legacy naming
-        cmd['to_zone'] = act.get('destination_zone') or act.get('to_zone') or 'BATTLE_ZONE'
+        # Use normalized destination if available
+        cmd['to_zone'] = dest or 'BATTLE'
         if 'value1' in act: cmd['max_cost'] = act['value1']
     elif act_type == "MOVE_BUFFER_TO_ZONE":
         cmd['type'] = 'TRANSITION'
