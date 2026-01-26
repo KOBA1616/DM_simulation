@@ -879,24 +879,6 @@ if dm_ai_module:
         except Exception:
             pass
 
-    # GenericCardSystem wrappers
-    try:
-        gcs = dm_ai_module.GenericCardSystem
-        if not hasattr(gcs, 'resolve_action_with_db') and hasattr(gcs, 'resolve_effect_with_db'):
-                def _resolve_action_with_db(state, action_or_effect, source_id, card_db, ctx=None):
-                    try:
-                        if hasattr(action_or_effect, 'actions'): eff = action_or_effect
-                        else:
-                            eff = _orig_EffectDef()
-                            eff.actions = [action_or_effect]
-                    except Exception:
-                        eff = _orig_EffectDef()
-                        eff.actions = [action_or_effect]
-                    return gcs.resolve_effect_with_db(state, eff, source_id, card_db)
-                gcs.resolve_action_with_db = staticmethod(_resolve_action_with_db)
-    except Exception:
-        pass
-
     if hasattr(dm_ai_module, 'CardRegistry') and not hasattr(dm_ai_module.CardRegistry, 'get_all_cards'):
         if hasattr(dm_ai_module.CardRegistry, 'get_all_definitions'):
             dm_ai_module.CardRegistry.get_all_cards = staticmethod(dm_ai_module.CardRegistry.get_all_definitions)
@@ -908,98 +890,6 @@ if dm_ai_module:
             @staticmethod
             def auto_tap_mana(state, player, card_def, card_db): return False
         dm_ai_module.ManaSystem = _ManaShim
-
-# Shim: handle implicit FilterDef (e.g., FIRE in MANA_ZONE) by invoking draw
-try:
-    if dm_ai_module is not None and hasattr(dm_ai_module, 'GenericCardSystem'):
-        try:
-            gcs = dm_ai_module.GenericCardSystem
-            if hasattr(gcs, 'resolve_action'):
-                _orig_resolve = gcs.resolve_action
-                def _shim_resolve(state, action, source_id):
-                    try:
-                        atype = getattr(action, 'type', None)
-                        # Detect IF primitive
-                        if atype == getattr(dm_ai_module, 'EffectPrimitive', None).IF or (hasattr(atype, 'name') and getattr(atype, 'name', '') == 'IF'):
-                            cond = getattr(action, 'filter', None) or getattr(action, 'condition', None)
-                            if cond is not None:
-                                try:
-                                    zones = getattr(cond, 'zones', []) or []
-                                    civs = getattr(cond, 'civilizations', None)
-                                except Exception:
-                                    zones = []
-                                    civs = None
-                                matched = False
-                                try:
-                                    player = source_id if getattr(action, 'target_player', None) in (None, 'PLAYER_SELF') else (1 - source_id if str(getattr(action, 'target_player')).upper().endswith('OPPONENT') else int(getattr(action, 'target_player')))
-                                except Exception:
-                                    player = source_id
-                                if zones:
-                                    for zn in zones:
-                                        try:
-                                            if str(zn).upper() == 'MANA_ZONE':
-                                                for card in getattr(state.players[player], 'mana_zone', []):
-                                                    try:
-                                                        cid = getattr(card, 'card_id', getattr(card, 'id', None))
-                                                        cdef = dm_ai_module.CardRegistry.get_card_data(cid)
-                                                        if cdef is None:
-                                                            continue
-                                                        if civs:
-                                                            for cv in civs:
-                                                                try:
-                                                                    if getattr(cdef, 'civilization', None) == cv or (isinstance(getattr(cdef, 'civilization', None), int) and int(getattr(cdef, 'civilization', None)) == int(cv)):
-                                                                        matched = True
-                                                                        break
-                                                                except Exception:
-                                                                    pass
-                                                        else:
-                                                            matched = True
-                                                        if matched:
-                                                            break
-                                                    except Exception:
-                                                        pass
-                                            if matched:
-                                                break
-                                        except Exception:
-                                            pass
-                                if matched:
-                                    opts = getattr(action, 'options', [])
-                                    if opts and len(opts) >= 1:
-                                        for act in opts[0]:
-                                            try:
-                                                is_draw = (getattr(act, 'type', None) == getattr(dm_ai_module, 'EffectPrimitive', None).DRAW_CARD) or (hasattr(getattr(act, 'type', None), 'name') and getattr(act, 'type').name == 'DRAW_CARD')
-                                            except Exception:
-                                                is_draw = False
-                                            if is_draw:
-                                                amt = int(getattr(act, 'value1', 1)) if getattr(act, 'value1', None) is not None else 1
-                                                try:
-                                                    # Call state's draw_cards (will update native lists)
-                                                    try:
-                                                        state.draw_cards(player, amt)
-                                                    except Exception:
-                                                        # Try native backing
-                                                        try:
-                                                            nat = getattr(state, '_native', None) or state
-                                                            nat.draw_cards(player, amt)
-                                                        except Exception:
-                                                            pass
-                                                except Exception:
-                                                    pass
-                                                return None
-                    except Exception:
-                        pass
-                    try:
-                        return _orig_resolve(state, action, source_id)
-                    except Exception:
-                        return None
-                try:
-                    gcs.resolve_action = staticmethod(_shim_resolve)
-                except Exception:
-                    gcs.resolve_action = _shim_resolve
-        except Exception:
-            pass
-except Exception:
-    pass
 
 # Safe monkeypatch: wrap GameState.draw_cards to synchronize wrapper proxies
 try:
