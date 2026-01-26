@@ -172,6 +172,7 @@ def register_all_schemas():
     register_schema(CommandSchema("PUT_CREATURE", [
         f_target,
         f_filter,
+        FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="NONE"),
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         f_links_in
     ]))

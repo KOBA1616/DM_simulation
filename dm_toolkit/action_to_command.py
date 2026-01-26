@@ -401,6 +401,8 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         cmd['type'] = 'TRANSITION'
         # Use legacy zone naming
         cmd['to_zone'] = act_data.get('destination_zone') or act_data.get('to_zone') or 'BATTLE_ZONE'
+        if src and src != "NONE":
+             cmd['from_zone'] = src
         if 'value1' in act_data: cmd['amount'] = act_data['value1']
         if 'str_val' in act_data: cmd['str_param'] = act_data['str_val']
         _transfer_common_move_fields(act_data, cmd)
