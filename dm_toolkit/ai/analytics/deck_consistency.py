@@ -2,7 +2,7 @@ import dm_ai_module
 import random
 import logging
 from typing import Any, List, cast, Dict
-from dm_toolkit.types import CardDB, SeenCards
+from dm_toolkit.dm_types import CardDB, SeenCards
 
 class SolitaireRunner:
     """

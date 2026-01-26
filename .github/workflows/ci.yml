@@ -72,7 +72,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          python scripts/headless_mainwindow.py --auto 3 --dump-json headless_ci_snapshot.json --log-level INFO
+          python -m dm_toolkit.cli console --auto 3 --dump-json headless_ci_snapshot.json --log-level INFO
       - name: Upload headless snapshot
         if: always()
         uses: actions/upload-artifact@v4

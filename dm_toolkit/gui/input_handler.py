@@ -10,7 +10,7 @@ from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 if TYPE_CHECKING:
     from dm_toolkit.gui.app import GameWindow
     from dm_toolkit.gui.game_session import GameSession
-    from dm_toolkit.types import GameState, CardDB
+    from dm_toolkit.dm_types import GameState, CardDB
 
 class GameInputHandler:
     def __init__(self, window: 'GameWindow', session: 'GameSession'):

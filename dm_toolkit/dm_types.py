@@ -49,7 +49,7 @@ else:
     NPArray = Any
     Tensor = Any
 
-    # Runtime aliases for engine types to help other modules import names from dm_toolkit.types
+    # Runtime aliases for engine types to help other modules import names from dm_toolkit.dm_types
     try:
         import dm_ai_module
         GameState = dm_ai_module.GameState

@@ -21,7 +21,7 @@ except ImportError:
     except ImportError:
         dm_ai_module = None
 
-from dm_toolkit.types import GameState, CardDB, Action, PlayerID, Tensor, NPArray
+from dm_toolkit.dm_types import GameState, CardDB, Action, PlayerID, Tensor, NPArray
 
 # Module logger (default to null handler to avoid spamming test output)
 logger = logging.getLogger('dm_toolkit.engine.compat')

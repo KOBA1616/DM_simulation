@@ -5,7 +5,7 @@ import os
 import sys
 import json
 
-from dm_toolkit.types import GameState, CardDB, Action
+from dm_toolkit.dm_types import GameState, CardDB, Action
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.unified_execution import ensure_executable_command
 from dm_toolkit.gui.i18n import tr

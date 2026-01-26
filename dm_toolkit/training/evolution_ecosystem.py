@@ -7,7 +7,7 @@ import time
 import argparse
 from datetime import datetime
 from typing import Dict, Any, List, Tuple, Optional, cast
-from dm_toolkit.types import CardCounts
+from dm_toolkit.dm_types import CardCounts
 
 # Set up paths
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
