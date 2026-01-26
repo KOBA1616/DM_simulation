@@ -1,7 +1,10 @@
 
 import unittest
+import pytest
+import dm_ai_module
 from dm_ai_module import GameInstance, ActionType, CardStub, GameState, Action, CardType
 
+@pytest.mark.skipif(not getattr(dm_ai_module, 'IS_NATIVE', False), reason="Requires native engine")
 class TestSpellAndStack(unittest.TestCase):
     def setUp(self):
         self.game = GameInstance()
