@@ -6,6 +6,7 @@ from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
 from dm_toolkit.gui.editor.context_menus import LogicTreeContextMenuHandler
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
+from dm_toolkit.gui.editor.qt_impl import QtEditorModel
 import uuid
 
 class LogicTreeWidget(QTreeView):
@@ -23,7 +24,8 @@ class LogicTreeWidget(QTreeView):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 
         # Initialize Data Manager
-        self.data_manager = CardDataManager(self.standard_model)
+        self.model_adapter = QtEditorModel(self.standard_model)
+        self.data_manager = CardDataManager(self.model_adapter)
 
         # Initialize Context Menu Handler
         self.context_menu_handler = LogicTreeContextMenuHandler(self)
@@ -104,8 +106,10 @@ class LogicTreeWidget(QTreeView):
         # Delegate to DataManager via contextual add
         new_item = self.data_manager.add_command_contextual(option_index, cmd_data)
         if new_item:
-            self.setExpanded(new_item.parent().index(), True)
-            self.setCurrentIndex(new_item.index())
+            parent_item = new_item.parent()
+            if parent_item:
+                 self.setExpanded(parent_item.get_id().index(), True)
+            self.setCurrentIndex(new_item.get_id().index())
 
     def add_action_sibling(self, action_index, action_data=None):
         pass
@@ -114,8 +118,10 @@ class LogicTreeWidget(QTreeView):
         # Delegate to DataManager via contextual add
         new_item = self.data_manager.add_command_contextual(effect_index, cmd_data)
         if new_item:
-            self.setExpanded(new_item.parent().index(), True)
-            self.setCurrentIndex(new_item.index())
+            parent_item = new_item.parent()
+            if parent_item:
+                 self.setExpanded(parent_item.get_id().index(), True)
+            self.setCurrentIndex(new_item.get_id().index())
 
     def add_action_to_effect(self, effect_index, action_data=None):
         self.add_command_to_effect(effect_index, action_data)
@@ -129,8 +135,10 @@ class LogicTreeWidget(QTreeView):
 
         new_item = self.data_manager.add_command_contextual(idx, cmd_data)
         if new_item:
-            self.setExpanded(new_item.parent().index(), True)
-            self.setCurrentIndex(new_item.index())
+            parent_item = new_item.parent()
+            if parent_item:
+                 self.setExpanded(parent_item.get_id().index(), True)
+            self.setCurrentIndex(new_item.get_id().index())
 
     def add_action_contextual(self, action_data=None):
         self.add_command_contextual(action_data)
@@ -139,8 +147,10 @@ class LogicTreeWidget(QTreeView):
         # Delegate to DataManager via contextual add
         new_item = self.data_manager.add_command_contextual(branch_index, cmd_data)
         if new_item:
-             self.setExpanded(new_item.parent().index(), True)
-             self.setCurrentIndex(new_item.index())
+             parent_item = new_item.parent()
+             if parent_item:
+                  self.setExpanded(parent_item.get_id().index(), True)
+             self.setCurrentIndex(new_item.get_id().index())
 
     def generate_branches_for_current(self):
         """Generates child branches for the currently selected command item."""
@@ -242,15 +252,16 @@ class LogicTreeWidget(QTreeView):
     def add_new_card(self):
         item = self.data_manager.add_new_card()
         if item:
-            self.setCurrentIndex(item.index())
-            self.expand(item.index())
+            idx = item.get_id().index()
+            self.setCurrentIndex(idx)
+            self.expand(idx)
         return item
 
     def add_child_item(self, parent_index, item_type, data, label):
         new_item = self.data_manager.add_child_item(parent_index, item_type, data, label)
         if new_item:
             self.setExpanded(parent_index, True)
-            self.setCurrentIndex(new_item.index())
+            self.setCurrentIndex(new_item.get_id().index())
         return new_item
 
     def remove_current_item(self):
@@ -281,7 +292,7 @@ class LogicTreeWidget(QTreeView):
         card_item = self.standard_model.itemFromIndex(card_index)
         item = self.data_manager.add_spell_side_item(card_item)
         if item:
-            self.setCurrentIndex(item.index())
+            self.setCurrentIndex(item.get_id().index())
             self.expand(card_index)
         return item
 
@@ -295,7 +306,7 @@ class LogicTreeWidget(QTreeView):
         card_item = self.standard_model.itemFromIndex(card_index)
         eff_item = self.data_manager.apply_template_by_key(card_item, "REVOLUTION_CHANGE", "Revolution Change")
         if eff_item:
-            self.setCurrentIndex(eff_item.index())
+            self.setCurrentIndex(eff_item.get_id().index())
             self.expand(card_index)
         return eff_item
 
@@ -310,7 +321,7 @@ class LogicTreeWidget(QTreeView):
         card_item = self.standard_model.itemFromIndex(card_index)
         eff_item = self.data_manager.apply_template_by_key(card_item, "MEKRAID", "Mekraid")
         if eff_item:
-            self.setCurrentIndex(eff_item.index())
+            self.setCurrentIndex(eff_item.get_id().index())
             self.expand(card_index)
         return eff_item
 
@@ -326,7 +337,7 @@ class LogicTreeWidget(QTreeView):
         card_item = self.standard_model.itemFromIndex(card_index)
         eff_item = self.data_manager.apply_template_by_key(card_item, "FRIEND_BURST", "Friend Burst")
         if eff_item:
-            self.setCurrentIndex(eff_item.index())
+            self.setCurrentIndex(eff_item.get_id().index())
             self.expand(card_index)
         return eff_item
 
@@ -342,7 +353,7 @@ class LogicTreeWidget(QTreeView):
         card_item = self.standard_model.itemFromIndex(card_index)
         eff_item = self.data_manager.apply_template_by_key(card_item, "MEGA_LAST_BURST", "Mega Last Burst")
         if eff_item:
-            self.setCurrentIndex(eff_item.index())
+            self.setCurrentIndex(eff_item.get_id().index())
             self.expand(card_index)
         return eff_item
 
