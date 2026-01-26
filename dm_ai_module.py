@@ -206,6 +206,30 @@ if 'GameState' not in globals():
             except Exception:
                 self.card_db = None
 
+        def setup_test_duel(self) -> None:
+            """Compatibility shim used by the GUI/tests to prepare a fresh game state.
+
+            Performs a minimal reset of core attributes so higher-level helpers
+            (e.g. `set_deck`, `PhaseManager.start_game`) can be called safely.
+            """
+            try:
+                self.game_over = False
+                self.turn_number = 1
+                self.players = [PlayerStub(), PlayerStub()]
+                self.active_player_id = 0
+                self.winner = -1
+                self.current_phase = 0
+                self.pending_effects = []
+                self.instance_counter = 0
+                self.execution_context = ExecutionContext()
+                self.waiting_for_user_input = False
+                self.pending_query = None
+                self.command_history = []
+                self.effect_buffer = []
+            except Exception:
+                # Swallow errors to keep shim tolerant across environments
+                pass
+
         def get_next_instance_id(self):
             self.instance_counter += 1
             return self.instance_counter
@@ -583,6 +607,126 @@ if 'JsonLoader' not in globals():
             except Exception:
                 return {}
 
+if 'ActionGenerator' not in globals():
+    class ActionGenerator:
+        @staticmethod
+        def generate_legal_actions(state: Any, card_db: Any) -> list:
+            """Conservative Python-side action generator used when native generator
+            is unavailable. Produces PASS, MANA_CHARGE, and PLAY_CARD candidates
+            based on simple heuristics (untapped mana count vs card cost).
+            """
+            out = []
+            try:
+                ActionCls = globals().get('Action')
+                ActionTypeCls = globals().get('ActionType')
+                if ActionCls is None or ActionTypeCls is None:
+                    return out
+
+                pid = getattr(state, 'active_player_id', 0)
+                player = state.players[pid]
+
+                # Always allow PASS
+                try:
+                    a = ActionCls()
+                    a.type = ActionTypeCls.PASS
+                    out.append(a)
+                except Exception:
+                    pass
+
+                # Mana charge candidates for each hand card
+                try:
+                    for c in list(getattr(player, 'hand', []) or []):
+                        try:
+                            act = ActionCls()
+                            act.type = ActionTypeCls.MANA_CHARGE
+                            act.card_id = getattr(c, 'card_id', c)
+                            act.source_instance_id = getattr(c, 'instance_id', -1)
+                            out.append(act)
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
+
+                # Play candidates when in Main phase (best-effort check)
+                try:
+                    cur_phase = getattr(state, 'current_phase', None)
+                    in_main = False
+                    try:
+                        if isinstance(cur_phase, int) and int(cur_phase) == 3:
+                            in_main = True
+                        else:
+                            pname = getattr(cur_phase, 'name', None) or str(cur_phase)
+                            if isinstance(pname, str) and 'MAIN' in pname.upper():
+                                in_main = True
+                    except Exception:
+                        in_main = False
+
+                    if in_main:
+                        usable_mana = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
+                        for c in list(getattr(player, 'hand', []) or []):
+                            try:
+                                cid = getattr(c, 'card_id', c)
+                                cost = 9999
+                                cdef = None
+                                # Robust lookup
+                                try:
+                                    if card_db is None:
+                                        cdef = None
+                                    elif hasattr(card_db, 'get_card'):
+                                        try:
+                                            cdef = card_db.get_card(cid)
+                                        except Exception:
+                                            try:
+                                                cdef = card_db.get_card(int(cid))
+                                            except Exception:
+                                                cdef = None
+                                    elif isinstance(card_db, dict):
+                                        try:
+                                            cdef = card_db.get(cid)
+                                        except Exception:
+                                            cdef = None
+                                        if cdef is None:
+                                            cdef = card_db.get(str(cid)) if isinstance(cid, (int, str)) else None
+                                except Exception:
+                                    cdef = None
+
+                                if cdef is not None:
+                                    try:
+                                        if isinstance(cdef, dict):
+                                            cost = int(cdef.get('cost', 9999) or 9999)
+                                        else:
+                                            cost = int(getattr(cdef, 'cost', 9999) or 9999)
+                                    except Exception:
+                                        cost = 9999
+
+                                # Heuristic: allow PLAY_CARD candidate not only when
+                                # current untapped mana is enough, but also when the
+                                # player could feasibly charge enough cards from hand
+                                # this turn to reach the cost. We conservatively
+                                # assume all other hand cards could be charged.
+                                try:
+                                    hand_cards = list(getattr(player, 'hand', []) or [])
+                                    hand_count = len(hand_cards)
+                                    # can't charge the same card we're trying to play
+                                    potential_charge_from_hand = max(0, hand_count - 1)
+                                except Exception:
+                                    potential_charge_from_hand = 0
+
+                                if cost <= (usable_mana + potential_charge_from_hand):
+                                    act = ActionCls()
+                                    act.type = ActionTypeCls.PLAY_CARD
+                                    act.card_id = cid
+                                    act.source_instance_id = getattr(c, 'instance_id', -1)
+                                    out.append(act)
+                            except Exception:
+                                continue
+                except Exception:
+                    pass
+
+            except Exception:
+                return out
+            return out
+
 if 'PhaseManager' not in globals():
     class PhaseManager:
         @staticmethod
@@ -639,6 +783,149 @@ if 'PhaseManager' not in globals():
                     return True, result
                 return True
             return False
+
+if 'Zone' not in globals():
+    from enum import IntEnum
+
+    class Zone(IntEnum):
+        DECK = 0
+        HAND = 1
+        MANA = 2
+        BATTLE = 3
+        GRAVEYARD = 4
+        SHIELD = 5
+
+if 'DevTools' not in globals():
+    class DevTools:
+        @staticmethod
+        def move_cards(*args, **kwargs):
+            """Flexible shim for DevTools.move_cards used by GUI/tests.
+
+            Supported signatures (best-effort):
+            - move_cards(gs, player_id, source, target, count=1, card_id_filter=-1)
+            - move_cards(gs, instance_id, source, target)  # move specific instance
+            """
+            try:
+                if len(args) < 4:
+                    return 0
+                gs = args[0]
+                key = args[1]
+
+                # Detect instance-id style call: args[1] is an instance id present in any zone
+                def _find_card_by_instance(iid):
+                    for pid, p in enumerate(getattr(gs, 'players', [])):
+                        for zname in ('hand', 'deck', 'battle_zone', 'mana_zone', 'shield_zone', 'graveyard'):
+                            z = getattr(p, zname, [])
+                            for i, c in enumerate(list(z)):
+                                try:
+                                    if getattr(c, 'instance_id', None) == int(iid):
+                                        return pid, zname, i, c
+                                except Exception:
+                                    continue
+                    return None
+
+                # If key matches an instance id, perform instance-based move
+                try:
+                    inst_lookup = _find_card_by_instance(int(key))
+                except Exception:
+                    inst_lookup = None
+
+                # If found and call pattern matches (args[2] is source zone), move that instance
+                if inst_lookup and (len(args) >= 4):
+                    pid, from_zone_name, idx, card_obj = inst_lookup
+                    target = args[3]
+                    # map Zone to attr name
+                    zone_map = {
+                        Zone.DECK: 'deck',
+                        Zone.HAND: 'hand',
+                        Zone.MANA: 'mana_zone',
+                        Zone.BATTLE: 'battle_zone',
+                        Zone.GRAVEYARD: 'graveyard',
+                        Zone.SHIELD: 'shield_zone',
+                    }
+                    dst_attr = zone_map.get(target, None)
+                    if dst_attr is None:
+                        return 0
+                    try:
+                        # remove from original zone
+                        getattr(gs.players[pid], from_zone_name).pop(idx)
+                    except Exception:
+                        pass
+                    try:
+                        getattr(gs.players[pid], dst_attr).append(card_obj)
+                    except Exception:
+                        pass
+                    return 1
+
+                # Otherwise assume player-id style: gs, player_id, source, target, [count], [card_filter]
+                try:
+                    player_id = int(key)
+                except Exception:
+                    return 0
+
+                src = args[2]
+                dst = args[3]
+                count = int(args[4]) if len(args) >= 5 else 1
+                card_filter = int(args[5]) if len(args) >= 6 else -1
+
+                zone_map = {
+                    Zone.DECK: 'deck',
+                    Zone.HAND: 'hand',
+                    Zone.MANA: 'mana_zone',
+                    Zone.BATTLE: 'battle_zone',
+                    Zone.GRAVEYARD: 'graveyard',
+                    Zone.SHIELD: 'shield_zone',
+                }
+
+                src_attr = zone_map.get(src, None)
+                dst_attr = zone_map.get(dst, None)
+                if src_attr is None or dst_attr is None:
+                    return 0
+
+                moved = 0
+                p = gs.players[player_id]
+                # iterate backwards to remove safely
+                src_list = getattr(p, src_attr, [])
+                for i in range(len(list(src_list)) - 1, -1, -1):
+                    if moved >= count:
+                        break
+                    try:
+                        card = src_list[i]
+                        cid = getattr(card, 'card_id', None) or getattr(card, 'id', None) or card
+                        if card_filter != -1 and int(cid) != int(card_filter):
+                            continue
+                        obj = src_list.pop(i)
+                        try:
+                            getattr(p, dst_attr).append(obj)
+                        except Exception:
+                            pass
+                        moved += 1
+                    except Exception:
+                        continue
+                return moved
+            except Exception:
+                return 0
+
+        @staticmethod
+        def trigger_loop_detection(state: Any):
+            try:
+                # Best-effort: create hash history attributes used by native code
+                if not hasattr(state, 'hash_history'):
+                    state.hash_history = []
+                if not hasattr(state, 'calculate_hash'):
+                    def _ch():
+                        return 0
+                    state.calculate_hash = _ch
+                state.hash_history.append(getattr(state, 'calculate_hash')())
+                state.hash_history.append(getattr(state, 'calculate_hash')())
+                # optional update trigger
+                try:
+                    if hasattr(state, 'update_loop_check'):
+                        state.update_loop_check()
+                except Exception:
+                    pass
+            except Exception:
+                pass
 
 if 'ParallelRunner' not in globals():
     class ParallelRunner:

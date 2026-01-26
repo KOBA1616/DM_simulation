@@ -1276,6 +1276,55 @@ class EngineCompat:
                                 break
 
                         if card:
+                            # Enforce mana cost when playing from HAND -> BATTLE in Python fallback
+                            try:
+                                player = state.players[player_id]
+                                # determine current mana count
+                                current_mana = getattr(player, 'mana_count', None)
+                                if current_mana is None:
+                                    current_mana = len(getattr(player, 'mana_zone', []) or [])
+                            except Exception:
+                                current_mana = None
+
+                            cost = None
+                            try:
+                                cid = getattr(card, 'card_id', None)
+                                cdef = None
+                                if card_db:
+                                    if hasattr(card_db, 'get_card'):
+                                        cdef = card_db.get_card(cid)
+                                    elif isinstance(card_db, dict):
+                                        cdef = cast(Dict[Any, Any], card_db).get(cid) or cast(Dict[Any, Any], card_db).get(str(cid))
+                                if not cdef and dm_ai_module and hasattr(dm_ai_module, 'CardDatabase'):
+                                    try:
+                                        if hasattr(dm_ai_module.CardDatabase, 'get_card'):
+                                            cdef = dm_ai_module.CardDatabase.get_card(cid)
+                                    except Exception:
+                                        pass
+                                if cdef:
+                                    cost = cdef.get('cost') or cdef.get('mana_cost') or cdef.get('cost_to_play')
+                                    try:
+                                        cost = int(cost)
+                                    except Exception:
+                                        pass
+                            except Exception:
+                                cost = None
+
+                            # If destination is battle and cost is known and current_mana is known, enforce payment
+                            if 'BATTLE' in to_z and cost is not None and current_mana is not None:
+                                try:
+                                    if int(current_mana) < int(cost):
+                                        logger.debug('EngineCompat: insufficient mana to play card %s (cost=%s, mana=%s); skipping', getattr(card, 'card_id', None), cost, current_mana)
+                                        # Do not perform the play
+                                        # Reinsert card back into original zone if it was popped
+                                        try:
+                                            src_list.insert(i, card)
+                                        except Exception:
+                                            pass
+                                        return
+                                except Exception:
+                                    pass
+
                             dest_list = _resolve_zone_instances_local(to_z)
                             # If to_z is implied or explicitly standard
                             if 'BATTLE' in to_z:
@@ -1297,28 +1346,55 @@ class EngineCompat:
                                 card = p.hand.pop(i)
                                 break
                         if card:
-                            # Assume Creature goes to Battle, Spell goes to Grave (simplification)
-                            # Ideally check card_db but this is deep fallback
-                            # Check if card has type info attached
-                            is_spell = False
+                            # Enforce mana cost for play in Python fallback similar to PLAY_FROM_ZONE
+                            try:
+                                player = state.players[player_id]
+                                current_mana = getattr(player, 'mana_count', None)
+                                if current_mana is None:
+                                    current_mana = len(getattr(player, 'mana_zone', []) or [])
+                            except Exception:
+                                current_mana = None
+
                             cid = getattr(card, 'card_id', -1)
                             cdef: Optional[Dict[str, Any]] = None
+                            try:
+                                if card_db:
+                                    if hasattr(card_db, 'get_card'):
+                                        cdef = card_db.get_card(cid)
+                                    elif isinstance(card_db, dict):
+                                        cdef = cast(Dict[Any, Any], card_db).get(cid) or cast(Dict[Any, Any], card_db).get(str(cid))
+                                if not cdef and dm_ai_module and hasattr(dm_ai_module, 'CardDatabase'):
+                                    try:
+                                        if hasattr(dm_ai_module.CardDatabase, 'get_card'):
+                                            cdef = dm_ai_module.CardDatabase.get_card(cid)
+                                    except Exception:
+                                        pass
+                            except Exception:
+                                cdef = None
 
-                            if card_db:
-                                if hasattr(card_db, 'get_card'):
-                                    cdef = card_db.get_card(cid)
-                                elif isinstance(card_db, dict):
-                                    cdef = cast(Dict[Any, Any], card_db).get(cid) or cast(Dict[Any, Any], card_db).get(str(cid))
-
-                            # Fallback to global DB if provided DB is missing/empty and we have the module
-                            if not cdef and dm_ai_module and hasattr(dm_ai_module, 'CardDatabase'):
+                            cost = None
+                            if cdef:
+                                cost = cdef.get('cost') or cdef.get('mana_cost') or cdef.get('cost_to_play')
                                 try:
-                                    # Try static get_card
-                                    if hasattr(dm_ai_module.CardDatabase, 'get_card'):
-                                        cdef = dm_ai_module.CardDatabase.get_card(cid)
+                                    cost = int(cost)
                                 except Exception:
                                     pass
 
+                            if cost is not None and current_mana is not None:
+                                try:
+                                    if int(current_mana) < int(cost):
+                                        logger.debug('EngineCompat: insufficient mana to PLAY_CARD %s (cost=%s, mana=%s); skipping', cid, cost, current_mana)
+                                        # Put card back into player's hand to restore state
+                                        try:
+                                            p.hand.insert(0, card)
+                                        except Exception:
+                                            pass
+                                        return
+                                except Exception:
+                                    pass
+
+                            # Continue original placement logic
+                            is_spell = False
                             if cdef and cdef.get('type') == 'SPELL':
                                 is_spell = True
 
