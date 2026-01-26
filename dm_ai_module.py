@@ -348,7 +348,13 @@ if 'GameInstance' not in globals():
         def start_game(self):
             pass
         def execute_action(self, action: Any) -> None:
-            pass
+            # Forward to CommandSystem
+            try:
+                pid = getattr(action, 'target_player', getattr(self.state, 'active_player_id', 0))
+                sid = getattr(action, 'source_instance_id', getattr(action, 'instance_id', 0))
+                CommandSystem.execute_command(self.state, action, sid, pid)
+            except Exception:
+                pass
 
 if 'CommandSystem' not in globals():
     class CommandSystem:
@@ -424,6 +430,41 @@ if 'CommandSystem' not in globals():
                             pass
                     return
 
+                if type_name == 'PLAY_CARD':
+                    if inst:
+                        try:
+                            p = state.players[player_id]
+                            for i, c in enumerate(list(getattr(p, 'hand', []))):
+                                if getattr(c, 'instance_id', -1) == int(inst):
+                                    card_obj = p.hand.pop(i)
+
+                                    # Check if spell or creature using CardDatabase if available
+                                    is_spell = False
+                                    try:
+                                        if hasattr(state, 'card_db') and state.card_db:
+                                            cid = getattr(card_obj, 'card_id', 0)
+                                            cdef = {}
+                                            if hasattr(state.card_db, 'get_card'):
+                                                cdef = state.card_db.get_card(cid)
+                                            elif isinstance(state.card_db, dict):
+                                                cdef = state.card_db.get(cid) or state.card_db.get(str(cid), {})
+
+                                            if cdef and cdef.get('type') == 'SPELL':
+                                                is_spell = True
+                                    except Exception:
+                                        pass
+
+                                    if is_spell:
+                                        p.graveyard.append(card_obj)
+                                    else:
+                                        card_obj.sick = True
+                                        card_obj.is_tapped = False
+                                        p.battle_zone.append(card_obj)
+                                    return
+                        except Exception:
+                            pass
+                    return
+
                 if type_name in ('PLAY_FROM_ZONE', 'MOVE_CARD'):
                     to_zone = str(getattr(cmd, 'to_zone', '') or (cmd.get('to_zone') if isinstance(cmd, dict) else '')).upper()
                     if inst:
@@ -453,177 +494,6 @@ if 'CommandSystem' not in globals():
                 # Best-effort: swallow errors in compatibility shim
                 return
 
-if 'GenericCardSystem' not in globals():
-    class GenericCardSystem:
-        @staticmethod
-        def execute_card_effect(state: Any, action_or_card: Any, player_id: int) -> None:
-            """Execute the effect of a previously played card.
-            Accepts either an action-like object or a raw card_id.
-            The minimal behavior for tests: put spell cards into graveyard.
-            """
-            try:
-                # Support both (action) or (card_id)
-                if hasattr(action_or_card, 'card_id'):
-                    card_id = getattr(action_or_card, 'card_id', 0)
-                    instance_id = getattr(action_or_card, 'source_instance_id', getattr(action_or_card, 'instance_id', None))
-                else:
-                    card_id = int(action_or_card) if action_or_card is not None else 0
-                    instance_id = None
-
-                # Find the instance object if possible
-                card_obj = None
-                if instance_id is not None:
-                    card_obj = state.get_card_instance(int(instance_id)) if hasattr(state, 'get_card_instance') else None
-
-                # If not found by instance, try to create a stub for the id
-                if card_obj is None:
-                    card_obj = CardStub(card_id, state.get_next_instance_id() if hasattr(state, 'get_next_instance_id') else 0)
-
-                # Determine if this is a spell via CardDatabase if available
-                is_spell = False
-                try:
-                    if hasattr(state, 'card_db') and state.card_db:
-                        if hasattr(state.card_db, 'get_card'):
-                            cdef = state.card_db.get_card(card_obj.card_id)
-                        elif isinstance(state.card_db, dict):
-                            cdef = state.card_db.get(card_obj.card_id) or state.card_db.get(str(card_obj.card_id), {})
-                        else:
-                            cdef = {}
-                        if cdef and cdef.get('type') == 'SPELL':
-                            is_spell = True
-                except Exception:
-                    is_spell = False
-
-                # Apply minimal resolution: spells -> graveyard, creatures -> battle_zone
-                if is_spell:
-                    # Remove from any other zone if present
-                    for p in state.players:
-                        for zone_name in ('hand', 'battle_zone', 'mana_zone', 'shield_zone', 'deck'):
-                            z = getattr(p, zone_name, [])
-                            for i, o in enumerate(list(z)):
-                                if getattr(o, 'instance_id', None) == getattr(card_obj, 'instance_id', None):
-                                    try:
-                                        z.pop(i)
-                                    except Exception:
-                                        pass
-                    # add to the active player's graveyard
-                    try:
-                        state.players[player_id].graveyard.append(card_obj)
-                    except Exception:
-                        pass
-                else:
-                    try:
-                        card_obj.sick = True
-                        card_obj.is_tapped = False
-                        state.players[player_id].battle_zone.append(card_obj)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-
-        @staticmethod
-        def resolve_action(state: Any, action: Any, player_id: int) -> None:
-            import warnings
-            try:
-                # Deprecation notice: prefer unified command API
-                try:
-                    warnings.warn(
-                        "GenericCardSystem.resolve_action is deprecated; use dm_toolkit.unified_execution.ensure_executable_command + EngineCompat.ExecuteCommand",
-                        DeprecationWarning,
-                    )
-                except Exception:
-                    pass
-                atype = getattr(action, 'type', None)
-                # Normalize string types
-                if isinstance(atype, str):
-                    try:
-                        atype = getattr(ActionType, atype)
-                    except Exception:
-                        pass
-
-                if atype == ActionType.MANA_CHARGE:
-                    instance_id = getattr(action, 'source_instance_id', getattr(action, 'instance_id', None))
-                    if instance_id is None:
-                        return
-                    p = state.players[player_id]
-                    for i, c in enumerate(list(p.hand)):
-                        if getattr(c, 'instance_id', -1) == int(instance_id):
-                            card = p.hand.pop(i)
-                            card.is_tapped = False
-                            p.mana_zone.append(card)
-                            return
-
-                if atype == ActionType.PLAY_CARD or (isinstance(atype, str) and str(atype).endswith('PLAY_CARD')):
-                    instance_id = getattr(action, 'source_instance_id', getattr(action, 'instance_id', None))
-                    if instance_id is None:
-                        return
-                    p = state.players[player_id]
-                    card_obj = None
-                    for i, c in enumerate(list(p.hand)):
-                        if getattr(c, 'instance_id', -1) == int(instance_id):
-                            card_obj = p.hand.pop(i)
-                            break
-                    if card_obj is None:
-                        card_obj = CardStub(getattr(action, 'card_id', 0), int(instance_id))
-
-                    # Determine type via CardDatabase if available
-                    cdef = {}
-                    try:
-                        if hasattr(state, 'card_db') and state.card_db:
-                            if hasattr(state.card_db, 'get_card'):
-                                cdef = state.card_db.get_card(card_obj.card_id)
-                            elif isinstance(state.card_db, dict):
-                                cdef = state.card_db.get(card_obj.card_id) or state.card_db.get(str(card_obj.card_id), {})
-                    except Exception:
-                        cdef = {}
-
-                    is_spell = False
-                    if cdef and cdef.get('type') == 'SPELL':
-                        is_spell = True
-
-                    if is_spell:
-                        state.players[player_id].graveyard.append(card_obj)
-                    else:
-                        card_obj.sick = True
-                        card_obj.is_tapped = False
-                        state.players[player_id].battle_zone.append(card_obj)
-
-                    # Push to pending effects as a simple stub
-                    try:
-                        state.pending_effects.append(action)
-                    except Exception:
-                        pass
-                    return
-
-                if atype == ActionType.RESOLVE_EFFECT:
-                    # Resolve top of pending_effects (LIFO)
-                    try:
-                        if getattr(state, 'pending_effects', None):
-                            action_to_resolve = state.pending_effects.pop()
-                            # Pass the whole action so execute_card_effect can access instance id
-                            GenericCardSystem.execute_card_effect(state, action_to_resolve, player_id)
-                            return
-                    except Exception:
-                        pass
-            except Exception:
-                # Swallow errors in resolve_action to avoid test interruption
-                pass
-            # Fallback: if legacy resolution didn't handle the action, attempt
-            # to convert to a command dict and execute via EngineCompat so
-            # that Action-based callers still result in canonical execution.
-            try:
-                from dm_toolkit.unified_execution import ensure_executable_command
-                from dm_toolkit.engine.compat import EngineCompat
-                try:
-                    cmd = ensure_executable_command(action)
-                    if cmd and cmd.get('type') not in (None, 'NONE'):
-                        card_db = getattr(state, 'card_db', None)
-                        EngineCompat.ExecuteCommand(state, cmd, card_db)
-                        return
-                except Exception:
-                    pass
-            except Exception:
-                pass
 
 if 'JsonLoader' not in globals():
     class JsonLoader:
@@ -1132,13 +1002,7 @@ if 'MutateCommand' not in globals():
             class EffectResolver:
                 @staticmethod
                 def resolve(state: Any, effect: Any, player_id: int) -> None:
-                    # Minimal: delegate to GenericCardSystem if possible
-                    try:
-                        if hasattr(effect, 'card_id'):
-                            GenericCardSystem.execute_card_effect(state, effect, player_id)
-                        return
-                    except Exception:
-                        return
+                    pass
 
         if 'TokenConverter' not in globals():
             class TokenConverter:
