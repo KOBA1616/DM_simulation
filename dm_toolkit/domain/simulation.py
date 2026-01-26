@@ -16,7 +16,7 @@ from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.training.scenario_definitions import SCENARIOS
 
 class SimulationRunner:
-    def __init__(self, card_db, scenario_name, episodes, threads, sims, evaluator_type, model_path=None):
+    def __init__(self, card_db, scenario_name, episodes, threads, sims, evaluator_type, model_path=None, deck_lists=None):
         self.card_db = card_db
         self.scenario_name = scenario_name
         self.episodes = episodes
@@ -24,6 +24,7 @@ class SimulationRunner:
         self.sims = sims
         self.evaluator_type = evaluator_type # "Random", "Heuristic", "Model"
         self.model_path = model_path
+        self.deck_lists = deck_lists
         self.is_cancelled = False
 
     def cancel(self):
@@ -46,30 +47,32 @@ class SimulationRunner:
             if progress_callback:
                 progress_callback(0, tr("Initializing..."))
 
-            # Setup Scenario
-            if self.scenario_name not in SCENARIOS:
-                msg = f"Error: Unknown scenario {self.scenario_name}"
-                try:
-                    msg = tr("Error: Unknown scenario {name}").format(name=self.scenario_name)
-                except Exception:
-                    pass
-                if finished_callback:
-                    finished_callback(0.0, msg)
-                return
+            config = None
+            if not self.deck_lists:
+                # Setup Scenario
+                if self.scenario_name not in SCENARIOS:
+                    msg = f"Error: Unknown scenario {self.scenario_name}"
+                    try:
+                        msg = tr("Error: Unknown scenario {name}").format(name=self.scenario_name)
+                    except Exception:
+                        pass
+                    if finished_callback:
+                        finished_callback(0.0, msg)
+                    return
 
-            scenario_def = SCENARIOS[self.scenario_name]
-            config_dict = scenario_def["config"]
+                scenario_def = SCENARIOS[self.scenario_name]
+                config_dict = scenario_def["config"]
 
-            config = dm_ai_module.ScenarioConfig()
-            config.my_mana = config_dict.get("my_mana", 0)
-            config.my_hand_cards = config_dict.get("my_hand_cards", [])
-            config.my_battle_zone = config_dict.get("my_battle_zone", [])
-            config.my_mana_zone = config_dict.get("my_mana_zone", [])
-            config.my_grave_yard = config_dict.get("my_grave_yard", [])
-            config.my_shields = config_dict.get("my_shields", [])
-            config.enemy_shield_count = config_dict.get("enemy_shield_count", 5)
-            config.enemy_battle_zone = config_dict.get("enemy_battle_zone", [])
-            config.enemy_can_use_trigger = config_dict.get("enemy_can_use_trigger", False)
+                config = dm_ai_module.ScenarioConfig()
+                config.my_mana = config_dict.get("my_mana", 0)
+                config.my_hand_cards = config_dict.get("my_hand_cards", [])
+                config.my_battle_zone = config_dict.get("my_battle_zone", [])
+                config.my_mana_zone = config_dict.get("my_mana_zone", [])
+                config.my_grave_yard = config_dict.get("my_grave_yard", [])
+                config.my_shields = config_dict.get("my_shields", [])
+                config.enemy_shield_count = config_dict.get("enemy_shield_count", 5)
+                config.enemy_battle_zone = config_dict.get("enemy_battle_zone", [])
+                config.enemy_can_use_trigger = config_dict.get("enemy_can_use_trigger", False)
 
             # Setup Evaluator
             evaluator_func = None
@@ -200,7 +203,15 @@ class SimulationRunner:
                     global_idx = start_game_idx + i
                     seed = int(time.time() * 1000 + global_idx) % 1000000
                     state = dm_ai_module.GameState(seed)
-                    dm_ai_module.PhaseManager.setup_scenario(state, config, self.card_db)
+
+                    if self.deck_lists:
+                        state.setup_test_duel()
+                        state.set_deck(0, self.deck_lists[0])
+                        state.set_deck(1, self.deck_lists[1])
+                        dm_ai_module.PhaseManager.start_game(state, self.card_db)
+                    else:
+                        dm_ai_module.PhaseManager.setup_scenario(state, config, self.card_db)
+
                     chunk_initial_states.append(state)
 
                 # Create Runner for this chunk

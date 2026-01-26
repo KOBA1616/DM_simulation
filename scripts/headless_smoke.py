@@ -1,6 +1,11 @@
 import sys
 import os
 import traceback
+from pathlib import Path
+
+# Ensure project root is on sys.path
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
 
 from dm_toolkit.gui.headless import create_session, find_legal_commands_for_instance, play_instance, run_steps
 
