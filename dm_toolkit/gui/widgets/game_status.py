@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.engine.compat import EngineCompat
-from dm_toolkit.types import GameState
+from dm_toolkit.dm_types import GameState
 
 class GameStatusWidget(QWidget):
     """

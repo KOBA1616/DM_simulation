@@ -18,7 +18,7 @@ except ImportError:
     sys.exit(1)
 
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
-from dm_toolkit.types import CardDB, ResultsList
+from dm_toolkit.dm_types import CardDB, ResultsList
 
 class SelfPlayRunner:
     def __init__(self, card_db: CardDB, device: Optional[Any] = None) -> None:

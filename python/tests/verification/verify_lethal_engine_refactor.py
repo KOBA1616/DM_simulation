@@ -15,7 +15,7 @@ except ImportError:
     print(f"Error: Could not import dm_ai_module. Make sure it is built and in {bin_path}")
     sys.exit(1)
 
-from dm_toolkit.types import CardDB, GameState
+from dm_toolkit.dm_types import CardDB, GameState
 from dm_toolkit.ai.agent.network import AlphaZeroNetwork
 
 class TestLethalSolverRefactor(unittest.TestCase):
