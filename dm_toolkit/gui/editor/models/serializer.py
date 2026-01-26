@@ -114,7 +114,10 @@ class ModelSerializer:
                 cards.append(card_model.model_dump(exclude_none=True))
         return cards
 
-    def reconstruct_card_model(self, card_item: IEditorItem) -> CardModel:
+    def reconstruct_card_model(self, card_item: IEditorItem) -> Optional[CardModel]:
+        if card_item is None:
+            return None
+
         # Get base data
         raw_data = self.get_item_data(card_item) # Resolves to dict
         card_data = copy.deepcopy(raw_data)

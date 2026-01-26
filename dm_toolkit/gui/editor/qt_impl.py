@@ -96,6 +96,8 @@ class QtEditorModel(IEditorModel):
         if isinstance(index, QModelIndex):
             item = self._model.itemFromIndex(index)
             return QtEditorItem(item) if item else None
+        elif isinstance(index, QStandardItem):
+            return QtEditorItem(index)
         return None
 
     def set_horizontal_header_labels(self, labels: List[str]) -> None:

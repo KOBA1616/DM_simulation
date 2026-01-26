@@ -94,8 +94,10 @@ class CardDataManager:
     def get_full_data(self):
         return self.serializer.get_full_data(self.model)
 
-    def reconstruct_card_model(self, card_item) -> CardModel:
+    def reconstruct_card_model(self, card_item) -> Optional[CardModel]:
         item = self._ensure_item(card_item)
+        if item is None:
+            return None
         return self.serializer.reconstruct_card_model(item)
 
     # --- Feature Service Wrappers ---
