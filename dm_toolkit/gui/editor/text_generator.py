@@ -1556,9 +1556,15 @@ class CardTextGenerator:
              count = val1 if val1 > 0 else 1
              filter_zones = action.get("filter", {}).get("zones", [])
              src_text = ""
-             if filter_zones:
+
+             # Prioritize explicit from_zone
+             from_z = action.get("from_zone") or action.get("source_zone")
+             if from_z and from_z != "NONE":
+                 src_text = cls._zone_to_japanese(from_z) + "から"
+             elif filter_zones:
                  znames = [tr(z) for z in filter_zones]
                  src_text = "または".join(znames) + "から"
+
              return f"{src_text}{target_str}を{count}{unit}バトルゾーンに出す。"
 
         elif atype == "SHUFFLE_DECK":
