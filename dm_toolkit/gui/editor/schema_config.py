@@ -372,6 +372,14 @@ def register_all_schemas():
 
     # --- Logic Commands ---
 
+    # SELECT_TARGET
+    register_schema(CommandSchema("SELECT_TARGET", [
+        f_target,
+        f_filter,
+        f_amount,
+        f_links_out
+    ]))
+
     # CHOICE
     register_schema(CommandSchema("CHOICE", [
         f_amount,  # e.g. "Choose 1"
