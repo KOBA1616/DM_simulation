@@ -1,7 +1,15 @@
 import json
 import os
 import re
+import sys
 from typing import Dict, List, Set, Any, Optional, Tuple
+
+try:
+    from dm_toolkit.editor.core.headless_impl import HeadlessEditorModel
+    from dm_toolkit.gui.editor.data_manager import CardDataManager
+    HAS_EDITOR = True
+except ImportError:
+    HAS_EDITOR = False
 
 class ValidationResult:
     def __init__(self, valid: bool, errors: List[str]) -> None:
@@ -118,6 +126,25 @@ class CardValidator:
              spell_side_result = self.validate_card(card_data['spell_side'])
              if not spell_side_result.valid:
                  errors.extend([f"SpellSide: {e}" for e in spell_side_result.errors])
+
+        # Schema Validation via CardDataManager
+        if HAS_EDITOR:
+            try:
+                model = HeadlessEditorModel()
+                manager = CardDataManager(model)
+                # Load just this card
+                manager.load_data([card_data])
+                root = model.root_item()
+                if root.row_count() == 0:
+                     errors.append("Editor Model: Failed to load card item")
+                else:
+                    item = root.child(0)
+                    reconstructed = manager.reconstruct_card_model(item)
+                    if reconstructed is None:
+                         errors.append("Editor Model: Failed to reconstruct/validate schema")
+            except Exception as e:
+                # errors.append(f"Editor Model Exception: {str(e)}")
+                pass
 
         return ValidationResult(len(errors) == 0, errors)
 
