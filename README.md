@@ -70,6 +70,21 @@ cmake --build build-msvc --config Release -- -j
 python -m pytest -q
 ```
 
+## Unified CLI (dm-cli)
+
+`dm-cli` is the main entry point for headless operations and validation.
+
+```bash
+# Run interactive console (headless REPL)
+./dm-cli console
+
+# Run headless simulation (batch games)
+./dm-cli sim --games 100
+
+# Validate card data
+./dm-cli validate data/cards.json
+```
+
 ## Local CI (Windows)
 
 CI相当のビルド/テスト/mypyをローカルでまとめて実行し、ログを `dumps/logs` に保存します。
