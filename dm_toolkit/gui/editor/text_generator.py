@@ -1720,6 +1720,31 @@ class CardTextGenerator:
              duration = val1 if val1 > 0 else 1
              return f"{target_str_lock}は{duration}ターンの間、呪文を唱えられない。"
 
+        elif atype in ["SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK"]:
+             scope = action.get("scope") or action.get("target_group", "NONE")
+             target_str_lock = "プレイヤー"
+             if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
+                  target_str_lock = "相手"
+             elif scope in ["PLAYER_SELF", "SELF"]:
+                  target_str_lock = "自分"
+             elif scope == "ALL_PLAYERS":
+                  target_str_lock = "すべてのプレイヤー"
+             else:
+                  target_str_lock, _ = cls._resolve_target(action, is_spell)
+
+             duration = val1 if val1 > 0 else 1
+
+             if atype == "SPELL_RESTRICTION":
+                 action_text = "呪文を唱えられない"
+             elif atype == "CANNOT_PUT_CREATURE":
+                 action_text = "クリーチャーを出せない"
+             elif atype == "CANNOT_SUMMON_CREATURE":
+                 action_text = "クリーチャーを召喚できない"
+             elif atype == "PLAYER_CANNOT_ATTACK":
+                 action_text = "攻撃できない"
+
+             return f"{target_str_lock}は{duration}ターンの間、{action_text}。"
+
         elif atype == "RESET_INSTANCE":
              return f"{target_str}の状態を初期化する（効果を無視する）。"
 
