@@ -1,6 +1,6 @@
+# dm_toolkit/gui/editor/models/serializer.py
 # -*- coding: utf-8 -*-
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtCore import Qt
+from dm_toolkit.editor.core.abstraction import IEditorItem, IEditorModel
 from dm_toolkit.gui.i18n import tr
 import copy
 from pydantic import BaseModel
@@ -10,19 +10,24 @@ from dm_toolkit.gui.editor.models import CardModel, EffectModel, CommandModel, M
 
 class ModelSerializer:
     """
-    Responsible for converting between Pydantic models and QStandardItems,
+    Responsible for converting between Pydantic models and IEditorItems,
     and serializing/deserializing the full card list.
     """
 
     def __init__(self):
         pass
 
-    def get_item_data(self, index_or_item):
+    def _ensure_item(self, item) -> IEditorItem:
+        if isinstance(item, IEditorItem):
+            return item
+        return None
+
+    def get_item_data(self, item):
         """
         Returns data as a dictionary (for compatibility).
         Internally, it might extract from a Pydantic model stored in the item.
         """
-        item = self._ensure_item(index_or_item)
+        item = self._ensure_item(item)
         if item:
             data = item.data(ROLE_DATA)
             if isinstance(data, BaseModel):
@@ -30,172 +35,27 @@ class ModelSerializer:
             return data or {}
         return {}
 
-    def get_item_model_obj(self, index_or_item):
+    def get_item_model_obj(self, item):
         """
         Returns the raw data object stored in the item (preferably a Pydantic model).
         """
-        item = self._ensure_item(index_or_item)
+        item = self._ensure_item(item)
         if item:
             return item.data(ROLE_DATA)
         return None
 
-    def set_item_data(self, index_or_item, data):
+    def set_item_data(self, item, data):
         """
         Sets data to the item.
         If 'data' is a Pydantic model, stores it directly.
         """
-        item = self._ensure_item(index_or_item)
+        item = self._ensure_item(item)
         if item:
-            self._set_data(item, data, ROLE_DATA)
+            item.set_data(data, ROLE_DATA)
 
-    def _set_data(self, item, value, role):
-        """Safe setData wrapper: tries native setData, falls back to instance storage."""
-        try:
-            # Prefer native Qt method when available
-            item.setData(value, role)
-            return
-        except Exception:
-            # Fallback: store on a per-instance dict and override data() accessor
-            if not hasattr(item, '_py_data_store'):
-                item._py_data_store = {}
-                try:
-                    item._py_orig_data = item.data
-                except Exception:
-                    item._py_orig_data = None
-
-                def _data_func(r, _item=item):
-                    if hasattr(_item, '_py_data_store') and r in _item._py_data_store:
-                        return _item._py_data_store[r]
-                    if getattr(_item, '_py_orig_data', None):
-                        try:
-                            return _item._py_orig_data(r)
-                        except Exception:
-                            return None
-                    return None
-
-                try:
-                    # bind as attribute on instance
-                    item.data = _data_func
-                except Exception:
-                    pass
-            item._py_data_store[role] = value
-
-    def _append_row(self, parent, child):
-        """Safe appendRow wrapper: tries native appendRow, falls back to instance storage."""
-        try:
-            parent.appendRow(child)
-            return
-        except Exception:
-            if not hasattr(parent, '_py_children'):
-                parent._py_children = []
-
-                def _child_func(idx, _p=parent):
-                    try:
-                        return _p._py_children[idx]
-                    except Exception:
-                        return None
-
-                def _rowcount_func(_p=parent):
-                    return len(_p._py_children)
-
-                def _append_func(c, _p=parent):
-                    try:
-                        c._py_parent = _p
-                    except Exception:
-                        pass
-                    _p._py_children.append(c)
-
-                try:
-                    parent.child = _child_func
-                    parent.rowCount = _rowcount_func
-                    parent.appendRow = _append_func
-                except Exception:
-                    pass
-            try:
-                child._py_parent = parent
-            except Exception:
-                pass
-            parent._py_children.append(child)
-
-    def _ensure_compat(self, item, label: str = None):
-        """Ensure the given item has basic methods used by tests (text/setText/setEditable/etc.)."""
-        try:
-            if label is not None and not hasattr(item, 'text'):
-                # Store label for compatibility
-                try:
-                    item._py_text = label
-                except Exception:
-                    pass
-
-                def _text(_item=item):
-                    return getattr(_item, '_py_text', '')
-
-                def _set_text(t, _item=item):
-                    try:
-                        _item._py_text = t
-                    except Exception:
-                        pass
-
-                try:
-                    item.text = _text
-                    item.setText = _set_text
-                except Exception:
-                    pass
-
-            if not hasattr(item, 'setEditable'):
-                def _set_editable(v):
-                    try:
-                        item._py_editable = bool(v)
-                    except Exception:
-                        pass
-                try:
-                    item.setEditable = _set_editable
-                except Exception:
-                    pass
-
-            if not hasattr(item, 'setToolTip'):
-                try:
-                    item.setToolTip = lambda v: None
-                except Exception:
-                    pass
-            # Ensure child/rowCount accessors exist for reconstruction
-            if not hasattr(item, 'rowCount'):
-                try:
-                    item._py_children = getattr(item, '_py_children', [])
-                except Exception:
-                    item._py_children = []
-
-                def _rowcount(_item=item):
-                    try:
-                        return len(_item._py_children)
-                    except Exception:
-                        return 0
-
-                def _child(idx, _item=item):
-                    try:
-                        return _item._py_children[idx]
-                    except Exception:
-                        return None
-
-                try:
-                    item.rowCount = _rowcount
-                    item.child = _child
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-    def _ensure_item(self, index_or_item):
-        from PyQt6.QtCore import QModelIndex
-        if isinstance(index_or_item, QModelIndex):
-            if index_or_item.model():
-                return index_or_item.model().itemFromIndex(index_or_item)
-            return None
-        return index_or_item
-
-    def load_data(self, model: QStandardItemModel, cards_data: list):
+    def load_data(self, model: IEditorModel, cards_data: list):
         model.clear()
-        model.setHorizontalHeaderLabels([tr("Logic Tree")])
+        model.set_headers([tr("Logic Tree")])
 
         for card_raw in cards_data:
             # Validate/Convert using Pydantic
@@ -213,52 +73,44 @@ class ModelSerializer:
                     card_model = None
 
             if card_model:
-                card_item = self.create_card_item(card_model)
+                card_item = self.create_card_item(model, card_model)
 
                 # Effects
                 for effect in card_model.effects:
-                    eff_item = self.create_effect_item(effect)
-                    self._load_effect_children(eff_item, effect)
-                    self._append_row(card_item, eff_item)
+                    eff_item = self.create_effect_item(model, effect)
+                    self._load_effect_children(model, eff_item, effect)
+                    card_item.append_row(eff_item)
 
                 # Static Abilities
                 for modifier in card_model.static_abilities:
-                    mod_item = self.create_modifier_item(modifier)
-                    self._append_row(card_item, mod_item)
+                    mod_item = self.create_modifier_item(model, modifier)
+                    card_item.append_row(mod_item)
 
                 # Reaction Abilities
                 for reaction in card_model.reaction_abilities:
-                    ra_item = self.create_reaction_item(reaction)
-                    self._append_row(card_item, ra_item)
+                    ra_item = self.create_reaction_item(model, reaction)
+                    card_item.append_row(ra_item)
 
                 # Spell Side
                 if card_model.spell_side:
-                    spell_item = self.create_spell_side_item(card_model.spell_side)
+                    spell_item = self.create_spell_side_item(model, card_model.spell_side)
                     for effect in card_model.spell_side.effects:
-                        eff_item = self.create_effect_item(effect)
-                        self._load_effect_children(eff_item, effect)
-                        self._append_row(spell_item, eff_item)
+                        eff_item = self.create_effect_item(model, effect)
+                        self._load_effect_children(model, eff_item, effect)
+                        spell_item.append_row(eff_item)
                     for modifier in card_model.spell_side.static_abilities:
-                        mod_item = self.create_modifier_item(modifier)
-                        self._append_row(spell_item, mod_item)
-                    self._append_row(card_item, spell_item)
+                        mod_item = self.create_modifier_item(model, modifier)
+                        spell_item.append_row(mod_item)
+                    card_item.append_row(spell_item)
 
-                try:
-                    model.appendRow(card_item)
-                except Exception:
-                    # fallback for SHIM model implementations
-                    if hasattr(model, 'invisibleRootItem'):
-                        root = model.invisibleRootItem()
-                        self._append_row(root, card_item)
-                    else:
-                        raise
+                model.append_row(card_item)
 
-    def get_full_data(self, model: QStandardItemModel):
+    def get_full_data(self, model: IEditorModel):
         cards = []
-        root = model.invisibleRootItem()
+        root = model.root_item()
         if root is None:
             return cards
-        for i in range(root.rowCount()):
+        for i in range(root.row_count()):
             card_item = root.child(i)
             if card_item is None: continue
 
@@ -267,7 +119,7 @@ class ModelSerializer:
                 cards.append(card_model.model_dump(exclude_none=True))
         return cards
 
-    def reconstruct_card_model(self, card_item) -> CardModel:
+    def reconstruct_card_model(self, card_item: IEditorItem) -> CardModel:
         # Get base data
         raw_data = self.get_item_data(card_item) # Resolves to dict
         card_data = copy.deepcopy(raw_data)
@@ -278,8 +130,9 @@ class ModelSerializer:
         card_data['reaction_abilities'] = []
 
         # Iterate children
-        for i in range(card_item.rowCount()):
+        for i in range(card_item.row_count()):
             child = card_item.child(i)
+            if not child: continue
             role = child.data(ROLE_TYPE)
 
             if role == "EFFECT":
@@ -294,8 +147,6 @@ class ModelSerializer:
                 card_data['keywords'] = child.data(ROLE_DATA)
 
         # Legacy keyword inference
-        # To avoid circular dependency, we import here or use a hook?
-        # For now, we import the service helper inside the method.
         try:
             from dm_toolkit.gui.editor.services.feature_service import EditorFeatureService
             EditorFeatureService.inject_keyword_logic(card_data)
@@ -304,19 +155,19 @@ class ModelSerializer:
 
         return CardModel(**card_data)
 
-    def _reconstruct_effect(self, eff_item) -> EffectModel:
+    def _reconstruct_effect(self, eff_item: IEditorItem) -> EffectModel:
         raw = self.get_item_data(eff_item)
         eff_data = copy.deepcopy(raw)
         eff_data['commands'] = []
 
-        for i in range(eff_item.rowCount()):
+        for i in range(eff_item.row_count()):
             child = eff_item.child(i)
-            if child.data(ROLE_TYPE) == "COMMAND":
+            if child and child.data(ROLE_TYPE) == "COMMAND":
                 eff_data['commands'].append(self._reconstruct_command(child))
 
         return EffectModel(**eff_data)
 
-    def _reconstruct_command(self, cmd_item) -> CommandModel:
+    def _reconstruct_command(self, cmd_item: IEditorItem) -> CommandModel:
         raw = self.get_item_data(cmd_item)
         cmd_data = copy.deepcopy(raw)
 
@@ -325,19 +176,20 @@ class ModelSerializer:
         if_false_cmds = []
         options_list = []
 
-        for i in range(cmd_item.rowCount()):
+        for i in range(cmd_item.row_count()):
             child = cmd_item.child(i)
+            if not child: continue
             role = child.data(ROLE_TYPE)
 
             if role == "CMD_BRANCH_TRUE":
-                for j in range(child.rowCount()):
+                for j in range(child.row_count()):
                     if_true_cmds.append(self._reconstruct_command(child.child(j)))
             elif role == "CMD_BRANCH_FALSE":
-                 for j in range(child.rowCount()):
+                 for j in range(child.row_count()):
                     if_false_cmds.append(self._reconstruct_command(child.child(j)))
             elif role == "OPTION":
                 opt_cmds = []
-                for j in range(child.rowCount()):
+                for j in range(child.row_count()):
                      opt_cmds.append(self._reconstruct_command(child.child(j)))
                 options_list.append(opt_cmds)
 
@@ -347,110 +199,99 @@ class ModelSerializer:
 
         return CommandModel(**cmd_data)
 
-    def _load_effect_children(self, eff_item, effect_model: EffectModel):
+    def _load_effect_children(self, model: IEditorModel, eff_item: IEditorItem, effect_model: EffectModel):
         for command in effect_model.commands:
-            cmd_item = self.create_command_item(command)
-            self._append_row(eff_item, cmd_item)
+            cmd_item = self.create_command_item(model, command)
+            eff_item.append_row(cmd_item)
 
 
     # --- Item Creation Methods ---
 
-    def create_card_item(self, model: CardModel):
-        item = QStandardItem(f"{model.id} - {model.name}")
-        self._ensure_compat(item, f"{model.id} - {model.name}")
-        self._set_data(item, "CARD", ROLE_TYPE)
-        self._set_data(item, model, ROLE_DATA) # Store Model directly
+    def create_card_item(self, model: IEditorModel, card_model: CardModel) -> IEditorItem:
+        item = model.create_item(f"{card_model.id} - {card_model.name}")
+        item.set_data("CARD", ROLE_TYPE)
+        item.set_data(card_model, ROLE_DATA) # Store Model directly
 
-        kw_item = QStandardItem(tr("Keywords"))
-        self._ensure_compat(kw_item, tr("Keywords"))
-        self._set_data(kw_item, "KEYWORDS", ROLE_TYPE)
-        self._set_data(kw_item, model.keywords, ROLE_DATA) # Dict
-        kw_item.setEditable(False)
-        self._append_row(item, kw_item)
+        kw_item = model.create_item(tr("Keywords"))
+        kw_item.set_data("KEYWORDS", ROLE_TYPE)
+        kw_item.set_data(card_model.keywords, ROLE_DATA) # Dict
+        kw_item.set_editable(False)
+        item.append_row(kw_item)
         return item
 
-    def create_effect_item(self, model: EffectModel):
-        item = QStandardItem(f"{tr('Effect')}: {tr(model.trigger)}")
-        self._ensure_compat(item, f"{tr('Effect')}: {tr(model.trigger)}")
-        self._set_data(item, "EFFECT", ROLE_TYPE)
-        self._set_data(item, model, ROLE_DATA)
+    def create_effect_item(self, model: IEditorModel, effect_model: EffectModel) -> IEditorItem:
+        item = model.create_item(f"{tr('Effect')}: {tr(effect_model.trigger)}")
+        item.set_data("EFFECT", ROLE_TYPE)
+        item.set_data(effect_model, ROLE_DATA)
         return item
 
-    def create_spell_side_item(self, model: CardModel):
-        item = QStandardItem(f"{tr('Spell Side')}: {model.name}")
-        self._ensure_compat(item, f"{tr('Spell Side')}: {model.name}")
-        self._set_data(item, "SPELL_SIDE", ROLE_TYPE)
-        self._set_data(item, model, ROLE_DATA)
+    def create_spell_side_item(self, model: IEditorModel, card_model: CardModel) -> IEditorItem:
+        item = model.create_item(f"{tr('Spell Side')}: {card_model.name}")
+        item.set_data("SPELL_SIDE", ROLE_TYPE)
+        item.set_data(card_model, ROLE_DATA)
 
-        kw_item = QStandardItem(tr("Keywords"))
-        self._ensure_compat(kw_item, tr("Keywords"))
-        self._set_data(kw_item, "KEYWORDS", ROLE_TYPE)
-        self._set_data(kw_item, model.keywords, ROLE_DATA) # Dict
-        kw_item.setEditable(False)
-        self._append_row(item, kw_item)
+        kw_item = model.create_item(tr("Keywords"))
+        kw_item.set_data("KEYWORDS", ROLE_TYPE)
+        kw_item.set_data(card_model.keywords, ROLE_DATA) # Dict
+        kw_item.set_editable(False)
+        item.append_row(kw_item)
         return item
 
-    def create_modifier_item(self, model: ModifierModel):
-        item = QStandardItem(f"{tr('Static')}: {tr(model.type)}")
-        self._ensure_compat(item, f"{tr('Static')}: {tr(model.type)}")
-        self._set_data(item, "MODIFIER", ROLE_TYPE)
-        self._set_data(item, model, ROLE_DATA)
+    def create_modifier_item(self, model: IEditorModel, modifier_model: ModifierModel) -> IEditorItem:
+        item = model.create_item(f"{tr('Static')}: {tr(modifier_model.type)}")
+        item.set_data("MODIFIER", ROLE_TYPE)
+        item.set_data(modifier_model, ROLE_DATA)
         return item
 
-    def create_reaction_item(self, model: ReactionModel):
-        item = QStandardItem(f"{tr('Reaction')}: {tr(model.type)}")
-        self._ensure_compat(item, f"{tr('Reaction')}: {tr(model.type)}")
-        self._set_data(item, "REACTION_ABILITY", ROLE_TYPE)
-        self._set_data(item, model, ROLE_DATA)
+    def create_reaction_item(self, model: IEditorModel, reaction_model: ReactionModel) -> IEditorItem:
+        item = model.create_item(f"{tr('Reaction')}: {tr(reaction_model.type)}")
+        item.set_data("REACTION_ABILITY", ROLE_TYPE)
+        item.set_data(reaction_model, ROLE_DATA)
         return item
 
-    def create_command_item(self, model_or_dict):
+    def create_command_item(self, model: IEditorModel, model_or_dict) -> IEditorItem:
         if isinstance(model_or_dict, dict):
-            model = CommandModel(**model_or_dict)
+            cmd_model = CommandModel(**model_or_dict)
         else:
-            model = model_or_dict
+            cmd_model = model_or_dict
 
-        label = f"{tr('Action')}: {tr(model.type)}"
-        item = QStandardItem(label)
-        self._ensure_compat(item, label)
-        self._set_data(item, "COMMAND", ROLE_TYPE)
-        self._set_data(item, model, ROLE_DATA)
+        label = f"{tr('Action')}: {tr(cmd_model.type)}"
+        item = model.create_item(label)
+        item.set_data("COMMAND", ROLE_TYPE)
+        item.set_data(cmd_model, ROLE_DATA)
 
         # Recursive rendering for branches/options
-        if model.if_true:
-            branch = QStandardItem(tr("If True"))
-            self._ensure_compat(branch, tr("If True"))
-            self._set_data(branch, "CMD_BRANCH_TRUE", ROLE_TYPE)
-            self._append_row(item, branch)
-            for cmd in model.if_true:
-                self._append_row(branch, self.create_command_item(cmd))
+        if cmd_model.if_true:
+            branch = model.create_item(tr("If True"))
+            branch.set_data("CMD_BRANCH_TRUE", ROLE_TYPE)
+            item.append_row(branch)
+            for cmd in cmd_model.if_true:
+                branch.append_row(self.create_command_item(model, cmd))
 
-        if model.if_false:
-            branch = QStandardItem(tr("If False"))
-            self._ensure_compat(branch, tr("If False"))
-            self._set_data(branch, "CMD_BRANCH_FALSE", ROLE_TYPE)
-            self._append_row(item, branch)
-            for cmd in model.if_false:
-                self._append_row(branch, self.create_command_item(cmd))
+        if cmd_model.if_false:
+            branch = model.create_item(tr("If False"))
+            branch.set_data("CMD_BRANCH_FALSE", ROLE_TYPE)
+            item.append_row(branch)
+            for cmd in cmd_model.if_false:
+                branch.append_row(self.create_command_item(model, cmd))
 
-        if model.options:
-            for idx, opt_cmds in enumerate(model.options):
-                opt_item = QStandardItem(f"{tr('Option')} {idx+1}")
-                self._ensure_compat(opt_item, f"{tr('Option')} {idx+1}")
-                self._set_data(opt_item, "OPTION", ROLE_TYPE)
-                self._append_row(item, opt_item)
+        if cmd_model.options:
+            for idx, opt_cmds in enumerate(cmd_model.options):
+                opt_item = model.create_item(f"{tr('Option')} {idx+1}")
+                opt_item.set_data("OPTION", ROLE_TYPE)
+                item.append_row(opt_item)
                 for cmd in opt_cmds:
-                    self._append_row(opt_item, self.create_command_item(cmd))
+                    opt_item.append_row(self.create_command_item(model, cmd))
 
         return item
 
-    def add_child_item(self, parent_item, item_type, data, label):
+    def add_child_item(self, model: IEditorModel, parent_item: IEditorItem, item_type, data, label) -> IEditorItem:
         """Add a child item to a parent."""
         if not parent_item:
             return None
 
-        new_item = QStandardItem(label)
-        self._set_data(new_item, item_type, ROLE_TYPE)
-        self._set_data(new_item, data, ROLE_DATA)
-        self._append_row(parent_item, new_item)
+        new_item = model.create_item(label)
+        new_item.set_data(item_type, ROLE_TYPE)
+        new_item.set_data(data, ROLE_DATA)
+        parent_item.append_row(new_item)
         return new_item
