@@ -475,10 +475,9 @@ class EngineCompat:
             pass
 
         # Legacy fallback: call native resolver directly if available
-        if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
-            dm_ai_module.EffectResolver.resolve_action(state, action, real_db)
-        else:
-            logger.warning("dm_ai_module.EffectResolver.resolve_action not found.")
+        # REMOVED: GenericCardSystem (EffectResolver.resolve_action) is incomplete.
+        # All actions must be convertible to commands via ensure_executable_command.
+        logger.warning("EffectResolver_resolve_action: Action could not be converted to Command: %s", action)
 
     @staticmethod
     def PhaseManager_next_phase(state: GameState, card_db: CardDB) -> None:
@@ -1096,12 +1095,6 @@ class EngineCompat:
                     return
                 except Exception:
                     pass
-
-            # If it's an Action-like object, use EffectResolver
-            if hasattr(cmd, 'type'):
-                if hasattr(dm_ai_module.EffectResolver, 'resolve_action'):
-                    dm_ai_module.EffectResolver.resolve_action(state, cmd, EngineCompat._resolve_db(card_db))
-                    return
         except Exception:
             pass
 

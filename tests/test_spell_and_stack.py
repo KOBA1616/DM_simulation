@@ -44,9 +44,9 @@ class TestSpellAndStack(unittest.TestCase):
         self.assertEqual(cid, spell_card_id)
 
         # Verification 3: Resolve Stack
-        resolve_action = Action()
-        resolve_action.type = ActionType.RESOLVE_EFFECT
-        self.game.execute_action(resolve_action)
+        pass_action = Action()
+        pass_action.type = ActionType.PASS
+        self.game.execute_action(pass_action)
 
         self.assertEqual(len(self.game.state.pending_effects), 0, "Pending effects should be empty after resolution")
 
@@ -90,16 +90,16 @@ class TestSpellAndStack(unittest.TestCase):
         self.assertEqual(getattr(self.game.state.pending_effects[1], 'card_id'), card_id_B)
 
         # 4. Resolve First (Should be B)
-        resolve_action = Action()
-        resolve_action.type = ActionType.RESOLVE_EFFECT
-        self.game.execute_action(resolve_action)
+        pass_action = Action()
+        pass_action.type = ActionType.PASS
+        self.game.execute_action(pass_action)
 
         # Verify stack has 1 item: [A]
         self.assertEqual(len(self.game.state.pending_effects), 1)
         self.assertEqual(getattr(self.game.state.pending_effects[0], 'card_id'), card_id_A)
 
         # 5. Resolve Second (Should be A)
-        self.game.execute_action(resolve_action)
+        self.game.execute_action(pass_action)
 
         # Verify stack empty
         self.assertEqual(len(self.game.state.pending_effects), 0)
