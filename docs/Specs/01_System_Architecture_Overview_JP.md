@@ -39,10 +39,10 @@
 *   **EffectResolver:** 選択されたアクションを受け取り、ゲーム状態を更新します。
     *   **Stack System:** プレイされたカードやトリガー能力は一度 `PendingEffect` としてスタック（`game_state.pending_effects`）に積まれ、LIFO（後入れ先出し）またはルールに基づく順序で処理されます。
 
-### 2.3 汎用カードシステム (GenericCardSystem)
+### 2.3 カード効果システム (Card Effect System)
 カードの効果処理はハードコードではなく、データ駆動型（Data-Driven）で設計されています。
-*   **IActionHandler:** 「カードを引く」「破壊する」「マナ加速する」といった原子的操作は `IActionHandler` インターフェースを実装した各ハンドラ（`DrawHandler`, `DestroyHandler`等）に委譲されます。
-*   **TargetUtils:** フィルタ条件（文明、コスト、種族など）に基づく対象選択ロジックを一元管理します。
+*   **CommandSystem:** ゲーム内の操作は全てコマンド（Command）として抽象化され、`CommandSystem` によって統一的に処理されます。
+*   **EffectSystem:** カード定義（JSON）から読み込まれた効果は、このシステムによって解析・実行可能な命令列にコンパイルされます。
 
 ### 2.4 特殊メカニクス実装
 *   **革命チェンジ (Revolution Change):** 攻撃時の `TriggerType::ON_ATTACK_FROM_HAND` を検知し、条件を満たす場合に手札との入れ替えアクションを生成します。

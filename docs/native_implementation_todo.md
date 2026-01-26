@@ -28,7 +28,7 @@
 3. CardDatabase 高速アクセスメソッド (C++):
    - 理由: カード定義参照が頻繁で、ネイティブ側で最適化すべき。
    - API: `get_card(id)`, イテレータ、ローディングの一貫性。
-   - 参照: `GenericCardSystem`, `JsonLoader` の代替・補完。
+   - 参照: `JsonLoader` の代替・補完。
    - 見積: 1-2日
 
 ---

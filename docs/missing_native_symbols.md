@@ -20,7 +20,6 @@ Detected references to `dm_ai_module` symbols and whether they are present.
 - GameInstance
 - GameResult
 - GameState
-- GenericCardSystem
 - JsonLoader
 - ParallelRunner
 - Phase
