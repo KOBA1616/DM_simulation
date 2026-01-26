@@ -230,7 +230,14 @@ class PythonMCTS:
                     cmd = ensure_executable_command(action)
                     EngineCompat.ExecuteCommand(current_state, cmd, self.card_db)
                 except Exception:
-                    dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
+                    try:
+                        from dm_toolkit.compat_wrappers import execute_action_compat
+                        execute_action_compat(current_state, action, self.card_db)
+                    except Exception:
+                        try:
+                            dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
+                        except Exception:
+                            pass
                 if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
                     dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
             depth += 1

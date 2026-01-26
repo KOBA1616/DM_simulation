@@ -128,7 +128,14 @@ class SolitaireRunner:
                         cmd = ensure_executable_command(best_action)
                         EngineCompat.ExecuteCommand(state, cmd, self.card_db)
                     except Exception:
-                        dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
+                        try:
+                            from dm_toolkit.compat_wrappers import execute_action_compat
+                            execute_action_compat(state, best_action, self.card_db)
+                        except Exception:
+                            try:
+                                dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
+                            except Exception:
+                                pass
 
     def _choose_action(self, actions: List[Any], state: Any) -> Any:
         # Prioritize:
