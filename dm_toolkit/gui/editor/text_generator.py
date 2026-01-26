@@ -979,7 +979,7 @@ class CardTextGenerator:
         return jp.get(z, tr(z))
 
     @classmethod
-    def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None) -> str:
+    def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False) -> str:
         """Helper to format keyword granting text, handling restriction keywords specially."""
         restriction_keys = [
             'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
@@ -990,7 +990,9 @@ class CardTextGenerator:
 
         if is_restriction:
             # Build selection phrase
-            if isinstance(amount, int) and amount > 0:
+            if skip_selection:
+                select_phrase = ""
+            elif isinstance(amount, int) and amount > 0:
                 select_phrase = f"{target_str}を{amount}体選び、"
             else:
                 select_phrase = f"{target_str}を選び、"
@@ -1004,6 +1006,9 @@ class CardTextGenerator:
         # Default behavior
         if duration_text and not duration_text.endswith('、'):
             duration_text += "、"
+
+        if skip_selection:
+            return f"{duration_text}そのクリーチャーに「{display_text}」を与える。"
 
         return f"{duration_text}{target_str}に「{display_text}」を与える。"
 
@@ -1350,6 +1355,12 @@ class CardTextGenerator:
             # APPLY_MODIFIER uses str_param to indicate effect id (from schema)
             str_param = action.get('str_param') or action.get('str_val') or action.get('mutation_kind') or ''
             duration_key = action.get('duration') or action.get('input_value_key', '')
+
+            # Determine if target is linked via input
+            input_key = action.get("input_value_key", "")
+            input_usage = action.get("input_value_usage") or action.get("input_usage")
+            is_target_linked = bool(input_key) and input_usage == "TARGET"
+
             duration_text = ""
             if duration_key:
                 trans = CardTextResources.get_duration_text(duration_key)
@@ -1371,17 +1382,24 @@ class CardTextGenerator:
 
             if str_param == "COST":
                 amt_val = amt if isinstance(amt, int) else 0
-                if isinstance(amt, int) and amt > 0:
+                if is_target_linked:
+                    select_phrase = ""
+                elif isinstance(amt, int) and amt > 0:
                     select_phrase = f"{target_str}を{amt}{unit}は、"
                 else:
                     select_phrase = f"{target_str}を選び、"
                 return f"{select_phrase}{duration_text}そのクリーチャーにコスト修正（{amt_val}）を与える。"
 
-            return cls._format_keyword_grant_text(target_str, str_param, effect_text, duration_text, amt)
+            return cls._format_keyword_grant_text(target_str, str_param, effect_text, duration_text, amt, skip_selection=is_target_linked)
 
         elif atype == "ADD_KEYWORD":
             str_val = action.get("str_val") or action.get("str_param", "")
             duration_key = action.get("duration") or action.get("input_value_key", "")
+
+            # Determine if target is linked via input
+            input_key = action.get("input_value_key", "")
+            input_usage = action.get("input_value_usage") or action.get("input_usage")
+            is_target_linked = bool(input_key) and input_usage == "TARGET"
 
             duration_text = ""
             if duration_key:
@@ -1406,12 +1424,17 @@ class CardTextGenerator:
                     target_str = "カード"
 
             amt = action.get('amount', 1)
-            return cls._format_keyword_grant_text(target_str, str_val, keyword, duration_text, amt)
+            return cls._format_keyword_grant_text(target_str, str_val, keyword, duration_text, amt, skip_selection=is_target_linked)
 
         elif atype == "MUTATE":
              mkind = action.get("mutation_kind", "")
              # val1 is amount
              str_param = action.get("str_param") or action.get("str_val", "")
+
+             # Determine if target is linked via input
+             input_key = action.get("input_value_key", "")
+             input_usage = action.get("input_value_usage") or action.get("input_usage")
+             is_target_linked = bool(input_key) and input_usage == "TARGET"
 
              # Duration handling
              duration_key = action.get("duration") or action.get("input_value_key", "")
@@ -1435,7 +1458,7 @@ class CardTextGenerator:
              elif mkind == "ADD_KEYWORD" or mkind == "GIVE_ABILITY":
                  keyword = CardTextResources.get_keyword_text(str_param)
                  # Revert amount usage for MUTATE - it usually comes from val1 which is amount
-                 return cls._format_keyword_grant_text(target_str, str_param, keyword, duration_text, val1)
+                 return cls._format_keyword_grant_text(target_str, str_param, keyword, duration_text, val1, skip_selection=is_target_linked)
              elif mkind == "REMOVE_KEYWORD":
                  keyword = CardTextResources.get_keyword_text(str_param)
                  return f"{duration_text}{target_str}の「{keyword}」を無視する。"
