@@ -33,7 +33,7 @@ duel_masters_ai/
 The engine utilizes a **Command-Based Architecture**.
 - **PhaseManager**: Manages the game loop and phase transitions.
 - **GameCommand**: Atomic instructions (`TRANSITION`, `MUTATE`, `FLOW`, etc.) that modify the game state.
-- **GenericCardSystem**: Replaces the legacy `EffectResolver`, dispatching card effects to modular `IActionHandler`s.
+- **EffectSystem**: Compiles and resolves card effects into executable logic, replacing the legacy `EffectResolver`.
 - **ConditionSystem**: Evaluates complex conditions (`ConditionDef`) for triggers and effects.
 - **TriggerManager**: Event-driven system for handling passive effects and triggers.
 
