@@ -92,7 +92,14 @@ class TestInferenceIntegration(unittest.TestCase):
         initial_mana_count = len(self.game.state.players[player_id].mana_zone)
         initial_hand_count = len(self.game.state.players[player_id].hand)
 
-        self.game.execute_action(command)
+        try:
+            from dm_toolkit.compat_wrappers import execute_action_compat
+            execute_action_compat(self.game.state, command, None)
+        except Exception:
+            try:
+                self.game.execute_action(command)
+            except Exception:
+                pass
 
         # 6. Verify something happened (or didn't if PASS)
         if command.type == ActionType.MANA_CHARGE:

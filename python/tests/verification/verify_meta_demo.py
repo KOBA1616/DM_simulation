@@ -67,7 +67,11 @@ if play_cmd is not None:
 					from dm_toolkit.compat_wrappers import execute_action_compat
 					execute_action_compat(game, play_action, card_db)
 				except Exception:
-					dm_ai_module.GameLogicSystem.resolve_action(game, play_action, card_db)
+						try:
+							from dm_toolkit.compat_wrappers import execute_action_compat
+							execute_action_compat(game, play_action, card_db)
+						except Exception:
+							dm_ai_module.GameLogicSystem.resolve_action(game, play_action, card_db)
 else:
 	try:
 		from dm_toolkit.compat_wrappers import execute_action_compat
@@ -91,7 +95,11 @@ if pay_cmd is not None:
 					from dm_toolkit.compat_wrappers import execute_action_compat
 					execute_action_compat(game, pay, card_db)
 				except Exception:
-					dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
+						try:
+							from dm_toolkit.compat_wrappers import execute_action_compat
+							execute_action_compat(game, pay, card_db)
+						except Exception:
+							dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
 else:
 	try:
 		from dm_toolkit.compat_wrappers import execute_action_compat
@@ -115,7 +123,11 @@ if res_cmd is not None:
 					from dm_toolkit.compat_wrappers import execute_action_compat
 					execute_action_compat(game, res, card_db)
 				except Exception:
-					dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
+						try:
+							from dm_toolkit.compat_wrappers import execute_action_compat
+							execute_action_compat(game, res, card_db)
+						except Exception:
+							dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
 else:
 	try:
 		from dm_toolkit.compat_wrappers import execute_action_compat

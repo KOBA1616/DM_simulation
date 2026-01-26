@@ -235,6 +235,7 @@ class PythonMCTS:
                         execute_action_compat(current_state, action, self.card_db)
                     except Exception:
                         try:
+                            # Last resort: call native EffectResolver
                             dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
                         except Exception:
                             pass

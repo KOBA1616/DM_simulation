@@ -61,9 +61,42 @@ def to_command_dict(obj: Any) -> Dict[str, Any]:
     Returns:
         A dictionary representing the Command.
     """
+    # 0. If the object exposes a precomputed `command` attribute, prefer it.
+    # This allows Action instances to carry a canonical command dict produced
+    # by generators (see dm_ai_module.ActionGenerator.command). Support
+    # both dicts and objects that can be mapped via map_action.
+    try:
+        if obj is not None and hasattr(obj, 'command'):
+            cmd_attr = getattr(obj, 'command')
+            if isinstance(cmd_attr, dict):
+                return map_action(cmd_attr)
+            # If it's an object with to_json or similar, fall through to
+            # existing handling by mapping the attribute value.
+            try:
+                return map_action(cmd_attr)
+            except Exception:
+                # Fall back to continuing conversion below
+                pass
+    except Exception:
+        pass
+
     # 1. If it's already a dictionary
     if isinstance(obj, dict):
         return map_action(obj)
+
+    # Emit a deprecation warning when callers pass Action-like objects that
+    # do not carry a `command` attribute. This encourages migration to the
+    # command-first path where possible.
+    try:
+        import warnings
+        if obj is not None and not isinstance(obj, dict) and not hasattr(obj, 'command'):
+            warnings.warn(
+                "Passing Action-like objects to unified execution is deprecated — attach a 'command' dict or use ensure_executable_command(map) to migrate.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+    except Exception:
+        pass
 
     # 2. If it's a CommandDef/ActionDef object with to_json support (e.g. pybind11 structs)
     if hasattr(obj, 'to_json'):

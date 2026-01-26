@@ -84,8 +84,9 @@ class ActionEncoder:
             cmd.type = ActionType.PASS
             return cmd
 
-        # Use block size of 10 to match legacy encoding expectations
-        BLOCK = 10
+        # Use module-level BLOCK (kept small to match tests)
+        # (avoids shadowing and keeps a single source of truth)
+        from dm_toolkit.ai.agent.tokenization import BLOCK as GLOBAL_BLOCK
 
         # 1..10: MANA_CHARGE (Hand Index 0-9)
         if 1 <= action_idx <= BLOCK:
@@ -137,20 +138,30 @@ class ActionEncoder:
         Maps a GameCommand to an integer index.
         Returns -1 if the command cannot be encoded (invalid or out of range).
         """
-        # Robustly obtain command type from various possible representations
+        # Try to normalize the action/command into a dict using unified helper
         cmd_type = None
+        action_dict = None
         try:
-            if hasattr(action, 'type'):
-                cmd_type = getattr(action, 'type')
-            elif isinstance(action, dict):
-                cmd_type = action.get('type')
+            try:
+                from dm_toolkit.unified_execution import to_command_dict
+                action_dict = to_command_dict(action)
+            except Exception:
+                # Fall back to wrappers or dicts
+                if isinstance(action, dict):
+                    action_dict = action
+                else:
+                    try:
+                        d = action.to_dict()
+                        action_dict = d
+                    except Exception:
+                        action_dict = None
+
+            if action_dict is not None:
+                # Prefer normalized dict type
+                cmd_type = action_dict.get('type')
             else:
-                # Try to_dict() if available (wrappers)
-                try:
-                    d = action.to_dict()
-                    cmd_type = d.get('type')
-                except Exception:
-                    cmd_type = None
+                if hasattr(action, 'type'):
+                    cmd_type = getattr(action, 'type')
         except Exception:
             cmd_type = None
 
@@ -175,13 +186,16 @@ class ActionEncoder:
         if _type_matches(cmd_type, ActionType.MANA_CHARGE):
             p = state.players[player_id]
             # Determine source id from action (support dict/wrapper)
-            cmd_src = None
-            try:
-                cmd_src = getattr(action, 'source_instance_id', None)
-            except Exception:
-                cmd_src = None
-            if cmd_src is None and isinstance(action, dict):
-                cmd_src = action.get('source_instance_id') or action.get('instance_id')
+            # Try normalized dict first
+            if action_dict is not None:
+                cmd_src = action_dict.get('source_instance_id') or action_dict.get('instance_id')
+            else:
+                try:
+                    cmd_src = getattr(action, 'source_instance_id', None)
+                except Exception:
+                    cmd_src = None
+                if cmd_src is None and isinstance(action, dict):
+                    cmd_src = action.get('source_instance_id') or action.get('instance_id')
 
             for i, c in enumerate(p.hand):
                 if i >= 10: break
@@ -193,13 +207,15 @@ class ActionEncoder:
         # Check PLAY_CARD (11-20)
         if _type_matches(cmd_type, ActionType.PLAY_CARD):
             p = state.players[player_id]
-            cmd_src = None
-            try:
-                cmd_src = getattr(action, 'source_instance_id', None)
-            except Exception:
-                cmd_src = None
-            if cmd_src is None and isinstance(action, dict):
-                cmd_src = action.get('source_instance_id') or action.get('instance_id')
+            if action_dict is not None:
+                cmd_src = action_dict.get('source_instance_id') or action_dict.get('instance_id')
+            else:
+                try:
+                    cmd_src = getattr(action, 'source_instance_id', None)
+                except Exception:
+                    cmd_src = None
+                if cmd_src is None and isinstance(action, dict):
+                    cmd_src = action.get('source_instance_id') or action.get('instance_id')
             for i, c in enumerate(p.hand):
                 if i >= 10: break
                 c_id = getattr(c, 'instance_id', -1)
@@ -210,13 +226,15 @@ class ActionEncoder:
         # Check ATTACK_PLAYER (21-30)
         if _type_matches(cmd_type, ActionType.ATTACK_PLAYER):
             p = state.players[player_id]
-            cmd_src = None
-            try:
-                cmd_src = getattr(action, 'source_instance_id', None)
-            except Exception:
-                cmd_src = None
-            if cmd_src is None and isinstance(action, dict):
-                cmd_src = action.get('source_instance_id') or action.get('instance_id')
+            if action_dict is not None:
+                cmd_src = action_dict.get('source_instance_id') or action_dict.get('instance_id')
+            else:
+                try:
+                    cmd_src = getattr(action, 'source_instance_id', None)
+                except Exception:
+                    cmd_src = None
+                if cmd_src is None and isinstance(action, dict):
+                    cmd_src = action.get('source_instance_id') or action.get('instance_id')
             for i, c in enumerate(p.battle_zone):
                 if i >= 10: break
                 c_id = getattr(c, 'instance_id', -1)

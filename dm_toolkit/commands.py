@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, Protocol, runtime_checkable, List, cast
 from dm_toolkit.action_to_command import map_action
+import warnings
 
 @runtime_checkable
 class ICommand(Protocol):
@@ -48,6 +49,23 @@ def wrap_action(action: Any) -> Optional[ICommand]:
     # If it's already command-like, return as-is
     if hasattr(action, "execute") and callable(getattr(action, "execute")):
         return action  # type: ignore
+
+    # Warn when wrapping legacy Action-like objects that do not provide a
+    # precomputed `command` attribute. This helps surface places that still
+    # rely on Action-only execution so they can migrate to command-first.
+    try:
+        has_cmd_attr = hasattr(action, 'command')
+    except Exception:
+        has_cmd_attr = False
+    if not has_cmd_attr:
+        try:
+            warnings.warn(
+                "Wrapping legacy Action-like object for execution; attach a 'command' attribute or migrate to ICommand/command dict to avoid this deprecation warning.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        except Exception:
+            pass
 
     # Unified wrapper: convert action-like object to command dict and execute via EngineCompat
     class _ActionWrapper(BaseCommand):

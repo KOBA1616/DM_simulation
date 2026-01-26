@@ -98,36 +98,41 @@ class DeckEvolution:
                 dm_ai_module.PhaseManager.next_phase(gs)
                 continue
 
-                if cmds:
-                    cmd = random.choice(cmds)
+            # Prefer executing ICommand-like objects when available
+            if cmds:
+                cmd = random.choice(cmds)
+                try:
+                    cast(Any, gs).execute_command(cmd)
+                except Exception:
                     try:
-                        cast(Any, gs).execute_command(cmd)
+                        cmd.execute(gs)
                     except Exception:
                         try:
-                            cmd.execute(gs)
+                            from dm_toolkit.engine.compat import EngineCompat
+                            EngineCompat.ExecuteCommand(gs, cmd, self.card_db)
                         except Exception:
-                            # fallback: try unified execute
-                            try:
-                                from dm_toolkit.engine.compat import EngineCompat
-                                EngineCompat.ExecuteCommand(gs, cmd, self.card_db)
-                            except Exception:
-                                # fallback to action path
-                                if actions:
-                                    action = random.choice(actions)
+                            # Fallback to action path if available
+                            if actions:
+                                action = random.choice(actions)
+                                try:
+                                    from dm_toolkit.unified_execution import ensure_executable_command
+                                    from dm_toolkit.engine.compat import EngineCompat
+                                    cdict = ensure_executable_command(action)
+                                    EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
+                                except Exception:
                                     try:
-                                        from dm_toolkit.unified_execution import ensure_executable_command
-                                        cdict = ensure_executable_command(action)
-                                        EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
+                                        from dm_toolkit.compat_wrappers import execute_action_compat
+                                        execute_action_compat(gs, action, self.card_db)
                                     except Exception:
                                         try:
-                                            from dm_toolkit.compat_wrappers import execute_action_compat
-                                            execute_action_compat(gs, action, self.card_db)
+                                            dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
                                         except Exception:
                                             try:
                                                 dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
                                             except Exception:
                                                 pass
-                # best-effort phase advance check
+
+                # Best-effort: if the chosen command is a flow/pass-like command, advance phase
                 try:
                     if getattr(cmd, 'to_dict', None):
                         d = cmd.to_dict()
@@ -136,6 +141,7 @@ class DeckEvolution:
                 except Exception:
                     pass
             else:
+                # No ICommand available; pick an Action and try to run it via unified path first
                 action = random.choice(actions)
                 try:
                     from dm_toolkit.unified_execution import ensure_executable_command
@@ -148,11 +154,17 @@ class DeckEvolution:
                         execute_action_compat(gs, action, self.card_db)
                     except Exception:
                         try:
-                            dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                            dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
                         except Exception:
-                            pass
-                if action.type == dm_ai_module.ActionType.PASS:
-                    dm_ai_module.PhaseManager.next_phase(gs)
+                            try:
+                                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                            except Exception:
+                                pass
+                try:
+                    if action.type == dm_ai_module.ActionType.PASS:
+                        dm_ai_module.PhaseManager.next_phase(gs)
+                except Exception:
+                    pass
         
     def mutate(self, deck: List[Any]) -> List[Any]:
         # Swap 1-4 cards

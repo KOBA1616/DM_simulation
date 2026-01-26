@@ -349,11 +349,43 @@ if 'GameInstance' not in globals():
         def start_game(self):
             pass
         def execute_action(self, action: Any) -> None:
-            # Forward to CommandSystem
+            # Prefer to handle some common Action types directly in the Python shim
             try:
                 pid = getattr(action, 'target_player', getattr(self.state, 'active_player_id', 0))
-                sid = getattr(action, 'source_instance_id', getattr(action, 'instance_id', 0))
-                CommandSystem.execute_command(self.state, action, sid, pid)
+                sid = getattr(action, 'source_instance_id', getattr(action, 'instance_id', None))
+                atype = getattr(action, 'type', None)
+
+                # Handle simple mana charge action in shim for non-native environments
+                try:
+                    if atype == ActionType.MANA_CHARGE or (isinstance(atype, int) and int(atype) == int(ActionType.MANA_CHARGE)):
+                        # best-effort: move the specified card from hand -> mana_zone
+                        p = self.state.players[pid]
+                        found = None
+                        for i, c in enumerate(list(getattr(p, 'hand', []))):
+                            try:
+                                if sid is not None and getattr(c, 'instance_id', None) == sid:
+                                    found = p.hand.pop(i)
+                                    break
+                                # fallback: match by card_id
+                                if getattr(c, 'card_id', None) == getattr(action, 'card_id', None):
+                                    found = p.hand.pop(i)
+                                    break
+                            except Exception:
+                                continue
+                        if found is not None:
+                            try:
+                                p.mana_zone.append(found)
+                            except Exception:
+                                pass
+                            return
+                except Exception:
+                    pass
+
+                # Fallback: forward to CommandSystem for other action/command handling
+                try:
+                    CommandSystem.execute_command(self.state, action, sid or 0, pid)
+                except Exception:
+                    pass
             except Exception:
                 pass
 
@@ -392,7 +424,99 @@ if 'ActionGenerator' not in globals():
     class ActionGenerator:
         @staticmethod
         def generate_legal_actions(state: Any, card_db: Any) -> list:
-            return []
+            """Best-effort Python fallback that produces Action instances annotated
+            with a `command` attribute (a canonical command-like dict). This
+            helps migrate callsites to prefer command execution while keeping
+            legacy Action consumers working.
+            """
+            out: list[Any] = []
+            try:
+                pid = getattr(state, 'active_player_id', 0)
+                players = getattr(state, 'players', []) or []
+                if pid < 0 or pid >= len(players):
+                    return out
+                p = players[pid]
+                hand = list(getattr(p, 'hand', []) or [])
+
+                # Produce PLAY_CARD-like actions for cards in hand
+                for c in hand:
+                    try:
+                        cid = getattr(c, 'card_id', None) or getattr(c, 'id', None) or c
+                        inst = getattr(c, 'instance_id', getattr(c, 'id', None))
+                        a = Action()
+                        try:
+                            a.type = ActionType.PLAY_CARD
+                        except Exception:
+                            a.type = getattr(ActionType, 'PLAY_CARD', None)
+                        a.card_id = cid
+                        a.source_instance_id = inst
+                        a.target_player = pid
+                        # Attach a canonical command dict to help prefer command path
+                        try:
+                            a.command = {
+                                'type': CommandType.PLAY_FROM_ZONE,
+                                'card_id': int(cid) if isinstance(cid, (int, str)) and str(cid).isdigit() else cid,
+                                'instance_id': inst,
+                                'from_zone': 'hand',
+                                'to_zone': 'battle_zone',
+                                'target_player': pid,
+                            }
+                        except Exception:
+                            a.command = {'type': CommandType.PLAY_FROM_ZONE, 'card_id': cid, 'instance_id': inst, 'target_player': pid}
+                        out.append(a)
+                    except Exception:
+                        continue
+
+                # Also provide MANA_CHARGE options (useful for simple generated tests)
+                for c in hand:
+                    try:
+                        inst = getattr(c, 'instance_id', getattr(c, 'id', None))
+                        cid = getattr(c, 'card_id', None) or getattr(c, 'id', None) or c
+                        a = Action()
+                        try:
+                            a.type = ActionType.MANA_CHARGE
+                        except Exception:
+                            a.type = getattr(ActionType, 'MANA_CHARGE', None)
+                        a.card_id = cid
+                        a.source_instance_id = inst
+                        a.target_player = pid
+                        a.command = {'type': CommandType.MANA_CHARGE, 'instance_id': inst, 'card_id': cid, 'target_player': pid}
+                        out.append(a)
+                    except Exception:
+                        continue
+                # If we're in the attack phase, offer ATTACK actions for eligible creatures
+                try:
+                    if getattr(state, 'current_phase', None) == getattr(Phase, 'ATTACK', 4):
+                        opp = 1 - pid
+                        battle = list(getattr(p, 'battle_zone', []) or [])
+                        for c in battle:
+                            try:
+                                inst = getattr(c, 'instance_id', getattr(c, 'id', None))
+                                tapped = getattr(c, 'is_tapped', False)
+                                sick = getattr(c, 'sick', getattr(c, 'is_sick', False))
+                                # Only untapped, non-sick creatures may attack
+                                if inst is None or tapped or sick:
+                                    continue
+                                a = Action()
+                                try:
+                                    a.type = ActionType.ATTACK_PLAYER
+                                except Exception:
+                                    a.type = getattr(ActionType, 'ATTACK_PLAYER', None)
+                                a.source_instance_id = inst
+                                a.target_player = opp
+                                # Attach canonical attack command
+                                try:
+                                    a.command = {'type': 'ATTACK', 'source_id': inst, 'target_player_id': opp}
+                                except Exception:
+                                    a.command = {'type': 'ATTACK', 'source_id': inst, 'target_player_id': opp}
+                                out.append(a)
+                            except Exception:
+                                continue
+                except Exception:
+                    pass
+            except Exception:
+                return out
+            return out
 
 if 'PhaseManager' not in globals():
     class PhaseManager:

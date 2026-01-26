@@ -133,9 +133,12 @@ class SolitaireRunner:
                             execute_action_compat(state, best_action, self.card_db)
                         except Exception:
                             try:
-                                dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
+                                dm.GameLogicSystem.resolve_action(state, best_action, self.card_db)
                             except Exception:
-                                pass
+                                try:
+                                    dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
+                                except Exception:
+                                    pass
 
     def _choose_action(self, actions: List[Any], state: Any) -> Any:
         # Prioritize:
