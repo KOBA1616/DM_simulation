@@ -1,6 +1,8 @@
 import pytest
+import dm_ai_module
 from dm_toolkit.gui import headless
 
+@pytest.mark.skipif(not getattr(dm_ai_module, 'IS_NATIVE', False), reason="Requires native engine")
 @pytest.mark.slow
 def test_headless_smoke_runs():
     """Run the smoke test logic directly using headless module."""
