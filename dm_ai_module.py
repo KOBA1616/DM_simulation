@@ -118,6 +118,7 @@ if 'CommandType' not in globals():
         PLAY_FROM_ZONE = 25
         REPLACE_CARD_MOVE = 20
         MOVE_CARD = 19
+        SELECT_TARGET = 30
 
 if 'CardDatabase' not in globals():
     class CardDatabase:
@@ -362,6 +363,23 @@ if 'CommandSystem' not in globals():
         def execute_command(state: Any, cmd: Any, source_id: int, player_id: int, ctx: Any = None) -> None:
             # More robust, accepts CommandDef-like objects and dicts
             try:
+                # 0. Handle Input Variable Linking (Contextual Target Resolution)
+                # If input_value_key is present, we resolve targets from context and recurse for each.
+                # Use ctx=True as a recursion flag to prevent infinite loops.
+                if not ctx:
+                    input_key = None
+                    if isinstance(cmd, dict):
+                        input_key = cmd.get('input_value_key')
+                    else:
+                        input_key = getattr(cmd, 'input_value_key', None)
+
+                    if input_key and hasattr(state, 'execution_context'):
+                        targets = state.execution_context.variables.get(input_key)
+                        if targets and isinstance(targets, list):
+                            for t in targets:
+                                CommandSystem.execute_command(state, cmd, int(t), player_id, ctx=True)
+                            return
+
                 # Resolve a normalized command type name
                 raw_type = None
                 if isinstance(cmd, dict):
@@ -391,6 +409,55 @@ if 'CommandSystem' not in globals():
                     return getattr(c, 'instance_id', None) or getattr(c, 'source_instance_id', None) or None
 
                 inst = _instance_of(cmd) or source_id
+
+                if type_name == 'SELECT_TARGET':
+                    # Simplified Shim Logic: Select from Battle Zone
+                    scope = None
+                    if isinstance(cmd, dict):
+                        scope = cmd.get('target_group') or cmd.get('scope')
+                    else:
+                        scope = getattr(cmd, 'target_group', None) or getattr(cmd, 'scope', None)
+
+                    target_pid = player_id
+                    if str(scope) in ('PLAYER_OPPONENT', 'OPPONENT'):
+                        target_pid = 1 - player_id
+
+                    # Candidates (Battle Zone only for shim simplicity)
+                    candidates = getattr(state.players[target_pid], 'battle_zone', [])
+
+                    # Amount
+                    amt = 1
+                    if isinstance(cmd, dict):
+                        amt = cmd.get('amount') or cmd.get('value1', 1)
+                    else:
+                        amt = getattr(cmd, 'amount', getattr(cmd, 'value1', 1))
+
+                    selected = candidates[:int(amt)]
+
+                    # Output
+                    out_key = None
+                    if isinstance(cmd, dict):
+                        out_key = cmd.get('output_value_key')
+                    else:
+                        out_key = getattr(cmd, 'output_value_key', None)
+
+                    if out_key and hasattr(state, 'execution_context'):
+                        ids = [getattr(c, 'instance_id', -1) for c in selected]
+                        state.execution_context.set_variable(out_key, ids)
+                    return
+
+                if type_name == 'DESTROY':
+                    if inst:
+                        try:
+                            for pl in state.players:
+                                for i, c in enumerate(list(getattr(pl, 'battle_zone', []))):
+                                    if getattr(c, 'instance_id', -1) == int(inst):
+                                        card = pl.battle_zone.pop(i)
+                                        pl.graveyard.append(card)
+                                        return
+                        except Exception:
+                            pass
+                    return
 
                 if type_name == 'TAP':
                     p = state.players[player_id]
@@ -862,53 +929,6 @@ if 'ParallelRunner' not in globals():
 
     def create_parallel_runner(card_db: Any, sims: int, batch_size: int) -> Any:
         return ParallelRunner(card_db, sims, batch_size)
-
-if 'GameInstance' in globals() and hasattr(globals()['GameInstance'], 'execute_action'):
-    # Patch existing GameInstance.execute_action to use GenericCardSystem if it's a no-op
-    try:
-        gi = globals()['GameInstance']
-        if getattr(gi, 'execute_action') and gi.execute_action.__code__.co_consts == (None,):
-            def _exec_action(self, action: Any) -> None:
-                try:
-                    try:
-                        from dm_toolkit.compat_wrappers import execute_action_compat
-                        execute_action_compat(self.state, action, getattr(self.state, 'card_db', None))
-                    except Exception:
-                        GenericCardSystem.resolve_action(self.state, action, getattr(self.state, 'active_player_id', 0))
-                except Exception:
-                    pass
-            globals()['GameInstance'].execute_action = _exec_action
-    except Exception:
-        pass
-
-# End of file
-
-# Ensure a minimal `GameInstance` is always exported for tests that import it
-if 'GameInstance' not in globals():
-    class GameInstance:
-        def __init__(self, game_id: int = 0):
-            self.state = GameState()
-            self.player_instances = self.state.players
-
-        def initialize(self):
-            return None
-
-        def start_game(self):
-            try:
-                PhaseManager.start_game(self.state, getattr(self.state, 'card_db', None))
-            except Exception:
-                pass
-
-        def execute_action(self, action: Any) -> None:
-                try:
-                    try:
-                        from dm_toolkit.compat_wrappers import execute_action_compat
-                        execute_action_compat(self.state, action, getattr(self.state, 'card_db', None))
-                    except Exception:
-                        GenericCardSystem.resolve_action(self.state, action, getattr(self.state, 'active_player_id', 0))
-                except Exception:
-                    pass
-
 
 if 'GameResult' not in globals():
     class GameResult(IntEnum):
