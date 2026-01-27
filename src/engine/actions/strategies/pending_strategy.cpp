@@ -73,7 +73,27 @@ namespace dm::engine {
             }
         }
 
-        const std::vector<size_t>& active_indices = (!spell_indices.empty()) ? spell_indices : other_indices;
+        // Order active indices by heuristic priority to favor outcomes likely beneficial
+        // to the decision maker. Basic heuristic: SPELLS > BREAK_SHIELD > RESOLVE_BATTLE > INTERNAL_PLAY > OTHERS
+        std::vector<size_t> active_indices = (!spell_indices.empty()) ? spell_indices : other_indices;
+
+        auto score_for = [&](const PendingEffect& e) -> int {
+            int score = 0;
+            if (e.type == EffectType::SHIELD_TRIGGER) score += 1000;
+            if (e.type == EffectType::BREAK_SHIELD) score += 800;
+            if (e.type == EffectType::RESOLVE_BATTLE) score += 600;
+            if (e.type == EffectType::INTERNAL_PLAY) score += 400;
+            if (e.type == EffectType::TRIGGER_ABILITY) score += 200;
+            // Favor effects controlled by decision_maker
+            if (e.controller == decision_maker) score += 50;
+            return score;
+        };
+
+        std::stable_sort(active_indices.begin(), active_indices.end(), [&](size_t a, size_t b) {
+            const auto& ea = game_state.pending_effects[a];
+            const auto& eb = game_state.pending_effects[b];
+            return score_for(ea) > score_for(eb);
+        });
 
         for (size_t i : active_indices) {
             const auto& eff = game_state.pending_effects[i];

@@ -37,9 +37,23 @@ class PythonMCTS:
 
     def search(self, root_state):
         self.root = Node(root_state.clone())
-        # Prefer Action list for heuristics but also generate ICommand wrappers for systems
-        legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.root.state, self.card_db)
-        legal_commands = commands.generate_legal_commands(self.root.state, self.card_db)
+        # Compatibility: obtain both legacy Action objects (when available)
+        # and ICommand wrappers (command-first path) for execution.
+        # Prefer command-first generator, fallback to legacy ActionGenerator
+        try:
+            try:
+                legal_commands = commands.generate_legal_commands(self.root.state, self.card_db) or []
+            except Exception:
+                legal_commands = []
+            legal_actions = []
+            if not legal_commands:
+                try:
+                    legal_actions = dm_ai_module.ActionGenerator.generate_legal_commands(self.root.state, self.card_db) or []
+                except Exception:
+                    legal_actions = []
+        except Exception:
+            legal_actions = []
+            legal_commands = []
 
         def _is_pass(obj):
             # Detect PASS for either Action or Command
@@ -166,11 +180,23 @@ class PythonMCTS:
 
         child_node = Node(next_state, parent=node, action=action)
         # Populate untried actions for child (prefer Action list)
-        child_actions = dm_ai_module.ActionGenerator.generate_legal_actions(next_state, self.card_db)
-        if child_actions:
-            child_node.untried_actions = child_actions
+        try:
+            child_actions = dm_ai_module.ActionGenerator.generate_legal_commands(next_state, self.card_db) or []
+        except Exception:
+            child_actions = []
+        # Prefer command-first for child expansion
+        try:
+            child_cmds = commands.generate_legal_commands(next_state, self.card_db) or []
+        except Exception:
+            child_cmds = []
+        if child_cmds:
+            child_node.untried_actions = child_cmds
         else:
-            child_node.untried_actions = commands.generate_legal_commands(next_state, self.card_db)
+            try:
+                child_actions = dm_ai_module.ActionGenerator.generate_legal_commands(next_state, self.card_db) or []
+            except Exception:
+                child_actions = []
+            child_node.untried_actions = child_actions
         node.children.append(child_node)
         return child_node
 
@@ -193,7 +219,19 @@ class PythonMCTS:
                 else:
                     return 0.0
             
-            actions = dm_ai_module.ActionGenerator.generate_legal_actions(current_state, self.card_db)
+            try:
+                # Prefer command-first during simulation rollouts
+                try:
+                    actions = commands.generate_legal_commands(current_state, self.card_db) or []
+                except Exception:
+                    actions = []
+                if not actions:
+                    try:
+                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(current_state, self.card_db) or []
+                    except Exception:
+                        actions = []
+            except Exception:
+                actions = []
             if not actions:
                 dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
             else:
@@ -239,8 +277,16 @@ class PythonMCTS:
                             dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
                         except Exception:
                             pass
-                if action.type == dm_ai_module.ActionType.PASS or action.type == dm_ai_module.ActionType.MANA_CHARGE:
-                    dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
+                # Phase advancement: detect both Action and ICommand representations
+                try:
+                    if hasattr(action, 'type') and getattr(action, 'type', None) in (dm_ai_module.ActionType.PASS, dm_ai_module.ActionType.MANA_CHARGE):
+                        dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
+                    else:
+                        payload = getattr(action, 'payload', {}) or {}
+                        if payload.get('pass') or payload.get('add_mana'):
+                            dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
+                except Exception:
+                    pass
             depth += 1
         
         return 0.5 # Draw if depth limit reached

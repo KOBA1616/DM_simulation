@@ -10,9 +10,13 @@ import dm_ai_module
 from dm_toolkit.engine.compat import EngineCompat
 from dm_ai_module import GameState
 import logging
+import os
 
-# Setup logging
-logging.basicConfig(level=logging.DEBUG)
+# Use centralized logging manager so tests don't reconfigure root handlers directly
+from scripts.logging_manager import configure_logging, get_logger
+
+# Setup logging via centralized manager (writes to null during tests)
+configure_logging(log_file=os.devnull, console_level_name='DEBUG', file_level_name='WARNING', root_level_name='DEBUG')
 
 @pytest.fixture
 def mock_state():

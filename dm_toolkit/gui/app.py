@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+# Configure centralized logging as early as possible for GUI entrypoint.
+# This is best-effort: if `scripts.logging_manager` is unavailable, continue.
+try:
+    from scripts.logging_manager import configure_logging  # type: ignore
+    configure_logging()
+except Exception:
+    pass
+
 import sys
 import os
 import random

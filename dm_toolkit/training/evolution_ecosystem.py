@@ -20,6 +20,7 @@ try:
 except ImportError:
     print("Error: Could not import dm_ai_module. Ensure it is built and in bin/")
     sys.exit(1)
+from dm_toolkit import commands
 
 class EvolutionEcosystem:
     def __init__(self, cards_path: str, meta_decks_path: str, output_path: Optional[str] = None) -> None:
@@ -127,14 +128,14 @@ class EvolutionEcosystem:
                  if dm_ai_module.PhaseManager.check_game_over(instance.state, res):
                     break
 
-                 legal_actions = dm_ai_module.ActionGenerator.generate_legal_actions(instance.state, self.card_db) or []
                  try:
-                     from dm_toolkit.commands import generate_legal_commands as _generate_legal_commands
+                     legal_actions = dm_ai_module.ActionGenerator.generate_legal_commands(instance.state, self.card_db) or []
                  except Exception:
-                    def _generate_legal_commands(state: Any, card_db: dict[Any, Any]) -> list[Any]:
-                             return []
-                 cmds = _generate_legal_commands(instance.state, self.card_db)
-
+                     legal_actions = []
+                 try:
+                     cmds = commands.generate_legal_commands(instance.state, self.card_db) or []
+                 except Exception:
+                     cmds = []
                  if not legal_actions and not cmds:
                      dm_ai_module.PhaseManager.next_phase(instance.state, self.card_db)
                      continue

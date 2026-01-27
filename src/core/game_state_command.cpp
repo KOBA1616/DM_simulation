@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 namespace dm::engine::game_command {
 
@@ -240,6 +241,19 @@ namespace dm::engine::game_command {
             case FlowType::PHASE_CHANGE:
                 previous_value = static_cast<int>(state.current_phase);
                 state.current_phase = static_cast<Phase>(new_value);
+                // Emit a simple phase transition log for native-side debugging
+                try {
+                    std::filesystem::create_directories("logs");
+                    std::ofstream lout("logs/phase_transitions.txt", std::ios::app);
+                    if (lout) {
+                        lout << "{\"event\":\"phase_change\",";
+                        lout << "\"turn\":" << state.turn_number << ",";
+                        // PlayerID is a uint8_t typedef; stream as integer to avoid printing as a char
+                        lout << "\"player\":" << static_cast<int>(state.active_player_id) << ",";
+                        lout << "\"phase\":" << static_cast<int>(state.current_phase) << "}" << std::endl;
+                        lout.close();
+                    }
+                } catch(...) {}
                 break;
             case FlowType::TURN_CHANGE:
                 previous_value = state.turn_number;

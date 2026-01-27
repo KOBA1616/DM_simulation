@@ -20,6 +20,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import dm_ai_module as dm
+from dm_toolkit import commands
 from types import SimpleNamespace
 
 # Simple instance id counter for created CardInstance objects
@@ -199,12 +200,17 @@ def attack_phase(gi, card_db=None, trace: bool = False):
     target = 1 - ap
 
     # If we have a card_db, prefer using the engine's IntentGenerator to pick a legal attack action
-    try:
-        if card_db is not None:
             try:
-                legal = dm.IntentGenerator.generate_legal_actions(state, card_db)
-            except Exception:
-                legal = None
+                if card_db is not None:
+                    try:
+                        legal = dm.IntentGenerator.generate_legal_commands(state, card_db) or []
+                    except Exception:
+                        legal = []
+                    if not legal:
+                        try:
+                            legal = commands.generate_legal_commands(state, card_db) or []
+                        except Exception:
+                            legal = []
 
             if trace:
                 try:

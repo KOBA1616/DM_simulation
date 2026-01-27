@@ -79,7 +79,13 @@ namespace dm::engine {
                 }
 
                 // Set Battle Zone State
-                card.summoning_sickness = true;
+                // If the card definition grants speed attacker, do NOT set summoning sickness
+                bool has_speed = false;
+                if (ctx.card_db.count(card.card_id)) {
+                    const auto& cdef = ctx.card_db.at(card.card_id);
+                    has_speed = cdef.keywords.speed_attacker;
+                }
+                card.summoning_sickness = !has_speed;
                 // Check SA/MachFighter later? Triggers handle it?
                 // Actually SA is static ability.
 

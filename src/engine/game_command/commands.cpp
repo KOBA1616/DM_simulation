@@ -5,6 +5,7 @@
 #include <iostream>
 #include <algorithm>
 #include <fstream>
+#include <filesystem>
 
 namespace dm::engine::game_command {
 
@@ -184,14 +185,23 @@ namespace dm::engine::game_command {
 
             state.event_dispatcher(evt);
         }
-        // Log successful transition
+        // Log successful transition and owner zone counts for diagnostics
         try {
             std::ofstream lout("logs/transition_debug.txt", std::ios::app);
             if (lout) {
                 lout << "[Transition] MOVED id=" << card_instance_id
                      << " from=" << static_cast<int>(from_zone)
                      << " to=" << static_cast<int>(to_zone)
-                     << " owner=" << owner_id << "\n";
+                     << " owner=" << owner_id;
+
+                // Append simple zone counts for quick inspection
+                lout << " counts=[battle=" << owner.battle_zone.size()
+                     << ",hand=" << owner.hand.size()
+                     << ",mana=" << owner.mana_zone.size()
+                     << ",shield=" << owner.shield_zone.size()
+                     << ",deck=" << owner.deck.size()
+                     << ",grave=" << owner.graveyard.size() << "]\n";
+
                 lout.close();
             }
         } catch(...) {}
@@ -487,6 +497,17 @@ namespace dm::engine::game_command {
                 previous_value = static_cast<int>(state.current_phase);
                 state.current_phase = static_cast<core::Phase>(new_value);
                 // Dispatch Phase Change Event?
+                try {
+                    std::filesystem::create_directories("logs");
+                    std::ofstream lout("logs/phase_transitions.txt", std::ios::app);
+                    if (lout) {
+                        lout << "{\"event\":\"phase_change\",";
+                        lout << "\"turn\":" << state.turn_number << ",";
+                        lout << "\"player\":" << state.active_player_id << ",";
+                        lout << "\"phase\":" << static_cast<int>(state.current_phase) << "}" << std::endl;
+                        lout.close();
+                    }
+                } catch(...) {}
                 break;
             case FlowType::TURN_CHANGE:
                 previous_value = state.turn_number;

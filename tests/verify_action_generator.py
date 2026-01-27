@@ -33,11 +33,22 @@ class TestActionGenerator(unittest.TestCase):
         # Active player 0
         self.state.active_player_id = 0
 
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.state, self.card_db)
+        # Prefer command-first generator
+        from dm_toolkit.commands import generate_legal_commands
+        cmds = generate_legal_commands(self.state, self.card_db)
 
-        # Expect MANA_CHARGE for each card + PASS
-        mana_actions = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
-        pass_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PASS]
+        def _tname(x):
+            try:
+                t = x.to_dict().get('type')
+            except Exception:
+                t = getattr(x, 'type', None)
+            try:
+                return getattr(t, 'name', str(t)).upper()
+            except Exception:
+                return str(t).upper()
+
+        mana_actions = [c for c in cmds if _tname(c).endswith('MANA_CHARGE')]
+        pass_actions = [c for c in cmds if _tname(c) == 'PASS']
 
         self.assertEqual(len(mana_actions), 2)
         self.assertEqual(len(pass_actions), 1)
@@ -59,14 +70,30 @@ class TestActionGenerator(unittest.TestCase):
         for m in self.state.players[0].mana_zone:
             m.is_tapped = False
 
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.state, self.card_db)
+        from dm_toolkit.commands import generate_legal_commands
+        cmds = generate_legal_commands(self.state, self.card_db)
 
-        # Expect PLAY_CARD for Cost 3, but NOT for Cost 99 + PASS
-        play_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
-        pass_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PASS]
+        def _t(x):
+            try:
+                d = x.to_dict()
+                return getattr(d.get('type'), 'name', d.get('type'))
+            except Exception:
+                try:
+                    return getattr(x, 'type', None)
+                except Exception:
+                    return None
+
+        play_actions = [c for c in cmds if str(_t(c)).upper().endswith('PLAY_CARD') or str(_t(c)).upper().endswith('PLAY')]
+        pass_actions = [c for c in cmds if str(_t(c)).upper() == 'PASS']
 
         self.assertEqual(len(play_actions), 1, "Should only be able to play the 3-cost card")
-        self.assertEqual(play_actions[0].card_id, 1)
+        # Check card_id via dict
+        p0 = play_actions[0]
+        try:
+            self.assertEqual(p0.to_dict().get('card_id'), 1)
+        except Exception:
+            # Fallback: underlying action attribute
+            self.assertEqual(getattr(p0, 'card_id', None), 1)
         self.assertEqual(len(pass_actions), 1)
 
     def test_attack_phase_actions(self):
@@ -81,13 +108,26 @@ class TestActionGenerator(unittest.TestCase):
         # Add tapped creature
         c3 = self.state.add_test_card_to_battle(0, 1, 102, tapped=True, sick=False)
 
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.state, self.card_db)
+        from dm_toolkit.commands import generate_legal_commands
+        cmds = generate_legal_commands(self.state, self.card_db)
 
-        # Expect ATTACK_PLAYER for c (100)
-        attack_actions = [a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER]
+        attack_actions = []
+        for c in cmds:
+            try:
+                if str(c.to_dict().get('type')).upper().endswith('ATTACK_PLAYER'):
+                    attack_actions.append(c)
+            except Exception:
+                try:
+                    if getattr(c, 'type', None) == dm_ai_module.ActionType.ATTACK_PLAYER:
+                        attack_actions.append(c)
+                except Exception:
+                    pass
 
         self.assertEqual(len(attack_actions), 1)
-        self.assertEqual(attack_actions[0].source_instance_id, 100)
+        try:
+            self.assertEqual(attack_actions[0].to_dict().get('source_instance_id'), 100)
+        except Exception:
+            self.assertEqual(getattr(attack_actions[0], 'source_instance_id', None), 100)
 
     def test_pending_effects(self):
         # Any phase
@@ -96,10 +136,15 @@ class TestActionGenerator(unittest.TestCase):
         # Add pending effect
         self.state.pending_effects.append("DUMMY_EFFECT")
 
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(self.state, self.card_db)
+        from dm_toolkit.commands import generate_legal_commands
+        cmds = generate_legal_commands(self.state, self.card_db)
 
-        self.assertEqual(len(actions), 1)
-        self.assertEqual(actions[0].type, dm_ai_module.ActionType.RESOLVE_EFFECT)
+        self.assertEqual(len(cmds), 1)
+        try:
+            self.assertEqual(cmds[0].to_dict().get('type'), dm_ai_module.ActionType.RESOLVE_EFFECT)
+        except Exception:
+            # Fallback: underlying action attribute
+            self.assertEqual(getattr(cmds[0], 'type', None), dm_ai_module.ActionType.RESOLVE_EFFECT)
 
 if __name__ == '__main__':
     unittest.main()

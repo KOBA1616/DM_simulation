@@ -256,8 +256,14 @@ namespace dm::engine {
             bool p2_deck_empty = game_state.players[1].deck.empty();
 
             if (p1_deck_empty && p2_deck_empty) {
-                result = GameResult::DRAW;
-                game_state.winner = result;
+                // Simultaneous deck-out: prefer active player as winner
+                if (game_state.active_player_id == 0) {
+                    result = GameResult::P1_WIN;
+                    game_state.winner = result;
+                } else {
+                    result = GameResult::P2_WIN;
+                    game_state.winner = result;
+                }
                 is_over = true;
             } else if (p1_deck_empty) {
                 result = GameResult::P2_WIN;

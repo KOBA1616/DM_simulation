@@ -46,6 +46,10 @@ from .card_widget import CardWidget
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.card_helpers import get_card_civilization
 from dm_toolkit.commands import wrap_action
+import logging
+
+# module logger
+logger = logging.getLogger('dm_toolkit.gui.widgets.zone_widget')
 
 class ZoneWidget(QWidget):
     card_clicked = pyqtSignal(int, int) # card_id, instance_id
@@ -157,7 +161,7 @@ class ZoneWidget(QWidget):
         if hasattr(card_data_list, '__len__') and len(card_data_list) > 0:
             first_card = card_data_list[0] if card_data_list else {}
             card_id = first_card.get('id', -1)
-            # print(f"DEBUG [zone {self.title}]: card_data_list has {len(card_data_list)} cards, first id={card_id}, card_db type={type(card_db)}")
+            logger.debug(f"[zone {self.title}] card_data_list has {len(card_data_list)} cards, first id={card_id}, card_db type={type(card_db)}")
 
         # If popup is active, update it too
         if hasattr(self, 'active_popup') and self.active_popup and self.active_popup.isVisible():

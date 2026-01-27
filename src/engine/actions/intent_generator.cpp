@@ -1,11 +1,38 @@
 #include "intent_generator.hpp"
 #include "core/constants.hpp"
+#include <fstream>
+#include <sstream>
+#include <filesystem>
 
 namespace dm::engine {
 
     using namespace dm::core;
 
     std::vector<Action> IntentGenerator::generate_legal_actions(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+        // Helper to dump actions for debugging
+        auto dump_actions = [&](const std::vector<Action>& actions, const std::string& context) {
+            try {
+                std::filesystem::create_directories("logs");
+                std::ofstream ofs("logs/intent_actions.txt", std::ios::app);
+                if (!ofs) return;
+                std::ostringstream ss;
+                ss << "[IntentActions] context=" << context << " player=" << static_cast<int>(game_state.active_player_id)
+                   << " phase=" << static_cast<int>(game_state.current_phase) << " count=" << actions.size() << "\n";
+                for (size_t i = 0; i < actions.size(); ++i) {
+                    const auto& a = actions[i];
+                    ss << "  #" << i << " type=" << static_cast<int>(a.type)
+                       << " card_id=" << a.card_id
+                       << " src_iid=" << a.source_instance_id
+                       << " tgt_iid=" << a.target_instance_id
+                       << " tgt_player=" << static_cast<int>(a.target_player)
+                       << " slot=" << a.slot_index << " tgt_slot=" << a.target_slot_index << "\n";
+                }
+                ofs << ss.str();
+            } catch (...) {
+                // Best-effort logging; swallow errors to not affect engine flow
+            }
+        };
+
         // Phase 6: Handle Waiting for User Input (Query Response)
         if (game_state.waiting_for_user_input && game_state.waiting_for_user_input) {
             std::vector<Action> actions;
@@ -31,8 +58,7 @@ namespace dm::engine {
                 }
             }
 
-            // If no valid choices (shouldn't happen for well-formed queries), return empty or pass?
-            // Usually queries have at least one option.
+            dump_actions(actions, "waiting_for_user_input");
             return actions;
         }
 
@@ -42,7 +68,9 @@ namespace dm::engine {
         // 1. Pending Effects
         if (!game_state.pending_effects.empty()) {
             PendingEffectStrategy pending_strategy;
-            return pending_strategy.generate(ctx);
+            auto res = pending_strategy.generate(ctx);
+            dump_actions(res, "pending_effects");
+            return res;
         }
 
         // 2. Stack (Atomic Action Flow)
@@ -50,6 +78,7 @@ namespace dm::engine {
             StackStrategy stack_strategy;
             auto stack_actions = stack_strategy.generate(ctx);
             if (!stack_actions.empty()) {
+                dump_actions(stack_actions, "stack_actions");
                 return stack_actions;
             }
         }
@@ -57,7 +86,9 @@ namespace dm::engine {
         // 3. Phase Specific Strategies
         if (game_state.current_phase == Phase::BLOCK) {
             BlockPhaseStrategy block_strategy;
-            return block_strategy.generate(ctx);
+            auto res = block_strategy.generate(ctx);
+            dump_actions(res, "block_phase");
+            return res;
         }
 
         switch (game_state.current_phase) {
@@ -69,25 +100,36 @@ namespace dm::engine {
                     Action pass;
                     pass.type = PlayerIntent::PASS;
                     actions.push_back(pass);
+                    dump_actions(actions, "pass_phase");
                     return actions;
                 }
             case Phase::MANA:
                 {
                     ManaPhaseStrategy mana_strategy;
-                    return mana_strategy.generate(ctx);
+                    auto res = mana_strategy.generate(ctx);
+                    dump_actions(res, "mana_phase");
+                    return res;
                 }
             case Phase::MAIN:
                 {
                     MainPhaseStrategy main_strategy;
-                    return main_strategy.generate(ctx);
+                    auto res = main_strategy.generate(ctx);
+                    dump_actions(res, "main_phase");
+                    return res;
                 }
             case Phase::ATTACK:
                 {
                     AttackPhaseStrategy attack_strategy;
-                    return attack_strategy.generate(ctx);
+                    auto res = attack_strategy.generate(ctx);
+                    dump_actions(res, "attack_phase");
+                    return res;
                 }
             default:
-                return {};
+                {
+                    std::vector<Action> empty;
+                    dump_actions(empty, "default_empty");
+                    return {};
+                }
         }
     }
 

@@ -15,6 +15,7 @@ import random
 import time
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.action_to_command import map_action
+from dm_toolkit import commands
 
 CARD_DB = dm.JsonLoader.load_cards('data/cards.json')
 
@@ -332,7 +333,15 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 continue
 
             active = state.active_player_id
-            legal = dm.IntentGenerator.generate_legal_actions(state, CARD_DB)
+            try:
+                legal = dm.IntentGenerator.generate_legal_commands(state, CARD_DB) or []
+            except Exception:
+                legal = []
+            if not legal:
+                try:
+                    legal = commands.generate_legal_commands(state, CARD_DB) or []
+                except Exception:
+                    legal = []
             if not legal:
                 dm.PhaseManager.next_phase(state, CARD_DB)
                 continue
@@ -740,7 +749,15 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             if finished[i]:
                 continue
             try:
-                legal = dm.IntentGenerator.generate_legal_actions(inst.state, CARD_DB) or []
+                try:
+                    legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
+                except Exception:
+                    legal = []
+                if not legal:
+                    try:
+                        legal = commands.generate_legal_commands(inst.state, CARD_DB) or []
+                    except Exception:
+                        legal = []
                 pending = EngineCompat.get_pending_effects_info(inst.state)
                 # turn number and simple player zone summaries
                 turn = EngineCompat.get_turn_number(inst.state)
@@ -824,7 +841,15 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             det = []
             for i, inst in enumerate(instances):
                 try:
-                    legal = dm.IntentGenerator.generate_legal_actions(inst.state, CARD_DB) or []
+                    try:
+                        legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
+                    except Exception:
+                        legal = []
+                    if not legal:
+                        try:
+                            legal = commands.generate_legal_commands(inst.state, CARD_DB) or []
+                        except Exception:
+                            legal = []
                     pending = EngineCompat.get_pending_effects_info(inst.state)
                     turn = EngineCompat.get_turn_number(inst.state)
                     p0 = EngineCompat.get_player(inst.state, 0)

@@ -3,6 +3,7 @@ sys.path.insert(0, os.getcwd())
 if os.path.isdir('python'):
     sys.path.insert(0, os.path.abspath('python'))
 import dm_ai_module
+from dm_toolkit import commands
 
 card_db = dm_ai_module.JsonLoader.load_cards('data/cards.json')
 valid_ids = list(card_db.keys())
@@ -35,7 +36,15 @@ def replay(seed, deck=None, max_steps=200):
     for step in range(max_steps):
         print(f"STEP {step}: turn={gs.turn_number} phase={gs.current_phase} active={gs.active_player_id} winner={gs.winner}")
         print(f"  p0 hand={len(gs.players[0].hand)} p1 hand={len(gs.players[1].hand)} deck0={len(gs.players[0].deck)} deck1={len(gs.players[1].deck)}")
-        legal = dm_ai_module.IntentGenerator.generate_legal_actions(gs, card_db)
+        try:
+            legal = dm_ai_module.IntentGenerator.generate_legal_commands(gs, card_db) or []
+        except Exception:
+            legal = []
+        if not legal:
+            try:
+                legal = commands.generate_legal_commands(gs, card_db) or []
+            except Exception:
+                legal = []
         print(f"  legal_actions={len(legal) if legal is not None else 'None'}")
         if gs.winner != dm_ai_module.GameResult.NONE:
             print('Winner set:', gs.winner)
@@ -46,7 +55,7 @@ def replay(seed, deck=None, max_steps=200):
             while True:
                 if gs.winner != dm_ai_module.GameResult.NONE:
                     break
-                legal2 = dm_ai_module.IntentGenerator.generate_legal_actions(gs, card_db)
+                legal2 = dm_ai_module.IntentGenerator.generate_legal_commands(gs, card_db)
                 if legal2:
                     break
                 dm_ai_module.PhaseManager.next_phase(gs, card_db)

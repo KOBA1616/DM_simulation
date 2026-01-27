@@ -1,4 +1,5 @@
 import dm_ai_module
+from dm_toolkit import commands
 import random
 import logging
 from typing import Any, List, cast, Dict
@@ -88,13 +89,14 @@ class SolitaireRunner:
 
         # Let's perform ONE action here to respect the outer safety counter.
 
-        actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_actions(state, self.card_db) or []
         try:
-            from dm_toolkit.commands import generate_legal_commands as _generate_legal_commands
+            actions: List[Any] = dm_ai_module.ActionGenerator.generate_legal_commands(state, self.card_db) or []
         except Exception:
-            def _generate_legal_commands(state: Any, card_db: dict[Any, Any]) -> list[Any]:
-                return []
-        cmds = _generate_legal_commands(state, cast(Dict[int, Any], self.card_db))
+            actions = []
+        try:
+            cmds = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db)) or []
+        except Exception:
+            cmds = []
 
         if not actions and not cmds:
             dm_ai_module.PhaseManager.next_phase(state, self.card_db)

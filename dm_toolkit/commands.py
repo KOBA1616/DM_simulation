@@ -1,6 +1,11 @@
 from typing import Any, Dict, Optional, Protocol, runtime_checkable, List, cast
 from dm_toolkit.action_to_command import map_action
 import warnings
+import logging
+
+# module logger
+logger = logging.getLogger('dm_toolkit.commands')
+
 
 @runtime_checkable
 class ICommand(Protocol):
@@ -124,7 +129,18 @@ def wrap_action(action: Any) -> Optional[ICommand]:
             # Use the unified execution mapper to preserve all normalization
             try:
                 from dm_toolkit.unified_execution import to_command_dict
-                return to_command_dict(self._action)
+                cmd = to_command_dict(self._action)
+                try:
+                    # Fix legacy normalization where ATTACK was converted to
+                    # type 'NONE' with a legacy_original_type marker.
+                    if isinstance(cmd, dict):
+                        orig = cmd.get('legacy_original_type') or cmd.get('legacy_type')
+                        if isinstance(orig, str) and orig.upper() == 'ATTACK':
+                            cmd['type'] = 'ATTACK'
+                            cmd['unified_type'] = 'ATTACK'
+                except Exception:
+                    pass
+                return cmd
             except Exception:
                 # Fallback to direct mapping if unified path fails
                 try:
@@ -159,14 +175,25 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
         try:
             cur_phase = getattr(state, 'current_phase', None)
             phase_name = getattr(cur_phase, 'name', None) or str(cur_phase)
-            print(f"Debug state_phase -> active_player={getattr(state, 'active_player_id', getattr(state, 'active_player', None))}, current_phase={phase_name}, raw={cur_phase}")
+            logger.debug(f"Debug state_phase -> active_player={getattr(state, 'active_player_id', getattr(state, 'active_player', None))}, current_phase={phase_name}, raw={cur_phase}")
         except Exception:
             pass
 
         actions: List[Any] = []
         try:
-            # Try to use card_db directly - it could be a native CardDatabase or a dict
-            actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+            # Prefer command-first generator when available (returns command dicts)
+            if hasattr(dm_ai_module, 'generate_commands'):
+                try:
+                    actions = dm_ai_module.generate_commands(state, card_db) or []
+                except Exception:
+                    # Fall back to legacy ActionGenerator when command-first fails
+                    try:
+                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
+                    except Exception:
+                        actions = []
+            else:
+                # Legacy path: use native ActionGenerator
+                actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
             # Debug: show types/reprs of first few returned actions to diagnose discrepancies
             try:
                 sample = []
@@ -175,7 +202,36 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                         sample.append((type(a).__name__, repr(a)))
                     except Exception:
                         sample.append((type(a).__name__, str(a)))
-                print(f"Debug generate_legal_actions -> count={len(actions)}, samples={sample}")
+                logger.debug(f"Debug generate_legal_actions -> count={len(actions)}, samples={sample}")
+
+                # Additional diagnostics: when in ATTACK phase, log battle-zone creatures
+                try:
+                    cur_phase = getattr(state, 'current_phase', None)
+                    pname = getattr(cur_phase, 'name', None) or str(cur_phase)
+                    if isinstance(pname, str) and 'ATTACK' in pname.upper():
+                        pid = getattr(state, 'active_player_id', 0)
+                        try:
+                            player = state.players[pid]
+                            bz = list(getattr(player, 'battle_zone', []) or [])
+                            bz_info = []
+                            for c in bz:
+                                try:
+                                    bz_info.append({
+                                        'instance_id': getattr(c, 'instance_id', None),
+                                        'card_id': getattr(c, 'card_id', None),
+                                        'is_tapped': getattr(c, 'is_tapped', None),
+                                        'sick': getattr(c, 'sick', None),
+                                    })
+                                except Exception:
+                                    try:
+                                        bz_info.append({'repr': repr(c)})
+                                    except Exception:
+                                        bz_info.append({'repr': str(c)})
+                            logger.debug(f"Debug battle_zone -> pid={pid}, count={len(bz)}, creatures={bz_info}")
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
             except Exception:
                 pass
 
@@ -207,6 +263,25 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                 except Exception:
                     normalized_cmds = [None] * len(actions)
 
+            # If native mapping preserved the legacy original type for
+            # ATTACK (some older native paths return ATTACK as a legacy
+            # token), normalize it so higher-level counting and UI code
+            # see an explicit 'ATTACK' type instead of 'NONE' with a
+            # legacy_original_type marker.
+            try:
+                if isinstance(normalized_cmds, list):
+                    for c in normalized_cmds:
+                        try:
+                            if isinstance(c, dict):
+                                orig = c.get('legacy_original_type') or c.get('legacy_type')
+                                if isinstance(orig, str) and orig.upper() == 'ATTACK':
+                                    c['type'] = 'ATTACK'
+                                    c['unified_type'] = 'ATTACK'
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
             # Debug: dump normalized commands (safe representations)
             try:
                 dump_norm = []
@@ -218,19 +293,29 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                             dump_norm.append({'_repr': repr(c)})
                     except Exception:
                         dump_norm.append({'_repr': str(c)})
-                print(f"Debug normalized_cmds -> count={len(dump_norm)}, entries={dump_norm[:12]}")
+                logger.debug(f"Debug normalized_cmds -> count={len(dump_norm)}, entries={dump_norm[:12]}")
             except Exception:
                 pass
 
-            # Debug: dump raw native actions (type and repr samples)
+            # Debug: dump raw native actions (type, action.type name if present, and repr samples)
             try:
                 raw_dump = []
+                raw_type_names = []
                 for i, a in enumerate(list(actions)):
                     try:
-                        raw_dump.append((i, type(a).__name__, repr(a)))
+                        a_type = getattr(a, 'type', None)
+                        try:
+                            tname = getattr(a_type, 'name', None) or str(a_type)
+                        except Exception:
+                            tname = str(a_type)
+                        raw_type_names.append(str(tname))
+                        raw_dump.append((i, type(a).__name__, tname, repr(a)))
                     except Exception:
-                        raw_dump.append((i, type(a).__name__, str(a)))
-                print(f"Debug raw_actions -> count={len(actions)}, samples={raw_dump[:12]}")
+                        try:
+                            raw_dump.append((i, type(a).__name__, None, str(a)))
+                        except Exception:
+                            raw_dump.append((i, type(a).__name__, None, '<unreprable>'))
+                logger.debug(f"Debug raw_actions -> count={len(actions)}, types={raw_type_names[:12]}, samples={raw_dump[:12]}")
             except Exception:
                 pass
 
@@ -347,14 +432,14 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                             try:
                                 dm_ai_module.PhaseManager.fast_forward(state, card_db)
                                 # Re-query actions after fast_forward
-                                actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+                                actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
                             except Exception:
                                 # If fast_forward fails for any reason, fall back
                                 # to stepping phases a couple times.
                                 for _ in range(2):
                                     try:
                                         dm_ai_module.PhaseManager.next_phase(state, card_db)
-                                        actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+                                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
                                         if actions:
                                             break
                                     except Exception:
@@ -363,7 +448,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                             for _ in range(2):
                                 try:
                                     dm_ai_module.PhaseManager.next_phase(state, card_db)
-                                    actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db) or []
+                                    actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
                                     if actions:
                                         break
                                 except Exception:
@@ -470,7 +555,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
 
                         # Debug lookup result
                         try:
-                            print(f"Debug play_lookup -> pid={pid}, card_id={cid}, cdef_present={bool(cdef)}, assumed_cost={cost}")
+                            logger.debug(f"Debug play_lookup -> pid={pid}, card_id={cid}, cdef_present={bool(cdef)}, assumed_cost={cost}")
                         except Exception:
                             pass
 
@@ -481,7 +566,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                             act.source_instance_id = getattr(c, 'instance_id', -1)
                             actions.append(act)
                             try:
-                                print(f"Debug play_heuristic1 -> pid={pid}, usable_mana={usable_mana}, card_id={cid}, cdef_present={bool(cdef)}, cost={cost}")
+                                logger.debug(f"Debug play_heuristic1 -> pid={pid}, usable_mana={usable_mana}, card_id={cid}, cdef_present={bool(cdef)}, cost={cost}")
                             except Exception:
                                 pass
                 except Exception:
@@ -572,7 +657,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                                 act.source_instance_id = getattr(c, 'instance_id', -1)
                                 actions.append(act)
                                 try:
-                                    print(f"Debug play_heuristic2 -> pid={pid}, usable_mana={usable_mana}, card_id={cid}, cdef_present={bool(cdef)}, cost={cost}")
+                                    logger.debug(f"Debug play_heuristic2 -> pid={pid}, usable_mana={usable_mana}, card_id={cid}, cdef_present={bool(cdef)}, cost={cost}")
                                 except Exception:
                                     pass
             except Exception:
@@ -691,7 +776,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                             act.source_instance_id = getattr(c, 'instance_id', -1)
                             actions.append(act)
                             try:
-                                print(f"Debug added_play_candidate -> pid={pid}, card_id={cid}, cost={cost}, usable_mana={usable_mana}, cdef_present={bool(cdef)}")
+                                logger.debug(f"Debug added_play_candidate -> pid={pid}, card_id={cid}, cost={cost}, usable_mana={usable_mana}, cdef_present={bool(cdef)}")
                             except Exception:
                                 pass
                 except Exception:

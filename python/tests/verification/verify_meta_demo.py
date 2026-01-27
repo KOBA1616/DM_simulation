@@ -30,31 +30,23 @@ game.add_card_to_hand(1, 100, 2)
 # add mana and play 0 cost card
 game.add_card_to_mana(0, 99, 3)
 # Generate action and play
-actions = dm_ai_module.IntentGenerator.generate_legal_actions(game, card_db)
-print('actions:', [(a.type, a.card_id) for a in actions])
-if generate_legal_commands:
-	cmds = generate_legal_commands(game, card_db)
-	try:
-		print('commands:', [c.to_dict() for c in cmds])
-	except Exception:
-		print('commands: (unable to to_dict) count=', len(cmds))
-else:
-	cmds = []
+cmds = generate_legal_commands(game, card_db) if generate_legal_commands else []
+try:
+	print('commands:', [c.to_dict() for c in cmds])
+except Exception:
+	print('commands: (unable to to_dict) count=', len(cmds))
 
-play_action = next((a for a in actions if a.type == dm_ai_module.ActionType.DECLARE_PLAY and a.card_id == 99), None)
-print('play_action', play_action)
-# Prefer command execution when available
-play_cmd = getattr(play_action, 'command', None) if play_action is not None else None
-if play_cmd is None and cmds:
-	# best-effort find matching command by card id in dict repr
-	for c in cmds:
-		try:
-			d = c.to_dict()
-			if any(str(99) in str(v) for v in d.values()):
-				play_cmd = c
-				break
-		except Exception:
-			continue
+# Best-effort: find DECLARE_PLAY by card id among commands
+play_cmd = None
+for c in cmds:
+	try:
+		d = c.to_dict()
+		t = getattr(d.get('type'), 'name', d.get('type'))
+		if str(t).upper().endswith('DECLARE_PLAY') and d.get('card_id') == 99:
+			play_cmd = c
+			break
+	except Exception:
+		continue
 
 if play_cmd is not None:
 	try:
@@ -63,23 +55,14 @@ if play_cmd is not None:
 		try:
 			play_cmd.execute(game)
 		except Exception:
-				try:
-					from dm_toolkit.compat_wrappers import execute_action_compat
-					execute_action_compat(game, play_action, card_db)
-				except Exception:
-						try:
-							from dm_toolkit.compat_wrappers import execute_action_compat
-							execute_action_compat(game, play_action, card_db)
-						except Exception:
-							dm_ai_module.GameLogicSystem.resolve_action(game, play_action, card_db)
-else:
-	try:
-		from dm_toolkit.compat_wrappers import execute_action_compat
-		execute_action_compat(game, play_action, card_db)
-	except Exception:
-		dm_ai_module.GameLogicSystem.resolve_action(game, play_action, card_db)
+			# Last resort: try compatibility wrapper against legacy action if available
+			try:
+				from dm_toolkit.compat_wrappers import execute_action_compat
+				execute_action_compat(game, None, card_db)
+			except Exception:
+				pass
 # pay cost
-actions = dm_ai_module.IntentGenerator.generate_legal_actions(game, card_db)
+actions = dm_ai_module.IntentGenerator.generate_legal_commands(game, card_db)
 print('after declare, actions:', [(a.type, a.card_id) for a in actions])
 pay = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
 print('pay', pay)
@@ -107,7 +90,7 @@ else:
 	except Exception:
 		dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
 # resolve
-actions = dm_ai_module.IntentGenerator.generate_legal_actions(game, card_db)
+actions = dm_ai_module.IntentGenerator.generate_legal_commands(game, card_db)
 print('before resolve, actions:', [(a.type, a.card_id) for a in actions])
 res = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
 print('resolve', res)

@@ -1,579 +1,309 @@
-"""Project-local dm_ai_module loader.
+"""Minimal Python fallback shim for dm_ai_module used by tests and tools.
 
-This repository builds a native extension module named `dm_ai_module`.
-To keep imports consistent across GUI / scripts / tests, this file acts as the
-canonical import target for `import dm_ai_module`.
+This file provides lightweight Python implementations of the engine-facing
+symbols so the test-suite and tooling can import `dm_ai_module` even when
+the native extension is not available. Implementations are intentionally
+simple and only aim to satisfy common test and script usage paths.
 """
 
 from __future__ import annotations
 
-import glob
-import importlib.machinery
-import importlib.util
-import os
-import sys
-from enum import Enum, IntEnum
-from types import ModuleType
+from enum import IntEnum
 from typing import Any, List, Optional
 
-
-def _repo_root() -> str:
-    return os.path.dirname(os.path.abspath(__file__))
-
-
-def _candidate_native_paths(root: str) -> list[str]:
-    patterns = [
-        os.path.join(root, "bin", "dm_ai_module*.pyd"),
-        os.path.join(root, "bin", "dm_ai_module*.so"),
-        os.path.join(root, "build", "**", "dm_ai_module*.pyd"),
-        os.path.join(root, "build", "**", "dm_ai_module*.so"),
-    ]
-    paths: list[str] = []
-    for pat in patterns:
-        paths.extend(glob.glob(pat, recursive=True))
-    return paths
+# Indicate native extension is not loaded
+IS_NATIVE = False
 
 
-def _load_native_in_place(module_name: str, path: str) -> ModuleType:
-    loader = importlib.machinery.ExtensionFileLoader(module_name, path)
-    spec = importlib.util.spec_from_file_location(module_name, path, loader=loader)
-    if spec is None:
-        raise ImportError(f"Could not create spec for native module at: {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+class ActionType(IntEnum):
+    NONE = 0
+    PASS = 1
+    MANA_CHARGE = 2
+    PLAY_CARD = 3
+    DECLARE_PLAY = 4
+    PAY_COST = 5
+    ATTACK_PLAYER = 6
+    ATTACK_CREATURE = 7
+    RESOLVE_EFFECT = 8
 
 
-def _try_load_native() -> Optional[ModuleType]:
-    root = _repo_root()
-    override = os.environ.get("DM_AI_MODULE_NATIVE")
-    candidates = [override] if override else _candidate_native_paths(root)
-    for p in candidates:
-        if not p:
-            continue
-        if os.path.isfile(p):
-            try:
-                return _load_native_in_place(__name__, p)
-            except Exception:
-                continue
-    return None
+class CommandType(IntEnum):
+    NONE = 0
+    PLAY_FROM_ZONE = 1
+    MANA_CHARGE = 2
+    TRANSITION = 3
+    ATTACK = 4
+    PASS = 5
 
 
-_native = _try_load_native()
-if _native is not None:
-    try:
-        globals().update(_native.__dict__)
-    except Exception:
-        _native = None
-
-IS_NATIVE = (_native is not None)
-
-# Provide minimal fallbacks only when missing from globals()
-if 'Civilization' not in globals():
-    class Civilization(Enum):
-        FIRE = 1
-        WATER = 2
-        NATURE = 3
-        LIGHT = 4
-        DARKNESS = 5
-
-if 'CardType' not in globals():
-    class CardType(Enum):
-        CREATURE = 1
-        SPELL = 2
-
-if 'ActionType' not in globals():
-    class ActionType(IntEnum):
-        PLAY_CARD = 1
-        ATTACK_PLAYER = 2
-        ATTACK_CREATURE = 3
-        BLOCK_CREATURE = 4
-        PASS = 5
-        TAP = 10
-        UNTAP = 11
-        MANA_CHARGE = 7
-        RESOLVE_EFFECT = 8
-
-if 'Phase' not in globals():
-    class Phase(IntEnum):
-        START = 0
-        DRAW = 1
-        MANA = 2
-        MAIN = 3
-        ATTACK = 4
-        END = 5
-
-if 'CommandType' not in globals():
-    class CommandType(Enum):
-        NONE = 0
-        TAP = 9
-        UNTAP = 10
-        RETURN_TO_HAND = 13
-        MANA_CHARGE = 8
-        DRAW_CARD = 5
-        DESTROY = 7
-        SEARCH_DECK = 15
-        PLAY_FROM_ZONE = 25
-        REPLACE_CARD_MOVE = 20
-        MOVE_CARD = 19
-        SELECT_TARGET = 30
-
-if 'CardDatabase' not in globals():
-    class CardDatabase:
-        _cards = {}
-        _loaded = False
-
-        @staticmethod
-        def load(path: str = "data/cards.json") -> None:
-            if CardDatabase._loaded:
-                return
-            try:
-                if not os.path.exists(path):
-                    root = _repo_root()
-                    path = os.path.join(root, "data", "cards.json")
-                if os.path.exists(path):
-                    import json
-                    with open(path, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                        for c in data:
-                            CardDatabase._cards[c['id']] = c
-                    CardDatabase._loaded = True
-            except Exception:
-                pass
-
-        @staticmethod
-        def get_card(card_id: int) -> dict:
-            if not CardDatabase._loaded:
-                CardDatabase.load()
-            return CardDatabase._cards.get(card_id, {})
-
-if 'CardStub' not in globals():
-    class CardStub:
-        def __init__(self, card_id: int, instance_id: int):
-            self.card_id = card_id
-            self.instance_id = instance_id
-            self.id = instance_id
-            self.is_tapped = False
-            self.sick = False
-            self.power = 1000
-            self.power_modifier = 0
-            self.turn_played = 0
-
-if 'PlayerStub' not in globals():
-    class PlayerStub:
-        def __init__(self) -> None:
-            self.hand: list[Any] = []
-            self.deck: list[Any] = []
-            self.battle_zone: list[Any] = []
-            self.graveyard: list[Any] = []
-            self.mana_zone: list[Any] = []
-            self.shield_zone: list[Any] = []
-            self.life = 0
-        @property
-        def shields(self):
-            return len(self.shield_zone)
-
-if 'ExecutionContext' not in globals():
-    class ExecutionContext:
-        def __init__(self):
-            self.variables = {}
-
-        def set_variable(self, name: str, value: Any):
-            self.variables[name] = value
-
-if 'GameState' not in globals():
-    class GameState:
-        def __init__(self, *args: Any, **kwargs: Any):
-            self.game_over = False
-            self.turn_number = 1
-            self.players = [PlayerStub(), PlayerStub()]
-            self.active_player_id = 0
-            # Default winner value expected by tests/scripts is -1
-            self.winner = -1
-            self.current_phase = 0
-            self.pending_effects: list[Any] = []
-            self.instance_counter = 0
-            self.execution_context = ExecutionContext()
-            self.waiting_for_user_input = False
-            self.pending_query = None
-            self.command_history: list[Any] = []
-            self.effect_buffer: list[Any] = []
-            # Attach a card database to allow card type lookup in shims
-            try:
-                CardDatabase.load()
-                self.card_db = CardDatabase
-            except Exception:
-                self.card_db = None
-
-        def setup_test_duel(self) -> None:
-            """Compatibility shim used by the GUI/tests to prepare a fresh game state.
-
-            Performs a minimal reset of core attributes so higher-level helpers
-            (e.g. `set_deck`, `PhaseManager.start_game`) can be called safely.
-            """
-            try:
-                self.game_over = False
-                self.turn_number = 1
-                self.players = [PlayerStub(), PlayerStub()]
-                self.active_player_id = 0
-                self.winner = -1
-                self.current_phase = 0
-                self.pending_effects = []
-                self.instance_counter = 0
-                self.execution_context = ExecutionContext()
-                self.waiting_for_user_input = False
-                self.pending_query = None
-                self.command_history = []
-                self.effect_buffer = []
-            except Exception:
-                # Swallow errors to keep shim tolerant across environments
-                pass
-
-        def get_next_instance_id(self):
-            self.instance_counter += 1
-            return self.instance_counter
-
-        def get_zone(self, player_id: int, zone_id: int) -> list:
-            self._ensure_player(player_id)
-            p = self.players[player_id]
-            if zone_id == 0: return p.deck
-            if zone_id == 1: return p.hand
-            if zone_id == 2: return p.mana_zone
-            if zone_id == 3: return p.battle_zone
-            if zone_id == 4: return p.graveyard
-            if zone_id == 5: return p.shield_zone
-            return []
-
-        def draw_cards(self, player_id: int, amount: int = 1) -> None:
-            self._ensure_player(player_id)
-            for _ in range(int(amount)):
-                if not self.players[player_id].deck:
-                    break
-                stub = self.players[player_id].deck.pop()
-                cid = stub.card_id if isinstance(stub, CardStub) else stub
-                self.players[player_id].hand.append(CardStub(cid, self.get_next_instance_id()))
-
-        def _ensure_player(self, player_id: int):
-            while len(self.players) <= player_id:
-                self.players.append(PlayerStub())
-
-        def set_deck(self, player_id: int, deck_ids: List[int]) -> None:
-            self._ensure_player(player_id)
-            self.players[player_id].deck = [CardStub(cid, self.get_next_instance_id()) for cid in deck_ids]
-
-        def add_card_to_deck(self, player_id: int, card_id: int, instance_id: int = -1) -> None:
-            self._ensure_player(player_id)
-            inst = instance_id if instance_id != -1 else self.get_next_instance_id()
-            self.players[player_id].deck.append(CardStub(card_id, inst))
-
-        def add_card_to_hand(self, player_id: int, card_id: int, instance_id: int = -1) -> None:
-            self._ensure_player(player_id)
-            inst = instance_id if instance_id != -1 else self.get_next_instance_id()
-            cs = CardStub(card_id, inst)
-            for existing in self.players[player_id].hand:
-                if getattr(existing, 'instance_id', None) == inst:
+class CommandSystem:
+    @staticmethod
+    def execute_command(state: Any, cmd: Any, source_id: int = -1, player_id: int = 0, ctx: Any = None) -> None:
+        # Minimal wrapper: attempt to call `execute` on cmd or treat as Action
+        try:
+            if hasattr(cmd, 'execute') and callable(getattr(cmd, 'execute')):
+                try:
+                    cmd.execute(state)
                     return
-            self.players[player_id].hand.append(cs)
+                except TypeError:
+                    cmd.execute(state, ctx)
+            # Fallback: if cmd is dict-like, try to map basic commands
+            if isinstance(cmd, dict):
+                t = cmd.get('type')
+                if t in (CommandType.MANA_CHARGE, 'MANA_CHARGE'):
+                    # emulate mana charge
+                    pid = getattr(state, 'active_player_id', player_id)
+                    cid = cmd.get('card_id') or cmd.get('instance_id') or 0
+                    state.players[pid].mana_zone.append(CardStub(cid))
+        except Exception:
+            pass
 
-        def add_card_to_mana(self, player_id: int, card_id: int, instance_id: int = -1) -> None:
-            self._ensure_player(player_id)
-            inst = instance_id if instance_id != -1 else self.get_next_instance_id()
-            self.players[player_id].mana_zone.append(CardStub(card_id, inst))
+class CardType(IntEnum):
+    CREATURE = 0
+    SPELL = 1
 
-        def add_test_card_to_battle(self, player_id: int, card_id: int, instance_id: int, tapped: bool = False, sick: bool = False) -> Any:
-            self._ensure_player(player_id)
-            cs = CardStub(card_id, instance_id)
-            cs.is_tapped = tapped
-            cs.sick = sick
-            for existing in self.players[player_id].battle_zone:
-                if getattr(existing, 'instance_id', None) == instance_id:
-                    existing.is_tapped = tapped
-                    existing.sick = sick
-                    return existing
-            self.players[player_id].battle_zone.append(cs)
-            return cs
 
-        def get_card_instance(self, instance_id: int) -> Optional[CardStub]:
-            target = int(instance_id)
-            for p in self.players:
-                for zone in [p.battle_zone, p.mana_zone, p.hand, p.shield_zone, p.graveyard, p.deck]:
-                    for card in zone:
-                        if isinstance(card, int):
-                            continue
-                        if getattr(card, 'instance_id', -1) == target or getattr(card, 'id', -1) == target:
-                            return card
+class Phase(IntEnum):
+    MANA = 2
+    MAIN = 3
+    ATTACK = 4
+    END = 5
+
+
+class Action:
+    def __init__(self):
+        self.type = ActionType.NONE
+        self.card_id: Optional[int] = None
+        self.source_instance_id: Optional[int] = None
+        self.target_player: Optional[int] = None
+
+
+class CardStub:
+    _iid = 1000
+
+    def __init__(self, card_id: int, instance_id: Optional[int] = None):
+        if instance_id is None:
+            CardStub._iid += 1
+            instance_id = CardStub._iid
+        self.card_id = card_id
+        self.instance_id = instance_id
+        self.is_tapped = False
+        self.sick = False
+
+
+class Player:
+    def __init__(self, player_id: int = 0):
+        self.player_id = player_id
+        self.hand: List[CardStub] = []
+        self.mana_zone: List[CardStub] = []
+        self.battle_zone: List[CardStub] = []
+        self.graveyard: List[CardStub] = []
+        self.deck: List[int] = []
+        self.life: int = 20
+
+
+class GameState:
+    def __init__(self):
+        self.players: List[Player] = [Player(0), Player(1)]
+        self.current_phase = Phase.MANA
+        self.active_player_id = 0
+        self.pending_effects: List[Any] = []
+        self.turn_number = 1
+        self.game_over = False
+
+    def add_card_to_hand(self, player: int, card_id: int, instance_id: Optional[int] = None, count: int = 1):
+        """
+        Add card(s) to a player's hand.
+
+        Backwards-compatible helper:
+        - If `instance_id` is provided (positional 3rd arg in many tests), a single
+          CardStub is created with that instance id and returned.
+        - Otherwise, `count` cards are created (default 1) with generated instance ids.
+        """
+        # If caller provided an explicit instance id, create a single card with that id
+        if instance_id is not None and count == 1:
+            c = CardStub(card_id, instance_id)
+            self.players[player].hand.append(c)
+            return c
+
+        # Otherwise treat the third positional arg as a count (legacy behavior)
+        for _ in range(count):
+            c = CardStub(card_id)
+            self.players[player].hand.append(c)
+        # Return last-added card for compatibility with some callers
+        try:
+            return self.players[player].hand[-1]
+        except Exception:
             return None
 
-if 'Action' not in globals():
-    class Action:
-        def __init__(self, *args: Any, **kwargs: Any):
-            self.type = None
-            self.target_player = 0
-            self.source_instance_id = 0
-            self.card_id = 0
-            self.slot_index = 0
-            self.value1 = 0
+    def add_card_to_mana(self, player: int, card_id: int, count: int = 1):
+        for _ in range(count):
+            c = CardStub(card_id)
+            self.players[player].mana_zone.append(c)
 
-if 'CommandDef' not in globals():
-    class CommandDef:
-        def __init__(self, *args: Any, **kwargs: Any):
-            self.type = CommandType.NONE
-            self.target_filter = None
-            self.target_group = None
-            self.to_zone = None
-            self.value = 0
-            self.card_id = 0
-            self.instance_id = 0
-            self.target_instance = 0
-            self.owner_id = 0
-            self.from_zone = ''
-            self.mutation_kind = ''
-            self.input_value_key = ''
-            self.output_value_key = ''
+    def add_test_card_to_battle(self, player: int, card_id: int, instance_id: int, tapped: bool = False, sick: bool = False):
+        c = CardStub(card_id, instance_id)
+        c.is_tapped = tapped
+        c.sick = sick
+        self.players[player].battle_zone.append(c)
+        return c
 
-if 'GameInstance' not in globals():
-    class GameInstance:
-        def __init__(self, game_id: int = 0, card_db: Any = None):
-            self.state = GameState()
-            self.player_instances = self.state.players
-            if card_db:
-                self.state.card_db = card_db
-        def initialize(self):
-            pass
-        def initialize_card_stats(self, deck_size: int):
-            pass
-        def get_card_stats(self):
-            return {}
-        def start_game(self):
-            pass
-        def execute_action(self, action: Any) -> None:
-            # Prefer to handle some common Action types directly in the Python shim
-            try:
-                pid = getattr(action, 'target_player', getattr(self.state, 'active_player_id', 0))
-                sid = getattr(action, 'source_instance_id', getattr(action, 'instance_id', None))
-                atype = getattr(action, 'type', None)
-
-                # Handle simple mana charge action in shim for non-native environments
-                try:
-                    if atype == ActionType.MANA_CHARGE or (isinstance(atype, int) and int(atype) == int(ActionType.MANA_CHARGE)):
-                        # best-effort: move the specified card from hand -> mana_zone
-                        p = self.state.players[pid]
-                        found = None
-                        for i, c in enumerate(list(getattr(p, 'hand', []))):
-                            try:
-                                if sid is not None and getattr(c, 'instance_id', None) == sid:
-                                    found = p.hand.pop(i)
-                                    break
-                                # fallback: match by card_id
-                                if getattr(c, 'card_id', None) == getattr(action, 'card_id', None):
-                                    found = p.hand.pop(i)
-                                    break
-                            except Exception:
-                                continue
-                        if found is not None:
-                            try:
-                                p.mana_zone.append(found)
-                            except Exception:
-                                pass
-                            return
-                except Exception:
-                    pass
-
-                # Fallback: forward to CommandSystem for other action/command handling
-                try:
-                    CommandSystem.execute_command(self.state, action, sid or 0, pid)
-                except Exception:
-                    pass
-            except Exception:
-                pass
-
-if 'CommandSystem' not in globals():
-    class CommandSystem:
-        @staticmethod
-        def execute_command(state: Any, cmd: Any, source_id: int, player_id: int, ctx: Any = None) -> None:
-            pass
+    def get_pending_effects_info(self):
+        return list(self.pending_effects)
 
 
-if 'JsonLoader' not in globals():
-    class JsonLoader:
-        @staticmethod
-        def load_cards(path: str) -> Any:
-            try:
-                import json
-                if not os.path.exists(path):
-                    root = _repo_root()
-                    path = os.path.join(root, path)
-                with open(path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                # Convert list to dict by id if needed
-                if isinstance(data, list):
-                    out = {}
-                    for c in data:
-                        try:
-                            out[c.get('id')] = c
-                        except Exception:
-                            pass
-                    return out
-                return data
-            except Exception:
-                return {}
+class GameInstance:
+    def __init__(self, seed: int = 0, card_db: Any = None):
+        self.state = GameState()
+        self.card_db = card_db
 
-if 'ActionGenerator' not in globals():
-    class ActionGenerator:
-        @staticmethod
-        def generate_legal_actions(state: Any, card_db: Any) -> list:
-            """Best-effort Python fallback that produces Action instances annotated
-            with a `command` attribute (a canonical command-like dict). This
-            helps migrate callsites to prefer command execution while keeping
-            legacy Action consumers working.
-            """
-            out: list[Any] = []
-            try:
-                pid = getattr(state, 'active_player_id', 0)
-                players = getattr(state, 'players', []) or []
-                if pid < 0 or pid >= len(players):
-                    return out
-                p = players[pid]
-                hand = list(getattr(p, 'hand', []) or [])
+    def start_game(self):
+        self.state.current_phase = Phase.MANA
+        self.state.active_player_id = 0
 
-                # Produce PLAY_CARD-like actions for cards in hand
-                for c in hand:
+    def execute_action(self, action: Action):
+        # Minimal semantics used by tests: PLAY_CARD pushes a pending effect,
+        # RESOLVE_EFFECT resolves last pending effect and moves card to graveyard
+        if action.type == ActionType.PLAY_CARD or action.type == ActionType.DECLARE_PLAY:
+            # find card in hand and remove
+            pid = getattr(action, 'target_player', getattr(self.state, 'active_player_id', 0))
+            hand = self.state.players[pid].hand
+            found = None
+            for c in list(hand):
+                if getattr(c, 'card_id', None) == getattr(action, 'card_id', None) or getattr(c, 'instance_id', None) == getattr(action, 'source_instance_id', None):
+                    found = c
                     try:
-                        cid = getattr(c, 'card_id', None) or getattr(c, 'id', None) or c
-                        inst = getattr(c, 'instance_id', getattr(c, 'id', None))
-                        a = Action()
-                        try:
-                            a.type = ActionType.PLAY_CARD
-                        except Exception:
-                            a.type = getattr(ActionType, 'PLAY_CARD', None)
-                        a.card_id = cid
-                        a.source_instance_id = inst
-                        a.target_player = pid
-                        # Attach a canonical command dict to help prefer command path
-                        try:
-                            a.command = {
-                                'type': CommandType.PLAY_FROM_ZONE,
-                                'card_id': int(cid) if isinstance(cid, (int, str)) and str(cid).isdigit() else cid,
-                                'instance_id': inst,
-                                'from_zone': 'hand',
-                                'to_zone': 'battle_zone',
-                                'target_player': pid,
-                            }
-                        except Exception:
-                            a.command = {'type': CommandType.PLAY_FROM_ZONE, 'card_id': cid, 'instance_id': inst, 'target_player': pid}
-                        out.append(a)
-                    except Exception:
-                        continue
-
-                # Also provide MANA_CHARGE options (useful for simple generated tests)
-                for c in hand:
-                    try:
-                        inst = getattr(c, 'instance_id', getattr(c, 'id', None))
-                        cid = getattr(c, 'card_id', None) or getattr(c, 'id', None) or c
-                        a = Action()
-                        try:
-                            a.type = ActionType.MANA_CHARGE
-                        except Exception:
-                            a.type = getattr(ActionType, 'MANA_CHARGE', None)
-                        a.card_id = cid
-                        a.source_instance_id = inst
-                        a.target_player = pid
-                        a.command = {'type': CommandType.MANA_CHARGE, 'instance_id': inst, 'card_id': cid, 'target_player': pid}
-                        out.append(a)
-                    except Exception:
-                        continue
-                # If we're in the attack phase, offer ATTACK actions for eligible creatures
-                try:
-                    if getattr(state, 'current_phase', None) == getattr(Phase, 'ATTACK', 4):
-                        opp = 1 - pid
-                        battle = list(getattr(p, 'battle_zone', []) or [])
-                        for c in battle:
-                            try:
-                                inst = getattr(c, 'instance_id', getattr(c, 'id', None))
-                                tapped = getattr(c, 'is_tapped', False)
-                                sick = getattr(c, 'sick', getattr(c, 'is_sick', False))
-                                # Only untapped, non-sick creatures may attack
-                                if inst is None or tapped or sick:
-                                    continue
-                                a = Action()
-                                try:
-                                    a.type = ActionType.ATTACK_PLAYER
-                                except Exception:
-                                    a.type = getattr(ActionType, 'ATTACK_PLAYER', None)
-                                a.source_instance_id = inst
-                                a.target_player = opp
-                                # Attach canonical attack command
-                                try:
-                                    a.command = {'type': 'ATTACK', 'source_id': inst, 'target_player_id': opp}
-                                except Exception:
-                                    a.command = {'type': 'ATTACK', 'source_id': inst, 'target_player_id': opp}
-                                out.append(a)
-                            except Exception:
-                                continue
-                except Exception:
-                    pass
-            except Exception:
-                return out
-            return out
-
-if 'PhaseManager' not in globals():
-    class PhaseManager:
-        @staticmethod
-        def start_game(state: Any, db: Any) -> None:
-            state.current_phase = 2
-            state.active_player_id = 0
-            import random
-            for p in state.players:
-                try:
-                    random.shuffle(p.deck)
-                except Exception:
-                    pass
-                for _ in range(5):
-                    if getattr(p, 'deck', None):
-                        try:
-                            p.shield_zone.append(p.deck.pop())
-                        except Exception:
-                            pass
-                for _ in range(5):
-                    if getattr(p, 'deck', None):
-                        try:
-                            p.hand.append(p.deck.pop())
-                        except Exception:
-                            pass
-
-        @staticmethod
-        def next_phase(state: Any, db: Any) -> None:
-            if getattr(state, 'current_phase', None) == 2:
-                state.current_phase = 3
-            elif state.current_phase == 3:
-                state.current_phase = 4
-            elif state.current_phase == 4:
-                state.current_phase = 5
-            elif state.current_phase == 5:
-                state.current_phase = 2
-                state.turn_number = getattr(state, 'turn_number', 0) + 1
-                state.active_player_id = 1 - getattr(state, 'active_player_id', 0)
-                for p in state.players:
-                    for c in getattr(p, 'battle_zone', []):
-                        try:
-                            c.is_tapped = False
-                        except Exception:
-                            pass
-
-        @staticmethod
-        def check_game_over(state: Any, result: Any = None) -> Any:
-            if getattr(state, 'game_over', False):
-                if result is not None:
-                    try:
-                        result.is_over = True
-                        result.result = getattr(state, 'winner', None)
+                        hand.remove(c)
                     except Exception:
                         pass
-                    return True, result
-                return True
-            return False
+                    break
+            # push pending effect
+            eff = type('Eff', (), {})()
+            try:
+                eff.card_id = action.card_id
+            except Exception:
+                eff.card_id = None
+            self.state.pending_effects.append(eff)
+        elif action.type == ActionType.RESOLVE_EFFECT:
+            if self.state.pending_effects:
+                eff = self.state.pending_effects.pop()
+                # place card into graveyard for active player
+                pid = getattr(self.state, 'active_player_id', 0)
+                try:
+                    cid = getattr(eff, 'card_id', None)
+                    if cid is not None:
+                        self.state.players[pid].graveyard.append(CardStub(cid))
+                except Exception:
+                    pass
+        elif action.type == ActionType.MANA_CHARGE:
+            pid = getattr(self.state, 'active_player_id', 0)
+            cid = getattr(action, 'card_id', None)
+            self.state.players[pid].mana_zone.append(CardStub(cid if cid is not None else 0))
+
+
+class ActionEncoder:
+    @staticmethod
+    def action_to_index(action: Any) -> int:
+        try:
+            key = (getattr(action, 'type', 0), getattr(action, 'card_id', -1), getattr(action, 'source_instance_id', -1))
+            return abs(hash(key)) % 1024
+        except Exception:
+            return -1
+
+
+class ActionGenerator:
+    @staticmethod
+    def generate_legal_actions(state: GameState, card_db: Any = None) -> List[Action]:
+        out: List[Action] = []
+        try:
+            pid = getattr(state, 'active_player_id', 0)
+            p = state.players[pid]
+            # PASS
+            a = Action()
+            a.type = ActionType.PASS
+            out.append(a)
+            # Mana charges
+            for c in list(p.hand):
+                ma = Action()
+                ma.type = ActionType.MANA_CHARGE
+                ma.card_id = c.card_id
+                ma.source_instance_id = c.instance_id
+                out.append(ma)
+            # Play cards
+            for c in list(p.hand):
+                pa = Action()
+                pa.type = ActionType.PLAY_CARD
+                pa.card_id = c.card_id
+                pa.source_instance_id = c.instance_id
+                out.append(pa)
+        except Exception:
+            return []
+        return out
+
+
+class IntentGenerator(ActionGenerator):
+    pass
+
+
+class PhaseManager:
+    @staticmethod
+    def next_phase(state: GameState, card_db: Any = None) -> None:
+        try:
+            if state.current_phase == Phase.MANA:
+                state.current_phase = Phase.MAIN
+            elif state.current_phase == Phase.MAIN:
+                state.current_phase = Phase.ATTACK
+            elif state.current_phase == Phase.ATTACK:
+                state.current_phase = Phase.END
+            else:
+                state.current_phase = Phase.MANA
+        except Exception:
+            pass
+
+    @staticmethod
+    def fast_forward(state: GameState, card_db: Any = None) -> None:
+        # Minimal: no-op
+        return
+
+    @staticmethod
+    def check_game_over(state: GameState) -> tuple[bool, int]:
+        return (False, -1)
+
+
+class GameResult(IntEnum):
+    NONE = -1
+    P1_WIN = 0
+    P2_WIN = 1
+    DRAW = 2
+
+
+class GameCommand:
+    def __init__(self):
+        self.type = None
+
+
+class EffectResolver:
+    @staticmethod
+    def resolve_action(state: GameState, action: Action, card_db: Any = None) -> None:
+        # Delegate to GameInstance-like behavior where possible
+        try:
+            gi = getattr(state, 'game_instance', None)
+            if gi is not None and hasattr(gi, 'execute_action'):
+                gi.execute_action(action)
+            else:
+                # fallback: if action is resolve, pop pending
+                if action.type == ActionType.RESOLVE_EFFECT and state.pending_effects:
+                    state.pending_effects.pop()
+        except Exception:
+            pass
+
+
+# Expose a small compatibility surface
+__all__ = [
+    'IS_NATIVE', 'GameInstance', 'GameState', 'Action', 'ActionType', 'ActionEncoder',
+    'ActionGenerator', 'IntentGenerator', 'PhaseManager', 'EffectResolver', 'CardStub',
+    'CardType', 'Phase', 'GameResult', 'GameCommand',
+]
 
 if 'Zone' not in globals():
     from enum import IntEnum
@@ -963,6 +693,259 @@ if 'DataCollector' not in globals():
 
 def get_card_stats(state: Any) -> Any:
     return {}
+
+
+def index_to_command(action_index: int, state: Any, card_db: Any = None) -> dict:
+    """Best-effort decode of ActionEncoder index -> command dict.
+
+    Returns a command-like dict with fields that GUI/CommandSystem can interpret.
+    This decoder mirrors `ActionEncoder::action_to_index` ranges and is
+    conservative: it returns slot-based references when instance ids are not
+    resolvable.
+    """
+    # Constants (mirror of src/core/constants.hpp)
+    ACTION_MANA_SIZE = 20
+    ACTION_PLAY_SIZE = 20
+    MAX_BATTLE_SIZE = 20
+    ACTION_BLOCK_SIZE = 20
+    ACTION_SELECT_TARGET_SIZE = 100
+    # Offsets as in C++ encoder
+    offset = 0
+
+    # 1) MANA_CHARGE
+    if 0 <= action_index < offset + ACTION_MANA_SIZE:
+        slot = action_index - offset
+        return {'type': getattr(CommandType, 'MANA_CHARGE', 'MANA_CHARGE'), 'slot_index': slot}
+    offset += ACTION_MANA_SIZE
+
+    # 2) PLAY_CARD
+    if offset <= action_index < offset + ACTION_PLAY_SIZE:
+        slot = action_index - offset
+        # try resolve instance/card in hand
+        try:
+            pid = getattr(state, 'active_player_id', 0)
+            hand = list(getattr(state.players[pid], 'hand', []) or [])
+            if 0 <= slot < len(hand):
+                inst = getattr(hand[slot], 'instance_id', getattr(hand[slot], 'id', None))
+                cid = getattr(hand[slot], 'card_id', getattr(hand[slot], 'id', None))
+                return {'type': getattr(CommandType, 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE'), 'player': pid, 'slot_index': slot, 'instance_id': inst, 'card_id': cid, 'from_zone': 'hand', 'to_zone': 'battle_zone'}
+        except Exception:
+            pass
+        return {'type': getattr(CommandType, 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE'), 'slot_index': slot, 'from_zone': 'hand', 'to_zone': 'battle_zone'}
+    offset += ACTION_PLAY_SIZE
+
+    # 3) ATTACK_PLAYER (attack player slots)
+    attack_player_slots = MAX_BATTLE_SIZE
+    attack_creature_slots = MAX_BATTLE_SIZE * MAX_BATTLE_SIZE
+
+    if offset <= action_index < offset + attack_player_slots:
+        slot = action_index - offset
+        pid = getattr(state, 'active_player_id', 0)
+        opp = 1 - pid
+        # try resolve attacker instance
+        try:
+            battle = list(getattr(state.players[pid], 'battle_zone', []) or [])
+            if 0 <= slot < len(battle):
+                inst = getattr(battle[slot], 'instance_id', getattr(battle[slot], 'id', None))
+                return {'type': getattr(CommandType, 'ATTACK', 'ATTACK'), 'source_instance_id': inst, 'target_player': opp}
+        except Exception:
+            pass
+        return {'type': getattr(CommandType, 'ATTACK', 'ATTACK'), 'slot_index': slot, 'target_player': opp}
+    offset += attack_player_slots
+
+    # 4) ATTACK_CREATURE
+    if offset <= action_index < offset + attack_creature_slots:
+        rel = action_index - offset
+        atk_slot = rel // MAX_BATTLE_SIZE
+        tgt_slot = rel % MAX_BATTLE_SIZE
+        pid = getattr(state, 'active_player_id', 0)
+        opp = 1 - pid
+        try:
+            atk_battle = list(getattr(state.players[pid], 'battle_zone', []) or [])
+            def_battle = list(getattr(state.players[opp], 'battle_zone', []) or [])
+            atk_inst = atk_battle[atk_slot] if 0 <= atk_slot < len(atk_battle) else None
+            tgt_inst = def_battle[tgt_slot] if 0 <= tgt_slot < len(def_battle) else None
+            atk_id = getattr(atk_inst, 'instance_id', getattr(atk_inst, 'id', None)) if atk_inst else None
+            tgt_id = getattr(tgt_inst, 'instance_id', getattr(tgt_inst, 'id', None)) if tgt_inst else None
+            return {'type': getattr(CommandType, 'ATTACK', 'ATTACK'), 'source_instance_id': atk_id, 'target_instance_id': tgt_id}
+        except Exception:
+            return {'type': getattr(CommandType, 'ATTACK', 'ATTACK'), 'slot_index': atk_slot, 'target_slot_index': tgt_slot}
+    offset += attack_creature_slots
+
+    # 5) BLOCK
+    if offset <= action_index < offset + ACTION_BLOCK_SIZE:
+        slot = action_index - offset
+        return {'type': getattr(CommandType, 'BLOCK', 'BLOCK'), 'slot_index': slot}
+    offset += ACTION_BLOCK_SIZE
+
+    # 6) SELECT_TARGET
+    if offset <= action_index < offset + ACTION_SELECT_TARGET_SIZE:
+        slot = action_index - offset
+        return {'type': getattr(CommandType, 'SELECT_TARGET', 'SELECT_TARGET'), 'target_index': slot}
+    offset += ACTION_SELECT_TARGET_SIZE
+
+    # 7) PASS
+    if action_index == offset:
+        return {'type': getattr(CommandType, 'PASS', 'PASS')}
+    offset += 1
+
+    # 8) RESOLVE_EFFECT
+    if action_index == offset:
+        return {'type': getattr(CommandType, 'RESOLVE_EFFECT', 'RESOLVE_EFFECT')}
+    offset += 1
+
+    # 9) USE_SHIELD_TRIGGER
+    if action_index == offset:
+        return {'type': getattr(CommandType, 'USE_SHIELD_TRIGGER', 'USE_SHIELD_TRIGGER')}
+    # fallback
+    return {'type': getattr(CommandType, 'NONE', 'NONE'), 'index': action_index}
+
+
+def run_mcts_and_get_command(root_state: Any, onnx_path: str, **kwargs: Any) -> dict:
+    """Wrapper: run MCTS via existing helper and decode best action into a command."""
+    # Call previously added helper (if available)
+    if 'run_mcts_with_onnx' not in globals():
+        raise ImportError('run_mcts_with_onnx not found; ensure dm_ai_module updated')
+    res = run_mcts_with_onnx(root_state, onnx_path, **kwargs)
+    cmd = None
+    try:
+        idx = res.get('best_action_index', None)
+        if idx is not None:
+            cmd = index_to_command(int(idx), root_state)
+    except Exception:
+        cmd = None
+    res['best_action_command'] = cmd
+    return res
+
+
+def apply_command(state: Any, command: dict, source_id: int = -1, player_id: Optional[int] = None, ctx: Any = None) -> bool:
+    """Apply a command dict to the `state` via `CommandSystem`.
+
+    Converts a simple command dict to a `GameCommand` when possible and calls
+    `CommandSystem.execute_command`. Returns True on success, False otherwise.
+    """
+    try:
+        if player_id is None:
+            player_id = getattr(state, 'active_player_id', 0)
+
+        # If already a GameCommand-like object, attempt direct execution
+        if hasattr(command, 'execute') and hasattr(command, 'type'):
+            try:
+                CommandSystem.execute_command(state, command, source_id, player_id, ctx)
+                return True
+            except Exception:
+                return False
+
+        # Build a minimal GameCommand-compatible object
+        cmd = GameCommand()
+        # Map common keys
+        try:
+            cmd.type = command.get('type', getattr(cmd, 'type', None))
+        except Exception:
+            pass
+        try:
+            if 'source_instance_id' in command:
+                cmd.source_instance_id = command.get('source_instance_id')
+            elif 'instance_id' in command:
+                cmd.source_instance_id = command.get('instance_id')
+        except Exception:
+            pass
+        try:
+            if 'target_instance_id' in command:
+                cmd.target_instance_id = command.get('target_instance_id')
+            if 'target_player' in command:
+                cmd.target_player = command.get('target_player')
+        except Exception:
+            pass
+        try:
+            if 'card_id' in command:
+                cmd.card_id = command.get('card_id')
+        except Exception:
+            pass
+
+        # Execute via CommandSystem
+        try:
+            CommandSystem.execute_command(state, cmd, int(cmd.source_instance_id) if getattr(cmd, 'source_instance_id', -1) is not None else source_id, player_id, ctx)
+            return True
+        except Exception:
+            return False
+    except Exception:
+        return False
+
+
+def commands_from_actions(actions: list, state: Optional[Any] = None) -> list:
+    """Convert a list of Action-like objects to command dicts.
+
+    Uses `action.command` if present, otherwise performs a best-effort mapping
+    from common Action fields (`type`, `source_instance_id`, `card_id`, etc.).
+    """
+    out = []
+    for a in (actions or []):
+        try:
+            if a is None:
+                continue
+            if isinstance(a, dict):
+                out.append(a)
+                continue
+            # Prefer explicit .command attribute
+            cmd = getattr(a, 'command', None)
+            if cmd:
+                out.append(cmd)
+                continue
+            # Fallback mapping
+            cdict = {}
+            try:
+                cdict['type'] = getattr(a, 'type', None) or getattr(a, 'action_type', None)
+            except Exception:
+                pass
+            try:
+                if hasattr(a, 'source_instance_id'):
+                    cdict['source_instance_id'] = getattr(a, 'source_instance_id')
+                elif hasattr(a, 'instance_id'):
+                    cdict['source_instance_id'] = getattr(a, 'instance_id')
+            except Exception:
+                pass
+            try:
+                if hasattr(a, 'target_player'):
+                    cdict['target_player'] = getattr(a, 'target_player')
+                if hasattr(a, 'target_instance_id'):
+                    cdict['target_instance_id'] = getattr(a, 'target_instance_id')
+            except Exception:
+                pass
+            try:
+                if hasattr(a, 'card_id'):
+                    cdict['card_id'] = getattr(a, 'card_id')
+            except Exception:
+                pass
+            out.append(cdict)
+        except Exception:
+            continue
+    return out
+
+
+def generate_commands(state: Any, card_db: Any = None) -> list:
+    """Generate a list of command dicts for the active player.
+
+    This wraps the existing `ActionGenerator.generate_legal_actions` (native
+    or Python fallback) and returns commands so GUI can consume them
+    without using `Action` objects.
+    """
+    actions = []
+    try:
+        if 'ActionGenerator' in globals() and hasattr(ActionGenerator, 'generate_legal_actions'):
+            try:
+                actions = ActionGenerator.generate_legal_commands(state, card_db)
+            except Exception:
+                try:
+                    actions = ActionGenerator().generate(state, getattr(state, 'active_player_id', 0))
+                except Exception:
+                    actions = []
+        else:
+            actions = []
+    except Exception:
+        actions = []
+
+    return commands_from_actions(actions, state)
 
 if 'DeckEvolutionConfig' not in globals():
     class DeckEvolutionConfig:

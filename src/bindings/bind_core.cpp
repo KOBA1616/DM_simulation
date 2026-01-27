@@ -636,8 +636,16 @@ void bind_core(py::module& m) {
             std::map<std::string, int> ctx;
             // Convert python dict to map
             for (auto item : py_ctx) {
-                if (py::isinstance<py::str>(item.first) && py::isinstance<py::int_>(item.second)) {
-                    ctx[item.first.cast<std::string>()] = item.second.cast<int>();
+                try {
+                    py::handle key_h = item.first;
+                    py::handle val_h = item.second;
+                    if (py::isinstance<py::str>(key_h) && py::isinstance<py::int_>(val_h)) {
+                        std::string key_s = py::cast<std::string>(key_h);
+                        int v = py::cast<int>(val_h);
+                        ctx[key_s] = v;
+                    }
+                } catch (...) {
+                    // ignore bad entries
                 }
             }
             dm::engine::systems::CommandSystem::execute_command(state, cmd, source_instance_id, player_id, ctx);

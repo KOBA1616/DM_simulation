@@ -3,6 +3,9 @@
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/systems/card/passive_effect_system.hpp"
 #include "engine/systems/mana/cost_payment_system.hpp"
+#include <fstream>
+#include <sstream>
+#include <filesystem>
 
 namespace dm::engine {
 
@@ -36,6 +39,43 @@ namespace dm::engine {
         const auto& card_db = ctx.card_db;
         const Player& active_player = game_state.players[game_state.active_player_id];
 
+        // Ensure we record that MainPhaseStrategy::generate was entered at runtime.
+        // This helps detect whether this code path is actually executed in the
+        // imported native module used by Python runs.
+        try {
+            std::filesystem::create_directories("logs");
+            std::ofstream enter_ofs("logs/main_phase_checks.txt", std::ios::app);
+            if (enter_ofs) {
+                enter_ofs << "[MainPhaseEnter] player=" << static_cast<int>(game_state.active_player_id)
+                          << " turn=" << game_state.turn_number
+                          << " hand_count=" << active_player.hand.size() << "\n";
+            }
+        } catch (...) {
+            // swallow errors
+        }
+
+        auto log_skip = [&](int hand_index, const CardInstance& card, const CardDefinition& def, bool spell_restricted, int adjusted_cost, int available_mana, bool can_pay) {
+            try {
+                std::filesystem::create_directories("logs");
+                std::ofstream ofs("logs/main_phase_checks.txt", std::ios::app);
+                if (!ofs) return;
+                std::ostringstream ss;
+                ss << "[MainPhase] player=" << static_cast<int>(game_state.active_player_id)
+                   << " turn=" << game_state.turn_number
+                   << " hand_idx=" << hand_index
+                   << " instance_id=" << card.instance_id
+                   << " card_id=" << def.id
+                   << " adjusted_cost=" << adjusted_cost
+                   << " available_mana=" << available_mana
+                   << " spell_restricted=" << (spell_restricted?1:0)
+                   << " can_pay=" << (can_pay?1:0)
+                   << "\n";
+                ofs << ss.str();
+            } catch (...) {
+                // swallow
+            }
+        };
+
         for (size_t i = 0; i < active_player.hand.size(); ++i) {
             const auto& card = active_player.hand[i];
             if (card_db.count(card.card_id)) {
@@ -54,13 +94,21 @@ namespace dm::engine {
                 }
 
                 // 1. Standard Play (Creature side if Twinpact)
-                if (!spell_restricted && ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
-                    Action action;
-                    action.type = PlayerIntent::DECLARE_PLAY;
-                    action.card_id = card.card_id;
-                    action.source_instance_id = card.instance_id;
-                    action.slot_index = static_cast<int>(i);
-                    actions.push_back(action);
+                {
+                    int adjusted_cost = ManaSystem::get_adjusted_cost(game_state, active_player, def);
+                    int available_mana = ManaSystem::get_usable_mana_count(game_state, active_player.id, def.civilizations, card_db);
+                    bool can_pay = ManaSystem::can_pay_cost(game_state, active_player, def, card_db);
+
+                    if (!spell_restricted && can_pay) {
+                        Action action;
+                        action.type = PlayerIntent::DECLARE_PLAY;
+                        action.card_id = card.card_id;
+                        action.source_instance_id = card.instance_id;
+                        action.slot_index = static_cast<int>(i);
+                        actions.push_back(action);
+                    } else {
+                        log_skip(static_cast<int>(i), card, def, spell_restricted, adjusted_cost, available_mana, can_pay);
+                    }
                 }
 
                 // 2. Twinpact Spell Side Play
@@ -74,16 +122,24 @@ namespace dm::engine {
                         side_restricted = true;
                     }
 
-                    if (!side_restricted && ManaSystem::can_pay_cost(game_state, active_player, spell_def, card_db)) {
-                        Action action;
-                        action.type = PlayerIntent::DECLARE_PLAY;
-                        action.card_id = card.card_id; // Same ID? Or should we use spell_side ID?
-                        // Usually Twinpact cards share ID but behave differently.
-                        // We use `is_spell_side` flag.
-                        action.source_instance_id = card.instance_id;
-                        action.slot_index = static_cast<int>(i);
-                        action.is_spell_side = true;
-                        actions.push_back(action);
+                    {
+                        int adjusted_cost_side = ManaSystem::get_adjusted_cost(game_state, active_player, spell_def);
+                        int available_mana_side = ManaSystem::get_usable_mana_count(game_state, active_player.id, spell_def.civilizations, card_db);
+                        bool can_pay_side = ManaSystem::can_pay_cost(game_state, active_player, spell_def, card_db);
+                        if (!side_restricted && can_pay_side) {
+                            Action action;
+                            action.type = PlayerIntent::DECLARE_PLAY;
+                            action.card_id = card.card_id; // Same ID? Or should we use spell_side ID?
+                            // Usually Twinpact cards share ID but behave differently.
+                            // We use `is_spell_side` flag.
+                            action.source_instance_id = card.instance_id;
+                            action.slot_index = static_cast<int>(i);
+                            action.is_spell_side = true;
+                            actions.push_back(action);
+                        } else {
+                            // log twinpact side skip
+                            log_skip(static_cast<int>(i), card, spell_def, side_restricted, adjusted_cost_side, available_mana_side, can_pay_side);
+                        }
                     }
                 }
 

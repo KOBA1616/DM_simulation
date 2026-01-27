@@ -581,6 +581,18 @@ namespace dm::engine::systems {
 
              int dest_idx = to_bottom ? 0 : -1;
              auto cmd = std::make_unique<TransitionCommand>(id, from_zone, to_zone, owner, dest_idx);
+             // Temp debug: record attempted transition details
+             try {
+                 std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                 if (lout) {
+                     lout << "PIPELINE_MOVE id=" << id
+                          << " from=" << static_cast<int>(from_zone)
+                          << " to=" << static_cast<int>(to_zone)
+                          << " owner=" << owner << "\n";
+                     lout.close();
+                 }
+             } catch(...) {}
+
              execute_command(std::move(cmd), state);
         }
     }

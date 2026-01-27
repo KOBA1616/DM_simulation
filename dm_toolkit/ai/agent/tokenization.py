@@ -172,8 +172,17 @@ class ActionEncoder:
             except Exception:
                 pass
             try:
-                if isinstance(t, str) and str(t).upper() == str(enum_val).upper():
-                    return True
+                if isinstance(t, str):
+                    # Compare against enum member name when available (e.g. 'PASS')
+                    enum_name = getattr(enum_val, 'name', None)
+                    if enum_name is not None and t.upper() == enum_name.upper():
+                        return True
+                    # Fallback: compare numeric string forms
+                    try:
+                        if t.isdigit() and int(t) == int(enum_val):
+                            return True
+                    except Exception:
+                        pass
             except Exception:
                 pass
             return False
@@ -205,7 +214,10 @@ class ActionEncoder:
             return -1
 
         # Check PLAY_CARD (11-20)
-        if _type_matches(cmd_type, ActionType.PLAY_CARD):
+        # Accept both legacy ActionType.PLAY_CARD and normalized command types
+        if _type_matches(cmd_type, ActionType.PLAY_CARD) or (
+            isinstance(action_dict, dict) and str(action_dict.get('type', '')).upper() in ('PLAY_FROM_ZONE', 'PLAY')
+        ):
             p = state.players[player_id]
             if action_dict is not None:
                 cmd_src = action_dict.get('source_instance_id') or action_dict.get('instance_id')

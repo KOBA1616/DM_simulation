@@ -7,6 +7,7 @@ import sys
 import time
 import json
 import logging
+from scripts.logging_manager import configure_logging, get_logger
 from typing import Any
 
 from dm_toolkit.gui import headless
@@ -208,8 +209,9 @@ def run_console(args):
     numeric_level = getattr(logging, args.log_level.upper(), None)
     if not isinstance(numeric_level, int):
         numeric_level = logging.INFO
-    logging.basicConfig(level=numeric_level, format='%(levelname)s: %(message)s')
-    logger = logging.getLogger('headless_console')
+    # Delegate logging setup to centralized manager so CLI and GUI behave consistently
+    configure_logging(console_level_name=args.log_level)
+    logger = get_logger('headless_console')
 
     sess = headless.create_session(p0_human=args.p0_human, p1_human=args.p1_human)
     logger.info('Session created. gs present: %s', bool(getattr(sess, 'gs', None)))

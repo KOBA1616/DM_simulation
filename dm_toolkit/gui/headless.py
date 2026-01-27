@@ -5,6 +5,7 @@ Qt dependencies so tests can run in headless CI environments.
 """
 from typing import Any, Dict, List, Optional, Tuple
 import os
+import logging
 
 from dm_toolkit.gui.game_session import GameSession
 from dm_toolkit.engine.compat import EngineCompat
@@ -225,6 +226,14 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                             break
             except Exception:
                 pass
+    except Exception:
+        pass
+
+    # Route session callback_log to the module logger so GameSession diagnostics
+    # (Execute PRE/POST dumps) appear in the centralized logs when running
+    # headless scripts.
+    try:
+        sess.callback_log = logging.getLogger('selfplay_long').debug
     except Exception:
         pass
 

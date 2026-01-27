@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional, cast
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
 
 import dm_ai_module
+# Prefer command-first generation where available
+from dm_toolkit import commands
 # from dm_toolkit.ai.agent.mcts import MCTS # MCTS might not be available in python toolkit yet or deprecated
 # Since MCTS is now in C++ (dm_ai_module.MCTS), we should use that or skip deep logic here.
 
@@ -91,8 +93,14 @@ class DeckEvolution:
                 def _generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> List[Any]:
                     return []
 
-            actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, self.card_db) or []
-            cmds = _generate_legal_commands(gs, self.card_db)
+            try:
+                actions = dm_ai_module.ActionGenerator.generate_legal_commands(gs, self.card_db) or []
+            except Exception:
+                actions = []
+            try:
+                cmds = commands.generate_legal_commands(gs, self.card_db) or []
+            except Exception:
+                cmds = []
 
             if not actions and not cmds:
                 dm_ai_module.PhaseManager.next_phase(gs)

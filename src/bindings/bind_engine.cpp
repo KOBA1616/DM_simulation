@@ -200,28 +200,28 @@ void bind_engine(py::module& m) {
         .def("resume", &dm::engine::systems::PipelineExecutor::resume)
         .def("execute", static_cast<void (dm::engine::systems::PipelineExecutor::*)(const std::vector<dm::core::Instruction>&, core::GameState&, const std::map<core::CardID, core::CardDefinition>&)>(&dm::engine::systems::PipelineExecutor::execute))
         // execute_command wrapper: accept a dict or bound command objects and dispatch
-        .def("execute_command", [](dm::engine::systems::PipelineExecutor& exec, py::object obj, core::GameState& state) {
+        .def("execute_command", [&m](dm::engine::systems::PipelineExecutor& exec, py::object obj, core::GameState& state) {
             try {
                 std::unique_ptr<dm::engine::game_command::GameCommand> cmd;
                 if (py::isinstance<py::dict>(obj)) {
                     py::dict d = obj.cast<py::dict>();
                     std::string t = py::str(d["type"]);
                     if (t == "PLAY_CARD") {
-                        int iid = (int)d["instance_id"];
+                        int iid = d["instance_id"].cast<int>();
                         auto p = std::make_unique<dm::engine::game_command::PlayCardCommand>(iid);
-                        if (d.contains("target_slot_index")) p->target_slot_index = (int)d["target_slot_index"];
-                        if (d.contains("is_spell_side")) p->is_spell_side = (bool)d["is_spell_side"];
+                        if (d.contains("target_slot_index")) p->target_slot_index = d["target_slot_index"].cast<int>();
+                        if (d.contains("is_spell_side")) p->is_spell_side = d["is_spell_side"].cast<bool>();
                         cmd = std::move(p);
                     } else if (t == "MANA_CHARGE") {
-                        int iid = (int)d["instance_id"];
+                        int iid = d["instance_id"].cast<int>();
                         cmd = std::make_unique<dm::engine::game_command::ManaChargeCommand>(iid);
                     } else if (t == "PASS") {
                         cmd = std::make_unique<dm::engine::game_command::PassCommand>();
                     } else if (t == "ATTACK") {
-                        int src = (int)d["source_id"];
-                        int tgt = (int)d["target_id"];
+                        int src = d["source_id"].cast<int>();
+                        int tgt = d["target_id"].cast<int>();
                         int pid = 0;
-                        if (d.contains("target_player_id")) pid = (int)d["target_player_id"];
+                        if (d.contains("target_player_id")) pid = d["target_player_id"].cast<int>();
                         cmd = std::make_unique<dm::engine::game_command::AttackCommand>(src, tgt, (dm::core::PlayerID)pid);
                     }
                 } else {
@@ -365,7 +365,7 @@ void bind_engine(py::module& m) {
         .def_readonly("state", &GameInstance::state)
         .def("start_game", &GameInstance::start_game)
         .def("resolve_action", &GameInstance::resolve_action)
-        .def("execute_command", [](GameInstance& gi, py::object obj) {
+        .def("execute_command", [&m](GameInstance& gi, py::object obj) {
             try {
                 // Prefer to dispatch via pipeline if available
                 std::unique_ptr<dm::engine::game_command::GameCommand> cmd;
@@ -373,13 +373,13 @@ void bind_engine(py::module& m) {
                     py::dict d = obj.cast<py::dict>();
                     std::string t = py::str(d["type"]);
                     if (t == "PLAY_CARD") {
-                        int iid = (int)d["instance_id"];
+                        int iid = d["instance_id"].cast<int>();
                         auto p = std::make_unique<dm::engine::game_command::PlayCardCommand>(iid);
-                        if (d.contains("target_slot_index")) p->target_slot_index = (int)d["target_slot_index"];
-                        if (d.contains("is_spell_side")) p->is_spell_side = (bool)d["is_spell_side"];
+                        if (d.contains("target_slot_index")) p->target_slot_index = d["target_slot_index"].cast<int>();
+                        if (d.contains("is_spell_side")) p->is_spell_side = d["is_spell_side"].cast<bool>();
                         cmd = std::move(p);
                     } else if (t == "MANA_CHARGE") {
-                        int iid = (int)d["instance_id"];
+                        int iid = d["instance_id"].cast<int>();
                         cmd = std::make_unique<dm::engine::game_command::ManaChargeCommand>(iid);
                     } else if (t == "PASS") {
                         cmd = std::make_unique<dm::engine::game_command::PassCommand>();

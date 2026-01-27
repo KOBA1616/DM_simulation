@@ -133,14 +133,23 @@ class MCTS:
                 return 1.0 if current_player == 1 else -1.0
             return 0.0
 
-        # Generate legal actions (prefer Action objects; fallback to ICommand)
-        actions = dm_ai_module.ActionGenerator.generate_legal_actions(node.state, self.card_db)
-        # commands = [] # Removed shadowing
-        cmd_list = [] # Use distinct name
-        if not actions:
-            cmd_list = commands.generate_legal_commands(node.state, self.card_db) or []
+        # Generate legal moves: prefer command-first (`ICommand` wrappers), fallback to legacy Actions
+        try:
+            try:
+                cmd_list = commands.generate_legal_commands(node.state, self.card_db) or []
+            except Exception:
+                cmd_list = []
+            actions = []
             if not cmd_list:
+                try:
+                    # Fallback to legacy ActionGenerator.generate_legal_actions
+                    actions = dm_ai_module.ActionGenerator.generate_legal_actions(node.state, self.card_db) or []
+                except Exception:
+                    actions = []
+            if not cmd_list and not actions:
                 return 0.0
+        except Exception:
+            return 0.0
 
         # Evaluate with Network
         # Use Masked Tensor (mask_opponent_hand=True) during inference
@@ -159,13 +168,28 @@ class MCTS:
         # Iterate over Action objects if present, otherwise over ICommand objects
         iterable = actions if actions else cmd_list
         for item in iterable:
-            is_action = hasattr(item, 'type')
+            # Identify legacy Action instances explicitly when possible
+            try:
+                ActionCls = getattr(dm_ai_module, 'Action', None)
+                is_action = isinstance(item, ActionCls) if ActionCls is not None else False
+            except Exception:
+                is_action = False
 
             # Map action to index when possible
             action_idx = -1
             if is_action:
                 try:
                     action_idx = dm_ai_module.ActionEncoder.action_to_index(item)
+                except Exception:
+                    action_idx = -1
+            else:
+                # Try to recover underlying legacy Action when available (wrappers may store it)
+                try:
+                    underlying = getattr(item, '_action', None)
+                    if underlying is not None:
+                        action_idx = dm_ai_module.ActionEncoder.action_to_index(underlying)
+                    else:
+                        action_idx = -1
                 except Exception:
                     action_idx = -1
 
