@@ -25,7 +25,7 @@ def test_play_heuristic_with_mocked_dm_ai_module():
     # ActionGenerator returns no native actions to force Python fallback.
     class ActionGenerator:
         @staticmethod
-        def generate_legal_commands(state, card_db=None):
+        def generate_legal_actions(state, card_db=None):
             return []
 
     class PhaseManager:

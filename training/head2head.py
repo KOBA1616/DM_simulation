@@ -469,7 +469,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 score = float(policy_logits[idx])
                 # apply small penalty to PASS actions if configured
                 try:
-                    is_pass_act = (getattr(act, 'type', None) == dm.ActionType.PASS)
+                    is_pass_act = dm.is_action_type(act, dm.ActionType.PASS)
                 except Exception:
                     is_pass_act = False
                 if is_pass_act and pass_penalty:
@@ -485,11 +485,11 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 try:
                     is_chosen_pass = False
                     try:
-                        is_chosen_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or getattr(chosen, 'type', None) == dm.ActionType.PASS )
+                        is_chosen_pass = dm.is_action_type(last_chosen[game_idx], dm.ActionType.PASS) or dm.is_action_type(chosen, dm.ActionType.PASS)
                     except Exception:
-                        is_chosen_pass = getattr(chosen, 'type', None) == dm.ActionType.PASS
+                        is_chosen_pass = dm.is_action_type(chosen, dm.ActionType.PASS)
                     if is_chosen_pass:
-                        non_pass_candidates = [a for a in legal if not (getattr(a, 'type', None) == dm.ActionType.PASS)]
+                        non_pass_candidates = [a for a in legal if not dm.is_action_type(a, dm.ActionType.PASS)]
                         if non_pass_candidates:
                             try:
                                 print("H2H_JSON: " + __import__('json').dumps({'event': 'fallback_non_pass_selected', 'index': game_idx, 'reason': 'model_chose_pass_but_nonpass_available'}, ensure_ascii=False))
@@ -504,11 +504,11 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 try:
                     is_chosen_pass = False
                     try:
-                        is_chosen_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or getattr(chosen, 'type', None) == dm.ActionType.PASS )
+                        is_chosen_pass = dm.is_action_type(last_chosen[game_idx], dm.ActionType.PASS) or dm.is_action_type(chosen, dm.ActionType.PASS)
                     except Exception:
-                        is_chosen_pass = getattr(chosen, 'type', None) == dm.ActionType.PASS
+                        is_chosen_pass = dm.is_action_type(chosen, dm.ActionType.PASS)
                     if is_chosen_pass:
-                        non_pass_candidates = [a for a in legal if not (getattr(a, 'type', None) == dm.ActionType.PASS)]
+                        non_pass_candidates = [a for a in legal if not dm.is_action_type(a, dm.ActionType.PASS)]
                         if non_pass_candidates:
                             # log the fallback
                             try:

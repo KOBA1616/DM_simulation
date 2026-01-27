@@ -78,7 +78,7 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
 
                 class _ActionGenerator:
                     @staticmethod
-                    def generate_legal_commands(state, card_db):
+                    def generate_legal_actions(state, card_db):
                         out = []
                         try:
                             pid = getattr(state, 'active_player_id', 0)

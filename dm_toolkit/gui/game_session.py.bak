@@ -848,7 +848,7 @@ class GameSession:
         finally:
             self.is_processing = False
 
-    def generate_legal_commands(self) -> List[Any]:
+    def generate_legal_actions(self) -> List[Any]:
         if not self.gs:
             return []
         from dm_toolkit.commands import generate_legal_commands

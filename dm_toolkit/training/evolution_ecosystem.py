@@ -173,25 +173,25 @@ class EvolutionEcosystem:
                     _MOVE_CARD = getattr(dm_ai_module.ActionType, 'MOVE_CARD', None)
                     for act in legal_actions:
                         # Check for MANA_CHARGE or MOVE_CARD in Mana Phase
-                        if act.type == _MANA_CHARGE:
+                        if dm_ai_module.is_action_type(act, _MANA_CHARGE):
                             best_action = act
                             found = True
                             break
-                        if instance.state.current_phase == dm_ai_module.Phase.MANA and act.type == _MOVE_CARD:
+                        if instance.state.current_phase == dm_ai_module.Phase.MANA and dm_ai_module.is_action_type(act, _MOVE_CARD):
                             best_action = act
                             found = True
                             break
 
                  if not found:
                      for act in legal_actions:
-                         if act.type == dm_ai_module.ActionType.PLAY_CARD:
+                         if dm_ai_module.is_action_type(act, dm_ai_module.ActionType.PLAY_CARD):
                              best_action = act
                              found = True
                              break
 
                  if not found:
                      for act in legal_actions:
-                         if act.type == dm_ai_module.ActionType.ATTACK_PLAYER:
+                         if dm_ai_module.is_action_type(act, dm_ai_module.ActionType.ATTACK_PLAYER):
                              best_action = act
                              found = True
                              break

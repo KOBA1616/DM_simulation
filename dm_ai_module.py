@@ -6,6 +6,7 @@ it runs reliably when the native extension is unavailable.
 """
 
 from enum import IntEnum
+import warnings
 from typing import Any, Dict, List, Optional
 import json
 import os
@@ -134,6 +135,11 @@ class Action:
     Fields: `type`, `source_instance_id`, `target_player` are used by compat layer/tests.
     """
     def __init__(self, type: Any = ActionType.NONE, source_instance_id: Optional[int] = None, target_player: int = 255):
+        warnings.warn(
+            "`Action` is deprecated — migrate to Command-based APIs (`Command`/`generate_legal_commands`) and unified command dicts.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.type = type
         self.source_instance_id = source_instance_id
         self.target_player = target_player
@@ -232,6 +238,46 @@ class FlowCommand:
         self.arg = arg
         # Some tests expect `new_value` attribute for flow commands
         self.new_value = arg
+
+
+def get_action_type(obj: Any) -> Any:
+    """Return the 'type' of an action-like object in a normalized form.
+
+    Supports legacy `Action` objects, command dicts, and enum/int/string types.
+    """
+    if obj is None:
+        return None
+    try:
+        if isinstance(obj, dict):
+            return obj.get('type')
+    except Exception:
+        pass
+    return getattr(obj, 'type', None)
+
+
+def is_action_type(obj: Any, expected: Any) -> bool:
+    """Safe comparison for action types.
+
+    Allows `obj` to be an `Action` object, a command `dict`, an `IntEnum`,
+    or plain ints/strings. `expected` is typically an `ActionType` member.
+    """
+    val = get_action_type(obj)
+    # Direct enum comparison
+    try:
+        if isinstance(val, IntEnum):
+            return val == expected
+    except Exception:
+        pass
+    # String names in command dicts (e.g. "PASS")
+    if isinstance(val, str) and isinstance(expected, IntEnum):
+        return val == expected.name or val == str(expected.value)
+    # Numeric comparisons
+    if isinstance(val, int) and isinstance(expected, IntEnum):
+        return val == expected.value
+    try:
+        return val == expected
+    except Exception:
+        return False
 
 
 class FilterDef:

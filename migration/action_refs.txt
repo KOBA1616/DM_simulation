@@ -1,0 +1,83 @@
+Repository-wide Action-related references (regex: ActionType|ActionGenerator|generate_legal_actions|class Action|Action)
+
+Note: search capped at 200 matches; this file contains the collected hits at time of audit.
+
+Matches (path:line: snippet)
+
+c:\Users\ichirou\DM_simulation\dm_ai_module.py:18: class ActionType(IntEnum):
+c:\Users\ichirou\DM_simulation\dm_ai_module.py:132: class Action:
+c:\Users\ichirou\DM_simulation\dm_ai_module.py:137: def __init__(self, type: Any = ActionType.NONE, source_instance_id: Optional[int] = None, target_player: int = 255):
+c:\Users\ichirou\DM_simulation\dm_ai_module.py:139: `Action` is deprecated — migrate to Command-based APIs
+c:\Users\ichirou\DM_simulation\dm_ai_module.py:183: def execute_action(self, action: Any):
+
+docs\MCTS_Transformer_REQUIREMENTS.md:21: IntentGenerator::generate_legal_actions()
+
+docs\MCTS_Transformer_REQUIREMENTS.md:27: ai/encoders/ActionEncoder
+
+docs\MCTS_Transformer_REQUIREMENTS.md:51: IntentGenerator::generate_legal_actions()
+
+docs\design_index_to_command.md:4: C++ MCTS がネットワークの出力（action index）を高速に command / ICommand に復元できるようにする。
+
+scripts\replace_generate_calls.py:15: DEF_RE = re.compile(r"^\s*def\s+generate_legal_actions\s*\(")
+
+training\simple_game_generator.py:229: policy = [0.0] * 591  # Total action space size
+
+training\head2head.py:308: # action counts per turn per game: list of dict(turn -> dict(action_type -> count))
+training\head2head.py:472: is_pass_act = (getattr(act, 'type', None) == dm.ActionType.PASS)
+training\head2head.py:488: is_chosen_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or getattr(chosen, 'type', None) == dm.ActionType.PASS )
+
+tests\verify_buffer_actions.py:14: action = {"type": "LOOK_TO_BUFFER", "value1": 3, "from_zone": "SHIELD"}
+
+tests\verify_action_to_command.py:14: action = {"type": "MANA_CHARGE", "source_instance_id": 10, "from_zone": "HAND"}
+
+tests\verify_action_generator.py:23: self.assertTrue(hasattr(dm_ai_module, 'ActionGenerator'), "ActionGenerator class is missing")
+
+tests\test_spell_and_stack.py:5: from dm_ai_module import GameInstance, ActionType, CardStub, GameState, Action, CardType
+
+tests\test_spell_and_stack.py:26: action = Action()
+
+tests\test_spell_and_stack.py:27: action.type = ActionType.PLAY_CARD
+
+tests\test_spell_and_stack.py:35: execute_action_compat(self.game.state, action, None)
+
+tests\test_inference_integration.py:82: # 3. Get Action
+tests\test_inference_integration.py:83: # ActionType is IntEnum
+
+tests\test_generate_legal_commands_mock.py:28: def generate_legal_actions(state, card_db=None):
+
+tests\test_ai_masking.py:12: from dm_ai_module import GameInstance, ActionType, CardStub, GameCommand
+tests\test_ai_masking.py:39: cmd.type = ActionType.PASS
+
+tests\generated\test_scenarios.py:97: # 2. Execute Action
+tests\generated\test_scenarios.py:112: self.type = dm_ai_module.ActionType.MANA_CHARGE
+
+scripts\selfplay_long.py:186: # Choose action
+scripts\selfplay_long.py:246: logger.exception('Exception executing action')
+
+scripts\replay_game_verbose.py.bak:40: legal = dm_ai_module.IntentGenerator.generate_legal_actions(gs, card_db) or []
+
+(End of collected hits; full set may be larger. To iterate further, we can run chunked searches or use `git grep` locally.)
+
+--- appended training hits ---
+
+training\head2head.py:472: is_pass_act = (getattr(act, 'type', None) == dm.ActionType.PASS)
+training\head2head.py:488: is_chosen_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or getattr(chosen, 'type', None) == dm.ActionType.PASS )
+training\head2head.py:490: is_chosen_pass = getattr(chosen, 'type', None) == dm.ActionType.PASS
+training\head2head.py:492: non_pass_candidates = [a for a in legal if not (getattr(a, 'type', None) == dm.ActionType.PASS)]
+training\head2head.py:507: is_chosen_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or getattr(chosen, 'type', None) == dm.ActionType.PASS )
+training\head2head.py:509: is_chosen_pass = getattr(chosen, 'type', None) == dm.ActionType.PASS
+training\head2head.py:511: non_pass_candidates = [a for a in legal if not (getattr(a, 'type', None) == dm.ActionType.PASS)]
+training\head2head.py:553: if act_type == 'PASS' or getattr(chosen, 'type', None) == dm.ActionType.PASS:
+training\head2head.py:569: if chosen.type == dm.ActionType.PASS:
+training\head2head.py:577: is_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or getattr(chosen, 'type', None) == dm.ActionType.PASS )
+training\head2head.py:579: is_pass = getattr(chosen, 'type', None) == dm.ActionType.PASS
+training\head2head.py:638: is_pass_act = (getattr(act, 'type', None) == dm.ActionType.PASS)
+training\head2head.py:678: if act_type == 'PASS' or getattr(chosen, 'type', None) == dm.ActionType.PASS:
+training\head2head.py:695: if chosen.type == dm.ActionType.PASS:
+training\head2head.py:703: is_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or getattr(chosen, 'type', None) == dm.ActionType.PASS )
+training\head2head.py:705: is_pass = getattr(chosen, 'type', None) == dm.ActionType.PASS
+
+dm_toolkit\training\evolution_ecosystem.py:171: _MANA_CHARGE = getattr(dm_ai_module.ActionType, 'MANA_CHARGE', None)
+dm_toolkit\training\evolution_ecosystem.py:172: _MOVE_CARD = getattr(dm_ai_module.ActionType, 'MOVE_CARD', None)
+dm_toolkit\training\evolution_ecosystem.py:187: if act.type == dm_ai_module.ActionType.PLAY_CARD:
+dm_toolkit\training\evolution_ecosystem.py:194: if act.type == dm_ai_module.ActionType.ATTACK_PLAYER:
