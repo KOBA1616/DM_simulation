@@ -23,6 +23,17 @@ except ImportError:
 
 from dm_toolkit.dm_types import GameState, CardDB, Action, PlayerID, Tensor, NPArray
 
+# At runtime, prefer concrete engine types from dm_ai_module when available
+try:
+    if dm_ai_module is not None:
+        try:
+            GameState = getattr(dm_ai_module, 'GameState', GameState)
+            Action = getattr(dm_ai_module, 'Action', Action)
+        except Exception:
+            pass
+except Exception:
+    pass
+
 # Module logger (default to null handler to avoid spamming test output)
 logger = logging.getLogger('dm_toolkit.engine.compat')
 try:

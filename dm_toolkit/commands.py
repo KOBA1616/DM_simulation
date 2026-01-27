@@ -7,6 +7,68 @@ import logging
 logger = logging.getLogger('dm_toolkit.commands')
 
 
+def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
+    """Call the native action generator with fallbacks.
+
+    Handles multiple possible native names for compatibility:
+    - dm_ai_module.generate_commands
+    - dm_ai_module.ActionGenerator.generate_legal_commands
+    - dm_ai_module.ActionGenerator.generate_legal_actions
+    - instance.generate(state, player_id)
+    """
+    try:
+        import dm_ai_module
+    except Exception:
+        return []
+
+    # 1) Prefer a top-level generate_commands (command-first) if present
+    try:
+        if hasattr(dm_ai_module, 'generate_commands'):
+            try:
+                return dm_ai_module.generate_commands(state, card_db) or []
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    AG = getattr(dm_ai_module, 'ActionGenerator', None)
+    if AG is None:
+        return []
+
+    # 2) Try static/classmethod generate_legal_commands
+    try:
+        if hasattr(AG, 'generate_legal_commands'):
+            try:
+                return AG.generate_legal_commands(state, card_db) or []
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # 3) Try legacy generate_legal_actions
+    try:
+        if hasattr(AG, 'generate_legal_actions'):
+            try:
+                return AG.generate_legal_commands(state, card_db) or []
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # 4) Try instance-based generator
+    try:
+        inst = AG()
+        if hasattr(inst, 'generate'):
+            try:
+                return inst.generate(state, getattr(state, 'active_player_id', 0)) or []
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    return []
+
+
 @runtime_checkable
 class ICommand(Protocol):
     def execute(self, state: Any, card_db: Any = None) -> Optional[Any]:
@@ -182,18 +244,13 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
         actions: List[Any] = []
         try:
             # Prefer command-first generator when available (returns command dicts)
-            if hasattr(dm_ai_module, 'generate_commands'):
-                try:
-                    actions = dm_ai_module.generate_commands(state, card_db) or []
-                except Exception:
-                    # Fall back to legacy ActionGenerator when command-first fails
-                    try:
-                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
-                    except Exception:
-                        actions = []
-            else:
-                # Legacy path: use native ActionGenerator
-                actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
+            # Use robust native action generator helper that supports several
+            # historical names and generator shapes (generate_commands, 
+            # generate_legal_commands, generate_legal_actions, instance.generate).
+            try:
+                actions = _call_native_action_generator(state, card_db) or []
+            except Exception:
+                actions = []
             # Debug: show types/reprs of first few returned actions to diagnose discrepancies
             try:
                 sample = []
@@ -432,14 +489,14 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                             try:
                                 dm_ai_module.PhaseManager.fast_forward(state, card_db)
                                 # Re-query actions after fast_forward
-                                actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
+                                actions = _call_native_action_generator(state, card_db) or []
                             except Exception:
                                 # If fast_forward fails for any reason, fall back
                                 # to stepping phases a couple times.
                                 for _ in range(2):
                                     try:
                                         dm_ai_module.PhaseManager.next_phase(state, card_db)
-                                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
+                                        actions = _call_native_action_generator(state, card_db) or []
                                         if actions:
                                             break
                                     except Exception:
@@ -448,7 +505,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                             for _ in range(2):
                                 try:
                                     dm_ai_module.PhaseManager.next_phase(state, card_db)
-                                    actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, card_db) or []
+                                    actions = _call_native_action_generator(state, card_db) or []
                                     if actions:
                                         break
                                 except Exception:

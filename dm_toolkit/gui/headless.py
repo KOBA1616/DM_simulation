@@ -114,7 +114,66 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                     _native.ActionType = _ActionType
                     _native.Action = _Action
                     _native.ActionGenerator = _ActionGenerator
-                    print("headless: injected dm_ai_module stubs for Action/ActionType/ActionGenerator")
+                    # Also provide minimal Command-based stubs so command-first codepaths
+                    # (generate_legal_commands / Command.to_dict) can fall back safely.
+                    class _CommandType:
+                        PASS = 'PASS'
+                        MANA_CHARGE = 'MANA_CHARGE'
+                        PLAY_CARD = 'PLAY_CARD'
+
+                    class _Command:
+                        def __init__(self, type_, instance_id=None, source_instance_id=None, card_id=None):
+                            self.type = type_
+                            self.instance_id = instance_id
+                            self.source_instance_id = source_instance_id
+                            self.card_id = card_id
+
+                        def to_dict(self):
+                            out = {'type': self.type}
+                            if self.instance_id is not None:
+                                out['instance_id'] = self.instance_id
+                            if self.source_instance_id is not None:
+                                out['source_instance_id'] = self.source_instance_id
+                            if self.card_id is not None:
+                                out['card_id'] = self.card_id
+                            return out
+
+                        def __repr__(self):
+                            return f"<_StubCommand type={self.type} card_id={self.card_id} src={self.source_instance_id}>"
+
+                    class _CommandGenerator:
+                        @staticmethod
+                        def generate_legal_commands(state, card_db):
+                            out = []
+                            try:
+                                # Prefer adapting from ActionGenerator if available
+                                acts = []
+                                try:
+                                    if hasattr(_native, 'ActionGenerator'):
+                                        acts = _native.ActionGenerator.generate_legal_commands(state, card_db)
+                                except Exception:
+                                    acts = []
+
+                                if acts:
+                                    for a in acts:
+                                        try:
+                                            t = getattr(a, 'type', None)
+                                            iid = getattr(a, 'instance_id', None) or getattr(a, 'source_instance_id', None)
+                                            cid = getattr(a, 'card_id', None)
+                                            out.append(_Command(t, instance_id=iid, source_instance_id=getattr(a, 'source_instance_id', None), card_id=cid))
+                                        except Exception:
+                                            continue
+                                else:
+                                    # Fallback: build a PASS command
+                                    out.append(_Command(_CommandType.PASS))
+                            except Exception:
+                                pass
+                            return out
+
+                    _native.CommandType = _CommandType
+                    _native.Command = _Command
+                    _native.CommandGenerator = _CommandGenerator
+                    print("headless: injected dm_ai_module stubs for Action/Command and generators")
                 except Exception:
                     pass
         except Exception:

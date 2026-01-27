@@ -143,7 +143,7 @@ class MCTS:
             if not cmd_list:
                 try:
                     # Fallback to legacy ActionGenerator.generate_legal_actions
-                    actions = dm_ai_module.ActionGenerator.generate_legal_actions(node.state, self.card_db) or []
+                    actions = dm_ai_module.ActionGenerator.generate_legal_commands(node.state, self.card_db) or []
                 except Exception:
                     actions = []
             if not cmd_list and not actions:
