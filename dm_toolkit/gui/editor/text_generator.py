@@ -1057,7 +1057,7 @@ class CardTextGenerator:
             "to_zone": command_copy.get("to_zone", ""),
             "original_to_zone": command_copy.get("original_to_zone", ""),
             "mutation_kind": command_copy.get("mutation_kind", ""),
-            "destination_zone": command_copy.get("to_zone", ""), # For MOVE_CARD mapping
+            "destination_zone": command_copy.get("to_zone") or command_copy.get("destination_zone", ""), # For MOVE_CARD mapping
             "result": command_copy.get("result") or command_copy.get("str_param", ""), # For GAME_RESULT, map properly
             "is_mega_last_burst": card_mega_last_burst,  # Pass mega_last_burst flag for CAST_SPELL detection
             "duration": command_copy.get("duration", "")
@@ -1521,7 +1521,7 @@ class CardTextGenerator:
         if atype == "SEARCH_DECK":
             dest_zone = action.get("destination_zone", "HAND")
             if not dest_zone: dest_zone = "HAND"
-            zone_str = tr(dest_zone)
+            zone_str = cls._zone_to_japanese(dest_zone)
             count = val1 if val1 > 0 else 1
 
             if dest_zone == "HAND":
@@ -2474,9 +2474,9 @@ class CardTextGenerator:
 
         # Destination/Source Resolution
         dest_zone = action.get("destination_zone", "")
-        zone_str = tr(dest_zone) if dest_zone else "どこか"
+        zone_str = cls._zone_to_japanese(dest_zone) if dest_zone else "どこか"
         src_zone = action.get("source_zone", "")
-        src_str = tr(src_zone) if src_zone else ""
+        src_str = cls._zone_to_japanese(src_zone) if src_zone else ""
 
         text = template.replace("{value1}", str(val1))
         text = text.replace("{value2}", str(val2))
