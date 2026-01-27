@@ -68,7 +68,7 @@ class PBTManager:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.network: Optional[AlphaZeroNetwork] = None
         self.input_size = dm_ai_module.TensorConverter.INPUT_SIZE
-        self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
+        self.action_size = dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
 
         # Evolution Config
         self.evo_config = dm_ai_module.DeckEvolutionConfig()

@@ -2,5 +2,5 @@ numpy
 torch
 PyQt6
 onnx
-onnxruntime
+onnxruntime>=1.18.0
 pydantic>=2.0

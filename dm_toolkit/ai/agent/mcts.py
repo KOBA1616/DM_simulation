@@ -177,19 +177,35 @@ class MCTS:
 
             # Map action to index when possible
             action_idx = -1
-            if is_action:
-                try:
-                    action_idx = dm_ai_module.ActionEncoder.action_to_index(item)
-                except Exception:
-                    action_idx = -1
-            else:
-                # Try to recover underlying legacy Action when available (wrappers may store it)
-                try:
-                    underlying = getattr(item, '_action', None)
-                    if underlying is not None:
-                        action_idx = dm_ai_module.ActionEncoder.action_to_index(underlying)
+            # Prefer command-first encoder when possible
+            try:
+                # If item is a plain dict (command-like)
+                if isinstance(item, dict):
+                    action_idx = dm_ai_module.CommandEncoder.command_to_index(item)
+                else:
+                    # If wrapper exposes normalized dict via `to_dict`
+                    to_dict = getattr(item, 'to_dict', None)
+                    if callable(to_dict):
+                        try:
+                            action_idx = dm_ai_module.CommandEncoder.command_to_index(item.to_dict())
+                        except Exception:
+                            action_idx = -1
                     else:
                         action_idx = -1
+            except Exception:
+                action_idx = -1
+
+            # Fallback to legacy ActionEncoder (supports legacy Action objects or underlying `_action`)
+            if action_idx == -1:
+                try:
+                    if is_action:
+                        action_idx = dm_ai_module.ActionEncoder.action_to_index(item)
+                    else:
+                        underlying = getattr(item, '_action', None)
+                        if underlying is not None:
+                            action_idx = dm_ai_module.ActionEncoder.action_to_index(underlying)
+                        else:
+                            action_idx = -1
                 except Exception:
                     action_idx = -1
 

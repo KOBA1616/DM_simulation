@@ -1,0 +1,35 @@
+C++ and docs Action-related references (search performed for ActionType, ActionEncoder, generate_legal_actions, ActionGenerator, action_to_index, TOTAL_ACTION_SIZE, index_to_command)
+
+Found matches (path:line: snippet)
+
+docs\MCTS_Transformer_REQUIREMENTS.md:21: IntentGenerator::generate_legal_actions()
+docs\MCTS_Transformer_REQUIREMENTS.md:27: ai/encoders/ActionEncoder
+docs\MCTS_Transformer_REQUIREMENTS.md:51: IntentGenerator::generate_legal_actions()
+docs\MCTS_Transformer_REQUIREMENTS.md:55: ActionEncoder::TOTAL_ACTION_SIZE
+
+docs\design_index_to_command.md:1: Design: Native index -> command inverse (index_to_command)
+docs\design_index_to_command.md:22: Python の `index_to_command` と同じオフセット設計を C++ に移植する.
+
+tests and migration refs: migration\action_refs.txt
+
+src\engine\systems\flow\phase_manager.cpp:237: auto actions = IntentGenerator::generate_legal_actions(game_state, card_db);
+src\ai\encoders\action_encoder.cpp:8: int ActionEncoder::action_to_index(const Action& action) {
+src\bindings\bind_ai.cpp:69: py::class_<ActionEncoder>(m, "ActionEncoder")
+src\bindings\bind_ai.cpp:70: .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
+src\bindings\bind_ai.cpp:71: .def_static("action_to_index", &ActionEncoder::action_to_index);
+src\bindings\bind_engine.cpp:260: .def_static("generate_legal_actions", &IntentGenerator::generate_legal_actions);
+src\bindings\bind_engine.cpp:263: m.attr("ActionGenerator") = m.attr("IntentGenerator");
+src\bindings\bind_core.cpp:132: m.attr("ActionType") = m.attr("PlayerIntent");
+src\ai\mcts\mcts.cpp:64: std::vector<float> aggregated_policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+src\ai\self_play\self_play.cpp:69: auto legal_actions = IntentGenerator::generate_legal_actions(state, *card_db_);
+src\ai\self_play\self_play.cpp:84: if (ActionEncoder::action_to_index(act) == action_idx) {
+src\ai\evaluator\beam_search_evaluator.cpp:24: std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+src\ai\data_collection\data_collector.cpp:123: std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+src\ai\data_collection\data_collector.cpp:124: int action_idx = ActionEncoder::action_to_index(chosen_action);
+
+native prototype: native_prototypes/index_to_command (CMake + src/index_to_command.cpp)
+
+Notes / next actions:
+- Core native code (`ActionEncoder`, `IntentGenerator`/`ActionGenerator`, `ActionType`) is heavily used in `src/ai` and engine code (MCTS, self-play, data collection).
+- Migration plan must include: (A) design `CommandEncoder` and new `TOTAL_COMMAND_SIZE`, (B) provide native `index_to_command` inverse mapping compatible with Python shim, (C) update bindings (`bind_ai.cpp` / `bind_engine.cpp`) to export Command-based APIs or backward-compat wrappers.
+- Recommend creating a small design doc (`docs/design_command_encoder.md`) and a test matrix comparing Python shim `dm_ai_module.index_to_command` vs native `index_to_command` for a representative set of indices.

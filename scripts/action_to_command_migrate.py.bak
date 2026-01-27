@@ -2,7 +2,7 @@
 """
 Conservative migration helper (Action -> Command).
 - By default performs a dry-run and reports candidate files/occurrences.
-- Replaces only `generate_legal_commands(` -> `generate_legal_commands(` when `--apply` is passed.
+- Replaces only `generate_legal_actions(` -> `generate_legal_commands(` when `--apply` is passed.
 - If `--backup` is passed with `--apply`, writes a `.bak` copy before modifying.
 
 Use carefully and review diffs before applying.
@@ -30,7 +30,7 @@ def scan(root: Path):
 
 def replace_in_file(path: Path, apply: bool, backup: bool):
     txt = path.read_text(encoding='utf-8')
-    new = txt.replace('generate_legal_commands(', 'generate_legal_commands(')
+    new = txt.replace('generate_legal_actions(', 'generate_legal_commands(')
     if new == txt:
         return False, []
     # collect context lines

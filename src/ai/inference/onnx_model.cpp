@@ -14,7 +14,23 @@ namespace dm::ai::inference {
         : env_(ORT_LOGGING_LEVEL_WARNING, "DM_AI_Inference")
     {
         Ort::SessionOptions session_options;
-        session_options.SetIntraOpNumThreads(1);
+        // Allow overriding intra/inter op thread counts via environment variables
+        // Useful to tune performance without recompiling. If not set, leave
+        // defaults to let ORT choose optimal values.
+        const char* env_intra = std::getenv("ORT_INTRA_THREADS");
+        const char* env_inter = std::getenv("ORT_INTER_THREADS");
+        if (env_intra) {
+            try {
+                int v = std::stoi(env_intra);
+                if (v > 0) session_options.SetIntraOpNumThreads(v);
+            } catch(...) { /* ignore bad values */ }
+        }
+        if (env_inter) {
+            try {
+                int v = std::stoi(env_inter);
+                if (v > 0) session_options.SetInterOpNumThreads(v);
+            } catch(...) { /* ignore bad values */ }
+        }
         session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
 #ifdef _WIN32

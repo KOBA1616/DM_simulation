@@ -17,8 +17,6 @@ class AIPlayer:
     def __init__(self, model_path: str, device='cpu', config=None):
         self.device = device
         self.tokenizer = StateTokenizer()
-        self.action_encoder = ActionEncoder()
-
         # Default Config (matches train_simple.py)
         self.config = config or {
             'vocab_size': 1000,
@@ -30,9 +28,21 @@ class AIPlayer:
             'max_len': 200
         }
 
+        # Ensure action_dim matches CommandEncoder schema when available
+        try:
+            dm_mod = __import__('dm_ai_module')
+            if hasattr(dm_mod, 'CommandEncoder'):
+                action_dim = int(getattr(dm_mod, 'CommandEncoder').TOTAL_COMMAND_SIZE)
+            else:
+                action_dim = int(self.config.get('action_dim', 600))
+        except Exception:
+            action_dim = int(self.config.get('action_dim', 600))
+
+        self.action_encoder = ActionEncoder(action_dim=action_dim)
+
         self.model = DuelTransformer(
             vocab_size=self.config['vocab_size'],
-            action_dim=self.config['action_dim'],
+            action_dim=self.config['action_dim'] if 'action_dim' in self.config else action_dim,
             d_model=self.config['d_model'],
             nhead=self.config['nhead'],
             num_layers=self.config['num_layers'],

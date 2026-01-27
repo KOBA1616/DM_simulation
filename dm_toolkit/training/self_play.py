@@ -33,7 +33,7 @@ class SelfPlayRunner:
         # Note: instance.state returns a copy, but checking dimensions is fine
         dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_state, 0, self.card_db)
         self.input_size = len(dummy_vec)
-        self.action_size = dm_ai_module.ActionEncoder.TOTAL_ACTION_SIZE
+        self.action_size = dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
 
     def load_model(self, model_path: Optional[str]) -> Any:
         network = AlphaZeroNetwork(self.input_size, self.action_size).to(self.device)

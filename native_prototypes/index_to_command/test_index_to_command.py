@@ -1,14 +1,16 @@
-def test_stub_index_to_command_returns_dict():
-    # This test is a placeholder; it will run only after the native module is built
-    try:
-        import index_to_command_native as native
-    except Exception:
-        # skip if not built
-        return
-    d0 = native.index_to_command(0)
-    assert isinstance(d0, dict)
-    assert d0.get('type') == 'PASS'
-    d5 = native.index_to_command(5)
-    assert d5.get('type') == 'MANA_CHARGE'
-    d25 = native.index_to_command(25)
-    assert d25.get('type') == 'PLAY_FROM_ZONE'
+from native_prototypes.index_to_command.index_to_command import index_to_command
+
+
+def test_index_to_command_basic():
+    # PASS
+    assert index_to_command(0)['type'] == 'PASS'
+    # MANA_CHARGE region
+    for i in (1, 5, 19):
+        d = index_to_command(i)
+        assert d['type'] == 'MANA_CHARGE'
+        assert d['slot_index'] == i
+    # PLAY_FROM_ZONE region
+    for i in (20, 25, 45):
+        d = index_to_command(i)
+        assert d['type'] == 'PLAY_FROM_ZONE'
+        assert d['slot_index'] == i - 20

@@ -98,8 +98,29 @@ namespace dm::ai {
                     }
 
                     std::vector<dm::ai::inference::InputTensor> inputs;
-                    inputs.push_back({input_ids_name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, input_ids.data(), dm::ai::inference::TensorType::INT64});
-                    inputs.push_back({mask_name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, mask.data(), dm::ai::inference::TensorType::BOOL});
+
+                    // Build inputs based on the actual names detected in the ONNX model.
+                    // If the model exposes only a single input (e.g. `input_ids`), only pass that.
+                    // If the model exposes both `input_ids` and a `mask`-like input, map them accordingly.
+                    if (input_names.size() <= 1) {
+                        // Single input model: assume it expects token ids only
+                        inputs.push_back({input_ids_name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, input_ids.data(), dm::ai::inference::TensorType::INT64});
+                    } else {
+                        // Multi-input model: match names heuristically
+                        for (const auto& name : input_names) {
+                            std::string lname = name;
+                            // to lower for simple checks
+                            std::transform(lname.begin(), lname.end(), lname.begin(), [](unsigned char c){ return std::tolower(c); });
+                            if (lname.find("mask") != std::string::npos || lname.find("attention_mask") != std::string::npos) {
+                                inputs.push_back({name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, mask.data(), dm::ai::inference::TensorType::BOOL});
+                            } else if (lname.find("input") != std::string::npos || lname.find("id") != std::string::npos) {
+                                inputs.push_back({name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, input_ids.data(), dm::ai::inference::TensorType::INT64});
+                            } else {
+                                // Unknown input, attempt to pass input_ids as a fallback
+                                inputs.push_back({name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, input_ids.data(), dm::ai::inference::TensorType::INT64});
+                            }
+                        }
+                    }
 
                     // 4. Infer
                     auto result = onnx_model_->infer(inputs, n);

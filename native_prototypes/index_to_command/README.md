@@ -21,4 +21,29 @@ import index_to_command_native as native
 print(native.index_to_command(0))
 print(native.index_to_command(5))
 print(native.index_to_command(25))
+
+If you don't build the native module, use the provided Python wrapper:
+
+```py
+from native_prototypes.index_to_command.index_to_command import index_to_command
+print(index_to_command(0))
+```
+
+Build (Windows example using PowerShell and CMake):
+
+```powershell
+mkdir build && cd build
+cmake -S .. -B . -G "Visual Studio 17 2022" -A x64
+cmake --build . --config Release
+```
+
+Or with Ninja / Unix-like:
+
+```bash
+mkdir build && cd build
+cmake -S .. -B . -G Ninja
+cmake --build .
+```
+
+After successful build, the module `index_to_command_native` will be importable from Python.
 ```

@@ -66,6 +66,8 @@ class GameState:
         self.pending_effects: List[Any] = []
         self.turn_number = 1
         self.game_over = False
+        # Use -1 as legacy sentinel for "no winner"; PhaseManager will
+        # normalize negative sentinels to `GameResult.NONE` when reporting.
         self.winner = -1
         class _Exec:
             pass
@@ -127,6 +129,7 @@ class GameState:
         self.pending_effects = []
         self.turn_number = 1
         self.game_over = False
+        self.winner = -1
 
 
 class Action:
@@ -476,6 +479,128 @@ def generate_commands(state: Any, card_db: Any = None) -> List[Dict[str, Any]]:
     return out
 
 
+class CommandEncoder:
+    """Compatibility CommandEncoder used by Python tooling.
+
+    Mirrors the prototype used in `native_prototypes` so that Python and
+    native code share the same numeric layout for indices.
+    """
+    PASS_INDEX = 0
+    MANA_CHARGE_BASE = 1
+    MANA_CHARGE_SLOTS = 19
+    PLAY_FROM_ZONE_BASE = MANA_CHARGE_BASE + MANA_CHARGE_SLOTS
+    PLAY_FROM_ZONE_SLOTS = 256
+
+    TOTAL_COMMAND_SIZE = PLAY_FROM_ZONE_BASE + PLAY_FROM_ZONE_SLOTS
+
+    @staticmethod
+    def index_to_command(idx: int) -> Dict:
+        if idx == CommandEncoder.PASS_INDEX:
+            return {"type": "PASS"}
+        if CommandEncoder.MANA_CHARGE_BASE <= idx < CommandEncoder.PLAY_FROM_ZONE_BASE:
+            return {"type": "MANA_CHARGE", "slot_index": int(idx)}
+        if idx >= CommandEncoder.PLAY_FROM_ZONE_BASE and idx < CommandEncoder.TOTAL_COMMAND_SIZE:
+            return {"type": "PLAY_FROM_ZONE", "slot_index": int(idx - CommandEncoder.PLAY_FROM_ZONE_BASE)}
+        raise IndexError(f"index out of range: {idx}")
+
+    @staticmethod
+    def command_to_index(cmd: Dict) -> int:
+        t = cmd.get("type")
+        if t == "PASS":
+            return CommandEncoder.PASS_INDEX
+        if t == "MANA_CHARGE":
+            si = int(cmd.get("slot_index", CommandEncoder.MANA_CHARGE_BASE))
+            if si < CommandEncoder.MANA_CHARGE_BASE or si >= CommandEncoder.PLAY_FROM_ZONE_BASE:
+                raise ValueError("slot_index out of range for MANA_CHARGE")
+            return si
+        if t == "PLAY_FROM_ZONE":
+            si = int(cmd.get("slot_index", 0))
+            if si < 0 or si >= CommandEncoder.PLAY_FROM_ZONE_SLOTS:
+                raise ValueError("slot_index out of range for PLAY_FROM_ZONE")
+            return CommandEncoder.PLAY_FROM_ZONE_BASE + si
+        raise ValueError(f"unsupported command type: {t}")
+
+
+class ActionEncoder:
+    """Deprecated ActionEncoder compatibility wrapper.
+
+    Provides `action_to_index` and `index_to_action` delegating to the
+    command-based encoder. Emits DeprecationWarning when used.
+    """
+    TOTAL_ACTION_SIZE = CommandEncoder.TOTAL_COMMAND_SIZE
+
+    @staticmethod
+    def action_to_index(action: Any) -> int:
+        warnings.warn("ActionEncoder is deprecated; use CommandEncoder/command_to_index", DeprecationWarning, stacklevel=2)
+        # Accept dict-like command shapes directly
+        if isinstance(action, dict):
+            return CommandEncoder.command_to_index(action)
+        # Legacy Action object: map common types
+        t = getattr(action, 'type', None)
+        try:
+            if t == ActionType.PASS:
+                return CommandEncoder.PASS_INDEX
+            if t == ActionType.MANA_CHARGE:
+                si = getattr(action, 'source_instance_id', None) or getattr(action, 'slot_index', None)
+                try:
+                    si_i = int(si)
+                except Exception:
+                    si_i = CommandEncoder.MANA_CHARGE_BASE
+                if si_i < CommandEncoder.MANA_CHARGE_BASE or si_i >= CommandEncoder.PLAY_FROM_ZONE_BASE:
+                    return CommandEncoder.MANA_CHARGE_BASE
+                return si_i
+            if t == ActionType.PLAY_CARD or t == ActionType.RESOLVE_EFFECT:
+                si = getattr(action, 'source_instance_id', None) or getattr(action, 'slot_index', None)
+                try:
+                    si_i = int(si)
+                except Exception:
+                    si_i = 0
+                if si_i < 0 or si_i >= CommandEncoder.PLAY_FROM_ZONE_SLOTS:
+                    return CommandEncoder.PLAY_FROM_ZONE_BASE
+                return CommandEncoder.PLAY_FROM_ZONE_BASE + si_i
+        except Exception:
+            pass
+        # Fallback: attempt to treat as command-like
+        try:
+            cmd = getattr(action, 'to_dict', None)
+            if callable(cmd):
+                return CommandEncoder.command_to_index(action.to_dict())
+        except Exception:
+            pass
+        raise ValueError('cannot encode action to index')
+
+    @staticmethod
+    def index_to_action(idx: int) -> Any:
+        warnings.warn("ActionEncoder is deprecated; use CommandEncoder/index_to_command", DeprecationWarning, stacklevel=2)
+        cmd = CommandEncoder.index_to_command(int(idx))
+        # Return a lightweight Action-like object for legacy callers
+        a = Action()
+        if cmd.get('type') == 'PASS':
+            a.type = ActionType.PASS
+        elif cmd.get('type') == 'MANA_CHARGE':
+            a.type = ActionType.MANA_CHARGE
+            a.source_instance_id = int(cmd.get('slot_index', 0))
+        elif cmd.get('type') == 'PLAY_FROM_ZONE':
+            a.type = ActionType.PLAY_CARD
+            a.source_instance_id = int(cmd.get('slot_index', 0))
+        return a
+
+
+class DevTools:
+    """Small dev/test utilities used by some legacy tests.
+
+    `trigger_loop_detection(state)` simulates the engine's loop-detection
+    by marking the state so that `PhaseManager.check_game_over` treats it
+    as a detected loop on the next invocation.
+    """
+    @staticmethod
+    def trigger_loop_detection(state: GameState) -> None:
+        try:
+            setattr(state, '_loop_forced', True)
+        except Exception:
+            pass
+
+
 class DataCollector:
     def collect_data_batch_heuristic(self, count: int, include_history: bool, some_flag: bool):
         class Batch:
@@ -527,15 +652,36 @@ class PhaseManager:
     @staticmethod
     def check_game_over(state: GameState) -> bool:
         try:
-            return bool(getattr(state, 'game_over', False))
+            # Compatibility: support DevTools-triggered loop detection for tests.
+            if getattr(state, '_loop_forced', False):
+                # mark winner based on active player (0 -> P1_WIN)
+                try:
+                    wp = GameResult.P1_WIN if getattr(state, 'active_player_id', 0) == 0 else GameResult.P2_WIN
+                    setattr(state, 'winner', wp)
+                    setattr(state, 'game_over', True)
+                    return True, int(wp)
+                except Exception:
+                    return True, int(GameResult.P1_WIN)
+            # Default behavior: return (bool, int) to match native bindings
+            is_over = bool(getattr(state, 'game_over', False))
+            res = getattr(state, 'winner', 0)
+            try:
+                res_i = int(res)
+            except Exception:
+                res_i = int(GameResult.NONE)
+            # Normalize legacy negative sentinel (-1) to GameResult.NONE (0)
+            if isinstance(res_i, int) and res_i < 0:
+                res_i = int(GameResult.NONE)
+            return is_over, res_i
         except Exception:
-            return False
+            return False, int(GameResult.NONE)
 
 
 __all__ = [
     'IS_NATIVE', 'ActionType', 'CommandType', 'CardStub', 'Player', 'GameState', 'GameInstance',
     'CommandDef', 'FilterDef', 'TargetScope', 'CommandSystem', 'JsonLoader', 'ParallelRunner',
     'create_parallel_runner', 'index_to_command', 'generate_commands', 'generate_legal_commands', 'Command', 'CommandGenerator', 'PhaseManager',
-    'Action', 'GameCommand', 'GameResult', 'CardType', 'FlowType', 'FlowCommand', 'DataCollector'
+    'Action', 'GameCommand', 'GameResult', 'CardType', 'FlowType', 'FlowCommand', 'DataCollector', 'CommandEncoder', 'ActionEncoder'
 ]
+
 
