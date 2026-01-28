@@ -245,6 +245,22 @@ class PhaseManager:
                 state.current_phase = Phase.ATTACK
             elif state.current_phase == Phase.ATTACK:
                 state.current_phase = Phase.END
+            elif state.current_phase == Phase.END:
+                state.active_player_id = 1 - getattr(state, 'active_player_id', 0)
+                state.turn_number += 1
+                state.current_phase = Phase.MANA
+                # Start of turn processing: Untap and Draw
+                try:
+                    p = state.players[state.active_player_id]
+                    # Untap
+                    for c in p.mana_zone + p.battle_zone:
+                        c.is_tapped = False
+                    # Draw
+                    if p.deck:
+                        card_id = p.deck.pop()
+                        state.add_card_to_hand(state.active_player_id, card_id)
+                except Exception:
+                    pass
             else:
                 state.current_phase = Phase.MANA
         except Exception:
