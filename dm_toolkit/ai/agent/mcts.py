@@ -160,7 +160,12 @@ class MCTS:
                 node.state, node.state.active_player_id, self.card_db
             )
             # Check if tensor is already a tensor or numpy array of ints (tokens)
-            if isinstance(tensor, (list, np.ndarray)) and (
+            if isinstance(tensor, torch.Tensor):
+                if tensor.dim() == 1:
+                    tensor_t = tensor.unsqueeze(0)
+                else:
+                    tensor_t = tensor
+            elif isinstance(tensor, (list, np.ndarray)) and (
                 (isinstance(tensor, list) and len(tensor) > 0 and isinstance(tensor[0], (int, np.integer))) or
                 (isinstance(tensor, np.ndarray) and np.issubdtype(tensor.dtype, np.integer))
             ):
