@@ -162,6 +162,9 @@ class SimulationRunner:
 
                     evaluator_func = model_batch_evaluate
 
+                    # Register callback for Native C++ MCTS integration
+                    EngineCompat.register_batch_inference_numpy(model_batch_evaluate)
+
                 except ImportError:
                     if finished_callback:
                         finished_callback(0.0, tr("Error: PyTorch not available for Model evaluation."))

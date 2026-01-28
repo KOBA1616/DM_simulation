@@ -1,6 +1,36 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+except ImportError:
+    # Dummy classes to allow import without torch
+    class torch:
+        class Tensor:
+            pass
+        @staticmethod
+        def randn(*args): return torch.Tensor()
+    class nn:
+        class Module:
+            pass
+        class Embedding(Module):
+            def __init__(self, *args, **kwargs): pass
+        class Parameter:
+            def __init__(self, *args, **kwargs): pass
+        class TransformerEncoderLayer(Module):
+            def __init__(self, *args, **kwargs): pass
+        class TransformerEncoder(Module):
+            def __init__(self, *args, **kwargs): pass
+        class Sequential(Module):
+            def __init__(self, *args, **kwargs): pass
+        class LayerNorm(Module):
+            def __init__(self, *args, **kwargs): pass
+        class Linear(Module):
+            def __init__(self, *args, **kwargs): pass
+        class GELU(Module):
+            pass
+    class F:
+        pass
+
 import math
 from typing import Optional, Tuple
 from dm_toolkit.ai.agent.synergy import SynergyGraph

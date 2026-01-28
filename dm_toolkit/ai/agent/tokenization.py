@@ -1,5 +1,12 @@
 from typing import Any, List
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    class np:
+        class ndarray: pass
+        def array(data, **kwargs): return data
+        int64 = int
+
 import dm_ai_module
 from dm_ai_module import GameCommand, ActionType, CommandType
 
